@@ -15,13 +15,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -51,15 +56,42 @@ fun LibraryScreen(
   onSyncGooglePlayBooks: () -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
+  onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
+  onClearBookSeries: (LibraryBook) -> Unit,
   onDismissMessage: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   var showingHidden by rememberSaveable { mutableStateOf(false) }
+  var seriesEditorBook by remember { mutableStateOf<LibraryBook?>(null) }
+  var expandedSeries by remember(showingHidden) { mutableStateOf(emptySet<String>()) }
+  val existingSeriesNames = remember(state.books, state.hiddenBooks) {
+    (state.books + state.hiddenBooks)
+      .mapNotNull { it.series?.name?.trim()?.takeIf(String::isNotEmpty) }
+      .distinctBy { it.lowercase() }
+      .sortedBy { it.lowercase() }
+  }
+
   LaunchedEffect(state.message) {
     val message = state.message ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(message)
     onDismissMessage()
+  }
+
+  seriesEditorBook?.let { book ->
+    LibrarySeriesDialog(
+      book = book,
+      existingSeriesNames = existingSeriesNames,
+      onDismiss = { seriesEditorBook = null },
+      onSave = { name, position ->
+        onSetBookSeries(book, name, position)
+        seriesEditorBook = null
+      },
+      onClear = {
+        onClearBookSeries(book)
+        seriesEditorBook = null
+      },
+    )
   }
 
   Column(modifier.fillMaxSize()) {
@@ -102,6 +134,7 @@ fun LibraryScreen(
         style = MaterialTheme.typography.bodyMedium,
       )
     } else {
+      val groups = remember(displayedBooks) { groupLibraryBooks(displayedBooks) }
       LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 112.dp),
         modifier = Modifier
@@ -111,17 +144,69 @@ fun LibraryScreen(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
-        items(
-          items = displayedBooks,
-          key = { book -> "${book.source.name}:${book.sourceId}" },
-        ) { book ->
-          LibraryBookThumbnail(
-            book = book,
-            actionLabel = if (showingHidden) "再表示" else "非表示",
-            onAction = {
-              if (showingHidden) onRestoreBook(book) else onHideBook(book)
-            },
-          )
+        groups.series.forEach { section ->
+          val expanded = section.name in expandedSeries
+          item(
+            key = "series:${section.name}",
+            span = { GridItemSpan(maxLineSpan) },
+          ) {
+            LibrarySeriesHeader(
+              name = section.name,
+              count = section.books.size,
+              expanded = expanded,
+              onToggle = {
+                expandedSeries = if (expanded) {
+                  expandedSeries - section.name
+                } else {
+                  expandedSeries + section.name
+                }
+              },
+            )
+          }
+          if (expanded) {
+            items(
+              items = section.books,
+              key = { book -> "${book.source.name}:${book.sourceId}" },
+            ) { book ->
+              LibraryBookThumbnail(
+                book = book,
+                actionLabel = if (showingHidden) "再表示" else "非表示",
+                onAction = {
+                  if (showingHidden) onRestoreBook(book) else onHideBook(book)
+                },
+                onEditSeries = { seriesEditorBook = book },
+              )
+            }
+          }
+        }
+
+        if (groups.ungrouped.isNotEmpty()) {
+          if (groups.series.isNotEmpty()) {
+            item(
+              key = "ungrouped-heading",
+              span = { GridItemSpan(maxLineSpan) },
+            ) {
+              Text(
+                "シリーズ未設定",
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          }
+          items(
+            items = groups.ungrouped,
+            key = { book -> "${book.source.name}:${book.sourceId}" },
+          ) { book ->
+            LibraryBookThumbnail(
+              book = book,
+              actionLabel = if (showingHidden) "再表示" else "非表示",
+              onAction = {
+                if (showingHidden) onRestoreBook(book) else onHideBook(book)
+              },
+              onEditSeries = { seriesEditorBook = book },
+            )
+          }
         }
       }
     }
@@ -210,10 +295,53 @@ private fun LibraryVisibilitySelector(
 }
 
 @Composable
+private fun LibrarySeriesHeader(
+  name: String,
+  count: Int,
+  expanded: Boolean,
+  onToggle: () -> Unit,
+) {
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable(onClick = onToggle),
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      Column(Modifier.weight(1f)) {
+        Text(
+          name,
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.SemiBold,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          "$count 冊",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      Text(
+        if (expanded) "閉じる" else "展開",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+      )
+    }
+  }
+}
+
+@Composable
 private fun LibraryBookThumbnail(
   book: LibraryBook,
   actionLabel: String,
   onAction: () -> Unit,
+  onEditSeries: () -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
   Column(modifier = Modifier.fillMaxWidth()) {
@@ -255,6 +383,13 @@ private fun LibraryBookThumbnail(
       maxLines = 2,
       overflow = TextOverflow.Ellipsis,
     )
+    book.series?.position?.let { position ->
+      Text(
+        "$position 巻",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+      )
+    }
     if (book.authors.isNotEmpty()) {
       Text(
         book.authors.joinToString(", "),
@@ -264,13 +399,116 @@ private fun LibraryBookThumbnail(
         overflow = TextOverflow.Ellipsis,
       )
     }
-    TextButton(
-      onClick = onAction,
-      modifier = Modifier.align(Alignment.End),
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-      Text(actionLabel)
+      TextButton(onClick = onEditSeries) {
+        Text("シリーズ")
+      }
+      TextButton(onClick = onAction) {
+        Text(actionLabel)
+      }
     }
   }
+}
+
+@Composable
+private fun LibrarySeriesDialog(
+  book: LibraryBook,
+  existingSeriesNames: List<String>,
+  onDismiss: () -> Unit,
+  onSave: (String, Int?) -> Unit,
+  onClear: () -> Unit,
+) {
+  var seriesName by remember(book.source, book.sourceId, book.series) {
+    mutableStateOf(book.series?.name.orEmpty())
+  }
+  var positionText by remember(book.source, book.sourceId, book.series) {
+    mutableStateOf(book.series?.position?.toString().orEmpty())
+  }
+  var seriesMenuExpanded by remember { mutableStateOf(false) }
+  val trimmedName = seriesName.trim()
+  val trimmedPosition = positionText.trim()
+  val position = trimmedPosition.takeIf(String::isNotEmpty)?.toIntOrNull()
+  val positionValid = trimmedPosition.isEmpty() || (position != null && position > 0)
+  val canSave = trimmedName.isNotEmpty() && positionValid
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("シリーズを設定") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          book.title,
+          style = MaterialTheme.typography.bodyMedium,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        OutlinedTextField(
+          value = seriesName,
+          onValueChange = { seriesName = it },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("シリーズ名") },
+          singleLine = true,
+        )
+        if (existingSeriesNames.isNotEmpty()) {
+          Box {
+            TextButton(onClick = { seriesMenuExpanded = true }) {
+              Text("既存のシリーズから選択")
+            }
+            DropdownMenu(
+              expanded = seriesMenuExpanded,
+              onDismissRequest = { seriesMenuExpanded = false },
+            ) {
+              existingSeriesNames.forEach { name ->
+                DropdownMenuItem(
+                  text = { Text(name) },
+                  onClick = {
+                    seriesName = name
+                    seriesMenuExpanded = false
+                  },
+                )
+              }
+            }
+          }
+        }
+        OutlinedTextField(
+          value = positionText,
+          onValueChange = { value ->
+            positionText = value.filter(Char::isDigit)
+          },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("巻数・順番（任意）") },
+          supportingText = {
+            Text(if (positionValid) "同じシリーズ内ではこの順番で表示します" else "1以上で入力してください")
+          },
+          isError = !positionValid,
+          singleLine = true,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        enabled = canSave,
+        onClick = { onSave(trimmedName, position) },
+      ) {
+        Text("保存")
+      }
+    },
+    dismissButton = {
+      Row {
+        if (book.series != null) {
+          TextButton(onClick = onClear) {
+            Text("シリーズ解除")
+          }
+        }
+        TextButton(onClick = onDismiss) {
+          Text("キャンセル")
+        }
+      }
+    },
+  )
 }
 
 private fun formatSyncTime(epochMillis: Long): String {
