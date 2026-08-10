@@ -59,7 +59,7 @@ class LibraryGroupingTest {
   }
 
   @Test
-  fun `同じ推定シリーズが一冊だけならグループを作らない`() {
+  fun `推定シリーズが一冊だけでもグループを作る`() {
     val groups = groupLibraryBooks(
       listOf(
         book(id = "1", title = "Windows 11"),
@@ -67,8 +67,9 @@ class LibraryGroupingTest {
       ),
     )
 
-    assertEquals(emptyList<LibrarySeriesSection>(), groups.series)
-    assertEquals(listOf("Windows 11", "数字のない本"), groups.ungrouped.map { it.title })
+    assertEquals(listOf("Windows"), groups.series.map { it.name })
+    assertEquals(listOf("Windows 11"), groups.series.single().books.map { it.title })
+    assertEquals(listOf("数字のない本"), groups.ungrouped.map { it.title })
   }
 
   @Test
@@ -84,12 +85,20 @@ class LibraryGroupingTest {
       ),
     )
 
-    assertEquals(listOf("手動シリーズ"), groups.series.map { it.name })
-    assertEquals(listOf("自動シリーズ 2"), groups.ungrouped.map { it.title })
+    assertEquals(setOf("自動シリーズ", "手動シリーズ"), groups.series.map { it.name }.toSet())
+    assertEquals(
+      listOf("自動シリーズ 2"),
+      groups.series.single { it.name == "自動シリーズ" }.books.map { it.title },
+    )
+    assertEquals(
+      listOf("自動シリーズ 1"),
+      groups.series.single { it.name == "手動シリーズ" }.books.map { it.title },
+    )
+    assertEquals(emptyList<LibraryBook>(), groups.ungrouped)
   }
 
   @Test
-  fun `手動シリーズと同名なら一冊の自動判定でも同じグループに入る`() {
+  fun `手動シリーズと同名なら自動判定も同じグループに入る`() {
     val groups = groupLibraryBooks(
       listOf(
         book(
@@ -114,8 +123,9 @@ class LibraryGroupingTest {
       ),
     )
 
-    assertEquals(emptyList<LibrarySeriesSection>(), groups.series)
-    assertEquals(listOf("作品 1", "作品 2"), groups.ungrouped.map { it.title })
+    assertEquals(listOf("作品"), groups.series.map { it.name })
+    assertEquals(listOf("作品 2"), groups.series.single().books.map { it.title })
+    assertEquals(listOf("作品 1"), groups.ungrouped.map { it.title })
   }
 
   @Test
