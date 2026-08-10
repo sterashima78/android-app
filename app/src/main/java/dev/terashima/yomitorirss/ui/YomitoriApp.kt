@@ -8,10 +8,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
@@ -45,6 +50,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -287,6 +293,11 @@ fun YomitoriApp(
   ) {
     Scaffold(
       snackbarHost = { SnackbarHost(snackbarHostState) },
+      contentWindowInsets = if (selectedTab == MainTab.X) {
+        WindowInsets(0, 0, 0, 0)
+      } else {
+        ScaffoldDefaults.contentWindowInsets
+      },
       topBar = {
         if (selectedTab.usesGlobalTopBar()) {
           TopAppBar(
@@ -526,6 +537,9 @@ fun YomitoriApp(
             Surface(
               modifier = Modifier
                 .align(Alignment.TopEnd)
+                .windowInsetsPadding(
+                  WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End),
+                )
                 .padding(8.dp),
               shape = MaterialTheme.shapes.large,
               color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
