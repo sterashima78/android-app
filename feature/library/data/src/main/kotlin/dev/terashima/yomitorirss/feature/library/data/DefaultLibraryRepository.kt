@@ -86,21 +86,41 @@ class DefaultLibraryRepository(
       seriesPosition?.let { put("series_position", it) } ?: putNull("series_position")
       put("updated_at", System.currentTimeMillis())
     }
-    database.writable.insertWithOnConflict(
-      "library_item_series",
-      null,
-      values,
-      android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
-    )
+    database.transaction {
+      insertWithOnConflict(
+        "library_item_series",
+        null,
+        values,
+        android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+      )
+      delete(
+        "library_item_series_exclusions",
+        "source = ? AND source_id = ?",
+        arrayOf(book.source.name, book.sourceId),
+      )
+    }
   }
 
   override suspend fun clearBookSeries(book: LibraryBook) {
     ensureSchema()
-    database.writable.delete(
-      "library_item_series",
-      "source = ? AND source_id = ?",
-      arrayOf(book.source.name, book.sourceId),
-    )
+    val exclusionValues = ContentValues().apply {
+      put("source", book.source.name)
+      put("source_id", book.sourceId)
+      put("updated_at", System.currentTimeMillis())
+    }
+    database.transaction {
+      delete(
+        "library_item_series",
+        "source = ? AND source_id = ?",
+        arrayOf(book.source.name, book.sourceId),
+      )
+      insertWithOnConflict(
+        "library_item_series_exclusions",
+        null,
+        exclusionValues,
+        android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+      )
+    }
   }
 
   override suspend fun syncGooglePlayBooks(
@@ -137,10 +157,13 @@ class DefaultLibraryRepository(
         SELECT item.source, item.source_id, item.title, item.authors, item.publisher,
                item.published_date, item.description, item.isbn10, item.isbn13,
                item.thumbnail_url, item.info_url,
-               series.series_name, series.series_position
+               series.series_name, series.series_position,
+               exclusion.source AS automatic_series_exclusion
         FROM library_items AS item
         LEFT JOIN library_item_series AS series
           ON series.source = item.source AND series.source_id = item.source_id
+        LEFT JOIN library_item_series_exclusions AS exclusion
+          ON exclusion.source = item.source AND exclusion.source_id = item.source_id
         WHERE $hiddenPredicate (
           SELECT 1
           FROM hidden_library_items AS hidden
@@ -212,6 +235,16 @@ class DefaultLibraryRepository(
         "CREATE INDEX IF NOT EXISTS library_item_series_name " +
           "ON library_item_series(series_name COLLATE NOCASE)",
       )
+      execSQL(
+        """
+          CREATE TABLE IF NOT EXISTS library_item_series_exclusions(
+            source TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY(source, source_id)
+          )
+        """.trimIndent(),
+      )
     }
   }
 
@@ -251,6 +284,7 @@ class DefaultLibraryRepository(
         position = nullableInt("series_position"),
       )
     },
+    automaticSeriesExcluded = nullableString("automatic_series_exclusion") != null,
   )
 
   private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
