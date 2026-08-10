@@ -59,6 +59,18 @@ class LibraryGroupingTest {
   }
 
   @Test
+  fun `末尾の巻付き数字を巻数として扱う`() {
+    assertEquals(
+      LibrarySeries("作品名", 10),
+      inferLibrarySeriesFromTitle("作品名 10巻"),
+    )
+    assertEquals(
+      LibrarySeries("作品名", 12),
+      inferLibrarySeriesFromTitle("作品名１２巻"),
+    )
+  }
+
+  @Test
   fun `推定シリーズが一冊だけでもグループを作る`() {
     val groups = groupLibraryBooks(
       listOf(
