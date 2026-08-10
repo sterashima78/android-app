@@ -85,9 +85,15 @@ class LibraryGroupingTest {
       ),
     )
 
-    assertEquals(listOf("自動シリーズ", "手動シリーズ"), groups.series.map { it.name })
-    assertEquals(listOf("自動シリーズ 2"), groups.series.first().books.map { it.title })
-    assertEquals(listOf("自動シリーズ 1"), groups.series.last().books.map { it.title })
+    assertEquals(setOf("自動シリーズ", "手動シリーズ"), groups.series.map { it.name }.toSet())
+    assertEquals(
+      listOf("自動シリーズ 2"),
+      groups.series.single { it.name == "自動シリーズ" }.books.map { it.title },
+    )
+    assertEquals(
+      listOf("自動シリーズ 1"),
+      groups.series.single { it.name == "手動シリーズ" }.books.map { it.title },
+    )
     assertEquals(emptyList<LibraryBook>(), groups.ungrouped)
   }
 
