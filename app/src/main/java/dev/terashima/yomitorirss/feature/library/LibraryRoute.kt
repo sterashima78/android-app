@@ -19,6 +19,8 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -59,7 +61,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
             if (cursor.moveToFirst()) cursor.getString(0) else null
           }
           val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-            input.readNBytes(MAX_AMAZON_IMPORT_BYTES + 1)
+            input.readUpTo(MAX_AMAZON_IMPORT_BYTES + 1)
           } ?: error("選択したファイルを開けませんでした")
           require(bytes.size <= MAX_AMAZON_IMPORT_BYTES) {
             "インポートファイルが大きすぎます（上限 25 MB）"
@@ -135,6 +137,19 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     onClearBookSeries = libraryViewModel::clearBookSeries,
     onDismissMessage = libraryViewModel::dismissMessage,
   )
+}
+
+private fun InputStream.readUpTo(limit: Int): ByteArray {
+  val output = ByteArrayOutputStream(minOf(limit, DEFAULT_BUFFER_SIZE))
+  val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+  var total = 0
+  while (total < limit) {
+    val read = read(buffer, 0, minOf(buffer.size, limit - total))
+    if (read < 0) break
+    output.write(buffer, 0, read)
+    total += read
+  }
+  return output.toByteArray()
 }
 
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
