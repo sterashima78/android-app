@@ -1,11 +1,11 @@
 package dev.terashima.yomitorirss.feature.youtube
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,21 +15,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Subscriptions
+import androidx.compose.material.icons.filled.WatchLater
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,81 +71,93 @@ fun YouTubeScreen(
 ) {
   var showAddDialog by remember { mutableStateOf(false) }
 
-  Column(modifier = modifier.fillMaxSize()) {
-    Row(
+  Scaffold(
+    modifier = modifier.fillMaxSize(),
+    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    bottomBar = {
+      NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+        YouTubeTab.entries.forEach { tab ->
+          NavigationBarItem(
+            selected = state.selectedTab == tab,
+            onClick = { onSelectTab(tab) },
+            icon = {
+              Icon(
+                imageVector = when (tab) {
+                  YouTubeTab.UNREAD -> Icons.Default.PlayArrow
+                  YouTubeTab.WATCH_LATER -> Icons.Default.WatchLater
+                  YouTubeTab.SAVED -> Icons.Default.Bookmark
+                  YouTubeTab.SUBSCRIPTIONS -> Icons.Default.Subscriptions
+                },
+                contentDescription = tab.label,
+              )
+            },
+            label = { Text(tab.label, maxLines = 1) },
+          )
+        }
+      }
+    },
+  ) { padding ->
+    Column(
       modifier = Modifier
-        .fillMaxWidth()
-        .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 12.dp, vertical = 8.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+        .fillMaxSize()
+        .padding(padding),
     ) {
-      YouTubeTab.entries.forEach { tab ->
-        if (state.selectedTab == tab) {
-          Button(onClick = { onSelectTab(tab) }) {
-            Text(tab.label)
-          }
-        } else {
-          TextButton(onClick = { onSelectTab(tab) }) {
-            Text(tab.label)
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.End,
+      ) {
+        if (state.selectedTab == YouTubeTab.UNREAD && state.unread.isNotEmpty()) {
+          TextButton(onClick = onMarkAllRead) {
+            Text("すべて既読")
           }
         }
-      }
-    }
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-      horizontalArrangement = Arrangement.End,
-    ) {
-      if (state.selectedTab == YouTubeTab.UNREAD && state.unread.isNotEmpty()) {
-        TextButton(onClick = onMarkAllRead) {
-          Text("すべて既読")
+        if (state.selectedTab == YouTubeTab.SUBSCRIPTIONS) {
+          IconButton(onClick = { showAddDialog = true }) {
+            Icon(Icons.Default.Add, contentDescription = "チャンネルを追加")
+          }
+        }
+        IconButton(onClick = onRefresh, enabled = !state.refreshing) {
+          if (state.refreshing) {
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+          } else {
+            Icon(Icons.Default.Refresh, contentDescription = "YouTubeを更新")
+          }
         }
       }
-      if (state.selectedTab == YouTubeTab.SUBSCRIPTIONS) {
-        IconButton(onClick = { showAddDialog = true }) {
-          Icon(Icons.Default.Add, contentDescription = "チャンネルを追加")
-        }
+
+      when (state.selectedTab) {
+        YouTubeTab.UNREAD -> VideoList(
+          modifier = Modifier.weight(1f),
+          videos = state.unread,
+          emptyText = "未読の動画はありません",
+          onMarkRead = onMarkRead,
+          onSaveAndRead = onSaveAndRead,
+          onToggleWatchLater = onToggleWatchLater,
+          onOpen = onOpen,
+        )
+
+        YouTubeTab.WATCH_LATER -> VideoList(
+          modifier = Modifier.weight(1f),
+          videos = state.watchLater,
+          emptyText = "あとで見る動画はありません",
+          onMarkRead = onMarkRead,
+          onSaveAndRead = onSaveAndRead,
+          onToggleWatchLater = onToggleWatchLater,
+          onOpen = onOpen,
+        )
+
+        YouTubeTab.SAVED -> SavedVideoList(
+          modifier = Modifier.weight(1f),
+          videos = state.saved,
+          onOpen = onOpen,
+        )
+
+        YouTubeTab.SUBSCRIPTIONS -> ChannelSubscriptions(
+          modifier = Modifier.weight(1f),
+          channels = state.channels,
+          onUnsubscribe = onUnsubscribe,
+        )
       }
-      IconButton(onClick = onRefresh, enabled = !state.refreshing) {
-        if (state.refreshing) {
-          CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-        } else {
-          Icon(Icons.Default.Refresh, contentDescription = "YouTubeを更新")
-        }
-      }
-    }
-
-    when (state.selectedTab) {
-      YouTubeTab.UNREAD -> VideoList(
-        modifier = Modifier.weight(1f),
-        videos = state.unread,
-        emptyText = "未読の動画はありません",
-        onMarkRead = onMarkRead,
-        onSaveAndRead = onSaveAndRead,
-        onToggleWatchLater = onToggleWatchLater,
-        onOpen = onOpen,
-      )
-
-      YouTubeTab.WATCH_LATER -> VideoList(
-        modifier = Modifier.weight(1f),
-        videos = state.watchLater,
-        emptyText = "あとで見る動画はありません",
-        onMarkRead = onMarkRead,
-        onSaveAndRead = onSaveAndRead,
-        onToggleWatchLater = onToggleWatchLater,
-        onOpen = onOpen,
-      )
-
-      YouTubeTab.SAVED -> SavedVideoList(
-        modifier = Modifier.weight(1f),
-        videos = state.saved,
-        onOpen = onOpen,
-      )
-
-      YouTubeTab.SUBSCRIPTIONS -> ChannelSubscriptions(
-        modifier = Modifier.weight(1f),
-        channels = state.channels,
-        onUnsubscribe = onUnsubscribe,
-      )
     }
   }
 
