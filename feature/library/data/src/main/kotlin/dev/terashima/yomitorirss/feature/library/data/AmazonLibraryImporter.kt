@@ -28,7 +28,7 @@ internal class AmazonLibraryImporter {
       listOf(ImportContent(fileName.orEmpty(), bytes))
     }
 
-    val imported = contents
+    val imported = selectContentsForSource(source, contents)
       .flatMap { content -> parseContent(source, content) }
       .distinctBy(LibraryBook::sourceId)
 
@@ -36,6 +36,23 @@ internal class AmazonLibraryImporter {
       "蔵書データを認識できませんでした。CSV / TSV またはそれらを含む ZIP を選択してください"
     }
     return imported
+  }
+
+  private fun selectContentsForSource(
+    source: LibrarySource,
+    contents: List<ImportContent>,
+  ): List<ImportContent> {
+    if (contents.size <= 1) return contents
+    val hints = when (source) {
+      LibrarySource.KINDLE -> listOf("kindle", "ebook", "e-book")
+      LibrarySource.AUDIBLE -> listOf("audible", "audiobook", "audio-book")
+      LibrarySource.GOOGLE_PLAY_BOOKS -> emptyList()
+    }
+    val hinted = contents.filter { content ->
+      val name = content.name.lowercase(Locale.ROOT)
+      hints.any(name::contains)
+    }
+    return hinted.ifEmpty { contents }
   }
 
   private fun parseContent(
