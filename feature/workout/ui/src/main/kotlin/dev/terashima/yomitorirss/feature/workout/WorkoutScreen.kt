@@ -2,11 +2,11 @@ package dev.terashima.yomitorirss.feature.workout
 
 import android.media.AudioManager
 import android.media.ToneGenerator
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,14 +15,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,24 +68,38 @@ fun WorkoutScreen(
     return
   }
 
-  Column(modifier.fillMaxSize()) {
-    Row(
-      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      WorkoutTab.entries.forEach { tab ->
-        FilterChip(
-          selected = state.selectedTab == tab,
-          onClick = { viewModel.selectTab(tab) },
-          label = { Text(tab.label) },
-        )
+  Scaffold(
+    modifier = modifier.fillMaxSize(),
+    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    bottomBar = {
+      NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+        WorkoutTab.entries.forEach { tab ->
+          NavigationBarItem(
+            selected = state.selectedTab == tab,
+            onClick = { viewModel.selectTab(tab) },
+            icon = {
+              Icon(
+                imageVector = when (tab) {
+                  WorkoutTab.WORKOUT -> Icons.Default.FitnessCenter
+                  WorkoutTab.TIMER -> Icons.Default.AccessTime
+                  WorkoutTab.HISTORY -> Icons.Default.History
+                  WorkoutTab.SETTINGS -> Icons.Default.Settings
+                },
+                contentDescription = tab.label,
+              )
+            },
+            label = { Text(tab.label, maxLines = 1) },
+          )
+        }
       }
-    }
+    },
+  ) { padding ->
+    val contentModifier = Modifier.fillMaxSize().padding(padding)
     when (state.selectedTab) {
-      WorkoutTab.WORKOUT -> WorkoutLogScreen(state, viewModel, Modifier.fillMaxSize())
-      WorkoutTab.TIMER -> WorkoutTimerScreen(state, viewModel, Modifier.fillMaxSize())
-      WorkoutTab.HISTORY -> WorkoutHistoryScreen(state, Modifier.fillMaxSize())
-      WorkoutTab.SETTINGS -> WorkoutSettingsScreen(state, viewModel, Modifier.fillMaxSize())
+      WorkoutTab.WORKOUT -> WorkoutLogScreen(state, viewModel, contentModifier)
+      WorkoutTab.TIMER -> WorkoutTimerScreen(state, viewModel, contentModifier)
+      WorkoutTab.HISTORY -> WorkoutHistoryScreen(state, contentModifier)
+      WorkoutTab.SETTINGS -> WorkoutSettingsScreen(state, viewModel, contentModifier)
     }
   }
 }

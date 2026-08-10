@@ -25,6 +25,7 @@ Yomitori 側では ADR-0001 と ADR-0003 により UI / Domain / Data の依存�
 - Data は Android の SharedPreferences を永続化手段として使い、Domain の `WorkoutRepository` を実装する。
 - UI は Compose 画面、ViewModel、タイマー/ストップウォッチのライフサイクルを所有する。
 - `:app` は composition root として Repository を生成し、ナビゲーションへ `WorkoutRoute` を接続する。
+- ワークアウト内の主要画面である「記録」「タイマー」「履歴」「設定」は、上部の一時的な FilterChip ではなく Material 3 の下部 `NavigationBar` で切り替える。ワークアウト画面内の主要目的を常時同じ位置から切り替えられるようにし、RSS / Bookmark などの主要画面切り替えと操作位置を揃える。
 
 参照実装と同様に、休憩タイマーは初期値90秒とし、30/60/90/120秒を選択できる。セット記録後は休憩タイマーをリセットして開始する。プランクと踏み台昇降はストップウォッチ計測値を直接セットとして保存する。履歴は新しい順で最大50セッションを保持する。
 
@@ -38,6 +39,7 @@ Yomitori 側では ADR-0001 と ADR-0003 により UI / Domain / Data の依存�
 - Domain の日付ロールオーバーは JVM 単体テストで検証できる。
 - SharedPreferences のJSON形式は内部実装詳細であり、UI/Domainに露出しない。
 - タイマー状態は画面プロセスの生存期間に限定される。永続タイマーが必要になった場合は別途設計する。
+- ワークアウトの主要画面切り替えは画面下部に固定され、長い記録画面をスクロールしていても切り替え位置が変わらない。
 - Health Connect やウェアラブル連携は含めず、まず参照アプリ相当の手入力・端末内計測を提供する。
 
 ## Relationship
