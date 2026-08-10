@@ -38,33 +38,13 @@ internal fun inferLibrarySeriesFromTitle(title: String): LibrarySeries? {
 }
 
 internal fun groupLibraryBooks(books: List<LibraryBook>): LibraryBookGroups {
-  val manualSeriesKeys = books
-    .mapNotNull { it.series?.name?.takeIf(String::isNotBlank) }
-    .map(::seriesKey)
-    .toSet()
-  val automaticCandidates = books
-    .asSequence()
-    .filter { it.series == null && !it.automaticSeriesExcluded }
-    .mapNotNull { book ->
-      inferLibrarySeriesFromTitle(book.title)?.let { series -> book to series }
-    }
-    .toList()
-  val eligibleAutomaticSeriesKeys = automaticCandidates
-    .groupingBy { (_, series) -> seriesKey(series.name) }
-    .eachCount()
-    .filter { (key, count) -> count >= 2 || key in manualSeriesKeys }
-    .keys
-
   val effectiveBooks = books.map { book ->
     if (book.series != null || book.automaticSeriesExcluded) {
       book
     } else {
-      val inferred = inferLibrarySeriesFromTitle(book.title)
-      if (inferred != null && seriesKey(inferred.name) in eligibleAutomaticSeriesKeys) {
+      inferLibrarySeriesFromTitle(book.title)?.let { inferred ->
         book.copy(series = inferred)
-      } else {
-        book
-      }
+      } ?: book
     }
   }
 
