@@ -6,6 +6,11 @@ enum class LibrarySource(val label: String) {
   AUDIBLE("Audible"),
 }
 
+data class LibrarySeries(
+  val name: String,
+  val position: Int?,
+)
+
 data class LibraryBook(
   val source: LibrarySource,
   val sourceId: String,
@@ -18,6 +23,7 @@ data class LibraryBook(
   val isbn13: String?,
   val thumbnailUrl: String?,
   val infoUrl: String?,
+  val series: LibrarySeries? = null,
 )
 
 data class LibrarySourceState(
