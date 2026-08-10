@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 data class LibraryUiState(
   val initialized: Boolean = false,
   val syncing: Boolean = false,
+  val importingSource: LibrarySource? = null,
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
   val sourceStates: Map<LibrarySource, LibrarySourceState> = emptyMap(),
@@ -30,7 +31,7 @@ class LibraryViewModel(
   }
 
   fun syncGooglePlayBooks(accessToken: String, accountLabel: String?) {
-    if (_state.value.syncing) return
+    if (_state.value.syncing || _state.value.importingSource != null) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(syncing = true) }
       runCatching { repository.syncGooglePlayBooks(accessToken, accountLabel) }
@@ -38,6 +39,23 @@ class LibraryViewModel(
           loadSnapshot(
             message = "Google Play Books から ${result.importedCount} 冊を同期しました",
           )
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun importAmazonLibrary(
+    source: LibrarySource,
+    fileName: String?,
+    bytes: ByteArray,
+  ) {
+    require(source == LibrarySource.KINDLE || source == LibrarySource.AUDIBLE)
+    if (_state.value.syncing || _state.value.importingSource != null) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(importingSource = source) }
+      runCatching { repository.importAmazonLibrary(source, fileName, bytes) }
+        .onSuccess { result ->
+          loadSnapshot(message = "${source.label} から ${result.importedCount} 冊をインポートしました")
         }
         .onFailure(::showError)
     }
@@ -103,6 +121,7 @@ class LibraryViewModel(
           it.copy(
             initialized = true,
             syncing = false,
+            importingSource = null,
             books = snapshot.books,
             hiddenBooks = snapshot.hiddenBooks,
             sourceStates = snapshot.sourceStates,
@@ -118,6 +137,7 @@ class LibraryViewModel(
       it.copy(
         initialized = true,
         syncing = false,
+        importingSource = null,
         message = error.message ?: "蔵書の操作に失敗しました",
       )
     }

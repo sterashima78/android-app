@@ -69,6 +69,8 @@ private enum class LibraryTab(val label: String) {
 fun LibraryScreen(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
+  onImportKindle: () -> Unit,
+  onImportAudible: () -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
@@ -164,6 +166,8 @@ fun LibraryScreen(
           LibraryTab.SETTINGS -> LibrarySettingsTab(
             state = state,
             onSyncGooglePlayBooks = onSyncGooglePlayBooks,
+            onImportKindle = onImportKindle,
+            onImportAudible = onImportAudible,
             onRestoreBook = onRestoreBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -185,7 +189,7 @@ private fun LibraryAllTab(
       if (hiddenCount > 0) {
         "表示中の蔵書はありません。設定に非表示の蔵書が $hiddenCount 冊あります。"
       } else {
-        "蔵書がありません。設定から Google Play Books を同期してください。"
+        "蔵書がありません。設定から蔵書サービスを同期またはインポートしてください。"
       },
     )
     return
@@ -216,7 +220,7 @@ private fun LibrarySeriesTab(
       if (hiddenCount > 0) {
         "表示中の蔵書はありません。設定に非表示の蔵書が $hiddenCount 冊あります。"
       } else {
-        "蔵書がありません。設定から Google Play Books を同期してください。"
+        "蔵書がありません。設定から蔵書サービスを同期またはインポートしてください。"
       },
     )
     return
@@ -242,11 +246,7 @@ private fun LibrarySeriesTab(
           expanded = expanded,
           onToggle = {
             onExpandedSeriesChange(
-              if (expanded) {
-                expandedSeries - section.name
-              } else {
-                expandedSeries + section.name
-              },
+              if (expanded) expandedSeries - section.name else expandedSeries + section.name,
             )
           },
         )
@@ -299,6 +299,8 @@ private fun LibrarySeriesTab(
 private fun LibrarySettingsTab(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
+  onImportKindle: () -> Unit,
+  onImportAudible: () -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -306,6 +308,8 @@ private fun LibrarySettingsTab(
     LibrarySyncHeader(
       state = state,
       onSyncGooglePlayBooks = onSyncGooglePlayBooks,
+      onImportKindle = onImportKindle,
+      onImportAudible = onImportAudible,
     )
     HorizontalDivider()
     Column(
@@ -396,51 +400,85 @@ private fun LibraryEmptyMessage(message: String) {
 private fun LibrarySyncHeader(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
+  onImportKindle: () -> Unit,
+  onImportAudible: () -> Unit,
 ) {
   Column(
     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-    verticalArrangement = Arrangement.spacedBy(6.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Column(Modifier.weight(1f)) {
-        Text("Google Play Books", style = MaterialTheme.typography.titleMedium)
-        val sourceState = state.sourceStates[LibrarySource.GOOGLE_PLAY_BOOKS]
-        Text(
-          sourceState?.lastSyncedAtEpochMillis?.let(::formatSyncTime) ?: "未同期",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        sourceState?.accountLabel?.let { account ->
-          Text(
-            account,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-          )
-        }
-      }
-      Button(
-        onClick = onSyncGooglePlayBooks,
-        enabled = !state.syncing,
-      ) {
-        if (state.syncing) {
-          CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-        } else {
-          Text("同期")
-        }
-      }
-    }
-
+    LibrarySourceActionRow(
+      source = LibrarySource.GOOGLE_PLAY_BOOKS,
+      state = state,
+      actionLabel = "同期",
+      busy = state.syncing,
+      enabled = !state.syncing && state.importingSource == null,
+      accountLabel = state.sourceStates[LibrarySource.GOOGLE_PLAY_BOOKS]?.accountLabel,
+      onAction = onSyncGooglePlayBooks,
+    )
+    LibrarySourceActionRow(
+      source = LibrarySource.KINDLE,
+      state = state,
+      actionLabel = "インポート",
+      busy = state.importingSource == LibrarySource.KINDLE,
+      enabled = !state.syncing && state.importingSource == null,
+      onAction = onImportKindle,
+    )
+    LibrarySourceActionRow(
+      source = LibrarySource.AUDIBLE,
+      state = state,
+      actionLabel = "インポート",
+      busy = state.importingSource == LibrarySource.AUDIBLE,
+      enabled = !state.syncing && state.importingSource == null,
+      onAction = onImportAudible,
+    )
     Text(
-      "Kindle と Audible は将来ファイルインポートに対応予定です。",
+      "Kindle / Audible は端末で選択した CSV・TSV・ZIP のみを読み込みます。Amazon の認証情報は保存しません。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+  }
+}
+
+@Composable
+private fun LibrarySourceActionRow(
+  source: LibrarySource,
+  state: LibraryUiState,
+  actionLabel: String,
+  busy: Boolean,
+  enabled: Boolean,
+  accountLabel: String? = null,
+  onAction: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    Column(Modifier.weight(1f)) {
+      Text(source.label, style = MaterialTheme.typography.titleMedium)
+      Text(
+        state.sourceStates[source]?.lastSyncedAtEpochMillis?.let(::formatSyncTime) ?: "未同期",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      accountLabel?.let { account ->
+        Text(
+          account,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+    }
+    Button(onClick = onAction, enabled = enabled) {
+      if (busy) {
+        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+      } else {
+        Text(actionLabel)
+      }
+    }
   }
 }
 
@@ -625,9 +663,7 @@ private fun LibrarySeriesDialog(
         }
         OutlinedTextField(
           value = positionText,
-          onValueChange = { value ->
-            positionText = value.filter(Char::isDigit)
-          },
+          onValueChange = { value -> positionText = value.filter(Char::isDigit) },
           modifier = Modifier.fillMaxWidth(),
           label = { Text("巻数・順番（任意）") },
           supportingText = {
@@ -664,5 +700,5 @@ private fun LibrarySeriesDialog(
 private fun formatSyncTime(epochMillis: Long): String {
   val formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
   val local = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
-  return "最終同期: ${formatter.format(local)}"
+  return "最終更新: ${formatter.format(local)}"
 }

@@ -18,4 +18,10 @@ interface LibraryRepository {
     accessToken: String,
     accountLabel: String?,
   ): LibrarySyncResult
+
+  suspend fun importAmazonLibrary(
+    source: LibrarySource,
+    fileName: String?,
+    bytes: ByteArray,
+  ): LibrarySyncResult
 }

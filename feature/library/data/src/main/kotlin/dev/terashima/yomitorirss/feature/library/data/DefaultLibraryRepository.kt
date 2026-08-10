@@ -16,6 +16,7 @@ class DefaultLibraryRepository(
   private val database: DatabaseConnection,
 ) : LibraryRepository {
   private val googleBooks = GoogleBooksApiClient()
+  private val amazonLibraryImporter = AmazonLibraryImporter()
 
   override suspend fun snapshot(): LibrarySnapshot {
     ensureSchema()
@@ -129,15 +130,37 @@ class DefaultLibraryRepository(
   ): LibrarySyncResult {
     ensureSchema()
     val books = googleBooks.library(accessToken)
+    return replaceSource(
+      source = LibrarySource.GOOGLE_PLAY_BOOKS,
+      books = books,
+      accountLabel = accountLabel,
+    )
+  }
+
+  override suspend fun importAmazonLibrary(
+    source: LibrarySource,
+    fileName: String?,
+    bytes: ByteArray,
+  ): LibrarySyncResult {
+    ensureSchema()
+    val books = amazonLibraryImporter.parse(source, fileName, bytes)
+    return replaceSource(source = source, books = books, accountLabel = null)
+  }
+
+  private fun replaceSource(
+    source: LibrarySource,
+    books: List<LibraryBook>,
+    accountLabel: String?,
+  ): LibrarySyncResult {
     val syncedAt = System.currentTimeMillis()
     database.transaction {
-      delete("library_items", "source = ?", arrayOf(LibrarySource.GOOGLE_PLAY_BOOKS.name))
+      delete("library_items", "source = ?", arrayOf(source.name))
       books.forEach { book ->
         insertOrThrow("library_items", null, book.toValues(syncedAt))
       }
       val sourceValues = ContentValues().apply {
-        put("source", LibrarySource.GOOGLE_PLAY_BOOKS.name)
-        put("account_label", accountLabel)
+        put("source", source.name)
+        accountLabel?.let { put("account_label", it) } ?: putNull("account_label")
         put("last_synced_at", syncedAt)
       }
       insertWithOnConflict(
