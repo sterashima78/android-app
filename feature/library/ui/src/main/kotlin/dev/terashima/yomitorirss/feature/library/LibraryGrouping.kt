@@ -13,12 +13,16 @@ internal data class LibraryBookGroups(
 private val parenthesizedSeriesPosition = Regex(
   """^(.*?)[\s　]*[\(（][\s　]*([0-9０-９]+)[\s　]*[\)）][\s　]*$""",
 )
+private val volumeSuffixSeriesPosition = Regex(
+  """^(.*?)[\s　]*([0-9０-９]+)[\s　]*巻[\s　]*$""",
+)
 private val trailingSeriesPosition = Regex(
   """^(.*?)([0-9０-９]+)[\s　]*$""",
 )
 
 internal fun inferLibrarySeriesFromTitle(title: String): LibrarySeries? {
   val match = parenthesizedSeriesPosition.matchEntire(title.trim())
+    ?: volumeSuffixSeriesPosition.matchEntire(title.trim())
     ?: trailingSeriesPosition.matchEntire(title.trim())
     ?: return null
   val seriesName = match.groupValues[1]
