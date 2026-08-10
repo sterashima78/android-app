@@ -24,6 +24,7 @@ data class LibraryBook(
   val thumbnailUrl: String?,
   val infoUrl: String?,
   val series: LibrarySeries? = null,
+  val automaticSeriesExcluded: Boolean = false,
 )
 
 data class LibrarySourceState(
