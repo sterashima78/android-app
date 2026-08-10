@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+  <include domain="database" path="yomitori-rss.db" />
+  <include domain="sharedpref" path="." />
+  <exclude domain="sharedpref" path="google_drive_backup.xml" />
+  <include domain="file" path="local-summary-models/" />
+</full-backup-content>
