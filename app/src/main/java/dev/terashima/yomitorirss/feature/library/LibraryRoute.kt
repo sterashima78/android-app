@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.library
 
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,7 +19,9 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LibraryRoute(modifier: Modifier = Modifier) {
@@ -41,6 +45,33 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       .onFailure(libraryViewModel::reportError)
   }
 
+  fun importAmazonFile(source: LibrarySource, uri: Uri) {
+    scope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) {
+          val displayName = context.contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null,
+          )?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+          }
+          val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+            input.readNBytes(MAX_AMAZON_IMPORT_BYTES + 1)
+          } ?: error("選択したファイルを開けませんでした")
+          require(bytes.size <= MAX_AMAZON_IMPORT_BYTES) {
+            "インポートファイルが大きすぎます（上限 25 MB）"
+          }
+          displayName to bytes
+        }
+      }.onSuccess { (displayName, bytes) ->
+        libraryViewModel.importAmazonLibrary(source, displayName, bytes)
+      }.onFailure(libraryViewModel::reportError)
+    }
+  }
+
   val authorizationLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.StartIntentSenderForResult(),
   ) { result ->
@@ -50,6 +81,17 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     } else {
       acceptAuthorizationResult(data)
     }
+  }
+
+  val kindleImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri ->
+    uri?.let { importAmazonFile(LibrarySource.KINDLE, it) }
+  }
+  val audibleImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri ->
+    uri?.let { importAmazonFile(LibrarySource.AUDIBLE, it) }
   }
 
   val requestSync: () -> Unit = {
@@ -73,10 +115,20 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     }
   }
 
+  val importMimeTypes = arrayOf(
+    "text/csv",
+    "text/tab-separated-values",
+    "text/plain",
+    "application/zip",
+    "application/octet-stream",
+  )
+
   LibraryScreen(
     modifier = modifier,
     state = state,
     onSyncGooglePlayBooks = requestSync,
+    onImportKindle = { kindleImportLauncher.launch(importMimeTypes) },
+    onImportAudible = { audibleImportLauncher.launch(importMimeTypes) },
     onHideBook = libraryViewModel::hideBook,
     onRestoreBook = libraryViewModel::restoreBook,
     onSetBookSeries = libraryViewModel::setBookSeries,
@@ -84,3 +136,5 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     onDismissMessage = libraryViewModel::dismissMessage,
   )
 }
+
+private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
