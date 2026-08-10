@@ -140,7 +140,11 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
   Box(modifier = modifier) {
     AndroidView(
       factory = { webView },
-      modifier = Modifier.fillMaxSize(),
+      modifier = Modifier
+        .fillMaxSize()
+        .windowInsetsPadding(
+          WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
+        ),
     )
 
     Surface(
