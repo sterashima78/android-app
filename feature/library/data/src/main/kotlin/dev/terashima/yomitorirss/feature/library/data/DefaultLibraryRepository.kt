@@ -5,6 +5,7 @@ import android.database.Cursor
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
+import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySourceState
@@ -69,6 +70,39 @@ class DefaultLibraryRepository(
     )
   }
 
+  override suspend fun setBookSeries(
+    book: LibraryBook,
+    series: LibrarySeries,
+  ) {
+    val seriesName = series.name.trim()
+    val seriesPosition = series.position
+    require(seriesName.isNotEmpty()) { "シリーズ名を入力してください" }
+    require(seriesPosition == null || seriesPosition > 0) { "巻数は1以上で入力してください" }
+    ensureSchema()
+    val values = ContentValues().apply {
+      put("source", book.source.name)
+      put("source_id", book.sourceId)
+      put("series_name", seriesName)
+      seriesPosition?.let { put("series_position", it) } ?: putNull("series_position")
+      put("updated_at", System.currentTimeMillis())
+    }
+    database.writable.insertWithOnConflict(
+      "library_item_series",
+      null,
+      values,
+      android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+    )
+  }
+
+  override suspend fun clearBookSeries(book: LibraryBook) {
+    ensureSchema()
+    database.writable.delete(
+      "library_item_series",
+      "source = ? AND source_id = ?",
+      arrayOf(book.source.name, book.sourceId),
+    )
+  }
+
   override suspend fun syncGooglePlayBooks(
     accessToken: String,
     accountLabel: String?,
@@ -102,8 +136,11 @@ class DefaultLibraryRepository(
       """
         SELECT item.source, item.source_id, item.title, item.authors, item.publisher,
                item.published_date, item.description, item.isbn10, item.isbn13,
-               item.thumbnail_url, item.info_url
+               item.thumbnail_url, item.info_url,
+               series.series_name, series.series_position
         FROM library_items AS item
+        LEFT JOIN library_item_series AS series
+          ON series.source = item.source AND series.source_id = item.source_id
         WHERE $hiddenPredicate (
           SELECT 1
           FROM hidden_library_items AS hidden
@@ -159,6 +196,22 @@ class DefaultLibraryRepository(
           )
         """.trimIndent(),
       )
+      execSQL(
+        """
+          CREATE TABLE IF NOT EXISTS library_item_series(
+            source TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            series_name TEXT NOT NULL,
+            series_position INTEGER,
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY(source, source_id)
+          )
+        """.trimIndent(),
+      )
+      execSQL(
+        "CREATE INDEX IF NOT EXISTS library_item_series_name " +
+          "ON library_item_series(series_name COLLATE NOCASE)",
+      )
     }
   }
 
@@ -192,6 +245,12 @@ class DefaultLibraryRepository(
     isbn13 = nullableString("isbn13"),
     thumbnailUrl = nullableString("thumbnail_url"),
     infoUrl = nullableString("info_url"),
+    series = nullableString("series_name")?.let { name ->
+      LibrarySeries(
+        name = name,
+        position = nullableInt("series_position"),
+      )
+    },
   )
 
   private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
@@ -204,5 +263,10 @@ class DefaultLibraryRepository(
   private fun Cursor.nullableLong(name: String): Long? {
     val index = getColumnIndexOrThrow(name)
     return if (isNull(index)) null else getLong(index)
+  }
+
+  private fun Cursor.nullableInt(name: String): Int? {
+    val index = getColumnIndexOrThrow(name)
+    return if (isNull(index)) null else getInt(index)
   }
 }

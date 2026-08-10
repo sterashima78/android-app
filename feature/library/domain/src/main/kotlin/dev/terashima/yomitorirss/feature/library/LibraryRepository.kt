@@ -7,6 +7,13 @@ interface LibraryRepository {
 
   suspend fun restoreBook(book: LibraryBook)
 
+  suspend fun setBookSeries(
+    book: LibraryBook,
+    series: LibrarySeries,
+  )
+
+  suspend fun clearBookSeries(book: LibraryBook)
+
   suspend fun syncGooglePlayBooks(
     accessToken: String,
     accountLabel: String?,
