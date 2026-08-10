@@ -291,10 +291,7 @@ private fun LazyItemScope.SwipeVideoItem(
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .clickable {
-          onMarkRead(video)
-          onOpen(video)
-        }
+        .clickable { onOpen(video) }
         .padding(12.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
