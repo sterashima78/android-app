@@ -59,6 +59,31 @@ class LibraryViewModel(
     }
   }
 
+  fun setBookSeries(
+    book: LibraryBook,
+    seriesName: String,
+    position: Int?,
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        repository.setBookSeries(
+          book = book,
+          series = LibrarySeries(name = seriesName, position = position),
+        )
+      }
+        .onSuccess { loadSnapshot(message = "「${book.title}」のシリーズを更新しました") }
+        .onFailure(::showError)
+    }
+  }
+
+  fun clearBookSeries(book: LibraryBook) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.clearBookSeries(book) }
+        .onSuccess { loadSnapshot(message = "「${book.title}」をシリーズから外しました") }
+        .onFailure(::showError)
+    }
+  }
+
   fun reportError(error: Throwable) {
     showError(error)
   }
