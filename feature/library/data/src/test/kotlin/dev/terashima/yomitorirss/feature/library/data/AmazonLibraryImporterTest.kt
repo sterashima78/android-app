@@ -54,14 +54,9 @@ class AmazonLibraryImporterTest {
 
   @Test
   fun `ZIP 内の CSV を解析する`() {
-    val bytes = ByteArrayOutputStream().use { output ->
-      ZipOutputStream(output).use { zip ->
-        zip.putNextEntry(ZipEntry("audible/library.csv"))
-        zip.write("Title,ASIN\nZipped Audio,AUDIO2\n".toByteArray())
-        zip.closeEntry()
-      }
-      output.toByteArray()
-    }
+    val bytes = zipOf(
+      "audible/library.csv" to "Title,ASIN\nZipped Audio,AUDIO2\n",
+    )
 
     val books = importer.parse(LibrarySource.AUDIBLE, "export.zip", bytes)
 
@@ -70,8 +65,34 @@ class AmazonLibraryImporterTest {
     assertEquals("AUDIO2", books.single().sourceId)
   }
 
+  @Test
+  fun `Kindle と Audible が同じ ZIP にある場合は選択したソースだけを読む`() {
+    val bytes = zipOf(
+      "kindle/library.csv" to "Title,ASIN\nKindle Book,KINDLE1\n",
+      "audible/library.csv" to "Title,ASIN\nAudible Book,AUDIO3\n",
+    )
+
+    val kindle = importer.parse(LibrarySource.KINDLE, "amazon-export.zip", bytes)
+    val audible = importer.parse(LibrarySource.AUDIBLE, "amazon-export.zip", bytes)
+
+    assertEquals(listOf("Kindle Book"), kindle.map { it.title })
+    assertEquals(listOf("Audible Book"), audible.map { it.title })
+  }
+
   @Test(expected = IllegalArgumentException::class)
   fun `認識できない形式では既存蔵書を置換するための空リストを返さない`() {
     importer.parse(LibrarySource.KINDLE, "unknown.csv", "foo,bar\na,b\n".toByteArray())
   }
+
+  private fun zipOf(vararg files: Pair<String, String>): ByteArray =
+    ByteArrayOutputStream().use { output ->
+      ZipOutputStream(output).use { zip ->
+        files.forEach { (name, text) ->
+          zip.putNextEntry(ZipEntry(name))
+          zip.write(text.toByteArray())
+          zip.closeEntry()
+        }
+      }
+      output.toByteArray()
+    }
 }
