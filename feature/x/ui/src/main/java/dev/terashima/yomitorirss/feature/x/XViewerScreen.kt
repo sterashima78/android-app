@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
@@ -135,9 +137,7 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
     }
   }
 
-  Box(
-    modifier = modifier.windowInsetsPadding(WindowInsets.navigationBars),
-  ) {
+  Box(modifier = modifier) {
     AndroidView(
       factory = { webView },
       modifier = Modifier.fillMaxSize(),
@@ -146,6 +146,9 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
     Surface(
       modifier = Modifier
         .align(Alignment.BottomEnd)
+        .windowInsetsPadding(
+          WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.End),
+        )
         .padding(end = 12.dp, bottom = 76.dp)
         .widthIn(max = 520.dp),
       shape = MaterialTheme.shapes.large,
@@ -236,6 +239,9 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
       hostState = snackbarHostState,
       modifier = Modifier
         .align(Alignment.TopCenter)
+        .windowInsetsPadding(
+          WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        )
         .padding(horizontal = 12.dp, vertical = 8.dp),
     )
   }
