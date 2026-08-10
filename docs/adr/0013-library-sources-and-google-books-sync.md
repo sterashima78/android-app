@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-09
+- Updated: 2026-08-11
 
 ## Context
 
@@ -23,7 +24,7 @@ ADR-0003 / ADR-0004 に従い、蔵書を独立した ownership として次の 
 :feature:library:ui
 ```
 
-Domain は `LibraryBook` と `LibrarySource` を所有する。`LibrarySource` は現時点で `GOOGLE_PLAY_BOOKS`、`KINDLE`、`AUDIBLE` を定義するが、実際に同期処理を提供するのは Google Play Books のみとする。
+Domain は `LibraryBook` と `LibrarySource` を所有する。`LibrarySource` は `GOOGLE_PLAY_BOOKS`、`KINDLE`、`AUDIBLE` を定義し、サービスごとの取得方法は data layer に閉じ込める。
 
 ### Google Play Books
 
@@ -44,41 +45,56 @@ Android 側の承認には、メール機能と同じ Google Play services の `
 
 アクセストークンは永続化しない。Google Play services が返した短期トークンを同期処理にだけ渡す。
 
+### Kindle / Audible のファイルインポート
+
+Kindle と Audible には、ネットワーク API、WebView scraping、非公開 API、Amazon のアカウント情報・Cookie・セッション情報を利用しない。
+
+ユーザーが自身で取得した蔵書データを Android の `OpenDocument` で明示的に選択し、端末内で解析する。対応入力は CSV、TSV、およびそれらを格納した ZIP とする。Amazon 側のエクスポート形式は固定スキーマとして扱わず、一般的な英語ヘッダー名の別名を許容する。
+
+インポータは次の責務を `library:data` に持つ。
+
+- CSV/TSV の引用符、エスケープされた引用符、セル内改行を解析する
+- UTF-8 BOM を許容する
+- ASIN 等の source-specific ID があれば優先し、無い場合は source/title/authors/date から安定した SHA-256 派生 ID を生成する
+- ZIP はファイルシステムへ展開せずストリームで読み、CSV/TSV/text の候補のみを解析する
+- 入力 25 MB、ZIP 展開後合計 50 MB、ZIP 100 エントリまでに制限する
+- 認識可能な書籍が 0 件の場合は失敗とし、既存の Kindle/Audible 蔵書を消さない
+
+ファイル選択後の URI 権限、元ファイル、元ファイルの内容は永続化しない。解析結果の `LibraryBook` のみを DB に保存する。ログやテスト fixture に実ユーザーのエクスポート内容を含めない。
+
+インポート成功時は対象 source の `library_items` だけをトランザクション内で置換する。Google Play Books や他方の Amazon source は変更しない。既存の表示非表示・手動シリーズ設定は source/sourceId をキーに別テーブルで保持されるため、同じ ID の再インポート後も維持される。
+
 ### 永続化
 
 `library_items` は source と source-specific ID の組を主キーとする。これによりサービス間で同一書籍と推測されるものを無理に同一レコードへ統合せず、将来 ISBN/ASIN 等を使った表示上の統合を追加できる。
 
-`library_sources` には最終同期日時と表示用のアカウント名だけを保存する。Google のアクセストークンは保存しない。
+`library_sources` には最終同期・インポート日時と、必要な場合だけ表示用のアカウント名を保存する。Google のアクセストークンは保存しない。Kindle/Audible ではアカウント名も保存しない。
 
 これらのテーブル定義は `library:data` が所有し、repository の IO 操作時に `CREATE TABLE IF NOT EXISTS` で遅延初期化する。`core:database` は汎用的な接続・トランザクション capability のままとし、蔵書固有のスキーマを持たせない。repository の生成時には DB I/O を行わない。
 
-Google Play Books のデータは API から再構築できるキャッシュとして扱う。
-
-### Kindle / Audible
-
-Kindle と Audible は今回ネットワーク API、WebView scraping、非公開 API を使用しない。将来、ユーザーが取得したファイルを明示的にインポートする data source を追加する。
-
-その際も `LibraryBook` / `LibrarySource` を利用し、Google Play Books の同期実装とは独立させる。
+Google Play Books のデータと、再インポート可能な Kindle/Audible のデータは source ごとに再構築可能なローカルコピーとして扱う。
 
 ## Consequences
 
 ### Positive
 
 - Google Play Books の公式 API で蔵書を同期できる
-- Google Books 固有 JSON/OAuth 処理を data layer に閉じ込められる
-- Kindle/Audible の将来のファイルインポートを同じ蔵書 UI に追加できる
-- API エラー時に既存の蔵書キャッシュを失わない
-- OAuth access token をアプリの DB に保存しない
+- Kindle/Audible を Amazon の認証情報や非公開 API に依存せず取り込める
+- Google Books 固有 JSON/OAuth と Amazon ファイル解析を data layer に閉じ込められる
+- 取得・解析エラー時に既存の蔵書を失わない
+- OAuth access token や Amazon セッション情報をアプリの DB に保存しない
 - 蔵書固有の DB スキーマを `core:database` に流出させない
 
 ### Negative
 
 - Google Play Books の同期操作では Google アカウント選択が必要になる
 - Purchased と My eBooks の意味や内容が Google 側で変化した場合は同期対象の見直しが必要になる
-- Kindle/Audible は現時点では一覧に取り込めない
+- Kindle/Audible はユーザーがデータファイルを取得して手動でインポートする必要がある
+- Amazon のエクスポート列名が変わった場合は importer のヘッダー別名を追従する必要がある
+- source-specific ID が無いデータでは派生 ID を使うため、タイトル・著者・日付が大きく変わると同一書籍を別レコードとして扱う可能性がある
 
 ## Relationship to existing ADRs
 
 - ADR-0003 の layer 分離に従い `domain -> data/ui` の逆依存を作らない
 - ADR-0004 の concept-oriented ownership として `library` を独立させる
-- `core:network` と `core:database` は汎用 capability のまま維持し、Google Books 固有処理を持たせない
+- `core:network` と `core:database` は汎用 capability のまま維持し、Google Books 固有処理や Amazon ファイル形式固有処理を持たせない
