@@ -75,14 +75,15 @@ class DefaultLibraryRepository(
     series: LibrarySeries,
   ) {
     val seriesName = series.name.trim()
+    val seriesPosition = series.position
     require(seriesName.isNotEmpty()) { "シリーズ名を入力してください" }
-    require(series.position == null || series.position > 0) { "巻数は1以上で入力してください" }
+    require(seriesPosition == null || seriesPosition > 0) { "巻数は1以上で入力してください" }
     ensureSchema()
     val values = ContentValues().apply {
       put("source", book.source.name)
       put("source_id", book.sourceId)
       put("series_name", seriesName)
-      series.position?.let { put("series_position", it) } ?: putNull("series_position")
+      seriesPosition?.let { put("series_position", it) } ?: putNull("series_position")
       put("updated_at", System.currentTimeMillis())
     }
     database.writable.insertWithOnConflict(
