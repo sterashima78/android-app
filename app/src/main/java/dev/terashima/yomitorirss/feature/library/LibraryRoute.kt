@@ -79,6 +79,8 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     onSyncGooglePlayBooks = requestSync,
     onHideBook = libraryViewModel::hideBook,
     onRestoreBook = libraryViewModel::restoreBook,
+    onSetBookSeries = libraryViewModel::setBookSeries,
+    onClearBookSeries = libraryViewModel::clearBookSeries,
     onDismissMessage = libraryViewModel::dismissMessage,
   )
 }
