@@ -151,7 +151,7 @@ private class LibraryUriHandler(
   private val context: Context,
 ) : UriHandler {
   override fun openUri(uri: String) {
-    val parsedUri = Uri.parse(uri)
+    val parsedUri = Uri.parse(normalizeGooglePlayBooksReaderUrl(uri))
     if (parsedUri.isGoogleBooksUri()) {
       openGooglePlayBooks(parsedUri)
     } else {
@@ -165,12 +165,6 @@ private class LibraryUriHandler(
     }
     if (startActivity(directReaderIntent)) return
 
-    val libraryIntent = Intent(Intent.ACTION_MAIN).apply {
-      addCategory(Intent.CATEGORY_LAUNCHER)
-      setPackage(PLAY_BOOKS_PACKAGE)
-    }
-    if (startActivity(libraryIntent)) return
-
     context.startActivity(Intent(Intent.ACTION_VIEW, uri))
   }
 
@@ -180,6 +174,11 @@ private class LibraryUriHandler(
   } catch (_: ActivityNotFoundException) {
     false
   }
+}
+
+internal fun normalizeGooglePlayBooksReaderUrl(url: String): String {
+  if (!url.startsWith(PLAY_BOOKS_HTTP_READER_PREFIX, ignoreCase = true)) return url
+  return "https://${url.substring(HTTP_SCHEME_PREFIX.length)}"
 }
 
 private fun Uri.isGoogleBooksUri(): Boolean {
@@ -208,4 +207,6 @@ private fun InputStream.readUpTo(limit: Int): ByteArray {
 }
 
 private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
+private const val HTTP_SCHEME_PREFIX = "http://"
+private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
