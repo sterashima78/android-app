@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -7,12 +9,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -38,6 +43,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   )
   val state by libraryViewModel.state.collectAsState()
   val scope = rememberCoroutineScope()
+  val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
@@ -125,18 +131,67 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     "application/octet-stream",
   )
 
-  LibraryScreen(
-    modifier = modifier,
-    state = state,
-    onSyncGooglePlayBooks = requestSync,
-    onImportKindle = { kindleImportLauncher.launch(importMimeTypes) },
-    onImportAudible = { audibleImportLauncher.launch(importMimeTypes) },
-    onHideBook = libraryViewModel::hideBook,
-    onRestoreBook = libraryViewModel::restoreBook,
-    onSetBookSeries = libraryViewModel::setBookSeries,
-    onClearBookSeries = libraryViewModel::clearBookSeries,
-    onDismissMessage = libraryViewModel::dismissMessage,
-  )
+  CompositionLocalProvider(LocalUriHandler provides libraryUriHandler) {
+    LibraryScreen(
+      modifier = modifier,
+      state = state,
+      onSyncGooglePlayBooks = requestSync,
+      onImportKindle = { kindleImportLauncher.launch(importMimeTypes) },
+      onImportAudible = { audibleImportLauncher.launch(importMimeTypes) },
+      onHideBook = libraryViewModel::hideBook,
+      onRestoreBook = libraryViewModel::restoreBook,
+      onSetBookSeries = libraryViewModel::setBookSeries,
+      onClearBookSeries = libraryViewModel::clearBookSeries,
+      onDismissMessage = libraryViewModel::dismissMessage,
+    )
+  }
+}
+
+private class LibraryUriHandler(
+  private val context: Context,
+) : UriHandler {
+  override fun openUri(uri: String) {
+    val parsedUri = Uri.parse(uri)
+    if (parsedUri.isGoogleBooksUri()) {
+      openGooglePlayBooks(parsedUri)
+    } else {
+      context.startActivity(Intent(Intent.ACTION_VIEW, parsedUri))
+    }
+  }
+
+  private fun openGooglePlayBooks(uri: Uri) {
+    val directReaderIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+      setPackage(PLAY_BOOKS_PACKAGE)
+    }
+    if (startActivity(directReaderIntent)) return
+
+    val libraryIntent = Intent(Intent.ACTION_MAIN).apply {
+      addCategory(Intent.CATEGORY_LAUNCHER)
+      setPackage(PLAY_BOOKS_PACKAGE)
+    }
+    if (startActivity(libraryIntent)) return
+
+    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+  }
+
+  private fun startActivity(intent: Intent): Boolean = try {
+    context.startActivity(intent)
+    true
+  } catch (_: ActivityNotFoundException) {
+    false
+  }
+}
+
+private fun Uri.isGoogleBooksUri(): Boolean {
+  val normalizedHost = host?.lowercase() ?: return false
+  val normalizedPath = path.orEmpty().lowercase()
+  return when {
+    normalizedHost == "play.google.com" ->
+      normalizedPath.startsWith("/books") || normalizedPath.startsWith("/store/books")
+    normalizedHost == "books.google.com" -> true
+    normalizedHost.startsWith("books.google.") -> true
+    else -> false
+  }
 }
 
 private fun InputStream.readUpTo(limit: Int): ByteArray {
@@ -152,4 +207,5 @@ private fun InputStream.readUpTo(limit: Int): ByteArray {
   return output.toByteArray()
 }
 
+private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024

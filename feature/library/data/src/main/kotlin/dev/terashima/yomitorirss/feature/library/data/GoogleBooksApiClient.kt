@@ -79,6 +79,7 @@ internal class GoogleBooksApiClient(
     val imageLinks = info.optJSONObject("imageLinks")
     val thumbnail = imageLinks?.stringOrNull("thumbnail")
       ?.replace("http://", "https://")
+    val accessInfo = volume.optJSONObject("accessInfo")
 
     return LibraryBook(
       source = LibrarySource.GOOGLE_PLAY_BOOKS,
@@ -91,7 +92,7 @@ internal class GoogleBooksApiClient(
       isbn10 = isbn10,
       isbn13 = isbn13,
       thumbnailUrl = thumbnail,
-      infoUrl = info.stringOrNull("infoLink"),
+      infoUrl = accessInfo?.stringOrNull("webReaderLink") ?: info.stringOrNull("infoLink"),
     )
   }
 
