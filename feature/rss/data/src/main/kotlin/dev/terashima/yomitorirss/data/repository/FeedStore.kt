@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
 import java.time.Instant
 import java.util.UUID
@@ -20,11 +21,20 @@ internal class FeedStore(
       }
     }
 
+  fun listFolders(): List<FeedFolder> = database.readable
+    .rawQuery("SELECT * FROM feed_folders ORDER BY normalized_name", null)
+    .use { cursor ->
+      buildList {
+        while (cursor.moveToNext()) add(cursor.feedFolder())
+      }
+    }
+
   fun addFeed(
     parsed: ParsedFeed,
     etag: String?,
     modified: String?,
     markExistingArticlesRead: Boolean = false,
+    folderId: String? = null,
   ): Feed {
     val now = nowIso()
     val feed = Feed(
@@ -37,6 +47,7 @@ internal class FeedStore(
       lastFetchedAt = now,
       lastError = null,
       createdAt = now,
+      folderId = folderId,
     )
     database.transaction {
       insertOrThrow("feeds", null, feed.values())
@@ -49,6 +60,66 @@ internal class FeedStore(
       )
     }
     return feed
+  }
+
+  fun createFolder(name: String): FeedFolder {
+    val display = displayName(name)
+    require(display.isNotBlank()) { "フォルダ名を入力してください" }
+    require(!folderNameExists(normalizeName(display))) { "同じ名前のフォルダがあります" }
+    val folder = FeedFolder(
+      id = UUID.randomUUID().toString(),
+      name = display,
+      normalizedName = normalizeName(display),
+      createdAt = nowIso(),
+    )
+    database.writable.insertOrThrow("feed_folders", null, folder.values())
+    return folder
+  }
+
+  fun ensureFolder(name: String): FeedFolder {
+    val display = displayName(name)
+    require(display.isNotBlank()) { "フォルダ名を入力してください" }
+    database.readable.rawQuery(
+      "SELECT * FROM feed_folders WHERE normalized_name=? LIMIT 1",
+      arrayOf(normalizeName(display)),
+    ).use { cursor ->
+      if (cursor.moveToFirst()) return cursor.feedFolder()
+    }
+    return createFolder(display)
+  }
+
+  fun renameFolder(id: String, name: String) {
+    val display = displayName(name)
+    require(display.isNotBlank()) { "フォルダ名を入力してください" }
+    val normalized = normalizeName(display)
+    require(!folderNameExists(normalized, excludingId = id)) { "同じ名前のフォルダがあります" }
+    val updated = database.writable.update(
+      "feed_folders",
+      contentValues("name" to display, "normalized_name" to normalized),
+      "id=?",
+      arrayOf(id),
+    )
+    require(updated > 0) { "フォルダが見つかりません" }
+  }
+
+  fun deleteFolder(id: String) {
+    val deleted = database.writable.delete("feed_folders", "id=?", arrayOf(id))
+    require(deleted > 0) { "フォルダが見つかりません" }
+  }
+
+  fun moveFeedToFolder(feedId: String, folderId: String?) {
+    if (folderId != null) {
+      database.readable.rawQuery("SELECT 1 FROM feed_folders WHERE id=? LIMIT 1", arrayOf(folderId)).use { cursor ->
+        require(cursor.moveToFirst()) { "フォルダが見つかりません" }
+      }
+    }
+    val updated = database.writable.update(
+      "feeds",
+      contentValues("folder_id" to folderId),
+      "id=?",
+      arrayOf(feedId),
+    )
+    require(updated > 0) { "フィードが見つかりません" }
   }
 
   fun updateFeedSuccess(feed: Feed, parsed: ParsedFeed, etag: String?, modified: String?) {
@@ -103,6 +174,16 @@ internal class FeedStore(
     }
   }
 
+  private fun folderNameExists(normalizedName: String, excludingId: String? = null): Boolean {
+    val sql = if (excludingId == null) {
+      "SELECT 1 FROM feed_folders WHERE normalized_name=? LIMIT 1"
+    } else {
+      "SELECT 1 FROM feed_folders WHERE normalized_name=? AND id<>? LIMIT 1"
+    }
+    val args = if (excludingId == null) arrayOf(normalizedName) else arrayOf(normalizedName, excludingId)
+    return database.readable.rawQuery(sql, args).use(Cursor::moveToFirst)
+  }
+
   private fun upsertArticles(
     db: SQLiteDatabase,
     feed: Feed,
@@ -147,6 +228,14 @@ private fun Feed.values(): ContentValues = contentValues(
   "last_fetched_at" to lastFetchedAt,
   "last_error" to lastError,
   "created_at" to createdAt,
+  "folder_id" to folderId,
+)
+
+private fun FeedFolder.values(): ContentValues = contentValues(
+  "id" to id,
+  "name" to name,
+  "normalized_name" to normalizedName,
+  "created_at" to createdAt,
 )
 
 private fun contentValues(vararg values: Pair<String, String?>): ContentValues = ContentValues().apply {
@@ -165,6 +254,14 @@ private fun Cursor.feed(): Feed = Feed(
   lastFetchedAt = nullableString("last_fetched_at"),
   lastError = nullableString("last_error"),
   createdAt = string("created_at"),
+  folderId = nullableString("folder_id"),
+)
+
+private fun Cursor.feedFolder(): FeedFolder = FeedFolder(
+  id = string("id"),
+  name = string("name"),
+  normalizedName = string("normalized_name"),
+  createdAt = string("created_at"),
 )
 
 private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
@@ -172,4 +269,6 @@ private fun Cursor.string(name: String): String = getString(getColumnIndexOrThro
 private fun Cursor.nullableString(name: String): String? =
   getColumnIndexOrThrow(name).let { index -> if (isNull(index)) null else getString(index) }
 
+private fun displayName(name: String): String = name.trim().replace(Regex("\\s+"), " ")
+private fun normalizeName(name: String): String = displayName(name).lowercase()
 private fun nowIso(): String = Instant.now().toString()
