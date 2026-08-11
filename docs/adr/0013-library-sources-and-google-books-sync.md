@@ -41,9 +41,11 @@ Android 側の承認には、メール機能と同じ Google Play services の `
 - Purchased (`1`)
 - My eBooks (`7`)
 
-各 bookshelf を `maxResults=40` で最後までページングし、Google Books の volume ID をキーに重複排除する。全ページ取得に成功してからローカルの `GOOGLE_PLAY_BOOKS` 行を置換する。途中で API エラーが発生した場合は既存キャッシュを保持する。
+各 bookshelf を `maxResults=40` で最後までページングし、Google Books の volume ID をキーに重複排除する。My eBooks を先に、Purchased を後に処理し、両方に含まれる同一 Volume では Purchased 側の状態を最終値として残す。全ページ取得に成功してからローカルの `GOOGLE_PLAY_BOOKS` 行を置換する。途中で API エラーが発生した場合は既存キャッシュを保持する。
 
-Google Books API が返す URL は用途を区別する。`LibraryBook.infoUrl` には対象 Volume を読むための `accessInfo.webReaderLink` だけを保存する。書籍情報ページである `volumeInfo.infoLink` は読書 URL のフォールバックに利用しない。`webReaderLink` が返らない Volume は `infoUrl = null` とし、Google Play ストアの商品 URL を合成しない。Android での Reader URL の扱いは ADR-0019 に従う。
+購入済み判定には、認証済み Volume の `userInfo.isPurchased` と Purchased bookshelf (`1`) の所属情報を利用する。My eBooks (`7`) は購入済み書籍が自動追加される一方でユーザーが手動追加できるため、My eBooks に存在することだけでは購入済みと判定しない。
+
+Google Books API が返す URL は用途を区別する。対象 Volume を読むための `accessInfo.webReaderLink` がある場合は `LibraryBook.infoUrl` に保存する。`webReaderLink` がなく購入済みと判定できる場合は、Google Play Books アプリの front-door 起動用フォールバックとして `https://play.google.com/books` を保存する。書籍情報ページである `volumeInfo.infoLink` は読書 URL のフォールバックに利用しない。未購入かつ `webReaderLink` がない Volume は `infoUrl = null` とする。Android での Reader URL と Play Books フォールバックの扱いは ADR-0019 に従う。
 
 アクセストークンは永続化しない。Google Play services が返した短期トークンを同期処理にだけ渡す。
 
@@ -87,12 +89,14 @@ Google Play Books のデータと、再インポート可能な Kindle/Audible �
 - OAuth access token や Amazon セッション情報をアプリの DB に保存しない
 - 蔵書固有の DB スキーマを `core:database` に流出させない
 - Google Books の情報ページを読書 URL と誤認して Google Play ストアへ遷移しない
+- 購入済み書籍で Reader URL が返らない場合でも Google Play Books アプリまでフォールバックできる
 
 ### Negative
 
 - Google Play Books の同期操作では Google アカウント選択が必要になる
-- Purchased と My eBooks の意味や内容が Google 側で変化した場合は同期対象の見直しが必要になる
-- `webReaderLink` が返らない Google Books の項目はアプリから直接読書開始できない
+- Purchased と My eBooks の意味や内容が Google 側で変化した場合は同期対象と購入判定の見直しが必要になる
+- 購入済みフォールバックは Play Books のホームを開くため、対象書籍を自動選択できるとは限らない
+- `webReaderLink` が返らず購入済みとも判定できない Google Books 項目はアプリから直接読書開始できない
 - Kindle/Audible はユーザーがデータファイルを取得して手動でインポートする必要がある
 - Amazon のエクスポート列名が変わった場合は importer のヘッダー別名を追従する必要がある
 - source-specific ID が無いデータでは派生 ID を使うため、タイトル・著者・日付が大きく変わると同一書籍を別レコードとして扱う可能性がある
