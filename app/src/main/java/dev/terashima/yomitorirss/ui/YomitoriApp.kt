@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
@@ -79,6 +80,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.chat.AiChatScreen
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
+import dev.terashima.yomitorirss.feature.integrated.IntegratedRoute
 import dev.terashima.yomitorirss.feature.library.LibraryRoute
 import dev.terashima.yomitorirss.feature.mail.MailScreen
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
@@ -149,6 +151,7 @@ fun YomitoriApp(
   val selectedRedditTab = selectedTab.redditTab()
   val selectedBookmarkTab = selectedTab.bookmarkTab()
   val selectedFeatureInitialized = when (selectedSection) {
+    AppSection.HOME -> true
     AppSection.RSS -> if (selectedTab == MainTab.FEEDS) feedState.initialized else rssState.initialized
     AppSection.REDDIT -> redditState.initialized
     AppSection.BOOKMARKS -> bookmarkState.initialized
@@ -223,7 +226,7 @@ fun YomitoriApp(
   }
   LaunchedEffect(backupState.restoreCompleted) {
     if (backupState.restoreCompleted) {
-      appViewModel.selectTab(MainTab.UNREAD)
+      appViewModel.selectTab(MainTab.INTEGRATED)
       backupViewModel.consumeRestoreCompleted()
     }
   }
@@ -268,6 +271,7 @@ fun YomitoriApp(
               icon = {
                 Icon(
                   imageVector = when (section) {
+                    AppSection.HOME -> Icons.Default.Home
                     AppSection.RSS -> Icons.Default.RssFeed
                     AppSection.REDDIT -> Icons.Default.Forum
                     AppSection.BOOKMARKS -> Icons.Default.Bookmark
@@ -419,6 +423,7 @@ fun YomitoriApp(
             }
           }
 
+          AppSection.HOME,
           AppSection.LIBRARY,
           AppSection.MAIL,
           AppSection.YOUTUBE,
@@ -440,6 +445,19 @@ fun YomitoriApp(
       } else {
         val contentModifier = Modifier.fillMaxSize().padding(padding)
         when (selectedTab) {
+          MainTab.INTEGRATED -> IntegratedRoute(
+            modifier = contentModifier,
+            rssViewModel = rssViewModel,
+            redditViewModel = redditViewModel,
+            feedViewModel = feedViewModel,
+            mailViewModel = mailViewModel,
+            onOpenArticle = onOpenArticle,
+            onOpenMail = { thread ->
+              mailViewModel.openThread(thread)
+              appViewModel.selectTab(MainTab.MAIL)
+            },
+          )
+
           MainTab.UNREAD,
           MainTab.READ_LATER -> PullToRefreshContainer(
             modifier = contentModifier,
@@ -737,6 +755,8 @@ fun YomitoriApp(
 internal fun MainTab.usesGlobalTopBar(): Boolean = this != MainTab.X
 
 private fun MainTab.appSection(): AppSection = when (this) {
+  MainTab.INTEGRATED -> AppSection.HOME
+
   MainTab.UNREAD,
   MainTab.READ_LATER,
   MainTab.FEEDS -> AppSection.RSS
@@ -781,6 +801,7 @@ private fun MainTab.bookmarkTab(): BookmarkTab? = when (this) {
 }
 
 private fun MainTab.screenTitle(): String = when (this) {
+  MainTab.INTEGRATED -> "統合ビュー"
   MainTab.UNREAD -> "RSS・未読"
   MainTab.READ_LATER -> "RSS・あとで読む"
   MainTab.REDDIT_UNREAD -> "Reddit・未読"
@@ -801,6 +822,7 @@ private fun MainTab.screenTitle(): String = when (this) {
 }
 
 private fun AppSection.defaultTab(): MainTab = when (this) {
+  AppSection.HOME -> MainTab.INTEGRATED
   AppSection.RSS -> MainTab.UNREAD
   AppSection.REDDIT -> MainTab.REDDIT_UNREAD
   AppSection.BOOKMARKS -> MainTab.SAVED
