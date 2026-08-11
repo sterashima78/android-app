@@ -43,6 +43,8 @@ Android 側の承認には、メール機能と同じ Google Play services の `
 
 各 bookshelf を `maxResults=40` で最後までページングし、Google Books の volume ID をキーに重複排除する。全ページ取得に成功してからローカルの `GOOGLE_PLAY_BOOKS` 行を置換する。途中で API エラーが発生した場合は既存キャッシュを保持する。
 
+Google Books API が返す URL は用途を区別する。`LibraryBook.infoUrl` には対象 Volume を読むための `accessInfo.webReaderLink` だけを保存する。書籍情報ページである `volumeInfo.infoLink` は読書 URL のフォールバックに利用しない。`webReaderLink` が返らない Volume は `infoUrl = null` とし、Google Play ストアの商品 URL を合成しない。Android での Reader URL の扱いは ADR-0019 に従う。
+
 アクセストークンは永続化しない。Google Play services が返した短期トークンを同期処理にだけ渡す。
 
 ### Kindle / Audible のファイルインポート
@@ -84,11 +86,13 @@ Google Play Books のデータと、再インポート可能な Kindle/Audible �
 - 取得・解析エラー時に既存の蔵書を失わない
 - OAuth access token や Amazon セッション情報をアプリの DB に保存しない
 - 蔵書固有の DB スキーマを `core:database` に流出させない
+- Google Books の情報ページを読書 URL と誤認して Google Play ストアへ遷移しない
 
 ### Negative
 
 - Google Play Books の同期操作では Google アカウント選択が必要になる
 - Purchased と My eBooks の意味や内容が Google 側で変化した場合は同期対象の見直しが必要になる
+- `webReaderLink` が返らない Google Books の項目はアプリから直接読書開始できない
 - Kindle/Audible はユーザーがデータファイルを取得して手動でインポートする必要がある
 - Amazon のエクスポート列名が変わった場合は importer のヘッダー別名を追従する必要がある
 - source-specific ID が無いデータでは派生 ID を使うため、タイトル・著者・日付が大きく変わると同一書籍を別レコードとして扱う可能性がある
@@ -98,3 +102,4 @@ Google Play Books のデータと、再インポート可能な Kindle/Audible �
 - ADR-0003 の layer 分離に従い `domain -> data/ui` の逆依存を作らない
 - ADR-0004 の concept-oriented ownership として `library` を独立させる
 - `core:network` と `core:database` は汎用 capability のまま維持し、Google Books 固有処理や Amazon ファイル形式固有処理を持たせない
+- Google Books の Reader URL と Android 外部アプリ連携は ADR-0019 に従う

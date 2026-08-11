@@ -92,7 +92,10 @@ internal class GoogleBooksApiClient(
       isbn10 = isbn10,
       isbn13 = isbn13,
       thumbnailUrl = thumbnail,
-      infoUrl = accessInfo?.stringOrNull("webReaderLink") ?: info.stringOrNull("infoLink"),
+      infoUrl = googleBooksReadingUrl(
+        webReaderLink = accessInfo?.stringOrNull("webReaderLink"),
+        infoLink = info.stringOrNull("infoLink"),
+      ),
     )
   }
 
@@ -108,3 +111,9 @@ internal class GoogleBooksApiClient(
     val LIBRARY_SHELVES = listOf(1, 7)
   }
 }
+
+@Suppress("UNUSED_PARAMETER")
+internal fun googleBooksReadingUrl(
+  webReaderLink: String?,
+  infoLink: String?,
+): String? = webReaderLink?.takeIf(String::isNotBlank)

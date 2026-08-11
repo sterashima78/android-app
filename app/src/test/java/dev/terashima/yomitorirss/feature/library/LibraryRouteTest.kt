@@ -30,6 +30,38 @@ class LibraryRouteTest {
   }
 
   @Test
+  fun `Google Play Books の reader URL を読書リンクとして分類する`() {
+    assertEquals(
+      GoogleBooksLinkType.READER,
+      googleBooksLinkType("https://play.google.com/books/reader?id=volume-id&hl=ja"),
+    )
+  }
+
+  @Test
+  fun `Google Play の書籍詳細 URL は情報リンクとして分類する`() {
+    assertEquals(
+      GoogleBooksLinkType.INFORMATION,
+      googleBooksLinkType("https://play.google.com/store/books/details?id=volume-id"),
+    )
+  }
+
+  @Test
+  fun `Google Books の情報 URL は情報リンクとして分類する`() {
+    assertEquals(
+      GoogleBooksLinkType.INFORMATION,
+      googleBooksLinkType("https://books.google.com/books?id=volume-id"),
+    )
+  }
+
+  @Test
+  fun `Google Books 以外の URL は通常リンクとして分類する`() {
+    assertEquals(
+      GoogleBooksLinkType.OTHER,
+      googleBooksLinkType("https://example.com/books?id=volume-id"),
+    )
+  }
+
+  @Test
   fun `読書 Activity はストア Activity より優先する`() {
     val reader = readerActivityScore(
       "com.google.android.apps.play.books.ebook.activity.ReadingActivity",
