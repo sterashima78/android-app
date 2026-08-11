@@ -11,10 +11,7 @@ import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsDialog
 @Composable
 fun SettingsScreen(
   modifier: Modifier,
-  feedCount: Int,
   tagCount: Int,
-  onOpenFeeds: () -> Unit,
-  onImportFeedOpml: () -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenModels: () -> Unit,
@@ -28,10 +25,7 @@ fun SettingsScreen(
 
   SettingsFeatureScreen(
     modifier = modifier,
-    feedCount = feedCount,
     tagCount = tagCount,
-    onOpenFeeds = onOpenFeeds,
-    onImportFeedOpml = onImportFeedOpml,
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = { showXCssSettings = true },
