@@ -224,7 +224,11 @@ private fun MessageBubble(isUser: Boolean, content: String) {
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(content, style = MaterialTheme.typography.bodyMedium)
+        if (isUser) {
+          Text(content, style = MaterialTheme.typography.bodyMedium)
+        } else {
+          MarkdownMessage(content)
+        }
       }
     }
   }
