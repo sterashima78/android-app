@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +37,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -76,130 +80,146 @@ fun MailScreen(
   onDismissMessage: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Column(modifier = modifier.fillMaxSize()) {
-    state.message?.let { message ->
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(
-          text = message,
-          modifier = Modifier.weight(1f),
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodySmall,
-        )
-        TextButton(onClick = onDismissMessage) { Text("閉じる") }
-      }
-    }
-
-    if (state.accounts.isEmpty() && state.initialized) {
-      EmptyMailState(onAddAccount = onAddAccount, loading = state.loading)
-      return@Column
-    }
-
-    AccountBar(
-      state = state,
-      onAddAccount = onAddAccount,
-      onRemoveSelectedAccount = onRemoveSelectedAccount,
-      onSelectAccount = onSelectAccount,
-    )
-
-    MailSyncStatus(
-      accounts = state.accounts,
-      onRetry = onRefresh,
-    )
-
-    state.selectedThread?.let { thread ->
-      ThreadDetail(
-        thread = thread,
-        labels = state.labels,
-        loading = state.loading,
-        onBack = onCloseThread,
-        onToggleRead = onToggleRead,
-        onToggleStarred = onToggleStarred,
-        onArchive = onArchive,
-        onTrash = onTrash,
-        onApplyLabel = onApplyLabel,
-      )
-      return@Column
-    }
-
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      MAIL_TRIAGE_MAILBOXES.forEach { mailbox ->
-        FilterChip(
-          selected = state.mailbox == mailbox,
-          onClick = { onSelectMailbox(mailbox) },
-          label = { Text(mailbox.label) },
-        )
-      }
-    }
-
-    OutlinedTextField(
-      value = state.query,
-      onValueChange = onUpdateQuery,
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-      singleLine = true,
-      label = { Text("Gmail を検索") },
-      trailingIcon = {
-        IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "検索") }
-      },
-    )
-
-    val refreshing = state.accounts.any {
-      it.syncState == MailSyncState.SYNCING || it.syncState == MailSyncState.WAITING_FOR_NETWORK
-    }
-    PullToRefreshContainer(
-      modifier = Modifier.weight(1f),
-      isRefreshing = refreshing,
-      onRefresh = onRefresh,
-      enabled = !state.loading,
-    ) {
-      LazyColumn(modifier = Modifier.fillMaxSize()) {
-        if (state.loading && state.threads.isEmpty()) {
-          item {
-            Column(
-              modifier = Modifier.fillParentMaxSize(),
-              horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.Center,
-            ) {
-              CircularProgressIndicator()
-            }
+  Scaffold(
+    modifier = modifier.fillMaxSize(),
+    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    bottomBar = {
+      if (state.accounts.isNotEmpty() && state.selectedThread == null) {
+        NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+          MAIL_TRIAGE_MAILBOXES.forEach { mailbox ->
+            NavigationBarItem(
+              selected = state.mailbox == mailbox,
+              onClick = { onSelectMailbox(mailbox) },
+              icon = {
+                Icon(
+                  imageVector = when (mailbox) {
+                    Mailbox.UNREAD -> Icons.Default.MarkEmailUnread
+                    Mailbox.STARRED -> Icons.Default.Star
+                    Mailbox.ALL_MAIL -> Icons.Default.Archive
+                    Mailbox.INBOX -> Icons.Default.MarkEmailRead
+                  },
+                  contentDescription = mailbox.label,
+                )
+              },
+              label = { Text(mailbox.label, maxLines = 1) },
+            )
           }
-        } else if (state.threads.isEmpty()) {
-          item {
-            Column(
-              modifier = Modifier.fillParentMaxSize().padding(24.dp),
-              horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.Center,
-            ) {
-              Text(
-                when (state.mailbox) {
-                  Mailbox.UNREAD -> "未読メールはありません"
-                  Mailbox.STARRED -> "スター付きメールはありません"
-                  Mailbox.ALL_MAIL -> "アーカイブされたメールはありません"
-                  Mailbox.INBOX -> "表示するメールはありません"
-                },
+        }
+      }
+    },
+  ) { padding ->
+    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+      state.message?.let { message ->
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+          )
+          TextButton(onClick = onDismissMessage) { Text("閉じる") }
+        }
+      }
+
+      if (state.accounts.isEmpty() && state.initialized) {
+        EmptyMailState(onAddAccount = onAddAccount, loading = state.loading)
+        return@Column
+      }
+
+      AccountBar(
+        state = state,
+        onAddAccount = onAddAccount,
+        onRemoveSelectedAccount = onRemoveSelectedAccount,
+        onSelectAccount = onSelectAccount,
+      )
+
+      MailSyncStatus(
+        accounts = state.accounts,
+        onRetry = onRefresh,
+      )
+
+      state.selectedThread?.let { thread ->
+        ThreadDetail(
+          thread = thread,
+          labels = state.labels,
+          loading = state.loading,
+          onBack = onCloseThread,
+          onToggleRead = onToggleRead,
+          onToggleStarred = onToggleStarred,
+          onArchive = onArchive,
+          onTrash = onTrash,
+          onApplyLabel = onApplyLabel,
+        )
+        return@Column
+      }
+
+      OutlinedTextField(
+        value = state.query,
+        onValueChange = onUpdateQuery,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        singleLine = true,
+        label = { Text("Gmail を検索") },
+        trailingIcon = {
+          IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "検索") }
+        },
+      )
+
+      val refreshing = state.accounts.any {
+        it.syncState == MailSyncState.SYNCING || it.syncState == MailSyncState.WAITING_FOR_NETWORK
+      }
+      PullToRefreshContainer(
+        modifier = Modifier.weight(1f),
+        isRefreshing = refreshing,
+        onRefresh = onRefresh,
+        enabled = !state.loading,
+      ) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+          if (state.loading && state.threads.isEmpty()) {
+            item {
+              Column(
+                modifier = Modifier.fillParentMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+              ) {
+                CircularProgressIndicator()
+              }
+            }
+          } else if (state.threads.isEmpty()) {
+            item {
+              Column(
+                modifier = Modifier.fillParentMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+              ) {
+                Text(
+                  when (state.mailbox) {
+                    Mailbox.UNREAD -> "未読メールはありません"
+                    Mailbox.STARRED -> "スター付きメールはありません"
+                    Mailbox.ALL_MAIL -> "アーカイブされたメールはありません"
+                    Mailbox.INBOX -> "表示するメールはありません"
+                  },
+                )
+              }
+            }
+          } else {
+            items(
+              items = state.threads,
+              key = { "${it.accountId}:${it.id}" },
+            ) { thread ->
+              SwipeThreadRow(
+                thread = thread,
+                mailbox = state.mailbox,
+                account = state.accounts.firstOrNull { it.id == thread.accountId },
+                onOpen = { onOpenThread(thread) },
+                onToggleRead = { onToggleRead(thread) },
+                onToggleStarred = { onToggleStarred(thread) },
+                onArchive = { onArchive(thread) },
+                onRestoreToInbox = { onApplyLabel(thread, "INBOX") },
               )
             }
-          }
-        } else {
-          items(
-            items = state.threads,
-            key = { "${it.accountId}:${it.id}" },
-          ) { thread ->
-            SwipeThreadRow(
-              thread = thread,
-              mailbox = state.mailbox,
-              account = state.accounts.firstOrNull { it.id == thread.accountId },
-              onOpen = { onOpenThread(thread) },
-              onToggleRead = { onToggleRead(thread) },
-              onToggleStarred = { onToggleStarred(thread) },
-              onArchive = { onArchive(thread) },
-              onRestoreToInbox = { onApplyLabel(thread, "INBOX") },
-            )
           }
         }
       }
