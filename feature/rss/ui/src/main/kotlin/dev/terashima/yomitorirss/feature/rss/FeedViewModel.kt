@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 data class FeedUiState(
   val initialized: Boolean = false,
   val feeds: List<Feed> = emptyList(),
+  val folders: List<FeedFolder> = emptyList(),
   val refreshing: Boolean = false,
   val refreshProgress: String? = null,
   val message: String? = null,
@@ -148,6 +149,50 @@ class FeedViewModel(
     }
   }
 
+  fun createFolder(name: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.createFolder(name) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "フォルダを作成しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun renameFolder(folder: FeedFolder, name: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.renameFolder(folder.id, name) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "フォルダ名を変更しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun deleteFolder(folder: FeedFolder) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.deleteFolder(folder.id) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "${folder.name}を削除しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun moveFeedToFolder(feed: Feed, folderId: String?) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.moveFeedToFolder(feed.id, folderId) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "${feed.title}を移動しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun importOpml(documentUri: String) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { imports.importFeedOpml(documentUri) }
@@ -178,16 +223,18 @@ class FeedViewModel(
   }
 
   private suspend fun reload() {
-    runCatching { repository.listFeeds().filter(feedSelector) }
-      .onSuccess { feeds -> _state.update { it.copy(initialized = true, feeds = feeds) } }
-      .onFailure { error ->
-        _state.update {
-          it.copy(
-            initialized = true,
-            message = "フィードを読み込めませんでした: ${error.userMessage()}",
-          )
-        }
+    runCatching {
+      repository.listFeeds().filter(feedSelector) to repository.listFolders()
+    }.onSuccess { (feeds, folders) ->
+      _state.update { it.copy(initialized = true, feeds = feeds, folders = folders) }
+    }.onFailure { error ->
+      _state.update {
+        it.copy(
+          initialized = true,
+          message = "フィードを読み込めませんでした: ${error.userMessage()}",
+        )
       }
+    }
   }
 
   private fun showError(error: Throwable) {
