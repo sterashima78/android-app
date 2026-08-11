@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
@@ -35,7 +34,6 @@ import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -70,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.airuntime.SummaryProgress
+import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
@@ -339,30 +338,6 @@ fun YomitoriApp(
                   Icon(Icons.Default.DoneAll, contentDescription = "すべて既読")
                 }
               }
-              if (selectedTab == MainTab.UNREAD || selectedTab == MainTab.READ_LATER || selectedTab == MainTab.FEEDS) {
-                IconButton(
-                  onClick = { feedViewModel.refresh() },
-                  enabled = !feedState.refreshing,
-                ) {
-                  if (feedState.refreshing) {
-                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                  } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "更新")
-                  }
-                }
-              }
-              if (selectedTab == MainTab.REDDIT_UNREAD || selectedTab == MainTab.REDDIT_SUBSCRIPTIONS) {
-                IconButton(
-                  onClick = { redditViewModel.refresh() },
-                  enabled = !redditState.refreshing,
-                ) {
-                  if (redditState.refreshing) {
-                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                  } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "Redditを更新")
-                  }
-                }
-              }
               if (selectedTab == MainTab.FEEDS) {
                 IconButton(onClick = { showAddFeed = true }) {
                   Icon(Icons.Default.Add, contentDescription = "フィードを追加")
@@ -455,35 +430,47 @@ fun YomitoriApp(
         val contentModifier = Modifier.fillMaxSize().padding(padding)
         when (selectedTab) {
           MainTab.UNREAD,
-          MainTab.READ_LATER -> RssScreen(
+          MainTab.READ_LATER -> PullToRefreshContainer(
             modifier = contentModifier,
-            tab = requireNotNull(selectedRssTab),
-            state = rssState,
-            onMarkRead = rssViewModel::markRead,
-            onSaveAndRead = rssViewModel::saveAndRead,
-            onReadLater = rssViewModel::readLater,
-            onUnsave = rssViewModel::unsave,
-            onRemoveReadLater = rssViewModel::removeReadLater,
-            onOpen = onOpenArticle,
-            onSummarize = { summaryViewModel.summarize(it) },
-            onEditTags = { editTagsFor = it },
-            onMoveFolder = { moveFolderFor = it },
-          )
+            isRefreshing = feedState.refreshing,
+            onRefresh = feedViewModel::refresh,
+          ) {
+            RssScreen(
+              modifier = Modifier.fillMaxSize(),
+              tab = requireNotNull(selectedRssTab),
+              state = rssState,
+              onMarkRead = rssViewModel::markRead,
+              onSaveAndRead = rssViewModel::saveAndRead,
+              onReadLater = rssViewModel::readLater,
+              onUnsave = rssViewModel::unsave,
+              onRemoveReadLater = rssViewModel::removeReadLater,
+              onOpen = onOpenArticle,
+              onSummarize = { summaryViewModel.summarize(it) },
+              onEditTags = { editTagsFor = it },
+              onMoveFolder = { moveFolderFor = it },
+            )
+          }
 
           MainTab.REDDIT_UNREAD,
-          MainTab.REDDIT_SUBSCRIPTIONS -> RedditScreen(
+          MainTab.REDDIT_SUBSCRIPTIONS -> PullToRefreshContainer(
             modifier = contentModifier,
-            tab = requireNotNull(selectedRedditTab),
-            state = redditState,
-            onMarkRead = redditViewModel::markRead,
-            onSaveAndRead = redditViewModel::saveAndRead,
-            onOpen = onOpenArticle,
-            onSummarize = { summaryViewModel.summarize(it) },
-            onSubscribeThread = redditViewModel::subscribeThread,
-            onUnsubscribeThread = redditViewModel::unsubscribeThread,
-            onAddCommunity = redditViewModel::addCommunity,
-            onDeleteSubscription = redditViewModel::deleteSubscription,
-          )
+            isRefreshing = redditState.refreshing,
+            onRefresh = redditViewModel::refresh,
+          ) {
+            RedditScreen(
+              modifier = Modifier.fillMaxSize(),
+              tab = requireNotNull(selectedRedditTab),
+              state = redditState,
+              onMarkRead = redditViewModel::markRead,
+              onSaveAndRead = redditViewModel::saveAndRead,
+              onOpen = onOpenArticle,
+              onSummarize = { summaryViewModel.summarize(it) },
+              onSubscribeThread = redditViewModel::subscribeThread,
+              onUnsubscribeThread = redditViewModel::unsubscribeThread,
+              onAddCommunity = redditViewModel::addCommunity,
+              onDeleteSubscription = redditViewModel::deleteSubscription,
+            )
+          }
 
           MainTab.SAVED,
           MainTab.FOLDERS,
@@ -563,12 +550,18 @@ fun YomitoriApp(
             onSendMessage = chatViewModel::sendMessage,
           )
 
-          MainTab.FEEDS -> FeedScreen(
+          MainTab.FEEDS -> PullToRefreshContainer(
             modifier = contentModifier,
-            feeds = feedState.feeds,
-            onAdd = { showAddFeed = true },
-            onDelete = feedViewModel::deleteFeed,
-          )
+            isRefreshing = feedState.refreshing,
+            onRefresh = feedViewModel::refresh,
+          ) {
+            FeedScreen(
+              modifier = Modifier.fillMaxSize(),
+              feeds = feedState.feeds,
+              onAdd = { showAddFeed = true },
+              onDelete = feedViewModel::deleteFeed,
+            )
+          }
 
           MainTab.SETTINGS -> SettingsScreen(
             modifier = contentModifier,

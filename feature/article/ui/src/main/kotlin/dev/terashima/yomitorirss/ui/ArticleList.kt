@@ -72,15 +72,15 @@ fun ArticleList(
   onMoveFolder: (Article) -> Unit = {},
   extraMenuActions: (Article) -> List<ArticleMenuAction> = { emptyList() },
 ) {
-  if (articles.isEmpty()) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-      Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    return
-  }
-
   val groups = articles.groupBy(::dateLabel)
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
+    if (articles.isEmpty()) {
+      item {
+        Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+          Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+    }
     groups.forEach { (date, values) ->
       stickyHeader(key = "header-$date") {
         Surface(color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f)) {

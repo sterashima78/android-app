@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -21,13 +20,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.WatchLater
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +46,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.core.designsystem.SwipeAction
 import dev.terashima.yomitorirss.core.designsystem.SwipeActionListItem
 import java.time.Instant
@@ -116,47 +114,46 @@ fun YouTubeScreen(
             Icon(Icons.Default.Add, contentDescription = "チャンネルを追加")
           }
         }
-        IconButton(onClick = onRefresh, enabled = !state.refreshing) {
-          if (state.refreshing) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-          } else {
-            Icon(Icons.Default.Refresh, contentDescription = "YouTubeを更新")
-          }
-        }
       }
 
-      when (state.selectedTab) {
-        YouTubeTab.UNREAD -> VideoList(
-          modifier = Modifier.weight(1f),
-          videos = state.unread,
-          emptyText = "未読の動画はありません",
-          onMarkRead = onMarkRead,
-          onSaveAndRead = onSaveAndRead,
-          onToggleWatchLater = onToggleWatchLater,
-          onOpen = onOpen,
-        )
+      PullToRefreshContainer(
+        modifier = Modifier.weight(1f),
+        isRefreshing = state.refreshing,
+        onRefresh = onRefresh,
+      ) {
+        when (state.selectedTab) {
+          YouTubeTab.UNREAD -> VideoList(
+            modifier = Modifier.fillMaxSize(),
+            videos = state.unread,
+            emptyText = "未読の動画はありません",
+            onMarkRead = onMarkRead,
+            onSaveAndRead = onSaveAndRead,
+            onToggleWatchLater = onToggleWatchLater,
+            onOpen = onOpen,
+          )
 
-        YouTubeTab.WATCH_LATER -> VideoList(
-          modifier = Modifier.weight(1f),
-          videos = state.watchLater,
-          emptyText = "あとで見る動画はありません",
-          onMarkRead = onMarkRead,
-          onSaveAndRead = onSaveAndRead,
-          onToggleWatchLater = onToggleWatchLater,
-          onOpen = onOpen,
-        )
+          YouTubeTab.WATCH_LATER -> VideoList(
+            modifier = Modifier.fillMaxSize(),
+            videos = state.watchLater,
+            emptyText = "あとで見る動画はありません",
+            onMarkRead = onMarkRead,
+            onSaveAndRead = onSaveAndRead,
+            onToggleWatchLater = onToggleWatchLater,
+            onOpen = onOpen,
+          )
 
-        YouTubeTab.SAVED -> SavedVideoList(
-          modifier = Modifier.weight(1f),
-          videos = state.saved,
-          onOpen = onOpen,
-        )
+          YouTubeTab.SAVED -> SavedVideoList(
+            modifier = Modifier.fillMaxSize(),
+            videos = state.saved,
+            onOpen = onOpen,
+          )
 
-        YouTubeTab.SUBSCRIPTIONS -> ChannelSubscriptions(
-          modifier = Modifier.weight(1f),
-          channels = state.channels,
-          onUnsubscribe = onUnsubscribe,
-        )
+          YouTubeTab.SUBSCRIPTIONS -> ChannelSubscriptions(
+            modifier = Modifier.fillMaxSize(),
+            channels = state.channels,
+            onUnsubscribe = onUnsubscribe,
+          )
+        }
       }
     }
   }
@@ -182,17 +179,19 @@ private fun VideoList(
   onToggleWatchLater: (YouTubeVideo) -> Unit,
   onOpen: (YouTubeVideo) -> Unit,
 ) {
-  if (videos.isEmpty()) {
-    Column(modifier = modifier.fillMaxWidth().padding(24.dp)) {
-      Text(emptyText, style = MaterialTheme.typography.bodyLarge)
-    }
-    return
-  }
-
   LazyColumn(
     modifier = modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(2.dp),
   ) {
+    if (videos.isEmpty()) {
+      item {
+        Text(
+          emptyText,
+          modifier = Modifier.fillMaxWidth().padding(24.dp),
+          style = MaterialTheme.typography.bodyLarge,
+        )
+      }
+    }
     items(videos, key = YouTubeVideo::id) { video ->
       SwipeVideoItem(
         video = video,
@@ -211,17 +210,19 @@ private fun SavedVideoList(
   videos: List<YouTubeVideo>,
   onOpen: (YouTubeVideo) -> Unit,
 ) {
-  if (videos.isEmpty()) {
-    Column(modifier = modifier.fillMaxWidth().padding(24.dp)) {
-      Text("保存済みの動画はありません", style = MaterialTheme.typography.bodyLarge)
-    }
-    return
-  }
-
   LazyColumn(
     modifier = modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(2.dp),
   ) {
+    if (videos.isEmpty()) {
+      item {
+        Text(
+          "保存済みの動画はありません",
+          modifier = Modifier.fillMaxWidth().padding(24.dp),
+          style = MaterialTheme.typography.bodyLarge,
+        )
+      }
+    }
     items(videos, key = YouTubeVideo::url) { video ->
       Card(
         modifier = Modifier
@@ -353,22 +354,22 @@ private fun ChannelSubscriptions(
   channels: List<YouTubeChannel>,
   onUnsubscribe: (YouTubeChannel) -> Unit,
 ) {
-  if (channels.isEmpty()) {
-    Column(modifier = modifier.fillMaxWidth().padding(24.dp)) {
-      Text("購読中のYouTubeチャンネルはありません", style = MaterialTheme.typography.bodyLarge)
-      Spacer(Modifier.height(8.dp))
-      Text(
-        "右上の追加ボタンからチャンネルURLを入力してください。",
-        style = MaterialTheme.typography.bodyMedium,
-      )
-    }
-    return
-  }
-
   LazyColumn(
     modifier = modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
+    if (channels.isEmpty()) {
+      item {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+          Text("購読中のYouTubeチャンネルはありません", style = MaterialTheme.typography.bodyLarge)
+          Spacer(Modifier.height(8.dp))
+          Text(
+            "右上の追加ボタンからチャンネルURLを入力してください。",
+            style = MaterialTheme.typography.bodyMedium,
+          )
+        }
+      }
+    }
     items(channels, key = YouTubeChannel::id) { channel ->
       Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         Row(

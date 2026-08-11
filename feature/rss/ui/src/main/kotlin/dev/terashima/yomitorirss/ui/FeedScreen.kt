@@ -38,23 +38,24 @@ fun FeedScreen(
   onAdd: () -> Unit,
   onDelete: (Feed) -> Unit,
 ) {
-  if (feeds.isEmpty()) {
-    Column(
-      modifier.fillMaxSize(),
-      verticalArrangement = Arrangement.Center,
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      Text("フィードが登録されていません")
-      Spacer(Modifier.height(16.dp))
-      FilledTonalButton(onClick = onAdd) {
-        Icon(Icons.Default.Add, null)
-        Spacer(Modifier.width(8.dp))
-        Text("フィードを追加")
+  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp)) {
+    if (feeds.isEmpty()) {
+      item {
+        Column(
+          Modifier.fillParentMaxSize(),
+          verticalArrangement = Arrangement.Center,
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          Text("フィードが登録されていません")
+          Spacer(Modifier.height(16.dp))
+          FilledTonalButton(onClick = onAdd) {
+            Icon(Icons.Default.Add, null)
+            Spacer(Modifier.width(8.dp))
+            Text("フィードを追加")
+          }
+        }
       }
     }
-    return
-  }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp)) {
     items(feeds, key = Feed::id) { feed ->
       Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
