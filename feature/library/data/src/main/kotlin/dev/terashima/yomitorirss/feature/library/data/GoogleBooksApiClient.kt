@@ -81,10 +81,8 @@ internal class GoogleBooksApiClient(
       ?.replace("http://", "https://")
     val accessInfo = volume.optJSONObject("accessInfo")
     val userInfo = volume.optJSONObject("userInfo")
-    val isPurchased = when {
-      userInfo?.has("isPurchased") == true -> userInfo.optBoolean("isPurchased", false)
-      else -> shelf == PURCHASED_SHELF
-    }
+    val isPurchased = shelf == PURCHASED_SHELF ||
+      userInfo?.optBoolean("isPurchased", false) == true
 
     return LibraryBook(
       source = LibrarySource.GOOGLE_PLAY_BOOKS,
