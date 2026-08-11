@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.MarkEmailUnread
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -50,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.core.designsystem.SwipeAction
 import dev.terashima.yomitorirss.core.designsystem.SwipeActionListItem
 import java.time.Instant
@@ -137,64 +137,70 @@ fun MailScreen(
       }
     }
 
-    Row(
+    OutlinedTextField(
+      value = state.query,
+      onValueChange = onUpdateQuery,
       modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      OutlinedTextField(
-        value = state.query,
-        onValueChange = onUpdateQuery,
-        modifier = Modifier.weight(1f),
-        singleLine = true,
-        label = { Text("Gmail を検索") },
-        trailingIcon = {
-          IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "検索") }
-        },
-      )
-      IconButton(onClick = onRefresh, enabled = !state.loading) {
-        Icon(Icons.Default.Refresh, contentDescription = "同期")
-      }
-    }
+      singleLine = true,
+      label = { Text("Gmail を検索") },
+      trailingIcon = {
+        IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "検索") }
+      },
+    )
 
-    if (state.loading && state.threads.isEmpty()) {
-      Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-      ) {
-        CircularProgressIndicator()
-      }
-    } else if (state.threads.isEmpty()) {
-      Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-      ) {
-        Text(
-          when (state.mailbox) {
-            Mailbox.UNREAD -> "未読メールはありません"
-            Mailbox.STARRED -> "スター付きメールはありません"
-            Mailbox.ALL_MAIL -> "アーカイブされたメールはありません"
-            Mailbox.INBOX -> "表示するメールはありません"
-          },
-        )
-      }
-    } else {
+    val refreshing = state.accounts.any {
+      it.syncState == MailSyncState.SYNCING || it.syncState == MailSyncState.WAITING_FOR_NETWORK
+    }
+    PullToRefreshContainer(
+      modifier = Modifier.weight(1f),
+      isRefreshing = refreshing,
+      onRefresh = onRefresh,
+      enabled = !state.loading,
+    ) {
       LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(
-          items = state.threads,
-          key = { "${it.accountId}:${it.id}" },
-        ) { thread ->
-          SwipeThreadRow(
-            thread = thread,
-            mailbox = state.mailbox,
-            account = state.accounts.firstOrNull { it.id == thread.accountId },
-            onOpen = { onOpenThread(thread) },
-            onToggleRead = { onToggleRead(thread) },
-            onToggleStarred = { onToggleStarred(thread) },
-            onArchive = { onArchive(thread) },
-            onRestoreToInbox = { onApplyLabel(thread, "INBOX") },
-          )
+        if (state.loading && state.threads.isEmpty()) {
+          item {
+            Column(
+              modifier = Modifier.fillParentMaxSize(),
+              horizontalAlignment = Alignment.CenterHorizontally,
+              verticalArrangement = Arrangement.Center,
+            ) {
+              CircularProgressIndicator()
+            }
+          }
+        } else if (state.threads.isEmpty()) {
+          item {
+            Column(
+              modifier = Modifier.fillParentMaxSize().padding(24.dp),
+              horizontalAlignment = Alignment.CenterHorizontally,
+              verticalArrangement = Arrangement.Center,
+            ) {
+              Text(
+                when (state.mailbox) {
+                  Mailbox.UNREAD -> "未読メールはありません"
+                  Mailbox.STARRED -> "スター付きメールはありません"
+                  Mailbox.ALL_MAIL -> "アーカイブされたメールはありません"
+                  Mailbox.INBOX -> "表示するメールはありません"
+                },
+              )
+            }
+          }
+        } else {
+          items(
+            items = state.threads,
+            key = { "${it.accountId}:${it.id}" },
+          ) { thread ->
+            SwipeThreadRow(
+              thread = thread,
+              mailbox = state.mailbox,
+              account = state.accounts.firstOrNull { it.id == thread.accountId },
+              onOpen = { onOpenThread(thread) },
+              onToggleRead = { onToggleRead(thread) },
+              onToggleStarred = { onToggleStarred(thread) },
+              onArchive = { onArchive(thread) },
+              onRestoreToInbox = { onApplyLabel(thread, "INBOX") },
+            )
+          }
         }
       }
     }

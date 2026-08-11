@@ -130,13 +130,15 @@ private fun RedditSubscriptionsScreen(
       }
     }
 
-    if (subscriptions.isEmpty()) {
-      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Redditの購読はありません", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    LazyColumn(Modifier.weight(1f)) {
+      if (subscriptions.isEmpty()) {
+        item {
+          Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Redditの購読はありません", color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+        }
       }
-    } else {
-      LazyColumn(Modifier.fillMaxSize()) {
-        items(subscriptions, key = RedditSubscription::id) { subscription ->
+      items(subscriptions, key = RedditSubscription::id) { subscription ->
           Card(
             modifier = Modifier
               .fillMaxWidth()
@@ -166,7 +168,6 @@ private fun RedditSubscriptionsScreen(
               }
             }
           }
-        }
       }
     }
   }

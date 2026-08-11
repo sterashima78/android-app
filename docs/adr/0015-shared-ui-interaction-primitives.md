@@ -45,18 +45,25 @@ feature 側は次だけを指定する。
 
 現在存在する同種の実装は RSS/Article、Mail、YouTube から `SwipeActionListItem` へ移行する。今後同じ interaction を追加する feature も原則としてこの primitive を利用する。
 
+更新可能な一覧については、ヘッダー上の常設更新ボタンではなく、一覧先頭で下方向へ引く pull-to-refresh を標準 interaction とする。`PullToRefreshContainer` を `:core:designsystem` の共通 primitive とし、RSS、Reddit、メール、YouTube、およびフィード管理から利用する。更新中の表示は Material 3 の pull-to-refresh indicator に統一する。
+
+ジェスチャーだけに依存すると支援技術から更新できなくなるため、`PullToRefreshContainer` は画面上に常設ボタンを表示せず、アクセシビリティの custom action として「更新」を公開する。
+
 ## Consequences
 
 ### Positive
 
 - RSS、メール、YouTube でスワイプと削除後の詰め直し animation が一致する
+- RSS、Reddit、メール、YouTube、フィード管理で更新操作と indicator が一致する
+- ヘッダーから更新専用ボタンを除去し、主要操作のための領域を確保できる
 - motion parameter の調整箇所が一つになる
 - feature UI から pointer gesture と animation の定型実装を除去できる
 - feature は業務上の action 定義に集中できる
 
 ### Negative
 
-- UI feature が `:core:designsystem` に依存する
+- UI feature と app host が `:core:designsystem` に依存する
+- pull-to-refresh はスクロール可能な一覧を前提とするため、空状態も `LazyColumn` 内に配置する必要がある
 - 共通 primitive に feature 固有の例外を持ち込むと API が肥大化する可能性がある
 
 ## Guardrails
@@ -65,6 +72,8 @@ feature 側は次だけを指定する。
 - 共有するのは見た目・motion・gesture といった interaction primitive に限定する
 - feature 固有要件のために共通 API が複雑化する場合は、feature 側で primitive を組み合わせて表現する
 - 同種の interaction を feature 内で再実装する前に、既存 primitive の拡張で表現できるか確認する
+- 更新可能な一覧では `PullToRefreshContainer` を優先し、通常の更新のためだけにヘッダーへ常設ボタンを追加しない
+- 更新失敗時の明示的な再試行など、状態回復に必要なボタンは pull-to-refresh とは別の操作として残してよい
 
 ## Relationship to ADR-0003
 
