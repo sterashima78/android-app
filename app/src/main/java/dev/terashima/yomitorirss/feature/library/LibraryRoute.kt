@@ -4,6 +4,8 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -153,26 +155,65 @@ private class LibraryUriHandler(
 ) : UriHandler {
   override fun openUri(uri: String) {
     val parsedUri = Uri.parse(uri)
-    if (parsedUri.isGoogleBooksUri()) {
-      openGooglePlayBooks(parsedUri)
-    } else {
-      context.startActivity(Intent(Intent.ACTION_VIEW, parsedUri))
+    when {
+      parsedUri.isGoogleBooksReaderUri() -> openGooglePlayBooksReader(parsedUri)
+      else -> context.startActivity(Intent(Intent.ACTION_VIEW, parsedUri))
     }
   }
 
-  private fun openGooglePlayBooks(uri: Uri) {
-    val readerUri = Uri.parse(googlePlayBooksReaderUrl(uri.toString()) ?: uri.toString())
-    val explicitReaderIntent = Intent(Intent.ACTION_VIEW, readerUri).apply {
-      component = ComponentName(PLAY_BOOKS_PACKAGE, PLAY_BOOKS_READER_ACTIVITY)
-    }
-    if (startActivity(explicitReaderIntent)) return
-
-    val packageReaderIntent = Intent(Intent.ACTION_VIEW, readerUri).apply {
+  private fun openGooglePlayBooksReader(uri: Uri) {
+    val readerUri = Uri.parse(normalizeGooglePlayBooksReaderUrl(uri.toString()))
+    val readerIntent = Intent(Intent.ACTION_VIEW, readerUri).apply {
       setPackage(PLAY_BOOKS_PACKAGE)
     }
-    if (startActivity(packageReaderIntent)) return
+
+    readerActivities(readerUri).forEach { component ->
+      val explicitIntent = Intent(readerIntent).apply { this.component = component }
+      if (startActivity(explicitIntent)) return
+    }
+
+    val legacyReaderIntent = Intent(readerIntent).apply {
+      component = ComponentName(PLAY_BOOKS_PACKAGE, LEGACY_PLAY_BOOKS_READER_ACTIVITY)
+    }
+    if (startActivity(legacyReaderIntent)) return
+
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
+    if (launchIntent != null && startActivity(launchIntent)) return
 
     context.startActivity(Intent(Intent.ACTION_VIEW, readerUri))
+  }
+
+  private fun readerActivities(readerUri: Uri): List<ComponentName> {
+    val packageManager = context.packageManager
+    val matchedActivities = packageManager.queryIntentActivities(
+      Intent(Intent.ACTION_VIEW, readerUri).apply { setPackage(PLAY_BOOKS_PACKAGE) },
+      PackageManager.MATCH_DEFAULT_ONLY,
+    ).mapNotNull { resolveInfo ->
+      val activity = resolveInfo.activityInfo ?: return@mapNotNull null
+      if (!activity.exported || readerActivityScore(activity.name) <= 0) return@mapNotNull null
+      ComponentName(activity.packageName, activity.name)
+    }
+
+    val declaredActivities = playBooksActivities(packageManager)
+      .asSequence()
+      .filter(ActivityInfo::exported)
+      .filter { readerActivityScore(it.name) > 0 }
+      .map { ComponentName(it.packageName, it.name) }
+      .toList()
+
+    return (matchedActivities + declaredActivities)
+      .distinctBy { it.flattenToString() }
+      .sortedByDescending { readerActivityScore(it.className) }
+  }
+
+  @Suppress("DEPRECATION")
+  private fun playBooksActivities(packageManager: PackageManager): List<ActivityInfo> = try {
+    packageManager.getPackageInfo(PLAY_BOOKS_PACKAGE, PackageManager.GET_ACTIVITIES)
+      .activities
+      ?.toList()
+      .orEmpty()
+  } catch (_: PackageManager.NameNotFoundException) {
+    emptyList()
   }
 
   private fun startActivity(intent: Intent): Boolean = try {
@@ -185,29 +226,29 @@ private class LibraryUriHandler(
   }
 }
 
-internal fun googlePlayBooksReaderUrl(url: String): String? {
-  val query = url.substringAfter('?', missingDelimiterValue = "").substringBefore('#')
-  val encodedVolumeId = query.split('&').firstNotNullOfOrNull { parameter ->
-    val separator = parameter.indexOf('=')
-    if (separator <= 0) return@firstNotNullOfOrNull null
-    if (!parameter.substring(0, separator).equals("id", ignoreCase = true)) {
-      return@firstNotNullOfOrNull null
-    }
-    parameter.substring(separator + 1).takeIf(String::isNotBlank)
-  } ?: return null
-  return "$PLAY_BOOKS_READER_URL_PREFIX$encodedVolumeId"
+internal fun normalizeGooglePlayBooksReaderUrl(url: String): String {
+  if (!url.startsWith(PLAY_BOOKS_HTTP_READER_PREFIX, ignoreCase = true)) return url
+  return "https://${url.substring(HTTP_SCHEME_PREFIX.length)}"
 }
 
-private fun Uri.isGoogleBooksUri(): Boolean {
+internal fun readerActivityScore(activityName: String): Int {
+  val normalized = activityName.lowercase()
+  var score = 0
+  if ("readingactivity" in normalized) score += 120
+  if ("readeractivity" in normalized) score += 110
+  if ("readactivity" in normalized) score += 100
+  if ("reading" in normalized) score += 80
+  if ("reader" in normalized) score += 70
+  if ("ebook" in normalized) score += 40
+  if ("store" in normalized || "shop" in normalized || "catalog" in normalized) score -= 200
+  if ("detail" in normalized || "preview" in normalized) score -= 100
+  return score
+}
+
+private fun Uri.isGoogleBooksReaderUri(): Boolean {
   val normalizedHost = host?.lowercase() ?: return false
   val normalizedPath = path.orEmpty().lowercase()
-  return when {
-    normalizedHost == "play.google.com" ->
-      normalizedPath.startsWith("/books") || normalizedPath.startsWith("/store/books")
-    normalizedHost == "books.google.com" -> true
-    normalizedHost.startsWith("books.google.") -> true
-    else -> false
-  }
+  return normalizedHost == "play.google.com" && normalizedPath.startsWith("/books/reader")
 }
 
 private fun InputStream.readUpTo(limit: Int): ByteArray {
@@ -224,7 +265,8 @@ private fun InputStream.readUpTo(limit: Int): ByteArray {
 }
 
 private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
-private const val PLAY_BOOKS_READER_ACTIVITY =
+private const val LEGACY_PLAY_BOOKS_READER_ACTIVITY =
   "com.google.android.apps.play.books.ebook.activity.ReadingActivity"
-private const val PLAY_BOOKS_READER_URL_PREFIX = "https://play.google.com/books/reader?id="
+private const val HTTP_SCHEME_PREFIX = "http://"
+private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
