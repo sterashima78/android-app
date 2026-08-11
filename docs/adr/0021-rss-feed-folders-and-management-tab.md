@@ -9,7 +9,7 @@ RSSの登録済みフィードが増えると、単一の一覧だけでは購�
 
 既存のOPMLパーサーは `outline` の階層からフォルダ名を読み取っていたが、インポート時にはその情報を保存していなかった。また、フィード管理画面とOPMLインポートは設定画面配下にあり、RSSというfeature自身の主要表示から分離されていた。
 
-ADR-0019では、同一feature内の複数の主要表示を原則として画面下部の `NavigationBar` で切り替える方針を定めている。フィード管理はアプリ全体の設定ではなく、RSSの購読対象を管理する主要表示である。
+ADR `0019-feature-bottom-tab-navigation.md` では、同一feature内の複数の主要表示を原則として画面下部の `NavigationBar` で切り替える方針を定めている。フィード管理はアプリ全体の設定ではなく、RSSの購読対象を管理する主要表示である。
 
 ## Decision
 
@@ -23,7 +23,7 @@ RSS feature の主要表示を次の3タブとする。
 
 「フィード管理」は既存の `MainTab.FEEDS` を利用するが、所属するトップレベルsectionを `SETTINGS` から `RSS` へ変更する。
 
-フィード追加、OPMLインポートなど現在の管理画面に対するactionは、ADR-0019に従いフィード管理タブの上部actionとして配置する。
+フィード追加、OPMLインポートなど現在の管理画面に対するactionは、ADR `0019-feature-bottom-tab-navigation.md` に従いフィード管理タブの上部actionとして配置する。
 
 設定画面からはフィード管理とOPMLインポートを削除する。
 
@@ -73,7 +73,7 @@ version 1および2のバックアップは引き続き復元可能とする。�
 
 - 登録フィードを用途や分野ごとに整理できる
 - フィード管理がRSS feature内で完結し、設定画面の責務が明確になる
-- ADR-0019で定めたfeature内ナビゲーションの一貫性を維持できる
+- ADR `0019-feature-bottom-tab-navigation.md` で定めたfeature内ナビゲーションの一貫性を維持できる
 - OPMLが持つフォルダ情報をインポート後も利用できる
 - フォルダ削除で購読そのものを失わない
 
@@ -85,5 +85,5 @@ version 1および2のバックアップは引き続き復元可能とする。�
 
 ## Relationship to existing ADRs
 
-- ADR-0019の「feature内の主要表示は画面下部タブで切り替える」方針をRSSへ適用する
+- ADR `0019-feature-bottom-tab-navigation.md` の「feature内の主要表示は画面下部タブで切り替える」方針をRSSへ適用する
 - ADR-0001およびADR-0003の層・モジュール境界に従い、フォルダのモデルとrepository契約は `:feature:rss:domain`、SQLite実装は `:feature:rss:data`、管理画面は `:feature:rss:ui` に置く
