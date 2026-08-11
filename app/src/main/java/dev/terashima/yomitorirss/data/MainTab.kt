@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.navigation
 
 enum class MainTab(val label: String) {
+  INTEGRATED("統合ビュー"),
   UNREAD("未読"),
   READ_LATER("あとで読む"),
   REDDIT_UNREAD("未読"),
