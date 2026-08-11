@@ -73,11 +73,11 @@ class AiSettingsViewModel(
   }
 
   fun downloadModel(modelId: String) {
-    viewModelScope.launch(Dispatchers.IO) {
-      runCatching { repository.downloadModel(modelId) }
-        .onSuccess { _state.update { it.copy(message = "モデルをダウンロードしました") } }
-        .onFailure(::showError)
-    }
+    runCatching { repository.downloadModel(modelId) }
+      .onSuccess {
+        _state.update { it.copy(message = "モデルのバックグラウンドダウンロードを開始しました") }
+      }
+      .onFailure(::showError)
   }
 
   fun selectModel(modelId: String) {
