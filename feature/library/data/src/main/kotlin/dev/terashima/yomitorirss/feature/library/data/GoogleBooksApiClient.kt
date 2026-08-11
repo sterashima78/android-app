@@ -43,7 +43,7 @@ internal class GoogleBooksApiClient(
       val items = root.optJSONArray("items")
       val itemCount = items?.length() ?: 0
       for (index in 0 until itemCount) {
-        parseBook(items.getJSONObject(index))?.let(onBook)
+        parseBook(items.getJSONObject(index), shelf)?.let(onBook)
       }
 
       val totalItems = root.optInt("totalItems", itemCount)
@@ -52,7 +52,7 @@ internal class GoogleBooksApiClient(
     }
   }
 
-  private fun parseBook(volume: JSONObject): LibraryBook? {
+  private fun parseBook(volume: JSONObject, shelf: Int): LibraryBook? {
     val id = volume.optString("id").takeIf(String::isNotBlank) ?: return null
     val info = volume.optJSONObject("volumeInfo") ?: return null
     val title = info.optString("title").takeIf(String::isNotBlank) ?: "タイトル不明"
@@ -80,6 +80,11 @@ internal class GoogleBooksApiClient(
     val thumbnail = imageLinks?.stringOrNull("thumbnail")
       ?.replace("http://", "https://")
     val accessInfo = volume.optJSONObject("accessInfo")
+    val userInfo = volume.optJSONObject("userInfo")
+    val isPurchased = when {
+      userInfo?.has("isPurchased") == true -> userInfo.optBoolean("isPurchased", false)
+      else -> shelf == PURCHASED_SHELF
+    }
 
     return LibraryBook(
       source = LibrarySource.GOOGLE_PLAY_BOOKS,
@@ -95,6 +100,7 @@ internal class GoogleBooksApiClient(
       infoUrl = googleBooksReadingUrl(
         webReaderLink = accessInfo?.stringOrNull("webReaderLink"),
         infoLink = info.stringOrNull("infoLink"),
+        isPurchased = isPurchased,
       ),
     )
   }
@@ -108,7 +114,11 @@ internal class GoogleBooksApiClient(
   private companion object {
     const val BASE_URL = "https://www.googleapis.com/books/v1"
     const val PAGE_SIZE = 40
-    val LIBRARY_SHELVES = listOf(1, 7)
+    const val PURCHASED_SHELF = 1
+    const val MY_EBOOKS_SHELF = 7
+
+    // My eBooks を先に処理し、Purchased の購入判定を同一 Volume の最終状態として残す。
+    val LIBRARY_SHELVES = listOf(MY_EBOOKS_SHELF, PURCHASED_SHELF)
   }
 }
 
@@ -116,4 +126,8 @@ internal class GoogleBooksApiClient(
 internal fun googleBooksReadingUrl(
   webReaderLink: String?,
   infoLink: String?,
+  isPurchased: Boolean = false,
 ): String? = webReaderLink?.takeIf(String::isNotBlank)
+  ?: GOOGLE_PLAY_BOOKS_HOME_URL.takeIf { isPurchased }
+
+internal const val GOOGLE_PLAY_BOOKS_HOME_URL = "https://play.google.com/books"
