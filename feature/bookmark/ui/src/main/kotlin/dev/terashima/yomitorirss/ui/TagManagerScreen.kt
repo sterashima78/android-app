@@ -38,9 +38,7 @@ import dev.terashima.yomitorirss.feature.article.SwipeChoice
 internal fun TagManagerScreen(
   tags: List<Tag>,
   bookmarks: List<BookmarkedArticle>,
-  selectedTagId: String?,
   hiddenArticleIds: Set<String>,
-  onTagSelected: (String?) -> Unit,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
@@ -52,6 +50,7 @@ internal fun TagManagerScreen(
   modifier: Modifier = Modifier,
 ) {
   var newName by remember { mutableStateOf("") }
+  var selectedTagId by remember { mutableStateOf<String?>(null) }
   var editing by remember { mutableStateOf<Tag?>(null) }
   var editingName by remember { mutableStateOf("") }
 
@@ -110,7 +109,7 @@ internal fun TagManagerScreen(
       items(tags, key = Tag::id) { tag ->
         FilterChip(
           selected = tag.id == selectedTagId,
-          onClick = { onTagSelected(tag.id) },
+          onClick = { selectedTagId = tag.id },
           label = { Text("${tag.name} (${articleCounts[tag.id] ?: 0})") },
         )
       }
@@ -144,7 +143,12 @@ internal fun TagManagerScreen(
         ) {
           Icon(Icons.Default.Edit, "タグ名を変更")
         }
-        IconButton(onClick = { onDelete(selectedTag) }) {
+        IconButton(
+          onClick = {
+            selectedTagId = null
+            onDelete(selectedTag)
+          },
+        ) {
           Icon(Icons.Default.Delete, "タグを削除")
         }
       }
