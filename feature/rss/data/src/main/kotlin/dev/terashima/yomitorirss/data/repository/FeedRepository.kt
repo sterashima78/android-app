@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.rss.data
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
@@ -19,6 +20,8 @@ class DefaultFeedRepository(
 
   override suspend fun listFeeds(): List<Feed> = store.listFeeds()
 
+  override suspend fun listFolders(): List<FeedFolder> = store.listFolders()
+
   override suspend fun inspect(input: String): FeedInspection = client.inspect(input)
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
@@ -34,6 +37,26 @@ class DefaultFeedRepository(
 
   override suspend fun deleteFeed(feedId: String) {
     store.deleteFeed(feedId)
+    dataChanges.notifyChanged()
+  }
+
+  override suspend fun createFolder(name: String) {
+    store.createFolder(name)
+    dataChanges.notifyChanged()
+  }
+
+  override suspend fun renameFolder(folderId: String, name: String) {
+    store.renameFolder(folderId, name)
+    dataChanges.notifyChanged()
+  }
+
+  override suspend fun deleteFolder(folderId: String) {
+    store.deleteFolder(folderId)
+    dataChanges.notifyChanged()
+  }
+
+  override suspend fun moveFeedToFolder(feedId: String, folderId: String?) {
+    store.moveFeedToFolder(feedId, folderId)
     dataChanges.notifyChanged()
   }
 
