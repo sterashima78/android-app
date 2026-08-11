@@ -158,7 +158,9 @@ private class LibraryUriHandler(
   override fun openUri(uri: String) {
     when (googleBooksLinkType(uri)) {
       GoogleBooksLinkType.READER -> openGooglePlayBooksReader(Uri.parse(uri))
-      GoogleBooksLinkType.PLAY_BOOKS_HOME -> openGooglePlayBooksHome()
+      GoogleBooksLinkType.PLAY_BOOKS_HOME -> {
+        if (!openGooglePlayBooksHome()) showPlayBooksOpenFailedMessage()
+      }
       GoogleBooksLinkType.INFORMATION -> showMissingReaderLinkMessage()
       GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
     }
@@ -182,7 +184,7 @@ private class LibraryUriHandler(
 
     if (openGooglePlayBooksHome()) return
 
-    Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
+    showPlayBooksOpenFailedMessage()
   }
 
   private fun openGooglePlayBooksHome(): Boolean {
@@ -226,6 +228,10 @@ private class LibraryUriHandler(
 
   private fun showMissingReaderLinkMessage() {
     Toast.makeText(context, GOOGLE_BOOKS_NO_READER_MESSAGE, Toast.LENGTH_LONG).show()
+  }
+
+  private fun showPlayBooksOpenFailedMessage() {
+    Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
   }
 
   private fun startActivity(intent: Intent): Boolean = try {
@@ -304,5 +310,5 @@ private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/
 private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
   "この項目には Google Books API の読書リンクがないため、直接開けません。"
 private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
-  "Google Play Books の読書画面を開けませんでした。"
+  "Google Play Books を開けませんでした。"
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
