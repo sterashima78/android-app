@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +30,7 @@ import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationMa
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -154,10 +156,10 @@ private class LibraryUriHandler(
   private val context: Context,
 ) : UriHandler {
   override fun openUri(uri: String) {
-    val parsedUri = Uri.parse(uri)
-    when {
-      parsedUri.isGoogleBooksReaderUri() -> openGooglePlayBooksReader(parsedUri)
-      else -> context.startActivity(Intent(Intent.ACTION_VIEW, parsedUri))
+    when (googleBooksLinkType(uri)) {
+      GoogleBooksLinkType.READER -> openGooglePlayBooksReader(Uri.parse(uri))
+      GoogleBooksLinkType.INFORMATION -> showMissingReaderLinkMessage()
+      GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
     }
   }
 
@@ -180,7 +182,7 @@ private class LibraryUriHandler(
     val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
     if (launchIntent != null && startActivity(launchIntent)) return
 
-    context.startActivity(Intent(Intent.ACTION_VIEW, readerUri))
+    Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
   }
 
   private fun readerActivities(readerUri: Uri): List<ComponentName> {
@@ -216,6 +218,10 @@ private class LibraryUriHandler(
     emptyList()
   }
 
+  private fun showMissingReaderLinkMessage() {
+    Toast.makeText(context, GOOGLE_BOOKS_NO_READER_MESSAGE, Toast.LENGTH_LONG).show()
+  }
+
   private fun startActivity(intent: Intent): Boolean = try {
     context.startActivity(intent)
     true
@@ -223,6 +229,29 @@ private class LibraryUriHandler(
     false
   } catch (_: SecurityException) {
     false
+  }
+}
+
+internal enum class GoogleBooksLinkType {
+  READER,
+  INFORMATION,
+  OTHER,
+}
+
+internal fun googleBooksLinkType(url: String): GoogleBooksLinkType {
+  val uri = runCatching { URI(url) }.getOrNull() ?: return GoogleBooksLinkType.OTHER
+  val scheme = uri.scheme?.lowercase()
+  if (scheme != "http" && scheme != "https") return GoogleBooksLinkType.OTHER
+
+  val host = uri.host?.lowercase() ?: return GoogleBooksLinkType.OTHER
+  val path = uri.path.orEmpty().lowercase()
+  return when {
+    host == "play.google.com" && path.startsWith("/books/reader") -> GoogleBooksLinkType.READER
+    host == "play.google.com" &&
+      (path.startsWith("/books") || path.startsWith("/store/books")) ->
+      GoogleBooksLinkType.INFORMATION
+    host == "books.google.com" || host.startsWith("books.google.") -> GoogleBooksLinkType.INFORMATION
+    else -> GoogleBooksLinkType.OTHER
   }
 }
 
@@ -245,12 +274,6 @@ internal fun readerActivityScore(activityName: String): Int {
   return score
 }
 
-private fun Uri.isGoogleBooksReaderUri(): Boolean {
-  val normalizedHost = host?.lowercase() ?: return false
-  val normalizedPath = path.orEmpty().lowercase()
-  return normalizedHost == "play.google.com" && normalizedPath.startsWith("/books/reader")
-}
-
 private fun InputStream.readUpTo(limit: Int): ByteArray {
   val output = ByteArrayOutputStream(minOf(limit, DEFAULT_BUFFER_SIZE))
   val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -269,4 +292,8 @@ private const val LEGACY_PLAY_BOOKS_READER_ACTIVITY =
   "com.google.android.apps.play.books.ebook.activity.ReadingActivity"
 private const val HTTP_SCHEME_PREFIX = "http://"
 private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"
+private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
+  "この項目には Google Books API の読書リンクがないため、直接開けません。"
+private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
+  "Google Play Books の読書画面を開けませんでした。"
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
