@@ -10,6 +10,17 @@
   <string name="unread_widget_read_later">あとで読む</string>
   <string name="unread_widget_read_later_description">記事をあとで読むへ移動する</string>
 
+  <string name="task_widget_title">未完了タスク</string>
+  <string name="task_widget_empty">未完了タスクはありません</string>
+  <string name="task_widget_refresh">↻</string>
+  <string name="task_widget_refresh_description">タスクを更新</string>
+  <string name="task_widget_description">未完了タスクをホーム画面に一覧表示し、完了操作できます</string>
+  <string name="task_widget_complete">✓</string>
+  <string name="task_widget_complete_description">タスクを完了</string>
+  <string name="task_widget_due_today">今日が期限</string>
+  <string name="task_widget_due_overdue">期限超過 %1$s</string>
+  <string name="task_widget_due_date">期限 %1$s</string>
+
   <color name="widget_background">#F7F8FA</color>
   <color name="widget_text">#202124</color>
   <color name="widget_text_secondary">#5F6368</color>
