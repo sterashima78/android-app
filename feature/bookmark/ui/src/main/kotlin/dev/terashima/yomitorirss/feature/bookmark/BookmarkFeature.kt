@@ -72,6 +72,13 @@ fun BookmarkScreen(
     BookmarkTab.TAGS -> TagManagerScreen(
       modifier = modifier,
       tags = state.tags,
+      bookmarks = state.bookmarkDetails.values.toList(),
+      hiddenArticleIds = state.hiddenArticleIds,
+      onOpen = onOpen,
+      onSummarize = onSummarize,
+      onEditTags = onEditTags,
+      onMoveFolder = onMoveFolder,
+      onUnsave = onUnsave,
       onCreate = onCreateTag,
       onRename = onRenameTag,
       onDelete = onDeleteTag,
