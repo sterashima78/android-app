@@ -34,7 +34,7 @@ class DefaultFeedImportRepository(
       } else {
         runCatching {
           val folderId = entry.folders
-            .takeIf(List<String>::isNotEmpty)
+            .takeIf { it.isNotEmpty() }
             ?.joinToString(" / ")
             ?.let(store::ensureFolder)
             ?.id
