@@ -1,6 +1,9 @@
 package dev.terashima.yomitorirss.feature.settings.data
 
+import dev.terashima.yomitorirss.core.airuntime.LocalInferenceBackend
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.feature.settings.AiInferenceBackend
+import dev.terashima.yomitorirss.feature.settings.AiInferenceSettings
 import dev.terashima.yomitorirss.feature.settings.AiModelDownloadProgress
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
@@ -25,6 +28,7 @@ class DefaultAiModelRepository(
         selected = model.selected,
         recommended = model.recommended,
         memoryLow = model.memoryLow,
+        supportsThinking = model.supportsThinking,
       )
     }
   }
@@ -52,10 +56,26 @@ class DefaultAiModelRepository(
   }
 
   override val summaryPrompt = manager.summaryPrompt
+  override val inferenceSettings = manager.inferenceSettings.map { settings ->
+    AiInferenceSettings(
+      backend = when (settings.backend) {
+        LocalInferenceBackend.CPU -> AiInferenceBackend.CPU
+        LocalInferenceBackend.GPU -> AiInferenceBackend.GPU
+      },
+      thinkingEnabled = settings.thinkingEnabled,
+    )
+  }
 
   override fun isSupported(): Boolean = manager.isSupported()
   override fun updateSummaryPrompt(prompt: String) = manager.updateSummaryPrompt(prompt)
   override fun resetSummaryPrompt() = manager.resetSummaryPrompt()
+  override fun setInferenceBackend(backend: AiInferenceBackend) = manager.setInferenceBackend(
+    when (backend) {
+      AiInferenceBackend.CPU -> LocalInferenceBackend.CPU
+      AiInferenceBackend.GPU -> LocalInferenceBackend.GPU
+    },
+  )
+  override fun setThinkingEnabled(enabled: Boolean) = manager.setThinkingEnabled(enabled)
   override fun downloadModel(modelId: String) = manager.downloadModel(modelId)
   override fun selectModel(modelId: String) = manager.selectModel(modelId)
   override fun deleteModel(modelId: String) = manager.deleteModel(modelId)

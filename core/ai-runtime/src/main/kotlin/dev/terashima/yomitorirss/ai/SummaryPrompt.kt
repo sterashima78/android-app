@@ -33,10 +33,11 @@ object SummaryPrompt {
     }
   }
 
-  fun cacheKey(modelId: String, template: String): String {
+  fun cacheKey(modelId: String, template: String, variant: String? = null): String {
     val digest = MessageDigest.getInstance("SHA-256")
       .digest(normalize(template).toByteArray(Charsets.UTF_8))
       .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-    return "$modelId:${digest.take(16)}"
+    val variantSuffix = variant?.takeIf(String::isNotBlank)?.let { ":$it" }.orEmpty()
+    return "$modelId:${digest.take(16)}$variantSuffix"
   }
 }

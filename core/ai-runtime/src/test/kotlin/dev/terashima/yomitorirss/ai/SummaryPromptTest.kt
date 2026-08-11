@@ -33,4 +33,12 @@ class SummaryPromptTest {
 
     assertNotEquals(first, second)
   }
+
+  @Test
+  fun `Thinkingモードが変わるとキャッシュキーも変わる`() {
+    val thinking = SummaryPrompt.cacheKey("model", "要約 ${SummaryPrompt.ARTICLE_PLACEHOLDER}", "think")
+    val nonThinking = SummaryPrompt.cacheKey("model", "要約 ${SummaryPrompt.ARTICLE_PLACEHOLDER}", "no_think")
+
+    assertNotEquals(thinking, nonThinking)
+  }
 }

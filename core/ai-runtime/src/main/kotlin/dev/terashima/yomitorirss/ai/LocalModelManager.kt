@@ -22,6 +22,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
+enum class LocalInferenceBackend {
+  CPU,
+  GPU,
+}
+
+data class LocalInferenceSettings(
+  val backend: LocalInferenceBackend = LocalInferenceBackend.CPU,
+  val thinkingEnabled: Boolean = false,
+)
+
 data class LocalModelStatus(
   val id: String,
   val name: String,
@@ -35,6 +45,7 @@ data class LocalModelStatus(
   val selected: Boolean,
   val recommended: Boolean,
   val memoryLow: Boolean,
+  val supportsThinking: Boolean,
 )
 
 data class ModelDownloadProgress(
@@ -88,6 +99,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
   )
   val summaryPrompt: StateFlow<String> = _summaryPrompt.asStateFlow()
 
+  private val _inferenceSettings = MutableStateFlow(readInferenceSettings())
+  val inferenceSettings: StateFlow<LocalInferenceSettings> = _inferenceSettings.asStateFlow()
+
   init {
     refreshModels()
   }
@@ -115,6 +129,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         selected = downloaded && selectedId == model.id,
         recommended = model.recommended,
         memoryLow = deviceMemoryBytes() < model.minDeviceMemoryGb * BYTES_PER_GB,
+        supportsThinking = model.supportsThinking,
       )
     }
   }
@@ -132,8 +147,26 @@ class LocalModelManager(context: Context) : AutoCloseable {
     _summaryPrompt.value = SummaryPrompt.DEFAULT
   }
 
-  fun summaryCacheKey(modelId: String, prompt: String = _summaryPrompt.value): String =
-    SummaryPrompt.cacheKey(modelId, prompt)
+  fun setInferenceBackend(backend: LocalInferenceBackend) {
+    preferences.edit().putString(INFERENCE_BACKEND_KEY, backend.name).apply()
+    _inferenceSettings.value = _inferenceSettings.value.copy(backend = backend)
+  }
+
+  fun setThinkingEnabled(enabled: Boolean) {
+    preferences.edit().putBoolean(THINKING_ENABLED_KEY, enabled).apply()
+    _inferenceSettings.value = _inferenceSettings.value.copy(thinkingEnabled = enabled)
+  }
+
+  fun summaryCacheKey(modelId: String, prompt: String = _summaryPrompt.value): String {
+    val model = MODEL_CATALOG.firstOrNull { it.id == modelId }
+    val settings = currentInferenceSettings()
+    val variant = if (model?.supportsThinking == true) {
+      ThinkingMode.cacheVariant(settings.thinkingEnabled)
+    } else {
+      null
+    }
+    return SummaryPrompt.cacheKey(modelId, prompt, variant)
+  }
 
   fun selectModel(modelId: String) {
     val model = requireModel(modelId)
@@ -233,13 +266,14 @@ class LocalModelManager(context: Context) : AutoCloseable {
     cancelRequested.set(false)
 
     return inferenceLock.withLock {
+      val settings = currentInferenceSettings()
       val preparationStartedAt = SystemClock.elapsedRealtime()
       _summaryProgress.value = SummaryProgress(
         "preparing_model",
         model.name,
         estimatedStageDurationMillis("preparing_model", model.id),
       )
-      val inference = createInference(model, file)
+      val inference = createInference(model, file, settings.backend)
       synchronized(stateLock) { activeInference = inference }
       try {
         recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - preparationStartedAt)
@@ -250,10 +284,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
           model.name,
           estimatedStageDurationMillis("generating_summary", model.id),
         )
-        val raw = generateResponse(
-          inference,
-          createSummaryPrompt(text, model.maxInputChars, model.runtime, promptTemplate),
-        )
+        val promptWithMode = createSummaryPrompt(text, model.maxInputChars, model.runtime, promptTemplate)
+          .withThinkingMode(model, settings)
+        val raw = generateResponse(inference, promptWithMode)
         recordStageDuration("generating_summary", model.id, SystemClock.elapsedRealtime() - generationStartedAt)
         cleanSummary(raw)
       } finally {
@@ -279,13 +312,14 @@ class LocalModelManager(context: Context) : AutoCloseable {
     _chatResponse.value = ""
 
     return inferenceLock.withLock {
+      val settings = currentInferenceSettings()
       val preparationStartedAt = SystemClock.elapsedRealtime()
       _chatProgress.value = ChatProgress(
         "preparing_model",
         model.name,
         estimatedStageDurationMillis("preparing_model", model.id),
       )
-      val inference = createInference(model, file)
+      val inference = createInference(model, file, settings.backend)
       synchronized(stateLock) { activeInference = inference }
       try {
         recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - preparationStartedAt)
@@ -301,7 +335,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
           context = context,
           maxInputChars = maxOf(model.maxInputChars, model.contextTokens),
           chatMl = model.runtime == InferenceRuntime.MEDIAPIPE_TASK,
-        )
+        ).withThinkingMode(model, settings)
         val streamedRaw = StringBuilder()
         val raw = generateResponseStreaming(inference, prompt) { chunk ->
           appendStreamChunk(streamedRaw, chunk)
@@ -329,19 +363,29 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
-  private fun createInference(model: ModelDefinition, file: File): AutoCloseable = when (model.runtime) {
+  private fun createInference(
+    model: ModelDefinition,
+    file: File,
+    backend: LocalInferenceBackend,
+  ): AutoCloseable = when (model.runtime) {
     InferenceRuntime.MEDIAPIPE_TASK -> {
       val options = LlmInference.LlmInferenceOptions.builder()
         .setModelPath(file.absolutePath)
         .setMaxTokens(model.contextTokens)
         .setMaxTopK(40)
-        .setPreferredBackend(LlmInference.Backend.CPU)
+        .setPreferredBackend(
+          when (backend) {
+            LocalInferenceBackend.CPU -> LlmInference.Backend.CPU
+            LocalInferenceBackend.GPU -> LlmInference.Backend.GPU
+          },
+        )
         .build()
       LlmInference.createFromOptions(appContext, options)
     }
     InferenceRuntime.LITERT_LM -> LiteRtLmInference(
       file = file,
-      cacheDirectory = modelCacheDirectory(model),
+      cacheDirectory = modelBackendCacheDirectory(model, backend),
+      backend = backend,
     )
   }
 
@@ -381,6 +425,30 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val first = MODEL_CATALOG.firstOrNull { isValidModelFile(modelFile(it), it) }
     if (first != null) preferences.edit().putString(SELECTED_MODEL_KEY, first.id).apply()
     return first
+  }
+
+  private fun readInferenceSettings(): LocalInferenceSettings {
+    val backend = preferences.getString(INFERENCE_BACKEND_KEY, null)
+      ?.let { runCatching { LocalInferenceBackend.valueOf(it) }.getOrNull() }
+      ?: LocalInferenceBackend.CPU
+    return LocalInferenceSettings(
+      backend = backend,
+      thinkingEnabled = preferences.getBoolean(THINKING_ENABLED_KEY, false),
+    )
+  }
+
+  private fun currentInferenceSettings(): LocalInferenceSettings =
+    readInferenceSettings().also { settings ->
+      if (_inferenceSettings.value != settings) _inferenceSettings.value = settings
+    }
+
+  private fun String.withThinkingMode(
+    model: ModelDefinition,
+    settings: LocalInferenceSettings,
+  ): String = if (model.supportsThinking) {
+    ThinkingMode.apply(this, settings.thinkingEnabled)
+  } else {
+    this
   }
 
   private fun openDownloadConnection(initialUrl: String): HttpURLConnection {
@@ -448,7 +516,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private fun temporaryModelFile(model: ModelDefinition) = File(modelsDirectory(), "${model.fileName}.part")
   private fun modelsDirectory() = File(appContext.filesDir, "local-summary-models").apply { mkdirs() }
   private fun modelCacheDirectory(model: ModelDefinition) =
-    File(appContext.cacheDir, "local-summary-models/${model.id}").apply { mkdirs() }
+    File(appContext.cacheDir, "local-summary-models/${model.id}")
+  private fun modelBackendCacheDirectory(model: ModelDefinition, backend: LocalInferenceBackend) =
+    File(modelCacheDirectory(model), backend.name.lowercase()).apply { mkdirs() }
 
   private fun isValidModelFile(file: File, model: ModelDefinition): Boolean {
     if (!file.isFile) return false
@@ -504,6 +574,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val minDeviceMemoryGb: Int,
     val runtime: InferenceRuntime,
     val recommended: Boolean = false,
+    val supportsThinking: Boolean = false,
   )
 
   companion object {
@@ -520,6 +591,8 @@ class LocalModelManager(context: Context) : AutoCloseable {
     private const val PREFERENCES_NAME = "local_summary_models"
     private const val SELECTED_MODEL_KEY = "selected_model_id"
     private const val SUMMARY_PROMPT_KEY = "summary_prompt"
+    private const val INFERENCE_BACKEND_KEY = "inference_backend"
+    private const val THINKING_ENABLED_KEY = "thinking_enabled"
 
     private val MODEL_CATALOG = listOf(
       ModelDefinition(
@@ -552,6 +625,22 @@ class LocalModelManager(context: Context) : AutoCloseable {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/7fa1d78473894f7e736a21d920c3aa80f950c0db/gemma-4-E2B-it.litertlm?download=true",
         8,
         InferenceRuntime.LITERT_LM,
+      ),
+      ModelDefinition(
+        "qwen3-4b-mixed-int4",
+        "Qwen3 4B",
+        "品質と端末内実行のバランスを重視したモデル。Thinkingの切り替えに対応します。",
+        "litert-community/Qwen3-4B",
+        "Apache-2.0",
+        "Mixed INT4",
+        2048,
+        1200,
+        2_659_063_000,
+        "qwen3_4b_mixed_int4.litertlm",
+        "https://huggingface.co/litert-community/Qwen3-4B/resolve/main/qwen3_4b_mixed_int4.litertlm?download=true",
+        8,
+        InferenceRuntime.LITERT_LM,
+        supportsThinking = true,
       ),
       ModelDefinition(
         "gemma4-e4b-it",
@@ -590,11 +679,15 @@ class LocalModelManager(context: Context) : AutoCloseable {
 private class LiteRtLmInference(
   file: File,
   cacheDirectory: File,
+  backend: LocalInferenceBackend,
 ) : AutoCloseable {
   private val engine = Engine(
     EngineConfig(
       modelPath = file.absolutePath,
-      backend = Backend.CPU(),
+      backend = when (backend) {
+        LocalInferenceBackend.CPU -> Backend.CPU()
+        LocalInferenceBackend.GPU -> Backend.GPU()
+      },
       cacheDir = cacheDirectory.absolutePath,
     ),
   ).also { it.initialize() }

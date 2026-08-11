@@ -22,6 +22,9 @@
     android:supportsRtl="true"
     android:theme="@style/Theme.Yomitori"
     android:usesCleartextTraffic="false">
+    <uses-native-library android:name="libvndksupport.so" android:required="false" />
+    <uses-native-library android:name="libOpenCL.so" android:required="false" />
+
     <meta-data
       android:name="android.webkit.WebView.EnableSafeBrowsing"
       android:value="true" />

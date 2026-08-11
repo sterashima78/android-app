@@ -1,7 +1,7 @@
 # Android RSSリーダー仕様書
 
 - 文書バージョン: 0.2.0
-- 更新日: 2026-08-06
+- 更新日: 2026-08-11
 - 状態: Kotlinネイティブ移行版
 
 ## 1. 目的
@@ -157,6 +157,8 @@ XML宣言とHTTP Content-Typeの文字コードを確認し、日本語をUTF-8�
 - 使用モデルの選択
 - モデルの削除
 - 端末メモリが推奨量を下回る場合の警告
+- 推論バックエンドのCPU/GPU切り替え
+- 選択中モデルが対応している場合のThinking切り替え
 
 初期候補は次のとおり。
 
@@ -164,8 +166,13 @@ XML宣言とHTTP Content-Typeの文字コードを確認し、日本語をUTF-8�
 - Qwen2.5 1.5B Instruct
 - Gemma 4 E2B Instruct
 - Gemma 4 E4B Instruct
+- Qwen3 4B mixed INT4
 
-モデル読込中と要約生成中を区別して表示する。生成済み要約は記事IDとモデルIDとともにSQLiteへキャッシュし、再生成も可能とする。
+CPUを既定の実行バックエンドとする。GPUを選択した場合はMediaPipe Tasks GenAIまたはLiteRT-LMのGPU backendで推論する。GPUが利用できない端末では自動的にCPUへ切り替えずエラーを表示する。
+
+Thinkingは既定で無効とする。Qwen3 4Bでは `/think` と `/no_think` を利用して1つのモデル内で切り替える。Thinking対応モデルではThinking状態も要約キャッシュキーへ含める。
+
+モデル読込中と要約生成中を区別して表示する。生成済み要約は記事IDとモデルID、要約設定を表すキャッシュキーとともにSQLiteへキャッシュし、再生成も可能とする。
 
 ## 10. データベース
 
