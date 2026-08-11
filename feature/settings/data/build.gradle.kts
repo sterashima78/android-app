@@ -19,5 +19,6 @@ android {
 dependencies {
   implementation(project(":feature:settings:domain"))
   implementation(project(":core:ai-runtime"))
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+  implementation("androidx.work:work-runtime-ktx:2.11.2")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }
