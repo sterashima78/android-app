@@ -655,12 +655,16 @@ fun YomitoriApp(
     ModelManagerDialog(
       supported = aiState.supported,
       models = aiState.models,
+      inferenceBackend = aiState.inferenceBackend,
+      thinkingEnabled = aiState.thinkingEnabled,
       progressModelId = aiState.downloadProgress?.modelId,
       progressText = aiState.downloadProgress?.let {
         val percent = if (it.totalBytes > 0) it.downloadedBytes * 100 / it.totalBytes else 0
         "${it.phase} $percent%"
       },
       onDismiss = { showModels = false },
+      onBackendChange = aiSettingsViewModel::setInferenceBackend,
+      onThinkingChange = aiSettingsViewModel::setThinkingEnabled,
       onDownload = aiSettingsViewModel::downloadModel,
       onSelect = aiSettingsViewModel::selectModel,
       onDelete = aiSettingsViewModel::deleteModel,

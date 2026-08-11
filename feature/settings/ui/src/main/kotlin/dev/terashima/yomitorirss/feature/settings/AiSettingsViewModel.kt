@@ -16,6 +16,8 @@ data class AiSettingsUiState(
   val downloadProgress: AiModelDownloadProgress? = null,
   val summaryProgress: AiSummaryProgress? = null,
   val summaryPrompt: String = "",
+  val inferenceBackend: AiInferenceBackend = AiInferenceBackend.CPU,
+  val thinkingEnabled: Boolean = false,
   val message: String? = null,
 )
 
@@ -38,6 +40,16 @@ class AiSettingsViewModel(
     viewModelScope.launch {
       repository.summaryPrompt.collect { prompt -> _state.update { it.copy(summaryPrompt = prompt) } }
     }
+    viewModelScope.launch {
+      repository.inferenceSettings.collect { settings ->
+        _state.update {
+          it.copy(
+            inferenceBackend = settings.backend,
+            thinkingEnabled = settings.thinkingEnabled,
+          )
+        }
+      }
+    }
   }
 
   fun updateSummaryPrompt(prompt: String) {
@@ -50,6 +62,14 @@ class AiSettingsViewModel(
     runCatching { repository.resetSummaryPrompt() }
       .onSuccess { _state.update { it.copy(message = "要約プロンプトを既定に戻しました") } }
       .onFailure(::showError)
+  }
+
+  fun setInferenceBackend(backend: AiInferenceBackend) {
+    runCatching { repository.setInferenceBackend(backend) }.onFailure(::showError)
+  }
+
+  fun setThinkingEnabled(enabled: Boolean) {
+    runCatching { repository.setThinkingEnabled(enabled) }.onFailure(::showError)
   }
 
   fun downloadModel(modelId: String) {

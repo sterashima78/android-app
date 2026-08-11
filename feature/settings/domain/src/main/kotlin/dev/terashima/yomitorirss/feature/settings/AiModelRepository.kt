@@ -2,6 +2,16 @@ package dev.terashima.yomitorirss.feature.settings
 
 import kotlinx.coroutines.flow.Flow
 
+enum class AiInferenceBackend {
+  CPU,
+  GPU,
+}
+
+data class AiInferenceSettings(
+  val backend: AiInferenceBackend = AiInferenceBackend.CPU,
+  val thinkingEnabled: Boolean = false,
+)
+
 data class AiModelStatus(
   val id: String,
   val name: String,
@@ -15,6 +25,7 @@ data class AiModelStatus(
   val selected: Boolean,
   val recommended: Boolean,
   val memoryLow: Boolean,
+  val supportsThinking: Boolean,
 )
 
 data class AiModelDownloadProgress(
@@ -36,10 +47,13 @@ interface AiModelRepository {
   val downloadProgress: Flow<AiModelDownloadProgress?>
   val summaryProgress: Flow<AiSummaryProgress?>
   val summaryPrompt: Flow<String>
+  val inferenceSettings: Flow<AiInferenceSettings>
 
   fun isSupported(): Boolean
   fun updateSummaryPrompt(prompt: String)
   fun resetSummaryPrompt()
+  fun setInferenceBackend(backend: AiInferenceBackend)
+  fun setThinkingEnabled(enabled: Boolean)
   fun downloadModel(modelId: String)
   fun selectModel(modelId: String)
   fun deleteModel(modelId: String)
