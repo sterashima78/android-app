@@ -1,18 +1,27 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package dev.terashima.yomitorirss.feature.x
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -125,19 +134,36 @@ internal fun Context.readDefaultXViewerCss(): String =
 internal fun XViewerCssSettings.cssForInjection(): String = if (enabled) css else ""
 
 @Composable
-fun XViewerCssSettingsDialog(onDismiss: () -> Unit) {
+fun XViewerCssSettingsSheet(onDismiss: () -> Unit) {
   val context = LocalContext.current
   val defaultCss = remember(context) { context.readDefaultXViewerCss() }
   val savedSettings = remember(context) { XViewerCssPreferences.load(context, defaultCss) }
   var settings by remember(savedSettings) { mutableStateOf(savedSettings) }
   var copyMessage by remember { mutableStateOf<String?>(null) }
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-  AlertDialog(
+  ModalBottomSheet(
     onDismissRequest = onDismiss,
-    title = { Text("X カスタム CSS") },
-    text = {
+    sheetState = sheetState,
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .fillMaxHeight(0.92f)
+        .imePadding()
+        .padding(horizontal = 24.dp),
+    ) {
+      Text(
+        text = "X カスタム CSS",
+        style = MaterialTheme.typography.headlineSmall,
+      )
+      Spacer(Modifier.height(12.dp))
+
       Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
+        modifier = Modifier
+          .fillMaxWidth()
+          .weight(1f)
+          .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Row(
@@ -194,10 +220,12 @@ fun XViewerCssSettingsDialog(onDismiss: () -> Unit) {
         OutlinedTextField(
           value = settings.css,
           onValueChange = { settings = settings.copy(css = it) },
-          modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 320.dp),
           label = { Text("CSS（セット ${settings.activeSetIndex + 1}）") },
           enabled = settings.enabled,
-          minLines = 12,
+          minLines = 14,
         )
 
         TextButton(
@@ -210,22 +238,28 @@ fun XViewerCssSettingsDialog(onDismiss: () -> Unit) {
         }
 
         Text("保存後、選択中のセットが次回 X 画面を開いたときに反映されます。")
+        Spacer(Modifier.height(4.dp))
       }
-    },
-    confirmButton = {
-      TextButton(
-        onClick = {
-          XViewerCssPreferences.save(context, settings)
-          onDismiss()
-        },
+
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
       ) {
-        Text("保存")
+        TextButton(onClick = onDismiss) {
+          Text("キャンセル")
+        }
+        TextButton(
+          onClick = {
+            XViewerCssPreferences.save(context, settings)
+            onDismiss()
+          },
+        ) {
+          Text("保存")
+        }
       }
-    },
-    dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("キャンセル")
-      }
-    },
-  )
+    }
+  }
 }
