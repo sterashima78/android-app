@@ -553,13 +553,15 @@ private fun LibraryBookThumbnail(
           .fillMaxWidth()
           .aspectRatio(0.68f)
           .combinedClickable(
-            onClickLabel = if (hasInfoUrl) "書籍を開く" else null,
+            onClickLabel = if (hasInfoUrl) "書籍を開く" else "操作メニュー",
             onLongClickLabel = "操作メニュー",
             onLongClick = { actionMenuExpanded = true },
             onClick = {
-              book.infoUrl
-                ?.takeIf(String::isNotBlank)
-                ?.let(uriHandler::openUri)
+              if (hasInfoUrl) {
+                book.infoUrl?.let(uriHandler::openUri)
+              } else {
+                actionMenuExpanded = true
+              }
             },
           ),
       ) {
