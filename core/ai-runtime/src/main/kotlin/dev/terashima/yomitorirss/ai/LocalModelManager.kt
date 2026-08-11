@@ -74,8 +74,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private val downloadLock = ReentrantLock()
   private val inferenceLock = ReentrantLock()
   private val cancelRequested = AtomicBoolean(false)
-  private val stateLock = Any()
-  private var activeInference: AutoCloseable? = null
+  private var cachedInference: CachedInference? = null
 
   private val _models = MutableStateFlow<List<LocalModelStatus>>(emptyList())
   val models: StateFlow<List<LocalModelStatus>> = _models.asStateFlow()
@@ -178,6 +177,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   fun deleteModel(modelId: String) {
     val model = requireModel(modelId)
     inferenceLock.withLock {
+      if (cachedInference?.key?.modelId == model.id) releaseCachedInferenceLocked()
       modelFile(model).delete()
       temporaryModelFile(model).delete()
       modelCacheDirectory(model).deleteRecursively()
@@ -266,17 +266,23 @@ class LocalModelManager(context: Context) : AutoCloseable {
     cancelRequested.set(false)
 
     return inferenceLock.withLock {
-      val settings = currentInferenceSettings()
-      val preparationStartedAt = SystemClock.elapsedRealtime()
-      _summaryProgress.value = SummaryProgress(
-        "preparing_model",
-        model.name,
-        estimatedStageDurationMillis("preparing_model", model.id),
-      )
-      val inference = createInference(model, file, settings.backend)
-      synchronized(stateLock) { activeInference = inference }
+      var lease: InferenceLease? = null
       try {
-        recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - preparationStartedAt)
+        val settings = currentInferenceSettings()
+        val cacheHit = hasReusableInference(model, file, settings.backend)
+        val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
+        if (!cacheHit) {
+          _summaryProgress.value = SummaryProgress(
+            "preparing_model",
+            model.name,
+            estimatedStageDurationMillis("preparing_model", model.id),
+          )
+        }
+        val acquired = acquireInference(model, file, settings.backend)
+        lease = acquired
+        preparationStartedAt?.let { startedAt ->
+          recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - startedAt)
+        }
         check(!cancelRequested.get()) { "要約をキャンセルしました" }
         val generationStartedAt = SystemClock.elapsedRealtime()
         _summaryProgress.value = SummaryProgress(
@@ -286,15 +292,19 @@ class LocalModelManager(context: Context) : AutoCloseable {
         )
         val promptWithMode = createSummaryPrompt(text, model.maxInputChars, model.runtime, promptTemplate)
           .withThinkingMode(model, settings)
-        val raw = generateResponse(inference, promptWithMode)
+        val raw = try {
+          generateResponse(acquired.inference, promptWithMode)
+        } catch (error: Throwable) {
+          if (acquired.retained) invalidateRetainedInferenceLocked(acquired.inference)
+          throw error
+        }
         recordStageDuration("generating_summary", model.id, SystemClock.elapsedRealtime() - generationStartedAt)
         cleanSummary(raw)
       } finally {
         _summaryProgress.value = null
-        synchronized(stateLock) {
-          if (activeInference === inference) activeInference = null
+        lease?.takeUnless(InferenceLease::retained)?.inference?.let { inference ->
+          runCatching { inference.close() }
         }
-        runCatching { inference.close() }
       }
     }
   }
@@ -312,17 +322,23 @@ class LocalModelManager(context: Context) : AutoCloseable {
     _chatResponse.value = ""
 
     return inferenceLock.withLock {
-      val settings = currentInferenceSettings()
-      val preparationStartedAt = SystemClock.elapsedRealtime()
-      _chatProgress.value = ChatProgress(
-        "preparing_model",
-        model.name,
-        estimatedStageDurationMillis("preparing_model", model.id),
-      )
-      val inference = createInference(model, file, settings.backend)
-      synchronized(stateLock) { activeInference = inference }
+      var lease: InferenceLease? = null
       try {
-        recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - preparationStartedAt)
+        val settings = currentInferenceSettings()
+        val cacheHit = hasReusableInference(model, file, settings.backend)
+        val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
+        if (!cacheHit) {
+          _chatProgress.value = ChatProgress(
+            "preparing_model",
+            model.name,
+            estimatedStageDurationMillis("preparing_model", model.id),
+          )
+        }
+        val acquired = acquireInference(model, file, settings.backend)
+        lease = acquired
+        preparationStartedAt?.let { startedAt ->
+          recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - startedAt)
+        }
         check(!cancelRequested.get()) { "チャットをキャンセルしました" }
         val generationStartedAt = SystemClock.elapsedRealtime()
         _chatProgress.value = ChatProgress(
@@ -337,9 +353,14 @@ class LocalModelManager(context: Context) : AutoCloseable {
           chatMl = model.runtime == InferenceRuntime.MEDIAPIPE_TASK,
         ).withThinkingMode(model, settings)
         val streamedRaw = StringBuilder()
-        val raw = generateResponseStreaming(inference, prompt) { chunk ->
-          appendStreamChunk(streamedRaw, chunk)
-          _chatResponse.value = ChatResponseStream.partial(streamedRaw.toString())
+        val raw = try {
+          generateResponseStreaming(acquired.inference, prompt) { chunk ->
+            appendStreamChunk(streamedRaw, chunk)
+            _chatResponse.value = ChatResponseStream.partial(streamedRaw.toString())
+          }
+        } catch (error: Throwable) {
+          if (acquired.retained) invalidateRetainedInferenceLocked(acquired.inference)
+          throw error
         }
         recordStageDuration("generating_reply", model.id, SystemClock.elapsedRealtime() - generationStartedAt)
         val reply = ChatResponseStream.complete(raw.ifBlank { streamedRaw.toString() })
@@ -347,20 +368,68 @@ class LocalModelManager(context: Context) : AutoCloseable {
         reply
       } finally {
         _chatProgress.value = null
-        synchronized(stateLock) {
-          if (activeInference === inference) activeInference = null
+        lease?.takeUnless(InferenceLease::retained)?.inference?.let { inference ->
+          runCatching { inference.close() }
         }
-        runCatching { inference.close() }
       }
     }
   }
 
   override fun close() {
     cancelRequested.set(true)
-    synchronized(stateLock) {
-      activeInference?.let { runCatching { it.close() } }
-      activeInference = null
+    inferenceLock.withLock {
+      releaseCachedInferenceLocked()
     }
+  }
+
+  private fun hasReusableInference(
+    model: ModelDefinition,
+    file: File,
+    backend: LocalInferenceBackend,
+  ): Boolean {
+    if (model.runtime != InferenceRuntime.LITERT_LM) return false
+    return cachedInference?.key == inferenceCacheKey(model, file, backend)
+  }
+
+  private fun acquireInference(
+    model: ModelDefinition,
+    file: File,
+    backend: LocalInferenceBackend,
+  ): InferenceLease {
+    if (model.runtime != InferenceRuntime.LITERT_LM) {
+      return InferenceLease(createInference(model, file, backend), retained = false)
+    }
+
+    val key = inferenceCacheKey(model, file, backend)
+    cachedInference?.takeIf { it.key == key }?.let { cached ->
+      return InferenceLease(cached.inference, retained = true)
+    }
+
+    releaseCachedInferenceLocked()
+    val inference = createInference(model, file, backend)
+    cachedInference = CachedInference(key, inference)
+    return InferenceLease(inference, retained = true)
+  }
+
+  private fun inferenceCacheKey(
+    model: ModelDefinition,
+    file: File,
+    backend: LocalInferenceBackend,
+  ) = InferenceCacheKey(
+    modelId = model.id,
+    backend = backend,
+    fileLength = file.length(),
+    fileModifiedAt = file.lastModified(),
+  )
+
+  private fun invalidateRetainedInferenceLocked(inference: AutoCloseable) {
+    if (cachedInference?.inference === inference) releaseCachedInferenceLocked()
+  }
+
+  private fun releaseCachedInferenceLocked() {
+    val cached = cachedInference ?: return
+    cachedInference = null
+    runCatching { cached.inference.close() }
   }
 
   private fun createInference(
@@ -558,6 +627,23 @@ class LocalModelManager(context: Context) : AutoCloseable {
   }
 
   private enum class InferenceRuntime { MEDIAPIPE_TASK, LITERT_LM }
+
+  private data class InferenceCacheKey(
+    val modelId: String,
+    val backend: LocalInferenceBackend,
+    val fileLength: Long,
+    val fileModifiedAt: Long,
+  )
+
+  private data class CachedInference(
+    val key: InferenceCacheKey,
+    val inference: AutoCloseable,
+  )
+
+  private data class InferenceLease(
+    val inference: AutoCloseable,
+    val retained: Boolean,
+  )
 
   private data class ModelDefinition(
     val id: String,
