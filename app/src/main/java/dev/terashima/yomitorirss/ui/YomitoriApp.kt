@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Checklist
@@ -36,6 +35,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
@@ -149,7 +149,7 @@ fun YomitoriApp(
   val selectedRedditTab = selectedTab.redditTab()
   val selectedBookmarkTab = selectedTab.bookmarkTab()
   val selectedFeatureInitialized = when (selectedSection) {
-    AppSection.RSS -> rssState.initialized
+    AppSection.RSS -> if (selectedTab == MainTab.FEEDS) feedState.initialized else rssState.initialized
     AppSection.REDDIT -> redditState.initialized
     AppSection.BOOKMARKS -> bookmarkState.initialized
     AppSection.LIBRARY -> true
@@ -159,7 +159,7 @@ fun YomitoriApp(
     AppSection.TASKS -> true
     AppSection.WORKOUT -> true
     AppSection.AI_CHAT -> chatState.initialized
-    AppSection.SETTINGS -> selectedTab != MainTab.FEEDS || feedState.initialized
+    AppSection.SETTINGS -> true
   }
 
   val exportLauncher = rememberLauncherForActivityResult(
@@ -241,7 +241,7 @@ fun YomitoriApp(
   }
   LaunchedEffect(feedState.feedAdded) {
     if (feedState.feedAdded) {
-      appViewModel.selectTab(MainTab.UNREAD)
+      appViewModel.selectTab(MainTab.FEEDS)
       feedViewModel.consumeFeedAdded()
     }
   }
@@ -301,21 +301,15 @@ fun YomitoriApp(
         if (selectedTab.usesGlobalTopBar()) {
           TopAppBar(
             navigationIcon = {
-              if (selectedTab == MainTab.FEEDS) {
-                IconButton(onClick = { appViewModel.selectTab(MainTab.SETTINGS) }) {
-                  Icon(Icons.Default.ArrowBack, contentDescription = "設定へ戻る")
-                }
-              } else {
-                IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                  Icon(Icons.Default.Menu, contentDescription = "メニュー")
-                }
+              IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                Icon(Icons.Default.Menu, contentDescription = "メニュー")
               }
             },
             title = {
               Column {
                 Text(selectedTab.screenTitle())
                 when (selectedSection) {
-                  AppSection.RSS, AppSection.SETTINGS -> feedState.refreshProgress
+                  AppSection.RSS -> feedState.refreshProgress
                   AppSection.REDDIT -> redditState.refreshProgress
                   else -> null
                 }?.let {
@@ -339,6 +333,22 @@ fun YomitoriApp(
                 }
               }
               if (selectedTab == MainTab.FEEDS) {
+                IconButton(
+                  onClick = {
+                    feedOpmlImportLauncher.launch(
+                      arrayOf(
+                        "application/xml",
+                        "text/xml",
+                        "text/x-opml",
+                        "application/x-opml",
+                        "application/octet-stream",
+                        "text/plain",
+                      ),
+                    )
+                  },
+                ) {
+                  Icon(Icons.Default.UploadFile, contentDescription = "OPMLからインポート")
+                }
                 IconButton(onClick = { showAddFeed = true }) {
                   Icon(Icons.Default.Add, contentDescription = "フィードを追加")
                 }
@@ -359,6 +369,7 @@ fun YomitoriApp(
                     imageVector = when (tab) {
                       RssTab.UNREAD -> Icons.Default.RssFeed
                       RssTab.READ_LATER -> Icons.Default.AccessTime
+                      RssTab.FEEDS -> Icons.Default.Folder
                     },
                     contentDescription = tab.label,
                   )
@@ -558,28 +569,19 @@ fun YomitoriApp(
             FeedScreen(
               modifier = Modifier.fillMaxSize(),
               feeds = feedState.feeds,
+              folders = feedState.folders,
               onAdd = { showAddFeed = true },
               onDelete = feedViewModel::deleteFeed,
+              onCreateFolder = feedViewModel::createFolder,
+              onRenameFolder = feedViewModel::renameFolder,
+              onDeleteFolder = feedViewModel::deleteFolder,
+              onMoveFeed = feedViewModel::moveFeedToFolder,
             )
           }
 
           MainTab.SETTINGS -> SettingsScreen(
             modifier = contentModifier,
-            feedCount = feedState.feeds.size,
             tagCount = bookmarkState.tags.size,
-            onOpenFeeds = { appViewModel.selectTab(MainTab.FEEDS) },
-            onImportFeedOpml = {
-              feedOpmlImportLauncher.launch(
-                arrayOf(
-                  "application/xml",
-                  "text/xml",
-                  "text/x-opml",
-                  "application/x-opml",
-                  "application/octet-stream",
-                  "text/plain",
-                ),
-              )
-            },
             onImportBookmarkCsv = {
               bookmarkCsvImportLauncher.launch(
                 arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
@@ -736,7 +738,8 @@ internal fun MainTab.usesGlobalTopBar(): Boolean = this != MainTab.X
 
 private fun MainTab.appSection(): AppSection = when (this) {
   MainTab.UNREAD,
-  MainTab.READ_LATER -> AppSection.RSS
+  MainTab.READ_LATER,
+  MainTab.FEEDS -> AppSection.RSS
 
   MainTab.REDDIT_UNREAD,
   MainTab.REDDIT_SUBSCRIPTIONS -> AppSection.REDDIT
@@ -753,13 +756,13 @@ private fun MainTab.appSection(): AppSection = when (this) {
   MainTab.TASKS -> AppSection.TASKS
   MainTab.WORKOUT -> AppSection.WORKOUT
   MainTab.AI_CHAT -> AppSection.AI_CHAT
-  MainTab.FEEDS,
   MainTab.SETTINGS -> AppSection.SETTINGS
 }
 
 private fun MainTab.rssTab(): RssTab? = when (this) {
   MainTab.UNREAD -> RssTab.UNREAD
   MainTab.READ_LATER -> RssTab.READ_LATER
+  MainTab.FEEDS -> RssTab.FEEDS
   else -> null
 }
 
@@ -793,7 +796,7 @@ private fun MainTab.screenTitle(): String = when (this) {
   MainTab.TASKS -> "タスク"
   MainTab.WORKOUT -> "ワークアウト"
   MainTab.AI_CHAT -> "AIチャット"
-  MainTab.FEEDS -> "設定・フィード管理"
+  MainTab.FEEDS -> "RSS・フィード管理"
   MainTab.SETTINGS -> "設定"
 }
 
@@ -814,6 +817,7 @@ private fun AppSection.defaultTab(): MainTab = when (this) {
 private fun RssTab.mainTab(): MainTab = when (this) {
   RssTab.UNREAD -> MainTab.UNREAD
   RssTab.READ_LATER -> MainTab.READ_LATER
+  RssTab.FEEDS -> MainTab.FEEDS
 }
 
 private fun RedditTab.mainTab(): MainTab = when (this) {
