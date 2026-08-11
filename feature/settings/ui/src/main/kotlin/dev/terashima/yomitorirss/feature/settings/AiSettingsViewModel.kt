@@ -33,7 +33,7 @@ class AiSettingsViewModel(
     }
     viewModelScope.launch {
       repository.downloadProgress.collect { progress ->
-        _state.update { it.copy(downloadProgress = progress?.takeIf(AiModelDownloadProgress::isActive)) }
+        _state.update { it.copy(downloadProgress = progress?.takeIf { value -> value.isActive }) }
       }
     }
     viewModelScope.launch {
