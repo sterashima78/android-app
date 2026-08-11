@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 data class AppUiState(
-  val selectedTab: MainTab = MainTab.UNREAD,
+  val selectedTab: MainTab = MainTab.INTEGRATED,
   val message: String? = null,
 )
 
