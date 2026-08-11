@@ -54,6 +54,8 @@ fun IntegratedRoute(
   val snackbarHostState = remember { SnackbarHostState() }
 
   LaunchedEffect(Unit) {
+    mailViewModel.updateQuery("")
+    mailViewModel.selectAccount(null)
     mailViewModel.selectMailbox(Mailbox.UNREAD)
   }
   LaunchedEffect(mailState.message) {
