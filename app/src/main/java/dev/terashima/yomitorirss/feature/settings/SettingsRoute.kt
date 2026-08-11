@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsDialog
+import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
 @Composable
 fun SettingsScreen(
@@ -39,6 +39,6 @@ fun SettingsScreen(
   )
 
   if (showXCssSettings) {
-    XViewerCssSettingsDialog(onDismiss = { showXCssSettings = false })
+    XViewerCssSettingsSheet(onDismiss = { showXCssSettings = false })
   }
 }
