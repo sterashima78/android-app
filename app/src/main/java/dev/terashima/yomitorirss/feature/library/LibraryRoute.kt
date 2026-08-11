@@ -158,6 +158,9 @@ private class LibraryUriHandler(
   override fun openUri(uri: String) {
     when (googleBooksLinkType(uri)) {
       GoogleBooksLinkType.READER -> openGooglePlayBooksReader(Uri.parse(uri))
+      GoogleBooksLinkType.PLAY_BOOKS_HOME -> {
+        if (!openGooglePlayBooksHome()) showPlayBooksOpenFailedMessage()
+      }
       GoogleBooksLinkType.INFORMATION -> showMissingReaderLinkMessage()
       GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
     }
@@ -179,10 +182,15 @@ private class LibraryUriHandler(
     }
     if (startActivity(legacyReaderIntent)) return
 
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
-    if (launchIntent != null && startActivity(launchIntent)) return
+    if (openGooglePlayBooksHome()) return
 
-    Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
+    showPlayBooksOpenFailedMessage()
+  }
+
+  private fun openGooglePlayBooksHome(): Boolean {
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
+      ?: return false
+    return startActivity(launchIntent)
   }
 
   private fun readerActivities(readerUri: Uri): List<ComponentName> {
@@ -222,6 +230,10 @@ private class LibraryUriHandler(
     Toast.makeText(context, GOOGLE_BOOKS_NO_READER_MESSAGE, Toast.LENGTH_LONG).show()
   }
 
+  private fun showPlayBooksOpenFailedMessage() {
+    Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
+  }
+
   private fun startActivity(intent: Intent): Boolean = try {
     context.startActivity(intent)
     true
@@ -234,6 +246,7 @@ private class LibraryUriHandler(
 
 internal enum class GoogleBooksLinkType {
   READER,
+  PLAY_BOOKS_HOME,
   INFORMATION,
   OTHER,
 }
@@ -246,6 +259,8 @@ internal fun googleBooksLinkType(url: String): GoogleBooksLinkType {
   val host = uri.host?.lowercase() ?: return GoogleBooksLinkType.OTHER
   val path = uri.path.orEmpty().lowercase()
   return when {
+    host == "play.google.com" && path.trimEnd('/') == "/books" ->
+      GoogleBooksLinkType.PLAY_BOOKS_HOME
     host == "play.google.com" && path.startsWith("/books/reader") -> GoogleBooksLinkType.READER
     host == "play.google.com" &&
       (path.startsWith("/books") || path.startsWith("/store/books")) ->
@@ -295,5 +310,5 @@ private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/
 private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
   "この項目には Google Books API の読書リンクがないため、直接開けません。"
 private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
-  "Google Play Books の読書画面を開けませんでした。"
+  "Google Play Books を開けませんでした。"
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024

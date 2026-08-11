@@ -38,6 +38,18 @@ class LibraryRouteTest {
   }
 
   @Test
+  fun `Google Play Books のホーム URL をアプリ起動先として分類する`() {
+    assertEquals(
+      GoogleBooksLinkType.PLAY_BOOKS_HOME,
+      googleBooksLinkType("https://play.google.com/books"),
+    )
+    assertEquals(
+      GoogleBooksLinkType.PLAY_BOOKS_HOME,
+      googleBooksLinkType("https://play.google.com/books/"),
+    )
+  }
+
+  @Test
   fun `Google Play の書籍詳細 URL は情報リンクとして分類する`() {
     assertEquals(
       GoogleBooksLinkType.INFORMATION,
