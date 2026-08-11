@@ -24,6 +24,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 enum class RssTab(val label: String) {
   UNREAD("未読"),
   READ_LATER("あとで読む"),
+  FEEDS("フィード管理"),
 }
 
 @Composable
@@ -88,5 +89,7 @@ fun RssScreen(
         )
       }
     }
+
+    RssTab.FEEDS -> Unit
   }
 }
