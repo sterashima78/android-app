@@ -10,15 +10,23 @@ import org.json.JSONObject
 
 internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
   put("format", "yomitori-rss-backup")
-  put("version", 2)
+  put("version", 3)
   put("exportedAt", Instant.now().toString())
-  put("feeds", queryJsonArray("SELECT id,title,feed_url,site_url,created_at FROM feeds ORDER BY title") { cursor ->
+  put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at FROM feed_folders ORDER BY normalized_name") { cursor ->
+    JSONObject()
+      .put("id", cursor.text("id"))
+      .put("name", cursor.text("name"))
+      .put("normalizedName", cursor.text("normalized_name"))
+      .put("createdAt", cursor.text("created_at"))
+  })
+  put("feeds", queryJsonArray("SELECT id,title,feed_url,site_url,created_at,folder_id FROM feeds ORDER BY title") { cursor ->
     JSONObject()
       .put("id", cursor.text("id"))
       .put("title", cursor.text("title"))
       .put("feedUrl", cursor.text("feed_url"))
       .put("siteUrl", cursor.nullableText("site_url"))
       .put("createdAt", cursor.text("created_at"))
+      .put("folderId", cursor.nullableText("folder_id"))
   })
   put("tags", queryJsonArray("SELECT id,name,normalized_name,created_at FROM tags ORDER BY normalized_name") { cursor ->
     JSONObject()
@@ -57,7 +65,7 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
 
 internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   val version = root.optInt("version")
-  require(root.optString("format") == "yomitori-rss-backup" && version in 1..2) {
+  require(root.optString("format") == "yomitori-rss-backup" && version in 1..3) {
     "対応していないバックアップです"
   }
 
@@ -69,6 +77,27 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   execSQL("DELETE FROM bookmark_folders")
   execSQL("DELETE FROM tags")
   execSQL("DELETE FROM feeds")
+  execSQL("DELETE FROM feed_folders")
+
+  val feedFolderIds = mutableSetOf<String>()
+  if (version >= 3) {
+    val feedFolders = root.optJSONArray("feedFolders") ?: JSONArray()
+    for (index in 0 until feedFolders.length()) {
+      val item = feedFolders.getJSONObject(index)
+      val id = item.getString("id")
+      feedFolderIds += id
+      insertOrThrow(
+        "feed_folders",
+        null,
+        values(
+          "id" to id,
+          "name" to item.getString("name"),
+          "normalized_name" to item.getString("normalizedName"),
+          "created_at" to item.getString("createdAt"),
+        ),
+      )
+    }
+  }
 
   val feeds = root.getJSONArray("feeds")
   val feedIds = mutableSetOf<String>()
@@ -85,6 +114,7 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
         "feed_url" to item.getString("feedUrl"),
         "site_url" to item.nullable("siteUrl"),
         "created_at" to item.getString("createdAt"),
+        "folder_id" to item.nullable("folderId")?.takeIf(feedFolderIds::contains),
       ),
     )
   }
