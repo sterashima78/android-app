@@ -15,13 +15,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.YomitoriApplication
 
 @Composable
-fun YouTubeRoute(
-  viewModel: YouTubeViewModel,
-  modifier: Modifier = Modifier,
-) {
+fun YouTubeRoute(modifier: Modifier = Modifier) {
   val context = LocalContext.current
+  val application = context.applicationContext as YomitoriApplication
+  val viewModel: YouTubeViewModel = viewModel(
+    factory = remember(application) {
+      YouTubeViewModel.Factory(
+        repository = application.container.youtubeRepository,
+        bookmarkRepository = application.container.bookmarkRepository,
+      )
+    },
+  )
   val state by viewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
 
