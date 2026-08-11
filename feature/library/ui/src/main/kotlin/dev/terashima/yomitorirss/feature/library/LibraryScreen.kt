@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -542,55 +543,78 @@ private fun LibraryBookThumbnail(
   onEditSeries: () -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
-  Column(modifier = Modifier.fillMaxWidth()) {
-    Card(
-      modifier = Modifier
-        .fillMaxWidth()
-        .aspectRatio(0.68f)
-        .clickable(enabled = !book.infoUrl.isNullOrBlank()) {
-          book.infoUrl?.let(uriHandler::openUri)
-        },
-    ) {
-      LibraryBookCover(
-        book = book,
-        modifier = Modifier.fillMaxSize(),
-      )
-    }
+  var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
+  val hasInfoUrl = !book.infoUrl.isNullOrBlank()
 
-    Spacer(Modifier.height(6.dp))
-    Text(
-      book.title,
-      style = MaterialTheme.typography.bodyMedium,
-      fontWeight = FontWeight.Medium,
-      maxLines = 2,
-      overflow = TextOverflow.Ellipsis,
-    )
-    book.series?.position?.let { position ->
+  Box(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+      Card(
+        modifier = Modifier
+          .fillMaxWidth()
+          .aspectRatio(0.68f)
+          .combinedClickable(
+            onClickLabel = if (hasInfoUrl) "書籍を開く" else "操作メニュー",
+            onLongClickLabel = "操作メニュー",
+            onLongClick = { actionMenuExpanded = true },
+            onClick = {
+              if (hasInfoUrl) {
+                book.infoUrl?.let(uriHandler::openUri)
+              } else {
+                actionMenuExpanded = true
+              }
+            },
+          ),
+      ) {
+        LibraryBookCover(
+          book = book,
+          modifier = Modifier.fillMaxSize(),
+        )
+      }
+
+      Spacer(Modifier.height(6.dp))
       Text(
-        "$position 巻",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary,
-      )
-    }
-    if (book.authors.isNotEmpty()) {
-      Text(
-        book.authors.joinToString(", "),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
+        book.title,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium,
+        maxLines = 2,
         overflow = TextOverflow.Ellipsis,
       )
+      book.series?.position?.let { position ->
+        Text(
+          "$position 巻",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.primary,
+        )
+      }
+      if (book.authors.isNotEmpty()) {
+        Text(
+          book.authors.joinToString(", "),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
     }
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.SpaceBetween,
+
+    DropdownMenu(
+      expanded = actionMenuExpanded,
+      onDismissRequest = { actionMenuExpanded = false },
     ) {
-      TextButton(onClick = onEditSeries) {
-        Text("シリーズ")
-      }
-      TextButton(onClick = onAction) {
-        Text(actionLabel)
-      }
+      DropdownMenuItem(
+        text = { Text("シリーズを編集") },
+        onClick = {
+          actionMenuExpanded = false
+          onEditSeries()
+        },
+      )
+      DropdownMenuItem(
+        text = { Text(actionLabel) },
+        onClick = {
+          actionMenuExpanded = false
+          onAction()
+        },
+      )
     }
   }
 }
