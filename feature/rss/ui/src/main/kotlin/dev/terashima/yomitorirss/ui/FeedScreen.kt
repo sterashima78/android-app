@@ -208,7 +208,7 @@ private fun FeedFolderHeader(
     Spacer(Modifier.width(8.dp))
     Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
     Text(
-      "$count件",
+      "${count}件",
       style = MaterialTheme.typography.labelMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
