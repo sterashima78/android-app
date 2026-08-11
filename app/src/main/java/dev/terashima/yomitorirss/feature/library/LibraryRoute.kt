@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -151,7 +152,7 @@ private class LibraryUriHandler(
   private val context: Context,
 ) : UriHandler {
   override fun openUri(uri: String) {
-    val parsedUri = Uri.parse(normalizeGooglePlayBooksReaderUrl(uri))
+    val parsedUri = Uri.parse(uri)
     if (parsedUri.isGoogleBooksUri()) {
       openGooglePlayBooks(parsedUri)
     } else {
@@ -160,12 +161,18 @@ private class LibraryUriHandler(
   }
 
   private fun openGooglePlayBooks(uri: Uri) {
-    val directReaderIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+    val readerUri = Uri.parse(googlePlayBooksReaderUrl(uri.toString()) ?: uri.toString())
+    val explicitReaderIntent = Intent(Intent.ACTION_VIEW, readerUri).apply {
+      component = ComponentName(PLAY_BOOKS_PACKAGE, PLAY_BOOKS_READER_ACTIVITY)
+    }
+    if (startActivity(explicitReaderIntent)) return
+
+    val packageReaderIntent = Intent(Intent.ACTION_VIEW, readerUri).apply {
       setPackage(PLAY_BOOKS_PACKAGE)
     }
-    if (startActivity(directReaderIntent)) return
+    if (startActivity(packageReaderIntent)) return
 
-    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+    context.startActivity(Intent(Intent.ACTION_VIEW, readerUri))
   }
 
   private fun startActivity(intent: Intent): Boolean = try {
@@ -173,12 +180,22 @@ private class LibraryUriHandler(
     true
   } catch (_: ActivityNotFoundException) {
     false
+  } catch (_: SecurityException) {
+    false
   }
 }
 
-internal fun normalizeGooglePlayBooksReaderUrl(url: String): String {
-  if (!url.startsWith(PLAY_BOOKS_HTTP_READER_PREFIX, ignoreCase = true)) return url
-  return "https://${url.substring(HTTP_SCHEME_PREFIX.length)}"
+internal fun googlePlayBooksReaderUrl(url: String): String? {
+  val query = url.substringAfter('?', missingDelimiterValue = "").substringBefore('#')
+  val encodedVolumeId = query.split('&').firstNotNullOfOrNull { parameter ->
+    val separator = parameter.indexOf('=')
+    if (separator <= 0) return@firstNotNullOfOrNull null
+    if (!parameter.substring(0, separator).equals("id", ignoreCase = true)) {
+      return@firstNotNullOfOrNull null
+    }
+    parameter.substring(separator + 1).takeIf(String::isNotBlank)
+  } ?: return null
+  return "$PLAY_BOOKS_READER_URL_PREFIX$encodedVolumeId"
 }
 
 private fun Uri.isGoogleBooksUri(): Boolean {
@@ -207,6 +224,7 @@ private fun InputStream.readUpTo(limit: Int): ByteArray {
 }
 
 private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
-private const val HTTP_SCHEME_PREFIX = "http://"
-private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"
+private const val PLAY_BOOKS_READER_ACTIVITY =
+  "com.google.android.apps.play.books.ebook.activity.ReadingActivity"
+private const val PLAY_BOOKS_READER_URL_PREFIX = "https://play.google.com/books/reader?id="
 private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
