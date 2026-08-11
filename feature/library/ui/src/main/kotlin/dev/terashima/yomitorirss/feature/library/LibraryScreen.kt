@@ -243,6 +243,7 @@ private fun LibrarySeriesTab(
         LibrarySeriesHeader(
           name = section.name,
           count = section.books.size,
+          coverBook = section.books.firstOrNull { !it.thumbnailUrl.isNullOrBlank() } ?: section.books.first(),
           expanded = expanded,
           onToggle = {
             onExpandedSeriesChange(
@@ -486,6 +487,7 @@ private fun LibrarySourceActionRow(
 private fun LibrarySeriesHeader(
   name: String,
   count: Int,
+  coverBook: LibraryBook,
   expanded: Boolean,
   onToggle: () -> Unit,
 ) {
@@ -497,10 +499,18 @@ private fun LibrarySeriesHeader(
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 14.dp),
+        .padding(horizontal = 16.dp, vertical = 12.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+      Card(
+        modifier = Modifier.size(width = 52.dp, height = 76.dp),
+      ) {
+        LibraryBookCover(
+          book = coverBook,
+          modifier = Modifier.fillMaxSize(),
+        )
+      }
       Column(Modifier.weight(1f)) {
         Text(
           name,
@@ -541,26 +551,10 @@ private fun LibraryBookThumbnail(
           book.infoUrl?.let(uriHandler::openUri)
         },
     ) {
-      Box(
-        modifier = Modifier
-          .fillMaxSize()
-          .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center,
-      ) {
-        Text(
-          "表紙なし",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        book.thumbnailUrl?.takeIf(String::isNotBlank)?.let { thumbnailUrl ->
-          AsyncImage(
-            model = thumbnailUrl,
-            contentDescription = "${book.title} の表紙",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-          )
-        }
-      }
+      LibraryBookCover(
+        book = book,
+        modifier = Modifier.fillMaxSize(),
+      )
     }
 
     Spacer(Modifier.height(6.dp))
@@ -597,6 +591,31 @@ private fun LibraryBookThumbnail(
       TextButton(onClick = onAction) {
         Text(actionLabel)
       }
+    }
+  }
+}
+
+@Composable
+private fun LibraryBookCover(
+  book: LibraryBook,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(
+      "表紙なし",
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    book.thumbnailUrl?.takeIf(String::isNotBlank)?.let { thumbnailUrl ->
+      AsyncImage(
+        model = thumbnailUrl,
+        contentDescription = "${book.title} の表紙",
+        modifier = Modifier.fillMaxSize(),
+        contentScale = ContentScale.Fit,
+      )
     }
   }
 }
