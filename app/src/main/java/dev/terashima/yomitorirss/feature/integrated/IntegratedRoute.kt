@@ -1,0 +1,134 @@
+package dev.terashima.yomitorirss.feature.integrated
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.YomitoriApplication
+import dev.terashima.yomitorirss.feature.article.Article
+import dev.terashima.yomitorirss.feature.mail.MailThread
+import dev.terashima.yomitorirss.feature.mail.MailViewModel
+import dev.terashima.yomitorirss.feature.mail.Mailbox
+import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
+import dev.terashima.yomitorirss.feature.rss.FeedViewModel
+import dev.terashima.yomitorirss.feature.rss.RssViewModel
+import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
+
+@Composable
+fun IntegratedRoute(
+  rssViewModel: RssViewModel,
+  redditViewModel: RedditViewModel,
+  feedViewModel: FeedViewModel,
+  mailViewModel: MailViewModel,
+  onOpenArticle: (Article) -> Unit,
+  onOpenMail: (MailThread) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val context = LocalContext.current
+  val application = context.applicationContext as YomitoriApplication
+  val youtubeViewModel: YouTubeViewModel = viewModel(
+    factory = remember(application) {
+      YouTubeViewModel.Factory(
+        repository = application.container.youtubeRepository,
+        bookmarkRepository = application.container.bookmarkRepository,
+      )
+    },
+  )
+  val rssState by rssViewModel.state.collectAsState()
+  val redditState by redditViewModel.state.collectAsState()
+  val feedState by feedViewModel.state.collectAsState()
+  val mailState by mailViewModel.state.collectAsState()
+  val youtubeState by youtubeViewModel.state.collectAsState()
+  val snackbarHostState = remember { SnackbarHostState() }
+
+  LaunchedEffect(Unit) {
+    mailViewModel.selectMailbox(Mailbox.UNREAD)
+  }
+  LaunchedEffect(mailState.message) {
+    val message = mailState.message ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(message)
+    mailViewModel.dismissMessage()
+  }
+  LaunchedEffect(youtubeState.message) {
+    val message = youtubeState.message ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(message)
+    youtubeViewModel.dismissMessage()
+  }
+
+  val initialized = rssState.initialized &&
+    redditState.initialized &&
+    mailState.initialized &&
+    youtubeState.initialized
+  Box(modifier = modifier.fillMaxSize()) {
+    if (!initialized) {
+      CircularProgressIndicator(Modifier.align(Alignment.Center))
+    } else {
+      IntegratedScreen(
+        modifier = Modifier.fillMaxSize(),
+        rssState = rssState,
+        redditState = redditState,
+        youtubeState = youtubeState,
+        mailState = mailState,
+        isRefreshing = feedState.refreshing ||
+          redditState.refreshing ||
+          youtubeState.refreshing ||
+          mailState.loading,
+        onRefresh = {
+          feedViewModel.refresh()
+          redditViewModel.refresh()
+          youtubeViewModel.refresh()
+          mailViewModel.refresh()
+        },
+        onMarkProcessed = { item ->
+          when (item) {
+            is IntegratedItem.Rss -> rssViewModel.markRead(item.article)
+            is IntegratedItem.Reddit -> redditViewModel.markRead(item.article)
+            is IntegratedItem.YouTube -> youtubeViewModel.markRead(item.video)
+            is IntegratedItem.Mail -> mailViewModel.toggleRead(item.thread)
+          }
+        },
+        onDefer = { item ->
+          when (item) {
+            is IntegratedItem.Rss -> rssViewModel.readLater(item.article)
+            is IntegratedItem.Reddit -> redditViewModel.saveAndRead(item.article)
+            is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
+            is IntegratedItem.Mail -> {
+              if (item.thread.isStarred) {
+                mailViewModel.toggleRead(item.thread)
+              } else {
+                mailViewModel.toggleStarred(item.thread)
+              }
+            }
+          }
+        },
+        onArchive = { item -> mailViewModel.archive(item.thread) },
+        onOpen = { item ->
+          when (item) {
+            is IntegratedItem.Rss -> onOpenArticle(item.article)
+            is IntegratedItem.Reddit -> onOpenArticle(item.article)
+            is IntegratedItem.Mail -> onOpenMail(item.thread)
+            is IntegratedItem.YouTube -> runCatching {
+              context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.video.url)))
+            }
+          }
+        },
+      )
+    }
+    SnackbarHost(
+      hostState = snackbarHostState,
+      modifier = Modifier.align(Alignment.BottomCenter),
+    )
+  }
+}
