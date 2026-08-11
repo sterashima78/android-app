@@ -32,7 +32,9 @@ class AiSettingsViewModel(
       repository.models.collect { models -> _state.update { it.copy(models = models) } }
     }
     viewModelScope.launch {
-      repository.downloadProgress.collect { progress -> _state.update { it.copy(downloadProgress = progress) } }
+      repository.downloadProgress.collect { progress ->
+        _state.update { it.copy(downloadProgress = progress?.takeIf { value -> value.isActive }) }
+      }
     }
     viewModelScope.launch {
       repository.summaryProgress.collect { progress -> _state.update { it.copy(summaryProgress = progress) } }

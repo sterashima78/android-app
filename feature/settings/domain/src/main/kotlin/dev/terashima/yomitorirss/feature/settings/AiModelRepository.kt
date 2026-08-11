@@ -34,7 +34,10 @@ data class AiModelDownloadProgress(
   val downloadedBytes: Long,
   val totalBytes: Long,
   val estimatedRemainingMillis: Long? = null,
-)
+) {
+  val isActive: Boolean
+    get() = phase == "queued" || phase == "downloading" || phase == "verifying"
+}
 
 data class AiSummaryProgress(
   val stage: String,
