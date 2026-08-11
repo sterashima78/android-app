@@ -158,6 +158,7 @@ private class LibraryUriHandler(
   override fun openUri(uri: String) {
     when (googleBooksLinkType(uri)) {
       GoogleBooksLinkType.READER -> openGooglePlayBooksReader(Uri.parse(uri))
+      GoogleBooksLinkType.PLAY_BOOKS_HOME -> openGooglePlayBooksHome()
       GoogleBooksLinkType.INFORMATION -> showMissingReaderLinkMessage()
       GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
     }
@@ -179,10 +180,15 @@ private class LibraryUriHandler(
     }
     if (startActivity(legacyReaderIntent)) return
 
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
-    if (launchIntent != null && startActivity(launchIntent)) return
+    if (openGooglePlayBooksHome()) return
 
     Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
+  }
+
+  private fun openGooglePlayBooksHome(): Boolean {
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
+      ?: return false
+    return startActivity(launchIntent)
   }
 
   private fun readerActivities(readerUri: Uri): List<ComponentName> {
@@ -234,6 +240,7 @@ private class LibraryUriHandler(
 
 internal enum class GoogleBooksLinkType {
   READER,
+  PLAY_BOOKS_HOME,
   INFORMATION,
   OTHER,
 }
@@ -246,6 +253,8 @@ internal fun googleBooksLinkType(url: String): GoogleBooksLinkType {
   val host = uri.host?.lowercase() ?: return GoogleBooksLinkType.OTHER
   val path = uri.path.orEmpty().lowercase()
   return when {
+    host == "play.google.com" && path.trimEnd('/') == "/books" ->
+      GoogleBooksLinkType.PLAY_BOOKS_HOME
     host == "play.google.com" && path.startsWith("/books/reader") -> GoogleBooksLinkType.READER
     host == "play.google.com" &&
       (path.startsWith("/books") || path.startsWith("/store/books")) ->
