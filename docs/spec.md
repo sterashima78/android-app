@@ -162,8 +162,6 @@ XML宣言とHTTP Content-Typeの文字コードを確認し、日本語をUTF-8�
 
 初期候補は次のとおり。
 
-- Qwen2.5 0.5B Instruct
-- Qwen2.5 1.5B Instruct
 - Gemma 4 E2B Instruct
 - Gemma 4 E4B Instruct
 - Qwen3 4B mixed INT4
