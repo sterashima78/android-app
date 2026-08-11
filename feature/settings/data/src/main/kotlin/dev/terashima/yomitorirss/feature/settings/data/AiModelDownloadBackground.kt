@@ -31,6 +31,7 @@ import dev.terashima.yomitorirss.core.airuntime.ModelDownloadProgress
 import dev.terashima.yomitorirss.feature.settings.AiModelDownloadProgress
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
