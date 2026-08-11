@@ -180,6 +180,8 @@ private class LibraryUriHandler(
     true
   } catch (_: ActivityNotFoundException) {
     false
+  } catch (_: SecurityException) {
+    false
   }
 }
 
