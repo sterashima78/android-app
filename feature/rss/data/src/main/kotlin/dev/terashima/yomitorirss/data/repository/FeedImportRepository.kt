@@ -33,6 +33,11 @@ class DefaultFeedImportRepository(
         duplicates += 1
       } else {
         runCatching {
+          val folderId = entry.folders
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(" / ")
+            ?.let(store::ensureFolder)
+            ?.id
           store.addFeed(
             parsed = ParsedFeed(
               title = entry.title,
@@ -42,6 +47,7 @@ class DefaultFeedImportRepository(
             ),
             etag = null,
             modified = null,
+            folderId = folderId,
           )
         }.onSuccess {
           added += 1

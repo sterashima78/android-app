@@ -10,10 +10,7 @@ import androidx.compose.ui.Modifier
 @Composable
 fun SettingsFeatureScreen(
   modifier: Modifier,
-  feedCount: Int,
   tagCount: Int,
-  onOpenFeeds: () -> Unit,
-  onImportFeedOpml: () -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
@@ -29,10 +26,7 @@ fun SettingsFeatureScreen(
 
   SettingsContent(
     modifier = modifier,
-    feedCount = feedCount,
     tagCount = tagCount,
-    onOpenFeeds = onOpenFeeds,
-    onImportFeedOpml = onImportFeedOpml,
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = onOpenXCss,

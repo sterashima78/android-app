@@ -28,10 +28,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SettingsContent(
   modifier: Modifier,
-  feedCount: Int,
   tagCount: Int,
-  onOpenFeeds: () -> Unit,
-  onImportFeedOpml: () -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
@@ -47,24 +44,6 @@ fun SettingsContent(
     modifier = modifier.fillMaxSize(),
     contentPadding = PaddingValues(bottom = 24.dp),
   ) {
-    item { SettingsHeader("RSS") }
-    item {
-      SettingsRow(
-        icon = Icons.Default.List,
-        title = "フィード管理",
-        supporting = "登録済み ${feedCount}件",
-        onClick = onOpenFeeds,
-      )
-    }
-    item {
-      SettingsRow(
-        icon = Icons.Default.UploadFile,
-        title = "OPMLからフィードをインポート",
-        onClick = onImportFeedOpml,
-      )
-    }
-    item { SettingsDivider() }
-
     item { SettingsHeader("ブックマーク") }
     item {
       SettingsRow(

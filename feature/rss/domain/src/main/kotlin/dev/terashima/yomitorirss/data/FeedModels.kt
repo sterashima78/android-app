@@ -10,6 +10,14 @@ data class Feed(
   val lastFetchedAt: String?,
   val lastError: String?,
   val createdAt: String,
+  val folderId: String? = null,
+)
+
+data class FeedFolder(
+  val id: String,
+  val name: String,
+  val normalizedName: String,
+  val createdAt: String,
 )
 
 data class FeedCandidate(
