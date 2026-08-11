@@ -19,10 +19,13 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     if (oldVersion < 7) migrateToVersion7(db)
     if (oldVersion < 8) migrateToVersion8(db)
     if (oldVersion < 9) migrateToVersion9(db)
+    if (oldVersion < 10) migrateToVersion10(db)
   }
 
   private fun schema(db: SQLiteDatabase) {
-    db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,feed_url TEXT NOT NULL UNIQUE,site_url TEXT,etag TEXT,last_modified TEXT,last_fetched_at TEXT,last_error TEXT,created_at TEXT NOT NULL)")
+    db.execSQL("CREATE TABLE IF NOT EXISTS feed_folders(id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,normalized_name TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL)")
+    db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,feed_url TEXT NOT NULL UNIQUE,site_url TEXT,etag TEXT,last_modified TEXT,last_fetched_at TEXT,last_error TEXT,created_at TEXT NOT NULL,folder_id TEXT REFERENCES feed_folders(id) ON DELETE SET NULL)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS feeds_folder_id ON feeds(folder_id,title)")
     db.execSQL("CREATE TABLE IF NOT EXISTS articles(id TEXT PRIMARY KEY NOT NULL,feed_id TEXT REFERENCES feeds(id) ON DELETE SET NULL,external_id TEXT,identity_key TEXT NOT NULL,url TEXT NOT NULL,title TEXT NOT NULL,published_at TEXT NOT NULL,fetched_at TEXT NOT NULL,read_at TEXT,saved_at TEXT,source_title TEXT NOT NULL,source_feed_url TEXT NOT NULL)")
     db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS article_feed_identity ON articles(feed_id,identity_key) WHERE feed_id IS NOT NULL")
     db.execSQL("CREATE INDEX IF NOT EXISTS article_unread_date ON articles(read_at,published_at DESC)")
@@ -98,6 +101,17 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     addColumnIfMissing(db, "mail_messages", "html_body", "html_body TEXT")
   }
 
+  private fun migrateToVersion10(db: SQLiteDatabase) {
+    db.execSQL("CREATE TABLE IF NOT EXISTS feed_folders(id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,normalized_name TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL)")
+    addColumnIfMissing(
+      db,
+      "feeds",
+      "folder_id",
+      "folder_id TEXT REFERENCES feed_folders(id) ON DELETE SET NULL",
+    )
+    db.execSQL("CREATE INDEX IF NOT EXISTS feeds_folder_id ON feeds(folder_id,title)")
+  }
+
   private fun addColumnIfMissing(
     db: SQLiteDatabase,
     table: String,
@@ -120,7 +134,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
 
   companion object {
     const val DB_NAME = "yomitori-rss.db"
-    private const val DB_VERSION = 9
+    private const val DB_VERSION = 10
 
     fun create(context: Context): YomitoriDatabase {
       val app = context.applicationContext
