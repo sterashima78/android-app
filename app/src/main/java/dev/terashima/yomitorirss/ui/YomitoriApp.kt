@@ -70,7 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.airuntime.SummaryProgress
 import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
-import dev.terashima.yomitoririss.feature.article.Article
+import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
 import dev.terashima.yomitorirss.feature.bookmark.ArticleFolderDialog
