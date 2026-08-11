@@ -14,12 +14,12 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
   override fun onCreate(db: SQLiteDatabase) = schema(db)
 
   override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+    if (oldVersion < 10) migrateToVersion10(db)
     schema(db)
     if (oldVersion < 6) migrateToVersion6(db)
     if (oldVersion < 7) migrateToVersion7(db)
     if (oldVersion < 8) migrateToVersion8(db)
     if (oldVersion < 9) migrateToVersion9(db)
-    if (oldVersion < 10) migrateToVersion10(db)
   }
 
   private fun schema(db: SQLiteDatabase) {
