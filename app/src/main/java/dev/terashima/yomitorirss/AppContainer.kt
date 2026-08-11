@@ -95,7 +95,7 @@ class AppContainer(private val application: Application) {
     LocalModelManager(application)
   }
   val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultAiModelRepository(modelManager)
+    DefaultAiModelRepository(application, modelManager)
   }
   val chatRepository: ChatRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultChatRepository(application)
