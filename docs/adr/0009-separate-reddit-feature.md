@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-09
+- Updated: 2026-08-12
 - Supersedes: ADR-0007 の module ownership に関する決定
 
 ## Context
@@ -16,6 +17,8 @@ Reddit には次の固有概念がある。
 - thread 購読開始時点を基準にした新着 comment の追跡
 
 これらを一般 RSS のフィード管理・未読一覧へ混在させると、取得 transport と product concept が同一視される。
+
+一方で、未読を処理しながら一部を後回しにする「あとで読む」は情報源に依存しない仕分け概念であり、RSS と Reddit で同じ操作体系を利用したい。
 
 ## Decision
 
@@ -33,7 +36,7 @@ Reddit には次の固有概念がある。
 
 - `reddit:domain`: Reddit URL 判定、community / thread subscription model、repository contract
 - `reddit:data`: RSS transport を利用した Reddit repository 実装
-- `reddit:ui`: Reddit 未読、community / thread 購読管理、thread subscription action
+- `reddit:ui`: Reddit 未読、あとで読む、community / thread 購読管理、thread subscription action
 
 ### 2. RSS/Atom は Reddit の transport 実装として再利用する
 
@@ -52,16 +55,30 @@ Reddit 専用 HTTP client や parser は複製しない。
 Reddit section は次を持つ。
 
 - 未読
+- あとで読む
 - 購読管理
 
-RSS section は従来どおり次を持つ。
+RSS section は次を持つ。
 
 - 未読
 - あとで読む
+- フィード管理
+
+Reddit の未読画面では RSS と同じ仕分け操作を採用する。
+
+- 左スワイプ: 既読
+- 右スワイプ: ブックマーク
+- 右への大きいスワイプ: あとで読む
+
+「あ とで読む」は RSS と同じ `BookmarkRepository` / あとで読むフォルダ状態を再利用する。新しい Reddit 専用保存テーブルは作らない。ただし Reddit のあとで読むタブでは Reddit source の記事だけを抽出し、RSS のあとで読むタブには Reddit 記事を混在させない。
+
+Reddit のあとで読む一覧では RSS と同様に古い順・新しい順を切り替えられ、ブックマーク解除または未分類への移動を行える。
 
 Reddit の記事・コメントは RSS の未読一覧、RSS のフィード管理、RSS の「すべて既読」、RSS ホームウィジェットには表示しない。
 
 ブックマークと読書履歴は情報源をまたぐ共通概念なので、RSS / Reddit の双方を引き続き扱う。
+
+統合ビューの「後回し」操作も Reddit ではこの「あ とで読む」状態へ遷移させ、単なるブックマークとは区別する。
 
 ### 4. アプリ内の他の公開面でも RSS / Reddit を混在させない
 
@@ -88,7 +105,7 @@ source の種類が増え URL classification だけでは曖昧になる場合�
 - community は `/new/.rss` に正規化し新着順で購読する
 - thread はユーザーが明示的に購読した場合だけ comments RSS を追加する
 - thread 購読開始時点の既存 comment は既読ベースラインにする
-- 記事を開く、既読にする、ブックマークするだけでは thread を購読しない
+- 記事を開く、既読にする、ブックマークする、あとで読むにするだけでは thread を購読しない
 
 ## Consequences
 
@@ -97,6 +114,8 @@ source の種類が増え URL classification だけでは曖昧になる場合�
 - RSS と Reddit の product concept が混在しない
 - Reddit 固有 UI を今後拡張しやすい
 - RSS parser / conditional request / persistence は再利用できる
+- RSS と Reddit で「あとで読む」の操作感と保存 semantics を共通化できる
+- あとで読む保存形式を追加せず既存バックアップ対象をそのまま再利用できる
 - 既存 Reddit 購読データを migration なしで引き継げる
 - AI Skill、LAN Web UI、ホームウィジェットでも同じ境界を維持できる
 - 将来 Reddit API に移行しても domain / UI を保ちやすい
@@ -105,6 +124,7 @@ source の種類が増え URL classification だけでは曖昧になる場合�
 
 - 現時点では storage layer は RSS feed table を共有する
 - source 判定を URL に依存する
+- あとで読むの storage は RSS / Reddit で共有するため、各 UI で source filter を必ず適用する必要がある
 - Reddit と RSS が同じ DataChangeNotifier を共有するため変更通知は相互に発生する。ただし各 ViewModel が自分の source だけを reload する
 
 ## Relationship to existing ADRs
@@ -113,3 +133,4 @@ source の種類が増え URL classification だけでは曖昧になる場合�
 - ADR-0003 の `<feature-name>:{ui,domain,data}` 構成に従う
 - ADR-0004 の concept ownership を優先し、transport の種類ではなく Reddit という product concept に module を割り当てる
 - ADR-0007 の取得方式・thread opt-in 方針は維持し、module ownership の決定だけを置き換える
+- ADR-0019 の feature 内表示切り替えを bottom tab に統一する方針に従い、Reddit の「あとで読む」も bottom tab として追加する
