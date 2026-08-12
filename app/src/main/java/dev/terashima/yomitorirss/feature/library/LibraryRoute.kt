@@ -132,6 +132,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     "text/csv",
     "text/tab-separated-values",
     "text/plain",
+    "application/json",
     "application/zip",
     "application/octet-stream",
   )
