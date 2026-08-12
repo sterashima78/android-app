@@ -5,6 +5,7 @@ enum class MainTab(val label: String) {
   UNREAD("未読"),
   READ_LATER("あとで読む"),
   REDDIT_UNREAD("未読"),
+  REDDIT_READ_LATER("あとで読む"),
   REDDIT_SUBSCRIPTIONS("購読管理"),
   SAVED("ブックマーク"),
   HISTORY("履歴"),
