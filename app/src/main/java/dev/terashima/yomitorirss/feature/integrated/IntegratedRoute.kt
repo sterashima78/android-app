@@ -24,9 +24,13 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.Mailbox
+import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
+import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
+import dev.terashima.yomitorirss.feature.reddit.redditThreadId
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
+import dev.terashima.yomitorirss.feature.youtube.YouTubeVideo
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 @Composable
@@ -145,6 +149,17 @@ fun IntegratedRoute(
             }
           }
         },
+        actionsForItem = { item ->
+          integratedItemActions(
+            item = item,
+            redditState = redditState,
+            onOpenArticle = onOpenArticle,
+            onSubscribeRedditThread = redditViewModel::subscribeThread,
+            onUnsubscribeRedditThread = redditViewModel::unsubscribeThread,
+            onSaveYouTube = youtubeViewModel::saveAndRead,
+            onToggleMailStarred = mailViewModel::toggleStarred,
+          )
+        },
       )
     }
     SnackbarHost(
@@ -153,3 +168,61 @@ fun IntegratedRoute(
     )
   }
 }
+
+internal fun integratedItemActions(
+  item: IntegratedItem,
+  redditState: RedditUiState,
+  onOpenArticle: (Article) -> Unit,
+  onSubscribeRedditThread: (Article) -> Unit,
+  onUnsubscribeRedditThread: (Article) -> Unit,
+  onSaveYouTube: (YouTubeVideo) -> Unit,
+  onToggleMailStarred: (MailThread) -> Unit,
+): List<IntegratedItemAction> = when (item) {
+  is IntegratedItem.Rss -> listOf(
+    IntegratedItemAction("はてなブックマークコメントを見る") {
+      onOpenArticle(item.article.withHatenaBookmarkCommentsUrl())
+    },
+  )
+
+  is IntegratedItem.Reddit -> buildList {
+    add(
+      IntegratedItemAction("はてなブックマークコメントを見る") {
+        onOpenArticle(item.article.withHatenaBookmarkCommentsUrl())
+      },
+    )
+    val threadId = redditThreadId(item.article.url)
+    if (threadId != null) {
+      val subscribed = redditState.subscriptions.any { subscription ->
+        subscription.kind == RedditSubscriptionKind.THREAD &&
+          redditThreadId(subscription.feedUrl) == threadId
+      }
+      add(
+        if (subscribed) {
+          IntegratedItemAction("スレッドの購読を解除") {
+            onUnsubscribeRedditThread(item.article)
+          }
+        } else {
+          IntegratedItemAction("スレッドを購読") {
+            onSubscribeRedditThread(item.article)
+          }
+        },
+      )
+    }
+  }
+
+  is IntegratedItem.YouTube -> listOf(
+    IntegratedItemAction("保存") {
+      onSaveYouTube(item.video)
+    },
+  )
+
+  is IntegratedItem.Mail -> listOf(
+    IntegratedItemAction(if (item.thread.isStarred) "スターを外す" else "スター") {
+      onToggleMailStarred(item.thread)
+    },
+  )
+}
+
+private fun Article.withHatenaBookmarkCommentsUrl(): Article = copy(
+  url = "https://b.hatena.ne.jp/entry?url=${Uri.encode(url)}",
+)
