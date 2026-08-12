@@ -2,6 +2,7 @@
 
 package dev.terashima.yomitorirss.feature.task
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +22,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SubdirectoryArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -48,6 +48,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -194,7 +197,7 @@ private fun TaskRow(
   onEdit: () -> Unit,
   onDelete: () -> Unit,
 ) {
-  var menuOpen by remember { mutableStateOf(false) }
+  var menuOpen by remember(row.task.id) { mutableStateOf(false) }
   val task = row.task
   val status = taskStatus(task)
   val statusColor = when (status) {
@@ -203,67 +206,77 @@ private fun TaskRow(
     TaskStatus.UNFINISHED -> MaterialTheme.colorScheme.primary
   }
 
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(start = (row.depth * 20).dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    if (row.hasChildren) {
-      IconButton(onClick = onExpandToggle) {
-        Icon(
-          if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-          contentDescription = if (expanded) "子タスクを閉じる" else "子タスクを開く",
-        )
+  Box {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(start = (row.depth * 20).dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (row.hasChildren) {
+        IconButton(onClick = onExpandToggle) {
+          Icon(
+            if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+            contentDescription = if (expanded) "子タスクを閉じる" else "子タスクを開く",
+          )
+        }
+      } else {
+        Spacer(Modifier.size(48.dp))
       }
-    } else {
-      Spacer(Modifier.size(48.dp))
-    }
 
-    Checkbox(checked = task.completed, onCheckedChange = onCompletedChange)
+      Checkbox(checked = task.completed, onCheckedChange = onCompletedChange)
 
-    Column(Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 6.dp)) {
-      Text(
-        text = task.title,
-        style = MaterialTheme.typography.bodyLarge,
-        textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
-      )
-      if (task.description.isNotBlank()) {
+      Column(
+        Modifier
+          .weight(1f)
+          .semantics {
+            onLongClick(label = "タスク操作") {
+              menuOpen = true
+              true
+            }
+          }
+          .pointerInput(task.id) {
+            detectTapGestures(onLongPress = { menuOpen = true })
+          }
+          .padding(horizontal = 4.dp, vertical = 6.dp),
+      ) {
         Text(
-          text = task.description,
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 3,
+          text = task.title,
+          style = MaterialTheme.typography.bodyLarge,
+          textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
+        )
+        if (task.description.isNotBlank()) {
+          Text(
+            text = task.description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 3,
+          )
+        }
+        Text(
+          text = taskStatusLabel(task, status),
+          style = MaterialTheme.typography.labelMedium,
+          color = statusColor,
         )
       }
-      Text(
-        text = taskStatusLabel(task, status),
-        style = MaterialTheme.typography.labelMedium,
-        color = statusColor,
-      )
     }
 
-    Box {
-      IconButton(onClick = { menuOpen = true }) {
-        Icon(Icons.Default.MoreVert, contentDescription = "タスク操作")
-      }
-      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-        DropdownMenuItem(
-          text = { Text("子タスクを追加") },
-          leadingIcon = { Icon(Icons.Default.SubdirectoryArrowRight, contentDescription = null) },
-          onClick = { menuOpen = false; onAddChild() },
-        )
-        DropdownMenuItem(
-          text = { Text("編集") },
-          leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-          onClick = { menuOpen = false; onEdit() },
-        )
-        DropdownMenuItem(
-          text = { Text("削除") },
-          leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-          onClick = { menuOpen = false; onDelete() },
-        )
-      }
+    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+      DropdownMenuItem(
+        text = { Text("子タスクを追加") },
+        leadingIcon = { Icon(Icons.Default.SubdirectoryArrowRight, contentDescription = null) },
+        onClick = { menuOpen = false; onAddChild() },
+      )
+      DropdownMenuItem(
+        text = { Text("編集") },
+        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+        onClick = { menuOpen = false; onEdit() },
+      )
+      DropdownMenuItem(
+        text = { Text("削除") },
+        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+        onClick = { menuOpen = false; onDelete() },
+      )
     }
   }
 }
