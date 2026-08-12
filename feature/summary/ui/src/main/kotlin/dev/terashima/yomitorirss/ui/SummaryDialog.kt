@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package dev.terashima.yomitorirss.feature.summary
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.core.designsystem.MarkdownText
 import dev.terashima.yomitorirss.feature.article.Article
 
 @Composable
@@ -60,7 +62,7 @@ fun SummaryDialog(
             Spacer(Modifier.height(8.dp))
             Text(progress ?: "記事本文を取得しています")
           } else {
-            Text(text.orEmpty(), style = MaterialTheme.typography.bodyLarge)
+            MarkdownText(text.orEmpty())
           }
         }
       }
