@@ -1,6 +1,8 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package dev.terashima.yomitorirss.feature.integrated
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -304,6 +304,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   onOpen: () -> Unit,
   actions: List<IntegratedItemAction>,
 ) {
+  var menuOpen by remember(item.key) { mutableStateOf(false) }
   val leftAction = when (tab) {
     IntegratedTab.UNREAD -> SwipeAction(
       label = "既読",
@@ -340,84 +341,70 @@ private fun LazyItemScope.IntegratedSwipeRow(
       null
     },
   ) {
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onOpen)
-        .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp),
-      verticalAlignment = Alignment.Top,
-    ) {
-      Icon(
-        imageVector = item.source.icon(),
-        contentDescription = item.source.label,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-      Spacer(Modifier.width(12.dp))
-      Column(modifier = Modifier.weight(1f)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Text(
-            text = item.source.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
+    Box {
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .combinedClickable(
+            onClick = onOpen,
+            onLongClick = if (actions.isEmpty()) null else ({ menuOpen = true }),
           )
-          Spacer(Modifier.weight(1f))
-          Text(
-            text = formatTime(item.timestamp),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-          text = item.title,
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.SemiBold,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
+          .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Top,
+      ) {
+        Icon(
+          imageVector = item.source.icon(),
+          contentDescription = item.source.label,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (item.subtitle.isNotBlank()) {
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+              text = item.source.label,
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+              text = formatTime(item.timestamp),
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
           Spacer(Modifier.height(4.dp))
           Text(
-            text = item.subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = item.title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
           )
+          if (item.subtitle.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+              text = item.subtitle,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
         }
       }
-      if (actions.isNotEmpty()) {
-        IntegratedActionMenu(
-          itemKey = item.key,
-          actions = actions,
-        )
-      }
-    }
-  }
-}
-
-@Composable
-private fun IntegratedActionMenu(
-  itemKey: String,
-  actions: List<IntegratedItemAction>,
-) {
-  var menuOpen by remember(itemKey) { mutableStateOf(false) }
-  Box {
-    IconButton(onClick = { menuOpen = true }) {
-      Icon(Icons.Default.MoreVert, contentDescription = "アイテムの操作")
-    }
-    DropdownMenu(
-      expanded = menuOpen,
-      onDismissRequest = { menuOpen = false },
-    ) {
-      actions.forEach { itemAction ->
-        DropdownMenuItem(
-          text = { Text(itemAction.label) },
-          onClick = {
-            menuOpen = false
-            itemAction.action()
-          },
-        )
+      DropdownMenu(
+        expanded = menuOpen,
+        onDismissRequest = { menuOpen = false },
+      ) {
+        actions.forEach { itemAction ->
+          DropdownMenuItem(
+            text = { Text(itemAction.label) },
+            onClick = {
+              menuOpen = false
+              itemAction.action()
+            },
+          )
+        }
       }
     }
   }
