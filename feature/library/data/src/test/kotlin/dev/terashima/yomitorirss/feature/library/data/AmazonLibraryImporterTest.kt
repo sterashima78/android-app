@@ -90,6 +90,32 @@ class AmazonLibraryImporterTest {
   }
 
   @Test(expected = IllegalArgumentException::class)
+  fun `Kindle の別 ownership ファイルに後続 revoke があれば所有扱いしない`() {
+    val bytes = zipOf(
+      "Kindle/Digital.Content.Ownership.1.json" to """
+        {
+          "rightType": "GRANT",
+          "eventTimestamp": "2026-01-01T00:00:00Z",
+          "asin": "KINDLE4",
+          "title": "Returned Later",
+          "contentType": "E-Book"
+        }
+      """.trimIndent(),
+      "Kindle/Digital.Content.Ownership.2.json" to """
+        {
+          "rightType": "REVOKE",
+          "eventTimestamp": "2026-02-01T00:00:00Z",
+          "asin": "KINDLE4",
+          "title": "Returned Later",
+          "contentType": "E-Book"
+        }
+      """.trimIndent(),
+    )
+
+    importer.parse(LibrarySource.KINDLE, "kindle-export.zip", bytes)
+  }
+
+  @Test(expected = IllegalArgumentException::class)
   fun `Kindle の複数ファイル ZIP に ownership JSON が無ければ行動ログを蔵書扱いしない`() {
     val bytes = zipOf(
       "Kindle/Kindle.Devices.ReadingSession.csv" to "Title,ASIN\nReading Log,KINDLE_LOG\n",
