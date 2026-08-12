@@ -35,9 +35,14 @@ internal class AmazonLibraryImporter {
       listOf(ImportContent(fileName.orEmpty(), bytes))
     }
 
-    val imported = selectContentsForSource(source, contents)
-      .flatMap { content -> parseContent(source, content) }
-      .distinctBy(LibraryBook::sourceId)
+    val selected = selectContentsForSource(source, contents)
+    val imported = if (source == LibrarySource.KINDLE && selected.all { it.name.isJsonFile() }) {
+      parseKindleOwnershipContents(selected)
+    } else {
+      selected
+        .flatMap { content -> parseContent(source, content) }
+        .distinctBy(LibraryBook::sourceId)
+    }
 
     require(imported.isNotEmpty()) { source.unrecognizedImportMessage() }
     return imported
@@ -100,14 +105,17 @@ internal class AmazonLibraryImporter {
     }.orEmpty()
   }
 
-  private fun parseKindleOwnershipJson(text: String): List<LibraryBook> {
-    val roots = parseJsonRoots(text)
-    if (roots.isEmpty()) return emptyList()
+  private fun parseKindleOwnershipJson(text: String): List<LibraryBook> =
+    parseKindleOwnershipContents(listOf(ImportContent("ownership.json", text.toByteArray())))
 
+  private fun parseKindleOwnershipContents(contents: List<ImportContent>): List<LibraryBook> {
     val candidates = mutableListOf<KindleOwnershipCandidate>()
     var ordinal = 0
-    roots.forEach { root ->
-      collectKindleOwnershipCandidates(root, candidates) { ordinal++ }
+    contents.forEach { content ->
+      val text = content.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")
+      parseJsonRoots(text).forEach { root ->
+        collectKindleOwnershipCandidates(root, candidates) { ordinal++ }
+      }
     }
 
     return candidates
@@ -225,8 +233,11 @@ internal class AmazonLibraryImporter {
         is JSONArray -> {
           for (index in 0 until value.length()) {
             val item = value.opt(index)
-            if (item != null && item != JSONObject.NULL && item !is JSONObject && item !is JSONArray) {
-              output.getOrPut(normalizeHeader(key)) { mutableListOf() } += item.toString()
+            when {
+              item == null || item == JSONObject.NULL -> Unit
+              item is JSONObject && value.length() == 1 -> collectPrimitiveValues(item, output)
+              item !is JSONObject && item !is JSONArray ->
+                output.getOrPut(normalizeHeader(key)) { mutableListOf() } += item.toString()
             }
           }
         }
@@ -530,7 +541,15 @@ internal class AmazonLibraryImporter {
     val INFO_URL_HEADERS = listOf("infourl", "producturl", "detailurl", "url")
     val AUDIBLE_DELETED_HEADERS = setOf("deleted", "isdeleted", "deletedfromlibrary", "isdeletedfromlibrary")
 
-    val KINDLE_ID_HEADERS = listOf("asin", "amazonasin", "productasin", "contentasin", "contentid")
+    val KINDLE_ID_HEADERS = listOf(
+      "asin",
+      "amazonasin",
+      "productasin",
+      "contentasin",
+      "contentid",
+      "productid",
+      "itemid",
+    )
     val KINDLE_TITLE_HEADERS = listOf("title", "booktitle", "producttitle", "contenttitle", "itemtitle", "name")
     val KINDLE_AUTHOR_HEADERS = listOf("author", "authors", "creator", "creators", "writtenby")
     val KINDLE_PUBLISHED_DATE_HEADERS = listOf(
