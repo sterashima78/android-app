@@ -1,11 +1,11 @@
-package dev.terashima.yomitorirss.feature.chat
+package dev.terashima.yomitorirss.core.designsystem
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class MarkdownMessageTest {
+class MarkdownTextTest {
   @Test
   fun `見出し 段落 リスト コードをブロックへ分解する`() {
     val blocks = parseMarkdownBlocks(
