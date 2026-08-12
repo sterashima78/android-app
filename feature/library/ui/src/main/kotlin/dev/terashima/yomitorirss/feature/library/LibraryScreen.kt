@@ -435,7 +435,7 @@ private fun LibrarySyncHeader(
       onAction = onImportAudible,
     )
     Text(
-      "Kindle / Audible は端末で選択した CSV・TSV・ZIP のみを読み込みます。Amazon の認証情報は保存しません。",
+      "Kindle は Digital.Content.Ownership*.json / ZIP、Audible は Library.csv / ZIP を端末内で読み込みます。認証情報は保存しません。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
