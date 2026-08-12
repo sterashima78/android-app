@@ -81,7 +81,8 @@ class IntegratedScreenTest {
       messageCount = 1,
       isInInbox = true,
       isUnread = false,
-      isStarred = true,
+      isStarred = false,
+      isReadLater = true,
     )
 
     val items = integratedItems(

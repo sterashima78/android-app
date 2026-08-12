@@ -20,6 +20,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     if (oldVersion < 7) migrateToVersion7(db)
     if (oldVersion < 8) migrateToVersion8(db)
     if (oldVersion < 9) migrateToVersion9(db)
+    if (oldVersion < 11) migrateToVersion11(db)
   }
 
   private fun schema(db: SQLiteDatabase) {
@@ -42,7 +43,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     db.execSQL("CREATE INDEX IF NOT EXISTS summary_task_state ON summary_tasks(state,queued_at)")
     db.execSQL("CREATE TABLE IF NOT EXISTS mail_accounts(id TEXT PRIMARY KEY NOT NULL,email TEXT NOT NULL UNIQUE,display_name TEXT,last_history_id TEXT,last_synced_at INTEGER,sync_state TEXT NOT NULL DEFAULT 'idle',sync_processed_threads INTEGER NOT NULL DEFAULT 0,sync_error TEXT,sync_page_token TEXT,sync_start_history_id TEXT,sync_generation TEXT)")
     db.execSQL("CREATE TABLE IF NOT EXISTS mail_labels(account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE,id TEXT NOT NULL,name TEXT NOT NULL,type TEXT NOT NULL,PRIMARY KEY(account_id,id))")
-    db.execSQL("CREATE TABLE IF NOT EXISTS mail_threads(account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE,id TEXT NOT NULL,subject TEXT NOT NULL,snippet TEXT NOT NULL,last_message_at INTEGER NOT NULL,message_count INTEGER NOT NULL,in_inbox INTEGER NOT NULL DEFAULT 0,is_unread INTEGER NOT NULL DEFAULT 0,is_starred INTEGER NOT NULL DEFAULT 0,archived_locally INTEGER NOT NULL DEFAULT 0,sync_generation TEXT,PRIMARY KEY(account_id,id))")
+    db.execSQL("CREATE TABLE IF NOT EXISTS mail_threads(account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE,id TEXT NOT NULL,subject TEXT NOT NULL,snippet TEXT NOT NULL,last_message_at INTEGER NOT NULL,message_count INTEGER NOT NULL,in_inbox INTEGER NOT NULL DEFAULT 0,is_unread INTEGER NOT NULL DEFAULT 0,is_starred INTEGER NOT NULL DEFAULT 0,archived_locally INTEGER NOT NULL DEFAULT 0,read_later_locally INTEGER NOT NULL DEFAULT 0,sync_generation TEXT,PRIMARY KEY(account_id,id))")
     db.execSQL("CREATE INDEX IF NOT EXISTS mail_threads_date ON mail_threads(last_message_at DESC)")
     db.execSQL("CREATE INDEX IF NOT EXISTS mail_threads_account_inbox ON mail_threads(account_id,in_inbox,last_message_at DESC)")
     db.execSQL("CREATE INDEX IF NOT EXISTS mail_threads_account_unread ON mail_threads(account_id,is_unread,last_message_at DESC)")
@@ -112,6 +113,15 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     db.execSQL("CREATE INDEX IF NOT EXISTS feeds_folder_id ON feeds(folder_id,title)")
   }
 
+  private fun migrateToVersion11(db: SQLiteDatabase) {
+    addColumnIfMissing(
+      db,
+      "mail_threads",
+      "read_later_locally",
+      "read_later_locally INTEGER NOT NULL DEFAULT 0",
+    )
+  }
+
   private fun addColumnIfMissing(
     db: SQLiteDatabase,
     table: String,
@@ -134,7 +144,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
 
   companion object {
     const val DB_NAME = "yomitori-rss.db"
-    private const val DB_VERSION = 10
+    private const val DB_VERSION = 11
 
     fun create(context: Context): YomitoriDatabase {
       val app = context.applicationContext

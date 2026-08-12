@@ -67,7 +67,7 @@ fun IntegratedRoute(
     mailViewModel.selectMailbox(
       when (selectedTab) {
         IntegratedTab.UNREAD -> Mailbox.UNREAD
-        IntegratedTab.READ_LATER -> Mailbox.STARRED
+        IntegratedTab.READ_LATER -> Mailbox.READ_LATER
       },
     )
   }
@@ -121,13 +121,7 @@ fun IntegratedRoute(
             is IntegratedItem.Rss -> rssViewModel.readLater(item.article)
             is IntegratedItem.Reddit -> redditViewModel.readLater(item.article)
             is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
-            is IntegratedItem.Mail -> {
-              if (item.thread.isStarred) {
-                mailViewModel.toggleRead(item.thread)
-              } else {
-                mailViewModel.toggleStarred(item.thread)
-              }
-            }
+            is IntegratedItem.Mail -> mailViewModel.readLater(item.thread)
           }
         },
         onRemoveDeferred = { item ->
@@ -135,8 +129,8 @@ fun IntegratedRoute(
             is IntegratedItem.Rss -> rssViewModel.removeReadLater(item.article)
             is IntegratedItem.Reddit -> redditViewModel.removeReadLater(item.article)
             is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
-            is IntegratedItem.Mail -> if (item.thread.isStarred) {
-              mailViewModel.toggleStarred(item.thread)
+            is IntegratedItem.Mail -> if (item.thread.isReadLater) {
+              mailViewModel.toggleReadLater(item.thread)
             }
           }
         },

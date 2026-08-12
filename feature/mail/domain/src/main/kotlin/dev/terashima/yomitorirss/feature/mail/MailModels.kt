@@ -50,12 +50,14 @@ data class MailThread(
   val isInInbox: Boolean,
   val isUnread: Boolean,
   val isStarred: Boolean,
+  val isReadLater: Boolean = false,
   val messages: List<MailMessage> = emptyList(),
 )
 
 enum class Mailbox(val label: String) {
   INBOX("受信"),
   UNREAD("未読"),
+  READ_LATER("あとで読む"),
   STARRED("スター"),
   ALL_MAIL("アーカイブ"),
 }

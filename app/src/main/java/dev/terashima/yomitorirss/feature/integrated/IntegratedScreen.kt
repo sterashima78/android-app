@@ -418,7 +418,7 @@ internal fun integratedItems(
           .forEach { add(IntegratedItem.Reddit(it.article)) }
         youtubeState.watchLater.forEach { add(IntegratedItem.YouTube(it)) }
         mailState.threads
-          .filter(MailThread::isStarred)
+          .filter(MailThread::isReadLater)
           .forEach { thread ->
             add(
               IntegratedItem.Mail(
@@ -453,14 +453,14 @@ private fun IntegratedItem.deferLabel(): String = when (this) {
   is IntegratedItem.Rss -> "あとで読む"
   is IntegratedItem.Reddit -> "あとで読む"
   is IntegratedItem.YouTube -> "あとで見る"
-  is IntegratedItem.Mail -> "スターして完了"
+  is IntegratedItem.Mail -> "あとで読む"
 }
 
 private fun IntegratedItem.removeDeferredLabel(): String = when (this) {
   is IntegratedItem.Rss -> "あとで読む解除"
   is IntegratedItem.Reddit -> "あとで読む解除"
   is IntegratedItem.YouTube -> "あとで見る解除"
-  is IntegratedItem.Mail -> "スター解除"
+  is IntegratedItem.Mail -> "あとで読む解除"
 }
 
 private fun IntegratedSource.icon(): ImageVector = when (this) {

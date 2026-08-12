@@ -16,6 +16,15 @@ class MailViewModelTest {
   }
 
   @Test
+  fun `あとで読むは受信トレイ状態に関係なくリポジトリ結果を維持する`() {
+    val inbox = thread(id = "read-later-inbox", isInInbox = true, isReadLater = true)
+    val archived = thread(id = "read-later-archived", isInInbox = false, isReadLater = true)
+    val threads = listOf(inbox, archived)
+
+    assertEquals(threads, threads.forMailbox(Mailbox.READ_LATER))
+  }
+
+  @Test
   fun `アーカイブは受信トレイ外のスレッドだけを表示する`() {
     val inbox = thread(id = "inbox", isInInbox = true)
     val archived = thread(id = "archived", isInInbox = false)
@@ -40,6 +49,7 @@ class MailViewModelTest {
     isInInbox: Boolean,
     isUnread: Boolean = false,
     isStarred: Boolean = false,
+    isReadLater: Boolean = false,
   ) = MailThread(
     id = id,
     accountId = "account@example.com",
@@ -50,5 +60,6 @@ class MailViewModelTest {
     isInInbox = isInInbox,
     isUnread = isUnread,
     isStarred = isStarred,
+    isReadLater = isReadLater,
   )
 }

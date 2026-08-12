@@ -73,7 +73,9 @@ class DefaultMailRepository(
     query: String,
   ): List<MailThread> {
     val trimmedQuery = query.trim()
-    if (trimmedQuery.isNotEmpty()) return remoteSearch(accountId, mailbox, trimmedQuery)
+    if (trimmedQuery.isNotEmpty() && mailbox != Mailbox.READ_LATER) {
+      return remoteSearch(accountId, mailbox, trimmedQuery)
+    }
     val selection = buildList {
       if (accountId != null) add("account_id = ?")
       when (mailbox) {
@@ -82,9 +84,10 @@ class DefaultMailRepository(
           add("is_unread = 1")
           add("in_inbox = 1")
         }
+        Mailbox.READ_LATER -> add("read_later_locally = 1")
         Mailbox.STARRED -> {
           add("is_starred = 1")
-          add("(in_inbox = 1 OR archived_locally = 1)")
+          add("(in_inbox = 1 OR archived_locally = 1 OR read_later_locally = 1)")
         }
         Mailbox.ALL_MAIL -> {
           add("in_inbox = 0")
@@ -93,7 +96,7 @@ class DefaultMailRepository(
       }
     }.joinToString(" AND ").ifBlank { null }
     val args = accountId?.let { arrayOf(it) }
-    return database.readable.query(
+    val threads = database.readable.query(
       "mail_threads",
       THREAD_COLUMNS,
       selection,
@@ -103,6 +106,11 @@ class DefaultMailRepository(
       "last_message_at DESC",
       "100",
     ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.mailThread()) } }
+    if (mailbox != Mailbox.READ_LATER || trimmedQuery.isEmpty()) return threads
+    return threads.filter { thread ->
+      thread.subject.contains(trimmedQuery, ignoreCase = true) ||
+        thread.snippet.contains(trimmedQuery, ignoreCase = true)
+    }
   }
 
   override suspend fun getThread(accountId: String, threadId: String): MailThread {
@@ -239,6 +247,15 @@ class DefaultMailRepository(
     )
   }
 
+  override suspend fun setThreadReadLater(accountId: String, threadId: String, readLater: Boolean) {
+    database.writable.update(
+      "mail_threads",
+      ContentValues().apply { put("read_later_locally", readLater.asInt()) },
+      "account_id = ? AND id = ?",
+      arrayOf(accountId, threadId),
+    )
+  }
+
   override suspend fun archiveThread(accountId: String, threadId: String) {
     setArchiveState(accountId, threadId, archived = true)
   }
@@ -306,9 +323,9 @@ class DefaultMailRepository(
         val gmailQuery = listOf(mailbox.gmailQuery, query).filter(String::isNotBlank).joinToString(" ")
         for (threadId in api.listThreadIds(token, gmailQuery, maxResults = 50)) {
           val thread = api.getThread(token, account.id, threadId)
-          if (!thread.isInInbox && !isArchivedLocally(thread.accountId, thread.id)) continue
+          if (!thread.isInInbox && !isRetainedLocally(thread.accountId, thread.id)) continue
           upsertThread(thread)
-          add(thread.copy(messages = emptyList()))
+          add(getThread(thread.accountId, thread.id).copy(messages = emptyList()))
         }
       }
     }.distinctBy { "${it.accountId}:${it.id}" }.sortedByDescending(MailThread::lastMessageAtEpochMillis)
@@ -323,7 +340,7 @@ class DefaultMailRepository(
     for (threadId in delta.threadIds) {
       try {
         val thread = api.getThread(accessToken, account.id, threadId)
-        if (thread.isInInbox || isArchivedLocally(account.id, threadId)) {
+        if (thread.isInInbox || isRetainedLocally(account.id, threadId)) {
           upsertThread(thread)
         } else {
           deleteThread(account.id, threadId)
@@ -521,6 +538,7 @@ class DefaultMailRepository(
       ?: activeSyncGeneration(thread.accountId)
       ?: threadGeneration(thread.accountId, thread.id)
     val effectiveArchivedLocally = if (thread.isInInbox) false else isArchivedLocally(thread.accountId, thread.id)
+    val effectiveReadLater = isReadLaterLocally(thread.accountId, thread.id)
     database.transaction {
       insertWithOnConflict(
         "mail_threads",
@@ -536,6 +554,7 @@ class DefaultMailRepository(
           put("is_unread", thread.isUnread.asInt())
           put("is_starred", thread.isStarred.asInt())
           put("archived_locally", effectiveArchivedLocally.asInt())
+          put("read_later_locally", effectiveReadLater.asInt())
           if (effectiveGeneration == null) putNull(SYNC_GENERATION_COLUMN) else put(SYNC_GENERATION_COLUMN, effectiveGeneration)
         },
         SQLiteDatabase.CONFLICT_REPLACE,
@@ -596,9 +615,24 @@ class DefaultMailRepository(
     "1",
   ).use { cursor -> if (cursor.moveToFirst()) cursor.stringOrNull(0) else null }
 
-  private fun isArchivedLocally(accountId: String, threadId: String): Boolean = database.readable.query(
+  private fun isArchivedLocally(accountId: String, threadId: String): Boolean = localFlag(
+    accountId = accountId,
+    threadId = threadId,
+    column = "archived_locally",
+  )
+
+  private fun isReadLaterLocally(accountId: String, threadId: String): Boolean = localFlag(
+    accountId = accountId,
+    threadId = threadId,
+    column = "read_later_locally",
+  )
+
+  private fun isRetainedLocally(accountId: String, threadId: String): Boolean =
+    isArchivedLocally(accountId, threadId) || isReadLaterLocally(accountId, threadId)
+
+  private fun localFlag(accountId: String, threadId: String, column: String): Boolean = database.readable.query(
     "mail_threads",
-    arrayOf("archived_locally"),
+    arrayOf(column),
     "account_id = ? AND id = ?",
     arrayOf(accountId, threadId),
     null,
@@ -611,7 +645,7 @@ class DefaultMailRepository(
     val staleThreadIds = database.readable.query(
       "mail_threads",
       arrayOf("id"),
-      "account_id = ? AND archived_locally = 0 AND ($SYNC_GENERATION_COLUMN IS NULL OR $SYNC_GENERATION_COLUMN != ?)",
+      "account_id = ? AND archived_locally = 0 AND read_later_locally = 0 AND ($SYNC_GENERATION_COLUMN IS NULL OR $SYNC_GENERATION_COLUMN != ?)",
       arrayOf(accountId, generation),
       null,
       null,
@@ -665,6 +699,7 @@ class DefaultMailRepository(
     isInInbox = getInt(getColumnIndexOrThrow("in_inbox")) != 0,
     isUnread = getInt(getColumnIndexOrThrow("is_unread")) != 0,
     isStarred = getInt(getColumnIndexOrThrow("is_starred")) != 0,
+    isReadLater = getInt(getColumnIndexOrThrow("read_later_locally")) != 0,
   )
 
   private fun Cursor.mailMessage() = MailMessage(
@@ -691,6 +726,7 @@ class DefaultMailRepository(
     get() = when (this) {
       Mailbox.INBOX -> "in:inbox"
       Mailbox.UNREAD -> "in:inbox is:unread"
+      Mailbox.READ_LATER -> ""
       Mailbox.STARRED -> "is:starred"
       Mailbox.ALL_MAIL -> "in:archive"
     }
@@ -731,6 +767,7 @@ class DefaultMailRepository(
       "in_inbox",
       "is_unread",
       "is_starred",
+      "read_later_locally",
     )
     val MESSAGE_COLUMNS = arrayOf(
       "account_id",
