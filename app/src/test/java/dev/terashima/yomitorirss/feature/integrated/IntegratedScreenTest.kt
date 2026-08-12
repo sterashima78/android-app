@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.integrated
 
 import dev.terashima.yomitorirss.feature.article.Article
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.mail.MailAccount
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
@@ -53,6 +54,56 @@ class IntegratedScreenTest {
 
     assertEquals(
       listOf(IntegratedSource.MAIL, IntegratedSource.YOUTUBE, IntegratedSource.REDDIT, IntegratedSource.RSS),
+      items.map(IntegratedItem::source),
+    )
+  }
+
+  @Test
+  fun `あとで読むアイテムを各機能から古い順に統合する`() {
+    val rss = article("rss-later", "2026-08-11T09:00:00Z")
+    val reddit = article("reddit-later", "2026-08-11T10:00:00Z")
+    val youtube = YouTubeVideo(
+      id = "youtube-later",
+      channelId = "channel",
+      channelTitle = "Channel",
+      title = "YouTube later",
+      url = "https://example.com/youtube-later",
+      publishedAtEpochMillis = Instant.parse("2026-08-11T11:00:00Z").toEpochMilli(),
+      isRead = false,
+      isWatchLater = true,
+    )
+    val mail = MailThread(
+      id = "mail-later",
+      accountId = "account",
+      subject = "Mail later",
+      snippet = "snippet",
+      lastMessageAtEpochMillis = Instant.parse("2026-08-11T12:00:00Z").toEpochMilli(),
+      messageCount = 1,
+      isInInbox = true,
+      isUnread = false,
+      isStarred = true,
+    )
+
+    val items = integratedItems(
+      rssState = RssUiState(
+        initialized = true,
+        readLater = listOf(BookmarkedArticle(article = rss, savedAt = "2026-08-11T09:05:00Z")),
+      ),
+      redditState = RedditUiState(
+        initialized = true,
+        readLater = listOf(BookmarkedArticle(article = reddit, savedAt = "2026-08-11T10:05:00Z")),
+      ),
+      youtubeState = YouTubeUiState(initialized = true, watchLater = listOf(youtube)),
+      mailState = MailUiState(
+        initialized = true,
+        accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
+        threads = listOf(mail),
+      ),
+      tab = IntegratedTab.READ_LATER,
+    )
+
+    assertEquals(
+      listOf(IntegratedSource.RSS, IntegratedSource.REDDIT, IntegratedSource.YOUTUBE, IntegratedSource.MAIL),
       items.map(IntegratedItem::source),
     )
   }

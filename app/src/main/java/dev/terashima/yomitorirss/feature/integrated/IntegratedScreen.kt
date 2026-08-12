@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.PlayArrow
@@ -25,6 +26,8 @@ import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +54,11 @@ import dev.terashima.yomitorirss.feature.youtube.YouTubeVideo
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+enum class IntegratedTab(val label: String) {
+  UNREAD("未読"),
+  READ_LATER("あとで読む"),
+}
 
 enum class IntegratedSource(val label: String) {
   ALL("すべて"),
@@ -111,19 +119,28 @@ sealed interface IntegratedItem {
 
 @Composable
 fun IntegratedScreen(
+  selectedTab: IntegratedTab,
   rssState: RssUiState,
   redditState: RedditUiState,
   youtubeState: YouTubeUiState,
   mailState: MailUiState,
   isRefreshing: Boolean,
+  onSelectTab: (IntegratedTab) -> Unit,
   onRefresh: () -> Unit,
   onMarkProcessed: (IntegratedItem) -> Unit,
   onDefer: (IntegratedItem) -> Unit,
+  onRemoveDeferred: (IntegratedItem) -> Unit,
   onArchive: (IntegratedItem.Mail) -> Unit,
   onOpen: (IntegratedItem) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val items = integratedItems(rssState, redditState, youtubeState, mailState)
+  val items = integratedItems(
+    rssState = rssState,
+    redditState = redditState,
+    youtubeState = youtubeState,
+    mailState = mailState,
+    tab = selectedTab,
+  )
   var selectedSourceName by rememberSaveable { mutableStateOf(IntegratedSource.ALL.name) }
   val selectedSource = IntegratedSource.entries.firstOrNull { it.name == selectedSourceName }
     ?: IntegratedSource.ALL
@@ -134,7 +151,7 @@ fun IntegratedScreen(
   }
 
   Column(modifier = modifier.fillMaxSize()) {
-    InboxSummary(total = items.size)
+    InboxSummary(total = items.size, tab = selectedTab)
     SourceFilters(
       selected = selectedSource,
       counts = items.groupingBy(IntegratedItem::source).eachCount(),
@@ -156,11 +173,7 @@ fun IntegratedScreen(
               contentAlignment = Alignment.Center,
             ) {
               Text(
-                text = if (selectedSource == IntegratedSource.ALL) {
-                  "インボックスは空です"
-                } else {
-                  "${selectedSource.label} の未処理アイテムはありません"
-                },
+                text = emptyMessage(selectedTab, selectedSource),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
@@ -169,8 +182,10 @@ fun IntegratedScreen(
           items(visibleItems, key = IntegratedItem::key) { item ->
             IntegratedSwipeRow(
               item = item,
+              tab = selectedTab,
               onMarkProcessed = { onMarkProcessed(item) },
               onDefer = { onDefer(item) },
+              onRemoveDeferred = { onRemoveDeferred(item) },
               onArchive = if (item is IntegratedItem.Mail) {
                 { onArchive(item) }
               } else {
@@ -182,11 +197,29 @@ fun IntegratedScreen(
         }
       }
     }
+    NavigationBar {
+      IntegratedTab.entries.forEach { tab ->
+        NavigationBarItem(
+          selected = selectedTab == tab,
+          onClick = { onSelectTab(tab) },
+          icon = {
+            Icon(
+              imageVector = when (tab) {
+                IntegratedTab.UNREAD -> Icons.Default.RssFeed
+                IntegratedTab.READ_LATER -> Icons.Default.AccessTime
+              },
+              contentDescription = tab.label,
+            )
+          },
+          label = { Text(tab.label, maxLines = 1) },
+        )
+      }
+    }
   }
 }
 
 @Composable
-private fun InboxSummary(total: Int) {
+private fun InboxSummary(total: Int, tab: IntegratedTab) {
   Surface(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
     shape = MaterialTheme.shapes.large,
@@ -197,9 +230,15 @@ private fun InboxSummary(total: Int) {
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Column(modifier = Modifier.weight(1f)) {
-        Text("未処理", style = MaterialTheme.typography.labelLarge)
         Text(
-          if (total == 0) "インボックスゼロ" else "$total 件を仕分けできます",
+          text = if (tab == IntegratedTab.UNREAD) "未処理" else "あとで読む",
+          style = MaterialTheme.typography.labelLarge,
+        )
+        Text(
+          text = when (tab) {
+            IntegratedTab.UNREAD -> if (total == 0) "インボックスゼロ" else "$total 件を仕分けできます"
+            IntegratedTab.READ_LATER -> if (total == 0) "保留中のアイテムはありません" else "$total 件をあとで確認できます"
+          },
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.SemiBold,
         )
@@ -245,29 +284,47 @@ private fun SourceFilters(
 @Composable
 private fun LazyItemScope.IntegratedSwipeRow(
   item: IntegratedItem,
+  tab: IntegratedTab,
   onMarkProcessed: () -> Unit,
   onDefer: () -> Unit,
+  onRemoveDeferred: () -> Unit,
   onArchive: (() -> Unit)?,
   onOpen: () -> Unit,
 ) {
-  SwipeActionListItem(
-    itemKey = item.key,
-    left = SwipeAction(
+  val leftAction = when (tab) {
+    IntegratedTab.UNREAD -> SwipeAction(
       label = "既読",
       color = MaterialTheme.colorScheme.primary,
       onCommit = onMarkProcessed,
-    ),
-    right = SwipeAction(
-      label = item.deferLabel(),
+    )
+    IntegratedTab.READ_LATER -> SwipeAction(
+      label = item.removeDeferredLabel(),
       color = MaterialTheme.colorScheme.secondary,
-      onCommit = onDefer,
-    ),
-    farRight = onArchive?.let { archive ->
+      onCommit = onRemoveDeferred,
+    )
+  }
+  SwipeActionListItem(
+    itemKey = item.key,
+    left = leftAction,
+    right = if (tab == IntegratedTab.UNREAD) {
       SwipeAction(
-        label = "アーカイブ",
-        color = MaterialTheme.colorScheme.tertiary,
-        onCommit = archive,
+        label = item.deferLabel(),
+        color = MaterialTheme.colorScheme.secondary,
+        onCommit = onDefer,
       )
+    } else {
+      null
+    },
+    farRight = if (tab == IntegratedTab.UNREAD) {
+      onArchive?.let { archive ->
+        SwipeAction(
+          label = "アーカイブ",
+          color = MaterialTheme.colorScheme.tertiary,
+          onCommit = archive,
+        )
+      }
+    } else {
+      null
     },
   ) {
     Row(
@@ -325,36 +382,85 @@ internal fun integratedItems(
   redditState: RedditUiState,
   youtubeState: YouTubeUiState,
   mailState: MailUiState,
+  tab: IntegratedTab = IntegratedTab.UNREAD,
 ): List<IntegratedItem> {
   val accountLabels = mailState.accounts.associate { account ->
     account.id to (account.displayName?.takeIf(String::isNotBlank) ?: account.email)
   }
-  return buildList {
-    rssState.unread
-      .filterNot { it.id in rssState.hiddenArticleIds }
-      .forEach { add(IntegratedItem.Rss(it)) }
-    redditState.unread
-      .filterNot { it.id in redditState.hiddenArticleIds }
-      .forEach { add(IntegratedItem.Reddit(it)) }
-    youtubeState.unread.forEach { add(IntegratedItem.YouTube(it)) }
-    mailState.threads
-      .filter { it.isUnread && it.isInInbox }
-      .forEach { thread ->
-        add(
-          IntegratedItem.Mail(
-            thread = thread,
-            accountLabel = accountLabels[thread.accountId] ?: thread.accountId,
-          ),
-        )
+  val items = buildList {
+    when (tab) {
+      IntegratedTab.UNREAD -> {
+        rssState.unread
+          .filterNot { it.id in rssState.hiddenArticleIds }
+          .forEach { add(IntegratedItem.Rss(it)) }
+        redditState.unread
+          .filterNot { it.id in redditState.hiddenArticleIds }
+          .forEach { add(IntegratedItem.Reddit(it)) }
+        youtubeState.unread.forEach { add(IntegratedItem.YouTube(it)) }
+        mailState.threads
+          .filter { it.isUnread && it.isInInbox }
+          .forEach { thread ->
+            add(
+              IntegratedItem.Mail(
+                thread = thread,
+                accountLabel = accountLabels[thread.accountId] ?: thread.accountId,
+              ),
+            )
+          }
       }
-  }.sortedByDescending(IntegratedItem::timestamp)
+
+      IntegratedTab.READ_LATER -> {
+        rssState.readLater
+          .filterNot { it.article.id in rssState.hiddenArticleIds }
+          .forEach { add(IntegratedItem.Rss(it.article)) }
+        redditState.readLater
+          .filterNot { it.article.id in redditState.hiddenArticleIds }
+          .forEach { add(IntegratedItem.Reddit(it.article)) }
+        youtubeState.watchLater.forEach { add(IntegratedItem.YouTube(it)) }
+        mailState.threads
+          .filter(MailThread::isStarred)
+          .forEach { thread ->
+            add(
+              IntegratedItem.Mail(
+                thread = thread,
+                accountLabel = accountLabels[thread.accountId] ?: thread.accountId,
+              ),
+            )
+          }
+      }
+    }
+  }
+  return when (tab) {
+    IntegratedTab.UNREAD -> items.sortedByDescending(IntegratedItem::timestamp)
+    IntegratedTab.READ_LATER -> items.sortedBy(IntegratedItem::timestamp)
+  }
+}
+
+private fun emptyMessage(tab: IntegratedTab, source: IntegratedSource): String = when (tab) {
+  IntegratedTab.UNREAD -> if (source == IntegratedSource.ALL) {
+    "インボックスは空です"
+  } else {
+    "${source.label} の未処理アイテムはありません"
+  }
+  IntegratedTab.READ_LATER -> if (source == IntegratedSource.ALL) {
+    "あとで読むアイテムはありません"
+  } else {
+    "${source.label} のあとで読むアイテムはありません"
+  }
 }
 
 private fun IntegratedItem.deferLabel(): String = when (this) {
   is IntegratedItem.Rss -> "あとで読む"
-  is IntegratedItem.Reddit -> "保存"
+  is IntegratedItem.Reddit -> "あとで読む"
   is IntegratedItem.YouTube -> "あとで見る"
   is IntegratedItem.Mail -> "スターして完了"
+}
+
+private fun IntegratedItem.removeDeferredLabel(): String = when (this) {
+  is IntegratedItem.Rss -> "あとで読む解除"
+  is IntegratedItem.Reddit -> "あとで読む解除"
+  is IntegratedItem.YouTube -> "あとで見る解除"
+  is IntegratedItem.Mail -> "スター解除"
 }
 
 private fun IntegratedSource.icon(): ImageVector = when (this) {
