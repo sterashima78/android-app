@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,9 +33,11 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
 import dev.terashima.yomitorirss.feature.article.ArticleMenuAction
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 
 enum class RedditTab(val label: String) {
   UNREAD("未読"),
+  READ_LATER("あとで読む"),
   SUBSCRIPTIONS("購読管理"),
 }
 
@@ -45,6 +48,9 @@ fun RedditScreen(
   state: RedditUiState,
   onMarkRead: (Article) -> Unit,
   onSaveAndRead: (Article) -> Unit,
+  onReadLater: (Article) -> Unit,
+  onUnsave: (Article) -> Unit,
+  onRemoveReadLater: (Article) -> Unit,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onSubscribeThread: (Article) -> Unit,
@@ -58,6 +64,18 @@ fun RedditScreen(
       state = state,
       onMarkRead = onMarkRead,
       onSaveAndRead = onSaveAndRead,
+      onReadLater = onReadLater,
+      onOpen = onOpen,
+      onSummarize = onSummarize,
+      onSubscribeThread = onSubscribeThread,
+      onUnsubscribeThread = onUnsubscribeThread,
+    )
+
+    RedditTab.READ_LATER -> RedditReadLaterScreen(
+      modifier = modifier,
+      state = state,
+      onUnsave = onUnsave,
+      onRemoveReadLater = onRemoveReadLater,
       onOpen = onOpen,
       onSummarize = onSummarize,
       onSubscribeThread = onSubscribeThread,
@@ -79,15 +97,13 @@ private fun RedditUnreadScreen(
   state: RedditUiState,
   onMarkRead: (Article) -> Unit,
   onSaveAndRead: (Article) -> Unit,
+  onReadLater: (Article) -> Unit,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onSubscribeThread: (Article) -> Unit,
   onUnsubscribeThread: (Article) -> Unit,
 ) {
-  val subscribedThreadIds = state.subscriptions
-    .filter { it.kind == RedditSubscriptionKind.THREAD }
-    .mapNotNull { redditThreadId(it.feedUrl) }
-    .toSet()
+  val subscribedThreadIds = subscribedThreadIds(state)
 
   ArticleList(
     modifier = modifier,
@@ -95,20 +111,85 @@ private fun RedditUnreadScreen(
     emptyText = "Redditの未読はありません",
     left = SwipeChoice("既読", MaterialTheme.colorScheme.primary, onMarkRead),
     right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
+    farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
     onOpen = onOpen,
     onSummarize = onSummarize,
     onEditTags = {},
-    extraMenuActions = { article ->
-      val threadId = redditThreadId(article.url)
-      if (threadId == null) {
-        emptyList()
-      } else if (threadId in subscribedThreadIds) {
-        listOf(ArticleMenuAction("スレッドの購読を解除") { onUnsubscribeThread(article) })
-      } else {
-        listOf(ArticleMenuAction("スレッドを購読") { onSubscribeThread(article) })
-      }
-    },
+    extraMenuActions = redditThreadMenuActions(
+      subscribedThreadIds = subscribedThreadIds,
+      onSubscribeThread = onSubscribeThread,
+      onUnsubscribeThread = onUnsubscribeThread,
+    ),
   )
+}
+
+@Composable
+private fun RedditReadLaterScreen(
+  modifier: Modifier,
+  state: RedditUiState,
+  onUnsave: (Article) -> Unit,
+  onRemoveReadLater: (Article) -> Unit,
+  onOpen: (Article) -> Unit,
+  onSummarize: (Article) -> Unit,
+  onSubscribeThread: (Article) -> Unit,
+  onUnsubscribeThread: (Article) -> Unit,
+) {
+  var oldestFirst by rememberSaveable { mutableStateOf(true) }
+  val subscribedThreadIds = subscribedThreadIds(state)
+  val bookmarkedArticles = state.readLater
+    .filterNot { it.article.id in state.hiddenArticleIds }
+    .let { visible ->
+      if (oldestFirst) visible.sortedBy { it.article.publishedAt }
+      else visible.sortedByDescending { it.article.publishedAt }
+    }
+  val articles = bookmarkedArticles.map(BookmarkedArticle::article)
+
+  Column(modifier.fillMaxSize()) {
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+      horizontalArrangement = Arrangement.End,
+    ) {
+      TextButton(onClick = { oldestFirst = !oldestFirst }) {
+        Text(if (oldestFirst) "古い順 ↑" else "新しい順 ↓")
+      }
+    }
+    ArticleList(
+      modifier = Modifier.weight(1f),
+      articles = articles,
+      bookmarkDetails = bookmarkedArticles.associateBy { it.article.id },
+      emptyText = "Redditのあとで読む記事はありません",
+      left = SwipeChoice("ブックマーク解除", MaterialTheme.colorScheme.error, onUnsave),
+      right = SwipeChoice("未分類へ", MaterialTheme.colorScheme.secondary, onRemoveReadLater),
+      onOpen = onOpen,
+      onSummarize = onSummarize,
+      onEditTags = {},
+      extraMenuActions = redditThreadMenuActions(
+        subscribedThreadIds = subscribedThreadIds,
+        onSubscribeThread = onSubscribeThread,
+        onUnsubscribeThread = onUnsubscribeThread,
+      ),
+    )
+  }
+}
+
+private fun subscribedThreadIds(state: RedditUiState): Set<String> = state.subscriptions
+  .filter { it.kind == RedditSubscriptionKind.THREAD }
+  .mapNotNull { redditThreadId(it.feedUrl) }
+  .toSet()
+
+private fun redditThreadMenuActions(
+  subscribedThreadIds: Set<String>,
+  onSubscribeThread: (Article) -> Unit,
+  onUnsubscribeThread: (Article) -> Unit,
+): (Article) -> List<ArticleMenuAction> = { article ->
+  val threadId = redditThreadId(article.url)
+  if (threadId == null) {
+    emptyList()
+  } else if (threadId in subscribedThreadIds) {
+    listOf(ArticleMenuAction("スレッドの購読を解除") { onUnsubscribeThread(article) })
+  } else {
+    listOf(ArticleMenuAction("スレッドを購読") { onSubscribeThread(article) })
+  }
 }
 
 @Composable
@@ -139,35 +220,35 @@ private fun RedditSubscriptionsScreen(
         }
       }
       items(subscriptions, key = RedditSubscription::id) { subscription ->
-          Card(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 12.dp, vertical = 4.dp),
+        Card(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
           ) {
-            Row(
-              modifier = Modifier.fillMaxWidth().padding(14.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Column(Modifier.weight(1f)) {
-                Text(subscription.title, style = MaterialTheme.typography.titleMedium)
+            Column(Modifier.weight(1f)) {
+              Text(subscription.title, style = MaterialTheme.typography.titleMedium)
+              Text(
+                if (subscription.kind == RedditSubscriptionKind.COMMUNITY) "コミュニティ" else "スレッド",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              subscription.lastError?.let { error ->
                 Text(
-                  if (subscription.kind == RedditSubscriptionKind.COMMUNITY) "コミュニティ" else "スレッド",
-                  style = MaterialTheme.typography.labelMedium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  error,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.error,
                 )
-                subscription.lastError?.let { error ->
-                  Text(
-                    error,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                  )
-                }
-              }
-              IconButton(onClick = { onDeleteSubscription(subscription) }) {
-                Icon(Icons.Default.Delete, contentDescription = "購読解除")
               }
             }
+            IconButton(onClick = { onDeleteSubscription(subscription) }) {
+              Icon(Icons.Default.Delete, contentDescription = "購読解除")
+            }
           }
+        }
       }
     }
   }

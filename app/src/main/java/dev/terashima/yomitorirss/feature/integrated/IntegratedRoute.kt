@@ -104,7 +104,7 @@ fun IntegratedRoute(
         onDefer = { item ->
           when (item) {
             is IntegratedItem.Rss -> rssViewModel.readLater(item.article)
-            is IntegratedItem.Reddit -> redditViewModel.saveAndRead(item.article)
+            is IntegratedItem.Reddit -> redditViewModel.readLater(item.article)
             is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
             is IntegratedItem.Mail -> {
               if (item.thread.isStarred) {

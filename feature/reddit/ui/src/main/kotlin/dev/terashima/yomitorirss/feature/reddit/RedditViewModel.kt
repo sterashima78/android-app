@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.sync.withLock
 data class RedditUiState(
   val initialized: Boolean = false,
   val unread: List<Article> = emptyList(),
+  val readLater: List<BookmarkedArticle> = emptyList(),
   val subscriptions: List<RedditSubscription> = emptyList(),
   val hiddenArticleIds: Set<String> = emptySet(),
   val refreshing: Boolean = false,
@@ -43,6 +45,9 @@ class RedditViewModel(
     }
     viewModelScope.launch(Dispatchers.IO) {
       articleRepository.changes.collect { reload() }
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      bookmarkRepository.changes.collect { reload() }
     }
     viewModelScope.launch(Dispatchers.IO) {
       redditRepository.changes.collect { reload() }
@@ -160,6 +165,27 @@ class RedditViewModel(
     bookmarkRepository.saveAndReadArticle(article.id)
   }
 
+  fun readLater(article: Article) = performArticleAction(
+    article = article,
+    shouldScheduleBackup = { true },
+  ) {
+    bookmarkRepository.markReadLater(article.id)
+  }
+
+  fun unsave(article: Article) = performArticleAction(
+    article = article,
+    shouldScheduleBackup = { true },
+  ) {
+    bookmarkRepository.unsaveArticle(article.id)
+  }
+
+  fun removeReadLater(article: Article) = performArticleAction(
+    article = article,
+    shouldScheduleBackup = { true },
+  ) {
+    bookmarkRepository.removeReadLater(article.id)
+  }
+
   fun markAllUnreadAsRead() {
     val visible = _state.value.unread.filterNot { it.id in _state.value.hiddenArticleIds }
     if (visible.isEmpty()) return
@@ -225,12 +251,15 @@ class RedditViewModel(
     reloadMutex.withLock {
       runCatching {
         val unread = articleRepository.listUnreadArticles().filter(Article::isRedditArticle)
-        unread to redditRepository.listSubscriptions()
-      }.onSuccess { (unread, subscriptions) ->
+        val readLater = bookmarkRepository.listReadLaterArticles().filter { it.article.isRedditArticle() }
+        val subscriptions = redditRepository.listSubscriptions()
+        Triple(unread, readLater, subscriptions)
+      }.onSuccess { (unread, readLater, subscriptions) ->
         _state.update {
           it.copy(
             initialized = true,
             unread = unread,
+            readLater = readLater,
             subscriptions = subscriptions,
           )
         }
