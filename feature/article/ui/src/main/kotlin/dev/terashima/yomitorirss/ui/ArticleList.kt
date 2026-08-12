@@ -18,13 +18,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Label
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -158,105 +156,102 @@ private fun ArticleContent(
   extraMenuActions: (Article) -> List<ArticleMenuAction>,
 ) {
   var menuOpen by remember(article.id) { mutableStateOf(false) }
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .combinedClickable(onClick = { onOpen(article) }, onLongClick = { onSummarize(article) })
-      .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Column(Modifier.weight(1f)) {
-      Text(
-        article.title,
-        style = MaterialTheme.typography.titleMedium,
-        maxLines = 3,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Spacer(Modifier.height(7.dp))
-      Row(verticalAlignment = Alignment.CenterVertically) {
+  Box {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .combinedClickable(onClick = { onOpen(article) }, onLongClick = { menuOpen = true })
+        .padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(Modifier.weight(1f)) {
         Text(
-          article.sourceTitle,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.weight(1f),
-        )
-        Text(
-          timeLabel(article.publishedAt),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      bookmarkDetails?.let { details ->
-        Spacer(Modifier.height(6.dp))
-        Text(
-          "フォルダ: ${details.folder?.name ?: "未分類"}",
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.tertiary,
-          maxLines = 1,
+          article.title,
+          style = MaterialTheme.typography.titleMedium,
+          maxLines = 3,
           overflow = TextOverflow.Ellipsis,
         )
-        if (details.tags.isNotEmpty()) {
-          Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
           Text(
-            details.tags.joinToString(" · ") { it.name },
+            article.sourceTitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+          )
+          Text(
+            timeLabel(article.publishedAt),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        bookmarkDetails?.let { details ->
+          Spacer(Modifier.height(6.dp))
+          Text(
+            "フォルダ: ${details.folder?.name ?: "未分類"}",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.tertiary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
           )
+          if (details.tags.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+              details.tags.joinToString(" · ") { it.name },
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.secondary,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
         }
       }
     }
-    Box {
-      IconButton(onClick = { menuOpen = true }) {
-        Icon(Icons.Default.MoreVert, "記事メニュー")
+    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+      DropdownMenuItem(
+        text = { Text("はてなブックマークコメントを見る") },
+        leadingIcon = { Icon(Icons.Default.OpenInNew, null) },
+        onClick = {
+          menuOpen = false
+          onOpen(article.copy(url = "https://b.hatena.ne.jp/entry?url=${android.net.Uri.encode(article.url)}"))
+        },
+      )
+      extraMenuActions(article).forEach { menuAction ->
+        DropdownMenuItem(
+          text = { Text(menuAction.label) },
+          onClick = {
+            menuOpen = false
+            menuAction.action()
+          },
+        )
       }
-      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+      DropdownMenuItem(
+        text = { Text("要約") },
+        leadingIcon = { Icon(Icons.Default.SmartToy, null) },
+        onClick = {
+          menuOpen = false
+          onSummarize(article)
+        },
+      )
+      if (bookmarkDetails != null) {
         DropdownMenuItem(
-          text = { Text("はてなブックマークコメントを見る") },
-          leadingIcon = { Icon(Icons.Default.OpenInNew, null) },
+          text = { Text("フォルダを移動") },
+          leadingIcon = { Icon(Icons.Default.Folder, null) },
           onClick = {
             menuOpen = false
-            onOpen(article.copy(url = "https://b.hatena.ne.jp/entry?url=${android.net.Uri.encode(article.url)}"))
+            onMoveFolder(article)
           },
         )
-        extraMenuActions(article).forEach { menuAction ->
-          DropdownMenuItem(
-            text = { Text(menuAction.label) },
-            onClick = {
-              menuOpen = false
-              menuAction.action()
-            },
-          )
-        }
         DropdownMenuItem(
-          text = { Text("要約") },
-          leadingIcon = { Icon(Icons.Default.SmartToy, null) },
+          text = { Text("タグを編集") },
+          leadingIcon = { Icon(Icons.Default.Label, null) },
           onClick = {
             menuOpen = false
-            onSummarize(article)
+            onEditTags(article)
           },
         )
-        if (bookmarkDetails != null) {
-          DropdownMenuItem(
-            text = { Text("フォルダを移動") },
-            leadingIcon = { Icon(Icons.Default.Folder, null) },
-            onClick = {
-              menuOpen = false
-              onMoveFolder(article)
-            },
-          )
-          DropdownMenuItem(
-            text = { Text("タグを編集") },
-            leadingIcon = { Icon(Icons.Default.Label, null) },
-            onClick = {
-              menuOpen = false
-              onEditTags(article)
-            },
-          )
-        }
       }
     }
   }
