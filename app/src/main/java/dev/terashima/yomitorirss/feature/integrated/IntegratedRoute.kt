@@ -11,7 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,11 +55,21 @@ fun IntegratedRoute(
   val mailState by mailViewModel.state.collectAsState()
   val youtubeState by youtubeViewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
+  var selectedTabName by rememberSaveable { mutableStateOf(IntegratedTab.UNREAD.name) }
+  val selectedTab = IntegratedTab.entries.firstOrNull { it.name == selectedTabName }
+    ?: IntegratedTab.UNREAD
 
   LaunchedEffect(Unit) {
     mailViewModel.updateQuery("")
     mailViewModel.selectAccount(null)
-    mailViewModel.selectMailbox(Mailbox.UNREAD)
+  }
+  LaunchedEffect(selectedTab) {
+    mailViewModel.selectMailbox(
+      when (selectedTab) {
+        IntegratedTab.UNREAD -> Mailbox.UNREAD
+        IntegratedTab.READ_LATER -> Mailbox.STARRED
+      },
+    )
   }
   LaunchedEffect(mailState.message) {
     val message = mailState.message ?: return@LaunchedEffect
@@ -79,6 +92,7 @@ fun IntegratedRoute(
     } else {
       IntegratedScreen(
         modifier = Modifier.fillMaxSize(),
+        selectedTab = selectedTab,
         rssState = rssState,
         redditState = redditState,
         youtubeState = youtubeState,
@@ -87,6 +101,7 @@ fun IntegratedRoute(
           redditState.refreshing ||
           youtubeState.refreshing ||
           mailState.loading,
+        onSelectTab = { selectedTabName = it.name },
         onRefresh = {
           feedViewModel.refresh()
           redditViewModel.refresh()
@@ -112,6 +127,16 @@ fun IntegratedRoute(
               } else {
                 mailViewModel.toggleStarred(item.thread)
               }
+            }
+          }
+        },
+        onRemoveDeferred = { item ->
+          when (item) {
+            is IntegratedItem.Rss -> rssViewModel.removeReadLater(item.article)
+            is IntegratedItem.Reddit -> redditViewModel.removeReadLater(item.article)
+            is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
+            is IntegratedItem.Mail -> if (item.thread.isStarred) {
+              mailViewModel.toggleStarred(item.thread)
             }
           }
         },
