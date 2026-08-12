@@ -21,10 +21,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RssFeed
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -117,6 +122,11 @@ sealed interface IntegratedItem {
   }
 }
 
+data class IntegratedItemAction(
+  val label: String,
+  val action: () -> Unit,
+)
+
 @Composable
 fun IntegratedScreen(
   selectedTab: IntegratedTab,
@@ -132,6 +142,7 @@ fun IntegratedScreen(
   onRemoveDeferred: (IntegratedItem) -> Unit,
   onArchive: (IntegratedItem.Mail) -> Unit,
   onOpen: (IntegratedItem) -> Unit,
+  actionsForItem: (IntegratedItem) -> List<IntegratedItemAction> = { emptyList() },
   modifier: Modifier = Modifier,
 ) {
   val items = integratedItems(
@@ -192,6 +203,7 @@ fun IntegratedScreen(
                 null
               },
               onOpen = { onOpen(item) },
+              actions = actionsForItem(item),
             )
           }
         }
@@ -290,6 +302,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   onRemoveDeferred: () -> Unit,
   onArchive: (() -> Unit)?,
   onOpen: () -> Unit,
+  actions: List<IntegratedItemAction>,
 ) {
   val leftAction = when (tab) {
     IntegratedTab.UNREAD -> SwipeAction(
@@ -331,7 +344,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
       modifier = Modifier
         .fillMaxWidth()
         .clickable(onClick = onOpen)
-        .padding(horizontal = 16.dp, vertical = 14.dp),
+        .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp),
       verticalAlignment = Alignment.Top,
     ) {
       Icon(
@@ -372,6 +385,39 @@ private fun LazyItemScope.IntegratedSwipeRow(
             overflow = TextOverflow.Ellipsis,
           )
         }
+      }
+      if (actions.isNotEmpty()) {
+        IntegratedActionMenu(
+          itemKey = item.key,
+          actions = actions,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun IntegratedActionMenu(
+  itemKey: String,
+  actions: List<IntegratedItemAction>,
+) {
+  var menuOpen by remember(itemKey) { mutableStateOf(false) }
+  Box {
+    IconButton(onClick = { menuOpen = true }) {
+      Icon(Icons.Default.MoreVert, contentDescription = "アイテムの操作")
+    }
+    DropdownMenu(
+      expanded = menuOpen,
+      onDismissRequest = { menuOpen = false },
+    ) {
+      actions.forEach { itemAction ->
+        DropdownMenuItem(
+          text = { Text(itemAction.label) },
+          onClick = {
+            menuOpen = false
+            itemAction.action()
+          },
+        )
       }
     }
   }

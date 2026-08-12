@@ -5,6 +5,8 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.mail.MailAccount
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
+import dev.terashima.yomitorirss.feature.reddit.RedditSubscription
+import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
 import dev.terashima.yomitorirss.feature.youtube.YouTubeUiState
@@ -137,6 +139,78 @@ class IntegratedScreenTest {
 
     assertFalse(items.isNotEmpty())
   }
+
+  @Test
+  fun `統合ビューはソース固有のアクションを提供する`() {
+    val rss = IntegratedItem.Rss(article("rss-action", "2026-08-11T09:00:00Z"))
+    val redditArticle = article("reddit-action", "2026-08-11T10:00:00Z").copy(
+      url = "https://www.reddit.com/r/androiddev/comments/abc123/sample/",
+    )
+    val reddit = IntegratedItem.Reddit(redditArticle)
+    val youtube = IntegratedItem.YouTube(
+      YouTubeVideo(
+        id = "youtube-action",
+        channelId = "channel",
+        channelTitle = "Channel",
+        title = "YouTube",
+        url = "https://example.com/youtube-action",
+        publishedAtEpochMillis = 1L,
+        isRead = false,
+        isWatchLater = false,
+      ),
+    )
+    val mail = IntegratedItem.Mail(
+      thread = MailThread(
+        id = "mail-action",
+        accountId = "account",
+        subject = "Mail",
+        snippet = "",
+        lastMessageAtEpochMillis = 1L,
+        messageCount = 1,
+        isInInbox = true,
+        isUnread = true,
+        isStarred = true,
+      ),
+      accountLabel = "user@example.com",
+    )
+    val redditState = RedditUiState(
+      initialized = true,
+      subscriptions = listOf(
+        RedditSubscription(
+          id = "thread",
+          title = "thread",
+          feedUrl = "https://www.reddit.com/r/androiddev/comments/abc123/sample/.rss",
+          kind = RedditSubscriptionKind.THREAD,
+          lastFetchedAt = null,
+          lastError = null,
+        ),
+      ),
+    )
+
+    assertEquals(
+      listOf("はてなブックマークコメントを見る"),
+      actionLabels(rss, redditState),
+    )
+    assertEquals(
+      listOf("はてなブックマークコメントを見る", "スレッドの購読を解除"),
+      actionLabels(reddit, redditState),
+    )
+    assertEquals(listOf("保存"), actionLabels(youtube, redditState))
+    assertEquals(listOf("スターを外す"), actionLabels(mail, redditState))
+  }
+
+  private fun actionLabels(
+    item: IntegratedItem,
+    redditState: RedditUiState,
+  ): List<String> = integratedItemActions(
+    item = item,
+    redditState = redditState,
+    onOpenArticle = {},
+    onSubscribeRedditThread = {},
+    onUnsubscribeRedditThread = {},
+    onSaveYouTube = {},
+    onToggleMailStarred = {},
+  ).map(IntegratedItemAction::label)
 
   private fun article(id: String, publishedAt: String): Article = Article(
     id = id,
