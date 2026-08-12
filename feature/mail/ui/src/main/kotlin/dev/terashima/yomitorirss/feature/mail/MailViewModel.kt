@@ -113,6 +113,33 @@ class MailViewModel(
     }
   }
 
+  fun readLater(thread: MailThread) = mutateThread(
+    thread = thread,
+    hideFromCurrentList = _state.value.mailbox == Mailbox.UNREAD,
+  ) {
+    if (!thread.isReadLater) {
+      repository.setThreadReadLater(thread.accountId, thread.id, readLater = true)
+    }
+    if (thread.isUnread) {
+      repository.setThreadRead(thread.accountId, thread.id, read = true)
+    }
+  }
+
+  fun toggleReadLater(thread: MailThread) {
+    val mailbox = _state.value.mailbox
+    val adding = !thread.isReadLater
+    val addAndRead = mailbox == Mailbox.UNREAD && adding
+    mutateThread(
+      thread = thread,
+      hideFromCurrentList = addAndRead || (mailbox == Mailbox.READ_LATER && thread.isReadLater),
+    ) {
+      repository.setThreadReadLater(thread.accountId, thread.id, readLater = adding)
+      if (addAndRead && thread.isUnread) {
+        repository.setThreadRead(thread.accountId, thread.id, read = true)
+      }
+    }
+  }
+
   fun archive(thread: MailThread) = mutateThread(
     thread = thread,
     hideFromCurrentList = _state.value.mailbox == Mailbox.UNREAD || _state.value.mailbox == Mailbox.INBOX,
@@ -259,5 +286,6 @@ internal fun List<MailThread>.forMailbox(mailbox: Mailbox): List<MailThread> = w
   Mailbox.UNREAD -> filter(MailThread::isInInbox)
   Mailbox.ALL_MAIL -> filterNot(MailThread::isInInbox)
   Mailbox.INBOX,
+  Mailbox.READ_LATER,
   Mailbox.STARRED -> this
 }

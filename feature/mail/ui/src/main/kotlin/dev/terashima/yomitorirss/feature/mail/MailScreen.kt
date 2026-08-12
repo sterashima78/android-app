@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
@@ -74,6 +75,7 @@ fun MailScreen(
   onCloseThread: () -> Unit,
   onToggleRead: (MailThread) -> Unit,
   onToggleStarred: (MailThread) -> Unit,
+  onToggleReadLater: (MailThread) -> Unit,
   onArchive: (MailThread) -> Unit,
   onTrash: (MailThread) -> Unit,
   onApplyLabel: (MailThread, String) -> Unit,
@@ -94,6 +96,7 @@ fun MailScreen(
                 Icon(
                   imageVector = when (mailbox) {
                     Mailbox.UNREAD -> Icons.Default.MarkEmailUnread
+                    Mailbox.READ_LATER -> Icons.Default.AccessTime
                     Mailbox.STARRED -> Icons.Default.Star
                     Mailbox.ALL_MAIL -> Icons.Default.Archive
                     Mailbox.INBOX -> Icons.Default.MarkEmailRead
@@ -149,6 +152,7 @@ fun MailScreen(
           onBack = onCloseThread,
           onToggleRead = onToggleRead,
           onToggleStarred = onToggleStarred,
+          onToggleReadLater = onToggleReadLater,
           onArchive = onArchive,
           onTrash = onTrash,
           onApplyLabel = onApplyLabel,
@@ -161,7 +165,9 @@ fun MailScreen(
         onValueChange = onUpdateQuery,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         singleLine = true,
-        label = { Text("Gmail を検索") },
+        label = {
+          Text(if (state.mailbox == Mailbox.READ_LATER) "あとで読むメールを検索" else "Gmail を検索")
+        },
         trailingIcon = {
           IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "検索") }
         },
@@ -197,6 +203,7 @@ fun MailScreen(
                 Text(
                   when (state.mailbox) {
                     Mailbox.UNREAD -> "未読メールはありません"
+                    Mailbox.READ_LATER -> "あとで読むメールはありません"
                     Mailbox.STARRED -> "スター付きメールはありません"
                     Mailbox.ALL_MAIL -> "アーカイブされたメールはありません"
                     Mailbox.INBOX -> "表示するメールはありません"
@@ -216,6 +223,7 @@ fun MailScreen(
                 onOpen = { onOpenThread(thread) },
                 onToggleRead = { onToggleRead(thread) },
                 onToggleStarred = { onToggleStarred(thread) },
+                onToggleReadLater = { onToggleReadLater(thread) },
                 onArchive = { onArchive(thread) },
                 onRestoreToInbox = { onApplyLabel(thread, "INBOX") },
               )
@@ -348,6 +356,7 @@ private fun LazyItemScope.SwipeThreadRow(
   onOpen: () -> Unit,
   onToggleRead: () -> Unit,
   onToggleStarred: () -> Unit,
+  onToggleReadLater: () -> Unit,
   onArchive: () -> Unit,
   onRestoreToInbox: () -> Unit,
 ) {
@@ -357,6 +366,12 @@ private fun LazyItemScope.SwipeThreadRow(
       color = MaterialTheme.colorScheme.primary,
       dismissesItem = true,
       onCommit = onToggleRead,
+    )
+    Mailbox.READ_LATER -> SwipeAction(
+      label = "あとで読む解除",
+      color = MaterialTheme.colorScheme.primary,
+      dismissesItem = true,
+      onCommit = onToggleReadLater,
     )
     Mailbox.STARRED -> SwipeAction(
       label = "スター解除",
@@ -377,12 +392,20 @@ private fun LazyItemScope.SwipeThreadRow(
       onCommit = onArchive,
     )
   }
-  val right = SwipeAction(
-    label = if (thread.isStarred) "スター解除" else "スター",
-    color = MaterialTheme.colorScheme.secondary,
-    dismissesItem = mailbox == Mailbox.STARRED && thread.isStarred,
-    onCommit = onToggleStarred,
-  )
+  val right = when (mailbox) {
+    Mailbox.READ_LATER -> SwipeAction(
+      label = if (thread.isStarred) "スター解除" else "スター",
+      color = MaterialTheme.colorScheme.secondary,
+      dismissesItem = false,
+      onCommit = onToggleStarred,
+    )
+    else -> SwipeAction(
+      label = if (thread.isReadLater) "あとで読む解除" else "あとで読む",
+      color = MaterialTheme.colorScheme.secondary,
+      dismissesItem = mailbox == Mailbox.UNREAD && !thread.isReadLater,
+      onCommit = onToggleReadLater,
+    )
+  }
   val farRight = when (mailbox) {
     Mailbox.UNREAD -> SwipeAction(
       label = "アーカイブ",
@@ -390,13 +413,14 @@ private fun LazyItemScope.SwipeThreadRow(
       dismissesItem = true,
       onCommit = onArchive,
     )
+    Mailbox.READ_LATER,
     Mailbox.STARRED -> SwipeAction(
       label = "アーカイブ",
       color = MaterialTheme.colorScheme.tertiary,
       dismissesItem = false,
       onCommit = onArchive,
     )
-    Mailbox.ALL_MAIL -> null
+    Mailbox.ALL_MAIL,
     Mailbox.INBOX -> null
   }
 
@@ -411,6 +435,7 @@ private fun LazyItemScope.SwipeThreadRow(
       account = account,
       onOpen = onOpen,
       onToggleStarred = onToggleStarred,
+      onToggleReadLater = onToggleReadLater,
     )
   }
 }
@@ -421,6 +446,7 @@ private fun ThreadRow(
   account: MailAccount?,
   onOpen: () -> Unit,
   onToggleStarred: () -> Unit,
+  onToggleReadLater: () -> Unit,
 ) {
   Row(
     modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -454,6 +480,13 @@ private fun ThreadRow(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
+    IconButton(onClick = onToggleReadLater) {
+      Icon(
+        imageVector = Icons.Default.AccessTime,
+        contentDescription = if (thread.isReadLater) "あとで読むを解除" else "あとで読む",
+        tint = if (thread.isReadLater) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
     IconButton(onClick = onToggleStarred) {
       Icon(
         imageVector = if (thread.isStarred) Icons.Default.Star else Icons.Outlined.StarBorder,
@@ -471,6 +504,7 @@ private fun ThreadDetail(
   onBack: () -> Unit,
   onToggleRead: (MailThread) -> Unit,
   onToggleStarred: (MailThread) -> Unit,
+  onToggleReadLater: (MailThread) -> Unit,
   onArchive: (MailThread) -> Unit,
   onTrash: (MailThread) -> Unit,
   onApplyLabel: (MailThread, String) -> Unit,
@@ -493,6 +527,13 @@ private fun ThreadDetail(
         Icon(
           if (thread.isUnread) Icons.Default.MarkEmailRead else Icons.Default.MarkEmailUnread,
           contentDescription = if (thread.isUnread) "既読" else "未読",
+        )
+      }
+      IconButton(onClick = { onToggleReadLater(thread) }, enabled = !loading) {
+        Icon(
+          Icons.Default.AccessTime,
+          contentDescription = if (thread.isReadLater) "あとで読むを解除" else "あとで読む",
+          tint = if (thread.isReadLater) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
       IconButton(onClick = { onToggleStarred(thread) }, enabled = !loading) {
@@ -556,5 +597,10 @@ private fun formatTime(epochMillis: Long): String {
   }.getOrDefault("")
 }
 
-private val MAIL_TRIAGE_MAILBOXES = listOf(Mailbox.UNREAD, Mailbox.STARRED, Mailbox.ALL_MAIL)
+private val MAIL_TRIAGE_MAILBOXES = listOf(
+  Mailbox.UNREAD,
+  Mailbox.READ_LATER,
+  Mailbox.STARRED,
+  Mailbox.ALL_MAIL,
+)
 private val FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")

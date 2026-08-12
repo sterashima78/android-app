@@ -545,6 +545,7 @@ fun YomitoriApp(
             onCloseThread = mailViewModel::closeThread,
             onToggleRead = mailViewModel::toggleRead,
             onToggleStarred = mailViewModel::toggleStarred,
+            onToggleReadLater = mailViewModel::toggleReadLater,
             onArchive = mailViewModel::archive,
             onTrash = mailViewModel::trash,
             onApplyLabel = mailViewModel::applyLabel,

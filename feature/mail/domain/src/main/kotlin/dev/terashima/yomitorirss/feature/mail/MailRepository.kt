@@ -27,6 +27,8 @@ interface MailRepository {
 
   suspend fun setThreadStarred(accountId: String, threadId: String, starred: Boolean)
 
+  suspend fun setThreadReadLater(accountId: String, threadId: String, readLater: Boolean)
+
   suspend fun archiveThread(accountId: String, threadId: String)
 
   suspend fun trashThread(accountId: String, threadId: String)
