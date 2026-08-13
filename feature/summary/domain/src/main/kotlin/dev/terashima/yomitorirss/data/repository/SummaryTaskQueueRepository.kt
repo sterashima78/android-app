@@ -10,6 +10,16 @@ enum class SummaryQueueTaskState {
   UNKNOWN,
 }
 
+enum class SummaryQueueTaskProgressStage {
+  FETCHING_ARTICLE,
+  PREPARING_MODEL,
+  GENERATING_SUMMARY,
+  SUMMARIZING_CHUNK,
+  REDUCING_SUMMARY,
+  FINALIZING_SUMMARY,
+  UNKNOWN,
+}
+
 data class SummaryQueueTask(
   val articleId: String,
   val articleTitle: String,
@@ -19,7 +29,7 @@ data class SummaryQueueTask(
   val startedAt: String?,
   val finishedAt: String?,
   val error: String?,
-  val progressStage: String? = null,
+  val progressStage: SummaryQueueTaskProgressStage? = null,
   val progressCurrent: Int? = null,
   val progressTotal: Int? = null,
 )
