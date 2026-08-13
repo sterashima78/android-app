@@ -411,7 +411,7 @@ private fun LibrarySettingsTab(
         ) {
           Text("Kindle の表紙を補完", style = MaterialTheme.typography.titleMedium)
           Text(
-            "Open Library の公開書籍カタログから表紙を検索します。",
+            "Amazon の公開商品ページを優先し、見つからない場合は Open Library から表紙を検索します。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -422,7 +422,7 @@ private fun LibrarySettingsTab(
         )
       }
       Text(
-        "有効にすると Kindle のタイトル・著者・ISBN を Open Library へ送信します。Amazon のエクスポートファイルや認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
+        "有効にすると Kindle の ASIN を Amazon へ送信し、フォールバック時はタイトル・著者・ISBN を Open Library へ送信します。Amazon のエクスポートファイルや認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
