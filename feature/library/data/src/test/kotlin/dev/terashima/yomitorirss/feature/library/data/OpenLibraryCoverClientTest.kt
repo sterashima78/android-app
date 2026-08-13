@@ -164,6 +164,89 @@ class OpenLibraryCoverClientTest {
     assertEquals(null, explicitVolumeNumber("Synthetic Book"))
   }
 
+  @Test
+  fun `Amazon商品ページのOGPから表紙を取得する`() {
+    val html = """
+      <meta property="og:image" content="https://m.media-amazon.com/images/I/synthetic-cover.jpg">
+    """.trimIndent()
+
+    assertEquals(
+      "https://m.media-amazon.com/images/I/synthetic-cover.jpg",
+      extractAmazonOgCoverUrl(html),
+    )
+  }
+
+  @Test
+  fun `Amazon商品画像では高解像度属性を優先する`() {
+    val html = """
+      <img id="ebooksImgBlkFront"
+        src="https://m.media-amazon.com/images/I/low.jpg"
+        data-old-hires="https://m.media-amazon.com/images/I/high.jpg">
+    """.trimIndent()
+
+    assertEquals(
+      "https://m.media-amazon.com/images/I/high.jpg",
+      extractAmazonProductImageUrl(html),
+    )
+  }
+
+  @Test
+  fun `Amazon動的画像では最大サイズを選ぶ`() {
+    val html = """
+      <img id="landingImage"
+        data-a-dynamic-image="{&quot;https://m.media-amazon.com/images/I/small.jpg&quot;:[320,500],&quot;https://m.media-amazon.com/images/I/large.jpg&quot;:[1600,2500]}">
+    """.trimIndent()
+
+    assertEquals(
+      "https://m.media-amazon.com/images/I/large.jpg",
+      extractAmazonProductImageUrl(html),
+    )
+  }
+
+  @Test
+  fun `Amazon商品URLは要求ASINとホストを検証する`() {
+    assertTrue(
+      isAmazonProductPageForAsin(
+        "https://www.amazon.co.jp/Synthetic-Book/dp/B0TEST0001/ref=test",
+        "B0TEST0001",
+      ),
+    )
+    assertFalse(
+      isAmazonProductPageForAsin(
+        "https://www.amazon.co.jp/errors/validateCaptcha",
+        "B0TEST0001",
+      ),
+    )
+    assertFalse(
+      isAmazonProductPageForAsin(
+        "https://example.com/dp/B0TEST0001",
+        "B0TEST0001",
+      ),
+    )
+  }
+
+  @Test
+  fun `商品表紙以外のAmazon画像と外部ホストを採用しない`() {
+    assertEquals(
+      null,
+      extractAmazonOgCoverUrl(
+        "<meta property=\"og:image\" content=\"https://m.media-amazon.com/images/G/logo.png\">",
+      ),
+    )
+    assertEquals(
+      null,
+      extractAmazonProductImageUrl(
+        "<img id=\"landingImage\" src=\"https://example.com/images/I/cover.jpg\">",
+      ),
+    )
+  }
+
+  @Test
+  fun `Amazonアクセス確認ページを検出する`() {
+    assertTrue(isAmazonChallengePage("<form action=\"/errors/validateCaptcha\"></form>"))
+    assertFalse(isAmazonChallengePage("<html><title>Synthetic Book</title></html>"))
+  }
+
   private fun book(
     title: String,
     authors: List<String>,

@@ -86,7 +86,7 @@ class LibraryCoverStatusRepository(
       put("source", LibrarySource.KINDLE.name)
       put("source_id", sourceId)
       putNull("thumbnail_url")
-      put("provider", OPEN_LIBRARY_PROVIDER)
+      put("provider", KINDLE_COVER_ENRICHMENT_PROVIDER)
       put("lookup_status", CoverLookupStatus.ERROR.name)
       putNull("matched_identifier")
       put("updated_at", nowEpochMillis)
@@ -142,7 +142,7 @@ class LibraryCoverStatusRepository(
   private companion object {
     const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
     const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
-    const val OPEN_LIBRARY_PROVIDER = "OPEN_LIBRARY"
+    const val KINDLE_COVER_ENRICHMENT_PROVIDER = "KINDLE_COVER_ENRICHMENT"
   }
 }
 

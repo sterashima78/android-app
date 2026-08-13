@@ -255,6 +255,9 @@ private fun coverWorkStateLabel(state: LibraryCoverWorkState): String = when (st
 
 private fun coverProviderLabel(provider: String): String = when (provider) {
   "OPEN_LIBRARY" -> "Open Library"
+  "AMAZON_PRODUCT_PAGE_OGP" -> "Amazon 商品ページ (OGP)"
+  "AMAZON_PRODUCT_PAGE_IMAGE" -> "Amazon 商品ページ (商品画像)"
+  "KINDLE_COVER_ENRICHMENT" -> "Kindle 表紙補完"
   "AUDIBLE_PRODUCT_PAGE" -> "Audible 商品ページ"
   else -> provider
 }
