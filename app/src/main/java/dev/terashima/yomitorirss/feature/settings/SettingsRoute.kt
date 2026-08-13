@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.library.LibraryCoverQueueRoute
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
@@ -22,11 +24,23 @@ fun SettingsScreen(
   onImportBackup: () -> Unit,
   onOpenWebServer: () -> Unit,
 ) {
+  val context = LocalContext.current
+  val backgroundDataFetchPreferences = remember(context) {
+    BackgroundDataFetchPreferences(context)
+  }
+  var backgroundFetchWifiOnly by remember {
+    mutableStateOf(backgroundDataFetchPreferences.wifiOnly)
+  }
   var showXCssSettings by remember { mutableStateOf(false) }
 
   SettingsFeatureScreen(
     modifier = modifier,
     tagCount = tagCount,
+    backgroundFetchWifiOnly = backgroundFetchWifiOnly,
+    onBackgroundFetchWifiOnlyChange = { wifiOnly ->
+      backgroundDataFetchPreferences.wifiOnly = wifiOnly
+      backgroundFetchWifiOnly = wifiOnly
+    },
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = { showXCssSettings = true },
