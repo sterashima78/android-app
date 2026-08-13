@@ -62,6 +62,7 @@ data class LibrarySnapshot(
   val books: List<LibraryBook>,
   val hiddenBooks: List<LibraryBook>,
   val sourceStates: Map<LibrarySource, LibrarySourceState>,
+  val kindleCoverEnrichmentEnabled: Boolean = false,
 )
 
 data class LibrarySyncResult(

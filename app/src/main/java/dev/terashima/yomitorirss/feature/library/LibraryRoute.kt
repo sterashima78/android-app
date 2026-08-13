@@ -14,10 +14,13 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -41,12 +44,44 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val repository = remember(application) {
     DefaultLibraryRepository(DatabaseConnection(application.container.database))
   }
+  val coverScheduler = remember(application) { KindleCoverEnrichmentScheduler(application) }
   val libraryViewModel: LibraryViewModel = viewModel(
     factory = LibraryViewModel.Factory(repository),
   )
   val state by libraryViewModel.state.collectAsState()
+  val coverWorkInfos by coverScheduler.workInfos.collectAsState(initial = emptyList())
+  var coverSnapshot by remember { mutableStateOf<LibrarySnapshot?>(null) }
   val scope = rememberCoroutineScope()
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
+
+  LaunchedEffect(
+    state.initialized,
+    state.kindleCoverEnrichmentEnabled,
+    state.sourceStates[LibrarySource.KINDLE]?.lastSyncedAtEpochMillis,
+  ) {
+    if (state.initialized) {
+      coverScheduler.sync(state.kindleCoverEnrichmentEnabled)
+    }
+  }
+
+  LaunchedEffect(state.books, state.hiddenBooks, state.sourceStates, state.kindleCoverEnrichmentEnabled) {
+    coverSnapshot = null
+  }
+
+  LaunchedEffect(coverWorkInfos) {
+    if (coverWorkInfos.isNotEmpty() && coverWorkInfos.all { it.state.isFinished }) {
+      coverSnapshot = withContext(Dispatchers.IO) { repository.snapshot() }
+    }
+  }
+
+  val displayState = coverSnapshot?.let { snapshot ->
+    state.copy(
+      books = snapshot.books,
+      hiddenBooks = snapshot.hiddenBooks,
+      sourceStates = snapshot.sourceStates,
+      kindleCoverEnrichmentEnabled = snapshot.kindleCoverEnrichmentEnabled,
+    )
+  } ?: state
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
@@ -136,7 +171,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   CompositionLocalProvider(LocalUriHandler provides libraryUriHandler) {
     LibraryScreen(
       modifier = modifier,
-      state = state,
+      state = displayState,
       onSyncGooglePlayBooks = requestSync,
       onImportKindle = { kindleImportLauncher.launch(kindleImportMimeTypes) },
       onImportAudible = { audibleImportLauncher.launch(audibleImportMimeTypes) },
@@ -144,6 +179,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       onRestoreBook = libraryViewModel::restoreBook,
       onSetBookSeries = libraryViewModel::setBookSeries,
       onClearBookSeries = libraryViewModel::clearBookSeries,
+      onKindleCoverEnrichmentEnabledChange = libraryViewModel::setKindleCoverEnrichmentEnabled,
       onDismissMessage = libraryViewModel::dismissMessage,
     )
   }

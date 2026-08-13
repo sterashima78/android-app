@@ -18,6 +18,7 @@ data class LibraryUiState(
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
   val sourceStates: Map<LibrarySource, LibrarySourceState> = emptyMap(),
+  val kindleCoverEnrichmentEnabled: Boolean = false,
   val message: String? = null,
 )
 
@@ -107,6 +108,22 @@ class LibraryViewModel(
     }
   }
 
+  fun setKindleCoverEnrichmentEnabled(enabled: Boolean) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.setKindleCoverEnrichmentEnabled(enabled) }
+        .onSuccess {
+          loadSnapshot(
+            message = if (enabled) {
+              "Kindle の表紙補完を有効にしました"
+            } else {
+              "Kindle の表紙補完を無効にしました"
+            },
+          )
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun reportError(error: Throwable) {
     showError(error)
   }
@@ -130,6 +147,7 @@ class LibraryViewModel(
             books = snapshot.books,
             hiddenBooks = snapshot.hiddenBooks,
             sourceStates = snapshot.sourceStates,
+            kindleCoverEnrichmentEnabled = snapshot.kindleCoverEnrichmentEnabled,
             message = message,
           )
         }

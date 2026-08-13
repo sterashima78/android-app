@@ -42,6 +42,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -80,6 +81,7 @@ fun LibraryScreen(
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
   onClearBookSeries: (LibraryBook) -> Unit,
+  onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
   onDismissMessage: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -181,6 +183,7 @@ fun LibraryScreen(
             onSyncGooglePlayBooks = onSyncGooglePlayBooks,
             onImportKindle = onImportKindle,
             onImportAudible = onImportAudible,
+            onKindleCoverEnrichmentEnabledChange = onKindleCoverEnrichmentEnabledChange,
             onRestoreBook = onRestoreBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -381,6 +384,7 @@ private fun LibrarySettingsTab(
   onSyncGooglePlayBooks: () -> Unit,
   onImportKindle: () -> Unit,
   onImportAudible: () -> Unit,
+  onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -391,6 +395,38 @@ private fun LibrarySettingsTab(
       onImportKindle = onImportKindle,
       onImportAudible = onImportAudible,
     )
+    HorizontalDivider()
+    Column(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Column(
+          modifier = Modifier.weight(1f),
+          verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+          Text("Kindle の表紙を補完", style = MaterialTheme.typography.titleMedium)
+          Text(
+            "Open Library の公開書籍カタログから表紙を検索します。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        Switch(
+          checked = state.kindleCoverEnrichmentEnabled,
+          onCheckedChange = onKindleCoverEnrichmentEnabledChange,
+        )
+      }
+      Text(
+        "有効にすると Kindle のタイトル・著者・ISBN を Open Library へ送信します。Amazon のエクスポートファイルや認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
     HorizontalDivider()
     Column(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
