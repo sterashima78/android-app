@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_KIND
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,10 +120,15 @@ class YouTubeViewModel(
     removeFromVideoLists(video.id)
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
-        bookmarkRepository.saveSharedArticle(
+        val youtubeFolderId = bookmarkRepository.listFolders()
+          .firstOrNull { it.systemKind == YOUTUBE_FOLDER_KIND }
+          ?.id
+          ?: error("YouTubeブックマークフォルダが見つかりません")
+        bookmarkRepository.saveSharedArticleToFolder(
           url = video.url,
           title = video.title,
           sourceTitle = video.channelTitle,
+          folderId = youtubeFolderId,
         )
         repository.markRead(video.id)
       }.onSuccess {
