@@ -5,7 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryCoverAcquisitionItem
-import dev.terashima.yomitoririss.feature.library.LibraryCoverAcquisitionSnapshot
+import dev.terashima.yomitorirss.feature.library.LibraryCoverAcquisitionSnapshot
 import dev.terashima.yomitorirss.feature.library.LibraryCoverAcquisitionState
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 
