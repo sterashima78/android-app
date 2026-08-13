@@ -25,6 +25,8 @@ data class LibraryBook(
   val infoUrl: String?,
   val series: LibrarySeries? = null,
   val automaticSeriesExcluded: Boolean = false,
+  val narrators: List<String> = emptyList(),
+  val duration: String? = null,
 )
 
 data class LibrarySourceState(
