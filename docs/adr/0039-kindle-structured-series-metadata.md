@@ -40,5 +40,5 @@ Amazon 由来のシリーズ情報はユーザー編集状態と分離し、再�
 - ADR-0017 の手動設定・シリーズ解除・タイトル推定を維持し、その間に構造化 Kindle メタデータを追加する。
 - ADR-0026 の ownership JSON を Kindle 蔵書の正規入力とする判断は維持する。一方、SagaSeries CSV を利用しないという限定的な判断は本 ADR で置き換える。
 - ADR-0031 のストリーミング再帰 ZIP 走査、安全上限、実データを fixture に保存しない方針をシリーズ走査にも適用する。
-- ADR-0038 の public repository policy に従い、テストは人工データのみを利用する。
+- `docs/adr/0038-android-test-layers-and-e2e.md` の public repository policy に従い、テストは人工データのみを利用する。
 - ADR-0003 / ADR-0004 に従い、Amazon 固有の解析・永続化は `feature:library:data` に閉じ込める。
