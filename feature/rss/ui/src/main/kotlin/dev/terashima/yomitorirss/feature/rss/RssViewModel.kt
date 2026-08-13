@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
+import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -158,6 +159,7 @@ class RssViewModel(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val backupChangeScheduler: BackupChangeScheduler,
+    @Suppress("UNUSED_PARAMETER") summaryRepository: SummaryRepository,
     private val articleSelector: (Article) -> Boolean = { true },
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
