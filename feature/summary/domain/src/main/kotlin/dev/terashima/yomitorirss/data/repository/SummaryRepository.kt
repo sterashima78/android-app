@@ -9,6 +9,13 @@ sealed interface SummaryRequestResult {
 
 interface SummaryRepository {
   suspend fun request(articleId: String, forceRefresh: Boolean): SummaryRequestResult
-  fun isAutoSummarizeReadLaterEnabled(): Boolean
-  fun setAutoSummarizeReadLaterEnabled(enabled: Boolean)
+
+  /**
+   * ブックマーク追加を起点に、要約とAIタグの準備をバックグラウンドで要求する。
+   * 既存要約がある場合は再生成せず、その要約をタグ生成へ再利用する。
+   */
+  suspend fun requestBookmarkEnrichment(articleId: String): SummaryRequestResult
+
+  /** 保存済みの要約を返す。AIチャット等の読み取り用途向け。 */
+  suspend fun findSummary(articleId: String): String?
 }
