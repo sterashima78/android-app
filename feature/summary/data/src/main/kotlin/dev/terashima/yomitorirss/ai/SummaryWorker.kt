@@ -15,6 +15,7 @@ import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgress
 import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgressStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.summarizeHierarchically
+import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import java.util.concurrent.atomic.AtomicReference
@@ -89,7 +90,9 @@ class SummaryWorker(
             )
             check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
             currentCoroutineContext().ensureActive()
-            database.addAiGeneratedTags(task.articleId, generatedTags)
+            if (database.addAiGeneratedTags(task.articleId, generatedTags)) {
+              DataChangeNotifier.shared.notifyChanged()
+            }
           }
 
           database.completeRunningSummaryTask(task.articleId)
