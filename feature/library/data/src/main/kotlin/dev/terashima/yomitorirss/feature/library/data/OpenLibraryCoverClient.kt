@@ -175,7 +175,7 @@ private fun String?.cleanIsbn(): String? = this
   ?.uppercase(Locale.ROOT)
   ?.takeIf { it.length == 10 || it.length == 13 }
 
-private fun String.urlEncode(): String = URLEncoder.encode(this, StandardCharsets.UTF_8)
+private fun String.urlEncode(): String = URLEncoder.encode(this, StandardCharsets.UTF_8.name())
 
 private fun escapeQueryValue(value: String): String = value
   .replace("\\", "\\\\")
