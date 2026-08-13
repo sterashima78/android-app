@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -29,6 +30,10 @@ internal class AmazonLibraryImporter {
     require(bytes.isNotEmpty()) { "インポートファイルが空です" }
     require(bytes.size <= MAX_INPUT_BYTES) { "インポートファイルが大きすぎます（上限 25 MB）" }
 
+    if (source == LibrarySource.KINDLE) {
+      return ByteArrayInputStream(bytes).use { input -> parseKindle(fileName, input) }
+    }
+
     val contents = if (isZip(fileName, bytes)) {
       readZipContents(source, bytes)
     } else {
@@ -37,47 +42,125 @@ internal class AmazonLibraryImporter {
       listOf(ImportContent(name, bytes))
     }
 
-    val imported = when (source) {
-      LibrarySource.KINDLE -> parseKindleOwnershipContents(contents)
-      LibrarySource.AUDIBLE -> contents
-        .flatMap { parseAudibleLibraryCsv(it.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")) }
-        .distinctBy(LibraryBook::sourceId)
-      LibrarySource.GOOGLE_PLAY_BOOKS -> emptyList()
-    }
+    val imported = contents
+      .flatMap { parseAudibleLibraryCsv(it.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")) }
+      .distinctBy(LibraryBook::sourceId)
 
     require(imported.isNotEmpty()) { source.unrecognizedImportMessage() }
     return imported
+  }
+
+  fun parseKindle(
+    fileName: String?,
+    input: InputStream,
+  ): List<LibraryBook> {
+    val buffered = input.asBufferedInputStream()
+    val imported = if (isZip(fileName, buffered)) {
+      parseKindleZip(buffered)
+    } else {
+      val name = fileName.orEmpty()
+      require(name.isKindleOwnershipFile()) { LibrarySource.KINDLE.unrecognizedImportMessage() }
+      val bytes = buffered.readLimited(
+        limit = MAX_ENTRY_BYTES,
+        tooLargeMessage = "Kindle ownership JSON が大きすぎます（1ファイル上限 25 MB）",
+      )
+      require(bytes.isNotEmpty()) { "インポートファイルが空です" }
+      parseKindleOwnershipContents(listOf(ImportContent(name, bytes)))
+    }
+
+    require(imported.isNotEmpty()) { LibrarySource.KINDLE.unrecognizedImportMessage() }
+    return imported
+  }
+
+  private fun parseKindleZip(input: InputStream): List<LibraryBook> {
+    val scopedCandidates = mutableListOf<KindleOwnershipCandidate>()
+    val fallbackCandidates = mutableListOf<KindleOwnershipCandidate>()
+    var scopedOwnershipFileFound = false
+    var ownershipFileFound = false
+    var ordinal = 0
+    var entryCount = 0
+    var expandedOwnershipBytes = 0L
+
+    val zip = ZipInputStream(input)
+    while (true) {
+      val entry = zip.nextEntry ?: break
+      entryCount += 1
+      require(entryCount <= MAX_STREAMING_ZIP_ENTRIES) {
+        "ZIP 内のファイル数が多すぎます（上限 100000 件）"
+      }
+
+      if (!entry.isDirectory && entry.name.isKindleOwnershipFile()) {
+        ownershipFileFound = true
+        val scoped = entry.name.hasKindlePathHint()
+        if (scoped) scopedOwnershipFileFound = true
+
+        val remaining = MAX_KINDLE_EXPANDED_BYTES - expandedOwnershipBytes
+        require(remaining > 0) {
+          "Kindle ownership JSON の合計サイズが大きすぎます（上限 256 MB）"
+        }
+        val entryLimit = minOf(MAX_ENTRY_BYTES.toLong(), remaining).toInt()
+        val tooLargeMessage = if (remaining < MAX_ENTRY_BYTES) {
+          "Kindle ownership JSON の合計サイズが大きすぎます（上限 256 MB）"
+        } else {
+          "Kindle ownership JSON が大きすぎます（1ファイル上限 25 MB）"
+        }
+        val bytes = zip.readLimited(
+          limit = entryLimit,
+          tooLargeMessage = tooLargeMessage,
+        )
+        expandedOwnershipBytes += bytes.size
+        val output = if (scoped) scopedCandidates else fallbackCandidates
+        collectKindleOwnershipContent(bytes, output) { ordinal++ }
+      }
+      zip.closeEntry()
+    }
+
+    require(ownershipFileFound) { LibrarySource.KINDLE.unrecognizedImportMessage() }
+    return resolveKindleOwnershipCandidates(
+      if (scopedOwnershipFileFound) scopedCandidates else fallbackCandidates,
+    )
   }
 
   private fun parseKindleOwnershipContents(contents: List<ImportContent>): List<LibraryBook> {
     val candidates = mutableListOf<KindleOwnershipCandidate>()
     var ordinal = 0
     contents.forEach { content ->
-      val text = content.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")
-      parseJsonRoots(text).forEach { root ->
-        collectKindleOwnershipCandidates(root, candidates) { ordinal++ }
-      }
+      collectKindleOwnershipContent(content.bytes, candidates) { ordinal++ }
     }
+    return resolveKindleOwnershipCandidates(candidates)
+  }
 
-    return candidates
-      .groupBy(KindleOwnershipCandidate::sourceId)
-      .mapNotNull { (_, records) ->
-        val latest = records.maxWithOrNull(
+  private fun collectKindleOwnershipContent(
+    bytes: ByteArray,
+    output: MutableList<KindleOwnershipCandidate>,
+    nextOrdinal: () -> Int,
+  ) {
+    val text = bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")
+    parseJsonRoots(text).forEach { root ->
+      collectKindleOwnershipCandidates(root, output, nextOrdinal)
+    }
+  }
+
+  private fun resolveKindleOwnershipCandidates(
+    candidates: List<KindleOwnershipCandidate>,
+  ): List<LibraryBook> = candidates
+    .groupBy(KindleOwnershipCandidate::sourceId)
+    .mapNotNull { (_, records) ->
+      val latest = records.maxWithOrNull(
+        compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
+          .thenBy(KindleOwnershipCandidate::ordinal),
+      ) ?: return@mapNotNull null
+      if (latest.state == KindleRightState.REVOKED) return@mapNotNull null
+
+      records
+        .asSequence()
+        .filter { it.book != null }
+        .maxWithOrNull(
           compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
             .thenBy(KindleOwnershipCandidate::ordinal),
-        ) ?: return@mapNotNull null
-        if (latest.state == KindleRightState.REVOKED) return@mapNotNull null
-
-        records
-          .asSequence()
-          .filter { it.book != null }
-          .maxWithOrNull(
-            compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
-              .thenBy(KindleOwnershipCandidate::ordinal),
-          )
-          ?.book
-      }
-  }
+        )
+        ?.book
+    }
 
   private fun parseJsonRoots(text: String): List<Any> = runCatching {
     buildList {
@@ -276,7 +359,10 @@ internal class AmazonLibraryImporter {
         if (!entry.isDirectory && entry.name.isExpectedSourceFile(source)) {
           val remaining = MAX_EXPANDED_BYTES - expandedBytes
           require(remaining > 0) { "ZIP の展開サイズが大きすぎます（上限 50 MB）" }
-          val content = zip.readLimited(minOf(MAX_ENTRY_BYTES, remaining.toInt()))
+          val content = zip.readLimited(
+            limit = minOf(MAX_ENTRY_BYTES, remaining.toInt()),
+            tooLargeMessage = "ZIP 内のファイルが大きすぎます",
+          )
           expandedBytes += content.size
           contents += ImportContent(entry.name, content)
         }
@@ -284,15 +370,13 @@ internal class AmazonLibraryImporter {
       }
     }
     require(contents.isNotEmpty()) { source.unrecognizedImportMessage() }
-    return if (source == LibrarySource.KINDLE) {
-      val kindleScoped = contents.filter { it.name.hasKindlePathHint() }
-      kindleScoped.ifEmpty { contents }
-    } else {
-      contents
-    }
+    return contents
   }
 
-  private fun InputStream.readLimited(limit: Int): ByteArray {
+  private fun InputStream.readLimited(
+    limit: Int,
+    tooLargeMessage: String,
+  ): ByteArray {
     val output = ByteArrayOutputStream()
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var total = 0
@@ -300,7 +384,7 @@ internal class AmazonLibraryImporter {
       val read = read(buffer)
       if (read < 0) break
       total += read
-      require(total <= limit) { "ZIP 内のファイルが大きすぎます" }
+      require(total <= limit) { tooLargeMessage }
       output.write(buffer, 0, read)
     }
     return output.toByteArray()
@@ -416,9 +500,23 @@ internal class AmazonLibraryImporter {
   }
 
   private fun isZip(fileName: String?, bytes: ByteArray): Boolean =
-    fileName?.lowercase(Locale.ROOT)?.endsWith(".zip") == true ||
-      (bytes.size >= 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4b.toByte() &&
-        bytes[2] == 0x03.toByte() && bytes[3] == 0x04.toByte())
+    fileName?.lowercase(Locale.ROOT)?.endsWith(".zip") == true || bytes.hasZipSignature()
+
+  private fun isZip(fileName: String?, input: BufferedInputStream): Boolean {
+    if (fileName?.lowercase(Locale.ROOT)?.endsWith(".zip") == true) return true
+    input.mark(ZIP_SIGNATURE_SIZE)
+    val signature = ByteArray(ZIP_SIGNATURE_SIZE)
+    val read = input.read(signature)
+    input.reset()
+    return read == ZIP_SIGNATURE_SIZE && signature.hasZipSignature()
+  }
+
+  private fun ByteArray.hasZipSignature(): Boolean =
+    size >= ZIP_SIGNATURE_SIZE && this[0] == 0x50.toByte() && this[1] == 0x4b.toByte() &&
+      this[2] == 0x03.toByte() && this[3] == 0x04.toByte()
+
+  private fun InputStream.asBufferedInputStream(): BufferedInputStream =
+    this as? BufferedInputStream ?: BufferedInputStream(this)
 
   private fun LibrarySource.unrecognizedImportMessage(): String = when (this) {
     LibrarySource.KINDLE ->
@@ -448,6 +546,9 @@ internal class AmazonLibraryImporter {
     const val MAX_EXPANDED_BYTES = 50 * 1024 * 1024L
     const val MAX_ENTRY_BYTES = 25 * 1024 * 1024
     const val MAX_ZIP_ENTRIES = 100
+    const val MAX_STREAMING_ZIP_ENTRIES = 100_000
+    const val MAX_KINDLE_EXPANDED_BYTES = 256 * 1024 * 1024L
+    const val ZIP_SIGNATURE_SIZE = 4
 
     val TITLE_HEADERS = setOf("title", "booktitle", "producttitle", "itemname", "name")
     val ID_HEADERS = setOf("asin", "amazonasin", "audibleasin", "productid", "contentid", "id")

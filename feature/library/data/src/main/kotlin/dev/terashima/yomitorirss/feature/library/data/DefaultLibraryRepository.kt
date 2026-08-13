@@ -11,6 +11,8 @@ import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySourceState
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import org.json.JSONArray
 
 class DefaultLibraryRepository(
@@ -142,14 +144,17 @@ class DefaultLibraryRepository(
   override suspend fun importAmazonLibrary(
     source: LibrarySource,
     fileName: String?,
-    bytes: ByteArray,
+    input: InputStream,
   ): LibrarySyncResult {
     ensureSchema()
-    val parsedBooks = amazonLibraryImporter.parse(source, fileName, bytes)
-    val books = if (source == LibrarySource.AUDIBLE) {
-      audibleMetadataEnricher.enrich(fileName, bytes, parsedBooks)
-    } else {
-      parsedBooks
+    val books = when (source) {
+      LibrarySource.KINDLE -> amazonLibraryImporter.parseKindle(fileName, input)
+      LibrarySource.AUDIBLE -> {
+        val bytes = input.readLimited(MAX_AUDIBLE_IMPORT_BYTES)
+        val parsedBooks = amazonLibraryImporter.parse(source, fileName, bytes)
+        audibleMetadataEnricher.enrich(fileName, bytes, parsedBooks)
+      }
+      LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
     }
     return replaceSource(source = source, books = books, accountLabel = null)
   }
@@ -362,5 +367,23 @@ class DefaultLibraryRepository(
   private fun Cursor.nullableInt(name: String): Int? {
     val index = getColumnIndexOrThrow(name)
     return if (isNull(index)) null else getInt(index)
+  }
+
+  private fun InputStream.readLimited(limit: Int): ByteArray {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0
+    while (true) {
+      val read = read(buffer)
+      if (read < 0) break
+      total += read
+      require(total <= limit) { "Audible インポートファイルが大きすぎます（上限 25 MB）" }
+      output.write(buffer, 0, read)
+    }
+    return output.toByteArray()
+  }
+
+  private companion object {
+    const val MAX_AUDIBLE_IMPORT_BYTES = 25 * 1024 * 1024
   }
 }
