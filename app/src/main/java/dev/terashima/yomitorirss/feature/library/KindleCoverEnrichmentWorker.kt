@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit
 
 internal class KindleCoverEnrichmentScheduler(context: Context) {
   private val workManager = WorkManager.getInstance(context.applicationContext)
+  val workInfos = workManager.getWorkInfosForUniqueWorkFlow(WORK_NAME)
 
   fun sync(enabled: Boolean) {
     if (enabled) schedule() else cancel()
@@ -60,7 +61,7 @@ internal class KindleCoverEnrichmentScheduler(context: Context) {
   }
 }
 
-internal class KindleCoverEnrichmentWorker(
+class KindleCoverEnrichmentWorker(
   appContext: Context,
   workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
