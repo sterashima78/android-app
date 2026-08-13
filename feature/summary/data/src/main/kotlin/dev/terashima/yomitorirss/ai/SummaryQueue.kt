@@ -24,8 +24,8 @@ object SummaryQueue {
     }
     if (!accepted) return false
 
+    ensureCleanupScheduled(appContext)
     return runCatching {
-      scheduleCleanup(appContext)
       scheduleWorker(appContext)
       true
     }.getOrElse { error ->
@@ -41,7 +41,7 @@ object SummaryQueue {
 
   fun kick(context: Context) {
     val appContext = context.applicationContext
-    scheduleCleanup(appContext)
+    ensureCleanupScheduled(appContext)
     scheduleWorker(appContext)
   }
 
@@ -80,7 +80,7 @@ object SummaryQueue {
       database.close()
     }
     if (!resumed) return false
-    scheduleCleanup(appContext)
+    ensureCleanupScheduled(appContext)
     scheduleWorker(appContext)
     return true
   }
@@ -100,6 +100,10 @@ object SummaryQueue {
       ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )
+  }
+
+  private fun ensureCleanupScheduled(context: Context) {
+    runCatching { scheduleCleanup(context) }
   }
 
   private fun scheduleCleanup(context: Context) {
