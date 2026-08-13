@@ -66,7 +66,9 @@ stopped は再開可能なので削除しない。queued / running も削除対�
 
 要約タスクのenqueue、再開、またはタスクキューのkick時にスケジュールを保証する。一度登録されたPeriodicWorkはWorkManagerが永続化するため、アプリ起動ごとに別ジョブを増やさない。
 
-クリーンアップ失敗時は `Result.retry()` とし、一時的なDBアクセス失敗で保守処理を恒久停止しない。
+クリーンアップの登録は保守処理としてベストエフォートにし、登録失敗だけを理由に要約タスクの受理や実行を失敗扱いにしない。次回のenqueue、再開、kick時に再び登録を試みる。
+
+クリーンアップ実行時の一時的なDBアクセス失敗は `Result.retry()` とする。ただしWorkManagerからのキャンセルはCoroutineのキャンセルとして伝播させ、retryへ変換しない。
 
 ## Consequences
 
