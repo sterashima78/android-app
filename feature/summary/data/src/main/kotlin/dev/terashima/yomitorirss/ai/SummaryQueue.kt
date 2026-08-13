@@ -1,14 +1,18 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import java.util.concurrent.TimeUnit
 
 object SummaryQueue {
   private const val QUEUE_NAME = "article-summary-queue"
   private const val TAG = "article-summary"
+  private const val CLEANUP_WORK_NAME = "article-summary-task-log-cleanup"
 
   fun enqueue(context: Context, articleId: String, forceRefresh: Boolean): Boolean {
     val appContext = context.applicationContext
@@ -21,6 +25,7 @@ object SummaryQueue {
     if (!accepted) return false
 
     return runCatching {
+      scheduleCleanup(appContext)
       scheduleWorker(appContext)
       true
     }.getOrElse { error ->
@@ -35,7 +40,9 @@ object SummaryQueue {
   }
 
   fun kick(context: Context) {
-    scheduleWorker(context.applicationContext)
+    val appContext = context.applicationContext
+    scheduleCleanup(appContext)
+    scheduleWorker(appContext)
   }
 
   fun stop(context: Context, articleId: String): Boolean {
@@ -73,6 +80,7 @@ object SummaryQueue {
       database.close()
     }
     if (!resumed) return false
+    scheduleCleanup(appContext)
     scheduleWorker(appContext)
     return true
   }
@@ -90,6 +98,16 @@ object SummaryQueue {
     WorkManager.getInstance(context).enqueueUniqueWork(
       QUEUE_NAME,
       ExistingWorkPolicy.APPEND_OR_REPLACE,
+      request,
+    )
+  }
+
+  private fun scheduleCleanup(context: Context) {
+    val request = PeriodicWorkRequestBuilder<SummaryTaskLogCleanupWorker>(1, TimeUnit.DAYS)
+      .build()
+    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+      CLEANUP_WORK_NAME,
+      ExistingPeriodicWorkPolicy.KEEP,
       request,
     )
   }
