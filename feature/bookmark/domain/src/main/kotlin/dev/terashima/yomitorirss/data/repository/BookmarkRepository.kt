@@ -22,6 +22,12 @@ interface BookmarkRepository {
   suspend fun unsaveArticle(articleId: String)
   suspend fun removeReadLater(articleId: String)
   suspend fun saveSharedArticle(url: String, title: String, sourceTitle: String): BookmarkSaveResult
+  suspend fun saveSharedArticleToFolder(
+    url: String,
+    title: String,
+    sourceTitle: String,
+    folderId: String,
+  ): BookmarkSaveResult
 }
 
 interface BookmarkImportRepository {
