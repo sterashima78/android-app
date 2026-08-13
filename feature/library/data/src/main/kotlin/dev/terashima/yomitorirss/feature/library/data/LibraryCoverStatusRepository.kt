@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import android.content.ContentValues
 import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryCoverAcquisitionItem
 import dev.terashima.yomitorirss.feature.library.LibraryCoverAcquisitionSnapshot
@@ -57,6 +59,47 @@ class LibraryCoverStatusRepository(
     )
   }
 
+  suspend fun markNextKindleCoverLookupError(
+    nowEpochMillis: Long = System.currentTimeMillis(),
+  ): Boolean {
+    ensureSchema()
+    val staleBefore = nowEpochMillis - COVER_LOOKUP_STALE_MILLIS
+    val sourceId = database.readable.rawQuery(
+      """
+        SELECT item.source_id
+        FROM library_items AS item
+        LEFT JOIN library_item_external_metadata AS metadata
+          ON metadata.source = item.source AND metadata.source_id = item.source_id
+        WHERE item.source = ?
+          AND (item.thumbnail_url IS NULL OR TRIM(item.thumbnail_url) = '')
+          AND (metadata.thumbnail_url IS NULL OR TRIM(metadata.thumbnail_url) = '')
+          AND (metadata.updated_at IS NULL OR metadata.updated_at < ?)
+        ORDER BY item.title COLLATE NOCASE, item.source_id
+        LIMIT 1
+      """.trimIndent(),
+      arrayOf(LibrarySource.KINDLE.name, staleBefore.toString()),
+    ).use { cursor ->
+      if (cursor.moveToFirst()) cursor.getString(0) else null
+    } ?: return false
+
+    val values = ContentValues().apply {
+      put("source", LibrarySource.KINDLE.name)
+      put("source_id", sourceId)
+      putNull("thumbnail_url")
+      put("provider", OPEN_LIBRARY_PROVIDER)
+      put("lookup_status", CoverLookupStatus.ERROR.name)
+      putNull("matched_identifier")
+      put("updated_at", nowEpochMillis)
+    }
+    database.writable.insertWithOnConflict(
+      "library_item_external_metadata",
+      null,
+      values,
+      SQLiteDatabase.CONFLICT_REPLACE,
+    )
+    return true
+  }
+
   suspend fun resetUnresolvedLookups(sources: Set<LibrarySource>) {
     if (sources.isEmpty()) return
     ensureSchema()
@@ -99,6 +142,7 @@ class LibraryCoverStatusRepository(
   private companion object {
     const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
     const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
+    const val OPEN_LIBRARY_PROVIDER = "OPEN_LIBRARY"
   }
 }
 
@@ -117,6 +161,7 @@ internal fun resolveLibraryCoverAcquisitionState(
   return when (lookupStatus) {
     CoverLookupStatus.NOT_FOUND.name -> LibraryCoverAcquisitionState.NOT_FOUND
     CoverLookupStatus.AMBIGUOUS.name -> LibraryCoverAcquisitionState.AMBIGUOUS
+    CoverLookupStatus.ERROR.name -> LibraryCoverAcquisitionState.NOT_FOUND
     else -> LibraryCoverAcquisitionState.WAITING
   }
 }

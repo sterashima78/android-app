@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.LibraryCoverStatusRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -52,7 +53,7 @@ internal class KindleCoverEnrichmentScheduler(context: Context) {
           .setRequiredNetworkType(NetworkType.CONNECTED)
           .build(),
       )
-      .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+      .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
       .build()
 
   companion object {
@@ -71,14 +72,23 @@ class KindleCoverEnrichmentWorker(
 ) : CoroutineWorker(appContext, workerParams) {
   override suspend fun doWork(): Result {
     val database = YomitoriDatabase.create(applicationContext)
-    val repository = DefaultLibraryRepository(DatabaseConnection(database))
+    val connection = DatabaseConnection(database)
+    val repository = DefaultLibraryRepository(connection)
+    val coverStatusRepository = LibraryCoverStatusRepository(connection)
     return try {
       if (repository.enrichKindleCoverBatch(limit = BOOKS_PER_WORKER)) {
         KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
       }
       Result.success()
     } catch (_: IOException) {
-      Result.retry()
+      if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
+        Result.retry()
+      } else {
+        if (coverStatusRepository.markNextKindleCoverLookupError()) {
+          KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
+        }
+        Result.success()
+      }
     } catch (error: CancellationException) {
       throw error
     } catch (_: Throwable) {
@@ -90,5 +100,6 @@ class KindleCoverEnrichmentWorker(
 
   private companion object {
     const val BOOKS_PER_WORKER = 1
+    const val MAX_RETRY_ATTEMPTS = 2
   }
 }

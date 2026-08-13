@@ -5,8 +5,10 @@ import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -119,6 +121,42 @@ class OpenLibraryCoverClientTest {
   }
 
   @Test
+  fun `同じクライアントで複数の検索を実行できる`() = runBlocking {
+    val httpClient = RecordingHttpClient(body = "{\"docs\":[]}")
+    val client = OpenLibraryCoverClient(httpClient)
+
+    client.lookup(book(title = "Synthetic Book A", authors = emptyList()))
+    client.lookup(book(title = "Synthetic Book B", authors = emptyList()))
+
+    assertEquals(2, httpClient.requestCount)
+  }
+
+  @Test
+  fun `429とサーバーエラーは一時エラーとして再試行対象にする`() = runBlocking {
+    val httpClient = RecordingHttpClient(body = "{}", statusCode = 429)
+    val error = runCatching {
+      OpenLibraryCoverClient(httpClient).lookup(
+        book(title = "Synthetic Book", authors = emptyList()),
+      )
+    }.exceptionOrNull()
+
+    assertTrue(error is IOException)
+    assertTrue(isRetryableOpenLibraryStatus(408))
+    assertTrue(isRetryableOpenLibraryStatus(429))
+    assertTrue(isRetryableOpenLibraryStatus(503))
+    assertFalse(isRetryableOpenLibraryStatus(404))
+  }
+
+  @Test
+  fun `恒久的なHTTPエラーは取得エラーとして確定する`() = runBlocking {
+    val result = OpenLibraryCoverClient(
+      RecordingHttpClient(body = "{}", statusCode = 404),
+    ).lookup(book(title = "Synthetic Book", authors = emptyList()))
+
+    assertEquals(CoverLookupStatus.ERROR, result.status)
+  }
+
+  @Test
   fun `巻数表現を抽出できる`() {
     assertEquals(12, explicitVolumeNumber("架空書籍 第12巻"))
     assertEquals(7, explicitVolumeNumber("Synthetic Book Vol. 7"))
@@ -147,14 +185,17 @@ class OpenLibraryCoverClientTest {
 
   private class RecordingHttpClient(
     private val body: String,
+    private val statusCode: Int = 200,
   ) : HttpClient {
     var lastRequest: HttpRequest? = null
+    var requestCount: Int = 0
 
     override suspend fun execute(request: HttpRequest): HttpResponse {
       lastRequest = request
+      requestCount++
       return HttpResponse(
-        statusCode = 200,
-        reasonPhrase = "OK",
+        statusCode = statusCode,
+        reasonPhrase = if (statusCode in 200..299) "OK" else "Error",
         finalUrl = request.url,
         headers = emptyMap(),
         body = body.toByteArray(),

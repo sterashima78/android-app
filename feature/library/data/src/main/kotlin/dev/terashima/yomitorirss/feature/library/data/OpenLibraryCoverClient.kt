@@ -14,6 +14,7 @@ internal enum class CoverLookupStatus {
   FOUND,
   NOT_FOUND,
   AMBIGUOUS,
+  ERROR,
 }
 
 internal data class CoverLookupResult(
@@ -25,12 +26,11 @@ internal data class CoverLookupResult(
 internal class OpenLibraryCoverClient(
   private val httpClient: HttpClient = HttpClient.create(),
 ) {
-  private var requestAttempted = false
-
-  suspend fun lookup(book: LibraryBook): CoverLookupResult {
-    book.isbn13.cleanIsbn()?.let { return lookupByIsbn(it) }
-    book.isbn10.cleanIsbn()?.let { return lookupByIsbn(it) }
-    return lookupByTitle(book)
+  suspend fun lookup(book: LibraryBook): CoverLookupResult = try {
+    val isbn = book.isbn13.cleanIsbn() ?: book.isbn10.cleanIsbn()
+    if (isbn != null) lookupByIsbn(isbn) else lookupByTitle(book)
+  } catch (_: PermanentOpenLibraryHttpException) {
+    CoverLookupResult(CoverLookupStatus.ERROR)
   }
 
   private suspend fun lookupByIsbn(isbn: String): CoverLookupResult {
@@ -69,18 +69,16 @@ internal class OpenLibraryCoverClient(
   }
 
   private suspend fun search(query: String, limit: Int): List<OpenLibraryCandidate> {
-    if (requestAttempted) {
-      throw IOException("Open Library への連続検索を避けるためバックグラウンドで再試行します")
-    }
-    requestAttempted = true
-
     val url = "$SEARCH_URL?q=${query.urlEncode()}" +
       "&fields=key,title,author_name,isbn,cover_i&limit=$limit"
     val response = httpClient.execute(
       HttpRequest(url = url, headers = mapOf("Accept" to "application/json")),
     )
     if (!response.isSuccessful) {
-      throw IOException("Open Library の検索に失敗しました (${response.statusCode})")
+      if (isRetryableOpenLibraryStatus(response.statusCode)) {
+        throw IOException("Open Library の一時的な検索エラー (${response.statusCode})")
+      }
+      throw PermanentOpenLibraryHttpException()
     }
 
     val root = runCatching { JSONObject(response.body.toString(Charsets.UTF_8)) }
@@ -93,6 +91,11 @@ internal class OpenLibraryCoverClient(
     }
   }
 }
+
+internal fun isRetryableOpenLibraryStatus(statusCode: Int): Boolean =
+  statusCode == 408 || statusCode == 429 || statusCode in 500..599
+
+private class PermanentOpenLibraryHttpException : Exception()
 
 internal fun selectTitleCandidate(
   book: LibraryBook,

@@ -30,6 +30,14 @@ class LibraryCoverStatusRepositoryTest {
   }
 
   @Test
+  fun `取得エラーは未取得として再試行可能にする`() {
+    assertEquals(
+      LibraryCoverAcquisitionState.NOT_FOUND,
+      resolveLibraryCoverAcquisitionState(null, null, CoverLookupStatus.ERROR.name, 900L, 500L),
+    )
+  }
+
+  @Test
   fun `古い未取得結果は待機状態へ戻す`() {
     assertEquals(
       LibraryCoverAcquisitionState.WAITING,
