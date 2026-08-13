@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -86,6 +87,33 @@ class AmazonLibraryImporterTest {
     val books = importer.parse(LibrarySource.KINDLE, "kindle-export.zip", bytes)
 
     assertEquals(listOf("Zipped Kindle Book"), books.map { it.title })
+  }
+
+  @Test
+  fun `Kindle ZIP は100件を超える無関係ファイルをストリームで読み飛ばす`() {
+    val files = buildList {
+      repeat(150) { index ->
+        add("Other/data-$index.json" to "{\"ignored\":$index}")
+      }
+      add(
+        "Kindle/Digital.Content.Ownership.151.json" to """
+          {
+            "rightAction": "Grant",
+            "timestamp": "2026-04-01T00:00:00Z",
+            "asin": "KINDLE151",
+            "title": "Streaming Kindle Book",
+            "contentType": "Kindle E-Book"
+          }
+        """.trimIndent(),
+      )
+    }
+    val bytes = zipOf(files)
+
+    val books = ByteArrayInputStream(bytes).use { input ->
+      importer.parseKindle("amazon-export.zip", input)
+    }
+
+    assertEquals(listOf("Streaming Kindle Book"), books.map { it.title })
   }
 
   @Test(expected = IllegalArgumentException::class)
@@ -181,7 +209,9 @@ class AmazonLibraryImporterTest {
     )
   }
 
-  private fun zipOf(vararg files: Pair<String, String>): ByteArray =
+  private fun zipOf(vararg files: Pair<String, String>): ByteArray = zipOf(files.toList())
+
+  private fun zipOf(files: List<Pair<String, String>>): ByteArray =
     ByteArrayOutputStream().use { output ->
       ZipOutputStream(output).use { zip ->
         files.forEach { (name, text) ->
