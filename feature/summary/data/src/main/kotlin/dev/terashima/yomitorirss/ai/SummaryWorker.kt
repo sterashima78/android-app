@@ -10,7 +10,9 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import dev.terashima.yomitorirss.core.airuntime.HIERARCHICAL_SUMMARY_CACHE_VARIANT
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.airuntime.summarizeHierarchically
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import kotlinx.coroutines.CancellationException
@@ -42,7 +44,7 @@ class SummaryWorker(
           val selectedModel = modelManager.selectedModel()
             ?: error("要約モデルをダウンロードして選択してください")
           val prompt = modelManager.summaryPrompt.value
-          val cacheKey = modelManager.summaryCacheKey(selectedModel.id, prompt)
+          val cacheKey = "${modelManager.summaryCacheKey(selectedModel.id, prompt)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
 
           if (!task.forceRefresh) {
             val cached = database.findSummary(task.articleId)
@@ -54,7 +56,7 @@ class SummaryWorker(
 
           val articleText = ArticleContentClient().fetchArticleText(article.url)
           currentCoroutineContext().ensureActive()
-          val summary = modelManager.summarize(articleText, prompt)
+          val summary = modelManager.summarizeHierarchically(articleText, prompt)
           currentCoroutineContext().ensureActive()
           database.saveSummary(task.articleId, summary, cacheKey)
           database.completeRunningSummaryTask(task.articleId)
