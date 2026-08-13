@@ -12,4 +12,8 @@ class DataChangeNotifier {
   fun notifyChanged() {
     _version.update { it + 1L }
   }
+
+  companion object {
+    val shared: DataChangeNotifier = DataChangeNotifier()
+  }
 }
