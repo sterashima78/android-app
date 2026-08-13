@@ -3,7 +3,9 @@ package dev.terashima.yomitorirss.feature.youtube
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_KIND
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,7 @@ data class YouTubeUiState(
 class YouTubeViewModel(
   private val repository: YouTubeRepository,
   private val bookmarkRepository: BookmarkRepository,
+  private val backupChangeScheduler: BackupChangeScheduler,
 ) : ViewModel() {
   private val _state = MutableStateFlow(YouTubeUiState())
   val state: StateFlow<YouTubeUiState> = _state.asStateFlow()
@@ -119,11 +122,17 @@ class YouTubeViewModel(
     removeFromVideoLists(video.id)
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
-        bookmarkRepository.saveSharedArticle(
+        val youtubeFolderId = bookmarkRepository.listFolders()
+          .firstOrNull { it.systemKind == YOUTUBE_FOLDER_KIND }
+          ?.id
+          ?: error("YouTubeブックマークフォルダが見つかりません")
+        bookmarkRepository.saveSharedArticleToFolder(
           url = video.url,
           title = video.title,
           sourceTitle = video.channelTitle,
+          folderId = youtubeFolderId,
         )
+        backupChangeScheduler.scheduleAfterChange()
         repository.markRead(video.id)
       }.onSuccess {
         reloadSavedVideos()
@@ -247,11 +256,12 @@ class YouTubeViewModel(
   class Factory(
     private val repository: YouTubeRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val backupChangeScheduler: BackupChangeScheduler,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(YouTubeViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return YouTubeViewModel(repository, bookmarkRepository) as T
+      return YouTubeViewModel(repository, bookmarkRepository, backupChangeScheduler) as T
     }
   }
 }

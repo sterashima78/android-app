@@ -26,6 +26,7 @@ dependencies {
   implementation(project(":feature:youtube:domain"))
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:article:domain"))
+  implementation(project(":feature:backup:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
   implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")

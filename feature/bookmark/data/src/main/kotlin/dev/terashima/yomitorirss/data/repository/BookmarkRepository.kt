@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.bookmark.data
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
@@ -11,6 +12,10 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.bookmark.Tag
+import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_KIND
+import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_NAME
+import java.time.Instant
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 
@@ -29,16 +34,21 @@ class DefaultBookmarkRepository(
 
   override suspend fun isBookmarked(articleId: String): Boolean = store.isBookmarked(articleId)
 
-  override suspend fun listFolders(): List<BookmarkFolder> = store.listFolders()
+  override suspend fun listFolders(): List<BookmarkFolder> {
+    ensureYouTubeFolder()
+    return store.listFolders()
+  }
 
   override suspend fun listTags(): List<Tag> = store.listTags()
 
   override suspend fun createFolder(name: String) {
+    requireUserFolderName(name)
     store.createFolder(name)
     dataChanges.notifyChanged()
   }
 
   override suspend fun renameFolder(folderId: String, name: String) {
+    requireUserFolderName(name)
     store.renameFolder(folderId, name)
     dataChanges.notifyChanged()
   }
@@ -101,19 +111,114 @@ class DefaultBookmarkRepository(
     url: String,
     title: String,
     sourceTitle: String,
+  ): BookmarkSaveResult = saveSharedArticleInternal(
+    url = url,
+    title = title,
+    sourceTitle = sourceTitle,
+    folderId = null,
+  )
+
+  override suspend fun saveSharedArticleToFolder(
+    url: String,
+    title: String,
+    sourceTitle: String,
+    folderId: String,
+  ): BookmarkSaveResult = saveSharedArticleInternal(
+    url = url,
+    title = title,
+    sourceTitle = sourceTitle,
+    folderId = folderId,
+  )
+
+  private suspend fun saveSharedArticleInternal(
+    url: String,
+    title: String,
+    sourceTitle: String,
+    folderId: String?,
   ): BookmarkSaveResult {
     val result = store.saveSharedArticle(url, title, sourceTitle)
+    val articleId = findSavedArticleIdByUrl(url)
+      ?: error("保存したブックマークが見つかりません")
+    if (folderId != null) store.moveArticleToFolder(articleId, folderId)
     dataChanges.notifyChanged()
     if (result == BookmarkSaveResult.ADDED) {
-      findSavedArticleIdByUrl(url)?.let { articleId -> notifyNewBookmark(articleId, wasBookmarked = false) }
+      notifyNewBookmark(articleId, wasBookmarked = false)
     }
     return result
   }
 
   private fun findSavedArticleIdByUrl(url: String): String? = database.readable.rawQuery(
-    "SELECT id FROM articles WHERE url=? AND saved_at IS NOT NULL ORDER BY saved_at DESC LIMIT 1",
+    "SELECT id FROM articles WHERE url=? ORDER BY CASE WHEN saved_at IS NULL THEN 1 ELSE 0 END,fetched_at DESC LIMIT 1",
     arrayOf(url),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+
+  private fun ensureYouTubeFolder() {
+    val normalizedName = normalizeFolderName(YOUTUBE_FOLDER_NAME)
+    database.transaction {
+      rawQuery(
+        "SELECT id,name,system_kind FROM bookmark_folders WHERE normalized_name=? LIMIT 1",
+        arrayOf(normalizedName),
+      ).use { cursor ->
+        if (cursor.moveToFirst()) {
+          val id = cursor.getString(0)
+          val name = cursor.getString(1)
+          val systemKind = if (cursor.isNull(2)) null else cursor.getString(2)
+          require(systemKind == null || systemKind == YOUTUBE_FOLDER_KIND) {
+            "YouTubeフォルダ名は別のシステムフォルダで使用されています"
+          }
+          if (name != YOUTUBE_FOLDER_NAME || systemKind != YOUTUBE_FOLDER_KIND) {
+            update(
+              "bookmark_folders",
+              ContentValues().apply {
+                put("name", YOUTUBE_FOLDER_NAME)
+                put("normalized_name", normalizedName)
+                put("system_kind", YOUTUBE_FOLDER_KIND)
+              },
+              "id=?",
+              arrayOf(id),
+            )
+          }
+          return@transaction
+        }
+      }
+
+      rawQuery(
+        "SELECT id FROM bookmark_folders WHERE system_kind=? LIMIT 1",
+        arrayOf(YOUTUBE_FOLDER_KIND),
+      ).use { cursor ->
+        if (cursor.moveToFirst()) {
+          update(
+            "bookmark_folders",
+            ContentValues().apply {
+              put("name", YOUTUBE_FOLDER_NAME)
+              put("normalized_name", normalizedName)
+            },
+            "id=?",
+            arrayOf(cursor.getString(0)),
+          )
+          return@transaction
+        }
+      }
+
+      insertOrThrow(
+        "bookmark_folders",
+        null,
+        ContentValues().apply {
+          put("id", UUID.randomUUID().toString())
+          put("name", YOUTUBE_FOLDER_NAME)
+          put("normalized_name", normalizedName)
+          put("system_kind", YOUTUBE_FOLDER_KIND)
+          put("created_at", Instant.now().toString())
+        },
+      )
+    }
+  }
+
+  private fun requireUserFolderName(name: String) {
+    require(normalizeFolderName(name) != normalizeFolderName(YOUTUBE_FOLDER_NAME)) {
+      "YouTubeはシステムフォルダ名として予約されています"
+    }
+  }
 
   private suspend fun notifyNewBookmark(articleId: String, wasBookmarked: Boolean) {
     if (wasBookmarked || !store.isBookmarked(articleId)) return
@@ -168,3 +273,6 @@ class DefaultBookmarkImportRepository(
     ?.use(block)
     ?: error(errorMessage)
 }
+
+private fun normalizeFolderName(name: String): String =
+  name.trim().replace(Regex("\\s+"), " ").lowercase()
