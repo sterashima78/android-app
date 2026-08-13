@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.FilterInputStream
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -73,52 +74,68 @@ internal class AmazonLibraryImporter {
   }
 
   private fun parseKindleZip(input: InputStream): List<LibraryBook> {
-    val scopedCandidates = mutableListOf<KindleOwnershipCandidate>()
-    val fallbackCandidates = mutableListOf<KindleOwnershipCandidate>()
-    var scopedOwnershipFileFound = false
-    var ownershipFileFound = false
-    var ordinal = 0
-    var entryCount = 0
-    var expandedOwnershipBytes = 0L
+    val state = KindleZipScanState()
+    scanKindleZip(input = input, depth = 0, state = state)
 
-    val zip = ZipInputStream(input)
-    while (true) {
-      val entry = zip.nextEntry ?: break
-      entryCount += 1
-      require(entryCount <= MAX_STREAMING_ZIP_ENTRIES) {
-        "ZIP 内のファイル数が多すぎます（上限 100000 件）"
-      }
+    require(state.ownershipFileFound) {
+      "ZIP 内を全階層走査しましたが Digital.Content.Ownership*.json が見つかりませんでした"
+    }
+    val imported = resolveKindleOwnershipCandidates(state.candidates)
+    require(imported.isNotEmpty()) {
+      "Digital.Content.Ownership*.json は見つかりましたが Kindle 蔵書を解析できませんでした"
+    }
+    return imported
+  }
 
-      if (!entry.isDirectory && entry.name.isKindleOwnershipFile()) {
-        ownershipFileFound = true
-        val scoped = entry.name.hasKindlePathHint()
-        if (scoped) scopedOwnershipFileFound = true
-
-        val remaining = MAX_KINDLE_EXPANDED_BYTES - expandedOwnershipBytes
-        require(remaining > 0) {
-          "Kindle ownership JSON の合計サイズが大きすぎます（上限 256 MB）"
-        }
-        val entryLimit = minOf(MAX_ENTRY_BYTES.toLong(), remaining).toInt()
-        val tooLargeMessage = if (remaining < MAX_ENTRY_BYTES) {
-          "Kindle ownership JSON の合計サイズが大きすぎます（上限 256 MB）"
-        } else {
-          "Kindle ownership JSON が大きすぎます（1ファイル上限 25 MB）"
-        }
-        val bytes = zip.readLimited(
-          limit = entryLimit,
-          tooLargeMessage = tooLargeMessage,
-        )
-        expandedOwnershipBytes += bytes.size
-        val output = if (scoped) scopedCandidates else fallbackCandidates
-        collectKindleOwnershipContent(bytes, output) { ordinal++ }
-      }
-      zip.closeEntry()
+  private fun scanKindleZip(
+    input: InputStream,
+    depth: Int,
+    state: KindleZipScanState,
+  ) {
+    require(depth <= MAX_NESTED_ZIP_DEPTH) {
+      "ZIP の入れ子が深すぎます（上限 $MAX_NESTED_ZIP_DEPTH 階層）"
     }
 
-    require(ownershipFileFound) { LibrarySource.KINDLE.unrecognizedImportMessage() }
-    return resolveKindleOwnershipCandidates(
-      if (scopedOwnershipFileFound) scopedCandidates else fallbackCandidates,
-    )
+    ZipInputStream(NonClosingInputStream(input)).use { zip ->
+      while (true) {
+        val entry = zip.nextEntry ?: break
+        state.entryCount += 1
+        require(state.entryCount <= MAX_STREAMING_ZIP_ENTRIES) {
+          "ZIP 内のファイル数が多すぎます（上限 100000 件）"
+        }
+
+        when {
+          entry.isDirectory -> Unit
+          entry.name.isKindleOwnershipFile() -> {
+            state.ownershipFileFound = true
+            val remaining = MAX_KINDLE_EXPANDED_BYTES - state.expandedOwnershipBytes
+            require(remaining > 0) {
+              "Kindle ownership JSON の合計サイズが大きすぎます（上限 256 MB）"
+            }
+            val entryLimit = minOf(MAX_ENTRY_BYTES.toLong(), remaining).toInt()
+            val tooLargeMessage = if (remaining < MAX_ENTRY_BYTES) {
+              "Kindle ownership JSON の合計サイズが大きすぎます（上限 256 MB）"
+            } else {
+              "Kindle ownership JSON が大きすぎます（1ファイル上限 25 MB）"
+            }
+            val bytes = zip.readLimited(
+              limit = entryLimit,
+              tooLargeMessage = tooLargeMessage,
+            )
+            state.expandedOwnershipBytes += bytes.size
+            collectKindleOwnershipContent(bytes, state.candidates) { state.ordinal++ }
+          }
+          entry.name.isZipFile() -> {
+            scanKindleZip(
+              input = zip,
+              depth = depth + 1,
+              state = state,
+            )
+          }
+        }
+        zip.closeEntry()
+      }
+    }
   }
 
   private fun parseKindleOwnershipContents(contents: List<ImportContent>): List<LibraryBook> {
@@ -493,10 +510,7 @@ internal class AmazonLibraryImporter {
       (name.startsWith("digital.content.ownership") || inOwnershipDirectory)
   }
 
-  private fun String.hasKindlePathHint(): Boolean {
-    val lower = lowercase(Locale.ROOT)
-    return "kindle" in lower || "ebook" in lower || "e-book" in lower
-  }
+  private fun String.isZipFile(): Boolean = baseName().endsWith(".zip")
 
   private fun String.isAudibleLibraryFile(): Boolean = baseName() == "library.csv"
 
@@ -543,6 +557,18 @@ internal class AmazonLibraryImporter {
     val ordinal: Int,
   )
 
+  private data class KindleZipScanState(
+    val candidates: MutableList<KindleOwnershipCandidate> = mutableListOf(),
+    var ownershipFileFound: Boolean = false,
+    var ordinal: Int = 0,
+    var entryCount: Int = 0,
+    var expandedOwnershipBytes: Long = 0L,
+  )
+
+  private class NonClosingInputStream(input: InputStream) : FilterInputStream(input) {
+    override fun close() = Unit
+  }
+
   private enum class KindleRightState {
     GRANTED,
     REVOKED,
@@ -555,6 +581,7 @@ internal class AmazonLibraryImporter {
     const val MAX_ZIP_ENTRIES = 100
     const val MAX_STREAMING_ZIP_ENTRIES = 100_000
     const val MAX_KINDLE_EXPANDED_BYTES = 256 * 1024 * 1024L
+    const val MAX_NESTED_ZIP_DEPTH = 4
     const val ZIP_SIGNATURE_SIZE = 4
 
     val TITLE_HEADERS = setOf("title", "booktitle", "producttitle", "itemname", "name")
