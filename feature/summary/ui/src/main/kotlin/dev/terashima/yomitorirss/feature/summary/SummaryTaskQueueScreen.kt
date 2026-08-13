@@ -213,13 +213,14 @@ private fun statusLabel(state: SummaryQueueTaskState): String = when (state) {
 }
 
 internal fun progressLabel(item: SummaryQueueTask): String = when (item.progressStage) {
-  "fetching_article" -> "記事本文を取得しています"
-  "preparing_model" -> "AIモデルを読み込んでいます"
-  "generating_summary" -> "要約を生成しています"
-  "summarizing_chunk" -> progressCountLabel("分割要約", item)
-  "reducing_summary" -> progressCountLabel("中間要約を統合", item)
-  "finalizing_summary" -> "最終要約を生成しています"
-  else -> "処理しています"
+  SummaryQueueTaskProgressStage.FETCHING_ARTICLE -> "記事本文を取得しています"
+  SummaryQueueTaskProgressStage.PREPARING_MODEL -> "AIモデルを読み込んでいます"
+  SummaryQueueTaskProgressStage.GENERATING_SUMMARY -> "要約を生成しています"
+  SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK -> progressCountLabel("分割要約中", item)
+  SummaryQueueTaskProgressStage.REDUCING_SUMMARY -> progressCountLabel("中間要約の統合中", item)
+  SummaryQueueTaskProgressStage.FINALIZING_SUMMARY -> "最終要約を生成しています"
+  SummaryQueueTaskProgressStage.UNKNOWN,
+  null -> "処理しています"
 }
 
 internal fun progressFraction(item: SummaryQueueTask): Float? {
@@ -235,7 +236,7 @@ private fun progressCountLabel(prefix: String, item: SummaryQueueTask): String {
   return if (current != null && total != null && current > 0 && total > 0) {
     "$prefix $current/$total"
   } else {
-    "$prefixしています"
+    prefix
   }
 }
 
