@@ -37,6 +37,8 @@ Gradle Managed Devices の基準環境は Pixel 6 / API 35 / Google system image
 
 E2E は主要フローに限定する。Unit Test または Robolectric Test で十分に表現できる挙動は、より高速な層で検証する。
 
+Pull Request では通常の Unit/Robolectric/lint に加えて、専用の Android E2E workflow で `pixel6Api35DebugAndroidTest` を実行する。GitHub Actions の Linux runner ではハードウェアレンダリングに依存せず実行できるよう Managed Device の GPU を `swiftshader_indirect` に固定し、KVM を有効化する。E2E レポートは失敗時も確認できるよう短期間の artifact として保存する。
+
 ## Public repository policy
 
 このリポジトリは public repository であるため、テストコードや fixture には次を含めない。
@@ -53,3 +55,4 @@ E2E は主要フローに限定する。Unit Test または Robolectric Test で
 - Compose UI と Android システム UI の責務を分けてテストできる。
 - Emulator テストは JVM テストより実行時間が長い。
 - UI の文言や semantics を変更した場合は E2E テストの追従が必要になる。
+- Pull Request ごとに Managed Device の起動コストが追加されるが、main へ入る前に実 Android 環境での回帰を検出できる。
