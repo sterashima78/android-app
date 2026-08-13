@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 internal class KindleCoverEnrichmentScheduler(context: Context) {
   private val workManager = WorkManager.getInstance(context.applicationContext)
@@ -35,7 +36,7 @@ internal class KindleCoverEnrichmentScheduler(context: Context) {
     workManager.enqueueUniqueWork(
       WORK_NAME,
       ExistingWorkPolicy.APPEND,
-      request(),
+      request(initialDelayMillis = CONTINUATION_DELAY_MILLIS),
     )
   }
 
@@ -43,17 +44,20 @@ internal class KindleCoverEnrichmentScheduler(context: Context) {
     workManager.cancelUniqueWork(WORK_NAME)
   }
 
-  private fun request() = OneTimeWorkRequestBuilder<KindleCoverEnrichmentWorker>()
-    .setConstraints(
-      Constraints.Builder()
-        .setRequiredNetworkType(NetworkType.CONNECTED)
-        .build(),
-    )
-    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-    .build()
+  private fun request(initialDelayMillis: Long = 0L) =
+    OneTimeWorkRequestBuilder<KindleCoverEnrichmentWorker>()
+      .setInitialDelay(initialDelayMillis, TimeUnit.MILLISECONDS)
+      .setConstraints(
+        Constraints.Builder()
+          .setRequiredNetworkType(NetworkType.CONNECTED)
+          .build(),
+      )
+      .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+      .build()
 
   companion object {
     private const val WORK_NAME = "kindle-cover-enrichment"
+    private const val CONTINUATION_DELAY_MILLIS = 1_100L
 
     fun continueAfterBatch(context: Context) {
       KindleCoverEnrichmentScheduler(context).scheduleContinuation()
@@ -69,16 +73,22 @@ class KindleCoverEnrichmentWorker(
     val database = YomitoriDatabase.create(applicationContext)
     val repository = DefaultLibraryRepository(DatabaseConnection(database))
     return try {
-      if (repository.enrichKindleCoverBatch()) {
+      if (repository.enrichKindleCoverBatch(limit = BOOKS_PER_WORKER)) {
         KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
       }
       Result.success()
     } catch (_: IOException) {
       Result.retry()
+    } catch (error: CancellationException) {
+      throw error
     } catch (_: Throwable) {
       Result.failure()
     } finally {
       database.close()
     }
+  }
+
+  private companion object {
+    const val BOOKS_PER_WORKER = 1
   }
 }

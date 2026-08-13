@@ -18,7 +18,9 @@ Kindle 表紙補完は初期状態を無効とし、設定画面でユーザー�
 
 所有情報の取得には引き続き外部 API、Amazon の Cookie・セッション、非公開 API、Web scraping を利用しない。外部通信は表示用の表紙メタデータ補完だけに限定する。
 
-表紙補完は Kindle インポート完了後に WorkManager で実行し、インポートの成否を外部サービスの状態に依存させない。ネットワーク接続を制約とし、通信障害は backoff 付きで再試行する。検索クライアントは1回の Worker 実行につき Open Library への検索を1回だけ許可し、同一バッチの2冊目に到達した場合は追加通信を行わず `IOException` として Worker の exponential backoff に委ねる。これにより外部APIへ短時間に連続して検索しない。
+表紙補完は Kindle インポート完了後に WorkManager で実行し、インポートの成否を外部サービスの状態に依存させない。ネットワーク接続を制約とし、通信障害は exponential backoff 付きで再試行する。
+
+通常の複数冊処理では backoff を利用しない。1回の Worker は1冊だけを処理し、続きがある場合は次の Worker を unique work chain に追加する。継続 Worker には 1.1 秒の初期待機を設定し、Open Library の検索が 1 request/second を超えないようにする。最初の1冊は追加待機なしで開始できる。Worker のキャンセルは失敗へ変換せず、そのままキャンセルとして伝播させる。
 
 検索結果に含まれる CoverID を保存 URL に利用し、ISBN 等による Covers API の追加レート制限を避ける。ユーザー個人の連絡先を User-Agent に埋め込むことはしない。
 
@@ -47,7 +49,8 @@ Kindle 表紙補完は初期状態を無効とし、設定画面でユーザー�
 - 再インポート後も取得済み表紙を維持できる
 - 同名書籍や別巻の誤表紙を保守的に回避できる
 - 公開リポジトリにユーザーデータや秘密情報を追加しない
-- Open Library への検索を低頻度に抑え、通信失敗時も WorkManager の backoff を利用できる
+- 通常の複数冊処理を WorkManager の失敗・backoff と分離できる
+- Open Library への検索間隔を明示的に確保できる
 
 ### Negative
 
@@ -55,7 +58,7 @@ Kindle 表紙補完は初期状態を無効とし、設定画面でユーザー�
 - タイトルしかない Kindle データでは曖昧判定となり表紙を設定できない場合がある
 - Open Library の検索・応答仕様やレート制限変更には追従が必要になる
 - 有効化したユーザーの書誌情報は Open Library へ送信される
-- 1 Worker 1検索と backoff を優先するため、大量蔵書の初回補完には時間がかかる
+- 1冊ごとに1.1秒以上空けるため、大量蔵書の初回補完には一定の時間がかかる
 
 ## Relationship to existing ADRs
 
