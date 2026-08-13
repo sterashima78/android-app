@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import java.io.InputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,12 +57,37 @@ class LibraryViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(importingSource = source) }
       runCatching {
-        openInputStream().use { input ->
+        val result = openInputStream().use { input ->
           repository.importAmazonLibrary(source, fileName, input)
         }
+        val seriesMetadataFailed = if (
+          source == LibrarySource.KINDLE && repository is LibrarySeriesImportSupport
+        ) {
+          try {
+            openInputStream().use { input ->
+              repository.importSeriesMetadata(source, fileName, input)
+            }
+            false
+          } catch (error: CancellationException) {
+            throw error
+          } catch (_: Throwable) {
+            runCatching { repository.clearSeriesMetadata(source) }
+            true
+          }
+        } else {
+          false
+        }
+        result to seriesMetadataFailed
       }
-        .onSuccess { result ->
-          loadSnapshot(message = "${source.label} から ${result.importedCount} 冊をインポートしました")
+        .onSuccess { (result, seriesMetadataFailed) ->
+          val warning = if (seriesMetadataFailed) {
+            "（シリーズ情報は更新できませんでした）"
+          } else {
+            ""
+          }
+          loadSnapshot(
+            message = "${source.label} から ${result.importedCount} 冊をインポートしました$warning",
+          )
         }
         .onFailure(::showError)
     }
