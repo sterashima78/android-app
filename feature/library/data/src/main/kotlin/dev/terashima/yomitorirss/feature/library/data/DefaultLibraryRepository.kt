@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import android.content.ContentValues
 import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
@@ -17,6 +18,7 @@ class DefaultLibraryRepository(
 ) : LibraryRepository {
   private val googleBooks = GoogleBooksApiClient()
   private val amazonLibraryImporter = AmazonLibraryImporter()
+  private val audibleMetadataEnricher = AudibleLibraryMetadataEnricher()
 
   override suspend fun snapshot(): LibrarySnapshot {
     ensureSchema()
@@ -58,7 +60,7 @@ class DefaultLibraryRepository(
       "hidden_library_items",
       null,
       values,
-      android.database.sqlite.SQLiteDatabase.CONFLICT_IGNORE,
+      SQLiteDatabase.CONFLICT_IGNORE,
     )
   }
 
@@ -92,7 +94,7 @@ class DefaultLibraryRepository(
         "library_item_series",
         null,
         values,
-        android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+        SQLiteDatabase.CONFLICT_REPLACE,
       )
       delete(
         "library_item_series_exclusions",
@@ -119,7 +121,7 @@ class DefaultLibraryRepository(
         "library_item_series_exclusions",
         null,
         exclusionValues,
-        android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+        SQLiteDatabase.CONFLICT_REPLACE,
       )
     }
   }
@@ -143,7 +145,12 @@ class DefaultLibraryRepository(
     bytes: ByteArray,
   ): LibrarySyncResult {
     ensureSchema()
-    val books = amazonLibraryImporter.parse(source, fileName, bytes)
+    val parsedBooks = amazonLibraryImporter.parse(source, fileName, bytes)
+    val books = if (source == LibrarySource.AUDIBLE) {
+      audibleMetadataEnricher.enrich(fileName, bytes, parsedBooks)
+    } else {
+      parsedBooks
+    }
     return replaceSource(source = source, books = books, accountLabel = null)
   }
 
@@ -167,7 +174,7 @@ class DefaultLibraryRepository(
         "library_sources",
         null,
         sourceValues,
-        android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+        SQLiteDatabase.CONFLICT_REPLACE,
       )
     }
     return LibrarySyncResult(importedCount = books.size, syncedAtEpochMillis = syncedAt)
@@ -179,7 +186,7 @@ class DefaultLibraryRepository(
       """
         SELECT item.source, item.source_id, item.title, item.authors, item.publisher,
                item.published_date, item.description, item.isbn10, item.isbn13,
-               item.thumbnail_url, item.info_url,
+               item.thumbnail_url, item.info_url, item.narrators, item.duration,
                series.series_name, series.series_position,
                exclusion.source AS automatic_series_exclusion
         FROM library_items AS item
@@ -214,11 +221,15 @@ class DefaultLibraryRepository(
             isbn13 TEXT,
             thumbnail_url TEXT,
             info_url TEXT,
+            narrators TEXT NOT NULL DEFAULT '[]',
+            duration TEXT,
             synced_at INTEGER NOT NULL,
             PRIMARY KEY(source, source_id)
           )
         """.trimIndent(),
       )
+      ensureColumn("library_items", "narrators", "TEXT NOT NULL DEFAULT '[]'")
+      ensureColumn("library_items", "duration", "TEXT")
       execSQL(
         "CREATE INDEX IF NOT EXISTS library_items_source_title " +
           "ON library_items(source, title COLLATE NOCASE)",
@@ -271,6 +282,25 @@ class DefaultLibraryRepository(
     }
   }
 
+  private fun SQLiteDatabase.ensureColumn(
+    table: String,
+    column: String,
+    definition: String,
+  ) {
+    val exists = rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+      val nameIndex = cursor.getColumnIndexOrThrow("name")
+      var found = false
+      while (cursor.moveToNext()) {
+        if (cursor.getString(nameIndex) == column) {
+          found = true
+          break
+        }
+      }
+      found
+    }
+    if (!exists) execSQL("ALTER TABLE $table ADD COLUMN $column $definition")
+  }
+
   private fun LibraryBook.toValues(syncedAt: Long): ContentValues = ContentValues().apply {
     put("source", source.name)
     put("source_id", sourceId)
@@ -283,6 +313,8 @@ class DefaultLibraryRepository(
     put("isbn13", isbn13)
     put("thumbnail_url", thumbnailUrl)
     put("info_url", infoUrl)
+    put("narrators", JSONArray(narrators).toString())
+    put("duration", duration)
     put("synced_at", syncedAt)
   }
 
@@ -290,10 +322,7 @@ class DefaultLibraryRepository(
     source = LibrarySource.valueOf(string("source")),
     sourceId = string("source_id"),
     title = string("title"),
-    authors = JSONArray(string("authors")).let { array ->
-      buildList { for (index in 0 until array.length()) add(array.optString(index)) }
-        .filter(String::isNotBlank)
-    },
+    authors = jsonStringList("authors"),
     publisher = nullableString("publisher"),
     publishedDate = nullableString("published_date"),
     description = nullableString("description"),
@@ -308,7 +337,15 @@ class DefaultLibraryRepository(
       )
     },
     automaticSeriesExcluded = nullableString("automatic_series_exclusion") != null,
+    narrators = jsonStringList("narrators"),
+    duration = nullableString("duration"),
   )
+
+  private fun Cursor.jsonStringList(name: String): List<String> =
+    JSONArray(string(name)).let { array ->
+      buildList { for (index in 0 until array.length()) add(array.optString(index)) }
+        .filter(String::isNotBlank)
+    }
 
   private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
 
