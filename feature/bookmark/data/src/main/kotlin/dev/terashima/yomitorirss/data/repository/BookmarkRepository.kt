@@ -148,7 +148,7 @@ class DefaultBookmarkRepository(
   }
 
   private fun findSavedArticleIdByUrl(url: String): String? = database.readable.rawQuery(
-    "SELECT id FROM articles WHERE url=? AND saved_at IS NOT NULL ORDER BY saved_at DESC LIMIT 1",
+    "SELECT id FROM articles WHERE url=? ORDER BY CASE WHEN saved_at IS NULL THEN 1 ELSE 0 END,fetched_at DESC LIMIT 1",
     arrayOf(url),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
 
