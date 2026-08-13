@@ -11,9 +11,9 @@ import org.json.JSONArray
 
 class KindleCoverEnrichmentRepository(
   private val database: DatabaseConnection,
-  private val amazonCoverClient: KindleAmazonCoverClient = KindleAmazonCoverClient(),
-  private val openLibraryCoverClient: OpenLibraryCoverClient = OpenLibraryCoverClient(),
 ) {
+  private val amazonCoverClient = KindleAmazonCoverClient()
+  private val openLibraryCoverClient = OpenLibraryCoverClient()
   private var schemaEnsured = false
 
   suspend fun enrichBatch(limit: Int = KINDLE_COVER_BATCH_SIZE): Boolean {
