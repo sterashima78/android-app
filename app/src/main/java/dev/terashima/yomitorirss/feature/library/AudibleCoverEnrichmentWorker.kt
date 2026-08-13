@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.data.AudibleCoverEnrichmentRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 internal class AudibleCoverEnrichmentScheduler(context: Context) {
   private val workManager = WorkManager.getInstance(context.applicationContext)
@@ -31,21 +32,24 @@ internal class AudibleCoverEnrichmentScheduler(context: Context) {
     workManager.enqueueUniqueWork(
       WORK_NAME,
       ExistingWorkPolicy.APPEND,
-      request(),
+      request(initialDelayMillis = CONTINUATION_DELAY_MILLIS),
     )
   }
 
-  private fun request() = OneTimeWorkRequestBuilder<AudibleCoverEnrichmentWorker>()
-    .setConstraints(
-      Constraints.Builder()
-        .setRequiredNetworkType(NetworkType.CONNECTED)
-        .build(),
-    )
-    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-    .build()
+  private fun request(initialDelayMillis: Long = 0L) =
+    OneTimeWorkRequestBuilder<AudibleCoverEnrichmentWorker>()
+      .setInitialDelay(initialDelayMillis, TimeUnit.MILLISECONDS)
+      .setConstraints(
+        Constraints.Builder()
+          .setRequiredNetworkType(NetworkType.CONNECTED)
+          .build(),
+      )
+      .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+      .build()
 
   companion object {
     private const val WORK_NAME = "audible-cover-enrichment"
+    private const val CONTINUATION_DELAY_MILLIS = 1_100L
 
     fun continueAfterBatch(context: Context) {
       AudibleCoverEnrichmentScheduler(context).scheduleContinuation()
@@ -67,6 +71,8 @@ class AudibleCoverEnrichmentWorker(
       Result.success()
     } catch (_: IOException) {
       Result.retry()
+    } catch (error: CancellationException) {
+      throw error
     } catch (_: Throwable) {
       Result.failure()
     } finally {
