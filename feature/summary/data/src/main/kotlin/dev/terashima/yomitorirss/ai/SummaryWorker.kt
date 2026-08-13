@@ -70,6 +70,7 @@ class SummaryWorker(
             val generatedTags = parseGeneratedTags(
               modelManager.summarize(tagSource, AUTO_TAG_PROMPT),
             )
+            check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
             currentCoroutineContext().ensureActive()
             database.addAiGeneratedTags(task.articleId, generatedTags)
           }
