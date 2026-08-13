@@ -20,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.dp
 fun SettingsContent(
   modifier: Modifier,
   tagCount: Int,
+  backgroundFetchWifiOnly: Boolean,
+  onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
@@ -46,6 +49,18 @@ fun SettingsContent(
     modifier = modifier.fillMaxSize(),
     contentPadding = PaddingValues(bottom = 24.dp),
   ) {
+    item { SettingsHeader("バックグラウンド取得") }
+    item {
+      SettingsSwitchRow(
+        icon = Icons.Default.Download,
+        title = "Wi-Fi 接続中のみ取得",
+        supporting = "RSS・メール・表紙・AIモデルのバックグラウンド取得を Wi-Fi 接続中に限定",
+        checked = backgroundFetchWifiOnly,
+        onCheckedChange = onBackgroundFetchWifiOnlyChange,
+      )
+    }
+    item { SettingsDivider() }
+
     item { SettingsHeader("ブックマーク") }
     item {
       SettingsRow(
@@ -171,6 +186,28 @@ private fun SettingsRow(
     supportingContent = supporting?.let { { Text(it) } },
     leadingContent = { Icon(icon, contentDescription = null) },
     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+  )
+}
+
+@Composable
+private fun SettingsSwitchRow(
+  icon: ImageVector,
+  title: String,
+  supporting: String,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+) {
+  ListItem(
+    modifier = Modifier.clickable { onCheckedChange(!checked) },
+    headlineContent = { Text(title) },
+    supportingContent = { Text(supporting) },
+    leadingContent = { Icon(icon, contentDescription = null) },
+    trailingContent = {
+      Switch(
+        checked = checked,
+        onCheckedChange = null,
+      )
+    },
   )
 }
 
