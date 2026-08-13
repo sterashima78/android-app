@@ -482,8 +482,15 @@ internal class AmazonLibraryImporter {
     substringAfterLast('/').substringAfterLast('\\').lowercase(Locale.ROOT)
 
   private fun String.isKindleOwnershipFile(): Boolean {
-    val name = baseName()
-    return name.startsWith("digital.content.ownership") && name.endsWith(".json")
+    val normalizedPath = replace('\\', '/').trim('/')
+    val segments = normalizedPath.split('/')
+    val name = segments.lastOrNull()?.lowercase(Locale.ROOT).orEmpty()
+    val inOwnershipDirectory = segments.dropLast(1).any { segment ->
+      segment.equals("Digital.Content.Ownership", ignoreCase = true) ||
+        segment.startsWith("Digital.Content.Ownership.", ignoreCase = true)
+    }
+    return name.endsWith(".json") &&
+      (name.startsWith("digital.content.ownership") || inOwnershipDirectory)
   }
 
   private fun String.hasKindlePathHint(): Boolean {
