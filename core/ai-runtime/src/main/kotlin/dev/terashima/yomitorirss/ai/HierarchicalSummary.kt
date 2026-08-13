@@ -34,8 +34,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
   val finalPrefix = """
     以下は、長い記事を先頭から順に分割して作成した中間要約です。
     すべて同じ記事の一部なので、全体を1つの記事として扱ってください。
-
-  """.trimIndent()
+  """.trimIndent() + "\n\n"
   val finalBudget = (maxInputChars - finalPrefix.length).coerceAtLeast(maxInputChars / 2)
 
   var reductionRound = 0
