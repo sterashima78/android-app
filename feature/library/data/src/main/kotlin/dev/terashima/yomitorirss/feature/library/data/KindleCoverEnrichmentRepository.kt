@@ -90,3 +90,25 @@ class KindleCoverEnrichmentRepository(
       }
     }
   }
+
+  private fun saveLookup(
+    book: LibraryBook,
+    result: KindleCoverLookupResult,
+  ) {
+    val lookup = result.lookup
+    val values = ContentValues().apply {
+      put("source", LibrarySource.KINDLE.name)
+      put("source_id", book.sourceId)
+      lookup.thumbnailUrl?.let { put("thumbnail_url", it) } ?: putNull("thumbnail_url")
+      put("provider", result.provider.storageValue)
+      put("lookup_status", lookup.status.name)
+      lookup.matchedIdentifier?.let { put("matched_identifier", it) } ?: putNull("matched_identifier")
+      put("updated_at", System.currentTimeMillis())
+    }
+    database.writable.insertWithOnConflict(
+      "library_item_external_metadata",
+      null,
+      values,
+      SQLiteDatabase.CONFLICT_REPLACE,
+    )
+  }
