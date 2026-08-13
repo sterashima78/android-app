@@ -9,7 +9,6 @@ import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
-import dev.terashima.yomitorirss.feature.summary.SummaryRequestResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +30,6 @@ class RssViewModel(
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
   private val backupChangeScheduler: BackupChangeScheduler,
-  private val summaryRepository: SummaryRepository,
   private val articleSelector: (Article) -> Boolean = { true },
 ) : ViewModel() {
   private val _state = MutableStateFlow(RssUiState())
@@ -70,11 +68,7 @@ class RssViewModel(
     bookmarkRepository.saveAndReadArticle(article.id)
   }
 
-  fun readLater(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { true },
-    afterSuccess = { requestAutomaticSummary(article) },
-  ) {
+  fun readLater(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
     bookmarkRepository.markReadLater(article.id)
   }
 
@@ -94,9 +88,7 @@ class RssViewModel(
       runCatching {
         var scheduleBackup = false
         visible.forEach { article ->
-          if (!scheduleBackup && bookmarkRepository.isBookmarked(article.id)) {
-            scheduleBackup = true
-          }
+          if (!scheduleBackup && bookmarkRepository.isBookmarked(article.id)) scheduleBackup = true
           articleRepository.markArticleRead(article.id)
         }
         scheduleBackup
@@ -114,7 +106,6 @@ class RssViewModel(
   private fun performArticleAction(
     article: Article,
     shouldScheduleBackup: suspend () -> Boolean,
-    afterSuccess: suspend () -> Unit = {},
     action: suspend () -> Unit,
   ) {
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
@@ -127,7 +118,6 @@ class RssViewModel(
         reload()
         if (scheduleBackup) backupChangeScheduler.scheduleAfterChange()
         _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
-        afterSuccess()
       }.onFailure { error ->
         _state.update {
           it.copy(
@@ -139,46 +129,15 @@ class RssViewModel(
     }
   }
 
-  private suspend fun requestAutomaticSummary(article: Article) {
-    if (!summaryRepository.isAutoSummarizeReadLaterEnabled()) return
-
-    runCatching {
-      when (summaryRepository.request(article.id, forceRefresh = false)) {
-        is SummaryRequestResult.PreviousFailure -> {
-          summaryRepository.request(article.id, forceRefresh = true)
-        }
-
-        else -> Unit
-      }
-    }.onFailure { error ->
-      _state.update {
-        it.copy(
-          message = "あとで読むに追加しましたが、自動要約を開始できませんでした: ${error.userMessage()}",
-        )
-      }
-    }
-  }
-
   private suspend fun reload() {
     reloadMutex.withLock {
       runCatching {
         articleRepository.listUnreadArticles().filter(articleSelector) to
           bookmarkRepository.listReadLaterArticles().filter { articleSelector(it.article) }
       }.onSuccess { (unread, readLater) ->
-        _state.update {
-          it.copy(
-            initialized = true,
-            unread = unread,
-            readLater = readLater,
-          )
-        }
+        _state.update { it.copy(initialized = true, unread = unread, readLater = readLater) }
       }.onFailure { error ->
-        _state.update {
-          it.copy(
-            initialized = true,
-            message = "記事を読み込めませんでした: ${error.userMessage()}",
-          )
-        }
+        _state.update { it.copy(initialized = true, message = "記事を読み込めませんでした: ${error.userMessage()}") }
       }
     }
   }
@@ -187,7 +146,7 @@ class RssViewModel(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val backupChangeScheduler: BackupChangeScheduler,
-    private val summaryRepository: SummaryRepository,
+    @Suppress("UNUSED_PARAMETER") summaryRepository: SummaryRepository,
     private val articleSelector: (Article) -> Boolean = { true },
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -195,13 +154,7 @@ class RssViewModel(
         "Unknown ViewModel class: ${modelClass.name}"
       }
       @Suppress("UNCHECKED_CAST")
-      return RssViewModel(
-        articleRepository,
-        bookmarkRepository,
-        backupChangeScheduler,
-        summaryRepository,
-        articleSelector,
-      ) as T
+      return RssViewModel(articleRepository, bookmarkRepository, backupChangeScheduler, articleSelector) as T
     }
   }
 }
