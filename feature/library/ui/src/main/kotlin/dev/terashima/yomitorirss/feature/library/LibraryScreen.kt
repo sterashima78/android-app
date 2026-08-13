@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -68,6 +69,7 @@ import java.util.Locale
 private enum class LibraryTab(val label: String) {
   ALL("全体"),
   SERIES("シリーズ"),
+  HIDDEN("非表示"),
   SETTINGS("設定"),
 }
 
@@ -138,6 +140,7 @@ fun LibraryScreen(
                 imageVector = when (tab) {
                   LibraryTab.ALL -> Icons.Default.LibraryBooks
                   LibraryTab.SERIES -> Icons.Default.Folder
+                  LibraryTab.HIDDEN -> Icons.Default.VisibilityOff
                   LibraryTab.SETTINGS -> Icons.Default.Settings
                 },
                 contentDescription = tab.label,
@@ -178,14 +181,20 @@ fun LibraryScreen(
             onEditSeries = { seriesEditorBook = it },
           )
 
+          LibraryTab.HIDDEN -> LibraryHiddenTab(
+            books = state.hiddenBooks,
+            selectedSource = selectedSource,
+            onSelectedSourceChange = { selectedSourceName = it?.name },
+            onRestoreBook = onRestoreBook,
+            onEditSeries = { seriesEditorBook = it },
+          )
+
           LibraryTab.SETTINGS -> LibrarySettingsTab(
             state = state,
             onSyncGooglePlayBooks = onSyncGooglePlayBooks,
             onImportKindle = onImportKindle,
             onImportAudible = onImportAudible,
             onKindleCoverEnrichmentEnabledChange = onKindleCoverEnrichmentEnabledChange,
-            onRestoreBook = onRestoreBook,
-            onEditSeries = { seriesEditorBook = it },
           )
         }
       }
@@ -205,7 +214,7 @@ private fun LibraryAllTab(
   if (books.isEmpty()) {
     LibraryEmptyMessage(
       if (hiddenCount > 0) {
-        "表示中の蔵書はありません。設定に非表示の蔵書が $hiddenCount 冊あります。"
+        "表示中の蔵書はありません。非表示タブに $hiddenCount 冊あります。"
       } else {
         "蔵書がありません。設定から蔵書サービスを同期またはインポートしてください。"
       },
@@ -256,7 +265,7 @@ private fun LibrarySeriesTab(
   if (books.isEmpty()) {
     LibraryEmptyMessage(
       if (hiddenCount > 0) {
-        "表示中の蔵書はありません。設定に非表示の蔵書が $hiddenCount 冊あります。"
+        "表示中の蔵書はありません。非表示タブに $hiddenCount 冊あります。"
       } else {
         "蔵書がありません。設定から蔵書サービスを同期またはインポートしてください。"
       },
@@ -379,14 +388,54 @@ private fun LibrarySourceFilterBar(
 }
 
 @Composable
+private fun LibraryHiddenTab(
+  books: List<LibraryBook>,
+  selectedSource: LibrarySource?,
+  onSelectedSourceChange: (LibrarySource?) -> Unit,
+  onRestoreBook: (LibraryBook) -> Unit,
+  onEditSeries: (LibraryBook) -> Unit,
+) {
+  val filteredBooks = remember(books, selectedSource) {
+    filterLibraryBooksBySource(books, selectedSource)
+  }
+  val sortedBooks = remember(filteredBooks) {
+    filteredBooks.sortedWith(compareBy<LibraryBook> { it.title.lowercase() }.thenBy { it.sourceId })
+  }
+
+  Column(Modifier.fillMaxSize()) {
+    LibrarySourceFilterBar(
+      selectedSource = selectedSource,
+      onSelectedSourceChange = onSelectedSourceChange,
+    )
+    when {
+      books.isEmpty() -> LibraryEmptyMessage(
+        message = "非表示の蔵書はありません。",
+        modifier = Modifier.weight(1f),
+      )
+
+      sortedBooks.isEmpty() -> LibraryEmptyMessage(
+        message = "${selectedSource?.label ?: "選択したサービス"} の非表示の蔵書はありません。",
+        modifier = Modifier.weight(1f),
+      )
+
+      else -> LibraryBookGrid(
+        books = sortedBooks,
+        actionLabel = "再表示",
+        onAction = onRestoreBook,
+        onEditSeries = onEditSeries,
+        modifier = Modifier.weight(1f),
+      )
+    }
+  }
+}
+
+@Composable
 private fun LibrarySettingsTab(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
   onImportKindle: () -> Unit,
   onImportAudible: () -> Unit,
   onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
-  onRestoreBook: (LibraryBook) -> Unit,
-  onEditSeries: (LibraryBook) -> Unit,
 ) {
   Column(Modifier.fillMaxSize()) {
     LibrarySyncHeader(
@@ -425,45 +474,6 @@ private fun LibrarySettingsTab(
         "有効にすると Kindle のタイトル・著者・ISBN を Open Library へ送信します。Amazon のエクスポートファイルや認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    }
-    HorizontalDivider()
-    Column(
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-      verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-      Text("蔵書の表示", style = MaterialTheme.typography.titleMedium)
-      Text(
-        "表示中 ${state.books.size} 冊 / 非表示 ${state.hiddenBooks.size} 冊",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-      Text(
-        "全体・シリーズで非表示にした書籍は、ここから再表示できます。",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    }
-    HorizontalDivider()
-
-    if (state.hiddenBooks.isEmpty()) {
-      Text(
-        "非表示の蔵書はありません。",
-        modifier = Modifier.padding(24.dp),
-        style = MaterialTheme.typography.bodyMedium,
-      )
-    } else {
-      Text(
-        "非表示の蔵書",
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        style = MaterialTheme.typography.titleMedium,
-      )
-      LibraryBookGrid(
-        books = state.hiddenBooks,
-        actionLabel = "再表示",
-        onAction = onRestoreBook,
-        onEditSeries = onEditSeries,
-        modifier = Modifier.weight(1f),
       )
     }
   }
