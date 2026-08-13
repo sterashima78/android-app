@@ -19,6 +19,9 @@ data class SummaryQueueTask(
   val startedAt: String?,
   val finishedAt: String?,
   val error: String?,
+  val progressStage: String? = null,
+  val progressCurrent: Int? = null,
+  val progressTotal: Int? = null,
 )
 
 interface SummaryTaskQueueRepository {
