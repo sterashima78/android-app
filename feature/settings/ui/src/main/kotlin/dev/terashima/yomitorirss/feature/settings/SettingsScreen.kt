@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 fun SettingsFeatureScreen(
   modifier: Modifier,
   tagCount: Int,
+  backgroundFetchWifiOnly: Boolean,
+  onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
@@ -29,6 +31,8 @@ fun SettingsFeatureScreen(
   SettingsContent(
     modifier = modifier,
     tagCount = tagCount,
+    backgroundFetchWifiOnly = backgroundFetchWifiOnly,
+    onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = onOpenXCss,
