@@ -36,6 +36,10 @@ internal class AudibleCoverEnrichmentScheduler(context: Context) {
     )
   }
 
+  fun cancel() {
+    workManager.cancelUniqueWork(WORK_NAME)
+  }
+
   private fun request(initialDelayMillis: Long = 0L) =
     OneTimeWorkRequestBuilder<AudibleCoverEnrichmentWorker>()
       .setInitialDelay(initialDelayMillis, TimeUnit.MILLISECONDS)
