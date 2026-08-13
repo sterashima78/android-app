@@ -111,7 +111,7 @@ class OpenLibraryCoverClientTest {
 
     assertEquals(CoverLookupStatus.FOUND, result.status)
     assertEquals(
-      "https://covers.openlibrary.org/b/isbn/$isbn-L.jpg?default=false",
+      "https://covers.openlibrary.org/b/id/99-L.jpg",
       result.thumbnailUrl,
     )
     assertEquals("ISBN:$isbn", result.matchedIdentifier)
@@ -133,7 +133,7 @@ class OpenLibraryCoverClientTest {
     isbn13: String? = null,
   ) = LibraryBook(
     source = LibrarySource.KINDLE,
-    sourceId = "B000TEST00",
+    sourceId = "TESTBOOK01",
     title = title,
     authors = authors,
     publisher = null,
