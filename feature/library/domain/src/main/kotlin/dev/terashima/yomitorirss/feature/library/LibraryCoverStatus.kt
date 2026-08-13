@@ -19,6 +19,7 @@ data class LibraryCoverAcquisitionItem(
 
 data class LibraryCoverAcquisitionSnapshot(
   val items: List<LibraryCoverAcquisitionItem> = emptyList(),
+  val kindleCoverEnrichmentEnabled: Boolean = false,
 ) {
   fun count(state: LibraryCoverAcquisitionState): Int = items.count { it.state == state }
 }

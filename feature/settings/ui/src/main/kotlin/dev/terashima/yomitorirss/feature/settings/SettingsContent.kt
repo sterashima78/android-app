@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SmartToy
@@ -35,6 +36,7 @@ fun SettingsContent(
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenSummaryTaskQueue: () -> Unit,
+  onOpenCoverQueue: () -> Unit,
   onOpenDriveBackup: () -> Unit,
   onExportBackup: () -> Unit,
   onImportBackup: () -> Unit,
@@ -95,6 +97,17 @@ fun SettingsContent(
         title = "タスクキュー",
         supporting = "要約・タグ付けタスクの状態確認・停止・キャンセル",
         onClick = onOpenSummaryTaskQueue,
+      )
+    }
+    item { SettingsDivider() }
+
+    item { SettingsHeader("蔵書") }
+    item {
+      SettingsRow(
+        icon = Icons.Default.LibraryBooks,
+        title = "表紙取得状況",
+        supporting = "Kindle / Audible の取得待ち・取得結果・バックグラウンド処理",
+        onClick = onOpenCoverQueue,
       )
     }
     item { SettingsDivider() }

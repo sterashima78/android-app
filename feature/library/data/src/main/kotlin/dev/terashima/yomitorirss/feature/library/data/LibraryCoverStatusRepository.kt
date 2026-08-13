@@ -10,7 +10,9 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 class LibraryCoverStatusRepository(
   private val database: DatabaseConnection,
 ) {
-  fun snapshot(nowEpochMillis: Long = System.currentTimeMillis()): LibraryCoverAcquisitionSnapshot {
+  private var schemaEnsured = false
+
+  suspend fun snapshot(nowEpochMillis: Long = System.currentTimeMillis()): LibraryCoverAcquisitionSnapshot {
     ensureSchema()
     val staleBefore = nowEpochMillis - COVER_LOOKUP_STALE_MILLIS
     val items = database.readable.rawQuery(
@@ -49,36 +51,37 @@ class LibraryCoverStatusRepository(
         }
       }
     }
-    return LibraryCoverAcquisitionSnapshot(items)
+    return LibraryCoverAcquisitionSnapshot(
+      items = items,
+      kindleCoverEnrichmentEnabled = isKindleCoverEnrichmentEnabled(),
+    )
   }
 
-  fun resetUnresolvedLookups() {
+  suspend fun resetUnresolvedLookups(sources: Set<LibrarySource>) {
+    if (sources.isEmpty()) return
     ensureSchema()
-    database.writable.delete(
-      "library_item_external_metadata",
-      """
-        source IN (?, ?)
-        AND (thumbnail_url IS NULL OR TRIM(thumbnail_url) = '')
-      """.trimIndent(),
-      arrayOf(LibrarySource.KINDLE.name, LibrarySource.AUDIBLE.name),
-    )
+    database.transaction {
+      sources.forEach { source ->
+        delete(
+          "library_item_external_metadata",
+          "source = ? AND (thumbnail_url IS NULL OR TRIM(thumbnail_url) = '')",
+          arrayOf(source.name),
+        )
+      }
+    }
   }
 
-  private fun ensureSchema() {
-    database.writable.execSQL(
-      """
-        CREATE TABLE IF NOT EXISTS library_item_external_metadata(
-          source TEXT NOT NULL,
-          source_id TEXT NOT NULL,
-          thumbnail_url TEXT,
-          provider TEXT NOT NULL,
-          lookup_status TEXT NOT NULL,
-          matched_identifier TEXT,
-          updated_at INTEGER NOT NULL,
-          PRIMARY KEY(source, source_id)
-        )
-      """.trimIndent(),
-    )
+  private suspend fun ensureSchema() {
+    if (schemaEnsured) return
+    DefaultLibraryRepository(database).snapshot()
+    schemaEnsured = true
+  }
+
+  private fun isKindleCoverEnrichmentEnabled(): Boolean {
+    return database.readable.rawQuery(
+      "SELECT value FROM library_settings WHERE key = ? LIMIT 1",
+      arrayOf(KINDLE_COVER_ENRICHMENT_SETTING),
+    ).use { cursor -> cursor.moveToFirst() && cursor.getString(0) == "1" }
   }
 
   private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
@@ -95,6 +98,7 @@ class LibraryCoverStatusRepository(
 
   private companion object {
     const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
+    const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
   }
 }
 

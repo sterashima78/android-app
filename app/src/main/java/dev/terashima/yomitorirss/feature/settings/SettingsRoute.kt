@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import dev.terashima.yomitorirss.feature.library.LibraryCoverQueueRoute
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
 @Composable
@@ -32,6 +33,7 @@ fun SettingsScreen(
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     taskQueueContent = { onDismiss -> TaskQueueScreen(onDismiss) },
+    coverQueueContent = { onDismiss -> LibraryCoverQueueRoute(onDismiss) },
     onOpenDriveBackup = onOpenDriveBackup,
     onExportBackup = onExportBackup,
     onImportBackup = onImportBackup,
