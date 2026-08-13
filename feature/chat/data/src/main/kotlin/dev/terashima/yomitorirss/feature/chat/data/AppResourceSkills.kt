@@ -12,7 +12,7 @@ import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
-import dev.terashima.yomitoririss.feature.summary.SummaryRepository
+import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.task.TaskItem
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import java.time.LocalDate
