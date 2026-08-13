@@ -11,11 +11,13 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.bookmark.Tag
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultBookmarkRepository(
   database: DatabaseConnection,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
+  private val onBookmarkAdded: suspend (articleId: String) -> Unit = {},
 ) : BookmarkRepository {
   private val store = BookmarkStore(database)
   override val changes: StateFlow<Long> = dataChanges.version
@@ -72,13 +74,17 @@ class DefaultBookmarkRepository(
   }
 
   override suspend fun saveAndReadArticle(articleId: String) {
+    val wasBookmarked = store.isBookmarked(articleId)
     store.saveAndReadArticle(articleId)
     dataChanges.notifyChanged()
+    notifyNewBookmark(articleId, wasBookmarked)
   }
 
   override suspend fun markReadLater(articleId: String) {
+    val wasBookmarked = store.isBookmarked(articleId)
     store.markReadLater(articleId)
     dataChanges.notifyChanged()
+    notifyNewBookmark(articleId, wasBookmarked)
   }
 
   override suspend fun unsaveArticle(articleId: String) {
@@ -95,8 +101,28 @@ class DefaultBookmarkRepository(
     url: String,
     title: String,
     sourceTitle: String,
-  ): BookmarkSaveResult = store.saveSharedArticle(url, title, sourceTitle).also {
+  ): BookmarkSaveResult {
+    val result = store.saveSharedArticle(url, title, sourceTitle)
     dataChanges.notifyChanged()
+    if (result == BookmarkSaveResult.ADDED) {
+      store.listSavedArticles(tagId = null, folderId = null)
+        .firstOrNull { bookmarked -> bookmarked.article.url == url }
+        ?.article
+        ?.id
+        ?.let { articleId -> notifyNewBookmark(articleId, wasBookmarked = false) }
+    }
+    return result
+  }
+
+  private suspend fun notifyNewBookmark(articleId: String, wasBookmarked: Boolean) {
+    if (wasBookmarked || !store.isBookmarked(articleId)) return
+    try {
+      onBookmarkAdded(articleId)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      // ブックマーク保存の成功はAI処理の成否から独立させる。
+    }
   }
 }
 
