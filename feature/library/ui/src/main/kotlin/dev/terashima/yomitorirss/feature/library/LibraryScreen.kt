@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.library
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -30,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -82,9 +85,13 @@ fun LibraryScreen(
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   var selectedTabName by rememberSaveable { mutableStateOf(LibraryTab.ALL.name) }
+  var selectedSourceName by rememberSaveable { mutableStateOf<String?>(null) }
   var seriesEditorBook by remember { mutableStateOf<LibraryBook?>(null) }
   var expandedSeries by remember { mutableStateOf(emptySet<String>()) }
   val selectedTab = LibraryTab.valueOf(selectedTabName)
+  val selectedSource = remember(selectedSourceName) {
+    LibrarySource.entries.firstOrNull { it.name == selectedSourceName }
+  }
   val existingSeriesNames = remember(state.books, state.hiddenBooks) {
     (state.books + state.hiddenBooks)
       .mapNotNull { it.series?.name?.trim()?.takeIf(String::isNotEmpty) }
@@ -152,6 +159,8 @@ fun LibraryScreen(
           LibraryTab.ALL -> LibraryAllTab(
             books = state.books,
             hiddenCount = state.hiddenBooks.size,
+            selectedSource = selectedSource,
+            onSelectedSourceChange = { selectedSourceName = it?.name },
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -159,6 +168,8 @@ fun LibraryScreen(
           LibraryTab.SERIES -> LibrarySeriesTab(
             books = state.books,
             hiddenCount = state.hiddenBooks.size,
+            selectedSource = selectedSource,
+            onSelectedSourceChange = { selectedSourceName = it?.name },
             expandedSeries = expandedSeries,
             onExpandedSeriesChange = { expandedSeries = it },
             onHideBook = onHideBook,
@@ -183,6 +194,8 @@ fun LibraryScreen(
 private fun LibraryAllTab(
   books: List<LibraryBook>,
   hiddenCount: Int,
+  selectedSource: LibrarySource?,
+  onSelectedSourceChange: (LibrarySource?) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -197,21 +210,41 @@ private fun LibraryAllTab(
     return
   }
 
-  val sortedBooks = remember(books) {
-    books.sortedWith(compareBy<LibraryBook> { it.title.lowercase() }.thenBy { it.sourceId })
+  val filteredBooks = remember(books, selectedSource) {
+    filterLibraryBooksBySource(books, selectedSource)
   }
-  LibraryBookGrid(
-    books = sortedBooks,
-    actionLabel = "非表示",
-    onAction = onHideBook,
-    onEditSeries = onEditSeries,
-  )
+  val sortedBooks = remember(filteredBooks) {
+    filteredBooks.sortedWith(compareBy<LibraryBook> { it.title.lowercase() }.thenBy { it.sourceId })
+  }
+
+  Column(Modifier.fillMaxSize()) {
+    LibrarySourceFilterBar(
+      selectedSource = selectedSource,
+      onSelectedSourceChange = onSelectedSourceChange,
+    )
+    if (sortedBooks.isEmpty()) {
+      LibraryEmptyMessage(
+        message = "${selectedSource?.label ?: "選択したサービス"} の蔵書はありません。",
+        modifier = Modifier.weight(1f),
+      )
+    } else {
+      LibraryBookGrid(
+        books = sortedBooks,
+        actionLabel = "非表示",
+        onAction = onHideBook,
+        onEditSeries = onEditSeries,
+        modifier = Modifier.weight(1f),
+      )
+    }
+  }
 }
 
 @Composable
 private fun LibrarySeriesTab(
   books: List<LibraryBook>,
   hiddenCount: Int,
+  selectedSource: LibrarySource?,
+  onSelectedSourceChange: (LibrarySource?) -> Unit,
   expandedSeries: Set<String>,
   onExpandedSeriesChange: (Set<String>) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
@@ -228,72 +261,116 @@ private fun LibrarySeriesTab(
     return
   }
 
-  val groups = remember(books) { groupLibraryBooks(books) }
-  LazyVerticalGrid(
-    columns = GridCells.Adaptive(minSize = 112.dp),
-    modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(12.dp),
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
-    verticalArrangement = Arrangement.spacedBy(16.dp),
-  ) {
-    groups.series.forEach { section ->
-      val expanded = section.name in expandedSeries
-      item(
-        key = "series:${section.name}",
-        span = { GridItemSpan(maxLineSpan) },
+  val filteredBooks = remember(books, selectedSource) {
+    filterLibraryBooksBySource(books, selectedSource)
+  }
+  val groups = remember(filteredBooks) { groupLibraryBooks(filteredBooks) }
+
+  Column(Modifier.fillMaxSize()) {
+    LibrarySourceFilterBar(
+      selectedSource = selectedSource,
+      onSelectedSourceChange = onSelectedSourceChange,
+    )
+    if (filteredBooks.isEmpty()) {
+      LibraryEmptyMessage(
+        message = "${selectedSource?.label ?: "選択したサービス"} の蔵書はありません。",
+        modifier = Modifier.weight(1f),
+      )
+    } else {
+      LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 112.dp),
+        modifier = Modifier.weight(1f),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
-        LibrarySeriesHeader(
-          name = section.name,
-          count = section.books.size,
-          coverBook = section.books.firstOrNull { !it.thumbnailUrl.isNullOrBlank() } ?: section.books.first(),
-          expanded = expanded,
-          onToggle = {
-            onExpandedSeriesChange(
-              if (expanded) expandedSeries - section.name else expandedSeries + section.name,
+        groups.series.forEach { section ->
+          val expanded = section.name in expandedSeries
+          item(
+            key = "series:${section.name}",
+            span = { GridItemSpan(maxLineSpan) },
+          ) {
+            LibrarySeriesHeader(
+              name = section.name,
+              count = section.books.size,
+              coverBook = section.books.firstOrNull { !it.thumbnailUrl.isNullOrBlank() } ?: section.books.first(),
+              expanded = expanded,
+              onToggle = {
+                onExpandedSeriesChange(
+                  if (expanded) expandedSeries - section.name else expandedSeries + section.name,
+                )
+              },
             )
-          },
-        )
-      }
-      if (expanded) {
-        items(
-          items = section.books,
-          key = { book -> "${book.source.name}:${book.sourceId}" },
-        ) { book ->
-          LibraryBookThumbnail(
-            book = book,
-            actionLabel = "非表示",
-            onAction = { onHideBook(book) },
-            onEditSeries = { onEditSeries(book) },
-          )
+          }
+          if (expanded) {
+            items(
+              items = section.books,
+              key = { book -> "${book.source.name}:${book.sourceId}" },
+            ) { book ->
+              LibraryBookThumbnail(
+                book = book,
+                actionLabel = "非表示",
+                onAction = { onHideBook(book) },
+                onEditSeries = { onEditSeries(book) },
+              )
+            }
+          }
+        }
+
+        if (groups.ungrouped.isNotEmpty()) {
+          if (groups.series.isNotEmpty()) {
+            item(
+              key = "ungrouped-heading",
+              span = { GridItemSpan(maxLineSpan) },
+            ) {
+              Text(
+                "シリーズ未設定",
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          }
+          items(
+            items = groups.ungrouped,
+            key = { book -> "${book.source.name}:${book.sourceId}" },
+          ) { book ->
+            LibraryBookThumbnail(
+              book = book,
+              actionLabel = "非表示",
+              onAction = { onHideBook(book) },
+              onEditSeries = { onEditSeries(book) },
+            )
+          }
         }
       }
     }
+  }
+}
 
-    if (groups.ungrouped.isNotEmpty()) {
-      if (groups.series.isNotEmpty()) {
-        item(
-          key = "ungrouped-heading",
-          span = { GridItemSpan(maxLineSpan) },
-        ) {
-          Text(
-            "シリーズ未設定",
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-      }
-      items(
-        items = groups.ungrouped,
-        key = { book -> "${book.source.name}:${book.sourceId}" },
-      ) { book ->
-        LibraryBookThumbnail(
-          book = book,
-          actionLabel = "非表示",
-          onAction = { onHideBook(book) },
-          onEditSeries = { onEditSeries(book) },
-        )
-      }
+@Composable
+private fun LibrarySourceFilterBar(
+  selectedSource: LibrarySource?,
+  onSelectedSourceChange: (LibrarySource?) -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .horizontalScroll(rememberScrollState())
+      .padding(horizontal = 12.dp, vertical = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    FilterChip(
+      selected = selectedSource == null,
+      onClick = { onSelectedSourceChange(null) },
+      label = { Text("すべて") },
+    )
+    LibrarySource.entries.forEach { source ->
+      FilterChip(
+        selected = selectedSource == source,
+        onClick = { onSelectedSourceChange(source) },
+        label = { Text(source.label) },
+      )
     }
   }
 }
@@ -386,9 +463,12 @@ private fun LibraryBookGrid(
 }
 
 @Composable
-private fun LibraryEmptyMessage(message: String) {
+private fun LibraryEmptyMessage(
+  message: String,
+  modifier: Modifier = Modifier,
+) {
   Box(
-    modifier = Modifier.fillMaxSize(),
+    modifier = modifier.fillMaxSize(),
     contentAlignment = Alignment.TopStart,
   ) {
     Text(
@@ -574,6 +654,13 @@ private fun LibraryBookThumbnail(
       }
 
       Spacer(Modifier.height(6.dp))
+      Text(
+        book.source.label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
       Text(
         book.title,
         style = MaterialTheme.typography.bodyMedium,
