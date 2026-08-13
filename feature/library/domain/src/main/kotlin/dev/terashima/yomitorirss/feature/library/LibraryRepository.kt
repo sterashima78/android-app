@@ -24,6 +24,6 @@ interface LibraryRepository {
   suspend fun importAmazonLibrary(
     source: LibrarySource,
     fileName: String?,
-    input: InputStream,
+    openInputStream: () -> InputStream,
   ): LibrarySyncResult
 }
