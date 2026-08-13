@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -400,6 +401,7 @@ private fun AddYouTubeChannelDialog(
   onAdd: (String) -> Unit,
 ) {
   var value by remember { mutableStateOf("") }
+  val uriHandler = LocalUriHandler.current
   AlertDialog(
     onDismissRequest = onDismiss,
     title = { Text("YouTubeチャンネルを購読") },
@@ -408,9 +410,15 @@ private fun AddYouTubeChannelDialog(
         Text("チャンネルURLを入力してください。")
         Spacer(Modifier.height(8.dp))
         Text(
-          "チャンネルIDは https://www.ytultra.com/ja/youtube-channel-id-finder/ などの外部サイトで確認できます。",
+          "チャンネルIDは以下の外部サイトなどで確認できます。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+          YOUTUBE_CHANNEL_ID_FINDER_URL,
+          modifier = Modifier.clickable { uriHandler.openUri(YOUTUBE_CHANNEL_ID_FINDER_URL) },
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
@@ -436,6 +444,9 @@ private fun AddYouTubeChannelDialog(
     },
   )
 }
+
+private const val YOUTUBE_CHANNEL_ID_FINDER_URL =
+  "https://www.ytultra.com/ja/youtube-channel-id-finder/"
 
 private val publishedAtFormatter: DateTimeFormatter =
   DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
