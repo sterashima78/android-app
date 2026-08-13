@@ -21,6 +21,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     if (oldVersion < 8) migrateToVersion8(db)
     if (oldVersion < 9) migrateToVersion9(db)
     if (oldVersion < 11) migrateToVersion11(db)
+    if (oldVersion < 12) migrateToVersion12(db)
   }
 
   private fun schema(db: SQLiteDatabase) {
@@ -39,7 +40,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     db.execSQL("CREATE TABLE IF NOT EXISTS article_folders(article_id TEXT PRIMARY KEY NOT NULL REFERENCES articles(id) ON DELETE CASCADE,folder_id TEXT NOT NULL REFERENCES bookmark_folders(id) ON DELETE CASCADE)")
     db.execSQL("CREATE INDEX IF NOT EXISTS article_folder_folder_id ON article_folders(folder_id,article_id)")
     db.execSQL("CREATE TABLE IF NOT EXISTS article_summaries(article_id TEXT PRIMARY KEY NOT NULL REFERENCES articles(id) ON DELETE CASCADE,summary TEXT NOT NULL,model_id TEXT NOT NULL,created_at TEXT NOT NULL)")
-    db.execSQL("CREATE TABLE IF NOT EXISTS summary_tasks(article_id TEXT PRIMARY KEY NOT NULL REFERENCES articles(id) ON DELETE CASCADE,state TEXT NOT NULL,force_refresh INTEGER NOT NULL DEFAULT 0,queued_at TEXT NOT NULL,started_at TEXT,finished_at TEXT,error TEXT)")
+    db.execSQL("CREATE TABLE IF NOT EXISTS summary_tasks(article_id TEXT PRIMARY KEY NOT NULL REFERENCES articles(id) ON DELETE CASCADE,state TEXT NOT NULL,force_refresh INTEGER NOT NULL DEFAULT 0,queued_at TEXT NOT NULL,started_at TEXT,finished_at TEXT,error TEXT,progress_stage TEXT,progress_current INTEGER,progress_total INTEGER)")
     db.execSQL("CREATE INDEX IF NOT EXISTS summary_task_state ON summary_tasks(state,queued_at)")
     db.execSQL("CREATE TABLE IF NOT EXISTS mail_accounts(id TEXT PRIMARY KEY NOT NULL,email TEXT NOT NULL UNIQUE,display_name TEXT,last_history_id TEXT,last_synced_at INTEGER,sync_state TEXT NOT NULL DEFAULT 'idle',sync_processed_threads INTEGER NOT NULL DEFAULT 0,sync_error TEXT,sync_page_token TEXT,sync_start_history_id TEXT,sync_generation TEXT)")
     db.execSQL("CREATE TABLE IF NOT EXISTS mail_labels(account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE,id TEXT NOT NULL,name TEXT NOT NULL,type TEXT NOT NULL,PRIMARY KEY(account_id,id))")
@@ -122,6 +123,12 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
     )
   }
 
+  private fun migrateToVersion12(db: SQLiteDatabase) {
+    addColumnIfMissing(db, "summary_tasks", "progress_stage", "progress_stage TEXT")
+    addColumnIfMissing(db, "summary_tasks", "progress_current", "progress_current INTEGER")
+    addColumnIfMissing(db, "summary_tasks", "progress_total", "progress_total INTEGER")
+  }
+
   private fun addColumnIfMissing(
     db: SQLiteDatabase,
     table: String,
@@ -144,7 +151,7 @@ class YomitoriDatabase private constructor(context: Context) : SQLiteOpenHelper(
 
   companion object {
     const val DB_NAME = "yomitori-rss.db"
-    private const val DB_VERSION = 11
+    private const val DB_VERSION = 12
 
     fun create(context: Context): YomitoriDatabase {
       val app = context.applicationContext
