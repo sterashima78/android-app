@@ -48,11 +48,21 @@ internal fun YomitoriDatabase.isBookmarkedForAiEnrichment(articleId: String): Bo
     arrayOf(articleId),
   ).use { cursor -> cursor.moveToFirst() }
 
-internal fun YomitoriDatabase.addAiGeneratedTags(articleId: String, names: List<String>) {
-  if (names.isEmpty()) return
+internal fun YomitoriDatabase.addAiGeneratedTags(articleId: String, names: List<String>): Boolean {
+  if (names.isEmpty()) return false
   val db = writableDatabase
   db.beginTransaction()
-  try {
+  return try {
+    val isStillBookmarked = db.rawQuery(
+      "SELECT 1 FROM articles WHERE id=? AND saved_at IS NOT NULL LIMIT 1",
+      arrayOf(articleId),
+    ).use { cursor -> cursor.moveToFirst() }
+    if (!isStillBookmarked) {
+      db.setTransactionSuccessful()
+      return false
+    }
+
+    var changed = false
     names.forEach { rawName ->
       val display = displayTagName(rawName)
       if (display.isBlank()) return@forEach
@@ -83,7 +93,7 @@ internal fun YomitoriDatabase.addAiGeneratedTags(articleId: String, names: List<
         }
       }
 
-      db.insertWithOnConflict(
+      val inserted = db.insertWithOnConflict(
         "article_tags",
         null,
         ContentValues().apply {
@@ -92,8 +102,10 @@ internal fun YomitoriDatabase.addAiGeneratedTags(articleId: String, names: List<
         },
         SQLiteDatabase.CONFLICT_IGNORE,
       )
+      if (inserted != -1L) changed = true
     }
     db.setTransactionSuccessful()
+    changed
   } finally {
     db.endTransaction()
   }
