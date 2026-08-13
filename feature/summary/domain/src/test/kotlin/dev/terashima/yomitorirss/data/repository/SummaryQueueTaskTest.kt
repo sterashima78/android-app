@@ -31,12 +31,12 @@ class SummaryQueueTaskTest {
       startedAt = "2026-08-13T00:01:00Z",
       finishedAt = null,
       error = null,
-      progressStage = "summarizing_chunk",
+      progressStage = SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK,
       progressCurrent = 3,
       progressTotal = 8,
     )
 
-    assertEquals("summarizing_chunk", task.progressStage)
+    assertEquals(SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK, task.progressStage)
     assertEquals(3, task.progressCurrent)
     assertEquals(8, task.progressTotal)
   }
