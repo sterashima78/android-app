@@ -23,6 +23,9 @@ class DefaultSummaryTaskQueueRepository(
         startedAt = item.task.startedAt,
         finishedAt = item.task.finishedAt,
         error = item.task.error,
+        progressStage = item.task.progressStage,
+        progressCurrent = item.task.progressCurrent,
+        progressTotal = item.task.progressTotal,
       )
     }
 
