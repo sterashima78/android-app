@@ -141,12 +141,9 @@ class IntegratedScreenTest {
   }
 
   @Test
-  fun `統合ビューはソース固有のアクションを提供する`() {
+  fun `統合ビューのスワイプ操作は各機能の一覧と一致する`() {
     val rss = IntegratedItem.Rss(article("rss-action", "2026-08-11T09:00:00Z"))
-    val redditArticle = article("reddit-action", "2026-08-11T10:00:00Z").copy(
-      url = "https://www.reddit.com/r/androiddev/comments/abc123/sample/",
-    )
-    val reddit = IntegratedItem.Reddit(redditArticle)
+    val reddit = IntegratedItem.Reddit(article("reddit-action", "2026-08-11T10:00:00Z"))
     val youtube = IntegratedItem.YouTube(
       YouTubeVideo(
         id = "youtube-action",
@@ -156,12 +153,61 @@ class IntegratedScreenTest {
         url = "https://example.com/youtube-action",
         publishedAtEpochMillis = 1L,
         isRead = false,
-        isWatchLater = false,
+        isWatchLater = true,
       ),
     )
     val mail = IntegratedItem.Mail(
       thread = MailThread(
         id = "mail-action",
+        accountId = "account",
+        subject = "Mail",
+        snippet = "",
+        lastMessageAtEpochMillis = 1L,
+        messageCount = 1,
+        isInInbox = true,
+        isUnread = true,
+        isStarred = true,
+        isReadLater = true,
+      ),
+      accountLabel = "user@example.com",
+    )
+
+    assertEquals(listOf("既読", "ブックマーク", "あとで読む"), swipeLabels(rss, IntegratedTab.UNREAD))
+    assertEquals(listOf("既読", "ブックマーク", "あとで読む"), swipeLabels(reddit, IntegratedTab.UNREAD))
+    assertEquals(listOf("既読", "保存", "あとで見る"), swipeLabels(youtube, IntegratedTab.UNREAD))
+    assertEquals(listOf("既読", "あとで読む解除", "アーカイブ"), swipeLabels(mail, IntegratedTab.UNREAD))
+
+    assertEquals(listOf("ブックマーク解除", "未分類へ", null), swipeLabels(rss, IntegratedTab.READ_LATER))
+    assertEquals(listOf("ブックマーク解除", "未分類へ", null), swipeLabels(reddit, IntegratedTab.READ_LATER))
+    assertEquals(listOf("既読", "保存", "未読へ戻す"), swipeLabels(youtube, IntegratedTab.READ_LATER))
+    assertEquals(listOf("あとで読む解除", "スター解除", "アーカイブ"), swipeLabels(mail, IntegratedTab.READ_LATER))
+
+    assertEquals(listOf(false, false, false), swipeDismisses(youtube, IntegratedTab.READ_LATER))
+    assertEquals(listOf(true, false, false), swipeDismisses(mail, IntegratedTab.READ_LATER))
+  }
+
+  @Test
+  fun `補助メニューはスワイプや直接操作と重複させない`() {
+    val rss = IntegratedItem.Rss(article("rss-menu", "2026-08-11T09:00:00Z"))
+    val redditArticle = article("reddit-menu", "2026-08-11T10:00:00Z").copy(
+      url = "https://www.reddit.com/r/androiddev/comments/abc123/sample/",
+    )
+    val reddit = IntegratedItem.Reddit(redditArticle)
+    val youtube = IntegratedItem.YouTube(
+      YouTubeVideo(
+        id = "youtube-menu",
+        channelId = "channel",
+        channelTitle = "Channel",
+        title = "YouTube",
+        url = "https://example.com/youtube-menu",
+        publishedAtEpochMillis = 1L,
+        isRead = false,
+        isWatchLater = false,
+      ),
+    )
+    val mail = IntegratedItem.Mail(
+      thread = MailThread(
+        id = "mail-menu",
         accountId = "account",
         subject = "Mail",
         snippet = "",
@@ -187,16 +233,27 @@ class IntegratedScreenTest {
       ),
     )
 
-    assertEquals(
-      listOf("はてなブックマークコメントを見る"),
-      actionLabels(rss, redditState),
-    )
+    assertEquals(listOf("はてなブックマークコメントを見る"), actionLabels(rss, redditState))
     assertEquals(
       listOf("はてなブックマークコメントを見る", "スレッドの購読を解除"),
       actionLabels(reddit, redditState),
     )
-    assertEquals(listOf("保存"), actionLabels(youtube, redditState))
-    assertEquals(listOf("スターを外す"), actionLabels(mail, redditState))
+    assertEquals(emptyList<String>(), actionLabels(youtube, redditState))
+    assertEquals(emptyList<String>(), actionLabels(mail, redditState))
+  }
+
+  private fun swipeLabels(item: IntegratedItem, tab: IntegratedTab): List<String?> {
+    val actions = integratedSwipeActions(item, tab)
+    return listOf(actions.left?.label, actions.right?.label, actions.farRight?.label)
+  }
+
+  private fun swipeDismisses(item: IntegratedItem, tab: IntegratedTab): List<Boolean?> {
+    val actions = integratedSwipeActions(item, tab)
+    return listOf(
+      actions.left?.dismissesItem,
+      actions.right?.dismissesItem,
+      actions.farRight?.dismissesItem,
+    )
   }
 
   private fun actionLabels(
@@ -208,8 +265,6 @@ class IntegratedScreenTest {
     onOpenArticle = {},
     onSubscribeRedditThread = {},
     onUnsubscribeRedditThread = {},
-    onSaveYouTube = {},
-    onToggleMailStarred = {},
   ).map(IntegratedItemAction::label)
 
   private fun article(id: String, publishedAt: String): Article = Article(
