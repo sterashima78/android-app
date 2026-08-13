@@ -14,6 +14,7 @@ import androidx.work.WorkInfo
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.LibraryCoverStatusRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,6 +62,8 @@ fun LibraryCoverQueueRoute(onDismiss: () -> Unit) {
           audibleScheduler.schedule()
           message = "未取得の表紙を再試行します"
           refreshVersion++
+        } catch (error: CancellationException) {
+          throw error
         } catch (error: Throwable) {
           message = error.message ?: "表紙の再試行に失敗しました"
         }
