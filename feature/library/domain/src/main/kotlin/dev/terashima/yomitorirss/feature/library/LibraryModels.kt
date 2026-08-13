@@ -9,6 +9,7 @@ enum class LibrarySource(val label: String) {
 data class LibrarySeries(
   val name: String,
   val position: Int?,
+  val sourceId: String? = null,
 )
 
 data class LibraryBook(
@@ -27,6 +28,7 @@ data class LibraryBook(
   val automaticSeriesExcluded: Boolean = false,
   val narrators: List<String> = emptyList(),
   val duration: String? = null,
+  val sourceSeries: LibrarySeries? = null,
 )
 
 data class LibrarySourceState(
