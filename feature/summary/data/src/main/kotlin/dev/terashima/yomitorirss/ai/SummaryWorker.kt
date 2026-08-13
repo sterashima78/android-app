@@ -11,14 +11,23 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.airuntime.HIERARCHICAL_SUMMARY_CACHE_VARIANT
+import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgress
+import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgressStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.summarizeHierarchically
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class SummaryWorker(
@@ -54,9 +63,16 @@ class SummaryWorker(
             }
           }
 
+          database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
           val articleText = ArticleContentClient().fetchArticleText(article.url)
           currentCoroutineContext().ensureActive()
-          val summary = modelManager.summarizeHierarchically(articleText, prompt)
+          val summary = summarizeWithProgress(
+            database = database,
+            modelManager = modelManager,
+            articleId = task.articleId,
+            articleText = articleText,
+            prompt = prompt,
+          )
           currentCoroutineContext().ensureActive()
           database.saveSummary(task.articleId, summary, cacheKey)
           database.completeRunningSummaryTask(task.articleId)
@@ -71,6 +87,50 @@ class SummaryWorker(
     } finally {
       modelManager.close()
       database.close()
+    }
+  }
+
+  private suspend fun summarizeWithProgress(
+    database: YomitoriDatabase,
+    modelManager: LocalModelManager,
+    articleId: String,
+    articleText: String,
+    prompt: String,
+  ): String = coroutineScope {
+    val hierarchyProgress = AtomicReference<HierarchicalSummaryProgress?>(null)
+    val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
+      modelManager.summaryProgress.filterNotNull().collect { progress ->
+        when (progress.stage) {
+          "preparing_model" -> database.updateRunningSummaryTaskProgress(
+            articleId,
+            SUMMARY_PROGRESS_PREPARING_MODEL,
+          )
+          "generating_summary" -> {
+            val stored = hierarchyProgress.get().toStoredProgress()
+            database.updateRunningSummaryTaskProgress(
+              articleId = articleId,
+              stage = stored.stage,
+              current = stored.current,
+              total = stored.total,
+            )
+          }
+        }
+      }
+    }
+
+    try {
+      modelManager.summarizeHierarchically(articleText, prompt) { progress ->
+        hierarchyProgress.set(progress)
+        val stored = progress.toStoredProgress()
+        database.updateRunningSummaryTaskProgress(
+          articleId = articleId,
+          stage = stored.stage,
+          current = stored.current,
+          total = stored.total,
+        )
+      }
+    } finally {
+      progressCollector.cancelAndJoin()
     }
   }
 
@@ -121,6 +181,28 @@ class SummaryWorker(
     private const val CHANNEL_ID = "article_summary"
     private const val NOTIFICATION_ID = 8766
   }
+}
+
+private data class StoredSummaryProgress(
+  val stage: String,
+  val current: Int? = null,
+  val total: Int? = null,
+)
+
+private fun HierarchicalSummaryProgress?.toStoredProgress(): StoredSummaryProgress = when (this?.stage) {
+  HierarchicalSummaryProgressStage.CHUNK -> StoredSummaryProgress(
+    stage = SUMMARY_PROGRESS_SUMMARIZING_CHUNK,
+    current = this?.current,
+    total = this?.total,
+  )
+  HierarchicalSummaryProgressStage.REDUCTION -> StoredSummaryProgress(
+    stage = SUMMARY_PROGRESS_REDUCING_SUMMARY,
+    current = this?.current,
+    total = this?.total,
+  )
+  HierarchicalSummaryProgressStage.FINAL -> StoredSummaryProgress(SUMMARY_PROGRESS_FINALIZING_SUMMARY)
+  HierarchicalSummaryProgressStage.DIRECT,
+  null -> StoredSummaryProgress(SUMMARY_PROGRESS_GENERATING_SUMMARY)
 }
 
 private fun Throwable.userMessage(): String =

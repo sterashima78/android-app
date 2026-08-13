@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.summary.data
 import android.content.Context
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 
@@ -23,6 +24,9 @@ class DefaultSummaryTaskQueueRepository(
         startedAt = item.task.startedAt,
         finishedAt = item.task.finishedAt,
         error = item.task.error,
+        progressStage = item.task.progressStage.toSummaryQueueTaskProgressStage(),
+        progressCurrent = item.task.progressCurrent,
+        progressTotal = item.task.progressTotal,
       )
     }
 
@@ -45,4 +49,15 @@ private fun String.toSummaryQueueTaskState(): SummaryQueueTaskState = when (this
   SUMMARY_STOPPED -> SummaryQueueTaskState.STOPPED
   SUMMARY_CANCELLED -> SummaryQueueTaskState.CANCELLED
   else -> SummaryQueueTaskState.UNKNOWN
+}
+
+private fun String?.toSummaryQueueTaskProgressStage(): SummaryQueueTaskProgressStage? = when (this) {
+  null -> null
+  SUMMARY_PROGRESS_FETCHING_ARTICLE -> SummaryQueueTaskProgressStage.FETCHING_ARTICLE
+  SUMMARY_PROGRESS_PREPARING_MODEL -> SummaryQueueTaskProgressStage.PREPARING_MODEL
+  SUMMARY_PROGRESS_GENERATING_SUMMARY -> SummaryQueueTaskProgressStage.GENERATING_SUMMARY
+  SUMMARY_PROGRESS_SUMMARIZING_CHUNK -> SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK
+  SUMMARY_PROGRESS_REDUCING_SUMMARY -> SummaryQueueTaskProgressStage.REDUCING_SUMMARY
+  SUMMARY_PROGRESS_FINALIZING_SUMMARY -> SummaryQueueTaskProgressStage.FINALIZING_SUMMARY
+  else -> SummaryQueueTaskProgressStage.UNKNOWN
 }
