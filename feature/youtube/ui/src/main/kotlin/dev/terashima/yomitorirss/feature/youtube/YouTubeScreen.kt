@@ -407,6 +407,12 @@ private fun AddYouTubeChannelDialog(
       Column {
         Text("チャンネルURLを入力してください。")
         Spacer(Modifier.height(8.dp))
+        Text(
+          "チャンネルIDは https://www.ytultra.com/ja/youtube-channel-id-finder/ などの外部サイトで確認できます。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
         OutlinedTextField(
           value = value,
           onValueChange = { value = it },
