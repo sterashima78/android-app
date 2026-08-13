@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -100,9 +99,7 @@ fun LibraryCoverQueueScreen(
         .padding(padding),
       contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-      item {
-        CoverQueueSummary(snapshot)
-      }
+      item { CoverQueueSummary(snapshot) }
       item {
         Text(
           "バックグラウンド処理",
@@ -128,17 +125,11 @@ fun LibraryCoverQueueScreen(
           Button(
             onClick = onRetryUnresolved,
             enabled = retryable,
-            modifier = Modifier.weight(1f),
-          ) {
-            Text("未取得を再試行")
-          }
+          ) { Text("未取得を再試行") }
           OutlinedButton(
             onClick = onCancelCurrentWork,
             enabled = active,
-            modifier = Modifier.weight(1f),
-          ) {
-            Text("実行をキャンセル")
-          }
+          ) { Text("実行をキャンセル") }
         }
       }
       message?.let { text ->
@@ -239,11 +230,7 @@ private fun CoverQueueItem(item: LibraryCoverAcquisitionItem) {
 
   ListItem(
     headlineContent = {
-      Text(
-        item.title,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-      )
+      Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
     },
     supportingContent = { Text(details) },
   )
