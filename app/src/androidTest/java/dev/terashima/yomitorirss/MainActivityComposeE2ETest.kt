@@ -14,7 +14,7 @@ class MainActivityComposeE2ETest {
 
   @Test
   fun `ドロワーからRSSへ移動してフィード管理を開ける`() {
-    composeRule.onNodeWithText("統合ビュー").assertIsDisplayed()
+    composeRule.onNodeWithContentDescription("メニュー").assertIsDisplayed()
 
     composeRule.onNodeWithContentDescription("メニュー").performClick()
     composeRule.onNodeWithText("RSS").performClick()
