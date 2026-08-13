@@ -300,10 +300,10 @@ internal class AmazonLibraryImporter {
     val statuses = KINDLE_RIGHT_STATUS_HEADERS
       .flatMap { header -> this[header].orEmpty() }
       .map { it.lowercase(Locale.ROOT) }
-    if (statuses.any { status -> KINDLE_ACTIVE_STATUS_MARKERS.any(status::contains) }) {
+    if (statuses.any { it in KINDLE_ACTIVE_STATUS_MARKERS }) {
       return KindleRightState.GRANTED
     }
-    if (statuses.any { status -> KINDLE_INACTIVE_STATUS_MARKERS.any(status::contains) }) {
+    if (statuses.any { it in KINDLE_INACTIVE_STATUS_MARKERS }) {
       return KindleRightState.REVOKED
     }
 
