@@ -5,15 +5,30 @@ import kotlinx.coroutines.ensureActive
 
 const val HIERARCHICAL_SUMMARY_CACHE_VARIANT = "hierarchical-v1"
 
+enum class HierarchicalSummaryProgressStage {
+  DIRECT,
+  CHUNK,
+  REDUCTION,
+  FINAL,
+}
+
+data class HierarchicalSummaryProgress(
+  val stage: HierarchicalSummaryProgressStage,
+  val current: Int? = null,
+  val total: Int? = null,
+)
+
 suspend fun LocalModelManager.summarizeHierarchically(
   text: String,
   prompt: String = summaryPrompt.value,
+  onProgress: (HierarchicalSummaryProgress) -> Unit = {},
 ): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val maxInputChars = HierarchicalSummaryText.inputLimitFor(model.id)
   val normalized = HierarchicalSummaryText.normalize(text)
   if (normalized.length <= maxInputChars) {
     currentCoroutineContext().ensureActive()
+    onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.DIRECT))
     return summarize(normalized, prompt)
   }
 
@@ -21,6 +36,13 @@ suspend fun LocalModelManager.summarizeHierarchically(
   val targetChars = HierarchicalSummaryText.intermediateTargetChars(maxInputChars)
   var summaries = chunks.mapIndexed { index, chunk ->
     currentCoroutineContext().ensureActive()
+    onProgress(
+      HierarchicalSummaryProgress(
+        stage = HierarchicalSummaryProgressStage.CHUNK,
+        current = index + 1,
+        total = chunks.size,
+      ),
+    )
     summarize(
       chunk,
       chunkSummaryPrompt(
@@ -43,8 +65,15 @@ suspend fun LocalModelManager.summarizeHierarchically(
       "長文要約の中間結果を十分に圧縮できませんでした"
     }
     val groups = HierarchicalSummaryText.pack(summaries, maxInputChars)
-    summaries = groups.map { group ->
+    summaries = groups.mapIndexed { index, group ->
       currentCoroutineContext().ensureActive()
+      onProgress(
+        HierarchicalSummaryProgress(
+          stage = HierarchicalSummaryProgressStage.REDUCTION,
+          current = index + 1,
+          total = groups.size,
+        ),
+      )
       summarize(
         HierarchicalSummaryText.join(group),
         mergeSummaryPrompt(targetChars),
@@ -55,6 +84,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
 
   val finalContext = finalPrefix + HierarchicalSummaryText.join(summaries)
   currentCoroutineContext().ensureActive()
+  onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.FINAL))
   return summarize(finalContext, prompt)
 }
 
