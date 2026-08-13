@@ -32,15 +32,18 @@ internal class OpenLibraryCoverClient(
   }
 
   private suspend fun lookupByIsbn(isbn: String): CoverLookupResult {
-    val candidates = search(query = "isbn:$isbn", limit = ISBN_RESULT_LIMIT)
-    val exact = candidates.filter { candidate ->
-      candidate.coverId != null && candidate.isbns.any { it.cleanIsbn() == isbn }
-    }
+    val exact = search(query = "isbn:$isbn", limit = ISBN_RESULT_LIMIT)
+      .filter { candidate ->
+        candidate.coverId != null && candidate.isbns.any { it.cleanIsbn() == isbn }
+      }
+      .distinctBy(OpenLibraryCandidate::coverId)
     if (exact.isEmpty()) return CoverLookupResult(CoverLookupStatus.NOT_FOUND)
+    if (exact.size != 1) return CoverLookupResult(CoverLookupStatus.AMBIGUOUS)
 
+    val match = exact.single()
     return CoverLookupResult(
       status = CoverLookupStatus.FOUND,
-      thumbnailUrl = "$COVER_BASE_URL/isbn/$isbn-L.jpg?default=false",
+      thumbnailUrl = "$COVER_BASE_URL/id/${match.coverId}-L.jpg",
       matchedIdentifier = "ISBN:$isbn",
     )
   }
