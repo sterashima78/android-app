@@ -28,9 +28,9 @@ import androidx.compose.ui.platform.UriHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
+import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,7 +42,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val application = context.applicationContext as YomitoriApplication
   val authorization = remember(application) { GoogleBooksAuthorizationManager(application) }
   val repository = remember(application) {
-    DefaultLibraryRepository(DatabaseConnection(application.container.database))
+    SeriesAwareLibraryRepository(DatabaseConnection(application.container.database))
   }
   val coverScheduler = remember(application) { KindleCoverEnrichmentScheduler(application) }
   val audibleCoverScheduler = remember(application) { AudibleCoverEnrichmentScheduler(application) }
