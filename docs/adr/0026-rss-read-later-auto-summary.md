@@ -1,6 +1,6 @@
 # ADR-0026: RSSの「あとで読む」を任意で自動要約する
 
-- Status: Accepted
+- Status: Superseded by ADR-0029
 - Date: 2026-08-13
 
 ## Context
@@ -75,3 +75,4 @@ Bookmark の状態更新が成功した後に、自動要約の要求だけが�
 
 - ADR-0003 の feature 間依存と composition root の方針に従う
 - ADR-0025 の統合ビューでは RSS の deferred 操作に `RssViewModel.readLater` を利用しているため、本ADRの自動要約も同じ操作経路に適用される
+- ADR-0029 により、RSS固有の opt-in 自動要約から全ブックマーク追加時のAIメタデータ生成へ置き換えられた
