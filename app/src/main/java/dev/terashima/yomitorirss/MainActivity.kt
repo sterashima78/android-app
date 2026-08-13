@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
       backupChangeScheduler = container.backupChangeScheduler,
+      summaryRepository = container.summaryRepository,
       articleSelector = { article -> !article.isRedditArticle() },
     )
   }

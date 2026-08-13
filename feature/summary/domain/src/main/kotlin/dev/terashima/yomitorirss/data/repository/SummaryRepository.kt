@@ -9,4 +9,6 @@ sealed interface SummaryRequestResult {
 
 interface SummaryRepository {
   suspend fun request(articleId: String, forceRefresh: Boolean): SummaryRequestResult
+  fun isAutoSummarizeReadLaterEnabled(): Boolean
+  fun setAutoSummarizeReadLaterEnabled(enabled: Boolean)
 }
