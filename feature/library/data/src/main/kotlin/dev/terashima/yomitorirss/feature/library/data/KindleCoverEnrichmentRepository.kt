@@ -78,3 +78,48 @@ class KindleCoverEnrichmentRepository(
       )
     }
   }
+
+  private fun saveLookup(book: LibraryBook, result: KindleCoverLookupResult) {
+    val lookup = result.lookup
+    val values = ContentValues().apply {
+      put("source", LibrarySource.KINDLE.name)
+      put("source_id", book.sourceId)
+      lookup.thumbnailUrl?.let { put("thumbnail_url", it) } ?: putNull("thumbnail_url")
+      put("provider", result.provider.storageValue)
+      put("lookup_status", lookup.status.name)
+      lookup.matchedIdentifier?.let { put("matched_identifier", it) } ?: putNull("matched_identifier")
+      put("updated_at", System.currentTimeMillis())
+    }
+    database.writable.insertWithOnConflict(
+      "library_item_external_metadata",
+      null,
+      values,
+      SQLiteDatabase.CONFLICT_REPLACE,
+    )
+  }
+
+  private suspend fun ensureSchema() {
+    if (schemaEnsured) return
+    DefaultLibraryRepository(database).snapshot()
+    schemaEnsured = true
+  }
+
+  private fun isEnabled(): Boolean = database.readable.rawQuery(
+    "SELECT value FROM library_settings WHERE key = ? LIMIT 1",
+    arrayOf(KINDLE_COVER_ENRICHMENT_SETTING),
+  ).use { cursor -> cursor.moveToFirst() && cursor.getString(0) == "1" }
+
+  private companion object {
+    const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
+    const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
+  }
+}
+
+private fun parseKindleAuthors(value: String): List<String> = runCatching {
+  val array = JSONArray(value)
+  buildList {
+    for (index in 0 until array.length()) {
+      array.optString(index).trim().takeIf(String::isNotEmpty)?.let(::add)
+    }
+  }
+}.getOrElse { emptyList() }
