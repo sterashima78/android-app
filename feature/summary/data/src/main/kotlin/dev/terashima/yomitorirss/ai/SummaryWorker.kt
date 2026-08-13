@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
@@ -97,7 +98,7 @@ class SummaryWorker(
     prompt: String,
   ): String = coroutineScope {
     val hierarchyProgress = AtomicReference<HierarchicalSummaryProgress?>(null)
-    val progressCollector = launch(Dispatchers.IO) {
+    val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
       modelManager.summaryProgress.filterNotNull().collect { progress ->
         when (progress.stage) {
           "preparing_model" -> database.updateRunningSummaryTaskProgress(
@@ -191,13 +192,13 @@ private data class StoredSummaryProgress(
 private fun HierarchicalSummaryProgress?.toStoredProgress(): StoredSummaryProgress = when (this?.stage) {
   HierarchicalSummaryProgressStage.CHUNK -> StoredSummaryProgress(
     stage = SUMMARY_PROGRESS_SUMMARIZING_CHUNK,
-    current = current,
-    total = total,
+    current = this?.current,
+    total = this?.total,
   )
   HierarchicalSummaryProgressStage.REDUCTION -> StoredSummaryProgress(
     stage = SUMMARY_PROGRESS_REDUCING_SUMMARY,
-    current = current,
-    total = total,
+    current = this?.current,
+    total = this?.total,
   )
   HierarchicalSummaryProgressStage.FINAL -> StoredSummaryProgress(SUMMARY_PROGRESS_FINALIZING_SUMMARY)
   HierarchicalSummaryProgressStage.DIRECT,
