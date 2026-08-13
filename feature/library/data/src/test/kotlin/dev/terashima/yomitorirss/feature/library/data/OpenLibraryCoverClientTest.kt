@@ -126,6 +126,67 @@ class OpenLibraryCoverClientTest {
     assertEquals(null, explicitVolumeNumber("Synthetic Book"))
   }
 
+  @Test
+  fun `Amazon OGPから信頼可能な表紙URLを取得する`() {
+    val html = """
+      <meta property="og:image" content="https://m.media-amazon.com/images/I/synthetic-cover.jpg">
+    """.trimIndent()
+
+    assertEquals(
+      "https://m.media-amazon.com/images/I/synthetic-cover.jpg",
+      extractAmazonOgCoverUrl(html),
+    )
+  }
+
+  @Test
+  fun `Amazon商品画像では高解像度属性を優先する`() {
+    val html = """
+      <img id="ebooksImgBlkFront"
+        src="https://m.media-amazon.com/images/I/low.jpg"
+        data-old-hires="https://m.media-amazon.com/images/I/high.jpg">
+    """.trimIndent()
+
+    assertEquals(
+      "https://m.media-amazon.com/images/I/high.jpg",
+      extractAmazonProductImageUrl(html),
+    )
+  }
+
+  @Test
+  fun `Amazon商品URLは要求ASINとホストを検証する`() {
+    assertTrue(
+      isAmazonProductPageForAsin(
+        "https://www.amazon.co.jp/Synthetic-Book/dp/B0TEST0001/ref=test",
+        "B0TEST0001",
+      ),
+    )
+    assertEquals(
+      false,
+      isAmazonProductPageForAsin(
+        "https://www.amazon.co.jp/errors/validateCaptcha",
+        "B0TEST0001",
+      ),
+    )
+    assertEquals(
+      false,
+      isAmazonProductPageForAsin(
+        "https://example.com/dp/B0TEST0001",
+        "B0TEST0001",
+      ),
+    )
+  }
+
+  @Test
+  fun `信頼していないAmazon画像ホストは採用しない`() {
+    val html = """
+      <meta property="og:image" content="https://example.com/cover.jpg">
+      <img id="landingImage" src="https://example.com/cover.jpg">
+    """.trimIndent()
+
+    assertEquals(null, extractAmazonOgCoverUrl(html))
+    assertEquals(null, extractAmazonProductImageUrl(html))
+  }
+
   private fun book(
     title: String,
     authors: List<String>,
