@@ -59,6 +59,7 @@ import coil3.compose.AsyncImage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private enum class LibraryTab(val label: String) {
   ALL("全体"),
@@ -544,7 +545,8 @@ private fun LibraryBookThumbnail(
 ) {
   val uriHandler = LocalUriHandler.current
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
-  val hasInfoUrl = !book.infoUrl.isNullOrBlank()
+  val openUrl = remember(book.source, book.sourceId, book.infoUrl) { book.openUrl() }
+  val hasInfoUrl = openUrl != null
 
   Box(modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -557,8 +559,8 @@ private fun LibraryBookThumbnail(
             onLongClickLabel = "操作メニュー",
             onLongClick = { actionMenuExpanded = true },
             onClick = {
-              if (hasInfoUrl) {
-                book.infoUrl?.let(uriHandler::openUri)
+              if (openUrl != null) {
+                uriHandler.openUri(openUrl)
               } else {
                 actionMenuExpanded = true
               }
@@ -594,6 +596,30 @@ private fun LibraryBookThumbnail(
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
+      }
+      if (book.source == LibrarySource.AUDIBLE && book.narrators.isNotEmpty()) {
+        Text(
+          "ナレーター: ${book.narrators.joinToString(", ")}",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      if (book.source == LibrarySource.AUDIBLE) {
+        val audibleDetails = listOfNotNull(
+          book.duration?.takeIf(String::isNotBlank)?.let { "再生 $it" },
+          book.publishedDate?.takeIf(String::isNotBlank)?.let { "配信 $it" },
+        ).joinToString(" / ")
+        if (audibleDetails.isNotEmpty()) {
+          Text(
+            audibleDetails,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
       }
     }
 
@@ -739,6 +765,17 @@ private fun LibrarySeriesDialog(
     },
   )
 }
+
+private fun LibraryBook.openUrl(): String? {
+  infoUrl?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
+  if (source != LibrarySource.AUDIBLE) return null
+
+  val asin = sourceId.trim().uppercase(Locale.ROOT)
+  if (!AUDIBLE_ASIN.matches(asin)) return null
+  return "https://www.audible.co.jp/pd/$asin"
+}
+
+private val AUDIBLE_ASIN = Regex("^[A-Z0-9]{10}$")
 
 private fun formatSyncTime(epochMillis: Long): String {
   val formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
