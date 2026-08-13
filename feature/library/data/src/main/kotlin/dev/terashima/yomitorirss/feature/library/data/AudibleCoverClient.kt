@@ -6,10 +6,10 @@ import java.io.IOException
 import java.net.URI
 import java.util.Locale
 
-internal class AudibleCoverClient(
+class AudibleCoverClient(
   private val httpClient: HttpClient = HttpClient.create(),
 ) {
-  suspend fun lookup(sourceId: String): CoverLookupResult {
+  internal suspend fun lookup(sourceId: String): CoverLookupResult {
     val asin = sourceId.trim().uppercase(Locale.ROOT)
       .takeIf(AUDIBLE_ASIN::matches)
       ?: return CoverLookupResult(CoverLookupStatus.NOT_FOUND)
