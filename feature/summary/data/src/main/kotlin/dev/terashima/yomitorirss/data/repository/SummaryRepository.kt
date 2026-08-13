@@ -12,7 +12,6 @@ class DefaultSummaryRepository(
   private val modelManager: LocalModelManager,
 ) : SummaryRepository {
   private val appContext = context.applicationContext
-  private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
   override suspend fun request(articleId: String, forceRefresh: Boolean): SummaryRequestResult {
     if (!forceRefresh) {
@@ -41,15 +40,16 @@ class DefaultSummaryRepository(
     )
   }
 
-  override fun isAutoSummarizeReadLaterEnabled(): Boolean =
-    preferences.getBoolean(KEY_AUTO_SUMMARIZE_READ_LATER, false)
+  override suspend fun requestBookmarkEnrichment(articleId: String): SummaryRequestResult =
+    SummaryRequestResult.Enqueued(
+      accepted = SummaryQueue.enqueue(
+        context = appContext,
+        articleId = articleId,
+        forceRefresh = false,
+      ),
+      forceRefresh = false,
+    )
 
-  override fun setAutoSummarizeReadLaterEnabled(enabled: Boolean) {
-    preferences.edit().putBoolean(KEY_AUTO_SUMMARIZE_READ_LATER, enabled).apply()
-  }
-
-  private companion object {
-    const val PREFERENCES_NAME = "summary_settings"
-    const val KEY_AUTO_SUMMARIZE_READ_LATER = "auto_summarize_read_later"
-  }
+  override suspend fun findSummary(articleId: String): String? =
+    database.findSummary(articleId)?.summary
 }
