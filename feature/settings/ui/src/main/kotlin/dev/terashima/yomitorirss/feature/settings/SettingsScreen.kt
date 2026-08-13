@@ -11,8 +11,6 @@ import androidx.compose.ui.Modifier
 fun SettingsFeatureScreen(
   modifier: Modifier,
   tagCount: Int,
-  autoSummarizeReadLater: Boolean,
-  onAutoSummarizeReadLaterChange: (Boolean) -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
@@ -29,8 +27,6 @@ fun SettingsFeatureScreen(
   SettingsContent(
     modifier = modifier,
     tagCount = tagCount,
-    autoSummarizeReadLater = autoSummarizeReadLater,
-    onAutoSummarizeReadLaterChange = onAutoSummarizeReadLaterChange,
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = onOpenXCss,

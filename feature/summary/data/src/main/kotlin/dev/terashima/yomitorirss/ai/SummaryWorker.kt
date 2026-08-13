@@ -15,6 +15,7 @@ import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgress
 import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgressStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.summarizeHierarchically
+import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import java.util.concurrent.atomic.AtomicReference
@@ -50,31 +51,50 @@ class SummaryWorker(
 
         try {
           setForeground(createForegroundInfo(article.title))
-          val selectedModel = modelManager.selectedModel()
-            ?: error("要約モデルをダウンロードして選択してください")
-          val prompt = modelManager.summaryPrompt.value
-          val cacheKey = "${modelManager.summaryCacheKey(selectedModel.id, prompt)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
+          val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
+          val summary = if (cached != null) {
+            cached.summary
+          } else {
+            val selectedModel = modelManager.selectedModel()
+              ?: error("要約モデルをダウンロードして選択してください")
+            val prompt = modelManager.summaryPrompt.value
+            val cacheKey = "${modelManager.summaryCacheKey(selectedModel.id, prompt)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
 
-          if (!task.forceRefresh) {
-            val cached = database.findSummary(task.articleId)
-            if (cached != null && cached.modelId == cacheKey) {
-              database.completeRunningSummaryTask(task.articleId)
-              continue
+            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
+            val articleText = ArticleContentClient().fetchArticleText(article.url)
+            currentCoroutineContext().ensureActive()
+            summarizeWithProgress(
+              database = database,
+              modelManager = modelManager,
+              articleId = task.articleId,
+              articleText = articleText,
+              prompt = prompt,
+            ).also { generated ->
+              currentCoroutineContext().ensureActive()
+              database.saveSummary(task.articleId, generated, cacheKey)
             }
           }
 
-          database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
-          val articleText = ArticleContentClient().fetchArticleText(article.url)
-          currentCoroutineContext().ensureActive()
-          val summary = summarizeWithProgress(
-            database = database,
-            modelManager = modelManager,
-            articleId = task.articleId,
-            articleText = articleText,
-            prompt = prompt,
-          )
-          currentCoroutineContext().ensureActive()
-          database.saveSummary(task.articleId, summary, cacheKey)
+          if (database.isBookmarkedForAiEnrichment(task.articleId)) {
+            currentCoroutineContext().ensureActive()
+            modelManager.selectedModel()
+              ?: error("AIタグ生成用のモデルをダウンロードして選択してください")
+            val tagSource = buildString {
+              append("タイトル: ")
+              append(article.title)
+              append("\n\n要約:\n")
+              append(summary)
+            }
+            val generatedTags = parseGeneratedTags(
+              modelManager.summarize(tagSource, AUTO_TAG_PROMPT),
+            )
+            check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
+            currentCoroutineContext().ensureActive()
+            if (database.addAiGeneratedTags(task.articleId, generatedTags)) {
+              DataChangeNotifier.shared.notifyChanged()
+            }
+          }
+
           database.completeRunningSummaryTask(task.articleId)
         } catch (error: CancellationException) {
           throw error
@@ -139,17 +159,17 @@ class SummaryWorker(
     notificationManager.createNotificationChannel(
       NotificationChannel(
         CHANNEL_ID,
-        "記事の要約",
+        "記事の要約とタグ付け",
         NotificationManager.IMPORTANCE_LOW,
       ).apply {
-        description = "ローカルAIで記事をバックグラウンド要約している間に表示します"
+        description = "ローカルAIで記事をバックグラウンド要約・タグ付けしている間に表示します"
         setShowBadge(false)
       },
     )
 
     val notificationBuilder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.stat_notify_sync)
-      .setContentTitle("記事を要約しています")
+      .setContentTitle("記事をAI処理しています")
       .setContentText(articleTitle)
       .setStyle(NotificationCompat.BigTextStyle().bigText(articleTitle))
       .setOngoing(true)

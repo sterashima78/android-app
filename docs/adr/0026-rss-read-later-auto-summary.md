@@ -1,6 +1,6 @@
 # ADR-0026: RSSの「あとで読む」を任意で自動要約する
 
-- Status: Accepted
+- Status: Superseded by ADR-0030
 - Date: 2026-08-13
 
 ## Context
@@ -25,19 +25,11 @@ RSSの記事を「あとで読む」にしたとき、自動的に要約を要�
 
 自動要約設定は要約処理を開始する条件であるため、Summary feature が所有する。
 
-`SummaryRepository` は次を提供する。
-
-- 要約要求
-- 「あとで読む」の自動要約設定の取得
-- 同設定の更新
-
-Data 実装はアプリ内部の `SharedPreferences` に設定を保存する。設定画面は `:app` の route から Summary の Domain contract を利用し、UI module へは boolean と更新 callback だけを渡す。
+`SummaryRepository` は要約要求、「あとで読む」の自動要約設定の取得・更新を提供する。Data 実装はアプリ内部の `SharedPreferences` に設定を保存する。
 
 ### 3. RSS の「あとで読む」確定後に要約を要求する
 
 `RssViewModel` は Bookmark の「あとで読む」更新が成功した後に自動要約設定を確認し、有効な場合に `SummaryRepository.request(articleId, false)` を呼ぶ。
-
-これにより、RSS画面だけでなく、RSS項目に対して同じ `RssViewModel.readLater` を利用する統合ビューからの操作も同じ挙動になる。
 
 Reddit など RSS feature 以外の「あとで読む」操作には適用しない。
 
@@ -51,27 +43,22 @@ Reddit など RSS feature 以外の「あとで読む」操作には適用しな
 
 ### 5. 自動要約の失敗で「あとで読む」を巻き戻さない
 
-「あとで読む」登録と自動要約は異なる成功条件とする。
-
-Bookmark の状態更新が成功した後に、自動要約の要求だけが失敗した場合は「あとで読む」状態を維持する。たとえば要約モデルが未選択の場合は、登録を維持したまま自動要約を開始できなかった旨を UI に表示する。
+「あとで読む」登録と自動要約は異なる成功条件とする。自動要約だけが失敗した場合も「あとで読む」状態を維持する。
 
 ## Consequences
 
 ### Positive
 
-- 「あとで読む」に振り分けた RSS 記事の要約準備を自動化できる
-- 統合ビューでも RSS 画面と同じ処理経路を利用できる
-- 既存の Summary キューの重複排除と再実行機構を再利用できる
-- 自動要約失敗が RSS の振り分け操作を破壊しない
-- opt-in のため、端末負荷やモデル利用をユーザーが制御できる
+- RSSの「あとで読む」記事の要約準備を自動化できる
+- 既存のSummaryキューを再利用できる
+- 自動要約失敗がRSSの振り分け操作を破壊しない
 
 ### Negative
 
 - RSS UI が Summary Domain に依存する
-- SummaryRepository が要約要求に加えて自動化設定も扱う
-- 設定有効時でも要約モデルが利用できなければキュー投入は開始できず、ユーザーへのエラー表示が必要になる
+- 自動要約設定を別途管理する必要がある
 
 ## Relationship to existing ADRs
 
 - ADR-0003 の feature 間依存と composition root の方針に従う
-- ADR-0025 の統合ビューでは RSS の deferred 操作に `RssViewModel.readLater` を利用しているため、本ADRの自動要約も同じ操作経路に適用される
+- ADR-0030 により、RSS固有の opt-in 自動要約から通常のブックマーク追加時のAI要約・タグ付けへ置き換えられた

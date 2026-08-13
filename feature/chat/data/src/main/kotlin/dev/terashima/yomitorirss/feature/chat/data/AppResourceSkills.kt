@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.task.TaskItem
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import java.time.LocalDate
@@ -21,11 +22,12 @@ fun createAppResourceSkills(
   bookmarkRepository: BookmarkRepository,
   feedRepository: FeedRepository,
   redditRepository: RedditRepository,
+  summaryRepository: SummaryRepository,
   taskRepository: TaskRepository,
 ): List<AgentSkill> = listOf(
   rssSkill(articleRepository, feedRepository),
   redditSkill(articleRepository, redditRepository),
-  bookmarkSkill(bookmarkRepository),
+  bookmarkSkill(bookmarkRepository, summaryRepository),
   historySkill(articleRepository),
   taskSkill(taskRepository),
 )
@@ -112,20 +114,22 @@ private fun redditSkill(
 
 private fun bookmarkSkill(
   bookmarkRepository: BookmarkRepository,
+  summaryRepository: SummaryRepository,
 ): AgentSkill = AgentSkill(
   name = "bookmark-reader",
-  description = "保存済み・あとで読む記事、ブックマークフォルダ、タグを参照するSkill。",
-  instructions = "ブックマーク、保存記事、あとで読む、フォルダ、タグについて質問されたときに利用する。読み取り専用で利用する。",
+  description = "保存済み・あとで読む記事、ブックマークフォルダ、タグ、AI要約を参照するSkill。",
+  instructions = "ブックマーク、保存記事、あとで読む、フォルダ、タグ、保存記事の内容について質問されたときに利用する。検索と回答にはタグと保存済みAI要約を優先して利用する。読み取り専用で利用する。",
   tools = listOf(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_saved_articles",
-        description = "保存済みブックマークをタイトル・配信元・フォルダ・タグで検索する。",
+        description = "保存済みブックマークをタイトル・配信元・フォルダ・タグ・AI要約で検索する。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       formatBookmarkedArticles(
         bookmarkRepository.listSavedArticles(tagId = null, folderId = null),
+        summaryRepository,
         arguments.query(),
         arguments.limit(),
       )
@@ -133,11 +137,16 @@ private fun bookmarkSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_read_later_articles",
-        description = "あとで読むフォルダの記事を検索する。",
+        description = "あとで読むフォルダの記事をタイトル・配信元・タグ・AI要約で検索する。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      formatBookmarkedArticles(bookmarkRepository.listReadLaterArticles(), arguments.query(), arguments.limit())
+      formatBookmarkedArticles(
+        bookmarkRepository.listReadLaterArticles(),
+        summaryRepository,
+        arguments.query(),
+        arguments.limit(),
+      )
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
@@ -247,23 +256,29 @@ private fun formatArticles(
   }
 }
 
-private fun formatBookmarkedArticles(
+private suspend fun formatBookmarkedArticles(
   bookmarkedArticles: List<BookmarkedArticle>,
+  summaryRepository: SummaryRepository,
   query: String,
   limit: Int,
 ): String {
-  val filtered = bookmarkedArticles.filter { bookmarked ->
+  val enriched = bookmarkedArticles.map { bookmarked ->
+    bookmarked to summaryRepository.findSummary(bookmarked.article.id)
+  }
+  val filtered = enriched.filter { (bookmarked, summary) ->
     val article = bookmarked.article
     query.isBlank() || listOf(
       article.title,
       article.sourceTitle,
       bookmarked.folder?.name.orEmpty(),
       bookmarked.tags.joinToString(" ") { tag -> tag.name },
+      summary.orEmpty(),
     ).any { value -> value.contains(query, true) }
   }
-  return formatCollection(filtered, limit) { bookmarked ->
+  return formatCollection(filtered, limit) { (bookmarked, summary) ->
     val article = bookmarked.article
-    "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | url=${article.url}"
+    val compactSummary = summary.orEmpty().replace(Regex("\\s+"), " ").trim()
+    "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | summary=$compactSummary | url=${article.url}"
   }
 }
 
