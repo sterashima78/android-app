@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,13 +48,17 @@ class LibraryViewModel(
   fun importAmazonLibrary(
     source: LibrarySource,
     fileName: String?,
-    bytes: ByteArray,
+    openInputStream: () -> InputStream,
   ) {
     require(source == LibrarySource.KINDLE || source == LibrarySource.AUDIBLE)
     if (_state.value.syncing || _state.value.importingSource != null) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(importingSource = source) }
-      runCatching { repository.importAmazonLibrary(source, fileName, bytes) }
+      runCatching {
+        openInputStream().use { input ->
+          repository.importAmazonLibrary(source, fileName, input)
+        }
+      }
         .onSuccess { result ->
           loadSnapshot(message = "${source.label} から ${result.importedCount} 冊をインポートしました")
         }

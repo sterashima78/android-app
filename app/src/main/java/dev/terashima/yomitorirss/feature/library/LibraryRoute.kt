@@ -28,8 +28,6 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,7 +60,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     scope.launch {
       runCatching {
         withContext(Dispatchers.IO) {
-          val displayName = context.contentResolver.query(
+          application.contentResolver.query(
             uri,
             arrayOf(OpenableColumns.DISPLAY_NAME),
             null,
@@ -71,16 +69,12 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
           )?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
           }
-          val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-            input.readUpTo(MAX_AMAZON_IMPORT_BYTES + 1)
-          } ?: error("選択したファイルを開けませんでした")
-          require(bytes.size <= MAX_AMAZON_IMPORT_BYTES) {
-            "インポートファイルが大きすぎます（上限 25 MB）"
-          }
-          displayName to bytes
         }
-      }.onSuccess { (displayName, bytes) ->
-        libraryViewModel.importAmazonLibrary(source, displayName, bytes)
+      }.onSuccess { displayName ->
+        libraryViewModel.importAmazonLibrary(source, displayName) {
+          application.contentResolver.openInputStream(uri)
+            ?: error("選択したファイルを開けませんでした")
+        }
       }.onFailure(libraryViewModel::reportError)
     }
   }
@@ -292,19 +286,6 @@ internal fun readerActivityScore(activityName: String): Int {
   return score
 }
 
-private fun InputStream.readUpTo(limit: Int): ByteArray {
-  val output = ByteArrayOutputStream(minOf(limit, DEFAULT_BUFFER_SIZE))
-  val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-  var total = 0
-  while (total < limit) {
-    val read = read(buffer, 0, minOf(buffer.size, limit - total))
-    if (read < 0) break
-    output.write(buffer, 0, read)
-    total += read
-  }
-  return output.toByteArray()
-}
-
 private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
 private const val LEGACY_PLAY_BOOKS_READER_ACTIVITY =
   "com.google.android.apps.play.books.ebook.activity.ReadingActivity"
@@ -314,4 +295,3 @@ private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
   "この項目には Google Books API の読書リンクがないため、直接開けません。"
 private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
   "Google Play Books を開けませんでした。"
-private const val MAX_AMAZON_IMPORT_BYTES = 25 * 1024 * 1024
