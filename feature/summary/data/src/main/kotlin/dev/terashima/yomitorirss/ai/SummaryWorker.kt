@@ -104,10 +104,15 @@ class SummaryWorker(
             articleId,
             SUMMARY_PROGRESS_PREPARING_MODEL,
           )
-          "generating_summary" -> database.updateRunningSummaryTaskProgress(
-            articleId,
-            hierarchyProgress.get().toStoredProgress(),
-          )
+          "generating_summary" -> {
+            val stored = hierarchyProgress.get().toStoredProgress()
+            database.updateRunningSummaryTaskProgress(
+              articleId = articleId,
+              stage = stored.stage,
+              current = stored.current,
+              total = stored.total,
+            )
+          }
         }
       }
     }
