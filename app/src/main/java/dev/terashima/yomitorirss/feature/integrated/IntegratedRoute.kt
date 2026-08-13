@@ -30,7 +30,6 @@ import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.reddit.redditThreadId
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
-import dev.terashima.yomitorirss.feature.youtube.YouTubeVideo
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 @Composable
@@ -120,12 +119,28 @@ fun IntegratedRoute(
             is IntegratedItem.Mail -> mailViewModel.toggleRead(item.thread)
           }
         },
+        onSave = { item ->
+          when (item) {
+            is IntegratedItem.Rss -> rssViewModel.saveAndRead(item.article)
+            is IntegratedItem.Reddit -> redditViewModel.saveAndRead(item.article)
+            is IntegratedItem.YouTube -> youtubeViewModel.saveAndRead(item.video)
+            is IntegratedItem.Mail -> Unit
+          }
+        },
         onDefer = { item ->
           when (item) {
             is IntegratedItem.Rss -> rssViewModel.readLater(item.article)
             is IntegratedItem.Reddit -> redditViewModel.readLater(item.article)
             is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
-            is IntegratedItem.Mail -> mailViewModel.readLater(item.thread)
+            is IntegratedItem.Mail -> mailViewModel.toggleReadLater(item.thread)
+          }
+        },
+        onUnsave = { item ->
+          when (item) {
+            is IntegratedItem.Rss -> rssViewModel.unsave(item.article)
+            is IntegratedItem.Reddit -> redditViewModel.unsave(item.article)
+            is IntegratedItem.YouTube,
+            is IntegratedItem.Mail -> Unit
           }
         },
         onRemoveDeferred = { item ->
@@ -133,11 +148,10 @@ fun IntegratedRoute(
             is IntegratedItem.Rss -> rssViewModel.removeReadLater(item.article)
             is IntegratedItem.Reddit -> redditViewModel.removeReadLater(item.article)
             is IntegratedItem.YouTube -> youtubeViewModel.toggleWatchLater(item.video)
-            is IntegratedItem.Mail -> if (item.thread.isReadLater) {
-              mailViewModel.toggleReadLater(item.thread)
-            }
+            is IntegratedItem.Mail -> mailViewModel.toggleReadLater(item.thread)
           }
         },
+        onToggleMailStarred = { item -> mailViewModel.toggleStarred(item.thread) },
         onArchive = { item -> mailViewModel.archive(item.thread) },
         onOpen = { item ->
           when (item) {
@@ -156,8 +170,6 @@ fun IntegratedRoute(
             onOpenArticle = onOpenArticle,
             onSubscribeRedditThread = redditViewModel::subscribeThread,
             onUnsubscribeRedditThread = redditViewModel::unsubscribeThread,
-            onSaveYouTube = youtubeViewModel::saveAndRead,
-            onToggleMailStarred = mailViewModel::toggleStarred,
           )
         },
       )
@@ -175,8 +187,6 @@ internal fun integratedItemActions(
   onOpenArticle: (Article) -> Unit,
   onSubscribeRedditThread: (Article) -> Unit,
   onUnsubscribeRedditThread: (Article) -> Unit,
-  onSaveYouTube: (YouTubeVideo) -> Unit,
-  onToggleMailStarred: (MailThread) -> Unit,
 ): List<IntegratedItemAction> = when (item) {
   is IntegratedItem.Rss -> listOf(
     IntegratedItemAction("はてなブックマークコメントを見る") {
@@ -210,17 +220,8 @@ internal fun integratedItemActions(
     }
   }
 
-  is IntegratedItem.YouTube -> listOf(
-    IntegratedItemAction("保存") {
-      onSaveYouTube(item.video)
-    },
-  )
-
-  is IntegratedItem.Mail -> listOf(
-    IntegratedItemAction(if (item.thread.isStarred) "スターを外す" else "スター") {
-      onToggleMailStarred(item.thread)
-    },
-  )
+  is IntegratedItem.YouTube,
+  is IntegratedItem.Mail -> emptyList()
 }
 
 private fun Article.withHatenaBookmarkCommentsUrl(): Article = copy(
