@@ -19,7 +19,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -30,8 +29,6 @@ import androidx.compose.ui.unit.dp
 fun SettingsContent(
   modifier: Modifier,
   tagCount: Int,
-  autoSummarizeReadLater: Boolean,
-  onAutoSummarizeReadLaterChange: (Boolean) -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
@@ -78,18 +75,10 @@ fun SettingsContent(
 
     item { SettingsHeader("要約") }
     item {
-      SettingsToggleRow(
-        icon = Icons.Default.SmartToy,
-        title = "あとで読む記事を自動要約",
-        supporting = "RSSで「あとで読む」にした記事を要約キューへ自動追加",
-        checked = autoSummarizeReadLater,
-        onCheckedChange = onAutoSummarizeReadLaterChange,
-      )
-    }
-    item {
       SettingsRow(
         icon = Icons.Default.SmartToy,
         title = "要約モデル",
+        supporting = "ブックマーク追加時の自動要約・タグ付けにも使用",
         onClick = onOpenModels,
       )
     }
@@ -104,7 +93,7 @@ fun SettingsContent(
       SettingsRow(
         icon = Icons.Default.List,
         title = "タスクキュー",
-        supporting = "要約タスクの状態確認・停止・キャンセル",
+        supporting = "要約・タグ付けタスクの状態確認・停止・キャンセル",
         onClick = onOpenSummaryTaskQueue,
       )
     }
@@ -169,28 +158,6 @@ private fun SettingsRow(
     supportingContent = supporting?.let { { Text(it) } },
     leadingContent = { Icon(icon, contentDescription = null) },
     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-  )
-}
-
-@Composable
-private fun SettingsToggleRow(
-  icon: ImageVector,
-  title: String,
-  supporting: String,
-  checked: Boolean,
-  onCheckedChange: (Boolean) -> Unit,
-) {
-  ListItem(
-    modifier = Modifier.clickable { onCheckedChange(!checked) },
-    headlineContent = { Text(title) },
-    supportingContent = { Text(supporting) },
-    leadingContent = { Icon(icon, contentDescription = null) },
-    trailingContent = {
-      Switch(
-        checked = checked,
-        onCheckedChange = null,
-      )
-    },
   )
 }
 
