@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import dev.terashima.yomitorirss.feature.library.LibraryBook
+import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
@@ -7,6 +9,13 @@ internal data class KindleSeriesMetadata(
   val seriesId: String,
   val name: String,
   val position: Int,
+) {
+  fun asLibrarySeries(): LibrarySeries = LibrarySeries(name = name, position = position)
+}
+
+internal data class KindleImportResult(
+  val books: List<LibraryBook>,
+  val seriesByItemAsin: Map<String, KindleSeriesMetadata>,
 )
 
 internal object KindleSeriesMetadataParser {
