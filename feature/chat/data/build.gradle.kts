@@ -22,6 +22,7 @@ dependencies {
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:rss:domain"))
+  implementation(project(":feature:summary:domain"))
   implementation(project(":feature:task:domain"))
   implementation(project(":core:ai-runtime"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
