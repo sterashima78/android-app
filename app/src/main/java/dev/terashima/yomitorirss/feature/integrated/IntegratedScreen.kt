@@ -25,10 +25,13 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RssFeed
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -127,6 +131,36 @@ data class IntegratedItemAction(
   val action: () -> Unit,
 )
 
+internal enum class IntegratedSwipeOperation {
+  MARK_PROCESSED,
+  SAVE,
+  DEFER,
+  UNSAVE,
+  REMOVE_DEFERRED,
+  TOGGLE_STARRED,
+  ARCHIVE,
+}
+
+internal enum class IntegratedSwipeTone {
+  PRIMARY,
+  SECONDARY,
+  TERTIARY,
+  ERROR,
+}
+
+internal data class IntegratedSwipeActionSpec(
+  val label: String,
+  val tone: IntegratedSwipeTone,
+  val dismissesItem: Boolean,
+  val operation: IntegratedSwipeOperation,
+)
+
+internal data class IntegratedSwipeActions(
+  val left: IntegratedSwipeActionSpec?,
+  val right: IntegratedSwipeActionSpec?,
+  val farRight: IntegratedSwipeActionSpec?,
+)
+
 @Composable
 fun IntegratedScreen(
   selectedTab: IntegratedTab,
@@ -138,8 +172,11 @@ fun IntegratedScreen(
   onSelectTab: (IntegratedTab) -> Unit,
   onRefresh: () -> Unit,
   onMarkProcessed: (IntegratedItem) -> Unit,
+  onSave: (IntegratedItem) -> Unit,
   onDefer: (IntegratedItem) -> Unit,
+  onUnsave: (IntegratedItem) -> Unit,
   onRemoveDeferred: (IntegratedItem) -> Unit,
+  onToggleMailStarred: (IntegratedItem.Mail) -> Unit,
   onArchive: (IntegratedItem.Mail) -> Unit,
   onOpen: (IntegratedItem) -> Unit,
   actionsForItem: (IntegratedItem) -> List<IntegratedItemAction> = { emptyList() },
@@ -195,8 +232,15 @@ fun IntegratedScreen(
               item = item,
               tab = selectedTab,
               onMarkProcessed = { onMarkProcessed(item) },
+              onSave = { onSave(item) },
               onDefer = { onDefer(item) },
+              onUnsave = { onUnsave(item) },
               onRemoveDeferred = { onRemoveDeferred(item) },
+              onToggleMailStarred = if (item is IntegratedItem.Mail) {
+                { onToggleMailStarred(item) }
+              } else {
+                null
+              },
               onArchive = if (item is IntegratedItem.Mail) {
                 { onArchive(item) }
               } else {
@@ -298,48 +342,34 @@ private fun LazyItemScope.IntegratedSwipeRow(
   item: IntegratedItem,
   tab: IntegratedTab,
   onMarkProcessed: () -> Unit,
+  onSave: () -> Unit,
   onDefer: () -> Unit,
+  onUnsave: () -> Unit,
   onRemoveDeferred: () -> Unit,
+  onToggleMailStarred: (() -> Unit)?,
   onArchive: (() -> Unit)?,
   onOpen: () -> Unit,
   actions: List<IntegratedItemAction>,
 ) {
   var menuOpen by remember(item.key) { mutableStateOf(false) }
-  val leftAction = when (tab) {
-    IntegratedTab.UNREAD -> SwipeAction(
-      label = "既読",
-      color = MaterialTheme.colorScheme.primary,
-      onCommit = onMarkProcessed,
-    )
-    IntegratedTab.READ_LATER -> SwipeAction(
-      label = item.removeDeferredLabel(),
-      color = MaterialTheme.colorScheme.secondary,
-      onCommit = onRemoveDeferred,
-    )
+  val actionSpecs = integratedSwipeActions(item, tab)
+  val onOperation: (IntegratedSwipeOperation) -> Unit = { operation ->
+    when (operation) {
+      IntegratedSwipeOperation.MARK_PROCESSED -> onMarkProcessed()
+      IntegratedSwipeOperation.SAVE -> onSave()
+      IntegratedSwipeOperation.DEFER -> onDefer()
+      IntegratedSwipeOperation.UNSAVE -> onUnsave()
+      IntegratedSwipeOperation.REMOVE_DEFERRED -> onRemoveDeferred()
+      IntegratedSwipeOperation.TOGGLE_STARRED -> onToggleMailStarred?.invoke()
+      IntegratedSwipeOperation.ARCHIVE -> onArchive?.invoke()
+    }
   }
+
   SwipeActionListItem(
     itemKey = item.key,
-    left = leftAction,
-    right = if (tab == IntegratedTab.UNREAD) {
-      SwipeAction(
-        label = item.deferLabel(),
-        color = MaterialTheme.colorScheme.secondary,
-        onCommit = onDefer,
-      )
-    } else {
-      null
-    },
-    farRight = if (tab == IntegratedTab.UNREAD) {
-      onArchive?.let { archive ->
-        SwipeAction(
-          label = "アーカイブ",
-          color = MaterialTheme.colorScheme.tertiary,
-          onCommit = archive,
-        )
-      }
-    } else {
-      null
-    },
+    left = actionSpecs.left?.toSwipeAction(onOperation),
+    right = actionSpecs.right?.toSwipeAction(onOperation),
+    farRight = actionSpecs.farRight?.toSwipeAction(onOperation),
   ) {
     Box {
       Row(
@@ -391,6 +421,27 @@ private fun LazyItemScope.IntegratedSwipeRow(
             )
           }
         }
+        if (item is IntegratedItem.Mail) {
+          IconButton(
+            onClick = if (tab == IntegratedTab.UNREAD) onDefer else onRemoveDeferred,
+          ) {
+            Icon(
+              imageVector = Icons.Default.AccessTime,
+              contentDescription = if (item.thread.isReadLater) "あとで読むを解除" else "あとで読む",
+              tint = if (item.thread.isReadLater) {
+                MaterialTheme.colorScheme.primary
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
+            )
+          }
+          IconButton(onClick = { onToggleMailStarred?.invoke() }) {
+            Icon(
+              imageVector = if (item.thread.isStarred) Icons.Default.Star else Icons.Outlined.StarBorder,
+              contentDescription = if (item.thread.isStarred) "スターを外す" else "スター",
+            )
+          }
+        }
       }
       DropdownMenu(
         expanded = menuOpen,
@@ -407,6 +458,160 @@ private fun LazyItemScope.IntegratedSwipeRow(
         }
       }
     }
+  }
+}
+
+@Composable
+private fun IntegratedSwipeActionSpec.toSwipeAction(
+  onOperation: (IntegratedSwipeOperation) -> Unit,
+): SwipeAction = SwipeAction(
+  label = label,
+  color = tone.color(),
+  dismissesItem = dismissesItem,
+  onCommit = { onOperation(operation) },
+)
+
+@Composable
+private fun IntegratedSwipeTone.color(): Color = when (this) {
+  IntegratedSwipeTone.PRIMARY -> MaterialTheme.colorScheme.primary
+  IntegratedSwipeTone.SECONDARY -> MaterialTheme.colorScheme.secondary
+  IntegratedSwipeTone.TERTIARY -> MaterialTheme.colorScheme.tertiary
+  IntegratedSwipeTone.ERROR -> MaterialTheme.colorScheme.error
+}
+
+internal fun integratedSwipeActions(
+  item: IntegratedItem,
+  tab: IntegratedTab,
+): IntegratedSwipeActions = when (tab) {
+  IntegratedTab.UNREAD -> when (item) {
+    is IntegratedItem.Rss,
+    is IntegratedItem.Reddit -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec(
+        label = "既読",
+        tone = IntegratedSwipeTone.PRIMARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.MARK_PROCESSED,
+      ),
+      right = IntegratedSwipeActionSpec(
+        label = "ブックマーク",
+        tone = IntegratedSwipeTone.SECONDARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.SAVE,
+      ),
+      farRight = IntegratedSwipeActionSpec(
+        label = "あとで読む",
+        tone = IntegratedSwipeTone.TERTIARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.DEFER,
+      ),
+    )
+
+    is IntegratedItem.YouTube -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec(
+        label = "既読",
+        tone = IntegratedSwipeTone.PRIMARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.MARK_PROCESSED,
+      ),
+      right = IntegratedSwipeActionSpec(
+        label = "保存",
+        tone = IntegratedSwipeTone.TERTIARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.SAVE,
+      ),
+      farRight = IntegratedSwipeActionSpec(
+        label = "あとで見る",
+        tone = IntegratedSwipeTone.SECONDARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.DEFER,
+      ),
+    )
+
+    is IntegratedItem.Mail -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec(
+        label = "既読",
+        tone = IntegratedSwipeTone.PRIMARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.MARK_PROCESSED,
+      ),
+      right = IntegratedSwipeActionSpec(
+        label = if (item.thread.isReadLater) "あとで読む解除" else "あとで読む",
+        tone = IntegratedSwipeTone.SECONDARY,
+        dismissesItem = !item.thread.isReadLater,
+        operation = if (item.thread.isReadLater) {
+          IntegratedSwipeOperation.REMOVE_DEFERRED
+        } else {
+          IntegratedSwipeOperation.DEFER
+        },
+      ),
+      farRight = IntegratedSwipeActionSpec(
+        label = "アーカイブ",
+        tone = IntegratedSwipeTone.TERTIARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.ARCHIVE,
+      ),
+    )
+  }
+
+  IntegratedTab.READ_LATER -> when (item) {
+    is IntegratedItem.Rss,
+    is IntegratedItem.Reddit -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec(
+        label = "ブックマーク解除",
+        tone = IntegratedSwipeTone.ERROR,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.UNSAVE,
+      ),
+      right = IntegratedSwipeActionSpec(
+        label = "未分類へ",
+        tone = IntegratedSwipeTone.SECONDARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.REMOVE_DEFERRED,
+      ),
+      farRight = null,
+    )
+
+    is IntegratedItem.YouTube -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec(
+        label = "既読",
+        tone = IntegratedSwipeTone.PRIMARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.MARK_PROCESSED,
+      ),
+      right = IntegratedSwipeActionSpec(
+        label = "保存",
+        tone = IntegratedSwipeTone.TERTIARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.SAVE,
+      ),
+      farRight = IntegratedSwipeActionSpec(
+        label = "未読へ戻す",
+        tone = IntegratedSwipeTone.SECONDARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.REMOVE_DEFERRED,
+      ),
+    )
+
+    is IntegratedItem.Mail -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec(
+        label = "あとで読む解除",
+        tone = IntegratedSwipeTone.PRIMARY,
+        dismissesItem = true,
+        operation = IntegratedSwipeOperation.REMOVE_DEFERRED,
+      ),
+      right = IntegratedSwipeActionSpec(
+        label = if (item.thread.isStarred) "スター解除" else "スター",
+        tone = IntegratedSwipeTone.SECONDARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.TOGGLE_STARRED,
+      ),
+      farRight = IntegratedSwipeActionSpec(
+        label = "アーカイブ",
+        tone = IntegratedSwipeTone.TERTIARY,
+        dismissesItem = false,
+        operation = IntegratedSwipeOperation.ARCHIVE,
+      ),
+    )
   }
 }
 
@@ -480,20 +685,6 @@ private fun emptyMessage(tab: IntegratedTab, source: IntegratedSource): String =
   } else {
     "${source.label} のあとで読むアイテムはありません"
   }
-}
-
-private fun IntegratedItem.deferLabel(): String = when (this) {
-  is IntegratedItem.Rss -> "あとで読む"
-  is IntegratedItem.Reddit -> "あとで読む"
-  is IntegratedItem.YouTube -> "あとで見る"
-  is IntegratedItem.Mail -> "あとで読む"
-}
-
-private fun IntegratedItem.removeDeferredLabel(): String = when (this) {
-  is IntegratedItem.Rss -> "あとで読む解除"
-  is IntegratedItem.Reddit -> "あとで読む解除"
-  is IntegratedItem.YouTube -> "あとで見る解除"
-  is IntegratedItem.Mail -> "あとで読む解除"
 }
 
 private fun IntegratedSource.icon(): ImageVector = when (this) {
