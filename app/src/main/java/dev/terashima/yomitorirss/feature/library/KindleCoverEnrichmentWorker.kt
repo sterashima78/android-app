@@ -11,7 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.KindleCoverEnrichmentRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -71,9 +71,9 @@ class KindleCoverEnrichmentWorker(
 ) : CoroutineWorker(appContext, workerParams) {
   override suspend fun doWork(): Result {
     val database = YomitoriDatabase.create(applicationContext)
-    val repository = DefaultLibraryRepository(DatabaseConnection(database))
+    val repository = KindleCoverEnrichmentRepository(DatabaseConnection(database))
     return try {
-      if (repository.enrichKindleCoverBatch(limit = BOOKS_PER_WORKER)) {
+      if (repository.enrichBatch(limit = BOOKS_PER_WORKER)) {
         KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
       }
       Result.success()
