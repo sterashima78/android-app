@@ -112,3 +112,31 @@ class KindleCoverEnrichmentRepository(
       SQLiteDatabase.CONFLICT_REPLACE,
     )
   }
+
+  private suspend fun ensureSchema() {
+    if (schemaEnsured) return
+    DefaultLibraryRepository(database).snapshot()
+    schemaEnsured = true
+  }
+
+  private fun isEnabled(): Boolean = database.readable.rawQuery(
+    "SELECT value FROM library_settings WHERE key = ? LIMIT 1",
+    arrayOf(KINDLE_COVER_ENRICHMENT_SETTING),
+  ).use { cursor -> cursor.moveToFirst() && cursor.getString(0) == "1" }
+
+  private companion object {
+    const val KINDLE_COVER_BATCH_SIZE = 1
+    const val COVER_REQUEST_DELAY_MILLIS = 1_100L
+    const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
+    const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
+  }
+}
+
+private fun parseKindleAuthors(value: String): List<String> = runCatching {
+  val array = JSONArray(value)
+  buildList {
+    for (index in 0 until array.length()) {
+      array.optString(index).trim().takeIf(String::isNotEmpty)?.let(::add)
+    }
+  }
+}.getOrElse { emptyList() }
