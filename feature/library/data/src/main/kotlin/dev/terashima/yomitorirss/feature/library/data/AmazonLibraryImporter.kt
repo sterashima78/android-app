@@ -265,23 +265,24 @@ internal class AmazonLibraryImporter {
     objectValue: JSONObject,
     output: MutableMap<String, MutableList<String>>,
   ) {
+    fun collectArrayValues(key: String, array: JSONArray) {
+      for (index in 0 until array.length()) {
+        when (val item = array.opt(index)) {
+          null, JSONObject.NULL -> Unit
+          is JSONObject -> collectPrimitiveValues(item, output)
+          is JSONArray -> collectArrayValues(key, item)
+          else -> output.getOrPut(normalizeHeader(key)) { mutableListOf() } += item.toString()
+        }
+      }
+    }
+
     val keys = objectValue.keys()
     while (keys.hasNext()) {
       val key = keys.next()
       when (val value = objectValue.opt(key)) {
         null, JSONObject.NULL -> Unit
         is JSONObject -> collectPrimitiveValues(value, output)
-        is JSONArray -> {
-          for (index in 0 until value.length()) {
-            val item = value.opt(index)
-            when {
-              item == null || item == JSONObject.NULL -> Unit
-              item is JSONObject && value.length() == 1 -> collectPrimitiveValues(item, output)
-              item !is JSONObject && item !is JSONArray ->
-                output.getOrPut(normalizeHeader(key)) { mutableListOf() } += item.toString()
-            }
-          }
-        }
+        is JSONArray -> collectArrayValues(key, value)
         else -> output.getOrPut(normalizeHeader(key)) { mutableListOf() } += value.toString()
       }
     }
@@ -296,10 +297,22 @@ internal class AmazonLibraryImporter {
   }
 
   private fun Map<String, List<String>>.rightState(): KindleRightState? {
-    val action = firstValue(KINDLE_RIGHT_ACTION_HEADERS)?.lowercase(Locale.ROOT) ?: return null
+    val statuses = KINDLE_RIGHT_STATUS_HEADERS
+      .flatMap { header -> this[header].orEmpty() }
+      .map { it.lowercase(Locale.ROOT) }
+    if (statuses.any { it in KINDLE_ACTIVE_STATUS_MARKERS }) {
+      return KindleRightState.GRANTED
+    }
+    if (statuses.any { it in KINDLE_INACTIVE_STATUS_MARKERS }) {
+      return KindleRightState.REVOKED
+    }
+
+    val actions = KINDLE_RIGHT_ACTION_HEADERS
+      .flatMap { header -> this[header].orEmpty() }
+      .map { it.lowercase(Locale.ROOT) }
     return when {
-      KINDLE_REVOKED_MARKERS.any(action::contains) -> KindleRightState.REVOKED
-      KINDLE_GRANTED_MARKERS.any(action::contains) -> KindleRightState.GRANTED
+      actions.any { action -> KINDLE_REVOKED_MARKERS.any(action::contains) } -> KindleRightState.REVOKED
+      actions.any { action -> KINDLE_GRANTED_MARKERS.any(action::contains) } -> KindleRightState.GRANTED
       else -> null
     }
   }
@@ -611,7 +624,15 @@ internal class AmazonLibraryImporter {
       "productid",
       "itemid",
     )
-    val KINDLE_TITLE_HEADERS = listOf("title", "booktitle", "producttitle", "contenttitle", "itemtitle", "name")
+    val KINDLE_TITLE_HEADERS = listOf(
+      "productname",
+      "title",
+      "booktitle",
+      "producttitle",
+      "contenttitle",
+      "itemtitle",
+      "name",
+    )
     val KINDLE_AUTHOR_HEADERS = listOf("author", "authors", "creator", "creators", "writtenby")
     val KINDLE_PUBLISHED_DATE_HEADERS = listOf(
       "publisheddate",
@@ -620,6 +641,8 @@ internal class AmazonLibraryImporter {
       "releasedatetime",
     )
     val KINDLE_EVENT_DATE_HEADERS = listOf(
+      "lastupdateddate",
+      "acquireddate",
       "eventtimestamp",
       "timestamp",
       "updatedat",
@@ -628,6 +651,7 @@ internal class AmazonLibraryImporter {
       "purchasedate",
       "date",
     )
+    val KINDLE_RIGHT_STATUS_HEADERS = listOf("rightstatus")
     val KINDLE_RIGHT_ACTION_HEADERS = listOf(
       "righttype",
       "rightaction",
@@ -638,6 +662,7 @@ internal class AmazonLibraryImporter {
       "right",
     )
     val KINDLE_CONTENT_TYPE_HEADERS = listOf(
+      "resourcetype",
       "contenttype",
       "digitalcontenttype",
       "producttype",
@@ -645,6 +670,8 @@ internal class AmazonLibraryImporter {
       "assettype",
       "format",
     )
+    val KINDLE_ACTIVE_STATUS_MARKERS = listOf("active", "enabled", "current", "valid")
+    val KINDLE_INACTIVE_STATUS_MARKERS = listOf("inactive", "revoked", "expired", "deleted", "removed")
     val KINDLE_REVOKED_MARKERS = listOf("revoke", "return", "expire", "delete", "remove")
     val KINDLE_GRANTED_MARKERS = listOf("grant", "purchase", "acquire", "own")
     val KINDLE_NON_BOOK_TYPE_MARKERS = listOf("music", "song", "album", "video", "movie", "audible", "audiobook")
