@@ -47,7 +47,7 @@ import dev.terashima.yomitorirss.feature.youtube.YouTubeRepository
 import dev.terashima.yomitorirss.feature.youtube.data.DefaultYouTubeRepository
 
 class AppContainer(private val application: Application) {
-  private val dataChanges = DataChangeNotifier()
+  private val dataChanges = DataChangeNotifier.shared
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     YomitoriDatabase.create(application)
