@@ -6,6 +6,7 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -21,6 +22,8 @@ class SummaryTaskLogCleanupWorker(
         .toString()
       database.deleteFinishedSummaryTasksBefore(cutoff)
       Result.success()
+    } catch (error: CancellationException) {
+      throw error
     } catch (_: Throwable) {
       Result.retry()
     } finally {
