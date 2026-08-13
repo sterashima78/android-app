@@ -163,6 +163,8 @@ internal class AmazonLibraryImporter {
   ): List<LibraryBook> = candidates
     .groupBy(KindleOwnershipCandidate::sourceId)
     .mapNotNull { (_, records) ->
+      if (records.any(KindleOwnershipCandidate::excluded)) return@mapNotNull null
+
       val latest = records.maxWithOrNull(
         compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
           .thenBy(KindleOwnershipCandidate::ordinal),
@@ -225,7 +227,16 @@ internal class AmazonLibraryImporter {
 
     val sourceId = values.firstValue(KINDLE_ID_HEADERS)?.trim()?.takeIf(String::isNotEmpty)
       ?: return null
-    if (values.isKnownNonBookContent()) return null
+    if (values.isKnownNonBookContent()) {
+      return KindleOwnershipCandidate(
+        sourceId = sourceId,
+        book = null,
+        state = null,
+        eventEpochMillis = null,
+        ordinal = ordinal,
+        excluded = true,
+      )
+    }
 
     val state = values.rightState()
     val title = values.firstValue(KINDLE_TITLE_HEADERS)?.trim()?.takeIf(String::isNotEmpty)
@@ -582,6 +593,7 @@ internal class AmazonLibraryImporter {
     val state: KindleRightState?,
     val eventEpochMillis: Long?,
     val ordinal: Int,
+    val excluded: Boolean = false,
   )
 
   private data class KindleZipScanState(
