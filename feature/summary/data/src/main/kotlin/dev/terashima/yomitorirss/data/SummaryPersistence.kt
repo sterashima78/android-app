@@ -276,7 +276,7 @@ internal fun YomitoriDatabase.failRunningSummaryTask(articleId: String, error: S
 internal fun YomitoriDatabase.deleteFinishedSummaryTasksBefore(cutoff: String): Int =
   writableDatabase.delete(
     "summary_tasks",
-    "state IN (?,?,?) AND finished_at IS NOT NULL AND finished_at < ?",
+    "state IN (?,?,?) AND finished_at IS NOT NULL AND julianday(finished_at) < julianday(?)",
     arrayOf(SUMMARY_COMPLETED, SUMMARY_FAILED, SUMMARY_CANCELLED, cutoff),
   )
 
