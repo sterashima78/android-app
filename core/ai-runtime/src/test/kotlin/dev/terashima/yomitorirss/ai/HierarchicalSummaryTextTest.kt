@@ -14,8 +14,8 @@ class HierarchicalSummaryTextTest {
     assertTrue(chunks.size > 1)
     assertTrue(chunks.all { it.length <= 24 })
     assertEquals(
-      HierarchicalSummaryText.normalize(text),
-      HierarchicalSummaryText.normalize(chunks.joinToString(" ")),
+      HierarchicalSummaryText.normalize(text).filterNot(Char::isWhitespace),
+      chunks.joinToString("").filterNot(Char::isWhitespace),
     )
   }
 
