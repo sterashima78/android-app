@@ -11,7 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.KindleCoverEnrichmentRepository
 import dev.terashima.yomitorirss.feature.library.data.LibraryCoverStatusRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -73,10 +73,10 @@ class KindleCoverEnrichmentWorker(
   override suspend fun doWork(): Result {
     val database = YomitoriDatabase.create(applicationContext)
     val connection = DatabaseConnection(database)
-    val repository = DefaultLibraryRepository(connection)
+    val repository = KindleCoverEnrichmentRepository(connection)
     val coverStatusRepository = LibraryCoverStatusRepository(connection)
     return try {
-      if (repository.enrichKindleCoverBatch(limit = BOOKS_PER_WORKER)) {
+      if (repository.enrichNext()) {
         KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
       }
       Result.success()
@@ -99,7 +99,6 @@ class KindleCoverEnrichmentWorker(
   }
 
   private companion object {
-    const val BOOKS_PER_WORKER = 1
     const val MAX_RETRY_ATTEMPTS = 2
   }
 }
