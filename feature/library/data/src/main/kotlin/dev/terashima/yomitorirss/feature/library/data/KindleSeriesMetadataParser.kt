@@ -24,6 +24,7 @@ internal object KindleSeriesMetadataParser {
     val itemPositionIndex = header.indexOf("itempositioninseries")
     if (
       recordTypeIndex < 0 ||
+      seriesIdIndex < 0 ||
       seriesNameIndex < 0 ||
       itemIdIndex < 0 ||
       itemPositionIndex < 0
@@ -35,8 +36,9 @@ internal object KindleSeriesMetadataParser {
       rows.drop(1).forEach { row ->
         if (!row.valueAt(recordTypeIndex).equals("Item", ignoreCase = true)) return@forEach
 
-        val itemId = row.valueAt(itemIdIndex).amazonValue() ?: return@forEach
+        val seriesId = row.valueAt(seriesIdIndex).amazonValue() ?: return@forEach
         val seriesName = row.valueAt(seriesNameIndex).amazonValue() ?: return@forEach
+        val itemId = row.valueAt(itemIdIndex).amazonValue() ?: return@forEach
         val zeroBasedPosition = row.valueAt(itemPositionIndex)
           .amazonValue()
           ?.toIntOrNull()
@@ -48,7 +50,7 @@ internal object KindleSeriesMetadataParser {
           LibrarySeries(
             name = seriesName,
             position = zeroBasedPosition + 1,
-            sourceId = row.valueAt(seriesIdIndex).amazonValue(),
+            sourceId = seriesId,
           ),
         )
       }
