@@ -25,6 +25,8 @@ internal data class CoverLookupResult(
 internal class OpenLibraryCoverClient(
   private val httpClient: HttpClient = HttpClient.create(),
 ) {
+  private var requestAttempted = false
+
   suspend fun lookup(book: LibraryBook): CoverLookupResult {
     book.isbn13.cleanIsbn()?.let { return lookupByIsbn(it) }
     book.isbn10.cleanIsbn()?.let { return lookupByIsbn(it) }
@@ -67,6 +69,11 @@ internal class OpenLibraryCoverClient(
   }
 
   private suspend fun search(query: String, limit: Int): List<OpenLibraryCandidate> {
+    if (requestAttempted) {
+      throw IOException("Open Library への連続検索を避けるためバックグラウンドで再試行します")
+    }
+    requestAttempted = true
+
     val url = "$SEARCH_URL?q=${query.urlEncode()}" +
       "&fields=key,title,author_name,isbn,cover_i&limit=$limit"
     val response = httpClient.execute(
