@@ -5,6 +5,8 @@ import dev.terashima.yomitorirss.feature.article.Article
 const val READ_LATER_FOLDER_ID = "__read_later__"
 const val UNCATEGORIZED_FOLDER_ID = "__uncategorized__"
 const val READ_LATER_FOLDER_KIND = "read_later"
+const val YOUTUBE_FOLDER_KIND = "youtube"
+const val YOUTUBE_FOLDER_NAME = "YouTube"
 
 data class Tag(
   val id: String,
