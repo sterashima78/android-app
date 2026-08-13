@@ -163,6 +163,8 @@ internal class AmazonLibraryImporter {
   ): List<LibraryBook> = candidates
     .groupBy(KindleOwnershipCandidate::sourceId)
     .mapNotNull { (_, records) ->
+      if (records.any(KindleOwnershipCandidate::excluded)) return@mapNotNull null
+
       val latest = records.maxWithOrNull(
         compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
           .thenBy(KindleOwnershipCandidate::ordinal),
@@ -225,7 +227,16 @@ internal class AmazonLibraryImporter {
 
     val sourceId = values.firstValue(KINDLE_ID_HEADERS)?.trim()?.takeIf(String::isNotEmpty)
       ?: return null
-    if (values.isKnownNonBookContent()) return null
+    if (values.isKnownNonBookContent()) {
+      return KindleOwnershipCandidate(
+        sourceId = sourceId,
+        book = null,
+        state = null,
+        eventEpochMillis = null,
+        ordinal = ordinal,
+        excluded = true,
+      )
+    }
 
     val state = values.rightState()
     val title = values.firstValue(KINDLE_TITLE_HEADERS)?.trim()?.takeIf(String::isNotEmpty)
@@ -292,8 +303,22 @@ internal class AmazonLibraryImporter {
     headers.firstNotNullOfOrNull { header -> this[header]?.firstOrNull(String::isNotBlank) }
 
   private fun Map<String, List<String>>.isKnownNonBookContent(): Boolean {
-    val type = firstValue(KINDLE_CONTENT_TYPE_HEADERS)?.lowercase(Locale.ROOT) ?: return false
-    return KINDLE_NON_BOOK_TYPE_MARKERS.any(type::contains)
+    val contentTypes = KINDLE_CONTENT_TYPE_HEADERS
+      .flatMap { header -> this[header].orEmpty() }
+      .map { it.lowercase(Locale.ROOT) }
+    if (contentTypes.any { type -> KINDLE_NON_BOOK_TYPE_MARKERS.any(type::contains) }) return true
+
+    val originTypes = KINDLE_ORIGIN_TYPE_HEADERS
+      .flatMap { header -> this[header].orEmpty() }
+      .map { it.lowercase(Locale.ROOT) }
+    if (originTypes.any { origin -> KINDLE_SYSTEM_CONTENT_ORIGIN_MARKERS.any(origin::contains) }) return true
+
+    val title = firstValue(KINDLE_TITLE_HEADERS)
+      ?.trim()
+      ?.lowercase(Locale.ROOT)
+      ?: return false
+    val isKindleBrandedGuide = title.startsWith("kindle") || title.startsWith("amazon kindle")
+    return isKindleBrandedGuide && KINDLE_SYSTEM_GUIDE_TITLE_MARKERS.any(title::contains)
   }
 
   private fun Map<String, List<String>>.rightState(): KindleRightState? {
@@ -568,6 +593,7 @@ internal class AmazonLibraryImporter {
     val state: KindleRightState?,
     val eventEpochMillis: Long?,
     val ordinal: Int,
+    val excluded: Boolean = false,
   )
 
   private data class KindleZipScanState(
@@ -670,10 +696,26 @@ internal class AmazonLibraryImporter {
       "assettype",
       "format",
     )
+    val KINDLE_ORIGIN_TYPE_HEADERS = listOf("origintype")
     val KINDLE_ACTIVE_STATUS_MARKERS = listOf("active", "enabled", "current", "valid")
     val KINDLE_INACTIVE_STATUS_MARKERS = listOf("inactive", "revoked", "expired", "deleted", "removed")
     val KINDLE_REVOKED_MARKERS = listOf("revoke", "return", "expire", "delete", "remove")
     val KINDLE_GRANTED_MARKERS = listOf("grant", "purchase", "acquire", "own")
     val KINDLE_NON_BOOK_TYPE_MARKERS = listOf("music", "song", "album", "video", "movie", "audible", "audiobook")
+    val KINDLE_SYSTEM_CONTENT_ORIGIN_MARKERS = listOf(
+      "kindledictionary",
+      "kindleuserguide",
+      "kindledeviceguide",
+      "kindledevicemanual",
+    )
+    val KINDLE_SYSTEM_GUIDE_TITLE_MARKERS = listOf(
+      "user's guide",
+      "user’s guide",
+      "users guide",
+      "user guide",
+      "ユーザーガイド",
+      "ユーザガイド",
+      "取扱説明書",
+    )
   }
 }
