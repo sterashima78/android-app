@@ -45,11 +45,13 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     DefaultLibraryRepository(DatabaseConnection(application.container.database))
   }
   val coverScheduler = remember(application) { KindleCoverEnrichmentScheduler(application) }
+  val audibleCoverScheduler = remember(application) { AudibleCoverEnrichmentScheduler(application) }
   val libraryViewModel: LibraryViewModel = viewModel(
     factory = LibraryViewModel.Factory(repository),
   )
   val state by libraryViewModel.state.collectAsState()
   val coverWorkInfos by coverScheduler.workInfos.collectAsState(initial = emptyList())
+  val audibleCoverWorkInfos by audibleCoverScheduler.workInfos.collectAsState(initial = emptyList())
   var coverSnapshot by remember { mutableStateOf<LibrarySnapshot?>(null) }
   val scope = rememberCoroutineScope()
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
@@ -58,9 +60,11 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     state.initialized,
     state.kindleCoverEnrichmentEnabled,
     state.sourceStates[LibrarySource.KINDLE]?.lastSyncedAtEpochMillis,
+    state.sourceStates[LibrarySource.AUDIBLE]?.lastSyncedAtEpochMillis,
   ) {
     if (state.initialized) {
       coverScheduler.sync(state.kindleCoverEnrichmentEnabled)
+      audibleCoverScheduler.schedule()
     }
   }
 
@@ -68,8 +72,9 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     coverSnapshot = null
   }
 
-  LaunchedEffect(coverWorkInfos) {
-    if (coverWorkInfos.isNotEmpty() && coverWorkInfos.all { it.state.isFinished }) {
+  LaunchedEffect(coverWorkInfos, audibleCoverWorkInfos) {
+    val allCoverWorkInfos = coverWorkInfos + audibleCoverWorkInfos
+    if (allCoverWorkInfos.isNotEmpty() && allCoverWorkInfos.all { it.state.isFinished }) {
       coverSnapshot = withContext(Dispatchers.IO) { repository.snapshot() }
     }
   }
