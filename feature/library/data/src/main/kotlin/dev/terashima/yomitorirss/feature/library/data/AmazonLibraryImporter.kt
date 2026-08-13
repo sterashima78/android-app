@@ -30,83 +30,24 @@ internal class AmazonLibraryImporter {
     require(bytes.size <= MAX_INPUT_BYTES) { "インポートファイルが大きすぎます（上限 25 MB）" }
 
     val contents = if (isZip(fileName, bytes)) {
-      readZipContents(bytes)
+      readZipContents(source, bytes)
     } else {
-      listOf(ImportContent(fileName.orEmpty(), bytes))
+      val name = fileName.orEmpty()
+      require(name.isExpectedSourceFile(source)) { source.unrecognizedImportMessage() }
+      listOf(ImportContent(name, bytes))
     }
 
-    val selected = selectContentsForSource(source, contents)
-    val imported = if (source == LibrarySource.KINDLE && selected.all { it.name.isJsonFile() }) {
-      parseKindleOwnershipContents(selected)
-    } else {
-      selected
-        .flatMap { content -> parseContent(source, content) }
+    val imported = when (source) {
+      LibrarySource.KINDLE -> parseKindleOwnershipContents(contents)
+      LibrarySource.AUDIBLE -> contents
+        .flatMap { parseAudibleLibraryCsv(it.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")) }
         .distinctBy(LibraryBook::sourceId)
+      LibrarySource.GOOGLE_PLAY_BOOKS -> emptyList()
     }
 
     require(imported.isNotEmpty()) { source.unrecognizedImportMessage() }
     return imported
   }
-
-  private fun selectContentsForSource(
-    source: LibrarySource,
-    contents: List<ImportContent>,
-  ): List<ImportContent> = when (source) {
-    LibrarySource.KINDLE -> selectKindleContents(contents)
-    LibrarySource.AUDIBLE -> selectAudibleContents(contents)
-    LibrarySource.GOOGLE_PLAY_BOOKS -> emptyList()
-  }
-
-  private fun selectKindleContents(contents: List<ImportContent>): List<ImportContent> {
-    val ownership = contents.filter { it.name.isKindleOwnershipFile() }
-    if (ownership.isNotEmpty()) {
-      val kindleScoped = ownership.filter { it.name.hasKindlePathHint() }
-      return kindleScoped.ifEmpty { ownership }
-    }
-
-    // 旧インポートとの互換性のため、単一ファイルを明示選択した場合だけ汎用解析を残す。
-    // 複数ファイル ZIP では行動ログ等を蔵書と誤認しない。
-    if (contents.size == 1) {
-      val only = contents.single()
-      return if (only.name.isJsonFile() || only.name.isDelimitedTextFile()) listOf(only) else emptyList()
-    }
-    return emptyList()
-  }
-
-  private fun selectAudibleContents(contents: List<ImportContent>): List<ImportContent> {
-    val library = contents.filter { it.name.isAudibleLibraryFile() }
-    if (library.isNotEmpty()) return library
-
-    // Audible のフルエクスポートにはタイトルを含む履歴系 CSV があるため、
-    // 単一ファイル選択時も既知の非蔵書ファイルは明示的に拒否する。
-    if (contents.size == 1) {
-      val only = contents.single()
-      if (only.name.isKnownAudibleNonLibraryFile()) return emptyList()
-      return if (only.name.isDelimitedTextFile()) listOf(only) else emptyList()
-    }
-    return emptyList()
-  }
-
-  private fun parseContent(
-    source: LibrarySource,
-    content: ImportContent,
-  ): List<LibraryBook> {
-    val text = content.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")
-    if (source == LibrarySource.KINDLE && content.name.isJsonFile()) {
-      return parseKindleOwnershipJson(text)
-    }
-
-    val delimiters = when {
-      content.name.lowercase(Locale.ROOT).endsWith(".tsv") -> listOf('\t', ',')
-      else -> listOf(',', '\t')
-    }
-    return delimiters.firstNotNullOfOrNull { delimiter ->
-      parseDelimited(source, text, delimiter).takeIf(List<LibraryBook>::isNotEmpty)
-    }.orEmpty()
-  }
-
-  private fun parseKindleOwnershipJson(text: String): List<LibraryBook> =
-    parseKindleOwnershipContents(listOf(ImportContent("ownership.json", text.toByteArray())))
 
   private fun parseKindleOwnershipContents(contents: List<ImportContent>): List<LibraryBook> {
     val candidates = mutableListOf<KindleOwnershipCandidate>()
@@ -270,12 +211,8 @@ internal class AmazonLibraryImporter {
       ?: runCatching { LocalDate.parse(value).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli() }.getOrNull()
   }
 
-  private fun parseDelimited(
-    source: LibrarySource,
-    text: String,
-    delimiter: Char,
-  ): List<LibraryBook> {
-    val rows = parseRows(text, delimiter).filterNot { row -> row.all(String::isBlank) }
+  private fun parseAudibleLibraryCsv(text: String): List<LibraryBook> {
+    val rows = parseRows(text, ',').filterNot { row -> row.all(String::isBlank) }
     if (rows.size < 2) return emptyList()
 
     val header = rows.first().map(::normalizeHeader)
@@ -290,11 +227,7 @@ internal class AmazonLibraryImporter {
     val isbnIndex = header.indexOfAlias(ISBN_HEADERS)
     val thumbnailIndex = header.indexOfAlias(THUMBNAIL_HEADERS.toSet())
     val infoUrlIndex = header.indexOfAlias(INFO_URL_HEADERS.toSet())
-    val deletedIndex = if (source == LibrarySource.AUDIBLE) {
-      header.indexOfAlias(AUDIBLE_DELETED_HEADERS)
-    } else {
-      null
-    }
+    val deletedIndex = header.indexOfAlias(AUDIBLE_DELETED_HEADERS)
 
     return rows.drop(1).mapNotNull { row ->
       if (row.valueAt(deletedIndex).isTruthy()) return@mapNotNull null
@@ -306,16 +239,16 @@ internal class AmazonLibraryImporter {
         .flatMap { index -> splitPeople(row.valueAt(index)) }
         .distinctBy { it.lowercase(Locale.ROOT) }
       val publishedDate = row.valueAt(publishedDateIndex).clean()
-      val explicitId = row.valueAt(idIndex).clean()
       val genericIsbn = row.valueAt(isbnIndex).cleanIsbn()
       val isbn10 = row.valueAt(isbn10Index).cleanIsbn()
         ?: genericIsbn?.takeIf { it.length == 10 }
       val isbn13 = row.valueAt(isbn13Index).cleanIsbn()
         ?: genericIsbn?.takeIf { it.length == 13 }
-      val sourceId = explicitId ?: derivedSourceId(source, title, authors, publishedDate)
+      val sourceId = row.valueAt(idIndex).clean()
+        ?: derivedAudibleSourceId(title, authors, publishedDate)
 
       LibraryBook(
-        source = source,
+        source = LibrarySource.AUDIBLE,
         sourceId = sourceId,
         title = title,
         authors = authors,
@@ -330,7 +263,7 @@ internal class AmazonLibraryImporter {
     }
   }
 
-  private fun readZipContents(bytes: ByteArray): List<ImportContent> {
+  private fun readZipContents(source: LibrarySource, bytes: ByteArray): List<ImportContent> {
     val contents = mutableListOf<ImportContent>()
     var entryCount = 0
     var expandedBytes = 0L
@@ -340,7 +273,7 @@ internal class AmazonLibraryImporter {
         val entry = zip.nextEntry ?: break
         entryCount += 1
         require(entryCount <= MAX_ZIP_ENTRIES) { "ZIP 内のファイル数が多すぎます" }
-        if (!entry.isDirectory && entry.name.isSupportedImportFile()) {
+        if (!entry.isDirectory && entry.name.isExpectedSourceFile(source)) {
           val remaining = MAX_EXPANDED_BYTES - expandedBytes
           require(remaining > 0) { "ZIP の展開サイズが大きすぎます（上限 50 MB）" }
           val content = zip.readLimited(minOf(MAX_ENTRY_BYTES, remaining.toInt()))
@@ -350,8 +283,13 @@ internal class AmazonLibraryImporter {
         zip.closeEntry()
       }
     }
-    require(contents.isNotEmpty()) { "ZIP に対応する蔵書データファイルが見つかりません" }
-    return contents
+    require(contents.isNotEmpty()) { source.unrecognizedImportMessage() }
+    return if (source == LibrarySource.KINDLE) {
+      val kindleScoped = contents.filter { it.name.hasKindlePathHint() }
+      kindleScoped.ifEmpty { contents }
+    } else {
+      contents
+    }
   }
 
   private fun InputStream.readLimited(limit: Int): ByteArray {
@@ -407,15 +345,12 @@ internal class AmazonLibraryImporter {
     return rows
   }
 
-  private fun derivedSourceId(
-    source: LibrarySource,
+  private fun derivedAudibleSourceId(
     title: String,
     authors: List<String>,
     publishedDate: String?,
   ): String {
     val seed = buildString {
-      append(source.name)
-      append('\u0000')
       append(title.trim().lowercase(Locale.ROOT))
       append('\u0000')
       append(authors.joinToString("|") { it.trim().lowercase(Locale.ROOT) })
@@ -472,22 +407,13 @@ internal class AmazonLibraryImporter {
     return "kindle" in lower || "ebook" in lower || "e-book" in lower
   }
 
-  private fun String.isAudibleLibraryFile(): Boolean = when (baseName()) {
-    "library.csv", "library.tsv" -> true
-    else -> false
+  private fun String.isAudibleLibraryFile(): Boolean = baseName() == "library.csv"
+
+  private fun String.isExpectedSourceFile(source: LibrarySource): Boolean = when (source) {
+    LibrarySource.KINDLE -> isKindleOwnershipFile()
+    LibrarySource.AUDIBLE -> isAudibleLibraryFile()
+    LibrarySource.GOOGLE_PLAY_BOOKS -> false
   }
-
-  private fun String.isKnownAudibleNonLibraryFile(): Boolean =
-    baseName() in AUDIBLE_NON_LIBRARY_FILE_NAMES
-
-  private fun String.isDelimitedTextFile(): Boolean {
-    val lower = lowercase(Locale.ROOT)
-    return lower.endsWith(".csv") || lower.endsWith(".tsv") || lower.endsWith(".txt")
-  }
-
-  private fun String.isJsonFile(): Boolean = lowercase(Locale.ROOT).endsWith(".json")
-
-  private fun String.isSupportedImportFile(): Boolean = isDelimitedTextFile() || isJsonFile()
 
   private fun isZip(fileName: String?, bytes: ByteArray): Boolean =
     fileName?.lowercase(Locale.ROOT)?.endsWith(".zip") == true ||
@@ -496,9 +422,9 @@ internal class AmazonLibraryImporter {
 
   private fun LibrarySource.unrecognizedImportMessage(): String = when (this) {
     LibrarySource.KINDLE ->
-      "Kindle 蔵書を認識できませんでした。Digital.Content.Ownership*.json、対応 CSV/TSV、またはそれらを含む ZIP を選択してください"
+      "Kindle 蔵書を認識できませんでした。Digital.Content.Ownership*.json またはそれを含む ZIP を選択してください"
     LibrarySource.AUDIBLE ->
-      "Audible 蔵書を認識できませんでした。Library.csv、対応 CSV/TSV、または Library.csv を含む ZIP を選択してください"
+      "Audible 蔵書を認識できませんでした。Library.csv またはそれを含む ZIP を選択してください"
     LibrarySource.GOOGLE_PLAY_BOOKS -> "対応していない蔵書ソースです"
   }
 
@@ -587,21 +513,5 @@ internal class AmazonLibraryImporter {
     val KINDLE_REVOKED_MARKERS = listOf("revoke", "return", "expire", "delete", "remove")
     val KINDLE_GRANTED_MARKERS = listOf("grant", "purchase", "acquire", "own")
     val KINDLE_NON_BOOK_TYPE_MARKERS = listOf("music", "song", "album", "video", "movie", "audible", "audiobook")
-
-    val AUDIBLE_NON_LIBRARY_FILE_NAMES = setOf(
-      "account details.csv",
-      "cart history.csv",
-      "collections.csv",
-      "customer segment.csv",
-      "customer settings global.csv",
-      "device activations.csv",
-      "impressions data.csv",
-      "listening history.csv",
-      "membership billing.csv",
-      "membership history.csv",
-      "onboarding preferences.csv",
-      "purchase history.csv",
-      "wishlist.csv",
-    )
   }
 }
