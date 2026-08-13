@@ -27,6 +27,7 @@ fun YouTubeRoute(modifier: Modifier = Modifier) {
       YouTubeViewModel.Factory(
         repository = application.container.youtubeRepository,
         bookmarkRepository = application.container.bookmarkRepository,
+        backupChangeScheduler = application.container.backupChangeScheduler,
       )
     },
   )
