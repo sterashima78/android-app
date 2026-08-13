@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
+import java.util.Locale
+
 enum class LibrarySource(val label: String) {
   GOOGLE_PLAY_BOOKS("Google Play Books"),
   KINDLE("Kindle"),
@@ -27,7 +29,28 @@ data class LibraryBook(
   val automaticSeriesExcluded: Boolean = false,
   val narrators: List<String> = emptyList(),
   val duration: String? = null,
-)
+) {
+  fun openUrl(): String? {
+    if (source == LibrarySource.KINDLE) {
+      amazonAsin(sourceId)?.let { asin ->
+        return "kindle://book/?action=open&asin=$asin"
+      }
+    }
+
+    infoUrl?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
+    if (source != LibrarySource.AUDIBLE) return null
+
+    val asin = amazonAsin(sourceId) ?: return null
+    return "https://www.audible.co.jp/pd/$asin"
+  }
+}
+
+private fun amazonAsin(sourceId: String): String? {
+  val asin = sourceId.trim().uppercase(Locale.ROOT)
+  return asin.takeIf(AMAZON_ASIN::matches)
+}
+
+private val AMAZON_ASIN = Regex("^[A-Z0-9]{10}$")
 
 data class LibrarySourceState(
   val source: LibrarySource,
