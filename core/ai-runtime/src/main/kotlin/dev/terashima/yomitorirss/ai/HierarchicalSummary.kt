@@ -94,13 +94,9 @@ internal object HierarchicalSummaryText {
   private const val SEPARATOR = "\n\n---\n\n"
 
   fun inputLimitFor(modelId: String): Int = when (modelId) {
-    "qwen2.5-0.5b-q8",
-    "qwen2.5-1.5b-q8",
-    -> 700
+    "qwen2.5-0.5b-q8", "qwen2.5-1.5b-q8" -> 700
     "qwen3-4b-mixed-int4" -> 1_200
-    "gemma4-e2b-it",
-    "gemma4-e4b-it",
-    -> 2_500
+    "gemma4-e2b-it", "gemma4-e4b-it" -> 2_500
     else -> DEFAULT_INPUT_LIMIT
   }
 
