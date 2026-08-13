@@ -30,6 +30,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
+import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.data.DefaultAiModelRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
