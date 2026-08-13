@@ -30,7 +30,6 @@ import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
-import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.data.DefaultAiModelRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
@@ -60,7 +59,13 @@ class AppContainer(private val application: Application) {
     DefaultArticleRepository(databaseConnection, dataChanges)
   }
   val bookmarkRepository: BookmarkRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBookmarkRepository(databaseConnection, dataChanges)
+    DefaultBookmarkRepository(
+      database = databaseConnection,
+      dataChanges = dataChanges,
+      onBookmarkAdded = { articleId ->
+        summaryRepository.requestBookmarkEnrichment(articleId)
+      },
+    )
   }
   val bookmarkImportRepository: BookmarkImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkImportRepository(application, databaseConnection, dataChanges)
@@ -87,6 +92,7 @@ class AppContainer(private val application: Application) {
     DefaultWidgetRepository(
       database = database,
       feedRepository = feedRepository,
+      bookmarkRepository = bookmarkRepository,
       backupChangeScheduler = backupChangeScheduler,
       sourceSelector = { feedUrl -> !isRedditFeedUrl(feedUrl) },
     )
@@ -124,6 +130,7 @@ class AppContainer(private val application: Application) {
         bookmarkRepository = bookmarkRepository,
         feedRepository = feedRepository,
         redditRepository = redditRepository,
+        summaryRepository = summaryRepository,
         taskRepository = taskRepository,
       ),
     )
