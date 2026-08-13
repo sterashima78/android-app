@@ -128,10 +128,13 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     }
   }
 
-  val importMimeTypes = arrayOf(
+  val kindleImportMimeTypes = arrayOf(
+    "application/json",
+    "application/zip",
+    "application/octet-stream",
+  )
+  val audibleImportMimeTypes = arrayOf(
     "text/csv",
-    "text/tab-separated-values",
-    "text/plain",
     "application/zip",
     "application/octet-stream",
   )
@@ -141,8 +144,8 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       modifier = modifier,
       state = state,
       onSyncGooglePlayBooks = requestSync,
-      onImportKindle = { kindleImportLauncher.launch(importMimeTypes) },
-      onImportAudible = { audibleImportLauncher.launch(importMimeTypes) },
+      onImportKindle = { kindleImportLauncher.launch(kindleImportMimeTypes) },
+      onImportAudible = { audibleImportLauncher.launch(audibleImportMimeTypes) },
       onHideBook = libraryViewModel::hideBook,
       onRestoreBook = libraryViewModel::restoreBook,
       onSetBookSeries = libraryViewModel::setBookSeries,

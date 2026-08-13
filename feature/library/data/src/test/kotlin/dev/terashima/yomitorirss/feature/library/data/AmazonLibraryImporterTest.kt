@@ -5,83 +5,180 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AmazonLibraryImporterTest {
   private val importer = AmazonLibraryImporter()
 
   @Test
-  fun `Kindle CSV の引用符と改行を解析する`() {
-    val csv = """
-      ﻿Title,Authors,ASIN,Publisher,Description,ISBN13
-      "Book, One","Alice; Bob",B001,Example,"line1
-      line2",9781234567890
+  fun `Kindle の ownership JSON から現在所有している書籍だけ解析する`() {
+    val json = """
+      [
+        {
+          "rightType": "GRANT",
+          "eventTimestamp": "2026-01-01T00:00:00Z",
+          "content": {
+            "asin": "KINDLE1",
+            "title": "Owned Book",
+            "authors": ["Alice", "Bob"],
+            "contentType": "E-Book"
+          }
+        },
+        {
+          "rightType": "GRANT",
+          "eventTimestamp": "2026-01-01T00:00:00Z",
+          "content": {
+            "asin": "KINDLE2",
+            "title": "Returned Book",
+            "contentType": "E-Book"
+          }
+        },
+        {
+          "rightType": "REVOKE",
+          "eventTimestamp": "2026-02-01T00:00:00Z",
+          "content": {
+            "asin": "KINDLE2",
+            "title": "Returned Book",
+            "contentType": "E-Book"
+          }
+        },
+        {
+          "rightType": "GRANT",
+          "eventTimestamp": "2026-01-01T00:00:00Z",
+          "content": {
+            "asin": "MUSIC1",
+            "title": "Not a Book",
+            "contentType": "Music"
+          }
+        }
+      ]
     """.trimIndent()
 
-    val books = importer.parse(LibrarySource.KINDLE, "kindle.csv", csv.toByteArray())
+    val books = importer.parse(
+      LibrarySource.KINDLE,
+      "Digital.Content.Ownership.1.json",
+      json.toByteArray(),
+    )
 
     assertEquals(1, books.size)
-    assertEquals("B001", books.single().sourceId)
-    assertEquals("Book, One", books.single().title)
+    assertEquals("KINDLE1", books.single().sourceId)
+    assertEquals("Owned Book", books.single().title)
     assertEquals(listOf("Alice", "Bob"), books.single().authors)
-    assertEquals("line1\nline2", books.single().description)
-    assertEquals("9781234567890", books.single().isbn13)
   }
 
   @Test
-  fun `Audible TSV では著者とナレーターを保持する`() {
-    val tsv = "Title\tAuthor\tNarrator\tASIN\tRelease Date\nAudio Book\tWriter\tReader\tAUDIO1\t2026-01-02\n"
+  fun `Kindle ZIP では ownership JSON だけを蔵書として読む`() {
+    val bytes = zipOf(
+      "Kindle/Digital.Content.Ownership.3.json" to """
+        {
+          "rightAction": "Grant",
+          "timestamp": "2026-03-01T00:00:00Z",
+          "asin": "KINDLE3",
+          "title": "Zipped Kindle Book",
+          "contentType": "Kindle E-Book"
+        }
+      """.trimIndent(),
+      "Kindle/Kindle.Devices.ReadingSession.csv" to
+        "Title,ASIN,content_type\nReading Log,KINDLE_LOG,E-Book\n",
+      "Kindle/BookRelation.csv" to "Title,ASIN\nSeries Relation,KINDLE_RELATION\n",
+    )
 
-    val books = importer.parse(LibrarySource.AUDIBLE, "audible.tsv", tsv.toByteArray())
+    val books = importer.parse(LibrarySource.KINDLE, "kindle-export.zip", bytes)
+
+    assertEquals(listOf("Zipped Kindle Book"), books.map { it.title })
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `Kindle の別 ownership ファイルに後続 revoke があれば所有扱いしない`() {
+    val bytes = zipOf(
+      "Kindle/Digital.Content.Ownership.1.json" to """
+        {
+          "rightType": "GRANT",
+          "eventTimestamp": "2026-01-01T00:00:00Z",
+          "asin": "KINDLE4",
+          "title": "Returned Later",
+          "contentType": "E-Book"
+        }
+      """.trimIndent(),
+      "Kindle/Digital.Content.Ownership.2.json" to """
+        {
+          "rightType": "REVOKE",
+          "eventTimestamp": "2026-02-01T00:00:00Z",
+          "asin": "KINDLE4",
+          "title": "Returned Later",
+          "contentType": "E-Book"
+        }
+      """.trimIndent(),
+    )
+
+    importer.parse(LibrarySource.KINDLE, "kindle-export.zip", bytes)
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `Kindle ZIP に ownership JSON が無ければ他ファイルへフォールバックしない`() {
+    val bytes = zipOf(
+      "Kindle/Kindle.Devices.ReadingSession.csv" to "Title,ASIN\nReading Log,KINDLE_LOG\n",
+      "Kindle/BookRelation.csv" to "Title,ASIN\nSeries Relation,KINDLE_RELATION\n",
+    )
+
+    importer.parse(LibrarySource.KINDLE, "kindle-export.zip", bytes)
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `Kindle は旧 CSV を受け付けない`() {
+    importer.parse(
+      LibrarySource.KINDLE,
+      "kindle.csv",
+      "Title,ASIN\nLegacy Book,KINDLE5\n".toByteArray(),
+    )
+  }
+
+  @Test
+  fun `Audible の Library csv を直接解析する`() {
+    val csv =
+      "Title,Author,Narrator,ASIN,Release Date,Deleted\n" +
+        "Audio Book,Writer,Reader,AUDIO1,2026-01-02,false\n" +
+        "Deleted Audio,Writer,Reader,AUDIO2,2026-01-03,true\n"
+
+    val books = importer.parse(LibrarySource.AUDIBLE, "Library.csv", csv.toByteArray())
 
     assertEquals(1, books.size)
     assertEquals("AUDIO1", books.single().sourceId)
-    assertEquals(listOf("Writer", "Reader"), books.single().authors)
+    assertEquals("Audio Book", books.single().title)
+    assertEquals(listOf("Writer"), books.single().authors)
     assertEquals("2026-01-02", books.single().publishedDate)
   }
 
   @Test
-  fun `ASIN が無い場合は同じ入力から安定した ID を生成する`() {
-    val csv = "Title,Authors,Publication Date\nNo Id Book,Writer,2025-03-01\n"
-
-    val first = importer.parse(LibrarySource.KINDLE, "books.csv", csv.toByteArray()).single()
-    val second = importer.parse(LibrarySource.KINDLE, "books.csv", csv.toByteArray()).single()
-
-    assertTrue(first.sourceId.startsWith("derived:"))
-    assertEquals(first.sourceId, second.sourceId)
-  }
-
-  @Test
-  fun `ZIP 内の CSV を解析する`() {
+  fun `Audible ZIP では Library csv だけを蔵書として読む`() {
     val bytes = zipOf(
-      "audible/library.csv" to "Title,ASIN\nZipped Audio,AUDIO2\n",
+      "Audible/Library.csv" to "Title,Author,ASIN\nAudio Book,Writer,AUDIO1\n",
+      "Audible/Listening History.csv" to "Title,ASIN\nListened Only,LISTEN1\n",
+      "Audible/Purchase History.csv" to "Title,ASIN\nPurchase History Item,PURCHASE1\n",
+      "Audible/Wishlist.csv" to "Title,ASIN\nWishlist Item,WISH1\n",
     )
 
-    val books = importer.parse(LibrarySource.AUDIBLE, "export.zip", bytes)
+    val books = importer.parse(LibrarySource.AUDIBLE, "audible-export.zip", bytes)
 
-    assertEquals(1, books.size)
-    assertEquals("Zipped Audio", books.single().title)
-    assertEquals("AUDIO2", books.single().sourceId)
-  }
-
-  @Test
-  fun `Kindle と Audible が同じ ZIP にある場合は選択したソースだけを読む`() {
-    val bytes = zipOf(
-      "kindle/library.csv" to "Title,ASIN\nKindle Book,KINDLE1\n",
-      "audible/library.csv" to "Title,ASIN\nAudible Book,AUDIO3\n",
-    )
-
-    val kindle = importer.parse(LibrarySource.KINDLE, "amazon-export.zip", bytes)
-    val audible = importer.parse(LibrarySource.AUDIBLE, "amazon-export.zip", bytes)
-
-    assertEquals(listOf("Kindle Book"), kindle.map { it.title })
-    assertEquals(listOf("Audible Book"), audible.map { it.title })
+    assertEquals(listOf("Audio Book"), books.map { it.title })
   }
 
   @Test(expected = IllegalArgumentException::class)
-  fun `認識できない形式では既存蔵書を置換するための空リストを返さない`() {
-    importer.parse(LibrarySource.KINDLE, "unknown.csv", "foo,bar\na,b\n".toByteArray())
+  fun `Audible Wishlist csv を単体で選択しても蔵書として読まない`() {
+    importer.parse(
+      LibrarySource.AUDIBLE,
+      "Wishlist.csv",
+      "Title,ASIN\nWishlist Item,WISH1\n".toByteArray(),
+    )
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `Audible は Library tsv を受け付けない`() {
+    importer.parse(
+      LibrarySource.AUDIBLE,
+      "Library.tsv",
+      "Title\tASIN\nAudio Book\tAUDIO1\n".toByteArray(),
+    )
   }
 
   private fun zipOf(vararg files: Pair<String, String>): ByteArray =

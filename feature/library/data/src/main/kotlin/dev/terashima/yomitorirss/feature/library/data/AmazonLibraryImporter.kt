@@ -7,8 +7,15 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Instant
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.zip.ZipInputStream
+import org.json.JSONArray
+import org.json.JSONObject
+import org.json.JSONTokener
 
 internal class AmazonLibraryImporter {
   fun parse(
@@ -23,96 +30,225 @@ internal class AmazonLibraryImporter {
     require(bytes.size <= MAX_INPUT_BYTES) { "インポートファイルが大きすぎます（上限 25 MB）" }
 
     val contents = if (isZip(fileName, bytes)) {
-      readZipContents(bytes)
+      readZipContents(source, bytes)
     } else {
-      listOf(ImportContent(fileName.orEmpty(), bytes))
+      val name = fileName.orEmpty()
+      require(name.isExpectedSourceFile(source)) { source.unrecognizedImportMessage() }
+      listOf(ImportContent(name, bytes))
     }
 
-    val imported = selectContentsForSource(source, contents)
-      .flatMap { content -> parseContent(source, content) }
-      .distinctBy(LibraryBook::sourceId)
-
-    require(imported.isNotEmpty()) {
-      "蔵書データを認識できませんでした。CSV / TSV またはそれらを含む ZIP を選択してください"
+    val imported = when (source) {
+      LibrarySource.KINDLE -> parseKindleOwnershipContents(contents)
+      LibrarySource.AUDIBLE -> contents
+        .flatMap { parseAudibleLibraryCsv(it.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")) }
+        .distinctBy(LibraryBook::sourceId)
+      LibrarySource.GOOGLE_PLAY_BOOKS -> emptyList()
     }
+
+    require(imported.isNotEmpty()) { source.unrecognizedImportMessage() }
     return imported
   }
 
-  private fun selectContentsForSource(
-    source: LibrarySource,
-    contents: List<ImportContent>,
-  ): List<ImportContent> {
-    if (contents.size <= 1) return contents
-    val hints = when (source) {
-      LibrarySource.KINDLE -> listOf("kindle", "ebook", "e-book")
-      LibrarySource.AUDIBLE -> listOf("audible", "audiobook", "audio-book")
-      LibrarySource.GOOGLE_PLAY_BOOKS -> emptyList()
+  private fun parseKindleOwnershipContents(contents: List<ImportContent>): List<LibraryBook> {
+    val candidates = mutableListOf<KindleOwnershipCandidate>()
+    var ordinal = 0
+    contents.forEach { content ->
+      val text = content.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")
+      parseJsonRoots(text).forEach { root ->
+        collectKindleOwnershipCandidates(root, candidates) { ordinal++ }
+      }
     }
-    val hinted = contents.filter { content ->
-      val name = content.name.lowercase(Locale.ROOT)
-      hints.any(name::contains)
-    }
-    return hinted.ifEmpty { contents }
+
+    return candidates
+      .groupBy(KindleOwnershipCandidate::sourceId)
+      .mapNotNull { (_, records) ->
+        val latest = records.maxWithOrNull(
+          compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
+            .thenBy(KindleOwnershipCandidate::ordinal),
+        ) ?: return@mapNotNull null
+        if (latest.state == KindleRightState.REVOKED) return@mapNotNull null
+
+        records
+          .asSequence()
+          .filter { it.book != null }
+          .maxWithOrNull(
+            compareBy<KindleOwnershipCandidate> { it.eventEpochMillis ?: Long.MIN_VALUE }
+              .thenBy(KindleOwnershipCandidate::ordinal),
+          )
+          ?.book
+      }
   }
 
-  private fun parseContent(
-    source: LibrarySource,
-    content: ImportContent,
-  ): List<LibraryBook> {
-    val text = content.bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")
-    val delimiters = when {
-      content.name.lowercase(Locale.ROOT).endsWith(".tsv") -> listOf('\t', ',')
-      else -> listOf(',', '\t')
+  private fun parseJsonRoots(text: String): List<Any> = runCatching {
+    buildList {
+      val tokener = JSONTokener(text)
+      while (tokener.more()) {
+        val next = tokener.nextClean()
+        if (next.code == 0) break
+        tokener.back()
+        add(tokener.nextValue())
+      }
     }
-    return delimiters.firstNotNullOfOrNull { delimiter ->
-      parseDelimited(source, text, delimiter).takeIf(List<LibraryBook>::isNotEmpty)
-    }.orEmpty()
+  }.getOrElse { emptyList() }
+
+  private fun collectKindleOwnershipCandidates(
+    value: Any?,
+    output: MutableList<KindleOwnershipCandidate>,
+    nextOrdinal: () -> Int,
+  ) {
+    when (value) {
+      is JSONObject -> {
+        val candidate = kindleOwnershipCandidate(value, nextOrdinal())
+        if (candidate != null) {
+          output += candidate
+          return
+        }
+        val keys = value.keys()
+        while (keys.hasNext()) {
+          collectKindleOwnershipCandidates(value.opt(keys.next()), output, nextOrdinal)
+        }
+      }
+      is JSONArray -> {
+        for (index in 0 until value.length()) {
+          collectKindleOwnershipCandidates(value.opt(index), output, nextOrdinal)
+        }
+      }
+    }
   }
 
-  private fun parseDelimited(
-    source: LibrarySource,
-    text: String,
-    delimiter: Char,
-  ): List<LibraryBook> {
-    val rows = parseRows(text, delimiter).filterNot { row -> row.all(String::isBlank) }
+  private fun kindleOwnershipCandidate(
+    objectValue: JSONObject,
+    ordinal: Int,
+  ): KindleOwnershipCandidate? {
+    val values = linkedMapOf<String, MutableList<String>>()
+    collectPrimitiveValues(objectValue, values)
+
+    val sourceId = values.firstValue(KINDLE_ID_HEADERS)?.trim()?.takeIf(String::isNotEmpty)
+      ?: return null
+    if (values.isKnownNonBookContent()) return null
+
+    val state = values.rightState()
+    val title = values.firstValue(KINDLE_TITLE_HEADERS)?.trim()?.takeIf(String::isNotEmpty)
+    if (title == null && state == null) return null
+
+    val authors = KINDLE_AUTHOR_HEADERS
+      .flatMap { header -> values[header].orEmpty() }
+      .flatMap(::splitPeople)
+      .distinctBy { it.lowercase(Locale.ROOT) }
+    val eventTimestamp = values.firstValue(KINDLE_EVENT_DATE_HEADERS)
+    val book = title?.let {
+      LibraryBook(
+        source = LibrarySource.KINDLE,
+        sourceId = sourceId,
+        title = it,
+        authors = authors,
+        publisher = values.firstValue(PUBLISHER_HEADERS),
+        publishedDate = values.firstValue(KINDLE_PUBLISHED_DATE_HEADERS),
+        description = values.firstValue(DESCRIPTION_HEADERS),
+        isbn10 = values.firstValue(ISBN10_HEADERS).cleanIsbn(),
+        isbn13 = values.firstValue(ISBN13_HEADERS).cleanIsbn(),
+        thumbnailUrl = values.firstValue(THUMBNAIL_HEADERS),
+        infoUrl = values.firstValue(INFO_URL_HEADERS),
+      )
+    }
+
+    return KindleOwnershipCandidate(
+      sourceId = sourceId,
+      book = book,
+      state = state,
+      eventEpochMillis = eventTimestamp.toEpochMillisOrNull(),
+      ordinal = ordinal,
+    )
+  }
+
+  private fun collectPrimitiveValues(
+    objectValue: JSONObject,
+    output: MutableMap<String, MutableList<String>>,
+  ) {
+    val keys = objectValue.keys()
+    while (keys.hasNext()) {
+      val key = keys.next()
+      when (val value = objectValue.opt(key)) {
+        null, JSONObject.NULL -> Unit
+        is JSONObject -> collectPrimitiveValues(value, output)
+        is JSONArray -> {
+          for (index in 0 until value.length()) {
+            val item = value.opt(index)
+            when {
+              item == null || item == JSONObject.NULL -> Unit
+              item is JSONObject && value.length() == 1 -> collectPrimitiveValues(item, output)
+              item !is JSONObject && item !is JSONArray ->
+                output.getOrPut(normalizeHeader(key)) { mutableListOf() } += item.toString()
+            }
+          }
+        }
+        else -> output.getOrPut(normalizeHeader(key)) { mutableListOf() } += value.toString()
+      }
+    }
+  }
+
+  private fun Map<String, List<String>>.firstValue(headers: List<String>): String? =
+    headers.firstNotNullOfOrNull { header -> this[header]?.firstOrNull(String::isNotBlank) }
+
+  private fun Map<String, List<String>>.isKnownNonBookContent(): Boolean {
+    val type = firstValue(KINDLE_CONTENT_TYPE_HEADERS)?.lowercase(Locale.ROOT) ?: return false
+    return KINDLE_NON_BOOK_TYPE_MARKERS.any(type::contains)
+  }
+
+  private fun Map<String, List<String>>.rightState(): KindleRightState? {
+    val action = firstValue(KINDLE_RIGHT_ACTION_HEADERS)?.lowercase(Locale.ROOT) ?: return null
+    return when {
+      KINDLE_REVOKED_MARKERS.any(action::contains) -> KindleRightState.REVOKED
+      KINDLE_GRANTED_MARKERS.any(action::contains) -> KindleRightState.GRANTED
+      else -> null
+    }
+  }
+
+  private fun String?.toEpochMillisOrNull(): Long? {
+    val value = clean() ?: return null
+    return runCatching { Instant.parse(value).toEpochMilli() }.getOrNull()
+      ?: runCatching { OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrNull()
+      ?: runCatching { LocalDate.parse(value).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli() }.getOrNull()
+  }
+
+  private fun parseAudibleLibraryCsv(text: String): List<LibraryBook> {
+    val rows = parseRows(text, ',').filterNot { row -> row.all(String::isBlank) }
     if (rows.size < 2) return emptyList()
 
     val header = rows.first().map(::normalizeHeader)
     val titleIndex = header.indexOfAlias(TITLE_HEADERS) ?: return emptyList()
     val idIndex = header.indexOfAlias(ID_HEADERS)
     val authorIndexes = header.indexesOfAliases(AUTHOR_HEADERS)
-    val narratorIndexes = if (source == LibrarySource.AUDIBLE) {
-      header.indexesOfAliases(NARRATOR_HEADERS)
-    } else {
-      emptyList()
-    }
-    val publisherIndex = header.indexOfAlias(PUBLISHER_HEADERS)
-    val publishedDateIndex = header.indexOfAlias(PUBLISHED_DATE_HEADERS)
-    val descriptionIndex = header.indexOfAlias(DESCRIPTION_HEADERS)
-    val isbn10Index = header.indexOfAlias(ISBN10_HEADERS)
-    val isbn13Index = header.indexOfAlias(ISBN13_HEADERS)
+    val publisherIndex = header.indexOfAlias(PUBLISHER_HEADERS.toSet())
+    val publishedDateIndex = header.indexOfAlias(PUBLISHED_DATE_HEADERS.toSet())
+    val descriptionIndex = header.indexOfAlias(DESCRIPTION_HEADERS.toSet())
+    val isbn10Index = header.indexOfAlias(ISBN10_HEADERS.toSet())
+    val isbn13Index = header.indexOfAlias(ISBN13_HEADERS.toSet())
     val isbnIndex = header.indexOfAlias(ISBN_HEADERS)
-    val thumbnailIndex = header.indexOfAlias(THUMBNAIL_HEADERS)
-    val infoUrlIndex = header.indexOfAlias(INFO_URL_HEADERS)
+    val thumbnailIndex = header.indexOfAlias(THUMBNAIL_HEADERS.toSet())
+    val infoUrlIndex = header.indexOfAlias(INFO_URL_HEADERS.toSet())
+    val deletedIndex = header.indexOfAlias(AUDIBLE_DELETED_HEADERS)
 
     return rows.drop(1).mapNotNull { row ->
+      if (row.valueAt(deletedIndex).isTruthy()) return@mapNotNull null
+
       val title = row.valueAt(titleIndex)?.trim().orEmpty()
       if (title.isBlank()) return@mapNotNull null
 
-      val authors = (authorIndexes + narratorIndexes)
+      val authors = authorIndexes
         .flatMap { index -> splitPeople(row.valueAt(index)) }
         .distinctBy { it.lowercase(Locale.ROOT) }
       val publishedDate = row.valueAt(publishedDateIndex).clean()
-      val explicitId = row.valueAt(idIndex).clean()
       val genericIsbn = row.valueAt(isbnIndex).cleanIsbn()
       val isbn10 = row.valueAt(isbn10Index).cleanIsbn()
         ?: genericIsbn?.takeIf { it.length == 10 }
       val isbn13 = row.valueAt(isbn13Index).cleanIsbn()
         ?: genericIsbn?.takeIf { it.length == 13 }
-      val sourceId = explicitId ?: derivedSourceId(source, title, authors, publishedDate)
+      val sourceId = row.valueAt(idIndex).clean()
+        ?: derivedAudibleSourceId(title, authors, publishedDate)
 
       LibraryBook(
-        source = source,
+        source = LibrarySource.AUDIBLE,
         sourceId = sourceId,
         title = title,
         authors = authors,
@@ -127,7 +263,7 @@ internal class AmazonLibraryImporter {
     }
   }
 
-  private fun readZipContents(bytes: ByteArray): List<ImportContent> {
+  private fun readZipContents(source: LibrarySource, bytes: ByteArray): List<ImportContent> {
     val contents = mutableListOf<ImportContent>()
     var entryCount = 0
     var expandedBytes = 0L
@@ -137,7 +273,7 @@ internal class AmazonLibraryImporter {
         val entry = zip.nextEntry ?: break
         entryCount += 1
         require(entryCount <= MAX_ZIP_ENTRIES) { "ZIP 内のファイル数が多すぎます" }
-        if (!entry.isDirectory && entry.name.isDelimitedTextFile()) {
+        if (!entry.isDirectory && entry.name.isExpectedSourceFile(source)) {
           val remaining = MAX_EXPANDED_BYTES - expandedBytes
           require(remaining > 0) { "ZIP の展開サイズが大きすぎます（上限 50 MB）" }
           val content = zip.readLimited(minOf(MAX_ENTRY_BYTES, remaining.toInt()))
@@ -147,8 +283,13 @@ internal class AmazonLibraryImporter {
         zip.closeEntry()
       }
     }
-    require(contents.isNotEmpty()) { "ZIP に CSV / TSV ファイルが見つかりません" }
-    return contents
+    require(contents.isNotEmpty()) { source.unrecognizedImportMessage() }
+    return if (source == LibrarySource.KINDLE) {
+      val kindleScoped = contents.filter { it.name.hasKindlePathHint() }
+      kindleScoped.ifEmpty { contents }
+    } else {
+      contents
+    }
   }
 
   private fun InputStream.readLimited(limit: Int): ByteArray {
@@ -204,15 +345,12 @@ internal class AmazonLibraryImporter {
     return rows
   }
 
-  private fun derivedSourceId(
-    source: LibrarySource,
+  private fun derivedAudibleSourceId(
     title: String,
     authors: List<String>,
     publishedDate: String?,
   ): String {
     val seed = buildString {
-      append(source.name)
-      append('\u0000')
       append(title.trim().lowercase(Locale.ROOT))
       append('\u0000')
       append(authors.joinToString("|") { it.trim().lowercase(Locale.ROOT) })
@@ -245,15 +383,36 @@ internal class AmazonLibraryImporter {
     ?.uppercase(Locale.ROOT)
     ?.takeIf { it.length == 10 || it.length == 13 }
 
+  private fun String?.isTruthy(): Boolean = when (clean()?.lowercase(Locale.ROOT)) {
+    "true", "1", "yes", "y" -> true
+    else -> false
+  }
+
   private fun normalizeHeader(value: String): String = value
     .removePrefix("\uFEFF")
     .trim()
     .lowercase(Locale.ROOT)
     .filter(Char::isLetterOrDigit)
 
-  private fun String.isDelimitedTextFile(): Boolean {
+  private fun String.baseName(): String =
+    substringAfterLast('/').substringAfterLast('\\').lowercase(Locale.ROOT)
+
+  private fun String.isKindleOwnershipFile(): Boolean {
+    val name = baseName()
+    return name.startsWith("digital.content.ownership") && name.endsWith(".json")
+  }
+
+  private fun String.hasKindlePathHint(): Boolean {
     val lower = lowercase(Locale.ROOT)
-    return lower.endsWith(".csv") || lower.endsWith(".tsv") || lower.endsWith(".txt")
+    return "kindle" in lower || "ebook" in lower || "e-book" in lower
+  }
+
+  private fun String.isAudibleLibraryFile(): Boolean = baseName() == "library.csv"
+
+  private fun String.isExpectedSourceFile(source: LibrarySource): Boolean = when (source) {
+    LibrarySource.KINDLE -> isKindleOwnershipFile()
+    LibrarySource.AUDIBLE -> isAudibleLibraryFile()
+    LibrarySource.GOOGLE_PLAY_BOOKS -> false
   }
 
   private fun isZip(fileName: String?, bytes: ByteArray): Boolean =
@@ -261,7 +420,28 @@ internal class AmazonLibraryImporter {
       (bytes.size >= 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4b.toByte() &&
         bytes[2] == 0x03.toByte() && bytes[3] == 0x04.toByte())
 
+  private fun LibrarySource.unrecognizedImportMessage(): String = when (this) {
+    LibrarySource.KINDLE ->
+      "Kindle 蔵書を認識できませんでした。Digital.Content.Ownership*.json またはそれを含む ZIP を選択してください"
+    LibrarySource.AUDIBLE ->
+      "Audible 蔵書を認識できませんでした。Library.csv またはそれを含む ZIP を選択してください"
+    LibrarySource.GOOGLE_PLAY_BOOKS -> "対応していない蔵書ソースです"
+  }
+
   private data class ImportContent(val name: String, val bytes: ByteArray)
+
+  private data class KindleOwnershipCandidate(
+    val sourceId: String,
+    val book: LibraryBook?,
+    val state: KindleRightState?,
+    val eventEpochMillis: Long?,
+    val ordinal: Int,
+  )
+
+  private enum class KindleRightState {
+    GRANTED,
+    REVOKED,
+  }
 
   private companion object {
     const val MAX_INPUT_BYTES = 25 * 1024 * 1024
@@ -272,20 +452,66 @@ internal class AmazonLibraryImporter {
     val TITLE_HEADERS = setOf("title", "booktitle", "producttitle", "itemname", "name")
     val ID_HEADERS = setOf("asin", "amazonasin", "audibleasin", "productid", "contentid", "id")
     val AUTHOR_HEADERS = setOf("author", "authors", "creator", "creators", "writtenby")
-    val NARRATOR_HEADERS = setOf("narrator", "narrators", "narratedby")
-    val PUBLISHER_HEADERS = setOf("publisher", "publishername")
-    val PUBLISHED_DATE_HEADERS = setOf(
+    val PUBLISHER_HEADERS = listOf("publisher", "publishername")
+    val PUBLISHED_DATE_HEADERS = listOf(
       "publisheddate",
       "publicationdate",
       "releasedate",
       "releasedatetime",
+    )
+    val DESCRIPTION_HEADERS = listOf("description", "summary", "productdescription")
+    val ISBN10_HEADERS = listOf("isbn10")
+    val ISBN13_HEADERS = listOf("isbn13")
+    val ISBN_HEADERS = setOf("isbn")
+    val THUMBNAIL_HEADERS = listOf("thumbnailurl", "imageurl", "coverurl", "coverimageurl")
+    val INFO_URL_HEADERS = listOf("infourl", "producturl", "detailurl", "url")
+    val AUDIBLE_DELETED_HEADERS = setOf("deleted", "isdeleted", "deletedfromlibrary", "isdeletedfromlibrary")
+
+    val KINDLE_ID_HEADERS = listOf(
+      "asin",
+      "amazonasin",
+      "productasin",
+      "contentasin",
+      "contentid",
+      "productid",
+      "itemid",
+    )
+    val KINDLE_TITLE_HEADERS = listOf("title", "booktitle", "producttitle", "contenttitle", "itemtitle", "name")
+    val KINDLE_AUTHOR_HEADERS = listOf("author", "authors", "creator", "creators", "writtenby")
+    val KINDLE_PUBLISHED_DATE_HEADERS = listOf(
+      "publisheddate",
+      "publicationdate",
+      "releasedate",
+      "releasedatetime",
+    )
+    val KINDLE_EVENT_DATE_HEADERS = listOf(
+      "eventtimestamp",
+      "timestamp",
+      "updatedat",
+      "createdat",
+      "acquisitiondate",
+      "purchasedate",
       "date",
     )
-    val DESCRIPTION_HEADERS = setOf("description", "summary", "productdescription")
-    val ISBN10_HEADERS = setOf("isbn10")
-    val ISBN13_HEADERS = setOf("isbn13")
-    val ISBN_HEADERS = setOf("isbn")
-    val THUMBNAIL_HEADERS = setOf("thumbnailurl", "imageurl", "coverurl", "coverimageurl")
-    val INFO_URL_HEADERS = setOf("infourl", "producturl", "detailurl", "url")
+    val KINDLE_RIGHT_ACTION_HEADERS = listOf(
+      "righttype",
+      "rightaction",
+      "action",
+      "eventtype",
+      "operation",
+      "status",
+      "right",
+    )
+    val KINDLE_CONTENT_TYPE_HEADERS = listOf(
+      "contenttype",
+      "digitalcontenttype",
+      "producttype",
+      "mediatype",
+      "assettype",
+      "format",
+    )
+    val KINDLE_REVOKED_MARKERS = listOf("revoke", "return", "expire", "delete", "remove")
+    val KINDLE_GRANTED_MARKERS = listOf("grant", "purchase", "acquire", "own")
+    val KINDLE_NON_BOOK_TYPE_MARKERS = listOf("music", "song", "album", "video", "movie", "audible", "audiobook")
   }
 }
