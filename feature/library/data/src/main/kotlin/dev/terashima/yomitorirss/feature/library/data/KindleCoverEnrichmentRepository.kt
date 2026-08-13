@@ -42,3 +42,51 @@ class KindleCoverEnrichmentRepository(
       provider = KindleCoverProvider.OPEN_LIBRARY,
     )
   }
+
+  private fun queryCandidates(limit: Int): List<LibraryBook> {
+    val staleBefore = System.currentTimeMillis() - COVER_LOOKUP_STALE_MILLIS
+    return database.readable.rawQuery(
+      """
+        SELECT item.source_id, item.title, item.authors, item.isbn10, item.isbn13
+        FROM library_items AS item
+        LEFT JOIN library_item_external_metadata AS metadata
+          ON metadata.source = item.source AND metadata.source_id = item.source_id
+        WHERE item.source = ?
+          AND (item.thumbnail_url IS NULL OR TRIM(item.thumbnail_url) = '')
+          AND (metadata.thumbnail_url IS NULL OR TRIM(metadata.thumbnail_url) = '')
+          AND (metadata.updated_at IS NULL OR metadata.updated_at < ?)
+        ORDER BY item.title COLLATE NOCASE, item.source_id
+        LIMIT ?
+      """.trimIndent(),
+      arrayOf(
+        LibrarySource.KINDLE.name,
+        staleBefore.toString(),
+        limit.toString(),
+      ),
+    ).use { cursor ->
+      val sourceIdIndex = cursor.getColumnIndexOrThrow("source_id")
+      val titleIndex = cursor.getColumnIndexOrThrow("title")
+      val authorsIndex = cursor.getColumnIndexOrThrow("authors")
+      val isbn10Index = cursor.getColumnIndexOrThrow("isbn10")
+      val isbn13Index = cursor.getColumnIndexOrThrow("isbn13")
+      buildList {
+        while (cursor.moveToNext()) {
+          add(
+            LibraryBook(
+              source = LibrarySource.KINDLE,
+              sourceId = cursor.getString(sourceIdIndex),
+              title = cursor.getString(titleIndex),
+              authors = parseKindleAuthors(cursor.getString(authorsIndex)),
+              publisher = null,
+              publishedDate = null,
+              description = null,
+              isbn10 = if (cursor.isNull(isbn10Index)) null else cursor.getString(isbn10Index),
+              isbn13 = if (cursor.isNull(isbn13Index)) null else cursor.getString(isbn13Index),
+              thumbnailUrl = null,
+              infoUrl = null,
+            ),
+          )
+        }
+      }
+    }
+  }
