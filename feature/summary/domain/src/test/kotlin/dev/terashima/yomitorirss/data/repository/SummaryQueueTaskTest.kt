@@ -19,4 +19,25 @@ class SummaryQueueTaskTest {
     assertEquals(SummaryQueueTaskState.FAILED, task.state)
     assertEquals("failed", task.error)
   }
+
+  @Test
+  fun `実行中タスクの進捗を保持する`() {
+    val task = SummaryQueueTask(
+      articleId = "article-2",
+      articleTitle = "Long article",
+      sourceTitle = "Source",
+      state = SummaryQueueTaskState.RUNNING,
+      queuedAt = "2026-08-13T00:00:00Z",
+      startedAt = "2026-08-13T00:01:00Z",
+      finishedAt = null,
+      error = null,
+      progressStage = "summarizing_chunk",
+      progressCurrent = 3,
+      progressTotal = 8,
+    )
+
+    assertEquals("summarizing_chunk", task.progressStage)
+    assertEquals(3, task.progressCurrent)
+    assertEquals(8, task.progressTotal)
+  }
 }
