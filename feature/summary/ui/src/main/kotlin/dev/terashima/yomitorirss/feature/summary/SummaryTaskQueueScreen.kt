@@ -15,6 +15,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -140,6 +141,27 @@ private fun TaskRow(
         Column {
           Text("${item.sourceTitle} ・ ${statusLabel(item.state)}")
           statusTime(item)?.let { Text(it) }
+          if (item.state == SummaryQueueTaskState.RUNNING) {
+            item.progressStage?.let {
+              Text(
+                text = progressLabel(item),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+              )
+              val fraction = progressFraction(item)
+              if (fraction == null) {
+                LinearProgressIndicator(
+                  modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                )
+              } else {
+                LinearProgressIndicator(
+                  progress = { fraction },
+                  modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                )
+              }
+            }
+          }
           item.error?.takeIf(String::isNotBlank)?.let { error ->
             Text(
               text = error,
@@ -188,6 +210,33 @@ private fun statusLabel(state: SummaryQueueTaskState): String = when (state) {
   SummaryQueueTaskState.STOPPED -> "停止中"
   SummaryQueueTaskState.CANCELLED -> "キャンセル済み"
   SummaryQueueTaskState.UNKNOWN -> "不明"
+}
+
+internal fun progressLabel(item: SummaryQueueTask): String = when (item.progressStage) {
+  "fetching_article" -> "記事本文を取得しています"
+  "preparing_model" -> "AIモデルを読み込んでいます"
+  "generating_summary" -> "要約を生成しています"
+  "summarizing_chunk" -> progressCountLabel("分割要約", item)
+  "reducing_summary" -> progressCountLabel("中間要約を統合", item)
+  "finalizing_summary" -> "最終要約を生成しています"
+  else -> "処理しています"
+}
+
+internal fun progressFraction(item: SummaryQueueTask): Float? {
+  val current = item.progressCurrent ?: return null
+  val total = item.progressTotal ?: return null
+  if (current <= 0 || total <= 0 || current > total) return null
+  return ((current - 1).toFloat() / total.toFloat()).coerceIn(0f, 1f)
+}
+
+private fun progressCountLabel(prefix: String, item: SummaryQueueTask): String {
+  val current = item.progressCurrent
+  val total = item.progressTotal
+  return if (current != null && total != null && current > 0 && total > 0) {
+    "$prefix $current/$total"
+  } else {
+    "$prefixしています"
+  }
 }
 
 private fun statusTime(item: SummaryQueueTask): String? {
