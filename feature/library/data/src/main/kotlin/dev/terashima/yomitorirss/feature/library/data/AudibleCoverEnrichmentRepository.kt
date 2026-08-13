@@ -11,8 +11,9 @@ import org.json.JSONArray
 class AudibleCoverEnrichmentRepository(
   private val database: DatabaseConnection,
   private val productPageClient: AudibleCoverClient = AudibleCoverClient(),
-  private val catalogClient: AudibleCatalogCoverClient = AudibleCatalogCoverClient(),
 ) {
+  private val catalogClient = AudibleCatalogCoverClient()
+
   suspend fun enrichBatch(limit: Int = AUDIBLE_COVER_BATCH_SIZE): Boolean {
     require(limit > 0) { "表紙補完の処理件数は1件以上で指定してください" }
     ensureSchema()
