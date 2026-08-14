@@ -12,6 +12,8 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
+import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.mail.MailAuthorizationRequiredException
@@ -28,7 +30,8 @@ private const val PERIODIC_WORK_NAME = "gmail-mail-sync"
 private const val ACCOUNT_WORK_TAG_PREFIX = "gmail-mail-account:"
 
 class MailSyncScheduler(context: Context) {
-  private val workManager = WorkManager.getInstance(context.applicationContext)
+  private val appContext = context.applicationContext
+  private val workManager = WorkManager.getInstance(appContext)
 
   fun scheduleInitialPage(accountId: String, expectedPageToken: String?) {
     if (expectedPageToken == null) schedulePeriodic()
@@ -41,7 +44,7 @@ class MailSyncScheduler(context: Context) {
           INPUT_PAGE_TOKEN to expectedPageToken.orEmpty(),
         ),
       )
-      .setConstraints(networkConstraints())
+      .setConstraints(connectedConstraints())
       .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
       .addTag(accountWorkTag(accountId))
       .build()
@@ -54,7 +57,7 @@ class MailSyncScheduler(context: Context) {
 
   fun schedulePeriodic() {
     val request = PeriodicWorkRequestBuilder<MailSyncWorker>(30, TimeUnit.MINUTES)
-      .setConstraints(networkConstraints())
+      .setConstraints(backgroundDataFetchConstraints(appContext))
       .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
       .build()
     workManager.enqueueUniquePeriodicWork(
@@ -72,7 +75,7 @@ class MailSyncScheduler(context: Context) {
     workManager.cancelUniqueWork(PERIODIC_WORK_NAME)
   }
 
-  private fun networkConstraints() = Constraints.Builder()
+  private fun connectedConstraints() = Constraints.Builder()
     .setRequiredNetworkType(NetworkType.CONNECTED)
     .build()
 
@@ -90,13 +93,15 @@ class MailSyncWorker(
   workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
   override suspend fun doWork(): Result {
+    val initialSync = inputData.getBoolean(INPUT_INITIAL_SYNC, false)
+    if (!initialSync && !isBackgroundDataFetchAllowed(applicationContext)) return Result.success()
+
     val database = YomitoriDatabase.create(applicationContext)
     val repository = DefaultMailRepository(
       context = applicationContext,
       database = DatabaseConnection(database),
       authorization = GmailAuthorizationManager(applicationContext),
     )
-    val initialSync = inputData.getBoolean(INPUT_INITIAL_SYNC, false)
     val accountId = inputData.getString(INPUT_ACCOUNT_ID)
     return try {
       if (initialSync) {
@@ -113,8 +118,6 @@ class MailSyncWorker(
           }
           InitialSyncStep.Complete -> Result.success()
           InitialSyncStep.Stale -> {
-            // The previous attempt may have persisted its next checkpoint and been interrupted
-            // before enqueueing the continuation. Reconcile from the durable DB state here.
             repository.sync(accountId)
             Result.success()
           }
