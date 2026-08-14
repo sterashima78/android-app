@@ -228,8 +228,6 @@ class DefaultLibraryRepository(
           )
         """.trimIndent(),
       )
-      ensureColumn("library_items", "narrators", "TEXT NOT NULL DEFAULT '[]'")
-      ensureColumn("library_items", "duration", "TEXT")
       execSQL(
         "CREATE INDEX IF NOT EXISTS library_items_source_title " +
           "ON library_items(source, title COLLATE NOCASE)",
@@ -280,25 +278,6 @@ class DefaultLibraryRepository(
         """.trimIndent(),
       )
     }
-  }
-
-  private fun SQLiteDatabase.ensureColumn(
-    table: String,
-    column: String,
-    definition: String,
-  ) {
-    val exists = rawQuery("PRAGMA table_info($table)", null).use { cursor ->
-      val nameIndex = cursor.getColumnIndexOrThrow("name")
-      var found = false
-      while (cursor.moveToNext()) {
-        if (cursor.getString(nameIndex) == column) {
-          found = true
-          break
-        }
-      }
-      found
-    }
-    if (!exists) execSQL("ALTER TABLE $table ADD COLUMN $column $definition")
   }
 
   private fun LibraryBook.toValues(syncedAt: Long): ContentValues = ContentValues().apply {
