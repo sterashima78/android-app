@@ -25,21 +25,30 @@ class GoogleBooksAuthorizationManager(context: Context) {
   private val client = Identity.getAuthorizationClient(context.applicationContext)
 
   suspend fun requestAccount(): GoogleBooksAuthorizationOutcome {
-    val request = AuthorizationRequest.builder()
-      .setRequestedScopes(listOf(Scope(BOOKS_SCOPE)))
+    val request = baseRequestBuilder()
       .setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT)
       .build()
-    val result = suspendCoroutine<AuthorizationResult> { continuation ->
-      client.authorize(request)
-        .addOnSuccessListener(continuation::resume)
-        .addOnFailureListener(continuation::resumeWithException)
-    }
-    return outcome(result)
+    return outcome(authorize(request))
   }
+
+  suspend fun existingAccessTokenOrNull(): String? = runCatching {
+    val result = authorize(baseRequestBuilder().build())
+    if (result.hasResolution()) null else result.accessToken?.takeIf(String::isNotBlank)
+  }.getOrNull()
 
   fun resultFromIntent(data: Intent): GoogleBooksAuthorizedAccount = account(
     client.getAuthorizationResultFromIntent(data),
   )
+
+  private suspend fun authorize(request: AuthorizationRequest): AuthorizationResult =
+    suspendCoroutine { continuation ->
+      client.authorize(request)
+        .addOnSuccessListener(continuation::resume)
+        .addOnFailureListener(continuation::resumeWithException)
+    }
+
+  private fun baseRequestBuilder(): AuthorizationRequest.Builder = AuthorizationRequest.builder()
+    .setRequestedScopes(listOf(Scope(BOOKS_SCOPE)))
 
   private fun outcome(result: AuthorizationResult): GoogleBooksAuthorizationOutcome = if (result.hasResolution()) {
     GoogleBooksAuthorizationOutcome.RequiresResolution(
