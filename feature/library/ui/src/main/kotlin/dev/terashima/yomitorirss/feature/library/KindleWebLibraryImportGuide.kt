@@ -25,7 +25,17 @@ import androidx.compose.ui.unit.dp
 internal fun KindleWebLibraryImportGuide() {
   val context = LocalContext.current
   val uriHandler = LocalUriHandler.current
+  val importJson = LocalWebLibraryImportHandler.current
+  var showWebImport by rememberSaveable { mutableStateOf(false) }
   var showPersonalDocumentDeepLinkTest by rememberSaveable { mutableStateOf(false) }
+
+  if (showWebImport) {
+    AmazonWebLibraryImportDialog(
+      source = LibrarySource.KINDLE,
+      onDismiss = { showWebImport = false },
+      onImportJson = importJson,
+    )
+  }
 
   if (showPersonalDocumentDeepLinkTest) {
     KindlePersonalDocumentDeepLinkTestScreen(
@@ -37,18 +47,21 @@ internal fun KindleWebLibraryImportGuide() {
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Text("Kindle インポートデータの作成", style = MaterialTheme.typography.titleMedium)
+    Text("Kindle インポート", style = MaterialTheme.typography.titleMedium)
     Text(
-      "Amazon の Kindle Web Library 上でブックマークレットを実行し、蔵書・表紙・シリーズ情報を JSON に保存してからインポートします。Amazon の認証情報や Cookie はアプリへ渡しません。",
+      "通常はアプリ内の専用 WebView で Amazon にログインし、そのまま蔵書・表紙・シリーズ情報を取り込みます。ログイン状態は Amazon インポート専用の WebView プロファイルに保持されます。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    Button(
+      modifier = Modifier.fillMaxWidth(),
+      onClick = { showWebImport = true },
+    ) {
+      Text("アプリ内で Kindle を取り込む")
+    }
+
     Text(
-      "1. Chrome で Amazon にログインし、下の「Kindle Web Library を開く」からシリーズ画面を開きます。\n" +
-        "2. ブラウザでブックマークを作成し、URL を下のボタンでコピーしたブックマークレットに置き換えます。\n" +
-        "3. Kindle Web Library のシリーズ画面を開いたまま、アドレスバーにブックマーク名を入力し、★付きの候補を選んで実行します。\n" +
-        "4. 「完了 … / JSONを保存」と表示されたら「JSONを保存」を押します。\n" +
-        "5. この画面へ戻り、Kindle の「インポート」から kindle-library-export-YYYY-MM-DD.json を選びます。",
+      "外部ブラウザ方式もフォールバックとして利用できます。Chrome で Kindle Web Library を開き、ブックマークレットを実行して JSON を保存した後、上の Kindle インポートからファイルを選択してください。",
       style = MaterialTheme.typography.bodySmall,
     )
     Row(
@@ -59,9 +72,9 @@ internal fun KindleWebLibraryImportGuide() {
         modifier = Modifier.weight(1f),
         onClick = { uriHandler.openUri(KINDLE_WEB_LIBRARY_EXPORT_PAGE) },
       ) {
-        Text("Kindle Web Library を開く")
+        Text("外部ブラウザで開く")
       }
-      Button(
+      OutlinedButton(
         modifier = Modifier.weight(1f),
         onClick = {
           val clipboard = context.getSystemService(ClipboardManager::class.java)
@@ -71,7 +84,7 @@ internal fun KindleWebLibraryImportGuide() {
           Toast.makeText(context, "ブックマークレットをコピーしました", Toast.LENGTH_SHORT).show()
         },
       ) {
-        Text("ブックマークレットをコピー")
+        Text("ブックマークレット")
       }
     }
     OutlinedButton(
@@ -81,7 +94,7 @@ internal fun KindleWebLibraryImportGuide() {
       Text("Personal Document リンク検証")
     }
     Text(
-      "ブックマークレットはログイン済みの read.amazon.co.jp 内だけで蔵書情報を取得し、端末へ JSON を保存します。Amazon 側の画面仕様変更により動作しなくなる場合があります。",
+      "アプリは Amazon のパスワードや Cookie を読み取りません。WebView 内で生成した蔵書 JSON だけを既存の Kindle インポーターへ渡します。Amazon 側の画面仕様変更で取得できなくなった場合は外部ブラウザ方式を利用できます。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
