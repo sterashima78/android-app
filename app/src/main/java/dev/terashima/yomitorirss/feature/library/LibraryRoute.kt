@@ -117,7 +117,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
 
   val kindleImportMimeTypes = arrayOf(
     "application/json",
-    "application/zip",
     "application/octet-stream",
   )
   val audibleImportMimeTypes = arrayOf(
