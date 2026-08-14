@@ -8,9 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+private const val SUMMARY_PREFERENCES_NAME = "summary_preferences"
+private const val LEGACY_SUMMARY_PREFERENCES_NAME = "local_summary_models"
+private const val SUMMARY_PROMPT_KEY = "summary_prompt"
+
 class SummaryPromptStore(context: Context) {
   private val applicationContext = context.applicationContext
-  private val preferences = applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+  private val preferences = applicationContext.getSharedPreferences(SUMMARY_PREFERENCES_NAME, Context.MODE_PRIVATE)
 
   init {
     migrateLegacyPrompt(applicationContext, preferences)
@@ -33,29 +37,23 @@ class SummaryPromptStore(context: Context) {
     preferences.edit().remove(SUMMARY_PROMPT_KEY).apply()
     _prompt.value = DEFAULT_SUMMARY_PROMPT
   }
-
-  private companion object {
-    const val PREFERENCES_NAME = "summary_preferences"
-    const val LEGACY_PREFERENCES_NAME = "local_summary_models"
-    const val SUMMARY_PROMPT_KEY = "summary_prompt"
-  }
 }
 
 private fun migrateLegacyPrompt(context: Context, preferences: SharedPreferences) {
-  val legacyPreferences = context.getSharedPreferences("local_summary_models", Context.MODE_PRIVATE)
-  if (preferences.contains("summary_prompt")) {
-    legacyPreferences.edit().remove("summary_prompt").apply()
+  val legacyPreferences = context.getSharedPreferences(LEGACY_SUMMARY_PREFERENCES_NAME, Context.MODE_PRIVATE)
+  if (preferences.contains(SUMMARY_PROMPT_KEY)) {
+    legacyPreferences.edit().remove(SUMMARY_PROMPT_KEY).apply()
     return
   }
 
-  val legacyPrompt = legacyPreferences.getString("summary_prompt", null) ?: return
+  val legacyPrompt = legacyPreferences.getString(SUMMARY_PROMPT_KEY, null) ?: return
   val normalizedPrompt = runCatching { normalizeSummaryPrompt(legacyPrompt) }.getOrNull()
   if (normalizedPrompt == null) {
-    legacyPreferences.edit().remove("summary_prompt").apply()
+    legacyPreferences.edit().remove(SUMMARY_PROMPT_KEY).apply()
     return
   }
 
-  if (preferences.edit().putString("summary_prompt", normalizedPrompt).commit()) {
-    legacyPreferences.edit().remove("summary_prompt").apply()
+  if (preferences.edit().putString(SUMMARY_PROMPT_KEY, normalizedPrompt).commit()) {
+    legacyPreferences.edit().remove(SUMMARY_PROMPT_KEY).apply()
   }
 }
