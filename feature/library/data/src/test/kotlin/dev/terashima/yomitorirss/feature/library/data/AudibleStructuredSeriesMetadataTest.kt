@@ -3,30 +3,27 @@ package dev.terashima.yomitorirss.feature.library.data
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class AudibleStructuredSeriesMetadataTest {
   @Test
   fun `Web JSONからシリーズ名と位置を読み込む`() {
     val parsed = AudibleSeriesMetadataScanner().scan(
-      fileName = "audible-library-export.json",
-      input = ByteArrayInputStream(
-        """
-          {
-            "format":"audible-library-export",
-            "version":1,
-            "books":[{
-              "asin":"B000000001",
-              "title":"Example",
-              "authors":[],
-              "series":{"id":"B000000099","name":"Example Series","position":4}
-            }]
-          }
-        """.trimIndent().toByteArray(),
-      ),
+      """
+        {
+          "format":"audible-library-export",
+          "version":1,
+          "books":[{
+            "asin":"B000000001",
+            "title":"Example",
+            "authors":[],
+            "series":{"id":"B000000099","name":"Example Series","position":4}
+          }]
+        }
+      """.trimIndent(),
     )
 
     val metadata = parsed.getValue("B000000001")
@@ -36,13 +33,12 @@ class AudibleStructuredSeriesMetadataTest {
   }
 
   @Test
-  fun `従来CSVではWebシリーズ情報を空にする`() {
-    val parsed = AudibleSeriesMetadataScanner().scan(
-      fileName = "Library.csv",
-      input = ByteArrayInputStream("ASIN,Title\nB000000001,Example".toByteArray()),
-    )
-
-    assertEquals(emptyMap<String, AudibleSeriesMetadata>(), parsed)
+  fun `WebView形式ではないJSONを拒否する`() {
+    assertThrows(IllegalArgumentException::class.java) {
+      AudibleSeriesMetadataScanner().scan(
+        """{"format":"other","version":1,"books":[]}""",
+      )
+    }
   }
 
   @Test
