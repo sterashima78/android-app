@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Amended: 2026-08-14
+- Amended: 2026-08-15
 - Supersedes: ADR-0026 の Kindle インポート判断、ADR-0031、ADR-0033、ADR-0036、ADR-0039 の Kindle 入力形式判断、ADR-0041、ADR-0043、ADR-0044、ADR-0053
 - Refines: ADR-0017, ADR-0054
 
@@ -89,16 +89,19 @@ Personal Document の MYCD エクスポートでは安定した表紙 URL を正
 
 - 購入済み本: アプリ内 Kindle WebView 取り込み
 - 購入済み本のフォールバック: Kindle Web Library を開く導線とブックマークレット
-- Personal Document: 「コンテンツと端末の管理」の Personal Document 一覧を開く導線と専用ブックマークレット
-- 生成した JSON を Kindle インポートから選択する手順
+- Personal Document: アプリ内 Amazon WebView 取り込み
+- Personal Document のフォールバック: 「コンテンツと端末の管理」の Personal Document 一覧を開く導線と専用ブックマークレット
+- 外部ブラウザで生成した JSON を Kindle インポートから選択する手順
 
-Personal Document のブックマークレットは `numberOfItems` を基準にページングし、100件を超えるライブラリも `startIndex` を進めて全件取得する。
+Personal Document のアプリ内 WebView 取り込みは、ログイン済み `www.amazon.co.jp` の MYCD ページ上で `GetContentOwnershipData` をページングし、既存の `kindle-personal-library-export` v1 JSON を生成して importer へ直接渡す。認証・origin・WebView profile の境界は ADR-0061 に従う。
+
+外部ブラウザ用 Personal Document ブックマークレットも `numberOfItems` を基準にページングし、100件を超えるライブラリで `startIndex` を進めて全件取得する。
 
 ### 安全境界
 
 Kindle JSON は最大 25 MB とする。購入済み本では ASIN とシリーズ ID を10文字の英数字として検証する。Personal Document では ID を32文字の英大文字・数字として検証する。タイトル必須、シリーズ位置は存在する場合1以上とする。著者、表紙、シリーズ名、巻位置の欠損は許容する。
 
-Personal Document エクスポートには Cookie、CSRF token、端末 ID、配送先、Amazon アカウント情報を含めない。MYCD の API 応答から蔵書用途に必要な項目だけを allowlist して書き出す。
+Personal Document エクスポートには Cookie、CSRF token、端末 ID、配送先、Amazon アカウント情報を含めない。MYCD の API 応答から蔵書用途に必要な項目だけを allowlist して書き出す。アプリ内 WebView では CSRF token を同一ページ内の MYCD リクエストにのみ使用し、Web メッセージや importer JSON へ渡さない。
 
 実ユーザーのエクスポート JSON、ASIN / Personal Document ID 一覧、タイトル一覧、著者メールアドレス、Cookie、セッション情報をログ、fixture、ADR、公開リポジトリへ追加しない。テストデータは人工的な値のみを使用する。
 
@@ -108,6 +111,7 @@ Personal Document エクスポートには Cookie、CSRF token、端末 ID、配
 
 - 購入済み Kindle 本と Personal Document を同じ Kindle 蔵書として一覧・検索できる
 - 片方だけを再インポートしてももう片方を維持できる
+- Personal Document の通常操作も「アプリ内でログイン → 取り込む」まで短縮できる
 - Personal Document でもタップから Kindle 起動とタイトル検索までの操作を短縮できる
 - Kindle の購入済み蔵書・表紙・シリーズを1つの JSON から取り込める
 - 表紙取得の追加ネットワーク通信、バックグラウンドジョブ、再試行状態を削除できる
@@ -118,7 +122,7 @@ Personal Document エクスポートには Cookie、CSRF token、端末 ID、配
 
 - Personal Document を対象ドキュメントまで直接開けず、Kindle 側でタイトル検索が必要
 - Personal Document は現時点では表紙なしになる
-- Web Library / MYCD の非公開 Web 経路変更でブックマークレットが動作しなくなる可能性がある
+- Web Library / MYCD の非公開 Web 経路変更で WebView collector とブックマークレットが動作しなくなる可能性がある
 - Kindle Web Library 側で表紙 URL が欠けた購入済み本は「表紙なし」のままになる
 - 非コミックなど一部のシリーズではシリーズ名が取得できず、IDを使った代替表示になる
 
@@ -128,3 +132,4 @@ Personal Document エクスポートには Cookie、CSRF token、端末 ID、配
 - ADR-0036、ADR-0041、ADR-0043、ADR-0044、ADR-0053 の表紙補完・診断判断を置き換える
 - ADR-0039 の source-series テーブルと手動設定優先は維持するが、SagaSeries CSV 入力は使用しない
 - ADR-0054 に従い、データ作成手順とインポート UI は library feature が所有する
+- ADR-0061 に従い、購入済み本と Personal Document の通常の Web 収集は専用 WebView profile 内で完結させる

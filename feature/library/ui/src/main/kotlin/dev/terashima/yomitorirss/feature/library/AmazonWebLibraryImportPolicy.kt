@@ -73,6 +73,13 @@ internal fun isKindleWebLibraryPage(url: String): Boolean {
     uri.path.orEmpty().startsWith("/kindle-library")
 }
 
+internal fun isKindlePersonalDocumentPage(url: String): Boolean {
+  val uri = runCatching { URI(url) }.getOrNull() ?: return false
+  return uri.scheme.equals("https", ignoreCase = true) &&
+    uri.host.equals("www.amazon.co.jp", ignoreCase = true) &&
+    uri.path.orEmpty().startsWith("/hz/mycd/digital-console/contentlist/pdocs")
+}
+
 internal fun isAudibleLibraryPage(url: String): Boolean {
   val uri = runCatching { URI(url) }.getOrNull() ?: return false
   return uri.scheme.equals("https", ignoreCase = true) &&

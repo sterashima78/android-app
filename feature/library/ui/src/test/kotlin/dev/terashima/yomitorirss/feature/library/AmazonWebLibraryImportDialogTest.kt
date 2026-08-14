@@ -21,10 +21,36 @@ class AmazonWebLibraryImportDialogTest {
   fun `収集スクリプトを実行できるページを厳密に判定する`() {
     assertTrue(isKindleWebLibraryPage("https://read.amazon.co.jp/kindle-library?resourceType=COMICS"))
     assertFalse(isKindleWebLibraryPage("https://www.amazon.co.jp/kindle-library"))
+    assertTrue(
+      isKindlePersonalDocumentPage(
+        "https://www.amazon.co.jp/hz/mycd/digital-console/contentlist/pdocs/dateDsc/",
+      ),
+    )
+    assertFalse(
+      isKindlePersonalDocumentPage(
+        "https://www.amazon.co.jp/hz/mycd/digital-console/contentlist/books/dateDsc/",
+      ),
+    )
+    assertFalse(
+      isKindlePersonalDocumentPage(
+        "https://read.amazon.co.jp/hz/mycd/digital-console/contentlist/pdocs/dateDsc/",
+      ),
+    )
     assertTrue(isAudibleLibraryPage("https://www.audible.co.jp/library/titles?page=2"))
     assertFalse(isAudibleLibraryPage("https://api.audible.co.jp/library/titles"))
     assertTrue(isAudibleCatalogApiPage("https://api.audible.co.jp/1.0/catalog/products?asins=ABCDEFGHIJ"))
     assertFalse(isAudibleCatalogApiPage("https://www.audible.co.jp/1.0/catalog/products"))
+  }
+
+  @Test
+  fun `Personal Document collector は既存の正規入力形式を生成する`() {
+    assertTrue(
+      KINDLE_PERSONAL_DOCUMENT_WEBVIEW_COLLECT_SCRIPT.contains(
+        "format:'kindle-personal-library-export'",
+      ),
+    )
+    assertTrue(KINDLE_PERSONAL_DOCUMENT_WEBVIEW_COLLECT_SCRIPT.contains("csrfToken:token"))
+    assertFalse(KINDLE_PERSONAL_DOCUMENT_WEBVIEW_COLLECT_SCRIPT.contains("CookieManager"))
   }
 
   @Test
