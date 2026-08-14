@@ -356,7 +356,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const pickerStyle = document.createElement('style');
         pickerStyle.id = styleId;
         pickerStyle.textContent =
-          '[' + selectedAttribute + '=\"true\"] {' +
+          '[' + selectedAttribute + '="true"] {' +
           ' outline: 3px solid #ff9800 !important;' +
           ' outline-offset: 2px !important;' +
           '}';
@@ -378,7 +378,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const attributeSelector = (element, name) => {
           const value = element.getAttribute(name);
           if (!value) return null;
-          return '[' + name + '=\"' + escapeAttributeValue(value) + '\"]';
+          return '[' + name + '="' + escapeAttributeValue(value) + '"]';
         };
 
         const directCandidates = (element) => {
@@ -454,7 +454,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
           event.stopImmediatePropagation();
 
           const target = event.target.closest(
-            'a, button, [role=\"button\"], [data-testid], article, section, nav, aside, img, video, span, div'
+            'a, button, [role="button"], [data-testid], article, section, nav, aside, img, video, span, div'
           );
           if (!target || target === document.body || target === document.documentElement) return;
 
