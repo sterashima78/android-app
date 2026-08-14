@@ -90,7 +90,7 @@ class NdlSearchBibliographicClientTest {
 
   @Test
   fun `日本語文字を含むタイトルだけNDL候補とする`() {
-    assertTrue(isLikelyJapaneseBookTitle("子どもの感情コントロール"))
+    assertTrue(isLikelyJapaneseBookTitle("合成テスト書籍"))
     assertEquals(false, isLikelyJapaneseBookTitle("Synthetic Book"))
   }
 
