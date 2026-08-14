@@ -47,7 +47,7 @@ LiteRT-LMでは選択モデル、実行バックエンド、モデルファイ�
 - `feature:summary:data` が要約プロンプト保存、階層要約、要約結果整形を所有する。
 - `LocalModelManager` はfeature名に依存しない `LocalInferenceProgress` を公開する。各featureが自身のprogress modelへ変換する。
 
-この責務境界はADR-0046で明文化する。
+この責務境界はADR-0047で明文化する。
 
 ### Thinking
 
@@ -88,7 +88,7 @@ feature固有ポリシーをruntimeから分離することで、Chat/Summaryの
 ## References
 
 - ADR-0003: マルチモジュールアーキテクチャ
-- ADR-0046: ローカルAIの機能固有ポリシーをfeatureへ分離する
+- ADR-0047: ローカルAIの機能固有ポリシーをfeatureへ分離する
 - https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/api/kotlin/get_started.md
 - https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/api/cpp/conversation.md
 - https://github.com/google-ai-edge/LiteRT-LM/releases/tag/v0.14.0
