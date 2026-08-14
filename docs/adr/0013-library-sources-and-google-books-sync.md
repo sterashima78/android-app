@@ -45,7 +45,7 @@ Android 側の承認には、メール機能と同じ Google Play services の `
 
 購入済み判定には、認証済み Volume の `userInfo.isPurchased` と Purchased bookshelf (`1`) の所属情報を利用する。My eBooks (`7`) は購入済み書籍が自動追加される一方でユーザーが手動追加できるため、My eBooks に存在することだけでは購入済みと判定しない。
 
-Google Books API が返す URL は用途を区別する。対象 Volume を読むための `accessInfo.webReaderLink` がある場合は `LibraryBook.infoUrl` に保存する。`webReaderLink` がなく購入済みと判定できる場合は、Google Play Books アプリの front-door 起動用フォールバックとして `https://play.google.com/books` を保存する。書籍情報ページである `volumeInfo.infoLink` は読書 URL のフォールバックに利用しない。未購入かつ `webReaderLink` がない Volume は `infoUrl = null` とする。Android での Reader URL と Play Books フォールバックの扱いは ADR-0019 に従う。
+Google Books API が返す URL は用途を区別する。対象 Volume を読むための `accessInfo.webReaderLink` がある場合は `LibraryBook.infoUrl` に保存する。`webReaderLink` がなく購入済みと判定できる場合は、Google Play Books アプリの front-door 起動用フォールバックとして `https://play.google.com/books` を保存する。書籍情報ページである `volumeInfo.infoLink` は読書 URL のフォールバックに利用しない。未購入かつ `webReaderLink` がない Volume は `infoUrl = null` とする。Android での Reader URL と Play Books フォールバックの扱いは ADR-0047 に従う。
 
 アクセストークンは永続化しない。Google Play services が返した短期トークンを同期処理にだけ渡す。
 
@@ -106,4 +106,4 @@ Google Play Books のデータと、再インポート可能な Kindle/Audible �
 - ADR-0003 の layer 分離に従い `domain -> data/ui` の逆依存を作らない
 - ADR-0004 の concept-oriented ownership として `library` を独立させる
 - `core:network` と `core:database` は汎用 capability のまま維持し、Google Books 固有処理や Amazon ファイル形式固有処理を持たせない
-- Google Books の Reader URL と Android 外部アプリ連携は ADR-0019 に従う
+- Google Books の Reader URL と Android 外部アプリ連携は ADR-0047 に従う
