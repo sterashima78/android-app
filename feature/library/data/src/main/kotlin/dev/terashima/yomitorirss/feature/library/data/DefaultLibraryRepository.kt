@@ -160,7 +160,7 @@ class DefaultLibraryRepository(
   }
 
   private fun replaceKindleItems(books: List<LibraryBook>): LibrarySyncResult {
-    val personalDocuments = books.filter(LibraryBook::isKindlePersonalDocument)
+    val personalDocuments = books.filter { it.isKindlePersonalDocument() }
     require(personalDocuments.isEmpty() || personalDocuments.size == books.size) {
       "Kindle 通常本と Personal Document が混在したインポートはできません"
     }
