@@ -4,10 +4,8 @@ import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryBook
-import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import java.io.InputStream
 
 internal data class AudibleSeriesMetadata(
   val seriesId: String?,
@@ -16,17 +14,8 @@ internal data class AudibleSeriesMetadata(
 )
 
 internal class AudibleSeriesMetadataScanner {
-  fun scan(
-    fileName: String?,
-    input: InputStream,
-  ): Map<String, AudibleSeriesMetadata> {
-    if (!fileName.isNullOrBlank() && !fileName.isAudibleWebLibraryJson()) return emptyMap()
-    return runCatching {
-      AudibleWebLibraryExportParser.parse(fileName, input).seriesBySourceId
-    }.getOrElse { error ->
-      if (fileName == null) emptyMap() else throw error
-    }
-  }
+  fun scan(json: String): Map<String, AudibleSeriesMetadata> =
+    AudibleWebLibraryExportParser.parse(json).seriesBySourceId
 }
 
 internal fun List<LibraryBook>.applyAudibleSeries(
@@ -48,11 +37,8 @@ internal class AudibleSourceSeriesRepository(
   private val database: DatabaseConnection,
   private val scanner: AudibleSeriesMetadataScanner = AudibleSeriesMetadataScanner(),
 ) {
-  fun importMetadata(
-    fileName: String?,
-    input: InputStream,
-  ) {
-    replace(scanner.scan(fileName, input))
+  fun importMetadata(json: String) {
+    replace(scanner.scan(json))
   }
 
   fun clear() {
