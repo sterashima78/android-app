@@ -52,7 +52,7 @@ class AppDatabaseSchemaTest {
         "mail_messages",
       ),
       db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'android_metadata'",
         null,
       ).use { cursor ->
         buildSet {
