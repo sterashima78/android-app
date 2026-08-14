@@ -1,11 +1,13 @@
 package dev.terashima.yomitorirss.feature.x
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +94,20 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
       }
 
       webViewClient = object : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+          val url = request.url.toString()
+          if (!shouldOpenXNavigationExternally(url, request.isForMainFrame)) return false
+
+          runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, request.url))
+          }.onFailure {
+            scope.launch {
+              snackbarHostState.showSnackbar("外部リンクをブラウザで開けませんでした")
+            }
+          }
+          return true
+        }
+
         override fun onPageFinished(view: WebView, url: String) {
           super.onPageFinished(view, url)
           if (url.isXUrl()) {
@@ -263,6 +279,14 @@ internal fun parentTouchInterceptionRequest(actionMasked: Int): Boolean? = when 
   else -> null
 }
 
+internal fun shouldOpenXNavigationExternally(url: String, isForMainFrame: Boolean): Boolean {
+  if (!isForMainFrame) return false
+  val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+  val scheme = uri.scheme?.lowercase() ?: return false
+  if (scheme != "http" && scheme != "https") return false
+  return !url.isXUrl()
+}
+
 internal fun appendHiddenElementRule(css: String, selector: String): String {
   val normalizedSelector = selector.trim()
   if (normalizedSelector.isEmpty()) return css
@@ -332,7 +356,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const pickerStyle = document.createElement('style');
         pickerStyle.id = styleId;
         pickerStyle.textContent =
-          '[' + selectedAttribute + '="true"] {' +
+          '[' + selectedAttribute + '=\"true\"] {' +
           ' outline: 3px solid #ff9800 !important;' +
           ' outline-offset: 2px !important;' +
           '}';
@@ -354,7 +378,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const attributeSelector = (element, name) => {
           const value = element.getAttribute(name);
           if (!value) return null;
-          return '[' + name + '="' + escapeAttributeValue(value) + '"]';
+          return '[' + name + '=\"' + escapeAttributeValue(value) + '\"]';
         };
 
         const directCandidates = (element) => {
@@ -430,7 +454,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
           event.stopImmediatePropagation();
 
           const target = event.target.closest(
-            'a, button, [role="button"], [data-testid], article, section, nav, aside, img, video, span, div'
+            'a, button, [role=\"button\"], [data-testid], article, section, nav, aside, img, video, span, div'
           );
           if (!target || target === document.body || target === document.documentElement) return;
 
