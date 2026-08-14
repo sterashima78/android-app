@@ -1,4 +1,4 @@
-# ADR-0026: RSSの「あとで読む」を任意で自動要約する
+# ADR-0051: RSSの「あとで読む」を任意で自動要約する
 
 - Status: Superseded by ADR-0030
 - Date: 2026-08-13

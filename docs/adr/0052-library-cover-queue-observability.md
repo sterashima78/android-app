@@ -1,4 +1,4 @@
-# ADR-0038: 表紙取得キューを既存DBと WorkManager から可視化する
+# ADR-0052: 表紙取得キューを既存DBと WorkManager から可視化する
 
 - Status: Accepted
 - Date: 2026-08-14

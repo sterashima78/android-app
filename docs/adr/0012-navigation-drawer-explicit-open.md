@@ -40,4 +40,4 @@
 - ADR-0001 の UI 層の責務として、アプリ共通 navigation gesture の競合をルート UI で解決する
 - ADR-0003 / ADR-0004 の feature 分離を維持し、各 feature に drawer gesture 回避のための例外処理を持ち込まない
 - ADR-0008 mail triage workflow など、各 feature が定義する横スワイプの状態変更操作自体には変更を加えない
-- ADR-0008 x-webview-css-customization の X viewer でも、WebView 上のジェスチャーと drawer opening gesture の競合を避けるため同じ方針を適用する
+- ADR-0047 x-webview-css-customization の X viewer でも、WebView 上のジェスチャーと drawer opening gesture の競合を避けるため同じ方針を適用する

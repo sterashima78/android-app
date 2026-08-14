@@ -1,4 +1,4 @@
-# ADR-0008: X は WebView とローカル CSS 注入で表示する
+# ADR-0047: X は WebView とローカル CSS 注入で表示する
 
 - Status: Accepted
 - Date: 2026-08-09

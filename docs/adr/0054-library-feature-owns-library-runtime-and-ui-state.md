@@ -1,4 +1,4 @@
-# ADR-0046: Library の runtime と UI state を feature が所有する
+# ADR-0054: Library の runtime と UI state を feature が所有する
 
 - Status: Accepted
 - Date: 2026-08-14

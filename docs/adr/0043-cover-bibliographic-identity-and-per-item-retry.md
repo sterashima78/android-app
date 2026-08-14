@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Refines: ADR-0036, ADR-0041, ADR-0042
+- Refines: ADR-0036, ADR-0041, ADR-0053
 
 ## Context
 
@@ -123,5 +123,5 @@ Worker は現在処理可能な項目がなく、将来の `next_attempt_at` が
 
 - ADR-0036 の外部表紙補完を任意とすること、誤表紙を避けること、Amazon secret を持たない方針を維持する
 - ADR-0041 のレスポンス本文や認証情報を自動保存しない方針を維持する
-- ADR-0042 の Amazon → Google Books → Open Library と構造化診断を発展させる
+- ADR-0053 の Amazon → Google Books → Open Library と構造化診断を発展させる
 - ADR-0006 の再開可能な WorkManager 処理方針に従い、一冊の障害をキュー全体の障害にしない

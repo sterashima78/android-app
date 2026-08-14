@@ -90,7 +90,7 @@ HTML 表示のためだけにプレーンテキストを WebView へ渡さない
 - ADR-0001 の UI / Domain / Data の責務分離を維持する。MIME 解析と保存は data、表示と navigation は UI が担当する
 - ADR-0003 / ADR-0004 の feature 分離に従い、mail renderer は mail feature 内に閉じる
 - ADR-0008 mail triage workflow の一覧・状態遷移には変更を加えない
-- ADR-0008 x-webview-css-customization の X WebView とは設定を共有しない。両者は WebView を使うが、信頼モデルと必要権限が異なる
+- ADR-0047 x-webview-css-customization の X WebView とは設定を共有しない。両者は WebView を使うが、信頼モデルと必要権限が異なる
 
 ## References
 

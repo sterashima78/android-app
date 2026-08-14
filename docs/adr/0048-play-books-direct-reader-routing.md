@@ -1,4 +1,4 @@
-# ADR-0019: Google Books の読書 URL と情報 URL を分離する
+# ADR-0048: Google Books の読書 URL と情報 URL を分離する
 
 - Status: Accepted
 - Date: 2026-08-11
