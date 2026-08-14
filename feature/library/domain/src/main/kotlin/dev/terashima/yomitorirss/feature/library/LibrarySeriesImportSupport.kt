@@ -1,12 +1,9 @@
 package dev.terashima.yomitorirss.feature.library
 
-import java.io.InputStream
-
 interface LibrarySeriesImportSupport {
-  suspend fun importSeriesMetadata(
+  suspend fun importSeriesMetadataJson(
     source: LibrarySource,
-    fileName: String?,
-    input: InputStream,
+    json: String,
   )
 
   suspend fun clearSeriesMetadata(source: LibrarySource)
