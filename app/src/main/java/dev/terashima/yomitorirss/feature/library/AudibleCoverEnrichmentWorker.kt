@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.data.AudibleCoverEnrichmentRepository
+import dev.terashima.yomitorirss.feature.library.data.LibraryCoverStatusRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -67,14 +68,23 @@ class AudibleCoverEnrichmentWorker(
 ) : CoroutineWorker(appContext, workerParams) {
   override suspend fun doWork(): Result {
     val database = YomitoriDatabase.create(applicationContext)
-    val repository = AudibleCoverEnrichmentRepository(DatabaseConnection(database))
+    val connection = DatabaseConnection(database)
+    val repository = AudibleCoverEnrichmentRepository(connection)
+    val coverStatusRepository = LibraryCoverStatusRepository(connection)
     return try {
       if (repository.enrichBatch()) {
         AudibleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
       }
       Result.success()
-    } catch (_: IOException) {
-      Result.retry()
+    } catch (error: IOException) {
+      if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
+        Result.retry()
+      } else {
+        if (coverStatusRepository.markNextAudibleCoverLookupError(error.message)) {
+          AudibleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
+        }
+        Result.success()
+      }
     } catch (error: CancellationException) {
       throw error
     } catch (_: Throwable) {
@@ -82,5 +92,9 @@ class AudibleCoverEnrichmentWorker(
     } finally {
       database.close()
     }
+  }
+
+  private companion object {
+    const val MAX_RETRY_ATTEMPTS = 2
   }
 }
