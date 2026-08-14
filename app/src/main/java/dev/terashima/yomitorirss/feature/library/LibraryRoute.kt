@@ -121,8 +121,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   )
   val audibleImportMimeTypes = arrayOf(
     "application/json",
-    "text/csv",
-    "application/zip",
     "application/octet-stream",
   )
 
