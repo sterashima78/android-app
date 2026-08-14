@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class LibraryRouteTest {
+class LibraryFeatureRouteTest {
   @Test
   fun `Google Play Books の HTTP reader URL はパラメータを維持して HTTPS にする`() {
     val url = "http://play.google.com/books/reader?id=volume-id&hl=ja&source=gbs_api"

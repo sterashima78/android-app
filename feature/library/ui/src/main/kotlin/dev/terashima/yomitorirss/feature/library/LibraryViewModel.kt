@@ -150,6 +150,13 @@ class LibraryViewModel(
     }
   }
 
+  fun refreshAfterCoverEnrichment() {
+    val currentMessage = _state.value.message
+    viewModelScope.launch(Dispatchers.IO) {
+      loadSnapshot(message = currentMessage)
+    }
+  }
+
   fun reportError(error: Throwable) {
     showError(error)
   }
