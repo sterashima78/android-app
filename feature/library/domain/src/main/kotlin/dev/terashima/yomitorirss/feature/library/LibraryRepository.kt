@@ -16,8 +16,6 @@ interface LibraryRepository {
 
   suspend fun clearBookSeries(book: LibraryBook)
 
-  suspend fun setKindleCoverEnrichmentEnabled(enabled: Boolean)
-
   suspend fun syncGooglePlayBooks(
     accessToken: String,
     accountLabel: String?,

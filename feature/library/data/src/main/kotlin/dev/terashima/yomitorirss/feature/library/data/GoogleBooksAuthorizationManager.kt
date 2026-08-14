@@ -31,11 +31,6 @@ class GoogleBooksAuthorizationManager(context: Context) {
     return outcome(authorize(request))
   }
 
-  suspend fun existingAccessTokenOrNull(): String? = runCatching {
-    val result = authorize(baseRequestBuilder().build())
-    if (result.hasResolution()) null else result.accessToken?.takeIf(String::isNotBlank)
-  }.getOrNull()
-
   fun resultFromIntent(data: Intent): GoogleBooksAuthorizedAccount = account(
     client.getAuthorizationResultFromIntent(data),
   )

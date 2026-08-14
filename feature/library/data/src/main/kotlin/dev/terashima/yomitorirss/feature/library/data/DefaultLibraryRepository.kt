@@ -11,19 +11,15 @@ import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySourceState
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import kotlinx.coroutines.delay
 import org.json.JSONArray
 
 class DefaultLibraryRepository(
   private val database: DatabaseConnection,
 ) : LibraryRepository {
   private val googleBooks = GoogleBooksApiClient()
-  private val amazonLibraryImporter = AmazonLibraryImporter()
   private val kindleWebLibraryImporter = KindleWebLibraryImporter()
-  private val audibleMetadataEnricher = AudibleLibraryMetadataEnricher()
-  private val openLibraryCoverClient = OpenLibraryCoverClient()
+  private val audibleWebLibraryImporter = AudibleWebLibraryImporter()
 
   override suspend fun snapshot(): LibrarySnapshot {
     ensureSchema()
@@ -51,7 +47,6 @@ class DefaultLibraryRepository(
       books = books,
       hiddenBooks = hiddenBooks,
       sourceStates = sourceStates,
-      kindleCoverEnrichmentEnabled = isKindleCoverEnrichmentEnabled(),
     )
   }
 
@@ -132,21 +127,6 @@ class DefaultLibraryRepository(
     }
   }
 
-  override suspend fun setKindleCoverEnrichmentEnabled(enabled: Boolean) {
-    ensureSchema()
-    val values = ContentValues().apply {
-      put("key", KINDLE_COVER_ENRICHMENT_SETTING)
-      put("value", if (enabled) "1" else "0")
-      put("updated_at", System.currentTimeMillis())
-    }
-    database.writable.insertWithOnConflict(
-      "library_settings",
-      null,
-      values,
-      SQLiteDatabase.CONFLICT_REPLACE,
-    )
-  }
-
   override suspend fun syncGooglePlayBooks(
     accessToken: String,
     accountLabel: String?,
@@ -168,27 +148,10 @@ class DefaultLibraryRepository(
     ensureSchema()
     val books = when (source) {
       LibrarySource.KINDLE -> kindleWebLibraryImporter.parse(fileName, input)
-      LibrarySource.AUDIBLE -> {
-        val bytes = input.readLimited(MAX_AUDIBLE_IMPORT_BYTES)
-        val parsedBooks = amazonLibraryImporter.parse(source, fileName, bytes)
-        audibleMetadataEnricher.enrich(fileName, bytes, parsedBooks)
-      }
+      LibrarySource.AUDIBLE -> audibleWebLibraryImporter.parse(fileName, input)
       LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
     }
     return replaceSource(source = source, books = books, accountLabel = null)
-  }
-
-  suspend fun enrichKindleCoverBatch(limit: Int = KINDLE_COVER_BATCH_SIZE): Boolean {
-    require(limit > 0) { "表紙補完の処理件数は1件以上で指定してください" }
-    ensureSchema()
-    if (!isKindleCoverEnrichmentEnabled()) return false
-
-    val books = queryKindleCoverCandidates(limit)
-    books.forEachIndexed { index, book ->
-      saveCoverLookup(book, openLibraryCoverClient.lookup(book))
-      if (index < books.lastIndex) delay(COVER_REQUEST_DELAY_MILLIS)
-    }
-    return books.size == limit
   }
 
   private fun replaceSource(
@@ -202,11 +165,6 @@ class DefaultLibraryRepository(
       books.forEach { book ->
         insertOrThrow("library_items", null, book.toValues(syncedAt))
       }
-      delete(
-        "library_item_external_metadata",
-        "source = ? AND source_id NOT IN (SELECT source_id FROM library_items WHERE source = ?)",
-        arrayOf(source.name, source.name),
-      )
       val sourceValues = ContentValues().apply {
         put("source", source.name)
         accountLabel?.let { put("account_label", it) } ?: putNull("account_label")
@@ -228,17 +186,10 @@ class DefaultLibraryRepository(
       """
         SELECT item.source, item.source_id, item.title, item.authors, item.publisher,
                item.published_date, item.description, item.isbn10, item.isbn13,
-               CASE
-                 WHEN item.thumbnail_url IS NOT NULL AND TRIM(item.thumbnail_url) <> ''
-                   THEN item.thumbnail_url
-                 ELSE metadata.thumbnail_url
-               END AS thumbnail_url,
-               item.info_url, item.narrators, item.duration,
+               item.thumbnail_url, item.info_url, item.narrators, item.duration,
                series.series_name, series.series_position,
                exclusion.source AS automatic_series_exclusion
         FROM library_items AS item
-        LEFT JOIN library_item_external_metadata AS metadata
-          ON metadata.source = item.source AND metadata.source_id = item.source_id
         LEFT JOIN library_item_series AS series
           ON series.source = item.source AND series.source_id = item.source_id
         LEFT JOIN library_item_series_exclusions AS exclusion
@@ -252,63 +203,6 @@ class DefaultLibraryRepository(
       """.trimIndent(),
       null,
     ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.toBook()) } }
-  }
-
-  private fun queryKindleCoverCandidates(limit: Int): List<LibraryBook> {
-    val staleBefore = System.currentTimeMillis() - COVER_LOOKUP_STALE_MILLIS
-    return database.readable.rawQuery(
-      """
-        SELECT item.source, item.source_id, item.title, item.authors, item.publisher,
-               item.published_date, item.description, item.isbn10, item.isbn13,
-               item.thumbnail_url, item.info_url, item.narrators, item.duration
-        FROM library_items AS item
-        LEFT JOIN library_item_external_metadata AS metadata
-          ON metadata.source = item.source AND metadata.source_id = item.source_id
-        WHERE item.source = ?
-          AND (item.thumbnail_url IS NULL OR TRIM(item.thumbnail_url) = '')
-          AND (metadata.thumbnail_url IS NULL OR TRIM(metadata.thumbnail_url) = '')
-          AND (metadata.updated_at IS NULL OR metadata.updated_at < ?)
-        ORDER BY item.title COLLATE NOCASE, item.source_id
-        LIMIT ?
-      """.trimIndent(),
-      arrayOf(
-        LibrarySource.KINDLE.name,
-        staleBefore.toString(),
-        limit.toString(),
-      ),
-    ).use { cursor ->
-      buildList {
-        while (cursor.moveToNext()) add(cursor.toStoredBook())
-      }
-    }
-  }
-
-  private fun saveCoverLookup(
-    book: LibraryBook,
-    result: CoverLookupResult,
-  ) {
-    val values = ContentValues().apply {
-      put("source", book.source.name)
-      put("source_id", book.sourceId)
-      result.thumbnailUrl?.let { put("thumbnail_url", it) } ?: putNull("thumbnail_url")
-      put("provider", OPEN_LIBRARY_PROVIDER)
-      put("lookup_status", result.status.name)
-      result.matchedIdentifier?.let { put("matched_identifier", it) } ?: putNull("matched_identifier")
-      put("updated_at", System.currentTimeMillis())
-    }
-    database.writable.insertWithOnConflict(
-      "library_item_external_metadata",
-      null,
-      values,
-      SQLiteDatabase.CONFLICT_REPLACE,
-    )
-  }
-
-  private fun isKindleCoverEnrichmentEnabled(): Boolean {
-    return database.readable.rawQuery(
-      "SELECT value FROM library_settings WHERE key = ? LIMIT 1",
-      arrayOf(KINDLE_COVER_ENRICHMENT_SETTING),
-    ).use { cursor -> cursor.moveToFirst() && cursor.getString(0) == "1" }
   }
 
   private fun ensureSchema() {
@@ -385,33 +279,6 @@ class DefaultLibraryRepository(
           )
         """.trimIndent(),
       )
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS library_item_external_metadata(
-            source TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            thumbnail_url TEXT,
-            provider TEXT NOT NULL,
-            lookup_status TEXT NOT NULL,
-            matched_identifier TEXT,
-            updated_at INTEGER NOT NULL,
-            PRIMARY KEY(source, source_id)
-          )
-        """.trimIndent(),
-      )
-      execSQL(
-        "CREATE INDEX IF NOT EXISTS library_item_external_metadata_status " +
-          "ON library_item_external_metadata(source, lookup_status, updated_at)",
-      )
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS library_settings(
-            key TEXT PRIMARY KEY NOT NULL,
-            value TEXT NOT NULL,
-            updated_at INTEGER NOT NULL
-          )
-        """.trimIndent(),
-      )
     }
   }
 
@@ -474,22 +341,6 @@ class DefaultLibraryRepository(
     duration = nullableString("duration"),
   )
 
-  private fun Cursor.toStoredBook(): LibraryBook = LibraryBook(
-    source = LibrarySource.valueOf(string("source")),
-    sourceId = string("source_id"),
-    title = string("title"),
-    authors = jsonStringList("authors"),
-    publisher = nullableString("publisher"),
-    publishedDate = nullableString("published_date"),
-    description = nullableString("description"),
-    isbn10 = nullableString("isbn10"),
-    isbn13 = nullableString("isbn13"),
-    thumbnailUrl = nullableString("thumbnail_url"),
-    infoUrl = nullableString("info_url"),
-    narrators = jsonStringList("narrators"),
-    duration = nullableString("duration"),
-  )
-
   private fun Cursor.jsonStringList(name: String): List<String> =
     JSONArray(string(name)).let { array ->
       buildList { for (index in 0 until array.length()) add(array.optString(index)) }
@@ -511,28 +362,5 @@ class DefaultLibraryRepository(
   private fun Cursor.nullableInt(name: String): Int? {
     val index = getColumnIndexOrThrow(name)
     return if (isNull(index)) null else getInt(index)
-  }
-
-  private fun InputStream.readLimited(limit: Int): ByteArray {
-    val output = ByteArrayOutputStream()
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    var total = 0
-    while (true) {
-      val read = read(buffer)
-      if (read < 0) break
-      total += read
-      require(total <= limit) { "Audible インポートファイルが大きすぎます（上限 25 MB）" }
-      output.write(buffer, 0, read)
-    }
-    return output.toByteArray()
-  }
-
-  private companion object {
-    const val MAX_AUDIBLE_IMPORT_BYTES = 25 * 1024 * 1024
-    const val KINDLE_COVER_BATCH_SIZE = 10
-    const val COVER_REQUEST_DELAY_MILLIS = 350L
-    const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
-    const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
-    const val OPEN_LIBRARY_PROVIDER = "OPEN_LIBRARY"
   }
 }

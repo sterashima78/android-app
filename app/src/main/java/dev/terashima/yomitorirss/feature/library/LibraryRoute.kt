@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryCoverEnrichmentCoordinator
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
@@ -32,9 +31,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val authorization = remember(application) { GoogleBooksAuthorizationManager(application) }
   val repository = remember(databaseConnection) {
     SeriesAwareLibraryRepository(databaseConnection)
-  }
-  val coverCoordinator = remember(application, databaseConnection) {
-    DefaultLibraryCoverEnrichmentCoordinator(application, databaseConnection)
   }
   val libraryViewModel: LibraryViewModel = viewModel(
     factory = LibraryViewModel.Factory(repository),
@@ -121,15 +117,12 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   )
   val audibleImportMimeTypes = arrayOf(
     "application/json",
-    "text/csv",
-    "application/zip",
     "application/octet-stream",
   )
 
   LibraryFeatureRoute(
     modifier = modifier,
     viewModel = libraryViewModel,
-    coverCoordinator = coverCoordinator,
     onSyncGooglePlayBooks = requestSync,
     onImportKindle = { kindleImportLauncher.launch(kindleImportMimeTypes) },
     onImportAudible = { audibleImportLauncher.launch(audibleImportMimeTypes) },

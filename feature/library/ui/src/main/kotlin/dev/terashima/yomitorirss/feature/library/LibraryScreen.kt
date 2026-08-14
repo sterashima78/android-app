@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Settings
@@ -38,7 +37,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -46,7 +44,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -86,8 +83,6 @@ fun LibraryScreen(
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
   onClearBookSeries: (LibraryBook) -> Unit,
-  onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
-  onOpenCoverQueue: () -> Unit,
   onDismissMessage: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -198,8 +193,6 @@ fun LibraryScreen(
             onSyncGooglePlayBooks = onSyncGooglePlayBooks,
             onImportKindle = onImportKindle,
             onImportAudible = onImportAudible,
-            onKindleCoverEnrichmentEnabledChange = onKindleCoverEnrichmentEnabledChange,
-            onOpenCoverQueue = onOpenCoverQueue,
           )
         }
       }
@@ -440,8 +433,6 @@ private fun LibrarySettingsTab(
   onSyncGooglePlayBooks: () -> Unit,
   onImportKindle: () -> Unit,
   onImportAudible: () -> Unit,
-  onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
-  onOpenCoverQueue: () -> Unit,
 ) {
   Column(
     modifier = Modifier
@@ -463,43 +454,9 @@ private fun LibrarySettingsTab(
     HorizontalDivider()
     Column(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-      ) {
-        Column(
-          modifier = Modifier.weight(1f),
-          verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-          Text("Kindle の表紙を補完", style = MaterialTheme.typography.titleMedium)
-          Text(
-            "インポートした JSON に表紙がない書籍だけ、Amazon の公開商品ページを優先し、見つからない場合は Google Books、Open Library の順で検索します。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        Switch(
-          checked = state.kindleCoverEnrichmentEnabled,
-          onCheckedChange = onKindleCoverEnrichmentEnabledChange,
-        )
-      }
-      Text(
-        "有効にすると Kindle の ASIN を Amazon へ送信し、フォールバック時はタイトル・著者・ISBN を Google Books と Open Library へ送信します。インポート JSON や認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      AudibleWebLibraryImportGuide()
     }
-    HorizontalDivider()
-    ListItem(
-      modifier = Modifier.clickable(onClick = onOpenCoverQueue),
-      headlineContent = { Text("表紙取得状況") },
-      supportingContent = { Text("Kindle / Audible の取得待ち・取得結果・バックグラウンド処理") },
-      leadingContent = { Icon(Icons.Default.LibraryBooks, contentDescription = null) },
-      trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-    )
   }
 }
 
@@ -586,7 +543,7 @@ private fun LibrarySyncHeader(
       onAction = onImportAudible,
     )
     Text(
-      "Kindle は上記ブックマークレットで作成した kindle-library-export-*.json、Audible は Library.csv / ZIP を端末内で読み込みます。Amazon / Kindle の認証情報は保存しません。",
+      "Kindle / Audible は下のブックマークレットで作成した JSON を端末内で読み込みます。Amazon / Audible の認証情報は保存しません。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
