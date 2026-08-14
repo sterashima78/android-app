@@ -5,13 +5,13 @@ import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import java.io.IOException
 import org.json.JSONArray
 
 class KindleCoverEnrichmentRepository(
   private val database: DatabaseConnection,
 ) {
   private val amazonCoverClient = KindleAmazonCoverClient()
+  private val googleBooksCoverClient = GoogleBooksCoverClient()
   private val openLibraryCoverClient = OpenLibraryCoverClient()
   private var schemaEnsured = false
 
@@ -23,23 +23,77 @@ class KindleCoverEnrichmentRepository(
     return true
   }
 
-  private suspend fun lookup(book: LibraryBook): KindleCoverLookupResult {
-    var amazonFailure: IOException? = null
+  private suspend fun lookup(book: LibraryBook): KindleCoverEnrichmentLookupResult {
+    val steps = mutableListOf<CoverLookupTraceStep>()
+    var retryableFailure: CoverProviderIOException? = null
+
     val amazon = try {
-      amazonCoverClient.lookup(book.sourceId)
-    } catch (error: IOException) {
-      amazonFailure = error
+      amazonCoverClient.lookup(book.sourceId).also { steps += it.traceStep }
+    } catch (error: CoverProviderIOException) {
+      steps += error.step
+      retryableFailure = error
       null
     }
-    if (amazon?.lookup?.status == CoverLookupStatus.FOUND) return amazon
-
-    val openLibrary = openLibraryCoverClient.lookup(book)
-    if (amazonFailure != null && openLibrary.status != CoverLookupStatus.FOUND) {
-      throw amazonFailure
+    if (amazon?.lookup?.status == CoverLookupStatus.FOUND) {
+      return KindleCoverEnrichmentLookupResult(
+        lookup = amazon.lookup,
+        provider = amazon.provider,
+        trace = steps.toDiagnosticTrace(),
+      )
     }
-    return KindleCoverLookupResult(
-      lookup = openLibrary,
-      provider = KindleCoverProvider.OPEN_LIBRARY,
+
+    val googleBooks = try {
+      googleBooksCoverClient.lookup(book).also { steps += it.step }
+    } catch (error: CoverProviderIOException) {
+      steps += error.step
+      if (retryableFailure == null) retryableFailure = error
+      null
+    }
+    if (googleBooks?.lookup?.status == CoverLookupStatus.FOUND) {
+      return KindleCoverEnrichmentLookupResult(
+        lookup = googleBooks.lookup,
+        provider = KindleCoverProvider.GOOGLE_BOOKS,
+        trace = steps.toDiagnosticTrace(),
+      )
+    }
+
+    val openLibrary = try {
+      openLibraryCoverClient.lookupWithTrace(book).also { steps += it.step }
+    } catch (error: CoverProviderIOException) {
+      steps += error.step
+      if (retryableFailure == null) retryableFailure = error
+      null
+    }
+    if (openLibrary?.lookup?.status == CoverLookupStatus.FOUND) {
+      return KindleCoverEnrichmentLookupResult(
+        lookup = openLibrary.lookup,
+        provider = KindleCoverProvider.OPEN_LIBRARY,
+        trace = steps.toDiagnosticTrace(),
+      )
+    }
+
+    retryableFailure?.let { failure ->
+      throw KindleCoverEnrichmentException(
+        message = failure.message ?: "Kindle 表紙補完で一時的な取得エラーが発生しました",
+        diagnosticTrace = steps.toDiagnosticTrace(),
+        cause = failure,
+      )
+    }
+
+    val finalLookup = openLibrary?.lookup
+      ?: googleBooks?.lookup
+      ?: amazon?.lookup
+      ?: CoverLookupResult(CoverLookupStatus.NOT_FOUND)
+    val finalProvider = when {
+      openLibrary != null -> KindleCoverProvider.OPEN_LIBRARY
+      googleBooks != null -> KindleCoverProvider.GOOGLE_BOOKS
+      amazon != null -> amazon.provider
+      else -> KindleCoverProvider.OPEN_LIBRARY
+    }
+    return KindleCoverEnrichmentLookupResult(
+      lookup = finalLookup,
+      provider = finalProvider,
+      trace = steps.toDiagnosticTrace(),
     )
   }
 
@@ -79,7 +133,7 @@ class KindleCoverEnrichmentRepository(
     }
   }
 
-  private fun saveLookup(book: LibraryBook, result: KindleCoverLookupResult) {
+  private fun saveLookup(book: LibraryBook, result: KindleCoverEnrichmentLookupResult) {
     val lookup = result.lookup
     val values = ContentValues().apply {
       put("source", LibrarySource.KINDLE.name)
@@ -88,6 +142,7 @@ class KindleCoverEnrichmentRepository(
       put("provider", result.provider.storageValue)
       put("lookup_status", lookup.status.name)
       lookup.matchedIdentifier?.let { put("matched_identifier", it) } ?: putNull("matched_identifier")
+      put(DIAGNOSTIC_TRACE_COLUMN, result.trace)
       put("updated_at", System.currentTimeMillis())
     }
     database.writable.insertWithOnConflict(
@@ -101,7 +156,30 @@ class KindleCoverEnrichmentRepository(
   private suspend fun ensureSchema() {
     if (schemaEnsured) return
     DefaultLibraryRepository(database).snapshot()
+    ensureDiagnosticTraceColumn()
     schemaEnsured = true
+  }
+
+  private fun ensureDiagnosticTraceColumn() {
+    if (hasDiagnosticTraceColumn()) return
+    runCatching {
+      database.writable.execSQL(
+        "ALTER TABLE library_item_external_metadata ADD COLUMN $DIAGNOSTIC_TRACE_COLUMN TEXT",
+      )
+    }.getOrElse { error ->
+      if (!hasDiagnosticTraceColumn()) throw error
+    }
+  }
+
+  private fun hasDiagnosticTraceColumn(): Boolean = database.readable.rawQuery(
+    "PRAGMA table_info(library_item_external_metadata)",
+    null,
+  ).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == DIAGNOSTIC_TRACE_COLUMN) return@use true
+    }
+    false
   }
 
   private fun isEnabled(): Boolean = database.readable.rawQuery(
@@ -114,6 +192,12 @@ class KindleCoverEnrichmentRepository(
     const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
   }
 }
+
+private data class KindleCoverEnrichmentLookupResult(
+  val lookup: CoverLookupResult,
+  val provider: KindleCoverProvider,
+  val trace: String,
+)
 
 private fun parseKindleAuthors(value: String): List<String> = runCatching {
   val array = JSONArray(value)
