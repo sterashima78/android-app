@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
+- Amended by: ADR-0059
 
 ## Context
 
@@ -9,7 +10,7 @@ ADR-0003 は `:core:database` を横断的な database capability とし、接�
 
 しかし `YomitoriDatabase` は RSS、Article、Bookmark、Summary、Mail の table 定義と migration をすべて保持していた。この状態では feature 固有の schema 変更が `:core:database` の変更理由となり、`core` がアプリ固有概念を知ることになる。
 
-一方、既存データとの互換性のため、現在の単一 SQLite database と database version、migration の実行順序は維持する必要がある。
+本 ADR 採用時は、当時の既存データとの互換性のため、単一 SQLite database と database version、migration の実行順序を維持する必要があった。
 
 ## Decision
 
@@ -50,18 +51,11 @@ ADR-0003 は `:core:database` を横断的な database capability とし、接�
 
 ## Migration ordering
 
-既存 database version 12 の互換性を維持する。
+migration mechanism は `BEFORE_SCHEMA` と `AFTER_SCHEMA` の phase を持ち、同一 phase 内では target version の昇順で実行する。
 
-従来の `YomitoriDatabase.onUpgrade` は version 10 migration のみ schema 作成前に実行し、その後 schema を補完して version 6、7、8、9、11、12 migration を実行していた。
+`BEFORE_SCHEMA` は、既存 table へ列を追加してから `CREATE INDEX IF NOT EXISTS` などの schema 補完を実行する必要がある場合に利用できる。通常の migration は `AFTER_SCHEMA` を使う。
 
-この順序を保持するため、migration は次の phase を持つ。
-
-- `BEFORE_SCHEMA`: schema 補完より前に必要な migration
-- `AFTER_SCHEMA`: schema 補完後に実行する通常の migration
-
-同一 phase 内では target version の昇順で実行する。
-
-現在は RSS の version 10 migration のみ `BEFORE_SCHEMA` とし、Mail の version 6、7、8、9、11 と Summary の version 12 は `AFTER_SCHEMA` とする。
+本 ADR 採用時に存在した version 6〜12 の migration は、ADR-0059 により現行 version 12 を更新元ベースラインとしたため削除した。phase と migration runner は今後の version 13 以降の schema 変更に利用できる汎用機構として維持する。
 
 ## Version ownership
 
@@ -77,7 +71,7 @@ SQLite の database version は単一DB全体の値であり、特定 feature �
 - RSS、Bookmark、Summary、Mail の schema 変更がそれぞれの feature 内で完結する。
 - `:core:database` に新しいアプリ固有概念が蓄積しにくくなる。
 - Worker や Service は同じ application-level schema composition を利用できる。
-- 単一DBと既存 migration の互換性を維持できる。
+- 過去 migration を削除しても、今後の schema migration の ownership と実行機構を維持できる。
 
 ### Negative
 
@@ -85,6 +79,8 @@ SQLite の database version は単一DB全体の値であり、特定 feature �
 - 新しい migration では app-level database version の更新と feature contribution の追加を同時に行う必要がある。
 - feature 間の外部キー依存があるため、`:app` の contribution 順序には意味がある。
 
-## Relationship to ADR-0003
+## Relationship to ADR-0003 and ADR-0059
 
 ADR-0003 の「`:core:database` は汎用的な schema migration mechanism を提供し、feature 固有 migration の意味は feature の `data` が所有する」という決定を具体化する。ADR-0003 を変更または置き換えるものではない。
+
+ADR-0059 はサポートする更新元のベースラインを version 12 へ進め、本 ADR に記録されていた過去 migration を廃止する。本 ADR の schema/migration ownership の決定は維持する。

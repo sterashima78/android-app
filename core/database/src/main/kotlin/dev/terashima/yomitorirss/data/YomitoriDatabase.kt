@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.core.database
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import java.io.File
 
 class YomitoriDatabase private constructor(
   context: Context,
@@ -36,15 +35,6 @@ class YomitoriDatabase private constructor(
 
     fun create(context: Context, schema: DatabaseSchema): YomitoriDatabase {
       val app = context.applicationContext
-      val target = app.getDatabasePath(DB_NAME)
-      val legacy = File(app.filesDir, "SQLite/$DB_NAME")
-      if (!target.exists() && legacy.isFile) {
-        target.parentFile?.mkdirs()
-        legacy.copyTo(target)
-        listOf("-wal", "-shm").forEach { suffix ->
-          File(legacy.path + suffix).takeIf(File::isFile)?.copyTo(File(target.path + suffix), true)
-        }
-      }
       return YomitoriDatabase(app, schema).also {
         it.setWriteAheadLoggingEnabled(true)
         it.writableDatabase

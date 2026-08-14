@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,35 +61,7 @@ class AppDatabaseSchemaTest {
     )
   }
 
-  @Test
-  fun `version 9 database upgrades through feature migrations`() {
-    context.openOrCreateDatabase(YomitoriDatabase.DB_NAME, Context.MODE_PRIVATE, null).use { legacy ->
-      legacy.execSQL(
-        "CREATE TABLE feeds(id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,feed_url TEXT NOT NULL UNIQUE,site_url TEXT,etag TEXT,last_modified TEXT,last_fetched_at TEXT,last_error TEXT,created_at TEXT NOT NULL)",
-      )
-      legacy.version = 9
-    }
-
-    val db = openDatabase().writableDatabase
-
-    assertEquals(12, db.version)
-    assertTrue(columnNames(db, "feeds").contains("folder_id"))
-    assertTrue(columnNames(db, "summary_tasks").contains("progress_stage"))
-    assertTrue(columnNames(db, "summary_tasks").contains("progress_current"))
-    assertTrue(columnNames(db, "summary_tasks").contains("progress_total"))
-  }
-
   private fun openDatabase(): YomitoriDatabase = YomitoriDatabase.create(context, appDatabaseSchema).also {
     database = it
-  }
-
-  private fun columnNames(
-    db: android.database.sqlite.SQLiteDatabase,
-    table: String,
-  ): Set<String> = db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
-    val nameIndex = cursor.getColumnIndexOrThrow("name")
-    buildSet {
-      while (cursor.moveToNext()) add(cursor.getString(nameIndex))
-    }
   }
 }
