@@ -23,7 +23,7 @@ class LibraryCoverStatusRepository(
                item.thumbnail_url AS source_thumbnail_url,
                metadata.thumbnail_url AS external_thumbnail_url,
                metadata.provider, metadata.lookup_status, metadata.updated_at,
-               metadata.diagnostic_detail
+               metadata.diagnostic_detail, metadata.diagnostic_trace
         FROM library_items AS item
         LEFT JOIN library_item_external_metadata AS metadata
           ON metadata.source = item.source AND metadata.source_id = item.source_id
@@ -51,6 +51,7 @@ class LibraryCoverStatusRepository(
               ),
               provider = provider.withDiagnosticDetail(diagnosticDetail),
               lastAttemptAtEpochMillis = updatedAt,
+              diagnosticTrace = cursor.nullableString(DIAGNOSTIC_TRACE_COLUMN),
             ),
           )
         }
@@ -64,12 +65,14 @@ class LibraryCoverStatusRepository(
 
   suspend fun markNextKindleCoverLookupError(
     detail: String? = null,
+    diagnosticTrace: String? = null,
     nowEpochMillis: Long = System.currentTimeMillis(),
   ): Boolean = markNextCoverLookupError(
     source = LibrarySource.KINDLE,
     provider = KINDLE_COVER_ENRICHMENT_PROVIDER,
     orderBy = "item.title COLLATE NOCASE, item.source_id",
     detail = detail,
+    diagnosticTrace = diagnosticTrace,
     nowEpochMillis = nowEpochMillis,
   )
 
@@ -81,6 +84,7 @@ class LibraryCoverStatusRepository(
     provider = AUDIBLE_COVER_ENRICHMENT_PROVIDER,
     orderBy = "item.source_id",
     detail = detail,
+    diagnosticTrace = null,
     nowEpochMillis = nowEpochMillis,
   )
 
@@ -103,6 +107,7 @@ class LibraryCoverStatusRepository(
     provider: String,
     orderBy: String,
     detail: String?,
+    diagnosticTrace: String?,
     nowEpochMillis: Long,
   ): Boolean {
     ensureSchema()
@@ -132,7 +137,12 @@ class LibraryCoverStatusRepository(
       put("provider", provider)
       put("lookup_status", CoverLookupStatus.ERROR.name)
       putNull("matched_identifier")
-      detail?.sanitizeDiagnosticDetail()?.let { put("diagnostic_detail", it) } ?: putNull("diagnostic_detail")
+      detail?.sanitizeDiagnosticText(MAX_DIAGNOSTIC_DETAIL_CHARS)
+        ?.let { put(DIAGNOSTIC_DETAIL_COLUMN, it) }
+        ?: putNull(DIAGNOSTIC_DETAIL_COLUMN)
+      diagnosticTrace?.sanitizeDiagnosticText(MAX_DIAGNOSTIC_TRACE_CHARS)
+        ?.let { put(DIAGNOSTIC_TRACE_COLUMN, it) }
+        ?: putNull(DIAGNOSTIC_TRACE_COLUMN)
       put("updated_at", nowEpochMillis)
     }
     database.writable.insertWithOnConflict(
@@ -147,28 +157,29 @@ class LibraryCoverStatusRepository(
   private suspend fun ensureSchema() {
     if (schemaEnsured) return
     DefaultLibraryRepository(database).snapshot()
-    ensureDiagnosticDetailColumn()
+    ensureDiagnosticColumn(DIAGNOSTIC_DETAIL_COLUMN)
+    ensureDiagnosticColumn(DIAGNOSTIC_TRACE_COLUMN)
     schemaEnsured = true
   }
 
-  private fun ensureDiagnosticDetailColumn() {
-    if (hasDiagnosticDetailColumn()) return
+  private fun ensureDiagnosticColumn(column: String) {
+    if (hasColumn(column)) return
     runCatching {
       database.writable.execSQL(
-        "ALTER TABLE library_item_external_metadata ADD COLUMN $DIAGNOSTIC_DETAIL_COLUMN TEXT",
+        "ALTER TABLE library_item_external_metadata ADD COLUMN $column TEXT",
       )
     }.getOrElse { error ->
-      if (!hasDiagnosticDetailColumn()) throw error
+      if (!hasColumn(column)) throw error
     }
   }
 
-  private fun hasDiagnosticDetailColumn(): Boolean = database.readable.rawQuery(
+  private fun hasColumn(column: String): Boolean = database.readable.rawQuery(
     "PRAGMA table_info(library_item_external_metadata)",
     null,
   ).use { cursor ->
     val nameIndex = cursor.getColumnIndexOrThrow("name")
     while (cursor.moveToNext()) {
-      if (cursor.getString(nameIndex) == DIAGNOSTIC_DETAIL_COLUMN) return@use true
+      if (cursor.getString(nameIndex) == column) return@use true
     }
     false
   }
@@ -227,11 +238,12 @@ private fun String?.withDiagnosticDetail(detail: String?): String? = when {
   else -> "$this · $detail"
 }
 
-private fun String.sanitizeDiagnosticDetail(): String =
+private fun String.sanitizeDiagnosticText(maxChars: Int): String =
   replace(SENSITIVE_QUERY_PARAMETER, "$1<redacted>")
-    .take(MAX_DIAGNOSTIC_DETAIL_CHARS)
+    .take(maxChars)
 
 private val SENSITIVE_QUERY_PARAMETER = Regex(
   "(?i)([?&](?:access_token|api_key|apikey|key|token|signature|sig|authorization)=)[^&#\\s]*",
 )
 private const val MAX_DIAGNOSTIC_DETAIL_CHARS = 2_048
+private const val MAX_DIAGNOSTIC_TRACE_CHARS = 8_192
