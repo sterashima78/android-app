@@ -20,8 +20,12 @@ internal class AudibleSeriesMetadataScanner {
     fileName: String?,
     input: InputStream,
   ): Map<String, AudibleSeriesMetadata> {
-    if (!fileName.orEmpty().isAudibleWebLibraryJson()) return emptyMap()
-    return AudibleWebLibraryExportParser.parse(fileName, input).seriesBySourceId
+    if (!fileName.isNullOrBlank() && !fileName.isAudibleWebLibraryJson()) return emptyMap()
+    return runCatching {
+      AudibleWebLibraryExportParser.parse(fileName, input).seriesBySourceId
+    }.getOrElse { error ->
+      if (fileName == null) emptyMap() else throw error
+    }
   }
 }
 
