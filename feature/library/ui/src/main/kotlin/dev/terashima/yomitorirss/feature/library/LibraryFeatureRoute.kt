@@ -30,8 +30,14 @@ fun LibraryFeatureRoute(
   val state by viewModel.state.collectAsState()
   val context = LocalContext.current
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
+  val webLibraryImportHandler = remember(viewModel) {
+    { source: LibrarySource, json: String -> viewModel.importAmazonLibraryJson(source, json) }
+  }
 
-  CompositionLocalProvider(LocalUriHandler provides libraryUriHandler) {
+  CompositionLocalProvider(
+    LocalUriHandler provides libraryUriHandler,
+    LocalWebLibraryImportHandler provides webLibraryImportHandler,
+  ) {
     LibraryScreen(
       modifier = modifier,
       state = state,
