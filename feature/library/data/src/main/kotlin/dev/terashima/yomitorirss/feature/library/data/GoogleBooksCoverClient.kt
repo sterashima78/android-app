@@ -17,6 +17,9 @@ internal class GoogleBooksCoverClient(
 
   private suspend fun lookupByIsbn(isbn: String): TracedCoverLookupResult {
     val response = search("isbn:$isbn", ISBN_RESULT_LIMIT)
+    response.terminalError?.let { step ->
+      return TracedCoverLookupResult(CoverLookupResult(CoverLookupStatus.ERROR), step)
+    }
     val withCover = response.candidates.filter { it.thumbnailUrl != null }
     val exact = withCover.filter { candidate ->
       candidate.isbns.any { it.cleanBookIsbn() == isbn }
@@ -51,7 +54,7 @@ internal class GoogleBooksCoverClient(
 
   private suspend fun lookupByTitle(book: LibraryBook): TracedCoverLookupResult {
     val searchableTitle = searchableBookTitle(book.title)
-    if (searchableTitle.isBlank()) {
+    if (normalizedSearchableBookTitle(searchableTitle).isEmpty()) {
       return TracedCoverLookupResult(
         lookup = CoverLookupResult(CoverLookupStatus.NOT_FOUND),
         step = CoverLookupTraceStep(
@@ -78,7 +81,7 @@ internal class GoogleBooksCoverClient(
   }
 
   private suspend fun search(query: String, limit: Int): GoogleBooksSearchResponse {
-    val url = "$SEARCH_URL?q=${query.urlEncode()}&maxResults=$limit&projection=lite"
+    val url = "$SEARCH_URL?q=${query.urlEncode()}&maxResults=$limit"
     val response = httpClient.execute(
       HttpRequest(url = url, headers = mapOf("Accept" to "application/json")),
     )
@@ -142,6 +145,16 @@ private fun selectGoogleBooksTitleCandidate(
     return TracedCoverLookupResult(CoverLookupResult(CoverLookupStatus.ERROR), step)
   }
   val expectedTitle = normalizedSearchableBookTitle(book.title)
+  if (expectedTitle.isEmpty()) {
+    return TracedCoverLookupResult(
+      CoverLookupResult(CoverLookupStatus.NOT_FOUND),
+      CoverLookupTraceStep(
+        provider = GOOGLE_BOOKS_PROVIDER,
+        status = CoverLookupStatus.NOT_FOUND,
+        reason = "EMPTY_TITLE",
+      ),
+    )
+  }
   val expectedAuthors = book.authors.map(::normalizeBookText).filter(String::isNotEmpty).toSet()
   val expectedVolume = explicitVolumeNumber(book.title)
   val withCover = response.candidates.filter { it.thumbnailUrl != null }
@@ -152,7 +165,7 @@ private fun selectGoogleBooksTitleCandidate(
   val authorMatches = volumeMatches.filter { candidate ->
     expectedAuthors.isEmpty() || candidate.authors.any { candidateAuthor ->
       val normalizedCandidate = normalizeBookText(candidateAuthor)
-      expectedAuthors.any { expected ->
+      normalizedCandidate.isNotEmpty() && expectedAuthors.any { expected ->
         normalizedCandidate == expected || normalizedCandidate.contains(expected) || expected.contains(normalizedCandidate)
       }
     }
