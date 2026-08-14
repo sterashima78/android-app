@@ -77,13 +77,14 @@ private class LibraryUriHandler(
 
   private fun openKindlePersonalDocument(uri: Uri) {
     val title = uri.getQueryParameter("title")?.trim().orEmpty()
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(KINDLE_PACKAGE)
+    val launched = launchIntent != null && startActivity(launchIntent)
+
     if (title.isNotEmpty()) {
       val clipboard = context.getSystemService(ClipboardManager::class.java)
       clipboard.setPrimaryClip(ClipData.newPlainText("Kindle Personal Document title", title))
     }
 
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(KINDLE_PACKAGE)
-    val launched = launchIntent != null && startActivity(launchIntent)
     val message = when {
       title.isEmpty() && launched -> "Kindleを開きました"
       title.isEmpty() -> "Kindleアプリを開けませんでした"
