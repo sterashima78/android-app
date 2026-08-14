@@ -97,8 +97,8 @@ private fun InputStream.readLimited(limit: Int): ByteArray {
 }
 
 private fun ByteArray.looksLikeJson(): Boolean {
-  val first = firstOrNull { byte -> !byte.toInt().toChar().isWhitespace() } ?: return false
-  return first.toInt().toChar() == '{' || first.toInt().toChar() == '['
+  val text = toString(StandardCharsets.UTF_8).removePrefix("\uFEFF").trimStart()
+  return text.startsWith('{') || text.startsWith('[')
 }
 
 private fun ByteArray.hasZipSignature(): Boolean =
