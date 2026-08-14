@@ -80,19 +80,26 @@ class KindleCoverEnrichmentRepository(
       )
     }
 
-    val finalLookup = openLibrary?.lookup
-      ?: googleBooks?.lookup
-      ?: amazon?.lookup
-      ?: CoverLookupResult(CoverLookupStatus.NOT_FOUND)
-    val finalProvider = when {
-      openLibrary != null -> KindleCoverProvider.OPEN_LIBRARY
-      googleBooks != null -> KindleCoverProvider.GOOGLE_BOOKS
-      amazon != null -> amazon.provider
-      else -> KindleCoverProvider.OPEN_LIBRARY
+    val unresolved = buildList {
+      googleBooks?.let {
+        add(ProviderLookup(KindleCoverProvider.GOOGLE_BOOKS, it.lookup))
+      }
+      openLibrary?.let {
+        add(ProviderLookup(KindleCoverProvider.OPEN_LIBRARY, it.lookup))
+      }
     }
+    val strongest = unresolved.lastOrNull { it.lookup.status == CoverLookupStatus.AMBIGUOUS }
+      ?: unresolved.lastOrNull { it.lookup.status == CoverLookupStatus.ERROR }
+      ?: unresolved.lastOrNull()
+      ?: amazon?.let { ProviderLookup(it.provider, it.lookup) }
+      ?: ProviderLookup(
+        KindleCoverProvider.OPEN_LIBRARY,
+        CoverLookupResult(CoverLookupStatus.NOT_FOUND),
+      )
+
     return KindleCoverEnrichmentLookupResult(
-      lookup = finalLookup,
-      provider = finalProvider,
+      lookup = strongest.lookup,
+      provider = strongest.provider,
       trace = steps.toDiagnosticTrace(),
     )
   }
@@ -197,6 +204,11 @@ private data class KindleCoverEnrichmentLookupResult(
   val lookup: CoverLookupResult,
   val provider: KindleCoverProvider,
   val trace: String,
+)
+
+private data class ProviderLookup(
+  val provider: KindleCoverProvider,
+  val lookup: CoverLookupResult,
 )
 
 private fun parseKindleAuthors(value: String): List<String> = runCatching {
