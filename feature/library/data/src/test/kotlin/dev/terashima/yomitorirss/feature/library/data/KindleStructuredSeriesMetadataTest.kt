@@ -4,73 +4,83 @@ import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class KindleStructuredSeriesMetadataTest {
   @Test
-  fun `シリーズ位置を1始まりへ変換する`() {
-    val csv = """
-      series-ASIN,series-product-name,item-ASIN,item-position-in-series
-      SERIES_A,Example Series,ITEM_A,0
-      SERIES_A,Example Series,ITEM_B,1
-    """.trimIndent()
+  fun `Web Libraryのシリーズ位置をそのまま利用する`() {
+    val parsed = scan(
+      """
+        {
+          "format":"kindle-library-export",
+          "version":1,
+          "books":[{
+            "asin":"B000000001",
+            "title":"Example Book",
+            "authors":["Author"],
+            "coverUrl":null,
+            "series":{"id":"B000000099","name":"Example Series","position":3}
+          }]
+        }
+      """.trimIndent(),
+    )
 
-    val parsed = KindleSeriesMetadataParser.parse(csv.toByteArray())
-
-    assertEquals(1, parsed["ITEM_A"]?.series?.position)
-    assertEquals(2, parsed["ITEM_B"]?.series?.position)
+    assertEquals(3, parsed["B000000001"]?.position)
+    assertEquals("B000000099", parsed["B000000001"]?.seriesId)
+    assertEquals("Example Series", parsed["B000000001"]?.seriesName)
   }
 
   @Test
-  fun `入れ子ZIP内のシリーズCSVを読み込む`() {
-    val csv = """
-      series-ASIN,series-product-name,item-ASIN,item-position-in-series
-      SERIES_A,Example Series,ITEM_A,0
-    """.trimIndent().toByteArray()
-    val nested = zipOf("export/Kindle.SagaSeriesInfra.CollectionRightsDatastore.csv" to csv)
-    val outer = zipOf("archive/export.zip" to nested)
-
-    val parsed = KindleSeriesMetadataScanner().scan(
-      fileName = "amazon-export.zip",
-      input = ByteArrayInputStream(outer),
+  fun `シリーズ名が欠けてもIDと位置を保持する`() {
+    val parsed = scan(
+      """
+        {
+          "format":"kindle-library-export",
+          "version":1,
+          "books":[{
+            "asin":"B000000001",
+            "title":"Example Book",
+            "authors":[],
+            "coverUrl":null,
+            "series":{"id":"B000000099","name":null,"position":8}
+          }]
+        }
+      """.trimIndent(),
     )
 
-    assertEquals("Example Series", parsed["ITEM_A"]?.series?.name)
+    val metadata = parsed.getValue("B000000001")
+    assertNull(metadata.seriesName)
+    assertEquals("B000000099", metadata.seriesId)
+    assertEquals(8, metadata.position)
+    assertEquals("シリーズ名未取得 (B000000099)", metadata.toLibrarySeries().name)
   }
 
   @Test
   fun `手動設定とシリーズ解除をKindleメタデータより優先する`() {
     val metadata = mapOf(
-      "ITEM_A" to KindleSeriesMetadata(
-        seriesId = "SERIES_A",
-        series = LibrarySeries("Imported Series", 3),
+      "B000000001" to KindleSeriesMetadata(
+        seriesId = "B000000099",
+        seriesName = "Imported Series",
+        position = 3,
       ),
     )
-    val manual = book("ITEM_A", series = LibrarySeries("Manual Series", 8))
-    val excluded = book("ITEM_A", excluded = true)
-    val automatic = book("item_a")
+    val manual = book("B000000001", series = LibrarySeries("Manual Series", 8))
+    val excluded = book("B000000001", excluded = true)
+    val automatic = book("b000000001")
 
     assertEquals("Manual Series", listOf(manual).applyKindleSeries(metadata)[0].series?.name)
     assertNull(listOf(excluded).applyKindleSeries(metadata)[0].series)
     assertEquals("Imported Series", listOf(automatic).applyKindleSeries(metadata)[0].series?.name)
+    assertEquals("B000000099", listOf(automatic).applyKindleSeries(metadata)[0].series?.id)
   }
 
-  private fun zipOf(vararg files: Pair<String, ByteArray>): ByteArray {
-    val output = ByteArrayOutputStream()
-    ZipOutputStream(output).use { zip ->
-      files.forEach { (name, bytes) ->
-        zip.putNextEntry(ZipEntry(name))
-        zip.write(bytes)
-        zip.closeEntry()
-      }
-    }
-    return output.toByteArray()
-  }
+  private fun scan(json: String): Map<String, KindleSeriesMetadata> =
+    KindleSeriesMetadataScanner().scan(
+      fileName = "kindle-library-export.json",
+      input = ByteArrayInputStream(json.toByteArray()),
+    )
 
   private fun book(
     sourceId: String,
