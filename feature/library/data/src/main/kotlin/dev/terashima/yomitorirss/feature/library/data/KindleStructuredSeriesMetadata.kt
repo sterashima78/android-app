@@ -21,8 +21,10 @@ internal class KindleSeriesMetadataScanner {
   fun scan(
     fileName: String?,
     input: InputStream,
-  ): Map<String, KindleSeriesMetadata> =
-    KindleWebLibraryExportParser.parse(fileName, input).seriesBySourceId
+  ): Map<String, KindleSeriesMetadata>? {
+    val export = KindleWebLibraryExportParser.parse(fileName, input)
+    return if (export.isPersonalDocumentExport) null else export.seriesBySourceId
+  }
 }
 
 internal fun List<LibraryBook>.applyKindleSeries(
@@ -50,7 +52,7 @@ internal class KindleSourceSeriesRepository(
     fileName: String?,
     input: InputStream,
   ) {
-    val scanned = scanner.scan(fileName, input)
+    val scanned = scanner.scan(fileName, input) ?: return
     replace(scanned)
   }
 

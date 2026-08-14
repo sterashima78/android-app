@@ -76,10 +76,34 @@ class KindleStructuredSeriesMetadataTest {
     assertEquals("B000000099", listOf(automatic).applyKindleSeries(metadata)[0].series?.id)
   }
 
+  @Test
+  fun `Personal Documentは購入本のシリーズメタデータ更新対象にしない`() {
+    val parsed = KindleSeriesMetadataScanner().scan(
+      fileName = "kindle-personal-library.json",
+      input = ByteArrayInputStream(
+        """
+          {
+            "format":"kindle-personal-library-export",
+            "version":1,
+            "books":[{
+              "id":"0123456789ABCDEF0123456789ABCDEF",
+              "title":"Personal Document",
+              "authors":[]
+            }]
+          }
+        """.trimIndent().toByteArray(),
+      ),
+    )
+
+    assertNull(parsed)
+  }
+
   private fun scan(json: String): Map<String, KindleSeriesMetadata> =
-    KindleSeriesMetadataScanner().scan(
-      fileName = "kindle-library-export.json",
-      input = ByteArrayInputStream(json.toByteArray()),
+    requireNotNull(
+      KindleSeriesMetadataScanner().scan(
+        fileName = "kindle-library-export.json",
+        input = ByteArrayInputStream(json.toByteArray()),
+      ),
     )
 
   private fun book(

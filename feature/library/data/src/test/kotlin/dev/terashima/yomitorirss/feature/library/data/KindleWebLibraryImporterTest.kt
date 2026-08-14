@@ -1,9 +1,11 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import dev.terashima.yomitorirss.feature.library.isKindlePersonalDocument
 import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KindleWebLibraryImporterTest {
@@ -48,6 +50,41 @@ class KindleWebLibraryImporterTest {
   }
 
   @Test
+  fun `Personal Document JSONから32文字IDと著者を取り込む`() {
+    val books = parse(
+      """
+        {
+          "format":"kindle-personal-library-export",
+          "version":1,
+          "count":2,
+          "books":[
+            {
+              "id":"0123456789ABCDEF0123456789ABCDEF",
+              "title":"Personal PDF",
+              "authors":["Author A"],
+              "contentType":"application/pdf",
+              "acquiredAt":1700000000000
+            },
+            {
+              "id":"ABCDEF0123456789ABCDEF0123456789",
+              "title":"Personal Book",
+              "authors":[],
+              "contentType":"application/x-mobipocket-ebook",
+              "acquiredAt":1700000000001
+            }
+          ]
+        }
+      """.trimIndent(),
+    )
+
+    assertEquals(2, books.size)
+    assertEquals("PDOC:0123456789ABCDEF0123456789ABCDEF", books[0].sourceId)
+    assertEquals(listOf("Author A"), books[0].authors)
+    assertTrue(books.all { it.isKindlePersonalDocument() })
+    assertNull(books[0].thumbnailUrl)
+  }
+
+  @Test
   fun `同じASINが複数あれば最後の書籍を採用する`() {
     val books = parse(
       """
@@ -72,7 +109,22 @@ class KindleWebLibraryImporterTest {
       parse("""{"format":"other","version":1,"books":[]}""")
     }
 
-    assertEquals("Kindle Web Library のエクスポート JSON ではありません", error.message)
+    assertEquals("Kindle のエクスポート JSON ではありません", error.message)
+  }
+
+  @Test
+  fun `Personal Documentの不正なIDを拒否する`() {
+    assertThrows(IllegalArgumentException::class.java) {
+      parse(
+        """
+          {
+            "format":"kindle-personal-library-export",
+            "version":1,
+            "books":[{"id":"B000000001","title":"Invalid","authors":[]}]
+          }
+        """.trimIndent(),
+      )
+    }
   }
 
   @Test

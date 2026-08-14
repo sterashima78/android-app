@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.library
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -57,14 +59,39 @@ private class LibraryUriHandler(
   private val context: Context,
 ) : UriHandler {
   override fun openUri(uri: String) {
+    val parsedUri = Uri.parse(uri)
+    if (isKindlePersonalDocumentOpenUri(parsedUri)) {
+      openKindlePersonalDocument(parsedUri)
+      return
+    }
+
     when (googleBooksLinkType(uri)) {
-      GoogleBooksLinkType.READER -> openGooglePlayBooksReader(Uri.parse(uri))
+      GoogleBooksLinkType.READER -> openGooglePlayBooksReader(parsedUri)
       GoogleBooksLinkType.PLAY_BOOKS_HOME -> {
         if (!openGooglePlayBooksHome()) showPlayBooksOpenFailedMessage()
       }
       GoogleBooksLinkType.INFORMATION -> showMissingReaderLinkMessage()
-      GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
+      GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, parsedUri))
     }
+  }
+
+  private fun openKindlePersonalDocument(uri: Uri) {
+    val title = uri.getQueryParameter("title")?.trim().orEmpty()
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(KINDLE_PACKAGE)
+    val launched = launchIntent != null && startActivity(launchIntent)
+
+    if (title.isNotEmpty()) {
+      val clipboard = context.getSystemService(ClipboardManager::class.java)
+      clipboard.setPrimaryClip(ClipData.newPlainText("Kindle Personal Document title", title))
+    }
+
+    val message = when {
+      title.isEmpty() && launched -> "Kindleを開きました"
+      title.isEmpty() -> "Kindleアプリを開けませんでした"
+      launched -> "タイトルをコピーしました。Kindleで検索してください"
+      else -> "タイトルをコピーしました。Kindleアプリを開けませんでした"
+    }
+    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
   }
 
   private fun openGooglePlayBooksReader(uri: Uri) {
@@ -140,6 +167,9 @@ private class LibraryUriHandler(
   }
 }
 
+private fun isKindlePersonalDocumentOpenUri(uri: Uri): Boolean =
+  uri.scheme == "yomitori" && uri.host == "kindle-personal-document" && uri.path == "/open"
+
 internal enum class GoogleBooksLinkType {
   READER,
   PLAY_BOOKS_HOME,
@@ -185,6 +215,7 @@ internal fun readerActivityScore(activityName: String): Int {
   return score
 }
 
+private const val KINDLE_PACKAGE = "com.amazon.kindle"
 private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
 private const val HTTP_SCHEME_PREFIX = "http://"
 private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"

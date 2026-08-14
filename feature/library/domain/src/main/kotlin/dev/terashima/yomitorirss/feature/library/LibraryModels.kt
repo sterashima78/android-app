@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 enum class LibrarySource(val label: String) {
@@ -32,6 +34,11 @@ data class LibraryBook(
   val duration: String? = null,
 ) {
   fun openUrl(): String? {
+    if (isKindlePersonalDocument()) {
+      val encodedTitle = URLEncoder.encode(title, StandardCharsets.UTF_8)
+      return "$KINDLE_PERSONAL_DOCUMENT_OPEN_URI_PREFIX$encodedTitle"
+    }
+
     if (source == LibrarySource.KINDLE) {
       amazonAsin(sourceId)?.let { asin ->
         return "kindle://book/?action=open&asin=$asin"
@@ -46,12 +53,20 @@ data class LibraryBook(
   }
 }
 
+fun LibraryBook.isKindlePersonalDocument(): Boolean =
+  source == LibrarySource.KINDLE && sourceId.startsWith(KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX)
+
+fun kindlePersonalDocumentSourceId(documentId: String): String =
+  KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX + documentId.trim().uppercase(Locale.ROOT)
+
 private fun amazonAsin(sourceId: String): String? {
   val asin = sourceId.trim().uppercase(Locale.ROOT)
   return asin.takeIf(AMAZON_ASIN::matches)
 }
 
 private val AMAZON_ASIN = Regex("^[A-Z0-9]{10}$")
+const val KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX = "PDOC:"
+const val KINDLE_PERSONAL_DOCUMENT_OPEN_URI_PREFIX = "yomitori://kindle-personal-document/open?title="
 
 data class LibrarySourceState(
   val source: LibrarySource,
