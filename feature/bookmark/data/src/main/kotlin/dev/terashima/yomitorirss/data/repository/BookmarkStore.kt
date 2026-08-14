@@ -378,7 +378,6 @@ object BookmarkDatabaseInitializer {
   fun initialize(database: DatabaseConnection) {
     database.transaction {
       ensureReadLaterFolder(this, nowIso())
-      migrateLegacyReadLaterTag(this)
     }
   }
 }
@@ -396,19 +395,6 @@ private fun ensureReadLaterFolder(database: SQLiteDatabase, createdAt: String) {
     ),
     SQLiteDatabase.CONFLICT_IGNORE,
   )
-}
-
-private fun migrateLegacyReadLaterTag(database: SQLiteDatabase) {
-  val normalizedReadLater = normalizeName(READ_LATER_FOLDER_NAME)
-  database.execSQL(
-    "INSERT OR IGNORE INTO article_folders(article_id,folder_id) SELECT x.article_id,? FROM article_tags x JOIN tags t ON t.id=x.tag_id JOIN articles a ON a.id=x.article_id WHERE a.saved_at IS NOT NULL AND t.normalized_name=?",
-    arrayOf(READ_LATER_FOLDER_ID, normalizedReadLater),
-  )
-  database.execSQL(
-    "DELETE FROM article_tags WHERE tag_id IN(SELECT id FROM tags WHERE normalized_name=?)",
-    arrayOf(normalizedReadLater),
-  )
-  database.delete("tags", "normalized_name=?", arrayOf(normalizedReadLater))
 }
 
 private fun ensureImportedTag(database: SQLiteDatabase, name: String, createdAt: String): String {

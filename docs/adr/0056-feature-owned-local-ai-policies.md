@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
+- Amended by: ADR-0060
 
 ## Context
 
@@ -58,11 +59,13 @@ ADR-0003でDataから他featureのDataへの依存は許可されているため
 
 ### 既存データの互換性
 
-ユーザーが保存済みの要約promptを失わないよう、`SummaryPromptStore` は従来 `LocalModelManager` が使用していたSharedPreferences名 `local_summary_models` とkey `summary_prompt` を引き継ぐ。保存形式のmigrationは不要とする。
+当初はユーザーが保存済みの要約promptを失わないよう、`SummaryPromptStore` が従来 `LocalModelManager` のSharedPreferences名 `local_summary_models` とkey `summary_prompt` をそのまま引き継いでいた。
 
-モデルファイルやbackend/Thinking設定の保存場所も変更しない。
+ADR-0060 によりこの暫定措置を終了し、`feature:summary:data` 専用の `summary_preferences` へ初回アクセス時に自動移行する。新保存先への書き込み成功後に旧keyを削除し、その後は新保存先だけを利用する。
 
-`YomitoriApp` に残る旧 `SummaryProgress` 型名の未使用helperについては、core runtimeへ型を戻さず、Summary domain側にdeprecatedなsource compatibility shimを一時的に置く。app shellの整理時にhelperとshimを同時に削除する。新規コードからshimを利用しない。
+モデルファイルやbackend/Thinking設定の保存場所は変更しない。
+
+`YomitoriApp` に残っていた旧 `SummaryProgress` helperとSummary domain側のsource compatibility shimは、ADR-0060 により予定どおり削除する。進捗表示はfeature固有の型だけを利用する。
 
 ## Consequences
 
@@ -78,3 +81,4 @@ ChatとSummaryの仕様変更を各feature内で完結させやすくなり、`c
 - ADR-0004: 概念指向モジュール
 - ADR-0020: ローカルAIの実行バックエンドとThinkingをユーザー設定にする
 - ADR-0027: 長文記事は階層的に分割要約する
+- ADR-0060: 現行データ形式へ互換処理を収束させる
