@@ -61,7 +61,7 @@ JSON は一度に巨大なメッセージとして渡さず、32 KiB 文字単�
 
 ### ナビゲーション境界
 
-WebView 内の main-frame ナビゲーションは HTTPS の `amazon.co.jp` / `*.amazon.co.jp` / `audible.co.jp` / `*.audible.co.jp` のみに許可する。それ以外のリンクは外部アプリへ委譲する。
+WebView 内の main-frame ナビゲーションは HTTPS の `amazon.co.jp` / `*.amazon.co.jp` / `audible.co.jp` / `*.audible.co.jp` のみに許可する。それ以外の HTTP / HTTPS リンクは外部アプリへ委譲し、`intent:` などその他の scheme はブロックする。
 
 WebView では file access / content access / mixed content / JavaScript window open を無効化する。JavaScript と DOM storage は Amazon / Audible のページ動作と collector 実行に必要なため有効化する。
 
