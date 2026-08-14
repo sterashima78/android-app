@@ -63,7 +63,11 @@ internal object KindleWebLibraryExportParser {
       val coverUrl = value.nullableString("coverUrl")
       val importedSeries = value.series(index)
       val series = importedSeries?.toLibrarySeries()
-      if (importedSeries != null) seriesBySourceId[asin] = importedSeries
+      if (importedSeries != null) {
+        seriesBySourceId[asin] = importedSeries
+      } else {
+        seriesBySourceId.remove(asin)
+      }
 
       booksByAsin[asin] = LibraryBook(
         source = LibrarySource.KINDLE,
