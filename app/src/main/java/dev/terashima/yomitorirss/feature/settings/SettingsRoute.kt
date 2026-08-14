@@ -8,7 +8,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
-import dev.terashima.yomitorirss.feature.library.LibraryCoverQueueRoute
 import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
@@ -49,7 +48,6 @@ fun SettingsScreen(
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     taskQueueContent = { onDismiss -> TaskQueueScreen(onDismiss) },
-    coverQueueContent = { onDismiss -> LibraryCoverQueueRoute(onDismiss) },
     onOpenDriveBackup = onOpenDriveBackup,
     onExportBackup = onExportBackup,
     onImportBackup = onImportBackup,

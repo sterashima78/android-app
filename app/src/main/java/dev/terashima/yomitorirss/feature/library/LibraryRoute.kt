@@ -53,6 +53,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val coverWorkInfos by coverScheduler.workInfos.collectAsState(initial = emptyList())
   val audibleCoverWorkInfos by audibleCoverScheduler.workInfos.collectAsState(initial = emptyList())
   var coverSnapshot by remember { mutableStateOf<LibrarySnapshot?>(null) }
+  var showCoverQueue by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
 
@@ -185,8 +186,13 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       onSetBookSeries = libraryViewModel::setBookSeries,
       onClearBookSeries = libraryViewModel::clearBookSeries,
       onKindleCoverEnrichmentEnabledChange = libraryViewModel::setKindleCoverEnrichmentEnabled,
+      onOpenCoverQueue = { showCoverQueue = true },
       onDismissMessage = libraryViewModel::dismissMessage,
     )
+  }
+
+  if (showCoverQueue) {
+    LibraryCoverQueueRoute(onDismiss = { showCoverQueue = false })
   }
 }
 

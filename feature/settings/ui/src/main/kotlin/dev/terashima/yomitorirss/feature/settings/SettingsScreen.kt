@@ -19,14 +19,12 @@ fun SettingsFeatureScreen(
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   taskQueueContent: @Composable (onDismiss: () -> Unit) -> Unit,
-  coverQueueContent: @Composable (onDismiss: () -> Unit) -> Unit,
   onOpenDriveBackup: () -> Unit,
   onExportBackup: () -> Unit,
   onImportBackup: () -> Unit,
   onOpenWebServer: () -> Unit,
 ) {
   var showTaskQueue by remember { mutableStateOf(false) }
-  var showCoverQueue by remember { mutableStateOf(false) }
 
   SettingsContent(
     modifier = modifier,
@@ -39,7 +37,6 @@ fun SettingsFeatureScreen(
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     onOpenSummaryTaskQueue = { showTaskQueue = true },
-    onOpenCoverQueue = { showCoverQueue = true },
     onOpenDriveBackup = onOpenDriveBackup,
     onExportBackup = onExportBackup,
     onImportBackup = onImportBackup,
@@ -48,8 +45,5 @@ fun SettingsFeatureScreen(
 
   if (showTaskQueue) {
     taskQueueContent { showTaskQueue = false }
-  }
-  if (showCoverQueue) {
-    coverQueueContent { showCoverQueue = false }
   }
 }
