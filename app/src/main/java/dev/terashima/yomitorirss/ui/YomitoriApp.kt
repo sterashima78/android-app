@@ -68,7 +68,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.core.airuntime.SummaryProgress
 import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
@@ -862,10 +861,4 @@ private fun BookmarkTab.mainTab(): MainTab = when (this) {
   BookmarkTab.FOLDERS -> MainTab.FOLDERS
   BookmarkTab.TAGS -> MainTab.TAGS
   BookmarkTab.HISTORY -> MainTab.HISTORY
-}
-
-private fun summaryProgressLabel(progress: SummaryProgress): String = when (progress.stage) {
-  "preparing_model" -> "${progress.modelName ?: "モデル"} を準備しています"
-  "generating_summary" -> "${progress.modelName ?: "モデル"} で要約を生成しています"
-  else -> progress.modelName?.let { "${progress.stage}: $it" } ?: progress.stage
 }
