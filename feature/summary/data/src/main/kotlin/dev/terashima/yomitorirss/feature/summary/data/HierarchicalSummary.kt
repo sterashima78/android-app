@@ -27,7 +27,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
   onProgress: (HierarchicalSummaryProgress) -> Unit = {},
 ): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
-  val maxInputChars = HierarchicalSummaryText.inputLimitFor(model.id)
+  val maxInputChars = model.maxInputChars
   val normalized = HierarchicalSummaryText.normalize(text)
   if (normalized.length <= maxInputChars) {
     currentCoroutineContext().ensureActive()
@@ -155,16 +155,8 @@ private fun mergeSummaryPrompt(targetChars: Int): String = """
 """.trimIndent()
 
 internal object HierarchicalSummaryText {
-  private const val DEFAULT_INPUT_LIMIT = 700
   private const val MIN_BREAK_RATIO_PERCENT = 55
   private const val SEPARATOR = "\n\n---\n\n"
-
-  fun inputLimitFor(modelId: String): Int = when (modelId) {
-    "qwen2.5-0.5b-q8", "qwen2.5-1.5b-q8" -> 700
-    "qwen3-4b-mixed-int4" -> 1_200
-    "gemma4-e2b-it", "gemma4-e4b-it" -> 2_500
-    else -> DEFAULT_INPUT_LIMIT
-  }
 
   fun intermediateTargetChars(maxInputChars: Int): Int =
     (maxInputChars / 3).coerceIn(180, 400)
