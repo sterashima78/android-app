@@ -2,7 +2,6 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
-import java.io.IOException
 import java.net.URI
 import java.util.Locale
 import org.json.JSONObject
@@ -10,12 +9,16 @@ import org.json.JSONObject
 internal enum class KindleCoverProvider(val storageValue: String) {
   AMAZON_PRODUCT_PAGE_OGP("AMAZON_PRODUCT_PAGE_OGP"),
   AMAZON_PRODUCT_PAGE_IMAGE("AMAZON_PRODUCT_PAGE_IMAGE"),
+  AMAZON_PRODUCT_PAGE_JSON_LD("AMAZON_PRODUCT_PAGE_JSON_LD"),
+  AMAZON_PRODUCT_PAGE_IMAGE_SRC("AMAZON_PRODUCT_PAGE_IMAGE_SRC"),
+  GOOGLE_BOOKS("GOOGLE_BOOKS"),
   OPEN_LIBRARY("OPEN_LIBRARY"),
 }
 
 internal data class KindleCoverLookupResult(
   val lookup: CoverLookupResult,
   val provider: KindleCoverProvider,
+  val traceStep: CoverLookupTraceStep,
 )
 
 internal class KindleAmazonCoverClient(
@@ -24,7 +27,7 @@ internal class KindleAmazonCoverClient(
   suspend fun lookup(sourceId: String): KindleCoverLookupResult {
     val asin = sourceId.trim().uppercase(Locale.ROOT)
       .takeIf(KINDLE_ASIN::matches)
-      ?: return notFound()
+      ?: return notFound(null, "INVALID_ASIN")
 
     val response = httpClient.execute(
       HttpRequest(
@@ -36,34 +39,97 @@ internal class KindleAmazonCoverClient(
       ),
     )
 
-    if (response.statusCode == 404 || response.statusCode == 410) return notFound(asin)
+    if (response.statusCode == 404 || response.statusCode == 410) {
+      return notFound(
+        asin = asin,
+        reason = "HTTP_NOT_FOUND",
+        httpStatus = response.statusCode,
+        responseBytes = response.body.size,
+      )
+    }
     if (!response.isSuccessful) {
-      throw IOException("Amazon 商品ページの取得に失敗しました (${response.statusCode})")
+      throw CoverProviderIOException(
+        "Amazon 商品ページの取得に失敗しました (${response.statusCode})",
+        CoverLookupTraceStep(
+          provider = AMAZON_PROVIDER,
+          status = CoverLookupStatus.ERROR,
+          reason = if (isRetryableAmazonStatus(response.statusCode)) "HTTP_RETRYABLE" else "HTTP_ERROR",
+          httpStatus = response.statusCode,
+          responseBytes = response.body.size,
+        ),
+      )
     }
     if (!isAmazonProductPageForAsin(response.finalUrl, asin)) {
-      throw IOException("Amazon 商品ページ以外へリダイレクトされました")
+      throw CoverProviderIOException(
+        "Amazon 商品ページ以外へリダイレクトされました",
+        baseStep(response.statusCode, response.body.size, "UNEXPECTED_REDIRECT"),
+      )
+    }
+    val contentType = response.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)
+    if (contentType != null && contentType !in AMAZON_HTML_CONTENT_TYPES) {
+      throw CoverProviderIOException(
+        "Amazon 商品ページが HTML ではありません ($contentType)",
+        baseStep(
+          response.statusCode,
+          response.body.size,
+          "INVALID_CONTENT_TYPE",
+          mapOf("contentType" to contentType),
+        ),
+      )
     }
     if (response.body.size > MAX_PRODUCT_PAGE_BYTES) {
-      throw IOException("Amazon 商品ページが大きすぎます")
+      throw CoverProviderIOException(
+        "Amazon 商品ページが大きすぎます",
+        baseStep(response.statusCode, response.body.size, "RESPONSE_TOO_LARGE"),
+      )
     }
 
     val html = response.body.toString(Charsets.UTF_8)
     if (isAmazonChallengePage(html)) {
-      throw IOException("Amazon 商品ページでアクセス確認が要求されました")
+      throw CoverProviderIOException(
+        "Amazon 商品ページでアクセス確認が要求されました",
+        baseStep(response.statusCode, response.body.size, "CHALLENGE_PAGE"),
+      )
     }
+
+    val counts = amazonCoverCandidateCounts(html)
+    val attributes = mapOf(
+      "contentType" to (contentType ?: "unknown"),
+      "finalUrlMatches" to "true",
+      "asinPresent" to html.contains(asin, ignoreCase = true).toString(),
+      "ogCandidates" to counts.og.toString(),
+      "productImageCandidates" to counts.productImage.toString(),
+      "jsonLdCandidates" to counts.jsonLd.toString(),
+      "imageSrcCandidates" to counts.imageSrc.toString(),
+    )
+
     extractAmazonOgCoverUrl(html)?.let { imageUrl ->
-      return found(asin, imageUrl, KindleCoverProvider.AMAZON_PRODUCT_PAGE_OGP)
+      return found(asin, imageUrl, KindleCoverProvider.AMAZON_PRODUCT_PAGE_OGP, response, attributes)
     }
     extractAmazonProductImageUrl(html)?.let { imageUrl ->
-      return found(asin, imageUrl, KindleCoverProvider.AMAZON_PRODUCT_PAGE_IMAGE)
+      return found(asin, imageUrl, KindleCoverProvider.AMAZON_PRODUCT_PAGE_IMAGE, response, attributes)
     }
-    return notFound(asin)
+    extractAmazonJsonLdCoverUrl(html)?.let { imageUrl ->
+      return found(asin, imageUrl, KindleCoverProvider.AMAZON_PRODUCT_PAGE_JSON_LD, response, attributes)
+    }
+    extractAmazonImageSrcCoverUrl(html)?.let { imageUrl ->
+      return found(asin, imageUrl, KindleCoverProvider.AMAZON_PRODUCT_PAGE_IMAGE_SRC, response, attributes)
+    }
+    return notFound(
+      asin = asin,
+      reason = "PRODUCT_PAGE_WITHOUT_COVER",
+      httpStatus = response.statusCode,
+      responseBytes = response.body.size,
+      attributes = attributes,
+    )
   }
 
   private fun found(
     asin: String,
     imageUrl: String,
     provider: KindleCoverProvider,
+    response: dev.terashima.yomitorirss.core.network.HttpResponse,
+    attributes: Map<String, String>,
   ): KindleCoverLookupResult = KindleCoverLookupResult(
     lookup = CoverLookupResult(
       status = CoverLookupStatus.FOUND,
@@ -71,14 +137,50 @@ internal class KindleAmazonCoverClient(
       matchedIdentifier = "ASIN:$asin",
     ),
     provider = provider,
+    traceStep = CoverLookupTraceStep(
+      provider = AMAZON_PROVIDER,
+      status = CoverLookupStatus.FOUND,
+      reason = provider.storageValue,
+      httpStatus = response.statusCode,
+      responseBytes = response.body.size,
+      attributes = attributes,
+    ),
   )
 
-  private fun notFound(asin: String? = null): KindleCoverLookupResult = KindleCoverLookupResult(
+  private fun notFound(
+    asin: String?,
+    reason: String,
+    httpStatus: Int? = null,
+    responseBytes: Int? = null,
+    attributes: Map<String, String> = emptyMap(),
+  ): KindleCoverLookupResult = KindleCoverLookupResult(
     lookup = CoverLookupResult(
       status = CoverLookupStatus.NOT_FOUND,
       matchedIdentifier = asin?.let { "ASIN:$it" },
     ),
     provider = KindleCoverProvider.AMAZON_PRODUCT_PAGE_OGP,
+    traceStep = CoverLookupTraceStep(
+      provider = AMAZON_PROVIDER,
+      status = CoverLookupStatus.NOT_FOUND,
+      reason = reason,
+      httpStatus = httpStatus,
+      responseBytes = responseBytes,
+      attributes = attributes,
+    ),
+  )
+
+  private fun baseStep(
+    httpStatus: Int,
+    responseBytes: Int,
+    reason: String,
+    attributes: Map<String, String> = emptyMap(),
+  ) = CoverLookupTraceStep(
+    provider = AMAZON_PROVIDER,
+    status = CoverLookupStatus.ERROR,
+    reason = reason,
+    httpStatus = httpStatus,
+    responseBytes = responseBytes,
+    attributes = attributes,
   )
 }
 
@@ -115,6 +217,24 @@ internal fun extractAmazonProductImageUrl(html: String): String? = IMAGE_TAG.fin
         ?.takeIf(::isTrustedAmazonImageUrl)
   }
 
+internal fun extractAmazonJsonLdCoverUrl(html: String): String? = JSON_LD_SCRIPT.findAll(html)
+  .map { it.groupValues[1] }
+  .flatMap { script -> JSON_LD_IMAGE.findAll(script).map { it.groupValues[1] } }
+  .map { it.decodeJsonEscapes().decodeHtmlEntities().trim() }
+  .firstOrNull(::isTrustedAmazonImageUrl)
+
+internal fun extractAmazonImageSrcCoverUrl(html: String): String? = LINK_TAG.findAll(html)
+  .map { match -> htmlAttributes(match.value) }
+  .firstNotNullOfOrNull { attributes ->
+    if (!attributes["rel"].orEmpty().equals("image_src", ignoreCase = true)) {
+      return@firstNotNullOfOrNull null
+    }
+    attributes["href"]
+      ?.decodeHtmlEntities()
+      ?.trim()
+      ?.takeIf(::isTrustedAmazonImageUrl)
+  }
+
 internal fun isAmazonProductPageForAsin(url: String, asin: String): Boolean {
   val uri = runCatching { URI(url) }.getOrNull() ?: return false
   if (!uri.scheme.equals("https", ignoreCase = true)) return false
@@ -132,6 +252,23 @@ internal fun isAmazonChallengePage(html: String): Boolean {
   val lowercaseHtml = html.lowercase(Locale.ROOT)
   return AMAZON_CHALLENGE_MARKERS.any(lowercaseHtml::contains)
 }
+
+internal fun isRetryableAmazonStatus(statusCode: Int): Boolean =
+  statusCode == 408 || statusCode == 429 || statusCode in 500..599
+
+private fun amazonCoverCandidateCounts(html: String): AmazonCoverCandidateCounts = AmazonCoverCandidateCounts(
+  og = META_TAG.findAll(html).count { match ->
+    val attrs = htmlAttributes(match.value)
+    (attrs["property"] ?: attrs["name"])?.lowercase(Locale.ROOT) in COVER_META_KEYS
+  },
+  productImage = IMAGE_TAG.findAll(html).count { match ->
+    htmlAttributes(match.value)["id"]?.lowercase(Locale.ROOT) in PRODUCT_IMAGE_IDS
+  },
+  jsonLd = JSON_LD_SCRIPT.findAll(html).sumOf { match -> JSON_LD_IMAGE.findAll(match.groupValues[1]).count() },
+  imageSrc = LINK_TAG.findAll(html).count { match ->
+    htmlAttributes(match.value)["rel"].orEmpty().equals("image_src", ignoreCase = true)
+  },
+)
 
 private fun largestDynamicImageUrl(value: String): String? {
   val root = runCatching { JSONObject(value) }.getOrNull() ?: return null
@@ -173,17 +310,35 @@ private fun String.decodeHtmlEntities(): String =
     .replace("&#x27;", "'", ignoreCase = true)
     .replace("&apos;", "'")
 
+private fun String.decodeJsonEscapes(): String =
+  replace("\\/", "/")
+    .replace("\\u0026", "&", ignoreCase = true)
+
 private data class DynamicImage(
   val url: String,
   val area: Long,
 )
 
+private data class AmazonCoverCandidateCounts(
+  val og: Int,
+  val productImage: Int,
+  val jsonLd: Int,
+  val imageSrc: Int,
+)
+
 private const val AMAZON_PRODUCT_BASE_URL = "https://www.amazon.co.jp/dp"
+private const val AMAZON_PROVIDER = "AMAZON_PRODUCT_PAGE"
 private const val MAX_PRODUCT_PAGE_BYTES = 8 * 1024 * 1024
 
 private val KINDLE_ASIN = Regex("^[A-Z0-9]{10}$")
 private val META_TAG = Regex("<meta\\b[^>]*>", RegexOption.IGNORE_CASE)
 private val IMAGE_TAG = Regex("<img\\b[^>]*>", RegexOption.IGNORE_CASE)
+private val LINK_TAG = Regex("<link\\b[^>]*>", RegexOption.IGNORE_CASE)
+private val JSON_LD_SCRIPT = Regex(
+  """<script\b[^>]*type\s*=\s*["']application/ld\+json["'][^>]*>(.*?)</script>""",
+  setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+private val JSON_LD_IMAGE = Regex("""["']image["']\s*:\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
 private val ATTRIBUTE = Regex(
   """([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s\"'=<>`]+))""",
 )
@@ -207,3 +362,4 @@ private val AMAZON_CHALLENGE_MARKERS = setOf(
   "captchacharacters",
   "enter the characters you see below",
 )
+private val AMAZON_HTML_CONTENT_TYPES = setOf("text/html", "application/xhtml+xml")
