@@ -37,7 +37,7 @@ fun isArchitectureDependencyConfiguration(name: String): Boolean {
   if ("test" in name.lowercase()) return false
 
   return name in baseArchitectureDependencyConfigurations ||
-    variantArchitectureDependencyConfigurationSuffixes.any(name::endsWith)
+    variantArchitectureDependencyConfigurationSuffixes.any { suffix -> name.endsWith(suffix) }
 }
 
 fun projectLayer(path: String): String = path.substringAfterLast(':')
