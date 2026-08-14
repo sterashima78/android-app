@@ -4,8 +4,6 @@ import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.kindlePersonalDocumentSourceId
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import org.json.JSONArray
@@ -18,27 +16,16 @@ internal data class KindleWebLibraryExport(
 )
 
 internal class KindleWebLibraryImporter {
-  fun parse(
-    fileName: String?,
-    input: InputStream,
-  ): List<LibraryBook> = KindleWebLibraryExportParser.parse(fileName, input).books
+  fun parse(json: String): List<LibraryBook> = KindleWebLibraryExportParser.parse(json).books
 }
 
 internal object KindleWebLibraryExportParser {
-  fun parse(
-    fileName: String?,
-    input: InputStream,
-  ): KindleWebLibraryExport {
-    if (!fileName.isNullOrBlank()) {
-      require(fileName.endsWith(".json", ignoreCase = true)) {
-        "Kindle から保存した JSON ファイルを選択してください"
-      }
-    }
-
-    val bytes = input.readLimited(MAX_INPUT_BYTES)
-    require(bytes.isNotEmpty()) { "インポートファイルが空です" }
+  fun parse(json: String): KindleWebLibraryExport {
+    val bytes = json.toByteArray(StandardCharsets.UTF_8)
+    require(bytes.isNotEmpty()) { "Kindle の WebView データが空です" }
+    require(bytes.size <= MAX_INPUT_BYTES) { "Kindle の JSON が大きすぎます（上限 25 MB）" }
     val root = runCatching {
-      JSONObject(bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF"))
+      JSONObject(json.removePrefix("\uFEFF"))
     }.getOrElse {
       throw IllegalArgumentException("Kindle の JSON を解析できませんでした", it)
     }
@@ -177,20 +164,6 @@ internal object KindleWebLibraryExportParser {
         value.toString().trim().takeIf(String::isNotEmpty)?.let(::add)
       }
     }.distinctBy { it.lowercase(Locale.ROOT) }
-  }
-
-  private fun InputStream.readLimited(limit: Int): ByteArray {
-    val output = ByteArrayOutputStream(minOf(limit, DEFAULT_BUFFER_SIZE))
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    var total = 0
-    while (true) {
-      val read = read(buffer)
-      if (read < 0) break
-      total += read
-      require(total <= limit) { "Kindle の JSON が大きすぎます（上限 25 MB）" }
-      output.write(buffer, 0, read)
-    }
-    return output.toByteArray()
   }
 
   private val AMAZON_ASIN = Regex("^[A-Z0-9]{10}$")

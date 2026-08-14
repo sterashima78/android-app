@@ -3,8 +3,6 @@ package dev.terashima.yomitorirss.feature.library.data
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.Locale
@@ -18,45 +16,29 @@ internal data class AudibleWebLibraryExport(
 )
 
 internal class AudibleWebLibraryImporter {
-  fun parse(
-    fileName: String?,
-    input: InputStream,
-  ): List<LibraryBook> = AudibleWebLibraryExportParser.parse(fileName, input).books
+  fun parse(json: String): List<LibraryBook> = AudibleWebLibraryExportParser.parse(json).books
 }
 
 internal object AudibleWebLibraryExportParser {
-  fun parse(
-    fileName: String?,
-    input: InputStream,
-  ): AudibleWebLibraryExport {
-    if (!fileName.isNullOrBlank()) {
-      require(fileName.isAudibleWebLibraryJson()) {
-        "Audible Web Library から保存した JSON ファイルを選択してください"
-      }
-    }
-
-    val bytes = input.readLimited(MAX_INPUT_BYTES)
-    require(bytes.isNotEmpty()) { "インポートファイルが空です" }
+  fun parse(json: String): AudibleWebLibraryExport {
+    val bytes = json.toByteArray(StandardCharsets.UTF_8)
+    require(bytes.isNotEmpty()) { "Audible の WebView データが空です" }
+    require(bytes.size <= MAX_INPUT_BYTES) { "Audible Web Library の JSON が大きすぎます（上限 25 MB）" }
     val root = runCatching {
-      JSONTokener(bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF")).nextValue()
+      JSONTokener(json.removePrefix("\uFEFF")).nextValue() as? JSONObject
+        ?: throw IllegalArgumentException("Audible Web Library の JSON オブジェクトではありません")
     }.getOrElse {
       throw IllegalArgumentException("Audible Web Library の JSON を解析できませんでした", it)
     }
 
-    val bookValues = when (root) {
-      is JSONArray -> root
-      is JSONObject -> {
-        require(root.optString("format") == EXPORT_FORMAT) {
-          "Audible Web Library のエクスポート JSON ではありません"
-        }
-        require(root.optInt("version", -1) == EXPORT_VERSION) {
-          "対応していない Audible Web Library エクスポート形式です"
-        }
-        root.optJSONArray("books")
-          ?: throw IllegalArgumentException("Audible Web Library の books が見つかりません")
-      }
-      else -> throw IllegalArgumentException("Audible Web Library の JSON を解析できませんでした")
+    require(root.optString("format") == EXPORT_FORMAT) {
+      "Audible Web Library のエクスポート JSON ではありません"
     }
+    require(root.optInt("version", -1) == EXPORT_VERSION) {
+      "対応していない Audible Web Library エクスポート形式です"
+    }
+    val bookValues = root.optJSONArray("books")
+      ?: throw IllegalArgumentException("Audible Web Library の books が見つかりません")
 
     val booksByAsin = linkedMapOf<String, LibraryBook>()
     val seriesBySourceId = linkedMapOf<String, AudibleSeriesMetadata>()
@@ -182,20 +164,6 @@ internal object AudibleWebLibraryExportParser {
     }
   }
 
-  private fun InputStream.readLimited(limit: Int): ByteArray {
-    val output = ByteArrayOutputStream(minOf(limit, DEFAULT_BUFFER_SIZE))
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    var total = 0
-    while (true) {
-      val read = read(buffer)
-      if (read < 0) break
-      total += read
-      require(total <= limit) { "Audible Web Library の JSON が大きすぎます（上限 25 MB）" }
-      output.write(buffer, 0, read)
-    }
-    return output.toByteArray()
-  }
-
   private val AUDIBLE_ASIN = Regex("^[A-Z0-9]{10}$")
   private val BREAK_TAG = Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)
   private val HTML_TAG = Regex("<[^>]+>")
@@ -204,9 +172,6 @@ internal object AudibleWebLibraryExportParser {
   private const val EXPORT_VERSION = 1
   private const val MAX_INPUT_BYTES = 25 * 1024 * 1024
 }
-
-internal fun String.isAudibleWebLibraryJson(): Boolean =
-  substringAfterLast('/').substringAfterLast('\\').endsWith(".json", ignoreCase = true)
 
 internal fun AudibleSeriesMetadata.toLibrarySeries(): LibrarySeries = LibrarySeries(
   name = seriesName ?: "シリーズ名未取得 (${requireNotNull(seriesId)})",

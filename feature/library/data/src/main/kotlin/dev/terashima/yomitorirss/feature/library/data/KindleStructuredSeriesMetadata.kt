@@ -8,7 +8,6 @@ import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.LibrarySeriesImportSupport
 import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import java.io.InputStream
 import java.util.Locale
 
 internal data class KindleSeriesMetadata(
@@ -18,11 +17,8 @@ internal data class KindleSeriesMetadata(
 )
 
 internal class KindleSeriesMetadataScanner {
-  fun scan(
-    fileName: String?,
-    input: InputStream,
-  ): Map<String, KindleSeriesMetadata>? {
-    val export = KindleWebLibraryExportParser.parse(fileName, input)
+  fun scan(json: String): Map<String, KindleSeriesMetadata>? {
+    val export = KindleWebLibraryExportParser.parse(json)
     return if (export.isPersonalDocumentExport) null else export.seriesBySourceId
   }
 }
@@ -48,11 +44,8 @@ internal class KindleSourceSeriesRepository(
   private val database: DatabaseConnection,
   private val scanner: KindleSeriesMetadataScanner = KindleSeriesMetadataScanner(),
 ) {
-  fun importMetadata(
-    fileName: String?,
-    input: InputStream,
-  ) {
-    val scanned = scanner.scan(fileName, input) ?: return
+  fun importMetadata(json: String) {
+    val scanned = scanner.scan(json) ?: return
     replace(scanned)
   }
 
@@ -179,14 +172,13 @@ class SeriesAwareLibraryRepository private constructor(
     kindleSourceSeriesRepository.enrich(delegate.snapshot()),
   )
 
-  override suspend fun importSeriesMetadata(
+  override suspend fun importSeriesMetadataJson(
     source: LibrarySource,
-    fileName: String?,
-    input: InputStream,
+    json: String,
   ) {
     when (source) {
-      LibrarySource.KINDLE -> kindleSourceSeriesRepository.importMetadata(fileName, input)
-      LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.importMetadata(fileName, input)
+      LibrarySource.KINDLE -> kindleSourceSeriesRepository.importMetadata(json)
+      LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.importMetadata(json)
       LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
     }
   }

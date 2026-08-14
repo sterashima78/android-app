@@ -1,8 +1,6 @@
 package dev.terashima.yomitorirss.feature.library
 
 import android.content.Intent
-import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,9 +15,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun LibraryRoute(modifier: Modifier = Modifier) {
@@ -45,29 +41,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       .onFailure(libraryViewModel::reportError)
   }
 
-  fun importAmazonFile(source: LibrarySource, uri: Uri) {
-    scope.launch {
-      runCatching {
-        withContext(Dispatchers.IO) {
-          application.contentResolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME),
-            null,
-            null,
-            null,
-          )?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-          }
-        }
-      }.onSuccess { displayName ->
-        libraryViewModel.importAmazonLibrary(source, displayName) {
-          application.contentResolver.openInputStream(uri)
-            ?: error("選択したファイルを開けませんでした")
-        }
-      }.onFailure(libraryViewModel::reportError)
-    }
-  }
-
   val authorizationLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.StartIntentSenderForResult(),
   ) { result ->
@@ -77,17 +50,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     } else {
       acceptAuthorizationResult(data)
     }
-  }
-
-  val kindleImportLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.OpenDocument(),
-  ) { uri ->
-    uri?.let { importAmazonFile(LibrarySource.KINDLE, it) }
-  }
-  val audibleImportLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.OpenDocument(),
-  ) { uri ->
-    uri?.let { importAmazonFile(LibrarySource.AUDIBLE, it) }
   }
 
   val requestSync: () -> Unit = {
@@ -111,20 +73,9 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     }
   }
 
-  val kindleImportMimeTypes = arrayOf(
-    "application/json",
-    "application/octet-stream",
-  )
-  val audibleImportMimeTypes = arrayOf(
-    "application/json",
-    "application/octet-stream",
-  )
-
   LibraryFeatureRoute(
     modifier = modifier,
     viewModel = libraryViewModel,
     onSyncGooglePlayBooks = requestSync,
-    onImportKindle = { kindleImportLauncher.launch(kindleImportMimeTypes) },
-    onImportAudible = { audibleImportLauncher.launch(audibleImportMimeTypes) },
   )
 }

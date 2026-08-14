@@ -25,8 +25,6 @@ import java.net.URI
 fun LibraryFeatureRoute(
   viewModel: LibraryViewModel,
   onSyncGooglePlayBooks: () -> Unit,
-  onImportKindle: () -> Unit,
-  onImportAudible: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
@@ -44,8 +42,6 @@ fun LibraryFeatureRoute(
       modifier = modifier,
       state = state,
       onSyncGooglePlayBooks = onSyncGooglePlayBooks,
-      onImportKindle = onImportKindle,
-      onImportAudible = onImportAudible,
       onHideBook = viewModel::hideBook,
       onRestoreBook = viewModel::restoreBook,
       onSetBookSeries = viewModel::setBookSeries,

@@ -77,8 +77,6 @@ private enum class LibraryTab(val label: String) {
 fun LibraryScreen(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
-  onImportKindle: () -> Unit,
-  onImportAudible: () -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
@@ -191,8 +189,6 @@ fun LibraryScreen(
           LibraryTab.SETTINGS -> LibrarySettingsTab(
             state = state,
             onSyncGooglePlayBooks = onSyncGooglePlayBooks,
-            onImportKindle = onImportKindle,
-            onImportAudible = onImportAudible,
           )
         }
       }
@@ -431,8 +427,6 @@ private fun LibraryHiddenTab(
 private fun LibrarySettingsTab(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
-  onImportKindle: () -> Unit,
-  onImportAudible: () -> Unit,
 ) {
   Column(
     modifier = Modifier
@@ -442,8 +436,6 @@ private fun LibrarySettingsTab(
     LibrarySyncHeader(
       state = state,
       onSyncGooglePlayBooks = onSyncGooglePlayBooks,
-      onImportKindle = onImportKindle,
-      onImportAudible = onImportAudible,
     )
     HorizontalDivider()
     Column(
@@ -510,8 +502,6 @@ private fun LibraryEmptyMessage(
 private fun LibrarySyncHeader(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
-  onImportKindle: () -> Unit,
-  onImportAudible: () -> Unit,
 ) {
   Column(
     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -526,24 +516,8 @@ private fun LibrarySyncHeader(
       accountLabel = state.sourceStates[LibrarySource.GOOGLE_PLAY_BOOKS]?.accountLabel,
       onAction = onSyncGooglePlayBooks,
     )
-    LibrarySourceActionRow(
-      source = LibrarySource.KINDLE,
-      state = state,
-      actionLabel = "インポート",
-      busy = state.importingSource == LibrarySource.KINDLE,
-      enabled = !state.syncing && state.importingSource == null,
-      onAction = onImportKindle,
-    )
-    LibrarySourceActionRow(
-      source = LibrarySource.AUDIBLE,
-      state = state,
-      actionLabel = "インポート",
-      busy = state.importingSource == LibrarySource.AUDIBLE,
-      enabled = !state.syncing && state.importingSource == null,
-      onAction = onImportAudible,
-    )
     Text(
-      "Kindle / Audible は下のブックマークレットで作成した JSON を端末内で読み込みます。Amazon / Audible の認証情報は保存しません。",
+      "Kindle / Audible は下の専用 WebView から取り込みます。ファイルインポートには対応しません。Amazon / Audible の認証情報は保存しません。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

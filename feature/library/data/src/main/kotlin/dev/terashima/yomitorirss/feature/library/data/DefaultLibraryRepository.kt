@@ -13,7 +13,6 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySourceState
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
 import dev.terashima.yomitorirss.feature.library.isKindlePersonalDocument
-import java.io.InputStream
 import org.json.JSONArray
 
 class DefaultLibraryRepository(
@@ -142,17 +141,16 @@ class DefaultLibraryRepository(
     )
   }
 
-  override suspend fun importAmazonLibrary(
+  override suspend fun importAmazonLibraryJson(
     source: LibrarySource,
-    fileName: String?,
-    input: InputStream,
+    json: String,
   ): LibrarySyncResult {
     ensureSchema()
     return when (source) {
-      LibrarySource.KINDLE -> replaceKindleItems(kindleWebLibraryImporter.parse(fileName, input))
+      LibrarySource.KINDLE -> replaceKindleItems(kindleWebLibraryImporter.parse(json))
       LibrarySource.AUDIBLE -> replaceSource(
         source = source,
-        books = audibleWebLibraryImporter.parse(fileName, input),
+        books = audibleWebLibraryImporter.parse(json),
         accountLabel = null,
       )
       LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
