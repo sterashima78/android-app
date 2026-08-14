@@ -3,8 +3,6 @@ package dev.terashima.yomitorirss.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import java.io.ByteArrayInputStream
-import java.io.InputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,36 +46,15 @@ class LibraryViewModel(
   }
 
   fun importAmazonLibraryJson(source: LibrarySource, json: String) {
-    val bytes = json.toByteArray(Charsets.UTF_8)
-    val fileName = when (source) {
-      LibrarySource.KINDLE -> "kindle-library-export-webview.json"
-      LibrarySource.AUDIBLE -> "audible-library-export-webview.json"
-      else -> {
-        reportError(IllegalArgumentException("${source.label} は Web Library インポートに対応していません"))
-        return
-      }
-    }
-    importAmazonLibrary(source, fileName) { ByteArrayInputStream(bytes) }
-  }
-
-  fun importAmazonLibrary(
-    source: LibrarySource,
-    fileName: String?,
-    openInputStream: () -> InputStream,
-  ) {
     require(source == LibrarySource.KINDLE || source == LibrarySource.AUDIBLE)
     if (_state.value.syncing || _state.value.importingSource != null) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(importingSource = source) }
       runCatching {
-        val result = openInputStream().use { input ->
-          repository.importAmazonLibrary(source, fileName, input)
-        }
+        val result = repository.importAmazonLibraryJson(source, json)
         val seriesMetadataFailed = if (repository is LibrarySeriesImportSupport) {
           try {
-            openInputStream().use { input ->
-              repository.importSeriesMetadata(source, fileName, input)
-            }
+            repository.importSeriesMetadataJson(source, json)
             false
           } catch (error: CancellationException) {
             throw error
