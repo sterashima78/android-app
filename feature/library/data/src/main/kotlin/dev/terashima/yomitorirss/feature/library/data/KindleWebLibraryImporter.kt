@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.library.data
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.kindlePersonalDocumentSourceId
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
@@ -13,6 +14,7 @@ import org.json.JSONObject
 internal data class KindleWebLibraryExport(
   val books: List<LibraryBook>,
   val seriesBySourceId: Map<String, KindleSeriesMetadata>,
+  val isPersonalDocumentExport: Boolean = false,
 )
 
 internal class KindleWebLibraryImporter {
@@ -29,7 +31,7 @@ internal object KindleWebLibraryExportParser {
   ): KindleWebLibraryExport {
     if (!fileName.isNullOrBlank()) {
       require(fileName.endsWith(".json", ignoreCase = true)) {
-        "Kindle Web Library から保存した JSON ファイルを選択してください"
+        "Kindle から保存した JSON ファイルを選択してください"
       }
     }
 
@@ -38,15 +40,20 @@ internal object KindleWebLibraryExportParser {
     val root = runCatching {
       JSONObject(bytes.toString(StandardCharsets.UTF_8).removePrefix("\uFEFF"))
     }.getOrElse {
-      throw IllegalArgumentException("Kindle Web Library の JSON を解析できませんでした", it)
+      throw IllegalArgumentException("Kindle の JSON を解析できませんでした", it)
     }
 
-    require(root.optString("format") == EXPORT_FORMAT) {
-      "Kindle Web Library のエクスポート JSON ではありません"
-    }
     require(root.optInt("version", -1) == EXPORT_VERSION) {
-      "対応していない Kindle Web Library エクスポート形式です"
+      "対応していない Kindle エクスポート形式です"
     }
+    return when (root.optString("format")) {
+      WEB_EXPORT_FORMAT -> parseWebLibrary(root)
+      PERSONAL_EXPORT_FORMAT -> parsePersonalDocuments(root)
+      else -> throw IllegalArgumentException("Kindle のエクスポート JSON ではありません")
+    }
+  }
+
+  private fun parseWebLibrary(root: JSONObject): KindleWebLibraryExport {
     val bookValues = root.optJSONArray("books")
       ?: throw IllegalArgumentException("Kindle Web Library の books が見つかりません")
 
@@ -89,6 +96,43 @@ internal object KindleWebLibraryExportParser {
     return KindleWebLibraryExport(
       books = booksByAsin.values.toList(),
       seriesBySourceId = seriesBySourceId,
+    )
+  }
+
+  private fun parsePersonalDocuments(root: JSONObject): KindleWebLibraryExport {
+    val bookValues = root.optJSONArray("books")
+      ?: throw IllegalArgumentException("Kindle Personal Document の books が見つかりません")
+    val booksById = linkedMapOf<String, LibraryBook>()
+    for (index in 0 until bookValues.length()) {
+      val value = bookValues.optJSONObject(index)
+        ?: throw IllegalArgumentException("Kindle Personal Document の books[$index] が不正です")
+      val id = value.optString("id").trim().uppercase(Locale.ROOT)
+      require(PERSONAL_DOCUMENT_ID.matches(id)) {
+        "Kindle Personal Document の books[$index] の ID が不正です"
+      }
+      val title = value.optString("title").trim()
+      require(title.isNotEmpty()) {
+        "Kindle Personal Document の books[$index] にタイトルがありません"
+      }
+      booksById[id] = LibraryBook(
+        source = LibrarySource.KINDLE,
+        sourceId = kindlePersonalDocumentSourceId(id),
+        title = title,
+        authors = value.optJSONArray("authors").stringList(),
+        publisher = null,
+        publishedDate = null,
+        description = null,
+        isbn10 = null,
+        isbn13 = null,
+        thumbnailUrl = null,
+        infoUrl = null,
+      )
+    }
+    require(booksById.isNotEmpty()) { "Kindle Personal Document が見つかりませんでした" }
+    return KindleWebLibraryExport(
+      books = booksById.values.toList(),
+      seriesBySourceId = emptyMap(),
+      isPersonalDocumentExport = true,
     )
   }
 
@@ -143,14 +187,16 @@ internal object KindleWebLibraryExportParser {
       val read = read(buffer)
       if (read < 0) break
       total += read
-      require(total <= limit) { "Kindle Web Library の JSON が大きすぎます（上限 25 MB）" }
+      require(total <= limit) { "Kindle の JSON が大きすぎます（上限 25 MB）" }
       output.write(buffer, 0, read)
     }
     return output.toByteArray()
   }
 
   private val AMAZON_ASIN = Regex("^[A-Z0-9]{10}$")
-  private const val EXPORT_FORMAT = "kindle-library-export"
+  private val PERSONAL_DOCUMENT_ID = Regex("^[A-Z0-9]{32}$")
+  private const val WEB_EXPORT_FORMAT = "kindle-library-export"
+  private const val PERSONAL_EXPORT_FORMAT = "kindle-personal-library-export"
   private const val EXPORT_VERSION = 1
   private const val MAX_INPUT_BYTES = 25 * 1024 * 1024
 }
