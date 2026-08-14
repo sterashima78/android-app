@@ -23,7 +23,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -242,8 +241,10 @@ private fun WebLibraryImportContent(
           val target = request.url.toString()
           if (isTrustedAmazonImportNavigation(target)) return false
 
-          runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, request.url))
+          if (isExternalHttpNavigation(target)) {
+            runCatching {
+              context.startActivity(Intent(Intent.ACTION_VIEW, request.url))
+            }
           }
           return true
         }
@@ -400,6 +401,12 @@ private fun isStartPageForSource(source: LibrarySource, url: String): Boolean = 
   LibrarySource.KINDLE -> isKindleWebLibraryPage(url)
   LibrarySource.AUDIBLE -> isAudibleLibraryPage(url)
   else -> false
+}
+
+private fun isExternalHttpNavigation(url: String): Boolean {
+  val uri = runCatching { URI(url) }.getOrNull() ?: return false
+  return uri.scheme.equals("http", ignoreCase = true) ||
+    uri.scheme.equals("https", ignoreCase = true)
 }
 
 private fun isAllowedBridgeOrigin(source: LibrarySource, origin: String): Boolean {
