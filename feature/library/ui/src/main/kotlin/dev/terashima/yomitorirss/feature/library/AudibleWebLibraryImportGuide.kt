@@ -12,6 +12,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -21,22 +25,36 @@ import androidx.compose.ui.unit.dp
 internal fun AudibleWebLibraryImportGuide() {
   val context = LocalContext.current
   val uriHandler = LocalUriHandler.current
+  val importJson = LocalWebLibraryImportHandler.current
+  var showWebImport by rememberSaveable { mutableStateOf(false) }
+
+  if (showWebImport) {
+    AmazonWebLibraryImportDialog(
+      source = LibrarySource.AUDIBLE,
+      onDismiss = { showWebImport = false },
+      onImportJson = importJson,
+    )
+  }
 
   Column(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Text("Audible インポートデータの作成", style = MaterialTheme.typography.titleMedium)
+    Text("Audible インポート", style = MaterialTheme.typography.titleMedium)
     Text(
-      "Audible Web Library から全蔵書の ASIN を取得し、Audible のカタログ情報でタイトル・著者・ナレーター・表紙・再生時間・シリーズを補完して JSON に保存します。ログイン情報や Cookie は JSON に含めません。",
+      "通常はアプリ内の専用 WebView で Audible にログインし、ASIN の収集、カタログ情報・表紙・再生時間・シリーズの取得、インポートまで連続して実行します。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    Button(
+      modifier = Modifier.fillMaxWidth(),
+      onClick = { showWebImport = true },
+    ) {
+      Text("アプリ内で Audible を取り込む")
+    }
+
     Text(
-      "1. Chrome で Audible にログインし、下の「Audible Library を開く」からライブラリーを開きます。\n" +
-        "2. 1つ目のブックマークを作成し、「① ASIN収集」をコピーして URL に設定します。ライブラリー上で実行すると全ページを巡回して API の JSON 画面へ移動します。\n" +
-        "3. 2つ目のブックマークを作成し、「② JSON出力」をコピーして URL に設定します。API の JSON 画面上で実行すると残りの ASIN を50件ずつ取得し、シリーズ情報を補完して JSON を保存します。\n" +
-        "4. この画面へ戻り、Audible の「インポート」から audible-library-export-YYYY-MM-DD.json を選びます。",
+      "外部ブラウザ方式もフォールバックとして残します。Chrome で Audible Library を開き、① ASIN収集、② JSON出力の順にブックマークレットを実行した後、上の Audible インポートから JSON を選択してください。",
       style = MaterialTheme.typography.bodySmall,
     )
     Row(
@@ -47,9 +65,9 @@ internal fun AudibleWebLibraryImportGuide() {
         modifier = Modifier.weight(1f),
         onClick = { uriHandler.openUri(AUDIBLE_WEB_LIBRARY_EXPORT_PAGE) },
       ) {
-        Text("Audible Library を開く")
+        Text("外部ブラウザで開く")
       }
-      Button(
+      OutlinedButton(
         modifier = Modifier.weight(1f),
         onClick = {
           copyBookmarklet(
@@ -63,7 +81,7 @@ internal fun AudibleWebLibraryImportGuide() {
         Text("① ASIN収集")
       }
     }
-    Button(
+    OutlinedButton(
       modifier = Modifier.fillMaxWidth(),
       onClick = {
         copyBookmarklet(
@@ -77,7 +95,7 @@ internal fun AudibleWebLibraryImportGuide() {
       Text("② JSON出力をコピー")
     }
     Text(
-      "Audible のライブラリー画面とカタログ API は別オリジンのため2段階で実行します。カタログ API は公開仕様として保証された API ではなく、Audible 側の変更で動作しなくなる場合があります。従来の Library.csv / ZIP も引き続きインポートできます。",
+      "アプリは Audible / Amazon のパスワードや Cookie を読み取りません。認証と Web 通信は専用 WebView プロファイル内で行い、既存の Audible インポーターには生成済み JSON だけを渡します。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
