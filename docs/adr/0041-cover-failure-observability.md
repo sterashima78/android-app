@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Refines: ADR-0038
+- Refines: ADR-0051
 
 ## Context
 
