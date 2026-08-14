@@ -1,4 +1,5 @@
 package dev.terashima.yomitorirss.core.airuntime
+
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
@@ -9,11 +10,6 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.ProgressListener
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -21,10 +17,25 @@ import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.runBlocking
 
 enum class LocalInferenceBackend {
   CPU,
   GPU,
+}
+
+enum class LocalPromptFormat {
+  CHAT_ML,
+  PLAIN,
+}
+
+enum class LocalInferenceStage {
+  PREPARING_MODEL,
+  GENERATING_RESPONSE,
 }
 
 data class LocalInferenceSettings(
@@ -46,6 +57,9 @@ data class LocalModelStatus(
   val recommended: Boolean,
   val memoryLow: Boolean,
   val supportsThinking: Boolean,
+  val maxInputChars: Int,
+  val promptBudgetChars: Int,
+  val promptFormat: LocalPromptFormat,
 )
 
 data class ModelDownloadProgress(
@@ -56,14 +70,8 @@ data class ModelDownloadProgress(
   val estimatedRemainingMillis: Long? = null,
 )
 
-data class SummaryProgress(
-  val stage: String,
-  val modelName: String? = null,
-  val estimatedStageDurationMillis: Long? = null,
-)
-
-data class ChatProgress(
-  val stage: String,
+data class LocalInferenceProgress(
+  val stage: LocalInferenceStage,
   val modelName: String? = null,
   val estimatedStageDurationMillis: Long? = null,
 )
@@ -82,21 +90,8 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private val _downloadProgress = MutableStateFlow<ModelDownloadProgress?>(null)
   val downloadProgress: StateFlow<ModelDownloadProgress?> = _downloadProgress.asStateFlow()
 
-  private val _summaryProgress = MutableStateFlow<SummaryProgress?>(null)
-  val summaryProgress: StateFlow<SummaryProgress?> = _summaryProgress.asStateFlow()
-
-  private val _chatProgress = MutableStateFlow<ChatProgress?>(null)
-  val chatProgress: StateFlow<ChatProgress?> = _chatProgress.asStateFlow()
-
-  private val _chatResponse = MutableStateFlow("")
-  val chatResponse: StateFlow<String> = _chatResponse.asStateFlow()
-
-  private val _summaryPrompt = MutableStateFlow(
-    preferences.getString(SUMMARY_PROMPT_KEY, null)
-      ?.let { runCatching { SummaryPrompt.normalize(it) }.getOrNull() }
-      ?: SummaryPrompt.DEFAULT,
-  )
-  val summaryPrompt: StateFlow<String> = _summaryPrompt.asStateFlow()
+  private val _inferenceProgress = MutableStateFlow<LocalInferenceProgress?>(null)
+  val inferenceProgress: StateFlow<LocalInferenceProgress?> = _inferenceProgress.asStateFlow()
 
   private val _inferenceSettings = MutableStateFlow(readInferenceSettings())
   val inferenceSettings: StateFlow<LocalInferenceSettings> = _inferenceSettings.asStateFlow()
@@ -129,22 +124,17 @@ class LocalModelManager(context: Context) : AutoCloseable {
         recommended = model.recommended,
         memoryLow = deviceMemoryBytes() < model.minDeviceMemoryGb * BYTES_PER_GB,
         supportsThinking = model.supportsThinking,
+        maxInputChars = model.maxInputChars,
+        promptBudgetChars = maxOf(model.maxInputChars, model.contextTokens),
+        promptFormat = when (model.runtime) {
+          InferenceRuntime.MEDIAPIPE_TASK -> LocalPromptFormat.CHAT_ML
+          InferenceRuntime.LITERT_LM -> LocalPromptFormat.PLAIN
+        },
       )
     }
   }
 
   fun selectedModel(): LocalModelStatus? = models.value.firstOrNull(LocalModelStatus::selected)
-
-  fun updateSummaryPrompt(prompt: String) {
-    val normalized = SummaryPrompt.normalize(prompt)
-    preferences.edit().putString(SUMMARY_PROMPT_KEY, normalized).apply()
-    _summaryPrompt.value = normalized
-  }
-
-  fun resetSummaryPrompt() {
-    preferences.edit().remove(SUMMARY_PROMPT_KEY).apply()
-    _summaryPrompt.value = SummaryPrompt.DEFAULT
-  }
 
   fun setInferenceBackend(backend: LocalInferenceBackend) {
     preferences.edit().putString(INFERENCE_BACKEND_KEY, backend.name).apply()
@@ -156,15 +146,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
     _inferenceSettings.value = _inferenceSettings.value.copy(thinkingEnabled = enabled)
   }
 
-  fun summaryCacheKey(modelId: String, prompt: String = _summaryPrompt.value): String {
-    val model = MODEL_CATALOG.firstOrNull { it.id == modelId }
-    val settings = currentInferenceSettings()
-    val variant = if (model?.supportsThinking == true) {
-      ThinkingMode.cacheVariant(settings.thinkingEnabled)
-    } else {
-      null
-    }
-    return SummaryPrompt.cacheKey(modelId, prompt, variant)
+  fun inferenceCacheVariant(modelId: String): String? {
+    val model = MODEL_CATALOG.firstOrNull { it.id == modelId } ?: return null
+    if (!model.supportsThinking) return null
+    return ThinkingMode.cacheVariant(currentInferenceSettings().thinkingEnabled)
   }
 
   fun selectModel(modelId: String) {
@@ -257,69 +242,17 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
-  fun summarize(text: String, prompt: String = _summaryPrompt.value): String {
-    check(isSupported()) { "この端末ではローカルモデルを利用できません" }
-    val model = resolveSelectedModel() ?: error("要約モデルをダウンロードして選択してください")
-    val file = modelFile(model)
-    check(isValidModelFile(file, model)) { "選択したモデルが見つかりません" }
-    val promptTemplate = SummaryPrompt.normalize(prompt)
-    cancelRequested.set(false)
-
-    return inferenceLock.withLock {
-      var lease: InferenceLease? = null
-      try {
-        val settings = currentInferenceSettings()
-        val cacheHit = hasReusableInference(model, file, settings.backend)
-        val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
-        if (!cacheHit) {
-          _summaryProgress.value = SummaryProgress(
-            "preparing_model",
-            model.name,
-            estimatedStageDurationMillis("preparing_model", model.id),
-          )
-        }
-        val acquired = acquireInference(model, file, settings.backend)
-        lease = acquired
-        preparationStartedAt?.let { startedAt ->
-          recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - startedAt)
-        }
-        check(!cancelRequested.get()) { "要約をキャンセルしました" }
-        val generationStartedAt = SystemClock.elapsedRealtime()
-        _summaryProgress.value = SummaryProgress(
-          "generating_summary",
-          model.name,
-          estimatedStageDurationMillis("generating_summary", model.id),
-        )
-        val promptWithMode = createSummaryPrompt(text, model.maxInputChars, model.runtime, promptTemplate)
-          .withThinkingMode(model, settings)
-        val raw = try {
-          generateResponse(acquired.inference, promptWithMode)
-        } catch (error: Throwable) {
-          if (acquired.retained) invalidateRetainedInferenceLocked(acquired.inference)
-          throw error
-        }
-        recordStageDuration("generating_summary", model.id, SystemClock.elapsedRealtime() - generationStartedAt)
-        cleanSummary(raw)
-      } finally {
-        _summaryProgress.value = null
-        lease?.takeUnless(InferenceLease::retained)?.inference?.let { inference ->
-          runCatching { inference.close() }
-        }
-      }
-    }
-  }
-
-  fun chat(
-    turns: List<ChatTurn>,
-    context: List<ChatContextBlock> = emptyList(),
+  fun generate(
+    prompt: String,
+    streaming: Boolean = false,
+    onPartial: (String) -> Unit = {},
   ): String {
     check(isSupported()) { "この端末ではローカルモデルを利用できません" }
-    require(turns.any { it.role == ChatRole.USER && it.content.isNotBlank() }) { "メッセージを入力してください" }
+    require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
     val model = resolveSelectedModel() ?: error("AIモデルをダウンロードして選択してください")
     val file = modelFile(model)
     check(isValidModelFile(file, model)) { "選択したモデルが見つかりません" }
     cancelRequested.set(false)
-    _chatResponse.value = ""
 
     return inferenceLock.withLock {
       var lease: InferenceLease? = null
@@ -328,46 +261,48 @@ class LocalModelManager(context: Context) : AutoCloseable {
         val cacheHit = hasReusableInference(model, file, settings.backend)
         val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
         if (!cacheHit) {
-          _chatProgress.value = ChatProgress(
-            "preparing_model",
+          _inferenceProgress.value = LocalInferenceProgress(
+            LocalInferenceStage.PREPARING_MODEL,
             model.name,
-            estimatedStageDurationMillis("preparing_model", model.id),
+            estimatedStageDurationMillis(PREPARING_MODEL_DURATION_KEY, model.id),
           )
         }
         val acquired = acquireInference(model, file, settings.backend)
         lease = acquired
         preparationStartedAt?.let { startedAt ->
-          recordStageDuration("preparing_model", model.id, SystemClock.elapsedRealtime() - startedAt)
+          recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
         }
-        check(!cancelRequested.get()) { "チャットをキャンセルしました" }
+        check(!cancelRequested.get()) { "推論をキャンセルしました" }
         val generationStartedAt = SystemClock.elapsedRealtime()
-        _chatProgress.value = ChatProgress(
-          "generating_reply",
+        _inferenceProgress.value = LocalInferenceProgress(
+          LocalInferenceStage.GENERATING_RESPONSE,
           model.name,
-          estimatedStageDurationMillis("generating_reply", model.id),
+          estimatedStageDurationMillis(GENERATING_RESPONSE_DURATION_KEY, model.id),
         )
-        val prompt = ChatPrompt.render(
-          turns = turns,
-          context = context,
-          maxInputChars = maxOf(model.maxInputChars, model.contextTokens),
-          chatMl = model.runtime == InferenceRuntime.MEDIAPIPE_TASK,
-        ).withThinkingMode(model, settings)
-        val streamedRaw = StringBuilder()
+        val promptWithMode = prompt.withThinkingMode(model, settings)
         val raw = try {
-          generateResponseStreaming(acquired.inference, prompt) { chunk ->
-            appendStreamChunk(streamedRaw, chunk)
-            _chatResponse.value = ChatResponseStream.partial(streamedRaw.toString())
+          if (streaming) {
+            val streamedRaw = StringBuilder()
+            val generated = generateResponseStreaming(acquired.inference, promptWithMode) { chunk ->
+              appendStreamChunk(streamedRaw, chunk)
+              onPartial(streamedRaw.toString())
+            }
+            generated.ifBlank { streamedRaw.toString() }
+          } else {
+            generateResponse(acquired.inference, promptWithMode)
           }
         } catch (error: Throwable) {
           if (acquired.retained) invalidateRetainedInferenceLocked(acquired.inference)
           throw error
         }
-        recordStageDuration("generating_reply", model.id, SystemClock.elapsedRealtime() - generationStartedAt)
-        val reply = ChatResponseStream.complete(raw.ifBlank { streamedRaw.toString() })
-        _chatResponse.value = reply
-        reply
+        recordStageDuration(
+          GENERATING_RESPONSE_DURATION_KEY,
+          model.id,
+          SystemClock.elapsedRealtime() - generationStartedAt,
+        )
+        raw
       } finally {
-        _chatProgress.value = null
+        _inferenceProgress.value = null
         lease?.takeUnless(InferenceLease::retained)?.inference?.let { inference ->
           runCatching { inference.close() }
         }
@@ -546,41 +481,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
     throw IOException("リダイレクト回数が上限を超えました")
   }
 
-  private fun createSummaryPrompt(
-    text: String,
-    maxInputChars: Int,
-    runtime: InferenceRuntime,
-    promptTemplate: String,
-  ): String {
-    val normalized = text.replace(Regex("\\s+"), " ").trim()
-    val article = if (normalized.length <= maxInputChars) normalized else {
-      val headLength = maxInputChars * 3 / 4
-      normalized.take(headLength) + "\n（中略）\n" + normalized.takeLast(maxInputChars - headLength)
-    }
-    val instruction = SummaryPrompt.render(promptTemplate, article)
-    return when (runtime) {
-      InferenceRuntime.MEDIAPIPE_TASK -> """
-        <|im_start|>system
-        あなたはニュース記事の要約担当です。本文だけを根拠に、日本語で簡潔に回答してください。<|im_end|>
-        <|im_start|>user
-        $instruction<|im_end|>
-        <|im_start|>assistant
-      """.trimIndent()
-      InferenceRuntime.LITERT_LM -> instruction
-    }
-  }
-
-  private fun cleanSummary(value: String): String {
-    val result = value
-      .substringBefore("<|im_end|>")
-      .substringBefore("<end_of_turn>")
-      .replace(Regex("<think>.*?</think>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "")
-      .replace(Regex("^要約[:：]?\\s*", RegexOption.IGNORE_CASE), "")
-      .trim()
-    check(result.isNotBlank()) { "要約結果が空です" }
-    return result
-  }
-
   private fun modelFile(model: ModelDefinition) = File(modelsDirectory(), model.fileName)
   private fun temporaryModelFile(model: ModelDefinition) = File(modelsDirectory(), "${model.fileName}.part")
   private fun modelsDirectory() = File(appContext.filesDir, "local-summary-models").apply { mkdirs() }
@@ -676,9 +576,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
     private const val MAXIMUM_MODEL_SIZE_RATIO = 1.02
     private const val PREFERENCES_NAME = "local_summary_models"
     private const val SELECTED_MODEL_KEY = "selected_model_id"
-    private const val SUMMARY_PROMPT_KEY = "summary_prompt"
     private const val INFERENCE_BACKEND_KEY = "inference_backend"
     private const val THINKING_ENABLED_KEY = "thinking_enabled"
+    private const val PREPARING_MODEL_DURATION_KEY = "preparing_model"
+    private const val GENERATING_RESPONSE_DURATION_KEY = "generating_response"
 
     private val MODEL_CATALOG = listOf(
       ModelDefinition(
