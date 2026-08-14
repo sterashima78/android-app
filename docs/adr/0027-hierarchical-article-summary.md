@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-13
+- Amended: 2026-08-14
 
 ## Context
 
@@ -28,13 +29,17 @@
 
 中間要約は最終回答として保存せず、一時的な推論結果としてのみ扱う。最終要約だけを既存の要約テーブルへ保存する。
 
-分割処理と中間要約のグループ化は副作用を持たない処理として `core:ai-runtime` に置き、単体テスト可能にする。推論呼び出し自体は `LocalModelManager` の既存APIを再利用し、LiteRT-LMではADR-0020で決めた初期化済みEngineの再利用を維持する。
+分割処理、中間要約のグループ化、要約用プロンプト、進捗段階はSummary機能の意味を持つため `feature:summary:data` が所有する。副作用を持たない分割・グループ化処理は同moduleで単体テストする。
+
+`core:ai-runtime` は階層要約を知らず、選択モデルの能力情報と汎用 `generate` APIだけを提供する。`feature:summary:data` がプロンプトを組み立てて推論を複数回呼び出す。LiteRT-LMではADR-0020で決めた初期化済みEngineの再利用を維持する。
 
 ## Cache compatibility
 
 従来の要約は本文中盤を含まない可能性があるため、同じモデル・同じユーザープロンプトであっても再利用しない。
 
 要約キャッシュキーへ `hierarchical-v1` を追加し、分割要約導入前のキャッシュを自動的に無効化する。今後、要約アルゴリズムの意味が変わる変更を行う場合も同様に世代を更新する。
+
+要約プロンプト本体とそのhash規則は `feature:summary:domain`、階層要約世代は `feature:summary:data` が所有する。Thinking状態そのものはruntime設定だが、runtimeから提供されるvariantを要約cache keyへ組み込む責務はsummary featureに置く。
 
 ## Cancellation and failure
 
@@ -48,11 +53,14 @@
 
 LiteRT-LMモデルではEngineを再利用するため、チャンクごとにモデルを再ロードすることはない。ただし各チャンクでConversationと生成処理は必要になる。
 
-モデルごとの分割単位は、現在 `LocalModelManager` の安全側入力上限と同じ値を使用する。将来モデルカタログを外部化する場合は、この値もモデル能力情報として一元管理する。
+モデルごとの分割単位は、現在 `LocalModelManager` が公開するモデル能力と同じ値を利用する。将来モデルカタログを外部化する場合も、runtimeが技術的能力を公開し、summary featureが要約アルゴリズムへ適用する境界を維持する。
+
+階層要約をfeature側へ移すことで、要約アルゴリズムの変更がChatや他のAI利用機能へ波及しにくくなる。
 
 ## References
 
 - ADR-0020: ローカルAIの実行バックエンドとThinkingをユーザー設定にする
+- ADR-0046: ローカルAIの機能固有ポリシーをfeatureへ分離する
 - `core/ai-runtime/.../LocalModelManager.kt`
-- `core/ai-runtime/.../HierarchicalSummary.kt`
+- `feature/summary/data/.../HierarchicalSummary.kt`
 - `feature/article/data/.../ArticleContentClient.kt`
