@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-14
 - Amends: ADR-0047
+- Amended by: ADR-0060
 
 ## Context
 
@@ -26,6 +27,8 @@
 
 この方針は「legacy」「compatibility」と書かれた処理を無条件に削除することを意味しない。現在の最新版を利用していても永続データに旧形式が残り得る設定や、実際に現在の動作で利用される fallback は、移行完了を確認できるまで残す。
 
+ADR-0060 ではこの考え方を database schema 以外にも適用し、完了確認済みの X CSS・ブックマーク・source compatibility は削除する。一方、要約プロンプトのように現在のユーザーデータを保持すべきものは、一度だけ現行保存先へ自動移行してから旧保存先を廃止する。
+
 ## Consequences
 
 ### Positive
@@ -46,3 +49,7 @@
 ADR-0047 の feature-owned schema / migration ownership と汎用 migration mechanism は維持する。
 
 ADR-0047 採用時に互換性のため保持した version 6〜12 の migration は本 ADR により役目を終えたものとして削除する。今後追加する migration は引き続き、対象 feature の `data` module が所有する。
+
+## Relationship to ADR-0060
+
+ADR-0060 は本 ADR の更新互換性ベースラインを database 以外の永続データと source compatibility に拡張する。現在利用中のユーザーデータを失う可能性がある場合は、古い形式を恒久的に読み続けるのではなく、現行形式へ自動移行して互換処理を収束させる。
