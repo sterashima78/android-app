@@ -1,7 +1,5 @@
 package dev.terashima.yomitorirss.feature.library
 
-import java.io.InputStream
-
 interface LibraryRepository {
   suspend fun snapshot(): LibrarySnapshot
 
@@ -21,9 +19,8 @@ interface LibraryRepository {
     accountLabel: String?,
   ): LibrarySyncResult
 
-  suspend fun importAmazonLibrary(
+  suspend fun importAmazonLibraryJson(
     source: LibrarySource,
-    fileName: String?,
-    input: InputStream,
+    json: String,
   ): LibrarySyncResult
 }
