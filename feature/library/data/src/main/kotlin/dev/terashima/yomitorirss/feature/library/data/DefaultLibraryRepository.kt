@@ -11,7 +11,6 @@ import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySourceState
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import kotlinx.coroutines.delay
 import org.json.JSONArray
@@ -20,9 +19,8 @@ class DefaultLibraryRepository(
   private val database: DatabaseConnection,
 ) : LibraryRepository {
   private val googleBooks = GoogleBooksApiClient()
-  private val amazonLibraryImporter = AmazonLibraryImporter()
   private val kindleWebLibraryImporter = KindleWebLibraryImporter()
-  private val audibleMetadataEnricher = AudibleLibraryMetadataEnricher()
+  private val audibleWebLibraryImporter = AudibleWebLibraryImporter()
   private val openLibraryCoverClient = OpenLibraryCoverClient()
 
   override suspend fun snapshot(): LibrarySnapshot {
@@ -168,11 +166,7 @@ class DefaultLibraryRepository(
     ensureSchema()
     val books = when (source) {
       LibrarySource.KINDLE -> kindleWebLibraryImporter.parse(fileName, input)
-      LibrarySource.AUDIBLE -> {
-        val bytes = input.readLimited(MAX_AUDIBLE_IMPORT_BYTES)
-        val parsedBooks = amazonLibraryImporter.parse(source, fileName, bytes)
-        audibleMetadataEnricher.enrich(fileName, bytes, parsedBooks)
-      }
+      LibrarySource.AUDIBLE -> audibleWebLibraryImporter.parse(fileName, input)
       LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
     }
     return replaceSource(source = source, books = books, accountLabel = null)
@@ -513,22 +507,7 @@ class DefaultLibraryRepository(
     return if (isNull(index)) null else getInt(index)
   }
 
-  private fun InputStream.readLimited(limit: Int): ByteArray {
-    val output = ByteArrayOutputStream()
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    var total = 0
-    while (true) {
-      val read = read(buffer)
-      if (read < 0) break
-      total += read
-      require(total <= limit) { "Audible インポートファイルが大きすぎます（上限 25 MB）" }
-      output.write(buffer, 0, read)
-    }
-    return output.toByteArray()
-  }
-
   private companion object {
-    const val MAX_AUDIBLE_IMPORT_BYTES = 25 * 1024 * 1024
     const val KINDLE_COVER_BATCH_SIZE = 10
     const val COVER_REQUEST_DELAY_MILLIS = 350L
     const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
