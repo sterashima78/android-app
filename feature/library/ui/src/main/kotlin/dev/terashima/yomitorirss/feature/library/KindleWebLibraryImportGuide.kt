@@ -28,12 +28,22 @@ internal fun KindleWebLibraryImportGuide() {
   val uriHandler = LocalUriHandler.current
   val importJson = LocalWebLibraryImportHandler.current
   var showWebImport by rememberSaveable { mutableStateOf(false) }
+  var showPersonalDocumentWebImport by rememberSaveable { mutableStateOf(false) }
 
   if (showWebImport) {
     AmazonWebLibraryImportDialog(
       source = LibrarySource.KINDLE,
       onDismiss = { showWebImport = false },
       onImportJson = importJson,
+    )
+  }
+
+  if (showPersonalDocumentWebImport) {
+    AmazonWebLibraryImportDialog(
+      source = LibrarySource.KINDLE,
+      onDismiss = { showPersonalDocumentWebImport = false },
+      onImportJson = importJson,
+      kindlePersonalDocuments = true,
     )
   }
 
@@ -81,7 +91,17 @@ internal fun KindleWebLibraryImportGuide() {
     HorizontalDivider()
     Text("Personal Document", style = MaterialTheme.typography.titleSmall)
     Text(
-      "Send to Kindle などで追加した Personal Document は「コンテンツと端末の管理」で別のブックマークレットを実行して JSON を保存します。通常本と Personal Document は別々に再インポートでき、片方を更新してももう片方は残ります。",
+      "Send to Kindle などで追加した Personal Document もアプリ内の専用 WebView から取り込めます。ログイン後に「コンテンツと端末の管理」の Personal Document 一覧を開き、アプリが全件を取得してそのままインポートします。",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    Button(
+      modifier = Modifier.fillMaxWidth(),
+      onClick = { showPersonalDocumentWebImport = true },
+    ) {
+      Text("アプリ内で Personal Document を取り込む")
+    }
+    Text(
+      "外部ブラウザとブックマークレットはフォールバックとして残します。通常本と Personal Document は別々に再インポートでき、片方を更新してももう片方は残ります。",
       style = MaterialTheme.typography.bodySmall,
     )
     Row(
@@ -92,7 +112,7 @@ internal fun KindleWebLibraryImportGuide() {
         modifier = Modifier.weight(1f),
         onClick = { uriHandler.openUri(KINDLE_PERSONAL_DOCUMENT_EXPORT_PAGE) },
       ) {
-        Text("Personal Document")
+        Text("外部ブラウザで開く")
       }
       OutlinedButton(
         modifier = Modifier.weight(1f),
@@ -104,13 +124,13 @@ internal fun KindleWebLibraryImportGuide() {
       }
     }
     Text(
-      "生成した kindle-personal-library-YYYY-MM-DD.json は上の Kindle インポートから選択します。Personal Document をタップするとタイトルをクリップボードへコピーして Kindle アプリを起動します。",
+      "Personal Document をタップすると Kindle アプリを起動し、タイトルをクリップボードへコピーします。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
     Text(
-      "ブックマークレットはログイン済み Amazon ページ内で蔵書 JSON だけを生成します。Cookie、CSRF token、端末情報は JSON へ保存しません。Amazon 側の画面仕様変更により動作しなくなる場合があります。",
+      "認証状態は専用 WebView プロファイル内だけに保持します。collector はログイン済み Amazon ページ内で動作し、Cookie、CSRF token、端末情報をインポート JSON へ含めません。Amazon 側の画面仕様変更により動作しなくなる場合は外部ブラウザ方式を利用できます。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
