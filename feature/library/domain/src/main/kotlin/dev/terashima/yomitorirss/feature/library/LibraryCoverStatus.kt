@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
+import kotlinx.coroutines.flow.Flow
+
 enum class LibraryCoverAcquisitionState {
   SOURCE_PROVIDED,
   ACQUIRED,
@@ -35,4 +37,21 @@ enum class LibraryCoverWorkState {
   RUNNING,
   RETRY_WAITING,
   FAILED,
+}
+
+data class LibraryCoverWorkSnapshot(
+  val states: Map<LibrarySource, LibraryCoverWorkState> = emptyMap(),
+  val finishedWorkCount: Int = 0,
+)
+
+interface LibraryCoverEnrichmentCoordinator {
+  val workSnapshots: Flow<LibraryCoverWorkSnapshot>
+
+  fun sync(kindleEnabled: Boolean)
+
+  suspend fun snapshot(): LibraryCoverAcquisitionSnapshot
+
+  suspend fun retryUnresolved(kindleEnabled: Boolean)
+
+  fun cancel()
 }
