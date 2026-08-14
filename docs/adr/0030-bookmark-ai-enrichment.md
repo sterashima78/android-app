@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-13
-- Supersedes: ADR-0026 (RSS read-later auto summary)
+- Supersedes: ADR-0050 (RSS read-later auto summary)
 
 ## Context
 
