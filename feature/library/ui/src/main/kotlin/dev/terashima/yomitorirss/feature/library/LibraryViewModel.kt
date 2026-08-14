@@ -60,9 +60,7 @@ class LibraryViewModel(
         val result = openInputStream().use { input ->
           repository.importAmazonLibrary(source, fileName, input)
         }
-        val seriesMetadataFailed = if (
-          source == LibrarySource.KINDLE && repository is LibrarySeriesImportSupport
-        ) {
+        val seriesMetadataFailed = if (repository is LibrarySeriesImportSupport) {
           try {
             openInputStream().use { input ->
               repository.importSeriesMetadata(source, fileName, input)
