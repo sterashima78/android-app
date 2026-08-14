@@ -37,11 +37,11 @@ class KindleCoverEnrichmentException(
 
 internal fun List<CoverLookupTraceStep>.toDiagnosticTrace(): String {
   val stepsJson = JSONArray()
-  forEach { step ->
+  take(MAX_TRACE_STEPS).forEach { step ->
     val json = JSONObject()
-      .put("provider", step.provider)
+      .put("provider", step.provider.take(MAX_DIAGNOSTIC_VALUE_CHARS))
       .put("status", step.status.name)
-      .put("reason", step.reason)
+      .put("reason", step.reason.take(MAX_DIAGNOSTIC_VALUE_CHARS))
     step.httpStatus?.let { json.put("httpStatus", it) }
     step.responseBytes?.let { json.put("responseBytes", it) }
     step.candidateCount?.let { json.put("candidateCount", it) }
@@ -50,7 +50,14 @@ internal fun List<CoverLookupTraceStep>.toDiagnosticTrace(): String {
     step.authorMatchCount?.let { json.put("authorMatchCount", it) }
     step.volumeMatchCount?.let { json.put("volumeMatchCount", it) }
     if (step.attributes.isNotEmpty()) {
-      json.put("attributes", JSONObject(step.attributes))
+      val safeAttributes = JSONObject()
+      step.attributes.entries.take(MAX_TRACE_ATTRIBUTES).forEach { (key, value) ->
+        safeAttributes.put(
+          key.take(MAX_DIAGNOSTIC_KEY_CHARS),
+          value.take(MAX_DIAGNOSTIC_VALUE_CHARS),
+        )
+      }
+      json.put("attributes", safeAttributes)
     }
     stepsJson.put(json)
   }
@@ -58,8 +65,10 @@ internal fun List<CoverLookupTraceStep>.toDiagnosticTrace(): String {
     .put("version", 1)
     .put("steps", stepsJson)
     .toString()
-    .take(MAX_DIAGNOSTIC_TRACE_CHARS)
 }
 
 internal const val DIAGNOSTIC_TRACE_COLUMN = "diagnostic_trace"
-private const val MAX_DIAGNOSTIC_TRACE_CHARS = 8_192
+private const val MAX_TRACE_STEPS = 4
+private const val MAX_TRACE_ATTRIBUTES = 16
+private const val MAX_DIAGNOSTIC_KEY_CHARS = 64
+private const val MAX_DIAGNOSTIC_VALUE_CHARS = 256
