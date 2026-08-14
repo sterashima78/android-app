@@ -30,6 +30,7 @@ dependencies {
   implementation("androidx.compose.foundation:foundation")
   implementation("androidx.compose.material:material-icons-extended")
   implementation("androidx.compose.material3:material3")
+  implementation("androidx.webkit:webkit:1.16.0")
   implementation("io.coil-kt.coil3:coil-compose:3.5.0")
   implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
