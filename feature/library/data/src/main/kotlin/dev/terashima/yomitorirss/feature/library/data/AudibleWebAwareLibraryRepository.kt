@@ -52,25 +52,28 @@ internal class AudibleWebAwareLibraryRepository(
   }
 }
 
-private fun List<LibraryBook>.toAudibleLibraryCsv(): String = buildString {
-  appendLine(
-    "ASIN,Title,Authors,Publisher,Published Date,Description,Cover URL,Product URL,Narrators,Duration",
-  )
-  forEach { book ->
+private fun List<LibraryBook>.toAudibleLibraryCsv(): String {
+  val books = this
+  return buildString {
     appendLine(
-      listOf(
-        book.sourceId,
-        book.title,
-        book.authors.joinToString(";"),
-        book.publisher.orEmpty(),
-        book.publishedDate.orEmpty(),
-        book.description.orEmpty(),
-        book.thumbnailUrl.orEmpty(),
-        book.infoUrl.orEmpty(),
-        book.narrators.joinToString(";"),
-        book.duration.orEmpty(),
-      ).joinToString(",") { it.csvField() },
+      "ASIN,Title,Authors,Publisher,Published Date,Description,Cover URL,Product URL,Narrators,Duration",
     )
+    books.forEach { book ->
+      appendLine(
+        listOf(
+          book.sourceId,
+          book.title,
+          book.authors.joinToString(";"),
+          book.publisher.orEmpty(),
+          book.publishedDate.orEmpty(),
+          book.description.orEmpty(),
+          book.thumbnailUrl.orEmpty(),
+          book.infoUrl.orEmpty(),
+          book.narrators.joinToString(";"),
+          book.duration.orEmpty(),
+        ).joinToString(",") { it.csvField() },
+      )
+    }
   }
 }
 
