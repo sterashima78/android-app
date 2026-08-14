@@ -67,6 +67,18 @@ class MailSyncScheduler(context: Context) {
     )
   }
 
+  fun refreshPeriodicNetworkPolicy() {
+    val workInfos = workManager.getWorkInfosForUniqueWork(PERIODIC_WORK_NAME)
+    workInfos.addListener(
+      {
+        if (runCatching { workInfos.get().isNotEmpty() }.getOrDefault(false)) {
+          schedulePeriodic()
+        }
+      },
+      appContext.mainExecutor,
+    )
+  }
+
   fun cancelAccount(accountId: String) {
     workManager.cancelAllWorkByTag(accountWorkTag(accountId))
   }
@@ -118,6 +130,8 @@ class MailSyncWorker(
           }
           InitialSyncStep.Complete -> Result.success()
           InitialSyncStep.Stale -> {
+            // The previous attempt may have persisted its next checkpoint and been interrupted
+            // before enqueueing the continuation. Reconcile from the durable DB state here.
             repository.sync(accountId)
             Result.success()
           }

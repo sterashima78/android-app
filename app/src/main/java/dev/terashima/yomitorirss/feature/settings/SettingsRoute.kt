@@ -41,7 +41,7 @@ fun SettingsScreen(
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundDataFetchPreferences.wifiOnly = wifiOnly
       backgroundFetchWifiOnly = wifiOnly
-      MailSyncScheduler(context).schedulePeriodic()
+      MailSyncScheduler(context).refreshPeriodicNetworkPolicy()
     },
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
