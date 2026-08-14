@@ -105,6 +105,11 @@ internal class KindleAmazonCoverClient(
       "productImageCandidates" to counts.productImage.toString(),
       "jsonLdCandidates" to counts.jsonLd.toString(),
       "imageSrcCandidates" to counts.imageSrc.toString(),
+      "imagePathMentions" to counts.imagePathMentions.toString(),
+      "hiResMentions" to counts.hiResMentions.toString(),
+      "largeImageMentions" to counts.largeImageMentions.toString(),
+      "colorImagesMentions" to counts.colorImagesMentions.toString(),
+      "imageBlockAtfMentions" to counts.imageBlockAtfMentions.toString(),
     )
 
     extractAmazonOgCoverUrl(html)?.let { imageUrl ->
@@ -273,6 +278,11 @@ private fun amazonCoverCandidateCounts(html: String): AmazonCoverCandidateCounts
   imageSrc = LINK_TAG.findAll(html).count { match ->
     htmlAttributes(match.value)["rel"].orEmpty().equals("image_src", ignoreCase = true)
   },
+  imagePathMentions = AMAZON_IMAGE_PATH.findAll(html).count(),
+  hiResMentions = HI_RES_FIELD.findAll(html).count(),
+  largeImageMentions = LARGE_IMAGE_FIELD.findAll(html).count(),
+  colorImagesMentions = COLOR_IMAGES_FIELD.findAll(html).count(),
+  imageBlockAtfMentions = IMAGE_BLOCK_ATF.findAll(html).count(),
 )
 
 private fun largestDynamicImageUrl(value: String): String? {
@@ -336,6 +346,11 @@ private data class AmazonCoverCandidateCounts(
   val productImage: Int,
   val jsonLd: Int,
   val imageSrc: Int,
+  val imagePathMentions: Int,
+  val hiResMentions: Int,
+  val largeImageMentions: Int,
+  val colorImagesMentions: Int,
+  val imageBlockAtfMentions: Int,
 )
 
 private const val AMAZON_PRODUCT_BASE_URL = "https://www.amazon.co.jp/dp"
@@ -354,6 +369,14 @@ private val JSON_LD_IMAGE = Regex("""["']image["']\s*:\s*["']([^"']+)["']""", Re
 private val ATTRIBUTE = Regex(
   """([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s\"'=<>`]+))""",
 )
+private val AMAZON_IMAGE_PATH = Regex("""(?:/|\\/)images(?:/|\\/)I(?:/|\\/)""", RegexOption.IGNORE_CASE)
+private val HI_RES_FIELD = Regex("""["']hiRes["']\s*:""", RegexOption.IGNORE_CASE)
+private val LARGE_IMAGE_FIELD = Regex(
+  """["']large["']\s*:\s*["'][^"']*(?:/|\\/)images(?:/|\\/)I(?:/|\\/)""",
+  RegexOption.IGNORE_CASE,
+)
+private val COLOR_IMAGES_FIELD = Regex("""["']colorImages["']\s*:""", RegexOption.IGNORE_CASE)
+private val IMAGE_BLOCK_ATF = Regex("ImageBlockATF", RegexOption.IGNORE_CASE)
 private val COVER_META_KEYS = setOf("og:image", "twitter:image", "twitter:image:src")
 private val PRODUCT_IMAGE_IDS = setOf(
   "landingimage",
