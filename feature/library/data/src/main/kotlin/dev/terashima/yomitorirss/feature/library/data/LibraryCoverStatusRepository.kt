@@ -152,25 +152,25 @@ class LibraryCoverStatusRepository(
   }
 
   private fun ensureDiagnosticDetailColumn() {
-    val exists = database.readable.rawQuery(
-      "PRAGMA table_info(library_item_external_metadata)",
-      null,
-    ).use { cursor ->
-      val nameIndex = cursor.getColumnIndexOrThrow("name")
-      var found = false
-      while (cursor.moveToNext()) {
-        if (cursor.getString(nameIndex) == DIAGNOSTIC_DETAIL_COLUMN) {
-          found = true
-          break
-        }
-      }
-      found
-    }
-    if (!exists) {
+    if (hasDiagnosticDetailColumn()) return
+    runCatching {
       database.writable.execSQL(
         "ALTER TABLE library_item_external_metadata ADD COLUMN $DIAGNOSTIC_DETAIL_COLUMN TEXT",
       )
+    }.getOrElse { error ->
+      if (!hasDiagnosticDetailColumn()) throw error
     }
+  }
+
+  private fun hasDiagnosticDetailColumn(): Boolean = database.readable.rawQuery(
+    "PRAGMA table_info(library_item_external_metadata)",
+    null,
+  ).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == DIAGNOSTIC_DETAIL_COLUMN) return@use true
+    }
+    false
   }
 
   private fun isKindleCoverEnrichmentEnabled(): Boolean {
