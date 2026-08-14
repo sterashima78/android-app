@@ -44,11 +44,10 @@ fun backgroundDataFetchNetworkRequest(context: Context): NetworkRequest =
 fun isBackgroundDataFetchAllowed(context: Context): Boolean {
   if (!BackgroundDataFetchPreferences(context).wifiOnly) return true
   val connectivityManager = context.applicationContext.getSystemService(ConnectivityManager::class.java)
-  return connectivityManager.allNetworks.any { network ->
-    val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return@any false
-    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-      capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-  }
+  val activeNetwork = connectivityManager.activeNetwork ?: return false
+  val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+  return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
 }
 
 private fun backgroundDataFetchNetworkRequest(wifiOnly: Boolean): NetworkRequest =
