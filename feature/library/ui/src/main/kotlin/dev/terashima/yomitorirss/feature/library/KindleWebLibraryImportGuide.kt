@@ -6,7 +6,9 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -69,6 +71,9 @@ internal fun KindleWebLibraryImportGuide() {
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
+
+  Spacer(Modifier.height(20.dp))
+  AudibleWebLibraryImportGuide()
 }
 
 internal const val KINDLE_WEB_LIBRARY_EXPORT_PAGE =

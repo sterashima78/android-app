@@ -164,26 +164,36 @@ internal class KindleSourceSeriesRepository(
 
 class SeriesAwareLibraryRepository private constructor(
   private val delegate: LibraryRepository,
-  private val sourceSeriesRepository: KindleSourceSeriesRepository,
+  private val kindleSourceSeriesRepository: KindleSourceSeriesRepository,
+  private val audibleSourceSeriesRepository: AudibleSourceSeriesRepository,
 ) : LibraryRepository by delegate, LibrarySeriesImportSupport {
   constructor(database: DatabaseConnection) : this(
-    delegate = DefaultLibraryRepository(database),
-    sourceSeriesRepository = KindleSourceSeriesRepository(database),
+    delegate = AudibleWebAwareLibraryRepository(DefaultLibraryRepository(database)),
+    kindleSourceSeriesRepository = KindleSourceSeriesRepository(database),
+    audibleSourceSeriesRepository = AudibleSourceSeriesRepository(database),
   )
 
-  override suspend fun snapshot(): LibrarySnapshot = sourceSeriesRepository.enrich(delegate.snapshot())
+  override suspend fun snapshot(): LibrarySnapshot = audibleSourceSeriesRepository.enrich(
+    kindleSourceSeriesRepository.enrich(delegate.snapshot()),
+  )
 
   override suspend fun importSeriesMetadata(
     source: LibrarySource,
     fileName: String?,
     input: InputStream,
   ) {
-    require(source == LibrarySource.KINDLE) { "Kindle のシリーズ情報のみインポートできます" }
-    sourceSeriesRepository.importMetadata(fileName, input)
+    when (source) {
+      LibrarySource.KINDLE -> kindleSourceSeriesRepository.importMetadata(fileName, input)
+      LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.importMetadata(fileName, input)
+      LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
+    }
   }
 
   override suspend fun clearSeriesMetadata(source: LibrarySource) {
-    require(source == LibrarySource.KINDLE) { "Kindle のシリーズ情報のみ削除できます" }
-    sourceSeriesRepository.clear()
+    when (source) {
+      LibrarySource.KINDLE -> kindleSourceSeriesRepository.clear()
+      LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.clear()
+      LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
+    }
   }
 }
