@@ -6,6 +6,7 @@ enum class LibraryCoverAcquisitionState {
   WAITING,
   NOT_FOUND,
   AMBIGUOUS,
+  ERROR,
 }
 
 data class LibraryCoverAcquisitionItem(
@@ -16,6 +17,8 @@ data class LibraryCoverAcquisitionItem(
   val provider: String?,
   val lastAttemptAtEpochMillis: Long?,
   val diagnosticTrace: String? = null,
+  val retryCount: Int = 0,
+  val nextAttemptAtEpochMillis: Long? = null,
 )
 
 data class LibraryCoverAcquisitionSnapshot(
