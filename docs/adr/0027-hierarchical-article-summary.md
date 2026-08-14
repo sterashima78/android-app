@@ -60,7 +60,7 @@ LiteRT-LMモデルではEngineを再利用するため、チャンクごとに�
 ## References
 
 - ADR-0020: ローカルAIの実行バックエンドとThinkingをユーザー設定にする
-- ADR-0046: ローカルAIの機能固有ポリシーをfeatureへ分離する
+- ADR-0047: ローカルAIの機能固有ポリシーをfeatureへ分離する
 - `core/ai-runtime/.../LocalModelManager.kt`
 - `feature/summary/data/.../HierarchicalSummary.kt`
 - `feature/article/data/.../ArticleContentClient.kt`
