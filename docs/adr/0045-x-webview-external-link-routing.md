@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR-0008 では X を専用 WebView で表示し、`x.com` / `twitter.com` 配下だけを CSS 注入対象としている。
+ADR-0046 では X を専用 WebView で表示し、`x.com` / `twitter.com` 配下だけを CSS 注入対象としている。
 
 一方、X の投稿に含まれる外部サイトへのリンクまで同じ WebView 内で開くと、X 閲覧用に限定した WebView が一般 Web ブラウザーとして振る舞うことになる。戻る導線や閲覧コンテキストも X と外部サイトで混在する。
 
