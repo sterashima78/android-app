@@ -14,7 +14,7 @@ class UnreadWidgetRefreshWorker(
   workerParameters: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParameters) {
   override suspend fun doWork(): Result {
-    if (!isBackgroundDataFetchAllowed(applicationContext)) return Result.success()
+    if (!isBackgroundDataFetchAllowed(applicationContext)) return Result.retry()
     return try {
       applicationContext.requireWidgetRepository().refreshFeeds()
       UnreadArticlesWidgetUpdater.updateAll(applicationContext)
