@@ -94,8 +94,23 @@ internal class BookmarkStore(
 
   fun replaceArticleTags(articleId: String, tagIds: Set<String>) {
     database.transaction {
-      delete("article_tags", "article_id=?", arrayOf(articleId))
-      tagIds.forEach { tagId ->
+      val existingTagIds = rawQuery(
+        "SELECT tag_id FROM article_tags WHERE article_id=?",
+        arrayOf(articleId),
+      ).use { cursor ->
+        buildSet {
+          while (cursor.moveToNext()) add(cursor.getString(0))
+        }
+      }
+
+      (existingTagIds - tagIds).forEach { tagId ->
+        delete(
+          "article_tags",
+          "article_id=? AND tag_id=?",
+          arrayOf(articleId, tagId),
+        )
+      }
+      (tagIds - existingTagIds).forEach { tagId ->
         insertWithOnConflict(
           "article_tags",
           null,

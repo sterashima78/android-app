@@ -84,8 +84,9 @@ class SummaryWorker(
               append("\n\n要約:\n")
               append(summary)
             }
+            val tagPrompt = buildAutoTagPrompt(database.listExistingTagNamesForAiEnrichment())
             val generatedTags = parseGeneratedTags(
-              modelManager.summarizeText(tagSource, AUTO_TAG_PROMPT),
+              modelManager.summarizeText(tagSource, tagPrompt),
             )
             check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
             currentCoroutineContext().ensureActive()
