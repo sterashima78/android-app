@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Settings
@@ -36,6 +37,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -84,6 +86,7 @@ fun LibraryScreen(
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
   onClearBookSeries: (LibraryBook) -> Unit,
   onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
+  onOpenCoverQueue: () -> Unit,
   onDismissMessage: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -195,6 +198,7 @@ fun LibraryScreen(
             onImportKindle = onImportKindle,
             onImportAudible = onImportAudible,
             onKindleCoverEnrichmentEnabledChange = onKindleCoverEnrichmentEnabledChange,
+            onOpenCoverQueue = onOpenCoverQueue,
           )
         }
       }
@@ -436,6 +440,7 @@ private fun LibrarySettingsTab(
   onImportKindle: () -> Unit,
   onImportAudible: () -> Unit,
   onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
+  onOpenCoverQueue: () -> Unit,
 ) {
   Column(Modifier.fillMaxSize()) {
     LibrarySyncHeader(
@@ -476,6 +481,14 @@ private fun LibrarySettingsTab(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
+    HorizontalDivider()
+    ListItem(
+      modifier = Modifier.clickable(onClick = onOpenCoverQueue),
+      headlineContent = { Text("表紙取得状況") },
+      supportingContent = { Text("Kindle / Audible の取得待ち・取得結果・バックグラウンド処理") },
+      leadingContent = { Icon(Icons.Default.LibraryBooks, contentDescription = null) },
+      trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+    )
   }
 }
 
