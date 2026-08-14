@@ -221,7 +221,7 @@ private fun readKindlePackageStatus(context: Context): KindlePackageStatus {
       .map { it.name }
       .filter { name ->
         val normalized = name.lowercase(Locale.ROOT)
-        listOf("book", "kindle", "reader", "reading", "home").any(normalized::contains)
+        listOf("book", "kindle", "reader", "reading", "home").any { token -> token in normalized }
       }
       .distinct()
       .sorted()
