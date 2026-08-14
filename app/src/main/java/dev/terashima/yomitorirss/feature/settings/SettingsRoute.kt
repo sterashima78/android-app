@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.library.LibraryCoverQueueRoute
+import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
 @Composable
@@ -40,6 +41,7 @@ fun SettingsScreen(
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundDataFetchPreferences.wifiOnly = wifiOnly
       backgroundFetchWifiOnly = wifiOnly
+      MailSyncScheduler(context).schedulePeriodic()
     },
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
