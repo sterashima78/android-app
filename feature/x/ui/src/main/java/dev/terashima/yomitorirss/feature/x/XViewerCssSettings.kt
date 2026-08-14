@@ -85,7 +85,6 @@ internal data class XViewerCssSettings(
 internal object XViewerCssPreferences {
   private const val PREFS_NAME = "x_viewer_preferences"
   private const val KEY_CSS_ENABLED = "custom_css_enabled"
-  private const val KEY_LEGACY_CUSTOM_CSS = "custom_css"
   private const val KEY_ACTIVE_CSS_SET = "active_css_set"
   private const val KEY_CUSTOM_CSS_SET_PREFIX = "custom_css_set_"
 
@@ -97,8 +96,6 @@ internal object XViewerCssPreferences {
       val key = cssSetKey(index)
       when {
         preferences.contains(key) -> preferences.getString(key, "") ?: ""
-        index == 0 && preferences.contains(KEY_LEGACY_CUSTOM_CSS) ->
-          preferences.getString(KEY_LEGACY_CUSTOM_CSS, defaultCss) ?: defaultCss
         index == 0 -> defaultCss
         else -> ""
       }
@@ -119,7 +116,6 @@ internal object XViewerCssPreferences {
       .edit()
       .putBoolean(KEY_CSS_ENABLED, settings.enabled)
       .putInt(KEY_ACTIVE_CSS_SET, settings.activeSetIndex)
-      .remove(KEY_LEGACY_CUSTOM_CSS)
 
     settings.persistedCssSets().forEachIndexed { index, css ->
       editor.putString(cssSetKey(index), css)
