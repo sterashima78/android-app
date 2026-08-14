@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import java.io.ByteArrayInputStream
 import java.io.InputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,19 @@ class LibraryViewModel(
         }
         .onFailure(::showError)
     }
+  }
+
+  fun importAmazonLibraryJson(source: LibrarySource, json: String) {
+    val bytes = json.toByteArray(Charsets.UTF_8)
+    val fileName = when (source) {
+      LibrarySource.KINDLE -> "kindle-library-export-webview.json"
+      LibrarySource.AUDIBLE -> "audible-library-export-webview.json"
+      else -> {
+        reportError(IllegalArgumentException("${source.label} は Web Library インポートに対応していません"))
+        return
+      }
+    }
+    importAmazonLibrary(source, fileName) { ByteArrayInputStream(bytes) }
   }
 
   fun importAmazonLibrary(
