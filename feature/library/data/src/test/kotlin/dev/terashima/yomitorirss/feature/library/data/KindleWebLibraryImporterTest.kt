@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.feature.library.isKindlePersonalDocument
-import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -148,8 +147,5 @@ class KindleWebLibraryImporterTest {
     }
   }
 
-  private fun parse(json: String) = KindleWebLibraryImporter().parse(
-    fileName = "kindle-library-export.json",
-    input = ByteArrayInputStream(json.toByteArray()),
-  )
+  private fun parse(json: String) = KindleWebLibraryImporter().parse(json)
 }
