@@ -8,7 +8,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.library.AudibleCoverEnrichmentWorker
 import dev.terashima.yomitorirss.feature.library.KindleCoverEnrichmentWorker
 import dev.terashima.yomitorirss.feature.library.LibraryCoverAcquisitionSnapshot
 import dev.terashima.yomitorirss.feature.library.LibraryCoverEnrichmentCoordinator
@@ -17,50 +16,44 @@ import dev.terashima.yomitorirss.feature.library.LibraryCoverWorkState
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 class DefaultLibraryCoverEnrichmentCoordinator(
   context: Context,
   database: DatabaseConnection,
 ) : LibraryCoverEnrichmentCoordinator {
   private val kindleScheduler = KindleCoverEnrichmentScheduler(context)
-  private val audibleScheduler = AudibleCoverEnrichmentScheduler(context)
   private val statusRepository = LibraryCoverStatusRepository(database)
 
-  override val workSnapshots: Flow<LibraryCoverWorkSnapshot> = combine(
-    kindleScheduler.workInfos,
-    audibleScheduler.workInfos,
-  ) { kindleWorkInfos, audibleWorkInfos ->
-    LibraryCoverWorkSnapshot(
-      states = mapOf(
-        LibrarySource.KINDLE to coverWorkState(kindleWorkInfos),
-        LibrarySource.AUDIBLE to coverWorkState(audibleWorkInfos),
-      ),
-      finishedWorkCount = (kindleWorkInfos + audibleWorkInfos).count { it.state.isFinished },
-    )
-  }.distinctUntilChanged()
+  override val workSnapshots: Flow<LibraryCoverWorkSnapshot> = kindleScheduler.workInfos
+    .map { kindleWorkInfos ->
+      LibraryCoverWorkSnapshot(
+        states = mapOf(
+          LibrarySource.KINDLE to coverWorkState(kindleWorkInfos),
+        ),
+        finishedWorkCount = kindleWorkInfos.count { it.state.isFinished },
+      )
+    }
+    .distinctUntilChanged()
 
   override fun sync(kindleEnabled: Boolean) {
     kindleScheduler.sync(kindleEnabled)
-    audibleScheduler.schedule()
   }
 
-  override suspend fun snapshot(): LibraryCoverAcquisitionSnapshot = statusRepository.snapshot()
+  override suspend fun snapshot(): LibraryCoverAcquisitionSnapshot =
+    statusRepository.snapshot().let { snapshot ->
+      snapshot.copy(items = snapshot.items.filter { it.source == LibrarySource.KINDLE })
+    }
 
   override suspend fun retryUnresolved(kindleEnabled: Boolean) {
-    val sources = buildSet {
-      add(LibrarySource.AUDIBLE)
-      if (kindleEnabled) add(LibrarySource.KINDLE)
-    }
-    statusRepository.resetUnresolvedLookups(sources)
-    if (kindleEnabled) kindleScheduler.schedule(force = true)
-    audibleScheduler.schedule()
+    if (!kindleEnabled) return
+    statusRepository.resetUnresolvedLookups(setOf(LibrarySource.KINDLE))
+    kindleScheduler.schedule(force = true)
   }
 
   override fun cancel() {
     kindleScheduler.cancel()
-    audibleScheduler.cancel()
   }
 }
 
@@ -119,44 +112,6 @@ private class KindleCoverEnrichmentScheduler(context: Context) {
   }
 }
 
-private class AudibleCoverEnrichmentScheduler(context: Context) {
-  private val appContext = context.applicationContext
-  private val workManager = WorkManager.getInstance(appContext)
-  val workInfos = workManager.getWorkInfosForUniqueWorkFlow(WORK_NAME)
-
-  fun schedule() {
-    workManager.enqueueUniqueWork(
-      WORK_NAME,
-      ExistingWorkPolicy.KEEP,
-      request(),
-    )
-  }
-
-  fun scheduleContinuation() {
-    workManager.enqueueUniqueWork(
-      WORK_NAME,
-      ExistingWorkPolicy.APPEND,
-      request(initialDelayMillis = CONTINUATION_DELAY_MILLIS),
-    )
-  }
-
-  fun cancel() {
-    workManager.cancelUniqueWork(WORK_NAME)
-  }
-
-  private fun request(initialDelayMillis: Long = 0L) =
-    OneTimeWorkRequestBuilder<AudibleCoverEnrichmentWorker>()
-      .setInitialDelay(initialDelayMillis, TimeUnit.MILLISECONDS)
-      .setConstraints(backgroundDataFetchConstraints(appContext))
-      .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-      .build()
-
-  companion object {
-    private const val WORK_NAME = "audible-cover-enrichment"
-    private const val CONTINUATION_DELAY_MILLIS = 1_100L
-  }
-}
-
 internal fun continueKindleCoverEnrichment(
   context: Context,
   delayMillis: Long = CONTINUATION_DELAY_MILLIS,
@@ -164,10 +119,6 @@ internal fun continueKindleCoverEnrichment(
   KindleCoverEnrichmentScheduler(context).scheduleContinuation(
     delayMillis.coerceAtLeast(CONTINUATION_DELAY_MILLIS),
   )
-}
-
-internal fun continueAudibleCoverEnrichment(context: Context) {
-  AudibleCoverEnrichmentScheduler(context).scheduleContinuation()
 }
 
 private const val CONTINUATION_DELAY_MILLIS = 1_100L
