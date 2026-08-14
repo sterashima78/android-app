@@ -88,8 +88,7 @@ internal class NdlSearchBibliographicClient(
       }
 
     val titleMatches = candidates.filter { candidate ->
-      val normalizedCandidate = normalizeBookText(candidate.title)
-      normalizedCandidate == expectedTitle || normalizedCandidate.startsWith(expectedTitle)
+      normalizeBookText(candidate.title) == expectedTitle
     }
     val resolvedIsbns = titleMatches.flatMap(NdlSearchCandidate::isbns).distinct()
     val status = if (resolvedIsbns.size > 1) CoverLookupStatus.AMBIGUOUS else CoverLookupStatus.NOT_FOUND
