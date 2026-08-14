@@ -10,60 +10,26 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import java.net.URI
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun LibraryFeatureRoute(
   viewModel: LibraryViewModel,
-  coverCoordinator: LibraryCoverEnrichmentCoordinator,
   onSyncGooglePlayBooks: () -> Unit,
   onImportKindle: () -> Unit,
   onImportAudible: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
-  val workSnapshot by coverCoordinator.workSnapshots.collectAsState(
-    initial = LibraryCoverWorkSnapshot(),
-  )
-  var showCoverQueue by remember { mutableStateOf(false) }
-  var observedFinishedWorkCount by remember { mutableIntStateOf(0) }
   val context = LocalContext.current
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
-
-  LaunchedEffect(
-    state.initialized,
-    state.kindleCoverEnrichmentEnabled,
-    state.sourceStates[LibrarySource.KINDLE]?.lastSyncedAtEpochMillis,
-    state.sourceStates[LibrarySource.AUDIBLE]?.lastSyncedAtEpochMillis,
-  ) {
-    if (state.initialized) {
-      coverCoordinator.sync(state.kindleCoverEnrichmentEnabled)
-    }
-  }
-
-  LaunchedEffect(workSnapshot.finishedWorkCount) {
-    val finishedWorkCount = workSnapshot.finishedWorkCount
-    if (state.initialized && finishedWorkCount > observedFinishedWorkCount) {
-      viewModel.refreshAfterCoverEnrichment()
-    }
-    observedFinishedWorkCount = finishedWorkCount
-  }
 
   CompositionLocalProvider(LocalUriHandler provides libraryUriHandler) {
     LibraryScreen(
@@ -76,68 +42,9 @@ fun LibraryFeatureRoute(
       onRestoreBook = viewModel::restoreBook,
       onSetBookSeries = viewModel::setBookSeries,
       onClearBookSeries = viewModel::clearBookSeries,
-      onKindleCoverEnrichmentEnabledChange = viewModel::setKindleCoverEnrichmentEnabled,
-      onOpenCoverQueue = { showCoverQueue = true },
       onDismissMessage = viewModel::dismissMessage,
     )
   }
-
-  if (showCoverQueue) {
-    LibraryCoverQueueRoute(
-      coverCoordinator = coverCoordinator,
-      onDismiss = { showCoverQueue = false },
-    )
-  }
-}
-
-@Composable
-private fun LibraryCoverQueueRoute(
-  coverCoordinator: LibraryCoverEnrichmentCoordinator,
-  onDismiss: () -> Unit,
-) {
-  val workSnapshot by coverCoordinator.workSnapshots.collectAsState(
-    initial = LibraryCoverWorkSnapshot(),
-  )
-  var snapshot by remember { mutableStateOf(LibraryCoverAcquisitionSnapshot()) }
-  var refreshVersion by remember { mutableIntStateOf(0) }
-  var message by remember { mutableStateOf<String?>(null) }
-  val scope = rememberCoroutineScope()
-
-  LaunchedEffect(workSnapshot, refreshVersion) {
-    snapshot = withContext(Dispatchers.IO) { coverCoordinator.snapshot() }
-  }
-
-  val workStates = workSnapshot.states.toMutableMap().apply {
-    if (!snapshot.kindleCoverEnrichmentEnabled) {
-      this[LibrarySource.KINDLE] = LibraryCoverWorkState.DISABLED
-    }
-  }
-
-  LibraryCoverQueueScreen(
-    snapshot = snapshot,
-    workStates = workStates,
-    message = message,
-    onRetryUnresolved = {
-      scope.launch {
-        try {
-          withContext(Dispatchers.IO) {
-            coverCoordinator.retryUnresolved(snapshot.kindleCoverEnrichmentEnabled)
-          }
-          message = "未取得の表紙を再試行します"
-          refreshVersion++
-        } catch (error: CancellationException) {
-          throw error
-        } catch (error: Throwable) {
-          message = error.message ?: "表紙の再試行に失敗しました"
-        }
-      }
-    },
-    onCancelCurrentWork = {
-      coverCoordinator.cancel()
-      message = "現在の表紙取得をキャンセルしました"
-    },
-    onDismiss = onDismiss,
-  )
 }
 
 private class LibraryUriHandler(
