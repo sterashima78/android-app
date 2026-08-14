@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
@@ -301,9 +302,9 @@ private fun LibrarySeriesTab(
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         groups.series.forEach { section ->
-          val expanded = section.name in expandedSeries
+          val expanded = section.key in expandedSeries
           item(
-            key = "series:${section.name}",
+            key = "series:${section.key}",
             span = { GridItemSpan(maxLineSpan) },
           ) {
             LibrarySeriesHeader(
@@ -313,7 +314,7 @@ private fun LibrarySeriesTab(
               expanded = expanded,
               onToggle = {
                 onExpandedSeriesChange(
-                  if (expanded) expandedSeries - section.name else expandedSeries + section.name,
+                  if (expanded) expandedSeries - section.key else expandedSeries + section.key,
                 )
               },
             )
@@ -442,13 +443,23 @@ private fun LibrarySettingsTab(
   onKindleCoverEnrichmentEnabledChange: (Boolean) -> Unit,
   onOpenCoverQueue: () -> Unit,
 ) {
-  Column(Modifier.fillMaxSize()) {
+  Column(
+    modifier = Modifier
+      .fillMaxSize()
+      .verticalScroll(rememberScrollState()),
+  ) {
     LibrarySyncHeader(
       state = state,
       onSyncGooglePlayBooks = onSyncGooglePlayBooks,
       onImportKindle = onImportKindle,
       onImportAudible = onImportAudible,
     )
+    HorizontalDivider()
+    Column(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+      KindleWebLibraryImportGuide()
+    }
     HorizontalDivider()
     Column(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -465,7 +476,7 @@ private fun LibrarySettingsTab(
         ) {
           Text("Kindle の表紙を補完", style = MaterialTheme.typography.titleMedium)
           Text(
-            "Amazon の公開商品ページを優先し、見つからない場合は Google Books、Open Library の順で表紙を検索します。",
+            "インポートした JSON に表紙がない書籍だけ、Amazon の公開商品ページを優先し、見つからない場合は Google Books、Open Library の順で検索します。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -476,7 +487,7 @@ private fun LibrarySettingsTab(
         )
       }
       Text(
-        "有効にすると Kindle の ASIN を Amazon へ送信し、フォールバック時はタイトル・著者・ISBN を Google Books と Open Library へ送信します。Amazon のエクスポートファイルや認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
+        "有効にすると Kindle の ASIN を Amazon へ送信し、フォールバック時はタイトル・著者・ISBN を Google Books と Open Library へ送信します。インポート JSON や認証情報は送信しません。取得済みの表紙は無効化後も表示します。",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -575,7 +586,7 @@ private fun LibrarySyncHeader(
       onAction = onImportAudible,
     )
     Text(
-      "Kindle は Digital.Content.Ownership*.json / ZIP、Audible は Library.csv / ZIP を端末内で読み込みます。認証情報は保存しません。",
+      "Kindle は上記ブックマークレットで作成した kindle-library-export-*.json、Audible は Library.csv / ZIP を端末内で読み込みます。Amazon / Kindle の認証情報は保存しません。",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

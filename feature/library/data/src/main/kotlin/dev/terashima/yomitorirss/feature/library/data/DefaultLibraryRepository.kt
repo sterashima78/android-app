@@ -21,6 +21,7 @@ class DefaultLibraryRepository(
 ) : LibraryRepository {
   private val googleBooks = GoogleBooksApiClient()
   private val amazonLibraryImporter = AmazonLibraryImporter()
+  private val kindleWebLibraryImporter = KindleWebLibraryImporter()
   private val audibleMetadataEnricher = AudibleLibraryMetadataEnricher()
   private val openLibraryCoverClient = OpenLibraryCoverClient()
 
@@ -166,7 +167,7 @@ class DefaultLibraryRepository(
   ): LibrarySyncResult {
     ensureSchema()
     val books = when (source) {
-      LibrarySource.KINDLE -> amazonLibraryImporter.parseKindle(fileName, input)
+      LibrarySource.KINDLE -> kindleWebLibraryImporter.parse(fileName, input)
       LibrarySource.AUDIBLE -> {
         val bytes = input.readLimited(MAX_AUDIBLE_IMPORT_BYTES)
         val parsedBooks = amazonLibraryImporter.parse(source, fileName, bytes)

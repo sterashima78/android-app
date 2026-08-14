@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
 internal data class LibrarySeriesSection(
+  val key: String,
   val name: String,
   val books: List<LibraryBook>,
 )
@@ -58,9 +59,10 @@ internal fun groupLibraryBooks(books: List<LibraryBook>): LibraryBookGroups {
     .sortedWith(compareBy<LibraryBook> { it.title.lowercase() }.thenBy { it.sourceId })
 
   val series = assigned
-    .groupBy { seriesKey(requireNotNull(it.series).name) }
-    .map { (_, seriesBooks) ->
+    .groupBy { book -> seriesKey(requireNotNull(book.series)) }
+    .map { (key, seriesBooks) ->
       LibrarySeriesSection(
+        key = key,
         name = requireNotNull(seriesBooks.first().series).name.trim(),
         books = seriesBooks.sortedWith(
           compareBy<LibraryBook> { it.series?.position ?: Int.MAX_VALUE }
@@ -77,7 +79,9 @@ internal fun groupLibraryBooks(books: List<LibraryBook>): LibraryBookGroups {
   )
 }
 
-private fun seriesKey(name: String): String = name.trim().lowercase()
+private fun seriesKey(series: LibrarySeries): String =
+  series.id?.trim()?.takeIf(String::isNotEmpty)?.let { "id:${it.uppercase()}" }
+    ?: "name:${series.name.trim().lowercase()}"
 
 private fun normalizeDigits(value: String): String = buildString(value.length) {
   value.forEach { character ->

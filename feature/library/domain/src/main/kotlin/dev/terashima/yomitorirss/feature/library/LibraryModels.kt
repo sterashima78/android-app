@@ -11,6 +11,7 @@ enum class LibrarySource(val label: String) {
 data class LibrarySeries(
   val name: String,
   val position: Int?,
+  val id: String? = null,
 )
 
 data class LibraryBook(
