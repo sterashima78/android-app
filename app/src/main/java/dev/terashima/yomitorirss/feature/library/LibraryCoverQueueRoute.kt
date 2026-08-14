@@ -58,7 +58,7 @@ fun LibraryCoverQueueRoute(onDismiss: () -> Unit) {
             if (snapshot.kindleCoverEnrichmentEnabled) add(LibrarySource.KINDLE)
           }
           withContext(Dispatchers.IO) { repository.resetUnresolvedLookups(sources) }
-          if (snapshot.kindleCoverEnrichmentEnabled) kindleScheduler.schedule()
+          if (snapshot.kindleCoverEnrichmentEnabled) kindleScheduler.schedule(force = true)
           audibleScheduler.schedule()
           message = "未取得の表紙を再試行します"
           refreshVersion++
