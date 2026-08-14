@@ -2,13 +2,13 @@ package dev.terashima.yomitorirss.feature.library
 
 import android.content.Context
 import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
+import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.data.AudibleCoverEnrichmentRepository
@@ -18,7 +18,8 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 
 internal class AudibleCoverEnrichmentScheduler(context: Context) {
-  private val workManager = WorkManager.getInstance(context.applicationContext)
+  private val appContext = context.applicationContext
+  private val workManager = WorkManager.getInstance(appContext)
   val workInfos = workManager.getWorkInfosForUniqueWorkFlow(WORK_NAME)
 
   fun schedule() {
@@ -44,11 +45,7 @@ internal class AudibleCoverEnrichmentScheduler(context: Context) {
   private fun request(initialDelayMillis: Long = 0L) =
     OneTimeWorkRequestBuilder<AudibleCoverEnrichmentWorker>()
       .setInitialDelay(initialDelayMillis, TimeUnit.MILLISECONDS)
-      .setConstraints(
-        Constraints.Builder()
-          .setRequiredNetworkType(NetworkType.CONNECTED)
-          .build(),
-      )
+      .setConstraints(backgroundDataFetchConstraints(appContext))
       .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
       .build()
 
@@ -67,6 +64,11 @@ class AudibleCoverEnrichmentWorker(
   workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
   override suspend fun doWork(): Result {
+    if (!isBackgroundDataFetchAllowed(applicationContext)) {
+      AudibleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
+      return Result.success()
+    }
+
     val database = YomitoriDatabase.create(applicationContext)
     val connection = DatabaseConnection(database)
     val repository = AudibleCoverEnrichmentRepository(connection)

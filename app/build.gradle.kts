@@ -135,6 +135,7 @@ dependencies {
   implementation(project(":feature:mail:domain"))
   implementation(project(":feature:mail:data"))
   implementation(project(":feature:mail:ui"))
+  implementation(project(":core:background"))
   implementation(project(":core:database"))
   implementation(project(":core:designsystem"))
   implementation(project(":core:ai-runtime"))

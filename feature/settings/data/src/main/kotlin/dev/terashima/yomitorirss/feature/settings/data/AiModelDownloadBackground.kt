@@ -13,21 +13,20 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.os.Build
 import android.os.PersistableBundle
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.ModelDownloadProgress
+import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
+import dev.terashima.yomitorirss.core.background.backgroundDataFetchNetworkRequest
+import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.feature.settings.AiModelDownloadProgress
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -172,14 +171,11 @@ internal class AiModelDownloadScheduler(
       putString(INPUT_MODEL_ID, modelId)
       putLong(INPUT_MODEL_SIZE_BYTES, estimatedBytes)
     }
-    val network = NetworkRequest.Builder()
-      .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-      .build()
     val job = JobInfo.Builder(
       JOB_ID,
       ComponentName(appContext, AiModelDownloadJobService::class.java),
     )
-      .setRequiredNetwork(network)
+      .setRequiredNetwork(backgroundDataFetchNetworkRequest(appContext))
       .setUserInitiated(true)
       .setEstimatedNetworkBytes(estimatedBytes, 0L)
       .setExtras(extras)
@@ -198,11 +194,7 @@ internal class AiModelDownloadScheduler(
           INPUT_MODEL_SIZE_BYTES to estimatedBytes,
         ),
       )
-      .setConstraints(
-        Constraints.Builder()
-          .setRequiredNetworkType(NetworkType.CONNECTED)
-          .build(),
-      )
+      .setConstraints(backgroundDataFetchConstraints(appContext))
       .build()
     WorkManager.getInstance(appContext).enqueueUniqueWork(
       WORK_NAME,
@@ -221,6 +213,11 @@ class AiModelDownloadJobService : JobService() {
     val modelId = params.extras.getString(INPUT_MODEL_ID)?.takeIf(String::isNotBlank) ?: return false
     val estimatedBytes = params.extras.getLong(INPUT_MODEL_SIZE_BYTES, 0)
     if (runningDownload != null) return false
+    if (!isBackgroundDataFetchAllowed(applicationContext)) {
+      AiModelDownloadStateStore(applicationContext).markQueued(modelId, estimatedBytes)
+      serviceScope.launch { jobFinished(params, true) }
+      return true
+    }
 
     val manager = LocalModelManager(applicationContext)
     val stateStore = AiModelDownloadStateStore(applicationContext)
@@ -311,6 +308,11 @@ class AiModelDownloadWorker(
     val modelId = inputData.getString(INPUT_MODEL_ID)?.takeIf(String::isNotBlank)
       ?: return Result.failure()
     val estimatedBytes = inputData.getLong(INPUT_MODEL_SIZE_BYTES, 0)
+    if (!isBackgroundDataFetchAllowed(applicationContext)) {
+      AiModelDownloadStateStore(applicationContext).markQueued(modelId, estimatedBytes)
+      return Result.retry()
+    }
+
     val manager = LocalModelManager(applicationContext)
     val stateStore = AiModelDownloadStateStore(applicationContext)
     val modelName = manager.models.value.firstOrNull { it.id == modelId }?.name ?: "AIモデル"

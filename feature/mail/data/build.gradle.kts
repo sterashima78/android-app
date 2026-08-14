@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:mail:domain"))
+  implementation(project(":core:background"))
   implementation(project(":core:database"))
   implementation(project(":core:network"))
 
