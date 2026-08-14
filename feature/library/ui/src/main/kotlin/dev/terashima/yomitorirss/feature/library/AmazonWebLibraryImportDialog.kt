@@ -57,10 +57,23 @@ private data class WebLibrarySourceConfig(
   val startUrl: String,
   val expectedFormat: String,
   val allowedBridgeOrigins: Set<String>,
+  val kindlePersonalDocuments: Boolean = false,
 )
 
-private fun webLibrarySourceConfig(source: LibrarySource): WebLibrarySourceConfig = when (source) {
-  LibrarySource.KINDLE -> WebLibrarySourceConfig(
+private fun webLibrarySourceConfig(
+  source: LibrarySource,
+  kindlePersonalDocuments: Boolean,
+): WebLibrarySourceConfig = when {
+  source == LibrarySource.KINDLE && kindlePersonalDocuments -> WebLibrarySourceConfig(
+    source = source,
+    title = "Kindle Personal Document",
+    startUrl = KINDLE_PERSONAL_DOCUMENT_EXPORT_PAGE,
+    expectedFormat = "kindle-personal-library-export",
+    allowedBridgeOrigins = setOf("https://www.amazon.co.jp"),
+    kindlePersonalDocuments = true,
+  )
+
+  source == LibrarySource.KINDLE -> WebLibrarySourceConfig(
     source = source,
     title = "Kindle Web Library",
     startUrl = KINDLE_WEB_LIBRARY_EXPORT_PAGE,
@@ -68,7 +81,7 @@ private fun webLibrarySourceConfig(source: LibrarySource): WebLibrarySourceConfi
     allowedBridgeOrigins = setOf("https://read.amazon.co.jp"),
   )
 
-  LibrarySource.AUDIBLE -> WebLibrarySourceConfig(
+  source == LibrarySource.AUDIBLE -> WebLibrarySourceConfig(
     source = source,
     title = "Audible Library",
     startUrl = AUDIBLE_WEB_LIBRARY_EXPORT_PAGE,
@@ -87,8 +100,11 @@ internal fun AmazonWebLibraryImportDialog(
   source: LibrarySource,
   onDismiss: () -> Unit,
   onImportJson: (LibrarySource, String) -> Unit,
+  kindlePersonalDocuments: Boolean = false,
 ) {
-  val config = remember(source) { webLibrarySourceConfig(source) }
+  val config = remember(source, kindlePersonalDocuments) {
+    webLibrarySourceConfig(source, kindlePersonalDocuments)
+  }
   val latestOnDismiss by rememberUpdatedState(onDismiss)
   val latestOnImportJson by rememberUpdatedState(onImportJson)
   val supportsRequiredWebViewFeatures = remember {
@@ -110,7 +126,7 @@ internal fun AmazonWebLibraryImportDialog(
     ) {
       if (!supportsRequiredWebViewFeatures) {
         UnsupportedWebLibraryImport(
-          sourceLabel = source.label,
+          sourceLabel = config.title,
           onDismiss = latestOnDismiss,
         )
       } else {
@@ -185,7 +201,7 @@ private fun WebLibraryImportContent(
         config.allowedBridgeOrigins,
       ) { _, message, sourceOrigin, isMainFrame, _ ->
         if (!isMainFrame || !importing) return@addWebMessageListener
-        if (!isAllowedBridgeOrigin(config.source, sourceOrigin.toString())) return@addWebMessageListener
+        if (!isAllowedBridgeOrigin(config, sourceOrigin.toString())) return@addWebMessageListener
 
         runCatching {
           val payload = JSONObject(message.data ?: return@addWebMessageListener)
@@ -222,7 +238,7 @@ private fun WebLibraryImportContent(
               val json = chunkAccumulator.finish(payload.getString("session"))
               validateCollectedLibraryJson(config, json)
               importing = false
-              progressText = "${config.source.label} のデータを取得しました。インポートしています"
+              progressText = "${config.title} のデータを取得しました。インポートしています"
               onImportJson(config.source, json)
               onDismiss()
             }
@@ -272,8 +288,8 @@ private fun WebLibraryImportContent(
             view.evaluateJavascript(AUDIBLE_WEBVIEW_EXPORT_SCRIPT, null)
           } else if (!importing) {
             progressText = when {
-              isStartPageForSource(config.source, url) -> "ログイン済みなら「蔵書を取り込む」を押してください"
-              else -> "ログイン後に蔵書ページへ移動してください"
+              isStartPageForConfig(config, url) -> "ログイン済みなら「取り込む」を押してください"
+              else -> "ログイン後に対象ページへ移動してください"
             }
           }
         }
@@ -352,30 +368,32 @@ private fun WebLibraryImportContent(
       }
 
       if (!importing) {
-        if (isStartPageForSource(config.source, currentUrl)) {
+        if (isStartPageForConfig(config, currentUrl)) {
           Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
               chunkAccumulator.reset()
               audibleApiCollectionStarted = false
               importing = true
-              progressText = "蔵書情報を取得しています"
-              val script = when (config.source) {
-                LibrarySource.KINDLE -> KINDLE_WEBVIEW_COLLECT_SCRIPT
-                LibrarySource.AUDIBLE -> AUDIBLE_WEBVIEW_COLLECT_SCRIPT
+              progressText = "${config.title} の情報を取得しています"
+              val script = when {
+                config.source == LibrarySource.KINDLE && config.kindlePersonalDocuments ->
+                  KINDLE_PERSONAL_DOCUMENT_WEBVIEW_COLLECT_SCRIPT
+                config.source == LibrarySource.KINDLE -> KINDLE_WEBVIEW_COLLECT_SCRIPT
+                config.source == LibrarySource.AUDIBLE -> AUDIBLE_WEBVIEW_COLLECT_SCRIPT
                 else -> error("Unsupported source")
               }
               webView.evaluateJavascript(script, null)
             },
           ) {
-            Text("蔵書を取り込む")
+            Text(if (config.kindlePersonalDocuments) "Personal Document を取り込む" else "蔵書を取り込む")
           }
         } else {
           Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { webView.loadUrl(config.startUrl) },
           ) {
-            Text("蔵書ページへ")
+            Text("対象ページへ")
           }
         }
       }
@@ -397,9 +415,10 @@ private fun validateCollectedLibraryJson(config: WebLibrarySourceConfig, json: S
   require(root.optInt("version") == 1) { "未対応の Web Library データ形式です" }
 }
 
-private fun isStartPageForSource(source: LibrarySource, url: String): Boolean = when (source) {
-  LibrarySource.KINDLE -> isKindleWebLibraryPage(url)
-  LibrarySource.AUDIBLE -> isAudibleLibraryPage(url)
+private fun isStartPageForConfig(config: WebLibrarySourceConfig, url: String): Boolean = when {
+  config.source == LibrarySource.KINDLE && config.kindlePersonalDocuments -> isKindlePersonalDocumentPage(url)
+  config.source == LibrarySource.KINDLE -> isKindleWebLibraryPage(url)
+  config.source == LibrarySource.AUDIBLE -> isAudibleLibraryPage(url)
   else -> false
 }
 
@@ -409,16 +428,12 @@ private fun isExternalHttpNavigation(url: String): Boolean {
     uri.scheme.equals("https", ignoreCase = true)
 }
 
-private fun isAllowedBridgeOrigin(source: LibrarySource, origin: String): Boolean {
+private fun isAllowedBridgeOrigin(config: WebLibrarySourceConfig, origin: String): Boolean {
   val uri = runCatching { URI(origin) }.getOrNull() ?: return false
   if (!uri.scheme.equals("https", ignoreCase = true)) return false
   if (uri.port != -1 && uri.port != 443) return false
   val host = uri.host?.lowercase() ?: return false
-  return when (source) {
-    LibrarySource.KINDLE -> host == "read.amazon.co.jp"
-    LibrarySource.AUDIBLE -> host == "www.audible.co.jp" || host == "api.audible.co.jp"
-    else -> false
-  }
+  return "https://$host" in config.allowedBridgeOrigins
 }
 
 private fun String.toBrowserCompatibleImportUserAgent(): String =
