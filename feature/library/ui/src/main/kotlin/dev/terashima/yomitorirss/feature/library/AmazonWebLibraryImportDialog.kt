@@ -155,7 +155,7 @@ private fun UnsupportedWebLibraryImport(
     Text("$sourceLabel のアプリ内インポートを利用できません", style = MaterialTheme.typography.titleLarge)
     Spacer(Modifier.height(12.dp))
     Text(
-      "端末の Android System WebView が、専用プロファイルまたは安全な Web メッセージ機能に対応していません。設定画面の外部ブラウザ用ブックマークレットと JSON インポートを利用してください。",
+      "端末の Android System WebView が、専用プロファイルまたは安全な Web メッセージ機能に対応していません。Android System WebView を更新してから再度お試しください。",
       style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(Modifier.height(20.dp))
