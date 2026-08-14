@@ -10,14 +10,12 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.airuntime.HIERARCHICAL_SUMMARY_CACHE_VARIANT
-import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgress
-import dev.terashima.yomitorirss.core.airuntime.HierarchicalSummaryProgressStage
+import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
-import dev.terashima.yomitorirss.core.airuntime.summarizeHierarchically
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
+import dev.terashima.yomitorirss.feature.summary.summaryCacheKey
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
@@ -38,6 +36,7 @@ class SummaryWorker(
   override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
     val database = YomitoriDatabase.create(applicationContext)
     val modelManager = LocalModelManager(applicationContext)
+    val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
       database.requeueInterruptedSummaryTasks()
 
@@ -57,8 +56,8 @@ class SummaryWorker(
           } else {
             val selectedModel = modelManager.selectedModel()
               ?: error("要約モデルをダウンロードして選択してください")
-            val prompt = modelManager.summaryPrompt.value
-            val cacheKey = "${modelManager.summaryCacheKey(selectedModel.id, prompt)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
+            val prompt = summaryPromptStore.prompt.value
+            val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
 
             database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
             val articleText = ArticleContentClient().fetchArticleText(article.url)
@@ -86,7 +85,7 @@ class SummaryWorker(
               append(summary)
             }
             val generatedTags = parseGeneratedTags(
-              modelManager.summarize(tagSource, AUTO_TAG_PROMPT),
+              modelManager.summarizeText(tagSource, AUTO_TAG_PROMPT),
             )
             check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
             currentCoroutineContext().ensureActive()
@@ -119,13 +118,13 @@ class SummaryWorker(
   ): String = coroutineScope {
     val hierarchyProgress = AtomicReference<HierarchicalSummaryProgress?>(null)
     val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
-      modelManager.summaryProgress.filterNotNull().collect { progress ->
+      modelManager.inferenceProgress.filterNotNull().collect { progress ->
         when (progress.stage) {
-          "preparing_model" -> database.updateRunningSummaryTaskProgress(
+          LocalInferenceStage.PREPARING_MODEL -> database.updateRunningSummaryTaskProgress(
             articleId,
             SUMMARY_PROGRESS_PREPARING_MODEL,
           )
-          "generating_summary" -> {
+          LocalInferenceStage.GENERATING_RESPONSE -> {
             val stored = hierarchyProgress.get().toStoredProgress()
             database.updateRunningSummaryTaskProgress(
               articleId = articleId,

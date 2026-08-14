@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.core.airuntime
+package dev.terashima.yomitorirss.feature.summary.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,16 +36,8 @@ class HierarchicalSummaryTextTest {
   }
 
   @Test
-  fun `モデルごとの既存入力上限を分割単位として利用する`() {
-    assertEquals(700, HierarchicalSummaryText.inputLimitFor("qwen2.5-0.5b-q8"))
-    assertEquals(700, HierarchicalSummaryText.inputLimitFor("qwen2.5-1.5b-q8"))
-    assertEquals(1_200, HierarchicalSummaryText.inputLimitFor("qwen3-4b-mixed-int4"))
-    assertEquals(2_500, HierarchicalSummaryText.inputLimitFor("gemma4-e2b-it"))
-    assertEquals(2_500, HierarchicalSummaryText.inputLimitFor("gemma4-e4b-it"))
-  }
-
-  @Test
-  fun `未知モデルは最小の既存入力上限へフォールバックする`() {
-    assertEquals(700, HierarchicalSummaryText.inputLimitFor("future-model"))
+  fun `中間要約の目標長は入力上限に応じて安全な範囲へ収める`() {
+    assertEquals(180, HierarchicalSummaryText.intermediateTargetChars(300))
+    assertEquals(400, HierarchicalSummaryText.intermediateTargetChars(2_500))
   }
 }

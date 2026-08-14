@@ -17,7 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.core.airuntime.SummaryPrompt
+import dev.terashima.yomitorirss.feature.summary.SUMMARY_ARTICLE_PLACEHOLDER
+import dev.terashima.yomitorirss.feature.summary.SUMMARY_PROMPT_MAX_LENGTH
 
 @Composable
 internal fun SummaryPromptDialog(
@@ -27,7 +28,7 @@ internal fun SummaryPromptDialog(
   onReset: () -> Unit,
 ) {
   var value by remember(prompt) { mutableStateOf(prompt) }
-  val valid = value.isNotBlank() && value.length <= SummaryPrompt.MAX_LENGTH
+  val valid = value.isNotBlank() && value.length <= SUMMARY_PROMPT_MAX_LENGTH
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -35,7 +36,7 @@ internal fun SummaryPromptDialog(
     text = {
       Column {
         Text(
-          "${SummaryPrompt.ARTICLE_PLACEHOLDER} の位置に記事本文が入ります。省略した場合は末尾に本文を追加します。",
+          "$SUMMARY_ARTICLE_PLACEHOLDER の位置に記事本文が入ります。省略した場合は末尾に本文を追加します。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -46,8 +47,8 @@ internal fun SummaryPromptDialog(
           label = { Text("プロンプト") },
           minLines = 8,
           maxLines = 14,
-          supportingText = { Text("${value.length} / ${SummaryPrompt.MAX_LENGTH}") },
-          isError = value.length > SummaryPrompt.MAX_LENGTH,
+          supportingText = { Text("${value.length} / $SUMMARY_PROMPT_MAX_LENGTH") },
+          isError = value.length > SUMMARY_PROMPT_MAX_LENGTH,
           modifier = Modifier.fillMaxWidth(),
         )
       }

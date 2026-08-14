@@ -1,5 +1,8 @@
-package dev.terashima.yomitorirss.core.airuntime
+package dev.terashima.yomitorirss.feature.summary.data
 
+import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.airuntime.LocalPromptFormat
+import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -20,16 +23,16 @@ data class HierarchicalSummaryProgress(
 
 suspend fun LocalModelManager.summarizeHierarchically(
   text: String,
-  prompt: String = summaryPrompt.value,
+  prompt: String,
   onProgress: (HierarchicalSummaryProgress) -> Unit = {},
 ): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
-  val maxInputChars = HierarchicalSummaryText.inputLimitFor(model.id)
+  val maxInputChars = model.maxInputChars
   val normalized = HierarchicalSummaryText.normalize(text)
   if (normalized.length <= maxInputChars) {
     currentCoroutineContext().ensureActive()
     onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.DIRECT))
-    return summarize(normalized, prompt)
+    return summarizeText(normalized, prompt)
   }
 
   val chunks = HierarchicalSummaryText.split(normalized, maxInputChars)
@@ -43,7 +46,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
         total = chunks.size,
       ),
     )
-    summarize(
+    summarizeText(
       chunk,
       chunkSummaryPrompt(
         part = index + 1,
@@ -74,7 +77,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
           total = groups.size,
         ),
       )
-      summarize(
+      summarizeText(
         HierarchicalSummaryText.join(group),
         mergeSummaryPrompt(targetChars),
       )
@@ -85,7 +88,41 @@ suspend fun LocalModelManager.summarizeHierarchically(
   val finalContext = finalPrefix + HierarchicalSummaryText.join(summaries)
   currentCoroutineContext().ensureActive()
   onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.FINAL))
-  return summarize(finalContext, prompt)
+  return summarizeText(finalContext, prompt)
+}
+
+fun LocalModelManager.summarizeText(text: String, prompt: String): String {
+  val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
+  val normalized = HierarchicalSummaryText.normalize(text)
+  val article = if (normalized.length <= model.maxInputChars) {
+    normalized
+  } else {
+    val headLength = model.maxInputChars * 3 / 4
+    normalized.take(headLength) + "\n（中略）\n" + normalized.takeLast(model.maxInputChars - headLength)
+  }
+  val instruction = renderSummaryPrompt(prompt, article)
+  val inferencePrompt = when (model.promptFormat) {
+    LocalPromptFormat.CHAT_ML -> """
+      <|im_start|>system
+      あなたはニュース記事の要約担当です。本文だけを根拠に、日本語で簡潔に回答してください。<|im_end|>
+      <|im_start|>user
+      $instruction<|im_end|>
+      <|im_start|>assistant
+    """.trimIndent()
+    LocalPromptFormat.PLAIN -> instruction
+  }
+  return cleanSummary(generate(inferencePrompt))
+}
+
+private fun cleanSummary(value: String): String {
+  val result = value
+    .substringBefore("<|im_end|>")
+    .substringBefore("<end_of_turn>")
+    .replace(Regex("<think>.*?</think>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "")
+    .replace(Regex("^要約[:：]?\\s*", RegexOption.IGNORE_CASE), "")
+    .trim()
+  check(result.isNotBlank()) { "要約結果が空です" }
+  return result
 }
 
 private fun chunkSummaryPrompt(
@@ -118,16 +155,8 @@ private fun mergeSummaryPrompt(targetChars: Int): String = """
 """.trimIndent()
 
 internal object HierarchicalSummaryText {
-  private const val DEFAULT_INPUT_LIMIT = 700
   private const val MIN_BREAK_RATIO_PERCENT = 55
   private const val SEPARATOR = "\n\n---\n\n"
-
-  fun inputLimitFor(modelId: String): Int = when (modelId) {
-    "qwen2.5-0.5b-q8", "qwen2.5-1.5b-q8" -> 700
-    "qwen3-4b-mixed-int4" -> 1_200
-    "gemma4-e2b-it", "gemma4-e4b-it" -> 2_500
-    else -> DEFAULT_INPUT_LIMIT
-  }
 
   fun intermediateTargetChars(maxInputChars: Int): Int =
     (maxInputChars / 3).coerceIn(180, 400)

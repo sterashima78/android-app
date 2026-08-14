@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-11
+- Amended: 2026-08-14
 
 ## Context
 
@@ -28,13 +29,25 @@ GPUでは生成自体は高速でも、LiteRT-LMの `Engine.initialize()` によ
 
 LiteRT-LMでは選択モデル、実行バックエンド、モデルファイルの状態が同一である間、初期化済み `Engine` を `LocalModelManager` 内で1つだけ保持して再利用する。
 
-- チャットや要約の各リクエストでは `Engine` を再初期化しない。
-- 各リクエストで作る `Conversation` は従来どおり処理終了時に閉じる。チャット履歴は既存の `ChatPrompt` で毎回明示的に与えるため、`Conversation` 自体は保持しない。
+- チャットや要約など各featureからの推論リクエストでは `Engine` を再初期化しない。
+- 各リクエストで作る `Conversation` は処理終了時に閉じる。チャット履歴は `feature:chat:data` がプロンプトへ毎回明示的に与えるため、`Conversation` 自体は保持しない。
 - 選択モデル、CPU/GPU、モデルファイルのサイズまたは更新時刻が変わった場合は、次の推論開始時に保持中の `Engine` を閉じて新しい条件で初期化する。
 - モデル削除時と `LocalModelManager.close()` 時は保持中の `Engine` を閉じる。
 - 推論処理が例外で失敗した場合は、その `Engine` が再利用可能であると仮定せず破棄し、次回に再初期化する。
 - 同時に保持する `Engine` は1つだけとし、複数モデル分の重みを常駐させない。
 - MediaPipe Tasks GenAI の既存モデルは挙動変更を避けるため従来どおりリクエスト単位で生成・破棄し、この常駐化はLiteRT-LMに限定する。
+
+### feature と runtime の責務境界
+
+`core:ai-runtime` はモデルの取得・選択、CPU/GPU設定、Thinking適用、Engineのライフサイクル、汎用的な単発/ストリーミング推論を担当する。Chat/Summary固有のプロンプト、会話モデル、応答整形、要約アルゴリズムは保持しない。
+
+- `feature:chat:domain` が会話モデルを所有する。
+- `feature:chat:data` がChatプロンプト生成と応答整形を所有し、完成したプロンプトを `LocalModelManager.generate` へ渡す。
+- `feature:summary:domain` が要約プロンプトの既定値、検証、キャッシュキー規則を所有する。
+- `feature:summary:data` が要約プロンプト保存、階層要約、要約結果整形を所有する。
+- `LocalModelManager` はfeature名に依存しない `LocalInferenceProgress` を公開する。各featureが自身のprogress modelへ変換する。
+
+この責務境界はADR-0047で明文化する。
 
 ### Thinking
 
@@ -43,8 +56,8 @@ LiteRT-LMでは選択モデル、実行バックエンド、モデルファイ�
 - Thinking設定は対応モデルを選択している場合だけUIに表示する。
 - 初期値は無効とし、従来の要約・チャットの応答時間を維持する。
 - Qwen3 4Bではユーザー入力へ `/think` または `/no_think` を付加して切り替える。
-- Thinking中に生成された `<think>...</think>` は既存の応答整形処理で最終表示から除外し、最終回答のみ表示する。
-- Thinking対応モデルではThinking状態を要約キャッシュキーへ含め、モード変更後に異なるモードのキャッシュを再利用しない。
+- Thinking中に生成された `<think>...</think>` の表示上の除去は、回答の意味を所有する各feature側で行う。
+- Thinking対応モデルではThinking状態を要約キャッシュキーへ含め、モード変更後に異なるモードのキャッシュを再利用しない。runtimeはThinking状態を表すcache variantだけを提供し、要約cache keyの構築はsummary featureが行う。
 
 ### Qwen3 4B
 
@@ -70,11 +83,13 @@ LiteRT-LMの初回推論では引き続きモデル読み込みとGPU初期化�
 
 Thinkingは推論品質を高められるが、生成時間、電力消費、発熱が増える可能性がある。そのため対応モデルに限定した明示設定とする。
 
-モデル管理UI、設定ドメイン、AIランタイムの3層に設定を通し、推論実装だけがUI状態へ直接依存しない構成を維持する。
+feature固有ポリシーをruntimeから分離することで、Chat/Summaryの仕様変更がAI実行基盤へ波及しにくくなる。一方、feature側でruntimeの汎用progressやモデル能力を自身の概念へ変換するadapterが必要になる。
 
 ## References
 
-- https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/api/kotlin/getting_started.md
+- ADR-0003: マルチモジュールアーキテクチャ
+- ADR-0047: ローカルAIの機能固有ポリシーをfeatureへ分離する
+- https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/api/kotlin/get_started.md
 - https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/api/cpp/conversation.md
 - https://github.com/google-ai-edge/LiteRT-LM/releases/tag/v0.14.0
 - https://huggingface.co/Qwen/Qwen3-4B

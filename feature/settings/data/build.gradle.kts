@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:settings:domain"))
+  implementation(project(":feature:summary:data"))
   implementation(project(":core:ai-runtime"))
   implementation(project(":core:background"))
   implementation("androidx.work:work-runtime-ktx:2.11.2")

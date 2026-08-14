@@ -2,12 +2,14 @@ package dev.terashima.yomitorirss.feature.settings.data
 
 import android.content.Context
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceBackend
+import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.feature.settings.AiInferenceBackend
 import dev.terashima.yomitorirss.feature.settings.AiInferenceSettings
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSummaryProgress
+import dev.terashima.yomitorirss.feature.summary.data.SummaryPromptStore
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 
@@ -17,6 +19,7 @@ class DefaultAiModelRepository(
 ) : AiModelRepository {
   private val downloadStateStore = AiModelDownloadStateStore(context)
   private val downloadScheduler = AiModelDownloadScheduler(context, downloadStateStore)
+  private val summaryPromptStore = SummaryPromptStore(context)
 
   override val models = manager.models.map { models ->
     models
@@ -44,17 +47,20 @@ class DefaultAiModelRepository(
     if (progress?.phase == "completed") manager.refreshModels()
   }
 
-  override val summaryProgress = manager.summaryProgress.map { progress ->
+  override val summaryProgress = manager.inferenceProgress.map { progress ->
     progress?.let {
       AiSummaryProgress(
-        stage = it.stage,
+        stage = when (it.stage) {
+          LocalInferenceStage.PREPARING_MODEL -> "preparing_model"
+          LocalInferenceStage.GENERATING_RESPONSE -> "generating_summary"
+        },
         modelName = it.modelName,
         estimatedStageDurationMillis = it.estimatedStageDurationMillis,
       )
     }
   }
 
-  override val summaryPrompt = manager.summaryPrompt
+  override val summaryPrompt = summaryPromptStore.prompt
   override val inferenceSettings = manager.inferenceSettings.map { settings ->
     AiInferenceSettings(
       backend = when (settings.backend) {
@@ -66,8 +72,8 @@ class DefaultAiModelRepository(
   }
 
   override fun isSupported(): Boolean = manager.isSupported()
-  override fun updateSummaryPrompt(prompt: String) = manager.updateSummaryPrompt(prompt)
-  override fun resetSummaryPrompt() = manager.resetSummaryPrompt()
+  override fun updateSummaryPrompt(prompt: String) = summaryPromptStore.update(prompt)
+  override fun resetSummaryPrompt() = summaryPromptStore.reset()
   override fun setInferenceBackend(backend: AiInferenceBackend) = manager.setInferenceBackend(
     when (backend) {
       AiInferenceBackend.CPU -> LocalInferenceBackend.CPU

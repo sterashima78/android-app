@@ -1,4 +1,8 @@
-package dev.terashima.yomitorirss.core.airuntime
+package dev.terashima.yomitorirss.feature.chat.data
+
+import dev.terashima.yomitorirss.feature.chat.ChatContextBlock
+import dev.terashima.yomitorirss.feature.chat.ChatRole
+import dev.terashima.yomitorirss.feature.chat.ChatTurn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

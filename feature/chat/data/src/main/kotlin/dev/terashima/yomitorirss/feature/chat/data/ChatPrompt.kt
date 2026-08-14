@@ -1,19 +1,8 @@
-package dev.terashima.yomitorirss.core.airuntime
-enum class ChatRole {
-  USER,
-  ASSISTANT,
-}
+package dev.terashima.yomitorirss.feature.chat.data
 
-data class ChatTurn(
-  val role: ChatRole,
-  val content: String,
-)
-
-data class ChatContextBlock(
-  val sourceId: String,
-  val label: String,
-  val content: String,
-)
+import dev.terashima.yomitorirss.feature.chat.ChatContextBlock
+import dev.terashima.yomitorirss.feature.chat.ChatRole
+import dev.terashima.yomitorirss.feature.chat.ChatTurn
 
 internal object ChatPrompt {
   private const val SYSTEM_PROMPT =

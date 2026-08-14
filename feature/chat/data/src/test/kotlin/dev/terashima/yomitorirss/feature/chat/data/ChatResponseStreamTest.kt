@@ -1,4 +1,5 @@
-package dev.terashima.yomitorirss.core.airuntime
+package dev.terashima.yomitorirss.feature.chat.data
+
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

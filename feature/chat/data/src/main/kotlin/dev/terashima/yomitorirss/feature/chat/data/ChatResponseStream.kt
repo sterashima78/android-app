@@ -1,4 +1,5 @@
-package dev.terashima.yomitorirss.core.airuntime
+package dev.terashima.yomitorirss.feature.chat.data
+
 internal object ChatResponseStream {
   private const val ASSISTANT_PREFIX = "アシスタント"
   private val completeThinkBlock = Regex(
