@@ -1,10 +1,149 @@
 import com.android.build.api.dsl.ApplicationExtension
+import org.gradle.api.GradleException
+import org.gradle.api.artifacts.ProjectDependency
 
 plugins {
   id("com.android.application") version "9.3.0" apply false
   id("com.android.library") version "9.3.0" apply false
   id("org.jetbrains.kotlin.jvm") version "2.3.21" apply false
   id("org.jetbrains.kotlin.plugin.compose") version "2.3.21" apply false
+}
+
+data class ProjectDependencyEdge(
+  val source: String,
+  val configuration: String,
+  val target: String,
+)
+
+val baseArchitectureDependencyConfigurations =
+  setOf(
+    "api",
+    "implementation",
+    "compileOnly",
+    "compileOnlyApi",
+    "runtimeOnly",
+  )
+
+val variantArchitectureDependencyConfigurationSuffixes =
+  setOf(
+    "Api",
+    "Implementation",
+    "CompileOnly",
+    "CompileOnlyApi",
+    "RuntimeOnly",
+  )
+
+fun isArchitectureDependencyConfiguration(name: String): Boolean {
+  if ("test" in name.lowercase()) return false
+
+  return name in baseArchitectureDependencyConfigurations ||
+    variantArchitectureDependencyConfigurationSuffixes.any { suffix -> name.endsWith(suffix) }
+}
+
+fun projectLayer(path: String): String = path.substringAfterLast(':')
+
+val verifyArchitecture by tasks.registering {
+  group = "verification"
+  description = "Verifies Gradle module dependency rules defined by ADR-0003."
+
+  doLast {
+    val edges =
+      subprojects
+        .flatMap { sourceProject ->
+          sourceProject.configurations
+            .filter { isArchitectureDependencyConfiguration(it.name) }
+            .flatMap { configuration ->
+              configuration.dependencies
+                .withType(ProjectDependency::class.java)
+                .map { dependency ->
+                  ProjectDependencyEdge(
+                    source = sourceProject.path,
+                    configuration = configuration.name,
+                    target = dependency.path,
+                  )
+                }
+            }
+        }
+        .distinct()
+
+    val violations = mutableListOf<String>()
+
+    edges.forEach { edge ->
+      val sourceLayer = projectLayer(edge.source)
+      val targetLayer = projectLayer(edge.target)
+
+      if (edge.source.startsWith(":core:") && edge.target.startsWith(":feature:")) {
+        violations +=
+          "core must not depend on feature: ${edge.source} --${edge.configuration}--> ${edge.target}"
+      }
+
+      if (sourceLayer == "domain" && targetLayer in setOf("ui", "data")) {
+        violations +=
+          "domain must not depend on ui/data: ${edge.source} --${edge.configuration}--> ${edge.target}"
+      }
+
+      if (
+        sourceLayer == "ui" &&
+          edge.target.startsWith(":feature:") &&
+          targetLayer == "data"
+      ) {
+        violations +=
+          "ui must not depend on concrete feature data: ${edge.source} --${edge.configuration}--> ${edge.target}"
+      }
+    }
+
+    val adjacency =
+      edges
+        .groupBy(ProjectDependencyEdge::source)
+        .mapValues { (_, projectEdges) -> projectEdges.map(ProjectDependencyEdge::target).distinct() }
+
+    val visitState = mutableMapOf<String, Int>()
+    val stack = mutableListOf<String>()
+    val reportedCycles = mutableSetOf<String>()
+
+    fun visit(projectPath: String) {
+      visitState[projectPath] = 1
+      stack += projectPath
+
+      adjacency[projectPath].orEmpty().forEach { target ->
+        when (visitState[target]) {
+          1 -> {
+            val cycleStart = stack.indexOf(target)
+            if (cycleStart >= 0) {
+              val cycle = (stack.subList(cycleStart, stack.size) + target).joinToString(" -> ")
+              if (reportedCycles.add(cycle)) {
+                violations += "Gradle project dependency cycle: $cycle"
+              }
+            }
+          }
+
+          2 -> Unit
+          else -> visit(target)
+        }
+      }
+
+      stack.removeAt(stack.lastIndex)
+      visitState[projectPath] = 2
+    }
+
+    subprojects.map { it.path }.sorted().forEach { projectPath ->
+      if (visitState[projectPath] == null) {
+        visit(projectPath)
+      }
+    }
+
+    if (violations.isNotEmpty()) {
+      throw GradleException(
+        buildString {
+          appendLine("Architecture verification failed (${violations.size} violation(s)):")
+          violations.sorted().forEach { violation -> appendLine("- $violation") }
+          append("See docs/adr/0003-multi-module-architecture.md for the dependency rules.")
+        },
+      )
+    }
+
+    logger.lifecycle("Architecture verification passed for ${edges.size} project dependency edge(s).")
+  }
 }
 
 subprojects {
