@@ -16,6 +16,7 @@ class KindleCoverEnrichmentRepository(
 ) {
   private val amazonCoverClient = KindleAmazonCoverClient()
   private val googleBooksCoverClient = GoogleBooksCoverClient()
+  private val ndlSearchBibliographicClient = NdlSearchBibliographicClient()
   private val openLibraryCoverClient = OpenLibraryCoverClient()
   private var schemaEnsured = false
 
@@ -140,23 +141,45 @@ class KindleCoverEnrichmentRepository(
         record(result, GOOGLE_BOOKS_PROVIDER)?.let { return it }
       }
     } else {
+      var googleTitleUnavailable = false
       val google = try {
         googleBooksCoverClient.lookupByTitle(book, accessToken)
       } catch (error: CancellationException) {
         throw error
       } catch (error: CoverProviderIOException) {
+        googleTitleUnavailable = true
         recordProviderException(error)
         null
       } catch (error: IOException) {
+        googleTitleUnavailable = true
         recordNetworkException(GOOGLE_BOOKS_PROVIDER, error)
         null
       }
       google?.let { result ->
+        if (result.lookup.status == CoverLookupStatus.ERROR) googleTitleUnavailable = true
         record(result, GOOGLE_BOOKS_PROVIDER)?.let { return it }
         resolvedIsbn = result.resolvedIdentifiers.preferredIsbn()
       }
 
-      if (resolvedIsbn != null && !accessToken.isNullOrBlank()) {
+      if (resolvedIsbn == null && isLikelyJapaneseBookTitle(book.title)) {
+        val ndl = try {
+          ndlSearchBibliographicClient.lookupByTitle(book)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (error: CoverProviderIOException) {
+          recordProviderException(error)
+          null
+        } catch (error: IOException) {
+          recordNetworkException(NDL_SEARCH_PROVIDER, error)
+          null
+        }
+        ndl?.let { result ->
+          record(result, NDL_SEARCH_PROVIDER)?.let { return it }
+          resolvedIsbn = result.resolvedIdentifiers.preferredIsbn()
+        }
+      }
+
+      if (resolvedIsbn != null && !accessToken.isNullOrBlank() && !googleTitleUnavailable) {
         val googleByIsbn = try {
           googleBooksCoverClient.lookupByIsbn(requireNotNull(resolvedIsbn), accessToken)
         } catch (error: CancellationException) {
