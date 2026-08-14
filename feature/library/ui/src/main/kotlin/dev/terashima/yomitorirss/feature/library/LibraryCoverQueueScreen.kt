@@ -78,7 +78,7 @@ fun LibraryCoverQueueScreen(
       message?.let { item { Text(it, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall) } }
       item {
         Text(
-          "未取得の行には解析用IDと推定原因を表示します。この画面のスクリーンショットを共有すれば、商品ページやAPIの現在の応答を再確認できます。",
+          "未取得の行には解析用ID、取得経路、実エラーまたは推定原因を表示します。この画面のスクリーンショットを共有すれば、商品ページやAPIの現在の応答を再確認できます。",
           Modifier.padding(16.dp),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -123,8 +123,8 @@ private fun CoverSummary(snapshot: LibraryCoverAcquisitionSnapshot) {
 
 private fun itemDetails(item: LibraryCoverAcquisitionItem): String = buildString {
   append("${item.source.label} · ${stateLabel(item.state)}")
-  item.provider?.let { append(" · ${providerLabel(it)}") }
   item.lastAttemptAtEpochMillis?.let { append(" · 最終試行 ${formatAttempt(it)}") }
+  item.provider?.let { append("\n取得経路/詳細: ${providerLabel(it)}") }
   if (item.state == LibraryCoverAcquisitionState.NOT_FOUND || item.state == LibraryCoverAcquisitionState.AMBIGUOUS) {
     append("\nsourceId=${item.sourceId}")
     append("\n推定: ${failureHint(item)}")
@@ -135,7 +135,8 @@ private fun itemDetails(item: LibraryCoverAcquisitionItem): String = buildString
 private fun failureHint(item: LibraryCoverAcquisitionItem): String = when {
   item.state == LibraryCoverAcquisitionState.AMBIGUOUS -> "候補が複数。タイトル・著者・巻数の照合条件を確認"
   item.provider == "OPEN_LIBRARY" -> "Amazon商品ページで取得できず、Open Libraryでも一致する表紙を特定できなかった可能性"
-  item.provider == "KINDLE_COVER_ENRICHMENT" -> "Kindle取得処理の通信・リダイレクト・アクセス確認・解析エラーの可能性"
+  item.provider?.startsWith("KINDLE_COVER_ENRICHMENT") == true -> "上記の実エラーを確認。通信・リダイレクト・アクセス確認・解析処理のいずれかで失敗"
+  item.provider?.startsWith("AUDIBLE_COVER_ENRICHMENT") == true -> "上記の実エラーを確認。Audible商品ページまたはCatalog APIの通信・解析処理で失敗"
   item.provider == "AUDIBLE_CATALOG_API_SEARCH" -> "商品ページ/ASIN検索で取得できず、タイトル・著者検索でも厳密一致しなかった可能性"
   item.provider == "AUDIBLE_CATALOG_API_ASIN" -> "Catalog APIのASIN検索で画像が見つからなかった可能性"
   item.source == LibrarySource.AUDIBLE -> "Audible商品ページまたはCatalog APIで表紙を特定できなかった可能性"
@@ -165,15 +166,21 @@ private fun workStateLabel(state: LibraryCoverWorkState): String = when (state) 
   LibraryCoverWorkState.FAILED -> "直近の処理でエラー"
 }
 
-private fun providerLabel(provider: String): String = when (provider) {
-  "OPEN_LIBRARY" -> "Open Library"
-  "AMAZON_PRODUCT_PAGE_OGP" -> "Amazon 商品ページ (OGP)"
-  "AMAZON_PRODUCT_PAGE_IMAGE" -> "Amazon 商品ページ (商品画像)"
-  "KINDLE_COVER_ENRICHMENT" -> "Kindle 表紙補完"
-  "AUDIBLE_PRODUCT_PAGE" -> "Audible 商品ページ"
-  "AUDIBLE_CATALOG_API_ASIN" -> "Audible Catalog API (ASIN)"
-  "AUDIBLE_CATALOG_API_SEARCH" -> "Audible Catalog API (検索)"
-  else -> provider
+private fun providerLabel(provider: String): String {
+  val base = provider.substringBefore(" · ")
+  val detail = provider.substringAfter(" · ", missingDelimiterValue = "")
+  val label = when (base) {
+    "OPEN_LIBRARY" -> "Open Library"
+    "AMAZON_PRODUCT_PAGE_OGP" -> "Amazon 商品ページ (OGP)"
+    "AMAZON_PRODUCT_PAGE_IMAGE" -> "Amazon 商品ページ (商品画像)"
+    "KINDLE_COVER_ENRICHMENT" -> "Kindle 表紙補完"
+    "AUDIBLE_PRODUCT_PAGE" -> "Audible 商品ページ"
+    "AUDIBLE_CATALOG_API_ASIN" -> "Audible Catalog API (ASIN)"
+    "AUDIBLE_CATALOG_API_SEARCH" -> "Audible Catalog API (検索)"
+    "AUDIBLE_COVER_ENRICHMENT" -> "Audible 表紙補完"
+    else -> base
+  }
+  return if (detail.isBlank()) label else "$label · $detail"
 }
 
 private fun formatAttempt(epochMillis: Long): String = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
