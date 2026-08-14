@@ -1,0 +1,288 @@
+package dev.terashima.yomitorirss.feature.library
+
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
+import java.net.URI
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@Composable
+fun LibraryFeatureRoute(
+  viewModel: LibraryViewModel,
+  coverCoordinator: LibraryCoverEnrichmentCoordinator,
+  onSyncGooglePlayBooks: () -> Unit,
+  onImportKindle: () -> Unit,
+  onImportAudible: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val state by viewModel.state.collectAsState()
+  val workSnapshot by coverCoordinator.workSnapshots.collectAsState(
+    initial = LibraryCoverWorkSnapshot(),
+  )
+  var showCoverQueue by remember { mutableStateOf(false) }
+  var observedFinishedWorkCount by remember { mutableIntStateOf(0) }
+  val context = LocalContext.current
+  val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
+
+  LaunchedEffect(
+    state.initialized,
+    state.kindleCoverEnrichmentEnabled,
+    state.sourceStates[LibrarySource.KINDLE]?.lastSyncedAtEpochMillis,
+    state.sourceStates[LibrarySource.AUDIBLE]?.lastSyncedAtEpochMillis,
+  ) {
+    if (state.initialized) {
+      coverCoordinator.sync(state.kindleCoverEnrichmentEnabled)
+    }
+  }
+
+  LaunchedEffect(workSnapshot.finishedWorkCount) {
+    val finishedWorkCount = workSnapshot.finishedWorkCount
+    if (state.initialized && finishedWorkCount > observedFinishedWorkCount) {
+      viewModel.refreshAfterCoverEnrichment()
+    }
+    observedFinishedWorkCount = finishedWorkCount
+  }
+
+  CompositionLocalProvider(LocalUriHandler provides libraryUriHandler) {
+    LibraryScreen(
+      modifier = modifier,
+      state = state,
+      onSyncGooglePlayBooks = onSyncGooglePlayBooks,
+      onImportKindle = onImportKindle,
+      onImportAudible = onImportAudible,
+      onHideBook = viewModel::hideBook,
+      onRestoreBook = viewModel::restoreBook,
+      onSetBookSeries = viewModel::setBookSeries,
+      onClearBookSeries = viewModel::clearBookSeries,
+      onKindleCoverEnrichmentEnabledChange = viewModel::setKindleCoverEnrichmentEnabled,
+      onOpenCoverQueue = { showCoverQueue = true },
+      onDismissMessage = viewModel::dismissMessage,
+    )
+  }
+
+  if (showCoverQueue) {
+    LibraryCoverQueueRoute(
+      coverCoordinator = coverCoordinator,
+      onDismiss = { showCoverQueue = false },
+    )
+  }
+}
+
+@Composable
+private fun LibraryCoverQueueRoute(
+  coverCoordinator: LibraryCoverEnrichmentCoordinator,
+  onDismiss: () -> Unit,
+) {
+  val workSnapshot by coverCoordinator.workSnapshots.collectAsState(
+    initial = LibraryCoverWorkSnapshot(),
+  )
+  var snapshot by remember { mutableStateOf(LibraryCoverAcquisitionSnapshot()) }
+  var refreshVersion by remember { mutableIntStateOf(0) }
+  var message by remember { mutableStateOf<String?>(null) }
+  val scope = rememberCoroutineScope()
+
+  LaunchedEffect(workSnapshot, refreshVersion) {
+    snapshot = withContext(Dispatchers.IO) { coverCoordinator.snapshot() }
+  }
+
+  val workStates = workSnapshot.states.toMutableMap().apply {
+    if (!snapshot.kindleCoverEnrichmentEnabled) {
+      this[LibrarySource.KINDLE] = LibraryCoverWorkState.DISABLED
+    }
+  }
+
+  LibraryCoverQueueScreen(
+    snapshot = snapshot,
+    workStates = workStates,
+    message = message,
+    onRetryUnresolved = {
+      scope.launch {
+        try {
+          withContext(Dispatchers.IO) {
+            coverCoordinator.retryUnresolved(snapshot.kindleCoverEnrichmentEnabled)
+          }
+          message = "未取得の表紙を再試行します"
+          refreshVersion++
+        } catch (error: CancellationException) {
+          throw error
+        } catch (error: Throwable) {
+          message = error.message ?: "表紙の再試行に失敗しました"
+        }
+      }
+    },
+    onCancelCurrentWork = {
+      coverCoordinator.cancel()
+      message = "現在の表紙取得をキャンセルしました"
+    },
+    onDismiss = onDismiss,
+  )
+}
+
+private class LibraryUriHandler(
+  private val context: Context,
+) : UriHandler {
+  override fun openUri(uri: String) {
+    when (googleBooksLinkType(uri)) {
+      GoogleBooksLinkType.READER -> openGooglePlayBooksReader(Uri.parse(uri))
+      GoogleBooksLinkType.PLAY_BOOKS_HOME -> {
+        if (!openGooglePlayBooksHome()) showPlayBooksOpenFailedMessage()
+      }
+      GoogleBooksLinkType.INFORMATION -> showMissingReaderLinkMessage()
+      GoogleBooksLinkType.OTHER -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
+    }
+  }
+
+  private fun openGooglePlayBooksReader(uri: Uri) {
+    val readerUri = Uri.parse(normalizeGooglePlayBooksReaderUrl(uri.toString()))
+    val readerIntent = Intent(Intent.ACTION_VIEW, readerUri).apply {
+      setPackage(PLAY_BOOKS_PACKAGE)
+    }
+
+    readerActivities(readerUri).forEach { component ->
+      val explicitIntent = Intent(readerIntent).apply { this.component = component }
+      if (startActivity(explicitIntent)) return
+    }
+
+    val legacyReaderIntent = Intent(readerIntent).apply {
+      component = ComponentName(PLAY_BOOKS_PACKAGE, LEGACY_PLAY_BOOKS_READER_ACTIVITY)
+    }
+    if (startActivity(legacyReaderIntent)) return
+
+    if (openGooglePlayBooksHome()) return
+
+    showPlayBooksOpenFailedMessage()
+  }
+
+  private fun openGooglePlayBooksHome(): Boolean {
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(PLAY_BOOKS_PACKAGE)
+      ?: return false
+    return startActivity(launchIntent)
+  }
+
+  private fun readerActivities(readerUri: Uri): List<ComponentName> {
+    val packageManager = context.packageManager
+    val matchedActivities = packageManager.queryIntentActivities(
+      Intent(Intent.ACTION_VIEW, readerUri).apply { setPackage(PLAY_BOOKS_PACKAGE) },
+      PackageManager.MATCH_DEFAULT_ONLY,
+    ).mapNotNull { resolveInfo ->
+      val activity = resolveInfo.activityInfo ?: return@mapNotNull null
+      if (!activity.exported || readerActivityScore(activity.name) <= 0) return@mapNotNull null
+      ComponentName(activity.packageName, activity.name)
+    }
+
+    val declaredActivities = playBooksActivities(packageManager)
+      .asSequence()
+      .filter(ActivityInfo::exported)
+      .filter { readerActivityScore(it.name) > 0 }
+      .map { ComponentName(it.packageName, it.name) }
+      .toList()
+
+    return (matchedActivities + declaredActivities)
+      .distinctBy { it.flattenToString() }
+      .sortedByDescending { readerActivityScore(it.className) }
+  }
+
+  @Suppress("DEPRECATION")
+  private fun playBooksActivities(packageManager: PackageManager): List<ActivityInfo> = try {
+    packageManager.getPackageInfo(PLAY_BOOKS_PACKAGE, PackageManager.GET_ACTIVITIES)
+      .activities
+      ?.toList()
+      .orEmpty()
+  } catch (_: PackageManager.NameNotFoundException) {
+    emptyList()
+  }
+
+  private fun showMissingReaderLinkMessage() {
+    Toast.makeText(context, GOOGLE_BOOKS_NO_READER_MESSAGE, Toast.LENGTH_LONG).show()
+  }
+
+  private fun showPlayBooksOpenFailedMessage() {
+    Toast.makeText(context, PLAY_BOOKS_OPEN_FAILED_MESSAGE, Toast.LENGTH_LONG).show()
+  }
+
+  private fun startActivity(intent: Intent): Boolean = try {
+    context.startActivity(intent)
+    true
+  } catch (_: ActivityNotFoundException) {
+    false
+  } catch (_: SecurityException) {
+    false
+  }
+}
+
+internal enum class GoogleBooksLinkType {
+  READER,
+  PLAY_BOOKS_HOME,
+  INFORMATION,
+  OTHER,
+}
+
+internal fun googleBooksLinkType(url: String): GoogleBooksLinkType {
+  val uri = runCatching { URI(url) }.getOrNull() ?: return GoogleBooksLinkType.OTHER
+  val scheme = uri.scheme?.lowercase()
+  if (scheme != "http" && scheme != "https") return GoogleBooksLinkType.OTHER
+
+  val host = uri.host?.lowercase() ?: return GoogleBooksLinkType.OTHER
+  val path = uri.path.orEmpty().lowercase()
+  return when {
+    host == "play.google.com" && path.trimEnd('/') == "/books" ->
+      GoogleBooksLinkType.PLAY_BOOKS_HOME
+    host == "play.google.com" && path.startsWith("/books/reader") -> GoogleBooksLinkType.READER
+    host == "play.google.com" &&
+      (path.startsWith("/books") || path.startsWith("/store/books")) ->
+      GoogleBooksLinkType.INFORMATION
+    host == "books.google.com" || host.startsWith("books.google.") -> GoogleBooksLinkType.INFORMATION
+    else -> GoogleBooksLinkType.OTHER
+  }
+}
+
+internal fun normalizeGooglePlayBooksReaderUrl(url: String): String {
+  if (!url.startsWith(PLAY_BOOKS_HTTP_READER_PREFIX, ignoreCase = true)) return url
+  return "https://${url.substring(HTTP_SCHEME_PREFIX.length)}"
+}
+
+internal fun readerActivityScore(activityName: String): Int {
+  val normalized = activityName.lowercase()
+  var score = 0
+  if ("readingactivity" in normalized) score += 120
+  if ("readeractivity" in normalized) score += 110
+  if ("readactivity" in normalized) score += 100
+  if ("reading" in normalized) score += 80
+  if ("reader" in normalized) score += 70
+  if ("ebook" in normalized) score += 40
+  if ("store" in normalized || "shop" in normalized || "catalog" in normalized) score -= 200
+  if ("detail" in normalized || "preview" in normalized) score -= 100
+  return score
+}
+
+private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
+private const val LEGACY_PLAY_BOOKS_READER_ACTIVITY =
+  "com.google.android.apps.play.books.ebook.activity.ReadingActivity"
+private const val HTTP_SCHEME_PREFIX = "http://"
+private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"
+private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
+  "この項目には Google Books API の読書リンクがないため、直接開けません。"
+private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
+  "Google Play Books を開けませんでした。"
