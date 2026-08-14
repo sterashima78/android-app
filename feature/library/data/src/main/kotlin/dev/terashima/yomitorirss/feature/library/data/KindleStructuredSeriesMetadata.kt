@@ -168,7 +168,7 @@ class SeriesAwareLibraryRepository private constructor(
   private val audibleSourceSeriesRepository: AudibleSourceSeriesRepository,
 ) : LibraryRepository by delegate, LibrarySeriesImportSupport {
   constructor(database: DatabaseConnection) : this(
-    delegate = AudibleWebAwareLibraryRepository(DefaultLibraryRepository(database)),
+    delegate = DefaultLibraryRepository(database),
     kindleSourceSeriesRepository = KindleSourceSeriesRepository(database),
     audibleSourceSeriesRepository = AudibleSourceSeriesRepository(database),
   )
