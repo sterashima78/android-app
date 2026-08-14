@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.library.data
 
-import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -49,32 +48,20 @@ class AudibleWebLibraryImporterTest {
   }
 
   @Test
-  fun `検証時に生成した裸配列JSONも取り込める`() {
-    val books = parse(
-      """
-        [
-          {
-            "asin":"B000000001",
-            "title":"First",
-            "authors":["Author"],
-            "narrators":[],
-            "publisher":null,
-            "publishedDate":"2025-01-02",
-            "description":"Description",
-            "coverUrl":null,
-            "durationMinutes":61,
-            "series":null,
-            "productUrl":"https://www.audible.co.jp/pd/B000000001"
-          }
-        ]
-      """.trimIndent(),
-      fileName = "audible-web-library.json",
-    )
-
-    assertEquals(1, books.size)
-    assertEquals("1時間1分", books.single().duration)
-    assertNull(books.single().thumbnailUrl)
-    assertNull(books.single().series)
+  fun `裸配列JSONを拒否する`() {
+    assertThrows(IllegalArgumentException::class.java) {
+      parse(
+        """
+          [
+            {
+              "asin":"B000000001",
+              "title":"First",
+              "authors":["Author"]
+            }
+          ]
+        """.trimIndent(),
+      )
+    }
   }
 
   @Test
@@ -153,16 +140,7 @@ class AudibleWebLibraryImporterTest {
     assertNull(books.single().thumbnailUrl)
   }
 
-  private fun parse(
-    json: String,
-    fileName: String = "audible-library-export.json",
-  ) = AudibleWebLibraryImporter().parse(
-    fileName = fileName,
-    input = ByteArrayInputStream(json.toByteArray()),
-  )
+  private fun parse(json: String) = AudibleWebLibraryImporter().parse(json)
 
-  private fun parseExport(json: String) = AudibleWebLibraryExportParser.parse(
-    fileName = "audible-library-export.json",
-    input = ByteArrayInputStream(json.toByteArray()),
-  )
+  private fun parseExport(json: String) = AudibleWebLibraryExportParser.parse(json)
 }
