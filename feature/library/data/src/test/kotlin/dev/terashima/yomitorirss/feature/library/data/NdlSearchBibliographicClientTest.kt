@@ -66,6 +66,29 @@ class NdlSearchBibliographicClientTest {
   }
 
   @Test
+  fun `検索タイトルを接頭辞に含む別タイトルはISBNを採用しない`() = runBlocking {
+    val httpClient = RecordingHttpClient(
+      """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+          <channel>
+            <item>
+              <title>合成テスト書籍 完全版 / テスト著者</title>
+              <description>ISBN 9781234567897</description>
+            </item>
+          </channel>
+        </rss>
+      """.trimIndent(),
+    )
+
+    val result = NdlSearchBibliographicClient(httpClient).lookupByTitle(book())
+
+    assertEquals(CoverLookupStatus.NOT_FOUND, result.lookup.status)
+    assertEquals("TITLE_MISMATCH", result.step.reason)
+    assertTrue(result.resolvedIdentifiers.isEmpty())
+  }
+
+  @Test
   fun `日本語文字を含むタイトルだけNDL候補とする`() {
     assertTrue(isLikelyJapaneseBookTitle("子どもの感情コントロール"))
     assertEquals(false, isLikelyJapaneseBookTitle("Synthetic Book"))
