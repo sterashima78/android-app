@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(application = YomitoriApplication::class)
+@Config(sdk = [35], application = YomitoriApplication::class)
 class AppDatabaseSchemaTest {
   private lateinit var context: Context
   private var database: YomitoriDatabase? = null
