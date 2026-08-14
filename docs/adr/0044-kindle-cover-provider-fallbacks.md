@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Refines: ADR-0036, ADR-0041, ADR-0042, ADR-0043
+- Refines: ADR-0036, ADR-0041, ADR-0053, ADR-0043
 
 ## Context
 
@@ -67,5 +67,5 @@ NDL Search へ送信する情報は、表紙補完を明示的に有効化した
 
 - ADR-0036 の「表示メタデータ補完だけを外部通信とし、所有情報インポートを外部サービスに依存させない」原則を維持する。
 - ADR-0041 の「本文を保存せず、共有可能な構造化診断だけを残す」原則を Amazon の script 手掛かりへ拡張する。
-- ADR-0042 の Amazon → Google Books → Open Library と構造化診断を維持する。
+- ADR-0053 の Amazon → Google Books → Open Library と構造化診断を維持する。
 - ADR-0043 の書誌識別子、OAuth、書籍単位再試行方針を維持し、日本語書誌同定と短時間リトライを追加する。
