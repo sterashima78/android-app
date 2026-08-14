@@ -1,4 +1,4 @@
-# ADR-0047: ローカルAIの機能固有ポリシーをfeatureへ分離する
+# ADR-0056: ローカルAIの機能固有ポリシーをfeatureへ分離する
 
 - Status: Accepted
 - Date: 2026-08-14
