@@ -8,7 +8,7 @@ import dev.terashima.yomitorirss.feature.rss.data.rssDatabaseSchema
 import dev.terashima.yomitorirss.feature.summary.data.summaryDatabaseSchema
 
 internal val appDatabaseSchema = DatabaseSchema(
-  version = 12,
+  version = 13,
   contributions = listOf(
     rssDatabaseSchema,
     articleDatabaseSchema,
