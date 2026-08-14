@@ -2,7 +2,9 @@ package dev.terashima.yomitorirss.feature.x
 
 import android.view.MotionEvent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class XViewerScreenTest {
@@ -23,6 +25,37 @@ class XViewerScreenTest {
       "Mozilla/5.0 (Linux; Android 17; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36"
 
     assertEquals(browserUserAgent, browserUserAgent.toBrowserCompatibleUserAgent())
+  }
+
+  @Test
+  fun `X ドメインのメインフレーム遷移は WebView 内に残す`() {
+    assertFalse(shouldOpenXNavigationExternally("https://x.com/home", isForMainFrame = true))
+    assertFalse(shouldOpenXNavigationExternally("https://mobile.x.com/home", isForMainFrame = true))
+    assertFalse(shouldOpenXNavigationExternally("https://twitter.com/home", isForMainFrame = true))
+    assertFalse(shouldOpenXNavigationExternally("https://mobile.twitter.com/home", isForMainFrame = true))
+  }
+
+  @Test
+  fun `X 外のメインフレーム遷移は外部ブラウザーで開く`() {
+    assertTrue(shouldOpenXNavigationExternally("https://example.com/article", isForMainFrame = true))
+    assertTrue(shouldOpenXNavigationExternally("https://t.co/example", isForMainFrame = true))
+  }
+
+  @Test
+  fun `X に似た外部ドメインも外部ブラウザーで開く`() {
+    assertTrue(shouldOpenXNavigationExternally("https://x.com.example.com/", isForMainFrame = true))
+    assertTrue(shouldOpenXNavigationExternally("https://twitter.com.example.com/", isForMainFrame = true))
+  }
+
+  @Test
+  fun `サブフレームの外部 URL はブラウザー起動対象にしない`() {
+    assertFalse(shouldOpenXNavigationExternally("https://example.com/embed", isForMainFrame = false))
+  }
+
+  @Test
+  fun `HTTP 以外の URL はブラウザー起動対象にしない`() {
+    assertFalse(shouldOpenXNavigationExternally("about:blank", isForMainFrame = true))
+    assertFalse(shouldOpenXNavigationExternally("javascript:void(0)", isForMainFrame = true))
   }
 
   @Test
