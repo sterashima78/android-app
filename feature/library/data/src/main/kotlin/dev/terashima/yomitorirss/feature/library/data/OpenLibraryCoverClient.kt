@@ -74,7 +74,7 @@ internal class OpenLibraryCoverClient(
 
   private suspend fun lookupByTitle(book: LibraryBook): TracedCoverLookupResult {
     val title = searchableBookTitle(book.title)
-    if (title.isEmpty()) {
+    if (normalizedSearchableBookTitle(title).isEmpty()) {
       return TracedCoverLookupResult(
         CoverLookupResult(CoverLookupStatus.NOT_FOUND),
         CoverLookupTraceStep(
@@ -196,7 +196,7 @@ private fun selectOpenLibraryTitleCandidate(
   val authorMatches = volumeMatches.filter { candidate ->
     expectedAuthors.isEmpty() || candidate.authors.any { candidateAuthor ->
       val normalizedCandidate = normalizeBookText(candidateAuthor)
-      expectedAuthors.any { expectedAuthor ->
+      normalizedCandidate.isNotEmpty() && expectedAuthors.any { expectedAuthor ->
         normalizedCandidate == expectedAuthor ||
           normalizedCandidate.contains(expectedAuthor) ||
           expectedAuthor.contains(normalizedCandidate)
