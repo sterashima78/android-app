@@ -59,13 +59,13 @@ ADR-0003でDataから他featureのDataへの依存は許可されているため
 
 ### 既存データの互換性
 
-当初はユーザーが保存済みの要約promptを失わないよう、`SummaryPromptStore` が従来 `LocalModelManager` のSharedPreferences名 `local_summary_models` とkey `summary_prompt` をそのまま引き継いでいた。
+当初はユーザーが保存済みの要約promptを失わないよう、`SummaryPromptStore` が従来 `LocalModelManager` のSharedPreferences名 `local_summary_models` とkey `summary_prompt` を引き継ぎ、その後 ADR-0060 で `feature:summary:data` 専用の `summary_preferences` へ一度限りの自動移行を導入した。
 
-ADR-0060 によりこの暫定措置を終了し、`feature:summary:data` 専用の `summary_preferences` へ初回アクセス時に自動移行する。新保存先への書き込み成功後に旧keyを削除し、その後は新保存先だけを利用する。
+現行保存先への移行完了後、ADR-0060 の方針に従ってこのruntime migrationも削除した。現在の `SummaryPromptStore` は `summary_preferences` の `summary_prompt` だけを読み書きし、旧 `local_summary_models` の要約promptを参照しない。
 
-モデルファイルやbackend/Thinking設定の保存場所は変更しない。
+モデルファイルやbackend/Thinking設定の保存場所は変更しないため、`LocalModelManager` 自体が利用する `local_summary_models` SharedPreferencesは継続して存在する。
 
-`YomitoriApp` に残っていた旧 `SummaryProgress` helperとSummary domain側のsource compatibility shimは、ADR-0060 により予定どおり削除する。進捗表示はfeature固有の型だけを利用する。
+`YomitoriApp` に残っていた旧 `SummaryProgress` helperとSummary domain側のsource compatibility shimは、ADR-0060 により予定どおり削除した。進捗表示はfeature固有の型だけを利用する。
 
 ## Consequences
 
