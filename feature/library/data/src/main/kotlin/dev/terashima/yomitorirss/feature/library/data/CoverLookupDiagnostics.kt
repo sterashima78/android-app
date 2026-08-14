@@ -4,10 +4,25 @@ import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal enum class BookIdentifierRelation {
+  EXACT_EDITION,
+  SAME_WORK,
+}
+
+internal data class ResolvedBookIdentifier(
+  val type: String,
+  val value: String,
+  val relation: BookIdentifierRelation,
+  val source: String,
+)
+
 internal data class CoverLookupTraceStep(
   val provider: String,
   val status: CoverLookupStatus,
   val reason: String,
+  val operation: String = "COVER_LOOKUP",
+  val retryable: Boolean = false,
+  val retryAfterSeconds: Long? = null,
   val httpStatus: Int? = null,
   val responseBytes: Int? = null,
   val candidateCount: Int? = null,
@@ -21,6 +36,7 @@ internal data class CoverLookupTraceStep(
 internal data class TracedCoverLookupResult(
   val lookup: CoverLookupResult,
   val step: CoverLookupTraceStep,
+  val resolvedIdentifiers: List<ResolvedBookIdentifier> = emptyList(),
 )
 
 internal class CoverProviderIOException(
@@ -35,13 +51,19 @@ class KindleCoverEnrichmentException(
   cause: Throwable? = null,
 ) : IOException(message, cause)
 
-internal fun List<CoverLookupTraceStep>.toDiagnosticTrace(): String {
+internal fun List<CoverLookupTraceStep>.toDiagnosticTrace(
+  resolvedIdentifiers: List<ResolvedBookIdentifier> = emptyList(),
+  nextAttemptAtEpochMillis: Long? = null,
+): String {
   val stepsJson = JSONArray()
   take(MAX_TRACE_STEPS).forEach { step ->
     val json = JSONObject()
       .put("provider", step.provider.take(MAX_DIAGNOSTIC_VALUE_CHARS))
+      .put("operation", step.operation.take(MAX_DIAGNOSTIC_VALUE_CHARS))
       .put("status", step.status.name)
       .put("reason", step.reason.take(MAX_DIAGNOSTIC_VALUE_CHARS))
+      .put("retryable", step.retryable)
+    step.retryAfterSeconds?.let { json.put("retryAfterSeconds", it) }
     step.httpStatus?.let { json.put("httpStatus", it) }
     step.responseBytes?.let { json.put("responseBytes", it) }
     step.candidateCount?.let { json.put("candidateCount", it) }
@@ -61,14 +83,48 @@ internal fun List<CoverLookupTraceStep>.toDiagnosticTrace(): String {
     }
     stepsJson.put(json)
   }
-  return JSONObject()
-    .put("version", 1)
+
+  val root = JSONObject()
+    .put("version", 2)
     .put("steps", stepsJson)
-    .toString()
+
+  if (resolvedIdentifiers.isNotEmpty()) {
+    val identifiersJson = JSONArray()
+    resolvedIdentifiers.distinctBy { "${it.type}:${it.value}:${it.relation}:${it.source}" }
+      .take(MAX_RESOLVED_IDENTIFIERS)
+      .forEach { identifier ->
+        identifiersJson.put(
+          JSONObject()
+            .put("type", identifier.type.take(MAX_DIAGNOSTIC_VALUE_CHARS))
+            .put("value", identifier.value.take(MAX_DIAGNOSTIC_VALUE_CHARS))
+            .put("relation", identifier.relation.name)
+            .put("source", identifier.source.take(MAX_DIAGNOSTIC_VALUE_CHARS)),
+        )
+      }
+    root.put("resolvedIdentity", JSONObject().put("identifiers", identifiersJson))
+  }
+  nextAttemptAtEpochMillis?.let { root.put("nextAttemptAt", it) }
+  return root.toString()
+}
+
+internal fun String.toResolvedIsbn(
+  relation: BookIdentifierRelation,
+  source: String,
+): ResolvedBookIdentifier? {
+  val cleaned = cleanBookIsbn() ?: return null
+  return ResolvedBookIdentifier(
+    type = if (cleaned.length == 13) "ISBN_13" else "ISBN_10",
+    value = cleaned,
+    relation = relation,
+    source = source,
+  )
 }
 
 internal const val DIAGNOSTIC_TRACE_COLUMN = "diagnostic_trace"
-private const val MAX_TRACE_STEPS = 4
+internal const val RETRY_COUNT_COLUMN = "retry_count"
+internal const val NEXT_ATTEMPT_AT_COLUMN = "next_attempt_at"
+private const val MAX_TRACE_STEPS = 8
 private const val MAX_TRACE_ATTRIBUTES = 16
+private const val MAX_RESOLVED_IDENTIFIERS = 8
 private const val MAX_DIAGNOSTIC_KEY_CHARS = 64
 private const val MAX_DIAGNOSTIC_VALUE_CHARS = 256

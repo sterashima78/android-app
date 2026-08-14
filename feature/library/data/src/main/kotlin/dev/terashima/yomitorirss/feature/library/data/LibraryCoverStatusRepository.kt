@@ -23,7 +23,9 @@ class LibraryCoverStatusRepository(
                item.thumbnail_url AS source_thumbnail_url,
                metadata.thumbnail_url AS external_thumbnail_url,
                metadata.provider, metadata.lookup_status, metadata.updated_at,
-               metadata.diagnostic_detail, metadata.diagnostic_trace
+               metadata.diagnostic_detail, metadata.diagnostic_trace,
+               COALESCE(metadata.$RETRY_COUNT_COLUMN, 0) AS retry_count,
+               metadata.$NEXT_ATTEMPT_AT_COLUMN AS next_attempt_at
         FROM library_items AS item
         LEFT JOIN library_item_external_metadata AS metadata
           ON metadata.source = item.source AND metadata.source_id = item.source_id
@@ -35,6 +37,7 @@ class LibraryCoverStatusRepository(
       buildList {
         while (cursor.moveToNext()) {
           val updatedAt = cursor.nullableLong("updated_at")
+          val nextAttemptAt = cursor.nullableLong("next_attempt_at")
           val provider = cursor.nullableString("provider")
           val diagnosticDetail = cursor.nullableString("diagnostic_detail")
           add(
@@ -48,10 +51,13 @@ class LibraryCoverStatusRepository(
                 lookupStatus = cursor.nullableString("lookup_status"),
                 updatedAtEpochMillis = updatedAt,
                 staleBeforeEpochMillis = staleBefore,
+                nextAttemptAtEpochMillis = nextAttemptAt,
               ),
               provider = provider.withDiagnosticDetail(diagnosticDetail),
               lastAttemptAtEpochMillis = updatedAt,
               diagnosticTrace = cursor.nullableString(DIAGNOSTIC_TRACE_COLUMN),
+              retryCount = cursor.int("retry_count"),
+              nextAttemptAtEpochMillis = nextAttemptAt,
             ),
           )
         }
@@ -143,6 +149,8 @@ class LibraryCoverStatusRepository(
       diagnosticTrace?.sanitizeDiagnosticText(MAX_DIAGNOSTIC_TRACE_CHARS)
         ?.let { put(DIAGNOSTIC_TRACE_COLUMN, it) }
         ?: putNull(DIAGNOSTIC_TRACE_COLUMN)
+      put(RETRY_COUNT_COLUMN, 0)
+      putNull(NEXT_ATTEMPT_AT_COLUMN)
       put("updated_at", nowEpochMillis)
     }
     database.writable.insertWithOnConflict(
@@ -157,16 +165,18 @@ class LibraryCoverStatusRepository(
   private suspend fun ensureSchema() {
     if (schemaEnsured) return
     DefaultLibraryRepository(database).snapshot()
-    ensureDiagnosticColumn(DIAGNOSTIC_DETAIL_COLUMN)
-    ensureDiagnosticColumn(DIAGNOSTIC_TRACE_COLUMN)
+    ensureColumn(DIAGNOSTIC_DETAIL_COLUMN, "TEXT")
+    ensureColumn(DIAGNOSTIC_TRACE_COLUMN, "TEXT")
+    ensureColumn(RETRY_COUNT_COLUMN, "INTEGER NOT NULL DEFAULT 0")
+    ensureColumn(NEXT_ATTEMPT_AT_COLUMN, "INTEGER")
     schemaEnsured = true
   }
 
-  private fun ensureDiagnosticColumn(column: String) {
+  private fun ensureColumn(column: String, definition: String) {
     if (hasColumn(column)) return
     runCatching {
       database.writable.execSQL(
-        "ALTER TABLE library_item_external_metadata ADD COLUMN $column TEXT",
+        "ALTER TABLE library_item_external_metadata ADD COLUMN $column $definition",
       )
     }.getOrElse { error ->
       if (!hasColumn(column)) throw error
@@ -192,6 +202,7 @@ class LibraryCoverStatusRepository(
   }
 
   private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
+  private fun Cursor.int(name: String): Int = getInt(getColumnIndexOrThrow(name))
 
   private fun Cursor.nullableString(name: String): String? {
     val index = getColumnIndexOrThrow(name)
@@ -218,16 +229,22 @@ internal fun resolveLibraryCoverAcquisitionState(
   lookupStatus: String?,
   updatedAtEpochMillis: Long?,
   staleBeforeEpochMillis: Long,
+  nextAttemptAtEpochMillis: Long? = null,
 ): LibraryCoverAcquisitionState {
   if (!sourceThumbnailUrl.isNullOrBlank()) return LibraryCoverAcquisitionState.SOURCE_PROVIDED
   if (!externalThumbnailUrl.isNullOrBlank()) return LibraryCoverAcquisitionState.ACQUIRED
+  if (lookupStatus == CoverLookupStatus.ERROR.name) {
+    if (nextAttemptAtEpochMillis != null || updatedAtEpochMillis == null || updatedAtEpochMillis >= staleBeforeEpochMillis) {
+      return LibraryCoverAcquisitionState.ERROR
+    }
+    return LibraryCoverAcquisitionState.WAITING
+  }
   if (updatedAtEpochMillis == null || updatedAtEpochMillis < staleBeforeEpochMillis) {
     return LibraryCoverAcquisitionState.WAITING
   }
   return when (lookupStatus) {
     CoverLookupStatus.NOT_FOUND.name -> LibraryCoverAcquisitionState.NOT_FOUND
     CoverLookupStatus.AMBIGUOUS.name -> LibraryCoverAcquisitionState.AMBIGUOUS
-    CoverLookupStatus.ERROR.name -> LibraryCoverAcquisitionState.NOT_FOUND
     else -> LibraryCoverAcquisitionState.WAITING
   }
 }

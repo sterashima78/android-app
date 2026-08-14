@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
+import dev.terashima.yomitorirss.core.network.HttpResponse
 import java.net.URI
 import java.util.Locale
 import org.json.JSONObject
@@ -48,12 +49,15 @@ internal class KindleAmazonCoverClient(
       )
     }
     if (!response.isSuccessful) {
+      val retryable = isRetryableAmazonStatus(response.statusCode)
       throw CoverProviderIOException(
         "Amazon 商品ページの取得に失敗しました (${response.statusCode})",
         CoverLookupTraceStep(
           provider = AMAZON_PROVIDER,
           status = CoverLookupStatus.ERROR,
-          reason = if (isRetryableAmazonStatus(response.statusCode)) "HTTP_RETRYABLE" else "HTTP_ERROR",
+          reason = if (retryable) "HTTP_RETRYABLE" else "HTTP_ERROR",
+          retryable = retryable,
+          retryAfterSeconds = response.retryAfterSeconds(),
           httpStatus = response.statusCode,
           responseBytes = response.body.size,
         ),
@@ -128,7 +132,7 @@ internal class KindleAmazonCoverClient(
     asin: String,
     imageUrl: String,
     provider: KindleCoverProvider,
-    response: dev.terashima.yomitorirss.core.network.HttpResponse,
+    response: HttpResponse,
     attributes: Map<String, String>,
   ): KindleCoverLookupResult = KindleCoverLookupResult(
     lookup = CoverLookupResult(
@@ -178,6 +182,7 @@ internal class KindleAmazonCoverClient(
     provider = AMAZON_PROVIDER,
     status = CoverLookupStatus.ERROR,
     reason = reason,
+    retryable = true,
     httpStatus = httpStatus,
     responseBytes = responseBytes,
     attributes = attributes,
@@ -301,6 +306,13 @@ private fun isTrustedAmazonImageUrl(url: String): Boolean {
   }
   return trustedHost && uri.path.orEmpty().contains("/images/I/", ignoreCase = true)
 }
+
+private fun HttpResponse.retryAfterSeconds(): Long? = headers.entries
+  .firstOrNull { (name, _) -> name.equals("Retry-After", ignoreCase = true) }
+  ?.value
+  ?.firstOrNull()
+  ?.trim()
+  ?.toLongOrNull()
 
 private fun String.decodeHtmlEntities(): String =
   replace("&amp;", "&")

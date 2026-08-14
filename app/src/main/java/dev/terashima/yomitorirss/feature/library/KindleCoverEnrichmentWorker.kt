@@ -11,10 +11,8 @@ import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
-import dev.terashima.yomitorirss.feature.library.data.KindleCoverEnrichmentException
+import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.KindleCoverEnrichmentRepository
-import dev.terashima.yomitorirss.feature.library.data.LibraryCoverStatusRepository
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 
@@ -27,19 +25,19 @@ internal class KindleCoverEnrichmentScheduler(context: Context) {
     if (enabled) schedule() else cancel()
   }
 
-  fun schedule() {
+  fun schedule(force: Boolean = false) {
     workManager.enqueueUniqueWork(
       WORK_NAME,
-      ExistingWorkPolicy.KEEP,
+      if (force) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
       request(),
     )
   }
 
-  private fun scheduleContinuation() {
+  private fun scheduleContinuation(delayMillis: Long) {
     workManager.enqueueUniqueWork(
       WORK_NAME,
       ExistingWorkPolicy.APPEND,
-      request(initialDelayMillis = CONTINUATION_DELAY_MILLIS),
+      request(initialDelayMillis = delayMillis),
     )
   }
 
@@ -58,8 +56,13 @@ internal class KindleCoverEnrichmentScheduler(context: Context) {
     private const val WORK_NAME = "kindle-cover-enrichment"
     private const val CONTINUATION_DELAY_MILLIS = 1_100L
 
-    fun continueAfterBatch(context: Context) {
-      KindleCoverEnrichmentScheduler(context).scheduleContinuation()
+    fun continueAfterBatch(
+      context: Context,
+      delayMillis: Long = CONTINUATION_DELAY_MILLIS,
+    ) {
+      KindleCoverEnrichmentScheduler(context).scheduleContinuation(
+        delayMillis.coerceAtLeast(CONTINUATION_DELAY_MILLIS),
+      )
     }
   }
 }
@@ -76,28 +79,20 @@ class KindleCoverEnrichmentWorker(
 
     val database = YomitoriDatabase.create(applicationContext)
     val connection = DatabaseConnection(database)
-    val repository = KindleCoverEnrichmentRepository(connection)
-    val coverStatusRepository = LibraryCoverStatusRepository(connection)
+    val authorizationManager = GoogleBooksAuthorizationManager(applicationContext)
+    val repository = KindleCoverEnrichmentRepository(
+      database = connection,
+      googleBooksAccessTokenProvider = authorizationManager::existingAccessTokenOrNull,
+    )
     return try {
       if (repository.enrichNext()) {
         KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
+      } else {
+        repository.nextWakeDelayMillis()?.let { delayMillis ->
+          KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext, delayMillis)
+        }
       }
       Result.success()
-    } catch (error: IOException) {
-      if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
-        Result.retry()
-      } else {
-        val trace = (error as? KindleCoverEnrichmentException)?.diagnosticTrace
-        if (
-          coverStatusRepository.markNextKindleCoverLookupError(
-            detail = error.message,
-            diagnosticTrace = trace,
-          )
-        ) {
-          KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
-        }
-        Result.success()
-      }
     } catch (error: CancellationException) {
       throw error
     } catch (_: Throwable) {
@@ -105,9 +100,5 @@ class KindleCoverEnrichmentWorker(
     } finally {
       database.close()
     }
-  }
-
-  private companion object {
-    const val MAX_RETRY_ATTEMPTS = 2
   }
 }

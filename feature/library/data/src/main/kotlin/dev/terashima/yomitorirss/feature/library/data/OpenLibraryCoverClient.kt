@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
+import dev.terashima.yomitorirss.core.network.HttpResponse
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -32,27 +33,38 @@ internal class OpenLibraryCoverClient(
     return if (isbn != null) lookupByIsbn(isbn) else lookupByTitle(book)
   }
 
-  private suspend fun lookupByIsbn(isbn: String): TracedCoverLookupResult {
-    val response = search(query = "isbn:$isbn", limit = ISBN_RESULT_LIMIT)
+  internal suspend fun lookupByIsbn(isbn: String): TracedCoverLookupResult {
+    val cleanedIsbn = isbn.cleanBookIsbn() ?: return TracedCoverLookupResult(
+      lookup = CoverLookupResult(CoverLookupStatus.NOT_FOUND),
+      step = CoverLookupTraceStep(
+        provider = OPEN_LIBRARY_PROVIDER,
+        status = CoverLookupStatus.NOT_FOUND,
+        reason = "INVALID_ISBN",
+        attributes = mapOf("searchMode" to "ISBN"),
+      ),
+    )
+    val response = search(query = "isbn:$cleanedIsbn", limit = ISBN_RESULT_LIMIT)
     response.terminalError?.let { step ->
       return TracedCoverLookupResult(CoverLookupResult(CoverLookupStatus.ERROR), step)
     }
-    val withCover = response.candidates.filter { it.coverId != null }
-    val exact = withCover.filter { candidate ->
-      candidate.isbns.any { it.cleanBookIsbn() == isbn }
-    }.distinctBy(OpenLibraryCandidate::coverId)
-    val lookup = when (exact.size) {
+    val exact = response.candidates.filter { candidate ->
+      candidate.isbns.any { it.cleanBookIsbn() == cleanedIsbn }
+    }
+    val coverIds = exact.mapNotNull(OpenLibraryCandidate::coverId).distinct()
+    val lookup = when (coverIds.size) {
       0 -> CoverLookupResult(CoverLookupStatus.NOT_FOUND)
-      1 -> {
-        val match = exact.single()
-        CoverLookupResult(
-          status = CoverLookupStatus.FOUND,
-          thumbnailUrl = "$COVER_BASE_URL/id/${match.coverId}-L.jpg",
-          matchedIdentifier = "ISBN:$isbn",
-        )
-      }
+      1 -> CoverLookupResult(
+        status = CoverLookupStatus.FOUND,
+        thumbnailUrl = "$COVER_BASE_URL/id/${coverIds.single()}-L.jpg",
+        matchedIdentifier = "ISBN:$cleanedIsbn",
+      )
       else -> CoverLookupResult(CoverLookupStatus.AMBIGUOUS)
     }
+    val resolvedIdentifiers = exact.flatMap { candidate ->
+      candidate.isbns.mapNotNull {
+        it.toResolvedIsbn(BookIdentifierRelation.EXACT_EDITION, OPEN_LIBRARY_PROVIDER)
+      }
+    }.distinctBy { "${it.type}:${it.value}" }
     return TracedCoverLookupResult(
       lookup = lookup,
       step = CoverLookupTraceStep(
@@ -61,18 +73,22 @@ internal class OpenLibraryCoverClient(
         reason = when (lookup.status) {
           CoverLookupStatus.FOUND -> "ISBN_MATCH"
           CoverLookupStatus.AMBIGUOUS -> "MULTIPLE_ISBN_COVER_MATCHES"
-          else -> "ISBN_COVER_MATCH_NOT_FOUND"
+          else -> if (exact.isNotEmpty()) "MATCHED_BOOK_WITHOUT_COVER" else "ISBN_MATCH_NOT_FOUND"
         },
         httpStatus = response.httpStatus,
         responseBytes = response.responseBytes,
         candidateCount = response.candidates.size,
-        coverCandidateCount = withCover.size,
-        attributes = mapOf("searchMode" to "ISBN"),
+        coverCandidateCount = response.candidates.count { it.coverId != null },
+        attributes = mapOf(
+          "searchMode" to "ISBN",
+          "matchRelation" to BookIdentifierRelation.EXACT_EDITION.name,
+        ),
       ),
+      resolvedIdentifiers = resolvedIdentifiers,
     )
   }
 
-  private suspend fun lookupByTitle(book: LibraryBook): TracedCoverLookupResult {
+  internal suspend fun lookupByTitle(book: LibraryBook): TracedCoverLookupResult {
     val title = searchableBookTitle(book.title)
     if (normalizedSearchableBookTitle(title).isEmpty()) {
       return TracedCoverLookupResult(
@@ -81,6 +97,7 @@ internal class OpenLibraryCoverClient(
           provider = OPEN_LIBRARY_PROVIDER,
           status = CoverLookupStatus.NOT_FOUND,
           reason = "EMPTY_TITLE",
+          operation = "BIBLIOGRAPHIC_SEARCH",
         ),
       )
     }
@@ -106,14 +123,17 @@ internal class OpenLibraryCoverClient(
       HttpRequest(url = url, headers = mapOf("Accept" to "application/json")),
     )
     if (!response.isSuccessful) {
+      val retryable = isRetryableOpenLibraryStatus(response.statusCode)
       val step = CoverLookupTraceStep(
         provider = OPEN_LIBRARY_PROVIDER,
         status = CoverLookupStatus.ERROR,
-        reason = if (isRetryableOpenLibraryStatus(response.statusCode)) "HTTP_RETRYABLE" else "HTTP_ERROR",
+        reason = if (retryable) "HTTP_RETRYABLE" else "HTTP_ERROR",
+        retryable = retryable,
+        retryAfterSeconds = response.retryAfterSeconds(),
         httpStatus = response.statusCode,
         responseBytes = response.body.size,
       )
-      if (isRetryableOpenLibraryStatus(response.statusCode)) {
+      if (retryable) {
         throw CoverProviderIOException(
           "Open Library の一時的な検索エラー (${response.statusCode})",
           step,
@@ -135,6 +155,7 @@ internal class OpenLibraryCoverClient(
             provider = OPEN_LIBRARY_PROVIDER,
             status = CoverLookupStatus.ERROR,
             reason = "PARSE_ERROR",
+            retryable = true,
             httpStatus = response.statusCode,
             responseBytes = response.body.size,
           ),
@@ -183,13 +204,13 @@ private fun selectOpenLibraryTitleCandidate(
         provider = OPEN_LIBRARY_PROVIDER,
         status = CoverLookupStatus.NOT_FOUND,
         reason = "EMPTY_TITLE",
+        operation = "BIBLIOGRAPHIC_SEARCH",
       ),
     )
   }
   val expectedAuthors = book.authors.map(::normalizeBookText).filter(String::isNotEmpty).toSet()
   val expectedVolume = explicitVolumeNumber(book.title)
-  val withCover = response.candidates.filter { it.coverId != null }
-  val titleMatches = withCover.filter { normalizedSearchableBookTitle(it.title) == expectedTitle }
+  val titleMatches = response.candidates.filter { normalizedSearchableBookTitle(it.title) == expectedTitle }
   val volumeMatches = titleMatches.filter { candidate ->
     expectedVolume == null || explicitVolumeNumber(candidate.title) == expectedVolume
   }
@@ -202,44 +223,56 @@ private fun selectOpenLibraryTitleCandidate(
           expectedAuthor.contains(normalizedCandidate)
       }
     }
-  }.distinctBy(OpenLibraryCandidate::coverId)
+  }.distinctBy { candidate -> candidate.key ?: "${candidate.title}:${candidate.authors.joinToString()}" }
 
   val lookup = when (authorMatches.size) {
     0 -> CoverLookupResult(CoverLookupStatus.NOT_FOUND)
     1 -> {
       val match = authorMatches.single()
-      CoverLookupResult(
-        status = CoverLookupStatus.FOUND,
-        thumbnailUrl = "$COVER_BASE_URL/id/${match.coverId}-L.jpg",
-        matchedIdentifier = match.key,
-      )
+      if (match.coverId == null) {
+        CoverLookupResult(CoverLookupStatus.NOT_FOUND)
+      } else {
+        CoverLookupResult(
+          status = CoverLookupStatus.FOUND,
+          thumbnailUrl = "$COVER_BASE_URL/id/${match.coverId}-L.jpg",
+          matchedIdentifier = match.key,
+        )
+      }
     }
     else -> CoverLookupResult(CoverLookupStatus.AMBIGUOUS)
   }
   val reason = when {
     lookup.status == CoverLookupStatus.FOUND -> "TITLE_AUTHOR_MATCH"
     lookup.status == CoverLookupStatus.AMBIGUOUS -> "MULTIPLE_HIGH_CONFIDENCE_MATCHES"
-    withCover.isEmpty() -> "NO_COVER_CANDIDATES"
     titleMatches.isEmpty() -> "TITLE_MISMATCH"
     volumeMatches.isEmpty() -> "VOLUME_MISMATCH"
     authorMatches.isEmpty() -> "AUTHOR_MISMATCH"
+    authorMatches.singleOrNull()?.coverId == null -> "MATCHED_BOOK_WITHOUT_COVER"
     else -> "NOT_FOUND"
   }
+  val resolvedIdentifiers = authorMatches.singleOrNull()?.isbns.orEmpty()
+    .mapNotNull { it.toResolvedIsbn(BookIdentifierRelation.SAME_WORK, OPEN_LIBRARY_PROVIDER) }
+    .distinctBy { "${it.type}:${it.value}" }
   return TracedCoverLookupResult(
     lookup = lookup,
     step = CoverLookupTraceStep(
       provider = OPEN_LIBRARY_PROVIDER,
       status = lookup.status,
       reason = reason,
+      operation = "BIBLIOGRAPHIC_SEARCH",
       httpStatus = response.httpStatus,
       responseBytes = response.responseBytes,
       candidateCount = response.candidates.size,
-      coverCandidateCount = withCover.size,
+      coverCandidateCount = response.candidates.count { it.coverId != null },
       titleMatchCount = titleMatches.size,
       volumeMatchCount = volumeMatches.size,
       authorMatchCount = authorMatches.size,
-      attributes = mapOf("searchMode" to "TITLE_AUTHOR"),
+      attributes = mapOf(
+        "searchMode" to "TITLE_AUTHOR",
+        "matchRelation" to BookIdentifierRelation.SAME_WORK.name,
+      ),
     ),
+    resolvedIdentifiers = resolvedIdentifiers,
   )
 }
 
@@ -305,6 +338,13 @@ internal fun String?.cleanBookIsbn(): String? = this
   ?.filter(Char::isLetterOrDigit)
   ?.uppercase(Locale.ROOT)
   ?.takeIf { it.length == 10 || it.length == 13 }
+
+private fun HttpResponse.retryAfterSeconds(): Long? = headers.entries
+  .firstOrNull { (name, _) -> name.equals("Retry-After", ignoreCase = true) }
+  ?.value
+  ?.firstOrNull()
+  ?.trim()
+  ?.toLongOrNull()
 
 private fun String.urlEncode(): String = URLEncoder.encode(this, StandardCharsets.UTF_8.name())
 

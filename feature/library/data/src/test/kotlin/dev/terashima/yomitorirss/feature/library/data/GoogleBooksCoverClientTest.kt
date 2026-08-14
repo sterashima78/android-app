@@ -38,12 +38,14 @@ class GoogleBooksCoverClientTest {
         title = "Synthetic Parenting Book (Japanese Edition)",
         authors = listOf("Example Author"),
       ),
+      accessToken = TEST_ACCESS_TOKEN,
     )
 
     assertEquals(CoverLookupStatus.FOUND, result.lookup.status)
     assertEquals("https://books.google.com/synthetic-cover.jpg", result.lookup.thumbnailUrl)
     assertEquals("TITLE_AUTHOR_MATCH", result.step.reason)
     assertFalse(httpClient.lastRequest?.url.orEmpty().contains("Japanese+Edition"))
+    assertEquals("Bearer $TEST_ACCESS_TOKEN", httpClient.lastRequest?.headers?.get("Authorization"))
   }
 
   @Test
@@ -67,6 +69,7 @@ class GoogleBooksCoverClientTest {
 
     val result = GoogleBooksCoverClient(httpClient).lookup(
       book(title = "Synthetic Book", authors = listOf("Expected Author")),
+      accessToken = TEST_ACCESS_TOKEN,
     )
 
     assertEquals(CoverLookupStatus.NOT_FOUND, result.lookup.status)
@@ -100,12 +103,60 @@ class GoogleBooksCoverClientTest {
 
     val result = GoogleBooksCoverClient(httpClient).lookup(
       book(title = "Synthetic Book", authors = emptyList(), isbn13 = isbn),
+      accessToken = TEST_ACCESS_TOKEN,
     )
 
     assertEquals(CoverLookupStatus.FOUND, result.lookup.status)
     assertEquals("ISBN_MATCH", result.step.reason)
     assertEquals("ISBN", result.step.attributes["searchMode"])
     assertTrue(httpClient.lastRequest?.url.orEmpty().contains("isbn%3A$isbn"))
+  }
+
+  @Test
+  fun `表紙なしの高信頼候補からISBNを解決する`() = runBlocking {
+    val isbn = "9781234567897"
+    val httpClient = RecordingHttpClient(
+      body = """
+        {
+          "items": [
+            {
+              "id": "synthetic-volume",
+              "volumeInfo": {
+                "title": "Synthetic Book",
+                "authors": ["Example Author"],
+                "industryIdentifiers": [
+                  {"type": "ISBN_13", "identifier": "$isbn"}
+                ]
+              }
+            }
+          ]
+        }
+      """.trimIndent(),
+    )
+
+    val result = GoogleBooksCoverClient(httpClient).lookupByTitle(
+      book(title = "Synthetic Book", authors = listOf("Example Author")),
+      accessToken = TEST_ACCESS_TOKEN,
+    )
+
+    assertEquals(CoverLookupStatus.NOT_FOUND, result.lookup.status)
+    assertEquals("MATCHED_BOOK_WITHOUT_COVER", result.step.reason)
+    assertEquals(isbn, result.resolvedIdentifiers.single().value)
+    assertEquals(BookIdentifierRelation.SAME_WORK, result.resolvedIdentifiers.single().relation)
+  }
+
+  @Test
+  fun `認可済みトークンがない場合は通信せずスキップする`() = runBlocking {
+    val httpClient = RecordingHttpClient(body = "{}")
+
+    val result = GoogleBooksCoverClient(httpClient).lookup(
+      book(title = "Synthetic Book", authors = listOf("Example Author")),
+      accessToken = null,
+    )
+
+    assertEquals(CoverLookupStatus.ERROR, result.lookup.status)
+    assertEquals("AUTH_UNAVAILABLE", result.step.reason)
+    assertEquals(0, httpClient.requestCount)
   }
 
   private fun book(
@@ -131,8 +182,10 @@ class GoogleBooksCoverClientTest {
     private val statusCode: Int = 200,
   ) : HttpClient {
     var lastRequest: HttpRequest? = null
+    var requestCount: Int = 0
 
     override suspend fun execute(request: HttpRequest): HttpResponse {
+      requestCount++
       lastRequest = request
       return HttpResponse(
         statusCode = statusCode,
@@ -142,5 +195,9 @@ class GoogleBooksCoverClientTest {
         body = body.toByteArray(),
       )
     }
+  }
+
+  private companion object {
+    const val TEST_ACCESS_TOKEN = "synthetic-access-token"
   }
 }

@@ -41,14 +41,19 @@ fun LibraryCoverQueueScreen(
   val visibleItems = snapshot.items.filter { item ->
     when (filter) {
       CoverQueueFilter.QUEUE -> item.state == LibraryCoverAcquisitionState.WAITING
-      CoverQueueFilter.UNRESOLVED -> item.state == LibraryCoverAcquisitionState.NOT_FOUND || item.state == LibraryCoverAcquisitionState.AMBIGUOUS
+      CoverQueueFilter.UNRESOLVED -> item.state == LibraryCoverAcquisitionState.NOT_FOUND ||
+        item.state == LibraryCoverAcquisitionState.AMBIGUOUS ||
+        item.state == LibraryCoverAcquisitionState.ERROR
       CoverQueueFilter.ACQUIRED -> item.state == LibraryCoverAcquisitionState.ACQUIRED || item.state == LibraryCoverAcquisitionState.SOURCE_PROVIDED
       CoverQueueFilter.ALL -> true
     }
   }
   val active = workStates.values.any { it == LibraryCoverWorkState.WAITING || it == LibraryCoverWorkState.RUNNING || it == LibraryCoverWorkState.RETRY_WAITING }
   val retryable = !active && snapshot.items.any { item ->
-    (item.state == LibraryCoverAcquisitionState.WAITING || item.state == LibraryCoverAcquisitionState.NOT_FOUND || item.state == LibraryCoverAcquisitionState.AMBIGUOUS) &&
+    (item.state == LibraryCoverAcquisitionState.WAITING ||
+      item.state == LibraryCoverAcquisitionState.NOT_FOUND ||
+      item.state == LibraryCoverAcquisitionState.AMBIGUOUS ||
+      item.state == LibraryCoverAcquisitionState.ERROR) &&
       workStates[item.source] != LibraryCoverWorkState.DISABLED
   }
 
@@ -84,7 +89,7 @@ fun LibraryCoverQueueScreen(
       message?.let { item { Text(it, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall) } }
       item {
         Text(
-          "未取得の行では各取得経路の結果と候補の絞り込み状況を確認できます。「診断情報をコピー」で共有すると、HTMLやAPIレスポンス本文を保存せずに原因を調査できます。",
+          "未取得の行では各取得経路の結果と候補の絞り込み状況を確認できます。一時エラーは書籍単位で再試行時刻を持ち、後続書籍の取得を止めません。「診断情報をコピー」で共有すると、HTMLやAPIレスポンス本文を保存せずに原因を調査できます。",
           Modifier.padding(16.dp),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -140,6 +145,7 @@ private fun CoverSummary(snapshot: LibraryCoverAcquisitionSnapshot) {
       Text("取得待ち ${snapshot.count(LibraryCoverAcquisitionState.WAITING)} 件")
       Text("取得済み ${snapshot.count(LibraryCoverAcquisitionState.ACQUIRED)} 件 / 元データあり ${snapshot.count(LibraryCoverAcquisitionState.SOURCE_PROVIDED)} 件")
       Text("見つからない ${snapshot.count(LibraryCoverAcquisitionState.NOT_FOUND)} 件 / 候補不明 ${snapshot.count(LibraryCoverAcquisitionState.AMBIGUOUS)} 件")
+      Text("取得エラー ${snapshot.count(LibraryCoverAcquisitionState.ERROR)} 件")
     }
   }
 }
@@ -148,7 +154,15 @@ private fun itemDetails(item: LibraryCoverAcquisitionItem): String = buildString
   append("${item.source.label} · ${stateLabel(item.state)}")
   item.lastAttemptAtEpochMillis?.let { append(" · 最終試行 ${formatAttempt(it)}") }
   item.provider?.let { append("\n取得経路/詳細: ${providerLabel(it)}") }
-  if (item.state == LibraryCoverAcquisitionState.NOT_FOUND || item.state == LibraryCoverAcquisitionState.AMBIGUOUS) {
+  if (item.state == LibraryCoverAcquisitionState.ERROR) {
+    if (item.retryCount > 0) append("\n再試行回数: ${item.retryCount}")
+    item.nextAttemptAtEpochMillis?.let { append("\n次回試行: ${formatAttempt(it)}") }
+  }
+  if (
+    item.state == LibraryCoverAcquisitionState.NOT_FOUND ||
+    item.state == LibraryCoverAcquisitionState.AMBIGUOUS ||
+    item.state == LibraryCoverAcquisitionState.ERROR
+  ) {
     append("\nsourceId=${item.sourceId}")
     append("\n推定: ${failureHint(item)}")
     append("\n調査対象: ${lookupTarget(item)}")
@@ -156,38 +170,50 @@ private fun itemDetails(item: LibraryCoverAcquisitionItem): String = buildString
 }
 
 private fun diagnosticSummary(trace: String): String = runCatching {
-  val steps = JSONObject(trace).optJSONArray("steps") ?: return@runCatching "診断ログあり"
+  val root = JSONObject(trace)
+  val steps = root.optJSONArray("steps") ?: return@runCatching "診断ログあり"
   buildList {
     for (index in 0 until steps.length()) {
       val step = steps.optJSONObject(index) ?: continue
       val provider = diagnosticProviderLabel(step.optString("provider"))
+      val operation = step.optString("operation").takeIf(String::isNotBlank)
       val status = step.optString("status")
       val reason = step.optString("reason")
       val candidateCount = if (step.has("candidateCount")) step.optInt("candidateCount") else null
       val titleMatches = if (step.has("titleMatchCount")) step.optInt("titleMatchCount") else null
       val authorMatches = if (step.has("authorMatchCount")) step.optInt("authorMatchCount") else null
+      val retryAfter = if (step.has("retryAfterSeconds")) step.optLong("retryAfterSeconds") else null
       add(
         buildString {
           append(provider)
+          operation?.let { append(" [$it]") }
           append(": $status / $reason")
           candidateCount?.let { append(" · 候補 $it") }
           titleMatches?.let { append(" · タイトル一致 $it") }
           authorMatches?.let { append(" · 著者一致 $it") }
+          retryAfter?.let { append(" · Retry-After ${it}秒") }
         },
       )
+    }
+    root.optJSONObject("resolvedIdentity")?.optJSONArray("identifiers")?.let { identifiers ->
+      if (identifiers.length() > 0) {
+        add("書誌識別子 ${identifiers.length()} 件を解決")
+      }
     }
   }.joinToString("\n")
 }.getOrElse { "診断ログあり" }
 
 private fun copyDiagnostics(context: Context, item: LibraryCoverAcquisitionItem) {
   val report = buildString {
-    appendLine("cover-diagnostic v1")
+    appendLine("cover-diagnostic v2")
     appendLine("source=${item.source.name}")
     appendLine("sourceId=${item.sourceId}")
     appendLine("title=${item.title}")
     appendLine("state=${item.state.name}")
     item.provider?.let { appendLine("provider=$it") }
     item.lastAttemptAtEpochMillis?.let { appendLine("lastAttemptAt=$it") }
+    if (item.retryCount > 0) appendLine("retryCount=${item.retryCount}")
+    item.nextAttemptAtEpochMillis?.let { appendLine("nextAttemptAt=$it") }
     item.diagnosticTrace?.let { appendLine("trace=$it") }
   }.trimEnd()
   val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -195,6 +221,7 @@ private fun copyDiagnostics(context: Context, item: LibraryCoverAcquisitionItem)
 }
 
 private fun failureHint(item: LibraryCoverAcquisitionItem): String = when {
+  item.state == LibraryCoverAcquisitionState.ERROR -> "一時的または取得経路固有のエラー。診断ログの provider / reason と次回試行時刻を確認"
   item.state == LibraryCoverAcquisitionState.AMBIGUOUS -> "候補が複数。タイトル・著者・巻数の照合条件を確認"
   item.provider == "GOOGLE_BOOKS" -> "Amazon商品ページで取得できず、Google Booksでは候補を絞れたが最終確定できなかった可能性"
   item.provider == "OPEN_LIBRARY" -> "Amazon商品ページとGoogle Booksで取得できず、Open Libraryでも一致する表紙を特定できなかった可能性"
@@ -218,6 +245,7 @@ private fun stateLabel(state: LibraryCoverAcquisitionState): String = when (stat
   LibraryCoverAcquisitionState.WAITING -> "取得待ち"
   LibraryCoverAcquisitionState.NOT_FOUND -> "見つからない"
   LibraryCoverAcquisitionState.AMBIGUOUS -> "候補を特定できない"
+  LibraryCoverAcquisitionState.ERROR -> "取得エラー"
 }
 
 private fun workStateLabel(state: LibraryCoverWorkState): String = when (state) {
