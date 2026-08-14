@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.library.KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
@@ -11,6 +12,7 @@ import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySourceState
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
+import dev.terashima.yomitorirss.feature.library.isKindlePersonalDocument
 import java.io.InputStream
 import org.json.JSONArray
 
@@ -146,12 +148,38 @@ class DefaultLibraryRepository(
     input: InputStream,
   ): LibrarySyncResult {
     ensureSchema()
-    val books = when (source) {
-      LibrarySource.KINDLE -> kindleWebLibraryImporter.parse(fileName, input)
-      LibrarySource.AUDIBLE -> audibleWebLibraryImporter.parse(fileName, input)
+    return when (source) {
+      LibrarySource.KINDLE -> replaceKindleItems(kindleWebLibraryImporter.parse(fileName, input))
+      LibrarySource.AUDIBLE -> replaceSource(
+        source = source,
+        books = audibleWebLibraryImporter.parse(fileName, input),
+        accountLabel = null,
+      )
       LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
     }
-    return replaceSource(source = source, books = books, accountLabel = null)
+  }
+
+  private fun replaceKindleItems(books: List<LibraryBook>): LibrarySyncResult {
+    val personalDocuments = books.filter(LibraryBook::isKindlePersonalDocument)
+    require(personalDocuments.isEmpty() || personalDocuments.size == books.size) {
+      "Kindle 通常本と Personal Document が混在したインポートはできません"
+    }
+    val isPersonalDocumentImport = personalDocuments.isNotEmpty()
+    val syncedAt = System.currentTimeMillis()
+    database.transaction {
+      val prefixPattern = "$KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX%"
+      val where = if (isPersonalDocumentImport) {
+        "source = ? AND source_id LIKE ?"
+      } else {
+        "source = ? AND source_id NOT LIKE ?"
+      }
+      delete("library_items", where, arrayOf(LibrarySource.KINDLE.name, prefixPattern))
+      books.forEach { book ->
+        insertOrThrow("library_items", null, book.toValues(syncedAt))
+      }
+      updateSourceState(LibrarySource.KINDLE, accountLabel = null, syncedAt = syncedAt)
+    }
+    return LibrarySyncResult(importedCount = books.size, syncedAtEpochMillis = syncedAt)
   }
 
   private fun replaceSource(
@@ -165,19 +193,27 @@ class DefaultLibraryRepository(
       books.forEach { book ->
         insertOrThrow("library_items", null, book.toValues(syncedAt))
       }
-      val sourceValues = ContentValues().apply {
-        put("source", source.name)
-        accountLabel?.let { put("account_label", it) } ?: putNull("account_label")
-        put("last_synced_at", syncedAt)
-      }
-      insertWithOnConflict(
-        "library_sources",
-        null,
-        sourceValues,
-        SQLiteDatabase.CONFLICT_REPLACE,
-      )
+      updateSourceState(source, accountLabel, syncedAt)
     }
     return LibrarySyncResult(importedCount = books.size, syncedAtEpochMillis = syncedAt)
+  }
+
+  private fun SQLiteDatabase.updateSourceState(
+    source: LibrarySource,
+    accountLabel: String?,
+    syncedAt: Long,
+  ) {
+    val sourceValues = ContentValues().apply {
+      put("source", source.name)
+      accountLabel?.let { put("account_label", it) } ?: putNull("account_label")
+      put("last_synced_at", syncedAt)
+    }
+    insertWithOnConflict(
+      "library_sources",
+      null,
+      sourceValues,
+      SQLiteDatabase.CONFLICT_REPLACE,
+    )
   }
 
   private fun queryBooks(hidden: Boolean): List<LibraryBook> {
