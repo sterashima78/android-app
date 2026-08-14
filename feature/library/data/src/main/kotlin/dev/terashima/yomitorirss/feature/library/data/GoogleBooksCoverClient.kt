@@ -76,6 +76,7 @@ internal class GoogleBooksCoverClient(
         attributes = mapOf(
           "searchMode" to "ISBN",
           "matchRelation" to BookIdentifierRelation.EXACT_EDITION.name,
+          "requestAttempts" to response.requestAttempts.toString(),
         ),
       ),
       resolvedIdentifiers = resolvedIdentifiers,
@@ -124,6 +125,7 @@ internal class GoogleBooksCoverClient(
         candidates = emptyList(),
         httpStatus = null,
         responseBytes = 0,
+        requestAttempts = 0,
         terminalError = CoverLookupTraceStep(
           provider = GOOGLE_BOOKS_PROVIDER,
           status = CoverLookupStatus.ERROR,
@@ -134,15 +136,23 @@ internal class GoogleBooksCoverClient(
     }
 
     val url = "$SEARCH_URL?q=${query.urlEncode()}&maxResults=$limit"
-    val response = httpClient.execute(
-      HttpRequest(
-        url = url,
-        headers = mapOf(
-          "Accept" to "application/json",
-          "Authorization" to "Bearer $accessToken",
-        ),
+    val request = HttpRequest(
+      url = url,
+      headers = mapOf(
+        "Accept" to "application/json",
+        "Authorization" to "Bearer $accessToken",
       ),
     )
+    var requestAttempts = 0
+    var response: HttpResponse
+    do {
+      requestAttempts++
+      response = httpClient.execute(request)
+    } while (
+      requestAttempts < MAX_IMMEDIATE_REQUEST_ATTEMPTS &&
+      response.statusCode in IMMEDIATE_RETRY_STATUSES
+    )
+
     if (!response.isSuccessful) {
       val retryable = isRetryableGoogleBooksStatus(response.statusCode)
       val step = CoverLookupTraceStep(
@@ -153,6 +163,7 @@ internal class GoogleBooksCoverClient(
         retryAfterSeconds = response.retryAfterSeconds(),
         httpStatus = response.statusCode,
         responseBytes = response.body.size,
+        attributes = mapOf("requestAttempts" to requestAttempts.toString()),
       )
       if (retryable) {
         throw CoverProviderIOException(
@@ -164,6 +175,7 @@ internal class GoogleBooksCoverClient(
         candidates = emptyList(),
         httpStatus = response.statusCode,
         responseBytes = response.body.size,
+        requestAttempts = requestAttempts,
         terminalError = step,
       )
     }
@@ -179,6 +191,7 @@ internal class GoogleBooksCoverClient(
             retryable = true,
             httpStatus = response.statusCode,
             responseBytes = response.body.size,
+            attributes = mapOf("requestAttempts" to requestAttempts.toString()),
           ),
           error,
         )
@@ -195,6 +208,7 @@ internal class GoogleBooksCoverClient(
       candidates = candidates,
       httpStatus = response.statusCode,
       responseBytes = response.body.size,
+      requestAttempts = requestAttempts,
     )
   }
 }
@@ -278,6 +292,7 @@ private fun selectGoogleBooksTitleCandidate(
       attributes = mapOf(
         "searchMode" to "TITLE_AUTHOR",
         "matchRelation" to BookIdentifierRelation.SAME_WORK.name,
+        "requestAttempts" to response.requestAttempts.toString(),
       ),
     ),
     resolvedIdentifiers = resolvedIdentifiers,
@@ -288,6 +303,7 @@ private data class GoogleBooksSearchResponse(
   val candidates: List<GoogleBooksCoverCandidate>,
   val httpStatus: Int?,
   val responseBytes: Int,
+  val requestAttempts: Int,
   val terminalError: CoverLookupTraceStep? = null,
 )
 
@@ -352,4 +368,6 @@ private const val SEARCH_URL = "https://www.googleapis.com/books/v1/volumes"
 internal const val GOOGLE_BOOKS_PROVIDER = "GOOGLE_BOOKS"
 private const val ISBN_RESULT_LIMIT = 5
 private const val TITLE_RESULT_LIMIT = 10
+private const val MAX_IMMEDIATE_REQUEST_ATTEMPTS = 2
+private val IMMEDIATE_RETRY_STATUSES = setOf(502, 503, 504)
 private val GOOGLE_BOOKS_IMAGE_KEYS = listOf("extraLarge", "large", "medium", "small", "thumbnail", "smallThumbnail")
