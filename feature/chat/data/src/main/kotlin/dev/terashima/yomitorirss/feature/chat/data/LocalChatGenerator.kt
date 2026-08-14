@@ -1,11 +1,11 @@
 package dev.terashima.yomitorirss.feature.chat.data
 
-import dev.terashima.yomitorirss.core.airuntime.ChatContextBlock as RuntimeChatContextBlock
-import dev.terashima.yomitorirss.core.airuntime.ChatRole as RuntimeChatRole
-import dev.terashima.yomitorirss.core.airuntime.ChatTurn as RuntimeChatTurn
+import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.airuntime.LocalPromptFormat
 import dev.terashima.yomitorirss.feature.chat.AgentSkill
 import dev.terashima.yomitorirss.feature.chat.AgentTool
+import dev.terashima.yomitorirss.feature.chat.ChatContextBlock
 import dev.terashima.yomitorirss.feature.chat.ChatContextProvider
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
 import dev.terashima.yomitorirss.feature.chat.ChatModelStatus
@@ -14,6 +14,8 @@ import dev.terashima.yomitorirss.feature.chat.ChatRole
 import dev.terashima.yomitorirss.feature.chat.ChatTurn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -31,6 +33,7 @@ class LocalChatGenerator(
       skill.tools.forEach { tool -> add(tool.definition.name) }
     }
   }
+  private val _streamingReply = MutableStateFlow("")
 
   init {
     val toolCount = skills.sumOf { it.tools.size }
@@ -41,35 +44,36 @@ class LocalChatGenerator(
     models.firstOrNull { it.selected }?.let { ChatModelStatus(id = it.id, name = it.name) }
   }
 
-  override val progress: Flow<ChatProgress?> = modelManager.chatProgress.map { progress ->
+  override val progress: Flow<ChatProgress?> = modelManager.inferenceProgress.map { progress ->
     progress?.let {
       ChatProgress(
-        stage = it.stage,
+        stage = when (it.stage) {
+          LocalInferenceStage.PREPARING_MODEL -> "preparing_model"
+          LocalInferenceStage.GENERATING_RESPONSE -> "generating_reply"
+        },
         modelName = it.modelName,
         estimatedStageDurationMillis = it.estimatedStageDurationMillis,
       )
     }
   }
 
-  override val streamingReply: Flow<String> = modelManager.chatResponse.map { response ->
-    if (AgentProtocol.shouldHideFromUser(response, agentNames)) "" else response
-  }
+  override val streamingReply: Flow<String> = _streamingReply.asStateFlow()
 
   override suspend fun reply(turns: List<ChatTurn>): String = withContext(Dispatchers.IO) {
     val query = turns.lastOrNull { it.role == ChatRole.USER }?.content.orEmpty()
+    require(query.isNotBlank()) { "メッセージを入力してください" }
     val baseContext = buildList {
       for (provider in contextProviders) addAll(provider.contextFor(query))
-    }.map { RuntimeChatContextBlock(it.sourceId, it.label, it.content) }
-    val runtimeTurns = turns.map { RuntimeChatTurn(it.role.toRuntime(), it.content) }
+    }
 
     if (skills.isEmpty()) {
-      return@withContext modelManager.chat(turns = runtimeTurns, context = baseContext)
+      return@withContext generateResponse(turns, baseContext)
     }
 
     val observations = mutableListOf<AgentObservation>()
     for (step in 0 until MAX_TOOL_STEPS) {
-      val response = modelManager.chat(
-        turns = runtimeTurns,
+      val response = generateResponse(
+        turns = turns,
         context = agentContext(baseContext, observations, allowToolCalls = true),
       )
       val call = AgentProtocol.parseToolCall(response)
@@ -108,8 +112,8 @@ class LocalChatGenerator(
         )
     }
 
-    val finalResponse = modelManager.chat(
-      turns = runtimeTurns,
+    val finalResponse = generateResponse(
+      turns = turns,
       context = agentContext(baseContext, observations, allowToolCalls = false),
     )
     if (AgentProtocol.containsToolCallMarker(finalResponse)) {
@@ -119,13 +123,34 @@ class LocalChatGenerator(
     }
   }
 
+  private fun generateResponse(
+    turns: List<ChatTurn>,
+    context: List<ChatContextBlock>,
+  ): String {
+    val model = modelManager.selectedModel() ?: error("AIモデルをダウンロードして選択してください")
+    val prompt = ChatPrompt.render(
+      turns = turns,
+      context = context,
+      maxInputChars = model.promptBudgetChars,
+      chatMl = model.promptFormat == LocalPromptFormat.CHAT_ML,
+    )
+    _streamingReply.value = ""
+    val raw = modelManager.generate(prompt, streaming = true) { partialRaw ->
+      val visible = ChatResponseStream.partial(partialRaw)
+      _streamingReply.value = if (AgentProtocol.shouldHideFromUser(visible, agentNames)) "" else visible
+    }
+    return ChatResponseStream.complete(raw).also { reply ->
+      _streamingReply.value = if (AgentProtocol.shouldHideFromUser(reply, agentNames)) "" else reply
+    }
+  }
+
   private fun agentContext(
-    baseContext: List<RuntimeChatContextBlock>,
+    baseContext: List<ChatContextBlock>,
     observations: List<AgentObservation>,
     allowToolCalls: Boolean,
-  ): List<RuntimeChatContextBlock> = buildList {
+  ): List<ChatContextBlock> = buildList {
     add(
-      RuntimeChatContextBlock(
+      ChatContextBlock(
         sourceId = "agent-skills",
         label = "Agent Skills",
         content = AgentProtocol.renderContext(skills, observations, allowToolCalls),
@@ -133,11 +158,6 @@ class LocalChatGenerator(
     )
     addAll(baseContext)
   }
-}
-
-private fun ChatRole.toRuntime(): RuntimeChatRole = when (this) {
-  ChatRole.USER -> RuntimeChatRole.USER
-  ChatRole.ASSISTANT -> RuntimeChatRole.ASSISTANT
 }
 
 private const val MAX_TOOL_STEPS = 4
