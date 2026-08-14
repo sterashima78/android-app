@@ -12,6 +12,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -21,6 +25,13 @@ import androidx.compose.ui.unit.dp
 internal fun KindleWebLibraryImportGuide() {
   val context = LocalContext.current
   val uriHandler = LocalUriHandler.current
+  var showPersonalDocumentDeepLinkTest by rememberSaveable { mutableStateOf(false) }
+
+  if (showPersonalDocumentDeepLinkTest) {
+    KindlePersonalDocumentDeepLinkTestScreen(
+      onDismiss = { showPersonalDocumentDeepLinkTest = false },
+    )
+  }
 
   Column(
     modifier = Modifier.fillMaxWidth(),
@@ -62,6 +73,12 @@ internal fun KindleWebLibraryImportGuide() {
       ) {
         Text("ブックマークレットをコピー")
       }
+    }
+    OutlinedButton(
+      modifier = Modifier.fillMaxWidth(),
+      onClick = { showPersonalDocumentDeepLinkTest = true },
+    ) {
+      Text("Personal Document リンク検証")
     }
     Text(
       "ブックマークレットはログイン済みの read.amazon.co.jp 内だけで蔵書情報を取得し、端末へ JSON を保存します。Amazon 側の画面仕様変更により動作しなくなる場合があります。",
