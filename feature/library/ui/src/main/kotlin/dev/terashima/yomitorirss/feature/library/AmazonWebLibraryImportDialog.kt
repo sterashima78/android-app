@@ -442,3 +442,7 @@ private fun String.toBrowserCompatibleImportUserAgent(): String =
 
 private const val AMAZON_LIBRARY_WEBVIEW_PROFILE = "yomitori-amazon-library"
 private const val WEB_LIBRARY_BRIDGE_NAME = "YomitoriLibraryBridge"
+private const val KINDLE_WEB_LIBRARY_EXPORT_PAGE = "https://read.amazon.co.jp/kindle-library"
+private const val KINDLE_PERSONAL_DOCUMENT_EXPORT_PAGE =
+  "https://www.amazon.co.jp/hz/mycd/digital-console/contentlist/pdocs/dateDsc/"
+private const val AUDIBLE_WEB_LIBRARY_EXPORT_PAGE = "https://www.audible.co.jp/library/titles"
