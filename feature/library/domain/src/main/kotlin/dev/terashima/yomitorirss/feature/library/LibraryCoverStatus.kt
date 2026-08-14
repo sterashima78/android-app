@@ -15,6 +15,7 @@ data class LibraryCoverAcquisitionItem(
   val state: LibraryCoverAcquisitionState,
   val provider: String?,
   val lastAttemptAtEpochMillis: Long?,
+  val diagnosticTrace: String? = null,
 )
 
 data class LibraryCoverAcquisitionSnapshot(
