@@ -46,12 +46,19 @@ data class LibraryBook(
   }
 }
 
+fun LibraryBook.isKindlePersonalDocument(): Boolean =
+  source == LibrarySource.KINDLE && sourceId.startsWith(KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX)
+
+fun kindlePersonalDocumentSourceId(documentId: String): String =
+  KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX + documentId.trim().uppercase(Locale.ROOT)
+
 private fun amazonAsin(sourceId: String): String? {
   val asin = sourceId.trim().uppercase(Locale.ROOT)
   return asin.takeIf(AMAZON_ASIN::matches)
 }
 
 private val AMAZON_ASIN = Regex("^[A-Z0-9]{10}$")
+const val KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX = "PDOC:"
 
 data class LibrarySourceState(
   val source: LibrarySource,
