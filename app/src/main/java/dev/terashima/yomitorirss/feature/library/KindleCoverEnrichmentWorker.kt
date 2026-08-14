@@ -80,11 +80,11 @@ class KindleCoverEnrichmentWorker(
         KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
       }
       Result.success()
-    } catch (_: IOException) {
+    } catch (error: IOException) {
       if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
         Result.retry()
       } else {
-        if (coverStatusRepository.markNextKindleCoverLookupError()) {
+        if (coverStatusRepository.markNextKindleCoverLookupError(error.message)) {
           KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
         }
         Result.success()

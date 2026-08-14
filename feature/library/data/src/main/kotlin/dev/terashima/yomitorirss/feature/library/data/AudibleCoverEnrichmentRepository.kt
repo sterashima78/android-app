@@ -27,6 +27,7 @@ class AudibleCoverEnrichmentRepository(
   }
 
   private suspend fun lookup(candidate: AudibleCoverCandidate): AudibleCoverLookupResult {
+    var productPageFailure: IOException? = null
     try {
       val productPage = productPageClient.lookup(candidate.sourceId)
       if (productPage.status == CoverLookupStatus.FOUND) {
@@ -35,15 +36,19 @@ class AudibleCoverEnrichmentRepository(
           provider = AudibleCoverProvider.PRODUCT_PAGE,
         )
       }
-    } catch (_: IOException) {
-      // 商品ページ取得に失敗しても Catalog API のフォールバックを試す。
+    } catch (error: IOException) {
+      productPageFailure = error
     }
 
-    return catalogClient.lookup(
+    val catalog = catalogClient.lookup(
       sourceId = candidate.sourceId,
       title = candidate.title,
       authors = candidate.authors,
     )
+    if (productPageFailure != null && catalog.lookup.status != CoverLookupStatus.FOUND) {
+      throw productPageFailure
+    }
+    return catalog
   }
 
   private fun queryCandidates(limit: Int): List<AudibleCoverCandidate> {

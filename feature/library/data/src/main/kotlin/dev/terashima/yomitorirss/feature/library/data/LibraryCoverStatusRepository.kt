@@ -22,7 +22,8 @@ class LibraryCoverStatusRepository(
         SELECT item.source, item.source_id, item.title,
                item.thumbnail_url AS source_thumbnail_url,
                metadata.thumbnail_url AS external_thumbnail_url,
-               metadata.provider, metadata.lookup_status, metadata.updated_at
+               metadata.provider, metadata.lookup_status, metadata.updated_at,
+               metadata.diagnostic_detail
         FROM library_items AS item
         LEFT JOIN library_item_external_metadata AS metadata
           ON metadata.source = item.source AND metadata.source_id = item.source_id
@@ -34,6 +35,8 @@ class LibraryCoverStatusRepository(
       buildList {
         while (cursor.moveToNext()) {
           val updatedAt = cursor.nullableLong("updated_at")
+          val provider = cursor.nullableString("provider")
+          val diagnosticDetail = cursor.nullableString("diagnostic_detail")
           add(
             LibraryCoverAcquisitionItem(
               source = LibrarySource.valueOf(cursor.string("source")),
@@ -46,7 +49,7 @@ class LibraryCoverStatusRepository(
                 updatedAtEpochMillis = updatedAt,
                 staleBeforeEpochMillis = staleBefore,
               ),
-              provider = cursor.nullableString("provider"),
+              provider = provider.withDiagnosticDetail(diagnosticDetail),
               lastAttemptAtEpochMillis = updatedAt,
             ),
           )
@@ -60,45 +63,26 @@ class LibraryCoverStatusRepository(
   }
 
   suspend fun markNextKindleCoverLookupError(
+    detail: String? = null,
     nowEpochMillis: Long = System.currentTimeMillis(),
-  ): Boolean {
-    ensureSchema()
-    val staleBefore = nowEpochMillis - COVER_LOOKUP_STALE_MILLIS
-    val sourceId = database.readable.rawQuery(
-      """
-        SELECT item.source_id
-        FROM library_items AS item
-        LEFT JOIN library_item_external_metadata AS metadata
-          ON metadata.source = item.source AND metadata.source_id = item.source_id
-        WHERE item.source = ?
-          AND (item.thumbnail_url IS NULL OR TRIM(item.thumbnail_url) = '')
-          AND (metadata.thumbnail_url IS NULL OR TRIM(metadata.thumbnail_url) = '')
-          AND (metadata.updated_at IS NULL OR metadata.updated_at < ?)
-        ORDER BY item.title COLLATE NOCASE, item.source_id
-        LIMIT 1
-      """.trimIndent(),
-      arrayOf(LibrarySource.KINDLE.name, staleBefore.toString()),
-    ).use { cursor ->
-      if (cursor.moveToFirst()) cursor.getString(0) else null
-    } ?: return false
+  ): Boolean = markNextCoverLookupError(
+    source = LibrarySource.KINDLE,
+    provider = KINDLE_COVER_ENRICHMENT_PROVIDER,
+    orderBy = "item.title COLLATE NOCASE, item.source_id",
+    detail = detail,
+    nowEpochMillis = nowEpochMillis,
+  )
 
-    val values = ContentValues().apply {
-      put("source", LibrarySource.KINDLE.name)
-      put("source_id", sourceId)
-      putNull("thumbnail_url")
-      put("provider", KINDLE_COVER_ENRICHMENT_PROVIDER)
-      put("lookup_status", CoverLookupStatus.ERROR.name)
-      putNull("matched_identifier")
-      put("updated_at", nowEpochMillis)
-    }
-    database.writable.insertWithOnConflict(
-      "library_item_external_metadata",
-      null,
-      values,
-      SQLiteDatabase.CONFLICT_REPLACE,
-    )
-    return true
-  }
+  suspend fun markNextAudibleCoverLookupError(
+    detail: String? = null,
+    nowEpochMillis: Long = System.currentTimeMillis(),
+  ): Boolean = markNextCoverLookupError(
+    source = LibrarySource.AUDIBLE,
+    provider = AUDIBLE_COVER_ENRICHMENT_PROVIDER,
+    orderBy = "item.source_id",
+    detail = detail,
+    nowEpochMillis = nowEpochMillis,
+  )
 
   suspend fun resetUnresolvedLookups(sources: Set<LibrarySource>) {
     if (sources.isEmpty()) return
@@ -114,10 +98,79 @@ class LibraryCoverStatusRepository(
     }
   }
 
+  private suspend fun markNextCoverLookupError(
+    source: LibrarySource,
+    provider: String,
+    orderBy: String,
+    detail: String?,
+    nowEpochMillis: Long,
+  ): Boolean {
+    ensureSchema()
+    val staleBefore = nowEpochMillis - COVER_LOOKUP_STALE_MILLIS
+    val sourceId = database.readable.rawQuery(
+      """
+        SELECT item.source_id
+        FROM library_items AS item
+        LEFT JOIN library_item_external_metadata AS metadata
+          ON metadata.source = item.source AND metadata.source_id = item.source_id
+        WHERE item.source = ?
+          AND (item.thumbnail_url IS NULL OR TRIM(item.thumbnail_url) = '')
+          AND (metadata.thumbnail_url IS NULL OR TRIM(metadata.thumbnail_url) = '')
+          AND (metadata.updated_at IS NULL OR metadata.updated_at < ?)
+        ORDER BY $orderBy
+        LIMIT 1
+      """.trimIndent(),
+      arrayOf(source.name, staleBefore.toString()),
+    ).use { cursor ->
+      if (cursor.moveToFirst()) cursor.getString(0) else null
+    } ?: return false
+
+    val values = ContentValues().apply {
+      put("source", source.name)
+      put("source_id", sourceId)
+      putNull("thumbnail_url")
+      put("provider", provider)
+      put("lookup_status", CoverLookupStatus.ERROR.name)
+      putNull("matched_identifier")
+      detail?.sanitizeDiagnosticDetail()?.let { put("diagnostic_detail", it) } ?: putNull("diagnostic_detail")
+      put("updated_at", nowEpochMillis)
+    }
+    database.writable.insertWithOnConflict(
+      "library_item_external_metadata",
+      null,
+      values,
+      SQLiteDatabase.CONFLICT_REPLACE,
+    )
+    return true
+  }
+
   private suspend fun ensureSchema() {
     if (schemaEnsured) return
     DefaultLibraryRepository(database).snapshot()
+    ensureDiagnosticDetailColumn()
     schemaEnsured = true
+  }
+
+  private fun ensureDiagnosticDetailColumn() {
+    if (hasDiagnosticDetailColumn()) return
+    runCatching {
+      database.writable.execSQL(
+        "ALTER TABLE library_item_external_metadata ADD COLUMN $DIAGNOSTIC_DETAIL_COLUMN TEXT",
+      )
+    }.getOrElse { error ->
+      if (!hasDiagnosticDetailColumn()) throw error
+    }
+  }
+
+  private fun hasDiagnosticDetailColumn(): Boolean = database.readable.rawQuery(
+    "PRAGMA table_info(library_item_external_metadata)",
+    null,
+  ).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == DIAGNOSTIC_DETAIL_COLUMN) return@use true
+    }
+    false
   }
 
   private fun isKindleCoverEnrichmentEnabled(): Boolean {
@@ -143,6 +196,8 @@ class LibraryCoverStatusRepository(
     const val COVER_LOOKUP_STALE_MILLIS = 30L * 24 * 60 * 60 * 1000
     const val KINDLE_COVER_ENRICHMENT_SETTING = "kindle_cover_enrichment_enabled"
     const val KINDLE_COVER_ENRICHMENT_PROVIDER = "KINDLE_COVER_ENRICHMENT"
+    const val AUDIBLE_COVER_ENRICHMENT_PROVIDER = "AUDIBLE_COVER_ENRICHMENT"
+    const val DIAGNOSTIC_DETAIL_COLUMN = "diagnostic_detail"
   }
 }
 
@@ -165,3 +220,18 @@ internal fun resolveLibraryCoverAcquisitionState(
     else -> LibraryCoverAcquisitionState.WAITING
   }
 }
+
+private fun String?.withDiagnosticDetail(detail: String?): String? = when {
+  detail.isNullOrBlank() -> this
+  isNullOrBlank() -> detail
+  else -> "$this · $detail"
+}
+
+private fun String.sanitizeDiagnosticDetail(): String =
+  replace(SENSITIVE_QUERY_PARAMETER, "$1<redacted>")
+    .take(MAX_DIAGNOSTIC_DETAIL_CHARS)
+
+private val SENSITIVE_QUERY_PARAMETER = Regex(
+  "(?i)([?&](?:access_token|api_key|apikey|key|token|signature|sig|authorization)=)[^&#\\s]*",
+)
+private const val MAX_DIAGNOSTIC_DETAIL_CHARS = 2_048
