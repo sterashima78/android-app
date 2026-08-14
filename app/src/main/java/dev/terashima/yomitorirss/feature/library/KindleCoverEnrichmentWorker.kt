@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.library.data.KindleCoverEnrichmentException
 import dev.terashima.yomitorirss.feature.library.data.KindleCoverEnrichmentRepository
 import dev.terashima.yomitorirss.feature.library.data.LibraryCoverStatusRepository
 import java.io.IOException
@@ -86,7 +87,13 @@ class KindleCoverEnrichmentWorker(
       if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
         Result.retry()
       } else {
-        if (coverStatusRepository.markNextKindleCoverLookupError(error.message)) {
+        val trace = (error as? KindleCoverEnrichmentException)?.diagnosticTrace
+        if (
+          coverStatusRepository.markNextKindleCoverLookupError(
+            detail = error.message,
+            diagnosticTrace = trace,
+          )
+        ) {
           KindleCoverEnrichmentScheduler.continueAfterBatch(applicationContext)
         }
         Result.success()

@@ -5,58 +5,38 @@ import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.text.Normalizer
-import java.util.Locale
 import org.json.JSONObject
 
-internal enum class CoverLookupStatus {
-  FOUND,
-  NOT_FOUND,
-  AMBIGUOUS,
-  ERROR,
-}
-
-internal data class CoverLookupResult(
-  val status: CoverLookupStatus,
-  val thumbnailUrl: String? = null,
-  val matchedIdentifier: String? = null,
-)
-
-internal class OpenLibraryCoverClient(
+internal class GoogleBooksCoverClient(
   private val httpClient: HttpClient = HttpClient.create(),
 ) {
-  suspend fun lookup(book: LibraryBook): CoverLookupResult = lookupWithTrace(book).lookup
-
-  suspend fun lookupWithTrace(book: LibraryBook): TracedCoverLookupResult {
+  suspend fun lookup(book: LibraryBook): TracedCoverLookupResult {
     val isbn = book.isbn13.cleanBookIsbn() ?: book.isbn10.cleanBookIsbn()
     return if (isbn != null) lookupByIsbn(isbn) else lookupByTitle(book)
   }
 
   private suspend fun lookupByIsbn(isbn: String): TracedCoverLookupResult {
-    val response = search(query = "isbn:$isbn", limit = ISBN_RESULT_LIMIT)
+    val response = search("isbn:$isbn", ISBN_RESULT_LIMIT)
     response.terminalError?.let { step ->
       return TracedCoverLookupResult(CoverLookupResult(CoverLookupStatus.ERROR), step)
     }
-    val withCover = response.candidates.filter { it.coverId != null }
+    val withCover = response.candidates.filter { it.thumbnailUrl != null }
     val exact = withCover.filter { candidate ->
       candidate.isbns.any { it.cleanBookIsbn() == isbn }
-    }.distinctBy(OpenLibraryCandidate::coverId)
+    }.distinctBy(GoogleBooksCoverCandidate::thumbnailUrl)
     val lookup = when (exact.size) {
       0 -> CoverLookupResult(CoverLookupStatus.NOT_FOUND)
-      1 -> {
-        val match = exact.single()
-        CoverLookupResult(
-          status = CoverLookupStatus.FOUND,
-          thumbnailUrl = "$COVER_BASE_URL/id/${match.coverId}-L.jpg",
-          matchedIdentifier = "ISBN:$isbn",
-        )
-      }
+      1 -> CoverLookupResult(
+        status = CoverLookupStatus.FOUND,
+        thumbnailUrl = exact.single().thumbnailUrl,
+        matchedIdentifier = "ISBN:$isbn",
+      )
       else -> CoverLookupResult(CoverLookupStatus.AMBIGUOUS)
     }
     return TracedCoverLookupResult(
       lookup = lookup,
       step = CoverLookupTraceStep(
-        provider = OPEN_LIBRARY_PROVIDER,
+        provider = GOOGLE_BOOKS_PROVIDER,
         status = lookup.status,
         reason = when (lookup.status) {
           CoverLookupStatus.FOUND -> "ISBN_MATCH"
@@ -73,12 +53,12 @@ internal class OpenLibraryCoverClient(
   }
 
   private suspend fun lookupByTitle(book: LibraryBook): TracedCoverLookupResult {
-    val title = searchableBookTitle(book.title)
-    if (normalizedSearchableBookTitle(title).isEmpty()) {
+    val searchableTitle = searchableBookTitle(book.title)
+    if (normalizedSearchableBookTitle(searchableTitle).isEmpty()) {
       return TracedCoverLookupResult(
-        CoverLookupResult(CoverLookupStatus.NOT_FOUND),
-        CoverLookupTraceStep(
-          provider = OPEN_LIBRARY_PROVIDER,
+        lookup = CoverLookupResult(CoverLookupStatus.NOT_FOUND),
+        step = CoverLookupTraceStep(
+          provider = GOOGLE_BOOKS_PROVIDER,
           status = CoverLookupStatus.NOT_FOUND,
           reason = "EMPTY_TITLE",
         ),
@@ -87,39 +67,39 @@ internal class OpenLibraryCoverClient(
 
     val author = book.authors.firstOrNull()?.trim()?.takeIf(String::isNotEmpty)
     val query = buildString {
-      append("title:\"")
-      append(escapeQueryValue(title))
+      append("intitle:\"")
+      append(searchableTitle.escapeSearchValue())
       append('"')
       if (author != null) {
-        append(" AND author:\"")
-        append(escapeQueryValue(author))
+        append(" inauthor:\"")
+        append(author.escapeSearchValue())
         append('"')
       }
     }
-    return selectOpenLibraryTitleCandidate(book, search(query = query, limit = TITLE_RESULT_LIMIT))
+    val response = search(query, TITLE_RESULT_LIMIT)
+    return selectGoogleBooksTitleCandidate(book, response)
   }
 
-  private suspend fun search(query: String, limit: Int): OpenLibrarySearchResponse {
-    val url = "$SEARCH_URL?q=${query.urlEncode()}" +
-      "&fields=key,title,author_name,isbn,cover_i&limit=$limit"
+  private suspend fun search(query: String, limit: Int): GoogleBooksSearchResponse {
+    val url = "$SEARCH_URL?q=${query.urlEncode()}&maxResults=$limit"
     val response = httpClient.execute(
       HttpRequest(url = url, headers = mapOf("Accept" to "application/json")),
     )
     if (!response.isSuccessful) {
       val step = CoverLookupTraceStep(
-        provider = OPEN_LIBRARY_PROVIDER,
+        provider = GOOGLE_BOOKS_PROVIDER,
         status = CoverLookupStatus.ERROR,
-        reason = if (isRetryableOpenLibraryStatus(response.statusCode)) "HTTP_RETRYABLE" else "HTTP_ERROR",
+        reason = if (isRetryableGoogleBooksStatus(response.statusCode)) "HTTP_RETRYABLE" else "HTTP_ERROR",
         httpStatus = response.statusCode,
         responseBytes = response.body.size,
       )
-      if (isRetryableOpenLibraryStatus(response.statusCode)) {
+      if (isRetryableGoogleBooksStatus(response.statusCode)) {
         throw CoverProviderIOException(
-          "Open Library の一時的な検索エラー (${response.statusCode})",
+          "Google Books API の一時的な検索エラー (${response.statusCode})",
           step,
         )
       }
-      return OpenLibrarySearchResponse(
+      return GoogleBooksSearchResponse(
         candidates = emptyList(),
         httpStatus = response.statusCode,
         responseBytes = response.body.size,
@@ -130,9 +110,9 @@ internal class OpenLibraryCoverClient(
     val root = runCatching { JSONObject(response.body.toString(Charsets.UTF_8)) }
       .getOrElse { error ->
         throw CoverProviderIOException(
-          "Open Library の応答を解析できませんでした",
+          "Google Books API の応答を解析できませんでした",
           CoverLookupTraceStep(
-            provider = OPEN_LIBRARY_PROVIDER,
+            provider = GOOGLE_BOOKS_PROVIDER,
             status = CoverLookupStatus.ERROR,
             reason = "PARSE_ERROR",
             httpStatus = response.statusCode,
@@ -141,15 +121,15 @@ internal class OpenLibraryCoverClient(
           error,
         )
       }
-    val docs = root.optJSONArray("docs")
+    val items = root.optJSONArray("items")
     val candidates = buildList {
-      if (docs != null) {
-        for (index in 0 until docs.length()) {
-          docs.optJSONObject(index)?.toCandidate()?.let(::add)
+      if (items != null) {
+        for (index in 0 until items.length()) {
+          items.optJSONObject(index)?.toGoogleBooksCoverCandidate()?.let(::add)
         }
       }
     }
-    return OpenLibrarySearchResponse(
+    return GoogleBooksSearchResponse(
       candidates = candidates,
       httpStatus = response.statusCode,
       responseBytes = response.body.size,
@@ -157,20 +137,9 @@ internal class OpenLibraryCoverClient(
   }
 }
 
-internal fun isRetryableOpenLibraryStatus(statusCode: Int): Boolean =
-  statusCode == 408 || statusCode == 429 || statusCode in 500..599
-
-internal fun selectTitleCandidate(
+private fun selectGoogleBooksTitleCandidate(
   book: LibraryBook,
-  candidates: List<OpenLibraryCandidate>,
-): CoverLookupResult = selectOpenLibraryTitleCandidate(
-  book,
-  OpenLibrarySearchResponse(candidates, httpStatus = 200, responseBytes = 0),
-).lookup
-
-private fun selectOpenLibraryTitleCandidate(
-  book: LibraryBook,
-  response: OpenLibrarySearchResponse,
+  response: GoogleBooksSearchResponse,
 ): TracedCoverLookupResult {
   response.terminalError?.let { step ->
     return TracedCoverLookupResult(CoverLookupResult(CoverLookupStatus.ERROR), step)
@@ -180,7 +149,7 @@ private fun selectOpenLibraryTitleCandidate(
     return TracedCoverLookupResult(
       CoverLookupResult(CoverLookupStatus.NOT_FOUND),
       CoverLookupTraceStep(
-        provider = OPEN_LIBRARY_PROVIDER,
+        provider = GOOGLE_BOOKS_PROVIDER,
         status = CoverLookupStatus.NOT_FOUND,
         reason = "EMPTY_TITLE",
       ),
@@ -188,7 +157,7 @@ private fun selectOpenLibraryTitleCandidate(
   }
   val expectedAuthors = book.authors.map(::normalizeBookText).filter(String::isNotEmpty).toSet()
   val expectedVolume = explicitVolumeNumber(book.title)
-  val withCover = response.candidates.filter { it.coverId != null }
+  val withCover = response.candidates.filter { it.thumbnailUrl != null }
   val titleMatches = withCover.filter { normalizedSearchableBookTitle(it.title) == expectedTitle }
   val volumeMatches = titleMatches.filter { candidate ->
     expectedVolume == null || explicitVolumeNumber(candidate.title) == expectedVolume
@@ -196,13 +165,11 @@ private fun selectOpenLibraryTitleCandidate(
   val authorMatches = volumeMatches.filter { candidate ->
     expectedAuthors.isEmpty() || candidate.authors.any { candidateAuthor ->
       val normalizedCandidate = normalizeBookText(candidateAuthor)
-      normalizedCandidate.isNotEmpty() && expectedAuthors.any { expectedAuthor ->
-        normalizedCandidate == expectedAuthor ||
-          normalizedCandidate.contains(expectedAuthor) ||
-          expectedAuthor.contains(normalizedCandidate)
+      normalizedCandidate.isNotEmpty() && expectedAuthors.any { expected ->
+        normalizedCandidate == expected || normalizedCandidate.contains(expected) || expected.contains(normalizedCandidate)
       }
     }
-  }.distinctBy(OpenLibraryCandidate::coverId)
+  }.distinctBy(GoogleBooksCoverCandidate::thumbnailUrl)
 
   val lookup = when (authorMatches.size) {
     0 -> CoverLookupResult(CoverLookupStatus.NOT_FOUND)
@@ -210,8 +177,8 @@ private fun selectOpenLibraryTitleCandidate(
       val match = authorMatches.single()
       CoverLookupResult(
         status = CoverLookupStatus.FOUND,
-        thumbnailUrl = "$COVER_BASE_URL/id/${match.coverId}-L.jpg",
-        matchedIdentifier = match.key,
+        thumbnailUrl = match.thumbnailUrl,
+        matchedIdentifier = match.id?.let { "GOOGLE_BOOKS:$it" },
       )
     }
     else -> CoverLookupResult(CoverLookupStatus.AMBIGUOUS)
@@ -228,7 +195,7 @@ private fun selectOpenLibraryTitleCandidate(
   return TracedCoverLookupResult(
     lookup = lookup,
     step = CoverLookupTraceStep(
-      provider = OPEN_LIBRARY_PROVIDER,
+      provider = GOOGLE_BOOKS_PROVIDER,
       status = lookup.status,
       reason = reason,
       httpStatus = response.httpStatus,
@@ -243,29 +210,45 @@ private fun selectOpenLibraryTitleCandidate(
   )
 }
 
-private data class OpenLibrarySearchResponse(
-  val candidates: List<OpenLibraryCandidate>,
+private data class GoogleBooksSearchResponse(
+  val candidates: List<GoogleBooksCoverCandidate>,
   val httpStatus: Int,
   val responseBytes: Int,
   val terminalError: CoverLookupTraceStep? = null,
 )
 
-internal data class OpenLibraryCandidate(
-  val key: String?,
+internal data class GoogleBooksCoverCandidate(
+  val id: String?,
   val title: String,
   val authors: List<String>,
   val isbns: List<String>,
-  val coverId: Long?,
+  val thumbnailUrl: String?,
 )
 
-private fun JSONObject.toCandidate(): OpenLibraryCandidate? {
-  val title = optString("title").trim().takeIf(String::isNotEmpty) ?: return null
-  return OpenLibraryCandidate(
-    key = optString("key").trim().takeIf(String::isNotEmpty),
+private fun JSONObject.toGoogleBooksCoverCandidate(): GoogleBooksCoverCandidate? {
+  val info = optJSONObject("volumeInfo") ?: return null
+  val title = info.optString("title").trim().takeIf(String::isNotEmpty) ?: return null
+  val imageLinks = info.optJSONObject("imageLinks")
+  val thumbnail = GOOGLE_BOOKS_IMAGE_KEYS.firstNotNullOfOrNull { key ->
+    imageLinks?.optString(key)?.trim()?.takeIf(String::isNotEmpty)
+  }?.replace("http://", "https://")
+  val identifiers = info.optJSONArray("industryIdentifiers")
+  val isbns = buildList {
+    if (identifiers != null) {
+      for (index in 0 until identifiers.length()) {
+        identifiers.optJSONObject(index)?.optString("identifier")
+          ?.trim()
+          ?.takeIf(String::isNotEmpty)
+          ?.let(::add)
+      }
+    }
+  }
+  return GoogleBooksCoverCandidate(
+    id = optString("id").trim().takeIf(String::isNotEmpty),
     title = title,
-    authors = stringList("author_name"),
-    isbns = stringList("isbn"),
-    coverId = if (has("cover_i") && !isNull("cover_i")) optLong("cover_i").takeIf { it > 0 } else null,
+    authors = info.stringList("authors"),
+    isbns = isbns,
+    thumbnailUrl = thumbnail,
   )
 }
 
@@ -278,51 +261,14 @@ private fun JSONObject.stringList(name: String): List<String> {
   }
 }
 
-internal fun searchableBookTitle(value: String): String {
-  var title = value.trim()
-  while (true) {
-    val stripped = title.replace(EDITION_SUFFIX, "").trim()
-    if (stripped == title) return title
-    title = stripped
-  }
-}
-
-internal fun normalizedSearchableBookTitle(value: String): String = normalizeBookText(searchableBookTitle(value))
-
-internal fun normalizeBookText(value: String): String = Normalizer
-  .normalize(value, Normalizer.Form.NFKC)
-  .lowercase(Locale.ROOT)
-  .filter(Char::isLetterOrDigit)
-
-internal fun explicitVolumeNumber(value: String): Int? {
-  val normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
-  return VOLUME_PATTERNS.firstNotNullOfOrNull { pattern ->
-    pattern.find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
-  }
-}
-
-internal fun String?.cleanBookIsbn(): String? = this
-  ?.filter(Char::isLetterOrDigit)
-  ?.uppercase(Locale.ROOT)
-  ?.takeIf { it.length == 10 || it.length == 13 }
+internal fun isRetryableGoogleBooksStatus(statusCode: Int): Boolean =
+  statusCode == 408 || statusCode == 429 || statusCode in 500..599
 
 private fun String.urlEncode(): String = URLEncoder.encode(this, StandardCharsets.UTF_8.name())
+private fun String.escapeSearchValue(): String = replace("\\", "\\\\").replace("\"", "\\\"")
 
-private fun escapeQueryValue(value: String): String = value
-  .replace("\\", "\\\\")
-  .replace("\"", "\\\"")
-
-private const val SEARCH_URL = "https://openlibrary.org/search.json"
-private const val COVER_BASE_URL = "https://covers.openlibrary.org/b"
-internal const val OPEN_LIBRARY_PROVIDER = "OPEN_LIBRARY"
+private const val SEARCH_URL = "https://www.googleapis.com/books/v1/volumes"
+internal const val GOOGLE_BOOKS_PROVIDER = "GOOGLE_BOOKS"
 private const val ISBN_RESULT_LIMIT = 5
 private const val TITLE_RESULT_LIMIT = 10
-
-private val EDITION_SUFFIX = Regex(
-  """\s*[（(]\s*(?:Japanese|Kindle|English)\s+Edition\s*[)）]\s*$""",
-  RegexOption.IGNORE_CASE,
-)
-private val VOLUME_PATTERNS = listOf(
-  Regex("(?:第\\s*)?(\\d{1,3})\\s*巻"),
-  Regex("(?:vol(?:ume)?\\.?|#)\\s*(\\d{1,3})", RegexOption.IGNORE_CASE),
-)
+private val GOOGLE_BOOKS_IMAGE_KEYS = listOf("extraLarge", "large", "medium", "small", "thumbnail", "smallThumbnail")

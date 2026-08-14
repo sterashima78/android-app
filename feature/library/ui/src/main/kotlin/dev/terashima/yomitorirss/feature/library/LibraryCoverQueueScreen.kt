@@ -2,6 +2,9 @@
 
 package dev.terashima.yomitorirss.feature.library
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,11 +15,13 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import org.json.JSONObject
 
 private enum class CoverQueueFilter(val label: String) {
   QUEUE("取得待ち"), UNRESOLVED("未取得"), ACQUIRED("取得済み"), ALL("すべて"),
@@ -32,6 +37,7 @@ fun LibraryCoverQueueScreen(
   onDismiss: () -> Unit,
 ) {
   var filter by remember { mutableStateOf(CoverQueueFilter.UNRESOLVED) }
+  val context = LocalContext.current
   val visibleItems = snapshot.items.filter { item ->
     when (filter) {
       CoverQueueFilter.QUEUE -> item.state == LibraryCoverAcquisitionState.WAITING
@@ -78,7 +84,7 @@ fun LibraryCoverQueueScreen(
       message?.let { item { Text(it, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall) } }
       item {
         Text(
-          "未取得の行には解析用ID、取得経路、実エラーまたは推定原因を表示します。この画面のスクリーンショットを共有すれば、商品ページやAPIの現在の応答を再確認できます。",
+          "未取得の行では各取得経路の結果と候補の絞り込み状況を確認できます。「診断情報をコピー」で共有すると、HTMLやAPIレスポンス本文を保存せずに原因を調査できます。",
           Modifier.padding(16.dp),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -100,7 +106,24 @@ fun LibraryCoverQueueScreen(
         items(visibleItems, key = { "${it.source.name}:${it.sourceId}" }) { item ->
           ListItem(
             headlineContent = { Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-            supportingContent = { Text(itemDetails(item)) },
+            supportingContent = {
+              Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(itemDetails(item))
+                item.diagnosticTrace?.takeIf(String::isNotBlank)?.let { trace ->
+                  Text(
+                    diagnosticSummary(trace),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                  TextButton(
+                    onClick = { copyDiagnostics(context, item) },
+                    contentPadding = PaddingValues(horizontal = 0.dp),
+                  ) {
+                    Text("診断情報をコピー")
+                  }
+                }
+              }
+            },
           )
           HorizontalDivider()
         }
@@ -132,10 +155,50 @@ private fun itemDetails(item: LibraryCoverAcquisitionItem): String = buildString
   }
 }
 
+private fun diagnosticSummary(trace: String): String = runCatching {
+  val steps = JSONObject(trace).optJSONArray("steps") ?: return@runCatching "診断ログあり"
+  buildList {
+    for (index in 0 until steps.length()) {
+      val step = steps.optJSONObject(index) ?: continue
+      val provider = diagnosticProviderLabel(step.optString("provider"))
+      val status = step.optString("status")
+      val reason = step.optString("reason")
+      val candidateCount = if (step.has("candidateCount")) step.optInt("candidateCount") else null
+      val titleMatches = if (step.has("titleMatchCount")) step.optInt("titleMatchCount") else null
+      val authorMatches = if (step.has("authorMatchCount")) step.optInt("authorMatchCount") else null
+      add(
+        buildString {
+          append(provider)
+          append(": $status / $reason")
+          candidateCount?.let { append(" · 候補 $it") }
+          titleMatches?.let { append(" · タイトル一致 $it") }
+          authorMatches?.let { append(" · 著者一致 $it") }
+        },
+      )
+    }
+  }.joinToString("\n")
+}.getOrElse { "診断ログあり" }
+
+private fun copyDiagnostics(context: Context, item: LibraryCoverAcquisitionItem) {
+  val report = buildString {
+    appendLine("cover-diagnostic v1")
+    appendLine("source=${item.source.name}")
+    appendLine("sourceId=${item.sourceId}")
+    appendLine("title=${item.title}")
+    appendLine("state=${item.state.name}")
+    item.provider?.let { appendLine("provider=$it") }
+    item.lastAttemptAtEpochMillis?.let { appendLine("lastAttemptAt=$it") }
+    item.diagnosticTrace?.let { appendLine("trace=$it") }
+  }.trimEnd()
+  val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+  clipboard.setPrimaryClip(ClipData.newPlainText("表紙取得診断", report))
+}
+
 private fun failureHint(item: LibraryCoverAcquisitionItem): String = when {
   item.state == LibraryCoverAcquisitionState.AMBIGUOUS -> "候補が複数。タイトル・著者・巻数の照合条件を確認"
-  item.provider == "OPEN_LIBRARY" -> "Amazon商品ページで取得できず、Open Libraryでも一致する表紙を特定できなかった可能性"
-  item.provider?.startsWith("KINDLE_COVER_ENRICHMENT") == true -> "上記の実エラーを確認。通信・リダイレクト・アクセス確認・解析処理のいずれかで失敗"
+  item.provider == "GOOGLE_BOOKS" -> "Amazon商品ページで取得できず、Google Booksでは候補を絞れたが最終確定できなかった可能性"
+  item.provider == "OPEN_LIBRARY" -> "Amazon商品ページとGoogle Booksで取得できず、Open Libraryでも一致する表紙を特定できなかった可能性"
+  item.provider?.startsWith("KINDLE_COVER_ENRICHMENT") == true -> "診断ログの実エラーを確認。各取得経路のHTTP・解析結果を確認"
   item.provider?.startsWith("AUDIBLE_COVER_ENRICHMENT") == true -> "上記の実エラーを確認。Audible商品ページまたはCatalog APIの通信・解析処理で失敗"
   item.provider == "AUDIBLE_CATALOG_API_SEARCH" -> "商品ページ/ASIN検索で取得できず、タイトル・著者検索でも厳密一致しなかった可能性"
   item.provider == "AUDIBLE_CATALOG_API_ASIN" -> "Catalog APIのASIN検索で画像が見つからなかった可能性"
@@ -144,7 +207,7 @@ private fun failureHint(item: LibraryCoverAcquisitionItem): String = when {
 }
 
 private fun lookupTarget(item: LibraryCoverAcquisitionItem): String = when (item.source) {
-  LibrarySource.KINDLE -> "Amazon /dp/${item.sourceId} と Open Library検索"
+  LibrarySource.KINDLE -> "Amazon /dp/${item.sourceId}、Google Books、Open Library"
   LibrarySource.AUDIBLE -> "Audible /pd/${item.sourceId} と Catalog API"
   LibrarySource.GOOGLE_PLAY_BOOKS -> "Google Play Books"
 }
@@ -171,8 +234,11 @@ private fun providerLabel(provider: String): String {
   val detail = provider.substringAfter(" · ", missingDelimiterValue = "")
   val label = when (base) {
     "OPEN_LIBRARY" -> "Open Library"
+    "GOOGLE_BOOKS" -> "Google Books"
     "AMAZON_PRODUCT_PAGE_OGP" -> "Amazon 商品ページ (OGP)"
     "AMAZON_PRODUCT_PAGE_IMAGE" -> "Amazon 商品ページ (商品画像)"
+    "AMAZON_PRODUCT_PAGE_JSON_LD" -> "Amazon 商品ページ (JSON-LD)"
+    "AMAZON_PRODUCT_PAGE_IMAGE_SRC" -> "Amazon 商品ページ (image_src)"
     "KINDLE_COVER_ENRICHMENT" -> "Kindle 表紙補完"
     "AUDIBLE_PRODUCT_PAGE" -> "Audible 商品ページ"
     "AUDIBLE_CATALOG_API_ASIN" -> "Audible Catalog API (ASIN)"
@@ -181,6 +247,13 @@ private fun providerLabel(provider: String): String {
     else -> base
   }
   return if (detail.isBlank()) label else "$label · $detail"
+}
+
+private fun diagnosticProviderLabel(provider: String): String = when (provider) {
+  "AMAZON_PRODUCT_PAGE" -> "Amazon"
+  "GOOGLE_BOOKS" -> "Google Books"
+  "OPEN_LIBRARY" -> "Open Library"
+  else -> provider
 }
 
 private fun formatAttempt(epochMillis: Long): String = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
