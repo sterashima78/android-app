@@ -21,6 +21,28 @@ class LibraryGroupingTest {
   }
 
   @Test
+  fun `同じシリーズIDなら表示名が異なっても同じグループにする`() {
+    val books = listOf(
+      book(
+        id = "1",
+        title = "第一巻",
+        series = LibrarySeries("シリーズ名未取得 (B000000099)", 1, id = "B000000099"),
+      ),
+      book(
+        id = "2",
+        title = "第二巻",
+        series = LibrarySeries("Example Series", 2, id = "B000000099"),
+      ),
+    )
+
+    val groups = groupLibraryBooks(books)
+
+    assertEquals(1, groups.series.size)
+    assertEquals(listOf("第一巻", "第二巻"), groups.series.single().books.map { it.title })
+    assertEquals("id:B000000099", groups.series.single().key)
+  }
+
+  @Test
   fun `巻数がない本は巻数指定済みの本より後ろに並べる`() {
     val books = listOf(
       book(id = "2", title = "番外編", series = LibrarySeries("シリーズ", null)),
