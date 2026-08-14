@@ -68,22 +68,3 @@ class DatabaseSchema(
 interface DatabaseSchemaProvider {
   val databaseSchema: DatabaseSchema
 }
-
-fun SQLiteDatabase.addColumnIfMissing(
-  table: String,
-  column: String,
-  definition: String,
-) {
-  val exists = rawQuery("PRAGMA table_info($table)", null).use { cursor ->
-    val nameIndex = cursor.getColumnIndexOrThrow("name")
-    var found = false
-    while (cursor.moveToNext()) {
-      if (cursor.getString(nameIndex) == column) {
-        found = true
-        break
-      }
-    }
-    found
-  }
-  if (!exists) execSQL("ALTER TABLE $table ADD COLUMN $definition")
-}
