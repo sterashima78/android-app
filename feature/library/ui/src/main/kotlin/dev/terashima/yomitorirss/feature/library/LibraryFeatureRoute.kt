@@ -72,11 +72,6 @@ private class LibraryUriHandler(
       if (startActivity(explicitIntent)) return
     }
 
-    val legacyReaderIntent = Intent(readerIntent).apply {
-      component = ComponentName(PLAY_BOOKS_PACKAGE, LEGACY_PLAY_BOOKS_READER_ACTIVITY)
-    }
-    if (startActivity(legacyReaderIntent)) return
-
     if (openGooglePlayBooksHome()) return
 
     showPlayBooksOpenFailedMessage()
@@ -185,8 +180,6 @@ internal fun readerActivityScore(activityName: String): Int {
 }
 
 private const val PLAY_BOOKS_PACKAGE = "com.google.android.apps.books"
-private const val LEGACY_PLAY_BOOKS_READER_ACTIVITY =
-  "com.google.android.apps.play.books.ebook.activity.ReadingActivity"
 private const val HTTP_SCHEME_PREFIX = "http://"
 private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/reader"
 private const val GOOGLE_BOOKS_NO_READER_MESSAGE =

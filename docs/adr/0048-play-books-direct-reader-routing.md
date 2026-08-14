@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-11
-- Updated: 2026-08-11
+- Updated: 2026-08-14
 
 ## Context
 
@@ -57,7 +57,7 @@ Reader URL は HTTP の場合だけ HTTPS に正規化し、`id`、`hl`、`sourc
 
 Android 11 以降の package visibility を考慮し、manifest の `<queries>` で `com.google.android.apps.books` を宣言する。
 
-Reader URL を開く際は、端末にインストールされている Google Play Books に対して `PackageManager` から exported reader 系 Activity を探索し、候補を `ComponentName` で明示起動する。旧バージョンとの互換経路として従来の `ReadingActivity` 固定名も最後の direct-reader 候補として残す。
+Reader URL を開く際は、端末にインストールされている Google Play Books に対して `PackageManager` から exported reader 系 Activity を探索し、候補を `ComponentName` で明示起動する。内部 Activity の固定クラス名は使用しない。固定名の Activity が実際に存在して外部起動可能であれば同じ探索結果に含まれ、exported でない Activity は固定 `ComponentName` を指定しても外部アプリから安定して起動できないため、固定名による追加フォールバックは冗長と判断する。
 
 Reader Activity を起動できない場合は Google Play Books の front-door Activity を開く。そこまで失敗した場合でも Reader URL を通常の `ACTION_VIEW` へ渡して Google Play Store に解決させず、起動できなかったことを表示する。
 
@@ -74,6 +74,7 @@ Reader Intent と Play Books ホームフォールバックには API が返し�
 - `My eBooks` に手動追加された未購入 Volume を購入済み書籍として扱わない
 - Google が返した Reader URL のパラメータを保持できる
 - Play Books の内部 Activity 名が更新されても、端末上の exported reader Activity を検出できる可能性がある
+- 特定の内部 Reader Activity クラス名への重複した依存を持たない
 - OAuth token やアカウント情報を外部 Intent に含めない
 
 ### Negative
