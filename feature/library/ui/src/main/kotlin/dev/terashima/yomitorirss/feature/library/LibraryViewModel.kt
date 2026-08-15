@@ -81,7 +81,7 @@ class LibraryViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(smbSettingsBusy = true) }
       runCatching { smb.deleteServer(serverId) }
-        .onSuccess { loadSnapshot(message = "SMB設定を削除しました。蔵書は次回同期時に更新されます") }
+        .onSuccess { loadSnapshot(message = "SMB設定と対象サーバ由来の蔵書を削除しました") }
         .onFailure(::showError)
     }
   }
