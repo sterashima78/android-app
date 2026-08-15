@@ -45,7 +45,10 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     SmbBookReaderRoute(
       book = book,
       repository = smbRepository,
-      onBack = { openedSmbBook = null },
+      onBack = {
+        openedSmbBook = null
+        libraryViewModel.refresh()
+      },
       modifier = modifier,
     )
     return
