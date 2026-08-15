@@ -183,6 +183,9 @@ class LibraryOrganizationViewModel(
               existingTags = rollingTags.takeLast(MAX_BATCH_TAXONOMY_CONTEXT),
               existingCollections = rollingCollections.takeLast(MAX_BATCH_TAXONOMY_CONTEXT),
             )
+            if (suggestion.tagNames.isEmpty() && suggestion.collectionNames.isEmpty()) {
+              error("分類候補がありませんでした")
+            }
             addDistinctOrganizationNames(rollingTags, suggestion.tagNames)
             addDistinctOrganizationNames(rollingCollections, suggestion.collectionNames)
             val draft = LibraryOrganizationBatchDraft(
