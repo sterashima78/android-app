@@ -53,6 +53,7 @@ class AppDatabaseSchemaTest {
         "mail_labels",
         "mail_threads",
         "mail_messages",
+        "smb_library_servers",
       ),
       db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'android_metadata'",

@@ -8,6 +8,7 @@ enum class LibrarySource(val label: String) {
   GOOGLE_PLAY_BOOKS("Google Play Books"),
   KINDLE("Kindle"),
   AUDIBLE("Audible"),
+  SMB("ファイルサーバ"),
 }
 
 data class LibrarySeries(

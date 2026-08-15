@@ -153,7 +153,9 @@ class DefaultLibraryRepository(
         books = audibleWebLibraryImporter.parse(json),
         accountLabel = null,
       )
-      LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
+      LibrarySource.GOOGLE_PLAY_BOOKS,
+      LibrarySource.SMB,
+      -> error("対応していない蔵書ソースです")
     }
   }
 
