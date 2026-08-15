@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.library.data.DefaultSmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
@@ -33,7 +33,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     SeriesAwareLibraryRepository(databaseConnection)
   }
   val smbRepository = remember(application, databaseConnection) {
-    DefaultSmbLibraryRepository(application, databaseConnection)
+    CleaningSmbLibraryRepository(application, databaseConnection)
   }
   val libraryViewModel: LibraryViewModel = viewModel(
     factory = LibraryViewModel.Factory(repository, smbRepository),
