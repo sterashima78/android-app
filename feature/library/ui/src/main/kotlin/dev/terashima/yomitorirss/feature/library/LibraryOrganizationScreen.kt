@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -50,14 +49,15 @@ fun LibraryOrganizationDialog(
   state: LibraryOrganizationUiState,
   onSave: (LibraryBook, LibraryOrganizationDraft) -> Unit,
   onSuggest: (LibraryBook) -> Unit,
-  onStartBatchSuggest: (List<LibraryBook>) -> Unit,
-  onCancelBatchSuggest: () -> Unit,
-  onToggleBatchSelection: (LibraryBookKey) -> Unit,
-  onSelectAllBatchCandidates: () -> Unit,
-  onClearBatchSelection: () -> Unit,
-  onUpdateBatchDraft: (LibraryBookKey, LibraryOrganizationBatchDraft) -> Unit,
-  onApplyBatch: (List<LibraryBook>) -> Unit,
-  onClearBatchReview: () -> Unit,
+  onStartBatch: (List<LibraryBook>) -> Unit,
+  onPauseBatch: () -> Unit,
+  onResumeBatch: () -> Unit,
+  onAcceptCandidate: (LibraryBook, LibraryOrganizationCandidate, List<String>, List<String>) -> Unit,
+  onDeferCandidate: (LibraryOrganizationCandidate) -> Unit,
+  onRejectCandidate: (LibraryOrganizationCandidate) -> Unit,
+  onReopenCandidate: (LibraryOrganizationCandidate) -> Unit,
+  onRetryCandidate: (LibraryOrganizationCandidate) -> Unit,
+  onUpdateCandidate: (LibraryOrganizationCandidate, List<String>, List<String>) -> Unit,
   onDismissMessage: () -> Unit,
   onDismiss: () -> Unit,
 ) {
@@ -92,9 +92,7 @@ fun LibraryOrganizationDialog(
     ),
   ) {
     Surface(Modifier.fillMaxSize()) {
-      Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-      ) { padding ->
+      Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Column(
           modifier = Modifier
             .fillMaxSize()
@@ -121,24 +119,27 @@ fun LibraryOrganizationDialog(
             }
             TextButton(onClick = onDismiss) { Text("閉じる") }
           }
+
           Text(
-            "コレクション・タグ・読書状態を設定できます。AIは候補だけを作り、保存するまで蔵書を変更しません。",
+            "AIの一括解析はバックグラウンドで継続します。生成済み候補は保存され、解析中でも順次仕分けできます。",
             modifier = Modifier.padding(horizontal = 16.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
-          LibraryBatchOrganizationCard(
-            books = books,
+
+          LibraryBackgroundOrganizationCard(
             ready = state.initialized && !state.loading,
             unorganizedCount = unorganizedCount,
             batch = state.batch,
             onStart = {
+              onStartBatch(books)
               batchReviewVisible = true
-              onStartBatchSuggest(books)
             },
             onReview = { batchReviewVisible = true },
-            onCancel = onCancelBatchSuggest,
+            onPause = onPauseBatch,
+            onResume = onResumeBatch,
           )
+
           Row(
             modifier = Modifier
               .fillMaxWidth()
@@ -214,7 +215,7 @@ fun LibraryOrganizationDialog(
       suggestion = state.suggestions[book.organizationKey()],
       saving = state.savingBook == book.organizationKey(),
       suggesting = state.suggestingBook == book.organizationKey(),
-      aiEnabled = !state.batch.running && !state.batch.applying,
+      aiEnabled = state.batch?.status != LibraryOrganizationBatchStatus.RUNNING,
       onSuggest = { onSuggest(book) },
       onSave = { draft ->
         onSave(book, draft)
@@ -225,36 +226,35 @@ fun LibraryOrganizationDialog(
   }
 
   if (batchReviewVisible) {
-    LibraryOrganizationBatchReviewDialog(
+    LibraryOrganizationCandidateReviewDialog(
       books = books,
       batch = state.batch,
-      suggestions = state.suggestions,
-      onToggleSelection = onToggleBatchSelection,
-      onSelectAll = onSelectAllBatchCandidates,
-      onClearSelection = onClearBatchSelection,
-      onUpdateDraft = onUpdateBatchDraft,
-      onApply = { onApplyBatch(books) },
-      onCancelGeneration = onCancelBatchSuggest,
-      onClearReview = {
-        onClearBatchReview()
-        batchReviewVisible = false
-      },
+      actionBook = state.candidateActionBook,
+      onAccept = onAcceptCandidate,
+      onDefer = onDeferCandidate,
+      onReject = onRejectCandidate,
+      onReopen = onReopenCandidate,
+      onRetry = onRetryCandidate,
+      onUpdate = onUpdateCandidate,
       onDismiss = { batchReviewVisible = false },
     )
   }
 }
 
 @Composable
-private fun LibraryBatchOrganizationCard(
-  books: List<LibraryBook>,
+private fun LibraryBackgroundOrganizationCard(
   ready: Boolean,
   unorganizedCount: Int,
-  batch: LibraryOrganizationBatchUiState,
+  batch: LibraryOrganizationBatchSnapshot?,
   onStart: () -> Unit,
   onReview: () -> Unit,
-  onCancel: () -> Unit,
+  onPause: () -> Unit,
+  onResume: () -> Unit,
 ) {
-  val booksByKey = remember(books) { books.associateBy(LibraryBook::organizationKey) }
+  val canStartNew = batch == null || (
+    batch.status == LibraryOrganizationBatchStatus.COMPLETED &&
+      batch.candidates.none { it.status in ACTIVE_OR_REVIEW_STATUSES }
+    )
   Card(
     modifier = Modifier
       .fillMaxWidth()
@@ -265,57 +265,56 @@ private fun LibraryBatchOrganizationCard(
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Text("AIでまとめて整理", style = MaterialTheme.typography.titleSmall)
-      when {
-        batch.running -> {
-          Text(
-            "${batch.completed} / ${batch.total} 冊を解析済み",
-            style = MaterialTheme.typography.bodyMedium,
-          )
-          batch.currentBook?.let { key ->
-            val title = booksByKey[key]?.title ?: "蔵書を解析中"
-            Text(
-              title,
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-            )
-          }
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onReview) { Text("候補をレビュー") }
-            TextButton(onClick = onCancel) { Text("停止") }
-          }
-        }
+      if (batch == null) {
+        Text(
+          "未整理の蔵書を端末上のローカルAIで順番に解析します。画面を閉じても処理と候補は保持されます。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      } else {
+        Text(
+          "${batch.status.label} · ${batch.processed} / ${batch.total} 冊解析済み",
+          style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+          "未確認 ${batch.pendingReview} · 保留 ${batch.deferred}",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
 
-        batch.drafts.isNotEmpty() || batch.failures.isNotEmpty() -> {
-          Text(
-            "候補 ${batch.drafts.size} 冊 / 失敗 ${batch.failures.size} 冊",
-            style = MaterialTheme.typography.bodyMedium,
-          )
-          Button(onClick = onReview) { Text("候補をレビュー") }
-        }
-
-        else -> {
-          Text(
-            if (ready) {
-              "未整理の蔵書を1冊ずつローカルAIで解析し、候補を確認してからまとめて適用します。"
-            } else {
-              "整理情報を読み込み中です。完了後に一括AI解析を開始できます。"
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-          Button(
-            onClick = onStart,
-            enabled = ready && unorganizedCount > 0 && !batch.applying,
-          ) {
-            Text(
-              when {
-                !ready -> "整理情報を読み込み中"
-                unorganizedCount > 0 -> "未整理 $unorganizedCount 冊をAI解析"
-                else -> "未整理の蔵書はありません"
-              },
-            )
+      Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        when (batch?.status) {
+          LibraryOrganizationBatchStatus.RUNNING -> {
+            Button(onClick = onReview) { Text("候補を仕分け") }
+            TextButton(onClick = onPause) { Text("解析を一時停止") }
+          }
+          LibraryOrganizationBatchStatus.PAUSED -> {
+            Button(onClick = onReview) { Text("候補を仕分け") }
+            TextButton(onClick = onResume) { Text("解析を再開") }
+          }
+          LibraryOrganizationBatchStatus.COMPLETED -> {
+            Button(onClick = onReview) { Text("候補を仕分け") }
+            if (canStartNew && unorganizedCount > 0) {
+              TextButton(onClick = onStart) { Text("未整理を再解析") }
+            }
+          }
+          null -> {
+            Button(
+              onClick = onStart,
+              enabled = ready && unorganizedCount > 0,
+            ) {
+              Text(
+                when {
+                  !ready -> "整理情報を読み込み中"
+                  unorganizedCount == 0 -> "未整理の蔵書はありません"
+                  else -> "未整理 $unorganizedCount 冊をバックグラウンド解析"
+                },
+              )
+            }
           }
         }
       }
@@ -323,27 +322,56 @@ private fun LibraryBatchOrganizationCard(
   }
 }
 
+private enum class CandidateReviewFilter(
+  val label: String,
+  val statuses: Set<LibraryOrganizationCandidateStatus>?,
+) {
+  REVIEW("未確認", setOf(LibraryOrganizationCandidateStatus.PENDING_REVIEW)),
+  DEFERRED("保留", setOf(LibraryOrganizationCandidateStatus.DEFERRED)),
+  PROCESSING(
+    "解析中",
+    setOf(
+      LibraryOrganizationCandidateStatus.QUEUED,
+      LibraryOrganizationCandidateStatus.PROCESSING,
+    ),
+  ),
+  APPLIED("採用済み", setOf(LibraryOrganizationCandidateStatus.APPLIED)),
+  REJECTED("却下", setOf(LibraryOrganizationCandidateStatus.REJECTED)),
+  PROBLEM(
+    "要確認",
+    setOf(
+      LibraryOrganizationCandidateStatus.FAILED,
+      LibraryOrganizationCandidateStatus.SKIPPED,
+    ),
+  ),
+  ALL("すべて", null),
+}
+
 @Composable
-private fun LibraryOrganizationBatchReviewDialog(
+private fun LibraryOrganizationCandidateReviewDialog(
   books: List<LibraryBook>,
-  batch: LibraryOrganizationBatchUiState,
-  suggestions: Map<LibraryBookKey, LibraryOrganizationSuggestion>,
-  onToggleSelection: (LibraryBookKey) -> Unit,
-  onSelectAll: () -> Unit,
-  onClearSelection: () -> Unit,
-  onUpdateDraft: (LibraryBookKey, LibraryOrganizationBatchDraft) -> Unit,
-  onApply: () -> Unit,
-  onCancelGeneration: () -> Unit,
-  onClearReview: () -> Unit,
+  batch: LibraryOrganizationBatchSnapshot?,
+  actionBook: LibraryBookKey?,
+  onAccept: (LibraryBook, LibraryOrganizationCandidate, List<String>, List<String>) -> Unit,
+  onDefer: (LibraryOrganizationCandidate) -> Unit,
+  onReject: (LibraryOrganizationCandidate) -> Unit,
+  onReopen: (LibraryOrganizationCandidate) -> Unit,
+  onRetry: (LibraryOrganizationCandidate) -> Unit,
+  onUpdate: (LibraryOrganizationCandidate, List<String>, List<String>) -> Unit,
   onDismiss: () -> Unit,
 ) {
+  var filterName by rememberSaveable { mutableStateOf(CandidateReviewFilter.REVIEW.name) }
+  var editingCandidate by remember { mutableStateOf<LibraryOrganizationCandidate?>(null) }
+  val filter = CandidateReviewFilter.valueOf(filterName)
   val booksByKey = remember(books) { books.associateBy(LibraryBook::organizationKey) }
-  val candidates = remember(booksByKey, batch.drafts) {
-    batch.drafts.mapNotNull { (key, draft) ->
-      booksByKey[key]?.let { book -> book to draft }
-    }.sortedWith(compareBy<Pair<LibraryBook, LibraryOrganizationBatchDraft>> { it.first.title.lowercase() })
+  val candidates = remember(batch, filter) {
+    batch?.candidates.orEmpty()
+      .filter { candidate -> filter.statuses?.contains(candidate.status) ?: true }
+      .sortedWith(
+        compareBy<LibraryOrganizationCandidate> { candidateStatusOrder(it.status) }
+          .thenByDescending(LibraryOrganizationCandidate::updatedAt),
+      )
   }
-  var editingCandidate by remember { mutableStateOf<LibraryBook?>(null) }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -363,42 +391,19 @@ private fun LibraryOrganizationBatchReviewDialog(
         ) {
           Column(Modifier.weight(1f)) {
             Text(
-              "AI整理候補をレビュー",
+              "AI整理候補を仕分け",
               style = MaterialTheme.typography.titleLarge,
               fontWeight = FontWeight.SemiBold,
             )
             Text(
-              when {
-                batch.running -> "${batch.completed} / ${batch.total} 冊を解析済み"
-                batch.applying -> "選択した候補を保存しています"
-                else -> "${batch.drafts.size} 件の候補 / ${batch.selectedKeys.size} 件を適用予定"
-              },
+              batch?.let {
+                "${it.status.label} · ${it.processed}/${it.total} · 未確認 ${it.pendingReview} · 保留 ${it.deferred}"
+              } ?: "一括整理はまだありません",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
-          TextButton(onClick = onDismiss, enabled = !batch.applying) { Text("閉じる") }
-        }
-
-        if (batch.running) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-          ) {
-            CircularProgressIndicator(modifier = Modifier.height(24.dp), strokeWidth = 2.dp)
-            val title = batch.currentBook?.let(booksByKey::get)?.title
-            Text(
-              title ?: "次の蔵書を準備中",
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodySmall,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-            )
-            TextButton(onClick = onCancelGeneration) { Text("停止") }
-          }
+          TextButton(onClick = onDismiss) { Text("閉じる") }
         }
 
         Row(
@@ -408,205 +413,220 @@ private fun LibraryOrganizationBatchReviewDialog(
             .padding(horizontal = 12.dp, vertical = 8.dp),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          TextButton(
-            onClick = onSelectAll,
-            enabled = batch.drafts.isNotEmpty() && !batch.applying,
-          ) { Text("すべて選択") }
-          TextButton(
-            onClick = onClearSelection,
-            enabled = batch.selectedKeys.isNotEmpty() && !batch.applying,
-          ) { Text("選択解除") }
-          TextButton(
-            onClick = onClearReview,
-            enabled = !batch.running && !batch.applying,
-          ) { Text("候補を破棄") }
+          CandidateReviewFilter.entries.forEach { candidateFilter ->
+            val count = batch?.candidates.orEmpty().count { candidate ->
+              candidateFilter.statuses?.contains(candidate.status) ?: true
+            }
+            FilterChip(
+              selected = filter == candidateFilter,
+              onClick = { filterName = candidateFilter.name },
+              label = { Text("${candidateFilter.label} $count") },
+            )
+          }
         }
         HorizontalDivider()
 
-        LazyColumn(
-          modifier = Modifier.weight(1f),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          if (candidates.isEmpty()) {
-            item {
-              Text(
-                if (batch.running) "候補が生成されるとここに表示されます。" else "レビューできる候補はありません。",
-                modifier = Modifier.padding(20.dp),
-                style = MaterialTheme.typography.bodyMedium,
-              )
-            }
-          } else {
+        if (candidates.isEmpty()) {
+          Text(
+            when {
+              batch == null -> "一括AI解析を開始すると候補がここに保存されます。"
+              batch.status == LibraryOrganizationBatchStatus.RUNNING -> "候補を生成中です。生成された本から順次ここに表示されます。"
+              else -> "この条件に一致する候補はありません。"
+            },
+            modifier = Modifier.padding(20.dp),
+            style = MaterialTheme.typography.bodyMedium,
+          )
+        } else {
+          LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            item { Spacer(Modifier.height(4.dp)) }
             items(
               items = candidates,
-              key = { (book, _) -> "batch-${book.source.name}:${book.sourceId}" },
-            ) { (book, draft) ->
-              val key = book.organizationKey()
-              Card(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(horizontal = 12.dp)
-                  .clickable(enabled = !batch.applying) { editingCandidate = book },
-              ) {
-                Row(
-                  modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
-                  verticalAlignment = Alignment.Top,
-                ) {
-                  Checkbox(
-                    checked = key in batch.selectedKeys,
-                    onCheckedChange = { onToggleSelection(key) },
-                    enabled = !batch.applying,
-                  )
-                  Column(
-                    modifier = Modifier
-                      .weight(1f)
-                      .padding(start = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                  ) {
-                    Text(
-                      book.title,
-                      style = MaterialTheme.typography.titleSmall,
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                      "コレクション: ${draft.collectionNames.joinToString().ifEmpty { "候補なし" }}",
-                      style = MaterialTheme.typography.bodySmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                      "タグ: ${draft.tagNames.joinToString().ifEmpty { "候補なし" }}",
-                      style = MaterialTheme.typography.bodySmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis,
-                    )
-                    suggestions[key]?.reason?.let { reason ->
-                      Text(
-                        reason,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                      )
-                    }
-                    Text(
-                      "タップして候補を編集",
-                      style = MaterialTheme.typography.labelSmall,
-                      color = MaterialTheme.colorScheme.primary,
-                    )
+              key = { "candidate-${it.batchId}:${it.key.source}:${it.key.sourceId}" },
+            ) { candidate ->
+              val book = booksByKey[candidate.key]
+              LibraryOrganizationCandidateRow(
+                candidate = candidate,
+                book = book,
+                busy = actionBook == candidate.key,
+                onAccept = {
+                  if (book != null) {
+                    onAccept(book, candidate, candidate.tagNames, candidate.collectionNames)
                   }
-                }
-              }
-            }
-          }
-
-          if (batch.failures.isNotEmpty()) {
-            item {
-              Text(
-                "生成に失敗した蔵書",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.titleSmall,
+                },
+                onEdit = { editingCandidate = candidate },
+                onDefer = { onDefer(candidate) },
+                onReject = { onReject(candidate) },
+                onReopen = { onReopen(candidate) },
+                onRetry = { onRetry(candidate) },
               )
             }
-            items(
-              items = batch.failures.entries.toList(),
-              key = { (key, _) -> "batch-failure-${key.source.name}:${key.sourceId}" },
-            ) { (key, error) ->
-              Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-              ) {
-                Text(
-                  booksByKey[key]?.title ?: "蔵書を特定できません",
-                  style = MaterialTheme.typography.bodyMedium,
-                  maxLines = 1,
-                  overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                  error,
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis,
-                )
-              }
-            }
-          }
-          item { Spacer(Modifier.height(12.dp)) }
-        }
-
-        HorizontalDivider()
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp),
-          horizontalArrangement = Arrangement.End,
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Button(
-            onClick = onApply,
-            enabled = batch.selectedKeys.isNotEmpty() && !batch.running && !batch.applying,
-          ) {
-            if (batch.applying) {
-              CircularProgressIndicator(modifier = Modifier.height(18.dp), strokeWidth = 2.dp)
-            } else {
-              Text("選択 ${batch.selectedKeys.size} 件を適用")
-            }
+            item { Spacer(Modifier.height(24.dp)) }
           }
         }
       }
     }
   }
 
-  editingCandidate?.let { book ->
-    val key = book.organizationKey()
-    batch.drafts[key]?.let { draft ->
-      LibraryOrganizationBatchCandidateEditorDialog(
-        book = book,
-        draft = draft,
-        onSave = { updated ->
-          onUpdateDraft(key, updated)
-          editingCandidate = null
-        },
-        onDismiss = { editingCandidate = null },
-      )
+  editingCandidate?.let { candidate ->
+    val book = booksByKey[candidate.key]
+    LibraryOrganizationCandidateEditorDialog(
+      title = book?.title ?: "蔵書の整理候補",
+      candidate = candidate,
+      busy = actionBook == candidate.key,
+      canAccept = book != null,
+      onSaveDraft = { tags, collections ->
+        onUpdate(candidate, tags, collections)
+        editingCandidate = null
+      },
+      onAccept = { tags, collections ->
+        if (book != null) onAccept(book, candidate, tags, collections)
+        editingCandidate = null
+      },
+      onDismiss = { editingCandidate = null },
+    )
+  }
+}
+
+@Composable
+private fun LibraryOrganizationCandidateRow(
+  candidate: LibraryOrganizationCandidate,
+  book: LibraryBook?,
+  busy: Boolean,
+  onAccept: () -> Unit,
+  onEdit: () -> Unit,
+  onDefer: () -> Unit,
+  onReject: () -> Unit,
+  onReopen: () -> Unit,
+  onRetry: () -> Unit,
+) {
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 12.dp),
+  ) {
+    Column(
+      modifier = Modifier.padding(14.dp),
+      verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+      ) {
+        Text(
+          book?.title ?: "${candidate.key.source.label} の蔵書",
+          modifier = Modifier.weight(1f),
+          style = MaterialTheme.typography.titleSmall,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          candidate.status.label,
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.primary,
+        )
+      }
+      if (candidate.tagNames.isNotEmpty()) {
+        Text(
+          "タグ: ${candidate.tagNames.joinToString()}",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      if (candidate.collectionNames.isNotEmpty()) {
+        Text(
+          "コレクション: ${candidate.collectionNames.joinToString()}",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      candidate.reason?.let { reason ->
+        Text(
+          reason,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      candidate.error?.let { error ->
+        Text(
+          error,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error,
+        )
+      }
+
+      if (busy) {
+        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
+      } else {
+        Row(
+          modifier = Modifier.horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+          when (candidate.status) {
+            LibraryOrganizationCandidateStatus.PENDING_REVIEW -> {
+              Button(onClick = onAccept, enabled = book != null) { Text("採用") }
+              TextButton(onClick = onEdit) { Text("編集") }
+              TextButton(onClick = onDefer) { Text("保留") }
+              TextButton(onClick = onReject) { Text("却下") }
+            }
+            LibraryOrganizationCandidateStatus.DEFERRED -> {
+              Button(onClick = onAccept, enabled = book != null) { Text("採用") }
+              TextButton(onClick = onEdit) { Text("編集") }
+              TextButton(onClick = onReopen) { Text("未確認へ") }
+              TextButton(onClick = onReject) { Text("却下") }
+            }
+            LibraryOrganizationCandidateStatus.REJECTED -> {
+              TextButton(onClick = onReopen) { Text("未確認へ戻す") }
+            }
+            LibraryOrganizationCandidateStatus.FAILED,
+            LibraryOrganizationCandidateStatus.SKIPPED -> {
+              TextButton(onClick = onRetry) { Text("再解析") }
+              TextButton(onClick = onReject) { Text("却下して完了") }
+            }
+            LibraryOrganizationCandidateStatus.QUEUED,
+            LibraryOrganizationCandidateStatus.PROCESSING,
+            LibraryOrganizationCandidateStatus.APPLIED -> Unit
+          }
+        }
+      }
     }
   }
 }
 
 @Composable
-private fun LibraryOrganizationBatchCandidateEditorDialog(
-  book: LibraryBook,
-  draft: LibraryOrganizationBatchDraft,
-  onSave: (LibraryOrganizationBatchDraft) -> Unit,
+private fun LibraryOrganizationCandidateEditorDialog(
+  title: String,
+  candidate: LibraryOrganizationCandidate,
+  busy: Boolean,
+  canAccept: Boolean,
+  onSaveDraft: (List<String>, List<String>) -> Unit,
+  onAccept: (List<String>, List<String>) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  var tagText by remember(book.organizationKey(), draft.tagNames) {
-    mutableStateOf(draft.tagNames.joinToString(", "))
+  var tagText by remember(candidate.key, candidate.updatedAt) {
+    mutableStateOf(candidate.tagNames.joinToString(", "))
   }
-  var collectionText by remember(book.organizationKey(), draft.collectionNames) {
-    mutableStateOf(draft.collectionNames.joinToString(", "))
+  var collectionText by remember(candidate.key, candidate.updatedAt) {
+    mutableStateOf(candidate.collectionNames.joinToString(", "))
   }
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("AI候補を編集") },
+    title = { Text("AI整理候補を編集") },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-          book.title,
-          style = MaterialTheme.typography.titleSmall,
-          maxLines = 3,
-          overflow = TextOverflow.Ellipsis,
-        )
+      Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
         OutlinedTextField(
           value = collectionText,
           onValueChange = { collectionText = it },
           modifier = Modifier.fillMaxWidth(),
           label = { Text("コレクション") },
-          supportingText = { Text("一括適用する前の候補だけを編集します") },
         )
         OutlinedTextField(
           value = tagText,
@@ -614,22 +634,37 @@ private fun LibraryOrganizationBatchCandidateEditorDialog(
           modifier = Modifier.fillMaxWidth(),
           label = { Text("タグ") },
         )
+        Text(
+          "候補だけ保存すれば後で再開できます。採用すると実際の蔵書整理情報へ反映されます。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
     },
     confirmButton = {
       TextButton(
+        enabled = !busy && canAccept,
         onClick = {
-          onSave(
-            LibraryOrganizationBatchDraft(
-              tagNames = splitOrganizationNames(tagText),
-              collectionNames = splitOrganizationNames(collectionText),
-            ),
+          onAccept(
+            splitOrganizationNames(tagText),
+            splitOrganizationNames(collectionText),
           )
         },
-      ) { Text("候補を更新") }
+      ) { Text("修正して採用") }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) { Text("キャンセル") }
+      Row {
+        TextButton(
+          enabled = !busy,
+          onClick = {
+            onSaveDraft(
+              splitOrganizationNames(tagText),
+              splitOrganizationNames(collectionText),
+            )
+          },
+        ) { Text("候補だけ保存") }
+        TextButton(onClick = onDismiss, enabled = !busy) { Text("キャンセル") }
+      }
     },
   )
 }
@@ -855,3 +890,23 @@ private fun mergeOrganizationNames(
   .filter(String::isNotEmpty)
   .distinctBy { it.lowercase() }
   .joinToString(", ")
+
+private fun candidateStatusOrder(status: LibraryOrganizationCandidateStatus): Int = when (status) {
+  LibraryOrganizationCandidateStatus.PENDING_REVIEW -> 0
+  LibraryOrganizationCandidateStatus.DEFERRED -> 1
+  LibraryOrganizationCandidateStatus.PROCESSING -> 2
+  LibraryOrganizationCandidateStatus.QUEUED -> 3
+  LibraryOrganizationCandidateStatus.FAILED -> 4
+  LibraryOrganizationCandidateStatus.SKIPPED -> 5
+  LibraryOrganizationCandidateStatus.APPLIED -> 6
+  LibraryOrganizationCandidateStatus.REJECTED -> 7
+}
+
+private val ACTIVE_OR_REVIEW_STATUSES = setOf(
+  LibraryOrganizationCandidateStatus.QUEUED,
+  LibraryOrganizationCandidateStatus.PROCESSING,
+  LibraryOrganizationCandidateStatus.PENDING_REVIEW,
+  LibraryOrganizationCandidateStatus.DEFERRED,
+  LibraryOrganizationCandidateStatus.FAILED,
+  LibraryOrganizationCandidateStatus.SKIPPED,
+)
