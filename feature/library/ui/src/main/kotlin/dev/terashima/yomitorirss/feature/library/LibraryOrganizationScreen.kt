@@ -129,6 +129,7 @@ fun LibraryOrganizationDialog(
           )
           LibraryBatchOrganizationCard(
             books = books,
+            ready = state.initialized && !state.loading,
             unorganizedCount = unorganizedCount,
             batch = state.batch,
             onStart = {
@@ -246,6 +247,7 @@ fun LibraryOrganizationDialog(
 @Composable
 private fun LibraryBatchOrganizationCard(
   books: List<LibraryBook>,
+  ready: Boolean,
   unorganizedCount: Int,
   batch: LibraryOrganizationBatchUiState,
   onStart: () -> Unit,
@@ -295,15 +297,25 @@ private fun LibraryBatchOrganizationCard(
 
         else -> {
           Text(
-            "未整理の蔵書を1冊ずつローカルAIで解析し、候補を確認してからまとめて適用します。",
+            if (ready) {
+              "未整理の蔵書を1冊ずつローカルAIで解析し、候補を確認してからまとめて適用します。"
+            } else {
+              "整理情報を読み込み中です。完了後に一括AI解析を開始できます。"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Button(
             onClick = onStart,
-            enabled = unorganizedCount > 0 && !batch.applying,
+            enabled = ready && unorganizedCount > 0 && !batch.applying,
           ) {
-            Text(if (unorganizedCount > 0) "未整理 $unorganizedCount 冊をAI解析" else "未整理の蔵書はありません")
+            Text(
+              when {
+                !ready -> "整理情報を読み込み中"
+                unorganizedCount > 0 -> "未整理 $unorganizedCount 冊をAI解析"
+                else -> "未整理の蔵書はありません"
+              },
+            )
           }
         }
       }
