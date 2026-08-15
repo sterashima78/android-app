@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.feature.chat.ChatModelStatus
 import dev.terashima.yomitorirss.feature.chat.ChatProgress
 import dev.terashima.yomitorirss.feature.chat.ChatRole
 import dev.terashima.yomitorirss.feature.chat.ChatTurn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,14 +82,39 @@ class LocalChatGenerator(
       tools = inferenceTools,
     )
 
-    _streamingReply.value = ""
-    val streamedRaw = StringBuilder()
-    val raw = modelManager.generateConversation(request, streaming = true) { chunk ->
-      appendStreamChunk(streamedRaw, chunk)
-      _streamingReply.value = ChatResponseStream.partial(streamedRaw.toString())
-    }
+    val raw = generateWithToolCallRecovery(request)
     ChatResponseStream.complete(raw).also { reply ->
       _streamingReply.value = reply
+    }
+  }
+
+  private fun generateWithToolCallRecovery(request: LocalInferenceConversationRequest): String {
+    var retryCount = 0
+    while (true) {
+      val streamedRaw = StringBuilder()
+      _streamingReply.value = ""
+      val currentRequest = if (retryCount == 0) {
+        request
+      } else {
+        request.copy(
+          systemInstruction = request.systemInstruction + "\n" + TOOL_CALL_RECOVERY_INSTRUCTION,
+        )
+      }
+
+      try {
+        return modelManager.generateConversation(currentRequest, streaming = true) { chunk ->
+          appendStreamChunk(streamedRaw, chunk)
+          _streamingReply.value = ChatResponseStream.partial(streamedRaw.toString())
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        if (!error.isGemmaToolCallParseFailure()) throw error
+        if (retryCount >= MAX_TOOL_CALL_PARSE_RETRIES) {
+          throw IllegalStateException(TOOL_CALL_PARSE_FAILURE_MESSAGE)
+        }
+        retryCount += 1
+      }
     }
   }
 }
@@ -126,6 +152,14 @@ private fun List<AgentSkill>.toInferenceTools(): List<LocalInferenceTool> {
   return tools
 }
 
+internal fun Throwable.isGemmaToolCallParseFailure(): Boolean =
+  generateSequence(this) { error -> error.cause }
+    .mapNotNull(Throwable::message)
+    .any { message ->
+      message.contains("Failed to parse tool calls", ignoreCase = true) ||
+        message.contains("Failed to parse FC tool calls", ignoreCase = true)
+    }
+
 private fun appendStreamChunk(buffer: StringBuilder, chunk: String) {
   if (chunk.isEmpty()) return
   val current = buffer.toString()
@@ -138,3 +172,8 @@ private fun appendStreamChunk(buffer: StringBuilder, chunk: String) {
 }
 
 private const val MAX_TOOL_RESULT_CHARS = 4_000
+private const val MAX_TOOL_CALL_PARSE_RETRIES = 1
+private const val TOOL_CALL_PARSE_FAILURE_MESSAGE =
+  "Gemma 4のツール呼び出しを解析できませんでした。もう一度お試しください。"
+private const val TOOL_CALL_RECOVERY_INSTRUCTION =
+  "前回のTool Callは形式エラーでした。必要なToolは1つずつ呼び、各Tool Callでは必要な引数だけを指定してください。省略可能な引数は必要がなければ省略してください。"
