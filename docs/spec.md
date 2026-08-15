@@ -1,7 +1,7 @@
 # Android RSSリーダー仕様書
 
 - 文書バージョン: 0.2.2
-- 更新日: 2026-08-14
+- 更新日: 2026-08-15
 - 状態: Kotlinネイティブ版
 
 ## 1. 目的
@@ -40,7 +40,7 @@
 | 永続化 | SQLiteOpenHelper |
 | HTTP | OkHttp |
 | XML・HTML解析 | jsoup |
-| 端末内要約 | MediaPipe Tasks GenAI、LiteRT-LM |
+| 端末内AI | Gemma 4、LiteRT-LM |
 | バックアップ | Storage Access Framework、UTF-8 JSON |
 
 Expo、React Native、JavaScriptランタイム、Metro、EASは使用しない。
@@ -147,9 +147,9 @@ XML宣言とHTTP Content-Typeの文字コードを確認し、日本語をUTF-8�
 - 保存済み記事は30日を超えても保持する
 - フィード削除時、保存済み記事は配信元情報を残して保持する
 
-## 9. 端末内要約
+## 9. 端末内AI
 
-記事本文を取得し、ダウンロード済みのローカルモデルで日本語要約を生成する。本文そのものはデータベースへ保存しない。
+記事本文を取得し、ダウンロード済みのGemma 4モデルで日本語要約を生成する。本文そのものはデータベースへ保存しない。AIチャットも同じGemma 4 / LiteRT-LM runtimeを利用する。
 
 モデル管理画面では次を行える。
 
@@ -160,19 +160,19 @@ XML宣言とHTTP Content-Typeの文字コードを確認し、日本語をUTF-8�
 - モデルの削除
 - 端末メモリが推奨量を下回る場合の警告
 - 推論バックエンドのCPU/GPU切り替え
-- 選択中モデルが対応している場合のThinking切り替え
 
-初期候補は次のとおり。
+モデル候補は次のとおり。
 
-- Gemma 4 E2B Instruct
-- Gemma 4 E4B Instruct
-- Qwen3 4B mixed INT4
+- Gemma 4 E2B Instruct（既定・推奨）
+- Gemma 4 E4B Instruct（品質優先）
 
-CPUを既定の実行バックエンドとする。GPUを選択した場合はMediaPipe Tasks GenAIまたはLiteRT-LMのGPU backendで推論する。GPUが利用できない端末では自動的にCPUへ切り替えずエラーを表示する。
+Qwen系モデルとMediaPipe Tasks GenAI runtimeは使用しない。旧Qwenモデルが端末に残っている場合は、最新版起動時にモデルファイル・一時ファイル・runtime cacheを削除する。
 
-Thinkingは既定で無効とする。Qwen3 4Bでは `/think` と `/no_think` を利用して1つのモデル内で切り替える。Thinking対応モデルではThinking状態も要約キャッシュキーへ含める。
+CPUを既定の実行バックエンドとする。GPUを選択した場合はLiteRT-LMのGPU backendで推論する。GPUが利用できない端末では自動的にCPUへ切り替えずエラーを表示する。
 
-モデル読込中と要約生成中を区別して表示する。生成済み要約は記事IDとモデルID、要約設定を表すキャッシュキーとともにSQLiteへキャッシュし、再生成も可能とする。
+AIチャットがアプリ内データを必要とする場合は、Gemma 4のFunction CallingとLiteRT-LMの `ConversationConfig.tools` / `OpenApiTool` を利用する。RSS、Reddit、ブックマーク、既読履歴、タスクの読み取り専用Toolを登録し、Tool CallとTool Responseの反復はLiteRT-LMのnative Conversationへ委譲する。任意コード実行、任意SQL、書き込みToolは提供しない。
+
+モデル読込中と生成中を区別して表示する。生成済み要約は記事IDとモデルID、要約設定を表すキャッシュキーとともにSQLiteへキャッシュし、再生成も可能とする。
 
 ## 10. データベース
 
