@@ -56,8 +56,60 @@ class KnowledgeTopicsTest {
     assertNotEquals(before.sourceFingerprint, after.sourceFingerprint)
   }
 
+  @Test
+  fun `記事作成では依頼に関連する資料を優先する`() {
+    val selected = selectKnowledgeSources(
+      query = "Gemma 4 と Pixel 9 の実用性をまとめて",
+      sources = listOf(
+        source("a", title = "Gemma 4 on Android", summary = "Pixel 9 での推論速度"),
+        source("b", title = "Kotlin Coroutines", summary = "非同期処理"),
+      ),
+      limit = 1,
+    )
+
+    assertEquals("a", selected.single().articleId)
+  }
+
+  @Test
+  fun `派生記事では元記事の出典を優先する`() {
+    val selected = selectKnowledgeSources(
+      query = "別の観点でまとめて",
+      sources = listOf(
+        source("a", savedAt = "2026-08-14T00:00:00Z"),
+        source("b", savedAt = "2026-08-15T00:00:00Z"),
+      ),
+      preferredArticleIds = setOf("a"),
+      limit = 1,
+    )
+
+    assertEquals("a", selected.single().articleId)
+  }
+
+  @Test
+  fun `LLM出力のH1をタイトルとして本文から分離する`() {
+    val document = parseGeneratedKnowledgeDocument(
+      raw = "```markdown\n# Pixel 9 と Gemma 4\n\n## 概要\n本文 [1]\n```",
+      fallbackTitle = "fallback",
+    )
+
+    assertEquals("Pixel 9 と Gemma 4", document.title)
+    assertEquals("## 概要\n本文 [1]", document.bodyMarkdown)
+  }
+
+  @Test
+  fun `H1がない場合は依頼から作ったタイトルを使う`() {
+    val document = parseGeneratedKnowledgeDocument(
+      raw = "## 概要\n本文",
+      fallbackTitle = fallbackKnowledgeTitle("Gemma 4についてまとめて"),
+    )
+
+    assertEquals("Gemma 4", document.title)
+    assertEquals("## 概要\n本文", document.bodyMarkdown)
+  }
+
   private fun source(
     id: String,
+    title: String = "title-$id",
     summary: String = "summary",
     tags: List<String> = emptyList(),
     folderName: String? = null,
@@ -65,7 +117,7 @@ class KnowledgeTopicsTest {
     savedAt: String = "2026-08-15T00:00:00Z",
   ) = KnowledgeGenerationSource(
     articleId = id,
-    title = "title-$id",
+    title = title,
     url = "https://example.com/$id",
     sourceTitle = sourceTitle,
     savedAt = savedAt,
