@@ -16,6 +16,12 @@ interface SummaryRepository {
    */
   suspend fun requestBookmarkEnrichment(articleId: String): SummaryRequestResult
 
+  /**
+   * 自動補完対象のブックマークをまとめて要約キューへ追加する。
+   * 既存要約または既存タスクがある記事は変更せず、新規タスクだけを1回のworker起動で処理する。
+   */
+  suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int
+
   /** 保存済みの要約を返す。AIチャット等の読み取り用途向け。 */
   suspend fun findSummary(articleId: String): String?
 }
