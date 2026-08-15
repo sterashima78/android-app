@@ -53,7 +53,7 @@ class DefaultLibraryOrganizationRepository(
   override suspend fun save(
     book: LibraryBook,
     draft: LibraryOrganizationDraft,
-  ) = withContext(Dispatchers.IO) {
+  ): Unit = withContext(Dispatchers.IO) {
     val tagNames = sanitizeNames(draft.tagNames, MAX_TAGS_PER_BOOK, "タグ")
     val collectionNames = sanitizeNames(draft.collectionNames, MAX_COLLECTIONS_PER_BOOK, "コレクション")
     ensureLibraryOrganizationSchema(database.writable)
@@ -129,6 +129,7 @@ class DefaultLibraryOrganizationRepository(
           SQLiteDatabase.CONFLICT_REPLACE,
         )
       }
+      Unit
     }
   }
 
