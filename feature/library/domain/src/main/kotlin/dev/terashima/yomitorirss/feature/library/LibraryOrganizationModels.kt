@@ -134,7 +134,7 @@ interface LibraryOrganizationRepository {
   )
 
   suspend fun acceptCandidate(
-    key: LibraryBookKey,
+    book: LibraryBook,
     draft: LibraryOrganizationDraft,
   )
 
