@@ -35,7 +35,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(13, db.version)
+    assertEquals(15, db.version)
     assertEquals(
       setOf(
         "feed_folders",
@@ -47,6 +47,8 @@ class AppDatabaseSchemaTest {
         "article_folders",
         "article_summaries",
         "summary_tasks",
+        "knowledge_pages",
+        "knowledge_page_sources",
         "mail_accounts",
         "mail_labels",
         "mail_threads",
