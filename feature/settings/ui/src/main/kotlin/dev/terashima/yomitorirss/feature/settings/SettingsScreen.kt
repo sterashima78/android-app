@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 fun SettingsFeatureScreen(
   modifier: Modifier,
   tagCount: Int,
-  backgroundFetchWifiOnly: Boolean,
+  initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
@@ -24,13 +24,19 @@ fun SettingsFeatureScreen(
   onImportBackup: () -> Unit,
   onOpenWebServer: () -> Unit,
 ) {
+  var backgroundFetchWifiOnly by remember(initialBackgroundFetchWifiOnly) {
+    mutableStateOf(initialBackgroundFetchWifiOnly)
+  }
   var showTaskQueue by remember { mutableStateOf(false) }
 
   SettingsContent(
     modifier = modifier,
     tagCount = tagCount,
     backgroundFetchWifiOnly = backgroundFetchWifiOnly,
-    onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
+    onBackgroundFetchWifiOnlyChange = { wifiOnly ->
+      backgroundFetchWifiOnly = wifiOnly
+      onBackgroundFetchWifiOnlyChange(wifiOnly)
+    },
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = onOpenXCss,
