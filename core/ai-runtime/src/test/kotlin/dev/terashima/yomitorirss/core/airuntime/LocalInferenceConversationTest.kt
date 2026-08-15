@@ -46,34 +46,19 @@ class LocalInferenceConversationTest {
   }
 
   @Test
-  fun `tool実行結果はJSONとして返す`() {
-    val tool = LocalOpenApiTool(
-      LocalInferenceTool(
-        name = "test_tool",
-        description = "test",
-        execute = { "1行目\n2行目" },
-      ),
-    )
-
-    val result = Json.parseToJsonElement(tool.execute("{}")).jsonObject
+  fun `tool実行結果はJSONとして表現する`() {
+    val result = Json.parseToJsonElement(toolResultJson("1行目\n2行目")).jsonObject
 
     assertEquals("1行目\n2行目", result.getValue("result").jsonPrimitive.content)
   }
 
   @Test
-  fun `tool実行失敗もJSONとして返す`() {
-    val tool = LocalOpenApiTool(
-      LocalInferenceTool(
-        name = "test_tool",
-        description = "test",
-        execute = { error("秘密の内部エラー") },
-      ),
-    )
-
-    val result = Json.parseToJsonElement(tool.execute("{}")).jsonObject
+  fun `tool実行失敗は内部情報を含まないJSONとして表現する`() {
+    val resultJson = toolErrorJson()
+    val result = Json.parseToJsonElement(resultJson).jsonObject
 
     assertEquals("ツール実行に失敗しました。", result.getValue("error").jsonPrimitive.content)
-    assertFalse(tool.execute("{}").contains("秘密の内部エラー"))
+    assertFalse(resultJson.contains("秘密の内部エラー"))
   }
 
   @Test
