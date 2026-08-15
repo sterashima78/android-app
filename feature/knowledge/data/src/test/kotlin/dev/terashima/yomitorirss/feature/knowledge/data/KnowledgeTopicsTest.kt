@@ -74,6 +74,21 @@ class KnowledgeTopicsTest {
   }
 
   @Test
+  fun `日本語の助詞でつながった依頼も個別の検索語として扱う`() {
+    val selected = selectKnowledgeSources(
+      query = "AndroidとKotlinの違いをまとめて",
+      sources = listOf(
+        source("android", title = "Androidアプリ設計", summary = "モバイルアプリの設計"),
+        source("kotlin", title = "Kotlin入門", summary = "Kotlin言語の特徴"),
+        source("rust", title = "Rust入門", summary = "所有権とライフタイム", savedAt = "2026-08-16T00:00:00Z"),
+      ),
+      limit = 2,
+    )
+
+    assertEquals(setOf("android", "kotlin"), selected.map { it.articleId }.toSet())
+  }
+
+  @Test
   fun `派生記事では元記事の出典を優先する`() {
     val selected = selectKnowledgeSources(
       query = "別の観点でまとめて",
