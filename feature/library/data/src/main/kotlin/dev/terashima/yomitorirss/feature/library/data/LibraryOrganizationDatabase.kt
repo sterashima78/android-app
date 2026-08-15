@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSnapshot
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationTag
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationUpdate
 import dev.terashima.yomitorirss.feature.library.LibraryReadingStatus
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.organizationKey
@@ -53,84 +54,106 @@ class DefaultLibraryOrganizationRepository(
   override suspend fun save(
     book: LibraryBook,
     draft: LibraryOrganizationDraft,
-  ): Unit = withContext(Dispatchers.IO) {
-    val tagNames = sanitizeNames(draft.tagNames, MAX_TAGS_PER_BOOK, "タグ")
-    val collectionNames = sanitizeNames(draft.collectionNames, MAX_COLLECTIONS_PER_BOOK, "コレクション")
-    val readingStatus = draft.readingStatus
+  ) {
+    saveAll(listOf(LibraryOrganizationUpdate(book, draft)))
+  }
+
+  override suspend fun saveAll(updates: List<LibraryOrganizationUpdate>): Unit = withContext(Dispatchers.IO) {
+    if (updates.isEmpty()) return@withContext
+    val sanitized = updates.map { update ->
+      SanitizedOrganizationUpdate(
+        key = update.book.organizationKey(),
+        tagNames = sanitizeNames(update.draft.tagNames, MAX_TAGS_PER_BOOK, "タグ"),
+        collectionNames = sanitizeNames(
+          update.draft.collectionNames,
+          MAX_COLLECTIONS_PER_BOOK,
+          "コレクション",
+        ),
+        readingStatus = update.draft.readingStatus,
+      )
+    }
     ensureLibraryOrganizationSchema(database.writable)
-    val key = book.organizationKey()
     val now = System.currentTimeMillis()
     database.transaction {
-      delete(
-        ITEM_TAG_TABLE,
-        "source = ? AND source_id = ?",
-        arrayOf(key.source.name, key.sourceId),
-      )
-      tagNames.forEach { name ->
-        val tagId = resolveTaxonomyId(
-          table = TAG_TABLE,
-          idColumn = "tag_id",
-          name = name,
-          idPrefix = "ltag",
-          now = now,
-        )
-        insertOrThrow(
-          ITEM_TAG_TABLE,
-          null,
-          ContentValues().apply {
-            put("source", key.source.name)
-            put("source_id", key.sourceId)
-            put("tag_id", tagId)
-            put("created_at", now)
-          },
-        )
-      }
-
-      delete(
-        ITEM_COLLECTION_TABLE,
-        "source = ? AND source_id = ?",
-        arrayOf(key.source.name, key.sourceId),
-      )
-      collectionNames.forEach { name ->
-        val collectionId = resolveTaxonomyId(
-          table = COLLECTION_TABLE,
-          idColumn = "collection_id",
-          name = name,
-          idPrefix = "lcol",
-          now = now,
-        )
-        insertOrThrow(
-          ITEM_COLLECTION_TABLE,
-          null,
-          ContentValues().apply {
-            put("source", key.source.name)
-            put("source_id", key.sourceId)
-            put("collection_id", collectionId)
-            put("created_at", now)
-          },
-        )
-      }
-
-      if (readingStatus == null) {
-        delete(
-          READING_STATUS_TABLE,
-          "source = ? AND source_id = ?",
-          arrayOf(key.source.name, key.sourceId),
-        )
-      } else {
-        insertWithOnConflict(
-          READING_STATUS_TABLE,
-          null,
-          ContentValues().apply {
-            put("source", key.source.name)
-            put("source_id", key.sourceId)
-            put("status", readingStatus.name)
-            put("updated_at", now)
-          },
-          SQLiteDatabase.CONFLICT_REPLACE,
-        )
-      }
+      sanitized.forEach { update -> writeOrganization(update, now) }
       Unit
+    }
+  }
+
+  private fun SQLiteDatabase.writeOrganization(
+    update: SanitizedOrganizationUpdate,
+    now: Long,
+  ) {
+    val key = update.key
+    delete(
+      ITEM_TAG_TABLE,
+      "source = ? AND source_id = ?",
+      arrayOf(key.source.name, key.sourceId),
+    )
+    update.tagNames.forEach { name ->
+      val tagId = resolveTaxonomyId(
+        table = TAG_TABLE,
+        idColumn = "tag_id",
+        name = name,
+        idPrefix = "ltag",
+        now = now,
+      )
+      insertOrThrow(
+        ITEM_TAG_TABLE,
+        null,
+        ContentValues().apply {
+          put("source", key.source.name)
+          put("source_id", key.sourceId)
+          put("tag_id", tagId)
+          put("created_at", now)
+        },
+      )
+    }
+
+    delete(
+      ITEM_COLLECTION_TABLE,
+      "source = ? AND source_id = ?",
+      arrayOf(key.source.name, key.sourceId),
+    )
+    update.collectionNames.forEach { name ->
+      val collectionId = resolveTaxonomyId(
+        table = COLLECTION_TABLE,
+        idColumn = "collection_id",
+        name = name,
+        idPrefix = "lcol",
+        now = now,
+      )
+      insertOrThrow(
+        ITEM_COLLECTION_TABLE,
+        null,
+        ContentValues().apply {
+          put("source", key.source.name)
+          put("source_id", key.sourceId)
+          put("collection_id", collectionId)
+          put("created_at", now)
+        },
+      )
+    }
+
+    val readingStatus = update.readingStatus
+    if (readingStatus == null) {
+      delete(
+        READING_STATUS_TABLE,
+        "source = ? AND source_id = ?",
+        arrayOf(key.source.name, key.sourceId),
+      )
+    } else {
+      insertWithOnConflict(
+        READING_STATUS_TABLE,
+        null,
+        ContentValues().apply {
+          put("source", key.source.name)
+          put("source_id", key.sourceId)
+          put("status", readingStatus.name)
+          put("updated_at", now)
+        },
+        SQLiteDatabase.CONFLICT_REPLACE,
+      )
     }
   }
 
@@ -243,6 +266,13 @@ class DefaultLibraryOrganizationRepository(
     return id
   }
 }
+
+private data class SanitizedOrganizationUpdate(
+  val key: LibraryBookKey,
+  val tagNames: List<String>,
+  val collectionNames: List<String>,
+  val readingStatus: LibraryReadingStatus?,
+)
 
 internal fun ensureLibraryOrganizationSchema(db: SQLiteDatabase) {
   db.execSQL(

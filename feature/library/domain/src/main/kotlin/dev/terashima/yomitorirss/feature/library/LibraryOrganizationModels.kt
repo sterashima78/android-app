@@ -47,6 +47,11 @@ data class LibraryOrganizationDraft(
   val readingStatus: LibraryReadingStatus?,
 )
 
+data class LibraryOrganizationUpdate(
+  val book: LibraryBook,
+  val draft: LibraryOrganizationDraft,
+)
+
 data class LibraryOrganizationSuggestion(
   val tagNames: List<String>,
   val collectionNames: List<String>,
@@ -62,6 +67,10 @@ interface LibraryOrganizationRepository {
     book: LibraryBook,
     draft: LibraryOrganizationDraft,
   )
+
+  suspend fun saveAll(updates: List<LibraryOrganizationUpdate>) {
+    updates.forEach { update -> save(update.book, update.draft) }
+  }
 }
 
 interface LibraryOrganizationSuggester {
