@@ -25,5 +25,6 @@ class YomitoriApplication : Application(), WidgetRepositoryProvider, TaskReposit
   override fun onCreate() {
     super.onCreate()
     StartupCrashStore.install(this)
+    runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }
 }

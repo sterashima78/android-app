@@ -39,6 +39,37 @@ object SummaryQueue {
     }
   }
 
+  fun enqueueMissingBookmarkEnrichment(context: Context, articleIds: List<String>): Int {
+    val appContext = context.applicationContext
+    val acceptedIds = mutableListOf<String>()
+    val database = YomitoriDatabase.create(appContext)
+    try {
+      articleIds.asSequence().distinct().forEach { articleId ->
+        if (database.findSummary(articleId) != null) return@forEach
+        if (database.findSummaryTask(articleId) != null) return@forEach
+        if (database.enqueueSummaryTask(articleId, forceRefresh = false)) acceptedIds += articleId
+      }
+    } finally {
+      database.close()
+    }
+    if (acceptedIds.isEmpty()) return 0
+
+    ensureCleanupScheduled(appContext)
+    runCatching { scheduleWorker(appContext) }
+      .onFailure { error ->
+        val retryDatabase = YomitoriDatabase.create(appContext)
+        try {
+          acceptedIds.forEach { articleId ->
+            retryDatabase.markSummaryTaskFailed(articleId, error.message ?: error.javaClass.simpleName)
+          }
+        } finally {
+          retryDatabase.close()
+        }
+      }
+      .getOrThrow()
+    return acceptedIds.size
+  }
+
   fun kick(context: Context) {
     val appContext = context.applicationContext
     ensureCleanupScheduled(appContext)
