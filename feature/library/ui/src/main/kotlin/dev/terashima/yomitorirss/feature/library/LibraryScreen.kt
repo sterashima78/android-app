@@ -625,7 +625,10 @@ private fun LibraryBookThumbnail(
   onEditSeries: () -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
+  val smbFileActions = LocalSmbBookFileActionBinding.current
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
+  var renameDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
+  var deleteDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
   val openUrl = remember(book.source, book.sourceId, book.infoUrl) { book.openUrl() }
   val hasInfoUrl = openUrl != null
 
@@ -722,6 +725,22 @@ private fun LibraryBookThumbnail(
           onEditSeries()
         },
       )
+      if (book.source == LibrarySource.SMB && smbFileActions != null) {
+        DropdownMenuItem(
+          text = { Text("ファイル名を変更") },
+          onClick = {
+            actionMenuExpanded = false
+            renameDialogVisible = true
+          },
+        )
+        DropdownMenuItem(
+          text = { Text("ファイルを削除") },
+          onClick = {
+            actionMenuExpanded = false
+            deleteDialogVisible = true
+          },
+        )
+      }
       DropdownMenuItem(
         text = { Text(actionLabel) },
         onClick = {
@@ -731,6 +750,101 @@ private fun LibraryBookThumbnail(
       )
     }
   }
+
+  if (renameDialogVisible && smbFileActions != null) {
+    SmbBookRenameDialog(
+      book = book,
+      onDismiss = { renameDialogVisible = false },
+      onRename = { newFileName ->
+        renameDialogVisible = false
+        smbFileActions.onRename(book, newFileName)
+      },
+    )
+  }
+
+  if (deleteDialogVisible && smbFileActions != null) {
+    SmbBookDeleteDialog(
+      book = book,
+      onDismiss = { deleteDialogVisible = false },
+      onDelete = {
+        deleteDialogVisible = false
+        smbFileActions.onDelete(book)
+      },
+    )
+  }
+}
+
+@Composable
+private fun SmbBookRenameDialog(
+  book: LibraryBook,
+  onDismiss: () -> Unit,
+  onRename: (String) -> Unit,
+) {
+  var newFileName by remember(book.sourceId) { mutableStateOf(book.title) }
+  val trimmed = newFileName.trim()
+  val valid = trimmed.isNotEmpty() && '/' !in trimmed && '\\' !in trimmed
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("ファイル名を変更") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          "ファイルサーバ上のファイル名を変更します。拡張子は現在の形式を維持します。",
+          style = MaterialTheme.typography.bodyMedium,
+        )
+        OutlinedTextField(
+          value = newFileName,
+          onValueChange = { newFileName = it },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("新しいファイル名") },
+          supportingText = {
+            Text(if (valid) "拡張子は入力しなくても維持されます" else "ファイル名を入力してください")
+          },
+          isError = !valid,
+          singleLine = true,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        enabled = valid,
+        onClick = { onRename(trimmed) },
+      ) {
+        Text("変更")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("キャンセル")
+      }
+    },
+  )
+}
+
+@Composable
+private fun SmbBookDeleteDialog(
+  book: LibraryBook,
+  onDismiss: () -> Unit,
+  onDelete: () -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("ファイルを削除") },
+    text = {
+      Text("「${book.title}」をファイルサーバから削除します。この操作は元に戻せません。")
+    },
+    confirmButton = {
+      TextButton(onClick = onDelete) {
+        Text("削除", color = MaterialTheme.colorScheme.error)
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("キャンセル")
+      }
+    },
+  )
 }
 
 @Composable
