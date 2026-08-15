@@ -32,6 +32,8 @@
 
 一時停止中に `enqueue`、`kick`、個別タスクの resume が呼ばれても通常の `SummaryWorker` は新規スケジュールしない。
 
+さらに `SummaryWorker` 自身も起動直後と次のタスクを claim する直前に `paused` を確認する。これにより、プロセス終了前に永続化されていた WorkRequest が後から起動した場合や、キャンセルとの競合が起きた場合でも新しいAI処理へ進まない。
+
 ### 3. 充電時の自動再開は充電制約付き OneTimeWorkRequest で行う
 
 `resume_when_charging` が有効な一時停止状態では、`SummaryResumeOnChargingWorker` を unique work として登録する。WorkRequest には `Constraints.Builder().setRequiresCharging(true)` を設定し、端末が充電状態になったときだけ実行可能にする。
