@@ -39,18 +39,36 @@ class KnowledgeTopicsTest {
     assertEquals(before.id, after.id)
   }
 
+  @Test
+  fun `保存日時が変わるとfingerprintが変わる`() {
+    val before = buildKnowledgeTopics(listOf(source("a", savedAt = "2026-08-15T00:00:00Z"))).single()
+    val after = buildKnowledgeTopics(listOf(source("a", savedAt = "2026-08-15T01:00:00Z"))).single()
+
+    assertNotEquals(before.sourceFingerprint, after.sourceFingerprint)
+  }
+
+  @Test
+  fun `正規化キーが同じでもトピック表示名が変わるとfingerprintが変わる`() {
+    val before = buildKnowledgeTopics(listOf(source("a", tags = listOf("Android")))).single()
+    val after = buildKnowledgeTopics(listOf(source("a", tags = listOf("ANDROID")))).single()
+
+    assertEquals(before.id, after.id)
+    assertNotEquals(before.sourceFingerprint, after.sourceFingerprint)
+  }
+
   private fun source(
     id: String,
     summary: String = "summary",
     tags: List<String> = emptyList(),
     folderName: String? = null,
     sourceTitle: String = "Feed",
+    savedAt: String = "2026-08-15T00:00:00Z",
   ) = KnowledgeGenerationSource(
     articleId = id,
     title = "title-$id",
     url = "https://example.com/$id",
     sourceTitle = sourceTitle,
-    savedAt = "2026-08-15T00:00:00Z",
+    savedAt = savedAt,
     summary = summary,
     tags = tags,
     folderName = folderName,
