@@ -5,13 +5,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
@@ -28,10 +32,23 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val repository = remember(databaseConnection) {
     SeriesAwareLibraryRepository(databaseConnection)
   }
+  val smbRepository = remember(application, databaseConnection) {
+    CleaningSmbLibraryRepository(application, databaseConnection)
+  }
   val libraryViewModel: LibraryViewModel = viewModel(
-    factory = LibraryViewModel.Factory(repository),
+    factory = LibraryViewModel.Factory(repository, smbRepository),
   )
+  var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
   val scope = rememberCoroutineScope()
+
+  openedSmbBook?.let { book ->
+    SmbBookReaderRoute(
+      book = book,
+      repository = smbRepository,
+      onBack = { openedSmbBook = null },
+    )
+    return
+  }
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
@@ -77,5 +94,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     modifier = modifier,
     viewModel = libraryViewModel,
     onSyncGooglePlayBooks = requestSync,
+    onOpenSmbBook = { openedSmbBook = it },
   )
 }

@@ -2,15 +2,17 @@
 
 - Status: Accepted
 - Date: 2026-08-09
-- Updated: 2026-08-11
+- Updated: 2026-08-15
 
 ## Context
 
 電子書籍・オーディオブックの所有情報をアプリ内で横断して参照できる蔵書機能を追加する。
 
-対象サービスは Google Play Books、Kindle、Audible を想定するが、利用可能な連携手段が異なる。Google Books API は OAuth 2.0 で認証済みユーザーの My Library bookshelf を取得できる一方、Kindle と Audible は今回の実装で安定した公式蔵書 API を前提にしない。
+当初の対象サービスは Google Play Books、Kindle、Audible とし、利用可能な連携手段が異なる。Google Books API は OAuth 2.0 で認証済みユーザーの My Library bookshelf を取得できる一方、Kindle と Audible は今回の実装で安定した公式蔵書 API を前提にしない。
 
-蔵書そのものは将来複数サービスを統合する概念であり、Google Play Books のデータ構造を domain model に露出させると、Kindle/Audible の追加時に UI と永続化構造までサービス固有仕様に引きずられる。
+2026-08-15 にユーザー管理の SMB ファイルサーバを第4の蔵書 source として追加した。SMB 固有の同期、認証情報、キャッシュ、組み込み Book Reader の判断は ADR-0065 に従う。本 ADR のサービス非依存 Library model と source ごとの取得方式を data layer に閉じ込める判断は引き続き適用する。
+
+蔵書そのものは将来複数サービスを統合する概念であり、Google Play Books のデータ構造を domain model に露出させると、Kindle/Audible/SMB の追加時に UI と永続化構造までサービス固有仕様に引きずられる。
 
 ## Decision
 
@@ -24,7 +26,7 @@ ADR-0003 / ADR-0004 に従い、蔵書を独立した ownership として次の 
 :feature:library:ui
 ```
 
-Domain は `LibraryBook` と `LibrarySource` を所有する。`LibrarySource` は `GOOGLE_PLAY_BOOKS`、`KINDLE`、`AUDIBLE` を定義し、サービスごとの取得方法は data layer に閉じ込める。
+Domain は `LibraryBook` と `LibrarySource` を所有する。`LibrarySource` は `GOOGLE_PLAY_BOOKS`、`KINDLE`、`AUDIBLE`、`SMB` を定義し、source ごとの取得方法は data layer に閉じ込める。SMB の詳細は ADR-0065 に従う。
 
 ### Google Play Books
 
@@ -74,9 +76,9 @@ Kindle と Audible には、ネットワーク API、WebView scraping、非公�
 
 `library_sources` には最終同期・インポート日時と、必要な場合だけ表示用のアカウント名を保存する。Google のアクセストークンは保存しない。Kindle/Audible ではアカウント名も保存しない。
 
-これらのテーブル定義は `library:data` が所有し、repository の IO 操作時に `CREATE TABLE IF NOT EXISTS` で遅延初期化する。`core:database` は汎用的な接続・トランザクション capability のままとし、蔵書固有のスキーマを持たせない。repository の生成時には DB I/O を行わない。
+これらのテーブル定義は `library:data` が所有し、repository の IO 操作時に `CREATE TABLE IF NOT EXISTS` で遅延初期化する。`core:database` は汎用的な接続・トランザクション capability のままとし、蔵書固有のスキーマを持たせない。repository の生成時には DB I/O を行わない。SMB 接続設定テーブルの app-level schema contribution は ADR-0047 / ADR-0065 に従う。
 
-Google Play Books のデータと、再インポート可能な Kindle/Audible のデータは source ごとに再構築可能なローカルコピーとして扱う。
+Google Play Books のデータと、再インポート可能な Kindle/Audible のデータは source ごとに再構築可能なローカルコピーとして扱う。SMB 由来データの再構築性とキャッシュ方針は ADR-0065 に従う。
 
 ## Consequences
 
@@ -84,7 +86,8 @@ Google Play Books のデータと、再インポート可能な Kindle/Audible �
 
 - Google Play Books の公式 API で蔵書を同期できる
 - Kindle/Audible を Amazon の認証情報や非公開 API に依存せず取り込める
-- Google Books 固有 JSON/OAuth と Amazon ファイル解析を data layer に閉じ込められる
+- SMB を同じサービス非依存モデルへ追加できる
+- Google Books 固有 JSON/OAuth と Amazon ファイル解析、SMB 取得を data layer に閉じ込められる
 - 取得・解析エラー時に既存の蔵書を失わない
 - OAuth access token や Amazon セッション情報をアプリの DB に保存しない
 - 蔵書固有の DB スキーマを `core:database` に流出させない
@@ -100,10 +103,12 @@ Google Play Books のデータと、再インポート可能な Kindle/Audible �
 - Kindle/Audible はユーザーがデータファイルを取得して手動でインポートする必要がある
 - Amazon のエクスポート列名が変わった場合は importer のヘッダー別名を追従する必要がある
 - source-specific ID が無いデータでは派生 ID を使うため、タイトル・著者・日付が大きく変わると同一書籍を別レコードとして扱う可能性がある
+- SMB 固有の制約は ADR-0065 に記録する
 
 ## Relationship to existing ADRs
 
 - ADR-0003 の layer 分離に従い `domain -> data/ui` の逆依存を作らない
 - ADR-0004 の concept-oriented ownership として `library` を独立させる
-- `core:network` と `core:database` は汎用 capability のまま維持し、Google Books 固有処理や Amazon ファイル形式固有処理を持たせない
+- `core:network` と `core:database` は汎用 capability のまま維持し、Google Books 固有処理や Amazon ファイル形式、SMB 固有処理を持たせない
 - Google Books の Reader URL と Android 外部アプリ連携は ADR-0048 に従う
+- SMB source と組み込み Book Reader は ADR-0065 に従う

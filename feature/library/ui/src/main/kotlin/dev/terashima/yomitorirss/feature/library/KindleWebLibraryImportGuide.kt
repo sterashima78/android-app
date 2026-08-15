@@ -42,6 +42,9 @@ internal fun KindleWebLibraryImportGuide() {
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
+    SmbLibrarySettingsFromBinding()
+    HorizontalDivider()
+
     Text("Kindle インポート", style = MaterialTheme.typography.titleMedium)
     Text(
       "購入済みの Kindle 本はアプリ内の専用 WebView から取り込めます。Amazon の認証情報はインポート処理へ渡しません。",

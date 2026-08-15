@@ -15,6 +15,9 @@ data class LibraryUiState(
   val initialized: Boolean = false,
   val syncing: Boolean = false,
   val importingSource: LibrarySource? = null,
+  val smbSyncing: Boolean = false,
+  val smbSettingsBusy: Boolean = false,
+  val smbServers: List<SmbServerSettings> = emptyList(),
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
   val sourceStates: Map<LibrarySource, LibrarySourceState> = emptyMap(),
@@ -23,6 +26,7 @@ data class LibraryUiState(
 
 class LibraryViewModel(
   private val repository: LibraryRepository,
+  private val smbRepository: SmbLibraryRepository? = null,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LibraryUiState())
   val state: StateFlow<LibraryUiState> = _state.asStateFlow()
@@ -32,7 +36,7 @@ class LibraryViewModel(
   }
 
   fun syncGooglePlayBooks(accessToken: String, accountLabel: String?) {
-    if (_state.value.syncing || _state.value.importingSource != null) return
+    if (isBusy()) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(syncing = true) }
       runCatching { repository.syncGooglePlayBooks(accessToken, accountLabel) }
@@ -45,9 +49,46 @@ class LibraryViewModel(
     }
   }
 
+  fun syncSmbLibrary() {
+    val smb = smbRepository ?: return
+    if (isBusy()) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbSyncing = true) }
+      runCatching { smb.sync() }
+        .onSuccess { result ->
+          loadSnapshot(message = "ファイルサーバから ${result.importedCount} 冊を同期しました")
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun saveSmbServer(settings: SmbServerSettings, password: String?) {
+    val smb = smbRepository ?: return
+    if (isBusy()) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbSettingsBusy = true) }
+      runCatching { smb.saveServer(settings, password) }
+        .onSuccess { saved ->
+          loadSnapshot(message = "${saved.name} のSMB設定を保存しました")
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun deleteSmbServer(serverId: String) {
+    val smb = smbRepository ?: return
+    if (isBusy()) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbSettingsBusy = true) }
+      runCatching { smb.deleteServer(serverId) }
+        .onSuccess { loadSnapshot(message = "SMB設定と対象サーバ由来の蔵書を削除しました") }
+        .onFailure(::showError)
+    }
+  }
+
   fun importAmazonLibraryJson(source: LibrarySource, json: String) {
     require(source == LibrarySource.KINDLE || source == LibrarySource.AUDIBLE)
-    if (_state.value.syncing || _state.value.importingSource != null) return
+    if (isBusy()) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(importingSource = source) }
       runCatching {
@@ -130,18 +171,29 @@ class LibraryViewModel(
     _state.update { it.copy(message = null) }
   }
 
+  private fun isBusy(): Boolean = _state.value.let {
+    it.syncing || it.importingSource != null || it.smbSyncing || it.smbSettingsBusy
+  }
+
   private fun reload() {
     viewModelScope.launch(Dispatchers.IO) { loadSnapshot() }
   }
 
   private suspend fun loadSnapshot(message: String? = null) {
-    runCatching { repository.snapshot() }
-      .onSuccess { snapshot ->
+    runCatching {
+      val snapshot = repository.snapshot()
+      val servers = smbRepository?.servers().orEmpty()
+      snapshot to servers
+    }
+      .onSuccess { (snapshot, servers) ->
         _state.update {
           it.copy(
             initialized = true,
             syncing = false,
             importingSource = null,
+            smbSyncing = false,
+            smbSettingsBusy = false,
+            smbServers = servers,
             books = snapshot.books,
             hiddenBooks = snapshot.hiddenBooks,
             sourceStates = snapshot.sourceStates,
@@ -158,16 +210,21 @@ class LibraryViewModel(
         initialized = true,
         syncing = false,
         importingSource = null,
+        smbSyncing = false,
+        smbSettingsBusy = false,
         message = error.message ?: "蔵書の操作に失敗しました",
       )
     }
   }
 
-  class Factory(private val repository: LibraryRepository) : ViewModelProvider.Factory {
+  class Factory(
+    private val repository: LibraryRepository,
+    private val smbRepository: SmbLibraryRepository? = null,
+  ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(LibraryViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return LibraryViewModel(repository) as T
+      return LibraryViewModel(repository, smbRepository) as T
     }
   }
 }
