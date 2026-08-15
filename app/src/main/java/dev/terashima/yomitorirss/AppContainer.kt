@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeSchedule
 import dev.terashima.yomitorirss.feature.backup.data.DefaultBackupRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkSourceMetadataReader
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkRepository
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
@@ -55,6 +56,9 @@ class AppContainer(private val application: Application) {
   private val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)
   }
+  private val bookmarkSourceMetadataReader: BookmarkSourceMetadataReader by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    BookmarkSourceMetadataReader(databaseConnection)
+  }
 
   val articleRepository: ArticleRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultArticleRepository(databaseConnection, dataChanges)
@@ -64,7 +68,15 @@ class AppContainer(private val application: Application) {
       database = databaseConnection,
       dataChanges = dataChanges,
       onBookmarkAdded = { articleId ->
-        summaryRepository.requestBookmarkEnrichment(articleId)
+        val source = bookmarkSourceMetadataReader.find(articleId)
+        if (
+          source != null && shouldRequestBookmarkEnrichment(
+            url = source.url,
+            sourceFeedUrl = source.sourceFeedUrl,
+          )
+        ) {
+          summaryRepository.requestBookmarkEnrichment(articleId)
+        }
       },
     )
   }
