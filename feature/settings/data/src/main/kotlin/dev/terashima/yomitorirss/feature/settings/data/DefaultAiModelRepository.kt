@@ -22,25 +22,23 @@ class DefaultAiModelRepository(
   private val summaryPromptStore = SummaryPromptStore(context)
 
   override val models = manager.models.map { models ->
-    models
-      .filterNot { model -> model.id in REMOVED_MODEL_IDS }
-      .map { model ->
-        AiModelStatus(
-          id = model.id,
-          name = model.name,
-          description = model.description,
-          source = model.source,
-          license = model.license,
-          quantization = model.quantization,
-          sizeBytes = model.sizeBytes,
-          downloadedBytes = model.downloadedBytes,
-          downloaded = model.downloaded,
-          selected = model.selected,
-          recommended = model.recommended,
-          memoryLow = model.memoryLow,
-          supportsThinking = model.supportsThinking,
-        )
-      }
+    models.map { model ->
+      AiModelStatus(
+        id = model.id,
+        name = model.name,
+        description = model.description,
+        source = model.source,
+        license = model.license,
+        quantization = model.quantization,
+        sizeBytes = model.sizeBytes,
+        downloadedBytes = model.downloadedBytes,
+        downloaded = model.downloaded,
+        selected = model.selected,
+        recommended = model.recommended,
+        memoryLow = model.memoryLow,
+        supportsThinking = model.supportsThinking,
+      )
+    }
   }
 
   override val downloadProgress = downloadStateStore.progress.onEach { progress ->
@@ -94,11 +92,4 @@ class DefaultAiModelRepository(
 
   override fun selectModel(modelId: String) = manager.selectModel(modelId)
   override fun deleteModel(modelId: String) = manager.deleteModel(modelId)
-
-  private companion object {
-    val REMOVED_MODEL_IDS = setOf(
-      "qwen2.5-0.5b-q8",
-      "qwen2.5-1.5b-q8",
-    )
-  }
 }
