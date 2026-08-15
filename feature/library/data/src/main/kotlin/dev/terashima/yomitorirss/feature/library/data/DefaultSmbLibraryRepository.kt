@@ -243,7 +243,7 @@ class DefaultSmbLibraryRepository(
   ): T {
     SMBClient().use { client ->
       client.connect(server.host, server.port).use { connection ->
-        val auth = AuthenticationContext(server.username, password.toCharArray(), server.domain.ifBlank { null })
+        val auth = AuthenticationContext(server.username, password.toCharArray(), server.domain)
         connection.authenticate(auth).use { session ->
           val share = session.connectShare(server.share) as? DiskShare
             ?: error("SMB共有がディスク共有ではありません")
@@ -281,11 +281,9 @@ class DefaultSmbLibraryRepository(
     }
   }
 
-  private fun ensureSchema() {
-    DefaultLibraryRepository(database).let { repository ->
-      // snapshot performs the library-owned lazy schema initialization without exposing it here.
-      runCatching { kotlinx.coroutines.runBlocking { repository.snapshot() } }.getOrThrow()
-    }
+  private suspend fun ensureSchema() {
+    // The library repository owns the shared library tables and initializes them lazily.
+    DefaultLibraryRepository(database).snapshot()
     database.writable.execSQL(
       """
         CREATE TABLE IF NOT EXISTS $SERVER_TABLE(
