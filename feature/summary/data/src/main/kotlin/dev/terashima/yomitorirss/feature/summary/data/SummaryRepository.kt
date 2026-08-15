@@ -50,6 +50,11 @@ class DefaultSummaryRepository(
       forceRefresh = false,
     )
 
+  override suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int {
+    if (articleIds.isEmpty() || modelManager.selectedModel() == null) return 0
+    return SummaryQueue.enqueueMissingBookmarkEnrichment(appContext, articleIds)
+  }
+
   override suspend fun findSummary(articleId: String): String? =
     database.findSummary(articleId)?.summary
 }
