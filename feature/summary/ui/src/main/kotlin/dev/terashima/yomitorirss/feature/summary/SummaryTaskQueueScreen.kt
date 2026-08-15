@@ -19,6 +19,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -31,9 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
-import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
-import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -56,6 +54,8 @@ fun SummaryTaskQueueScreen(
   SummaryTaskQueueContent(
     state = state,
     onDismiss = onDismiss,
+    onPausedChange = taskQueueViewModel::setPaused,
+    onResumeWhenChargingChange = taskQueueViewModel::setResumeWhenCharging,
     onStop = taskQueueViewModel::stop,
     onCancel = taskQueueViewModel::cancel,
     onResume = taskQueueViewModel::resume,
@@ -66,6 +66,8 @@ fun SummaryTaskQueueScreen(
 private fun SummaryTaskQueueContent(
   state: SummaryTaskQueueUiState,
   onDismiss: () -> Unit,
+  onPausedChange: (Boolean) -> Unit,
+  onResumeWhenChargingChange: (Boolean) -> Unit,
   onStop: (String) -> Unit,
   onCancel: (String) -> Unit,
   onResume: (String) -> Unit,
@@ -85,11 +87,44 @@ private fun SummaryTaskQueueContent(
           title = { Text("タスクキュー") },
         )
 
+        ListItem(
+          headlineContent = { Text("要約タスクを一時停止") },
+          supportingContent = {
+            Text(
+              if (state.queuePaused) {
+                "新しいタスクも待機させ、バックグラウンドのAI処理を開始しません"
+              } else {
+                "待機中の要約・タグ付けタスクをバックグラウンドで順次実行します"
+              },
+            )
+          },
+          trailingContent = {
+            Switch(
+              checked = state.queuePaused,
+              onCheckedChange = onPausedChange,
+            )
+          },
+        )
+        ListItem(
+          headlineContent = { Text("充電時に自動再開") },
+          supportingContent = {
+            Text("一時停止中に端末が充電状態になると、自動実行の一時停止を解除します")
+          },
+          trailingContent = {
+            Switch(
+              checked = state.resumeWhenCharging,
+              onCheckedChange = onResumeWhenChargingChange,
+            )
+          },
+        )
+        HorizontalDivider()
+
         val runningCount = state.tasks.count { it.state == SummaryQueueTaskState.RUNNING }
         val queuedCount = state.tasks.count { it.state == SummaryQueueTaskState.QUEUED }
         val stoppedCount = state.tasks.count { it.state == SummaryQueueTaskState.STOPPED }
+        val executionLabel = if (state.queuePaused) "自動実行 一時停止中" else "自動実行中"
         Text(
-          text = "実行中 ${runningCount}件 ・ 待機中 ${queuedCount}件 ・ 停止中 ${stoppedCount}件",
+          text = "$executionLabel ・ 実行中 ${runningCount}件 ・ 待機中 ${queuedCount}件 ・ 停止中 ${stoppedCount}件",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
