@@ -6,10 +6,12 @@ import android.os.Build
 import android.os.StatFs
 import android.os.SystemClock
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mediapipe.tasks.genai.llminference.ProgressListener
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.tool
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -97,6 +99,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   val inferenceSettings: StateFlow<LocalInferenceSettings> = _inferenceSettings.asStateFlow()
 
   init {
+    cleanupRetiredModelArtifacts()
     refreshModels()
   }
 
@@ -123,13 +126,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
         selected = downloaded && selectedId == model.id,
         recommended = model.recommended,
         memoryLow = deviceMemoryBytes() < model.minDeviceMemoryGb * BYTES_PER_GB,
-        supportsThinking = model.supportsThinking,
+        supportsThinking = false,
         maxInputChars = model.maxInputChars,
         promptBudgetChars = maxOf(model.maxInputChars, model.contextTokens),
-        promptFormat = when (model.runtime) {
-          InferenceRuntime.MEDIAPIPE_TASK -> LocalPromptFormat.CHAT_ML
-          InferenceRuntime.LITERT_LM -> LocalPromptFormat.PLAIN
-        },
+        promptFormat = LocalPromptFormat.PLAIN,
       )
     }
   }
@@ -146,11 +146,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     _inferenceSettings.value = _inferenceSettings.value.copy(thinkingEnabled = enabled)
   }
 
-  fun inferenceCacheVariant(modelId: String): String? {
-    val model = MODEL_CATALOG.firstOrNull { it.id == modelId } ?: return null
-    if (!model.supportsThinking) return null
-    return ThinkingMode.cacheVariant(currentInferenceSettings().thinkingEnabled)
-  }
+  fun inferenceCacheVariant(modelId: String): String? = null
 
   fun selectModel(modelId: String) {
     val model = requireModel(modelId)
@@ -247,15 +243,35 @@ class LocalModelManager(context: Context) : AutoCloseable {
     streaming: Boolean = false,
     onPartial: (String) -> Unit = {},
   ): String {
-    check(isSupported()) { "この端末ではローカルモデルを利用できません" }
     require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
+    return withInference { inference ->
+      if (streaming) inference.generateStreaming(prompt, onPartial) else inference.generate(prompt)
+    }
+  }
+
+  fun generateConversation(
+    request: LocalInferenceConversationRequest,
+    streaming: Boolean = false,
+    onPartial: (String) -> Unit = {},
+  ): String = withInference { inference ->
+    inference.generateConversation(request, streaming, onPartial)
+  }
+
+  override fun close() {
+    cancelRequested.set(true)
+    inferenceLock.withLock {
+      releaseCachedInferenceLocked()
+    }
+  }
+
+  private fun <T> withInference(block: (LiteRtLmInference) -> T): T {
+    check(isSupported()) { "この端末ではローカルモデルを利用できません" }
     val model = resolveSelectedModel() ?: error("AIモデルをダウンロードして選択してください")
     val file = modelFile(model)
     check(isValidModelFile(file, model)) { "選択したモデルが見つかりません" }
     cancelRequested.set(false)
 
     return inferenceLock.withLock {
-      var lease: InferenceLease? = null
       try {
         val settings = currentInferenceSettings()
         val cacheHit = hasReusableInference(model, file, settings.backend)
@@ -267,53 +283,33 @@ class LocalModelManager(context: Context) : AutoCloseable {
             estimatedStageDurationMillis(PREPARING_MODEL_DURATION_KEY, model.id),
           )
         }
-        val acquired = acquireInference(model, file, settings.backend)
-        lease = acquired
+        val inference = acquireInference(model, file, settings.backend)
         preparationStartedAt?.let { startedAt ->
           recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
         }
         check(!cancelRequested.get()) { "推論をキャンセルしました" }
+
         val generationStartedAt = SystemClock.elapsedRealtime()
         _inferenceProgress.value = LocalInferenceProgress(
           LocalInferenceStage.GENERATING_RESPONSE,
           model.name,
           estimatedStageDurationMillis(GENERATING_RESPONSE_DURATION_KEY, model.id),
         )
-        val promptWithMode = prompt.withThinkingMode(model, settings)
-        val raw = try {
-          if (streaming) {
-            val streamedRaw = StringBuilder()
-            val generated = generateResponseStreaming(acquired.inference, promptWithMode) { chunk ->
-              appendStreamChunk(streamedRaw, chunk)
-              onPartial(streamedRaw.toString())
-            }
-            generated.ifBlank { streamedRaw.toString() }
-          } else {
-            generateResponse(acquired.inference, promptWithMode)
+        try {
+          block(inference).also {
+            recordStageDuration(
+              GENERATING_RESPONSE_DURATION_KEY,
+              model.id,
+              SystemClock.elapsedRealtime() - generationStartedAt,
+            )
           }
         } catch (error: Throwable) {
-          if (acquired.retained) invalidateRetainedInferenceLocked(acquired.inference)
+          invalidateRetainedInferenceLocked(inference)
           throw error
         }
-        recordStageDuration(
-          GENERATING_RESPONSE_DURATION_KEY,
-          model.id,
-          SystemClock.elapsedRealtime() - generationStartedAt,
-        )
-        raw
       } finally {
         _inferenceProgress.value = null
-        lease?.takeUnless(InferenceLease::retained)?.inference?.let { inference ->
-          runCatching { inference.close() }
-        }
       }
-    }
-  }
-
-  override fun close() {
-    cancelRequested.set(true)
-    inferenceLock.withLock {
-      releaseCachedInferenceLocked()
     }
   }
 
@@ -321,29 +317,24 @@ class LocalModelManager(context: Context) : AutoCloseable {
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
-  ): Boolean {
-    if (model.runtime != InferenceRuntime.LITERT_LM) return false
-    return cachedInference?.key == inferenceCacheKey(model, file, backend)
-  }
+  ): Boolean = cachedInference?.key == inferenceCacheKey(model, file, backend)
 
   private fun acquireInference(
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
-  ): InferenceLease {
-    if (model.runtime != InferenceRuntime.LITERT_LM) {
-      return InferenceLease(createInference(model, file, backend), retained = false)
-    }
-
+  ): LiteRtLmInference {
     val key = inferenceCacheKey(model, file, backend)
-    cachedInference?.takeIf { it.key == key }?.let { cached ->
-      return InferenceLease(cached.inference, retained = true)
-    }
+    cachedInference?.takeIf { it.key == key }?.let { cached -> return cached.inference }
 
     releaseCachedInferenceLocked()
-    val inference = createInference(model, file, backend)
+    val inference = LiteRtLmInference(
+      file = file,
+      cacheDirectory = modelBackendCacheDirectory(model, backend),
+      backend = backend,
+    )
     cachedInference = CachedInference(key, inference)
-    return InferenceLease(inference, retained = true)
+    return inference
   }
 
   private fun inferenceCacheKey(
@@ -357,7 +348,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     fileModifiedAt = file.lastModified(),
   )
 
-  private fun invalidateRetainedInferenceLocked(inference: AutoCloseable) {
+  private fun invalidateRetainedInferenceLocked(inference: LiteRtLmInference) {
     if (cachedInference?.inference === inference) releaseCachedInferenceLocked()
   }
 
@@ -365,62 +356,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val cached = cachedInference ?: return
     cachedInference = null
     runCatching { cached.inference.close() }
-  }
-
-  private fun createInference(
-    model: ModelDefinition,
-    file: File,
-    backend: LocalInferenceBackend,
-  ): AutoCloseable = when (model.runtime) {
-    InferenceRuntime.MEDIAPIPE_TASK -> {
-      val options = LlmInference.LlmInferenceOptions.builder()
-        .setModelPath(file.absolutePath)
-        .setMaxTokens(model.contextTokens)
-        .setMaxTopK(40)
-        .setPreferredBackend(
-          when (backend) {
-            LocalInferenceBackend.CPU -> LlmInference.Backend.CPU
-            LocalInferenceBackend.GPU -> LlmInference.Backend.GPU
-          },
-        )
-        .build()
-      LlmInference.createFromOptions(appContext, options)
-    }
-    InferenceRuntime.LITERT_LM -> LiteRtLmInference(
-      file = file,
-      cacheDirectory = modelBackendCacheDirectory(model, backend),
-      backend = backend,
-    )
-  }
-
-  private fun generateResponse(inference: AutoCloseable, prompt: String): String = when (inference) {
-    is LlmInference -> inference.generateResponse(prompt)
-    is LiteRtLmInference -> inference.generate(prompt)
-    else -> error("未知の推論ランタイムです")
-  }
-
-  private fun generateResponseStreaming(
-    inference: AutoCloseable,
-    prompt: String,
-    onChunk: (String) -> Unit,
-  ): String = when (inference) {
-    is LlmInference -> inference.generateResponseAsync(
-      prompt,
-      ProgressListener<String> { partial, _ -> onChunk(partial) },
-    ).get()
-    is LiteRtLmInference -> inference.generateStreaming(prompt, onChunk)
-    else -> error("未知の推論ランタイムです")
-  }
-
-  private fun appendStreamChunk(buffer: StringBuilder, chunk: String) {
-    if (chunk.isEmpty()) return
-    val current = buffer.toString()
-    if (current.isNotEmpty() && chunk.length >= current.length && chunk.startsWith(current)) {
-      buffer.setLength(0)
-      buffer.append(chunk)
-    } else {
-      buffer.append(chunk)
-    }
   }
 
   private fun resolveSelectedModel(): ModelDefinition? {
@@ -437,7 +372,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
       ?: LocalInferenceBackend.CPU
     return LocalInferenceSettings(
       backend = backend,
-      thinkingEnabled = preferences.getBoolean(THINKING_ENABLED_KEY, false),
+      thinkingEnabled = false,
     )
   }
 
@@ -445,15 +380,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
     readInferenceSettings().also { settings ->
       if (_inferenceSettings.value != settings) _inferenceSettings.value = settings
     }
-
-  private fun String.withThinkingMode(
-    model: ModelDefinition,
-    settings: LocalInferenceSettings,
-  ): String = if (model.supportsThinking) {
-    ThinkingMode.apply(this, settings.thinkingEnabled)
-  } else {
-    this
-  }
 
   private fun openDownloadConnection(initialUrl: String): HttpURLConnection {
     var currentUrl = initialUrl
@@ -488,6 +414,19 @@ class LocalModelManager(context: Context) : AutoCloseable {
     File(appContext.cacheDir, "local-summary-models/${model.id}")
   private fun modelBackendCacheDirectory(model: ModelDefinition, backend: LocalInferenceBackend) =
     File(modelCacheDirectory(model), backend.name.lowercase()).apply { mkdirs() }
+
+  private fun cleanupRetiredModelArtifacts() {
+    val selectedId = preferences.getString(SELECTED_MODEL_KEY, null)
+    if (selectedId in RETIRED_MODEL_IDS) preferences.edit().remove(SELECTED_MODEL_KEY).apply()
+
+    RETIRED_MODEL_FILES.forEach { fileName ->
+      File(modelsDirectory(), fileName).delete()
+      File(modelsDirectory(), "$fileName.part").delete()
+    }
+    RETIRED_MODEL_IDS.forEach { modelId ->
+      File(appContext.cacheDir, "local-summary-models/$modelId").deleteRecursively()
+    }
+  }
 
   private fun isValidModelFile(file: File, model: ModelDefinition): Boolean {
     if (!file.isFile) return false
@@ -526,8 +465,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
     return ((total - downloaded) / bytesPerMillis).toLong().coerceAtLeast(0)
   }
 
-  private enum class InferenceRuntime { MEDIAPIPE_TASK, LITERT_LM }
-
   private data class InferenceCacheKey(
     val modelId: String,
     val backend: LocalInferenceBackend,
@@ -537,12 +474,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
 
   private data class CachedInference(
     val key: InferenceCacheKey,
-    val inference: AutoCloseable,
-  )
-
-  private data class InferenceLease(
-    val inference: AutoCloseable,
-    val retained: Boolean,
+    val inference: LiteRtLmInference,
   )
 
   private data class ModelDefinition(
@@ -558,9 +490,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val fileName: String,
     val downloadUrl: String,
     val minDeviceMemoryGb: Int,
-    val runtime: InferenceRuntime,
     val recommended: Boolean = false,
-    val supportsThinking: Boolean = false,
   )
 
   companion object {
@@ -581,83 +511,46 @@ class LocalModelManager(context: Context) : AutoCloseable {
     private const val PREPARING_MODEL_DURATION_KEY = "preparing_model"
     private const val GENERATING_RESPONSE_DURATION_KEY = "generating_response"
 
+    private val RETIRED_MODEL_IDS = setOf(
+      "qwen2.5-0.5b-q8",
+      "qwen3-4b-mixed-int4",
+      "qwen2.5-1.5b-q8",
+    )
+    private val RETIRED_MODEL_FILES = setOf(
+      "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
+      "qwen3_4b_mixed_int4.litertlm",
+      "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
+    )
+
     private val MODEL_CATALOG = listOf(
       ModelDefinition(
-        "qwen2.5-0.5b-q8",
-        "Qwen2.5 0.5B 軽量",
-        "待ち時間とメモリ使用量を抑えた軽量モデル。短い記事の要約に適しています。",
-        "litert-community/Qwen2.5-0.5B-Instruct",
-        "Apache-2.0",
-        "Dynamic INT8",
-        1280,
-        700,
-        546_660_344,
-        "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
-        "https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task?download=true",
-        4,
-        InferenceRuntime.MEDIAPIPE_TASK,
-        true,
+        id = "gemma4-e2b-it",
+        name = "Gemma 4 E2B",
+        description = "日本語要約とアプリ内ツール利用に対応する軽量Gemma 4モデルです。",
+        source = "litert-community/gemma-4-E2B-it-litert-lm",
+        license = "Apache-2.0",
+        quantization = "Mixed 2/4/8-bit",
+        contextTokens = 4096,
+        maxInputChars = 2500,
+        estimatedSizeBytes = 2_588_147_712,
+        fileName = "gemma-4-E2B-it.litertlm",
+        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/7fa1d78473894f7e736a21d920c3aa80f950c0db/gemma-4-E2B-it.litertlm?download=true",
+        minDeviceMemoryGb = 8,
+        recommended = true,
       ),
       ModelDefinition(
-        "gemma4-e2b-it",
-        "Gemma 4 E2B",
-        "長めの記事や日本語要約の品質を優先する軽量Gemma 4モデルです。",
-        "litert-community/gemma-4-E2B-it-litert-lm",
-        "Apache-2.0",
-        "Mixed 2/4/8-bit",
-        4096,
-        2500,
-        2_588_147_712,
-        "gemma-4-E2B-it.litertlm",
-        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/7fa1d78473894f7e736a21d920c3aa80f950c0db/gemma-4-E2B-it.litertlm?download=true",
-        8,
-        InferenceRuntime.LITERT_LM,
-      ),
-      ModelDefinition(
-        "qwen3-4b-mixed-int4",
-        "Qwen3 4B",
-        "品質と端末内実行のバランスを重視したモデル。Thinkingの切り替えに対応します。",
-        "litert-community/Qwen3-4B",
-        "Apache-2.0",
-        "Mixed INT4",
-        2048,
-        1200,
-        2_659_063_000,
-        "qwen3_4b_mixed_int4.litertlm",
-        "https://huggingface.co/litert-community/Qwen3-4B/resolve/main/qwen3_4b_mixed_int4.litertlm?download=true",
-        8,
-        InferenceRuntime.LITERT_LM,
-        supportsThinking = true,
-      ),
-      ModelDefinition(
-        "gemma4-e4b-it",
-        "Gemma 4 E4B 高品質",
-        "品質を優先するGemma 4モデルです。約3.7 GBの保存容量と12 GB級のメモリを推奨します。",
-        "litert-community/gemma-4-E4B-it-litert-lm",
-        "Apache-2.0",
-        "Mixed 2/4/8-bit",
-        4096,
-        2500,
-        3_659_530_240,
-        "gemma-4-E4B-it.litertlm",
-        "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/9695417f248178c63a9f318c6e0c56cb917cb837/gemma-4-E4B-it.litertlm?download=true",
-        12,
-        InferenceRuntime.LITERT_LM,
-      ),
-      ModelDefinition(
-        "qwen2.5-1.5b-q8",
-        "Qwen2.5 1.5B 高品質",
-        "軽量版より大きく、要約の安定性を優先するモデルです。",
-        "litert-community/Qwen2.5-1.5B-Instruct",
-        "Apache-2.0",
-        "Dynamic INT8",
-        1280,
-        700,
-        1_625_493_432,
-        "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
-        "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task?download=true",
-        6,
-        InferenceRuntime.MEDIAPIPE_TASK,
+        id = "gemma4-e4b-it",
+        name = "Gemma 4 E4B 高品質",
+        description = "品質を優先するGemma 4モデルです。約3.7 GBの保存容量と12 GB級のメモリを推奨します。",
+        source = "litert-community/gemma-4-E4B-it-litert-lm",
+        license = "Apache-2.0",
+        quantization = "Mixed 2/4/8-bit",
+        contextTokens = 4096,
+        maxInputChars = 2500,
+        estimatedSizeBytes = 3_659_530_240,
+        fileName = "gemma-4-E4B-it.litertlm",
+        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/9695417f248178c63a9f318c6e0c56cb917cb837/gemma-4-E4B-it.litertlm?download=true",
+        minDeviceMemoryGb = 12,
       ),
     )
   }
@@ -686,16 +579,50 @@ private class LiteRtLmInference(
 
   fun generateStreaming(prompt: String, onChunk: (String) -> Unit): String =
     engine.createConversation().use { conversation ->
-      val response = StringBuilder()
-      runBlocking {
-        conversation.sendMessageAsync(prompt).collect { message ->
-          val chunk = message.toString()
+      collectStreamingResponse(conversation.sendMessageAsync(prompt), onChunk)
+    }
+
+  fun generateConversation(
+    request: LocalInferenceConversationRequest,
+    streaming: Boolean,
+    onChunk: (String) -> Unit,
+  ): String {
+    val config = ConversationConfig(
+      systemInstruction = Contents.of(request.systemInstruction),
+      initialMessages = request.initialMessages.map { message ->
+        when (message.role) {
+          LocalInferenceMessageRole.USER -> Message.user(message.content)
+          LocalInferenceMessageRole.MODEL -> Message.model(message.content)
+        }
+      },
+      tools = request.tools.map { definition -> tool(LocalOpenApiTool(definition)) },
+      automaticToolCalling = true,
+    )
+    return engine.createConversation(config).use { conversation ->
+      if (streaming) {
+        collectStreamingResponse(conversation.sendMessageAsync(request.userMessage), onChunk)
+      } else {
+        conversation.sendMessage(request.userMessage).toString()
+      }
+    }
+  }
+
+  private fun collectStreamingResponse(
+    messages: kotlinx.coroutines.flow.Flow<Message>,
+    onChunk: (String) -> Unit,
+  ): String {
+    val response = StringBuilder()
+    runBlocking {
+      messages.collect { message ->
+        val chunk = message.toString()
+        if (chunk.isNotEmpty()) {
           response.append(chunk)
           onChunk(chunk)
         }
       }
-      response.toString()
     }
+    return response.toString()
+  }
 
   override fun close() {
     engine.close()
