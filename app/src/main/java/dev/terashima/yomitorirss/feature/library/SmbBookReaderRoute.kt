@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +43,10 @@ internal fun SmbBookReaderRoute(
   book: LibraryBook,
   repository: SmbLibraryRepository,
   onBack: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
+  BackHandler(onBack = onBack)
+
   val context = LocalContext.current
   val progress = remember(book.sourceId) { MutableStateFlow(DownloadProgress()) }
   val currentProgress by progress.collectAsState()
@@ -73,6 +77,7 @@ internal fun SmbBookReaderRoute(
       error = error,
       onRetry = { retryKey += 1 },
       onBack = onBack,
+      modifier = modifier,
     )
     return
   }
@@ -99,6 +104,7 @@ internal fun SmbBookReaderRoute(
       error = sourceResult.exceptionOrNull()?.message ?: "書籍を開けませんでした",
       onRetry = { retryKey += 1 },
       onBack = onBack,
+      modifier = modifier,
     )
     return
   }
@@ -112,6 +118,7 @@ internal fun SmbBookReaderRoute(
     source = source,
     positionStore = positionStore,
     onBack = onBack,
+    modifier = modifier,
   )
 }
 
@@ -122,9 +129,10 @@ private fun BookPreparationScreen(
   error: String?,
   onRetry: () -> Unit,
   onBack: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Box(
-    modifier = Modifier
+    modifier = modifier
       .fillMaxSize()
       .padding(24.dp),
     contentAlignment = Alignment.Center,

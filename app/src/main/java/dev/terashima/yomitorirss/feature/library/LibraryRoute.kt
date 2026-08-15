@@ -46,6 +46,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       book = book,
       repository = smbRepository,
       onBack = { openedSmbBook = null },
+      modifier = modifier,
     )
     return
   }
