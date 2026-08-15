@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
 import dev.terashima.yomitorirss.feature.library.LibraryReadingStatus
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
+import dev.terashima.yomitorirss.feature.library.organizationKey
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
