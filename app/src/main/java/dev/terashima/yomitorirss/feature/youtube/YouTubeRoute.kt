@@ -53,6 +53,7 @@ fun YouTubeRoute(modifier: Modifier = Modifier) {
         onUnsubscribe = viewModel::unsubscribe,
         onMarkRead = viewModel::markRead,
         onSaveAndRead = viewModel::saveAndRead,
+        onUnsave = viewModel::unsave,
         onToggleWatchLater = viewModel::toggleWatchLater,
         onMarkAllRead = viewModel::markAllRead,
         onOpen = { video ->
