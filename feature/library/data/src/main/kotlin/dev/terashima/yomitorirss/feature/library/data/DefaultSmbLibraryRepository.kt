@@ -119,6 +119,7 @@ class DefaultSmbLibraryRepository(
         SQLiteDatabase.CONFLICT_REPLACE,
       )
     }
+    cleanupSmbBookCovers(appContext, books.mapNotNull { it.thumbnailUrl })
     return LibrarySyncResult(books.size, syncedAt)
   }
 
@@ -129,11 +130,11 @@ class DefaultSmbLibraryRepository(
     require(book.source == LibrarySource.SMB) { "SMB由来の書籍ではありません" }
     ensureSchema()
     val location = parseBookLocation(book) ?: error("SMB書籍の場所情報が壊れています")
-    val extension = if (location.format == SmbBookFormat.PDF) "pdf" else "zip"
-    val cacheDirectory = File(cacheRoot, book.sourceId).apply { mkdirs() }
-    val cacheFile = File(cacheDirectory, "${location.size}-${location.modifiedAt}.$extension")
+    val cacheFile = cachedBookFile(book.sourceId, location)
+    cacheFile.parentFile?.mkdirs()
     if (cacheFile.isFile && cacheFile.length() == location.size) {
       cacheFile.setLastModified(System.currentTimeMillis())
+      updateCoverFromLocalBook(book, cacheFile, location)
       return book.prepared(cacheFile, location.format)
     }
 
@@ -141,7 +142,7 @@ class DefaultSmbLibraryRepository(
       ?: error("この書籍のSMBサーバ設定がありません")
     val password = credentialStore.load(server.id)
       ?: error("${server.name} のSMB認証情報がありません")
-    val temp = File(cacheDirectory, "download.tmp")
+    val temp = File(cacheFile.parentFile, "download.tmp")
     temp.delete()
 
     try {
@@ -173,6 +174,7 @@ class DefaultSmbLibraryRepository(
       if (cacheFile.exists()) cacheFile.delete()
       check(temp.renameTo(cacheFile)) { "SMB書籍をキャッシュへ保存できませんでした" }
       cacheFile.setLastModified(System.currentTimeMillis())
+      updateCoverFromLocalBook(book, cacheFile, location)
       cleanupCache()
       return book.prepared(cacheFile, location.format)
     } finally {
@@ -220,6 +222,19 @@ class DefaultSmbLibraryRepository(
         .appendQueryParameter("format", format.name)
         .build()
         .toString()
+      val location = SmbBookLocation(server.id, childPath, size, modifiedAt, format)
+      val thumbnailUrl = runCatching {
+        resolveSmbBookCover(
+          context = appContext,
+          share = share,
+          remotePath = childPath,
+          sourceId = sourceId,
+          size = size,
+          modifiedAt = modifiedAt,
+          format = format,
+          cachedBookFile = cachedBookFile(sourceId, location),
+        )
+      }.getOrNull()
       result += LibraryBook(
         source = LibrarySource.SMB,
         sourceId = sourceId,
@@ -230,7 +245,7 @@ class DefaultSmbLibraryRepository(
         description = "SMB: ${server.name}",
         isbn10 = null,
         isbn13 = null,
-        thumbnailUrl = null,
+        thumbnailUrl = thumbnailUrl,
         infoUrl = uri,
       )
     }
@@ -299,6 +314,34 @@ class DefaultSmbLibraryRepository(
     )
   }
 
+  private fun cachedBookFile(sourceId: String, location: SmbBookLocation): File {
+    val extension = if (location.format == SmbBookFormat.PDF) "pdf" else "zip"
+    return File(File(cacheRoot, sourceId), "${location.size}-${location.modifiedAt}.$extension")
+  }
+
+  private fun updateCoverFromLocalBook(
+    book: LibraryBook,
+    cacheFile: File,
+    location: SmbBookLocation,
+  ) {
+    val coverUrl = runCatching {
+      ensureSmbBookCoverFromLocal(
+        context = appContext,
+        sourceId = book.sourceId,
+        size = location.size,
+        modifiedAt = location.modifiedAt,
+        format = location.format,
+        localBookFile = cacheFile,
+      )
+    }.getOrNull() ?: return
+    database.writable.update(
+      "library_items",
+      ContentValues().apply { put("thumbnail_url", coverUrl) },
+      "source = ? AND source_id = ?",
+      arrayOf(LibrarySource.SMB.name, book.sourceId),
+    )
+  }
+
   private fun cleanupCache() {
     val files = cacheRoot.walkTopDown().filter(File::isFile).filter { it.name != "download.tmp" }.toList()
     var total = files.sumOf(File::length)
@@ -335,7 +378,7 @@ class DefaultSmbLibraryRepository(
     put("description", description)
     putNull("isbn10")
     putNull("isbn13")
-    putNull("thumbnail_url")
+    if (thumbnailUrl.isNullOrBlank()) putNull("thumbnail_url") else put("thumbnail_url", thumbnailUrl)
     put("info_url", infoUrl)
     put("narrators", "[]")
     putNull("duration")

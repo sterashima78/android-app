@@ -43,6 +43,10 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   )
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
   val scope = rememberCoroutineScope()
+  val closeSmbBook: () -> Unit = {
+    openedSmbBook = null
+    libraryViewModel.refresh()
+  }
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
@@ -93,7 +97,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
 
   openedSmbBook?.let { book ->
     Dialog(
-      onDismissRequest = { openedSmbBook = null },
+      onDismissRequest = closeSmbBook,
       properties = DialogProperties(
         usePlatformDefaultWidth = false,
         decorFitsSystemWindows = false,
@@ -102,7 +106,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
       SmbBookReaderRoute(
         book = book,
         repository = smbRepository,
-        onBack = { openedSmbBook = null },
+        onBack = closeSmbBook,
         modifier = Modifier.fillMaxSize(),
       )
     }
