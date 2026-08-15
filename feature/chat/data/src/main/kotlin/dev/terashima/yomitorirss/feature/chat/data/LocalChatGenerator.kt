@@ -82,8 +82,10 @@ class LocalChatGenerator(
     )
 
     _streamingReply.value = ""
-    val raw = modelManager.generateConversation(request, streaming = true) { partialRaw ->
-      _streamingReply.value = ChatResponseStream.partial(partialRaw)
+    val streamedRaw = StringBuilder()
+    val raw = modelManager.generateConversation(request, streaming = true) { chunk ->
+      appendStreamChunk(streamedRaw, chunk)
+      _streamingReply.value = ChatResponseStream.partial(streamedRaw.toString())
     }
     ChatResponseStream.complete(raw).also { reply ->
       _streamingReply.value = reply
@@ -122,6 +124,17 @@ private fun List<AgentSkill>.toInferenceTools(): List<LocalInferenceTool> {
     "Agent tool names must be unique"
   }
   return tools
+}
+
+private fun appendStreamChunk(buffer: StringBuilder, chunk: String) {
+  if (chunk.isEmpty()) return
+  val current = buffer.toString()
+  if (current.isNotEmpty() && chunk.length >= current.length && chunk.startsWith(current)) {
+    buffer.setLength(0)
+    buffer.append(chunk)
+  } else {
+    buffer.append(chunk)
+  }
 }
 
 private const val MAX_TOOL_RESULT_CHARS = 4_000
