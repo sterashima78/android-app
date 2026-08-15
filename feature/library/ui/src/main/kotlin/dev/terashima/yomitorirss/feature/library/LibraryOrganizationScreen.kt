@@ -584,6 +584,7 @@ private fun LibraryOrganizationCandidateRow(
             LibraryOrganizationCandidateStatus.FAILED,
             LibraryOrganizationCandidateStatus.SKIPPED -> {
               TextButton(onClick = onRetry) { Text("再解析") }
+              TextButton(onClick = onReject) { Text("却下して完了") }
             }
             LibraryOrganizationCandidateStatus.QUEUED,
             LibraryOrganizationCandidateStatus.PROCESSING,
@@ -906,4 +907,6 @@ private val ACTIVE_OR_REVIEW_STATUSES = setOf(
   LibraryOrganizationCandidateStatus.PROCESSING,
   LibraryOrganizationCandidateStatus.PENDING_REVIEW,
   LibraryOrganizationCandidateStatus.DEFERRED,
+  LibraryOrganizationCandidateStatus.FAILED,
+  LibraryOrganizationCandidateStatus.SKIPPED,
 )
