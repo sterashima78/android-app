@@ -32,7 +32,7 @@ class LibraryViewModel(
   val state: StateFlow<LibraryUiState> = _state.asStateFlow()
 
   init {
-    reload()
+    refresh()
   }
 
   fun syncGooglePlayBooks(accessToken: String, accountLabel: String?) {
@@ -163,6 +163,10 @@ class LibraryViewModel(
     }
   }
 
+  fun refresh() {
+    viewModelScope.launch(Dispatchers.IO) { loadSnapshot() }
+  }
+
   fun reportError(error: Throwable) {
     showError(error)
   }
@@ -173,10 +177,6 @@ class LibraryViewModel(
 
   private fun isBusy(): Boolean = _state.value.let {
     it.syncing || it.importingSource != null || it.smbSyncing || it.smbSettingsBusy
-  }
-
-  private fun reload() {
-    viewModelScope.launch(Dispatchers.IO) { loadSnapshot() }
   }
 
   private suspend fun loadSnapshot(message: String? = null) {
