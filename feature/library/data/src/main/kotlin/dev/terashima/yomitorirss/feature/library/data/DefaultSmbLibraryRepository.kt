@@ -240,15 +240,13 @@ class DefaultSmbLibraryRepository(
     server: SmbServerSettings,
     password: String,
     block: (DiskShare) -> T,
-  ): T {
-    SMBClient().use { client ->
-      client.connect(server.host, server.port).use { connection ->
-        val auth = AuthenticationContext(server.username, password.toCharArray(), server.domain)
-        connection.authenticate(auth).use { session ->
-          val share = session.connectShare(server.share) as? DiskShare
-            ?: error("SMB共有がディスク共有ではありません")
-          share.use(block)
-        }
+  ): T = SMBClient().use { client ->
+    client.connect(server.host, server.port).use { connection ->
+      val auth = AuthenticationContext(server.username, password.toCharArray(), server.domain)
+      connection.authenticate(auth).use { session ->
+        val share = session.connectShare(server.share) as? DiskShare
+          ?: error("SMB共有がディスク共有ではありません")
+        share.use(block)
       }
     }
   }
