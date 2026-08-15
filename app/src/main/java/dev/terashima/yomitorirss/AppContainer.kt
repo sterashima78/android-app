@@ -21,6 +21,8 @@ import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
+import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
@@ -156,5 +158,13 @@ class AppContainer(private val application: Application) {
   }
   val summaryTaskQueueRepository: SummaryTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultSummaryTaskQueueRepository(application, database)
+  }
+  val knowledgeRepository: KnowledgeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultKnowledgeRepository(
+      database = databaseConnection,
+      bookmarkRepository = bookmarkRepository,
+      summaryRepository = summaryRepository,
+      modelManager = modelManager,
+    )
   }
 }

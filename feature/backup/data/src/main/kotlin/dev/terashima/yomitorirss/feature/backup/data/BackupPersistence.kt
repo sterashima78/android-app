@@ -10,7 +10,7 @@ import org.json.JSONObject
 
 internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
   put("format", "yomitori-rss-backup")
-  put("version", 3)
+  put("version", 4)
   put("exportedAt", Instant.now().toString())
   put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at FROM feed_folders ORDER BY normalized_name") { cursor ->
     JSONObject()
@@ -61,14 +61,33 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
       .put("tagIds", articleTagIds(articleId))
       .put("folderId", articleFolderId(articleId))
   })
+  put(
+    "knowledgePages",
+    queryJsonArray(
+      "SELECT id,title,body_markdown,topic_kind,topic_key,source_fingerprint,generated_at " +
+        "FROM knowledge_pages WHERE editor_managed = 1 ORDER BY generated_at DESC",
+    ) { cursor ->
+      val pageId = cursor.text("id")
+      JSONObject()
+        .put("id", pageId)
+        .put("title", cursor.text("title"))
+        .put("bodyMarkdown", cursor.text("body_markdown"))
+        .put("topicKind", cursor.text("topic_kind"))
+        .put("topicKey", cursor.text("topic_key"))
+        .put("sourceFingerprint", cursor.text("source_fingerprint"))
+        .put("generatedAt", cursor.text("generated_at"))
+        .put("sources", knowledgePageSources(pageId))
+    },
+  )
 }
 
 internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   val version = root.optInt("version")
-  require(root.optString("format") == "yomitori-rss-backup" && version in 1..3) {
+  require(root.optString("format") == "yomitori-rss-backup" && version in 1..4) {
     "対応していないバックアップです"
   }
 
+  execSQL("DELETE FROM knowledge_pages")
   execSQL("DELETE FROM summary_tasks")
   execSQL("DELETE FROM article_summaries")
   execSQL("DELETE FROM article_folders")
@@ -195,6 +214,49 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
       )
     }
   }
+
+  if (version >= 4) {
+    restoreEditorManagedKnowledge(root.optJSONArray("knowledgePages") ?: JSONArray())
+  }
+}
+
+private fun SQLiteDatabase.restoreEditorManagedKnowledge(pages: JSONArray) {
+  for (index in 0 until pages.length()) {
+    val item = pages.getJSONObject(index)
+    val pageId = item.getString("id")
+    val sources = item.optJSONArray("sources") ?: JSONArray()
+    insertOrThrow(
+      "knowledge_pages",
+      null,
+      ContentValues().apply {
+        put("id", pageId)
+        put("title", item.getString("title"))
+        put("body_markdown", item.getString("bodyMarkdown"))
+        put("topic_kind", item.optString("topicKind", "llm"))
+        put("topic_key", item.optString("topicKey", ""))
+        put("source_count", sources.length())
+        put("source_fingerprint", item.optString("sourceFingerprint", ""))
+        put("generated_at", item.getString("generatedAt"))
+        put("editor_managed", 1)
+      },
+    )
+    for (sourceIndex in 0 until sources.length()) {
+      val source = sources.getJSONObject(sourceIndex)
+      insertOrThrow(
+        "knowledge_page_sources",
+        null,
+        ContentValues().apply {
+          put("page_id", pageId)
+          put("article_id", source.getString("articleId"))
+          put("citation_index", source.optInt("citationNumber", sourceIndex + 1))
+          put("title", source.getString("title"))
+          put("url", source.optString("url", ""))
+          put("source_title", source.optString("sourceTitle", ""))
+          put("saved_at", source.optString("savedAt", ""))
+        },
+      )
+    }
+  }
 }
 
 private fun YomitoriDatabase.queryJsonArray(
@@ -217,6 +279,26 @@ private fun YomitoriDatabase.articleFolderId(articleId: String): String? = reada
   "SELECT folder_id FROM article_folders WHERE article_id=? LIMIT 1",
   arrayOf(articleId),
 ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+
+private fun YomitoriDatabase.knowledgePageSources(pageId: String): JSONArray = JSONArray().apply {
+  readableDatabase.rawQuery(
+    "SELECT article_id,citation_index,title,url,source_title,saved_at FROM knowledge_page_sources " +
+      "WHERE page_id=? ORDER BY citation_index",
+    arrayOf(pageId),
+  ).use { cursor ->
+    while (cursor.moveToNext()) {
+      put(
+        JSONObject()
+          .put("articleId", cursor.text("article_id"))
+          .put("citationNumber", cursor.getInt(cursor.getColumnIndexOrThrow("citation_index")))
+          .put("title", cursor.text("title"))
+          .put("url", cursor.text("url"))
+          .put("sourceTitle", cursor.text("source_title"))
+          .put("savedAt", cursor.text("saved_at")),
+      )
+    }
+  }
+}
 
 private inline fun <T> YomitoriDatabase.transaction(block: SQLiteDatabase.() -> T): T {
   val database = writableDatabase

@@ -119,96 +119,8 @@ class DefaultSmbLibraryRepository(
         SQLiteDatabase.CONFLICT_REPLACE,
       )
     }
+    cleanupSmbBookCovers(appContext, books.mapNotNull { it.thumbnailUrl })
     return LibrarySyncResult(books.size, syncedAt)
-  }
-
-  override suspend fun renameBook(
-    book: LibraryBook,
-    newFileName: String,
-  ): LibraryBook {
-    require(book.source == LibrarySource.SMB) { "SMB由来の書籍ではありません" }
-    ensureSchema()
-    val location = parseBookLocation(book) ?: error("SMB書籍の場所情報が壊れています")
-    val currentName = location.path.substringAfterLast('\\')
-    val targetName = renamedSmbFileName(location.path, newFileName)
-    if (targetName == currentName) return book
-
-    val parentPath = location.path.substringBeforeLast('\\', "")
-    val targetPath = joinSmbPath(parentPath, targetName)
-    val targetSourceId = stableSourceId(location.serverId, targetPath)
-    val targetInfoUrl = smbBookInfoUrl(
-      sourceId = targetSourceId,
-      serverId = location.serverId,
-      path = targetPath,
-      size = location.size,
-      modifiedAt = location.modifiedAt,
-      format = location.format,
-    )
-    val renamedBook = book.copy(
-      sourceId = targetSourceId,
-      title = targetName.substringBeforeLast('.').ifBlank { targetName },
-      infoUrl = targetInfoUrl,
-    )
-    val server = serverFor(location.serverId)
-    val password = passwordFor(server)
-
-    withShare(server, password) { share ->
-      val collision = share.list(parentPath).any { entry ->
-        entry.fileName.equals(targetName, ignoreCase = true) &&
-          !entry.fileName.equals(currentName, ignoreCase = true)
-      }
-      require(!collision) { "同じ名前のファイルが既に存在します" }
-      share.openFile(
-        location.path,
-        EnumSet.of(AccessMask.DELETE, AccessMask.GENERIC_WRITE),
-        null,
-        SMB2ShareAccess.ALL,
-        SMB2CreateDisposition.FILE_OPEN,
-        null,
-      ).use { remoteFile ->
-        remoteFile.rename(targetPath)
-      }
-    }
-
-    try {
-      migrateBookIdentity(book, renamedBook)
-    } catch (error: Throwable) {
-      runCatching {
-        withShare(server, password) { share ->
-          share.openFile(
-            targetPath,
-            EnumSet.of(AccessMask.DELETE, AccessMask.GENERIC_WRITE),
-            null,
-            SMB2ShareAccess.ALL,
-            SMB2CreateDisposition.FILE_OPEN,
-            null,
-          ).use { remoteFile ->
-            remoteFile.rename(location.path)
-          }
-        }
-      }
-      throw error
-    }
-
-    migrateCache(book.sourceId, targetSourceId)
-    return renamedBook
-  }
-
-  override suspend fun deleteBook(book: LibraryBook) {
-    require(book.source == LibrarySource.SMB) { "SMB由来の書籍ではありません" }
-    ensureSchema()
-    val location = parseBookLocation(book) ?: error("SMB書籍の場所情報が壊れています")
-    val server = serverFor(location.serverId)
-    val password = passwordFor(server)
-
-    withShare(server, password) { share ->
-      share.rm(location.path)
-    }
-
-    database.transaction {
-      deleteBookMetadata(book.sourceId)
-    }
-    File(cacheRoot, book.sourceId).deleteRecursively()
   }
 
   override suspend fun prepareBook(
@@ -218,17 +130,19 @@ class DefaultSmbLibraryRepository(
     require(book.source == LibrarySource.SMB) { "SMB由来の書籍ではありません" }
     ensureSchema()
     val location = parseBookLocation(book) ?: error("SMB書籍の場所情報が壊れています")
-    val extension = if (location.format == SmbBookFormat.PDF) "pdf" else "zip"
-    val cacheDirectory = File(cacheRoot, book.sourceId).apply { mkdirs() }
-    val cacheFile = File(cacheDirectory, "${location.size}-${location.modifiedAt}.$extension")
+    val cacheFile = cachedBookFile(book.sourceId, location)
+    cacheFile.parentFile?.mkdirs()
     if (cacheFile.isFile && cacheFile.length() == location.size) {
       cacheFile.setLastModified(System.currentTimeMillis())
+      updateCoverFromLocalBook(book, cacheFile, location)
       return book.prepared(cacheFile, location.format)
     }
 
-    val server = serverFor(location.serverId)
-    val password = passwordFor(server)
-    val temp = File(cacheDirectory, "download.tmp")
+    val server = queryServers().firstOrNull { it.id == location.serverId }
+      ?: error("この書籍のSMBサーバ設定がありません")
+    val password = credentialStore.load(server.id)
+      ?: error("${server.name} のSMB認証情報がありません")
+    val temp = File(cacheFile.parentFile, "download.tmp")
     temp.delete()
 
     try {
@@ -260,6 +174,7 @@ class DefaultSmbLibraryRepository(
       if (cacheFile.exists()) cacheFile.delete()
       check(temp.renameTo(cacheFile)) { "SMB書籍をキャッシュへ保存できませんでした" }
       cacheFile.setLastModified(System.currentTimeMillis())
+      updateCoverFromLocalBook(book, cacheFile, location)
       cleanupCache()
       return book.prepared(cacheFile, location.format)
     } finally {
@@ -295,6 +210,31 @@ class DefaultSmbLibraryRepository(
       val size = entry.endOfFile
       val modifiedAt = entry.lastWriteTime.toEpochMillis()
       val sourceId = stableSourceId(server.id, childPath)
+      val uri = Uri.Builder()
+        .scheme(SMB_BOOK_SCHEME)
+        .authority(SMB_BOOK_HOST)
+        .appendPath("open")
+        .appendQueryParameter("sourceId", sourceId)
+        .appendQueryParameter("serverId", server.id)
+        .appendQueryParameter("path", childPath)
+        .appendQueryParameter("size", size.toString())
+        .appendQueryParameter("modified", modifiedAt.toString())
+        .appendQueryParameter("format", format.name)
+        .build()
+        .toString()
+      val location = SmbBookLocation(server.id, childPath, size, modifiedAt, format)
+      val thumbnailUrl = runCatching {
+        resolveSmbBookCover(
+          context = appContext,
+          share = share,
+          remotePath = childPath,
+          sourceId = sourceId,
+          size = size,
+          modifiedAt = modifiedAt,
+          format = format,
+          cachedBookFile = cachedBookFile(sourceId, location),
+        )
+      }.getOrNull()
       result += LibraryBook(
         source = LibrarySource.SMB,
         sourceId = sourceId,
@@ -305,15 +245,8 @@ class DefaultSmbLibraryRepository(
         description = "SMB: ${server.name}",
         isbn10 = null,
         isbn13 = null,
-        thumbnailUrl = null,
-        infoUrl = smbBookInfoUrl(
-          sourceId = sourceId,
-          serverId = server.id,
-          path = childPath,
-          size = size,
-          modifiedAt = modifiedAt,
-          format = format,
-        ),
+        thumbnailUrl = thumbnailUrl,
+        infoUrl = uri,
       )
     }
   }
@@ -332,13 +265,6 @@ class DefaultSmbLibraryRepository(
       }
     }
   }
-
-  private fun serverFor(serverId: String): SmbServerSettings =
-    queryServers().firstOrNull { it.id == serverId }
-      ?: error("この書籍のSMBサーバ設定がありません")
-
-  private fun passwordFor(server: SmbServerSettings): String =
-    credentialStore.load(server.id) ?: error("${server.name} のSMB認証情報がありません")
 
   private fun queryServers(): List<SmbServerSettings> = database.readable.rawQuery(
     """
@@ -388,69 +314,32 @@ class DefaultSmbLibraryRepository(
     )
   }
 
-  private fun migrateBookIdentity(
-    original: LibraryBook,
-    renamed: LibraryBook,
+  private fun cachedBookFile(sourceId: String, location: SmbBookLocation): File {
+    val extension = if (location.format == SmbBookFormat.PDF) "pdf" else "zip"
+    return File(File(cacheRoot, sourceId), "${location.size}-${location.modifiedAt}.$extension")
+  }
+
+  private fun updateCoverFromLocalBook(
+    book: LibraryBook,
+    cacheFile: File,
+    location: SmbBookLocation,
   ) {
-    database.transaction {
-      require(
-        rawQuery(
-          "SELECT 1 FROM library_items WHERE source = ? AND source_id = ? LIMIT 1",
-          arrayOf(LibrarySource.SMB.name, renamed.sourceId),
-        ).use { !it.moveToFirst() },
-      ) { "変更後のファイルは既に蔵書に存在します" }
-
-      val itemValues = ContentValues().apply {
-        put("source_id", renamed.sourceId)
-        put("title", renamed.title)
-        put("info_url", renamed.infoUrl)
-      }
-      check(
-        update(
-          "library_items",
-          itemValues,
-          "source = ? AND source_id = ?",
-          arrayOf(LibrarySource.SMB.name, original.sourceId),
-        ) == 1,
-      ) { "蔵書のファイル情報を更新できませんでした" }
-
-      listOf(
-        "hidden_library_items",
-        "library_item_series",
-        "library_item_series_exclusions",
-      ).forEach { table ->
-        update(
-          table,
-          ContentValues().apply { put("source_id", renamed.sourceId) },
-          "source = ? AND source_id = ?",
-          arrayOf(LibrarySource.SMB.name, original.sourceId),
-        )
-      }
-    }
-  }
-
-  private fun SQLiteDatabase.deleteBookMetadata(sourceId: String) {
-    listOf(
-      "library_items",
-      "hidden_library_items",
-      "library_item_series",
-      "library_item_series_exclusions",
-    ).forEach { table ->
-      delete(
-        table,
-        "source = ? AND source_id = ?",
-        arrayOf(LibrarySource.SMB.name, sourceId),
+    val coverUrl = runCatching {
+      ensureSmbBookCoverFromLocal(
+        context = appContext,
+        sourceId = book.sourceId,
+        size = location.size,
+        modifiedAt = location.modifiedAt,
+        format = location.format,
+        localBookFile = cacheFile,
       )
-    }
-  }
-
-  private fun migrateCache(originalSourceId: String, renamedSourceId: String) {
-    if (originalSourceId == renamedSourceId) return
-    val original = File(cacheRoot, originalSourceId)
-    if (!original.exists()) return
-    val renamed = File(cacheRoot, renamedSourceId)
-    renamed.deleteRecursively()
-    if (!original.renameTo(renamed)) original.deleteRecursively()
+    }.getOrNull() ?: return
+    database.writable.update(
+      "library_items",
+      ContentValues().apply { put("thumbnail_url", coverUrl) },
+      "source = ? AND source_id = ?",
+      arrayOf(LibrarySource.SMB.name, book.sourceId),
+    )
   }
 
   private fun cleanupCache() {
@@ -489,7 +378,7 @@ class DefaultSmbLibraryRepository(
     put("description", description)
     putNull("isbn10")
     putNull("isbn13")
-    putNull("thumbnail_url")
+    if (thumbnailUrl.isNullOrBlank()) putNull("thumbnail_url") else put("thumbnail_url", thumbnailUrl)
     put("info_url", infoUrl)
     put("narrators", "[]")
     putNull("duration")
@@ -515,42 +404,6 @@ class DefaultSmbLibraryRepository(
     const val MAX_CACHE_BYTES = 2L * 1024 * 1024 * 1024
   }
 }
-
-internal fun renamedSmbFileName(currentPath: String, requestedName: String): String {
-  val currentName = normalizeSmbPath(currentPath).substringAfterLast('\\')
-  val extension = currentName.substringAfterLast('.', "").takeIf(String::isNotBlank)
-    ?: error("現在のファイル拡張子を判定できません")
-  val requested = requestedName.trim()
-  require(requested.isNotEmpty()) { "新しいファイル名を入力してください" }
-  require(requested != "." && requested != "..") { "このファイル名は使用できません" }
-  require('/' !in requested && '\\' !in requested) { "ファイル名に / または \\ は使用できません" }
-  require(requested.none(Char::isISOControl)) { "ファイル名に制御文字は使用できません" }
-
-  val suffix = ".$extension"
-  val target = if (requested.endsWith(suffix, ignoreCase = true)) requested else "$requested$suffix"
-  require(target.substringBeforeLast('.').isNotBlank()) { "ファイル名を入力してください" }
-  return target
-}
-
-private fun smbBookInfoUrl(
-  sourceId: String,
-  serverId: String,
-  path: String,
-  size: Long,
-  modifiedAt: Long,
-  format: SmbBookFormat,
-): String = Uri.Builder()
-  .scheme("yomitori")
-  .authority("smb-book")
-  .appendPath("open")
-  .appendQueryParameter("sourceId", sourceId)
-  .appendQueryParameter("serverId", serverId)
-  .appendQueryParameter("path", path)
-  .appendQueryParameter("size", size.toString())
-  .appendQueryParameter("modified", modifiedAt.toString())
-  .appendQueryParameter("format", format.name)
-  .build()
-  .toString()
 
 private fun SmbServerSettings.normalized(id: String): SmbServerSettings = copy(
   id = id,

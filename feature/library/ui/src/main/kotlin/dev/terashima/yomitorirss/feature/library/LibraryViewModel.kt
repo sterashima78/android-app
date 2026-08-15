@@ -17,7 +17,6 @@ data class LibraryUiState(
   val importingSource: LibrarySource? = null,
   val smbSyncing: Boolean = false,
   val smbSettingsBusy: Boolean = false,
-  val smbBookActionBusy: Boolean = false,
   val smbServers: List<SmbServerSettings> = emptyList(),
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
@@ -33,7 +32,7 @@ class LibraryViewModel(
   val state: StateFlow<LibraryUiState> = _state.asStateFlow()
 
   init {
-    reload()
+    refresh()
   }
 
   fun syncGooglePlayBooks(accessToken: String, accountLabel: String?) {
@@ -83,30 +82,6 @@ class LibraryViewModel(
       _state.update { it.copy(smbSettingsBusy = true) }
       runCatching { smb.deleteServer(serverId) }
         .onSuccess { loadSnapshot(message = "SMB設定と対象サーバ由来の蔵書を削除しました") }
-        .onFailure(::showError)
-    }
-  }
-
-  fun renameSmbBook(book: LibraryBook, newFileName: String) {
-    val smb = smbRepository ?: return
-    if (isBusy()) return
-    viewModelScope.launch(Dispatchers.IO) {
-      _state.update { it.copy(smbBookActionBusy = true) }
-      runCatching { smb.renameBook(book, newFileName) }
-        .onSuccess { renamed ->
-          loadSnapshot(message = "「${book.title}」を「${renamed.title}」へ変更しました")
-        }
-        .onFailure(::showError)
-    }
-  }
-
-  fun deleteSmbBook(book: LibraryBook) {
-    val smb = smbRepository ?: return
-    if (isBusy()) return
-    viewModelScope.launch(Dispatchers.IO) {
-      _state.update { it.copy(smbBookActionBusy = true) }
-      runCatching { smb.deleteBook(book) }
-        .onSuccess { loadSnapshot(message = "「${book.title}」をファイルサーバから削除しました") }
         .onFailure(::showError)
     }
   }
@@ -188,6 +163,10 @@ class LibraryViewModel(
     }
   }
 
+  fun refresh() {
+    viewModelScope.launch(Dispatchers.IO) { loadSnapshot() }
+  }
+
   fun reportError(error: Throwable) {
     showError(error)
   }
@@ -197,11 +176,7 @@ class LibraryViewModel(
   }
 
   private fun isBusy(): Boolean = _state.value.let {
-    it.syncing || it.importingSource != null || it.smbSyncing || it.smbSettingsBusy || it.smbBookActionBusy
-  }
-
-  private fun reload() {
-    viewModelScope.launch(Dispatchers.IO) { loadSnapshot() }
+    it.syncing || it.importingSource != null || it.smbSyncing || it.smbSettingsBusy
   }
 
   private suspend fun loadSnapshot(message: String? = null) {
@@ -218,7 +193,6 @@ class LibraryViewModel(
             importingSource = null,
             smbSyncing = false,
             smbSettingsBusy = false,
-            smbBookActionBusy = false,
             smbServers = servers,
             books = snapshot.books,
             hiddenBooks = snapshot.hiddenBooks,
@@ -238,7 +212,6 @@ class LibraryViewModel(
         importingSource = null,
         smbSyncing = false,
         smbSettingsBusy = false,
-        smbBookActionBusy = false,
         message = error.message ?: "蔵書の操作に失敗しました",
       )
     }

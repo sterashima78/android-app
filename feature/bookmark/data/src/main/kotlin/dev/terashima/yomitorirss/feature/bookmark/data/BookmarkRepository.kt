@@ -30,6 +30,8 @@ class DefaultBookmarkRepository(
   override suspend fun listSavedArticles(tagId: String?, folderId: String?): List<BookmarkedArticle> =
     store.listSavedArticles(tagId, folderId)
 
+  override suspend fun listAllSavedArticles(): List<BookmarkedArticle> = store.listAllSavedArticles()
+
   override suspend fun listReadLaterArticles(): List<BookmarkedArticle> = store.listReadLaterArticles()
 
   override suspend fun isBookmarked(articleId: String): Boolean = store.isBookmarked(articleId)
