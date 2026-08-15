@@ -52,11 +52,18 @@ fun LibraryFeatureRoute(
       onDelete = viewModel::deleteSmbServer,
     )
   }
+  val smbBookFileActionBinding = remember(viewModel) {
+    SmbBookFileActionBinding(
+      onRename = viewModel::renameSmbBook,
+      onDelete = viewModel::deleteSmbBook,
+    )
+  }
 
   CompositionLocalProvider(
     LocalUriHandler provides libraryUriHandler,
     LocalWebLibraryImportHandler provides webLibraryImportHandler,
     LocalSmbLibraryUiBinding provides smbBinding,
+    LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
   ) {
     LibraryScreen(
       modifier = modifier,
