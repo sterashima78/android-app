@@ -20,5 +20,6 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
         )
       """.trimIndent(),
     )
+    ensureLibraryOrganizationSchema(db)
   },
 )

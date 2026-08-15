@@ -19,8 +19,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
+import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
 import kotlinx.coroutines.launch
 
@@ -35,11 +37,24 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val repository = remember(databaseConnection) {
     SeriesAwareLibraryRepository(databaseConnection)
   }
+  val organizationRepository = remember(databaseConnection) {
+    DefaultLibraryOrganizationRepository(databaseConnection)
+  }
+  val organizationSuggester = remember(application) {
+    LocalLibraryOrganizationSuggester(application.container.modelManager)
+  }
   val smbRepository = remember(application, databaseConnection) {
     CleaningSmbLibraryRepository(application, databaseConnection)
   }
   val libraryViewModel: LibraryViewModel = viewModel(
     factory = LibraryViewModel.Factory(repository, smbRepository),
+  )
+  val organizationViewModel: LibraryOrganizationViewModel = viewModel(
+    key = "library-organization",
+    factory = LibraryOrganizationViewModel.Factory(
+      organizationRepository,
+      organizationSuggester,
+    ),
   )
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
   val scope = rememberCoroutineScope()
@@ -91,6 +106,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   LibraryFeatureRoute(
     modifier = modifier,
     viewModel = libraryViewModel,
+    organizationViewModel = organizationViewModel,
     onSyncGooglePlayBooks = requestSync,
     onOpenSmbBook = { openedSmbBook = it },
   )
