@@ -195,8 +195,18 @@ private fun knowledgeSearchTerms(query: String): List<String> {
     .replace("記事", " ")
     .replace("作成", " ")
     .replace("詳しく", " ")
-  return cleaned
+  val coarseTerms = cleaned
     .split(Regex("[\\s\\p{Punct}、。・「」『』（）【】]+"))
+    .map(String::trim)
+    .filter(String::isNotBlank)
+
+  return coarseTerms
+    .flatMap { term ->
+      buildList {
+        add(term)
+        addAll(term.split(JAPANESE_PARTICLE_PATTERN))
+      }
+    }
     .map(String::trim)
     .filter { it.length >= 2 || it.any(Char::isDigit) }
     .distinct()
@@ -226,3 +236,4 @@ private data class ScoredSource(
 internal const val MAX_SOURCES_PER_TOPIC = 12
 private const val MAX_SEARCH_TERMS = 24
 private const val MAX_TITLE_LENGTH = 80
+private val JAPANESE_PARTICLE_PATTERN = Regex("について|として|から|まで|より|とは|との|の|を|に|で|が|は|へ|と")
