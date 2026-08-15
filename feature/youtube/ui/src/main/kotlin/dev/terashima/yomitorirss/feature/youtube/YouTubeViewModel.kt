@@ -143,6 +143,26 @@ class YouTubeViewModel(
     }
   }
 
+  fun unsave(video: YouTubeVideo) {
+    _state.update { state ->
+      state.copy(saved = state.saved.filterNot { it.url == video.url })
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        val bookmarked = bookmarkRepository.listSavedArticles(tagId = null, folderId = null)
+          .firstOrNull { it.article.url == video.url }
+          ?: error("保存済み動画が見つかりません")
+        bookmarkRepository.unsaveArticle(bookmarked.article.id)
+        backupChangeScheduler.scheduleAfterChange()
+      }.onSuccess {
+        _state.update { it.copy(message = "${video.title}の保存を解除しました") }
+      }.onFailure { error ->
+        reloadSavedVideos()
+        _state.update { it.copy(message = "保存を解除できませんでした: ${error.userMessage()}") }
+      }
+    }
+  }
+
   fun toggleWatchLater(video: YouTubeVideo) {
     val watchLater = !video.isWatchLater
     val updatedVideo = video.copy(isRead = false, isWatchLater = watchLater)

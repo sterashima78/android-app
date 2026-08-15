@@ -26,9 +26,11 @@ Bookmark feature に `YouTube` という予約済みシステムフォルダを�
 - 同一 URL の article が複数存在する場合は、Bookmark の共有保存処理と同じ選択規則で対象 article を決定し、その同じ article をフォルダへ移動する
 - Bookmark の1記事1フォルダという既存モデルは変更しない。ユーザーが保存後に記事を別フォルダへ移動することは許可する
 - YouTube の「保存済み」タブは従来どおり URL から YouTube 動画を判定する。`YouTube` フォルダだけに絞り込まないため、手動登録や後から別フォルダへ移動した YouTube ブックマークも参照できる
-- YouTube からの保存・フォルダ移動後は Bookmark 画面の永続化変更と同様に `BackupChangeScheduler` を呼び、設定済み Google Drive バックアップへ変更を反映する
+- YouTube の「保存済み」タブから保存解除する場合も、YouTube 独自状態は持たず BookmarkRepository のブックマーク解除を利用する
+- 保存解除は YouTube の既読・あとで見る状態を変更せず、Bookmark 側の保存状態だけを解除する
+- YouTube からの保存・保存解除・フォルダ移動後は Bookmark 画面の永続化変更と同様に `BackupChangeScheduler` を呼び、設定済み Google Drive バックアップへ変更を反映する
 
-フォルダの作成・予約・昇格は Bookmark feature が所有する。YouTube UI は `system_kind=youtube` のフォルダを BookmarkRepository から取得し、フォルダ指定付きの共有ブックマーク保存 API を利用する。YouTube domain / data には Bookmark 依存を追加しない。バックアップの起動は `youtube:ui` から `feature:backup:domain` の `BackupChangeScheduler` を利用し、YouTube domain / data にバックアップ依存を追加しない。
+フォルダの作成・予約・昇格は Bookmark feature が所有する。YouTube UI は `system_kind=youtube` のフォルダを BookmarkRepository から取得し、フォルダ指定付きの共有ブックマーク保存 API を利用する。保存解除も YouTube UI から BookmarkRepository の既存 API を利用する。YouTube domain / data には Bookmark 依存を追加しない。バックアップの起動は `youtube:ui` から `feature:backup:domain` の `BackupChangeScheduler` を利用し、YouTube domain / data にバックアップ依存を追加しない。
 
 ## Consequences
 
@@ -39,17 +41,19 @@ Bookmark feature に `YouTube` という予約済みシステムフォルダを�
 - 既存の Bookmark フォルダ機構を再利用し、YouTube DB に重複する保存状態を持たない
 - 既存の同名フォルダを破棄せず、そのまま予約フォルダへ移行できる
 - 手動で保存した YouTube URLや保存後に整理した項目も YouTube の「保存済み」から引き続き参照できる
-- YouTube 保存によるフォルダ移動も他の Bookmark 変更と同様にバックアップ対象として速やかにスケジュールされる
+- YouTube の「保存済み」から解除しても YouTube 側の視聴整理状態を壊さない
+- YouTube 保存・保存解除による Bookmark 変更も他の Bookmark 変更と同様にバックアップ対象として速やかにスケジュールされる
 
 ### Negative
 
 - `YouTube` というフォルダ名はユーザー定義フォルダとして利用できなくなる
 - 既存の通常 `YouTube` フォルダは更新後にシステムフォルダへ昇格し、フォルダ自体の改名・削除ができなくなる
 - 既に別フォルダへ保存済みの同一 URL を YouTube から再度保存すると、所属フォルダが `YouTube` に変更される
+- YouTube の「保存済み」から保存解除すると、別フォルダへ移動済みであっても同じ Bookmark 自体が解除される
 - `youtube:ui` から `feature:backup:domain` への feature 間依存が1本増える
 
 ## Relationship to existing ADRs
 
-- ADR-0010 の「YouTube の保存データ ownership は Bookmark feature に置く」方針を維持し、保存先の規約を追加する
+- ADR-0010 の「YouTube の保存データ ownership は Bookmark feature に置く」方針を維持し、保存先と保存解除の規約を追加する
 - ADR-0003 の `UI -> 他 feature の Domain` を許容する依存ルールに従い、`youtube:ui` だけが Bookmark domain と Backup domain を利用する
-- ADR-0004 の concept ownership に従い、Bookmark のフォルダ予約・永続化は Bookmark feature が所有する
+- ADR-0004 の concept ownership に従い、Bookmark のフォルダ予約・永続化・保存解除は Bookmark feature が所有する
