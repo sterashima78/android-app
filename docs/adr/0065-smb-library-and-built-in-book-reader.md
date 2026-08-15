@@ -13,6 +13,8 @@
 
 また ZIP と PDF の表示は蔵書同期とは異なる変更理由を持つ。ビューアには少なくとも左右ページ送り、右から左 / 左から右の読み方向、上下連続スクロール、表示モード切り替え時の読書位置維持が必要である。
 
+蔵書一覧を見ながらファイル名の不備や不要ファイルを発見することもある。これらを別のファイル管理アプリで修正すると蔵書との対応関係を追跡しづらいため、SMB由来の書籍については蔵書一覧から実ファイルを管理できる必要がある。
+
 ## Decision
 
 ### LibrarySource に SMB を追加する
@@ -25,7 +27,7 @@
 
 ### SMB 固有処理は library:data が所有する
 
-SMB 接続、ディレクトリ走査、ファイル取得、キャッシュ管理は `feature:library:data` が所有する。初期実装では SMBJ を使用し、SMB 2 / SMB 3 を対象とする。SMB 1 はサポートしない。
+SMB 接続、ディレクトリ走査、ファイル取得、キャッシュ管理、ファイル名変更、ファイル削除は `feature:library:data` が所有する。初期実装では SMBJ を使用し、SMB 2 / SMB 3 を対象とする。SMB 1 はサポートしない。
 
 非機密の接続設定は Library feature 所有の SQLite table に保存する。`smb_library_servers` は ADR-0047 に従って `libraryDatabaseSchema` の `DatabaseSchemaContribution` として app-level schema に登録し、既存DBにも schema version 更新時に追加する。
 
@@ -34,6 +36,18 @@ SMB 接続、ディレクトリ走査、ファイル取得、キャッシュ管�
 実サーバのホスト名、IP アドレス、ユーザー名、パスワード、共有パスをソースコード、fixture、ADR、ログへ記録しない。
 
 現時点の targetSdk 36 では LAN 通信は `INTERNET` 権限による従来互換のアクセスを利用する。将来 targetSdk を 37 以上へ更新するときは Android 17 の Local Network Protection に従い `ACCESS_LOCAL_NETWORK` の宣言・実行時許可を同時に実装する。targetSdk 36 以下の間はこの権限を先行して要求しない。
+
+### 蔵書一覧から SMB 実ファイルを管理する
+
+書籍の長押しで既存の操作メニューを開く。`LibrarySource.SMB` の書籍だけ、通常の「シリーズを編集」「非表示」に加えて「ファイル名を変更」「ファイルを削除」を表示する。
+
+ファイル名変更は同一ディレクトリ内の rename とし、ディレクトリ移動には利用しない。ユーザーが拡張子を省略した場合は現在の拡張子を維持し、異なる形式への変更をこの操作では許可しない。変更先に同名ファイルが存在する場合は失敗させる。
+
+`sourceId` はパス由来なので rename により変化する。アプリ内 rename では SMB 上の rename が成功した後、`library_items` の ID・タイトル・内部 URI と、`hidden_library_items`、`library_item_series`、`library_item_series_exclusions` の参照 ID を同じ変更として移行する。DB 側の移行に失敗した場合は可能な限り SMB 上の rename を元へ戻す。端末内の書籍キャッシュも新しい `sourceId` へ移動する。
+
+ファイル削除は不可逆操作のため確認ダイアログを必須とする。SMB 上の削除が成功した後、蔵書項目、非表示・シリーズ関連メタデータ、端末キャッシュを削除する。「非表示」は引き続き実ファイルを変更しない別操作として残す。
+
+Book Reader の読書位置は Book Reader feature が `sourceId` をキーに所有しているため、Library feature からそのストレージへ依存して移行しない。このためファイル名変更後の読書位置は新規書籍として開始する。この境界を変更する場合は Book Reader 側に明示的な ID 移行契約を追加する。
 
 ### 読書前にローカルキャッシュ境界を置く
 
@@ -79,6 +93,8 @@ SMB file path 等は外部 Intent へ渡さない。
 - SMB 本を Kindle / Play Books / Audible と同じ蔵書一覧・source filter で扱える
 - NAS が一時的に利用できなくても同期失敗で既存蔵書を失わない
 - 一度取得した本は SMB 接続なしでもキャッシュから読める
+- 蔵書一覧から不要ファイルの削除やファイル名の修正を完結できる
+- アプリ内 rename では非表示・シリーズ設定とキャッシュを新しい `sourceId` へ引き継げる
 - ZIP と PDF で左右ページ送り / 上下スクロールを共通 UI として利用できる
 - Library の取得責務と Book Reader の表示責務を分離できる
 - Reader の操作 UI と戻る処理を親画面のグローバル chrome から分離できる
@@ -89,7 +105,8 @@ SMB file path 等は外部 Intent へ渡さない。
 - 初回読書時はファイル全体のダウンロード完了まで待つ必要がある
 - 大きな PDF / ZIP は端末キャッシュ容量を消費する
 - `PdfRenderer` ベースの初期実装では PDF のテキスト検索・選択を提供しない
-- ファイルのリネームは sourceId の変更として扱われ、読書位置を引き継がない
+- ファイル名変更では sourceId が変わるため Book Reader の読書位置は引き継がない
+- ファイル削除は SMB 上の実ファイルを削除する不可逆操作である
 - 初期実装では RAR / CBR / 7z / EPUB、暗号化 ZIP、パスワード付き PDF を扱わない
 - targetSdk 37 以上へ更新する際は Local Network Protection 対応が追加で必要になる
 
