@@ -16,8 +16,8 @@ internal val appDatabaseSchema = DatabaseSchema(
     articleDatabaseSchema,
     bookmarkDatabaseSchema,
     summaryDatabaseSchema,
+    mailDatabaseSchema,
     libraryDatabaseSchema,
     knowledgeDatabaseSchema,
-    mailDatabaseSchema,
   ),
 )
