@@ -38,7 +38,7 @@ jobs:
       - name: Verify architecture
         run: ./gradlew --no-daemon verifyArchitecture
       - name: Test
-        run: ./gradlew --no-daemon clean test --no-build-cache
+        run: ./gradlew --no-daemon test
       - name: Lint
         run: ./gradlew --no-daemon :app:lintRelease
   build:
