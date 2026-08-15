@@ -15,6 +15,11 @@ data class KnowledgeUiState(
   val query: String = "",
   val selectedPage: KnowledgePage? = null,
   val building: Boolean = false,
+  val working: Boolean = false,
+  val composerOpen: Boolean = false,
+  val composerRequest: String = "",
+  val composerSourcePageId: String? = null,
+  val editInstruction: String = "",
   val lastBuild: KnowledgeBuildResult? = null,
   val message: String? = null,
 )
@@ -37,17 +42,117 @@ class KnowledgeViewModel(
   fun openPage(id: String) {
     viewModelScope.launch {
       runCatching { repository.findPage(id) }
-        .onSuccess { page -> _state.update { it.copy(selectedPage = page, message = null) } }
+        .onSuccess { page ->
+          _state.update { it.copy(selectedPage = page, editInstruction = "", message = null) }
+        }
         .onFailure(::reportError)
     }
   }
 
   fun closePage() {
-    _state.update { it.copy(selectedPage = null) }
+    _state.update { it.copy(selectedPage = null, editInstruction = "", message = null) }
+  }
+
+  fun startCreate(sourcePageId: String? = null) {
+    if (_state.value.working) return
+    _state.update {
+      it.copy(
+        composerOpen = true,
+        composerRequest = "",
+        composerSourcePageId = sourcePageId,
+        message = null,
+      )
+    }
+  }
+
+  fun cancelCreate() {
+    if (_state.value.working) return
+    _state.update {
+      it.copy(
+        composerOpen = false,
+        composerRequest = "",
+        composerSourcePageId = null,
+        message = null,
+      )
+    }
+  }
+
+  fun updateComposerRequest(request: String) {
+    _state.update { it.copy(composerRequest = request) }
+  }
+
+  fun createPage() {
+    val current = _state.value
+    val request = current.composerRequest.trim()
+    if (current.working) return
+    if (request.isBlank()) {
+      _state.update { it.copy(message = "作成したい記事の内容を入力してください") }
+      return
+    }
+    _state.update { it.copy(working = true, message = null) }
+    viewModelScope.launch {
+      runCatching { repository.createPage(request, current.composerSourcePageId) }
+        .onSuccess { page ->
+          val pages = repository.listPages(_state.value.query)
+          _state.update {
+            it.copy(
+              initialized = true,
+              pages = pages,
+              selectedPage = page,
+              working = false,
+              composerOpen = false,
+              composerRequest = "",
+              composerSourcePageId = null,
+              editInstruction = "",
+              message = null,
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update { it.copy(working = false) }
+          reportError(error)
+        }
+    }
+  }
+
+  fun updateEditInstruction(instruction: String) {
+    _state.update { it.copy(editInstruction = instruction) }
+  }
+
+  fun editPage() {
+    val current = _state.value
+    val page = current.selectedPage ?: return
+    val instruction = current.editInstruction.trim()
+    if (current.working) return
+    if (instruction.isBlank()) {
+      _state.update { it.copy(message = "編集内容を入力してください") }
+      return
+    }
+    _state.update { it.copy(working = true, message = null) }
+    viewModelScope.launch {
+      runCatching { repository.editPage(page.id, instruction) }
+        .onSuccess { updatedPage ->
+          val pages = repository.listPages(_state.value.query)
+          _state.update {
+            it.copy(
+              initialized = true,
+              pages = pages,
+              selectedPage = updatedPage,
+              working = false,
+              editInstruction = "",
+              message = null,
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update { it.copy(working = false) }
+          reportError(error)
+        }
+    }
   }
 
   fun rebuild() {
-    if (_state.value.building) return
+    if (_state.value.building || _state.value.working) return
     _state.update { it.copy(building = true, message = null) }
     viewModelScope.launch {
       runCatching { repository.rebuild() }
