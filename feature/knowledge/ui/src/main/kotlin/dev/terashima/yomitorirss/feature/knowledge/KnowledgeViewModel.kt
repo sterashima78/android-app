@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -26,12 +27,18 @@ data class KnowledgeUiState(
 
 class KnowledgeViewModel(
   private val repository: KnowledgeRepository,
+  private val scheduleBackupAfterChange: () -> Unit = {},
 ) : ViewModel() {
   private val _state = MutableStateFlow(KnowledgeUiState())
   val state: StateFlow<KnowledgeUiState> = _state.asStateFlow()
 
   init {
     refresh()
+    viewModelScope.launch {
+      repository.changes.drop(1).collect {
+        refreshAfterDataChange()
+      }
+    }
   }
 
   fun updateQuery(query: String) {
@@ -93,6 +100,7 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { repository.createPage(request, current.composerSourcePageId) }
         .onSuccess { page ->
+          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -132,6 +140,7 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { repository.editPage(page.id, instruction) }
         .onSuccess { updatedPage ->
+          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -193,6 +202,30 @@ class KnowledgeViewModel(
     }
   }
 
+  private suspend fun refreshAfterDataChange() {
+    val snapshot = _state.value
+    val query = snapshot.query
+    val selectedId = snapshot.selectedPage?.id
+    runCatching {
+      val pages = repository.listPages(query)
+      val selected = selectedId?.let { repository.findPage(it) }
+      pages to selected
+    }.onSuccess { (pages, selected) ->
+      _state.update { current ->
+        if (current.query != query || current.selectedPage?.id != selectedId) {
+          current
+        } else {
+          current.copy(
+            initialized = true,
+            pages = pages,
+            selectedPage = selected,
+            editInstruction = if (selected == null) "" else current.editInstruction,
+          )
+        }
+      }
+    }.onFailure(::reportError)
+  }
+
   private fun reportError(error: Throwable) {
     _state.update {
       it.copy(
@@ -204,11 +237,12 @@ class KnowledgeViewModel(
 
   class Factory(
     private val repository: KnowledgeRepository,
+    private val scheduleBackupAfterChange: () -> Unit = {},
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(KnowledgeViewModel::class.java))
-      return KnowledgeViewModel(repository) as T
+      return KnowledgeViewModel(repository, scheduleBackupAfterChange) as T
     }
   }
 }
