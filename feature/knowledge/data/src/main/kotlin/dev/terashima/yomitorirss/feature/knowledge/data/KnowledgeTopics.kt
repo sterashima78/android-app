@@ -91,7 +91,7 @@ internal fun selectKnowledgeSources(
     val folder = source.folderName.orEmpty().lowercase()
     val tags = source.tags.joinToString(" ").lowercase()
     val summary = source.summary.lowercase()
-    var score = if (source.articleId in preferredArticleIds) 100 else 0
+    var score = 0
     terms.forEach { term ->
       if (term in title) score += 12
       if (term in tags) score += 10
@@ -99,18 +99,51 @@ internal fun selectKnowledgeSources(
       if (term in sourceTitle) score += 6
       if (term in summary) score += 2
     }
-    ScoredSource(source, score)
+    ScoredSource(
+      source = source,
+      score = score,
+      preferred = source.articleId in preferredArticleIds,
+    )
+  }
+  val ordering = compareByDescending<ScoredSource> { it.score }
+    .thenByDescending { it.source.savedAt }
+    .thenBy { it.source.title.lowercase() }
+
+  if (preferredArticleIds.isEmpty()) {
+    val matching = scored.filter { it.score > 0 }
+    return (matching.ifEmpty { scored })
+      .sortedWith(ordering)
+      .take(limit)
+      .map(ScoredSource::source)
   }
 
-  val matching = scored.filter { it.score > 0 }
-  return (matching.ifEmpty { scored })
-    .sortedWith(
-      compareByDescending<ScoredSource> { it.score }
-        .thenByDescending { it.source.savedAt }
-        .thenBy { it.source.title.lowercase() },
-    )
-    .take(limit)
-    .map(ScoredSource::source)
+  val preferred = scored.filter(ScoredSource::preferred).sortedWith(ordering)
+  if (preferred.isEmpty()) {
+    val matching = scored.filter { it.score > 0 }
+    return (matching.ifEmpty { scored })
+      .sortedWith(ordering)
+      .take(limit)
+      .map(ScoredSource::source)
+  }
+
+  val matchedNew = scored.filter { !it.preferred && it.score > 0 }.sortedWith(ordering)
+  val preferredSlots = if (matchedNew.isEmpty()) {
+    minOf(preferred.size, limit)
+  } else {
+    minOf(preferred.size, (limit * 2 / 3).coerceAtLeast(1))
+  }
+
+  val selected = mutableListOf<ScoredSource>()
+  selected += preferred.take(preferredSlots)
+  selected += matchedNew.take((limit - selected.size).coerceAtLeast(0))
+  if (selected.size < limit) {
+    val selectedIds = selected.mapTo(hashSetOf()) { it.source.articleId }
+    selected += (preferred.drop(preferredSlots) + scored.filter { !it.preferred && it.score <= 0 })
+      .filterNot { it.source.articleId in selectedIds }
+      .sortedWith(ordering)
+      .take(limit - selected.size)
+  }
+  return selected.take(limit).map(ScoredSource::source)
 }
 
 internal fun parseGeneratedKnowledgeDocument(
@@ -187,6 +220,7 @@ private data class TopicIdentity(
 private data class ScoredSource(
   val source: KnowledgeGenerationSource,
   val score: Int,
+  val preferred: Boolean,
 )
 
 internal const val MAX_SOURCES_PER_TOPIC = 12
