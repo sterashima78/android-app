@@ -60,21 +60,20 @@ class DefaultKnowledgeRepository(
     } ?: return@withContext null
 
     val sources = database.readable.rawQuery(
-      "SELECT article_id,title,url,source_title,saved_at FROM knowledge_page_sources " +
-        "WHERE page_id = ? ORDER BY saved_at DESC,title COLLATE NOCASE",
+      "SELECT citation_index,article_id,title,url,source_title,saved_at FROM knowledge_page_sources " +
+        "WHERE page_id = ? ORDER BY citation_index",
       arrayOf(id),
     ).use { cursor ->
       buildList {
-        var citation = 1
         while (cursor.moveToNext()) {
           add(
             KnowledgeSource(
-              citationNumber = citation++,
-              articleId = cursor.getString(0),
-              title = cursor.getString(1),
-              url = cursor.getString(2),
-              sourceTitle = cursor.getString(3),
-              savedAt = cursor.getString(4),
+              citationNumber = cursor.getInt(0),
+              articleId = cursor.getString(1),
+              title = cursor.getString(2),
+              url = cursor.getString(3),
+              sourceTitle = cursor.getString(4),
+              savedAt = cursor.getString(5),
             ),
           )
         }
@@ -180,13 +179,14 @@ class DefaultKnowledgeRepository(
       if (updated == 0) insertOrThrow("knowledge_pages", null, values)
 
       delete("knowledge_page_sources", "page_id = ?", arrayOf(topic.id))
-      topic.sources.forEach { source ->
+      topic.sources.forEachIndexed { index, source ->
         insertOrThrow(
           "knowledge_page_sources",
           null,
           ContentValues().apply {
             put("page_id", topic.id)
             put("article_id", source.articleId)
+            put("citation_index", index + 1)
             put("title", source.title)
             put("url", source.url)
             put("source_title", source.sourceTitle)
