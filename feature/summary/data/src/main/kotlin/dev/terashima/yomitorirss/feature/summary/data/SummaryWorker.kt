@@ -90,7 +90,34 @@ class SummaryWorker(
             )
             check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
             currentCoroutineContext().ensureActive()
-            if (database.addAiGeneratedTags(task.articleId, generatedTags)) {
+            var metadataChanged = database.addAiGeneratedTags(task.articleId, generatedTags)
+
+            if (database.isUncategorizedBookmarkForAiEnrichment(task.articleId)) {
+              val existingFolders = database.listExistingFolderNamesForAiEnrichment()
+              if (existingFolders.isNotEmpty()) {
+                val folderSource = buildString {
+                  append(tagSource)
+                  append("\n\nタグ: ")
+                  append(generatedTags.joinToString("、"))
+                }
+                val folderName = parseGeneratedFolder(
+                  raw = modelManager.summarizeText(
+                    folderSource,
+                    buildAutoFolderPrompt(existingFolders),
+                  ),
+                  existingFolderNames = existingFolders,
+                )
+                currentCoroutineContext().ensureActive()
+                if (
+                  folderName != null &&
+                  database.assignExistingFolderForAiEnrichment(task.articleId, folderName)
+                ) {
+                  metadataChanged = true
+                }
+              }
+            }
+
+            if (metadataChanged) {
               DataChangeNotifier.shared.notifyChanged()
             }
           }
