@@ -23,5 +23,12 @@ fun KnowledgeRoute(modifier: Modifier = Modifier) {
     onOpenPage = knowledgeViewModel::openPage,
     onClosePage = knowledgeViewModel::closePage,
     onRebuild = knowledgeViewModel::rebuild,
+    onStartCreate = { knowledgeViewModel.startCreate() },
+    onStartRelatedCreate = knowledgeViewModel::startCreate,
+    onComposerRequestChange = knowledgeViewModel::updateComposerRequest,
+    onCreatePage = knowledgeViewModel::createPage,
+    onCancelCreate = knowledgeViewModel::cancelCreate,
+    onEditInstructionChange = knowledgeViewModel::updateEditInstruction,
+    onEditPage = knowledgeViewModel::editPage,
   )
 }
