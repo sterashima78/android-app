@@ -24,6 +24,7 @@ import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationMa
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import kotlinx.coroutines.launch
 
 @Composable
@@ -43,6 +44,9 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val organizationSuggester = remember(application) {
     LocalLibraryOrganizationSuggester(application.container.modelManager)
   }
+  val organizationBatchScheduler = remember(application) {
+    WorkManagerLibraryOrganizationBatchScheduler(application)
+  }
   val smbRepository = remember(application, databaseConnection) {
     CleaningSmbLibraryRepository(application, databaseConnection)
   }
@@ -54,6 +58,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     factory = LibraryOrganizationViewModel.Factory(
       organizationRepository,
       organizationSuggester,
+      organizationBatchScheduler,
     ),
   )
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
