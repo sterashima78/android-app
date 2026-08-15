@@ -28,18 +28,17 @@ fun SettingsScreen(
   val backgroundDataFetchPreferences = remember(context) {
     BackgroundDataFetchPreferences(context)
   }
-  var backgroundFetchWifiOnly by remember {
-    mutableStateOf(backgroundDataFetchPreferences.wifiOnly)
+  val initialBackgroundFetchWifiOnly = remember(backgroundDataFetchPreferences) {
+    backgroundDataFetchPreferences.wifiOnly
   }
   var showXCssSettings by remember { mutableStateOf(false) }
 
   SettingsFeatureScreen(
     modifier = modifier,
     tagCount = tagCount,
-    backgroundFetchWifiOnly = backgroundFetchWifiOnly,
+    initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundDataFetchPreferences.wifiOnly = wifiOnly
-      backgroundFetchWifiOnly = wifiOnly
       MailSyncScheduler(context).refreshPeriodicNetworkPolicy()
     },
     onImportBookmarkCsv = onImportBookmarkCsv,

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,11 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.feature.settings.AiInferenceBackend
-import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 
 @Composable
-internal fun ModelManagerDialog(
+fun ModelManagerDialog(
   supported: Boolean,
   models: List<AiModelStatus>,
   inferenceBackend: AiInferenceBackend,
@@ -131,12 +129,6 @@ internal fun ModelManagerDialog(
     },
     confirmButton = { TextButton(onClick = onDismiss) { Text("閉じる") } },
   )
-}
-
-internal fun progressLabel(stage: String, modelName: String?): String = when (stage) {
-  "preparing_model" -> "${modelName.orEmpty()}を読み込んでいます"
-  "generating_summary" -> "${modelName.orEmpty()}で要約を生成しています"
-  else -> stage
 }
 
 private fun formatBytes(bytes: Long): String = when {

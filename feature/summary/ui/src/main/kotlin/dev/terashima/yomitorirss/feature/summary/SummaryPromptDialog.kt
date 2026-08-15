@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.summary
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,11 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.feature.summary.SUMMARY_ARTICLE_PLACEHOLDER
-import dev.terashima.yomitorirss.feature.summary.SUMMARY_PROMPT_MAX_LENGTH
 
 @Composable
-internal fun SummaryPromptDialog(
+fun SummaryPromptDialog(
   prompt: String,
   onDismiss: () -> Unit,
   onSave: (String) -> Unit,
