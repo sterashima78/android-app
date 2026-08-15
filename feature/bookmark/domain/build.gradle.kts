@@ -9,6 +9,4 @@ kotlin {
 dependencies {
   implementation(project(":feature:article:domain"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-
-  testImplementation("junit:junit:4.13.2")
 }
