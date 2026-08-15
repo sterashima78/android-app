@@ -19,7 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
-import dev.terashima.yomitoririss.feature.library.data.DefaultLibraryOrganizationRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
@@ -48,6 +48,13 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   }
   val libraryViewModel: LibraryViewModel = viewModel(
     factory = LibraryViewModel.Factory(repository, smbRepository),
+  )
+  val organizationViewModel: LibraryOrganizationViewModel = viewModel(
+    key = "library-organization",
+    factory = LibraryOrganizationViewModel.Factory(
+      organizationRepository,
+      organizationSuggester,
+    ),
   )
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
   val scope = rememberCoroutineScope()
@@ -99,8 +106,7 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   LibraryFeatureRoute(
     modifier = modifier,
     viewModel = libraryViewModel,
-    organizationRepository = organizationRepository,
-    organizationSuggester = organizationSuggester,
+    organizationViewModel = organizationViewModel,
     onSyncGooglePlayBooks = requestSync,
     onOpenSmbBook = { openedSmbBook = it },
   )
