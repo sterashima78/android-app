@@ -19,7 +19,6 @@ android {
 dependencies {
   implementation("androidx.work:work-runtime-ktx:2.11.2")
 
-  testImplementation("junit:junit:4.13.2")
   testImplementation("androidx.test:core-ktx:1.7.0")
   testImplementation("org.robolectric:robolectric:4.16.1")
 }
