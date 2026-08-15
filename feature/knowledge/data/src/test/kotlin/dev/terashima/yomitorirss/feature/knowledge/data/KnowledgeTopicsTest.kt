@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.knowledge.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KnowledgeTopicsTest {
@@ -83,6 +84,29 @@ class KnowledgeTopicsTest {
     )
 
     assertEquals("a", selected.single().articleId)
+  }
+
+  @Test
+  fun `既存出典が上限まであっても新しい関連資料の枠を確保する`() {
+    val existing = (1..12).map { index ->
+      source("old-$index", title = "既存資料 $index", summary = "以前の観点")
+    }
+    val newEvidence = source(
+      "new",
+      title = "Gemma 4 の新しい検証",
+      summary = "Pixel 9 の実測データ",
+      savedAt = "2026-08-16T00:00:00Z",
+    )
+
+    val selected = selectKnowledgeSources(
+      query = "Gemma 4 と Pixel 9 の実測を追加して",
+      sources = existing + newEvidence,
+      preferredArticleIds = existing.mapTo(linkedSetOf()) { it.articleId },
+      limit = 12,
+    )
+
+    assertEquals(12, selected.size)
+    assertTrue(selected.any { it.articleId == "new" })
   }
 
   @Test
