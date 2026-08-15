@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-15
+- Updated: 2026-08-15
 - Refines: ADR-0013
 
 ## Context
@@ -48,7 +49,7 @@ SMB 蔵書も既存の蔵書グリッドで `thumbnailUrl` を利用する。表
 
 ZIP / CBZ は同期時に書籍本体を全体ダウンロードせず、SMB の入力ストリームを先頭から最大 32 MiB まで走査し、最初に現れる JPEG / PNG / WebP を表紙候補として保存する。すでに読書用ローカルキャッシュがある場合は、Book Reader と同じ自然順で最初の画像を選ぶ。
 
-PDF は同期のためだけに全ファイルをダウンロードしない。すでに読書用ローカルキャッシュがある場合、または初回読書でローカルキャッシュを作成した後に `PdfRenderer` で1ページ目を表紙へ変換する。Book Reader から蔵書へ戻る際は Library snapshot を再読込し、生成済み表紙を反映する。
+PDF は同期のためだけに全ファイルをダウンロードしない。すでに読書用ローカルキャッシュがある場合、または初回読書でローカルキャッシュを作成した後に `PdfRenderer` で1ページ目を表紙へ変換する。Book Reader を閉じる際は Library snapshot を再読込し、生成済み表紙を反映する。
 
 表紙抽出の失敗は蔵書同期・読書開始を失敗させない。表紙が取得できない場合は従来どおり「表紙なし」を表示する。サーバ設定削除時は対象書籍の読書キャッシュと表紙キャッシュの両方を削除する。
 
@@ -77,6 +78,8 @@ PDF は同期のためだけに全ファイルをダウンロードしない。�
 
 外部サービスの本は既存 URI routing を維持する。SMB 本だけは `yomitori://smb-book/open` の内部 URI として識別し、application composition/navigation layer が Library から Book Reader へ接続する。
 
+Book Reader は Library の通常コンテンツと置換せず、application composition layer から full-screen `Dialog` として表示する。これにより親 `Scaffold` のトップバーや content padding に Reader の操作 UI が依存せず、Android の戻る操作は Dialog の dismiss として蔵書一覧へ戻る。Library 一覧自体は背後で composition を維持する。
+
 SMB file path 等は外部 Intent へ渡さない。
 
 ## Consequences
@@ -90,6 +93,7 @@ SMB file path 等は外部 Intent へ渡さない。
 - 一度取得した本は SMB 接続なしでもキャッシュから読める
 - ZIP と PDF で左右ページ送り / 上下スクロールを共通 UI として利用できる
 - Library の取得責務と Book Reader の表示責務を分離できる
+- Reader の操作 UI と戻る処理を親画面のグローバル chrome から分離できる
 - SMB credential を公開リポジトリや平文 DB に置かない
 
 ### Negative
