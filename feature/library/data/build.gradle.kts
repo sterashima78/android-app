@@ -22,6 +22,7 @@ dependencies {
   implementation(project(":core:network"))
 
   implementation("com.google.android.gms:play-services-auth:21.5.0")
+  implementation("com.hierynomus:smbj:0.14.0")
 
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20260522")
