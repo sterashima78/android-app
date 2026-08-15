@@ -234,6 +234,8 @@ class DefaultLibraryOrganizationRepository(
       allowed = setOf(
         LibraryOrganizationCandidateStatus.PENDING_REVIEW,
         LibraryOrganizationCandidateStatus.DEFERRED,
+        LibraryOrganizationCandidateStatus.FAILED,
+        LibraryOrganizationCandidateStatus.SKIPPED,
       ),
       target = LibraryOrganizationCandidateStatus.REJECTED,
     )
@@ -298,7 +300,7 @@ class DefaultLibraryOrganizationRepository(
               SELECT batch_id FROM $BATCH_TABLE WHERE status = ?
             )
         """.trimIndent(),
-        arrayOf(
+        arrayOf<Any?>(
           LibraryOrganizationCandidateStatus.QUEUED.name,
           now,
           LibraryOrganizationCandidateStatus.PROCESSING.name,
@@ -1019,6 +1021,8 @@ private val ACTIVE_OR_REVIEW_CANDIDATE_STATUSES = setOf(
   LibraryOrganizationCandidateStatus.PROCESSING,
   LibraryOrganizationCandidateStatus.PENDING_REVIEW,
   LibraryOrganizationCandidateStatus.DEFERRED,
+  LibraryOrganizationCandidateStatus.FAILED,
+  LibraryOrganizationCandidateStatus.SKIPPED,
 )
 
 private const val TAG_TABLE = "library_organization_tags"
