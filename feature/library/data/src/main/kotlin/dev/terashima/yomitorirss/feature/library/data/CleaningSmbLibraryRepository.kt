@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.library.data
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
@@ -32,7 +33,7 @@ class CleaningSmbLibraryRepository private constructor(
     if (redundantSourceIds.isEmpty()) return result
 
     database.transaction {
-      redundantSourceIds.forEach(::deleteSmbBookMetadata)
+      redundantSourceIds.forEach { sourceId -> deleteSmbBookMetadata(sourceId) }
     }
     redundantSourceIds.forEach { sourceId ->
       File(appContext.cacheDir, "smb-books/$sourceId").deleteRecursively()
@@ -50,7 +51,7 @@ class CleaningSmbLibraryRepository private constructor(
 
     val remainingServers = delegate.servers()
     database.transaction {
-      sourceIds.forEach(::deleteSmbBookMetadata)
+      sourceIds.forEach { sourceId -> deleteSmbBookMetadata(sourceId) }
 
       if (remainingServers.isEmpty()) {
         delete("library_sources", "source = ?", arrayOf(LibrarySource.SMB.name))
@@ -102,7 +103,7 @@ class CleaningSmbLibraryRepository private constructor(
     }
   }
 
-  private fun android.database.sqlite.SQLiteDatabase.deleteSmbBookMetadata(sourceId: String) {
+  private fun SQLiteDatabase.deleteSmbBookMetadata(sourceId: String) {
     listOf(
       "library_items",
       "hidden_library_items",
