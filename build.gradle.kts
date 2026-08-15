@@ -133,6 +133,7 @@ val verifyArchitecture by tasks.registering {
     }
 
     val packagePattern = Regex("""(?m)^\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)\s*$""")
+    val androidImportPattern = Regex("""(?m)^\s*import\s+android\.""")
     subprojects.forEach { project ->
       listOf("src/main/java", "src/main/kotlin").forEach { sourceRootPath ->
         val sourceRoot = project.file(sourceRootPath)
@@ -140,8 +141,14 @@ val verifyArchitecture by tasks.registering {
           project.fileTree(sourceRoot) {
             include("**/*.kt")
           }.files.sortedBy { it.path }.forEach { sourceFile ->
+            val sourceText = sourceFile.readText()
+            if (projectLayer(project.path) == "domain" && androidImportPattern.containsMatchIn(sourceText)) {
+              violations +=
+                "domain must not import Android framework types: ${project.path}:${sourceFile.relativeTo(project.projectDir)}"
+            }
+
             val declaredPackage = packagePattern
-              .find(sourceFile.readText())
+              .find(sourceText)
               ?.groupValues
               ?.get(1)
               ?: return@forEach
