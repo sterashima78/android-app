@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-15
+- Updated: 2026-08-15
 - Refines: ADR-0013
 
 ## Context
@@ -67,6 +68,8 @@ SMB 接続、ディレクトリ走査、ファイル取得、キャッシュ管�
 
 外部サービスの本は既存 URI routing を維持する。SMB 本だけは `yomitori://smb-book/open` の内部 URI として識別し、application composition/navigation layer が Library から Book Reader へ接続する。
 
+Book Reader は Library の通常コンテンツと置換せず、application composition layer から full-screen `Dialog` として表示する。これにより親 `Scaffold` のトップバーや content padding に Reader の操作 UI が依存せず、Android の戻る操作は Dialog の dismiss として蔵書一覧へ戻る。Library 一覧自体は背後で composition を維持する。
+
 SMB file path 等は外部 Intent へ渡さない。
 
 ## Consequences
@@ -78,6 +81,7 @@ SMB file path 等は外部 Intent へ渡さない。
 - 一度取得した本は SMB 接続なしでもキャッシュから読める
 - ZIP と PDF で左右ページ送り / 上下スクロールを共通 UI として利用できる
 - Library の取得責務と Book Reader の表示責務を分離できる
+- Reader の操作 UI と戻る処理を親画面のグローバル chrome から分離できる
 - SMB credential を公開リポジトリや平文 DB に置かない
 
 ### Negative
