@@ -140,13 +140,18 @@ class LibraryOrganizationViewModel(
   }
 
   fun startBatchSuggestion(books: List<LibraryBook>) {
-    if (batchJob?.isActive == true || _state.value.batch.applying) return
-    if (_state.value.suggestingBook != null) {
+    val currentState = _state.value
+    if (!currentState.initialized || currentState.loading) {
+      _state.update { it.copy(message = "整理情報の読み込み完了後に一括AI解析を開始してください") }
+      return
+    }
+    if (batchJob?.isActive == true || currentState.batch.applying) return
+    if (currentState.suggestingBook != null) {
       _state.update { it.copy(message = "個別のAI候補生成が完了してから一括整理を開始してください") }
       return
     }
 
-    val snapshot = _state.value.snapshot
+    val snapshot = currentState.snapshot
     val targets = filterLibraryBooksForOrganization(
       books,
       snapshot,
