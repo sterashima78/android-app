@@ -18,6 +18,8 @@ import java.io.File
 import java.util.Locale
 import java.util.zip.ZipFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class DefaultBookPageSourceFactory {
@@ -102,6 +104,7 @@ private class PdfBookPageSource(
 ) : BookPageSource {
   private val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
   private val renderer = PdfRenderer(descriptor)
+  private val rendererMutex = Mutex()
 
   override val pageCount: Int = renderer.pageCount
 
@@ -110,22 +113,24 @@ private class PdfBookPageSource(
   }
 
   override suspend fun loadPage(index: Int, targetWidth: Int): BookPageImage = withContext(Dispatchers.IO) {
-    renderer.openPage(index).use { page ->
-      val width = targetWidth.coerceIn(MIN_PDF_WIDTH, MAX_PDF_WIDTH)
-      val height = (width.toDouble() * page.height / page.width)
-        .toInt()
-        .coerceAtLeast(1)
-      val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-      try {
-        bitmap.eraseColor(android.graphics.Color.WHITE)
-        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-        val bytes = ByteArrayOutputStream().use { output ->
-          check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) { "PDFページの変換に失敗しました" }
-          output.toByteArray()
+    rendererMutex.withLock {
+      renderer.openPage(index).use { page ->
+        val width = targetWidth.coerceIn(MIN_PDF_WIDTH, MAX_PDF_WIDTH)
+        val height = (width.toDouble() * page.height / page.width)
+          .toInt()
+          .coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        try {
+          bitmap.eraseColor(android.graphics.Color.WHITE)
+          page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+          val bytes = ByteArrayOutputStream().use { output ->
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) { "PDFページの変換に失敗しました" }
+            output.toByteArray()
+          }
+          BookPageImage(bytes = bytes, width = width, height = height)
+        } finally {
+          bitmap.recycle()
         }
-        BookPageImage(bytes = bytes, width = width, height = height)
-      } finally {
-        bitmap.recycle()
       }
     }
   }
