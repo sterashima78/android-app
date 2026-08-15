@@ -10,25 +10,44 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.net.URI
 
 @Composable
 fun LibraryFeatureRoute(
   viewModel: LibraryViewModel,
+  organizationRepository: LibraryOrganizationRepository,
+  organizationSuggester: LibraryOrganizationSuggester,
   onSyncGooglePlayBooks: () -> Unit,
   onOpenSmbBook: (LibraryBook) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
+  val organizationViewModel: LibraryOrganizationViewModel = viewModel(
+    key = "library-organization",
+    factory = LibraryOrganizationViewModel.Factory(organizationRepository, organizationSuggester),
+  )
+  val organizationState by organizationViewModel.state.collectAsState()
+  var organizationVisible by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
   val booksBySourceId = remember(state.books, state.hiddenBooks) {
     (state.books + state.hiddenBooks)
@@ -65,15 +84,39 @@ fun LibraryFeatureRoute(
     LocalSmbLibraryUiBinding provides smbBinding,
     LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
   ) {
-    LibraryScreen(
-      modifier = modifier,
-      state = state,
-      onSyncGooglePlayBooks = onSyncGooglePlayBooks,
-      onHideBook = viewModel::hideBook,
-      onRestoreBook = viewModel::restoreBook,
-      onSetBookSeries = viewModel::setBookSeries,
-      onClearBookSeries = viewModel::clearBookSeries,
-      onDismissMessage = viewModel::dismissMessage,
+    Box(modifier = modifier) {
+      LibraryScreen(
+        modifier = Modifier.fillMaxSize(),
+        state = state,
+        onSyncGooglePlayBooks = onSyncGooglePlayBooks,
+        onHideBook = viewModel::hideBook,
+        onRestoreBook = viewModel::restoreBook,
+        onSetBookSeries = viewModel::setBookSeries,
+        onClearBookSeries = viewModel::clearBookSeries,
+        onDismissMessage = viewModel::dismissMessage,
+      )
+      FloatingActionButton(
+        onClick = {
+          organizationViewModel.refresh()
+          organizationVisible = true
+        },
+        modifier = Modifier
+          .align(Alignment.BottomEnd)
+          .padding(end = 16.dp, bottom = 88.dp),
+      ) {
+        Text("整理")
+      }
+    }
+  }
+
+  if (organizationVisible) {
+    LibraryOrganizationDialog(
+      books = state.books,
+      state = organizationState,
+      onSave = organizationViewModel::save,
+      onSuggest = organizationViewModel::suggest,
+      onDismissMessage = organizationViewModel::dismissMessage,
+      onDismiss = { organizationVisible = false },
     )
   }
 }
