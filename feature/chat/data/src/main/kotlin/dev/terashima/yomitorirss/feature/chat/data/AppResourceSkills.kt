@@ -43,7 +43,7 @@ private fun rssSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_feeds",
-        description = "購読中のRSSフィードを一覧・検索する。Reddit購読は含まない。",
+        description = "購読中のRSSフィードを一覧・検索する。Reddit購読は含まない。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
@@ -51,21 +51,21 @@ private fun rssSkill(
       val feeds = feedRepository.listFeeds()
         .filterNot { feed -> isRedditFeedUrl(feed.feedUrl) }
         .filter { feed -> query.isBlank() || listOf(feed.title, feed.feedUrl, feed.siteUrl.orEmpty()).any { it.contains(query, true) } }
-      formatCollection(feeds, arguments.limit()) { feed ->
+      formatCollection(feeds, DEFAULT_TOOL_ITEMS) { feed ->
         "- id=${feed.id} | title=${feed.title} | feed_url=${feed.feedUrl} | site_url=${feed.siteUrl.orEmpty()} | last_fetched_at=${feed.lastFetchedAt.orEmpty()} | last_error=${feed.lastError.orEmpty()}"
       }
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_unread_articles",
-        description = "RSSの未読記事をタイトル・配信元で検索する。Redditは含まない。",
+        description = "RSSの未読記事をタイトル・配信元で検索する。Redditは含まない。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       formatArticles(
         articleRepository.listUnreadArticles().filterNot(Article::isRedditArticle),
         arguments.query(),
-        arguments.limit(),
+        DEFAULT_TOOL_ITEMS,
       )
     },
   ),
@@ -82,7 +82,7 @@ private fun redditSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_reddit_subscriptions",
-        description = "購読中のRedditコミュニティとスレッドを一覧・検索する。",
+        description = "購読中のRedditコミュニティとスレッドを一覧・検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
@@ -92,21 +92,21 @@ private fun redditSkill(
           query.isBlank() || listOf(subscription.title, subscription.feedUrl, subscription.kind.name)
             .any { it.contains(query, true) }
         }
-      formatCollection(subscriptions, arguments.limit()) { subscription ->
+      formatCollection(subscriptions, DEFAULT_TOOL_ITEMS) { subscription ->
         "- id=${subscription.id} | title=${subscription.title} | kind=${subscription.kind.name.lowercase()} | feed_url=${subscription.feedUrl} | last_fetched_at=${subscription.lastFetchedAt.orEmpty()} | last_error=${subscription.lastError.orEmpty()}"
       }
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_reddit_unread",
-        description = "Redditの未読投稿・新着コメントをタイトル・配信元で検索する。",
+        description = "Redditの未読投稿・新着コメントをタイトル・配信元で検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       formatArticles(
         articleRepository.listUnreadArticles().filter(Article::isRedditArticle),
         arguments.query(),
-        arguments.limit(),
+        DEFAULT_TOOL_ITEMS,
       )
     },
   ),
@@ -122,22 +122,35 @@ private fun bookmarkSkill(
   tools = listOf(
     LambdaAgentTool(
       definition = AgentToolDefinition(
+        name = "list_recent_saved_articles",
+        description = "最近ブックマークした保存記事を保存日時の新しい順に最大10件返す。「最近」「最新」「直近」のブックマークを求められた場合に使う。引数は不要。",
+      ),
+    ) {
+      formatBookmarkedArticles(
+        recentBookmarks(bookmarkRepository.listSavedArticles(tagId = null, folderId = null)),
+        summaryRepository,
+        query = "",
+        limit = DEFAULT_TOOL_ITEMS,
+      )
+    },
+    LambdaAgentTool(
+      definition = AgentToolDefinition(
         name = "search_saved_articles",
-        description = "保存済みブックマークをタイトル・配信元・フォルダ・タグ・AI要約で検索する。",
+        description = "保存済みブックマークをキーワードでタイトル・配信元・フォルダ・タグ・AI要約から検索し、保存日時の新しい順に最大10件返す。単に最近・最新の記事を求める場合はlist_recent_saved_articlesを使う。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       formatBookmarkedArticles(
-        bookmarkRepository.listSavedArticles(tagId = null, folderId = null),
+        recentBookmarks(bookmarkRepository.listSavedArticles(tagId = null, folderId = null)),
         summaryRepository,
         arguments.query(),
-        arguments.limit(),
+        DEFAULT_TOOL_ITEMS,
       )
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_read_later_articles",
-        description = "あとで読むフォルダの記事をタイトル・配信元・タグ・AI要約で検索する。",
+        description = "あとで読むフォルダの記事をタイトル・配信元・タグ・AI要約で検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
@@ -145,34 +158,34 @@ private fun bookmarkSkill(
         bookmarkRepository.listReadLaterArticles(),
         summaryRepository,
         arguments.query(),
-        arguments.limit(),
+        DEFAULT_TOOL_ITEMS,
       )
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_bookmark_folders",
-        description = "ブックマークフォルダを一覧・検索する。",
+        description = "ブックマークフォルダを一覧・検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       val query = arguments.query()
       val folders = bookmarkRepository.listFolders()
         .filter { query.isBlank() || it.name.contains(query, true) }
-      formatCollection(folders, arguments.limit()) { folder ->
+      formatCollection(folders, DEFAULT_TOOL_ITEMS) { folder ->
         "- id=${folder.id} | name=${folder.name} | system=${folder.isSystem}"
       }
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_bookmark_tags",
-        description = "ブックマークタグを一覧・検索する。",
+        description = "ブックマークタグを一覧・検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       val query = arguments.query()
       val tags = bookmarkRepository.listTags()
         .filter { query.isBlank() || it.name.contains(query, true) }
-      formatCollection(tags, arguments.limit()) { tag -> "- id=${tag.id} | name=${tag.name}" }
+      formatCollection(tags, DEFAULT_TOOL_ITEMS) { tag -> "- id=${tag.id} | name=${tag.name}" }
     },
   ),
 )
@@ -185,11 +198,11 @@ private fun historySkill(articleRepository: ArticleRepository): AgentSkill = Age
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_read_history",
-        description = "既読履歴をタイトル・配信元で検索する。",
+        description = "既読履歴をタイトル・配信元で検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      formatArticles(articleRepository.listHistoryArticles(), arguments.query(), arguments.limit())
+      formatArticles(articleRepository.listHistoryArticles(), arguments.query(), DEFAULT_TOOL_ITEMS)
     },
   ),
 )
@@ -202,7 +215,7 @@ private fun taskSkill(taskRepository: TaskRepository): AgentSkill = AgentSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_tasks",
-        description = "タスクをタイトル・説明と状態で検索する。",
+        description = "タスクをタイトル・説明と状態で検索する。最大10件の詳細を返す。",
         arguments = commonSearchArguments() + AgentToolArgument(
           name = "status",
           description = "all, open, completed, overdue のいずれか。省略時は all。",
@@ -215,7 +228,7 @@ private fun taskSkill(taskRepository: TaskRepository): AgentSkill = AgentSkill(
       val tasks = taskRepository.listTasks()
         .filter { task -> query.isBlank() || listOf(task.title, task.description).any { it.contains(query, true) } }
         .filter { task -> task.matchesStatus(status, today) }
-      formatCollection(tasks, arguments.limit()) { task -> formatTask(task, today) }
+      formatCollection(tasks, DEFAULT_TOOL_ITEMS) { task -> formatTask(task, today) }
     },
   ),
 )
@@ -227,21 +240,17 @@ private class LambdaAgentTool(
   override suspend fun execute(arguments: Map<String, String>): String = block(arguments)
 }
 
-private fun commonSearchArguments(): List<AgentToolArgument> = listOf(
+internal fun commonSearchArguments(): List<AgentToolArgument> = listOf(
   AgentToolArgument(
     name = "query",
-    description = "部分一致で絞り込む検索語。全件を見る場合は空文字または省略。",
-  ),
-  AgentToolArgument(
-    name = "limit",
-    description = "詳細を返す最大件数。1〜20。省略時は10。total はこの上限に関係なく検索結果全体の件数を返す。",
+    description = "部分一致で絞り込む実際の検索語。全件を見る場合は省略する。「最近」「最新」「直近」「新しい順」は検索語ではないのでqueryへ入れない。",
   ),
 )
 
 private fun Map<String, String>.query(): String = get("query")?.trim().orEmpty()
 
-private fun Map<String, String>.limit(): Int =
-  get("limit")?.toIntOrNull()?.coerceIn(1, MAX_TOOL_ITEMS) ?: DEFAULT_TOOL_ITEMS
+internal fun recentBookmarks(bookmarks: List<BookmarkedArticle>): List<BookmarkedArticle> =
+  bookmarks.sortedByDescending(BookmarkedArticle::savedAt)
 
 private fun formatArticles(
   articles: List<Article>,
@@ -278,7 +287,7 @@ private suspend fun formatBookmarkedArticles(
   return formatCollection(filtered, limit) { (bookmarked, summary) ->
     val article = bookmarked.article
     val compactSummary = summary.orEmpty().replace(Regex("\\s+"), " ").trim()
-    "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | summary=$compactSummary | url=${article.url}"
+    "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | saved_at=${bookmarked.savedAt} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | summary=$compactSummary | url=${article.url}"
   }
 }
 
@@ -316,4 +325,3 @@ private fun formatTask(task: TaskItem, today: LocalDate): String {
 }
 
 private const val DEFAULT_TOOL_ITEMS = 10
-private const val MAX_TOOL_ITEMS = 20

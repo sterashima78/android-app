@@ -72,9 +72,9 @@ internal class LocalOpenApiTool(
         .map(LocalInferenceToolArgument::name)
         .filterNot(arguments::containsKey)
       check(missingRequired.isEmpty()) { "Required tool arguments are missing" }
-      definition.execute(arguments)
+      toolResultJson(definition.execute(arguments))
     }.getOrElse {
-      "ツール実行に失敗しました。"
+      toolErrorJson()
     }
   }
 }
@@ -124,5 +124,13 @@ internal fun parseToolArguments(value: String): Map<String, String> {
     }
   }
 }
+
+internal fun toolResultJson(result: String): String = buildJsonObject {
+  put("result", result)
+}.toString()
+
+internal fun toolErrorJson(): String = buildJsonObject {
+  put("error", "ツール実行に失敗しました。")
+}.toString()
 
 private val TOOL_JSON = Json { isLenient = true }
