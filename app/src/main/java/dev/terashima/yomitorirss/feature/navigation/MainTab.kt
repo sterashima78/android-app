@@ -13,7 +13,6 @@ enum class MainTab(val label: String) {
   FOLDERS("フォルダ"),
   TAGS("タグ"),
   LIBRARY("蔵書"),
-  KNOWLEDGE("ナレッジ"),
   MAIL("メール"),
   YOUTUBE("YouTube"),
   X("X"),
