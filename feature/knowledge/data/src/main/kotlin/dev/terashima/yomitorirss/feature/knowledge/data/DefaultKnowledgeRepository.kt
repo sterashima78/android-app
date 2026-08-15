@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.knowledge.data
 
 import android.content.ContentValues
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildResult
@@ -13,6 +14,7 @@ import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 class DefaultKnowledgeRepository(
@@ -20,7 +22,10 @@ class DefaultKnowledgeRepository(
   private val bookmarkRepository: BookmarkRepository,
   private val summaryRepository: SummaryRepository,
   private val modelManager: LocalModelManager,
+  private val dataChanges: DataChangeNotifier = DataChangeNotifier.shared,
 ) : KnowledgeRepository {
+  override val changes: StateFlow<Long> = dataChanges.version
+
   override suspend fun listPages(query: String): List<KnowledgePageSummary> = withContext(Dispatchers.IO) {
     val normalized = query.trim()
     val pattern = "%$normalized%"
@@ -120,6 +125,7 @@ class DefaultKnowledgeRepository(
       generated += 1
     }
 
+    dataChanges.notifyChanged()
     KnowledgeBuildResult(
       generated = generated,
       reused = reused,
@@ -170,6 +176,7 @@ class DefaultKnowledgeRepository(
       sourceFingerprint = editorFingerprint(normalizedRequest, sources),
       generatedAt = now,
     )
+    dataChanges.notifyChanged()
     findPage(id) ?: error("生成したナレッジページを読み込めませんでした")
   }
 
@@ -211,11 +218,12 @@ class DefaultKnowledgeRepository(
       sourceFingerprint = editorFingerprint(normalizedInstruction, sources),
       generatedAt = now,
     )
+    dataChanges.notifyChanged()
     findPage(id) ?: error("編集したナレッジページを読み込めませんでした")
   }
 
   private suspend fun loadSourceSnapshot(): SourceSnapshot {
-    val bookmarks = bookmarkRepository.listSavedArticles(tagId = null, folderId = null)
+    val bookmarks = bookmarkRepository.listAllSavedArticles()
     val sources = bookmarks.mapNotNull { bookmark ->
       val summary = summaryRepository.findSummary(bookmark.article.id)?.trim()
       if (summary.isNullOrBlank()) return@mapNotNull null
