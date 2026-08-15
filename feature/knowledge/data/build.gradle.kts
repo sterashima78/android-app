@@ -1,0 +1,29 @@
+plugins {
+  id("com.android.library")
+}
+
+android {
+  namespace = "dev.terashima.yomitorirss.feature.knowledge.data"
+  compileSdk = 36
+
+  defaultConfig {
+    minSdk = 29
+  }
+
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  implementation(project(":feature:knowledge:domain"))
+  implementation(project(":feature:bookmark:domain"))
+  implementation(project(":feature:summary:domain"))
+  implementation(project(":core:database"))
+  implementation(project(":core:ai-runtime"))
+
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+
+  testImplementation("junit:junit:4.13.2")
+}
