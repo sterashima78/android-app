@@ -367,7 +367,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
         }
         if (item.source == IntegratedSource.MAIL) {
           IconButton(
-            onClick = if (tab == IntegratedTab.UNREAD) onDefer ?: {} else onRemoveDeferred,
+            onClick = if (tab == IntegratedTab.UNREAD) onDefer else onRemoveDeferred,
           ) {
             Icon(
               imageVector = Icons.Default.AccessTime,
