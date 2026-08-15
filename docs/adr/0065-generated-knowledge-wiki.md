@@ -13,7 +13,7 @@ OpenWiki のような LLM Wiki は、複数ソースを収集して構造化さ�
 
 ## Decision
 
-`:feature:knowledge:{domain,data,ui}` を追加し、生成ナレッジの意味、永続化、生成ポリシー、UI を Knowledge feature が所有する。
+`:feature:knowledge:{domain,data,ui}` を追加し、生成ナレッジの意味、永続化、生成ポリシー、UI を Knowledge feature が所有する。ナレッジベースは蔵書とは別概念であるため、アプリのトップレベルセクションとして独立した画面を持つ。
 
 ### 初期入力
 
@@ -38,14 +38,14 @@ OpenWiki のような LLM Wiki は、複数ソースを収集して構造化さ�
 - Markdown 本文
 - トピック種別と正規化キー
 - 出典数
-- 出典集合と要約内容から計算した fingerprint
+- 出典集合、要約、主要な出典メタデータから計算した fingerprint
 - 生成日時
 
 出典には記事 ID、タイトル、URL、提供元、保存日時を保持する。UI では Wiki 本文と出典一覧を同時に表示し、出典 URL を開けるようにする。
 
 ### 差分更新
 
-出典 ID と要約内容から `source_fingerprint` を計算する。同じトピックで fingerprint が変わっていないページは LLM で再生成せず再利用する。
+出典 ID、要約、タイトル、URL、提供元から `source_fingerprint` を計算する。同じトピックで fingerprint が変わっていないページは LLM で再生成せず再利用する。
 
 モバイル端末で一度に多数の推論を実行しないため、1回の再構築で新規または変更されたページを最大8件生成する。残りは次回の再構築対象とする。1ページへ入力する出典も最大12件に制限する。
 
@@ -67,7 +67,7 @@ Knowledge feature が生成プロンプトを所有し、`:core:ai-runtime` の�
 
 ### UI
 
-初期実装では既存の「蔵書」セクション内に「蔵書 / ナレッジ」の切替を置く。Knowledge feature 自体は独立モジュールであり、UI 上の配置を将来トップレベルへ変更しても domain/data の責務は変えない。
+ナレッジベースは「蔵書」配下には置かず、`AppSection.KNOWLEDGE` / `MainTab.KNOWLEDGE` を持つトップレベルの独立画面としてナビゲーションドロワーから遷移する。蔵書画面にはナレッジ用の切替や依存を持たせない。
 
 ナレッジ画面では次を提供する。
 
@@ -97,6 +97,7 @@ Knowledge feature が生成プロンプトを所有し、`:core:ai-runtime` の�
 - fingerprint により変更のないページの再推論を避けられる
 - 生成量を制限するためオンデバイス LLM の負荷を予測しやすい
 - Knowledge 固有の生成方針が `core:ai-runtime` へ流出しない
+- ナレッジと蔵書のナビゲーション・責務が混在しない
 - 将来の入力ソース追加や検索方式変更を Knowledge feature 内で進めやすい
 
 ### Negative
@@ -109,7 +110,7 @@ Knowledge feature が生成プロンプトを所有し、`:core:ai-runtime` の�
 ## Relationship to existing ADRs
 
 - ADR-0003 の feature-first 依存境界に従い、Knowledge data は他 feature の Domain Repository contract を利用する。
-- ADR-0004 の概念指向モジュール方針に従い、複数画面から利用可能な「Knowledge」を独立概念として扱う。
+- ADR-0004 の概念指向モジュール方針に従い、「Knowledge」を蔵書とは別の独立概念・独立画面として扱う。
 - ADR-0047 に従い、`knowledge_pages` と `knowledge_page_sources` の schema は `:feature:knowledge:data` が所有し、`:app` が schema contribution を合成する。
 - ADR-0056 に従い、Knowledge 固有の生成プロンプトと更新ポリシーは Knowledge feature が所有し、`:core:ai-runtime` は汎用推論 capability のままとする。
 - ADR-0005 と同様に、外部由来の文章は命令ではなくデータとして扱う。将来 Knowledge を Agent Skill として公開する場合も初期状態では読み取り専用とする。
