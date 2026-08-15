@@ -21,11 +21,27 @@ internal data class KnowledgeTopic(
   val sources: List<KnowledgeGenerationSource>,
 ) {
   val sourceFingerprint: String = sha256(
-    sources
-      .sortedBy(KnowledgeGenerationSource::articleId)
-      .joinToString("\n") {
-        listOf(it.articleId, it.title, it.url, it.sourceTitle, it.summary).joinToString("\u0000")
-      },
+    buildString {
+      append(kind)
+      append('\u0000')
+      append(key)
+      append('\u0000')
+      appendLine(title)
+      sources
+        .sortedBy(KnowledgeGenerationSource::articleId)
+        .forEach { source ->
+          appendLine(
+            listOf(
+              source.articleId,
+              source.title,
+              source.url,
+              source.sourceTitle,
+              source.savedAt,
+              source.summary,
+            ).joinToString("\u0000"),
+          )
+        }
+    },
   )
 }
 
