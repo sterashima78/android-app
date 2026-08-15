@@ -159,17 +159,17 @@ internal fun naturalCompare(left: String, right: String): Int {
       val leftNumber = left.substring(leftStart, leftIndex).trimStart('0')
       val rightNumber = right.substring(rightStart, rightIndex).trimStart('0')
       val lengthResult = leftNumber.length.compareTo(rightNumber.length)
-      if (lengthResult != 0) return@Comparator lengthResult
+      if (lengthResult != 0) return lengthResult
       val numberResult = leftNumber.compareTo(rightNumber)
-      if (numberResult != 0) return@Comparator numberResult
+      if (numberResult != 0) return numberResult
       continue
     }
     val charResult = leftChar.lowercaseChar().compareTo(rightChar.lowercaseChar())
-    if (charResult != 0) return@Comparator charResult
+    if (charResult != 0) return charResult
     leftIndex++
     rightIndex++
   }
-  left.length.compareTo(right.length)
+  return left.length.compareTo(right.length)
 }
 
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
