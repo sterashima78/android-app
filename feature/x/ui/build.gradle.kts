@@ -27,5 +27,6 @@ dependencies {
   implementation("androidx.compose.foundation:foundation")
   implementation("androidx.compose.material3:material3")
 
+  testImplementation("junit:junit:4.13.2")
   testImplementation("org.robolectric:robolectric:4.16.1")
 }
