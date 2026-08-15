@@ -70,6 +70,7 @@ class CleaningSmbLibraryRepository private constructor(
     sourceIds.forEach { sourceId ->
       File(appContext.cacheDir, "smb-books/$sourceId").deleteRecursively()
     }
+    deleteSmbBookCovers(appContext, sourceIds)
   }
 
   private fun sourceIdsForServer(serverId: String): List<String> = database.readable.rawQuery(
