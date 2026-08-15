@@ -179,7 +179,9 @@ class SeriesAwareLibraryRepository private constructor(
     when (source) {
       LibrarySource.KINDLE -> kindleSourceSeriesRepository.importMetadata(json)
       LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.importMetadata(json)
-      LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
+      LibrarySource.GOOGLE_PLAY_BOOKS,
+      LibrarySource.SMB,
+      -> error("対応していない蔵書ソースです")
     }
   }
 
@@ -187,7 +189,9 @@ class SeriesAwareLibraryRepository private constructor(
     when (source) {
       LibrarySource.KINDLE -> kindleSourceSeriesRepository.clear()
       LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.clear()
-      LibrarySource.GOOGLE_PLAY_BOOKS -> error("対応していない蔵書ソースです")
+      LibrarySource.GOOGLE_PLAY_BOOKS,
+      LibrarySource.SMB,
+      -> error("対応していない蔵書ソースです")
     }
   }
 }
