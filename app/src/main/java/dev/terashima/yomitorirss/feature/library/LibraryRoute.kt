@@ -19,8 +19,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
+import dev.terashima.yomitoririss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
+import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
 import kotlinx.coroutines.launch
 
@@ -34,6 +36,12 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   val authorization = remember(application) { GoogleBooksAuthorizationManager(application) }
   val repository = remember(databaseConnection) {
     SeriesAwareLibraryRepository(databaseConnection)
+  }
+  val organizationRepository = remember(databaseConnection) {
+    DefaultLibraryOrganizationRepository(databaseConnection)
+  }
+  val organizationSuggester = remember(application) {
+    LocalLibraryOrganizationSuggester(application.container.modelManager)
   }
   val smbRepository = remember(application, databaseConnection) {
     CleaningSmbLibraryRepository(application, databaseConnection)
@@ -91,6 +99,8 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   LibraryFeatureRoute(
     modifier = modifier,
     viewModel = libraryViewModel,
+    organizationRepository = organizationRepository,
+    organizationSuggester = organizationSuggester,
     onSyncGooglePlayBooks = requestSync,
     onOpenSmbBook = { openedSmbBook = it },
   )
