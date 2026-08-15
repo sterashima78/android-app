@@ -23,7 +23,9 @@ internal data class KnowledgeTopic(
   val sourceFingerprint: String = sha256(
     sources
       .sortedBy(KnowledgeGenerationSource::articleId)
-      .joinToString("\n") { "${it.articleId}\u0000${it.summary}" },
+      .joinToString("\n") {
+        listOf(it.articleId, it.title, it.url, it.sourceTitle, it.summary).joinToString("\u0000")
+      },
   )
 }
 
