@@ -12,7 +12,10 @@ import dev.terashima.yomitorirss.YomitoriApplication
 fun KnowledgeRoute(modifier: Modifier = Modifier) {
   val application = LocalContext.current.applicationContext as YomitoriApplication
   val knowledgeViewModel: KnowledgeViewModel = viewModel(
-    factory = KnowledgeViewModel.Factory(application.container.knowledgeRepository),
+    factory = KnowledgeViewModel.Factory(
+      repository = application.container.knowledgeRepository,
+      scheduleBackupAfterChange = application.container.backupChangeScheduler::scheduleAfterChange,
+    ),
   )
   val state by knowledgeViewModel.state.collectAsState()
 
