@@ -9,7 +9,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 enum class LocalInferenceMessageRole {
@@ -65,7 +64,15 @@ internal class LocalOpenApiTool(
 
   override fun execute(paramsJsonString: String): String = runBlocking {
     runCatching {
-      definition.execute(parseToolArguments(paramsJsonString))
+      val parsed = parseToolArguments(paramsJsonString)
+      val allowedNames = definition.arguments.map(LocalInferenceToolArgument::name).toSet()
+      val arguments = parsed.filterKeys { it in allowedNames }
+      val missingRequired = definition.arguments
+        .filter(LocalInferenceToolArgument::required)
+        .map(LocalInferenceToolArgument::name)
+        .filterNot(arguments::containsKey)
+      check(missingRequired.isEmpty()) { "Required tool arguments are missing" }
+      definition.execute(arguments)
     }.getOrElse {
       "ツール実行に失敗しました。"
     }
@@ -107,7 +114,7 @@ internal fun toolDescriptionJson(tool: LocalInferenceTool): String = buildJsonOb
 }.toString()
 
 internal fun parseToolArguments(value: String): Map<String, String> {
-  val root = runCatching { TOOL_JSON.parseToJsonElement(value).jsonObject }.getOrElse { return emptyMap() }
+  val root = TOOL_JSON.parseToJsonElement(value).jsonObject
   return root.mapValues { (_, element) ->
     when (element) {
       is JsonPrimitive -> element.content
