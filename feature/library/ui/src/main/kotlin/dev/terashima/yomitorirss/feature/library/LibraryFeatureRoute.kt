@@ -19,33 +19,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import java.net.URI
 
 @Composable
 fun LibraryFeatureRoute(
   viewModel: LibraryViewModel,
-  organizationRepository: LibraryOrganizationRepository,
-  organizationSuggester: LibraryOrganizationSuggester,
+  organizationViewModel: LibraryOrganizationViewModel,
   onSyncGooglePlayBooks: () -> Unit,
   onOpenSmbBook: (LibraryBook) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
-  val organizationViewModel: LibraryOrganizationViewModel = viewModel(
-    key = "library-organization",
-    factory = LibraryOrganizationViewModel.Factory(organizationRepository, organizationSuggester),
-  )
   val organizationState by organizationViewModel.state.collectAsState()
   var organizationVisible by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
