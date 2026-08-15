@@ -69,6 +69,7 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
     "対応していないバックアップです"
   }
 
+  execSQL("DELETE FROM knowledge_pages")
   execSQL("DELETE FROM summary_tasks")
   execSQL("DELETE FROM article_summaries")
   execSQL("DELETE FROM article_folders")
