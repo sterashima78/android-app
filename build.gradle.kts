@@ -44,7 +44,7 @@ fun projectLayer(path: String): String = path.substringAfterLast(':')
 
 val verifyArchitecture by tasks.registering {
   group = "verification"
-  description = "Verifies Gradle module dependency rules defined by ADR-0003."
+  description = "Verifies Gradle dependency rules and production source layout defined by the architecture ADRs."
 
   doLast {
     val edges =
@@ -132,12 +132,40 @@ val verifyArchitecture by tasks.registering {
       }
     }
 
+    val packagePattern = Regex("""(?m)^\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)\s*$""")
+    subprojects.forEach { project ->
+      listOf("src/main/java", "src/main/kotlin").forEach { sourceRootPath ->
+        val sourceRoot = project.file(sourceRootPath)
+        if (sourceRoot.isDirectory) {
+          project.fileTree(sourceRoot) {
+            include("**/*.kt")
+          }.files.sortedBy { it.path }.forEach { sourceFile ->
+            val declaredPackage = packagePattern
+              .find(sourceFile.readText())
+              ?.groupValues
+              ?.get(1)
+              ?: return@forEach
+            val expectedParentPath = declaredPackage.replace('.', '/')
+            val actualParentPath = sourceFile.parentFile
+              .relativeTo(sourceRoot)
+              .path
+              .replace('\\', '/')
+            if (actualParentPath != expectedParentPath) {
+              violations +=
+                "Kotlin package/source path mismatch: ${project.path}:${sourceFile.relativeTo(project.projectDir)} " +
+                  "declares $declaredPackage (expected parent $expectedParentPath)"
+            }
+          }
+        }
+      }
+    }
+
     if (violations.isNotEmpty()) {
       throw GradleException(
         buildString {
           appendLine("Architecture verification failed (${violations.size} violation(s)):")
           violations.sorted().forEach { violation -> appendLine("- $violation") }
-          append("See docs/adr/0003-multi-module-architecture.md for the dependency rules.")
+          append("See docs/adr/0003-multi-module-architecture.md and docs/adr/0046-automated-architecture-verification.md.")
         },
       )
     }
