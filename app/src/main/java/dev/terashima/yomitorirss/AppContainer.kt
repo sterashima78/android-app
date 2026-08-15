@@ -69,7 +69,12 @@ class AppContainer(private val application: Application) {
       dataChanges = dataChanges,
       onBookmarkAdded = { articleId ->
         val source = bookmarkSourceMetadataReader.find(articleId)
-        if (source != null && shouldRequestBookmarkEnrichment(source)) {
+        if (
+          source != null && shouldRequestBookmarkEnrichment(
+            url = source.url,
+            sourceFeedUrl = source.sourceFeedUrl,
+          )
+        ) {
           summaryRepository.requestBookmarkEnrichment(articleId)
         }
       },
