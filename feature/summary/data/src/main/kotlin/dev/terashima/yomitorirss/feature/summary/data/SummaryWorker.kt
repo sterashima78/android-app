@@ -39,8 +39,12 @@ class SummaryWorker(
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
       database.requeueInterruptedSummaryTasks()
+      if (SummaryQueue.executionState(applicationContext).paused) {
+        return@withContext Result.success()
+      }
 
       while (true) {
+        if (SummaryQueue.executionState(applicationContext).paused) break
         val task = database.claimNextSummaryTask() ?: break
         val article = database.findArticle(task.articleId)
         if (article == null) {
