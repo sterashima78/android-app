@@ -6,6 +6,7 @@ enum class AppSection(val label: String) {
   REDDIT("Reddit"),
   BOOKMARKS("ブックマーク"),
   LIBRARY("蔵書"),
+  KNOWLEDGE("ナレッジ"),
   MAIL("メール"),
   YOUTUBE("YouTube"),
   X("X"),
