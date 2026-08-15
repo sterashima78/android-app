@@ -26,9 +26,13 @@
 
 SMB 接続、ディレクトリ走査、ファイル取得、キャッシュ管理は `feature:library:data` が所有する。初期実装では SMBJ を使用し、SMB 2 / SMB 3 を対象とする。SMB 1 はサポートしない。
 
-非機密の接続設定は Library feature 所有の SQLite table に保存する。パスワードは Android Keystore で生成した非エクスポート AES/GCM 鍵を用いて暗号化し、暗号文だけを app-private SharedPreferences に保存する。パスワードは UI に再表示しない。
+非機密の接続設定は Library feature 所有の SQLite table に保存する。`smb_library_servers` は ADR-0047 に従って `libraryDatabaseSchema` の `DatabaseSchemaContribution` として app-level schema に登録し、既存DBにも schema version 更新時に追加する。
+
+パスワードは Android Keystore で生成した非エクスポート AES/GCM 鍵を用いて暗号化し、暗号文だけを app-private SharedPreferences に保存する。パスワードは UI に再表示しない。
 
 実サーバのホスト名、IP アドレス、ユーザー名、パスワード、共有パスをソースコード、fixture、ADR、ログへ記録しない。
+
+現時点の targetSdk 36 では LAN 通信は `INTERNET` 権限による従来互換のアクセスを利用する。将来 targetSdk を 37 以上へ更新するときは Android 17 の Local Network Protection に従い `ACCESS_LOCAL_NETWORK` の宣言・実行時許可を同時に実装する。targetSdk 36 以下の間はこの権限を先行して要求しない。
 
 ### 読書前にローカルキャッシュ境界を置く
 
@@ -83,6 +87,7 @@ SMB file path 等は外部 Intent へ渡さない。
 - `PdfRenderer` ベースの初期実装では PDF のテキスト検索・選択を提供しない
 - ファイルのリネームは sourceId の変更として扱われ、読書位置を引き継がない
 - 初期実装では RAR / CBR / 7z / EPUB、暗号化 ZIP、パスワード付き PDF を扱わない
+- targetSdk 37 以上へ更新する際は Local Network Protection 対応が追加で必要になる
 
 ## Relationship to existing ADRs
 
@@ -90,6 +95,6 @@ SMB file path 等は外部 Intent へ渡さない。
 - ADR-0004: Book Reader を独立した concept-oriented feature とする
 - ADR-0013: サービス非依存の Library model を維持したまま `LibrarySource.SMB` を追加し、本 ADR が SMB 固有取得方式を定める
 - ADR-0034: source filter は `LibrarySource` の追加に追従し、SMB を識別可能にする
-- ADR-0047: SMB 接続設定 table は Library feature が所有し、`core:database` に feature schema を流出させない
+- ADR-0047: SMB 接続設定 table は Library feature の `DatabaseSchemaContribution` が所有し、`core:database` に feature schema を流出させない
 - ADR-0054: Superseded 後も残る `app` を composition/navigation に限定する一般原則に従う
 - ADR-0055: 現在の最大番号より大きい一意番号を採番する
