@@ -66,6 +66,7 @@ fun BookReaderScreen(
   modifier: Modifier = Modifier,
 ) {
   val initial = remember(document.id) { positionStore.load(document.id) }
+  val pageCache = remember(source) { BookPageMemoryCache() }
   var mode by remember(document.id) { mutableStateOf(initial.mode) }
   var direction by remember(document.id) { mutableStateOf(initial.direction) }
   var currentPage by remember(document.id) {
@@ -148,6 +149,7 @@ fun BookReaderScreen(
       when (mode) {
         ReaderMode.PAGED -> PagedReader(
           source = source,
+          pageCache = pageCache,
           initialPage = currentPage,
           direction = direction,
           onPageChanged = {
@@ -158,6 +160,7 @@ fun BookReaderScreen(
 
         ReaderMode.VERTICAL -> VerticalReader(
           source = source,
+          pageCache = pageCache,
           initialPage = currentPage,
           initialOffset = pageOffset,
           onPositionChanged = { page, offset ->
@@ -173,6 +176,7 @@ fun BookReaderScreen(
 @Composable
 private fun PagedReader(
   source: BookPageSource,
+  pageCache: BookPageMemoryCache,
   initialPage: Int,
   direction: ReadingDirection,
   onPageChanged: (Int) -> Unit,
@@ -199,6 +203,7 @@ private fun PagedReader(
   ) { page ->
     ReaderPage(
       source = source,
+      pageCache = pageCache,
       page = page,
       vertical = false,
       modifier = Modifier.fillMaxSize(),
@@ -209,6 +214,7 @@ private fun PagedReader(
 @Composable
 private fun VerticalReader(
   source: BookPageSource,
+  pageCache: BookPageMemoryCache,
   initialPage: Int,
   initialOffset: Int,
   onPositionChanged: (Int, Int) -> Unit,
@@ -229,6 +235,7 @@ private fun VerticalReader(
     items((0 until source.pageCount).toList(), key = { it }) { page ->
       ReaderPage(
         source = source,
+        pageCache = pageCache,
         page = page,
         vertical = true,
         modifier = Modifier.fillMaxWidth(),
@@ -240,16 +247,28 @@ private fun VerticalReader(
 @Composable
 private fun ReaderPage(
   source: BookPageSource,
+  pageCache: BookPageMemoryCache,
   page: Int,
   vertical: Boolean,
   modifier: Modifier = Modifier,
 ) {
-  val result by produceState<Result<BookPageImage>?>(null, source, page) {
-    value = runCatching { source.loadPage(page, PAGE_RENDER_WIDTH) }
+  val cachedResult = remember(source, pageCache, page) {
+    pageCache.get(page)?.let { Result.success(it) }
+  }
+  val result by produceState<Result<BookPageImage>?>(cachedResult, source, pageCache, page) {
+    if (value == null) {
+      value = runCatching { source.loadPage(page, PAGE_RENDER_WIDTH) }
+        .onSuccess { pageCache.put(page, it) }
+    }
+  }
+  val pageModifier = if (vertical) {
+    modifier.aspectRatio(pageCache.aspectRatio(page))
+  } else {
+    modifier
   }
 
   Box(
-    modifier = modifier,
+    modifier = pageModifier,
     contentAlignment = Alignment.Center,
   ) {
     when (val current = result) {
@@ -258,13 +277,7 @@ private fun ReaderPage(
         onSuccess = { image ->
           ZoomablePageImage(
             image = image,
-            modifier = if (vertical) {
-              Modifier
-                .fillMaxWidth()
-                .aspectRatio(image.width.toFloat() / image.height.coerceAtLeast(1))
-            } else {
-              Modifier.fillMaxSize()
-            },
+            modifier = Modifier.fillMaxSize(),
           )
         },
         onFailure = { error ->
