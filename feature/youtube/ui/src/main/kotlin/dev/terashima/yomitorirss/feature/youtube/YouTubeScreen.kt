@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.WatchLater
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +63,7 @@ fun YouTubeScreen(
   onUnsubscribe: (YouTubeChannel) -> Unit,
   onMarkRead: (YouTubeVideo) -> Unit,
   onSaveAndRead: (YouTubeVideo) -> Unit,
+  onUnsave: (YouTubeVideo) -> Unit,
   onToggleWatchLater: (YouTubeVideo) -> Unit,
   onMarkAllRead: () -> Unit,
   onOpen: (YouTubeVideo) -> Unit,
@@ -146,6 +146,7 @@ fun YouTubeScreen(
           YouTubeTab.SAVED -> SavedVideoList(
             modifier = Modifier.fillMaxSize(),
             videos = state.saved,
+            onUnsave = onUnsave,
             onOpen = onOpen,
           )
 
@@ -209,6 +210,7 @@ private fun VideoList(
 private fun SavedVideoList(
   modifier: Modifier,
   videos: List<YouTubeVideo>,
+  onUnsave: (YouTubeVideo) -> Unit,
   onOpen: (YouTubeVideo) -> Unit,
 ) {
   LazyColumn(
@@ -225,16 +227,20 @@ private fun SavedVideoList(
       }
     }
     items(videos, key = YouTubeVideo::url) { video ->
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 10.dp, vertical = 3.dp)
-          .clickable { onOpen(video) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(14.dp),
+      SwipeActionListItem(
+        itemKey = video.url,
+        left = SwipeAction(
+          label = "保存解除",
+          color = MaterialTheme.colorScheme.error,
+          dismissesItem = false,
+          onCommit = { onUnsave(video) },
+        ),
       ) {
         Row(
-          modifier = Modifier.fillMaxWidth().padding(12.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpen(video) }
+            .padding(12.dp),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
