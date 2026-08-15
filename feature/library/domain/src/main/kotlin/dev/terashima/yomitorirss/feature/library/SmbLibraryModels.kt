@@ -36,6 +36,13 @@ interface SmbLibraryRepository {
 
   suspend fun sync(): LibrarySyncResult
 
+  suspend fun renameBook(
+    book: LibraryBook,
+    newFileName: String,
+  ): LibraryBook
+
+  suspend fun deleteBook(book: LibraryBook)
+
   suspend fun prepareBook(
     book: LibraryBook,
     onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
