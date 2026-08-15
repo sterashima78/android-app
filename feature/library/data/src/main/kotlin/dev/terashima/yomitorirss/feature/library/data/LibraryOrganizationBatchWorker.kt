@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
+import dev.terashima.yomitorirss.feature.library.organizationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -32,17 +33,17 @@ class WorkManagerLibraryOrganizationBatchScheduler(
 
   override fun kick() {
     val request = OneTimeWorkRequestBuilder<LibraryOrganizationBatchWorker>()
-      .addTag(WORK_TAG)
+      .addTag(LibraryOrganizationBatchWorker.WORK_TAG)
       .build()
     WorkManager.getInstance(appContext).enqueueUniqueWork(
-      WORK_NAME,
+      LibraryOrganizationBatchWorker.WORK_NAME,
       ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )
   }
 
   override fun cancel() {
-    WorkManager.getInstance(appContext).cancelUniqueWork(WORK_NAME)
+    WorkManager.getInstance(appContext).cancelUniqueWork(LibraryOrganizationBatchWorker.WORK_NAME)
   }
 }
 
