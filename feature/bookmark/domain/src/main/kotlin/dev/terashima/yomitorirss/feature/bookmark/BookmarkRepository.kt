@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface BookmarkRepository {
   val changes: StateFlow<Long>
   suspend fun listSavedArticles(tagId: String?, folderId: String?): List<BookmarkedArticle>
+  suspend fun listAllSavedArticles(): List<BookmarkedArticle> = listSavedArticles(tagId = null, folderId = null)
   suspend fun listReadLaterArticles(): List<BookmarkedArticle>
   suspend fun isBookmarked(articleId: String): Boolean
   suspend fun listFolders(): List<BookmarkFolder>

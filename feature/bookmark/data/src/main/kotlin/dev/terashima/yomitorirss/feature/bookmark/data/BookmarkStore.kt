@@ -48,6 +48,19 @@ internal class BookmarkStore(
     )
   }
 
+  fun listAllSavedArticles(): List<BookmarkedArticle> = buildList {
+    var offset = 0
+    while (true) {
+      val page = bookmarkedArticles(
+        "SELECT * FROM articles WHERE saved_at IS NOT NULL ORDER BY published_at DESC LIMIT ? OFFSET ?",
+        arrayOf(ALL_SAVED_PAGE_SIZE.toString(), offset.toString()),
+      )
+      addAll(page)
+      if (page.size < ALL_SAVED_PAGE_SIZE) break
+      offset += page.size
+    }
+  }
+
   fun listReadLaterArticles(): List<BookmarkedArticle> = bookmarkedArticles(
     "SELECT a.* FROM articles a JOIN article_folders f ON f.article_id=a.id WHERE a.saved_at IS NOT NULL AND f.folder_id=? ORDER BY a.published_at DESC",
     arrayOf(READ_LATER_FOLDER_ID),
@@ -485,3 +498,4 @@ private fun normalizeName(name: String): String = displayName(name).lowercase()
 private fun nowIso(): String = Instant.now().toString()
 
 private const val READ_LATER_FOLDER_NAME = "あとで読む"
+private const val ALL_SAVED_PAGE_SIZE = 400

@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RssFeed
@@ -80,6 +81,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.chat.AiChatScreen
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.integrated.IntegratedRoute
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.library.LibraryRoute
 import dev.terashima.yomitorirss.feature.mail.MailScreen
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
@@ -155,6 +157,7 @@ fun YomitoriApp(
     AppSection.REDDIT -> redditState.initialized
     AppSection.BOOKMARKS -> bookmarkState.initialized
     AppSection.LIBRARY -> true
+    AppSection.KNOWLEDGE -> true
     AppSection.MAIL -> mailState.initialized
     AppSection.YOUTUBE -> true
     AppSection.X -> true
@@ -275,6 +278,7 @@ fun YomitoriApp(
                     AppSection.REDDIT -> Icons.Default.Forum
                     AppSection.BOOKMARKS -> Icons.Default.Bookmark
                     AppSection.LIBRARY -> Icons.Default.LibraryBooks
+                    AppSection.KNOWLEDGE -> Icons.Default.MenuBook
                     AppSection.MAIL -> Icons.Default.Email
                     AppSection.YOUTUBE -> Icons.Default.PlayArrow
                     AppSection.X -> Icons.Default.Public
@@ -425,6 +429,7 @@ fun YomitoriApp(
 
           AppSection.HOME,
           AppSection.LIBRARY,
+          AppSection.KNOWLEDGE,
           AppSection.MAIL,
           AppSection.YOUTUBE,
           AppSection.X,
@@ -529,6 +534,8 @@ fun YomitoriApp(
           )
 
           MainTab.LIBRARY -> LibraryRoute(modifier = contentModifier)
+
+          MainTab.KNOWLEDGE -> KnowledgeRoute(modifier = contentModifier)
 
           MainTab.MAIL -> MailScreen(
             modifier = contentModifier,
@@ -776,6 +783,7 @@ private fun MainTab.appSection(): AppSection = when (this) {
   MainTab.HISTORY -> AppSection.BOOKMARKS
 
   MainTab.LIBRARY -> AppSection.LIBRARY
+  MainTab.KNOWLEDGE -> AppSection.KNOWLEDGE
   MainTab.MAIL -> AppSection.MAIL
   MainTab.YOUTUBE -> AppSection.YOUTUBE
   MainTab.X -> AppSection.X
@@ -819,6 +827,7 @@ private fun MainTab.screenTitle(): String = when (this) {
   MainTab.TAGS -> "ブックマーク・タグ"
   MainTab.HISTORY -> "ブックマーク・履歴"
   MainTab.LIBRARY -> "蔵書"
+  MainTab.KNOWLEDGE -> "ナレッジ"
   MainTab.MAIL -> "メール"
   MainTab.YOUTUBE -> "YouTube"
   MainTab.X -> "X"
@@ -835,6 +844,7 @@ private fun AppSection.defaultTab(): MainTab = when (this) {
   AppSection.REDDIT -> MainTab.REDDIT_UNREAD
   AppSection.BOOKMARKS -> MainTab.SAVED
   AppSection.LIBRARY -> MainTab.LIBRARY
+  AppSection.KNOWLEDGE -> MainTab.KNOWLEDGE
   AppSection.MAIL -> MainTab.MAIL
   AppSection.YOUTUBE -> MainTab.YOUTUBE
   AppSection.X -> MainTab.X
