@@ -102,12 +102,14 @@ class DefaultKnowledgeRepository(
         return@forEach
       }
 
-      val body = modelManager.generate(buildKnowledgePagePrompt(topic, inputBudget)).trim()
-      check(body.isNotBlank()) { "ナレッジページの生成結果が空でした" }
+      val generatedDocument = parseGeneratedKnowledgeDocument(
+        raw = modelManager.generate(buildKnowledgePagePrompt(topic, inputBudget)),
+        fallbackTitle = topic.title,
+      )
       persistPage(
         id = topic.id,
         title = topic.title,
-        body = body,
+        body = generatedDocument.bodyMarkdown,
         topicKind = topic.kind,
         topicKey = topic.key,
         editorManaged = false,
@@ -433,10 +435,16 @@ internal fun buildKnowledgeEditPrompt(
   promptBudgetChars: Int,
 ): String {
   val totalBudget = promptBudgetChars.coerceAtLeast(4_000)
-  val currentPageBudget = (totalBudget / 3).coerceIn(1_500, 6_000)
+  val currentPageBudget = totalBudget - EDIT_PROMPT_FIXED_CHARS - MIN_SOURCE_PROMPT_CHARS - instruction.length
+  require(currentPageBudget > 0) {
+    "編集指示が長すぎます。指示を短くして再実行してください"
+  }
+  require(page.bodyMarkdown.length <= currentPageBudget) {
+    "この記事は現在のモデルで安全に全文編集できる長さを超えています。記事を分割するか、より大きなコンテキストのモデルを選択してください"
+  }
   val sourceText = buildSourcePromptText(
     sources = sources,
-    charBudget = (totalBudget - 2_500 - currentPageBudget).coerceAtLeast(1_500),
+    charBudget = totalBudget - EDIT_PROMPT_FIXED_CHARS - instruction.length - page.bodyMarkdown.length,
   )
   return """
     |あなたは個人用ナレッジベースのWiki編集者です。
@@ -448,7 +456,7 @@ internal fun buildKnowledgeEditPrompt(
     |現在の記事:
     |<current_page>
     |# ${page.title}
-    |${page.bodyMarkdown.take(currentPageBudget)}
+    |${page.bodyMarkdown}
     |</current_page>
     |
     |重要な制約:
@@ -494,3 +502,6 @@ private fun editorFingerprint(
     }
   },
 )
+
+private const val EDIT_PROMPT_FIXED_CHARS = 2_500
+private const val MIN_SOURCE_PROMPT_CHARS = 1_500
