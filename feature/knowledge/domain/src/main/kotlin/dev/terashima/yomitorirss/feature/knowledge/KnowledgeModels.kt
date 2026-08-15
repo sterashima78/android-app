@@ -5,6 +5,7 @@ data class KnowledgePageSummary(
   val title: String,
   val sourceCount: Int,
   val generatedAt: String,
+  val editorManaged: Boolean,
 )
 
 data class KnowledgeSource(
@@ -22,6 +23,7 @@ data class KnowledgePage(
   val bodyMarkdown: String,
   val sourceCount: Int,
   val generatedAt: String,
+  val editorManaged: Boolean,
   val sources: List<KnowledgeSource>,
 )
 
