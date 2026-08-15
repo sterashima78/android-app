@@ -19,6 +19,7 @@ android {
 dependencies {
   implementation(project(":feature:knowledge:domain"))
   implementation(project(":feature:bookmark:domain"))
+  implementation(project(":feature:article:domain"))
   implementation(project(":feature:summary:domain"))
   implementation(project(":core:database"))
   implementation(project(":core:ai-runtime"))
