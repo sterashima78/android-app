@@ -1,7 +1,9 @@
 package dev.terashima.yomitorirss.feature.knowledge.data
 
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -130,6 +132,43 @@ class KnowledgeTopicsTest {
     assertEquals("Gemma 4", document.title)
     assertEquals("## 概要\n本文", document.bodyMarkdown)
   }
+
+  @Test
+  fun `編集プロンプトには記事本文の末尾まで含める`() {
+    val body = "本文".repeat(2_000) + "末尾マーカー"
+    val prompt = buildKnowledgeEditPrompt(
+      page = page(body),
+      instruction = "比較を追加して",
+      sources = listOf(source("a")),
+      promptBudgetChars = 12_000,
+    )
+
+    assertTrue(prompt.contains("末尾マーカー"))
+  }
+
+  @Test
+  fun `全文が入力上限に収まらない記事は編集しない`() {
+    val error = assertThrows(IllegalArgumentException::class.java) {
+      buildKnowledgeEditPrompt(
+        page = page("長文".repeat(4_000)),
+        instruction = "短くして",
+        sources = listOf(source("a")),
+        promptBudgetChars = 8_000,
+      )
+    }
+
+    assertTrue(error.message.orEmpty().contains("安全に全文編集"))
+  }
+
+  private fun page(body: String) = KnowledgePage(
+    id = "page",
+    title = "テスト記事",
+    bodyMarkdown = body,
+    sourceCount = 1,
+    generatedAt = "2026-08-15T00:00:00Z",
+    editorManaged = true,
+    sources = emptyList(),
+  )
 
   private fun source(
     id: String,
