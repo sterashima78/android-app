@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +56,7 @@ import dev.terashima.yomitorirss.feature.bookreader.ReadingDirection
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPosition
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReaderScreen(
   document: BookDocument,
@@ -197,6 +200,7 @@ private fun PagedReader(
     ReaderPage(
       source = source,
       page = page,
+      vertical = false,
       modifier = Modifier.fillMaxSize(),
     )
   }
@@ -226,6 +230,7 @@ private fun VerticalReader(
       ReaderPage(
         source = source,
         page = page,
+        vertical = true,
         modifier = Modifier.fillMaxWidth(),
       )
     }
@@ -236,6 +241,7 @@ private fun VerticalReader(
 private fun ReaderPage(
   source: BookPageSource,
   page: Int,
+  vertical: Boolean,
   modifier: Modifier = Modifier,
 ) {
   val result by produceState<Result<BookPageImage>?>(null, source, page) {
@@ -247,9 +253,20 @@ private fun ReaderPage(
     contentAlignment = Alignment.Center,
   ) {
     when (val current = result) {
-      null -> CircularProgressIndicator()
+      null -> CircularProgressIndicator(Modifier.padding(32.dp))
       else -> current.fold(
-        onSuccess = { image -> ZoomablePageImage(image) },
+        onSuccess = { image ->
+          ZoomablePageImage(
+            image = image,
+            modifier = if (vertical) {
+              Modifier
+                .fillMaxWidth()
+                .aspectRatio(image.width.toFloat() / image.height.coerceAtLeast(1))
+            } else {
+              Modifier.fillMaxSize()
+            },
+          )
+        },
         onFailure = { error ->
           Column(
             modifier = Modifier.padding(24.dp),
@@ -268,7 +285,10 @@ private fun ReaderPage(
 }
 
 @Composable
-private fun ZoomablePageImage(image: BookPageImage) {
+private fun ZoomablePageImage(
+  image: BookPageImage,
+  modifier: Modifier,
+) {
   val bitmap = remember(image.bytes) {
     BitmapFactory.decodeByteArray(image.bytes, 0, image.bytes.size)?.asImageBitmap()
   }
@@ -284,8 +304,7 @@ private fun ZoomablePageImage(image: BookPageImage) {
     bitmap = bitmap,
     contentDescription = null,
     contentScale = ContentScale.Fit,
-    modifier = Modifier
-      .fillMaxSize()
+    modifier = modifier
       .graphicsLayer {
         scaleX = scale
         scaleY = scale
