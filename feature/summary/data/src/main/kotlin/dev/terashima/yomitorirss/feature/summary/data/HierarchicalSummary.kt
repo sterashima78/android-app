@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
-import dev.terashima.yomitorirss.core.airuntime.LocalPromptFormat
 import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -100,18 +99,7 @@ fun LocalModelManager.summarizeText(text: String, prompt: String): String {
     val headLength = model.maxInputChars * 3 / 4
     normalized.take(headLength) + "\n（中略）\n" + normalized.takeLast(model.maxInputChars - headLength)
   }
-  val instruction = renderSummaryPrompt(prompt, article)
-  val inferencePrompt = when (model.promptFormat) {
-    LocalPromptFormat.CHAT_ML -> """
-      <|im_start|>system
-      あなたはニュース記事の要約担当です。本文だけを根拠に、日本語で簡潔に回答してください。<|im_end|>
-      <|im_start|>user
-      $instruction<|im_end|>
-      <|im_start|>assistant
-    """.trimIndent()
-    LocalPromptFormat.PLAIN -> instruction
-  }
-  return cleanSummary(generate(inferencePrompt))
+  return cleanSummary(generate(renderSummaryPrompt(prompt, article)))
 }
 
 private fun cleanSummary(value: String): String {

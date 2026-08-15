@@ -18,7 +18,7 @@ android {
 
 dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-  implementation("com.google.mediapipe:tasks-genai:0.10.35")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
   implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
 
   testImplementation("junit:junit:4.13.2")

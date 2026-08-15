@@ -2,19 +2,15 @@
 
 - Status: Accepted
 - Date: 2026-08-13
-- Amended: 2026-08-14
+- Amended: 2026-08-15
 
 ## Context
 
 記事要約では、`ArticleContentClient` が本文を最大40,000文字まで取得する一方、ローカルAIへ渡す直前にモデルごとの `maxInputChars` へ縮小していた。上限を超えた場合は本文の先頭75%と末尾25%だけを残していたため、中盤にある固有名詞、数値、主張、結論などが要約対象から完全に外れる可能性があった。
 
-現在のモデルごとの安全側の入力上限は次のとおりである。
+現在のモデルcatalogはGemma 4 E2B / E4Bへ統一され、要約用の安全側入力上限は2,500文字としている。
 
-- Qwen2.5 0.5B / 1.5B: 700文字
-- Qwen3 4B LiteRT-LM: 1,200文字
-- Gemma 4 E2B / E4B LiteRT-LM: 2,500文字
-
-単純にこの上限を引き上げると、モデルの固定コンテキスト長、プロンプト、生成出力が同じコンテキストを共有するため、端末上の推論失敗や品質低下につながる可能性がある。特にQwen3 4BのLiteRT-LM配布物は2048トークンのコンテキストである。
+単純にこの上限を引き上げると、モデルの固定コンテキスト長、プロンプト、生成出力が同じコンテキストを共有するため、端末上の推論失敗や品質低下につながる可能性がある。
 
 ## Decision
 
@@ -39,7 +35,7 @@
 
 要約キャッシュキーへ `hierarchical-v1` を追加し、分割要約導入前のキャッシュを自動的に無効化する。今後、要約アルゴリズムの意味が変わる変更を行う場合も同様に世代を更新する。
 
-要約プロンプト本体とそのhash規則は `feature:summary:domain`、階層要約世代は `feature:summary:data` が所有する。Thinking状態そのものはruntime設定だが、runtimeから提供されるvariantを要約cache keyへ組み込む責務はsummary featureに置く。
+要約プロンプト本体とそのhash規則は `feature:summary:domain`、階層要約世代は `feature:summary:data` が所有する。
 
 ## Cancellation and failure
 
@@ -51,7 +47,7 @@
 
 長文記事では本文中盤を含めた全体が要約対象になるため、従来より情報欠落が減る。一方、記事が長いほど推論回数が増え、要約完了までの時間、電力消費、発熱は増加する。
 
-LiteRT-LMモデルではEngineを再利用するため、チャンクごとにモデルを再ロードすることはない。ただし各チャンクでConversationと生成処理は必要になる。
+LiteRT-LMのEngineを再利用するため、チャンクごとにモデルを再ロードすることはない。ただし各チャンクでConversationと生成処理は必要になる。
 
 モデルごとの分割単位は、現在 `LocalModelManager` が公開するモデル能力と同じ値を利用する。将来モデルカタログを外部化する場合も、runtimeが技術的能力を公開し、summary featureが要約アルゴリズムへ適用する境界を維持する。
 
@@ -59,7 +55,7 @@ LiteRT-LMモデルではEngineを再利用するため、チャンクごとに�
 
 ## References
 
-- ADR-0020: ローカルAIの実行バックエンドとThinkingをユーザー設定にする
+- ADR-0020: ローカルAIをGemma 4 / LiteRT-LMへ統一する
 - ADR-0056: ローカルAIの機能固有ポリシーをfeatureへ分離する
 - `core/ai-runtime/.../LocalModelManager.kt`
 - `feature/summary/data/.../HierarchicalSummary.kt`
