@@ -56,6 +56,7 @@ class DefaultLibraryOrganizationRepository(
   ): Unit = withContext(Dispatchers.IO) {
     val tagNames = sanitizeNames(draft.tagNames, MAX_TAGS_PER_BOOK, "タグ")
     val collectionNames = sanitizeNames(draft.collectionNames, MAX_COLLECTIONS_PER_BOOK, "コレクション")
+    val readingStatus = draft.readingStatus
     ensureLibraryOrganizationSchema(database.writable)
     val key = book.organizationKey()
     val now = System.currentTimeMillis()
@@ -110,7 +111,7 @@ class DefaultLibraryOrganizationRepository(
         )
       }
 
-      if (draft.readingStatus == null) {
+      if (readingStatus == null) {
         delete(
           READING_STATUS_TABLE,
           "source = ? AND source_id = ?",
@@ -123,7 +124,7 @@ class DefaultLibraryOrganizationRepository(
           ContentValues().apply {
             put("source", key.source.name)
             put("source_id", key.sourceId)
-            put("status", draft.readingStatus.name)
+            put("status", readingStatus.name)
             put("updated_at", now)
           },
           SQLiteDatabase.CONFLICT_REPLACE,
