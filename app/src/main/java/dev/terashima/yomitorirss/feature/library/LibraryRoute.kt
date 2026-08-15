@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -40,15 +43,6 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
   )
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
   val scope = rememberCoroutineScope()
-
-  openedSmbBook?.let { book ->
-    SmbBookReaderRoute(
-      book = book,
-      repository = smbRepository,
-      onBack = { openedSmbBook = null },
-    )
-    return
-  }
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
@@ -96,4 +90,21 @@ fun LibraryRoute(modifier: Modifier = Modifier) {
     onSyncGooglePlayBooks = requestSync,
     onOpenSmbBook = { openedSmbBook = it },
   )
+
+  openedSmbBook?.let { book ->
+    Dialog(
+      onDismissRequest = { openedSmbBook = null },
+      properties = DialogProperties(
+        usePlatformDefaultWidth = false,
+        decorFitsSystemWindows = false,
+      ),
+    ) {
+      SmbBookReaderRoute(
+        book = book,
+        repository = smbRepository,
+        onBack = { openedSmbBook = null },
+        modifier = Modifier.fillMaxSize(),
+      )
+    }
+  }
 }
