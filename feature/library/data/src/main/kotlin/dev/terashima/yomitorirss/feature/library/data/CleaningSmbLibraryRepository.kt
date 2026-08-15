@@ -5,8 +5,10 @@ import android.content.Context
 import android.net.Uri
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import java.io.File
+import java.util.Locale
 
 class CleaningSmbLibraryRepository private constructor(
   context: Context,
@@ -24,34 +26,31 @@ class CleaningSmbLibraryRepository private constructor(
     delegate = DefaultSmbLibraryRepository(context, database),
   )
 
+  override suspend fun sync(): LibrarySyncResult {
+    val result = delegate.sync()
+    val redundantSourceIds = redundantSmbSourceIds(deduplicationCandidates())
+    if (redundantSourceIds.isEmpty()) return result
+
+    database.transaction {
+      redundantSourceIds.forEach(::deleteSmbBookMetadata)
+    }
+    redundantSourceIds.forEach { sourceId ->
+      File(appContext.cacheDir, "smb-books/$sourceId").deleteRecursively()
+    }
+    deleteSmbBookCovers(appContext, redundantSourceIds)
+
+    return result.copy(
+      importedCount = (result.importedCount - redundantSourceIds.size).coerceAtLeast(0),
+    )
+  }
+
   override suspend fun deleteServer(serverId: String) {
     val sourceIds = sourceIdsForServer(serverId)
     delegate.deleteServer(serverId)
 
     val remainingServers = delegate.servers()
     database.transaction {
-      sourceIds.forEach { sourceId ->
-        delete(
-          "library_items",
-          "source = ? AND source_id = ?",
-          arrayOf(LibrarySource.SMB.name, sourceId),
-        )
-        delete(
-          "hidden_library_items",
-          "source = ? AND source_id = ?",
-          arrayOf(LibrarySource.SMB.name, sourceId),
-        )
-        delete(
-          "library_item_series",
-          "source = ? AND source_id = ?",
-          arrayOf(LibrarySource.SMB.name, sourceId),
-        )
-        delete(
-          "library_item_series_exclusions",
-          "source = ? AND source_id = ?",
-          arrayOf(LibrarySource.SMB.name, sourceId),
-        )
-      }
+      sourceIds.forEach(::deleteSmbBookMetadata)
 
       if (remainingServers.isEmpty()) {
         delete("library_sources", "source = ?", arrayOf(LibrarySource.SMB.name))
@@ -73,6 +72,51 @@ class CleaningSmbLibraryRepository private constructor(
     deleteSmbBookCovers(appContext, sourceIds)
   }
 
+  private fun deduplicationCandidates(): List<SmbLibraryDeduplicationCandidate> = database.readable.rawQuery(
+    "SELECT source_id, title, info_url FROM library_items WHERE source = ?",
+    arrayOf(LibrarySource.SMB.name),
+  ).use { cursor ->
+    val sourceIdIndex = cursor.getColumnIndexOrThrow("source_id")
+    val titleIndex = cursor.getColumnIndexOrThrow("title")
+    val infoUrlIndex = cursor.getColumnIndexOrThrow("info_url")
+    buildList {
+      while (cursor.moveToNext()) {
+        if (cursor.isNull(infoUrlIndex)) continue
+        val uri = runCatching { Uri.parse(cursor.getString(infoUrlIndex)) }.getOrNull() ?: continue
+        if (uri.scheme != "yomitori" || uri.host != "smb-book" || uri.path != "/open") continue
+        val path = uri.getQueryParameter("path")?.takeIf(String::isNotBlank) ?: continue
+        val size = uri.getQueryParameter("size")?.toLongOrNull()?.takeIf { it >= 0L } ?: continue
+        val modifiedAt = uri.getQueryParameter("modified")?.toLongOrNull() ?: continue
+        val format = uri.getQueryParameter("format")?.takeIf(String::isNotBlank) ?: continue
+        add(
+          SmbLibraryDeduplicationCandidate(
+            sourceId = cursor.getString(sourceIdIndex),
+            title = cursor.getString(titleIndex),
+            path = path,
+            size = size,
+            modifiedAt = modifiedAt,
+            format = format,
+          ),
+        )
+      }
+    }
+  }
+
+  private fun android.database.sqlite.SQLiteDatabase.deleteSmbBookMetadata(sourceId: String) {
+    listOf(
+      "library_items",
+      "hidden_library_items",
+      "library_item_series",
+      "library_item_series_exclusions",
+    ).forEach { table ->
+      delete(
+        table,
+        "source = ? AND source_id = ?",
+        arrayOf(LibrarySource.SMB.name, sourceId),
+      )
+    }
+  }
+
   private fun sourceIdsForServer(serverId: String): List<String> = database.readable.rawQuery(
     "SELECT source_id, info_url FROM library_items WHERE source = ?",
     arrayOf(LibrarySource.SMB.name),
@@ -91,3 +135,47 @@ class CleaningSmbLibraryRepository private constructor(
     }
   }
 }
+
+internal data class SmbLibraryDeduplicationCandidate(
+  val sourceId: String,
+  val title: String,
+  val path: String,
+  val size: Long,
+  val modifiedAt: Long,
+  val format: String,
+)
+
+internal fun redundantSmbSourceIds(
+  candidates: List<SmbLibraryDeduplicationCandidate>,
+): List<String> {
+  val seen = mutableSetOf<SmbLibraryDuplicateKey>()
+  return candidates
+    .sortedWith(
+      compareBy<SmbLibraryDeduplicationCandidate>(
+        { smbPathDepth(it.path) },
+        { it.path.length },
+        { it.path.lowercase(Locale.ROOT) },
+        { it.sourceId },
+      ),
+    )
+    .mapNotNull { candidate ->
+      if (seen.add(candidate.duplicateKey())) null else candidate.sourceId
+    }
+}
+
+private data class SmbLibraryDuplicateKey(
+  val title: String,
+  val size: Long,
+  val modifiedAt: Long,
+  val format: String,
+)
+
+private fun SmbLibraryDeduplicationCandidate.duplicateKey(): SmbLibraryDuplicateKey =
+  SmbLibraryDuplicateKey(
+    title = title.trim().lowercase(Locale.ROOT),
+    size = size,
+    modifiedAt = modifiedAt,
+    format = format.trim().uppercase(Locale.ROOT),
+  )
+
+private fun smbPathDepth(path: String): Int = path.count { it == '\\' || it == '/' }
