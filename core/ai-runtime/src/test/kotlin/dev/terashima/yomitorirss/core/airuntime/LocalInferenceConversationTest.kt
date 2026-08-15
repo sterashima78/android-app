@@ -38,8 +38,8 @@ class LocalInferenceConversationTest {
   }
 
   @Test
-  fun `不正なtool引数JSONは空引数として扱う`() {
-    assertTrue(parseToolArguments("broken").isEmpty())
+  fun `不正なtool引数JSONは拒否する`() {
+    assertTrue(runCatching { parseToolArguments("broken") }.isFailure)
   }
 
   @Test
