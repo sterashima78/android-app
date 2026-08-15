@@ -35,7 +35,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(16, db.version)
+    assertEquals(17, db.version)
     assertEquals(
       setOf(
         "feed_folders",
@@ -59,6 +59,8 @@ class AppDatabaseSchemaTest {
         "library_item_organization_tags",
         "library_item_organization_collections",
         "library_item_reading_status",
+        "library_organization_batches",
+        "library_organization_batch_items",
       ),
       db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'android_metadata'",
