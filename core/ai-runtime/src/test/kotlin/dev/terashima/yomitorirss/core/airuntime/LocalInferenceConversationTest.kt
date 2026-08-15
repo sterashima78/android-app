@@ -1,5 +1,8 @@
 package dev.terashima.yomitorirss.core.airuntime
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -40,6 +43,37 @@ class LocalInferenceConversationTest {
   @Test
   fun `不正なtool引数JSONは拒否する`() {
     assertTrue(runCatching { parseToolArguments("broken") }.isFailure)
+  }
+
+  @Test
+  fun `tool実行結果はJSONとして返す`() {
+    val tool = LocalOpenApiTool(
+      LocalInferenceTool(
+        name = "test_tool",
+        description = "test",
+        execute = { "1行目\n2行目" },
+      ),
+    )
+
+    val result = Json.parseToJsonElement(tool.execute("{}")).jsonObject
+
+    assertEquals("1行目\n2行目", result.getValue("result").jsonPrimitive.content)
+  }
+
+  @Test
+  fun `tool実行失敗もJSONとして返す`() {
+    val tool = LocalOpenApiTool(
+      LocalInferenceTool(
+        name = "test_tool",
+        description = "test",
+        execute = { error("秘密の内部エラー") },
+      ),
+    )
+
+    val result = Json.parseToJsonElement(tool.execute("{}")).jsonObject
+
+    assertEquals("ツール実行に失敗しました。", result.getValue("error").jsonPrimitive.content)
+    assertFalse(tool.execute("{}").contains("秘密の内部エラー"))
   }
 
   @Test
