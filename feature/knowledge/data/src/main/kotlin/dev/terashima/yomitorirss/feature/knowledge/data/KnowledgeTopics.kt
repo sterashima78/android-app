@@ -31,14 +31,12 @@ internal fun buildKnowledgeTopics(sources: List<KnowledgeGenerationSource>): Lis
   val grouped = linkedMapOf<TopicIdentity, MutableList<KnowledgeGenerationSource>>()
   sources.forEach { source ->
     val tags = source.tags.map(String::trim).filter(String::isNotBlank).distinctBy { it.lowercase() }
+    val folderName = source.folderName?.trim().orEmpty()
+    val sourceTitle = source.sourceTitle.trim().ifBlank { "その他" }
     val identities = when {
       tags.isNotEmpty() -> tags.map { TopicIdentity("tag", it.lowercase(), it) }
-      !source.folderName.isNullOrBlank() -> listOf(
-        TopicIdentity("folder", source.folderName.trim().lowercase(), source.folderName.trim()),
-      )
-      else -> listOf(
-        TopicIdentity("source", source.sourceTitle.trim().lowercase(), source.sourceTitle.trim()),
-      )
+      folderName.isNotEmpty() -> listOf(TopicIdentity("folder", folderName.lowercase(), folderName))
+      else -> listOf(TopicIdentity("source", sourceTitle.lowercase(), sourceTitle))
     }
     identities.forEach { identity -> grouped.getOrPut(identity) { mutableListOf() } += source }
   }
@@ -50,7 +48,8 @@ internal fun buildKnowledgeTopics(sources: List<KnowledgeGenerationSource>): Lis
       key = identity.key,
       title = identity.title,
       sources = topicSources.distinctBy(KnowledgeGenerationSource::articleId)
-        .sortedWith(compareByDescending<KnowledgeGenerationSource> { it.savedAt }.thenBy { it.title }),
+        .sortedWith(compareByDescending<KnowledgeGenerationSource> { it.savedAt }.thenBy { it.title })
+        .take(MAX_SOURCES_PER_TOPIC),
     )
   }.sortedWith(compareByDescending<KnowledgeTopic> { it.sources.size }.thenBy { it.title.lowercase() })
 }
@@ -64,3 +63,5 @@ private data class TopicIdentity(
   val key: String,
   val title: String,
 )
+
+private const val MAX_SOURCES_PER_TOPIC = 12
