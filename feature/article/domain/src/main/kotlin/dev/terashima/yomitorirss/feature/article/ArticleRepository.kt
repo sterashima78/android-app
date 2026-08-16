@@ -10,4 +10,5 @@ interface ArticleRepository {
   suspend fun markArticleRead(articleId: String)
   suspend fun markArticleUnread(articleId: String)
   suspend fun markAllUnreadAsRead(): Int
+  suspend fun setArticleContentType(articleId: String, contentType: ContentType?)
 }

@@ -5,6 +5,8 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.Article
+import dev.terashima.yomitorirss.feature.article.resolveContentType
+import dev.terashima.yomitorirss.feature.article.toContentTypeOrNull
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkFolder
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportResult
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
@@ -28,7 +30,7 @@ internal class BookmarkStore(
   private val database: DatabaseConnection,
 ) {
   fun listSavedArticles(tagId: String?, folderId: String?): List<BookmarkedArticle> {
-    val clauses = mutableListOf("saved_at IS NOT NULL")
+    val clauses = mutableListOf("articles.saved_at IS NOT NULL")
     val args = mutableListOf<String>()
     if (tagId != null) {
       clauses += "EXISTS(SELECT 1 FROM article_tags x WHERE x.article_id=articles.id AND x.tag_id=?)"
@@ -43,7 +45,7 @@ internal class BookmarkStore(
       }
     }
     return bookmarkedArticles(
-      "SELECT * FROM articles WHERE ${clauses.joinToString(" AND ")} ORDER BY published_at DESC LIMIT 500",
+      "$BOOKMARK_ARTICLE_SELECT WHERE ${clauses.joinToString(" AND ")} ORDER BY articles.published_at DESC LIMIT 500",
       args.toTypedArray(),
     )
   }
@@ -52,7 +54,7 @@ internal class BookmarkStore(
     var offset = 0
     while (true) {
       val page = bookmarkedArticles(
-        "SELECT * FROM articles WHERE saved_at IS NOT NULL ORDER BY published_at DESC LIMIT ? OFFSET ?",
+        "$BOOKMARK_ARTICLE_SELECT WHERE articles.saved_at IS NOT NULL ORDER BY articles.published_at DESC LIMIT ? OFFSET ?",
         arrayOf(ALL_SAVED_PAGE_SIZE.toString(), offset.toString()),
       )
       addAll(page)
@@ -62,7 +64,9 @@ internal class BookmarkStore(
   }
 
   fun listReadLaterArticles(): List<BookmarkedArticle> = bookmarkedArticles(
-    "SELECT a.* FROM articles a JOIN article_folders f ON f.article_id=a.id WHERE a.saved_at IS NOT NULL AND f.folder_id=? ORDER BY a.published_at DESC",
+    "$BOOKMARK_ARTICLE_SELECT WHERE articles.saved_at IS NOT NULL " +
+      "AND EXISTS(SELECT 1 FROM article_folders f WHERE f.article_id=articles.id AND f.folder_id=?) " +
+      "ORDER BY articles.published_at DESC",
     arrayOf(READ_LATER_FOLDER_ID),
   )
 
@@ -459,19 +463,26 @@ private fun values(vararg entries: Pair<String, String?>): ContentValues = Conte
   entries.forEach { (key, value) -> if (value == null) putNull(key) else put(key, value) }
 }
 
-private fun Cursor.article(): Article = Article(
-  id = string("id"),
-  feedId = nullableString("feed_id"),
-  externalId = nullableString("external_id"),
-  identityKey = string("identity_key"),
-  url = string("url"),
-  title = string("title"),
-  publishedAt = string("published_at"),
-  fetchedAt = string("fetched_at"),
-  readAt = nullableString("read_at"),
-  sourceTitle = string("source_title"),
-  sourceFeedUrl = string("source_feed_url"),
-)
+private fun Cursor.article(): Article {
+  val articleOverride = nullableString("content_type").toContentTypeOrNull()
+  val feedOverride = nullableString("feed_content_type").toContentTypeOrNull()
+  val folderOverride = nullableString("folder_content_type").toContentTypeOrNull()
+  return Article(
+    id = string("id"),
+    feedId = nullableString("feed_id"),
+    externalId = nullableString("external_id"),
+    identityKey = string("identity_key"),
+    url = string("url"),
+    title = string("title"),
+    publishedAt = string("published_at"),
+    fetchedAt = string("fetched_at"),
+    readAt = nullableString("read_at"),
+    sourceTitle = string("source_title"),
+    sourceFeedUrl = string("source_feed_url"),
+    contentTypeOverride = articleOverride,
+    effectiveContentType = resolveContentType(articleOverride, feedOverride, folderOverride),
+  )
+}
 
 private fun Cursor.tag(): Tag = Tag(
   id = string("id"),
@@ -497,5 +508,11 @@ private fun displayName(name: String): String = name.trim().replace(Regex("\\s+"
 private fun normalizeName(name: String): String = displayName(name).lowercase()
 private fun nowIso(): String = Instant.now().toString()
 
+private const val BOOKMARK_ARTICLE_SELECT = """
+  SELECT articles.*, feeds.content_type AS feed_content_type, feed_folders.content_type AS folder_content_type
+  FROM articles
+  LEFT JOIN feeds ON feeds.id = articles.feed_id
+  LEFT JOIN feed_folders ON feed_folders.id = feeds.folder_id
+"""
 private const val READ_LATER_FOLDER_NAME = "あとで読む"
 private const val ALL_SAVED_PAGE_SIZE = 400

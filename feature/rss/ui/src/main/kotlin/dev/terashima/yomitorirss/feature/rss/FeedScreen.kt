@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.feature.article.ContentType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -57,11 +59,15 @@ fun FeedScreen(
   onRenameFolder: (FeedFolder, String) -> Unit,
   onDeleteFolder: (FeedFolder) -> Unit,
   onMoveFeed: (Feed, String?) -> Unit,
+  onSetFeedContentType: (Feed, ContentType?) -> Unit,
+  onSetFolderContentType: (FeedFolder, ContentType?) -> Unit,
 ) {
   var creatingFolder by remember { mutableStateOf(false) }
   var renamingFolder by remember { mutableStateOf<FeedFolder?>(null) }
   var deletingFolder by remember { mutableStateOf<FeedFolder?>(null) }
   var movingFeed by remember { mutableStateOf<Feed?>(null) }
+  var editingFeedContentType by remember { mutableStateOf<Feed?>(null) }
+  var editingFolderContentType by remember { mutableStateOf<FeedFolder?>(null) }
   val uncategorized = feeds.filter { it.folderId == null || folders.none { folder -> folder.id == it.folderId } }
 
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp)) {
@@ -106,7 +112,13 @@ fun FeedScreen(
         FeedFolderHeader(title = "未分類", count = uncategorized.size)
       }
       items(uncategorized, key = Feed::id) { feed ->
-        FeedCard(feed = feed, onMove = { movingFeed = feed }, onDelete = onDelete)
+        FeedCard(
+          feed = feed,
+          inheritedContentType = ContentType.ARTICLE,
+          onMove = { movingFeed = feed },
+          onEditContentType = { editingFeedContentType = feed },
+          onDelete = onDelete,
+        )
       }
     }
 
@@ -116,6 +128,9 @@ fun FeedScreen(
         FeedFolderHeader(
           title = folder.name,
           count = folderFeeds.size,
+          contentType = folder.effectiveContentType(),
+          inherited = folder.contentTypeOverride == null,
+          onEditContentType = { editingFolderContentType = folder },
           onRename = { renamingFolder = folder },
           onDelete = { deletingFolder = folder },
         )
@@ -131,7 +146,13 @@ fun FeedScreen(
         }
       } else {
         items(folderFeeds, key = Feed::id) { feed ->
-          FeedCard(feed = feed, onMove = { movingFeed = feed }, onDelete = onDelete)
+          FeedCard(
+            feed = feed,
+            inheritedContentType = folder.effectiveContentType(),
+            onMove = { movingFeed = feed },
+            onEditContentType = { editingFeedContentType = feed },
+            onDelete = onDelete,
+          )
         }
       }
     }
@@ -191,43 +212,86 @@ fun FeedScreen(
       },
     )
   }
+
+  editingFeedContentType?.let { feed ->
+    val folder = folders.firstOrNull { it.id == feed.folderId }
+    ContentTypeDialog(
+      title = feed.title,
+      currentOverride = feed.contentTypeOverride,
+      inheritedType = folder?.effectiveContentType() ?: ContentType.ARTICLE,
+      onDismiss = { editingFeedContentType = null },
+      onSelect = { type ->
+        editingFeedContentType = null
+        onSetFeedContentType(feed, type)
+      },
+    )
+  }
+
+  editingFolderContentType?.let { folder ->
+    ContentTypeDialog(
+      title = folder.name,
+      currentOverride = folder.contentTypeOverride,
+      inheritedType = ContentType.ARTICLE,
+      onDismiss = { editingFolderContentType = null },
+      onSelect = { type ->
+        editingFolderContentType = null
+        onSetFolderContentType(folder, type)
+      },
+    )
+  }
 }
 
 @Composable
 private fun FeedFolderHeader(
   title: String,
   count: Int,
+  contentType: ContentType? = null,
+  inherited: Boolean = false,
+  onEditContentType: (() -> Unit)? = null,
   onRename: (() -> Unit)? = null,
   onDelete: (() -> Unit)? = null,
 ) {
-  Row(
-    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-    Spacer(Modifier.width(8.dp))
-    Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-    Text(
-      "${count}件",
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    onRename?.let {
-      IconButton(onClick = it) { Icon(Icons.Default.Edit, contentDescription = "フォルダ名を変更") }
+  Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+      Spacer(Modifier.width(8.dp))
+      Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+      Text(
+        "${count}件",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      onEditContentType?.let {
+        IconButton(onClick = it) { Icon(Icons.Default.Tune, contentDescription = "コンテンツ種別を変更") }
+      }
+      onRename?.let {
+        IconButton(onClick = it) { Icon(Icons.Default.Edit, contentDescription = "フォルダ名を変更") }
+      }
+      onDelete?.let {
+        IconButton(onClick = it) { Icon(Icons.Default.Delete, contentDescription = "フォルダを削除") }
+      }
     }
-    onDelete?.let {
-      IconButton(onClick = it) { Icon(Icons.Default.Delete, contentDescription = "フォルダを削除") }
+    contentType?.let {
+      Text(
+        text = contentTypeStatus(it, inherited),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 32.dp, bottom = 4.dp),
+      )
     }
+    HorizontalDivider()
   }
-  HorizontalDivider()
 }
 
 @Composable
 private fun FeedCard(
   feed: Feed,
+  inheritedContentType: ContentType,
   onMove: () -> Unit,
+  onEditContentType: () -> Unit,
   onDelete: (Feed) -> Unit,
 ) {
+  val effectiveType = feed.contentTypeOverride ?: inheritedContentType
   Card(
     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -242,12 +306,20 @@ private fun FeedCard(
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
+        Text(
+          contentTypeStatus(effectiveType, feed.contentTypeOverride == null),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         feed.lastFetchedAt?.let {
           Text("最終更新 ${feedTimeLabel(it)}", style = MaterialTheme.typography.labelSmall)
         }
         feed.lastError?.let {
           Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
+      }
+      IconButton(onClick = onEditContentType) {
+        Icon(Icons.Default.Tune, contentDescription = "コンテンツ種別を変更")
       }
       IconButton(onClick = onMove) {
         Icon(Icons.Default.DriveFileMove, contentDescription = "フォルダを移動")
@@ -331,6 +403,63 @@ private fun MoveFolderRow(name: String, selected: Boolean, onClick: () -> Unit) 
     Text(name, modifier = Modifier.weight(1f))
     if (selected) Text("選択中", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
   }
+}
+
+@Composable
+private fun ContentTypeDialog(
+  title: String,
+  currentOverride: ContentType?,
+  inheritedType: ContentType,
+  onDismiss: () -> Unit,
+  onSelect: (ContentType?) -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("コンテンツ種別") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+          title,
+          style = MaterialTheme.typography.bodyMedium,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(8.dp))
+        ContentTypeChoice(
+          label = "継承（${contentTypeLabel(inheritedType)}）",
+          selected = currentOverride == null,
+          onClick = { onSelect(null) },
+        )
+        ContentTypeChoice(
+          label = "記事",
+          selected = currentOverride == ContentType.ARTICLE,
+          onClick = { onSelect(ContentType.ARTICLE) },
+        )
+        ContentTypeChoice(
+          label = "漫画",
+          selected = currentOverride == ContentType.COMIC,
+          onClick = { onSelect(ContentType.COMIC) },
+        )
+      }
+    },
+    confirmButton = {},
+    dismissButton = { TextButton(onClick = onDismiss) { Text("キャンセル") } },
+  )
+}
+
+@Composable
+private fun ContentTypeChoice(label: String, selected: Boolean, onClick: () -> Unit) {
+  TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Text(if (selected) "選択中 · $label" else label, modifier = Modifier.fillMaxWidth())
+  }
+}
+
+private fun contentTypeStatus(contentType: ContentType, inherited: Boolean): String =
+  "種別: ${contentTypeLabel(contentType)}${if (inherited) "（継承）" else ""}"
+
+private fun contentTypeLabel(contentType: ContentType): String = when (contentType) {
+  ContentType.ARTICLE -> "記事"
+  ContentType.COMIC -> "漫画"
 }
 
 private fun feedTimeLabel(value: String): String = runCatching {

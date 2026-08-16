@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
+import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 
 @Composable
@@ -43,6 +44,7 @@ internal fun TagManagerScreen(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
   onCreate: (String) -> Unit,
   onRename: (Tag, String) -> Unit,
@@ -163,6 +165,7 @@ internal fun TagManagerScreen(
         onSummarize = onSummarize,
         onEditTags = onEditTags,
         onMoveFolder = onMoveFolder,
+        onSetContentType = onSetContentType,
       )
     }
   }

@@ -36,6 +36,7 @@ internal class BookmarkAutoEnrichmentBackfillWorker(
         shouldRequestBookmarkEnrichment(
           url = article.url,
           sourceFeedUrl = article.sourceFeedUrl,
+          contentType = article.effectiveContentType,
         )
       }
       .map { it.id }

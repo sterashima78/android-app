@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.rss
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -188,6 +189,28 @@ class FeedViewModel(
         .onSuccess {
           backupChangeScheduler.scheduleAfterChange()
           _state.update { it.copy(message = "${feed.title}を移動しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun setFeedContentType(feed: Feed, contentType: ContentType?) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.setFeedContentType(feed.id, contentType) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "${feed.title}のコンテンツ種別を変更しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun setFolderContentType(folder: FeedFolder, contentType: ContentType?) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.setFolderContentType(folder.id, contentType) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "${folder.name}のコンテンツ種別を変更しました") }
         }
         .onFailure(::showError)
     }

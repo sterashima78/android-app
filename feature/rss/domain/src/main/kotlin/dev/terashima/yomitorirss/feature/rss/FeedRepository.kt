@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.rss
 
+import dev.terashima.yomitorirss.feature.article.ContentType
 import kotlinx.coroutines.flow.StateFlow
 
 interface FeedRepository {
@@ -13,5 +14,7 @@ interface FeedRepository {
   suspend fun renameFolder(folderId: String, name: String)
   suspend fun deleteFolder(folderId: String)
   suspend fun moveFeedToFolder(feedId: String, folderId: String?)
+  suspend fun setFeedContentType(feedId: String, contentType: ContentType?)
+  suspend fun setFolderContentType(folderId: String, contentType: ContentType?)
   suspend fun refreshFeed(feed: Feed)
 }

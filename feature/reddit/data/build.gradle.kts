@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:reddit:domain"))
+  implementation(project(":feature:article:domain"))
   implementation(project(":feature:rss:domain"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 }

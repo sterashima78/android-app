@@ -17,9 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
+import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
-import dev.terashima.yomitorirss.feature.bookmark.FolderManagerScreen
-import dev.terashima.yomitorirss.feature.bookmark.TagManagerScreen
 
 enum class BookmarkTab(val label: String) {
   BOOKMARKS("一覧"),
@@ -39,6 +38,7 @@ fun BookmarkScreen(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
   onMarkUnread: (Article) -> Unit,
   onCreateFolder: (String) -> Unit,
@@ -58,6 +58,7 @@ fun BookmarkScreen(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onSetContentType = onSetContentType,
       onUnsave = onUnsave,
     )
 
@@ -78,6 +79,7 @@ fun BookmarkScreen(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onSetContentType = onSetContentType,
       onUnsave = onUnsave,
       onCreate = onCreateTag,
       onRename = onRenameTag,
@@ -94,6 +96,7 @@ fun BookmarkScreen(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onSetContentType = onSetContentType,
     )
   }
 }
@@ -108,6 +111,7 @@ private fun BookmarkSavedScreen(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
 ) {
   Column(modifier.fillMaxSize()) {
@@ -175,6 +179,7 @@ private fun BookmarkSavedScreen(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onSetContentType = onSetContentType,
     )
   }
 }

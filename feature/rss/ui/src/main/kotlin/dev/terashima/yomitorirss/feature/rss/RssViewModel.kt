@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
@@ -78,6 +79,22 @@ class RssViewModel(
 
   fun removeReadLater(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
     bookmarkRepository.removeReadLater(article.id)
+  }
+
+  fun setArticleContentType(article: Article, contentType: ContentType?) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        val shouldScheduleBackup = bookmarkRepository.isBookmarked(article.id)
+        articleRepository.setArticleContentType(article.id, contentType)
+        shouldScheduleBackup
+      }.onSuccess { shouldScheduleBackup ->
+        reload()
+        if (shouldScheduleBackup) backupChangeScheduler.scheduleAfterChange()
+        _state.update { it.copy(message = "コンテンツ種別を変更しました") }
+      }.onFailure { error ->
+        _state.update { it.copy(message = "コンテンツ種別を変更できませんでした: ${error.userMessage()}") }
+      }
+    }
   }
 
   fun markAllUnreadAsRead() {

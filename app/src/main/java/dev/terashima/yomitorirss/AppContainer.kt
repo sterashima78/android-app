@@ -76,6 +76,7 @@ class AppContainer(private val application: Application) {
           source != null && shouldRequestBookmarkEnrichment(
             url = source.url,
             sourceFeedUrl = source.sourceFeedUrl,
+            contentType = source.effectiveContentType,
           )
         ) {
           summaryRepository.requestBookmarkEnrichment(articleId)

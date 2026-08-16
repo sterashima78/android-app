@@ -32,7 +32,7 @@ class SummaryTaskPriorityTest {
         version = 1,
         contributions = listOf(
           testFeedSchema,
-          articleDatabaseSchema,
+          testArticleSchema,
           testBookmarkFolderSchema,
           summaryDatabaseSchema,
         ),
@@ -134,6 +134,11 @@ class SummaryTaskPriorityTest {
       createSchema = { db ->
         db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL)")
       },
+    )
+
+    val testArticleSchema = DatabaseSchemaContribution(
+      owner = articleDatabaseSchema.owner,
+      createSchema = articleDatabaseSchema.createSchema,
     )
 
     val testBookmarkFolderSchema = DatabaseSchemaContribution(
