@@ -144,6 +144,7 @@ internal fun YomitoriDatabase.listSummaryTaskItems(): List<SummaryTaskListItem> 
         END,
         CASE WHEN q.state IN ('running', 'queued') THEN q.queued_at END ASC,
         COALESCE(q.finished_at, q.started_at, q.queued_at) DESC
+      LIMIT 200
     """.trimIndent(),
     null,
   ).use { cursor ->
