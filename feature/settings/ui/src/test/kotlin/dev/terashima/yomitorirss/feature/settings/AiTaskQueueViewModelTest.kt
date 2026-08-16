@@ -5,13 +5,14 @@ import org.junit.Test
 
 class AiTaskQueueViewModelTest {
   @Test
-  fun `完了済みを除外して実行中を先頭に並べる`() {
+  fun `完了済みを除外して実行中_待機中_一時停止の順に並べる`() {
     val tasks = listOf(
-      task("queued-1", AiTaskQueueItemState.QUEUED),
+      task("paused-1", AiTaskQueueItemState.PAUSED),
       task("completed", AiTaskQueueItemState.COMPLETED),
-      task("paused", AiTaskQueueItemState.PAUSED),
+      task("queued-1", AiTaskQueueItemState.QUEUED),
       task("running-1", AiTaskQueueItemState.RUNNING),
       task("failed", AiTaskQueueItemState.FAILED),
+      task("paused-2", AiTaskQueueItemState.PAUSED),
       task("running-2", AiTaskQueueItemState.RUNNING),
       task("queued-2", AiTaskQueueItemState.QUEUED),
     )
@@ -19,7 +20,15 @@ class AiTaskQueueViewModelTest {
     val result = prepareVisibleAiTasks(tasks)
 
     assertEquals(
-      listOf("running-1", "running-2", "queued-1", "paused", "failed", "queued-2"),
+      listOf(
+        "running-1",
+        "running-2",
+        "queued-1",
+        "queued-2",
+        "paused-1",
+        "paused-2",
+        "failed",
+      ),
       result.map(AiTaskQueueItem::id),
     )
   }
