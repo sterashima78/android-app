@@ -17,6 +17,11 @@ internal fun ArticleContentTypeDialog(
   onDismiss: () -> Unit,
   onSelect: (ContentType?) -> Unit,
 ) {
+  val inheritLabel = if (article.contentTypeOverride == null) {
+    "継承（現在: ${article.effectiveContentType.displayLabel()}）"
+  } else {
+    "継承（フィード/フォルダ設定）"
+  }
   AlertDialog(
     onDismissRequest = onDismiss,
     title = { Text("コンテンツ種別") },
@@ -24,7 +29,7 @@ internal fun ArticleContentTypeDialog(
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(article.title, style = MaterialTheme.typography.bodyMedium)
         ContentTypeChoice(
-          label = "継承（現在: ${article.effectiveContentType.displayLabel()}）",
+          label = inheritLabel,
           selected = article.contentTypeOverride == null,
           onClick = { onSelect(null) },
         )
