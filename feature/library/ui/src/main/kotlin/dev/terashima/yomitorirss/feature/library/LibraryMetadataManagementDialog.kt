@@ -327,11 +327,7 @@ private fun SeriesManagementContent(
   state: LibraryOrganizationUiState,
   onReorganizeSeries: (List<LibraryBook>) -> Unit,
 ) {
-  val seriesGroups = remember(books) {
-    groupLibraryBooksBySeries(books)
-      .filter { it.series != null }
-      .sortedBy { it.displayTitle.lowercase() }
-  }
+  val seriesGroups = remember(books) { groupLibraryBooks(books).series }
   if (seriesGroups.isEmpty()) {
     Text(
       "シリーズ情報が設定された蔵書はありません。",
@@ -354,7 +350,7 @@ private fun SeriesManagementContent(
       )
     }
     items(seriesGroups, key = LibrarySeriesSection::key) { group ->
-      val running = state.reorganizingSeriesName == group.displayTitle
+      val running = state.reorganizingSeriesName == group.name
       Card(
         modifier = Modifier
           .fillMaxWidth()
@@ -365,7 +361,7 @@ private fun SeriesManagementContent(
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           Text(
-            group.displayTitle,
+            group.name,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
           )
