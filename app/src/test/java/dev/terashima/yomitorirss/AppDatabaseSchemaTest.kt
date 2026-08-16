@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,7 +38,10 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(18, db.version)
+    assertEquals(19, db.version)
+    assertTrue("content_type" in columnNames(db, "feed_folders"))
+    assertTrue("content_type" in columnNames(db, "feeds"))
+    assertTrue("content_type" in columnNames(db, "articles"))
     assertEquals(
       setOf(
         "feed_folders",
@@ -76,7 +80,7 @@ class AppDatabaseSchemaTest {
   }
 
   @Test
-  fun `version 18 discards legacy library review candidates`() {
+  fun `legacy library review candidates are discarded while upgrading to current version`() {
     val legacyLibrarySchema = appDatabaseSchema.contributions
       .first { it.owner == "library" }
       .let { contribution ->
@@ -101,7 +105,10 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(18, upgraded.version)
+    assertEquals(19, upgraded.version)
+    assertTrue("content_type" in columnNames(upgraded, "feed_folders"))
+    assertTrue("content_type" in columnNames(upgraded, "feeds"))
+    assertTrue("content_type" in columnNames(upgraded, "articles"))
     assertEquals(
       0,
       countRows(
@@ -234,6 +241,13 @@ private fun insertArticleTag(db: SQLiteDatabase, articleId: String, tagId: Strin
     },
   )
 }
+
+private fun columnNames(db: SQLiteDatabase, table: String): Set<String> =
+  db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+    buildSet {
+      while (cursor.moveToNext()) add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+    }
+  }
 
 private fun countRows(
   db: SQLiteDatabase,
