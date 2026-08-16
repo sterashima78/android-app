@@ -91,7 +91,12 @@ object SummaryQueue {
     val appContext = context.applicationContext
     val preferences = SummaryQueueExecutionPreferences(appContext)
     if (preferences.paused == paused) {
-      if (paused) ensureResumeOnChargingScheduled(appContext)
+      if (paused) {
+        ensureResumeOnChargingScheduled(appContext)
+      } else {
+        ensureCleanupScheduled(appContext)
+        scheduleWorker(appContext)
+      }
       return
     }
 
@@ -136,8 +141,10 @@ object SummaryQueue {
   internal fun resumeAutomaticallyWhenCharging(context: Context) {
     val appContext = context.applicationContext
     val preferences = SummaryQueueExecutionPreferences(appContext)
-    if (!preferences.paused || !preferences.resumeWhenCharging) return
+    if (!preferences.resumeWhenCharging) return
 
+    // Library organization shares this execution gate and has its own charging worker. Either
+    // worker may clear the gate first, so scheduling the summary queue must remain idempotent.
     preferences.paused = false
     try {
       ensureCleanupScheduled(appContext)

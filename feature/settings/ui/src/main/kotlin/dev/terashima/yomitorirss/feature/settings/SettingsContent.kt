@@ -37,7 +37,7 @@ fun SettingsContent(
   onOpenXCss: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
-  onOpenSummaryTaskQueue: () -> Unit,
+  onOpenAiTaskQueue: () -> Unit,
   onOpenDriveBackup: () -> Unit,
   onExportBackup: () -> Unit,
   onImportBackup: () -> Unit,
@@ -88,28 +88,29 @@ fun SettingsContent(
     }
     item { SettingsDivider() }
 
-    item { SettingsHeader("要約") }
+    item { SettingsHeader("AI") }
     item {
       SettingsRow(
         icon = Icons.Default.SmartToy,
-        title = "要約モデル",
-        supporting = "ブックマーク追加時の自動要約・タグ付けにも使用",
+        title = "AIモデル",
+        supporting = "要約・ブックマーク整理・蔵書整理・チャットなどで共通利用",
         onClick = onOpenModels,
+      )
+    }
+    item {
+      SettingsRow(
+        icon = Icons.Default.List,
+        title = "AIタスクキュー",
+        supporting = "要約・タグ付け・蔵書整理タスクの状態確認・一時停止・再開",
+        onClick = onOpenAiTaskQueue,
       )
     }
     item {
       SettingsRow(
         icon = Icons.Default.Edit,
         title = "要約プロンプト",
+        supporting = "記事・ブックマークの要約だけに使用",
         onClick = onOpenSummaryPrompt,
-      )
-    }
-    item {
-      SettingsRow(
-        icon = Icons.Default.List,
-        title = "タスクキュー",
-        supporting = "要約・タグ付けタスクの状態確認・停止・キャンセル",
-        onClick = onOpenSummaryTaskQueue,
       )
     }
     item { SettingsDivider() }

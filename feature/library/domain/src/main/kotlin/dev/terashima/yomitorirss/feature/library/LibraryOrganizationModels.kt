@@ -151,6 +151,8 @@ interface LibraryOrganizationBatchScheduler {
   fun kick()
 
   fun cancel()
+
+  fun setResumeOnChargingScheduled(enabled: Boolean)
 }
 
 interface LibraryOrganizationSuggester {

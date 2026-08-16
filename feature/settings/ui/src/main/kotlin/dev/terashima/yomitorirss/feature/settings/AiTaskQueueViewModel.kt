@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.summary
+package dev.terashima.yomitorirss.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -13,19 +13,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-data class SummaryTaskQueueUiState(
-  val tasks: List<SummaryQueueTask> = emptyList(),
+data class AiTaskQueueUiState(
+  val tasks: List<AiTaskQueueItem> = emptyList(),
   val loading: Boolean = true,
   val queuePaused: Boolean = false,
   val resumeWhenCharging: Boolean = true,
   val actionError: String? = null,
 )
 
-class SummaryTaskQueueViewModel(
-  private val repository: SummaryTaskQueueRepository,
+class AiTaskQueueViewModel(
+  private val repository: AiTaskQueueRepository,
 ) : ViewModel() {
-  private val _state = MutableStateFlow(SummaryTaskQueueUiState())
-  val state: StateFlow<SummaryTaskQueueUiState> = _state.asStateFlow()
+  private val _state = MutableStateFlow(AiTaskQueueUiState())
+  val state: StateFlow<AiTaskQueueUiState> = _state.asStateFlow()
   private var pollingJob: Job? = null
 
   fun startObserving() {
@@ -55,11 +55,11 @@ class SummaryTaskQueueViewModel(
     runExecutionAction { repository.setResumeWhenCharging(enabled) }
   }
 
-  fun stop(articleId: String) = runTaskAction { repository.stop(articleId) }
+  fun stop(taskId: String) = runTaskAction { repository.stop(taskId) }
 
-  fun cancel(articleId: String) = runTaskAction { repository.cancel(articleId) }
+  fun cancel(taskId: String) = runTaskAction { repository.cancel(taskId) }
 
-  fun resume(articleId: String) = runTaskAction { repository.resume(articleId) }
+  fun resume(taskId: String) = runTaskAction { repository.resume(taskId) }
 
   private fun runExecutionAction(action: suspend () -> Unit) {
     viewModelScope.launch(Dispatchers.IO) {
@@ -115,18 +115,18 @@ class SummaryTaskQueueViewModel(
   }
 
   class Factory(
-    private val repository: SummaryTaskQueueRepository,
+    private val repository: AiTaskQueueRepository,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-      require(modelClass.isAssignableFrom(SummaryTaskQueueViewModel::class.java))
+      require(modelClass.isAssignableFrom(AiTaskQueueViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return SummaryTaskQueueViewModel(repository) as T
+      return AiTaskQueueViewModel(repository) as T
     }
   }
 
   private data class QueueSnapshot(
-    val tasks: List<SummaryQueueTask>,
-    val executionState: SummaryQueueExecutionState,
+    val tasks: List<AiTaskQueueItem>,
+    val executionState: AiTaskQueueExecutionState,
   )
 
   private companion object {

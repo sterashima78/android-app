@@ -1,28 +1,24 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
+import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 
 internal class SummaryQueueExecutionPreferences(context: Context) {
-  private val preferences = context.applicationContext.getSharedPreferences(
-    PREFERENCES_NAME,
-    Context.MODE_PRIVATE,
-  )
+  private val delegate = LocalAiBackgroundExecutionPreferences(context)
 
   var paused: Boolean
-    get() = preferences.getBoolean(KEY_PAUSED, false)
+    get() = delegate.paused
     set(value) {
-      preferences.edit().putBoolean(KEY_PAUSED, value).apply()
+      delegate.paused = value
     }
 
   var resumeWhenCharging: Boolean
-    get() = preferences.getBoolean(KEY_RESUME_WHEN_CHARGING, true)
+    get() = delegate.resumeWhenCharging
     set(value) {
-      preferences.edit().putBoolean(KEY_RESUME_WHEN_CHARGING, value).apply()
+      delegate.resumeWhenCharging = value
     }
 
   companion object {
-    internal const val PREFERENCES_NAME = "summary_queue_execution"
-    private const val KEY_PAUSED = "paused"
-    private const val KEY_RESUME_WHEN_CHARGING = "resume_when_charging"
+    internal const val PREFERENCES_NAME = LocalAiBackgroundExecutionPreferences.PREFERENCES_NAME
   }
 }
