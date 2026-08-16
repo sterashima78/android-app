@@ -38,114 +38,130 @@ class SummaryWorker(
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
 
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
-    return LocalAiBackgroundTaskGate.withPermit {
-      withContext(Dispatchers.IO) {
-        val database = YomitoriDatabase.create(applicationContext)
-        val modelManager = LocalModelManager(applicationContext)
-        val summaryPromptStore = SummaryPromptStore(applicationContext)
-        try {
-          database.requeueInterruptedSummaryTasks()
-          if (SummaryQueue.executionState(applicationContext).paused) {
-            return@withContext Result.success()
-          }
-
-          while (true) {
-            if (SummaryQueue.executionState(applicationContext).paused) break
-            val task = database.claimNextSummaryTask() ?: break
-            val article = database.findArticle(task.articleId)
-            if (article == null) {
-              database.failRunningSummaryTask(task.articleId, "記事が見つかりません")
-              continue
-            }
-
-            try {
-              setForeground(createForegroundInfo(article.title))
-              val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
-              val summary = if (cached != null) {
-                cached.summary
-              } else {
-                val selectedModel = modelManager.selectedModel()
-                  ?: error("要約モデルをダウンロードして選択してください")
-                val prompt = summaryPromptStore.prompt.value
-                val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
-
-                database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
-                val articleText = ArticleContentClient().fetchArticleText(article.url)
-                currentCoroutineContext().ensureActive()
-                summarizeWithProgress(
-                  database = database,
-                  modelManager = modelManager,
-                  articleId = task.articleId,
-                  articleText = articleText,
-                  prompt = prompt,
-                ).also { generated ->
-                  currentCoroutineContext().ensureActive()
-                  database.saveSummary(task.articleId, generated, cacheKey)
-                }
-              }
-
-              if (database.isBookmarkedForAiEnrichment(task.articleId)) {
-                currentCoroutineContext().ensureActive()
-                modelManager.selectedModel()
-                  ?: error("AIタグ生成用のモデルをダウンロードして選択してください")
-                val tagSource = buildString {
-                  append("タイトル: ")
-                  append(article.title)
-                  append("\n\n要約:\n")
-                  append(summary)
-                }
-                val tagPrompt = buildAutoTagPrompt(database.listExistingTagNamesForAiEnrichment())
-                val generatedTags = parseGeneratedTags(
-                  modelManager.summarizeText(tagSource, tagPrompt),
-                )
-                check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
-                currentCoroutineContext().ensureActive()
-                var metadataChanged = database.addAiGeneratedTags(task.articleId, generatedTags)
-
-                if (database.isUncategorizedBookmarkForAiEnrichment(task.articleId)) {
-                  val existingFolders = database.listExistingFolderNamesForAiEnrichment()
-                  if (existingFolders.isNotEmpty()) {
-                    val folderSource = buildString {
-                      append(tagSource)
-                      append("\n\nタグ: ")
-                      append(generatedTags.joinToString("、"))
-                    }
-                    val folderName = parseGeneratedFolder(
-                      raw = modelManager.summarizeText(
-                        folderSource,
-                        buildAutoFolderPrompt(existingFolders),
-                      ),
-                      existingFolderNames = existingFolders,
-                    )
-                    currentCoroutineContext().ensureActive()
-                    if (
-                      folderName != null &&
-                      database.assignExistingFolderForAiEnrichment(task.articleId, folderName)
-                    ) {
-                      metadataChanged = true
-                    }
-                  }
-                }
-
-                if (metadataChanged) {
-                  DataChangeNotifier.shared.notifyChanged()
-                }
-              }
-
-              database.completeRunningSummaryTask(task.articleId)
-            } catch (error: CancellationException) {
-              throw error
-            } catch (error: Throwable) {
-              database.failRunningSummaryTask(task.articleId, error.userMessage())
-            }
-          }
-
-          Result.success()
-        } finally {
-          modelManager.close()
-          database.close()
+    return withContext(Dispatchers.IO) {
+      val database = YomitoriDatabase.create(applicationContext)
+      try {
+        database.requeueInterruptedSummaryTasks()
+        if (SummaryQueue.executionState(applicationContext).paused) {
+          return@withContext Result.success()
         }
+
+        val priority = database.peekNextSummaryTaskPriority()
+          ?: return@withContext Result.success()
+        LocalAiBackgroundTaskGate.withPermit(priority) {
+          if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
+          val task = database.claimNextSummaryTaskByPriority() ?: return@withPermit
+          processTask(database, task)
+        }
+
+        if (
+          !SummaryQueue.executionState(applicationContext).paused &&
+          database.peekNextSummaryTaskPriority() != null
+        ) {
+          SummaryQueue.kick(applicationContext)
+        }
+        Result.success()
+      } finally {
+        database.close()
       }
+    }
+  }
+
+  private suspend fun processTask(
+    database: YomitoriDatabase,
+    task: SummaryTaskRecord,
+  ) {
+    val article = database.findArticle(task.articleId)
+    if (article == null) {
+      database.failRunningSummaryTask(task.articleId, "記事が見つかりません")
+      return
+    }
+
+    val modelManager = LocalModelManager(applicationContext)
+    val summaryPromptStore = SummaryPromptStore(applicationContext)
+    try {
+      try {
+        setForeground(createForegroundInfo(article.title))
+        val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
+        val summary = if (cached != null) {
+          cached.summary
+        } else {
+          val selectedModel = modelManager.selectedModel()
+            ?: error("要約モデルをダウンロードして選択してください")
+          val prompt = summaryPromptStore.prompt.value
+          val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
+
+          database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
+          val articleText = ArticleContentClient().fetchArticleText(article.url)
+          currentCoroutineContext().ensureActive()
+          summarizeWithProgress(
+            database = database,
+            modelManager = modelManager,
+            articleId = task.articleId,
+            articleText = articleText,
+            prompt = prompt,
+          ).also { generated ->
+            currentCoroutineContext().ensureActive()
+            database.saveSummary(task.articleId, generated, cacheKey)
+          }
+        }
+
+        if (database.isBookmarkedForAiEnrichment(task.articleId)) {
+          currentCoroutineContext().ensureActive()
+          modelManager.selectedModel()
+            ?: error("AIタグ生成用のモデルをダウンロードして選択してください")
+          val tagSource = buildString {
+            append("タイトル: ")
+            append(article.title)
+            append("\n\n要約:\n")
+            append(summary)
+          }
+          val tagPrompt = buildAutoTagPrompt(database.listExistingTagNamesForAiEnrichment())
+          val generatedTags = parseGeneratedTags(
+            modelManager.summarizeText(tagSource, tagPrompt),
+          )
+          check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
+          currentCoroutineContext().ensureActive()
+          var metadataChanged = database.addAiGeneratedTags(task.articleId, generatedTags)
+
+          if (database.isUncategorizedBookmarkForAiEnrichment(task.articleId)) {
+            val existingFolders = database.listExistingFolderNamesForAiEnrichment()
+            if (existingFolders.isNotEmpty()) {
+              val folderSource = buildString {
+                append(tagSource)
+                append("\n\nタグ: ")
+                append(generatedTags.joinToString("、"))
+              }
+              val folderName = parseGeneratedFolder(
+                raw = modelManager.summarizeText(
+                  folderSource,
+                  buildAutoFolderPrompt(existingFolders),
+                ),
+                existingFolderNames = existingFolders,
+              )
+              currentCoroutineContext().ensureActive()
+              if (
+                folderName != null &&
+                database.assignExistingFolderForAiEnrichment(task.articleId, folderName)
+              ) {
+                metadataChanged = true
+              }
+            }
+          }
+
+          if (metadataChanged) {
+            DataChangeNotifier.shared.notifyChanged()
+          }
+        }
+
+        database.completeRunningSummaryTask(task.articleId)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        database.failRunningSummaryTask(task.articleId, error.userMessage())
+      }
+    } finally {
+      modelManager.close()
     }
   }
 
