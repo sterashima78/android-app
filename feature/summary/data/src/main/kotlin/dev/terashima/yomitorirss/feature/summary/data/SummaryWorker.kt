@@ -42,23 +42,15 @@ class SummaryWorker(
       val database = YomitoriDatabase.create(applicationContext)
       try {
         database.requeueInterruptedSummaryTasks()
-        if (SummaryQueue.executionState(applicationContext).paused) {
-          return@withContext Result.success()
-        }
 
-        val priority = database.peekNextSummaryTaskPriority()
-          ?: return@withContext Result.success()
-        LocalAiBackgroundTaskGate.withPermit(priority) {
-          if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
-          val task = database.claimNextSummaryTaskByPriority() ?: return@withPermit
-          processTask(database, task)
-        }
-
-        if (
-          !SummaryQueue.executionState(applicationContext).paused &&
-          database.peekNextSummaryTaskPriority() != null
-        ) {
-          SummaryQueue.kick(applicationContext)
+        while (!SummaryQueue.executionState(applicationContext).paused) {
+          currentCoroutineContext().ensureActive()
+          val priority = database.peekNextSummaryTaskPriority() ?: break
+          LocalAiBackgroundTaskGate.withPermit(priority) {
+            if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
+            val task = database.claimNextSummaryTaskByPriority() ?: return@withPermit
+            processTask(database, task)
+          }
         }
         Result.success()
       } finally {
