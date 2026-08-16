@@ -33,11 +33,13 @@ fun ModelManagerDialog(
   models: List<AiModelStatus>,
   inferenceBackend: AiInferenceBackend,
   thinkingEnabled: Boolean,
+  speculativeDecodingEnabled: Boolean,
   progressModelId: String?,
   progressText: String?,
   onDismiss: () -> Unit,
   onBackendChange: (AiInferenceBackend) -> Unit,
   onThinkingChange: (Boolean) -> Unit,
+  onSpeculativeDecodingChange: (Boolean) -> Unit,
   onDownload: (String) -> Unit,
   onSelect: (String) -> Unit,
   onDelete: (String) -> Unit,
@@ -73,6 +75,24 @@ fun ModelManagerDialog(
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (selectedModel?.supportsSpeculativeDecoding == true) {
+              Spacer(Modifier.height(12.dp))
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                  Text("Speculative decoding", fontWeight = FontWeight.SemiBold)
+                  Text(
+                    "複数トークンを先読みして検証し、対応する処理では生成を高速化します。効果は端末や処理内容によって異なります。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
+                Switch(
+                  checked = speculativeDecodingEnabled,
+                  onCheckedChange = onSpeculativeDecodingChange,
+                  enabled = supported && selectedModel.downloaded,
+                )
+              }
+            }
             if (selectedModel?.supportsThinking == true) {
               Spacer(Modifier.height(12.dp))
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -101,7 +121,7 @@ fun ModelManagerDialog(
                 Text(model.name, fontWeight = FontWeight.SemiBold)
                 Text(model.description, style = MaterialTheme.typography.bodySmall)
                 Text(
-                  "${formatBytes(model.sizeBytes)} · ${model.quantization}${if (model.supportsThinking) " · Thinking対応" else ""}${if (model.memoryLow) " · メモリ不足の可能性" else ""}",
+                  "${formatBytes(model.sizeBytes)} · ${model.quantization}${if (model.supportsSpeculativeDecoding) " · Speculative decoding対応" else ""}${if (model.supportsThinking) " · Thinking対応" else ""}${if (model.memoryLow) " · メモリ不足の可能性" else ""}",
                   style = MaterialTheme.typography.labelSmall,
                   color = if (model.memoryLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
