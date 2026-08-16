@@ -432,7 +432,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
     releaseCachedInferenceLocked()
     val inference = LiteRtLmInference(
       file = file,
-      cacheDirectory = modelBackendCacheDirectory(model, backend, speculativeDecodingEnabled),
+      cacheDirectory = modelBackendCacheDirectory(
+        model = model,
+        backend = backend,
+        contextTokens = contextTokens,
+        speculativeDecodingEnabled = speculativeDecodingEnabled,
+      ),
       backend = backend,
       contextTokens = contextTokens,
       speculativeDecodingEnabled = speculativeDecodingEnabled,
@@ -582,10 +587,11 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private fun modelBackendCacheDirectory(
     model: ModelDefinition,
     backend: LocalInferenceBackend,
+    contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
   ) = File(
     modelCacheDirectory(model),
-    "${backend.name.lowercase()}/${if (speculativeDecodingEnabled) "speculative" else "standard"}",
+    "${backend.name.lowercase()}/${if (speculativeDecodingEnabled) "speculative" else "standard"}/context-$contextTokens",
   ).apply { mkdirs() }
   private fun modelTokenizerCacheDirectory(model: ModelDefinition) =
     File(modelCacheDirectory(model), "tokenizer").apply { mkdirs() }
