@@ -25,7 +25,7 @@ if (hasAnyReleaseSigningValue && !hasCompleteReleaseSigning) {
 
 android {
   namespace = "dev.terashima.yomitorirss"
-  compileSdk = 37
+  compileSdk = 36
 
   defaultConfig {
     applicationId = "dev.terashima.yomitorirss"
@@ -176,11 +176,11 @@ dependencies {
   implementation(project(":feature:x:ui"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
-  implementation("androidx.core:core-ktx:1.18.0")
-  implementation("androidx.activity:activity-compose:1.13.0")
-  implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0")
-  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
-  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+  implementation("androidx.core:core-ktx:1.17.0")
+  implementation("androidx.activity:activity-compose:1.11.0")
+  implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
+  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.ui:ui-tooling-preview")
