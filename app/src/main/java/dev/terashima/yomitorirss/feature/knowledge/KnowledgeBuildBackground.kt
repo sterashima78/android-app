@@ -100,7 +100,9 @@ internal class WorkManagerKnowledgeBuildTaskController(
       )
     }
 
-    val workInfos = workManager.getWorkInfosForUniqueWork(WORK_NAME).await()
+    val workInfos = withContext(Dispatchers.IO) {
+      workManager.getWorkInfosForUniqueWork(WORK_NAME).get()
+    }
     val workState = when {
       workInfos.any { it.state == WorkInfo.State.RUNNING } -> KnowledgeBuildTaskState.RUNNING
       workInfos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED } ->
