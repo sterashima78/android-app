@@ -35,6 +35,20 @@ class AiTaskQueueViewModelTest {
   }
 
   @Test
+  fun `同じ状態では高優先度タスクを先に並べる`() {
+    val tasks = listOf(
+      task("normal", AiTaskQueueItemState.QUEUED, priority = AiTaskQueueItemPriority.NORMAL),
+      task("low", AiTaskQueueItemState.QUEUED, priority = AiTaskQueueItemPriority.LOW),
+      task("high", AiTaskQueueItemState.QUEUED, priority = AiTaskQueueItemPriority.HIGH),
+    )
+
+    assertEquals(
+      listOf("high", "normal", "low"),
+      prepareVisibleAiTasks(tasks).map(AiTaskQueueItem::id),
+    )
+  }
+
+  @Test
   fun `完了済みだけなら表示対象は空になる`() {
     val tasks = listOf(
       task("completed-1", AiTaskQueueItemState.COMPLETED),
@@ -92,6 +106,7 @@ class AiTaskQueueViewModelTest {
   private fun task(
     id: String,
     state: AiTaskQueueItemState,
+    priority: AiTaskQueueItemPriority = AiTaskQueueItemPriority.NORMAL,
     progressStage: AiTaskQueueProgressStage? = null,
     progressCurrent: Int? = null,
     progressTotal: Int? = null,
@@ -101,6 +116,7 @@ class AiTaskQueueViewModelTest {
     title = id,
     source = "test",
     state = state,
+    priority = priority,
     progressStage = progressStage,
     progressCurrent = progressCurrent,
     progressTotal = progressTotal,
