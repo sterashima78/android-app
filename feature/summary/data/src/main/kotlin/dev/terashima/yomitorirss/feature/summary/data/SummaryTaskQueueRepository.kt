@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
@@ -30,8 +31,19 @@ class DefaultSummaryTaskQueueRepository(
       )
     }
 
+  override suspend fun executionState(): SummaryQueueExecutionState =
+    SummaryQueue.executionState(appContext)
+
   override suspend fun kick() {
     SummaryQueue.kick(appContext)
+  }
+
+  override suspend fun setPaused(paused: Boolean) {
+    SummaryQueue.setPaused(appContext, paused)
+  }
+
+  override suspend fun setResumeWhenCharging(enabled: Boolean) {
+    SummaryQueue.setResumeWhenCharging(appContext, enabled)
   }
 
   override suspend fun stop(articleId: String): Boolean = SummaryQueue.stop(appContext, articleId)

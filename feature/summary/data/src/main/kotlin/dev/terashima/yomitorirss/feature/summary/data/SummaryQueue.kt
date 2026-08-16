@@ -1,18 +1,21 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import java.util.concurrent.TimeUnit
 
 object SummaryQueue {
   private const val QUEUE_NAME = "article-summary-queue"
   private const val TAG = "article-summary"
   private const val CLEANUP_WORK_NAME = "article-summary-task-log-cleanup"
+  private const val RESUME_ON_CHARGING_WORK_NAME = "article-summary-resume-on-charging"
 
   fun enqueue(context: Context, articleId: String, forceRefresh: Boolean): Boolean {
     val appContext = context.applicationContext
@@ -76,6 +79,75 @@ object SummaryQueue {
     scheduleWorker(appContext)
   }
 
+  fun executionState(context: Context): SummaryQueueExecutionState {
+    val preferences = SummaryQueueExecutionPreferences(context)
+    return SummaryQueueExecutionState(
+      paused = preferences.paused,
+      resumeWhenCharging = preferences.resumeWhenCharging,
+    )
+  }
+
+  fun setPaused(context: Context, paused: Boolean) {
+    val appContext = context.applicationContext
+    val preferences = SummaryQueueExecutionPreferences(appContext)
+    if (preferences.paused == paused) {
+      if (paused) ensureResumeOnChargingScheduled(appContext)
+      return
+    }
+
+    if (paused) {
+      preferences.paused = true
+      try {
+        WorkManager.getInstance(appContext).cancelUniqueWork(QUEUE_NAME).result.get()
+        requeueInterruptedTasks(appContext)
+        ensureResumeOnChargingScheduled(appContext)
+      } catch (error: Throwable) {
+        preferences.paused = false
+        runCatching { scheduleWorker(appContext) }
+        throw error
+      }
+    } else {
+      WorkManager.getInstance(appContext).cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
+      preferences.paused = false
+      try {
+        ensureCleanupScheduled(appContext)
+        scheduleWorker(appContext)
+      } catch (error: Throwable) {
+        preferences.paused = true
+        ensureResumeOnChargingScheduled(appContext)
+        throw error
+      }
+    }
+  }
+
+  fun setResumeWhenCharging(context: Context, enabled: Boolean) {
+    val appContext = context.applicationContext
+    val preferences = SummaryQueueExecutionPreferences(appContext)
+    preferences.resumeWhenCharging = enabled
+    if (!preferences.paused) return
+
+    if (enabled) {
+      ensureResumeOnChargingScheduled(appContext)
+    } else {
+      WorkManager.getInstance(appContext).cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
+    }
+  }
+
+  internal fun resumeAutomaticallyWhenCharging(context: Context) {
+    val appContext = context.applicationContext
+    val preferences = SummaryQueueExecutionPreferences(appContext)
+    if (!preferences.paused || !preferences.resumeWhenCharging) return
+
+    preferences.paused = false
+    try {
+      ensureCleanupScheduled(appContext)
+      scheduleWorker(appContext)
+    } catch (error: Throwable) {
+      preferences.paused = true
+      throw error
+    }
+  }
+
   fun stop(context: Context, articleId: String): Boolean {
     val appContext = context.applicationContext
     val database = YomitoriDatabase.create(appContext)
@@ -123,6 +195,11 @@ object SummaryQueue {
   }
 
   private fun scheduleWorker(context: Context) {
+    if (SummaryQueueExecutionPreferences(context).paused) {
+      ensureResumeOnChargingScheduled(context)
+      return
+    }
+
     val request = OneTimeWorkRequestBuilder<SummaryWorker>()
       .addTag(TAG)
       .build()
@@ -131,6 +208,35 @@ object SummaryQueue {
       ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )
+  }
+
+  private fun ensureResumeOnChargingScheduled(context: Context) {
+    val preferences = SummaryQueueExecutionPreferences(context)
+    if (!preferences.paused || !preferences.resumeWhenCharging) return
+
+    runCatching {
+      val request = OneTimeWorkRequestBuilder<SummaryResumeOnChargingWorker>()
+        .setConstraints(
+          Constraints.Builder()
+            .setRequiresCharging(true)
+            .build(),
+        )
+        .build()
+      WorkManager.getInstance(context).enqueueUniqueWork(
+        RESUME_ON_CHARGING_WORK_NAME,
+        ExistingWorkPolicy.KEEP,
+        request,
+      )
+    }
+  }
+
+  private fun requeueInterruptedTasks(context: Context) {
+    val database = YomitoriDatabase.create(context)
+    try {
+      database.requeueInterruptedSummaryTasks()
+    } finally {
+      database.close()
+    }
   }
 
   private fun ensureCleanupScheduled(context: Context) {

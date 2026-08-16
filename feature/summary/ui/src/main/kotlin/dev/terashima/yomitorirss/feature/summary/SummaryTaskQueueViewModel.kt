@@ -3,8 +3,6 @@ package dev.terashima.yomitorirss.feature.summary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
-import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,6 +16,8 @@ import kotlinx.coroutines.launch
 data class SummaryTaskQueueUiState(
   val tasks: List<SummaryQueueTask> = emptyList(),
   val loading: Boolean = true,
+  val queuePaused: Boolean = false,
+  val resumeWhenCharging: Boolean = true,
   val actionError: String? = null,
 )
 
@@ -45,13 +45,31 @@ class SummaryTaskQueueViewModel(
     pollingJob = null
   }
 
-  fun stop(articleId: String) = runAction { repository.stop(articleId) }
+  fun setPaused(paused: Boolean) {
+    _state.update { it.copy(queuePaused = paused, actionError = null) }
+    runExecutionAction { repository.setPaused(paused) }
+  }
 
-  fun cancel(articleId: String) = runAction { repository.cancel(articleId) }
+  fun setResumeWhenCharging(enabled: Boolean) {
+    _state.update { it.copy(resumeWhenCharging = enabled, actionError = null) }
+    runExecutionAction { repository.setResumeWhenCharging(enabled) }
+  }
 
-  fun resume(articleId: String) = runAction { repository.resume(articleId) }
+  fun stop(articleId: String) = runTaskAction { repository.stop(articleId) }
 
-  private fun runAction(action: suspend () -> Boolean) {
+  fun cancel(articleId: String) = runTaskAction { repository.cancel(articleId) }
+
+  fun resume(articleId: String) = runTaskAction { repository.resume(articleId) }
+
+  private fun runExecutionAction(action: suspend () -> Unit) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { action() }
+        .onFailure(::showError)
+      reload()
+    }
+  }
+
+  private fun runTaskAction(action: suspend () -> Boolean) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { action() }
         .onSuccess { changed ->
@@ -67,9 +85,21 @@ class SummaryTaskQueueViewModel(
   }
 
   private suspend fun reload() {
-    runCatching { repository.listTasks() }
-      .onSuccess { tasks ->
-        _state.update { it.copy(tasks = tasks, loading = false) }
+    runCatching {
+      QueueSnapshot(
+        tasks = repository.listTasks(),
+        executionState = repository.executionState(),
+      )
+    }
+      .onSuccess { snapshot ->
+        _state.update {
+          it.copy(
+            tasks = snapshot.tasks,
+            loading = false,
+            queuePaused = snapshot.executionState.paused,
+            resumeWhenCharging = snapshot.executionState.resumeWhenCharging,
+          )
+        }
       }
       .onFailure { error ->
         _state.update { it.copy(loading = false, actionError = error.userMessage()) }
@@ -93,6 +123,11 @@ class SummaryTaskQueueViewModel(
       return SummaryTaskQueueViewModel(repository) as T
     }
   }
+
+  private data class QueueSnapshot(
+    val tasks: List<SummaryQueueTask>,
+    val executionState: SummaryQueueExecutionState,
+  )
 
   private companion object {
     const val POLL_INTERVAL_MILLIS = 1_000L
