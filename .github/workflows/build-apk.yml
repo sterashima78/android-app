@@ -38,7 +38,17 @@ jobs:
       - name: Verify architecture
         run: ./gradlew --no-daemon verifyArchitecture
       - name: Test
-        run: ./gradlew --no-daemon test
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon test 2>&1 | tee gradle-test.log
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: gradle-test-diagnostics
+          path: gradle-test.log
+          if-no-files-found: error
+          retention-days: 1
       - name: Lint
         run: ./gradlew --no-daemon :app:lintRelease
   build:
