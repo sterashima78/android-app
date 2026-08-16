@@ -59,6 +59,7 @@ data class LocalModelStatus(
   val recommended: Boolean,
   val memoryLow: Boolean,
   val supportsThinking: Boolean,
+  val contextTokens: Int,
   val maxInputChars: Int,
   val promptBudgetChars: Int,
   val promptFormat: LocalPromptFormat,
@@ -127,8 +128,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
         recommended = model.recommended,
         memoryLow = deviceMemoryBytes() < model.minDeviceMemoryGb * BYTES_PER_GB,
         supportsThinking = false,
+        contextTokens = model.contextTokens,
         maxInputChars = model.maxInputChars,
-        promptBudgetChars = maxOf(model.maxInputChars, model.contextTokens),
+        promptBudgetChars = model.promptBudgetChars,
         promptFormat = LocalPromptFormat.PLAIN,
       )
     }
@@ -332,6 +334,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
       file = file,
       cacheDirectory = modelBackendCacheDirectory(model, backend),
       backend = backend,
+      contextTokens = model.contextTokens,
     )
     cachedInference = CachedInference(key, inference)
     return inference
@@ -344,6 +347,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   ) = InferenceCacheKey(
     modelId = model.id,
     backend = backend,
+    contextTokens = model.contextTokens,
     fileLength = file.length(),
     fileModifiedAt = file.lastModified(),
   )
@@ -468,6 +472,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private data class InferenceCacheKey(
     val modelId: String,
     val backend: LocalInferenceBackend,
+    val contextTokens: Int,
     val fileLength: Long,
     val fileModifiedAt: Long,
   )
@@ -486,6 +491,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val quantization: String,
     val contextTokens: Int,
     val maxInputChars: Int,
+    val promptBudgetChars: Int,
     val estimatedSizeBytes: Long,
     val fileName: String,
     val downloadUrl: String,
@@ -530,8 +536,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
         source = "litert-community/gemma-4-E2B-it-litert-lm",
         license = "Apache-2.0",
         quantization = "Mixed 2/4/8-bit",
-        contextTokens = 4096,
+        contextTokens = 8192,
         maxInputChars = 2500,
+        promptBudgetChars = 4096,
         estimatedSizeBytes = 2_588_147_712,
         fileName = "gemma-4-E2B-it.litertlm",
         downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/7fa1d78473894f7e736a21d920c3aa80f950c0db/gemma-4-E2B-it.litertlm?download=true",
@@ -545,8 +552,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
         source = "litert-community/gemma-4-E4B-it-litert-lm",
         license = "Apache-2.0",
         quantization = "Mixed 2/4/8-bit",
-        contextTokens = 4096,
+        contextTokens = 8192,
         maxInputChars = 2500,
+        promptBudgetChars = 4096,
         estimatedSizeBytes = 3_659_530_240,
         fileName = "gemma-4-E4B-it.litertlm",
         downloadUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/9695417f248178c63a9f318c6e0c56cb917cb837/gemma-4-E4B-it.litertlm?download=true",
@@ -560,6 +568,7 @@ private class LiteRtLmInference(
   file: File,
   cacheDirectory: File,
   backend: LocalInferenceBackend,
+  contextTokens: Int,
 ) : AutoCloseable {
   private val engine = Engine(
     EngineConfig(
@@ -569,6 +578,7 @@ private class LiteRtLmInference(
         LocalInferenceBackend.GPU -> Backend.GPU()
       },
       cacheDir = cacheDirectory.absolutePath,
+      maxNumTokens = contextTokens,
     ),
   ).also { it.initialize() }
 
