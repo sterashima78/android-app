@@ -50,8 +50,13 @@ internal class WorkManagerKnowledgeBuildTaskController(
   }
 
   fun kick() {
+    if (!state.requested || state.stopped || state.failed) return
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
-    if (!state.requested || state.stopped || state.failed || execution.paused) return
+    if (execution.paused) {
+      setResumeOnChargingScheduled(true)
+      return
+    }
+    setResumeOnChargingScheduled(false)
     enqueueBuildWork()
   }
 
@@ -71,6 +76,7 @@ internal class WorkManagerKnowledgeBuildTaskController(
     if (!state.requested) return false
     state.clear()
     workManager.cancelUniqueWork(WORK_NAME).await()
+    workManager.cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME).await()
     return true
   }
 
