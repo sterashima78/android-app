@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val libraryDatabaseSchema = DatabaseSchemaContribution(
@@ -22,4 +23,13 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
     )
     ensureLibraryOrganizationSchema(db)
   },
+  migrations = listOf(
+    DatabaseMigration(targetVersion = 18) { db ->
+      db.delete(
+        "library_organization_batch_items",
+        "status IN (?, ?)",
+        arrayOf("PENDING_REVIEW", "DEFERRED"),
+      )
+    },
+  ),
 )
