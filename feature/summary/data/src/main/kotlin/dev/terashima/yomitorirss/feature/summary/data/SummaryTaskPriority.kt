@@ -31,6 +31,9 @@ internal fun YomitoriDatabase.peekNextSummaryTaskPriority(): LocalAiBackgroundTa
   }
 }
 
+internal fun YomitoriDatabase.claimNextSummaryTaskByPriority(): SummaryTaskRecord? =
+  claimNextSummaryTask()
+
 internal fun YomitoriDatabase.summaryTaskPriorityOrderByClause(): String =
   if (hasReadLaterBookmarkSchema()) {
     """
