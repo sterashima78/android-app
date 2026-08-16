@@ -93,21 +93,22 @@ class LibraryOrganizationResumeOnChargingWorker(
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (!execution.resumeWhenCharging) return@withContext Result.success()
 
-    // This preference is shared with the summary queue. Either charging worker may clear the
-    // global gate first, so both workers treat the operation as idempotent.
+    // This worker is only armed for a globally paused, still-running library batch. An explicitly
+    // paused batch keeps its PAUSED state and is never resumed only because charging started.
     execution.paused = false
 
     val database = YomitoriDatabase.create(applicationContext)
     try {
       val repository = DefaultLibraryOrganizationRepository(DatabaseConnection(database))
       when (repository.batchSnapshot()?.status) {
-        LibraryOrganizationBatchStatus.PAUSED -> repository.resumeBatch()
-        LibraryOrganizationBatchStatus.RUNNING -> Unit
+        LibraryOrganizationBatchStatus.RUNNING -> {
+          DataChangeNotifier.shared.notifyChanged()
+          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
+        }
+        LibraryOrganizationBatchStatus.PAUSED,
         LibraryOrganizationBatchStatus.COMPLETED,
-        null -> return@withContext Result.success()
+        null -> Unit
       }
-      DataChangeNotifier.shared.notifyChanged()
-      WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
       Result.success()
     } catch (cancelled: CancellationException) {
       throw cancelled
