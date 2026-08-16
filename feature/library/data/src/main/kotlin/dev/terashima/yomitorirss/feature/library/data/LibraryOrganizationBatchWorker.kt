@@ -104,6 +104,8 @@ class LibraryOrganizationResumeOnChargingWorker(
       DataChangeNotifier.shared.notifyChanged()
       WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
       Result.success()
+    } catch (cancelled: CancellationException) {
+      throw cancelled
     } catch (_: Throwable) {
       Result.retry()
     } finally {
