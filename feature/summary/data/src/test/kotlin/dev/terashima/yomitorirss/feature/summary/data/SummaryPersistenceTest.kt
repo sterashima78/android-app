@@ -29,7 +29,7 @@ class SummaryPersistenceTest {
       context,
       DatabaseSchema(
         version = 1,
-        contributions = listOf(testFeedSchema, articleDatabaseSchema, summaryDatabaseSchema),
+        contributions = listOf(testFeedSchema, testArticleSchema, summaryDatabaseSchema),
       ),
     )
   }
@@ -87,6 +87,11 @@ class SummaryPersistenceTest {
       createSchema = { db ->
         db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL)")
       },
+    )
+
+    val testArticleSchema = DatabaseSchemaContribution(
+      owner = articleDatabaseSchema.owner,
+      createSchema = articleDatabaseSchema.createSchema,
     )
   }
 }
