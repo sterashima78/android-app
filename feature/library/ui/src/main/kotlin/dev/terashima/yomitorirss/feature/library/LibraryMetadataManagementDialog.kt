@@ -61,6 +61,7 @@ fun LibraryMetadataManagementDialog(
   onDismiss: () -> Unit,
 ) {
   var sectionName by rememberSaveable { mutableStateOf(MetadataManagementSection.TAGS.name) }
+  var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
   var showAiOrganizer by rememberSaveable { mutableStateOf(false) }
   val section = MetadataManagementSection.valueOf(sectionName)
   val snackbarHostState = remember { SnackbarHostState() }
@@ -74,7 +75,9 @@ fun LibraryMetadataManagementDialog(
   }
 
   Dialog(
-    onDismissRequest = onDismiss,
+    onDismissRequest = {
+      if (selectedGroupId != null) selectedGroupId = null else onDismiss()
+    },
     properties = DialogProperties(
       usePlatformDefaultWidth = false,
       decorFitsSystemWindows = false,
@@ -119,7 +122,10 @@ fun LibraryMetadataManagementDialog(
             MetadataManagementSection.entries.forEach { candidate ->
               FilterChip(
                 selected = candidate == section,
-                onClick = { sectionName = candidate.name },
+                onClick = {
+                  sectionName = candidate.name
+                  selectedGroupId = null
+                },
                 label = { Text(candidate.label) },
               )
             }
@@ -134,11 +140,15 @@ fun LibraryMetadataManagementDialog(
             section == MetadataManagementSection.TAGS -> TagManagementContent(
               books = books,
               state = state,
+              selectedGroupId = selectedGroupId,
+              onSelectGroup = { selectedGroupId = it },
               onSave = onSave,
             )
             section == MetadataManagementSection.COLLECTIONS -> CollectionManagementContent(
               books = books,
               state = state,
+              selectedGroupId = selectedGroupId,
+              onSelectGroup = { selectedGroupId = it },
               onSave = onSave,
             )
             else -> SeriesManagementContent(
@@ -183,6 +193,8 @@ private fun LoadingMetadataManagement() {
 private fun TagManagementContent(
   books: List<LibraryBook>,
   state: LibraryOrganizationUiState,
+  selectedGroupId: String?,
+  onSelectGroup: (String?) -> Unit,
   onSave: (LibraryBook, LibraryOrganizationDraft) -> Unit,
 ) {
   val groups = remember(books, state.snapshot) {
@@ -193,6 +205,8 @@ private fun TagManagementContent(
     emptyMessage = "書籍に設定されているタグはありません。",
     groups = groups,
     state = state,
+    selectedGroupId = selectedGroupId,
+    onSelectGroup = onSelectGroup,
     removeLabel = "タグを外す",
     onRemove = { book, groupId ->
       onSave(book, state.snapshot.organizationFor(book).withoutTag(groupId))
@@ -204,6 +218,8 @@ private fun TagManagementContent(
 private fun CollectionManagementContent(
   books: List<LibraryBook>,
   state: LibraryOrganizationUiState,
+  selectedGroupId: String?,
+  onSelectGroup: (String?) -> Unit,
   onSave: (LibraryBook, LibraryOrganizationDraft) -> Unit,
 ) {
   val groups = remember(books, state.snapshot) {
@@ -214,6 +230,8 @@ private fun CollectionManagementContent(
     emptyMessage = "書籍に設定されているコレクションはありません。",
     groups = groups,
     state = state,
+    selectedGroupId = selectedGroupId,
+    onSelectGroup = onSelectGroup,
     removeLabel = "コレクションから外す",
     onRemove = { book, groupId ->
       onSave(book, state.snapshot.organizationFor(book).withoutCollection(groupId))
@@ -227,14 +245,15 @@ private fun MetadataGroupBrowser(
   emptyMessage: String,
   groups: List<LibraryMetadataBookGroup>,
   state: LibraryOrganizationUiState,
+  selectedGroupId: String?,
+  onSelectGroup: (String?) -> Unit,
   removeLabel: String,
   onRemove: (LibraryBook, String) -> Unit,
 ) {
-  var selectedGroupId by rememberSaveable(groupTypeLabel) { mutableStateOf<String?>(null) }
   val selectedGroup = groups.firstOrNull { it.id == selectedGroupId }
 
   LaunchedEffect(groups, selectedGroupId) {
-    if (selectedGroupId != null && selectedGroup == null) selectedGroupId = null
+    if (selectedGroupId != null && selectedGroup == null) onSelectGroup(null)
   }
 
   if (selectedGroup != null) {
@@ -243,7 +262,7 @@ private fun MetadataGroupBrowser(
       group = selectedGroup,
       state = state,
       removeLabel = removeLabel,
-      onBack = { selectedGroupId = null },
+      onBack = { onSelectGroup(null) },
       onRemove = onRemove,
     )
     return
@@ -275,7 +294,7 @@ private fun MetadataGroupBrowser(
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 12.dp)
-          .clickable { selectedGroupId = group.id },
+          .clickable { onSelectGroup(group.id) },
       ) {
         Column(
           modifier = Modifier.padding(14.dp),
