@@ -150,7 +150,7 @@ private fun AiTaskRow(
       headlineContent = { Text(taskTitle(item)) },
       supportingContent = {
         Column {
-          Text("${taskSource(item)} ・ ${statusLabel(item.state)}")
+          Text("${taskSource(item)} ・ ${statusLabel(item.state)} ・ ${priorityLabel(item.priority)}")
           aiTaskProgressPresentation(item)?.let { progress ->
             Text(
               text = progress.label,
@@ -243,6 +243,12 @@ private fun taskTitle(item: AiTaskQueueItem): String = item.title
 private fun taskSource(item: AiTaskQueueItem): String = when (item.kind) {
   AiTaskQueueItemKind.SUMMARY -> "要約 ・ ${item.source}"
   AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書整理 ・ ${item.source}"
+}
+
+private fun priorityLabel(priority: AiTaskQueueItemPriority): String = when (priority) {
+  AiTaskQueueItemPriority.HIGH -> "優先度 高"
+  AiTaskQueueItemPriority.NORMAL -> "優先度 通常"
+  AiTaskQueueItemPriority.LOW -> "優先度 低"
 }
 
 private fun statusLabel(state: AiTaskQueueItemState): String = when (state) {
