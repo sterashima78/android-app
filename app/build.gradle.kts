@@ -132,6 +132,8 @@ dependencies {
   implementation(project(":feature:chat:domain"))
   implementation(project(":feature:chat:data"))
   implementation(project(":feature:chat:ui"))
+  implementation(project(":feature:game:domain"))
+  implementation(project(":feature:game:ui"))
   implementation(project(":feature:integrated:ui"))
   implementation(project(":feature:library:domain"))
   implementation(project(":feature:library:data"))
