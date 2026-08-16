@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class AiTaskQueueUiState(
   val tasks: List<AiTaskQueueItem> = emptyList(),
+  val taskCounts: AiTaskQueueCounts = AiTaskQueueCounts(),
   val loading: Boolean = true,
   val queuePaused: Boolean = false,
   val resumeWhenCharging: Boolean = true,
@@ -88,6 +89,7 @@ class AiTaskQueueViewModel(
     runCatching {
       QueueSnapshot(
         tasks = repository.listTasks(),
+        taskCounts = repository.taskCounts(),
         executionState = repository.executionState(),
       )
     }
@@ -95,6 +97,7 @@ class AiTaskQueueViewModel(
         _state.update {
           it.copy(
             tasks = prepareVisibleAiTasks(snapshot.tasks),
+            taskCounts = snapshot.taskCounts,
             loading = false,
             queuePaused = snapshot.executionState.paused,
             resumeWhenCharging = snapshot.executionState.resumeWhenCharging,
@@ -126,6 +129,7 @@ class AiTaskQueueViewModel(
 
   private data class QueueSnapshot(
     val tasks: List<AiTaskQueueItem>,
+    val taskCounts: AiTaskQueueCounts,
     val executionState: AiTaskQueueExecutionState,
   )
 
