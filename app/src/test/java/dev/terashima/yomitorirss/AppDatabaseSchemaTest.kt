@@ -120,6 +120,16 @@ class AppDatabaseSchemaTest {
         arrayOf("APPLIED"),
       ),
     )
+    assertEquals(
+      "COMPLETED",
+      upgraded.rawQuery(
+        "SELECT status FROM library_organization_batches WHERE batch_id = ?",
+        arrayOf("legacy-batch"),
+      ).use { cursor ->
+        check(cursor.moveToFirst())
+        cursor.getString(0)
+      },
+    )
   }
 
   @Test
@@ -149,7 +159,7 @@ private fun insertLibraryOrganizationBatch(db: SQLiteDatabase, batchId: String) 
     null,
     ContentValues().apply {
       put("batch_id", batchId)
-      put("status", "COMPLETED")
+      put("status", "RUNNING")
       put("created_at", 1L)
       put("updated_at", 1L)
     },
