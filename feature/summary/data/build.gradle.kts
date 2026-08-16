@@ -4,7 +4,7 @@ plugins {
 
 android {
   namespace = "dev.terashima.yomitorirss.feature.summary.data"
-  compileSdk = 37
+  compileSdk = 36
 
   defaultConfig {
     minSdk = 29
@@ -23,7 +23,7 @@ dependencies {
   implementation(project(":core:database"))
   implementation(project(":core:ai-runtime"))
 
-  implementation("androidx.core:core-ktx:1.18.0")
+  implementation("androidx.core:core-ktx:1.17.0")
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
