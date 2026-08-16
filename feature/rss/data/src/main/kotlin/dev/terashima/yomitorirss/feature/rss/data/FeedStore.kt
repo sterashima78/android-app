@@ -4,6 +4,8 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.ContentType
+import dev.terashima.yomitorirss.feature.article.toContentTypeOrNull
 import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
@@ -122,6 +124,26 @@ internal class FeedStore(
     require(updated > 0) { "フィードが見つかりません" }
   }
 
+  fun setFeedContentType(feedId: String, contentType: ContentType?) {
+    val updated = database.writable.update(
+      "feeds",
+      contentValues("content_type" to contentType?.name),
+      "id=?",
+      arrayOf(feedId),
+    )
+    require(updated > 0) { "フィードが見つかりません" }
+  }
+
+  fun setFolderContentType(folderId: String, contentType: ContentType?) {
+    val updated = database.writable.update(
+      "feed_folders",
+      contentValues("content_type" to contentType?.name),
+      "id=?",
+      arrayOf(folderId),
+    )
+    require(updated > 0) { "フォルダが見つかりません" }
+  }
+
   fun updateFeedSuccess(feed: Feed, parsed: ParsedFeed, etag: String?, modified: String?) {
     database.transaction {
       val now = nowIso()
@@ -229,6 +251,7 @@ private fun Feed.values(): ContentValues = contentValues(
   "last_error" to lastError,
   "created_at" to createdAt,
   "folder_id" to folderId,
+  "content_type" to contentTypeOverride?.name,
 )
 
 private fun FeedFolder.values(): ContentValues = contentValues(
@@ -236,6 +259,7 @@ private fun FeedFolder.values(): ContentValues = contentValues(
   "name" to name,
   "normalized_name" to normalizedName,
   "created_at" to createdAt,
+  "content_type" to contentTypeOverride?.name,
 )
 
 private fun contentValues(vararg values: Pair<String, String?>): ContentValues = ContentValues().apply {
@@ -255,6 +279,7 @@ private fun Cursor.feed(): Feed = Feed(
   lastError = nullableString("last_error"),
   createdAt = string("created_at"),
   folderId = nullableString("folder_id"),
+  contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
 )
 
 private fun Cursor.feedFolder(): FeedFolder = FeedFolder(
@@ -262,6 +287,7 @@ private fun Cursor.feedFolder(): FeedFolder = FeedFolder(
   name = string("name"),
   normalizedName = string("normalized_name"),
   createdAt = string("created_at"),
+  contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
 )
 
 private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
