@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.organizationKey
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskPriority
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
@@ -180,6 +181,7 @@ internal class CompositeAiTaskQueueRepository(
     title = task.articleTitle,
     source = task.sourceTitle,
     state = task.state.toAiTaskState(),
+    priority = task.priority.toAiTaskPriority(),
     progressStage = task.progressStage?.toAiTaskProgressStage(),
     progressCurrent = task.progressCurrent,
     progressTotal = task.progressTotal,
@@ -208,6 +210,7 @@ internal class CompositeAiTaskQueueRepository(
       title = book?.title ?: candidate.key.sourceId,
       source = candidate.key.source.label,
       state = state,
+      priority = AiTaskQueueItemPriority.NORMAL,
       error = candidate.error,
       canResume = !globalPaused &&
         batchStatus != LibraryOrganizationBatchStatus.PAUSED &&
@@ -238,6 +241,12 @@ internal class CompositeAiTaskQueueRepository(
 
   private fun libraryTaskId(candidate: LibraryOrganizationCandidate): String =
     "$LIBRARY_PREFIX${candidate.batchId}:${candidate.key.source.name}:${candidate.key.sourceId}"
+
+  private fun SummaryQueueTaskPriority.toAiTaskPriority(): AiTaskQueueItemPriority = when (this) {
+    SummaryQueueTaskPriority.HIGH -> AiTaskQueueItemPriority.HIGH
+    SummaryQueueTaskPriority.NORMAL -> AiTaskQueueItemPriority.NORMAL
+    SummaryQueueTaskPriority.LOW -> AiTaskQueueItemPriority.LOW
+  }
 
   private fun SummaryQueueTaskState.toAiTaskState(): AiTaskQueueItemState = when (this) {
     SummaryQueueTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
