@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:widget:domain"))
+  implementation(project(":feature:article:domain"))
   implementation(project(":feature:rss:domain"))
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:backup:domain"))
