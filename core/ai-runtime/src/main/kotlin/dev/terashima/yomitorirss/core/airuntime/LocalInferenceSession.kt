@@ -31,6 +31,10 @@ internal fun interface IdleReleaseScheduler {
 /**
  * Reference-counts inference sessions and releases the retained engine only after a stable idle
  * period. A new session cancels a pending release before it can evict the engine.
+ *
+ * [close] cancels only a pending idle release. LocalModelManager historically remains reusable
+ * after close(), which is required by the benchmark path that evicts retained runtime resources
+ * before constructing benchmark engines.
  */
 internal class LocalInferenceSessionTracker(
   private val idleTimeoutMillis: Long,
@@ -40,11 +44,9 @@ internal class LocalInferenceSessionTracker(
   private val lock = Any()
   private var activeSessions = 0
   private var pendingRelease: IdleReleaseHandle? = null
-  private var closed = false
 
   fun openSession(): LocalInferenceSession {
     synchronized(lock) {
-      check(!closed) { "推論セッション管理は終了しています" }
       pendingRelease?.cancel()
       pendingRelease = null
       activeSessions += 1
@@ -58,14 +60,14 @@ internal class LocalInferenceSessionTracker(
     synchronized(lock) {
       check(activeSessions > 0) { "推論セッション数が不正です" }
       activeSessions -= 1
-      if (activeSessions != 0 || closed) return
+      if (activeSessions != 0) return
 
       pendingRelease?.cancel()
       pendingRelease = scheduler.schedule(idleTimeoutMillis) {
         // Keep the tracker lock while evicting. A newly opening session therefore cannot race with
         // Engine.close(); it starts only after the old retained Engine has been fully released.
         synchronized(lock) {
-          if (closed || activeSessions != 0) return@synchronized
+          if (activeSessions != 0) return@synchronized
           pendingRelease = null
           onIdle()
         }
@@ -75,8 +77,6 @@ internal class LocalInferenceSessionTracker(
 
   override fun close() {
     synchronized(lock) {
-      if (closed) return
-      closed = true
       pendingRelease?.cancel()
       pendingRelease = null
     }
