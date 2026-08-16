@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskCounts
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskPriority
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
@@ -15,8 +16,10 @@ class DefaultSummaryTaskQueueRepository(
 ) : SummaryTaskQueueRepository {
   private val appContext = context.applicationContext
 
-  override suspend fun listTasks(): List<SummaryQueueTask> =
-    database.listSummaryTaskItems().map { item ->
+  override suspend fun listTasks(): List<SummaryQueueTask> {
+    val items = database.listSummaryTaskItems()
+    val highPriorityArticleIds = database.readLaterSummaryTaskIds(items.map { it.task.articleId })
+    return items.map { item ->
       SummaryQueueTask(
         articleId = item.task.articleId,
         articleTitle = item.articleTitle,
@@ -26,11 +29,17 @@ class DefaultSummaryTaskQueueRepository(
         startedAt = item.task.startedAt,
         finishedAt = item.task.finishedAt,
         error = item.task.error,
+        priority = if (item.task.articleId in highPriorityArticleIds) {
+          SummaryQueueTaskPriority.HIGH
+        } else {
+          SummaryQueueTaskPriority.NORMAL
+        },
         progressStage = item.task.progressStage.toSummaryQueueTaskProgressStage(),
         progressCurrent = item.task.progressCurrent,
         progressTotal = item.task.progressTotal,
       )
     }
+  }
 
   override suspend fun taskCounts(): SummaryQueueTaskCounts = database.countSummaryQueueTasks()
 
