@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.organizationKey
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 
@@ -179,6 +180,7 @@ internal class CompositeAiTaskQueueRepository(
     title = task.articleTitle,
     source = task.sourceTitle,
     state = task.state.toAiTaskState(),
+    progressStage = task.progressStage?.toAiTaskProgressStage(),
     progressCurrent = task.progressCurrent,
     progressTotal = task.progressTotal,
     error = task.error,
@@ -245,6 +247,16 @@ internal class CompositeAiTaskQueueRepository(
     SummaryQueueTaskState.STOPPED -> AiTaskQueueItemState.STOPPED
     SummaryQueueTaskState.CANCELLED -> AiTaskQueueItemState.CANCELLED
     SummaryQueueTaskState.UNKNOWN -> AiTaskQueueItemState.UNKNOWN
+  }
+
+  private fun SummaryQueueTaskProgressStage.toAiTaskProgressStage(): AiTaskQueueProgressStage = when (this) {
+    SummaryQueueTaskProgressStage.FETCHING_ARTICLE -> AiTaskQueueProgressStage.FETCHING_CONTENT
+    SummaryQueueTaskProgressStage.PREPARING_MODEL -> AiTaskQueueProgressStage.PREPARING_MODEL
+    SummaryQueueTaskProgressStage.GENERATING_SUMMARY -> AiTaskQueueProgressStage.GENERATING
+    SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK -> AiTaskQueueProgressStage.PROCESSING_CHUNK
+    SummaryQueueTaskProgressStage.REDUCING_SUMMARY -> AiTaskQueueProgressStage.REDUCING
+    SummaryQueueTaskProgressStage.FINALIZING_SUMMARY -> AiTaskQueueProgressStage.FINALIZING
+    SummaryQueueTaskProgressStage.UNKNOWN -> AiTaskQueueProgressStage.UNKNOWN
   }
 
   private companion object {

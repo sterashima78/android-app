@@ -16,12 +16,23 @@ enum class AiTaskQueueItemState {
   UNKNOWN,
 }
 
+enum class AiTaskQueueProgressStage {
+  FETCHING_CONTENT,
+  PREPARING_MODEL,
+  GENERATING,
+  PROCESSING_CHUNK,
+  REDUCING,
+  FINALIZING,
+  UNKNOWN,
+}
+
 data class AiTaskQueueItem(
   val id: String,
   val kind: AiTaskQueueItemKind,
   val title: String,
   val source: String,
   val state: AiTaskQueueItemState,
+  val progressStage: AiTaskQueueProgressStage? = null,
   val progressCurrent: Int? = null,
   val progressTotal: Int? = null,
   val pendingReviewCount: Int? = null,

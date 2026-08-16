@@ -151,19 +151,23 @@ private fun AiTaskRow(
       supportingContent = {
         Column {
           Text("${taskSource(item)} ・ ${statusLabel(item.state)}")
-          val current = item.progressCurrent
-          val total = item.progressTotal
-          if (current != null && total != null && total > 0) {
+          aiTaskProgressPresentation(item)?.let { progress ->
             Text(
-              text = "進捗 $current/$total",
+              text = progress.label,
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.padding(top = 4.dp),
             )
-            LinearProgressIndicator(
-              progress = { (current.toFloat() / total.toFloat()).coerceIn(0f, 1f) },
-              modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-            )
+            if (progress.fraction == null) {
+              LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+              )
+            } else {
+              LinearProgressIndicator(
+                progress = { progress.fraction },
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+              )
+            }
           }
           item.pendingReviewCount?.takeIf { it > 0 }?.let { count ->
             Text(
@@ -202,6 +206,36 @@ private fun AiTaskRow(
       }
     }
   }
+}
+
+internal data class AiTaskProgressPresentation(
+  val label: String,
+  val fraction: Float?,
+)
+
+internal fun aiTaskProgressPresentation(item: AiTaskQueueItem): AiTaskProgressPresentation? {
+  if (item.state != AiTaskQueueItemState.RUNNING) return null
+
+  val current = item.progressCurrent
+  val total = item.progressTotal
+  val determinate = current != null && total != null && total > 0
+  val numberedProgress = if (determinate) " $current/$total" else ""
+  val label = when (item.progressStage) {
+    AiTaskQueueProgressStage.FETCHING_CONTENT -> "記事本文を取得中"
+    AiTaskQueueProgressStage.PREPARING_MODEL -> "AIモデルを読み込み中"
+    AiTaskQueueProgressStage.GENERATING -> "要約を生成中"
+    AiTaskQueueProgressStage.PROCESSING_CHUNK -> "長文を分割要約中$numberedProgress"
+    AiTaskQueueProgressStage.REDUCING -> "中間要約を統合中$numberedProgress"
+    AiTaskQueueProgressStage.FINALIZING -> "最終要約を生成中"
+    AiTaskQueueProgressStage.UNKNOWN,
+    null -> if (determinate) "進捗$current/$total" else "AI処理中"
+  }
+  val fraction = if (determinate) {
+    (current!!.toFloat() / total!!.toFloat()).coerceIn(0f, 1f)
+  } else {
+    null
+  }
+  return AiTaskProgressPresentation(label = label, fraction = fraction)
 }
 
 private fun taskTitle(item: AiTaskQueueItem): String = item.title
