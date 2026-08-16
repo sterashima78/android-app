@@ -14,7 +14,7 @@
 
 利用中のLiteRT-LM 0.14.0では `EngineConfig.maxNumTokens` によって入力と出力で共有するKV cacheの最大トークン数を明示できる。同versionのKotlin APIには生成ごとの `maxOutputToken` と、featureから任意文字列を事前tokenizeする公開APIがないため、当初はコンテキスト長から生成・runtime余白を引いたうえで `1文字 = 1.2 tokens` の安全側推定を行っていた。
 
-2026-08-16のADR-0071で、選択中 `.litertlm` に埋め込まれたSentencePiece tokenizerを `core:ai-runtime` から汎用token count capabilityとして利用できるようにした。これにより、文字数推定ではなく選択中モデルと同じtokenizerでrender済みpromptの実トークン数を計測できる。
+2026-08-16のADR-0073で、選択中 `.litertlm` に埋め込まれたSentencePiece tokenizerを `core:ai-runtime` から汎用token count capabilityとして利用できるようにした。これにより、文字数推定ではなく選択中モデルと同じtokenizerでrender済みpromptの実トークン数を計測できる。
 
 ## Decision
 
@@ -28,7 +28,7 @@
 
 `maxInputChars` はChatなど既存featureの文字数ポリシーとして維持し、`promptBudgetChars` も既存利用箇所では4,096文字のままとする。コンテキスト拡張によって他featureの入力サイズを暗黙に増やさない。
 
-`countTokens` の実装詳細と `.litertlm` 内蔵SentencePieceの扱いはADR-0071に従う。階層要約自体はtokenizerのファイル形式やnative libraryを知らない。
+`countTokens` の実装詳細と `.litertlm` 内蔵SentencePieceの扱いはADR-0073に従う。階層要約自体はtokenizerのファイル形式や実装方式を知らない。
 
 ### Summary input budget
 
@@ -87,13 +87,13 @@ LiteRT-LMのEngineを再利用するため、チャンクごとにモデルを�
 
 実token countへ移行してもLiteRT-LM内部制御分と生成出力の余白は必要である。予約領域を保つことで、tokenizer計測値と実際のKV cache利用量の差を安全側に吸収する。
 
-階層要約をfeature側に維持することで、要約アルゴリズムの変更や予算調整がChat、Knowledge、Library等へ暗黙に波及しない。一方、他featureが実token数を必要とする場合はADR-0071の汎用 `countTokens` capabilityを再利用できる。
+階層要約をfeature側に維持することで、要約アルゴリズムの変更や予算調整がChat、Knowledge、Library等へ暗黙に波及しない。一方、他featureが実token数を必要とする場合はADR-0073の汎用 `countTokens` capabilityを再利用できる。
 
 ## References
 
 - ADR-0020: ローカルAIをGemma 4 / LiteRT-LMへ統一する
 - ADR-0056: ローカルAIの機能固有ポリシーをfeatureへ分離する
-- ADR-0071: LiteRT-LMモデル内蔵SentencePieceで実トークン数を計測する
+- ADR-0073: LiteRT-LMモデル内蔵SentencePieceで実トークン数を計測する
 - LiteRT-LM 0.14.0 `EngineConfig.maxNumTokens`
 - Gemma 4 E2B LiteRT model card: https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm
 - Gemma 4 E4B LiteRT model card: https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm
