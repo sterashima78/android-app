@@ -3,9 +3,10 @@ package dev.terashima.yomitorirss.feature.bookmark
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.article.ContentType
+import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,6 +73,18 @@ class BookmarkViewModel(
 
   fun markUnread(article: Article) = performArticleAction(article) {
     articleRepository.markArticleUnread(article.id)
+  }
+
+  fun setArticleContentType(article: Article, contentType: ContentType?) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { articleRepository.setArticleContentType(article.id, contentType) }
+        .onSuccess {
+          reload()
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "コンテンツ種別を変更しました") }
+        }
+        .onFailure(::showError)
+    }
   }
 
   fun createFolder(name: String) = mutateBookmark(successMessage = "フォルダを作成しました") {
