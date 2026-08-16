@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun ArticleContentTypeDialog(
@@ -20,7 +21,7 @@ internal fun ArticleContentTypeDialog(
     onDismissRequest = onDismiss,
     title = { Text("コンテンツ種別") },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.ui.unit.dp(4f))) {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(article.title, style = MaterialTheme.typography.bodyMedium)
         ContentTypeChoice(
           label = "継承（現在: ${article.effectiveContentType.displayLabel()}）",
