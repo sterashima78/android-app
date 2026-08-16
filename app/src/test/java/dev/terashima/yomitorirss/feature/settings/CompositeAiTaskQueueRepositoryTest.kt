@@ -214,7 +214,7 @@ private class FakeScheduler : LibraryOrganizationBatchScheduler {
     kickCount += 1
   }
 
-  override fun cancel() {
+  override suspend fun cancel() {
     cancelCount += 1
   }
 

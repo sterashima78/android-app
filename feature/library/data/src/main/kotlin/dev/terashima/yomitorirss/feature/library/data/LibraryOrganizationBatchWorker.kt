@@ -14,6 +14,7 @@ import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.await
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
@@ -50,8 +51,10 @@ class WorkManagerLibraryOrganizationBatchScheduler(
     enqueueBatchWork()
   }
 
-  override fun cancel() {
-    WorkManager.getInstance(appContext).cancelUniqueWork(LibraryOrganizationBatchWorker.WORK_NAME)
+  override suspend fun cancel() {
+    WorkManager.getInstance(appContext)
+      .cancelUniqueWork(LibraryOrganizationBatchWorker.WORK_NAME)
+      .await()
   }
 
   override fun setResumeOnChargingScheduled(enabled: Boolean) {

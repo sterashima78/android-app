@@ -18,6 +18,7 @@ data class LibraryOrganizationUiState(
   val batch: LibraryOrganizationBatchSnapshot? = null,
   val savingBook: LibraryBookKey? = null,
   val suggestingBook: LibraryBookKey? = null,
+  val reorganizingSeriesBook: LibraryBookKey? = null,
   val suggestions: Map<LibraryBookKey, LibraryOrganizationSuggestion> = emptyMap(),
   val message: String? = null,
 )
@@ -27,6 +28,7 @@ class LibraryOrganizationViewModel(
   private val suggester: LibraryOrganizationSuggester,
   private val batchScheduler: LibraryOrganizationBatchScheduler,
 ) : ViewModel() {
+  private val metadataOrganizer = LibraryMetadataOrganizer(repository, suggester)
   private val _state = MutableStateFlow(LibraryOrganizationUiState())
   val state: StateFlow<LibraryOrganizationUiState> = _state.asStateFlow()
 
@@ -70,36 +72,48 @@ class LibraryOrganizationViewModel(
     book: LibraryBook,
     draft: LibraryOrganizationDraft,
   ) {
+    if (_state.value.reorganizingSeriesBook != null) {
+      _state.update { it.copy(message = "シリーズの再整理が完了してから編集してください") }
+      return
+    }
     val key = book.organizationKey()
     viewModelScope.launch {
       _state.update { it.copy(savingBook = key) }
-      runCatching {
-        repository.save(book, draft)
-        repository.snapshot() to repository.batchSnapshot()
-      }.onSuccess { (snapshot, batch) ->
-        _state.update {
-          it.copy(
-            snapshot = snapshot,
-            batch = batch,
-            savingBook = null,
-            suggestions = it.suggestions - key,
-            message = "整理情報を保存しました",
-          )
+      runCatching { repository.save(book, draft) }
+        .onSuccess {
+          val refreshed = runCatching { repository.snapshot() to repository.batchSnapshot() }.getOrNull()
+          _state.update {
+            it.copy(
+              snapshot = refreshed?.first ?: it.snapshot,
+              batch = refreshed?.second ?: it.batch,
+              savingBook = null,
+              suggestions = it.suggestions - key,
+              message = if (refreshed != null) {
+                "整理情報を保存しました"
+              } else {
+                "整理情報を保存しました。表示は次回の再読込で更新されます"
+              },
+            )
+          }
         }
-      }.onFailure { error ->
-        _state.update {
-          it.copy(
-            savingBook = null,
-            message = error.message ?: "整理情報を保存できませんでした",
-          )
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              savingBook = null,
+              message = error.message ?: "整理情報を保存できませんでした",
+            )
+          }
         }
-      }
     }
   }
 
   fun suggest(book: LibraryBook) {
     if (_state.value.batch?.status == LibraryOrganizationBatchStatus.RUNNING) {
       _state.update { it.copy(message = "一括AI解析中は個別のAI候補を生成できません") }
+      return
+    }
+    if (_state.value.reorganizingSeriesBook != null) {
+      _state.update { it.copy(message = "シリーズの再整理中は個別のAI候補を生成できません") }
       return
     }
     val key = book.organizationKey()
@@ -139,6 +153,10 @@ class LibraryOrganizationViewModel(
       _state.update { it.copy(message = "個別のAI候補生成が完了してから一括AI解析を開始してください") }
       return
     }
+    if (current.reorganizingSeriesBook != null) {
+      _state.update { it.copy(message = "シリーズの再整理が完了してから一括AI解析を開始してください") }
+      return
+    }
     viewModelScope.launch {
       runCatching {
         discardPreviousNonActiveResults()
@@ -156,6 +174,52 @@ class LibraryOrganizationViewModel(
     }
   }
 
+  fun reorganizeSeries(books: List<LibraryBook>) {
+    val current = _state.value
+    val firstBook = books.firstOrNull()
+    val seriesName = firstBook?.series?.name?.trim().orEmpty()
+    if (firstBook == null || seriesName.isEmpty()) {
+      _state.update { it.copy(message = "シリーズ情報が設定された蔵書だけ再整理できます") }
+      return
+    }
+    if (current.batch?.status == LibraryOrganizationBatchStatus.RUNNING) {
+      _state.update { it.copy(message = "一括AI解析を一時停止してからシリーズを再整理してください") }
+      return
+    }
+    if (current.suggestingBook != null || current.savingBook != null || current.reorganizingSeriesBook != null) {
+      _state.update { it.copy(message = "実行中の整理操作が完了してからシリーズを再整理してください") }
+      return
+    }
+
+    viewModelScope.launch {
+      _state.update { it.copy(reorganizingSeriesBook = firstBook.organizationKey()) }
+      runCatching { metadataOrganizer.reorganizeSeries(books) }
+        .onSuccess { result ->
+          val refreshedSnapshot = runCatching { repository.snapshot() }.getOrNull()
+          val message = buildSeriesReorganizationMessage(
+            seriesName = seriesName,
+            result = result,
+            refreshSucceeded = refreshedSnapshot != null,
+          )
+          _state.update {
+            it.copy(
+              snapshot = refreshedSnapshot ?: it.snapshot,
+              reorganizingSeriesBook = null,
+              message = message,
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              reorganizingSeriesBook = null,
+              message = error.message ?: "シリーズを再整理できませんでした",
+            )
+          }
+        }
+    }
+  }
+
   fun pauseBatch() {
     viewModelScope.launch {
       runCatching {
@@ -169,6 +233,10 @@ class LibraryOrganizationViewModel(
   }
 
   fun resumeBatch() {
+    if (_state.value.reorganizingSeriesBook != null) {
+      _state.update { it.copy(message = "シリーズの再整理が完了してから一括AI整理を再開してください") }
+      return
+    }
     viewModelScope.launch {
       runCatching {
         repository.resumeBatch()
@@ -215,6 +283,19 @@ class LibraryOrganizationViewModel(
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
       LibraryOrganizationViewModel(repository, suggester, batchScheduler) as T
   }
+}
+
+private fun buildSeriesReorganizationMessage(
+  seriesName: String,
+  result: LibrarySeriesReorganizationResult,
+  refreshSucceeded: Boolean,
+): String {
+  val base = if (result.failed == 0) {
+    "シリーズ「$seriesName」を ${result.updated} 冊再整理しました"
+  } else {
+    "シリーズ「$seriesName」を ${result.updated} / ${result.total} 冊再整理しました。${result.failed} 冊は既存情報を保持しました"
+  }
+  return if (refreshSucceeded) base else "$base。表示は次回の再読込で更新されます"
 }
 
 private val DISCARDABLE_PREVIOUS_RESULTS = setOf(
