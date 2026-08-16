@@ -75,7 +75,7 @@ class WorkManagerLibraryOrganizationBatchScheduler(
           .build(),
       )
       .build()
-    workManager.enqueueUniqueWork(
+    WorkManager.getInstance(appContext).enqueueUniqueWork(
       RESUME_ON_CHARGING_WORK_NAME,
       ExistingWorkPolicy.KEEP,
       request,
@@ -202,35 +202,31 @@ class LibraryOrganizationBatchWorker(
               }
 
               setForeground(createForegroundInfo(book.title))
-              val modelManager = LocalModelManager(applicationContext)
-              try {
-                val suggester = LocalLibraryOrganizationSuggester(modelManager)
-                val (existingTags, existingCollections) =
-                  organizationRepository.batchTaxonomyContext(item.batchId)
-                val seriesContext = seriesOrganizationContextFor(
-                  book = book,
-                  books = allBooks,
-                  organizationSnapshot = organizationSnapshot,
-                )
-                currentCoroutineContext().ensureActive()
-                val suggestion = suggester.suggest(
-                  book = book,
-                  existingTags = existingTags,
-                  existingCollections = existingCollections,
-                  seriesContext = seriesContext,
-                )
-                currentCoroutineContext().ensureActive()
-                persistAndAutoApplySuggestion(
-                  repository = organizationRepository,
-                  item = item,
-                  book = book,
-                  suggestion = suggestion,
-                )
-                DataChangeNotifier.shared.notifyChanged()
-                currentItem = null
-              } finally {
-                modelManager.close()
-              }
+              val modelManager = LocalModelManager.shared(applicationContext)
+              val suggester = LocalLibraryOrganizationSuggester(modelManager)
+              val (existingTags, existingCollections) =
+                organizationRepository.batchTaxonomyContext(item.batchId)
+              val seriesContext = seriesOrganizationContextFor(
+                book = book,
+                books = allBooks,
+                organizationSnapshot = organizationSnapshot,
+              )
+              currentCoroutineContext().ensureActive()
+              val suggestion = suggester.suggest(
+                book = book,
+                existingTags = existingTags,
+                existingCollections = existingCollections,
+                seriesContext = seriesContext,
+              )
+              currentCoroutineContext().ensureActive()
+              persistAndAutoApplySuggestion(
+                repository = organizationRepository,
+                item = item,
+                book = book,
+                suggestion = suggestion,
+              )
+              DataChangeNotifier.shared.notifyChanged()
+              currentItem = null
             } catch (cancelled: CancellationException) {
               throw cancelled
             } catch (error: Throwable) {
