@@ -42,7 +42,7 @@ fun SettingsFeatureScreen(
     onOpenXCss = onOpenXCss,
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
-    onOpenSummaryTaskQueue = { showTaskQueue = true },
+    onOpenAiTaskQueue = { showTaskQueue = true },
     onOpenDriveBackup = onOpenDriveBackup,
     onExportBackup = onExportBackup,
     onImportBackup = onImportBackup,
