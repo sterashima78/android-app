@@ -19,6 +19,7 @@ import androidx.work.await
 import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
+import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeBuildQueueStateStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,7 +41,7 @@ internal class WorkManagerKnowledgeBuildTaskController(
   context: Context,
 ) {
   private val appContext = context.applicationContext
-  private val state = KnowledgeBuildTaskStateStore(appContext)
+  private val state = KnowledgeBuildQueueStateStore(appContext)
   private val workManager = WorkManager.getInstance(appContext)
 
   fun enqueue() {
@@ -167,32 +168,29 @@ internal class KnowledgeBuildWorker(
   params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    val state = KnowledgeBuildTaskStateStore(applicationContext)
+    val state = KnowledgeBuildQueueStateStore(applicationContext)
     if (!state.requested || state.stopped) return Result.success()
     if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return Result.success()
 
-    setForeground(createForegroundInfo())
-    return LocalAiBackgroundTaskGate.withPermit {
-      if (!state.requested || state.stopped) return@withPermit Result.success()
-      if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
-        return@withPermit Result.success()
-      }
+    return try {
+      setForeground(createForegroundInfo())
+      LocalAiBackgroundTaskGate.withPermit {
+        if (!state.requested || state.stopped) return@withPermit Result.success()
+        if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
+          return@withPermit Result.success()
+        }
 
-      val app = applicationContext as? YomitoriApplication ?: run {
-        state.markFailed("アプリケーションの初期化状態を取得できませんでした")
-        return@withPermit Result.failure()
-      }
-
-      try {
+        val app = applicationContext as? YomitoriApplication
+          ?: error("アプリケーションの初期化状態を取得できませんでした")
         app.container.knowledgeRepository.rebuild()
         state.complete()
         Result.success()
-      } catch (cancelled: CancellationException) {
-        throw cancelled
-      } catch (error: Throwable) {
-        state.markFailed(error.userMessage())
-        Result.failure()
       }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (error: Throwable) {
+      state.markFailed(error.userMessage())
+      Result.failure()
     }
   }
 
@@ -241,72 +239,6 @@ internal class KnowledgeBuildWorker(
   private companion object {
     const val CHANNEL_ID = "knowledge_ai_generation"
     const val NOTIFICATION_ID = 8770
-  }
-}
-
-private class KnowledgeBuildTaskStateStore(context: Context) {
-  private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-
-  val requested: Boolean
-    get() = preferences.getBoolean(KEY_REQUESTED, false)
-
-  val stopped: Boolean
-    get() = preferences.getBoolean(KEY_STOPPED, false)
-
-  val failed: Boolean
-    get() = preferences.getBoolean(KEY_FAILED, false)
-
-  val error: String?
-    get() = preferences.getString(KEY_ERROR, null)
-
-  fun request() {
-    preferences.edit()
-      .putBoolean(KEY_REQUESTED, true)
-      .putBoolean(KEY_STOPPED, false)
-      .putBoolean(KEY_FAILED, false)
-      .remove(KEY_ERROR)
-      .apply()
-  }
-
-  fun markStopped() {
-    preferences.edit()
-      .putBoolean(KEY_STOPPED, true)
-      .putBoolean(KEY_FAILED, false)
-      .remove(KEY_ERROR)
-      .apply()
-  }
-
-  fun markReady() {
-    preferences.edit()
-      .putBoolean(KEY_STOPPED, false)
-      .putBoolean(KEY_FAILED, false)
-      .remove(KEY_ERROR)
-      .apply()
-  }
-
-  fun markFailed(message: String) {
-    preferences.edit()
-      .putBoolean(KEY_REQUESTED, true)
-      .putBoolean(KEY_STOPPED, false)
-      .putBoolean(KEY_FAILED, true)
-      .putString(KEY_ERROR, message)
-      .apply()
-  }
-
-  fun complete() {
-    clear()
-  }
-
-  fun clear() {
-    preferences.edit().clear().apply()
-  }
-
-  private companion object {
-    const val PREFERENCES_NAME = "knowledge_ai_build_queue"
-    const val KEY_REQUESTED = "requested"
-    const val KEY_STOPPED = "stopped"
-    const val KEY_FAILED = "failed"
-    const val KEY_ERROR = "error"
   }
 }
 
