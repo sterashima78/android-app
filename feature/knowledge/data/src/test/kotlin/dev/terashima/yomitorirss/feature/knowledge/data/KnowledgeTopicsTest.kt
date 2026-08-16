@@ -118,7 +118,7 @@ class KnowledgeTopicsTest {
     val selected = selectKnowledgeSources(
       query = "Gemma 4 と Pixel 9 の実測を追加して",
       sources = existing + newEvidence,
-      preferredArticleIds = existing.mapTo(linkedSetOf()) { it.articleId },
+      preferredArticleIds = existing.mapTo(linkedSetOf<String>()) { it.articleId },
       limit = 12,
     )
 
