@@ -162,89 +162,85 @@ class LibraryOrganizationBatchWorker(
       try {
         organizationRepository.requeueInterruptedBatchItems()
         DataChangeNotifier.shared.notifyChanged()
-        if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
-          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
-          return@withContext Result.success()
-        }
 
-        LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
-          if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return@withPermit
+        while (!LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
+          currentCoroutineContext().ensureActive()
+          var claimedItem = false
+          LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
+            if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return@withPermit
 
-          val item = organizationRepository.claimNextBatchItem()
-          if (item == null) {
-            val batch = organizationRepository.batchSnapshot()
-            if (batch?.status == LibraryOrganizationBatchStatus.RUNNING) {
-              organizationRepository.finishBatchIfIdle(batch.batchId)
-              DataChangeNotifier.shared.notifyChanged()
-            }
-            return@withPermit
-          }
-          currentItem = item
-
-          try {
-            val library = libraryRepository.snapshot()
-            val allBooks = library.books + library.hiddenBooks
-            val book = allBooks.firstOrNull { candidate -> candidate.organizationKey() == item.key }
-            if (book == null) {
-              organizationRepository.skipBatchItem(item, "蔵書が見つからないためスキップしました")
-              DataChangeNotifier.shared.notifyChanged()
-              currentItem = null
+            val item = organizationRepository.claimNextBatchItem()
+            if (item == null) {
+              val batch = organizationRepository.batchSnapshot()
+              if (batch?.status == LibraryOrganizationBatchStatus.RUNNING) {
+                organizationRepository.finishBatchIfIdle(batch.batchId)
+                DataChangeNotifier.shared.notifyChanged()
+              }
               return@withPermit
             }
+            claimedItem = true
+            currentItem = item
 
-            val organizationSnapshot = organizationRepository.snapshot()
-            val currentOrganization = organizationSnapshot.organizationFor(book)
-            if (currentOrganization.tags.isNotEmpty() || currentOrganization.collections.isNotEmpty()) {
-              organizationRepository.skipBatchItem(item, "別の操作ですでに整理済みです")
-              DataChangeNotifier.shared.notifyChanged()
-              currentItem = null
-              return@withPermit
-            }
-
-            setForeground(createForegroundInfo(book.title))
-            val modelManager = LocalModelManager(applicationContext)
             try {
-              val suggester = LocalLibraryOrganizationSuggester(modelManager)
-              val (existingTags, existingCollections) =
-                organizationRepository.batchTaxonomyContext(item.batchId)
-              val seriesContext = seriesOrganizationContextFor(
-                book = book,
-                books = allBooks,
-                organizationSnapshot = organizationSnapshot,
-              )
-              currentCoroutineContext().ensureActive()
-              val suggestion = suggester.suggest(
-                book = book,
-                existingTags = existingTags,
-                existingCollections = existingCollections,
-                seriesContext = seriesContext,
-              )
-              currentCoroutineContext().ensureActive()
-              persistAndAutoApplySuggestion(
-                repository = organizationRepository,
-                item = item,
-                book = book,
-                suggestion = suggestion,
-              )
+              val library = libraryRepository.snapshot()
+              val allBooks = library.books + library.hiddenBooks
+              val book = allBooks.firstOrNull { candidate -> candidate.organizationKey() == item.key }
+              if (book == null) {
+                organizationRepository.skipBatchItem(item, "蔵書が見つからないためスキップしました")
+                DataChangeNotifier.shared.notifyChanged()
+                currentItem = null
+                return@withPermit
+              }
+
+              val organizationSnapshot = organizationRepository.snapshot()
+              val currentOrganization = organizationSnapshot.organizationFor(book)
+              if (currentOrganization.tags.isNotEmpty() || currentOrganization.collections.isNotEmpty()) {
+                organizationRepository.skipBatchItem(item, "別の操作ですでに整理済みです")
+                DataChangeNotifier.shared.notifyChanged()
+                currentItem = null
+                return@withPermit
+              }
+
+              setForeground(createForegroundInfo(book.title))
+              val modelManager = LocalModelManager(applicationContext)
+              try {
+                val suggester = LocalLibraryOrganizationSuggester(modelManager)
+                val (existingTags, existingCollections) =
+                  organizationRepository.batchTaxonomyContext(item.batchId)
+                val seriesContext = seriesOrganizationContextFor(
+                  book = book,
+                  books = allBooks,
+                  organizationSnapshot = organizationSnapshot,
+                )
+                currentCoroutineContext().ensureActive()
+                val suggestion = suggester.suggest(
+                  book = book,
+                  existingTags = existingTags,
+                  existingCollections = existingCollections,
+                  seriesContext = seriesContext,
+                )
+                currentCoroutineContext().ensureActive()
+                persistAndAutoApplySuggestion(
+                  repository = organizationRepository,
+                  item = item,
+                  book = book,
+                  suggestion = suggestion,
+                )
+                DataChangeNotifier.shared.notifyChanged()
+                currentItem = null
+              } finally {
+                modelManager.close()
+              }
+            } catch (cancelled: CancellationException) {
+              throw cancelled
+            } catch (error: Throwable) {
+              organizationRepository.failBatchItem(item, error.userMessage())
               DataChangeNotifier.shared.notifyChanged()
               currentItem = null
-            } finally {
-              modelManager.close()
             }
-          } catch (cancelled: CancellationException) {
-            throw cancelled
-          } catch (error: Throwable) {
-            organizationRepository.failBatchItem(item, error.userMessage())
-            DataChangeNotifier.shared.notifyChanged()
-            currentItem = null
           }
-        }
 
-        if (
-          !LocalAiBackgroundExecutionPreferences(applicationContext).paused &&
-          organizationRepository.batchSnapshot()?.status == LibraryOrganizationBatchStatus.RUNNING
-        ) {
-          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
+          if (!claimedItem) break
         }
         Result.success()
       } catch (cancelled: CancellationException) {
