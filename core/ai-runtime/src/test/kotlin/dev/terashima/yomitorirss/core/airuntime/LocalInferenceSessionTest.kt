@@ -86,6 +86,27 @@ class LocalInferenceSessionTest {
     assertEquals(0, tracker.activeSessionCount())
     assertEquals(1, scheduler.pendingCount())
   }
+
+  @Test
+  fun `Managerの資源解放相当のclose後も新しいセッションを開始できる`() {
+    val scheduler = FakeIdleReleaseScheduler()
+    val tracker = LocalInferenceSessionTracker(
+      idleTimeoutMillis = 300_000,
+      onIdle = {},
+      scheduler = scheduler,
+    )
+
+    tracker.openSession().close()
+    assertEquals(1, scheduler.pendingCount())
+
+    tracker.close()
+    assertEquals(0, scheduler.pendingCount())
+
+    val next = tracker.openSession()
+    assertEquals(1, tracker.activeSessionCount())
+    next.close()
+    assertEquals(1, scheduler.pendingCount())
+  }
 }
 
 private class FakeIdleReleaseScheduler : IdleReleaseScheduler {
