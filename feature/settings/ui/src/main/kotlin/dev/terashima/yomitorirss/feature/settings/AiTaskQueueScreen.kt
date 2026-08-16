@@ -149,10 +149,10 @@ private fun AiTaskRow(
 ) {
   Column(Modifier.fillMaxWidth()) {
     ListItem(
-      headlineContent = { Text(item.title) },
+      headlineContent = { Text(taskTitle(item)) },
       supportingContent = {
         Column {
-          Text("${item.source} ・ ${statusLabel(item.state)}")
+          Text("${taskSource(item)} ・ ${statusLabel(item.state)}")
           val current = item.progressCurrent
           val total = item.progressTotal
           if (current != null && total != null && total > 0) {
@@ -200,6 +200,16 @@ private fun AiTaskRow(
       }
     }
   }
+}
+
+private fun taskTitle(item: AiTaskQueueItem): String = when (item.kind) {
+  AiTaskQueueItemKind.SUMMARY -> item.title
+  AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書のAI整理"
+}
+
+private fun taskSource(item: AiTaskQueueItem): String = when (item.kind) {
+  AiTaskQueueItemKind.SUMMARY -> "要約 ・ ${item.source}"
+  AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書"
 }
 
 private fun statusLabel(state: AiTaskQueueItemState): String = when (state) {
