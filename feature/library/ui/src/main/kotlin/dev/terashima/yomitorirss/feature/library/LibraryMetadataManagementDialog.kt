@@ -352,7 +352,9 @@ private fun SeriesManagementContent(
       )
     }
     items(seriesGroups, key = LibrarySeriesSection::key) { group ->
-      val running = group.books.any { it.organizationKey() == state.reorganizingSeriesBook }
+      val reorganizingSeriesBook = state.reorganizingSeriesBook
+      val running = reorganizingSeriesBook != null &&
+        group.books.any { it.organizationKey() == reorganizingSeriesBook }
       Card(
         modifier = Modifier
           .fillMaxWidth()
