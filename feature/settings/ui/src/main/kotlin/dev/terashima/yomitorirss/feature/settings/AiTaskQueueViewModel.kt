@@ -94,7 +94,7 @@ class AiTaskQueueViewModel(
       .onSuccess { snapshot ->
         _state.update {
           it.copy(
-            tasks = snapshot.tasks,
+            tasks = prepareVisibleAiTasks(snapshot.tasks),
             loading = false,
             queuePaused = snapshot.executionState.paused,
             resumeWhenCharging = snapshot.executionState.resumeWhenCharging,
@@ -133,6 +133,11 @@ class AiTaskQueueViewModel(
     const val POLL_INTERVAL_MILLIS = 1_000L
   }
 }
+
+internal fun prepareVisibleAiTasks(tasks: List<AiTaskQueueItem>): List<AiTaskQueueItem> =
+  tasks
+    .filterNot { it.state == AiTaskQueueItemState.COMPLETED }
+    .sortedBy { if (it.state == AiTaskQueueItemState.RUNNING) 0 else 1 }
 
 private fun Throwable.userMessage(): String =
   message?.takeIf(String::isNotBlank) ?: javaClass.simpleName
