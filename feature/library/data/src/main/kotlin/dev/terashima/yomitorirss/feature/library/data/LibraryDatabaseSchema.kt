@@ -30,6 +30,19 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
         "status IN (?, ?)",
         arrayOf("PENDING_REVIEW", "DEFERRED"),
       )
+      db.execSQL(
+        """
+          UPDATE library_organization_batches
+          SET status = 'COMPLETED'
+          WHERE status IN ('RUNNING', 'PAUSED')
+            AND NOT EXISTS (
+              SELECT 1
+              FROM library_organization_batch_items item
+              WHERE item.batch_id = library_organization_batches.batch_id
+                AND item.status IN ('QUEUED', 'PROCESSING')
+            )
+        """.trimIndent(),
+      )
     },
   ),
 )
