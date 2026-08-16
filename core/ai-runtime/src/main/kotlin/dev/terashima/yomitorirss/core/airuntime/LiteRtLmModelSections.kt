@@ -137,19 +137,31 @@ private class LiteRtLmFlatBufferHeader(bytes: ByteArray) {
   }
 
   private fun field(table: Int, index: Int): Int? {
+    check(index >= 0) { "LiteRT-LM FlatBuffer のfield indexが不正です" }
     requireRange(table, Int.SIZE_BYTES)
     val vtableDistance = intAt(table)
-    check(vtableDistance > 0) { "LiteRT-LM FlatBuffer のvtable offsetが不正です" }
-    val vtable = table - vtableDistance
+    check(vtableDistance != 0) { "LiteRT-LM FlatBuffer のvtable offsetが不正です" }
+    val vtablePosition = table.toLong() - vtableDistance.toLong()
+    check(vtablePosition in 0..Int.MAX_VALUE.toLong()) {
+      "LiteRT-LM FlatBuffer のvtable参照先が範囲外です"
+    }
+    val vtable = vtablePosition.toInt()
     requireRange(vtable, Short.SIZE_BYTES * 2)
     val vtableSize = unsignedShortAt(vtable)
-    val fieldEntry = vtable + Short.SIZE_BYTES * 2 + index * Short.SIZE_BYTES
-    if (fieldEntry + Short.SIZE_BYTES > vtable + vtableSize) return null
-    val fieldOffset = unsignedShortAt(fieldEntry)
+    check(vtableSize >= Short.SIZE_BYTES * 2) { "LiteRT-LM FlatBuffer のvtable sizeが不正です" }
+    requireRange(vtable, vtableSize)
+
+    val fieldEntryPosition = vtable.toLong() + Short.SIZE_BYTES * 2L + index * Short.SIZE_BYTES.toLong()
+    val vtableEnd = vtable.toLong() + vtableSize
+    if (fieldEntryPosition + Short.SIZE_BYTES > vtableEnd) return null
+    check(fieldEntryPosition <= Int.MAX_VALUE.toLong()) { "LiteRT-LM FlatBuffer のfield参照先が範囲外です" }
+    val fieldOffset = unsignedShortAt(fieldEntryPosition.toInt())
     if (fieldOffset == 0) return null
-    val position = table + fieldOffset
-    requireRange(position, 1)
-    return position
+
+    val position = table.toLong() + fieldOffset
+    check(position in 0..Int.MAX_VALUE.toLong()) { "LiteRT-LM FlatBuffer のfield位置が範囲外です" }
+    requireRange(position.toInt(), 1)
+    return position.toInt()
   }
 
   private fun indirect(position: Int): Int {
