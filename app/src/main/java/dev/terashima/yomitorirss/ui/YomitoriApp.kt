@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
@@ -259,7 +261,11 @@ fun YomitoriApp(
     gesturesEnabled = drawerState.isOpen,
     drawerContent = {
       ModalDrawerSheet {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 20.dp)) {
+        Column(
+          Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 20.dp),
+        ) {
           Text(
             text = "Yomitori",
             style = MaterialTheme.typography.headlineSmall,
