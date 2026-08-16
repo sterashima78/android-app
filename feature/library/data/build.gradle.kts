@@ -19,6 +19,7 @@ android {
 dependencies {
   implementation(project(":feature:library:domain"))
   implementation(project(":core:ai-runtime"))
+  implementation(project(":core:background"))
   implementation(project(":core:database"))
   implementation(project(":core:network"))
 
