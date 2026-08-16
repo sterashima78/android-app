@@ -45,7 +45,7 @@
 
 summary の `summary_tasks`、停止/キャンセル/再開状態、進捗は `:feature:summary` が引き続き所有する。
 
-library の batch/candidate table、候補レビュー、採用/保留/却下状態は `:feature:library` が引き続き所有する。共通キューから library batch の「停止」を選んだ場合は既存の `pauseBatch()` と WorkManager cancel を使い、「再開」は `resumeBatch()` と scheduler kick を使う。
+library の batch/candidate table、候補レビュー、採用/保留/却下状態は `:feature:library` が引き続き所有する。共通キューから library batch の個別「一時停止」を選んだ場合は既存の `pauseBatch()` と WorkManager cancel を使い、「再開」は `resumeBatch()` と scheduler kick を使う。
 
 したがって共通キューは feature-specific database を置き換えず、複数 queue を一貫して操作・観測するための集約 view である。
 
@@ -64,11 +64,15 @@ library の batch/candidate table、候補レビュー、採用/保留/却下状
 
 summary queue は従来の worker-side pause gate を共通 preference 経由で読む。
 
-library organization scheduler は共通 gate が paused の場合、新しい解析 worker を開始しない。実行中 batch を一時停止すると processing item を queued に戻したうえで unique work をキャンセルするため、候補データを失わない。
+library organization scheduler も共通 gate が paused の場合、新しい解析 worker を開始しない。全体のAIタスクを一時停止すると、実行中の library unique work はキャンセルする。キャンセルされた processing item は既存のキャンセル処理で queued に戻るため候補データを失わない。
 
-library にも充電制約付き resume worker を追加する。summary と library の charging worker は同じ preference を参照するため、どちらが先に実行されても安全な idempotent 操作とする。充電は再開の契機であり、電源から外れた際の自動再停止は行わない。
+この全体停止では library batch 自体の durable `PAUSED` 状態には変更しない。batch が `RUNNING` のまま共有実行ゲートによって止まっている場合、共通AIタスクキューでは実効状態を「一時停止中」と表示する。これにより、ユーザーが library batch を個別操作で `PAUSED` にしていたのか、AI全体の実行ゲートで一時的に止まっているだけなのかを区別できる。
 
-共通キューの全体停止は summary と、存在する library batch の双方を停止する。全体再開は summary と一時停止中の library batch の双方を再開する。個別の library batch 行から停止/再開することもできる。
+library にも充電制約付き resume worker を追加する。これは全体停止時に `RUNNING` だった library batch に対してだけ登録する。summary と library の charging worker は同じ preference を参照するため、どちらが先に実行されても安全な idempotent 操作とする。充電時には共有 gate を開き、library batch が引き続き `RUNNING` なら worker を kick する。個別操作で `PAUSED` の batch は充電だけでは再開しない。
+
+充電は再開の契機であり、電源から外れた際の自動再停止は行わない。
+
+共通キューの全体停止は summary と、実行中の library batch のバックグラウンド実行を止める。全体再開は summary と、全体停止前から `RUNNING` だった library batch の実行を再開する。個別に `PAUSED` の library batch は全体再開でも停止状態を維持し、明示的な個別「再開」でのみ `RUNNING` に戻す。
 
 ### 6. 公開リポジトリにユーザーデータを追加しない
 
@@ -81,6 +85,7 @@ library にも充電制約付き resume worker を追加する。summary と lib
 - 設定画面のモデル名称が実際の共有範囲と一致する。
 - 要約と蔵書整理を同じAIタスクキューから観測・停止・再開できる。
 - 電池消費を抑える実行ポリシーが feature ごとに食い違わない。
+- 全体停止と個別停止の状態を混同せず、個別停止した蔵書整理を意図せず再開しない。
 - feature 固有の durable state とレビュー意味論を維持できる。
 - `core:ai-runtime` に業務概念を持ち込まず、ADR-0056 の境界を保てる。
 - app は adapter に限定され、ADR-0063 のUI ownershipを保てる。
@@ -89,7 +94,8 @@ library にも充電制約付き resume worker を追加する。summary と lib
 
 - 共通キューは複数 feature repository を読むため、完全に1つのDB queryだけでスナップショットを作る構造ではない。
 - charging resume worker は各 feature が自身の WorkManager job を再開するため複数存在する。共有 preference と idempotent な再開処理で競合を吸収する必要がある。
-- library batch の「停止」は summary の個別 stopped state と異なり、batch 全体の paused state へ写像される。共通 contract はこの差異を抽象化する。
+- library batch は共有 gate により停止中でも durable status 自体は `RUNNING` のため、共通キュー側で実効状態を投影する必要がある。
+- library batch の個別「一時停止」は summary の個別 stopped state と異なり、batch 全体の paused state へ写像される。共通 contract はこの差異を抽象化する。
 
 ## Relationship to existing ADRs
 
