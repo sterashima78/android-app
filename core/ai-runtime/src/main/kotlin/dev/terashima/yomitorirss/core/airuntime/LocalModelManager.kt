@@ -92,6 +92,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private val cancelRequested = AtomicBoolean(false)
   private var cachedInference: CachedInference? = null
   private var cachedTokenizer: CachedTokenizer? = null
+  private val inferenceSessions = LocalInferenceSessionTracker(
+    idleTimeoutMillis = INFERENCE_IDLE_TIMEOUT_MILLIS,
+    onIdle = ::releaseIdleInference,
+  )
 
   private val _models = MutableStateFlow<List<LocalModelStatus>>(emptyList())
   val models: StateFlow<List<LocalModelStatus>> = _models.asStateFlow()
@@ -145,7 +149,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
-  fun selectedModel(): LocalModelStatus? = models.value.firstOrNull(LocalModelStatus::selected)
+  fun selectedModel(): LocalModelStatus? {
+    refreshModels()
+    return models.value.firstOrNull(LocalModelStatus::selected)
+  }
 
   fun setInferenceBackend(backend: LocalInferenceBackend) {
     preferences.edit().putString(INFERENCE_BACKEND_KEY, backend.name).apply()
@@ -298,6 +305,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   }
 
   override fun close() {
+    inferenceSessions.close()
     cancelRequested.set(true)
     inferenceLock.withLock {
       releaseCachedInferenceLocked()
@@ -312,48 +320,53 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val model = resolveSelectedModel() ?: error("AIモデルをダウンロードして選択してください")
     val file = modelFile(model)
     check(isValidModelFile(file, model)) { "選択したモデルが見つかりません" }
-    cancelRequested.set(false)
+    val session = inferenceSessions.openSession()
 
-    return inferenceLock.withLock {
-      try {
-        val settings = currentInferenceSettings()
-        val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
-        val cacheHit = hasReusableInference(model, file, settings.backend, speculativeDecodingEnabled)
-        val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
-        if (!cacheHit) {
-          _inferenceProgress.value = LocalInferenceProgress(
-            LocalInferenceStage.PREPARING_MODEL,
-            model.name,
-            estimatedStageDurationMillis(PREPARING_MODEL_DURATION_KEY, model.id),
-          )
-        }
-        val inference = acquireInference(model, file, settings.backend, speculativeDecodingEnabled)
-        preparationStartedAt?.let { startedAt ->
-          recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
-        }
-        check(!cancelRequested.get()) { "推論をキャンセルしました" }
-
-        val generationStartedAt = SystemClock.elapsedRealtime()
-        _inferenceProgress.value = LocalInferenceProgress(
-          LocalInferenceStage.GENERATING_RESPONSE,
-          model.name,
-          estimatedStageDurationMillis(GENERATING_RESPONSE_DURATION_KEY, model.id),
-        )
+    return try {
+      cancelRequested.set(false)
+      inferenceLock.withLock {
         try {
-          block(inference).also {
-            recordStageDuration(
-              GENERATING_RESPONSE_DURATION_KEY,
-              model.id,
-              SystemClock.elapsedRealtime() - generationStartedAt,
+          val settings = currentInferenceSettings()
+          val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
+          val cacheHit = hasReusableInference(model, file, settings.backend, speculativeDecodingEnabled)
+          val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
+          if (!cacheHit) {
+            _inferenceProgress.value = LocalInferenceProgress(
+              LocalInferenceStage.PREPARING_MODEL,
+              model.name,
+              estimatedStageDurationMillis(PREPARING_MODEL_DURATION_KEY, model.id),
             )
           }
-        } catch (error: Throwable) {
-          invalidateRetainedInferenceLocked(inference)
-          throw error
+          val inference = acquireInference(model, file, settings.backend, speculativeDecodingEnabled)
+          preparationStartedAt?.let { startedAt ->
+            recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
+          }
+          check(!cancelRequested.get()) { "推論をキャンセルしました" }
+
+          val generationStartedAt = SystemClock.elapsedRealtime()
+          _inferenceProgress.value = LocalInferenceProgress(
+            LocalInferenceStage.GENERATING_RESPONSE,
+            model.name,
+            estimatedStageDurationMillis(GENERATING_RESPONSE_DURATION_KEY, model.id),
+          )
+          try {
+            block(inference).also {
+              recordStageDuration(
+                GENERATING_RESPONSE_DURATION_KEY,
+                model.id,
+                SystemClock.elapsedRealtime() - generationStartedAt,
+              )
+            }
+          } catch (error: Throwable) {
+            invalidateRetainedInferenceLocked(inference)
+            throw error
+          }
+        } finally {
+          _inferenceProgress.value = null
         }
-      } finally {
-        _inferenceProgress.value = null
       }
+    } finally {
+      session.close()
     }
   }
 
@@ -426,6 +439,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
 
   private fun invalidateRetainedInferenceLocked(inference: LiteRtLmInference) {
     if (cachedInference?.inference === inference) releaseCachedInferenceLocked()
+  }
+
+  private fun releaseIdleInference() {
+    inferenceLock.withLock {
+      releaseCachedInferenceLocked()
+    }
   }
 
   private fun releaseCachedInferenceLocked() {
@@ -642,6 +661,16 @@ class LocalModelManager(context: Context) : AutoCloseable {
     private const val MODEL_REVISION_KEY_PREFIX = "model_revision"
     private const val PREPARING_MODEL_DURATION_KEY = "preparing_model"
     private const val GENERATING_RESPONSE_DURATION_KEY = "generating_response"
+    private const val INFERENCE_IDLE_TIMEOUT_MILLIS = 5L * 60L * 1000L
+
+    @Volatile
+    private var sharedInferenceManager: LocalModelManager? = null
+
+    fun shared(context: Context): LocalModelManager =
+      sharedInferenceManager ?: synchronized(this) {
+        sharedInferenceManager
+          ?: LocalModelManager(context.applicationContext).also { sharedInferenceManager = it }
+      }
 
     private val RETIRED_MODEL_IDS = setOf(
       "qwen2.5-0.5b-q8",
