@@ -169,7 +169,7 @@ private fun AiTaskRow(
           }
           item.pendingReviewCount?.takeIf { it > 0 }?.let { count ->
             Text(
-              text = "確認待ち $count件",
+              text = "確認待ち ${count}件",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.padding(top = 4.dp),
