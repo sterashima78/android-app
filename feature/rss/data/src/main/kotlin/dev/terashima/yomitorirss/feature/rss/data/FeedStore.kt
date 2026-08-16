@@ -105,8 +105,24 @@ internal class FeedStore(
   }
 
   fun deleteFolder(id: String) {
-    val deleted = database.writable.delete("feed_folders", "id=?", arrayOf(id))
-    require(deleted > 0) { "フォルダが見つかりません" }
+    database.transaction {
+      val inheritedType = rawQuery(
+        "SELECT content_type FROM feed_folders WHERE id=? LIMIT 1",
+        arrayOf(id),
+      ).use { cursor ->
+        require(cursor.moveToFirst()) { "フォルダが見つかりません" }
+        if (cursor.isNull(0)) null else cursor.getString(0)
+      }
+      if (inheritedType != null) {
+        update(
+          "feeds",
+          contentValues("content_type" to inheritedType),
+          "folder_id=? AND content_type IS NULL",
+          arrayOf(id),
+        )
+      }
+      delete("feed_folders", "id=?", arrayOf(id))
+    }
   }
 
   fun moveFeedToFolder(feedId: String, folderId: String?) {
@@ -190,6 +206,27 @@ internal class FeedStore(
 
   fun deleteFeed(id: String) {
     database.transaction {
+      val inheritedType = rawQuery(
+        """
+          SELECT COALESCE(f.content_type, ff.content_type)
+          FROM feeds f
+          LEFT JOIN feed_folders ff ON ff.id = f.folder_id
+          WHERE f.id=?
+          LIMIT 1
+        """.trimIndent(),
+        arrayOf(id),
+      ).use { cursor ->
+        require(cursor.moveToFirst()) { "フィードが見つかりません" }
+        if (cursor.isNull(0)) null else cursor.getString(0)
+      }
+      if (inheritedType != null) {
+        update(
+          "articles",
+          contentValues("content_type" to inheritedType),
+          "feed_id=? AND saved_at IS NOT NULL AND content_type IS NULL",
+          arrayOf(id),
+        )
+      }
       delete("articles", "feed_id=? AND saved_at IS NULL", arrayOf(id))
       update("articles", contentValues("feed_id" to null), "feed_id=? AND saved_at IS NOT NULL", arrayOf(id))
       delete("feeds", "id=?", arrayOf(id))
