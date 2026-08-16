@@ -111,7 +111,8 @@ fun LocalModelManager.summarizeText(text: String, prompt: String): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val normalized = HierarchicalSummaryText.normalize(text)
   val rendered = renderSummaryPrompt(prompt, normalized)
-  check(HierarchicalSummaryBudget.fitsRendered(model.contextTokens, rendered, ::countTokens)) {
+  val tokenCount: (String) -> Int = { value -> countTokens(value) }
+  check(HierarchicalSummaryBudget.fitsRendered(model.contextTokens, rendered, tokenCount)) {
     "要約入力がモデルのコンテキスト予算を超えています"
   }
   return cleanSummary(generate(rendered))
