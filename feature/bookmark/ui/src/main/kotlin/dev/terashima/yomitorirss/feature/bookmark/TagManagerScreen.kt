@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package dev.terashima.yomitorirss.feature.bookmark
 
 import androidx.compose.foundation.layout.Arrangement
