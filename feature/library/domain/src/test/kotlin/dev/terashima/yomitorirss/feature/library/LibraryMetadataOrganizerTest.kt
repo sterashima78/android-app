@@ -93,6 +93,29 @@ class LibraryMetadataOrganizerTest {
   }
 
   @Test
+  fun `同名でもseries IDが異なる書籍はシリーズコンテキストに含めない`() {
+    val target = book("book-1", "シリーズ 1", LibrarySeries("シリーズ", 1, "series-1"))
+    val other = book("book-2", "シリーズ 2", LibrarySeries("シリーズ", 2, "series-2"))
+    val snapshot = LibraryOrganizationSnapshot(
+      items = mapOf(
+        other.organizationKey() to LibraryItemOrganization(
+          key = other.organizationKey(),
+          tags = listOf(tag("別タグ")),
+          collections = listOf(collection("別コレクション")),
+        ),
+      ),
+    )
+
+    assertNull(
+      seriesContextForMetadataReorganization(
+        book = target,
+        books = listOf(target, other),
+        snapshot = snapshot,
+      ),
+    )
+  }
+
+  @Test
   fun `シリーズ分類がなければコンテキストを作らない`() {
     val target = book("book-1", "単巻", null)
 
