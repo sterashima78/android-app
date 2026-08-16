@@ -10,6 +10,7 @@ enum class AiInferenceBackend {
 data class AiInferenceSettings(
   val backend: AiInferenceBackend = AiInferenceBackend.CPU,
   val thinkingEnabled: Boolean = false,
+  val speculativeDecodingEnabled: Boolean = false,
 )
 
 data class AiModelStatus(
@@ -26,6 +27,7 @@ data class AiModelStatus(
   val recommended: Boolean,
   val memoryLow: Boolean,
   val supportsThinking: Boolean,
+  val supportsSpeculativeDecoding: Boolean,
 )
 
 data class AiModelDownloadProgress(
@@ -45,6 +47,39 @@ data class AiSummaryProgress(
   val estimatedStageDurationMillis: Long? = null,
 )
 
+data class AiModelBenchmarkSample(
+  val speculativeDecodingEnabled: Boolean,
+  val initTimeMillis: Long,
+  val timeToFirstTokenMillis: Long,
+  val prefillTokenCount: Int,
+  val decodeTokenCount: Int,
+  val prefillTokensPerSecond: Double,
+  val decodeTokensPerSecond: Double,
+  val totalTimeMillis: Long,
+)
+
+data class AiModelBenchmarkComparison(
+  val modelName: String,
+  val backend: AiInferenceBackend,
+  val requestedPrefillTokens: Int,
+  val requestedDecodeTokens: Int,
+  val standard: AiModelBenchmarkSample,
+  val speculative: AiModelBenchmarkSample?,
+  val speculativeError: String? = null,
+) {
+  val decodeSpeedup: Double?
+    get() = speculative
+      ?.decodeTokensPerSecond
+      ?.takeIf { standard.decodeTokensPerSecond > 0 }
+      ?.div(standard.decodeTokensPerSecond)
+
+  val totalTimeSpeedup: Double?
+    get() = speculative
+      ?.totalTimeMillis
+      ?.takeIf { it > 0 }
+      ?.let { standard.totalTimeMillis.toDouble() / it }
+}
+
 interface AiModelRepository {
   val models: Flow<List<AiModelStatus>>
   val downloadProgress: Flow<AiModelDownloadProgress?>
@@ -57,6 +92,8 @@ interface AiModelRepository {
   fun resetSummaryPrompt()
   fun setInferenceBackend(backend: AiInferenceBackend)
   fun setThinkingEnabled(enabled: Boolean)
+  fun setSpeculativeDecodingEnabled(enabled: Boolean)
+  suspend fun benchmarkSelectedModel(): AiModelBenchmarkComparison
   fun downloadModel(modelId: String)
   fun selectModel(modelId: String)
   fun deleteModel(modelId: String)

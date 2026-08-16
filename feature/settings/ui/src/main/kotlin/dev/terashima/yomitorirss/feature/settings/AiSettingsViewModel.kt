@@ -18,6 +18,7 @@ data class AiSettingsUiState(
   val summaryPrompt: String = "",
   val inferenceBackend: AiInferenceBackend = AiInferenceBackend.CPU,
   val thinkingEnabled: Boolean = false,
+  val speculativeDecodingEnabled: Boolean = false,
   val message: String? = null,
 )
 
@@ -48,6 +49,7 @@ class AiSettingsViewModel(
           it.copy(
             inferenceBackend = settings.backend,
             thinkingEnabled = settings.thinkingEnabled,
+            speculativeDecodingEnabled = settings.speculativeDecodingEnabled,
           )
         }
       }
@@ -72,6 +74,10 @@ class AiSettingsViewModel(
 
   fun setThinkingEnabled(enabled: Boolean) {
     runCatching { repository.setThinkingEnabled(enabled) }.onFailure(::showError)
+  }
+
+  fun setSpeculativeDecodingEnabled(enabled: Boolean) {
+    runCatching { repository.setSpeculativeDecodingEnabled(enabled) }.onFailure(::showError)
   }
 
   fun downloadModel(modelId: String) {

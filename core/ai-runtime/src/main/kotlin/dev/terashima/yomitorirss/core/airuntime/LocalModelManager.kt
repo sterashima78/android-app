@@ -10,6 +10,8 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.ExperimentalApi
+import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.tool
 import java.io.File
@@ -43,6 +45,7 @@ enum class LocalInferenceStage {
 data class LocalInferenceSettings(
   val backend: LocalInferenceBackend = LocalInferenceBackend.CPU,
   val thinkingEnabled: Boolean = false,
+  val speculativeDecodingEnabled: Boolean = false,
 )
 
 data class LocalModelStatus(
@@ -59,6 +62,7 @@ data class LocalModelStatus(
   val recommended: Boolean,
   val memoryLow: Boolean,
   val supportsThinking: Boolean,
+  val supportsSpeculativeDecoding: Boolean,
   val contextTokens: Int,
   val maxInputChars: Int,
   val promptBudgetChars: Int,
@@ -102,7 +106,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
   val inferenceSettings: StateFlow<LocalInferenceSettings> = _inferenceSettings.asStateFlow()
 
   init {
+    migrateLegacyCurrentModelRevisionMarkers()
     cleanupRetiredModelArtifacts()
+    cleanupOutdatedModelArtifacts()
     refreshModels()
   }
 
@@ -130,6 +136,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         recommended = model.recommended,
         memoryLow = deviceMemoryBytes() < model.minDeviceMemoryGb * BYTES_PER_GB,
         supportsThinking = false,
+        supportsSpeculativeDecoding = model.supportsSpeculativeDecoding,
         contextTokens = model.contextTokens,
         maxInputChars = model.maxInputChars,
         promptBudgetChars = model.promptBudgetChars,
@@ -150,7 +157,20 @@ class LocalModelManager(context: Context) : AutoCloseable {
     _inferenceSettings.value = _inferenceSettings.value.copy(thinkingEnabled = enabled)
   }
 
-  fun inferenceCacheVariant(modelId: String): String? = null
+  fun setSpeculativeDecodingEnabled(enabled: Boolean) {
+    preferences.edit().putBoolean(SPECULATIVE_DECODING_ENABLED_KEY, enabled).apply()
+    _inferenceSettings.value = _inferenceSettings.value.copy(speculativeDecodingEnabled = enabled)
+  }
+
+  fun inferenceCacheVariant(modelId: String): String? {
+    val model = requireModel(modelId)
+    val settings = currentInferenceSettings()
+    return if (settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding) {
+      "speculative-decoding-v1"
+    } else {
+      null
+    }
+  }
 
   fun selectModel(modelId: String) {
     val model = requireModel(modelId)
@@ -170,6 +190,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         modelCacheDirectory(model).deleteRecursively()
       }
     }
+    preferences.edit().remove(modelRevisionKey(model)).apply()
     if (preferences.getString(SELECTED_MODEL_KEY, null) == model.id) {
       preferences.edit().remove(SELECTED_MODEL_KEY).apply()
     }
@@ -191,6 +212,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         return
       }
       destination.delete()
+      preferences.edit().remove(modelRevisionKey(model)).apply()
       val requiredBytes = model.estimatedSizeBytes + DOWNLOAD_STORAGE_MARGIN_BYTES
       val availableBytes = StatFs(modelsDirectory().absolutePath).availableBytes
       check(availableBytes >= requiredBytes) { "モデルを保存する空き容量が不足しています" }
@@ -228,11 +250,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
           }
         }
         _downloadProgress.value = ModelDownloadProgress(model.id, "verifying", downloadedBytes, totalBytes, 0)
-        check(isValidModelFile(temporary, model)) { "ダウンロードしたモデルファイルが不正です" }
+        check(isExpectedModelArtifact(temporary, model)) { "ダウンロードしたモデルファイルが不正です" }
         if (!temporary.renameTo(destination)) {
           temporary.copyTo(destination, overwrite = true)
           temporary.delete()
         }
+        preferences.edit().putString(modelRevisionKey(model), model.artifactRevision).apply()
         if (resolveSelectedModel() == null) preferences.edit().putString(SELECTED_MODEL_KEY, model.id).apply()
         _downloadProgress.value = ModelDownloadProgress(model.id, "completed", destination.length(), destination.length(), 0)
         refreshModels()
@@ -294,7 +317,8 @@ class LocalModelManager(context: Context) : AutoCloseable {
     return inferenceLock.withLock {
       try {
         val settings = currentInferenceSettings()
-        val cacheHit = hasReusableInference(model, file, settings.backend)
+        val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
+        val cacheHit = hasReusableInference(model, file, settings.backend, speculativeDecodingEnabled)
         val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
         if (!cacheHit) {
           _inferenceProgress.value = LocalInferenceProgress(
@@ -303,7 +327,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
             estimatedStageDurationMillis(PREPARING_MODEL_DURATION_KEY, model.id),
           )
         }
-        val inference = acquireInference(model, file, settings.backend)
+        val inference = acquireInference(model, file, settings.backend, speculativeDecodingEnabled)
         preparationStartedAt?.let { startedAt ->
           recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
         }
@@ -337,22 +361,25 @@ class LocalModelManager(context: Context) : AutoCloseable {
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
-  ): Boolean = cachedInference?.key == inferenceCacheKey(model, file, backend)
+    speculativeDecodingEnabled: Boolean,
+  ): Boolean = cachedInference?.key == inferenceCacheKey(model, file, backend, speculativeDecodingEnabled)
 
   private fun acquireInference(
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
+    speculativeDecodingEnabled: Boolean,
   ): LiteRtLmInference {
-    val key = inferenceCacheKey(model, file, backend)
+    val key = inferenceCacheKey(model, file, backend, speculativeDecodingEnabled)
     cachedInference?.takeIf { it.key == key }?.let { cached -> return cached.inference }
 
     releaseCachedInferenceLocked()
     val inference = LiteRtLmInference(
       file = file,
-      cacheDirectory = modelBackendCacheDirectory(model, backend),
+      cacheDirectory = modelBackendCacheDirectory(model, backend, speculativeDecodingEnabled),
       backend = backend,
       contextTokens = model.contextTokens,
+      speculativeDecodingEnabled = speculativeDecodingEnabled,
     )
     cachedInference = CachedInference(key, inference)
     return inference
@@ -378,10 +405,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
+    speculativeDecodingEnabled: Boolean,
   ) = InferenceCacheKey(
     modelId = model.id,
     backend = backend,
     contextTokens = model.contextTokens,
+    speculativeDecodingEnabled = speculativeDecodingEnabled,
     fileLength = file.length(),
     fileModifiedAt = file.lastModified(),
   )
@@ -426,6 +455,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     return LocalInferenceSettings(
       backend = backend,
       thinkingEnabled = false,
+      speculativeDecodingEnabled = preferences.getBoolean(SPECULATIVE_DECODING_ENABLED_KEY, false),
     )
   }
 
@@ -465,10 +495,26 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private fun modelsDirectory() = File(appContext.filesDir, "local-summary-models").apply { mkdirs() }
   private fun modelCacheDirectory(model: ModelDefinition) =
     File(appContext.cacheDir, "local-summary-models/${model.id}")
-  private fun modelBackendCacheDirectory(model: ModelDefinition, backend: LocalInferenceBackend) =
-    File(modelCacheDirectory(model), backend.name.lowercase()).apply { mkdirs() }
+  private fun modelBackendCacheDirectory(
+    model: ModelDefinition,
+    backend: LocalInferenceBackend,
+    speculativeDecodingEnabled: Boolean,
+  ) = File(
+    modelCacheDirectory(model),
+    "${backend.name.lowercase()}/${if (speculativeDecodingEnabled) "speculative" else "standard"}",
+  ).apply { mkdirs() }
   private fun modelTokenizerCacheDirectory(model: ModelDefinition) =
     File(modelCacheDirectory(model), "tokenizer").apply { mkdirs() }
+
+  private fun migrateLegacyCurrentModelRevisionMarkers() {
+    MODEL_CATALOG.forEach { model ->
+      if (preferences.contains(modelRevisionKey(model))) return@forEach
+      val file = modelFile(model)
+      if (isExpectedModelArtifact(file, model)) {
+        preferences.edit().putString(modelRevisionKey(model), model.artifactRevision).apply()
+      }
+    }
+  }
 
   private fun cleanupRetiredModelArtifacts() {
     val selectedId = preferences.getString(SELECTED_MODEL_KEY, null)
@@ -483,12 +529,27 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
-  private fun isValidModelFile(file: File, model: ModelDefinition): Boolean {
-    if (!file.isFile) return false
-    val minimum = (model.estimatedSizeBytes * MINIMUM_MODEL_SIZE_RATIO).toLong()
-    val maximum = (model.estimatedSizeBytes * MAXIMUM_MODEL_SIZE_RATIO).toLong()
-    return file.length() in minimum..maximum
+  private fun cleanupOutdatedModelArtifacts() {
+    MODEL_CATALOG.forEach { model ->
+      val file = modelFile(model)
+      if (file.exists() && !isValidModelFile(file, model)) {
+        file.delete()
+        temporaryModelFile(model).delete()
+        modelCacheDirectory(model).deleteRecursively()
+        preferences.edit().remove(modelRevisionKey(model)).apply()
+      }
+    }
   }
+
+  private fun isExpectedModelArtifact(file: File, model: ModelDefinition): Boolean =
+    file.isFile && file.length() == model.estimatedSizeBytes
+
+  private fun isValidModelFile(file: File, model: ModelDefinition): Boolean =
+    isExpectedModelArtifact(file, model) &&
+      preferences.getString(modelRevisionKey(model), null) == model.artifactRevision
+
+  private fun modelRevisionKey(model: ModelDefinition): String =
+    "$MODEL_REVISION_KEY_PREFIX.${model.id}"
 
   private fun requireModel(modelId: String): ModelDefinition =
     MODEL_CATALOG.firstOrNull { it.id == modelId } ?: error("モデルが見つかりません: $modelId")
@@ -524,6 +585,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val modelId: String,
     val backend: LocalInferenceBackend,
     val contextTokens: Int,
+    val speculativeDecodingEnabled: Boolean,
     val fileLength: Long,
     val fileModifiedAt: Long,
   )
@@ -557,7 +619,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val estimatedSizeBytes: Long,
     val fileName: String,
     val downloadUrl: String,
+    val artifactRevision: String,
     val minDeviceMemoryGb: Int,
+    val supportsSpeculativeDecoding: Boolean = false,
     val recommended: Boolean = false,
   )
 
@@ -570,12 +634,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
     private const val MAX_REDIRECTS = 8
     private const val BYTES_PER_GB = 1024L * 1024 * 1024
     private const val MINIMUM_DEVICE_MEMORY_BYTES = 4L * BYTES_PER_GB
-    private const val MINIMUM_MODEL_SIZE_RATIO = 0.98
-    private const val MAXIMUM_MODEL_SIZE_RATIO = 1.02
     private const val PREFERENCES_NAME = "local_summary_models"
     private const val SELECTED_MODEL_KEY = "selected_model_id"
     private const val INFERENCE_BACKEND_KEY = "inference_backend"
     private const val THINKING_ENABLED_KEY = "thinking_enabled"
+    private const val SPECULATIVE_DECODING_ENABLED_KEY = "speculative_decoding_enabled"
+    private const val MODEL_REVISION_KEY_PREFIX = "model_revision"
     private const val PREPARING_MODEL_DURATION_KEY = "preparing_model"
     private const val GENERATING_RESPONSE_DURATION_KEY = "generating_response"
 
@@ -603,8 +667,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
         promptBudgetChars = 4096,
         estimatedSizeBytes = 2_588_147_712,
         fileName = "gemma-4-E2B-it.litertlm",
-        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/7fa1d78473894f7e736a21d920c3aa80f950c0db/gemma-4-E2B-it.litertlm?download=true",
+        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/6e5c4f1e395deb959c494953478fa5cec4b8008f/gemma-4-E2B-it.litertlm?download=true",
+        artifactRevision = "6e5c4f1e395deb959c494953478fa5cec4b8008f",
         minDeviceMemoryGb = 8,
+        supportsSpeculativeDecoding = true,
         recommended = true,
       ),
       ModelDefinition(
@@ -619,8 +685,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
         promptBudgetChars = 4096,
         estimatedSizeBytes = 3_659_530_240,
         fileName = "gemma-4-E4B-it.litertlm",
-        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/9695417f248178c63a9f318c6e0c56cb917cb837/gemma-4-E4B-it.litertlm?download=true",
+        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/28299f30ee4d43294517a4ac93abd6163412f07f/gemma-4-E4B-it.litertlm?download=true",
+        artifactRevision = "28299f30ee4d43294517a4ac93abd6163412f07f",
         minDeviceMemoryGb = 12,
+        supportsSpeculativeDecoding = true,
       ),
     )
   }
@@ -631,18 +699,15 @@ private class LiteRtLmInference(
   cacheDirectory: File,
   backend: LocalInferenceBackend,
   contextTokens: Int,
+  speculativeDecodingEnabled: Boolean,
 ) : AutoCloseable {
-  private val engine = Engine(
-    EngineConfig(
-      modelPath = file.absolutePath,
-      backend = when (backend) {
-        LocalInferenceBackend.CPU -> Backend.CPU()
-        LocalInferenceBackend.GPU -> Backend.GPU()
-      },
-      cacheDir = cacheDirectory.absolutePath,
-      maxNumTokens = contextTokens,
-    ),
-  ).also { it.initialize() }
+  private val engine = createEngine(
+    file = file,
+    cacheDirectory = cacheDirectory,
+    backend = backend,
+    contextTokens = contextTokens,
+    speculativeDecodingEnabled = speculativeDecodingEnabled,
+  )
 
   fun generate(prompt: String): String =
     engine.createConversation().use { conversation ->
@@ -698,5 +763,36 @@ private class LiteRtLmInference(
 
   override fun close() {
     engine.close()
+  }
+
+  @OptIn(ExperimentalApi::class)
+  private fun createEngine(
+    file: File,
+    cacheDirectory: File,
+    backend: LocalInferenceBackend,
+    contextTokens: Int,
+    speculativeDecodingEnabled: Boolean,
+  ): Engine = engineInitializationLock.withLock {
+    val previous = ExperimentalFlags.enableSpeculativeDecoding
+    ExperimentalFlags.enableSpeculativeDecoding = speculativeDecodingEnabled
+    try {
+      Engine(
+        EngineConfig(
+          modelPath = file.absolutePath,
+          backend = when (backend) {
+            LocalInferenceBackend.CPU -> Backend.CPU()
+            LocalInferenceBackend.GPU -> Backend.GPU()
+          },
+          cacheDir = cacheDirectory.absolutePath,
+          maxNumTokens = contextTokens,
+        ),
+      ).also { it.initialize() }
+    } finally {
+      ExperimentalFlags.enableSpeculativeDecoding = previous
+    }
+  }
+
+  companion object {
+    private val engineInitializationLock = ReentrantLock()
   }
 }
