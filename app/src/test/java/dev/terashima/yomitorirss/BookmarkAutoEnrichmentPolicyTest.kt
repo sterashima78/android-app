@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss
 
+import dev.terashima.yomitorirss.feature.article.ContentType
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,6 +12,18 @@ class BookmarkAutoEnrichmentPolicyTest {
       shouldRequestBookmarkEnrichment(
         url = "https://example.com/articles/1",
         sourceFeedUrl = "https://example.com/feed.xml",
+        contentType = ContentType.ARTICLE,
+      ),
+    )
+  }
+
+  @Test
+  fun `漫画は自動AI処理の対象外にする`() {
+    assertFalse(
+      shouldRequestBookmarkEnrichment(
+        url = "https://example.com/comics/1",
+        sourceFeedUrl = "https://example.com/comics/feed.xml",
+        contentType = ContentType.COMIC,
       ),
     )
   }
