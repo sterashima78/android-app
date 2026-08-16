@@ -112,12 +112,6 @@ fun LibraryFeatureRoute(
       onStartBatch = organizationViewModel::startBatch,
       onPauseBatch = organizationViewModel::pauseBatch,
       onResumeBatch = organizationViewModel::resumeBatch,
-      onAcceptCandidate = organizationViewModel::acceptCandidate,
-      onDeferCandidate = organizationViewModel::deferCandidate,
-      onRejectCandidate = organizationViewModel::rejectCandidate,
-      onReopenCandidate = organizationViewModel::reopenCandidate,
-      onRetryCandidate = organizationViewModel::retryCandidate,
-      onUpdateCandidate = organizationViewModel::updateCandidate,
       onDismissMessage = organizationViewModel::dismissMessage,
       onDismiss = { organizationVisible = false },
     )
