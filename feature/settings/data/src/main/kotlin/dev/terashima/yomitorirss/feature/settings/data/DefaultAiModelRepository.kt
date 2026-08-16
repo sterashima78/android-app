@@ -37,6 +37,7 @@ class DefaultAiModelRepository(
         recommended = model.recommended,
         memoryLow = model.memoryLow,
         supportsThinking = model.supportsThinking,
+        supportsSpeculativeDecoding = model.supportsSpeculativeDecoding,
       )
     }
   }
@@ -66,6 +67,7 @@ class DefaultAiModelRepository(
         LocalInferenceBackend.GPU -> AiInferenceBackend.GPU
       },
       thinkingEnabled = settings.thinkingEnabled,
+      speculativeDecodingEnabled = settings.speculativeDecodingEnabled,
     )
   }
 
@@ -79,6 +81,7 @@ class DefaultAiModelRepository(
     },
   )
   override fun setThinkingEnabled(enabled: Boolean) = manager.setThinkingEnabled(enabled)
+  override fun setSpeculativeDecodingEnabled(enabled: Boolean) = manager.setSpeculativeDecodingEnabled(enabled)
 
   override fun downloadModel(modelId: String) {
     val model = manager.models.value.firstOrNull { it.id == modelId }
