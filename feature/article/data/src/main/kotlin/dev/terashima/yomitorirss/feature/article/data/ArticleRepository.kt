@@ -82,7 +82,6 @@ private fun Cursor.article(): Article {
   val articleOverride = nullableString("content_type").toContentTypeOrNull()
   val feedOverride = nullableString("feed_content_type").toContentTypeOrNull()
   val folderOverride = nullableString("folder_content_type").toContentTypeOrNull()
-  val inheritedType = resolveContentType(null, feedOverride, folderOverride)
   return Article(
     id = string("id"),
     feedId = nullableString("feed_id"),
@@ -96,7 +95,6 @@ private fun Cursor.article(): Article {
     sourceTitle = string("source_title"),
     sourceFeedUrl = string("source_feed_url"),
     contentTypeOverride = articleOverride,
-    inheritedContentType = inheritedType,
     effectiveContentType = resolveContentType(articleOverride, feedOverride, folderOverride),
   )
 }
