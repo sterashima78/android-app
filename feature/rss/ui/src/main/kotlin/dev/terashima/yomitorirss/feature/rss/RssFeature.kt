@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
+import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 
@@ -41,6 +42,7 @@ fun RssScreen(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onSetContentType: (Article, ContentType?) -> Unit,
 ) {
   when (tab) {
     RssTab.UNREAD -> ArticleList(
@@ -54,6 +56,7 @@ fun RssScreen(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onSetContentType = onSetContentType,
     )
 
     RssTab.READ_LATER -> {
@@ -86,6 +89,7 @@ fun RssScreen(
           onSummarize = onSummarize,
           onEditTags = onEditTags,
           onMoveFolder = onMoveFolder,
+          onSetContentType = onSetContentType,
         )
       }
     }
