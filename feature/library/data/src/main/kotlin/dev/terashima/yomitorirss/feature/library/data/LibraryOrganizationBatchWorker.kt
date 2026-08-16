@@ -37,11 +37,11 @@ class WorkManagerLibraryOrganizationBatchScheduler(
     val workManager = WorkManager.getInstance(appContext)
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
     if (execution.paused) {
-      ensureResumeOnChargingScheduled()
+      setResumeOnChargingScheduled(true)
       return
     }
 
-    workManager.cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
+    setResumeOnChargingScheduled(false)
     val request = OneTimeWorkRequestBuilder<LibraryOrganizationBatchWorker>()
       .addTag(LibraryOrganizationBatchWorker.WORK_TAG)
       .build()
@@ -54,12 +54,17 @@ class WorkManagerLibraryOrganizationBatchScheduler(
 
   override fun cancel() {
     WorkManager.getInstance(appContext).cancelUniqueWork(LibraryOrganizationBatchWorker.WORK_NAME)
-    ensureResumeOnChargingScheduled()
   }
 
-  private fun ensureResumeOnChargingScheduled() {
+  override fun setResumeOnChargingScheduled(enabled: Boolean) {
+    val workManager = WorkManager.getInstance(appContext)
+    if (!enabled) {
+      workManager.cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
+      return
+    }
+
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
-    if (!execution.resumeWhenCharging) return
+    if (!execution.paused || !execution.resumeWhenCharging) return
 
     val request = OneTimeWorkRequestBuilder<LibraryOrganizationResumeOnChargingWorker>()
       .setConstraints(
@@ -68,7 +73,7 @@ class WorkManagerLibraryOrganizationBatchScheduler(
           .build(),
       )
       .build()
-    WorkManager.getInstance(appContext).enqueueUniqueWork(
+    workManager.enqueueUniqueWork(
       RESUME_ON_CHARGING_WORK_NAME,
       ExistingWorkPolicy.KEEP,
       request,
