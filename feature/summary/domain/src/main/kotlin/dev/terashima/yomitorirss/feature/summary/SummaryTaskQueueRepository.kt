@@ -34,6 +34,12 @@ data class SummaryQueueTask(
   val progressTotal: Int? = null,
 )
 
+data class SummaryQueueTaskCounts(
+  val queued: Int = 0,
+  val running: Int = 0,
+  val stopped: Int = 0,
+)
+
 data class SummaryQueueExecutionState(
   val paused: Boolean,
   val resumeWhenCharging: Boolean,
@@ -41,6 +47,16 @@ data class SummaryQueueExecutionState(
 
 interface SummaryTaskQueueRepository {
   suspend fun listTasks(): List<SummaryQueueTask>
+
+  suspend fun taskCounts(): SummaryQueueTaskCounts {
+    val tasks = listTasks()
+    return SummaryQueueTaskCounts(
+      queued = tasks.count { it.state == SummaryQueueTaskState.QUEUED },
+      running = tasks.count { it.state == SummaryQueueTaskState.RUNNING },
+      stopped = tasks.count { it.state == SummaryQueueTaskState.STOPPED },
+    )
+  }
+
   suspend fun executionState(): SummaryQueueExecutionState
   suspend fun kick()
   suspend fun setPaused(paused: Boolean)
