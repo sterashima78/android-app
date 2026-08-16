@@ -1,5 +1,10 @@
 package dev.terashima.yomitorirss.feature.settings
 
+enum class AiTaskQueueItemKind {
+  SUMMARY,
+  LIBRARY_ORGANIZATION,
+}
+
 enum class AiTaskQueueItemState {
   QUEUED,
   RUNNING,
@@ -13,6 +18,7 @@ enum class AiTaskQueueItemState {
 
 data class AiTaskQueueItem(
   val id: String,
+  val kind: AiTaskQueueItemKind,
   val title: String,
   val source: String,
   val state: AiTaskQueueItemState,
