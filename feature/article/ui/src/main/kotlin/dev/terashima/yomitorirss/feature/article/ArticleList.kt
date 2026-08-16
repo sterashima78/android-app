@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -68,6 +69,7 @@ fun ArticleList(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit = {},
+  onSetContentType: ((Article, ContentType?) -> Unit)? = null,
   extraMenuActions: (Article) -> List<ArticleMenuAction> = { emptyList() },
 ) {
   val groups = articles.groupBy(::dateLabel)
@@ -101,6 +103,7 @@ fun ArticleList(
           onSummarize = onSummarize,
           onEditTags = onEditTags,
           onMoveFolder = onMoveFolder,
+          onSetContentType = onSetContentType,
           extraMenuActions = extraMenuActions,
         )
       }
@@ -119,6 +122,7 @@ private fun LazyItemScope.SwipeArticleItem(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onSetContentType: ((Article, ContentType?) -> Unit)?,
   extraMenuActions: (Article) -> List<ArticleMenuAction>,
 ) {
   SwipeActionListItem(
@@ -134,6 +138,7 @@ private fun LazyItemScope.SwipeArticleItem(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onSetContentType = onSetContentType,
       extraMenuActions = extraMenuActions,
     )
   }
@@ -153,9 +158,11 @@ private fun ArticleContent(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onSetContentType: ((Article, ContentType?) -> Unit)?,
   extraMenuActions: (Article) -> List<ArticleMenuAction>,
 ) {
   var menuOpen by remember(article.id) { mutableStateOf(false) }
+  var editingContentType by remember(article.id) { mutableStateOf(false) }
   Box {
     Row(
       modifier = Modifier
@@ -184,6 +191,14 @@ private fun ArticleContent(
           Text(
             timeLabel(article.publishedAt),
             style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        if (article.effectiveContentType != ContentType.ARTICLE || article.contentTypeOverride != null) {
+          Spacer(Modifier.height(4.dp))
+          Text(
+            "種別: ${article.effectiveContentType.displayLabel()}${if (article.contentTypeOverride == null) "（継承）" else ""}",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
@@ -227,6 +242,16 @@ private fun ArticleContent(
           },
         )
       }
+      onSetContentType?.let {
+        DropdownMenuItem(
+          text = { Text("コンテンツ種別") },
+          leadingIcon = { Icon(Icons.Default.Tune, null) },
+          onClick = {
+            menuOpen = false
+            editingContentType = true
+          },
+        )
+      }
       DropdownMenuItem(
         text = { Text("要約") },
         leadingIcon = { Icon(Icons.Default.SmartToy, null) },
@@ -254,6 +279,16 @@ private fun ArticleContent(
         )
       }
     }
+  }
+  if (editingContentType) {
+    ArticleContentTypeDialog(
+      article = article,
+      onDismiss = { editingContentType = false },
+      onSelect = { contentType ->
+        editingContentType = false
+        onSetContentType?.invoke(article, contentType)
+      },
+    )
   }
 }
 
