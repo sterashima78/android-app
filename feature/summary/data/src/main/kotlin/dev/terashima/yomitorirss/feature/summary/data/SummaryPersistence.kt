@@ -125,12 +125,13 @@ internal fun YomitoriDatabase.markSummaryTaskFailed(id: String, error: String) {
   )
 }
 
-internal fun YomitoriDatabase.listSummaryTaskItems(limit: Int = 200): List<SummaryTaskListItem> =
+internal fun YomitoriDatabase.listSummaryTaskItems(): List<SummaryTaskListItem> =
   readableDatabase.rawQuery(
     """
       SELECT q.*, a.title AS article_title, a.source_title AS article_source_title
       FROM summary_tasks q
       JOIN articles a ON a.id = q.article_id
+      WHERE q.state <> 'completed'
       ORDER BY
         CASE q.state
           WHEN 'running' THEN 0
@@ -143,9 +144,8 @@ internal fun YomitoriDatabase.listSummaryTaskItems(limit: Int = 200): List<Summa
         END,
         CASE WHEN q.state IN ('running', 'queued') THEN q.queued_at END ASC,
         COALESCE(q.finished_at, q.started_at, q.queued_at) DESC
-      LIMIT ?
     """.trimIndent(),
-    arrayOf(limit.toString()),
+    null,
   ).use { cursor ->
     buildList {
       while (cursor.moveToNext()) {
