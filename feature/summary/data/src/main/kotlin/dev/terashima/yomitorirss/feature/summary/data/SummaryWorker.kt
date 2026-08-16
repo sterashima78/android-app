@@ -69,83 +69,79 @@ class SummaryWorker(
       return
     }
 
-    val modelManager = LocalModelManager(applicationContext)
+    val modelManager = LocalModelManager.shared(applicationContext)
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
-      try {
-        setForeground(createForegroundInfo(article.title))
-        val enrichmentContext = database.bookmarkEnrichmentContext(task.articleId)
-        var generatedMetadata: BookmarkAiGeneratedMetadata? = null
-        val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
-        if (cached != null) {
-          if (enrichmentContext != null) {
-            currentCoroutineContext().ensureActive()
-            modelManager.selectedModel()
-              ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
-            generatedMetadata = parseBookmarkMetadataEnrichment(
-              raw = modelManager.summarizeText(
-                text = cached.summary,
-                prompt = buildBookmarkMetadataPrompt(),
-                promptSuffix = buildBookmarkMetadataCandidateSuffix(
-                  articleTitle = article.title,
-                  existingTagNames = enrichmentContext.existingTagNames,
-                  existingFolderNames = enrichmentContext.existingFolderNames,
-                ),
-              ),
-              existingFolderNames = enrichmentContext.existingFolderNames,
-            )
-          }
-        } else {
-          val selectedModel = modelManager.selectedModel()
-            ?: error("要約モデルをダウンロードして選択してください")
-          val prompt = summaryPromptStore.prompt.value
-          val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
-
-          database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
-          val articleText = ArticleContentClient().fetchArticleText(article.url)
-          currentCoroutineContext().ensureActive()
-          val rawGenerated = summarizeWithProgress(
-            database = database,
-            modelManager = modelManager,
-            articleId = task.articleId,
-            articleText = articleText,
-            prompt = prompt,
-            promptSuffix = enrichmentContext?.let { context ->
-              buildBookmarkSummaryEnrichmentSuffix(
-                articleTitle = article.title,
-                existingTagNames = context.existingTagNames,
-                existingFolderNames = context.existingFolderNames,
-              )
-            }.orEmpty(),
-          )
-          val generatedSummary = enrichmentContext?.let { context ->
-            parseBookmarkSummaryEnrichment(
-              raw = rawGenerated,
-              existingFolderNames = context.existingFolderNames,
-            )
-          }
-          generatedMetadata = generatedSummary?.metadata
-          val generated = generatedSummary?.summary ?: rawGenerated
-          currentCoroutineContext().ensureActive()
-          database.saveSummary(task.articleId, generated, cacheKey)
-        }
-
+      setForeground(createForegroundInfo(article.title))
+      val enrichmentContext = database.bookmarkEnrichmentContext(task.articleId)
+      var generatedMetadata: BookmarkAiGeneratedMetadata? = null
+      val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
+      if (cached != null) {
         if (enrichmentContext != null) {
           currentCoroutineContext().ensureActive()
-          val metadata = checkNotNull(generatedMetadata) {
-            "ブックマークAIメタデータを生成できませんでした"
-          }
-          applyBookmarkMetadata(database, task.articleId, metadata)
+          modelManager.selectedModel()
+            ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
+          generatedMetadata = parseBookmarkMetadataEnrichment(
+            raw = modelManager.summarizeText(
+              text = cached.summary,
+              prompt = buildBookmarkMetadataPrompt(),
+              promptSuffix = buildBookmarkMetadataCandidateSuffix(
+                articleTitle = article.title,
+                existingTagNames = enrichmentContext.existingTagNames,
+                existingFolderNames = enrichmentContext.existingFolderNames,
+              ),
+            ),
+            existingFolderNames = enrichmentContext.existingFolderNames,
+          )
         }
+      } else {
+        val selectedModel = modelManager.selectedModel()
+          ?: error("要約モデルをダウンロードして選択してください")
+        val prompt = summaryPromptStore.prompt.value
+        val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
 
-        database.completeRunningSummaryTask(task.articleId)
-      } catch (error: CancellationException) {
-        throw error
-      } catch (error: Throwable) {
-        database.failRunningSummaryTask(task.articleId, error.userMessage())
+        database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
+        val articleText = ArticleContentClient().fetchArticleText(article.url)
+        currentCoroutineContext().ensureActive()
+        val rawGenerated = summarizeWithProgress(
+          database = database,
+          modelManager = modelManager,
+          articleId = task.articleId,
+          articleText = articleText,
+          prompt = prompt,
+          promptSuffix = enrichmentContext?.let { context ->
+            buildBookmarkSummaryEnrichmentSuffix(
+              articleTitle = article.title,
+              existingTagNames = context.existingTagNames,
+              existingFolderNames = context.existingFolderNames,
+            )
+          }.orEmpty(),
+        )
+        val generatedSummary = enrichmentContext?.let { context ->
+          parseBookmarkSummaryEnrichment(
+            raw = rawGenerated,
+            existingFolderNames = context.existingFolderNames,
+          )
+        }
+        generatedMetadata = generatedSummary?.metadata
+        val generated = generatedSummary?.summary ?: rawGenerated
+        currentCoroutineContext().ensureActive()
+        database.saveSummary(task.articleId, generated, cacheKey)
       }
-    } finally {
-      modelManager.close()
+
+      if (enrichmentContext != null) {
+        currentCoroutineContext().ensureActive()
+        val metadata = checkNotNull(generatedMetadata) {
+          "ブックマークAIメタデータを生成できませんでした"
+        }
+        applyBookmarkMetadata(database, task.articleId, metadata)
+      }
+
+      database.completeRunningSummaryTask(task.articleId)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (error: Throwable) {
+      database.failRunningSummaryTask(task.articleId, error.userMessage())
     }
   }
 
