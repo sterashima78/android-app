@@ -3,15 +3,24 @@ package dev.terashima.yomitorirss.feature.settings.data
 import android.content.Context
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceBackend
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
+import dev.terashima.yomitorirss.core.airuntime.LocalModelBenchmarkComparison
+import dev.terashima.yomitorirss.core.airuntime.LocalModelBenchmarkRunner
+import dev.terashima.yomitorirss.core.airuntime.LocalModelBenchmarkSample
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
+import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.feature.settings.AiInferenceBackend
 import dev.terashima.yomitorirss.feature.settings.AiInferenceSettings
+import dev.terashima.yomitorirss.feature.settings.AiModelBenchmarkComparison
+import dev.terashima.yomitorirss.feature.settings.AiModelBenchmarkSample
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSummaryProgress
 import dev.terashima.yomitorirss.feature.summary.data.SummaryPromptStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 
 class DefaultAiModelRepository(
   context: Context,
@@ -20,6 +29,7 @@ class DefaultAiModelRepository(
   private val downloadStateStore = AiModelDownloadStateStore(context)
   private val downloadScheduler = AiModelDownloadScheduler(context, downloadStateStore)
   private val summaryPromptStore = SummaryPromptStore(context)
+  private val benchmarkRunner = LocalModelBenchmarkRunner(context, manager)
 
   override val models = manager.models.map { models ->
     models.map { model ->
@@ -62,10 +72,7 @@ class DefaultAiModelRepository(
   override val summaryPrompt = summaryPromptStore.prompt
   override val inferenceSettings = manager.inferenceSettings.map { settings ->
     AiInferenceSettings(
-      backend = when (settings.backend) {
-        LocalInferenceBackend.CPU -> AiInferenceBackend.CPU
-        LocalInferenceBackend.GPU -> AiInferenceBackend.GPU
-      },
+      backend = settings.backend.toDomain(),
       thinkingEnabled = settings.thinkingEnabled,
       speculativeDecodingEnabled = settings.speculativeDecodingEnabled,
     )
@@ -83,6 +90,13 @@ class DefaultAiModelRepository(
   override fun setThinkingEnabled(enabled: Boolean) = manager.setThinkingEnabled(enabled)
   override fun setSpeculativeDecodingEnabled(enabled: Boolean) = manager.setSpeculativeDecodingEnabled(enabled)
 
+  override suspend fun benchmarkSelectedModel(): AiModelBenchmarkComparison =
+    LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.HIGH) {
+      withContext(Dispatchers.IO) {
+        benchmarkRunner.runSelectedModelComparison().toDomain()
+      }
+    }
+
   override fun downloadModel(modelId: String) {
     val model = manager.models.value.firstOrNull { it.id == modelId }
       ?: error("AIモデルが見つかりません")
@@ -96,3 +110,29 @@ class DefaultAiModelRepository(
   override fun selectModel(modelId: String) = manager.selectModel(modelId)
   override fun deleteModel(modelId: String) = manager.deleteModel(modelId)
 }
+
+private fun LocalInferenceBackend.toDomain(): AiInferenceBackend = when (this) {
+  LocalInferenceBackend.CPU -> AiInferenceBackend.CPU
+  LocalInferenceBackend.GPU -> AiInferenceBackend.GPU
+}
+
+private fun LocalModelBenchmarkComparison.toDomain() = AiModelBenchmarkComparison(
+  modelName = modelName,
+  backend = backend.toDomain(),
+  requestedPrefillTokens = requestedPrefillTokens,
+  requestedDecodeTokens = requestedDecodeTokens,
+  standard = standard.toDomain(),
+  speculative = speculative?.toDomain(),
+  speculativeError = speculativeError,
+)
+
+private fun LocalModelBenchmarkSample.toDomain() = AiModelBenchmarkSample(
+  speculativeDecodingEnabled = speculativeDecodingEnabled,
+  initTimeMillis = initTimeMillis,
+  timeToFirstTokenMillis = timeToFirstTokenMillis,
+  prefillTokenCount = prefillTokenCount,
+  decodeTokenCount = decodeTokenCount,
+  prefillTokensPerSecond = prefillTokensPerSecond,
+  decodeTokensPerSecond = decodeTokensPerSecond,
+  totalTimeMillis = totalTimeMillis,
+)
