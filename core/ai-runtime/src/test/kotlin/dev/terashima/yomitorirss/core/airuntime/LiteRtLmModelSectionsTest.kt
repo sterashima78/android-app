@@ -21,6 +21,19 @@ class LiteRtLmModelSectionsTest {
   }
 
   @Test
+  fun `tableより後ろの共有vtableを参照するSentencePieceセクションを取得する`() {
+    withFakeModel(
+      sectionType = SENTENCE_PIECE_SECTION_TYPE,
+      sectionVtableAfterTable = true,
+    ) { model, begin, end, _ ->
+      val section = LiteRtLmModelSections.sentencePieceTokenizer(model)
+
+      assertEquals(begin.toLong(), section.beginOffset)
+      assertEquals(end.toLong(), section.endOffset)
+    }
+  }
+
+  @Test
   fun `埋め込みSentencePieceをキャッシュへ抽出する`() {
     withFakeModel(sectionType = SENTENCE_PIECE_SECTION_TYPE) { model, _, _, payload ->
       val cacheDirectory = File(model.parentFile, "cache")
@@ -43,6 +56,7 @@ class LiteRtLmModelSectionsTest {
 
   private fun withFakeModel(
     sectionType: Int,
+    sectionVtableAfterTable: Boolean = false,
     block: (model: File, begin: Int, end: Int, payload: ByteArray) -> Unit,
   ) {
     val directory = Files.createTempDirectory("litertlm-tokenizer-test").toFile()
@@ -50,7 +64,11 @@ class LiteRtLmModelSectionsTest {
       val begin = 256
       val payload = byteArrayOf(1, 2, 3, 4, 5, 6)
       val end = begin + payload.size
-      val header = buildFlatBufferHeader(sectionType, begin.toLong(), end.toLong())
+      val header = if (sectionVtableAfterTable) {
+        buildFlatBufferHeaderWithFollowingSectionVtable(sectionType, begin.toLong(), end.toLong())
+      } else {
+        buildFlatBufferHeader(sectionType, begin.toLong(), end.toLong())
+      }
       val prefix = ByteBuffer.allocate(HEADER_PREFIX_SIZE).order(ByteOrder.LITTLE_ENDIAN).apply {
         put("LITERTLM".toByteArray(Charsets.US_ASCII))
         putInt(1)
@@ -75,6 +93,50 @@ class LiteRtLmModelSectionsTest {
     val bytes = ByteArray(81)
     val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
 
+    writeRootAndSectionMetadata(buffer, sectionTableOffset = 56)
+
+    buffer.putShort(44, 12.toShort())
+    buffer.putShort(46, 25.toShort())
+    buffer.putShort(48, 0.toShort())
+    buffer.putShort(50, 8.toShort())
+    buffer.putShort(52, 16.toShort())
+    buffer.putShort(54, 24.toShort())
+    buffer.putInt(56, 12)
+    buffer.putLong(64, begin)
+    buffer.putLong(72, end)
+    buffer.put(80, sectionType.toByte())
+
+    return bytes
+  }
+
+  private fun buildFlatBufferHeaderWithFollowingSectionVtable(
+    sectionType: Int,
+    begin: Long,
+    end: Long,
+  ): ByteArray {
+    val bytes = ByteArray(92)
+    val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+
+    val sectionTable = 44
+    val sectionVtable = 80
+    writeRootAndSectionMetadata(buffer, sectionTableOffset = sectionTable)
+
+    buffer.putInt(sectionTable, sectionTable - sectionVtable)
+    buffer.putLong(sectionTable + 8, begin)
+    buffer.putLong(sectionTable + 16, end)
+    buffer.put(sectionTable + 24, sectionType.toByte())
+
+    buffer.putShort(sectionVtable, 12.toShort())
+    buffer.putShort(sectionVtable + 2, 25.toShort())
+    buffer.putShort(sectionVtable + 4, 0.toShort())
+    buffer.putShort(sectionVtable + 6, 8.toShort())
+    buffer.putShort(sectionVtable + 8, 16.toShort())
+    buffer.putShort(sectionVtable + 10, 24.toShort())
+
+    return bytes
+  }
+
+  private fun writeRootAndSectionMetadata(buffer: ByteBuffer, sectionTableOffset: Int) {
     buffer.putInt(0, 12)
 
     buffer.putShort(4, 8.toShort())
@@ -91,20 +153,7 @@ class LiteRtLmModelSectionsTest {
     buffer.putInt(32, 4)
 
     buffer.putInt(36, 1)
-    buffer.putInt(40, 16)
-
-    buffer.putShort(44, 12.toShort())
-    buffer.putShort(46, 25.toShort())
-    buffer.putShort(48, 0.toShort())
-    buffer.putShort(50, 8.toShort())
-    buffer.putShort(52, 16.toShort())
-    buffer.putShort(54, 24.toShort())
-    buffer.putInt(56, 12)
-    buffer.putLong(64, begin)
-    buffer.putLong(72, end)
-    buffer.put(80, sectionType.toByte())
-
-    return bytes
+    buffer.putInt(40, sectionTableOffset - 40)
   }
 
   companion object {
