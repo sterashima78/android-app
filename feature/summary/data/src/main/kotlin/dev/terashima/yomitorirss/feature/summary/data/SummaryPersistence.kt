@@ -162,11 +162,12 @@ internal fun YomitoriDatabase.listSummaryTaskItems(): List<SummaryTaskListItem> 
   }
 
 internal fun YomitoriDatabase.claimNextSummaryTask(): SummaryTaskRecord? {
+  val orderBy = summaryTaskPriorityOrderByClause()
   val db = writableDatabase
   db.beginTransaction()
   try {
     val task = db.rawQuery(
-      "SELECT * FROM summary_tasks WHERE state=? ORDER BY queued_at ASC LIMIT 1",
+      "SELECT q.* FROM summary_tasks q WHERE q.state=? ORDER BY $orderBy LIMIT 1",
       arrayOf(SUMMARY_QUEUED),
     ).use { cursor -> if (!cursor.moveToFirst()) null else cursor.summaryTask() } ?: run {
       db.setTransactionSuccessful()

@@ -18,6 +18,7 @@ import androidx.work.await
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
+import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
@@ -151,28 +152,22 @@ class LibraryOrganizationBatchWorker(
     }
 
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
-    return LocalAiBackgroundTaskGate.withPermit {
-      withContext(Dispatchers.IO) {
-        if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
-          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
-          return@withContext Result.success()
-        }
+    return withContext(Dispatchers.IO) {
+      val database = YomitoriDatabase.create(applicationContext)
+      val connection = DatabaseConnection(database)
+      val organizationRepository = DefaultLibraryOrganizationRepository(connection)
+      val libraryRepository = SeriesAwareLibraryRepository(connection)
+      var currentItem: ClaimedLibraryOrganizationBatchItem? = null
 
-        val database = YomitoriDatabase.create(applicationContext)
-        val connection = DatabaseConnection(database)
-        val organizationRepository = DefaultLibraryOrganizationRepository(connection)
-        val libraryRepository = SeriesAwareLibraryRepository(connection)
-        val modelManager = LocalModelManager(applicationContext)
-        val suggester = LocalLibraryOrganizationSuggester(modelManager)
-        var currentItem: ClaimedLibraryOrganizationBatchItem? = null
+      try {
+        organizationRepository.requeueInterruptedBatchItems()
+        DataChangeNotifier.shared.notifyChanged()
 
-        try {
-          organizationRepository.requeueInterruptedBatchItems()
-          DataChangeNotifier.shared.notifyChanged()
-
-          while (true) {
-            currentCoroutineContext().ensureActive()
-            if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) break
+        while (!LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
+          currentCoroutineContext().ensureActive()
+          var claimedItem = false
+          LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
+            if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return@withPermit
 
             val item = organizationRepository.claimNextBatchItem()
             if (item == null) {
@@ -181,8 +176,9 @@ class LibraryOrganizationBatchWorker(
                 organizationRepository.finishBatchIfIdle(batch.batchId)
                 DataChangeNotifier.shared.notifyChanged()
               }
-              break
+              return@withPermit
             }
+            claimedItem = true
             currentItem = item
 
             try {
@@ -193,7 +189,7 @@ class LibraryOrganizationBatchWorker(
                 organizationRepository.skipBatchItem(item, "蔵書が見つからないためスキップしました")
                 DataChangeNotifier.shared.notifyChanged()
                 currentItem = null
-                continue
+                return@withPermit
               }
 
               val organizationSnapshot = organizationRepository.snapshot()
@@ -202,33 +198,39 @@ class LibraryOrganizationBatchWorker(
                 organizationRepository.skipBatchItem(item, "別の操作ですでに整理済みです")
                 DataChangeNotifier.shared.notifyChanged()
                 currentItem = null
-                continue
+                return@withPermit
               }
 
               setForeground(createForegroundInfo(book.title))
-              val (existingTags, existingCollections) =
-                organizationRepository.batchTaxonomyContext(item.batchId)
-              val seriesContext = seriesOrganizationContextFor(
-                book = book,
-                books = allBooks,
-                organizationSnapshot = organizationSnapshot,
-              )
-              currentCoroutineContext().ensureActive()
-              val suggestion = suggester.suggest(
-                book = book,
-                existingTags = existingTags,
-                existingCollections = existingCollections,
-                seriesContext = seriesContext,
-              )
-              currentCoroutineContext().ensureActive()
-              persistAndAutoApplySuggestion(
-                repository = organizationRepository,
-                item = item,
-                book = book,
-                suggestion = suggestion,
-              )
-              DataChangeNotifier.shared.notifyChanged()
-              currentItem = null
+              val modelManager = LocalModelManager(applicationContext)
+              try {
+                val suggester = LocalLibraryOrganizationSuggester(modelManager)
+                val (existingTags, existingCollections) =
+                  organizationRepository.batchTaxonomyContext(item.batchId)
+                val seriesContext = seriesOrganizationContextFor(
+                  book = book,
+                  books = allBooks,
+                  organizationSnapshot = organizationSnapshot,
+                )
+                currentCoroutineContext().ensureActive()
+                val suggestion = suggester.suggest(
+                  book = book,
+                  existingTags = existingTags,
+                  existingCollections = existingCollections,
+                  seriesContext = seriesContext,
+                )
+                currentCoroutineContext().ensureActive()
+                persistAndAutoApplySuggestion(
+                  repository = organizationRepository,
+                  item = item,
+                  book = book,
+                  suggestion = suggestion,
+                )
+                DataChangeNotifier.shared.notifyChanged()
+                currentItem = null
+              } finally {
+                modelManager.close()
+              }
             } catch (cancelled: CancellationException) {
               throw cancelled
             } catch (error: Throwable) {
@@ -238,15 +240,15 @@ class LibraryOrganizationBatchWorker(
             }
           }
 
-          Result.success()
-        } catch (cancelled: CancellationException) {
-          currentItem?.let(organizationRepository::requeueBatchItem)
-          DataChangeNotifier.shared.notifyChanged()
-          throw cancelled
-        } finally {
-          modelManager.close()
-          database.close()
+          if (!claimedItem) break
         }
+        Result.success()
+      } catch (cancelled: CancellationException) {
+        currentItem?.let(organizationRepository::requeueBatchItem)
+        DataChangeNotifier.shared.notifyChanged()
+        throw cancelled
+      } finally {
+        database.close()
       }
     }
   }
