@@ -1,7 +1,12 @@
 package dev.terashima.yomitorirss.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.feature.settings.AiInferenceBackend
+import dev.terashima.yomitorirss.feature.settings.AiInferenceSettings
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSummaryProgress
 
@@ -11,32 +16,36 @@ internal fun ModelManagerDialog(
   models: List<AiModelStatus>,
   inferenceBackend: AiInferenceBackend,
   thinkingEnabled: Boolean,
-  speculativeDecodingEnabled: Boolean,
   progressModelId: String?,
   progressText: String?,
   onDismiss: () -> Unit,
   onBackendChange: (AiInferenceBackend) -> Unit,
   onThinkingChange: (Boolean) -> Unit,
-  onSpeculativeDecodingChange: (Boolean) -> Unit,
   onDownload: (String) -> Unit,
   onSelect: (String) -> Unit,
   onDelete: (String) -> Unit,
-) = dev.terashima.yomitorirss.feature.settings.ModelManagerDialog(
-  supported = supported,
-  models = models,
-  inferenceBackend = inferenceBackend,
-  thinkingEnabled = thinkingEnabled,
-  speculativeDecodingEnabled = speculativeDecodingEnabled,
-  progressModelId = progressModelId,
-  progressText = progressText,
-  onDismiss = onDismiss,
-  onBackendChange = onBackendChange,
-  onThinkingChange = onThinkingChange,
-  onSpeculativeDecodingChange = onSpeculativeDecodingChange,
-  onDownload = onDownload,
-  onSelect = onSelect,
-  onDelete = onDelete,
-)
+) {
+  val application = LocalContext.current.applicationContext as YomitoriApplication
+  val aiModelRepository = application.container.aiModelRepository
+  val inferenceSettings by aiModelRepository.inferenceSettings.collectAsState(AiInferenceSettings())
+
+  dev.terashima.yomitorirss.feature.settings.ModelManagerDialog(
+    supported = supported,
+    models = models,
+    inferenceBackend = inferenceBackend,
+    thinkingEnabled = thinkingEnabled,
+    speculativeDecodingEnabled = inferenceSettings.speculativeDecodingEnabled,
+    progressModelId = progressModelId,
+    progressText = progressText,
+    onDismiss = onDismiss,
+    onBackendChange = onBackendChange,
+    onThinkingChange = onThinkingChange,
+    onSpeculativeDecodingChange = aiModelRepository::setSpeculativeDecodingEnabled,
+    onDownload = onDownload,
+    onSelect = onSelect,
+    onDelete = onDelete,
+  )
+}
 
 @Composable
 internal fun SummaryPromptDialog(
