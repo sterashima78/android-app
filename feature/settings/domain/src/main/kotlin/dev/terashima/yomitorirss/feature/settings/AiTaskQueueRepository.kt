@@ -5,6 +5,12 @@ enum class AiTaskQueueItemKind {
   LIBRARY_ORGANIZATION,
 }
 
+enum class AiTaskQueueItemPriority {
+  HIGH,
+  NORMAL,
+  LOW,
+}
+
 enum class AiTaskQueueItemState {
   QUEUED,
   RUNNING,
@@ -32,6 +38,7 @@ data class AiTaskQueueItem(
   val title: String,
   val source: String,
   val state: AiTaskQueueItemState,
+  val priority: AiTaskQueueItemPriority = AiTaskQueueItemPriority.NORMAL,
   val progressStage: AiTaskQueueProgressStage? = null,
   val progressCurrent: Int? = null,
   val progressTotal: Int? = null,
