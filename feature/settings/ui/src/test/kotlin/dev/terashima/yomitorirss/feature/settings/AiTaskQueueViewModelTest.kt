@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.settings
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AiTaskQueueViewModelTest {
@@ -43,11 +44,65 @@ class AiTaskQueueViewModelTest {
     assertEquals(emptyList<AiTaskQueueItem>(), prepareVisibleAiTasks(tasks))
   }
 
-  private fun task(id: String, state: AiTaskQueueItemState) = AiTaskQueueItem(
+  @Test
+  fun `件数のない実行中フェーズは不定進捗として表示する`() {
+    val presentation = aiTaskProgressPresentation(
+      task(
+        id = "preparing",
+        state = AiTaskQueueItemState.RUNNING,
+        progressStage = AiTaskQueueProgressStage.PREPARING_MODEL,
+      ),
+    )
+
+    assertEquals("AIモデルを読み込み中", presentation?.label)
+    assertNull(presentation?.fraction)
+  }
+
+  @Test
+  fun `長文分割は件数と確定進捗を表示する`() {
+    val presentation = aiTaskProgressPresentation(
+      task(
+        id = "chunk",
+        state = AiTaskQueueItemState.RUNNING,
+        progressStage = AiTaskQueueProgressStage.PROCESSING_CHUNK,
+        progressCurrent = 2,
+        progressTotal = 4,
+      ),
+    )
+
+    assertEquals("長文を分割要約中 2/4", presentation?.label)
+    assertEquals(0.5f, presentation?.fraction)
+  }
+
+  @Test
+  fun `フェーズ情報がない実行中タスクも不定進捗を表示する`() {
+    val presentation = aiTaskProgressPresentation(
+      task("running", AiTaskQueueItemState.RUNNING),
+    )
+
+    assertEquals("AI処理中", presentation?.label)
+    assertNull(presentation?.fraction)
+  }
+
+  @Test
+  fun `待機中タスクには進捗を表示しない`() {
+    assertNull(aiTaskProgressPresentation(task("queued", AiTaskQueueItemState.QUEUED)))
+  }
+
+  private fun task(
+    id: String,
+    state: AiTaskQueueItemState,
+    progressStage: AiTaskQueueProgressStage? = null,
+    progressCurrent: Int? = null,
+    progressTotal: Int? = null,
+  ) = AiTaskQueueItem(
     id = id,
     kind = AiTaskQueueItemKind.SUMMARY,
     title = id,
     source = "test",
     state = state,
+    progressStage = progressStage,
+    progressCurrent = progressCurrent,
+    progressTotal = progressTotal,
   )
 }
