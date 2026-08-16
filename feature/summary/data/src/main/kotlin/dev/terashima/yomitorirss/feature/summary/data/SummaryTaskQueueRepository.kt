@@ -4,6 +4,7 @@ import android.content.Context
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskCounts
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
@@ -30,6 +31,8 @@ class DefaultSummaryTaskQueueRepository(
         progressTotal = item.task.progressTotal,
       )
     }
+
+  override suspend fun taskCounts(): SummaryQueueTaskCounts = database.countSummaryQueueTasks()
 
   override suspend fun executionState(): SummaryQueueExecutionState =
     SummaryQueue.executionState(appContext)
