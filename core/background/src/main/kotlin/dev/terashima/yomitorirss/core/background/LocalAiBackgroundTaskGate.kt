@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.core.background
 
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Serializes expensive background local-AI jobs across feature-owned queues.
@@ -12,7 +11,12 @@ import kotlinx.coroutines.sync.withLock
 object LocalAiBackgroundTaskGate {
   private val mutex = Mutex()
 
-  suspend fun <T> withPermit(block: suspend () -> T): T = mutex.withLock {
-    block()
+  suspend fun <T> withPermit(block: suspend () -> T): T {
+    mutex.lock()
+    return try {
+      block()
+    } finally {
+      mutex.unlock()
+    }
   }
 }
