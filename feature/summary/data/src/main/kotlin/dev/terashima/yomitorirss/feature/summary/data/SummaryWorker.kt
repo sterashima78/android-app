@@ -74,8 +74,26 @@ class SummaryWorker(
     try {
       try {
         setForeground(createForegroundInfo(article.title))
+        val enrichmentContext = database.bookmarkEnrichmentContext(task.articleId)
+        var generatedMetadata: BookmarkAiGeneratedMetadata? = null
         val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
         val summary = if (cached != null) {
+          if (enrichmentContext != null) {
+            currentCoroutineContext().ensureActive()
+            modelManager.selectedModel()
+              ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
+            generatedMetadata = parseBookmarkMetadataEnrichment(
+              raw = modelManager.summarizeText(
+                text = cached.summary,
+                prompt = buildBookmarkMetadataPrompt(
+                  articleTitle = article.title,
+                  existingTagNames = enrichmentContext.existingTagNames,
+                  existingFolderNames = enrichmentContext.existingFolderNames,
+                ),
+              ),
+              existingFolderNames = enrichmentContext.existingFolderNames,
+            )
+          }
           cached.summary
         } else {
           val selectedModel = modelManager.selectedModel()
@@ -86,64 +104,39 @@ class SummaryWorker(
           database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
           val articleText = ArticleContentClient().fetchArticleText(article.url)
           currentCoroutineContext().ensureActive()
-          summarizeWithProgress(
+          val rawGenerated = summarizeWithProgress(
             database = database,
             modelManager = modelManager,
             articleId = task.articleId,
             articleText = articleText,
             prompt = prompt,
-          ).also { generated ->
-            currentCoroutineContext().ensureActive()
-            database.saveSummary(task.articleId, generated, cacheKey)
+            promptSuffix = enrichmentContext?.let { context ->
+              buildBookmarkSummaryEnrichmentSuffix(
+                articleTitle = article.title,
+                existingTagNames = context.existingTagNames,
+                existingFolderNames = context.existingFolderNames,
+              )
+            }.orEmpty(),
+          )
+          val generatedSummary = enrichmentContext?.let { context ->
+            parseBookmarkSummaryEnrichment(
+              raw = rawGenerated,
+              existingFolderNames = context.existingFolderNames,
+            )
           }
+          generatedMetadata = generatedSummary?.metadata
+          val generated = generatedSummary?.summary ?: rawGenerated
+          currentCoroutineContext().ensureActive()
+          database.saveSummary(task.articleId, generated, cacheKey)
+          generated
         }
 
-        if (database.isBookmarkedForAiEnrichment(task.articleId)) {
+        if (enrichmentContext != null) {
           currentCoroutineContext().ensureActive()
-          modelManager.selectedModel()
-            ?: error("AIタグ生成用のモデルをダウンロードして選択してください")
-          val tagSource = buildString {
-            append("タイトル: ")
-            append(article.title)
-            append("\n\n要約:\n")
-            append(summary)
+          val metadata = checkNotNull(generatedMetadata) {
+            "ブックマークAIメタデータを生成できませんでした"
           }
-          val tagPrompt = buildAutoTagPrompt(database.listExistingTagNamesForAiEnrichment())
-          val generatedTags = parseGeneratedTags(
-            modelManager.summarizeText(tagSource, tagPrompt),
-          )
-          check(generatedTags.isNotEmpty()) { "AIタグを生成できませんでした" }
-          currentCoroutineContext().ensureActive()
-          var metadataChanged = database.addAiGeneratedTags(task.articleId, generatedTags)
-
-          if (database.isUncategorizedBookmarkForAiEnrichment(task.articleId)) {
-            val existingFolders = database.listExistingFolderNamesForAiEnrichment()
-            if (existingFolders.isNotEmpty()) {
-              val folderSource = buildString {
-                append(tagSource)
-                append("\n\nタグ: ")
-                append(generatedTags.joinToString("、"))
-              }
-              val folderName = parseGeneratedFolder(
-                raw = modelManager.summarizeText(
-                  folderSource,
-                  buildAutoFolderPrompt(existingFolders),
-                ),
-                existingFolderNames = existingFolders,
-              )
-              currentCoroutineContext().ensureActive()
-              if (
-                folderName != null &&
-                database.assignExistingFolderForAiEnrichment(task.articleId, folderName)
-              ) {
-                metadataChanged = true
-              }
-            }
-          }
-
-          if (metadataChanged) {
-            DataChangeNotifier.shared.notifyChanged()
-          }
+          applyBookmarkMetadata(database, task.articleId, metadata)
         }
 
         database.completeRunningSummaryTask(task.articleId)
@@ -157,12 +150,32 @@ class SummaryWorker(
     }
   }
 
+  private suspend fun applyBookmarkMetadata(
+    database: YomitoriDatabase,
+    articleId: String,
+    metadata: BookmarkAiGeneratedMetadata,
+  ) {
+    currentCoroutineContext().ensureActive()
+    var metadataChanged = database.addAiGeneratedTags(articleId, metadata.tags)
+    currentCoroutineContext().ensureActive()
+    if (
+      metadata.folder != null &&
+      database.assignExistingFolderForAiEnrichment(articleId, metadata.folder)
+    ) {
+      metadataChanged = true
+    }
+    if (metadataChanged) {
+      DataChangeNotifier.shared.notifyChanged()
+    }
+  }
+
   private suspend fun summarizeWithProgress(
     database: YomitoriDatabase,
     modelManager: LocalModelManager,
     articleId: String,
     articleText: String,
     prompt: String,
+    promptSuffix: String,
   ): String = coroutineScope {
     val hierarchyProgress = AtomicReference<HierarchicalSummaryProgress?>(null)
     val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
@@ -186,7 +199,11 @@ class SummaryWorker(
     }
 
     try {
-      modelManager.summarizeHierarchically(articleText, prompt) { progress ->
+      modelManager.summarizeHierarchically(
+        text = articleText,
+        prompt = prompt,
+        promptSuffix = promptSuffix,
+      ) { progress ->
         hierarchyProgress.set(progress)
         val stored = progress.toStoredProgress()
         database.updateRunningSummaryTaskProgress(
@@ -248,6 +265,24 @@ class SummaryWorker(
     private const val CHANNEL_ID = "article_summary"
     private const val NOTIFICATION_ID = 8766
   }
+}
+
+private data class BookmarkEnrichmentContext(
+  val existingTagNames: List<String>,
+  val existingFolderNames: List<String>,
+)
+
+private fun YomitoriDatabase.bookmarkEnrichmentContext(articleId: String): BookmarkEnrichmentContext? {
+  if (!isBookmarkedForAiEnrichment(articleId)) return null
+  val existingFolders = if (isUncategorizedBookmarkForAiEnrichment(articleId)) {
+    listExistingFolderNamesForAiEnrichment()
+  } else {
+    emptyList()
+  }
+  return BookmarkEnrichmentContext(
+    existingTagNames = listExistingTagNamesForAiEnrichment(),
+    existingFolderNames = existingFolders,
+  )
 }
 
 private data class StoredSummaryProgress(
