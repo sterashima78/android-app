@@ -81,18 +81,13 @@ class AppDatabaseSchemaTest {
 
   @Test
   fun `legacy library review candidates are discarded while upgrading to current version`() {
-    val legacyLibrarySchema = appDatabaseSchema.contributions
-      .first { it.owner == "library" }
-      .let { contribution ->
+    val legacySchema = DatabaseSchema(
+      version = 17,
+      contributions = appDatabaseSchema.contributions.map { contribution ->
         DatabaseSchemaContribution(
           owner = contribution.owner,
           createSchema = contribution.createSchema,
         )
-      }
-    val legacySchema = DatabaseSchema(
-      version = 17,
-      contributions = appDatabaseSchema.contributions.map { contribution ->
-        if (contribution.owner == "library") legacyLibrarySchema else contribution
       },
     )
     val legacyDatabase = YomitoriDatabase.create(context, legacySchema)
