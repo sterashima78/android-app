@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.rss.data
 
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
@@ -57,6 +58,16 @@ class DefaultFeedRepository(
 
   override suspend fun moveFeedToFolder(feedId: String, folderId: String?) {
     store.moveFeedToFolder(feedId, folderId)
+    dataChanges.notifyChanged()
+  }
+
+  override suspend fun setFeedContentType(feedId: String, contentType: ContentType?) {
+    store.setFeedContentType(feedId, contentType)
+    dataChanges.notifyChanged()
+  }
+
+  override suspend fun setFolderContentType(folderId: String, contentType: ContentType?) {
+    store.setFolderContentType(folderId, contentType)
     dataChanges.notifyChanged()
   }
 
