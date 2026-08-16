@@ -58,6 +58,11 @@ data class LibraryOrganizationSuggestion(
   val reason: String?,
 )
 
+data class LibraryOrganizationSeriesContext(
+  val tagNames: List<String> = emptyList(),
+  val collectionNames: List<String> = emptyList(),
+)
+
 enum class LibraryOrganizationBatchStatus(val label: String) {
   RUNNING("解析中"),
   PAUSED("一時停止"),
@@ -160,5 +165,6 @@ interface LibraryOrganizationSuggester {
     book: LibraryBook,
     existingTags: List<String>,
     existingCollections: List<String>,
+    seriesContext: LibraryOrganizationSeriesContext? = null,
   ): LibraryOrganizationSuggestion
 }

@@ -20,8 +20,13 @@ import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSeriesContext
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSnapshot
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggestion
 import dev.terashima.yomitorirss.feature.library.organizationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -179,8 +184,8 @@ class LibraryOrganizationBatchWorker(
 
             try {
               val library = libraryRepository.snapshot()
-              val book = (library.books + library.hiddenBooks)
-                .firstOrNull { candidate -> candidate.organizationKey() == item.key }
+              val allBooks = library.books + library.hiddenBooks
+              val book = allBooks.firstOrNull { candidate -> candidate.organizationKey() == item.key }
               if (book == null) {
                 organizationRepository.skipBatchItem(item, "蔵書が見つからないためスキップしました")
                 DataChangeNotifier.shared.notifyChanged()
@@ -188,7 +193,8 @@ class LibraryOrganizationBatchWorker(
                 continue
               }
 
-              val currentOrganization = organizationRepository.snapshot().organizationFor(book)
+              val organizationSnapshot = organizationRepository.snapshot()
+              val currentOrganization = organizationSnapshot.organizationFor(book)
               if (currentOrganization.tags.isNotEmpty() || currentOrganization.collections.isNotEmpty()) {
                 organizationRepository.skipBatchItem(item, "別の操作ですでに整理済みです")
                 DataChangeNotifier.shared.notifyChanged()
@@ -199,14 +205,25 @@ class LibraryOrganizationBatchWorker(
               setForeground(createForegroundInfo(book.title))
               val (existingTags, existingCollections) =
                 organizationRepository.batchTaxonomyContext(item.batchId)
+              val seriesContext = seriesOrganizationContextFor(
+                book = book,
+                books = allBooks,
+                organizationSnapshot = organizationSnapshot,
+              )
               currentCoroutineContext().ensureActive()
               val suggestion = suggester.suggest(
                 book = book,
                 existingTags = existingTags,
                 existingCollections = existingCollections,
+                seriesContext = seriesContext,
               )
               currentCoroutineContext().ensureActive()
-              organizationRepository.saveGeneratedCandidate(item, suggestion)
+              persistAndAutoApplySuggestion(
+                repository = organizationRepository,
+                item = item,
+                book = book,
+                suggestion = suggestion,
+              )
               DataChangeNotifier.shared.notifyChanged()
               currentItem = null
             } catch (cancelled: CancellationException) {
@@ -239,7 +256,7 @@ class LibraryOrganizationBatchWorker(
         "蔵書のAI整理",
         NotificationManager.IMPORTANCE_LOW,
       ).apply {
-        description = "ローカルAIで蔵書の整理候補をバックグラウンド生成している間に表示します"
+        description = "ローカルAIで蔵書のタグ・コレクションをバックグラウンド整理している間に表示します"
         setShowBadge(false)
       },
     )
@@ -282,8 +299,99 @@ class LibraryOrganizationBatchWorker(
   }
 }
 
+private suspend fun persistAndAutoApplySuggestion(
+  repository: DefaultLibraryOrganizationRepository,
+  item: ClaimedLibraryOrganizationBatchItem,
+  book: LibraryBook,
+  suggestion: LibraryOrganizationSuggestion,
+) {
+  repository.saveGeneratedCandidate(item, suggestion)
+  try {
+    repository.acceptCandidate(
+      book = book,
+      draft = LibraryOrganizationDraft(
+        tagNames = suggestion.tagNames,
+        collectionNames = suggestion.collectionNames,
+        readingStatus = null,
+      ),
+    )
+  } catch (cancelled: CancellationException) {
+    throw cancelled
+  } catch (error: Throwable) {
+    val currentOrganization = try {
+      repository.snapshot().organizationFor(book)
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Throwable) {
+      null
+    }
+    val manuallyOrganized = currentOrganization?.let { organization ->
+      organization.tags.isNotEmpty() || organization.collections.isNotEmpty()
+    } == true
+    if (!manuallyOrganized) throw error
+
+    // A manual edit that raced with AI application wins. The transient generated candidate must not
+    // overwrite it or block the next batch waiting for approval.
+    try {
+      repository.rejectCandidate(item.key)
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Throwable) {
+      // The manual organization already won. A stale candidate can remain as recovery state.
+    }
+  }
+}
+
+internal fun seriesOrganizationContextFor(
+  book: LibraryBook,
+  books: List<LibraryBook>,
+  organizationSnapshot: LibraryOrganizationSnapshot,
+): LibraryOrganizationSeriesContext? {
+  val targetSeries = book.series ?: return null
+  val peerOrganizations = books.asSequence()
+    .filter { peer -> peer.organizationKey() != book.organizationKey() }
+    .filter { peer -> sameSeries(targetSeries.id, targetSeries.name, peer.series?.id, peer.series?.name) }
+    .map(organizationSnapshot::organizationFor)
+    .toList()
+
+  val tagNames = peerOrganizations
+    .flatMap { organization -> organization.tags.map { tag -> tag.name } }
+    .distinctBy(::normalizeLibraryOrganizationName)
+    .take(MAX_SERIES_CONTEXT_TAGS)
+  val collectionNames = peerOrganizations
+    .flatMap { organization -> organization.collections.map { collection -> collection.name } }
+    .distinctBy(::normalizeLibraryOrganizationName)
+    .take(MAX_SERIES_CONTEXT_COLLECTIONS)
+
+  if (tagNames.isEmpty() && collectionNames.isEmpty()) return null
+  return LibraryOrganizationSeriesContext(
+    tagNames = tagNames,
+    collectionNames = collectionNames,
+  )
+}
+
+private fun sameSeries(
+  leftId: String?,
+  leftName: String,
+  rightId: String?,
+  rightName: String?,
+): Boolean {
+  val normalizedLeftId = leftId?.trim()?.takeIf(String::isNotEmpty)
+  val normalizedRightId = rightId?.trim()?.takeIf(String::isNotEmpty)
+  if (normalizedLeftId != null && normalizedRightId != null) {
+    return normalizedLeftId.equals(normalizedRightId, ignoreCase = true)
+  }
+  val normalizedLeftName = leftName.trim()
+  val normalizedRightName = rightName?.trim().orEmpty()
+  if (normalizedLeftName.isEmpty() || normalizedRightName.isEmpty()) return false
+  return normalizedRightName.equals(normalizedLeftName, ignoreCase = true)
+}
+
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
     .mapNotNull(Throwable::message)
     .firstOrNull(String::isNotBlank)
     ?: javaClass.simpleName
+
+private const val MAX_SERIES_CONTEXT_TAGS = 20
+private const val MAX_SERIES_CONTEXT_COLLECTIONS = 10
