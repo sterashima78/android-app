@@ -13,6 +13,5 @@ data class Article(
   val sourceTitle: String,
   val sourceFeedUrl: String,
   val contentTypeOverride: ContentType? = null,
-  val inheritedContentType: ContentType = ContentType.ARTICLE,
-  val effectiveContentType: ContentType = contentTypeOverride ?: inheritedContentType,
+  val effectiveContentType: ContentType = ContentType.ARTICLE,
 )
