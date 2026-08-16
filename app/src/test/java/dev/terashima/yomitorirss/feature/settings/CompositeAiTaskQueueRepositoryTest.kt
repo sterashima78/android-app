@@ -53,7 +53,7 @@ class CompositeAiTaskQueueRepositoryTest {
   }
 
   @Test
-  fun `全体の一時停止と再開を要約と蔵書整理へ一貫して適用する`() = runBlocking {
+  fun `全体停止は実行中の蔵書整理を実行ゲートで止め再開時に再度キックする`() = runBlocking {
     val summary = FakeSummaryRepository()
     val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.RUNNING))
     val scheduler = FakeScheduler()
@@ -62,14 +62,32 @@ class CompositeAiTaskQueueRepositoryTest {
     repository.setPaused(true)
 
     assertTrue(summary.execution.paused)
-    assertEquals(LibraryOrganizationBatchStatus.PAUSED, library.batch!!.status)
+    assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.cancelCount)
+    assertTrue(scheduler.resumeOnChargingScheduled)
+    assertEquals(AiTaskQueueItemState.PAUSED, repository.listTasks().first().state)
 
     repository.setPaused(false)
 
     assertFalse(summary.execution.paused)
     assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.kickCount)
+    assertFalse(scheduler.resumeOnChargingScheduled)
+  }
+
+  @Test
+  fun `個別に一時停止した蔵書整理は全体停止の解除や充電再開対象にしない`() = runBlocking {
+    val summary = FakeSummaryRepository()
+    val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.PAUSED))
+    val scheduler = FakeScheduler()
+    val repository = CompositeAiTaskQueueRepository(summary, library, scheduler)
+
+    repository.setPaused(true)
+    repository.setPaused(false)
+
+    assertEquals(LibraryOrganizationBatchStatus.PAUSED, library.batch!!.status)
+    assertEquals(0, scheduler.kickCount)
+    assertFalse(scheduler.resumeOnChargingScheduled)
   }
 }
 
@@ -116,11 +134,18 @@ private class FakeLibraryOrganizationRepository(
 private class FakeScheduler : LibraryOrganizationBatchScheduler {
   var kickCount = 0
   var cancelCount = 0
+  var resumeOnChargingScheduled = false
+
   override fun kick() {
     kickCount += 1
   }
+
   override fun cancel() {
     cancelCount += 1
+  }
+
+  override fun setResumeOnChargingScheduled(enabled: Boolean) {
+    resumeOnChargingScheduled = enabled
   }
 }
 
