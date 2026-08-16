@@ -256,7 +256,7 @@ private fun LibraryBackgroundOrganizationCard(
         )
         if (problemCount > 0) {
           Text(
-            "失敗・スキップ $problemCount 件はAIタスクキューから再実行できます。",
+            "失敗・スキップ $problemCount 件はAIタスクキューから個別再実行するか、未整理をまとめて再解析できます。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -524,6 +524,4 @@ private fun mergeOrganizationNames(
 private val ACTIVE_BATCH_STATUSES = setOf(
   LibraryOrganizationCandidateStatus.QUEUED,
   LibraryOrganizationCandidateStatus.PROCESSING,
-  LibraryOrganizationCandidateStatus.FAILED,
-  LibraryOrganizationCandidateStatus.SKIPPED,
 )
