@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.library
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,6 +61,7 @@ fun LibraryMetadataManagementDialog(
   onDismiss: () -> Unit,
 ) {
   var sectionName by rememberSaveable { mutableStateOf(MetadataManagementSection.TAGS.name) }
+  var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
   var showAiOrganizer by rememberSaveable { mutableStateOf(false) }
   val section = MetadataManagementSection.valueOf(sectionName)
   val snackbarHostState = remember { SnackbarHostState() }
@@ -73,7 +75,9 @@ fun LibraryMetadataManagementDialog(
   }
 
   Dialog(
-    onDismissRequest = onDismiss,
+    onDismissRequest = {
+      if (selectedGroupId != null) selectedGroupId = null else onDismiss()
+    },
     properties = DialogProperties(
       usePlatformDefaultWidth = false,
       decorFitsSystemWindows = false,
@@ -95,12 +99,12 @@ fun LibraryMetadataManagementDialog(
           ) {
             Column(Modifier.weight(1f)) {
               Text(
-                "蔵書のメタ情報を整理",
+                "蔵書の分類を管理",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
               )
               Text(
-                "タグ・コレクションから蔵書を外したり、シリーズ単位でAI整理をやり直せます。",
+                "タグやコレクションごとに蔵書を閲覧し、所属を簡単に調整できます。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
@@ -118,7 +122,10 @@ fun LibraryMetadataManagementDialog(
             MetadataManagementSection.entries.forEach { candidate ->
               FilterChip(
                 selected = candidate == section,
-                onClick = { sectionName = candidate.name },
+                onClick = {
+                  sectionName = candidate.name
+                  selectedGroupId = null
+                },
                 label = { Text(candidate.label) },
               )
             }
@@ -133,11 +140,15 @@ fun LibraryMetadataManagementDialog(
             section == MetadataManagementSection.TAGS -> TagManagementContent(
               books = books,
               state = state,
+              selectedGroupId = selectedGroupId,
+              onSelectGroup = { selectedGroupId = it },
               onSave = onSave,
             )
             section == MetadataManagementSection.COLLECTIONS -> CollectionManagementContent(
               books = books,
               state = state,
+              selectedGroupId = selectedGroupId,
+              onSelectGroup = { selectedGroupId = it },
               onSave = onSave,
             )
             else -> SeriesManagementContent(
@@ -182,30 +193,23 @@ private fun LoadingMetadataManagement() {
 private fun TagManagementContent(
   books: List<LibraryBook>,
   state: LibraryOrganizationUiState,
+  selectedGroupId: String?,
+  onSelectGroup: (String?) -> Unit,
   onSave: (LibraryBook, LibraryOrganizationDraft) -> Unit,
 ) {
   val groups = remember(books, state.snapshot) {
-    state.snapshot.tags.mapNotNull { tag ->
-      val members = books.filter { book ->
-        state.snapshot.organizationFor(book).tags.any { it.id == tag.id }
-      }
-      members.takeIf(List<LibraryBook>::isNotEmpty)?.let { tag to it }
-    }.sortedBy { (tag, _) -> tag.name.lowercase() }
+    libraryTagGroups(books, state.snapshot)
   }
-  MetadataGroupList(
+  MetadataGroupBrowser(
+    groupTypeLabel = "タグ",
     emptyMessage = "書籍に設定されているタグはありません。",
-    groups = groups.map { (tag, members) -> MetadataBookGroup(tag.id, tag.name, members) },
+    groups = groups,
     state = state,
+    selectedGroupId = selectedGroupId,
+    onSelectGroup = onSelectGroup,
+    removeLabel = "タグを外す",
     onRemove = { book, groupId ->
-      val organization = state.snapshot.organizationFor(book)
-      onSave(
-        book,
-        LibraryOrganizationDraft(
-          tagNames = organization.tags.filterNot { it.id == groupId }.map(LibraryOrganizationTag::name),
-          collectionNames = organization.collections.map(LibraryCollection::name),
-          readingStatus = organization.readingStatus,
-        ),
-      )
+      onSave(book, state.snapshot.organizationFor(book).withoutTag(groupId))
     },
   )
 }
@@ -214,51 +218,56 @@ private fun TagManagementContent(
 private fun CollectionManagementContent(
   books: List<LibraryBook>,
   state: LibraryOrganizationUiState,
+  selectedGroupId: String?,
+  onSelectGroup: (String?) -> Unit,
   onSave: (LibraryBook, LibraryOrganizationDraft) -> Unit,
 ) {
   val groups = remember(books, state.snapshot) {
-    state.snapshot.collections.mapNotNull { collection ->
-      val members = books.filter { book ->
-        state.snapshot.organizationFor(book).collections.any { it.id == collection.id }
-      }
-      members.takeIf(List<LibraryBook>::isNotEmpty)?.let { collection to it }
-    }.sortedBy { (collection, _) -> collection.name.lowercase() }
+    libraryCollectionGroups(books, state.snapshot)
   }
-  MetadataGroupList(
+  MetadataGroupBrowser(
+    groupTypeLabel = "コレクション",
     emptyMessage = "書籍に設定されているコレクションはありません。",
-    groups = groups.map { (collection, members) ->
-      MetadataBookGroup(collection.id, collection.name, members)
-    },
+    groups = groups,
     state = state,
+    selectedGroupId = selectedGroupId,
+    onSelectGroup = onSelectGroup,
+    removeLabel = "コレクションから外す",
     onRemove = { book, groupId ->
-      val organization = state.snapshot.organizationFor(book)
-      onSave(
-        book,
-        LibraryOrganizationDraft(
-          tagNames = organization.tags.map(LibraryOrganizationTag::name),
-          collectionNames = organization.collections
-            .filterNot { it.id == groupId }
-            .map(LibraryCollection::name),
-          readingStatus = organization.readingStatus,
-        ),
-      )
+      onSave(book, state.snapshot.organizationFor(book).withoutCollection(groupId))
     },
   )
 }
 
-private data class MetadataBookGroup(
-  val id: String,
-  val name: String,
-  val books: List<LibraryBook>,
-)
-
 @Composable
-private fun MetadataGroupList(
+private fun MetadataGroupBrowser(
+  groupTypeLabel: String,
   emptyMessage: String,
-  groups: List<MetadataBookGroup>,
+  groups: List<LibraryMetadataBookGroup>,
   state: LibraryOrganizationUiState,
+  selectedGroupId: String?,
+  onSelectGroup: (String?) -> Unit,
+  removeLabel: String,
   onRemove: (LibraryBook, String) -> Unit,
 ) {
+  val selectedGroup = groups.firstOrNull { it.id == selectedGroupId }
+
+  LaunchedEffect(groups, selectedGroupId) {
+    if (selectedGroupId != null && selectedGroup == null) onSelectGroup(null)
+  }
+
+  if (selectedGroup != null) {
+    MetadataGroupDetail(
+      groupTypeLabel = groupTypeLabel,
+      group = selectedGroup,
+      state = state,
+      removeLabel = removeLabel,
+      onBack = { onSelectGroup(null) },
+      onRemove = onRemove,
+    )
+    return
+  }
+
   if (groups.isEmpty()) {
     Text(
       emptyMessage,
@@ -272,54 +281,183 @@ private fun MetadataGroupList(
     modifier = Modifier.fillMaxSize(),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
-    item { Spacer(Modifier.height(2.dp)) }
-    items(groups, key = MetadataBookGroup::id) { group ->
+    item {
+      Text(
+        "${groupTypeLabel}を選ぶと、所属する蔵書をまとめて閲覧・編集できます。",
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    items(groups, key = LibraryMetadataBookGroup::id) { group ->
       Card(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(horizontal = 12.dp),
+          .padding(horizontal = 12.dp)
+          .clickable { onSelectGroup(group.id) },
       ) {
         Column(
           modifier = Modifier.padding(14.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-          Text(
-            "${group.name} · ${group.books.size} 冊",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-          )
-          group.books.forEach { book ->
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-              Column(Modifier.weight(1f)) {
-                Text(
-                  book.title,
-                  style = MaterialTheme.typography.bodyMedium,
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                  book.source.label,
-                  style = MaterialTheme.typography.labelSmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-              TextButton(
-                enabled = state.savingBook == null && state.reorganizingSeriesBook == null,
-                onClick = { onRemove(book, group.id) },
-              ) {
-                Text(if (state.savingBook == book.organizationKey()) "保存中" else "外す")
-              }
-            }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+          ) {
+            Text(
+              group.name,
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.titleSmall,
+              fontWeight = FontWeight.SemiBold,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+              "${group.books.size} 冊",
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
           }
+          group.books.take(GROUP_PREVIEW_BOOK_COUNT).forEach { book ->
+            Text(
+              book.title,
+              style = MaterialTheme.typography.bodySmall,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+          if (group.books.size > GROUP_PREVIEW_BOOK_COUNT) {
+            Text(
+              "ほか ${group.books.size - GROUP_PREVIEW_BOOK_COUNT} 冊",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Text(
+            "閲覧・編集 →",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+          )
         }
       }
     }
     item { Spacer(Modifier.height(24.dp)) }
   }
+}
+
+@Composable
+private fun MetadataGroupDetail(
+  groupTypeLabel: String,
+  group: LibraryMetadataBookGroup,
+  state: LibraryOrganizationUiState,
+  removeLabel: String,
+  onBack: () -> Unit,
+  onRemove: (LibraryBook, String) -> Unit,
+) {
+  Column(Modifier.fillMaxSize()) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp, vertical = 8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      TextButton(onClick = onBack) {
+        Text("← ${groupTypeLabel}一覧")
+      }
+      Column(
+        modifier = Modifier
+          .weight(1f)
+          .padding(horizontal = 8.dp),
+      ) {
+        Text(
+          group.name,
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.SemiBold,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          "${group.books.size} 冊",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+    Text(
+      "各蔵書の現在の分類を確認しながら、この${groupTypeLabel}から直接外せます。",
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+
+    LazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      item { Spacer(Modifier.height(4.dp)) }
+      items(
+        items = group.books,
+        key = { "${it.source.name}:${it.sourceId}" },
+      ) { book ->
+        val organization = state.snapshot.organizationFor(book)
+        Card(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        ) {
+          Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+          ) {
+            Text(
+              book.title,
+              style = MaterialTheme.typography.titleSmall,
+              fontWeight = FontWeight.Medium,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+              book.source.label,
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            MetadataBookClassificationSummary(organization)
+            TextButton(
+              enabled = state.savingBook == null && state.reorganizingSeriesBook == null,
+              onClick = { onRemove(book, group.id) },
+            ) {
+              Text(
+                if (state.savingBook == book.organizationKey()) "保存中" else removeLabel,
+              )
+            }
+          }
+        }
+      }
+      item { Spacer(Modifier.height(24.dp)) }
+    }
+  }
+}
+
+@Composable
+private fun MetadataBookClassificationSummary(organization: LibraryItemOrganization) {
+  val collections = organization.collections.joinToString { it.name }
+  val tags = organization.tags.joinToString { it.name }
+  Text(
+    if (collections.isEmpty()) "コレクション: 未設定" else "コレクション: $collections",
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    maxLines = 2,
+    overflow = TextOverflow.Ellipsis,
+  )
+  Text(
+    if (tags.isEmpty()) "タグ: 未設定" else "タグ: $tags",
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    maxLines = 2,
+    overflow = TextOverflow.Ellipsis,
+  )
 }
 
 @Composable
@@ -435,3 +573,5 @@ private fun SeriesManagementContent(
     )
   }
 }
+
+private const val GROUP_PREVIEW_BOOK_COUNT = 3
