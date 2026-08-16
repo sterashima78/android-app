@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -80,6 +81,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.chat.AiChatScreen
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
+import dev.terashima.yomitorirss.feature.game.GameRoute
 import dev.terashima.yomitorirss.feature.integrated.IntegratedRoute
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.library.LibraryRoute
@@ -162,6 +164,7 @@ fun YomitoriApp(
     AppSection.YOUTUBE -> true
     AppSection.X -> true
     AppSection.TASKS -> true
+    AppSection.GAME -> true
     AppSection.WORKOUT -> true
     AppSection.AI_CHAT -> chatState.initialized
     AppSection.SETTINGS -> true
@@ -283,6 +286,7 @@ fun YomitoriApp(
                     AppSection.YOUTUBE -> Icons.Default.PlayArrow
                     AppSection.X -> Icons.Default.Public
                     AppSection.TASKS -> Icons.Default.Checklist
+                    AppSection.GAME -> Icons.Default.SportsEsports
                     AppSection.WORKOUT -> Icons.Default.FitnessCenter
                     AppSection.AI_CHAT -> Icons.Default.Chat
                     AppSection.SETTINGS -> Icons.Default.Settings
@@ -434,6 +438,7 @@ fun YomitoriApp(
           AppSection.YOUTUBE,
           AppSection.X,
           AppSection.TASKS,
+          AppSection.GAME,
           AppSection.WORKOUT,
           AppSection.AI_CHAT,
           AppSection.SETTINGS -> Unit
@@ -582,6 +587,8 @@ fun YomitoriApp(
           }
 
           MainTab.TASKS -> TaskScreen(modifier = contentModifier)
+
+          MainTab.GAME -> GameRoute(modifier = contentModifier)
 
           MainTab.WORKOUT -> WorkoutRoute(modifier = contentModifier)
 
@@ -792,6 +799,7 @@ private fun MainTab.appSection(): AppSection = when (this) {
   MainTab.YOUTUBE -> AppSection.YOUTUBE
   MainTab.X -> AppSection.X
   MainTab.TASKS -> AppSection.TASKS
+  MainTab.GAME -> AppSection.GAME
   MainTab.WORKOUT -> AppSection.WORKOUT
   MainTab.AI_CHAT -> AppSection.AI_CHAT
   MainTab.SETTINGS -> AppSection.SETTINGS
@@ -836,6 +844,7 @@ private fun MainTab.screenTitle(): String = when (this) {
   MainTab.YOUTUBE -> "YouTube"
   MainTab.X -> "X"
   MainTab.TASKS -> "タスク"
+  MainTab.GAME -> "ゲーム"
   MainTab.WORKOUT -> "ワークアウト"
   MainTab.AI_CHAT -> "AIチャット"
   MainTab.FEEDS -> "RSS・フィード管理"
@@ -853,6 +862,7 @@ private fun AppSection.defaultTab(): MainTab = when (this) {
   AppSection.YOUTUBE -> MainTab.YOUTUBE
   AppSection.X -> MainTab.X
   AppSection.TASKS -> MainTab.TASKS
+  AppSection.GAME -> MainTab.GAME
   AppSection.WORKOUT -> MainTab.WORKOUT
   AppSection.AI_CHAT -> MainTab.AI_CHAT
   AppSection.SETTINGS -> MainTab.SETTINGS
