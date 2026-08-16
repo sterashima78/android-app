@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-11
-- Amended: 2026-08-15
+- Amended: 2026-08-16
 
 ## Context
 
@@ -11,6 +11,8 @@
 AIチャットをAgentとして利用する要件ではGemma 4のFunction CallingとLiteRT-LMの `ConversationConfig.tools` / `OpenApiTool` を利用できる。独自テキストTool Callを維持しながら、Tool Callingを持たない別runtimeも同時にサポートすることは、チャットの実装を複雑にし、モデルごとに異なる挙動を生む。
 
 利用者は現行最新版のみを利用しており、モデル選択肢をGemma 4へ統一してよい。
+
+2026-08-16時点で採用中のLiteRT-LM 0.14.0は `EngineConfig.maxNumTokens` によりKV cacheのコンテキスト上限を明示できる。Gemma 4 E2B / E4BのLiteRTモデルはモデルカード上32kコンテキストまで対応するが、Android向け主要ベンチマークは2,048トークンであり、モバイル端末で最大値を利用することはメモリ面の検証が不足している。
 
 ## Decision
 
@@ -27,6 +29,16 @@ Qwen2.5 0.5B、Qwen2.5 1.5B、Qwen3 4Bはcatalogから削除する。既に端�
 
 MediaPipe Tasks GenAI依存は削除し、LiteRT-LMだけをローカルAI runtimeとして利用する。
 
+### 実行コンテキスト
+
+Gemma 4 E2B / E4Bのアプリ内実行コンテキストは8,192トークンとし、`EngineConfig.maxNumTokens` に同じ値を設定する。
+
+8,192はモデル自体の最大能力ではなく、モバイル向けのruntime設定である。32k全体を利用せず、過剰なKV cache増加を避けながら長文処理の分割回数を減らす中間値として採用する。OOM、速度低下、発熱等が実端末で確認された場合はモデルまたは端末能力別の設定を検討する。
+
+`LocalModelStatus` は実際にEngineへ設定する `contextTokens` を技術能力として公開する。featureはこの値を直接の本文上限として扱わず、各feature自身のprompt、出力余白、用途に応じて入力予算を決める。
+
+既存の `maxInputChars = 2,500` はChat等の文字数ポリシーとして維持する。またKnowledge / Library等が利用する `promptBudgetChars = 4,096` も維持し、Engineのコンテキスト拡張だけで既存featureの入力サイズが暗黙に変わらないようにする。
+
 ### 実行バックエンド
 
 ローカルAIの実行バックエンドはCPU/GPUから選択可能とする。
@@ -39,11 +51,11 @@ MediaPipe Tasks GenAI依存は削除し、LiteRT-LMだけをローカルAI runti
 
 ### 推論Engineのライフサイクル
 
-選択モデル、実行backend、モデルファイルの状態が同一である間、初期化済み `Engine` を `LocalModelManager` 内で1つだけ保持して再利用する。
+選択モデル、実行backend、実行コンテキスト、モデルファイルの状態が同一である間、初期化済み `Engine` を `LocalModelManager` 内で1つだけ保持して再利用する。
 
 - Chat、Summary等の推論リクエストごとにEngineを再初期化しない
 - 各推論またはChat requestでは軽量な `Conversation` を作り、処理終了時に閉じる
-- 選択モデル、backend、モデルファイルのサイズまたは更新時刻が変わった場合は保持中Engineを閉じ、新しい条件で初期化する
+- 選択モデル、backend、context tokens、モデルファイルのサイズまたは更新時刻が変わった場合は保持中Engineを閉じ、新しい条件で初期化する
 - モデル削除時、推論失敗時、`LocalModelManager.close()` 時は保持中Engineを閉じる
 - 同時に保持するEngineは1つだけとする
 
@@ -69,14 +81,14 @@ ChatでのAgent Skill接続方法はADR-0005で定義する。
 - Gemma 4モデルcatalogとモデルファイル管理
 - CPU/GPU設定
 - LiteRT-LM Engineのlifecycleとcache
-- モデルの入力上限等の技術能力
+- 実行コンテキスト等のモデル技術能力
 - 汎用的な単発生成
 - 汎用的なConversation / Tool Calling transport
 - raw streamingと `LocalInferenceProgress`
 
 Chat/Summary固有のsystem prompt、会話履歴の選択、Skill、要約アルゴリズム、結果整形は保持しない。
 
-この責務境界はADR-0056を維持する。
+この責務境界はADR-0056を維持する。Summaryにおけるコンテキストからの入力予算計算はADR-0027で定義する。
 
 ### Thinking
 
@@ -92,7 +104,9 @@ ChatではGemma 4のFunction CallingとLiteRT-LMのTool Calling loopを利用で
 
 一方、低メモリ端末向けのQwen2.5軽量モデルは利用できなくなる。Gemma 4 E2Bは8 GB級メモリを推奨するため、対象端末要件は実質的に高くなる。
 
-初期化済みEngineとモデル重みは `LocalModelManager` の寿命中メモリに残る。保持数を1つに制限し、モデル変更・削除・推論失敗・manager終了時に明示的に解放することで速度とメモリ使用量のバランスを取る。
+初期化済みEngineとモデル重みは `LocalModelManager` の寿命中メモリに残る。保持数を1つに制限し、モデル変更・backend変更・context変更・削除・推論失敗・manager終了時に明示的に解放することで速度とメモリ使用量のバランスを取る。
+
+8,192トークンのKV cacheは従来の4,096設定よりメモリを使用する。この追加コストはSummaryの推論回数削減と引き換えであり、他featureの入力予算を自動的に8,192相当まで拡張する理由にはしない。
 
 旧Qwenモデルを起動時に削除するため、アップデート直後に端末ストレージが回収される。旧モデルへのロールバック互換性は提供しない。
 
@@ -105,11 +119,15 @@ ChatではGemma 4のFunction CallingとLiteRT-LMのTool Calling loopを利用で
 - Qwen3 4Bモデル候補
 - Qwen3の `/think` / `/no_think` によるThinking切り替え
 - runtimeごとのChatML/plain prompt分岐を機能側で扱う方針
+- Engineのコンテキスト長をfeatureの固定文字数上限と同一視する方針
 
 ## References
 
 - ADR-0005: チャットに読み取り専用Agent Skillハーネスを導入する
 - ADR-0003: マルチモジュールアーキテクチャ
+- ADR-0027: 長文記事は階層的に分割要約する
 - ADR-0056: ローカルAIの機能固有ポリシーをfeatureへ分離する
-- LiteRT-LM Kotlin API: `ConversationConfig`, `OpenApiTool`
+- LiteRT-LM 0.14.0 `EngineConfig.maxNumTokens`
+- Gemma 4 E2B LiteRT model card: https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm
+- Gemma 4 E4B LiteRT model card: https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm
 - Gemma 4 Function Calling guide
