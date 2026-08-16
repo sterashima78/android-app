@@ -10,16 +10,17 @@ import org.json.JSONObject
 
 internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
   put("format", "yomitori-rss-backup")
-  put("version", 4)
+  put("version", 5)
   put("exportedAt", Instant.now().toString())
-  put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at FROM feed_folders ORDER BY normalized_name") { cursor ->
+  put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at,content_type FROM feed_folders ORDER BY normalized_name") { cursor ->
     JSONObject()
       .put("id", cursor.text("id"))
       .put("name", cursor.text("name"))
       .put("normalizedName", cursor.text("normalized_name"))
       .put("createdAt", cursor.text("created_at"))
+      .put("contentType", cursor.nullableText("content_type"))
   })
-  put("feeds", queryJsonArray("SELECT id,title,feed_url,site_url,created_at,folder_id FROM feeds ORDER BY title") { cursor ->
+  put("feeds", queryJsonArray("SELECT id,title,feed_url,site_url,created_at,folder_id,content_type FROM feeds ORDER BY title") { cursor ->
     JSONObject()
       .put("id", cursor.text("id"))
       .put("title", cursor.text("title"))
@@ -27,6 +28,7 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
       .put("siteUrl", cursor.nullableText("site_url"))
       .put("createdAt", cursor.text("created_at"))
       .put("folderId", cursor.nullableText("folder_id"))
+      .put("contentType", cursor.nullableText("content_type"))
   })
   put("tags", queryJsonArray("SELECT id,name,normalized_name,created_at FROM tags ORDER BY normalized_name") { cursor ->
     JSONObject()
@@ -58,6 +60,7 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
       .put("savedAt", cursor.nullableText("saved_at"))
       .put("sourceTitle", cursor.text("source_title"))
       .put("sourceFeedUrl", cursor.text("source_feed_url"))
+      .put("contentType", cursor.nullableText("content_type"))
       .put("tagIds", articleTagIds(articleId))
       .put("folderId", articleFolderId(articleId))
   })
@@ -83,7 +86,7 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
 
 internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   val version = root.optInt("version")
-  require(root.optString("format") == "yomitori-rss-backup" && version in 1..4) {
+  require(root.optString("format") == "yomitori-rss-backup" && version in 1..5) {
     "対応していないバックアップです"
   }
 
@@ -113,6 +116,7 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
           "name" to item.getString("name"),
           "normalized_name" to item.getString("normalizedName"),
           "created_at" to item.getString("createdAt"),
+          "content_type" to item.nullable("contentType").takeIf { version >= 5 },
         ),
       )
     }
@@ -134,6 +138,7 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
         "site_url" to item.nullable("siteUrl"),
         "created_at" to item.getString("createdAt"),
         "folder_id" to item.nullable("folderId")?.takeIf(feedFolderIds::contains),
+        "content_type" to item.nullable("contentType").takeIf { version >= 5 },
       ),
     )
   }
@@ -194,6 +199,7 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
         "saved_at" to item.nullable("savedAt"),
         "source_title" to item.getString("sourceTitle"),
         "source_feed_url" to item.getString("sourceFeedUrl"),
+        "content_type" to item.nullable("contentType").takeIf { version >= 5 },
       ),
     )
     val tagIds = item.optJSONArray("tagIds") ?: JSONArray()
