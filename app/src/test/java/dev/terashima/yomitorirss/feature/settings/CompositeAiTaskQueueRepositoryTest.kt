@@ -10,7 +10,11 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationCandidateSta
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSnapshot
+import dev.terashima.yomitorirss.feature.library.LibraryRepository
+import dev.terashima.yomitorirss.feature.library.LibrarySeries
+import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
@@ -23,7 +27,7 @@ import org.junit.Test
 
 class CompositeAiTaskQueueRepositoryTest {
   @Test
-  fun `AIタスク一覧に要約と蔵書整理を同じキューとして投影する`() = runBlocking {
+  fun `AIタスク一覧に要約と蔵書整理を一冊ずつ同じキューとして投影する`() = runBlocking {
     val summary = FakeSummaryRepository(
       tasks = listOf(
         SummaryQueueTask(
@@ -39,25 +43,38 @@ class CompositeAiTaskQueueRepositoryTest {
       ),
     )
     val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.RUNNING))
-    val repository = CompositeAiTaskQueueRepository(summary, library, FakeScheduler())
+    val repository = CompositeAiTaskQueueRepository(
+      summaryRepository = summary,
+      libraryRepository = library,
+      libraryCatalogRepository = FakeLibraryCatalogRepository(testBooks()),
+      libraryScheduler = FakeScheduler(),
+    )
 
     val tasks = repository.listTasks()
 
-    assertEquals(2, tasks.size)
+    assertEquals(3, tasks.size)
     assertEquals(AiTaskQueueItemKind.LIBRARY_ORGANIZATION, tasks[0].kind)
-    assertEquals(2, tasks[0].progressTotal)
-    assertEquals(1, tasks[0].progressCurrent)
-    assertEquals(1, tasks[0].pendingReviewCount)
-    assertEquals(AiTaskQueueItemKind.SUMMARY, tasks[1].kind)
+    assertEquals("Book one", tasks[0].title)
+    assertEquals("Kindle", tasks[0].source)
+    assertEquals(AiTaskQueueItemState.COMPLETED, tasks[0].state)
+    assertEquals(AiTaskQueueItemKind.LIBRARY_ORGANIZATION, tasks[1].kind)
+    assertEquals("Book two", tasks[1].title)
     assertEquals(AiTaskQueueItemState.QUEUED, tasks[1].state)
+    assertEquals(AiTaskQueueItemKind.SUMMARY, tasks[2].kind)
+    assertEquals(AiTaskQueueItemState.QUEUED, tasks[2].state)
   }
 
   @Test
-  fun `全体停止は実行中の蔵書整理を実行ゲートで止め再開時に再度キックする`() = runBlocking {
+  fun `全体停止は実行待ちの蔵書整理タスクを一時停止表示し再開時に再度キックする`() = runBlocking {
     val summary = FakeSummaryRepository()
     val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.RUNNING))
     val scheduler = FakeScheduler()
-    val repository = CompositeAiTaskQueueRepository(summary, library, scheduler)
+    val repository = CompositeAiTaskQueueRepository(
+      summary,
+      library,
+      FakeLibraryCatalogRepository(testBooks()),
+      scheduler,
+    )
 
     repository.setPaused(true)
 
@@ -65,7 +82,7 @@ class CompositeAiTaskQueueRepositoryTest {
     assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.cancelCount)
     assertTrue(scheduler.chargingResumeArmed)
-    assertEquals(AiTaskQueueItemState.PAUSED, repository.listTasks().first().state)
+    assertEquals(AiTaskQueueItemState.PAUSED, repository.listTasks()[1].state)
 
     repository.setPaused(false)
 
@@ -80,7 +97,12 @@ class CompositeAiTaskQueueRepositoryTest {
     val summary = FakeSummaryRepository()
     val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.PAUSED))
     val scheduler = FakeScheduler()
-    val repository = CompositeAiTaskQueueRepository(summary, library, scheduler)
+    val repository = CompositeAiTaskQueueRepository(
+      summary,
+      library,
+      FakeLibraryCatalogRepository(testBooks()),
+      scheduler,
+    )
 
     repository.setPaused(true)
     repository.setPaused(false)
@@ -88,6 +110,32 @@ class CompositeAiTaskQueueRepositoryTest {
     assertEquals(LibraryOrganizationBatchStatus.PAUSED, library.batch!!.status)
     assertEquals(0, scheduler.kickCount)
     assertFalse(scheduler.chargingResumeArmed)
+  }
+
+  @Test
+  fun `失敗した蔵書整理タスクは一冊だけ再試行してワーカーをキックする`() = runBlocking {
+    val failed = testBatch(LibraryOrganizationBatchStatus.COMPLETED).copy(
+      candidates = testBatch(LibraryOrganizationBatchStatus.COMPLETED).candidates.mapIndexed { index, candidate ->
+        if (index == 1) candidate.copy(status = LibraryOrganizationCandidateStatus.FAILED, error = "test failure") else candidate
+      },
+    )
+    val summary = FakeSummaryRepository()
+    val library = FakeLibraryOrganizationRepository(batch = failed)
+    val scheduler = FakeScheduler()
+    val repository = CompositeAiTaskQueueRepository(
+      summary,
+      library,
+      FakeLibraryCatalogRepository(testBooks()),
+      scheduler,
+    )
+    val task = repository.listTasks()[1]
+
+    assertTrue(task.canResume)
+    assertTrue(repository.resume(task.id))
+
+    assertEquals(LibraryOrganizationCandidateStatus.QUEUED, library.batch!!.candidates[1].status)
+    assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
+    assertEquals(1, scheduler.kickCount)
   }
 }
 
@@ -128,7 +176,33 @@ private class FakeLibraryOrganizationRepository(
   override suspend fun deferCandidate(key: LibraryBookKey) = Unit
   override suspend fun rejectCandidate(key: LibraryBookKey) = Unit
   override suspend fun reopenCandidate(key: LibraryBookKey) = Unit
-  override suspend fun retryCandidate(key: LibraryBookKey) = Unit
+  override suspend fun retryCandidate(key: LibraryBookKey) {
+    batch = batch?.let { current ->
+      current.copy(
+        status = LibraryOrganizationBatchStatus.RUNNING,
+        candidates = current.candidates.map { candidate ->
+          if (candidate.key == key) candidate.copy(status = LibraryOrganizationCandidateStatus.QUEUED, error = null) else candidate
+        },
+      )
+    }
+  }
+}
+
+private class FakeLibraryCatalogRepository(
+  private val books: List<LibraryBook>,
+) : LibraryRepository {
+  override suspend fun snapshot(): LibrarySnapshot = LibrarySnapshot(
+    books = books,
+    hiddenBooks = emptyList(),
+    sourceStates = emptyMap(),
+  )
+
+  override suspend fun hideBook(book: LibraryBook) = error("unused")
+  override suspend fun restoreBook(book: LibraryBook) = error("unused")
+  override suspend fun setBookSeries(book: LibraryBook, series: LibrarySeries) = error("unused")
+  override suspend fun clearBookSeries(book: LibraryBook) = error("unused")
+  override suspend fun syncGooglePlayBooks(accessToken: String, accountLabel: String?): LibrarySyncResult = error("unused")
+  override suspend fun importAmazonLibraryJson(source: LibrarySource, json: String): LibrarySyncResult = error("unused")
 }
 
 private class FakeScheduler : LibraryOrganizationBatchScheduler {
@@ -148,6 +222,25 @@ private class FakeScheduler : LibraryOrganizationBatchScheduler {
     chargingResumeArmed = enabled
   }
 }
+
+private fun testBooks(): List<LibraryBook> = listOf(
+  testBook("book-1", "Book one"),
+  testBook("book-2", "Book two"),
+)
+
+private fun testBook(sourceId: String, title: String): LibraryBook = LibraryBook(
+  source = LibrarySource.KINDLE,
+  sourceId = sourceId,
+  title = title,
+  authors = emptyList(),
+  publisher = null,
+  publishedDate = null,
+  description = null,
+  isbn10 = null,
+  isbn13 = null,
+  thumbnailUrl = null,
+  infoUrl = null,
+)
 
 private fun testBatch(status: LibraryOrganizationBatchStatus): LibraryOrganizationBatchSnapshot =
   LibraryOrganizationBatchSnapshot(
