@@ -1,5 +1,8 @@
 package dev.terashima.yomitorirss.feature.settings
 
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskSnapshot
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskState
+import dev.terashima.yomitorirss.feature.knowledge.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
@@ -18,6 +21,7 @@ internal class CompositeAiTaskQueueRepository(
   private val libraryRepository: LibraryOrganizationRepository,
   private val libraryCatalogRepository: LibraryRepository,
   private val libraryScheduler: LibraryOrganizationBatchScheduler,
+  private val knowledgeController: WorkManagerKnowledgeBuildTaskController? = null,
 ) : AiTaskQueueRepository {
   override suspend fun listTasks(): List<AiTaskQueueItem> {
     val globalPaused = summaryRepository.executionState().paused
@@ -38,7 +42,8 @@ internal class CompositeAiTaskQueueRepository(
       )
     }
     val summaryTasks = summaryRepository.listTasks().map(::toAiTaskQueueItem)
-    return libraryTasks + summaryTasks
+    val knowledgeTask = knowledgeController?.snapshot()?.let(::toAiTaskQueueItem)
+    return libraryTasks + summaryTasks + listOfNotNull(knowledgeTask)
   }
 
   override suspend fun taskCounts(): AiTaskQueueCounts {
@@ -52,12 +57,22 @@ internal class CompositeAiTaskQueueRepository(
         globalPaused = globalPaused,
       )
     }
+    val knowledgeState = knowledgeController?.snapshot()?.state?.toAiTaskState()
     return AiTaskQueueCounts(
-      running = summaryCounts.running + libraryStates.count { it == AiTaskQueueItemState.RUNNING },
-      queued = summaryCounts.queued + libraryStates.count { it == AiTaskQueueItemState.QUEUED },
-      pausedOrStopped = summaryCounts.stopped + libraryStates.count {
-        it == AiTaskQueueItemState.PAUSED || it == AiTaskQueueItemState.STOPPED
-      },
+      running = summaryCounts.running +
+        libraryStates.count { it == AiTaskQueueItemState.RUNNING } +
+        if (knowledgeState == AiTaskQueueItemState.RUNNING) 1 else 0,
+      queued = summaryCounts.queued +
+        libraryStates.count { it == AiTaskQueueItemState.QUEUED } +
+        if (knowledgeState == AiTaskQueueItemState.QUEUED) 1 else 0,
+      pausedOrStopped = summaryCounts.stopped +
+        libraryStates.count {
+          it == AiTaskQueueItemState.PAUSED || it == AiTaskQueueItemState.STOPPED
+        } +
+        if (
+          knowledgeState == AiTaskQueueItemState.PAUSED ||
+          knowledgeState == AiTaskQueueItemState.STOPPED
+        ) 1 else 0,
     )
   }
 
@@ -74,6 +89,7 @@ internal class CompositeAiTaskQueueRepository(
     if (libraryRepository.batchSnapshot()?.status == LibraryOrganizationBatchStatus.RUNNING) {
       libraryScheduler.kick()
     }
+    knowledgeController?.kick()
   }
 
   override suspend fun setPaused(paused: Boolean) {
@@ -93,6 +109,8 @@ internal class CompositeAiTaskQueueRepository(
           LibraryOrganizationBatchStatus.COMPLETED,
           null -> libraryScheduler.setResumeOnChargingScheduled(false)
         }
+        knowledgeController?.pauseForGlobalGate()
+        knowledgeController?.setResumeOnChargingScheduled(true)
       } catch (error: Throwable) {
         runCatching { summaryRepository.setPaused(false) }
         if (libraryStatus == LibraryOrganizationBatchStatus.RUNNING) {
@@ -100,6 +118,10 @@ internal class CompositeAiTaskQueueRepository(
             libraryScheduler.setResumeOnChargingScheduled(false)
             libraryScheduler.kick()
           }
+        }
+        runCatching {
+          knowledgeController?.setResumeOnChargingScheduled(false)
+          knowledgeController?.kick()
         }
         throw error
       }
@@ -112,6 +134,8 @@ internal class CompositeAiTaskQueueRepository(
       if (libraryStatus == LibraryOrganizationBatchStatus.RUNNING) {
         libraryScheduler.kick()
       }
+      knowledgeController?.setResumeOnChargingScheduled(false)
+      knowledgeController?.kick()
     } catch (error: Throwable) {
       runCatching { summaryRepository.setPaused(true) }
       if (libraryStatus == LibraryOrganizationBatchStatus.RUNNING) {
@@ -119,6 +143,10 @@ internal class CompositeAiTaskQueueRepository(
           libraryScheduler.cancel()
           libraryScheduler.setResumeOnChargingScheduled(true)
         }
+      }
+      runCatching {
+        knowledgeController?.pauseForGlobalGate()
+        knowledgeController?.setResumeOnChargingScheduled(true)
       }
       throw error
     }
@@ -133,25 +161,33 @@ internal class CompositeAiTaskQueueRepository(
       libraryScheduler.setResumeOnChargingScheduled(
         enabled = enabled && globalPaused && libraryRunning,
       )
+      knowledgeController?.setResumeOnChargingScheduled(enabled && globalPaused)
     } catch (error: Throwable) {
       runCatching { summaryRepository.setResumeWhenCharging(previous) }
+      runCatching {
+        val globalPaused = summaryRepository.executionState().paused
+        knowledgeController?.setResumeOnChargingScheduled(previous && globalPaused)
+      }
       throw error
     }
   }
 
   override suspend fun stop(taskId: String): Boolean = when {
     taskId.startsWith(SUMMARY_PREFIX) -> summaryRepository.stop(taskId.removePrefix(SUMMARY_PREFIX))
+    taskId == KNOWLEDGE_TASK_ID -> knowledgeController?.stop() ?: false
     else -> false
   }
 
   override suspend fun cancel(taskId: String): Boolean = when {
     taskId.startsWith(SUMMARY_PREFIX) -> summaryRepository.cancel(taskId.removePrefix(SUMMARY_PREFIX))
+    taskId == KNOWLEDGE_TASK_ID -> knowledgeController?.cancel() ?: false
     else -> false
   }
 
   override suspend fun resume(taskId: String): Boolean = when {
     taskId.startsWith(SUMMARY_PREFIX) -> summaryRepository.resume(taskId.removePrefix(SUMMARY_PREFIX))
     taskId.startsWith(LIBRARY_PREFIX) -> retryLibraryTask(taskId)
+    taskId == KNOWLEDGE_TASK_ID -> knowledgeController?.resume() ?: false
     else -> false
   }
 
@@ -190,6 +226,25 @@ internal class CompositeAiTaskQueueRepository(
       task.state == SummaryQueueTaskState.STOPPED,
     canResume = task.state == SummaryQueueTaskState.STOPPED || task.state == SummaryQueueTaskState.FAILED,
   )
+
+  private fun toAiTaskQueueItem(task: KnowledgeBuildTaskSnapshot): AiTaskQueueItem {
+    val state = task.state.toAiTaskState()
+    return AiTaskQueueItem(
+      id = KNOWLEDGE_TASK_ID,
+      kind = AiTaskQueueItemKind.KNOWLEDGE_WIKI,
+      title = "自動Wikiを構築",
+      source = "保存済み要約",
+      state = state,
+      error = task.error,
+      canStop = state == AiTaskQueueItemState.QUEUED || state == AiTaskQueueItemState.RUNNING,
+      canCancel = state == AiTaskQueueItemState.QUEUED ||
+        state == AiTaskQueueItemState.RUNNING ||
+        state == AiTaskQueueItemState.PAUSED ||
+        state == AiTaskQueueItemState.STOPPED ||
+        state == AiTaskQueueItemState.FAILED,
+      canResume = state == AiTaskQueueItemState.STOPPED || state == AiTaskQueueItemState.FAILED,
+    )
+  }
 
   private fun toAiTaskQueueItem(
     candidate: LibraryOrganizationCandidate,
@@ -249,6 +304,14 @@ internal class CompositeAiTaskQueueRepository(
     SummaryQueueTaskState.UNKNOWN -> AiTaskQueueItemState.UNKNOWN
   }
 
+  private fun KnowledgeBuildTaskState.toAiTaskState(): AiTaskQueueItemState = when (this) {
+    KnowledgeBuildTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
+    KnowledgeBuildTaskState.RUNNING -> AiTaskQueueItemState.RUNNING
+    KnowledgeBuildTaskState.PAUSED -> AiTaskQueueItemState.PAUSED
+    KnowledgeBuildTaskState.STOPPED -> AiTaskQueueItemState.STOPPED
+    KnowledgeBuildTaskState.FAILED -> AiTaskQueueItemState.FAILED
+  }
+
   private fun SummaryQueueTaskProgressStage.toAiTaskProgressStage(): AiTaskQueueProgressStage = when (this) {
     SummaryQueueTaskProgressStage.FETCHING_ARTICLE -> AiTaskQueueProgressStage.FETCHING_CONTENT
     SummaryQueueTaskProgressStage.PREPARING_MODEL -> AiTaskQueueProgressStage.PREPARING_MODEL
@@ -262,5 +325,6 @@ internal class CompositeAiTaskQueueRepository(
   private companion object {
     const val SUMMARY_PREFIX = "summary:"
     const val LIBRARY_PREFIX = "library-organization:"
+    const val KNOWLEDGE_TASK_ID = "knowledge:auto-wiki"
   }
 }

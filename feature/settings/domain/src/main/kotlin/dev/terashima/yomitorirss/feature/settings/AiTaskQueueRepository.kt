@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.settings
 enum class AiTaskQueueItemKind {
   SUMMARY,
   LIBRARY_ORGANIZATION,
+  KNOWLEDGE_WIKI,
 }
 
 enum class AiTaskQueueItemState {

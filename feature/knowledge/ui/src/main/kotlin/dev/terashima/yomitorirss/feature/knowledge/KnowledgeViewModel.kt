@@ -28,6 +28,7 @@ data class KnowledgeUiState(
 class KnowledgeViewModel(
   private val repository: KnowledgeRepository,
   private val scheduleBackupAfterChange: () -> Unit = {},
+  private val scheduleRebuild: (() -> Unit)? = null,
 ) : ViewModel() {
   private val _state = MutableStateFlow(KnowledgeUiState())
   val state: StateFlow<KnowledgeUiState> = _state.asStateFlow()
@@ -162,6 +163,13 @@ class KnowledgeViewModel(
 
   fun rebuild() {
     if (_state.value.building || _state.value.working) return
+    val scheduler = scheduleRebuild
+    if (scheduler != null) {
+      _state.update { it.copy(message = null) }
+      runCatching(scheduler).onFailure(::reportError)
+      return
+    }
+
     _state.update { it.copy(building = true, message = null) }
     viewModelScope.launch {
       runCatching { repository.rebuild() }
@@ -238,11 +246,12 @@ class KnowledgeViewModel(
   class Factory(
     private val repository: KnowledgeRepository,
     private val scheduleBackupAfterChange: () -> Unit = {},
+    private val scheduleRebuild: (() -> Unit)? = null,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(KnowledgeViewModel::class.java))
-      return KnowledgeViewModel(repository, scheduleBackupAfterChange) as T
+      return KnowledgeViewModel(repository, scheduleBackupAfterChange, scheduleRebuild) as T
     }
   }
 }
