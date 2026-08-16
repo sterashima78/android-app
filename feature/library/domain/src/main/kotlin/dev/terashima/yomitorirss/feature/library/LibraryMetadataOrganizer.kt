@@ -21,7 +21,8 @@ class LibraryMetadataOrganizer(
       "同一シリーズの蔵書だけまとめて再整理できます"
     }
 
-    var snapshot = repository.snapshot()
+    val snapshot = repository.snapshot()
+    val committedDrafts = mutableMapOf<LibraryBookKey, LibraryOrganizationDraft>()
     var updated = 0
     var failed = 0
 
@@ -29,20 +30,24 @@ class LibraryMetadataOrganizer(
       try {
         val suggestion = suggester.suggest(
           book = book,
-          existingTags = snapshot.tags.map(LibraryOrganizationTag::name),
-          existingCollections = snapshot.collections.map(LibraryCollection::name),
-          seriesContext = seriesContextFor(book, targets, snapshot),
+          existingTags = taxonomyNames(
+            snapshot.tags.map(LibraryOrganizationTag::name),
+            committedDrafts.values.flatMap(LibraryOrganizationDraft::tagNames),
+          ),
+          existingCollections = taxonomyNames(
+            snapshot.collections.map(LibraryCollection::name),
+            committedDrafts.values.flatMap(LibraryOrganizationDraft::collectionNames),
+          ),
+          seriesContext = seriesContextFor(book, targets, snapshot, committedDrafts),
         )
         val current = snapshot.organizationFor(book)
-        repository.save(
-          book = book,
-          draft = LibraryOrganizationDraft(
-            tagNames = suggestion.tagNames,
-            collectionNames = suggestion.collectionNames,
-            readingStatus = current.readingStatus,
-          ),
+        val draft = LibraryOrganizationDraft(
+          tagNames = suggestion.tagNames,
+          collectionNames = suggestion.collectionNames,
+          readingStatus = current.readingStatus,
         )
-        snapshot = repository.snapshot()
+        repository.save(book = book, draft = draft)
+        committedDrafts[book.organizationKey()] = draft
         updated += 1
       } catch (cancelled: CancellationException) {
         throw cancelled
@@ -63,26 +68,41 @@ internal fun seriesContextForMetadataReorganization(
   book: LibraryBook,
   books: List<LibraryBook>,
   snapshot: LibraryOrganizationSnapshot,
-): LibraryOrganizationSeriesContext? = seriesContextFor(book, books, snapshot)
+): LibraryOrganizationSeriesContext? = seriesContextFor(
+  book = book,
+  books = books,
+  snapshot = snapshot,
+  committedDrafts = emptyMap(),
+)
 
 private fun seriesContextFor(
   book: LibraryBook,
   books: List<LibraryBook>,
   snapshot: LibraryOrganizationSnapshot,
+  committedDrafts: Map<LibraryBookKey, LibraryOrganizationDraft>,
 ): LibraryOrganizationSeriesContext? {
   val series = book.series ?: return null
-  val peers = books.asSequence()
+  val peerMetadata = books.asSequence()
     .filter { it.organizationKey() != book.organizationKey() }
     .filter { sameSeries(series, it.series) }
-    .map(snapshot::organizationFor)
+    .map { peer ->
+      committedDrafts[peer.organizationKey()]?.let { draft ->
+        MetadataNames(draft.tagNames, draft.collectionNames)
+      } ?: snapshot.organizationFor(peer).let { organization ->
+        MetadataNames(
+          tagNames = organization.tags.map(LibraryOrganizationTag::name),
+          collectionNames = organization.collections.map(LibraryCollection::name),
+        )
+      }
+    }
     .toList()
 
-  val tagNames = peers
-    .flatMap { organization -> organization.tags.map(LibraryOrganizationTag::name) }
+  val tagNames = peerMetadata
+    .flatMap(MetadataNames::tagNames)
     .distinctBy(::normalizeMetadataName)
     .take(MAX_SERIES_CONTEXT_TAGS)
-  val collectionNames = peers
-    .flatMap { organization -> organization.collections.map(LibraryCollection::name) }
+  val collectionNames = peerMetadata
+    .flatMap(MetadataNames::collectionNames)
     .distinctBy(::normalizeMetadataName)
     .take(MAX_SERIES_CONTEXT_COLLECTIONS)
 
@@ -92,6 +112,16 @@ private fun seriesContextFor(
     collectionNames = collectionNames,
   )
 }
+
+private data class MetadataNames(
+  val tagNames: List<String>,
+  val collectionNames: List<String>,
+)
+
+private fun taxonomyNames(
+  persisted: List<String>,
+  committed: List<String>,
+): List<String> = (persisted + committed).distinctBy(::normalizeMetadataName)
 
 private fun sameSeries(left: LibrarySeries, right: LibrarySeries?): Boolean {
   right ?: return false
