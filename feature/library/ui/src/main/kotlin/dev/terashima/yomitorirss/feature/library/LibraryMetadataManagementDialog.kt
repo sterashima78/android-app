@@ -283,7 +283,7 @@ private fun MetadataGroupBrowser(
   ) {
     item {
       Text(
-        "$groupTypeLabelを選ぶと、所属する蔵書をまとめて閲覧・編集できます。",
+        "${groupTypeLabel}を選ぶと、所属する蔵書をまとめて閲覧・編集できます。",
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -385,7 +385,7 @@ private fun MetadataGroupDetail(
       }
     }
     Text(
-      "各蔵書の現在の分類を確認しながら、この$groupTypeLabelから直接外せます。",
+      "各蔵書の現在の分類を確認しながら、この${groupTypeLabel}から直接外せます。",
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
