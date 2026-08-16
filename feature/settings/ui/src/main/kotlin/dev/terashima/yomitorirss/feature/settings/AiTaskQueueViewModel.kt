@@ -137,7 +137,14 @@ class AiTaskQueueViewModel(
 internal fun prepareVisibleAiTasks(tasks: List<AiTaskQueueItem>): List<AiTaskQueueItem> =
   tasks
     .filterNot { it.state == AiTaskQueueItemState.COMPLETED }
-    .sortedBy { if (it.state == AiTaskQueueItemState.RUNNING) 0 else 1 }
+    .sortedBy { task ->
+      when (task.state) {
+        AiTaskQueueItemState.RUNNING -> 0
+        AiTaskQueueItemState.QUEUED -> 1
+        AiTaskQueueItemState.PAUSED -> 2
+        else -> 3
+      }
+    }
 
 private fun Throwable.userMessage(): String =
   message?.takeIf(String::isNotBlank) ?: javaClass.simpleName
