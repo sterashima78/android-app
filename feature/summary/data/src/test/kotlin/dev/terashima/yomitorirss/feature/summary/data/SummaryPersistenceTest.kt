@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
+import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.articleDatabaseSchema
 import org.junit.After
@@ -28,7 +29,7 @@ class SummaryPersistenceTest {
       context,
       DatabaseSchema(
         version = 1,
-        contributions = listOf(articleDatabaseSchema, summaryDatabaseSchema),
+        contributions = listOf(testFeedSchema, articleDatabaseSchema, summaryDatabaseSchema),
       ),
     )
   }
@@ -76,6 +77,15 @@ class SummaryPersistenceTest {
         putNull("saved_at")
         put("source_title", "test")
         put("source_feed_url", "")
+      },
+    )
+  }
+
+  private companion object {
+    val testFeedSchema = DatabaseSchemaContribution(
+      owner = "test-feed",
+      createSchema = { db ->
+        db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL)")
       },
     )
   }
