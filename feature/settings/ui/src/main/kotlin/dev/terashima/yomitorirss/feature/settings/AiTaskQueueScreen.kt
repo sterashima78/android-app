@@ -190,7 +190,11 @@ private fun AiTaskRow(
       Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
       ) {
-        if (item.canStop) TextButton(onClick = onStop) { Text("停止") }
+        if (item.canStop) {
+          TextButton(onClick = onStop) {
+            Text(if (item.kind == AiTaskQueueItemKind.LIBRARY_ORGANIZATION) "一時停止" else "停止")
+          }
+        }
         if (item.canResume) {
           TextButton(onClick = onResume) {
             Text(if (item.state == AiTaskQueueItemState.FAILED) "再実行" else "再開")
