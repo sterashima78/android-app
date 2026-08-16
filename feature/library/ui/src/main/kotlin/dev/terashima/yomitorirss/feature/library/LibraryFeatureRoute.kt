@@ -104,7 +104,7 @@ fun LibraryFeatureRoute(
   }
 
   if (organizationVisible) {
-    LibraryOrganizationDialog(
+    LibraryMetadataManagementDialog(
       books = state.books,
       state = organizationState,
       onSave = organizationViewModel::save,
@@ -112,6 +112,7 @@ fun LibraryFeatureRoute(
       onStartBatch = organizationViewModel::startBatch,
       onPauseBatch = organizationViewModel::pauseBatch,
       onResumeBatch = organizationViewModel::resumeBatch,
+      onReorganizeSeries = organizationViewModel::reorganizeSeries,
       onDismissMessage = organizationViewModel::dismissMessage,
       onDismiss = { organizationVisible = false },
     )
