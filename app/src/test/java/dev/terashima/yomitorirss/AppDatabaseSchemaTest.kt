@@ -4,6 +4,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
+import dev.terashima.yomitorirss.core.database.DatabaseSchema
+import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -35,7 +37,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(17, db.version)
+    assertEquals(18, db.version)
     assertEquals(
       setOf(
         "feed_folders",
@@ -74,6 +76,63 @@ class AppDatabaseSchemaTest {
   }
 
   @Test
+  fun `version 18 discards legacy library review candidates`() {
+    val legacyLibrarySchema = appDatabaseSchema.contributions
+      .first { it.owner == "library" }
+      .let { contribution ->
+        DatabaseSchemaContribution(
+          owner = contribution.owner,
+          createSchema = contribution.createSchema,
+        )
+      }
+    val legacySchema = DatabaseSchema(
+      version = 17,
+      contributions = appDatabaseSchema.contributions.map { contribution ->
+        if (contribution.owner == "library") legacyLibrarySchema else contribution
+      },
+    )
+    val legacyDatabase = YomitoriDatabase.create(context, legacySchema)
+    val legacyDb = legacyDatabase.writableDatabase
+    insertLibraryOrganizationBatch(legacyDb, "legacy-batch")
+    insertLibraryOrganizationBatchItem(legacyDb, "legacy-batch", "pending", "PENDING_REVIEW")
+    insertLibraryOrganizationBatchItem(legacyDb, "legacy-batch", "deferred", "DEFERRED")
+    insertLibraryOrganizationBatchItem(legacyDb, "legacy-batch", "applied", "APPLIED")
+    legacyDatabase.close()
+
+    val upgraded = openDatabase().writableDatabase
+
+    assertEquals(18, upgraded.version)
+    assertEquals(
+      0,
+      countRows(
+        upgraded,
+        "library_organization_batch_items",
+        "status IN (?, ?)",
+        arrayOf("PENDING_REVIEW", "DEFERRED"),
+      ),
+    )
+    assertEquals(
+      1,
+      countRows(
+        upgraded,
+        "library_organization_batch_items",
+        "status = ?",
+        arrayOf("APPLIED"),
+      ),
+    )
+    assertEquals(
+      "COMPLETED",
+      upgraded.rawQuery(
+        "SELECT status FROM library_organization_batches WHERE batch_id = ?",
+        arrayOf("legacy-batch"),
+      ).use { cursor ->
+        check(cursor.moveToFirst())
+        cursor.getString(0)
+      },
+    )
+  }
+
+  @Test
   fun `tag is removed only after its last article relation is deleted`() {
     val db = openDatabase().writableDatabase
     insertBookmarkedArticle(db, "article-1")
@@ -92,6 +151,43 @@ class AppDatabaseSchemaTest {
   private fun openDatabase(): YomitoriDatabase = YomitoriDatabase.create(context, appDatabaseSchema).also {
     database = it
   }
+}
+
+private fun insertLibraryOrganizationBatch(db: SQLiteDatabase, batchId: String) {
+  db.insertOrThrow(
+    "library_organization_batches",
+    null,
+    ContentValues().apply {
+      put("batch_id", batchId)
+      put("status", "RUNNING")
+      put("created_at", 1L)
+      put("updated_at", 1L)
+    },
+  )
+}
+
+private fun insertLibraryOrganizationBatchItem(
+  db: SQLiteDatabase,
+  batchId: String,
+  sourceId: String,
+  status: String,
+) {
+  db.insertOrThrow(
+    "library_organization_batch_items",
+    null,
+    ContentValues().apply {
+      put("batch_id", batchId)
+      put("source", "KINDLE")
+      put("source_id", sourceId)
+      put("status", status)
+      put("tag_names_json", "[\"sample-tag\"]")
+      put("collection_names_json", "[\"sample-collection\"]")
+      put("reason", "sample reason")
+      putNull("error")
+      put("created_at", 1L)
+      put("updated_at", 1L)
+    },
+  )
 }
 
 private fun insertBookmarkedArticle(db: SQLiteDatabase, id: String) {
