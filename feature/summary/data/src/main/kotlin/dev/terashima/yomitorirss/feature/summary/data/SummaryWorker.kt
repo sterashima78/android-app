@@ -77,7 +77,7 @@ class SummaryWorker(
         val enrichmentContext = database.bookmarkEnrichmentContext(task.articleId)
         var generatedMetadata: BookmarkAiGeneratedMetadata? = null
         val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
-        val summary = if (cached != null) {
+        if (cached != null) {
           if (enrichmentContext != null) {
             currentCoroutineContext().ensureActive()
             modelManager.selectedModel()
@@ -85,7 +85,8 @@ class SummaryWorker(
             generatedMetadata = parseBookmarkMetadataEnrichment(
               raw = modelManager.summarizeText(
                 text = cached.summary,
-                prompt = buildBookmarkMetadataPrompt(
+                prompt = buildBookmarkMetadataPrompt(),
+                promptSuffix = buildBookmarkMetadataCandidateSuffix(
                   articleTitle = article.title,
                   existingTagNames = enrichmentContext.existingTagNames,
                   existingFolderNames = enrichmentContext.existingFolderNames,
@@ -94,7 +95,6 @@ class SummaryWorker(
               existingFolderNames = enrichmentContext.existingFolderNames,
             )
           }
-          cached.summary
         } else {
           val selectedModel = modelManager.selectedModel()
             ?: error("要約モデルをダウンロードして選択してください")
@@ -128,7 +128,6 @@ class SummaryWorker(
           val generated = generatedSummary?.summary ?: rawGenerated
           currentCoroutineContext().ensureActive()
           database.saveSummary(task.articleId, generated, cacheKey)
-          generated
         }
 
         if (enrichmentContext != null) {
