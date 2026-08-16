@@ -212,8 +212,12 @@ internal object HierarchicalSummaryText {
       val fittingLength = hardEnd - start
       val minimumEnd = start + (fittingLength * MIN_BREAK_RATIO_PERCENT / 100)
       val breakIndex = findBreakIndex(normalized, minimumEnd, hardEnd)
-      val end = if (breakIndex >= minimumEnd) breakIndex + 1 else hardEnd
-      normalized.substring(start, end).trim().takeIf(String::isNotEmpty)?.let(chunks::add)
+      val preferredEnd = if (breakIndex >= minimumEnd) breakIndex + 1 else hardEnd
+      val preferredChunk = normalized.substring(start, preferredEnd).trim()
+      val end = if (preferredEnd == hardEnd || fits(preferredChunk)) preferredEnd else hardEnd
+      val chunk = normalized.substring(start, end).trim()
+      check(chunk.isNotEmpty() && fits(chunk)) { "要約チャンクがモデルの入力予算を超えています" }
+      chunks += chunk
       start = end
       while (start < normalized.length && normalized[start].isWhitespace()) start += 1
     }
