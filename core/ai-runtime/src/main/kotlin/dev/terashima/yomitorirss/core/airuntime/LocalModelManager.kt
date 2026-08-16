@@ -84,8 +84,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
   private val downloadLock = ReentrantLock()
   private val inferenceLock = ReentrantLock()
+  private val tokenizerLock = ReentrantLock()
   private val cancelRequested = AtomicBoolean(false)
   private var cachedInference: CachedInference? = null
+  private var cachedTokenizer: CachedTokenizer? = null
 
   private val _models = MutableStateFlow<List<LocalModelStatus>>(emptyList())
   val models: StateFlow<List<LocalModelStatus>> = _models.asStateFlow()
@@ -161,10 +163,13 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val model = requireModel(modelId)
     inferenceLock.withLock {
       if (cachedInference?.key?.modelId == model.id) releaseCachedInferenceLocked()
-      modelFile(model).delete()
-      temporaryModelFile(model).delete()
-      modelCacheDirectory(model).deleteRecursively()
     }
+    tokenizerLock.withLock {
+      if (cachedTokenizer?.key?.modelId == model.id) releaseCachedTokenizerLocked()
+    }
+    modelFile(model).delete()
+    temporaryModelFile(model).delete()
+    modelCacheDirectory(model).deleteRecursively()
     if (preferences.getString(SELECTED_MODEL_KEY, null) == model.id) {
       preferences.edit().remove(SELECTED_MODEL_KEY).apply()
     }
@@ -240,6 +245,16 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
+  fun countTokens(text: String): Int {
+    check(isSupported()) { "この端末ではローカルモデルを利用できません" }
+    val model = resolveSelectedModel() ?: error("AIモデルをダウンロードして選択してください")
+    val file = modelFile(model)
+    check(isValidModelFile(file, model)) { "選択したモデルが見つかりません" }
+    return tokenizerLock.withLock {
+      acquireTokenizer(model, file).count(text)
+    }
+  }
+
   fun generate(
     prompt: String,
     streaming: Boolean = false,
@@ -263,6 +278,9 @@ class LocalModelManager(context: Context) : AutoCloseable {
     cancelRequested.set(true)
     inferenceLock.withLock {
       releaseCachedInferenceLocked()
+    }
+    tokenizerLock.withLock {
+      releaseCachedTokenizerLocked()
     }
   }
 
@@ -340,6 +358,22 @@ class LocalModelManager(context: Context) : AutoCloseable {
     return inference
   }
 
+  private fun acquireTokenizer(
+    model: ModelDefinition,
+    file: File,
+  ): LiteRtLmTokenizer {
+    val key = tokenizerCacheKey(model, file)
+    cachedTokenizer?.takeIf { it.key == key }?.let { cached -> return cached.tokenizer }
+
+    releaseCachedTokenizerLocked()
+    val tokenizer = LiteRtLmTokenizer(
+      modelFile = file,
+      cacheDirectory = modelTokenizerCacheDirectory(model),
+    )
+    cachedTokenizer = CachedTokenizer(key, tokenizer)
+    return tokenizer
+  }
+
   private fun inferenceCacheKey(
     model: ModelDefinition,
     file: File,
@@ -352,6 +386,15 @@ class LocalModelManager(context: Context) : AutoCloseable {
     fileModifiedAt = file.lastModified(),
   )
 
+  private fun tokenizerCacheKey(
+    model: ModelDefinition,
+    file: File,
+  ) = TokenizerCacheKey(
+    modelId = model.id,
+    fileLength = file.length(),
+    fileModifiedAt = file.lastModified(),
+  )
+
   private fun invalidateRetainedInferenceLocked(inference: LiteRtLmInference) {
     if (cachedInference?.inference === inference) releaseCachedInferenceLocked()
   }
@@ -360,6 +403,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val cached = cachedInference ?: return
     cachedInference = null
     runCatching { cached.inference.close() }
+  }
+
+  private fun releaseCachedTokenizerLocked() {
+    val cached = cachedTokenizer ?: return
+    cachedTokenizer = null
+    runCatching { cached.tokenizer.close() }
   }
 
   private fun resolveSelectedModel(): ModelDefinition? {
@@ -418,6 +467,8 @@ class LocalModelManager(context: Context) : AutoCloseable {
     File(appContext.cacheDir, "local-summary-models/${model.id}")
   private fun modelBackendCacheDirectory(model: ModelDefinition, backend: LocalInferenceBackend) =
     File(modelCacheDirectory(model), backend.name.lowercase()).apply { mkdirs() }
+  private fun modelTokenizerCacheDirectory(model: ModelDefinition) =
+    File(modelCacheDirectory(model), "tokenizer").apply { mkdirs() }
 
   private fun cleanupRetiredModelArtifacts() {
     val selectedId = preferences.getString(SELECTED_MODEL_KEY, null)
@@ -480,6 +531,17 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private data class CachedInference(
     val key: InferenceCacheKey,
     val inference: LiteRtLmInference,
+  )
+
+  private data class TokenizerCacheKey(
+    val modelId: String,
+    val fileLength: Long,
+    val fileModifiedAt: Long,
+  )
+
+  private data class CachedTokenizer(
+    val key: TokenizerCacheKey,
+    val tokenizer: LiteRtLmTokenizer,
   )
 
   private data class ModelDefinition(
