@@ -6,7 +6,7 @@ import java.nio.ByteOrder
 import java.nio.file.Files
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFailsWith
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class LiteRtLmModelSectionsTest {
@@ -35,7 +35,7 @@ class LiteRtLmModelSectionsTest {
   @Test
   fun `SentencePieceセクションがないモデルは失敗する`() {
     withFakeModel(sectionType = GENERIC_BINARY_SECTION_TYPE) { model, _, _, _ ->
-      assertFailsWith<IllegalStateException> {
+      assertThrows(IllegalStateException::class.java) {
         LiteRtLmModelSections.sentencePieceTokenizer(model)
       }
     }
