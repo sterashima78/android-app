@@ -5,7 +5,7 @@ import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-const val HIERARCHICAL_SUMMARY_CACHE_VARIANT = "hierarchical-v2-context-budget"
+const val HIERARCHICAL_SUMMARY_CACHE_VARIANT = "hierarchical-v3-token-budget"
 
 enum class HierarchicalSummaryProgressStage {
   DIRECT,
@@ -27,8 +27,9 @@ suspend fun LocalModelManager.summarizeHierarchically(
 ): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val contextTokens = model.contextTokens
+  val tokenCount: (String) -> Int = { value -> countTokens(value) }
   val normalized = HierarchicalSummaryText.normalize(text)
-  if (HierarchicalSummaryBudget.fits(contextTokens, prompt, normalized)) {
+  if (HierarchicalSummaryBudget.fits(contextTokens, prompt, normalized, tokenCount)) {
     currentCoroutineContext().ensureActive()
     onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.DIRECT))
     return summarizeText(normalized, prompt)
@@ -40,8 +41,9 @@ suspend fun LocalModelManager.summarizeHierarchically(
     total = CHUNK_PROMPT_PLANNING_INDEX,
     targetChars = targetChars,
   )
-  val maxChunkChars = HierarchicalSummaryBudget.maxArticleChars(contextTokens, chunkPlanningPrompt)
-  val chunks = HierarchicalSummaryText.split(normalized, maxChunkChars)
+  val chunks = HierarchicalSummaryText.split(normalized) { chunk ->
+    HierarchicalSummaryBudget.fits(contextTokens, chunkPlanningPrompt, chunk, tokenCount)
+  }
   check(chunks.size <= CHUNK_PROMPT_PLANNING_INDEX) { "記事の分割数が上限を超えました" }
 
   var summaries = chunks.mapIndexed { index, chunk ->
@@ -68,14 +70,20 @@ suspend fun LocalModelManager.summarizeHierarchically(
     すべて同じ記事の一部なので、全体を1つの記事として扱ってください。
   """.trimIndent() + "\n\n"
   val mergePrompt = mergeSummaryPrompt(targetChars)
-  val maxMergeChars = HierarchicalSummaryBudget.maxArticleChars(contextTokens, mergePrompt)
 
   var reductionRound = 0
-  while (!HierarchicalSummaryBudget.fits(contextTokens, prompt, finalPrefix + HierarchicalSummaryText.join(summaries))) {
+  while (!HierarchicalSummaryBudget.fits(
+      contextTokens,
+      prompt,
+      finalPrefix + HierarchicalSummaryText.join(summaries),
+      tokenCount,
+    )) {
     check(reductionRound < MAX_REDUCTION_ROUNDS) {
       "長文要約の中間結果を十分に圧縮できませんでした"
     }
-    val groups = HierarchicalSummaryText.pack(summaries, maxMergeChars)
+    val groups = HierarchicalSummaryText.pack(summaries) { group ->
+      HierarchicalSummaryBudget.fits(contextTokens, mergePrompt, group, tokenCount)
+    }
     summaries = groups.mapIndexed { index, group ->
       currentCoroutineContext().ensureActive()
       onProgress(
@@ -103,7 +111,8 @@ fun LocalModelManager.summarizeText(text: String, prompt: String): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val normalized = HierarchicalSummaryText.normalize(text)
   val rendered = renderSummaryPrompt(prompt, normalized)
-  check(HierarchicalSummaryBudget.fitsRendered(model.contextTokens, rendered)) {
+  val tokenCount: (String) -> Int = { value -> countTokens(value) }
+  check(HierarchicalSummaryBudget.fitsRendered(model.contextTokens, rendered, tokenCount)) {
     "要約入力がモデルのコンテキスト予算を超えています"
   }
   return cleanSummary(generate(rendered))
@@ -152,40 +161,24 @@ private fun mergeSummaryPrompt(targetChars: Int): String = """
 internal object HierarchicalSummaryBudget {
   private const val OUTPUT_RESERVE_TOKENS = 768
   private const val RUNTIME_RESERVE_TOKENS = 256
-  private const val TOKEN_ESTIMATE_NUMERATOR = 6
-  private const val TOKEN_ESTIMATE_DENOMINATOR = 5
 
-  fun estimatedTokens(text: String): Int =
-    ((text.length.toLong() * TOKEN_ESTIMATE_NUMERATOR + TOKEN_ESTIMATE_DENOMINATOR - 1) /
-      TOKEN_ESTIMATE_DENOMINATOR).toInt()
+  fun fits(
+    contextTokens: Int,
+    prompt: String,
+    article: String,
+    tokenCount: (String) -> Int,
+  ): Boolean = fitsRendered(contextTokens, renderSummaryPrompt(prompt, article), tokenCount)
 
-  fun maxArticleChars(contextTokens: Int, prompt: String): Int {
+  fun fitsRendered(
+    contextTokens: Int,
+    renderedPrompt: String,
+    tokenCount: (String) -> Int,
+  ): Boolean {
     require(contextTokens > OUTPUT_RESERVE_TOKENS + RUNTIME_RESERVE_TOKENS) {
       "contextTokens is too small for summary reserves"
     }
-    check(fits(contextTokens, prompt, "")) { "要約プロンプトがモデルの入力予算を超えています" }
-
-    val inputTokenBudget = contextTokens - OUTPUT_RESERVE_TOKENS - RUNTIME_RESERVE_TOKENS
-    var lower = 0
-    var upper = (inputTokenBudget.toLong() * TOKEN_ESTIMATE_DENOMINATOR / TOKEN_ESTIMATE_NUMERATOR).toInt()
-    while (lower < upper) {
-      val middle = lower + (upper - lower + 1) / 2
-      if (fits(contextTokens, prompt, "あ".repeat(middle))) {
-        lower = middle
-      } else {
-        upper = middle - 1
-      }
-    }
-    return lower.also { articleChars ->
-      check(articleChars > 0) { "要約プロンプトがモデルの本文入力予算を使い切っています" }
-    }
+    return tokenCount(renderedPrompt).toLong() + OUTPUT_RESERVE_TOKENS + RUNTIME_RESERVE_TOKENS <= contextTokens
   }
-
-  fun fits(contextTokens: Int, prompt: String, article: String): Boolean =
-    fitsRendered(contextTokens, renderSummaryPrompt(prompt, article))
-
-  fun fitsRendered(contextTokens: Int, renderedPrompt: String): Boolean =
-    estimatedTokens(renderedPrompt) + OUTPUT_RESERVE_TOKENS + RUNTIME_RESERVE_TOKENS <= contextTokens
 }
 
 internal object HierarchicalSummaryText {
@@ -197,57 +190,89 @@ internal object HierarchicalSummaryText {
 
   fun normalize(text: String): String = text.replace(Regex("\\s+"), " ").trim()
 
-  fun split(text: String, maxChars: Int): List<String> {
-    require(maxChars > 0) { "maxChars must be positive" }
+  fun split(
+    text: String,
+    fits: (String) -> Boolean,
+  ): List<String> {
     val normalized = normalize(text)
     if (normalized.isEmpty()) return emptyList()
-    if (normalized.length <= maxChars) return listOf(normalized)
+    if (fits(normalized)) return listOf(normalized)
 
     val chunks = mutableListOf<String>()
     var start = 0
     while (start < normalized.length) {
-      val hardEnd = (start + maxChars).coerceAtMost(normalized.length)
-      if (hardEnd == normalized.length) {
-        normalized.substring(start).trim().takeIf(String::isNotEmpty)?.let(chunks::add)
+      val remaining = normalized.substring(start).trim()
+      if (remaining.isNotEmpty() && fits(remaining)) {
+        chunks += remaining
         break
       }
 
-      val minimumEnd = start + (maxChars * MIN_BREAK_RATIO_PERCENT / 100)
+      val hardEnd = maxFittingEnd(normalized, start, fits)
+      check(hardEnd > start) { "要約プロンプトがモデルの本文入力予算を使い切っています" }
+      val fittingLength = hardEnd - start
+      val minimumEnd = start + (fittingLength * MIN_BREAK_RATIO_PERCENT / 100)
       val breakIndex = findBreakIndex(normalized, minimumEnd, hardEnd)
-      val end = if (breakIndex >= minimumEnd) breakIndex + 1 else hardEnd
-      normalized.substring(start, end).trim().takeIf(String::isNotEmpty)?.let(chunks::add)
+      val preferredEnd = if (breakIndex >= minimumEnd) breakIndex + 1 else hardEnd
+      val preferredChunk = normalized.substring(start, preferredEnd).trim()
+      val end = if (preferredEnd == hardEnd || fits(preferredChunk)) preferredEnd else hardEnd
+      val chunk = normalized.substring(start, end).trim()
+      check(chunk.isNotEmpty() && fits(chunk)) { "要約チャンクがモデルの入力予算を超えています" }
+      chunks += chunk
       start = end
       while (start < normalized.length && normalized[start].isWhitespace()) start += 1
     }
     return chunks
   }
 
-  fun pack(items: List<String>, maxChars: Int): List<List<String>> {
-    require(maxChars > 0) { "maxChars must be positive" }
+  fun pack(
+    items: List<String>,
+    fits: (String) -> Boolean,
+  ): List<List<String>> {
     val expanded = items.flatMap { item ->
       val normalized = normalize(item)
-      if (normalized.length <= maxChars) listOf(normalized) else split(normalized, maxChars)
-    }.filter(String::isNotEmpty)
+      when {
+        normalized.isEmpty() -> emptyList()
+        fits(normalized) -> listOf(normalized)
+        else -> split(normalized, fits)
+      }
+    }
     if (expanded.isEmpty()) return emptyList()
 
     val groups = mutableListOf<MutableList<String>>()
     var current = mutableListOf<String>()
-    var currentLength = 0
     expanded.forEach { item ->
-      val addedLength = item.length + if (current.isEmpty()) 0 else SEPARATOR.length
-      if (current.isNotEmpty() && currentLength + addedLength > maxChars) {
+      check(fits(item)) { "中間要約1件が統合プロンプトの入力予算を超えています" }
+      val candidate = current + item
+      if (current.isNotEmpty() && !fits(join(candidate))) {
         groups += current
         current = mutableListOf()
-        currentLength = 0
       }
       current += item
-      currentLength += item.length + if (current.size == 1) 0 else SEPARATOR.length
     }
     if (current.isNotEmpty()) groups += current
     return groups
   }
 
   fun join(items: List<String>): String = items.joinToString(SEPARATOR) { normalize(it) }
+
+  private fun maxFittingEnd(
+    text: String,
+    start: Int,
+    fits: (String) -> Boolean,
+  ): Int {
+    var lower = start
+    var upper = text.length
+    while (lower < upper) {
+      val middle = lower + (upper - lower + 1) / 2
+      val candidate = text.substring(start, middle).trim()
+      if (candidate.isNotEmpty() && fits(candidate)) {
+        lower = middle
+      } else {
+        upper = middle - 1
+      }
+    }
+    return lower
+  }
 
   private fun findBreakIndex(text: String, minimumEnd: Int, hardEnd: Int): Int {
     for (index in hardEnd - 1 downTo minimumEnd) {
