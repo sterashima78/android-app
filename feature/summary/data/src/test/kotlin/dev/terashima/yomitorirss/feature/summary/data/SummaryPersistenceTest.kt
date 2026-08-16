@@ -40,7 +40,7 @@ class SummaryPersistenceTest {
   }
 
   @Test
-  fun `200件を超える未完了タスクもすべて取得する`() {
+  fun `表示上限を超える待機タスクも集計する`() {
     repeat(206) { index ->
       val articleId = "article-$index"
       insertArticle(articleId)
@@ -50,9 +50,13 @@ class SummaryPersistenceTest {
     database.completeRunningSummaryTask(completed.articleId)
 
     val tasks = database.listSummaryTaskItems()
+    val counts = database.countSummaryQueueTasks()
 
-    assertEquals(205, tasks.size)
-    assertEquals(205, tasks.count { it.task.state == SUMMARY_QUEUED })
+    assertEquals(200, tasks.size)
+    assertEquals(200, tasks.count { it.task.state == SUMMARY_QUEUED })
+    assertEquals(205, counts.queued)
+    assertEquals(0, counts.running)
+    assertEquals(0, counts.stopped)
   }
 
   private fun insertArticle(id: String) {
