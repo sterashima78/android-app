@@ -46,7 +46,7 @@ fun ModelManagerDialog(
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("要約モデル") },
+    title = { Text("AIモデル") },
     text = {
       LazyColumn(modifier = Modifier.fillMaxWidth()) {
         if (!supported) item { Text("この端末はarm64・4 GB以上のメモリという実行条件を満たしていません。") }
