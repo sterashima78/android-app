@@ -16,6 +16,10 @@ class LibraryMetadataOrganizer(
     val targets = books.distinctBy(LibraryBook::organizationKey)
     require(targets.isNotEmpty()) { "再整理するシリーズの蔵書がありません" }
     require(targets.all { it.series != null }) { "シリーズが設定された蔵書だけ再整理できます" }
+    val targetSeries = requireNotNull(targets.first().series)
+    require(targets.all { sameSeries(targetSeries, it.series) }) {
+      "同一シリーズの蔵書だけまとめて再整理できます"
+    }
 
     var snapshot = repository.snapshot()
     var updated = 0
@@ -94,7 +98,11 @@ private fun sameSeries(left: LibrarySeries, right: LibrarySeries?): Boolean {
   val leftId = left.id?.trim()?.takeIf(String::isNotEmpty)
   val rightId = right.id?.trim()?.takeIf(String::isNotEmpty)
   if (leftId != null && rightId != null) return leftId.equals(rightId, ignoreCase = true)
-  return left.name.trim().equals(right.name.trim(), ignoreCase = true)
+
+  val leftName = left.name.trim()
+  val rightName = right.name.trim()
+  if (leftName.isEmpty() || rightName.isEmpty()) return false
+  return leftName.equals(rightName, ignoreCase = true)
 }
 
 private fun normalizeMetadataName(value: String): String = value.trim().lowercase()
