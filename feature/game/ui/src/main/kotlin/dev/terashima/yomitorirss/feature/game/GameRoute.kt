@@ -1,9 +1,17 @@
 package dev.terashima.yomitorirss.feature.game
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GridOn
@@ -25,7 +34,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -178,65 +188,164 @@ private fun SudokuScreen(
   onEnterNumber: (Int) -> Unit,
   onClearCell: () -> Unit,
 ) {
-  Column(
+  Box(
     modifier = modifier
-      .verticalScroll(rememberScrollState())
-      .padding(horizontal = 16.dp, vertical = 12.dp),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+      .fillMaxSize()
+      .background(MaterialTheme.colorScheme.surface),
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 12.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-      Column {
-        Text("数独", style = MaterialTheme.typography.headlineSmall)
-        Text(
-          "ミス: ${state.mistakes}",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      TextButton(onClick = onBack) { Text("ゲーム一覧") }
-    }
+      SudokuHeader(
+        mistakes = state.mistakes,
+        onBack = onBack,
+        onNewGame = onNewGame,
+      )
 
-    SudokuBoard(
-      state = state,
-      onSelectCell = onSelectCell,
-      modifier = Modifier.align(Alignment.CenterHorizontally),
-    )
-
-    if (state.isCompleted) {
-      Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-          modifier = Modifier.padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
+      BoxWithConstraints(
+        modifier = Modifier
+          .fillMaxWidth()
+          .weight(1f),
+        contentAlignment = Alignment.Center,
+      ) {
+        val boardSize = minOf(maxWidth, maxHeight).coerceAtMost(520.dp)
+        Surface(
+          modifier = Modifier.size(boardSize),
+          shape = RoundedCornerShape(18.dp),
+          tonalElevation = 2.dp,
+          shadowElevation = 6.dp,
+          color = MaterialTheme.colorScheme.surface,
         ) {
-          Text("完成しました", style = MaterialTheme.typography.titleMedium)
-          Text("新しい問題でもう一度遊べます。")
-          Button(onClick = onNewGame) { Text("新しい問題") }
+          SudokuBoard(
+            state = state,
+            onSelectCell = onSelectCell,
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(4.dp),
+          )
         }
       }
-    } else {
-      NumberPad(
+
+      SudokuInputDock(
+        state = state,
         onEnterNumber = onEnterNumber,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-      )
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-      ) {
-        OutlinedButton(onClick = onClearCell) { Text("消去") }
-        Button(onClick = onNewGame) { Text("新しい問題") }
-      }
-      Text(
-        "誤った数字は盤面には入りません。ミス回数として記録します。",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
+        onClearCell = onClearCell,
       )
     }
-    Spacer(Modifier.height(8.dp))
+
+    AnimatedVisibility(
+      visible = state.isCompleted,
+      modifier = Modifier.align(Alignment.Center),
+      enter = fadeIn() + slideInVertically(initialOffsetY = { it / 5 }),
+      exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 5 }),
+    ) {
+      Card(
+        modifier = Modifier
+          .padding(28.dp)
+          .widthIn(max = 320.dp),
+      ) {
+        Column(
+          modifier = Modifier.padding(24.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          Text("完成", style = MaterialTheme.typography.headlineSmall)
+          Text(
+            "すべてのマスが揃いました。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Button(onClick = onNewGame, modifier = Modifier.fillMaxWidth()) {
+            Text("次の問題")
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun SudokuHeader(
+  mistakes: Int,
+  onBack: () -> Unit,
+  onNewGame: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .height(48.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(6.dp),
+  ) {
+    TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) {
+      Text("‹ ゲーム")
+    }
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        "数独",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+      )
+      Text(
+        "ミス $mistakes",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    TextButton(onClick = onNewGame, contentPadding = PaddingValues(horizontal = 8.dp)) {
+      Text("新しい問題")
+    }
+  }
+}
+
+@Composable
+private fun SudokuInputDock(
+  state: SudokuGameState,
+  onEnterNumber: (Int) -> Unit,
+  onClearCell: () -> Unit,
+) {
+  val selectedIndex = state.selectedIndex
+  val isEditable = selectedIndex != null &&
+    !state.puzzle.isGiven(selectedIndex) &&
+    !state.isCompleted
+
+  Box(
+    modifier = Modifier
+      .fillMaxWidth()
+      .height(106.dp),
+    contentAlignment = Alignment.Center,
+  ) {
+    AnimatedVisibility(
+      visible = isEditable,
+      enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
+      exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 3 }),
+    ) {
+      SudokuNumberPad(
+        state = state,
+        selectedIndex = requireNotNull(selectedIndex),
+        onEnterNumber = onEnterNumber,
+        onClearCell = onClearCell,
+      )
+    }
+
+    AnimatedVisibility(
+      visible = !isEditable && !state.isCompleted,
+      enter = fadeIn(),
+      exit = fadeOut(),
+    ) {
+      Text(
+        text = if (selectedIndex == null) {
+          "空いているマスを選択"
+        } else {
+          "固定数字です。空いているマスを選択してください"
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
   }
 }
 
@@ -247,15 +356,16 @@ private fun SudokuBoard(
   modifier: Modifier = Modifier,
 ) {
   val thinLine = MaterialTheme.colorScheme.outlineVariant
-  val thickLine = MaterialTheme.colorScheme.onSurface
+  val thickLine = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
   val selectedIndex = state.selectedIndex
   val selectedValue = selectedIndex?.let(state.entries::get)?.takeIf { it != 0 }
+  val boardShape = RoundedCornerShape(14.dp)
 
   Box(
     modifier = modifier
-      .fillMaxWidth()
-      .widthIn(max = 480.dp)
-      .aspectRatio(1f)
+      .clip(boardShape)
+      .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f))
+      .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), boardShape)
       .drawWithContent {
         drawContent()
         val cellSize = size.width / 9f
@@ -283,16 +393,20 @@ private fun SudokuBoard(
                 (row / 3 == selectedRow / 3 && column / 3 == selectedColumn / 3)
             } ?: false
             val sameValue = selectedValue != null && value == selectedValue
-            val background = when {
+            val targetBackground = when {
               isSelected -> MaterialTheme.colorScheme.secondaryContainer
-              sameValue -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-              related -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+              sameValue -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.68f)
+              related -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
               else -> Color.Transparent
             }
+            val background by animateColorAsState(
+              targetValue = targetBackground,
+              label = "sudoku-cell-background",
+            )
             val description = buildString {
               append("${row + 1}行${column + 1}列")
               if (value == 0) append("、空白") else append("、$value")
-              if (state.puzzle.isGiven(index)) append("、固定")
+              if (state.puzzle.isGiven(index)) append("、固定") else append("、入力可能")
             }
 
             Box(
@@ -307,8 +421,8 @@ private fun SudokuBoard(
               if (value != 0) {
                 Text(
                   text = value.toString(),
-                  style = MaterialTheme.typography.titleMedium,
-                  fontWeight = if (state.puzzle.isGiven(index)) FontWeight.Bold else FontWeight.Normal,
+                  style = MaterialTheme.typography.titleLarge,
+                  fontWeight = if (state.puzzle.isGiven(index)) FontWeight.Bold else FontWeight.SemiBold,
                   color = if (state.puzzle.isGiven(index)) {
                     MaterialTheme.colorScheme.onSurface
                   } else {
@@ -325,30 +439,109 @@ private fun SudokuBoard(
 }
 
 @Composable
-private fun NumberPad(
+private fun SudokuNumberPad(
+  state: SudokuGameState,
+  selectedIndex: Int,
   onEnterNumber: (Int) -> Unit,
-  modifier: Modifier = Modifier,
+  onClearCell: () -> Unit,
 ) {
   Column(
-    modifier = modifier.widthIn(max = 360.dp).fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(6.dp),
+    modifier = Modifier
+      .widthIn(max = 420.dp)
+      .fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    for (row in 0 until 3) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    SudokuNumberRow(
+      numbers = 1..5,
+      state = state,
+      selectedIndex = selectedIndex,
+      onEnterNumber = onEnterNumber,
+    )
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      for (number in 6..9) {
+        SudokuNumberButton(
+          number = number,
+          enabled = isSudokuNumberAvailable(state, selectedIndex, number),
+          onClick = { onEnterNumber(number) },
+          modifier = Modifier.weight(1f),
+        )
+      }
+      FilledTonalButton(
+        onClick = onClearCell,
+        enabled = state.entries[selectedIndex] != 0,
+        modifier = Modifier
+          .weight(1f)
+          .height(46.dp),
+        contentPadding = PaddingValues(0.dp),
+        shape = RoundedCornerShape(12.dp),
       ) {
-        for (column in 0 until 3) {
-          val number = row * 3 + column + 1
-          FilledTonalButton(
-            onClick = { onEnterNumber(number) },
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(vertical = 12.dp),
-          ) {
-            Text(number.toString())
-          }
-        }
+        Text("消去", style = MaterialTheme.typography.labelMedium)
       }
     }
+  }
+}
+
+@Composable
+private fun SudokuNumberRow(
+  numbers: IntRange,
+  state: SudokuGameState,
+  selectedIndex: Int,
+  onEnterNumber: (Int) -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    for (number in numbers) {
+      SudokuNumberButton(
+        number = number,
+        enabled = isSudokuNumberAvailable(state, selectedIndex, number),
+        onClick = { onEnterNumber(number) },
+        modifier = Modifier.weight(1f),
+      )
+    }
+  }
+}
+
+@Composable
+private fun SudokuNumberButton(
+  number: Int,
+  enabled: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  FilledTonalButton(
+    onClick = onClick,
+    enabled = enabled,
+    modifier = modifier.height(46.dp),
+    contentPadding = PaddingValues(0.dp),
+    shape = RoundedCornerShape(12.dp),
+  ) {
+    Text(
+      text = number.toString(),
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.SemiBold,
+    )
+  }
+}
+
+private fun isSudokuNumberAvailable(
+  state: SudokuGameState,
+  selectedIndex: Int,
+  number: Int,
+): Boolean {
+  val selectedRow = selectedIndex / 9
+  val selectedColumn = selectedIndex % 9
+
+  return state.entries.indices.none { index ->
+    if (index == selectedIndex || state.entries[index] != number) return@none false
+    val row = index / 9
+    val column = index % 9
+    row == selectedRow ||
+      column == selectedColumn ||
+      (row / 3 == selectedRow / 3 && column / 3 == selectedColumn / 3)
   }
 }
