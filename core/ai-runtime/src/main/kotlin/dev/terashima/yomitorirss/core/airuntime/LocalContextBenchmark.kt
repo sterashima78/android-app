@@ -45,7 +45,9 @@ class LocalContextBenchmarkRunner(
 
     modelManager.releaseRetainedInferenceForBenchmark()
 
-    val contextCandidates = SUPPORTED_CONTEXT_TOKENS.filter { it <= model.maxContextTokens }
+    val contextCandidates = SUPPORTED_CONTEXT_TOKENS.filter {
+      it <= modelManager.maxSupportedContextTokens(model.id)
+    }
     for (contextTokens in contextCandidates) {
       val prompt = buildPrefillPrompt(contextTokens)
       val sample = runSample(
@@ -132,27 +134,31 @@ class LocalContextBenchmarkRunner(
     val requestedPrefillTokens = modelManager.countTokens(prompt)
     val sampler = ProcessMemorySampler(activityManager)
     val baseline = sampler.start()
-    val previousSpeculativeDecoding = ExperimentalFlags.enableSpeculativeDecoding
-    ExperimentalFlags.enableSpeculativeDecoding = speculativeDecodingEnabled
     var engine: Engine? = null
     try {
       val initStartedAt = SystemClock.elapsedRealtime()
-      engine = Engine(
-        EngineConfig(
-          modelPath = modelFile.absolutePath,
-          backend = when (backend) {
-            LocalInferenceBackend.CPU -> Backend.CPU()
-            LocalInferenceBackend.GPU -> Backend.GPU()
-          },
-          cacheDir = benchmarkCacheDirectory(
-            modelId = modelId,
-            backend = backend,
-            speculativeDecodingEnabled = speculativeDecodingEnabled,
-            contextTokens = contextTokens,
-          ).absolutePath,
-          maxNumTokens = contextTokens,
-        ),
-      ).also { it.initialize() }
+      val previousSpeculativeDecoding = ExperimentalFlags.enableSpeculativeDecoding
+      ExperimentalFlags.enableSpeculativeDecoding = speculativeDecodingEnabled
+      engine = try {
+        Engine(
+          EngineConfig(
+            modelPath = modelFile.absolutePath,
+            backend = when (backend) {
+              LocalInferenceBackend.CPU -> Backend.CPU()
+              LocalInferenceBackend.GPU -> Backend.GPU()
+            },
+            cacheDir = benchmarkCacheDirectory(
+              modelId = modelId,
+              backend = backend,
+              speculativeDecodingEnabled = speculativeDecodingEnabled,
+              contextTokens = contextTokens,
+            ).absolutePath,
+            maxNumTokens = contextTokens,
+          ),
+        ).also { it.initialize() }
+      } finally {
+        ExperimentalFlags.enableSpeculativeDecoding = previousSpeculativeDecoding
+      }
       val initTimeMillis = SystemClock.elapsedRealtime() - initStartedAt
 
       val inferenceStartedAt = SystemClock.elapsedRealtime()
@@ -197,8 +203,6 @@ class LocalContextBenchmarkRunner(
         safe = false,
         error = error.userMessage(),
       )
-    } finally {
-      ExperimentalFlags.enableSpeculativeDecoding = previousSpeculativeDecoding
     }
   }
 
