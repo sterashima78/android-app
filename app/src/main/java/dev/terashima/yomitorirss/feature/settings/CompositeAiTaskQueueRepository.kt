@@ -40,6 +40,26 @@ internal class CompositeAiTaskQueueRepository(
     return libraryTasks + summaryTasks
   }
 
+  override suspend fun taskCounts(): AiTaskQueueCounts {
+    val summaryCounts = summaryRepository.taskCounts()
+    val globalPaused = summaryRepository.executionState().paused
+    val batch = libraryRepository.batchSnapshot()
+    val libraryStates = batch?.candidates.orEmpty().map { candidate ->
+      libraryTaskState(
+        candidate = candidate,
+        batchStatus = checkNotNull(batch).status,
+        globalPaused = globalPaused,
+      )
+    }
+    return AiTaskQueueCounts(
+      running = summaryCounts.running + libraryStates.count { it == AiTaskQueueItemState.RUNNING },
+      queued = summaryCounts.queued + libraryStates.count { it == AiTaskQueueItemState.QUEUED },
+      pausedOrStopped = summaryCounts.stopped + libraryStates.count {
+        it == AiTaskQueueItemState.PAUSED || it == AiTaskQueueItemState.STOPPED
+      },
+    )
+  }
+
   override suspend fun executionState(): AiTaskQueueExecutionState =
     summaryRepository.executionState().let { state ->
       AiTaskQueueExecutionState(
@@ -175,19 +195,11 @@ internal class CompositeAiTaskQueueRepository(
     globalPaused: Boolean,
     book: LibraryBook?,
   ): AiTaskQueueItem {
-    val waitingForAi = candidate.status == LibraryOrganizationCandidateStatus.QUEUED ||
-      candidate.status == LibraryOrganizationCandidateStatus.PROCESSING
-    val effectivelyPaused = waitingForAi && (
-      globalPaused || batchStatus == LibraryOrganizationBatchStatus.PAUSED
+    val state = libraryTaskState(
+      candidate = candidate,
+      batchStatus = batchStatus,
+      globalPaused = globalPaused,
     )
-    val state = when {
-      effectivelyPaused -> AiTaskQueueItemState.PAUSED
-      candidate.status == LibraryOrganizationCandidateStatus.QUEUED -> AiTaskQueueItemState.QUEUED
-      candidate.status == LibraryOrganizationCandidateStatus.PROCESSING -> AiTaskQueueItemState.RUNNING
-      candidate.status == LibraryOrganizationCandidateStatus.FAILED ||
-        candidate.status == LibraryOrganizationCandidateStatus.SKIPPED -> AiTaskQueueItemState.FAILED
-      else -> AiTaskQueueItemState.COMPLETED
-    }
     return AiTaskQueueItem(
       id = libraryTaskId(candidate),
       kind = AiTaskQueueItemKind.LIBRARY_ORGANIZATION,
@@ -200,6 +212,26 @@ internal class CompositeAiTaskQueueRepository(
         (candidate.status == LibraryOrganizationCandidateStatus.FAILED ||
           candidate.status == LibraryOrganizationCandidateStatus.SKIPPED),
     )
+  }
+
+  private fun libraryTaskState(
+    candidate: LibraryOrganizationCandidate,
+    batchStatus: LibraryOrganizationBatchStatus,
+    globalPaused: Boolean,
+  ): AiTaskQueueItemState {
+    val waitingForAi = candidate.status == LibraryOrganizationCandidateStatus.QUEUED ||
+      candidate.status == LibraryOrganizationCandidateStatus.PROCESSING
+    val effectivelyPaused = waitingForAi && (
+      globalPaused || batchStatus == LibraryOrganizationBatchStatus.PAUSED
+    )
+    return when {
+      effectivelyPaused -> AiTaskQueueItemState.PAUSED
+      candidate.status == LibraryOrganizationCandidateStatus.QUEUED -> AiTaskQueueItemState.QUEUED
+      candidate.status == LibraryOrganizationCandidateStatus.PROCESSING -> AiTaskQueueItemState.RUNNING
+      candidate.status == LibraryOrganizationCandidateStatus.FAILED ||
+        candidate.status == LibraryOrganizationCandidateStatus.SKIPPED -> AiTaskQueueItemState.FAILED
+      else -> AiTaskQueueItemState.COMPLETED
+    }
   }
 
   private fun libraryTaskId(candidate: LibraryOrganizationCandidate): String =
