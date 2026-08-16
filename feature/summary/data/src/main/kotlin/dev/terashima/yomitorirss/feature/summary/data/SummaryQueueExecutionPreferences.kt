@@ -17,4 +17,8 @@ internal class SummaryQueueExecutionPreferences(context: Context) {
     set(value) {
       delegate.resumeWhenCharging = value
     }
+
+  companion object {
+    internal const val PREFERENCES_NAME = LocalAiBackgroundExecutionPreferences.PREFERENCES_NAME
+  }
 }
