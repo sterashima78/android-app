@@ -21,6 +21,10 @@ data class KnowledgeUiState(
   val composerRequest: String = "",
   val composerSourcePageId: String? = null,
   val editInstruction: String = "",
+  val deleteConfirmationOpen: Boolean = false,
+  val splitDialogOpen: Boolean = false,
+  val mergeDialogOpen: Boolean = false,
+  val mergeCandidates: List<KnowledgePageSummary> = emptyList(),
   val lastBuild: KnowledgeBuildResult? = null,
   val message: String? = null,
 )
@@ -50,14 +54,34 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { repository.findPage(id) }
         .onSuccess { page ->
-          _state.update { it.copy(selectedPage = page, editInstruction = "", message = null) }
+          _state.update {
+            it.copy(
+              selectedPage = page,
+              editInstruction = "",
+              deleteConfirmationOpen = false,
+              splitDialogOpen = false,
+              mergeDialogOpen = false,
+              mergeCandidates = emptyList(),
+              message = null,
+            )
+          }
         }
         .onFailure(::reportError)
     }
   }
 
   fun closePage() {
-    _state.update { it.copy(selectedPage = null, editInstruction = "", message = null) }
+    _state.update {
+      it.copy(
+        selectedPage = null,
+        editInstruction = "",
+        deleteConfirmationOpen = false,
+        splitDialogOpen = false,
+        mergeDialogOpen = false,
+        mergeCandidates = emptyList(),
+        message = null,
+      )
+    }
   }
 
   fun startCreate(sourcePageId: String? = null) {
@@ -148,6 +172,141 @@ class KnowledgeViewModel(
               pages = pages,
               selectedPage = updatedPage,
               working = false,
+              editInstruction = "",
+              message = null,
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update { it.copy(working = false) }
+          reportError(error)
+        }
+    }
+  }
+
+  fun startDelete() {
+    if (_state.value.working || _state.value.selectedPage == null) return
+    _state.update { it.copy(deleteConfirmationOpen = true, message = null) }
+  }
+
+  fun cancelDelete() {
+    if (_state.value.working) return
+    _state.update { it.copy(deleteConfirmationOpen = false) }
+  }
+
+  fun deletePage() {
+    val page = _state.value.selectedPage ?: return
+    if (_state.value.working) return
+    _state.update { it.copy(working = true, message = null) }
+    viewModelScope.launch {
+      runCatching { repository.deletePage(page.id) }
+        .onSuccess {
+          runCatching(scheduleBackupAfterChange)
+          val pages = repository.listPages(_state.value.query)
+          _state.update {
+            it.copy(
+              initialized = true,
+              pages = pages,
+              selectedPage = null,
+              working = false,
+              deleteConfirmationOpen = false,
+              splitDialogOpen = false,
+              mergeDialogOpen = false,
+              mergeCandidates = emptyList(),
+              editInstruction = "",
+              message = null,
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update { it.copy(working = false) }
+          reportError(error)
+        }
+    }
+  }
+
+  fun startSplit() {
+    if (_state.value.working || _state.value.selectedPage == null) return
+    _state.update { it.copy(splitDialogOpen = true, message = null) }
+  }
+
+  fun cancelSplit() {
+    if (_state.value.working) return
+    _state.update { it.copy(splitDialogOpen = false) }
+  }
+
+  fun splitPage(heading: String) {
+    val page = _state.value.selectedPage ?: return
+    if (_state.value.working) return
+    _state.update { it.copy(working = true, message = null) }
+    viewModelScope.launch {
+      runCatching { repository.splitPage(page.id, heading) }
+        .onSuccess { updatedPage ->
+          runCatching(scheduleBackupAfterChange)
+          val pages = repository.listPages(_state.value.query)
+          _state.update {
+            it.copy(
+              initialized = true,
+              pages = pages,
+              selectedPage = updatedPage,
+              working = false,
+              splitDialogOpen = false,
+              editInstruction = "",
+              message = null,
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update { it.copy(working = false) }
+          reportError(error)
+        }
+    }
+  }
+
+  fun startMerge() {
+    val selectedId = _state.value.selectedPage?.id ?: return
+    if (_state.value.working) return
+    viewModelScope.launch {
+      runCatching { repository.listPages("").filterNot { it.id == selectedId } }
+        .onSuccess { candidates ->
+          if (candidates.isEmpty()) {
+            _state.update { it.copy(message = "統合できる別の記事がありません") }
+          } else {
+            _state.update {
+              it.copy(
+                mergeDialogOpen = true,
+                mergeCandidates = candidates,
+                message = null,
+              )
+            }
+          }
+        }
+        .onFailure(::reportError)
+    }
+  }
+
+  fun cancelMerge() {
+    if (_state.value.working) return
+    _state.update { it.copy(mergeDialogOpen = false, mergeCandidates = emptyList()) }
+  }
+
+  fun mergePage(secondaryId: String) {
+    val primary = _state.value.selectedPage ?: return
+    if (_state.value.working) return
+    _state.update { it.copy(working = true, message = null) }
+    viewModelScope.launch {
+      runCatching { repository.mergePages(primary.id, secondaryId) }
+        .onSuccess { mergedPage ->
+          runCatching(scheduleBackupAfterChange)
+          val pages = repository.listPages(_state.value.query)
+          _state.update {
+            it.copy(
+              initialized = true,
+              pages = pages,
+              selectedPage = mergedPage,
+              working = false,
+              mergeDialogOpen = false,
+              mergeCandidates = emptyList(),
               editInstruction = "",
               message = null,
             )
