@@ -196,7 +196,9 @@ private class LiteRtLmFlatBufferHeader(bytes: ByteArray) {
     val offset = intAt(position)
     check(offset > 0) { "LiteRT-LM FlatBuffer のoffsetが不正です" }
     val target = position.toLong() + offset
-    check(target in 0 until buffer.limit().toLong()) { "LiteRT-LM FlatBuffer の参照先が範囲外です" }
+    check(target >= 0L && target < buffer.limit().toLong()) {
+      "LiteRT-LM FlatBuffer の参照先が範囲外です"
+    }
     return target.toInt()
   }
 
