@@ -18,7 +18,7 @@ data class LibraryOrganizationUiState(
   val batch: LibraryOrganizationBatchSnapshot? = null,
   val savingBook: LibraryBookKey? = null,
   val suggestingBook: LibraryBookKey? = null,
-  val reorganizingSeriesName: String? = null,
+  val reorganizingSeriesBook: LibraryBookKey? = null,
   val suggestions: Map<LibraryBookKey, LibraryOrganizationSuggestion> = emptyMap(),
   val message: String? = null,
 )
@@ -72,7 +72,7 @@ class LibraryOrganizationViewModel(
     book: LibraryBook,
     draft: LibraryOrganizationDraft,
   ) {
-    if (_state.value.reorganizingSeriesName != null) {
+    if (_state.value.reorganizingSeriesBook != null) {
       _state.update { it.copy(message = "シリーズの再整理が完了してから編集してください") }
       return
     }
@@ -108,7 +108,7 @@ class LibraryOrganizationViewModel(
       _state.update { it.copy(message = "一括AI解析中は個別のAI候補を生成できません") }
       return
     }
-    if (_state.value.reorganizingSeriesName != null) {
+    if (_state.value.reorganizingSeriesBook != null) {
       _state.update { it.copy(message = "シリーズの再整理中は個別のAI候補を生成できません") }
       return
     }
@@ -149,7 +149,7 @@ class LibraryOrganizationViewModel(
       _state.update { it.copy(message = "個別のAI候補生成が完了してから一括AI解析を開始してください") }
       return
     }
-    if (current.reorganizingSeriesName != null) {
+    if (current.reorganizingSeriesBook != null) {
       _state.update { it.copy(message = "シリーズの再整理が完了してから一括AI解析を開始してください") }
       return
     }
@@ -172,8 +172,9 @@ class LibraryOrganizationViewModel(
 
   fun reorganizeSeries(books: List<LibraryBook>) {
     val current = _state.value
-    val seriesName = books.firstOrNull()?.series?.name?.trim().orEmpty()
-    if (seriesName.isEmpty()) {
+    val firstBook = books.firstOrNull()
+    val seriesName = firstBook?.series?.name?.trim().orEmpty()
+    if (firstBook == null || seriesName.isEmpty()) {
       _state.update { it.copy(message = "シリーズ情報が設定された蔵書だけ再整理できます") }
       return
     }
@@ -181,13 +182,13 @@ class LibraryOrganizationViewModel(
       _state.update { it.copy(message = "一括AI解析を一時停止してからシリーズを再整理してください") }
       return
     }
-    if (current.suggestingBook != null || current.savingBook != null || current.reorganizingSeriesName != null) {
+    if (current.suggestingBook != null || current.savingBook != null || current.reorganizingSeriesBook != null) {
       _state.update { it.copy(message = "実行中の整理操作が完了してからシリーズを再整理してください") }
       return
     }
 
     viewModelScope.launch {
-      _state.update { it.copy(reorganizingSeriesName = seriesName) }
+      _state.update { it.copy(reorganizingSeriesBook = firstBook.organizationKey()) }
       runCatching {
         val result = metadataOrganizer.reorganizeSeries(books)
         Triple(result, repository.snapshot(), repository.batchSnapshot())
@@ -201,14 +202,14 @@ class LibraryOrganizationViewModel(
           it.copy(
             snapshot = snapshot,
             batch = batch,
-            reorganizingSeriesName = null,
+            reorganizingSeriesBook = null,
             message = message,
           )
         }
       }.onFailure { error ->
         _state.update {
           it.copy(
-            reorganizingSeriesName = null,
+            reorganizingSeriesBook = null,
             message = error.message ?: "シリーズを再整理できませんでした",
           )
         }
@@ -229,7 +230,7 @@ class LibraryOrganizationViewModel(
   }
 
   fun resumeBatch() {
-    if (_state.value.reorganizingSeriesName != null) {
+    if (_state.value.reorganizingSeriesBook != null) {
       _state.update { it.copy(message = "シリーズの再整理が完了してから一括AI整理を再開してください") }
       return
     }
