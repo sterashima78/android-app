@@ -17,6 +17,7 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
+import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskProgressStage
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 import kotlinx.coroutines.runBlocking
@@ -34,11 +35,12 @@ class CompositeAiTaskQueueRepositoryTest {
           articleId = "article-1",
           articleTitle = "Test article",
           sourceTitle = "Test source",
-          state = SummaryQueueTaskState.QUEUED,
+          state = SummaryQueueTaskState.RUNNING,
           queuedAt = "2026-08-16T00:00:00Z",
-          startedAt = null,
+          startedAt = "2026-08-16T00:00:01Z",
           finishedAt = null,
           error = null,
+          progressStage = SummaryQueueTaskProgressStage.GENERATING_SUMMARY,
         ),
       ),
     )
@@ -61,7 +63,8 @@ class CompositeAiTaskQueueRepositoryTest {
     assertEquals("Book two", tasks[1].title)
     assertEquals(AiTaskQueueItemState.QUEUED, tasks[1].state)
     assertEquals(AiTaskQueueItemKind.SUMMARY, tasks[2].kind)
-    assertEquals(AiTaskQueueItemState.QUEUED, tasks[2].state)
+    assertEquals(AiTaskQueueItemState.RUNNING, tasks[2].state)
+    assertEquals(AiTaskQueueProgressStage.GENERATING, tasks[2].progressStage)
   }
 
   @Test
