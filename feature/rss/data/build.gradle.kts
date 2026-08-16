@@ -22,7 +22,7 @@ dependencies {
   implementation(project(":feature:rss:domain"))
 
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-  implementation("org.jsoup:jsoup:1.22.2")
+  implementation("org.jsoup:jsoup:1.23.1")
 
   testImplementation("junit:junit:4.13.2")
 }

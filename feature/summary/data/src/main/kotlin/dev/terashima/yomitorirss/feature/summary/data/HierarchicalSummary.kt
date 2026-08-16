@@ -5,7 +5,7 @@ import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-const val HIERARCHICAL_SUMMARY_CACHE_VARIANT = "hierarchical-v1"
+const val HIERARCHICAL_SUMMARY_CACHE_VARIANT = "hierarchical-v2-context-budget"
 
 enum class HierarchicalSummaryProgressStage {
   DIRECT,
@@ -26,16 +26,24 @@ suspend fun LocalModelManager.summarizeHierarchically(
   onProgress: (HierarchicalSummaryProgress) -> Unit = {},
 ): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
-  val maxInputChars = model.maxInputChars
+  val contextTokens = model.contextTokens
   val normalized = HierarchicalSummaryText.normalize(text)
-  if (normalized.length <= maxInputChars) {
+  if (HierarchicalSummaryBudget.fits(contextTokens, prompt, normalized)) {
     currentCoroutineContext().ensureActive()
     onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.DIRECT))
     return summarizeText(normalized, prompt)
   }
 
-  val chunks = HierarchicalSummaryText.split(normalized, maxInputChars)
-  val targetChars = HierarchicalSummaryText.intermediateTargetChars(maxInputChars)
+  val targetChars = HierarchicalSummaryText.intermediateTargetChars(contextTokens)
+  val chunkPlanningPrompt = chunkSummaryPrompt(
+    part = CHUNK_PROMPT_PLANNING_INDEX,
+    total = CHUNK_PROMPT_PLANNING_INDEX,
+    targetChars = targetChars,
+  )
+  val maxChunkChars = HierarchicalSummaryBudget.maxArticleChars(contextTokens, chunkPlanningPrompt)
+  val chunks = HierarchicalSummaryText.split(normalized, maxChunkChars)
+  check(chunks.size <= CHUNK_PROMPT_PLANNING_INDEX) { "記事の分割数が上限を超えました" }
+
   var summaries = chunks.mapIndexed { index, chunk ->
     currentCoroutineContext().ensureActive()
     onProgress(
@@ -59,14 +67,15 @@ suspend fun LocalModelManager.summarizeHierarchically(
     以下は、長い記事を先頭から順に分割して作成した中間要約です。
     すべて同じ記事の一部なので、全体を1つの記事として扱ってください。
   """.trimIndent() + "\n\n"
-  val finalBudget = (maxInputChars - finalPrefix.length).coerceAtLeast(maxInputChars / 2)
+  val mergePrompt = mergeSummaryPrompt(targetChars)
+  val maxMergeChars = HierarchicalSummaryBudget.maxArticleChars(contextTokens, mergePrompt)
 
   var reductionRound = 0
-  while (HierarchicalSummaryText.join(summaries).length > finalBudget) {
+  while (!HierarchicalSummaryBudget.fits(contextTokens, prompt, finalPrefix + HierarchicalSummaryText.join(summaries))) {
     check(reductionRound < MAX_REDUCTION_ROUNDS) {
       "長文要約の中間結果を十分に圧縮できませんでした"
     }
-    val groups = HierarchicalSummaryText.pack(summaries, maxInputChars)
+    val groups = HierarchicalSummaryText.pack(summaries, maxMergeChars)
     summaries = groups.mapIndexed { index, group ->
       currentCoroutineContext().ensureActive()
       onProgress(
@@ -78,7 +87,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
       )
       summarizeText(
         HierarchicalSummaryText.join(group),
-        mergeSummaryPrompt(targetChars),
+        mergePrompt,
       )
     }
     reductionRound += 1
@@ -93,13 +102,11 @@ suspend fun LocalModelManager.summarizeHierarchically(
 fun LocalModelManager.summarizeText(text: String, prompt: String): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val normalized = HierarchicalSummaryText.normalize(text)
-  val article = if (normalized.length <= model.maxInputChars) {
-    normalized
-  } else {
-    val headLength = model.maxInputChars * 3 / 4
-    normalized.take(headLength) + "\n（中略）\n" + normalized.takeLast(model.maxInputChars - headLength)
+  val rendered = renderSummaryPrompt(prompt, normalized)
+  check(HierarchicalSummaryBudget.fitsRendered(model.contextTokens, rendered)) {
+    "要約入力がモデルのコンテキスト予算を超えています"
   }
-  return cleanSummary(generate(renderSummaryPrompt(prompt, article)))
+  return cleanSummary(generate(rendered))
 }
 
 private fun cleanSummary(value: String): String {
@@ -142,12 +149,51 @@ private fun mergeSummaryPrompt(targetChars: Int): String = """
   {{article}}
 """.trimIndent()
 
+internal object HierarchicalSummaryBudget {
+  private const val OUTPUT_RESERVE_TOKENS = 768
+  private const val RUNTIME_RESERVE_TOKENS = 256
+  private const val TOKEN_ESTIMATE_NUMERATOR = 6
+  private const val TOKEN_ESTIMATE_DENOMINATOR = 5
+
+  fun estimatedTokens(text: String): Int =
+    ((text.length.toLong() * TOKEN_ESTIMATE_NUMERATOR + TOKEN_ESTIMATE_DENOMINATOR - 1) /
+      TOKEN_ESTIMATE_DENOMINATOR).toInt()
+
+  fun maxArticleChars(contextTokens: Int, prompt: String): Int {
+    require(contextTokens > OUTPUT_RESERVE_TOKENS + RUNTIME_RESERVE_TOKENS) {
+      "contextTokens is too small for summary reserves"
+    }
+    check(fits(contextTokens, prompt, "")) { "要約プロンプトがモデルの入力予算を超えています" }
+
+    val inputTokenBudget = contextTokens - OUTPUT_RESERVE_TOKENS - RUNTIME_RESERVE_TOKENS
+    var lower = 0
+    var upper = (inputTokenBudget.toLong() * TOKEN_ESTIMATE_DENOMINATOR / TOKEN_ESTIMATE_NUMERATOR).toInt()
+    while (lower < upper) {
+      val middle = lower + (upper - lower + 1) / 2
+      if (fits(contextTokens, prompt, "あ".repeat(middle))) {
+        lower = middle
+      } else {
+        upper = middle - 1
+      }
+    }
+    return lower.also { articleChars ->
+      check(articleChars > 0) { "要約プロンプトがモデルの本文入力予算を使い切っています" }
+    }
+  }
+
+  fun fits(contextTokens: Int, prompt: String, article: String): Boolean =
+    fitsRendered(contextTokens, renderSummaryPrompt(prompt, article))
+
+  fun fitsRendered(contextTokens: Int, renderedPrompt: String): Boolean =
+    estimatedTokens(renderedPrompt) + OUTPUT_RESERVE_TOKENS + RUNTIME_RESERVE_TOKENS <= contextTokens
+}
+
 internal object HierarchicalSummaryText {
   private const val MIN_BREAK_RATIO_PERCENT = 55
   private const val SEPARATOR = "\n\n---\n\n"
 
-  fun intermediateTargetChars(maxInputChars: Int): Int =
-    (maxInputChars / 3).coerceIn(180, 400)
+  fun intermediateTargetChars(contextTokens: Int): Int =
+    ((contextTokens + 1023) / 1024 * 100).coerceIn(240, 600)
 
   fun normalize(text: String): String = text.replace(Regex("\\s+"), " ").trim()
 
@@ -213,4 +259,5 @@ internal object HierarchicalSummaryText {
   private val BREAK_CHARACTERS = setOf('。', '！', '？', '.', '!', '?', ';', '；', ' ')
 }
 
+private const val CHUNK_PROMPT_PLANNING_INDEX = 999
 private const val MAX_REDUCTION_ROUNDS = 8
