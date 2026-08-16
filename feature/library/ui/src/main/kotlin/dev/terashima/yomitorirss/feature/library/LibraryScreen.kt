@@ -294,9 +294,8 @@ private fun LibrarySeriesTab(
           val expanded = section.key in expandedSeries
           item(
             key = "series:${section.key}",
-            span = { GridItemSpan(maxLineSpan) },
           ) {
-            LibrarySeriesHeader(
+            LibrarySeriesThumbnail(
               name = section.name,
               count = section.books.size,
               coverBook = section.books.firstOrNull { !it.thumbnailUrl.isNullOrBlank() } ?: section.books.first(),
@@ -567,53 +566,50 @@ private fun LibrarySourceActionRow(
 }
 
 @Composable
-private fun LibrarySeriesHeader(
+private fun LibrarySeriesThumbnail(
   name: String,
   count: Int,
   coverBook: LibraryBook,
   expanded: Boolean,
   onToggle: () -> Unit,
 ) {
-  Card(
+  Column(
     modifier = Modifier
       .fillMaxWidth()
       .clickable(onClick = onToggle),
   ) {
-    Row(
+    Card(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 12.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
+        .aspectRatio(0.68f),
     ) {
-      Card(
-        modifier = Modifier.size(width = 52.dp, height = 76.dp),
-      ) {
-        LibraryBookCover(
-          book = coverBook,
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
-      Column(Modifier.weight(1f)) {
-        Text(
-          name,
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.SemiBold,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-          "$count 冊",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      Text(
-        if (expanded) "閉じる" else "展開",
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
+      LibraryBookCover(
+        book = coverBook,
+        modifier = Modifier.fillMaxSize(),
       )
     }
+
+    Spacer(Modifier.height(6.dp))
+    Text(
+      "シリーズ",
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.primary,
+      maxLines = 1,
+    )
+    Text(
+      name,
+      style = MaterialTheme.typography.bodyMedium,
+      fontWeight = FontWeight.Medium,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+    )
+    Text(
+      if (expanded) "$count 冊 · 閉じる" else "$count 冊 · 展開",
+      style = MaterialTheme.typography.labelSmall,
+      color = if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 
