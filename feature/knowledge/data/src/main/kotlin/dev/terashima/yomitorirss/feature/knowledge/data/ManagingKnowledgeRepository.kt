@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
  *
  * User deletion of an automatic page is represented by an editor-managed tombstone. The underlying
  * automatic repository therefore treats the topic as protected during rebuilds, while this decorator
- * hides the tombstone from readers. User-created/editor-managed pages can be deleted physically.
+ * hides the tombstone from readers. Pages whose identity was created by the user can be deleted physically.
  */
 class ManagingKnowledgeRepository(
   private val delegate: KnowledgeRepository,
@@ -136,7 +136,7 @@ class ManagingKnowledgeRepository(
 
   private fun SQLiteDatabase.deleteOrSuppressPage(header: StorageHeader) {
     delete("knowledge_page_sources", "page_id = ?", arrayOf(header.id))
-    if (header.editorManaged) {
+    if (header.editorManaged && header.topicKind == EDITOR_TOPIC_KIND) {
       delete("knowledge_pages", "id = ?", arrayOf(header.id))
       return
     }
