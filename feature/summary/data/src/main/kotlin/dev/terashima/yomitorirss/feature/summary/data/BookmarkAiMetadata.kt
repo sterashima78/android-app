@@ -30,10 +30,14 @@ internal fun buildAutoTagPrompt(existingTagNames: List<String>): String = buildS
   }
 }
 
-internal fun parseGeneratedTags(raw: String): List<String> = raw
-  .replace("[", "")
-  .replace("]", "")
-  .split(',', '、', '\n', ';')
+internal fun parseGeneratedTags(raw: String): List<String> = normalizeGeneratedTags(
+  raw
+    .replace("[", "")
+    .replace("]", "")
+    .split(',', '、', '\n', ';'),
+)
+
+internal fun normalizeGeneratedTags(candidates: Iterable<String>): List<String> = candidates
   .asSequence()
   .map(::normalizeGeneratedTag)
   .filter { it.length in 1..40 }
@@ -143,5 +147,5 @@ internal fun YomitoriDatabase.addAiGeneratedTags(articleId: String, names: List<
 }
 
 private fun displayTagName(name: String): String = name.trim().replace(Regex("\\s+"), " ")
-private const val MAX_AUTO_TAGS = 5
+internal const val MAX_AUTO_TAGS = 5
 private const val MAX_EXISTING_TAGS_IN_PROMPT = 100
