@@ -23,16 +23,20 @@ data class HierarchicalSummaryProgress(
 suspend fun LocalModelManager.summarizeHierarchically(
   text: String,
   prompt: String,
+  promptSuffix: String = "",
   onProgress: (HierarchicalSummaryProgress) -> Unit = {},
 ): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val contextTokens = model.contextTokens
   val tokenCount: (String) -> Int = { value -> countTokens(value) }
+  check(HierarchicalSummaryBudget.fits(contextTokens, prompt, "", tokenCount, promptSuffix)) {
+    "要約プロンプトと出力要件がモデルのコンテキスト予算を超えています"
+  }
   val normalized = HierarchicalSummaryText.normalize(text)
-  if (HierarchicalSummaryBudget.fits(contextTokens, prompt, normalized, tokenCount)) {
+  if (HierarchicalSummaryBudget.fits(contextTokens, prompt, normalized, tokenCount, promptSuffix)) {
     currentCoroutineContext().ensureActive()
     onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.DIRECT))
-    return summarizeText(normalized, prompt)
+    return summarizeText(normalized, prompt, promptSuffix)
   }
 
   val targetChars = HierarchicalSummaryText.intermediateTargetChars(contextTokens)
@@ -77,6 +81,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
       prompt,
       finalPrefix + HierarchicalSummaryText.join(summaries),
       tokenCount,
+      promptSuffix,
     )) {
     check(reductionRound < MAX_REDUCTION_ROUNDS) {
       "長文要約の中間結果を十分に圧縮できませんでした"
@@ -104,13 +109,17 @@ suspend fun LocalModelManager.summarizeHierarchically(
   val finalContext = finalPrefix + HierarchicalSummaryText.join(summaries)
   currentCoroutineContext().ensureActive()
   onProgress(HierarchicalSummaryProgress(HierarchicalSummaryProgressStage.FINAL))
-  return summarizeText(finalContext, prompt)
+  return summarizeText(finalContext, prompt, promptSuffix)
 }
 
-fun LocalModelManager.summarizeText(text: String, prompt: String): String {
+fun LocalModelManager.summarizeText(
+  text: String,
+  prompt: String,
+  promptSuffix: String = "",
+): String {
   val model = selectedModel() ?: error("要約モデルをダウンロードして選択してください")
   val normalized = HierarchicalSummaryText.normalize(text)
-  val rendered = renderSummaryPrompt(prompt, normalized)
+  val rendered = renderSummaryPrompt(prompt, normalized) + promptSuffix
   val tokenCount: (String) -> Int = { value -> countTokens(value) }
   check(HierarchicalSummaryBudget.fitsRendered(model.contextTokens, rendered, tokenCount)) {
     "要約入力がモデルのコンテキスト予算を超えています"
@@ -167,7 +176,8 @@ internal object HierarchicalSummaryBudget {
     prompt: String,
     article: String,
     tokenCount: (String) -> Int,
-  ): Boolean = fitsRendered(contextTokens, renderSummaryPrompt(prompt, article), tokenCount)
+    promptSuffix: String = "",
+  ): Boolean = fitsRendered(contextTokens, renderSummaryPrompt(prompt, article) + promptSuffix, tokenCount)
 
   fun fitsRendered(
     contextTokens: Int,

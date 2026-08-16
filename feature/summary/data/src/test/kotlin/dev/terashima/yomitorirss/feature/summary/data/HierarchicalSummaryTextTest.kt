@@ -92,6 +92,24 @@ class HierarchicalSummaryTextTest {
   }
 
   @Test
+  fun `最終出力の追加要件も同じトークン予算へ含める`() {
+    val prompt = "要約してください。\n{{article}}"
+    val article = "あ".repeat(10_000)
+    val tokenCount: (String) -> Int = { (it.length + 1) / 2 }
+
+    assertTrue(HierarchicalSummaryBudget.fits(8_192, prompt, article, tokenCount))
+    assertFalse(
+      HierarchicalSummaryBudget.fits(
+        contextTokens = 8_192,
+        prompt = prompt,
+        article = article,
+        tokenCount = tokenCount,
+        promptSuffix = "分類候補".repeat(1_500),
+      ),
+    )
+  }
+
+  @Test
   fun `実トークン数には出力とruntimeの予約領域を加える`() {
     val contextTokens = 8_192
     val exactlyFits: (String) -> Int = { contextTokens - 768 - 256 }
