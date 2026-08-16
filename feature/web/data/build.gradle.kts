@@ -4,7 +4,7 @@ plugins {
 
 android {
   namespace = "dev.terashima.yomitorirss.feature.web.data"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     minSdk = 29
@@ -23,6 +23,6 @@ dependencies {
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:rss:domain"))
   implementation(project(":core:database"))
-  implementation("androidx.core:core-ktx:1.17.0")
+  implementation("androidx.core:core-ktx:1.18.0")
   testImplementation("junit:junit:4.13.2")
 }
