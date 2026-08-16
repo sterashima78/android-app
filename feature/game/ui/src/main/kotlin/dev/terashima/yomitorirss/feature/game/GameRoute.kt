@@ -49,6 +49,7 @@ private enum class GameScreen {
   LIST,
   SUDOKU,
   KLONDIKE,
+  SPIDER,
 }
 
 @Composable
@@ -56,6 +57,7 @@ fun GameRoute(
   modifier: Modifier = Modifier,
   sudokuViewModel: SudokuViewModel = viewModel(),
   klondikeViewModel: KlondikeViewModel = viewModel(),
+  spiderViewModel: SpiderViewModel = viewModel(),
 ) {
   var screen by rememberSaveable { mutableStateOf(GameScreen.LIST.name) }
 
@@ -64,6 +66,7 @@ fun GameRoute(
       modifier = modifier,
       onOpenSudoku = { screen = GameScreen.SUDOKU.name },
       onOpenKlondike = { screen = GameScreen.KLONDIKE.name },
+      onOpenSpider = { screen = GameScreen.SPIDER.name },
     )
 
     GameScreen.SUDOKU -> {
@@ -84,6 +87,12 @@ fun GameRoute(
       viewModel = klondikeViewModel,
       onBack = { screen = GameScreen.LIST.name },
     )
+
+    GameScreen.SPIDER -> SpiderRoute(
+      modifier = modifier,
+      viewModel = spiderViewModel,
+      onBack = { screen = GameScreen.LIST.name },
+    )
   }
 }
 
@@ -92,6 +101,7 @@ private fun GameListScreen(
   modifier: Modifier,
   onOpenSudoku: () -> Unit,
   onOpenKlondike: () -> Unit,
+  onOpenSpider: () -> Unit,
 ) {
   Column(
     modifier = modifier
@@ -132,6 +142,23 @@ private fun GameListScreen(
           Text("クロンダイク", style = MaterialTheme.typography.titleMedium)
           Text(
             "52枚のトランプを4組の組札へ揃える定番ソリティア",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      }
+    }
+    Card(onClick = onOpenSpider) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        Text("🕷", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.size(32.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text("スパイダーソリティア", style = MaterialTheme.typography.titleMedium)
+          Text(
+            "104枚を並べ替えて同一スートのKからAを8組完成させるソリティア",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
