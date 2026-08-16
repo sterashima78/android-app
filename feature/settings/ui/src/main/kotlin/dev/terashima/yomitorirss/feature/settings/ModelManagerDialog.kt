@@ -51,7 +51,7 @@ fun ModelManagerDialog(
   val selectedModel = models.firstOrNull(AiModelStatus::selected)
 
   AlertDialog(
-    onDismissRequest = onDismiss,
+    onDismissRequest = { if (!benchmarkRunning) onDismiss() },
     title = { Text("AIモデル") },
     text = {
       LazyColumn(modifier = Modifier.fillMaxWidth()) {
