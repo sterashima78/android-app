@@ -91,7 +91,12 @@ object SummaryQueue {
     val appContext = context.applicationContext
     val preferences = SummaryQueueExecutionPreferences(appContext)
     if (preferences.paused == paused) {
-      if (paused) ensureResumeOnChargingScheduled(appContext)
+      if (paused) {
+        ensureResumeOnChargingScheduled(appContext)
+      } else {
+        ensureCleanupScheduled(appContext)
+        scheduleWorker(appContext)
+      }
       return
     }
 
