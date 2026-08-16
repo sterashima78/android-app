@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -60,13 +61,23 @@ class BookmarkAiEnrichmentTest {
   }
 
   @Test
-  fun `タグは正規化後も最大5件に制限する`() {
+  fun `タグ配列が5件を超えるJSONは失敗させる`() {
+    assertThrows(IllegalStateException::class.java) {
+      parseBookmarkMetadataEnrichment(
+        raw = """{"tags":["Android","Kotlin","AI","端末","推論","性能"],"folder":null}""",
+        existingFolderNames = emptyList(),
+      )
+    }
+  }
+
+  @Test
+  fun `タグは大文字小文字を無視して重複排除する`() {
     val result = parseBookmarkMetadataEnrichment(
-      raw = """{"tags":["Android","android","Kotlin","AI","端末","推論"],"folder":null}""",
+      raw = """{"tags":["Android","android","Kotlin"],"folder":null}""",
       existingFolderNames = emptyList(),
     )
 
-    assertEquals(listOf("Android", "Kotlin", "AI", "端末", "推論"), result.tags)
+    assertEquals(listOf("Android", "Kotlin"), result.tags)
   }
 
   @Test
@@ -93,7 +104,7 @@ class BookmarkAiEnrichmentTest {
     )
 
     assertTrue(prompt.contains("{{article}}"))
-    assertTrue(!prompt.contains("既存タグ候補(JSON配列):"))
+    assertFalse(prompt.contains("既存タグ候補(JSON配列):"))
     assertTrue(suffix.contains("既存タグ候補(JSON配列): [\"既存タグ\"]"))
   }
 }
