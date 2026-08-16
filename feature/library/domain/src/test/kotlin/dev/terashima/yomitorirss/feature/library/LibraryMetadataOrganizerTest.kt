@@ -63,6 +63,41 @@ class LibraryMetadataOrganizerTest {
   }
 
   @Test
+  fun `保存済み分類はsnapshotを再読込せず後続書籍のシリーズ文脈へ反映する`() {
+    val first = book("book-1", "シリーズ 1", LibrarySeries("シリーズ", 1, "series-1"))
+    val second = book("book-2", "シリーズ 2", LibrarySeries("シリーズ", 2, "series-1"))
+    val repository = FakeOrganizationRepository(
+      currentSnapshot = LibraryOrganizationSnapshot(),
+      failSnapshotAfterFirstRead = true,
+    )
+    var secondContext: LibraryOrganizationSeriesContext? = null
+    val suggester = object : LibraryOrganizationSuggester {
+      override suspend fun suggest(
+        book: LibraryBook,
+        existingTags: List<String>,
+        existingCollections: List<String>,
+        seriesContext: LibraryOrganizationSeriesContext?,
+      ): LibraryOrganizationSuggestion {
+        if (book == second) secondContext = seriesContext
+        return LibraryOrganizationSuggestion(
+          tagNames = listOf(if (book == first) "先行タグ" else "後続タグ"),
+          collectionNames = listOf(if (book == first) "先行コレクション" else "後続コレクション"),
+          reason = null,
+        )
+      }
+    }
+
+    val result = runSuspend {
+      LibraryMetadataOrganizer(repository, suggester).reorganizeSeries(listOf(first, second))
+    }
+
+    assertEquals(LibrarySeriesReorganizationResult(total = 2, updated = 2, failed = 0), result)
+    assertEquals(1, repository.snapshotReads)
+    assertEquals(listOf("先行タグ"), secondContext?.tagNames)
+    assertEquals(listOf("先行コレクション"), secondContext?.collectionNames)
+  }
+
+  @Test
   fun `シリーズコンテキストは同一シリーズの既存分類だけを集める`() {
     val target = book("book-1", "シリーズ 1", LibrarySeries("シリーズ", 1, "series-1"))
     val peer = book("book-2", "シリーズ 2", LibrarySeries("シリーズ", 2, "series-1"))
@@ -162,10 +197,17 @@ class LibraryMetadataOrganizerTest {
 
 private class FakeOrganizationRepository(
   private val currentSnapshot: LibraryOrganizationSnapshot,
+  private val failSnapshotAfterFirstRead: Boolean = false,
 ) : LibraryOrganizationRepository {
   val saved = mutableListOf<Pair<LibraryBook, LibraryOrganizationDraft>>()
+  var snapshotReads = 0
+    private set
 
-  override suspend fun snapshot(): LibraryOrganizationSnapshot = currentSnapshot
+  override suspend fun snapshot(): LibraryOrganizationSnapshot {
+    snapshotReads += 1
+    if (failSnapshotAfterFirstRead && snapshotReads > 1) error("snapshot read failed")
+    return currentSnapshot
+  }
 
   override suspend fun save(book: LibraryBook, draft: LibraryOrganizationDraft) {
     saved += book to draft
