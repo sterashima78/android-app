@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,9 +31,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -53,6 +59,15 @@ fun KnowledgeScreen(
   onCancelCreate: () -> Unit,
   onEditInstructionChange: (String) -> Unit,
   onEditPage: () -> Unit,
+  onStartDelete: () -> Unit,
+  onCancelDelete: () -> Unit,
+  onDeletePage: () -> Unit,
+  onStartSplit: () -> Unit,
+  onCancelSplit: () -> Unit,
+  onSplitPage: (String) -> Unit,
+  onStartMerge: () -> Unit,
+  onCancelMerge: () -> Unit,
+  onMergePage: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val selected = state.selectedPage
@@ -66,6 +81,9 @@ fun KnowledgeScreen(
       onStartRelatedCreate = { onStartRelatedCreate(selected.id) },
       onEditInstructionChange = onEditInstructionChange,
       onEditPage = onEditPage,
+      onStartDelete = onStartDelete,
+      onStartSplit = onStartSplit,
+      onStartMerge = onStartMerge,
       modifier = modifier,
     )
   } else {
@@ -88,6 +106,33 @@ fun KnowledgeScreen(
       onRequestChange = onComposerRequestChange,
       onCreate = onCreatePage,
       onCancel = onCancelCreate,
+    )
+  }
+
+  if (state.deleteConfirmationOpen && selected != null) {
+    KnowledgeDeleteDialog(
+      page = selected,
+      working = state.working,
+      onDelete = onDeletePage,
+      onCancel = onCancelDelete,
+    )
+  }
+
+  if (state.splitDialogOpen && selected != null) {
+    KnowledgeSplitDialog(
+      page = selected,
+      working = state.working,
+      onSplit = onSplitPage,
+      onCancel = onCancelSplit,
+    )
+  }
+
+  if (state.mergeDialogOpen && selected != null) {
+    KnowledgeMergeDialog(
+      candidates = state.mergeCandidates,
+      working = state.working,
+      onMerge = onMergePage,
+      onCancel = onCancelMerge,
     )
   }
 }
@@ -232,6 +277,9 @@ private fun KnowledgePageDetail(
   onStartRelatedCreate: () -> Unit,
   onEditInstructionChange: (String) -> Unit,
   onEditPage: () -> Unit,
+  onStartDelete: () -> Unit,
+  onStartSplit: () -> Unit,
+  onStartMerge: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val uriHandler = LocalUriHandler.current
@@ -252,6 +300,19 @@ private fun KnowledgePageDetail(
         TextButton(onClick = onStartRelatedCreate, enabled = !working) {
           Icon(Icons.Default.Add, contentDescription = null)
           Text("この記事から新規")
+        }
+      }
+    }
+    item {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        TextButton(onClick = onStartSplit, enabled = !working) { Text("分割") }
+        TextButton(onClick = onStartMerge, enabled = !working) { Text("統合") }
+        TextButton(onClick = onStartDelete, enabled = !working) {
+          Text("削除", color = MaterialTheme.colorScheme.error)
         }
       }
     }
@@ -336,7 +397,7 @@ private fun KnowledgePageDetail(
               verticalAlignment = Alignment.CenterVertically,
             ) {
               CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-              Text("LLMが記事を編集中です", style = MaterialTheme.typography.bodySmall)
+              Text("記事を更新しています", style = MaterialTheme.typography.bodySmall)
             }
           }
           message?.let {
@@ -418,4 +479,152 @@ private fun KnowledgeCreateDialog(
       }
     },
   )
+}
+
+@Composable
+private fun KnowledgeDeleteDialog(
+  page: KnowledgePage,
+  working: Boolean,
+  onDelete: () -> Unit,
+  onCancel: () -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = { if (!working) onCancel() },
+    title = { Text("記事を削除しますか？") },
+    text = {
+      Text(
+        "「${page.title}」をWikiから削除します。自動生成された記事の場合も、次回の自動Wiki再構築で復活しないように記録します。",
+      )
+    },
+    confirmButton = {
+      TextButton(onClick = onDelete, enabled = !working) {
+        Text("削除", color = MaterialTheme.colorScheme.error)
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onCancel, enabled = !working) { Text("キャンセル") }
+    },
+  )
+}
+
+@Composable
+private fun KnowledgeSplitDialog(
+  page: KnowledgePage,
+  working: Boolean,
+  onSplit: (String) -> Unit,
+  onCancel: () -> Unit,
+) {
+  val candidates = remember(page.bodyMarkdown) { splitHeadingCandidates(page.bodyMarkdown) }
+  var selectedHeading by remember(page.id, candidates) { mutableStateOf(candidates.firstOrNull()) }
+  AlertDialog(
+    onDismissRequest = { if (!working) onCancel() },
+    title = { Text("記事を分割") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("選択した見出しから後ろを別の記事にします。本文はLLMで再生成せず、そのまま保持します。")
+        if (candidates.isEmpty()) {
+          Text(
+            "分割に使える「##」見出しがありません。LLM Editorで見出しを追加してから再実行してください。",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        } else {
+          LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
+            items(candidates) { heading ->
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable(enabled = !working) { selectedHeading = heading }
+                  .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                RadioButton(
+                  selected = selectedHeading == heading,
+                  onClick = { selectedHeading = heading },
+                  enabled = !working,
+                )
+                Text(heading, modifier = Modifier.padding(start = 8.dp))
+              }
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = { selectedHeading?.let(onSplit) },
+        enabled = !working && selectedHeading != null,
+      ) {
+        Text("分割")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onCancel, enabled = !working) { Text("キャンセル") }
+    },
+  )
+}
+
+@Composable
+private fun KnowledgeMergeDialog(
+  candidates: List<KnowledgePageSummary>,
+  working: Boolean,
+  onMerge: (String) -> Unit,
+  onCancel: () -> Unit,
+) {
+  var selectedId by remember(candidates) { mutableStateOf(candidates.firstOrNull()?.id) }
+  AlertDialog(
+    onDismissRequest = { if (!working) onCancel() },
+    title = { Text("記事を統合") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("現在の記事へ統合する記事を選択してください。現在の記事のタイトルを維持し、選択した記事を節として追加します。")
+        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+          items(candidates, key = KnowledgePageSummary::id) { page ->
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !working) { selectedId = page.id }
+                .padding(vertical = 8.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              RadioButton(
+                selected = selectedId == page.id,
+                onClick = { selectedId = page.id },
+                enabled = !working,
+              )
+              Column(modifier = Modifier.padding(start = 8.dp)) {
+                Text(page.title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                  "出典 ${page.sourceCount}件",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = { selectedId?.let(onMerge) },
+        enabled = !working && selectedId != null,
+      ) {
+        Text("統合")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onCancel, enabled = !working) { Text("キャンセル") }
+    },
+  )
+}
+
+private fun splitHeadingCandidates(bodyMarkdown: String): List<String> {
+  val lines = bodyMarkdown.lines()
+  val heading = Regex("^##\\s+(.+?)\\s*$")
+  return lines.mapIndexedNotNull { index, line ->
+    val match = heading.matchEntire(line.trim()) ?: return@mapIndexedNotNull null
+    val before = lines.take(index).joinToString("\n").trim()
+    val after = lines.drop(index + 1).joinToString("\n").trim()
+    match.groupValues[1].trim().takeIf { it.isNotBlank() && before.isNotBlank() && after.isNotBlank() }
+  }.distinct()
 }
