@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.rss.data
 
+import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
@@ -12,8 +13,22 @@ val rssDatabaseSchema = DatabaseSchemaContribution(
   },
   migrations = listOf(
     DatabaseMigration(targetVersion = 19) { db ->
-      db.execSQL("ALTER TABLE feed_folders ADD COLUMN content_type TEXT")
-      db.execSQL("ALTER TABLE feeds ADD COLUMN content_type TEXT")
+      db.addColumnIfMissing("feed_folders", "content_type", "content_type TEXT")
+      db.addColumnIfMissing("feeds", "content_type", "content_type TEXT")
     },
   ),
 )
+
+private fun SQLiteDatabase.addColumnIfMissing(table: String, column: String, definition: String) {
+  val exists = rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+    var found = false
+    while (cursor.moveToNext()) {
+      if (cursor.getString(cursor.getColumnIndexOrThrow("name")) == column) {
+        found = true
+        break
+      }
+    }
+    found
+  }
+  if (!exists) execSQL("ALTER TABLE $table ADD COLUMN $definition")
+}
