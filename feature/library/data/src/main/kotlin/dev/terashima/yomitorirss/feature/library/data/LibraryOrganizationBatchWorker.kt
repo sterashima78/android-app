@@ -315,8 +315,16 @@ private suspend fun persistAndAutoApplySuggestion(
         readingStatus = null,
       ),
     )
+  } catch (cancelled: CancellationException) {
+    throw cancelled
   } catch (error: Throwable) {
-    val currentOrganization = runCatching { repository.snapshot().organizationFor(book) }.getOrNull()
+    val currentOrganization = try {
+      repository.snapshot().organizationFor(book)
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Throwable) {
+      null
+    }
     val manuallyOrganized = currentOrganization?.let { organization ->
       organization.tags.isNotEmpty() || organization.collections.isNotEmpty()
     } == true
@@ -324,7 +332,13 @@ private suspend fun persistAndAutoApplySuggestion(
 
     // A manual edit that raced with AI application wins. The transient generated candidate must not
     // overwrite it or block the next batch waiting for approval.
-    runCatching { repository.rejectCandidate(item.key) }
+    try {
+      repository.rejectCandidate(item.key)
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Throwable) {
+      // The manual organization already won. A stale candidate can remain as recovery state.
+    }
   }
 }
 
@@ -367,7 +381,10 @@ private fun sameSeries(
   if (normalizedLeftId != null && normalizedRightId != null) {
     return normalizedLeftId.equals(normalizedRightId, ignoreCase = true)
   }
-  return rightName?.trim()?.equals(leftName.trim(), ignoreCase = true) == true
+  val normalizedLeftName = leftName.trim()
+  val normalizedRightName = rightName?.trim().orEmpty()
+  if (normalizedLeftName.isEmpty() || normalizedRightName.isEmpty()) return false
+  return normalizedRightName.equals(normalizedLeftName, ignoreCase = true)
 }
 
 private fun Throwable.userMessage(): String =
