@@ -87,15 +87,13 @@ class SudokuPuzzleFactory(
     }
 }
 
-fun SudokuPuzzle.newGameState(): SudokuGameState {
-  val firstEditable = cells.indexOfFirst { it == 0 }.takeIf { it >= 0 }
-  return SudokuGameState(
+fun SudokuPuzzle.newGameState(): SudokuGameState =
+  SudokuGameState(
     puzzle = this,
     entries = cells,
-    selectedIndex = firstEditable,
+    selectedIndex = null,
     mistakes = 0,
   )
-}
 
 fun SudokuGameState.selectCell(index: Int): SudokuGameState =
   if (index in 0 until CELL_COUNT) copy(selectedIndex = index) else this
@@ -106,7 +104,7 @@ fun SudokuGameState.enterNumber(value: Int): SudokuGameState {
   if (puzzle.solution[index] != value) return copy(mistakes = mistakes + 1)
 
   val nextEntries = entries.toMutableList().also { it[index] = value }
-  return copy(entries = nextEntries)
+  return copy(entries = nextEntries, selectedIndex = null)
 }
 
 fun SudokuGameState.clearSelectedCell(): SudokuGameState {
