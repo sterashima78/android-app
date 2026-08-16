@@ -64,7 +64,7 @@ class CompositeAiTaskQueueRepositoryTest {
     assertTrue(summary.execution.paused)
     assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.cancelCount)
-    assertTrue(scheduler.resumeOnChargingScheduled)
+    assertTrue(scheduler.chargingResumeArmed)
     assertEquals(AiTaskQueueItemState.PAUSED, repository.listTasks().first().state)
 
     repository.setPaused(false)
@@ -72,7 +72,7 @@ class CompositeAiTaskQueueRepositoryTest {
     assertFalse(summary.execution.paused)
     assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.kickCount)
-    assertFalse(scheduler.resumeOnChargingScheduled)
+    assertFalse(scheduler.chargingResumeArmed)
   }
 
   @Test
@@ -87,7 +87,7 @@ class CompositeAiTaskQueueRepositoryTest {
 
     assertEquals(LibraryOrganizationBatchStatus.PAUSED, library.batch!!.status)
     assertEquals(0, scheduler.kickCount)
-    assertFalse(scheduler.resumeOnChargingScheduled)
+    assertFalse(scheduler.chargingResumeArmed)
   }
 }
 
@@ -134,7 +134,7 @@ private class FakeLibraryOrganizationRepository(
 private class FakeScheduler : LibraryOrganizationBatchScheduler {
   var kickCount = 0
   var cancelCount = 0
-  var resumeOnChargingScheduled = false
+  var chargingResumeArmed = false
 
   override fun kick() {
     kickCount += 1
@@ -145,7 +145,7 @@ private class FakeScheduler : LibraryOrganizationBatchScheduler {
   }
 
   override fun setResumeOnChargingScheduled(enabled: Boolean) {
-    resumeOnChargingScheduled = enabled
+    chargingResumeArmed = enabled
   }
 }
 
