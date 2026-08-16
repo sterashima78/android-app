@@ -48,12 +48,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 private enum class GameScreen {
   LIST,
   SUDOKU,
+  KLONDIKE,
 }
 
 @Composable
 fun GameRoute(
   modifier: Modifier = Modifier,
   sudokuViewModel: SudokuViewModel = viewModel(),
+  klondikeViewModel: KlondikeViewModel = viewModel(),
 ) {
   var screen by rememberSaveable { mutableStateOf(GameScreen.LIST.name) }
 
@@ -61,6 +63,7 @@ fun GameRoute(
     GameScreen.LIST -> GameListScreen(
       modifier = modifier,
       onOpenSudoku = { screen = GameScreen.SUDOKU.name },
+      onOpenKlondike = { screen = GameScreen.KLONDIKE.name },
     )
 
     GameScreen.SUDOKU -> {
@@ -75,6 +78,12 @@ fun GameRoute(
         onClearCell = sudokuViewModel::clearSelectedCell,
       )
     }
+
+    GameScreen.KLONDIKE -> KlondikeRoute(
+      modifier = modifier,
+      viewModel = klondikeViewModel,
+      onBack = { screen = GameScreen.LIST.name },
+    )
   }
 }
 
@@ -82,6 +91,7 @@ fun GameRoute(
 private fun GameListScreen(
   modifier: Modifier,
   onOpenSudoku: () -> Unit,
+  onOpenKlondike: () -> Unit,
 ) {
   Column(
     modifier = modifier
@@ -105,6 +115,23 @@ private fun GameListScreen(
           Text("数独", style = MaterialTheme.typography.titleMedium)
           Text(
             "9×9 の盤面を数字で埋める一人用パズル",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      }
+    }
+    Card(onClick = onOpenKlondike) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        Text("♠", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.size(32.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text("クロンダイク", style = MaterialTheme.typography.titleMedium)
+          Text(
+            "52枚のトランプを4組の組札へ揃える定番ソリティア",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
