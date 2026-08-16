@@ -42,7 +42,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
   )
   val maxChunkChars = HierarchicalSummaryBudget.maxArticleChars(contextTokens, chunkPlanningPrompt)
   val chunks = HierarchicalSummaryText.split(normalized, maxChunkChars)
-  check(chunks.size < CHUNK_PROMPT_PLANNING_INDEX) { "記事の分割数が上限を超えました" }
+  check(chunks.size <= CHUNK_PROMPT_PLANNING_INDEX) { "記事の分割数が上限を超えました" }
 
   var summaries = chunks.mapIndexed { index, chunk ->
     currentCoroutineContext().ensureActive()
@@ -163,11 +163,21 @@ internal object HierarchicalSummaryBudget {
     require(contextTokens > OUTPUT_RESERVE_TOKENS + RUNTIME_RESERVE_TOKENS) {
       "contextTokens is too small for summary reserves"
     }
+    check(fits(contextTokens, prompt, "")) { "要約プロンプトがモデルの入力予算を超えています" }
+
     val inputTokenBudget = contextTokens - OUTPUT_RESERVE_TOKENS - RUNTIME_RESERVE_TOKENS
-    val maxRenderedChars = inputTokenBudget.toLong() * TOKEN_ESTIMATE_DENOMINATOR / TOKEN_ESTIMATE_NUMERATOR
-    val fixedPromptChars = renderSummaryPrompt(prompt, "").length
-    return (maxRenderedChars - fixedPromptChars).toInt().also { articleChars ->
-      check(articleChars > 0) { "要約プロンプトがモデルの入力予算を超えています" }
+    var lower = 0
+    var upper = (inputTokenBudget.toLong() * TOKEN_ESTIMATE_DENOMINATOR / TOKEN_ESTIMATE_NUMERATOR).toInt()
+    while (lower < upper) {
+      val middle = lower + (upper - lower + 1) / 2
+      if (fits(contextTokens, prompt, "あ".repeat(middle))) {
+        lower = middle
+      } else {
+        upper = middle - 1
+      }
+    }
+    return lower.also { articleChars ->
+      check(articleChars > 0) { "要約プロンプトがモデルの本文入力予算を使い切っています" }
     }
   }
 
