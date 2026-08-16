@@ -37,10 +37,11 @@ internal class CompositeAiTaskQueueRepository(
   }
 
   override suspend fun setPaused(paused: Boolean) {
+    val libraryStatus = libraryRepository.batchSnapshot()?.status
     if (paused) {
       summaryRepository.setPaused(true)
       try {
-        when (libraryRepository.batchSnapshot()?.status) {
+        when (libraryStatus) {
           LibraryOrganizationBatchStatus.RUNNING -> {
             libraryScheduler.cancel()
             libraryScheduler.setResumeOnChargingScheduled(true)
@@ -54,33 +55,48 @@ internal class CompositeAiTaskQueueRepository(
         }
       } catch (error: Throwable) {
         runCatching { summaryRepository.setPaused(false) }
+        if (libraryStatus == LibraryOrganizationBatchStatus.RUNNING) {
+          runCatching {
+            libraryScheduler.setResumeOnChargingScheduled(false)
+            libraryScheduler.kick()
+          }
+        }
         throw error
       }
       return
     }
 
     summaryRepository.setPaused(false)
-    libraryScheduler.setResumeOnChargingScheduled(false)
     try {
-      when (libraryRepository.batchSnapshot()?.status) {
-        LibraryOrganizationBatchStatus.RUNNING -> libraryScheduler.kick()
-        LibraryOrganizationBatchStatus.PAUSED,
-        LibraryOrganizationBatchStatus.COMPLETED,
-        null -> Unit
+      libraryScheduler.setResumeOnChargingScheduled(false)
+      if (libraryStatus == LibraryOrganizationBatchStatus.RUNNING) {
+        libraryScheduler.kick()
       }
     } catch (error: Throwable) {
       runCatching { summaryRepository.setPaused(true) }
+      if (libraryStatus == LibraryOrganizationBatchStatus.RUNNING) {
+        runCatching {
+          libraryScheduler.cancel()
+          libraryScheduler.setResumeOnChargingScheduled(true)
+        }
+      }
       throw error
     }
   }
 
   override suspend fun setResumeWhenCharging(enabled: Boolean) {
+    val previous = summaryRepository.executionState().resumeWhenCharging
     summaryRepository.setResumeWhenCharging(enabled)
-    val globalPaused = summaryRepository.executionState().paused
-    val libraryRunning = libraryRepository.batchSnapshot()?.status == LibraryOrganizationBatchStatus.RUNNING
-    libraryScheduler.setResumeOnChargingScheduled(
-      enabled = enabled && globalPaused && libraryRunning,
-    )
+    try {
+      val globalPaused = summaryRepository.executionState().paused
+      val libraryRunning = libraryRepository.batchSnapshot()?.status == LibraryOrganizationBatchStatus.RUNNING
+      libraryScheduler.setResumeOnChargingScheduled(
+        enabled = enabled && globalPaused && libraryRunning,
+      )
+    } catch (error: Throwable) {
+      runCatching { summaryRepository.setResumeWhenCharging(previous) }
+      throw error
+    }
   }
 
   override suspend fun stop(taskId: String): Boolean = when {
@@ -105,8 +121,16 @@ internal class CompositeAiTaskQueueRepository(
     if (taskId != "$LIBRARY_PREFIX${batch.batchId}") return false
     if (batch.status != LibraryOrganizationBatchStatus.RUNNING) return false
     libraryRepository.pauseBatch()
-    libraryScheduler.cancel()
-    libraryScheduler.setResumeOnChargingScheduled(false)
+    try {
+      libraryScheduler.cancel()
+      libraryScheduler.setResumeOnChargingScheduled(false)
+    } catch (error: Throwable) {
+      runCatching {
+        libraryRepository.resumeBatch()
+        libraryScheduler.kick()
+      }
+      throw error
+    }
     return true
   }
 
@@ -116,7 +140,15 @@ internal class CompositeAiTaskQueueRepository(
     if (batch.status != LibraryOrganizationBatchStatus.PAUSED) return false
     if (summaryRepository.executionState().paused) return false
     libraryRepository.resumeBatch()
-    libraryScheduler.kick()
+    try {
+      libraryScheduler.kick()
+    } catch (error: Throwable) {
+      runCatching {
+        libraryRepository.pauseBatch()
+        libraryScheduler.cancel()
+      }
+      throw error
+    }
     return true
   }
 
