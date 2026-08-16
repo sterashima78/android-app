@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,10 +35,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
@@ -88,7 +91,6 @@ fun LibraryScreen(
   var selectedTabName by rememberSaveable { mutableStateOf(LibraryTab.ALL.name) }
   var selectedSourceName by rememberSaveable { mutableStateOf<String?>(null) }
   var seriesEditorBook by remember { mutableStateOf<LibraryBook?>(null) }
-  var expandedSeries by remember { mutableStateOf(emptySet<String>()) }
   val selectedTab = LibraryTab.valueOf(selectedTabName)
   val selectedSource = remember(selectedSourceName) {
     LibrarySource.entries.firstOrNull { it.name == selectedSourceName }
@@ -172,8 +174,6 @@ fun LibraryScreen(
             hiddenCount = state.hiddenBooks.size,
             selectedSource = selectedSource,
             onSelectedSourceChange = { selectedSourceName = it?.name },
-            expandedSeries = expandedSeries,
-            onExpandedSeriesChange = { expandedSeries = it },
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -251,8 +251,6 @@ private fun LibrarySeriesTab(
   hiddenCount: Int,
   selectedSource: LibrarySource?,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
-  expandedSeries: Set<String>,
-  onExpandedSeriesChange: (Set<String>) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -267,15 +265,32 @@ private fun LibrarySeriesTab(
     return
   }
 
+  var selectedSeriesKey by rememberSaveable { mutableStateOf<String?>(null) }
   val filteredBooks = remember(books, selectedSource) {
     filterLibraryBooksBySource(books, selectedSource)
   }
   val groups = remember(filteredBooks) { groupLibraryBooks(filteredBooks) }
+  val selectedSeries = groups.series.firstOrNull { it.key == selectedSeriesKey }
+
+  selectedSeries?.let { section ->
+    LibrarySeriesBooksSheet(
+      section = section,
+      onDismiss = { selectedSeriesKey = null },
+      onHideBook = onHideBook,
+      onEditSeries = { book ->
+        selectedSeriesKey = null
+        onEditSeries(book)
+      },
+    )
+  }
 
   Column(Modifier.fillMaxSize()) {
     LibrarySourceFilterBar(
       selectedSource = selectedSource,
-      onSelectedSourceChange = onSelectedSourceChange,
+      onSelectedSourceChange = { source ->
+        selectedSeriesKey = null
+        onSelectedSourceChange(source)
+      },
     )
     if (filteredBooks.isEmpty()) {
       LibraryEmptyMessage(
@@ -291,7 +306,6 @@ private fun LibrarySeriesTab(
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         groups.series.forEach { section ->
-          val expanded = section.key in expandedSeries
           item(
             key = "series:${section.key}",
           ) {
@@ -299,26 +313,8 @@ private fun LibrarySeriesTab(
               name = section.name,
               count = section.books.size,
               coverBook = section.books.firstOrNull { !it.thumbnailUrl.isNullOrBlank() } ?: section.books.first(),
-              expanded = expanded,
-              onToggle = {
-                onExpandedSeriesChange(
-                  if (expanded) expandedSeries - section.key else expandedSeries + section.key,
-                )
-              },
+              onClick = { selectedSeriesKey = section.key },
             )
-          }
-          if (expanded) {
-            items(
-              items = section.books,
-              key = { book -> "${book.source.name}:${book.sourceId}" },
-            ) { book ->
-              LibraryBookThumbnail(
-                book = book,
-                actionLabel = "非表示",
-                onAction = { onHideBook(book) },
-                onEditSeries = { onEditSeries(book) },
-              )
-            }
           }
         }
 
@@ -349,6 +345,50 @@ private fun LibrarySeriesTab(
           }
         }
       }
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibrarySeriesBooksSheet(
+  section: LibrarySeriesSection,
+  onDismiss: () -> Unit,
+  onHideBook: (LibraryBook) -> Unit,
+  onEditSeries: (LibraryBook) -> Unit,
+) {
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .fillMaxHeight(0.85f),
+    ) {
+      Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        Text(
+          section.name,
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.SemiBold,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          "${section.books.size} 冊",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      LibraryBookGrid(
+        books = section.books,
+        actionLabel = "非表示",
+        onAction = onHideBook,
+        onEditSeries = onEditSeries,
+        modifier = Modifier.weight(1f),
+      )
     }
   }
 }
@@ -570,13 +610,12 @@ private fun LibrarySeriesThumbnail(
   name: String,
   count: Int,
   coverBook: LibraryBook,
-  expanded: Boolean,
-  onToggle: () -> Unit,
+  onClick: () -> Unit,
 ) {
   Column(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable(onClick = onToggle),
+      .clickable(onClick = onClick),
   ) {
     Card(
       modifier = Modifier
@@ -604,9 +643,9 @@ private fun LibrarySeriesThumbnail(
       overflow = TextOverflow.Ellipsis,
     )
     Text(
-      if (expanded) "$count 冊 · 閉じる" else "$count 冊 · 展開",
+      "$count 冊",
       style = MaterialTheme.typography.labelSmall,
-      color = if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
