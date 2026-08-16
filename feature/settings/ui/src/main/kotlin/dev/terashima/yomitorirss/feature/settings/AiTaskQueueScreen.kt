@@ -206,14 +206,11 @@ private fun AiTaskRow(
   }
 }
 
-private fun taskTitle(item: AiTaskQueueItem): String = when (item.kind) {
-  AiTaskQueueItemKind.SUMMARY -> item.title
-  AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書のAI整理"
-}
+private fun taskTitle(item: AiTaskQueueItem): String = item.title
 
 private fun taskSource(item: AiTaskQueueItem): String = when (item.kind) {
   AiTaskQueueItemKind.SUMMARY -> "要約 ・ ${item.source}"
-  AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書"
+  AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書整理 ・ ${item.source}"
 }
 
 private fun statusLabel(state: AiTaskQueueItemState): String = when (state) {
