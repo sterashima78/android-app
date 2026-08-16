@@ -39,6 +39,8 @@
 - summary queue: 記事要約・ブックマーク要約/タグ付けを個別タスクとして表示する
 - library organization queue: 1回の durable batch を「蔵書のAI整理」という1タスクとして表示し、解析済み件数/総件数と確認待ち件数を表示する
 
+各 feature が既に持つ実行進捗は、共通キュー側で再計算せず観測情報として view contract へ投影する。summary queue の ADR-0029 で定義した進捗フェーズと `current/total` を保持し、件数を確定できない実行フェーズも「実行中」であることとフェーズ名を不定進捗として表示できるようにする。共通キューはこの進捗を永続化せず、feature-owned queue を表示用に変換するだけとする。
+
 将来のAI feature は自身の durable state を維持したまま、composition adapter から共通 contract へ投影して追加できる。
 
 ### 3. feature 固有のタスク状態と操作意味論は各 feature に残す
@@ -84,6 +86,7 @@ library にも充電制約付き resume worker を追加する。これは全体
 
 - 設定画面のモデル名称が実際の共有範囲と一致する。
 - 要約と蔵書整理を同じAIタスクキューから観測・停止・再開できる。
+- feature-owned queue の進捗フェーズと件数を失わず、数値化できない実行中フェーズも共通キューから観測できる。
 - 電池消費を抑える実行ポリシーが feature ごとに食い違わない。
 - 全体停止と個別停止の状態を混同せず、個別停止した蔵書整理を意図せず再開しない。
 - feature 固有の durable state とレビュー意味論を維持できる。
@@ -99,6 +102,7 @@ library にも充電制約付き resume worker を追加する。これは全体
 
 ## Relationship to existing ADRs
 
+- ADR-0029: summary feature が永続化する進捗フェーズと件数を、共通AIタスクキューでも観測可能なまま維持する。
 - ADR-0056: feature 固有AIポリシーと汎用AI runtime の境界を維持する。本ADRは task semantics ではなく横断的な実行ゲートと設定UIを追加する。
 - ADR-0063: 共通キューUIを `:feature:settings:ui` に置き、`:app` は composition adapter に限定する。
 - ADR-0066: durable な蔵書AI整理 batch/candidate とレビュー方式を維持し、共通AIタスクキューからその batch を観測・停止・再開できるよう拡張する。
