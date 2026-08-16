@@ -95,11 +95,9 @@ fun AiTaskQueueScreen(
         )
         HorizontalDivider()
 
-        val runningCount = state.tasks.count { it.state == AiTaskQueueItemState.RUNNING }
-        val queuedCount = state.tasks.count { it.state == AiTaskQueueItemState.QUEUED }
-        val pausedCount = state.tasks.count {
-          it.state == AiTaskQueueItemState.PAUSED || it.state == AiTaskQueueItemState.STOPPED
-        }
+        val runningCount = state.taskCounts.running
+        val queuedCount = state.taskCounts.queued
+        val pausedCount = state.taskCounts.pausedOrStopped
         val executionLabel = if (state.queuePaused) "自動実行 一時停止中" else "自動実行中"
         Text(
           text = "$executionLabel ・ 実行中 ${runningCount}件 ・ 待機中 ${queuedCount}件 ・ 停止中 ${pausedCount}件",
