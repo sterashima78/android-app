@@ -73,10 +73,9 @@ class WorkManagerLibraryOrganizationBatchScheduler(
   }
 
   internal fun kickFromChargingResume() {
-    check(!LocalAiBackgroundExecutionPreferences(appContext).paused) {
-      "Charging resume must open the shared AI execution gate before scheduling library work"
-    }
     // Do not cancel RESUME_ON_CHARGING_WORK_NAME here: this method is called by that worker.
+    // The normal worker checks the shared execution gate again before doing any AI work, so a
+    // concurrent user pause remains authoritative even if this enqueue races with it.
     enqueueBatchWork()
   }
 
