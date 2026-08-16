@@ -162,14 +162,14 @@ class LocalModelManager(context: Context) : AutoCloseable {
   fun deleteModel(modelId: String) {
     val model = requireModel(modelId)
     inferenceLock.withLock {
-      if (cachedInference?.key?.modelId == model.id) releaseCachedInferenceLocked()
+      tokenizerLock.withLock {
+        if (cachedInference?.key?.modelId == model.id) releaseCachedInferenceLocked()
+        if (cachedTokenizer?.key?.modelId == model.id) releaseCachedTokenizerLocked()
+        modelFile(model).delete()
+        temporaryModelFile(model).delete()
+        modelCacheDirectory(model).deleteRecursively()
+      }
     }
-    tokenizerLock.withLock {
-      if (cachedTokenizer?.key?.modelId == model.id) releaseCachedTokenizerLocked()
-    }
-    modelFile(model).delete()
-    temporaryModelFile(model).delete()
-    modelCacheDirectory(model).deleteRecursively()
     if (preferences.getString(SELECTED_MODEL_KEY, null) == model.id) {
       preferences.edit().remove(SELECTED_MODEL_KEY).apply()
     }
