@@ -482,6 +482,7 @@ fun YomitoriApp(
               onSummarize = { summaryViewModel.summarize(it) },
               onEditTags = { editTagsFor = it },
               onMoveFolder = { moveFolderFor = it },
+              onSetContentType = rssViewModel::setArticleContentType,
             )
           }
 
@@ -523,6 +524,7 @@ fun YomitoriApp(
             onSummarize = { summaryViewModel.summarize(it) },
             onEditTags = { editTagsFor = it },
             onMoveFolder = { moveFolderFor = it },
+            onSetContentType = bookmarkViewModel::setArticleContentType,
             onUnsave = bookmarkViewModel::unsave,
             onMarkUnread = bookmarkViewModel::markUnread,
             onCreateFolder = bookmarkViewModel::createFolder,
@@ -606,6 +608,8 @@ fun YomitoriApp(
               onRenameFolder = feedViewModel::renameFolder,
               onDeleteFolder = feedViewModel::deleteFolder,
               onMoveFeed = feedViewModel::moveFeedToFolder,
+              onSetFeedContentType = feedViewModel::setFeedContentType,
+              onSetFolderContentType = feedViewModel::setFolderContentType,
             )
           }
 
