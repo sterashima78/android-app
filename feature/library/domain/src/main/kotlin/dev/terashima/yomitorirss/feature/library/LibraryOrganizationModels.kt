@@ -155,7 +155,7 @@ interface LibraryOrganizationRepository {
 interface LibraryOrganizationBatchScheduler {
   fun kick()
 
-  fun cancel()
+  suspend fun cancel()
 
   fun setResumeOnChargingScheduled(enabled: Boolean)
 }
