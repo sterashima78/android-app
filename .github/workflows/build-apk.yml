@@ -31,8 +31,10 @@ jobs:
           java-version: 17
       - name: Set up Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
-      - name: Install Android SDK 36 and 37
-        run: sdkmanager "platforms;android-36" "platforms;android-37" "build-tools;36.0.0"
+        with:
+          packages: platform-tools
+      - name: Install Android SDK 36 and 17 preview
+        run: sdkmanager "platforms;android-36" "platforms;android-CinnamonBun" "build-tools;36.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Verify architecture
@@ -55,8 +57,10 @@ jobs:
           java-version: 17
       - name: Set up Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
-      - name: Install Android SDK 36 and 37
-        run: sdkmanager "platforms;android-36" "platforms;android-37" "build-tools;36.0.0"
+        with:
+          packages: platform-tools
+      - name: Install Android SDK 36 and 17 preview
+        run: sdkmanager "platforms;android-36" "platforms;android-CinnamonBun" "build-tools;36.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Verify architecture
