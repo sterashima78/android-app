@@ -12,4 +12,6 @@ data class Article(
   val readAt: String?,
   val sourceTitle: String,
   val sourceFeedUrl: String,
+  val contentTypeOverride: ContentType? = null,
+  val effectiveContentType: ContentType = ContentType.ARTICLE,
 )
