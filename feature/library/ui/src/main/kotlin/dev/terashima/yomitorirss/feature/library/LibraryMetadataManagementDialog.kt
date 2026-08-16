@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -307,7 +308,7 @@ private fun MetadataGroupList(
                 )
               }
               TextButton(
-                enabled = state.savingBook == null && state.reorganizingSeriesName == null,
+                enabled = state.savingBook == null && state.reorganizingSeriesBook == null,
                 onClick = { onRemove(book, group.id) },
               ) {
                 Text(if (state.savingBook == book.organizationKey()) "保存中" else "外す")
@@ -328,6 +329,7 @@ private fun SeriesManagementContent(
   onReorganizeSeries: (List<LibraryBook>) -> Unit,
 ) {
   val seriesGroups = remember(books) { groupLibraryBooks(books).series }
+  var pendingSeries by remember { mutableStateOf<LibrarySeriesSection?>(null) }
   if (seriesGroups.isEmpty()) {
     Text(
       "シリーズ情報が設定された蔵書はありません。",
@@ -350,7 +352,7 @@ private fun SeriesManagementContent(
       )
     }
     items(seriesGroups, key = LibrarySeriesSection::key) { group ->
-      val running = state.reorganizingSeriesName == group.name
+      val running = group.books.any { it.organizationKey() == state.reorganizingSeriesBook }
       Card(
         modifier = Modifier
           .fillMaxWidth()
@@ -386,10 +388,10 @@ private fun SeriesManagementContent(
             )
           }
           Button(
-            enabled = state.reorganizingSeriesName == null &&
+            enabled = state.reorganizingSeriesBook == null &&
               state.savingBook == null &&
               state.batch?.status != LibraryOrganizationBatchStatus.RUNNING,
-            onClick = { onReorganizeSeries(group.books) },
+            onClick = { pendingSeries = group },
           ) {
             if (running) {
               CircularProgressIndicator(
@@ -404,5 +406,30 @@ private fun SeriesManagementContent(
       }
     }
     item { Spacer(Modifier.height(24.dp)) }
+  }
+
+  pendingSeries?.let { group ->
+    AlertDialog(
+      onDismissRequest = { pendingSeries = null },
+      title = { Text("シリーズを再整理しますか？") },
+      text = {
+        Text(
+          "「${group.name}」${group.books.size} 冊のタグ・コレクションをAIで作り直します。解析に失敗した書籍は現在の情報を保持します。",
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            pendingSeries = null
+            onReorganizeSeries(group.books)
+          },
+        ) {
+          Text("再整理")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { pendingSeries = null }) { Text("キャンセル") }
+      },
+    )
   }
 }
