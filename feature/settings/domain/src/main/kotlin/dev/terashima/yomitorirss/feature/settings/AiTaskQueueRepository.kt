@@ -31,6 +31,12 @@ data class AiTaskQueueItem(
   val canResume: Boolean = false,
 )
 
+data class AiTaskQueueCounts(
+  val running: Int = 0,
+  val queued: Int = 0,
+  val pausedOrStopped: Int = 0,
+)
+
 data class AiTaskQueueExecutionState(
   val paused: Boolean,
   val resumeWhenCharging: Boolean,
@@ -38,6 +44,18 @@ data class AiTaskQueueExecutionState(
 
 interface AiTaskQueueRepository {
   suspend fun listTasks(): List<AiTaskQueueItem>
+
+  suspend fun taskCounts(): AiTaskQueueCounts {
+    val tasks = listTasks()
+    return AiTaskQueueCounts(
+      running = tasks.count { it.state == AiTaskQueueItemState.RUNNING },
+      queued = tasks.count { it.state == AiTaskQueueItemState.QUEUED },
+      pausedOrStopped = tasks.count {
+        it.state == AiTaskQueueItemState.PAUSED || it.state == AiTaskQueueItemState.STOPPED
+      },
+    )
+  }
+
   suspend fun executionState(): AiTaskQueueExecutionState
   suspend fun kick()
   suspend fun setPaused(paused: Boolean)
