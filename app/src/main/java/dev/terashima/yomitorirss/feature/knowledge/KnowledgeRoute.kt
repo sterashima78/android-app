@@ -33,5 +33,14 @@ fun KnowledgeRoute(modifier: Modifier = Modifier) {
     onCancelCreate = knowledgeViewModel::cancelCreate,
     onEditInstructionChange = knowledgeViewModel::updateEditInstruction,
     onEditPage = knowledgeViewModel::editPage,
+    onStartDelete = knowledgeViewModel::startDelete,
+    onCancelDelete = knowledgeViewModel::cancelDelete,
+    onDeletePage = knowledgeViewModel::deletePage,
+    onStartSplit = knowledgeViewModel::startSplit,
+    onCancelSplit = knowledgeViewModel::cancelSplit,
+    onSplitPage = knowledgeViewModel::splitPage,
+    onStartMerge = knowledgeViewModel::startMerge,
+    onCancelMerge = knowledgeViewModel::cancelMerge,
+    onMergePage = knowledgeViewModel::mergePage,
   )
 }
