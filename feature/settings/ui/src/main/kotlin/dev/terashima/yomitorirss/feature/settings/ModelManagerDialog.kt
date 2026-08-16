@@ -34,16 +34,22 @@ fun ModelManagerDialog(
   inferenceBackend: AiInferenceBackend,
   thinkingEnabled: Boolean,
   speculativeDecodingEnabled: Boolean,
+  contextSizeMode: AiContextSizeMode,
+  effectiveContextTokens: Int?,
   benchmarkRunning: Boolean,
   benchmarkResult: AiModelBenchmarkComparison?,
   benchmarkError: String?,
+  contextBenchmarkResult: AiContextBenchmarkReport?,
+  contextBenchmarkError: String?,
   progressModelId: String?,
   progressText: String?,
   onDismiss: () -> Unit,
   onBackendChange: (AiInferenceBackend) -> Unit,
   onThinkingChange: (Boolean) -> Unit,
   onSpeculativeDecodingChange: (Boolean) -> Unit,
+  onContextSizeChange: (AiContextSizeMode) -> Unit,
   onRunBenchmark: () -> Unit,
+  onRunContextBenchmark: () -> Unit,
   onDownload: (String) -> Unit,
   onSelect: (String) -> Unit,
   onDelete: (String) -> Unit,
@@ -79,6 +85,61 @@ fun ModelManagerDialog(
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Spacer(Modifier.height(16.dp))
+            Text("コンテキストサイズ", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              ContextChip(
+                label = "自動",
+                mode = AiContextSizeMode.AUTO,
+                selectedMode = contextSizeMode,
+                enabled = supported && !benchmarkRunning,
+                onChange = onContextSizeChange,
+              )
+              ContextChip(
+                label = "4K",
+                mode = AiContextSizeMode.CONTEXT_4K,
+                selectedMode = contextSizeMode,
+                enabled = supported && !benchmarkRunning,
+                onChange = onContextSizeChange,
+              )
+              ContextChip(
+                label = "8K",
+                mode = AiContextSizeMode.CONTEXT_8K,
+                selectedMode = contextSizeMode,
+                enabled = supported && !benchmarkRunning,
+                onChange = onContextSizeChange,
+              )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              ContextChip(
+                label = "16K",
+                mode = AiContextSizeMode.CONTEXT_16K,
+                selectedMode = contextSizeMode,
+                enabled = supported && !benchmarkRunning,
+                onChange = onContextSizeChange,
+              )
+              ContextChip(
+                label = "32K",
+                mode = AiContextSizeMode.CONTEXT_32K,
+                selectedMode = contextSizeMode,
+                enabled = supported && !benchmarkRunning,
+                onChange = onContextSizeChange,
+              )
+            }
+            Text(
+              buildString {
+                append("EngineのKV cache上限です。")
+                effectiveContextTokens?.let { append(" 現在は${formatContextTokens(it)}。") }
+                if (contextSizeMode == AiContextSizeMode.AUTO) {
+                  append(" 自動は実機ベンチマークの安全な最大値を使い、未計測時は8Kです。")
+                }
+              },
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
             if (selectedModel?.supportsSpeculativeDecoding == true) {
               Spacer(Modifier.height(12.dp))
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -117,7 +178,34 @@ fun ModelManagerDialog(
             }
             if (selectedModel?.downloaded == true) {
               Spacer(Modifier.height(16.dp))
-              Text("性能ベンチマーク", fontWeight = FontWeight.SemiBold)
+              Text("コンテキストベンチマーク", fontWeight = FontWeight.SemiBold)
+              Text(
+                "4Kから順にコンテキストの約75%をprefillし、プロセスのピークPSS・Native/Graphics PSS・最低空きメモリと処理時間を計測します。余裕が不足した時点でより大きい設定は試しません。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              Spacer(Modifier.height(8.dp))
+              OutlinedButton(
+                onClick = onRunContextBenchmark,
+                enabled = supported && !benchmarkRunning,
+              ) {
+                Text(if (benchmarkRunning) "計測中…" else "コンテキストを計測")
+              }
+              contextBenchmarkResult?.let {
+                Spacer(Modifier.height(12.dp))
+                ContextBenchmarkResult(result = it)
+              }
+              contextBenchmarkError?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                  "コンテキスト計測に失敗しました: $it",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.error,
+                )
+              }
+
+              Spacer(Modifier.height(16.dp))
+              Text("生成性能ベンチマーク", fontWeight = FontWeight.SemiBold)
               Text(
                 "選択中の${inferenceBackend.name}で、要約を想定した prefill 2048 / decode 128 トークンを標準→Speculativeの順に計測します。実行中は他のバックグラウンドAIタスクを待機させます。",
                 style = MaterialTheme.typography.bodySmall,
@@ -128,13 +216,13 @@ fun ModelManagerDialog(
                 onClick = onRunBenchmark,
                 enabled = supported && !benchmarkRunning,
               ) {
-                Text(if (benchmarkRunning) "計測中…" else "ベンチマークを実行")
+                Text(if (benchmarkRunning) "計測中…" else "生成性能を計測")
               }
               if (benchmarkRunning) {
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Text(
-                  "標準とSpeculative decodingを順番に計測しています。",
+                  "AIベンチマークを実行しています。",
                   style = MaterialTheme.typography.labelSmall,
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -162,7 +250,7 @@ fun ModelManagerDialog(
                 Text(model.name, fontWeight = FontWeight.SemiBold)
                 Text(model.description, style = MaterialTheme.typography.bodySmall)
                 Text(
-                  "${formatBytes(model.sizeBytes)} · ${model.quantization}${if (model.supportsSpeculativeDecoding) " · Speculative decoding対応" else ""}${if (model.supportsThinking) " · Thinking対応" else ""}${if (model.memoryLow) " · メモリ不足の可能性" else ""}",
+                  "${formatBytes(model.sizeBytes)} · ${model.quantization}${if (model.selected) " · context ${formatContextTokens(model.contextTokens)}" else ""}${if (model.supportsSpeculativeDecoding) " · Speculative decoding対応" else ""}${if (model.supportsThinking) " · Thinking対応" else ""}${if (model.memoryLow) " · メモリ不足の可能性" else ""}",
                   style = MaterialTheme.typography.labelSmall,
                   color = if (model.memoryLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -207,6 +295,66 @@ fun ModelManagerDialog(
       TextButton(onClick = onDismiss, enabled = !benchmarkRunning) { Text("閉じる") }
     },
   )
+}
+
+@Composable
+private fun ContextChip(
+  label: String,
+  mode: AiContextSizeMode,
+  selectedMode: AiContextSizeMode,
+  enabled: Boolean,
+  onChange: (AiContextSizeMode) -> Unit,
+) {
+  FilterChip(
+    selected = mode == selectedMode,
+    onClick = { onChange(mode) },
+    enabled = enabled,
+    label = { Text(label) },
+  )
+}
+
+@Composable
+private fun ContextBenchmarkResult(result: AiContextBenchmarkReport) {
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Text(
+      "自動推奨: ${formatContextTokens(result.recommendedContextTokens)} · ${result.backend.name}${if (result.speculativeDecodingEnabled) " · Speculative" else ""}",
+      style = MaterialTheme.typography.labelMedium,
+      fontWeight = FontWeight.SemiBold,
+    )
+    result.samples.forEach { sample ->
+      Column {
+        Text(
+          "${formatContextTokens(sample.contextTokens)} · ${if (sample.safe) "安全圏" else "要注意"}",
+          style = MaterialTheme.typography.bodySmall,
+          fontWeight = FontWeight.SemiBold,
+          color = if (sample.safe) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
+        )
+        if (sample.succeeded) {
+          Text(
+            "Peak PSS ${formatBytes(sample.peakPssBytes)} · Native ${formatBytes(sample.peakNativePssBytes)} · Graphics ${formatBytes(sample.peakGraphicsPssBytes)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Text(
+            "最低空き ${formatBytes(sample.minimumAvailableMemoryBytes)} · prefill ${sample.requestedPrefillTokens} tok · 初期化 ${formatDuration(sample.initTimeMillis)} · 推論 ${formatDuration(sample.inferenceTimeMillis)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        } else {
+          Text(
+            sample.error.orEmpty(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
+          )
+        }
+      }
+    }
+    Text(
+      "自動設定は、最低空きメモリを端末RAMの15%以上かつ1 GB以上残し、Peak PSSを端末RAMの70%以下に保てた最大値を採用します。",
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
 }
 
 @Composable
@@ -270,6 +418,14 @@ private fun formatBytes(bytes: Long): String = when {
   bytes >= 1024L * 1024 * 1024 -> "%.1f GB".format(bytes.toDouble() / (1024L * 1024 * 1024))
   bytes >= 1024L * 1024 -> "%.0f MB".format(bytes.toDouble() / (1024L * 1024))
   else -> "$bytes B"
+}
+
+private fun formatContextTokens(tokens: Int): String = when (tokens) {
+  4_096 -> "4K"
+  8_192 -> "8K"
+  16_384 -> "16K"
+  32_768 -> "32K"
+  else -> "$tokens"
 }
 
 private fun formatRate(value: Double): String = "%.1f".format(value)
