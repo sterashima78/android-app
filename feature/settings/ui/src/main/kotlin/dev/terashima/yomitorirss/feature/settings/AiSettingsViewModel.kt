@@ -17,6 +17,7 @@ data class AiSettingsUiState(
   val summaryProgress: AiSummaryProgress? = null,
   val summaryPrompt: String = "",
   val inferenceBackend: AiInferenceBackend = AiInferenceBackend.CPU,
+  val contextSizeMode: AiContextSizeMode = AiContextSizeMode.AUTO,
   val thinkingEnabled: Boolean = false,
   val speculativeDecodingEnabled: Boolean = false,
   val message: String? = null,
@@ -48,6 +49,7 @@ class AiSettingsViewModel(
         _state.update {
           it.copy(
             inferenceBackend = settings.backend,
+            contextSizeMode = settings.contextSizeMode,
             thinkingEnabled = settings.thinkingEnabled,
             speculativeDecodingEnabled = settings.speculativeDecodingEnabled,
           )
@@ -70,6 +72,10 @@ class AiSettingsViewModel(
 
   fun setInferenceBackend(backend: AiInferenceBackend) {
     runCatching { repository.setInferenceBackend(backend) }.onFailure(::showError)
+  }
+
+  fun setContextSizeMode(mode: AiContextSizeMode) {
+    runCatching { repository.setContextSizeMode(mode) }.onFailure(::showError)
   }
 
   fun setThinkingEnabled(enabled: Boolean) {

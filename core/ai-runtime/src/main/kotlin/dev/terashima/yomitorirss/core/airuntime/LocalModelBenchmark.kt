@@ -53,9 +53,9 @@ class LocalModelBenchmarkRunner(
       "選択したモデルファイルが見つかりません"
     }
 
-    // Release the retained interactive engine before constructing benchmark engines. This reduces
-    // peak memory use and waits for any currently running interactive inference to finish.
-    modelManager.close()
+    // Release only the retained interactive Engine. LocalModelManager itself remains reusable and
+    // keeps its inference-session tracker alive for subsequent Summary/Chat requests.
+    modelManager.releaseRetainedInferenceForBenchmark()
 
     val backend = modelManager.inferenceSettings.value.backend
     val standard = runSample(

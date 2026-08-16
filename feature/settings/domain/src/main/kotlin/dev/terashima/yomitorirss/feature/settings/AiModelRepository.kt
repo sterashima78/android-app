@@ -7,10 +7,19 @@ enum class AiInferenceBackend {
   GPU,
 }
 
+enum class AiContextSizeMode(val tokens: Int?) {
+  AUTO(null),
+  CONTEXT_4K(4_096),
+  CONTEXT_8K(8_192),
+  CONTEXT_16K(16_384),
+  CONTEXT_32K(32_768),
+}
+
 data class AiInferenceSettings(
   val backend: AiInferenceBackend = AiInferenceBackend.CPU,
   val thinkingEnabled: Boolean = false,
   val speculativeDecodingEnabled: Boolean = false,
+  val contextSizeMode: AiContextSizeMode = AiContextSizeMode.AUTO,
 )
 
 data class AiModelStatus(
@@ -28,6 +37,7 @@ data class AiModelStatus(
   val memoryLow: Boolean,
   val supportsThinking: Boolean,
   val supportsSpeculativeDecoding: Boolean,
+  val contextTokens: Int = 8_192,
 )
 
 data class AiModelDownloadProgress(
@@ -80,6 +90,33 @@ data class AiModelBenchmarkComparison(
       ?.let { standard.totalTimeMillis.toDouble() / it }
 }
 
+data class AiContextBenchmarkSample(
+  val contextTokens: Int,
+  val requestedPrefillTokens: Int,
+  val initTimeMillis: Long,
+  val inferenceTimeMillis: Long,
+  val baselinePssBytes: Long,
+  val peakPssBytes: Long,
+  val peakNativePssBytes: Long,
+  val peakGraphicsPssBytes: Long,
+  val minimumAvailableMemoryBytes: Long,
+  val safe: Boolean,
+  val error: String? = null,
+) {
+  val succeeded: Boolean
+    get() = error == null
+}
+
+data class AiContextBenchmarkReport(
+  val modelName: String,
+  val backend: AiInferenceBackend,
+  val speculativeDecodingEnabled: Boolean,
+  val totalDeviceMemoryBytes: Long,
+  val recommendedContextTokens: Int,
+  val measuredAtEpochMillis: Long,
+  val samples: List<AiContextBenchmarkSample>,
+)
+
 interface AiModelRepository {
   val models: Flow<List<AiModelStatus>>
   val downloadProgress: Flow<AiModelDownloadProgress?>
@@ -93,7 +130,10 @@ interface AiModelRepository {
   fun setInferenceBackend(backend: AiInferenceBackend)
   fun setThinkingEnabled(enabled: Boolean)
   fun setSpeculativeDecodingEnabled(enabled: Boolean)
+  fun setContextSizeMode(mode: AiContextSizeMode)
   suspend fun benchmarkSelectedModel(): AiModelBenchmarkComparison
+  suspend fun benchmarkSelectedModelContexts(): AiContextBenchmarkReport
+  fun lastContextBenchmark(): AiContextBenchmarkReport?
   fun downloadModel(modelId: String)
   fun selectModel(modelId: String)
   fun deleteModel(modelId: String)
