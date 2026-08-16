@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,7 +16,9 @@ import dev.terashima.yomitorirss.feature.settings.AiInferenceSettings
 import dev.terashima.yomitorirss.feature.settings.AiModelBenchmarkComparison
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSummaryProgress
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun ModelManagerDialog(
@@ -40,12 +43,20 @@ internal fun ModelManagerDialog(
   var benchmarkRunning by remember { mutableStateOf(false) }
   var benchmarkResult by remember { mutableStateOf<AiModelBenchmarkComparison?>(null) }
   var benchmarkError by remember { mutableStateOf<String?>(null) }
-  var contextBenchmarkResult by remember(
+  var contextBenchmarkResult by remember { mutableStateOf<AiContextBenchmarkReport?>(null) }
+  var contextBenchmarkError by remember { mutableStateOf<String?>(null) }
+
+  LaunchedEffect(
     selectedModel?.id,
     inferenceSettings.backend,
     inferenceSettings.speculativeDecodingEnabled,
-  ) { mutableStateOf<AiContextBenchmarkReport?>(aiModelRepository.lastContextBenchmark()) }
-  var contextBenchmarkError by remember { mutableStateOf<String?>(null) }
+  ) {
+    contextBenchmarkResult = null
+    contextBenchmarkError = null
+    contextBenchmarkResult = withContext(Dispatchers.IO) {
+      aiModelRepository.lastContextBenchmark()
+    }
+  }
 
   fun clearBenchmark() {
     benchmarkResult = null
