@@ -21,6 +21,23 @@ class HierarchicalSummaryTextTest {
   }
 
   @Test
+  fun `文末へ戻した候補が非単調なtokenizerで予算超過なら安全な境界を維持する`() {
+    val text = "aaaaa. bbbbbbbbbbbb"
+    val fits: (String) -> Boolean = { candidate ->
+      candidate.length <= 10 && !candidate.endsWith('.')
+    }
+
+    val chunks = HierarchicalSummaryText.split(text, fits)
+
+    assertTrue(chunks.size > 1)
+    assertTrue(chunks.all(fits))
+    assertEquals(
+      HierarchicalSummaryText.normalize(text).filterNot(Char::isWhitespace),
+      chunks.joinToString("").filterNot(Char::isWhitespace),
+    )
+  }
+
+  @Test
   fun `中間要約のグループ化はトークン予算内で順序と内容を維持する`() {
     val summaries = listOf(
       "前半の重要事項A",
