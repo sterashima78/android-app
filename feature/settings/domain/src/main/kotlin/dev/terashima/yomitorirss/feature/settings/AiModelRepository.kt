@@ -10,6 +10,7 @@ enum class AiInferenceBackend {
 data class AiInferenceSettings(
   val backend: AiInferenceBackend = AiInferenceBackend.CPU,
   val thinkingEnabled: Boolean = false,
+  val speculativeDecodingEnabled: Boolean = false,
 )
 
 data class AiModelStatus(
@@ -26,6 +27,7 @@ data class AiModelStatus(
   val recommended: Boolean,
   val memoryLow: Boolean,
   val supportsThinking: Boolean,
+  val supportsSpeculativeDecoding: Boolean,
 )
 
 data class AiModelDownloadProgress(
@@ -57,6 +59,7 @@ interface AiModelRepository {
   fun resetSummaryPrompt()
   fun setInferenceBackend(backend: AiInferenceBackend)
   fun setThinkingEnabled(enabled: Boolean)
+  fun setSpeculativeDecodingEnabled(enabled: Boolean)
   fun downloadModel(modelId: String)
   fun selectModel(modelId: String)
   fun deleteModel(modelId: String)
