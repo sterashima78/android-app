@@ -46,6 +46,7 @@ data class LocalInferenceSettings(
   val backend: LocalInferenceBackend = LocalInferenceBackend.CPU,
   val thinkingEnabled: Boolean = false,
   val speculativeDecodingEnabled: Boolean = false,
+  val contextSizeMode: LocalContextSizeMode = LocalContextSizeMode.AUTO,
 )
 
 data class LocalModelStatus(
@@ -86,6 +87,7 @@ data class LocalInferenceProgress(
 class LocalModelManager(context: Context) : AutoCloseable {
   private val appContext = context.applicationContext
   private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+  private val contextBenchmarkStore = LocalContextBenchmarkStore(appContext)
   private val downloadLock = ReentrantLock()
   private val inferenceLock = ReentrantLock()
   private val tokenizerLock = ReentrantLock()
@@ -123,6 +125,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
 
   fun refreshModels() {
     val selectedId = resolveSelectedModel()?.id
+    val settings = readInferenceSettings()
     _models.value = MODEL_CATALOG.map { model ->
       val file = modelFile(model)
       val downloaded = isValidModelFile(file, model)
@@ -141,7 +144,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         memoryLow = deviceMemoryBytes() < model.minDeviceMemoryGb * BYTES_PER_GB,
         supportsThinking = false,
         supportsSpeculativeDecoding = model.supportsSpeculativeDecoding,
-        contextTokens = model.contextTokens,
+        contextTokens = effectiveContextTokens(model, settings),
         maxInputChars = model.maxInputChars,
         promptBudgetChars = model.promptBudgetChars,
         promptFormat = LocalPromptFormat.PLAIN,
@@ -157,6 +160,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   fun setInferenceBackend(backend: LocalInferenceBackend) {
     preferences.edit().putString(INFERENCE_BACKEND_KEY, backend.name).apply()
     _inferenceSettings.value = _inferenceSettings.value.copy(backend = backend)
+    refreshModels()
   }
 
   fun setThinkingEnabled(enabled: Boolean) {
@@ -167,15 +171,33 @@ class LocalModelManager(context: Context) : AutoCloseable {
   fun setSpeculativeDecodingEnabled(enabled: Boolean) {
     preferences.edit().putBoolean(SPECULATIVE_DECODING_ENABLED_KEY, enabled).apply()
     _inferenceSettings.value = _inferenceSettings.value.copy(speculativeDecodingEnabled = enabled)
+    refreshModels()
   }
 
-  fun inferenceCacheVariant(modelId: String): String? {
+  fun setContextSizeMode(mode: LocalContextSizeMode) {
+    preferences.edit().putString(CONTEXT_SIZE_MODE_KEY, mode.name).apply()
+    _inferenceSettings.value = _inferenceSettings.value.copy(contextSizeMode = mode)
+    refreshModels()
+  }
+
+  fun inferenceCacheVariant(modelId: String): String {
     val model = requireModel(modelId)
     val settings = currentInferenceSettings()
-    return if (settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding) {
-      "speculative-decoding-v1"
-    } else {
-      null
+    val contextTokens = effectiveContextTokens(model, settings)
+    val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
+    return buildString {
+      append("context-")
+      append(contextTokens)
+      if (speculativeDecodingEnabled) append("-speculative-decoding-v1")
+    }
+  }
+
+  internal fun maxSupportedContextTokens(modelId: String): Int = requireModel(modelId).contextTokens
+
+  internal fun releaseRetainedInferenceForBenchmark() {
+    cancelRequested.set(true)
+    inferenceLock.withLock {
+      releaseCachedInferenceLocked()
     }
   }
 
@@ -327,8 +349,15 @@ class LocalModelManager(context: Context) : AutoCloseable {
       inferenceLock.withLock {
         try {
           val settings = currentInferenceSettings()
+          val contextTokens = effectiveContextTokens(model, settings)
           val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
-          val cacheHit = hasReusableInference(model, file, settings.backend, speculativeDecodingEnabled)
+          val cacheHit = hasReusableInference(
+            model = model,
+            file = file,
+            backend = settings.backend,
+            contextTokens = contextTokens,
+            speculativeDecodingEnabled = speculativeDecodingEnabled,
+          )
           val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
           if (!cacheHit) {
             _inferenceProgress.value = LocalInferenceProgress(
@@ -337,7 +366,13 @@ class LocalModelManager(context: Context) : AutoCloseable {
               estimatedStageDurationMillis(PREPARING_MODEL_DURATION_KEY, model.id),
             )
           }
-          val inference = acquireInference(model, file, settings.backend, speculativeDecodingEnabled)
+          val inference = acquireInference(
+            model = model,
+            file = file,
+            backend = settings.backend,
+            contextTokens = contextTokens,
+            speculativeDecodingEnabled = speculativeDecodingEnabled,
+          )
           preparationStartedAt?.let { startedAt ->
             recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
           }
@@ -374,16 +409,24 @@ class LocalModelManager(context: Context) : AutoCloseable {
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
+    contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
-  ): Boolean = cachedInference?.key == inferenceCacheKey(model, file, backend, speculativeDecodingEnabled)
+  ): Boolean = cachedInference?.key == inferenceCacheKey(
+    model = model,
+    file = file,
+    backend = backend,
+    contextTokens = contextTokens,
+    speculativeDecodingEnabled = speculativeDecodingEnabled,
+  )
 
   private fun acquireInference(
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
+    contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
   ): LiteRtLmInference {
-    val key = inferenceCacheKey(model, file, backend, speculativeDecodingEnabled)
+    val key = inferenceCacheKey(model, file, backend, contextTokens, speculativeDecodingEnabled)
     cachedInference?.takeIf { it.key == key }?.let { cached -> return cached.inference }
 
     releaseCachedInferenceLocked()
@@ -391,7 +434,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
       file = file,
       cacheDirectory = modelBackendCacheDirectory(model, backend, speculativeDecodingEnabled),
       backend = backend,
-      contextTokens = model.contextTokens,
+      contextTokens = contextTokens,
       speculativeDecodingEnabled = speculativeDecodingEnabled,
     )
     cachedInference = CachedInference(key, inference)
@@ -418,11 +461,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
     model: ModelDefinition,
     file: File,
     backend: LocalInferenceBackend,
+    contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
   ) = InferenceCacheKey(
     modelId = model.id,
     backend = backend,
-    contextTokens = model.contextTokens,
+    contextTokens = contextTokens,
     speculativeDecodingEnabled = speculativeDecodingEnabled,
     fileLength = file.length(),
     fileModifiedAt = file.lastModified(),
@@ -471,10 +515,14 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val backend = preferences.getString(INFERENCE_BACKEND_KEY, null)
       ?.let { runCatching { LocalInferenceBackend.valueOf(it) }.getOrNull() }
       ?: LocalInferenceBackend.CPU
+    val contextSizeMode = preferences.getString(CONTEXT_SIZE_MODE_KEY, null)
+      ?.let { runCatching { LocalContextSizeMode.valueOf(it) }.getOrNull() }
+      ?: LocalContextSizeMode.AUTO
     return LocalInferenceSettings(
       backend = backend,
       thinkingEnabled = false,
       speculativeDecodingEnabled = preferences.getBoolean(SPECULATIVE_DECODING_ENABLED_KEY, false),
+      contextSizeMode = contextSizeMode,
     )
   }
 
@@ -482,6 +530,23 @@ class LocalModelManager(context: Context) : AutoCloseable {
     readInferenceSettings().also { settings ->
       if (_inferenceSettings.value != settings) _inferenceSettings.value = settings
     }
+
+  private fun effectiveContextTokens(
+    model: ModelDefinition,
+    settings: LocalInferenceSettings,
+  ): Int {
+    val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
+    val recommendation = contextBenchmarkStore.recommendedContextTokens(
+      modelId = model.id,
+      backend = settings.backend,
+      speculativeDecodingEnabled = speculativeDecodingEnabled,
+    )
+    return resolveContextTokens(
+      mode = settings.contextSizeMode,
+      maxSupportedContextTokens = model.contextTokens,
+      benchmarkRecommendation = recommendation,
+    )
+  }
 
   private fun openDownloadConnection(initialUrl: String): HttpURLConnection {
     var currentUrl = initialUrl
@@ -658,6 +723,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     private const val INFERENCE_BACKEND_KEY = "inference_backend"
     private const val THINKING_ENABLED_KEY = "thinking_enabled"
     private const val SPECULATIVE_DECODING_ENABLED_KEY = "speculative_decoding_enabled"
+    private const val CONTEXT_SIZE_MODE_KEY = "context_size_mode"
     private const val MODEL_REVISION_KEY_PREFIX = "model_revision"
     private const val PREPARING_MODEL_DURATION_KEY = "preparing_model"
     private const val GENERATING_RESPONSE_DURATION_KEY = "generating_response"
@@ -691,7 +757,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         source = "litert-community/gemma-4-E2B-it-litert-lm",
         license = "Apache-2.0",
         quantization = "Mixed 2/4/8-bit",
-        contextTokens = 8192,
+        contextTokens = 32_768,
         maxInputChars = 2500,
         promptBudgetChars = 4096,
         estimatedSizeBytes = 2_588_147_712,
@@ -709,7 +775,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         source = "litert-community/gemma-4-E4B-it-litert-lm",
         license = "Apache-2.0",
         quantization = "Mixed 2/4/8-bit",
-        contextTokens = 8192,
+        contextTokens = 32_768,
         maxInputChars = 2500,
         promptBudgetChars = 4096,
         estimatedSizeBytes = 3_659_530_240,
