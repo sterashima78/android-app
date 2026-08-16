@@ -66,6 +66,19 @@ class HierarchicalSummaryTextTest {
   }
 
   @Test
+  fun `本文placeholderを複数使うプロンプトでは重複分も予算へ含める`() {
+    val singlePrompt = "要約してください。\n{{article}}"
+    val repeatedPrompt = "本文A:\n{{article}}\n\n本文B:\n{{article}}"
+
+    val singleBudget = HierarchicalSummaryBudget.maxArticleChars(8_192, singlePrompt)
+    val repeatedBudget = HierarchicalSummaryBudget.maxArticleChars(8_192, repeatedPrompt)
+
+    assertTrue(repeatedBudget < singleBudget)
+    assertTrue(HierarchicalSummaryBudget.fits(8_192, repeatedPrompt, "あ".repeat(repeatedBudget)))
+    assertFalse(HierarchicalSummaryBudget.fits(8_192, repeatedPrompt, "あ".repeat(repeatedBudget + 1)))
+  }
+
+  @Test
   fun `文字数からトークン数を安全側に見積もる`() {
     assertEquals(0, HierarchicalSummaryBudget.estimatedTokens(""))
     assertEquals(6, HierarchicalSummaryBudget.estimatedTokens("12345"))
