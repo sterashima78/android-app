@@ -34,7 +34,6 @@ class WorkManagerLibraryOrganizationBatchScheduler(
   private val appContext = context.applicationContext
 
   override fun kick() {
-    val workManager = WorkManager.getInstance(appContext)
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
     if (execution.paused) {
       setResumeOnChargingScheduled(true)
@@ -42,14 +41,7 @@ class WorkManagerLibraryOrganizationBatchScheduler(
     }
 
     setResumeOnChargingScheduled(false)
-    val request = OneTimeWorkRequestBuilder<LibraryOrganizationBatchWorker>()
-      .addTag(LibraryOrganizationBatchWorker.WORK_TAG)
-      .build()
-    workManager.enqueueUniqueWork(
-      LibraryOrganizationBatchWorker.WORK_NAME,
-      ExistingWorkPolicy.APPEND_OR_REPLACE,
-      request,
-    )
+    enqueueBatchWork()
   }
 
   override fun cancel() {
@@ -80,6 +72,25 @@ class WorkManagerLibraryOrganizationBatchScheduler(
     )
   }
 
+  internal fun kickFromChargingResume() {
+    check(!LocalAiBackgroundExecutionPreferences(appContext).paused) {
+      "Charging resume must open the shared AI execution gate before scheduling library work"
+    }
+    // Do not cancel RESUME_ON_CHARGING_WORK_NAME here: this method is called by that worker.
+    enqueueBatchWork()
+  }
+
+  private fun enqueueBatchWork() {
+    val request = OneTimeWorkRequestBuilder<LibraryOrganizationBatchWorker>()
+      .addTag(LibraryOrganizationBatchWorker.WORK_TAG)
+      .build()
+    WorkManager.getInstance(appContext).enqueueUniqueWork(
+      LibraryOrganizationBatchWorker.WORK_NAME,
+      ExistingWorkPolicy.APPEND_OR_REPLACE,
+      request,
+    )
+  }
+
   private companion object {
     const val RESUME_ON_CHARGING_WORK_NAME = "library-ai-organization-resume-on-charging"
   }
@@ -103,7 +114,7 @@ class LibraryOrganizationResumeOnChargingWorker(
       when (repository.batchSnapshot()?.status) {
         LibraryOrganizationBatchStatus.RUNNING -> {
           DataChangeNotifier.shared.notifyChanged()
-          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
+          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kickFromChargingResume()
         }
         LibraryOrganizationBatchStatus.PAUSED,
         LibraryOrganizationBatchStatus.COMPLETED,
