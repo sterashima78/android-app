@@ -19,7 +19,6 @@ data class LibraryOrganizationUiState(
   val savingBook: LibraryBookKey? = null,
   val suggestingBook: LibraryBookKey? = null,
   val suggestions: Map<LibraryBookKey, LibraryOrganizationSuggestion> = emptyMap(),
-  val candidateActionBook: LibraryBookKey? = null,
   val message: String? = null,
 )
 
@@ -142,6 +141,7 @@ class LibraryOrganizationViewModel(
     }
     viewModelScope.launch {
       runCatching {
+        discardPreviousNonActiveResults()
         repository.startBatch(books)
         batchScheduler.kick()
         repository.batchSnapshot()
@@ -149,10 +149,10 @@ class LibraryOrganizationViewModel(
         _state.update {
           it.copy(
             batch = batch,
-            message = "一括AI解析をバックグラウンドで開始しました",
+            message = "一括AI整理をバックグラウンドで開始しました",
           )
         }
-      }.onFailure(::reportCandidateError)
+      }.onFailure(::reportBatchError)
     }
   }
 
@@ -163,8 +163,8 @@ class LibraryOrganizationViewModel(
         batchScheduler.cancel()
         repository.batchSnapshot()
       }.onSuccess { batch ->
-        _state.update { it.copy(batch = batch, message = "一括AI解析を一時停止しました") }
-      }.onFailure(::reportCandidateError)
+        _state.update { it.copy(batch = batch, message = "一括AI整理を一時停止しました") }
+      }.onFailure(::reportBatchError)
     }
   }
 
@@ -175,74 +175,8 @@ class LibraryOrganizationViewModel(
         batchScheduler.kick()
         repository.batchSnapshot()
       }.onSuccess { batch ->
-        _state.update { it.copy(batch = batch, message = "一括AI解析を再開しました") }
-      }.onFailure(::reportCandidateError)
-    }
-  }
-
-  fun updateCandidate(
-    candidate: LibraryOrganizationCandidate,
-    tagNames: List<String>,
-    collectionNames: List<String>,
-  ) {
-    runCandidateAction(candidate.key) {
-      repository.updateCandidate(
-        candidate.key,
-        LibraryOrganizationDraft(
-          tagNames = tagNames,
-          collectionNames = collectionNames,
-          readingStatus = null,
-        ),
-      )
-      "AI整理候補を更新しました"
-    }
-  }
-
-  fun acceptCandidate(
-    book: LibraryBook,
-    candidate: LibraryOrganizationCandidate,
-    tagNames: List<String> = candidate.tagNames,
-    collectionNames: List<String> = candidate.collectionNames,
-  ) {
-    runCandidateAction(candidate.key, refreshOrganization = true) {
-      repository.acceptCandidate(
-        book,
-        LibraryOrganizationDraft(
-          tagNames = tagNames,
-          collectionNames = collectionNames,
-          readingStatus = null,
-        ),
-      )
-      "整理候補を採用しました"
-    }
-  }
-
-  fun deferCandidate(candidate: LibraryOrganizationCandidate) {
-    runCandidateAction(candidate.key) {
-      repository.deferCandidate(candidate.key)
-      "整理候補を保留しました"
-    }
-  }
-
-  fun rejectCandidate(candidate: LibraryOrganizationCandidate) {
-    runCandidateAction(candidate.key) {
-      repository.rejectCandidate(candidate.key)
-      "整理候補を却下しました"
-    }
-  }
-
-  fun reopenCandidate(candidate: LibraryOrganizationCandidate) {
-    runCandidateAction(candidate.key) {
-      repository.reopenCandidate(candidate.key)
-      "整理候補を未確認へ戻しました"
-    }
-  }
-
-  fun retryCandidate(candidate: LibraryOrganizationCandidate) {
-    runCandidateAction(candidate.key) {
-      repository.retryCandidate(candidate.key)
-      batchScheduler.kick()
-      "AI解析を再実行します"
+        _state.update { it.copy(batch = batch, message = "一括AI整理を再開しました") }
+      }.onFailure(::reportBatchError)
     }
   }
 
@@ -250,36 +184,11 @@ class LibraryOrganizationViewModel(
     _state.update { it.copy(message = null) }
   }
 
-  private fun runCandidateAction(
-    key: LibraryBookKey,
-    refreshOrganization: Boolean = false,
-    block: suspend () -> String,
-  ) {
-    viewModelScope.launch {
-      _state.update { it.copy(candidateActionBook = key) }
-      runCatching {
-        val message = block()
-        val batch = repository.batchSnapshot()
-        val snapshot = if (refreshOrganization) repository.snapshot() else null
-        Triple(message, batch, snapshot)
-      }.onSuccess { (message, batch, snapshot) ->
-        _state.update {
-          it.copy(
-            batch = batch,
-            snapshot = snapshot ?: it.snapshot,
-            candidateActionBook = null,
-            message = message,
-          )
-        }
-      }.onFailure { error ->
-        _state.update {
-          it.copy(
-            candidateActionBook = null,
-            message = error.message ?: "AI整理候補を更新できませんでした",
-          )
-        }
-      }
-    }
+  private suspend fun discardPreviousNonActiveResults() {
+    val batch = repository.batchSnapshot() ?: return
+    batch.candidates
+      .filter { candidate -> candidate.status in DISCARDABLE_PREVIOUS_RESULTS }
+      .forEach { candidate -> repository.rejectCandidate(candidate.key) }
   }
 
   private suspend fun refreshBatchSilently() {
@@ -291,7 +200,7 @@ class LibraryOrganizationViewModel(
       }
   }
 
-  private fun reportCandidateError(error: Throwable) {
+  private fun reportBatchError(error: Throwable) {
     _state.update {
       it.copy(message = error.message ?: "一括AI整理を操作できませんでした")
     }
@@ -307,5 +216,12 @@ class LibraryOrganizationViewModel(
       LibraryOrganizationViewModel(repository, suggester, batchScheduler) as T
   }
 }
+
+private val DISCARDABLE_PREVIOUS_RESULTS = setOf(
+  LibraryOrganizationCandidateStatus.PENDING_REVIEW,
+  LibraryOrganizationCandidateStatus.DEFERRED,
+  LibraryOrganizationCandidateStatus.FAILED,
+  LibraryOrganizationCandidateStatus.SKIPPED,
+)
 
 private const val BATCH_REFRESH_INTERVAL_MS = 1_000L
