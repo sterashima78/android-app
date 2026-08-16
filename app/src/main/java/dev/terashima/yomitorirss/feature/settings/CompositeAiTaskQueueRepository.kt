@@ -1,8 +1,13 @@
 package dev.terashima.yomitorirss.feature.settings
 
+import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationCandidate
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationCandidateStatus
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
+import dev.terashima.yomitorirss.feature.library.LibraryRepository
+import dev.terashima.yomitorirss.feature.library.organizationKey
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskState
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
@@ -10,15 +15,29 @@ import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 internal class CompositeAiTaskQueueRepository(
   private val summaryRepository: SummaryTaskQueueRepository,
   private val libraryRepository: LibraryOrganizationRepository,
+  private val libraryCatalogRepository: LibraryRepository,
   private val libraryScheduler: LibraryOrganizationBatchScheduler,
 ) : AiTaskQueueRepository {
   override suspend fun listTasks(): List<AiTaskQueueItem> {
     val globalPaused = summaryRepository.executionState().paused
-    val libraryTask = libraryRepository.batchSnapshot()?.let { batch ->
-      toAiTaskQueueItem(batch, globalPaused)
+    val batch = libraryRepository.batchSnapshot()
+    val booksByKey = if (batch == null) {
+      emptyMap()
+    } else {
+      libraryCatalogRepository.snapshot().let { snapshot ->
+        (snapshot.books + snapshot.hiddenBooks).associateBy(LibraryBook::organizationKey)
+      }
+    }
+    val libraryTasks = batch?.candidates.orEmpty().map { candidate ->
+      toAiTaskQueueItem(
+        candidate = candidate,
+        batchStatus = checkNotNull(batch).status,
+        globalPaused = globalPaused,
+        book = booksByKey[candidate.key],
+      )
     }
     val summaryTasks = summaryRepository.listTasks().map(::toAiTaskQueueItem)
-    return listOfNotNull(libraryTask) + summaryTasks
+    return libraryTasks + summaryTasks
   }
 
   override suspend fun executionState(): AiTaskQueueExecutionState =
@@ -101,7 +120,6 @@ internal class CompositeAiTaskQueueRepository(
 
   override suspend fun stop(taskId: String): Boolean = when {
     taskId.startsWith(SUMMARY_PREFIX) -> summaryRepository.stop(taskId.removePrefix(SUMMARY_PREFIX))
-    taskId.startsWith(LIBRARY_PREFIX) -> pauseLibraryTask(taskId)
     else -> false
   }
 
@@ -112,43 +130,26 @@ internal class CompositeAiTaskQueueRepository(
 
   override suspend fun resume(taskId: String): Boolean = when {
     taskId.startsWith(SUMMARY_PREFIX) -> summaryRepository.resume(taskId.removePrefix(SUMMARY_PREFIX))
-    taskId.startsWith(LIBRARY_PREFIX) -> resumeLibraryTask(taskId)
+    taskId.startsWith(LIBRARY_PREFIX) -> retryLibraryTask(taskId)
     else -> false
   }
 
-  private suspend fun pauseLibraryTask(taskId: String): Boolean {
-    val batch = libraryRepository.batchSnapshot() ?: return false
-    if (taskId != "$LIBRARY_PREFIX${batch.batchId}") return false
-    if (batch.status != LibraryOrganizationBatchStatus.RUNNING) return false
-    libraryRepository.pauseBatch()
-    try {
-      libraryScheduler.cancel()
-      libraryScheduler.setResumeOnChargingScheduled(false)
-    } catch (error: Throwable) {
-      runCatching {
-        libraryRepository.resumeBatch()
-        libraryScheduler.kick()
-      }
-      throw error
-    }
-    return true
-  }
-
-  private suspend fun resumeLibraryTask(taskId: String): Boolean {
-    val batch = libraryRepository.batchSnapshot() ?: return false
-    if (taskId != "$LIBRARY_PREFIX${batch.batchId}") return false
-    if (batch.status != LibraryOrganizationBatchStatus.PAUSED) return false
+  private suspend fun retryLibraryTask(taskId: String): Boolean {
     if (summaryRepository.executionState().paused) return false
-    libraryRepository.resumeBatch()
-    try {
-      libraryScheduler.kick()
-    } catch (error: Throwable) {
-      runCatching {
-        libraryRepository.pauseBatch()
-        libraryScheduler.cancel()
-      }
-      throw error
+    val batch = libraryRepository.batchSnapshot() ?: return false
+    if (batch.status == LibraryOrganizationBatchStatus.PAUSED) return false
+    val candidate = batch.candidates.firstOrNull { candidate ->
+      taskId == libraryTaskId(candidate)
+    } ?: return false
+    if (
+      candidate.status != LibraryOrganizationCandidateStatus.FAILED &&
+      candidate.status != LibraryOrganizationCandidateStatus.SKIPPED
+    ) {
+      return false
     }
+
+    libraryRepository.retryCandidate(candidate.key)
+    libraryScheduler.kick()
     return true
   }
 
@@ -169,28 +170,40 @@ internal class CompositeAiTaskQueueRepository(
   )
 
   private fun toAiTaskQueueItem(
-    batch: dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchSnapshot,
+    candidate: LibraryOrganizationCandidate,
+    batchStatus: LibraryOrganizationBatchStatus,
     globalPaused: Boolean,
+    book: LibraryBook?,
   ): AiTaskQueueItem {
-    val effectivelyPaused = globalPaused && batch.status == LibraryOrganizationBatchStatus.RUNNING
+    val waitingForAi = candidate.status == LibraryOrganizationCandidateStatus.QUEUED ||
+      candidate.status == LibraryOrganizationCandidateStatus.PROCESSING
+    val effectivelyPaused = waitingForAi && (
+      globalPaused || batchStatus == LibraryOrganizationBatchStatus.PAUSED
+    )
+    val state = when {
+      effectivelyPaused -> AiTaskQueueItemState.PAUSED
+      candidate.status == LibraryOrganizationCandidateStatus.QUEUED -> AiTaskQueueItemState.QUEUED
+      candidate.status == LibraryOrganizationCandidateStatus.PROCESSING -> AiTaskQueueItemState.RUNNING
+      candidate.status == LibraryOrganizationCandidateStatus.FAILED ||
+        candidate.status == LibraryOrganizationCandidateStatus.SKIPPED -> AiTaskQueueItemState.FAILED
+      else -> AiTaskQueueItemState.COMPLETED
+    }
     return AiTaskQueueItem(
-      id = "$LIBRARY_PREFIX${batch.batchId}",
+      id = libraryTaskId(candidate),
       kind = AiTaskQueueItemKind.LIBRARY_ORGANIZATION,
-      title = "",
-      source = "",
-      state = when {
-        effectivelyPaused -> AiTaskQueueItemState.PAUSED
-        batch.status == LibraryOrganizationBatchStatus.RUNNING -> AiTaskQueueItemState.RUNNING
-        batch.status == LibraryOrganizationBatchStatus.PAUSED -> AiTaskQueueItemState.PAUSED
-        else -> AiTaskQueueItemState.COMPLETED
-      },
-      progressCurrent = batch.processed,
-      progressTotal = batch.total,
-      pendingReviewCount = batch.pendingReview + batch.deferred,
-      canStop = !globalPaused && batch.status == LibraryOrganizationBatchStatus.RUNNING,
-      canResume = !globalPaused && batch.status == LibraryOrganizationBatchStatus.PAUSED,
+      title = book?.title ?: candidate.key.sourceId,
+      source = candidate.key.source.label,
+      state = state,
+      error = candidate.error,
+      canResume = !globalPaused &&
+        batchStatus != LibraryOrganizationBatchStatus.PAUSED &&
+        (candidate.status == LibraryOrganizationCandidateStatus.FAILED ||
+          candidate.status == LibraryOrganizationCandidateStatus.SKIPPED),
     )
   }
+
+  private fun libraryTaskId(candidate: LibraryOrganizationCandidate): String =
+    "$LIBRARY_PREFIX${candidate.batchId}:${candidate.key.source.name}:${candidate.key.sourceId}"
 
   private fun SummaryQueueTaskState.toAiTaskState(): AiTaskQueueItemState = when (this) {
     SummaryQueueTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
