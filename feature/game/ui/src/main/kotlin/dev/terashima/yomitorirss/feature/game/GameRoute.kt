@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.game
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -95,7 +96,7 @@ private fun GameListScreen(
     )
     Card(onClick = onOpenSudoku) {
       Row(
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
       ) {
@@ -112,7 +113,7 @@ private fun GameListScreen(
     }
     Card(onClick = onOpenKlondike) {
       Row(
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
       ) {
@@ -129,7 +130,7 @@ private fun GameListScreen(
     }
     Card(onClick = onOpenSpider) {
       Row(
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
       ) {
