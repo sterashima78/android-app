@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.YomitoriApplication
+import dev.terashima.yomitorirss.feature.settings.AiContextBenchmarkReport
 import dev.terashima.yomitorirss.feature.settings.AiInferenceBackend
 import dev.terashima.yomitorirss.feature.settings.AiInferenceSettings
 import dev.terashima.yomitorirss.feature.settings.AiModelBenchmarkComparison
@@ -34,14 +35,22 @@ internal fun ModelManagerDialog(
   val application = LocalContext.current.applicationContext as YomitoriApplication
   val aiModelRepository = application.container.aiModelRepository
   val inferenceSettings by aiModelRepository.inferenceSettings.collectAsState(AiInferenceSettings())
+  val selectedModel = models.firstOrNull(AiModelStatus::selected)
   val scope = rememberCoroutineScope()
   var benchmarkRunning by remember { mutableStateOf(false) }
   var benchmarkResult by remember { mutableStateOf<AiModelBenchmarkComparison?>(null) }
   var benchmarkError by remember { mutableStateOf<String?>(null) }
+  var contextBenchmarkResult by remember(
+    selectedModel?.id,
+    inferenceSettings.backend,
+    inferenceSettings.speculativeDecodingEnabled,
+  ) { mutableStateOf<AiContextBenchmarkReport?>(aiModelRepository.lastContextBenchmark()) }
+  var contextBenchmarkError by remember { mutableStateOf<String?>(null) }
 
   fun clearBenchmark() {
     benchmarkResult = null
     benchmarkError = null
+    contextBenchmarkError = null
   }
 
   dev.terashima.yomitorirss.feature.settings.ModelManagerDialog(
@@ -50,18 +59,31 @@ internal fun ModelManagerDialog(
     inferenceBackend = inferenceBackend,
     thinkingEnabled = thinkingEnabled,
     speculativeDecodingEnabled = inferenceSettings.speculativeDecodingEnabled,
+    contextSizeMode = inferenceSettings.contextSizeMode,
+    effectiveContextTokens = selectedModel?.contextTokens,
     benchmarkRunning = benchmarkRunning,
     benchmarkResult = benchmarkResult,
     benchmarkError = benchmarkError,
+    contextBenchmarkResult = contextBenchmarkResult,
+    contextBenchmarkError = contextBenchmarkError,
     progressModelId = progressModelId,
     progressText = progressText,
     onDismiss = onDismiss,
     onBackendChange = { backend ->
       clearBenchmark()
+      contextBenchmarkResult = null
       onBackendChange(backend)
     },
     onThinkingChange = onThinkingChange,
-    onSpeculativeDecodingChange = aiModelRepository::setSpeculativeDecodingEnabled,
+    onSpeculativeDecodingChange = { enabled ->
+      clearBenchmark()
+      contextBenchmarkResult = null
+      aiModelRepository.setSpeculativeDecodingEnabled(enabled)
+    },
+    onContextSizeChange = { mode ->
+      clearBenchmark()
+      aiModelRepository.setContextSizeMode(mode)
+    },
     onRunBenchmark = {
       if (!benchmarkRunning) {
         benchmarkRunning = true
@@ -69,12 +91,19 @@ internal fun ModelManagerDialog(
         scope.launch {
           runCatching { aiModelRepository.benchmarkSelectedModel() }
             .onSuccess { benchmarkResult = it }
-            .onFailure { error ->
-              benchmarkError = generateSequence(error) { it.cause }
-                .mapNotNull(Throwable::message)
-                .firstOrNull(String::isNotBlank)
-                ?: error.javaClass.simpleName
-            }
+            .onFailure { error -> benchmarkError = error.userMessage() }
+          benchmarkRunning = false
+        }
+      }
+    },
+    onRunContextBenchmark = {
+      if (!benchmarkRunning) {
+        benchmarkRunning = true
+        clearBenchmark()
+        scope.launch {
+          runCatching { aiModelRepository.benchmarkSelectedModelContexts() }
+            .onSuccess { contextBenchmarkResult = it }
+            .onFailure { error -> contextBenchmarkError = error.userMessage() }
           benchmarkRunning = false
         }
       }
@@ -82,10 +111,12 @@ internal fun ModelManagerDialog(
     onDownload = onDownload,
     onSelect = { modelId ->
       clearBenchmark()
+      contextBenchmarkResult = null
       onSelect(modelId)
     },
     onDelete = { modelId ->
       clearBenchmark()
+      contextBenchmarkResult = null
       onDelete(modelId)
     },
   )
@@ -109,3 +140,9 @@ internal fun summaryProgressLabel(progress: AiSummaryProgress): String =
     stage = progress.stage,
     modelName = progress.modelName,
   )
+
+private fun Throwable.userMessage(): String =
+  generateSequence(this) { it.cause }
+    .mapNotNull(Throwable::message)
+    .firstOrNull(String::isNotBlank)
+    ?: javaClass.simpleName
