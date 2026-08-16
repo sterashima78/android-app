@@ -158,6 +158,8 @@ private class LiteRtLmFlatBufferHeader(bytes: ByteArray) {
     val objectsVector = indirect(objectsField)
     val objectCount = intAt(objectsVector)
     check(objectCount >= 0) { "LiteRT-LM section metadata の要素数が不正です" }
+    val maxObjectCount = (buffer.limit() - objectsVector - Int.SIZE_BYTES) / Int.SIZE_BYTES
+    check(objectCount <= maxObjectCount) { "LiteRT-LM section metadata の要素数がヘッダー範囲を超えています" }
 
     for (index in 0 until objectCount) {
       val entry = objectsVector + Int.SIZE_BYTES + index * Int.SIZE_BYTES
