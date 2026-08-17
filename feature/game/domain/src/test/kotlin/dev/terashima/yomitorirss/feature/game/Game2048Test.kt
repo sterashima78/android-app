@@ -3,6 +3,8 @@ package dev.terashima.yomitorirss.feature.game
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -55,5 +57,44 @@ class Game2048Test {
     val state = Game2048State(listOf(2, 4, 2, 4, 4, 2, 4, 2, 2, 4, 2, 4, 4, 2, 4, 2))
     assertTrue(state.isGameOver)
     assertFalse(state.hasWon)
+  }
+
+  @Test
+  fun `結合時は2枚の移動元と結合先を遷移情報へ含める`() {
+    val state = Game2048State(listOf(2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+    val result = Game2048(Random(3)).moveWithTransition(state, Game2048Direction.LEFT)
+
+    val merged = result.movements.filter { it.isMerge }
+    assertTrue(result.changed)
+    assertEquals(4, result.scoreDelta)
+    assertEquals(setOf(0, 1), merged.map { it.fromIndex }.toSet())
+    assertEquals(setOf(0), merged.map { it.toIndex }.toSet())
+    assertEquals(listOf(2, 2), merged.map { it.value })
+    assertNotNull(result.spawnedIndex)
+  }
+
+  @Test
+  fun `空白を詰める移動は元と先の位置を遷移情報へ含める`() {
+    val state = Game2048State(listOf(0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+    val result = Game2048(Random(4)).moveWithTransition(state, Game2048Direction.LEFT)
+
+    assertTrue(result.changed)
+    assertTrue(result.movements.any {
+      it.fromIndex == 1 && it.toIndex == 0 && it.value == 2 && !it.isMerge
+    })
+    assertNotNull(result.spawnedIndex)
+  }
+
+  @Test
+  fun `動かない入力も方向付きの結果として返す`() {
+    val state = Game2048State(listOf(2, 4, 8, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+    val result = Game2048(Random(5)).moveWithTransition(state, Game2048Direction.LEFT)
+
+    assertFalse(result.changed)
+    assertEquals(Game2048Direction.LEFT, result.direction)
+    assertEquals(state, result.state)
+    assertTrue(result.movements.isEmpty())
+    assertNull(result.spawnedIndex)
+    assertEquals(0, result.scoreDelta)
   }
 }
