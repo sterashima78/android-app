@@ -11,14 +11,18 @@ import org.junit.Test
 
 class YanmagaFeedClientTest {
   @Test
-  fun `ヤンマガWeb作品URLだけを対象にする`() {
+  fun `ヤンマガWeb作品URLだけを対象にして正規URLへ統一する`() {
     val client = YanmagaFeedClient()
 
     assertTrue(client.supports("https://yanmaga.jp/comics/sample_work"))
-    assertTrue(client.supports("https://www.yanmaga.jp/comics/sample_work/"))
+    assertTrue(client.supports("https://www.yanmaga.jp/comics/sample_work/?sort=older"))
     assertFalse(client.supports("https://yanmaga.jp/comics/sample_work/episode-1"))
     assertFalse(client.supports("https://yanmaga.jp/comics/series"))
     assertFalse(client.supports("https://example.com/comics/sample_work"))
+    assertEquals(
+      "https://yanmaga.jp/comics/sample_work",
+      client.canonicalWorkUrl("https://www.yanmaga.jp/comics/sample_work/?sort=older#episodes"),
+    )
   }
 
   @Test
@@ -59,9 +63,10 @@ class YanmagaFeedClientTest {
     )
     val client = YanmagaFeedClient(httpClient)
 
-    val result = client.fetchFeed(pageUrl)
+    val result = client.fetchFeed("$pageUrl?sort=older")
     val feed = requireNotNull(result.feed)
 
+    assertEquals(pageUrl, httpClient.lastRequest?.url)
     assertEquals("サンプル作品", feed.title)
     assertEquals(pageUrl, feed.feedUrl)
     assertEquals(pageUrl, feed.siteUrl)
