@@ -258,6 +258,7 @@ class MainActivity : ComponentActivity() {
           onOpenArticle = ::openArticle,
           onOpenWebServer = { showWebServer = true },
           onAddMailAccount = requestMailAccount,
+          onExitApp = ::finish,
         )
 
         if (showWebServer) {
