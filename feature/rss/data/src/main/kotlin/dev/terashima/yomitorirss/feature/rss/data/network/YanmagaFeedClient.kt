@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import java.net.URI
 import java.nio.charset.Charset
 import java.security.MessageDigest
@@ -84,7 +85,7 @@ internal class YanmagaFeedClient(
 
     val articles = episodeElements
       .asSequence()
-      .filterNot { it.attr("data-is-free").equals("false", ignoreCase = true) }
+      .filter(::isReadableForFree)
       .mapNotNull { episode ->
         val episodeTitle = episode.selectFirst(EPISODE_TITLE_SELECTOR)?.text()?.trim().orEmpty()
         val link = episode.selectFirst(EPISODE_URL_SELECTOR)
@@ -111,6 +112,12 @@ internal class YanmagaFeedClient(
       siteUrl = pageUrl,
       articles = articles,
     )
+  }
+
+  private fun isReadableForFree(episode: Element): Boolean {
+    val explicitlyUnavailable = episode.attr("data-is-free").equals("false", ignoreCase = true)
+    val hasFreeBadge = episode.selectFirst(FREE_BADGE_SELECTOR) != null
+    return !explicitlyUnavailable || hasFreeBadge
   }
 
   private fun request(url: String, additionalHeaders: Map<String, String> = emptyMap()): HttpRequest = HttpRequest(
@@ -161,6 +168,7 @@ internal class YanmagaFeedClient(
     const val EPISODE_TITLE_SELECTOR = ".mod-episode-title"
     const val EPISODE_URL_SELECTOR = ".mod-episode-link"
     const val EPISODE_DATE_SELECTOR = ".mod-episode-date"
+    const val FREE_BADGE_SELECTOR = ".mod-episode-point--free"
     val DATE_PATTERN = Regex("\\d{4}/\\d{1,2}/\\d{1,2}")
     val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("uuuu/M/d")
     val TOKYO: ZoneId = ZoneId.of("Asia/Tokyo")
