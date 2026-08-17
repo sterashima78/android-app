@@ -192,6 +192,9 @@ internal class CompositeAiTaskQueueRepository(
     else -> false
   }
 
+  override suspend fun retryFailedBookmarkTasks(): Int =
+    summaryRepository.retryFailedBookmarkTasks()
+
   private suspend fun retryLibraryTask(taskId: String): Boolean {
     if (summaryRepository.executionState().paused) return false
     val batch = libraryRepository.batchSnapshot() ?: return false
