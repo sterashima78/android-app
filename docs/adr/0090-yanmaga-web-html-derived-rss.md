@@ -9,6 +9,8 @@ RSS機能はRSS 2.0 / Atom / RSS 1.0と、Webページ内の `link[rel~=alternat
 
 公開実装 `shishi/rss_generator` では、ヤンマガWeb作品ページのエピソード一覧を `.mod-episode-item`、タイトルを `.mod-episode-title`、リンクを `.mod-episode-link`、公開日を `.mod-episode-date` から取得し、`data-is-free="false"` の項目を除外することで作品更新フィードを生成している。
 
+初期実装後、`data-is-free="false"` であっても `.mod-episode-point--free` が付与され、期間限定で無料閲覧できるエピソードが存在することが確認された。`data-is-free` だけを判定に使うと、この期間限定無料話が更新記事から欠落する。
+
 本アプリはサーバーを持たず、主要データと処理を端末内へ閉じる方針である。特定の外部RSS生成サービスへ依存すると、そのサービスの可用性・登録作品・運用変更に購読機能が依存する。また、作品追加のたびに外部ジェネレーター側へ設定を追加する運用も避けたい。
 
 ADR-0078では漫画RSSを `COMIC` として扱い、自動AI enrichmentから除外する方針を採用している。ヤンマガWeb由来の記事も同じ意味を持つため、この既存のコンテンツ種別へ接続する必要がある。
@@ -25,13 +27,16 @@ ADR-0078では漫画RSSを `COMIC` として扱い、自動AI enrichmentから�
 
 `:feature:rss:data` に `YanmagaFeedClient` を置き、共有 `HttpClient` で作品ページHTMLを取得してjsoupで解析する。
 
-解析セレクターは公開実装 `shishi/rss_generator` と同じものを使用する。
+解析セレクターは公開実装 `shishi/rss_generator` と同じものを基礎にする。
 
 - エピソード: `.mod-episode-item`
 - タイトル: `.mod-episode-title`
 - URL: `.mod-episode-link`
 - 公開日: `.mod-episode-date`
-- 非無料話の除外: `data-is-free="false"`
+- 通常の無料判定: `data-is-free="false"` ではない
+- 期間限定無料判定: `.mod-episode-point--free` を子孫要素に持つ
+
+`data-is-free="false"` でも `.mod-episode-point--free` がある場合は無料閲覧可能なエピソードとして含める。両方の条件を満たさない有料エピソードは除外する。
 
 取得した作品ページの最終URLを `feedUrl` と `siteUrl` に保存する。各エピソードURLを外部IDと重複判定の基準にし、公開日は日本時間の日付として解釈する。
 
@@ -62,6 +67,7 @@ ADR-0078では漫画RSSを `COMIC` として扱い、自動AI enrichmentから�
 ### Positive
 
 - ユーザーはヤンマガWebの作品URLを通常のフィード追加欄へ貼り付けるだけで購読できる。
+- 通常無料に加え、公開直後などの期間限定無料エピソードも更新記事として取得できる。
 - 外部RSS生成サービスへの依存や作品ごとのサーバー設定が不要になる。
 - 通常RSSの解析経路を変更せず、サイト固有ロジックを独立して保守できる。
 - 漫画として自動分類され、不要なAIタスクが自動的に抑止される。
@@ -69,7 +75,7 @@ ADR-0078では漫画RSSを `COMIC` として扱い、自動AI enrichmentから�
 
 ### Negative
 
-- ヤンマガWebのHTMLクラス名変更に追従する必要がある。
+- ヤンマガWebのHTMLクラス名や無料表示ルールの変更に追従する必要がある。
 - サイト側がJavaScript必須の構造へ移行した場合、このHTTP+jsoup方式だけでは取得できなくなる。
 - サイト固有アダプターがRSS data層に1つ増える。
 
