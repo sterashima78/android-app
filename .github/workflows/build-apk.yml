@@ -15,6 +15,7 @@ concurrency:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   quality:
@@ -92,6 +93,18 @@ jobs:
           path: mosaic-0.2.0-arm64-v8a.apk
           if-no-files-found: error
           retention-days: 1
+      - name: Publish APK build run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state=success \
+            -f context='apk/main' \
+            -f description='Signed release APK uploaded' \
+            -f target_url='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
       - name: Remove release keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/yomitori-release.keystore"
