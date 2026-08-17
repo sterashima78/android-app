@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 internal enum class CardEmphasis {
   NORMAL,
@@ -85,6 +86,7 @@ internal fun PlayingCardView(
   )
   val clickableModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
   val ink = if (card.suit.isRed) cardRed else cardBlack
+  val cornerSize = if (compact) 8.sp else 12.sp
 
   Box(
     modifier = modifier
@@ -108,6 +110,8 @@ internal fun PlayingCardView(
     Text(
       text = "${card.rankLabel()}${card.suit.symbol()}",
       color = ink,
+      fontSize = cornerSize,
+      lineHeight = cornerSize,
       fontWeight = FontWeight.Bold,
       textAlign = TextAlign.Start,
       maxLines = 1,
@@ -117,12 +121,16 @@ internal fun PlayingCardView(
       Text(
         text = card.suit.symbol(),
         color = ink.copy(alpha = 0.82f),
+        fontSize = 20.sp,
+        lineHeight = 20.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.align(Alignment.Center),
       )
       Text(
         text = "${card.rankLabel()}${card.suit.symbol()}",
         color = ink,
+        fontSize = cornerSize,
+        lineHeight = cornerSize,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.End,
         maxLines = 1,
@@ -206,6 +214,7 @@ internal fun CardSlotView(
     Text(
       text = label,
       color = Color.White.copy(alpha = 0.62f),
+      fontSize = 13.sp,
       fontWeight = FontWeight.SemiBold,
       textAlign = TextAlign.Center,
     )
