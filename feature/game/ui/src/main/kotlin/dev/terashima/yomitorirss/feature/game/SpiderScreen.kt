@@ -105,7 +105,7 @@ private fun SpiderScreen(
             SpiderStockControl(
               state = state,
               onDealStock = onDealStock,
-              modifier = Modifier.width(46.dp),
+              modifier = Modifier.width(52.dp),
             )
           }
 
