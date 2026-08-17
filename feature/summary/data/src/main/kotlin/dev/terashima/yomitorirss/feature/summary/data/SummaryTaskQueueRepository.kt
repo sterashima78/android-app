@@ -63,6 +63,12 @@ class DefaultSummaryTaskQueueRepository(
   override suspend fun cancel(articleId: String): Boolean = SummaryQueue.cancel(appContext, articleId)
 
   override suspend fun resume(articleId: String): Boolean = SummaryQueue.resume(appContext, articleId)
+
+  override suspend fun retryFailedBookmarkTasks(): Int {
+    val retried = database.retryFailedBookmarkSummaryTasks()
+    if (retried > 0) SummaryQueue.kick(appContext)
+    return retried
+  }
 }
 
 private fun String.toSummaryQueueTaskState(): SummaryQueueTaskState = when (this) {

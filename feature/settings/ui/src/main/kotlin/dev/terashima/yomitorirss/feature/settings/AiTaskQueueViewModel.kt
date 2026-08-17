@@ -62,6 +62,15 @@ class AiTaskQueueViewModel(
 
   fun resume(taskId: String) = runTaskAction { repository.resume(taskId) }
 
+  fun retryFailedBookmarkTasks() {
+    _state.update { it.copy(actionError = null) }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.retryFailedBookmarkTasks() }
+        .onFailure(::showError)
+      reload()
+    }
+  }
+
   private fun runExecutionAction(action: suspend () -> Unit) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { action() }

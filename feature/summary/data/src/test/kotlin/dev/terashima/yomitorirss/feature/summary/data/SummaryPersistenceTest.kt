@@ -60,7 +60,30 @@ class SummaryPersistenceTest {
     assertEquals(0, counts.stopped)
   }
 
-  private fun insertArticle(id: String) {
+  @Test
+  fun `失敗した保存済みブックマークだけを一括で待機に戻す`() {
+    insertArticle("saved-failed", bookmarked = true)
+    database.enqueueSummaryTask("saved-failed", forceRefresh = false)
+    database.markSummaryTaskFailed("saved-failed", "generation failed")
+
+    insertArticle("unsaved-failed")
+    database.enqueueSummaryTask("unsaved-failed", forceRefresh = false)
+    database.markSummaryTaskFailed("unsaved-failed", "generation failed")
+
+    insertArticle("saved-stopped", bookmarked = true)
+    database.enqueueSummaryTask("saved-stopped", forceRefresh = false)
+    database.stopSummaryTask("saved-stopped")
+
+    val retried = database.retryFailedBookmarkSummaryTasks()
+
+    assertEquals(1, retried)
+    assertEquals(SUMMARY_QUEUED, database.findSummaryTask("saved-failed")?.state)
+    assertEquals(null, database.findSummaryTask("saved-failed")?.error)
+    assertEquals(SUMMARY_FAILED, database.findSummaryTask("unsaved-failed")?.state)
+    assertEquals(SUMMARY_STOPPED, database.findSummaryTask("saved-stopped")?.state)
+  }
+
+  private fun insertArticle(id: String, bookmarked: Boolean = false) {
     database.writableDatabase.insertOrThrow(
       "articles",
       null,
@@ -74,7 +97,11 @@ class SummaryPersistenceTest {
         put("published_at", "2026-08-16T00:00:00Z")
         put("fetched_at", "2026-08-16T00:00:00Z")
         putNull("read_at")
-        putNull("saved_at")
+        if (bookmarked) {
+          put("saved_at", "2026-08-16T00:00:00Z")
+        } else {
+          putNull("saved_at")
+        }
         put("source_title", "test")
         put("source_feed_url", "")
       },

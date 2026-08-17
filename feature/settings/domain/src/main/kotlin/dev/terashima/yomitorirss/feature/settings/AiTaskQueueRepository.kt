@@ -82,4 +82,5 @@ interface AiTaskQueueRepository {
   suspend fun stop(taskId: String): Boolean
   suspend fun cancel(taskId: String): Boolean
   suspend fun resume(taskId: String): Boolean
+  suspend fun retryFailedBookmarkTasks(): Int = 0
 }
