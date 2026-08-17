@@ -310,10 +310,9 @@ fun YomitoriApp(
     },
   ) {
     BackHandler {
-      if (drawerState.isOpen) {
-        onExitApp()
-      } else {
-        scope.launch { drawerState.open() }
+      when (rootBackAction(drawerState.isOpen)) {
+        RootBackAction.OPEN_DRAWER -> scope.launch { drawerState.open() }
+        RootBackAction.EXIT_APP -> onExitApp()
       }
     }
 
