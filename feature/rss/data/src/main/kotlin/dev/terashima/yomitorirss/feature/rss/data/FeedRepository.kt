@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.rss.data
 
+import android.content.Context
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.ContentType
@@ -8,16 +9,19 @@ import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
+import dev.terashima.yomitorirss.feature.rss.data.network.MangaOneFeedClient
 import dev.terashima.yomitorirss.feature.rss.data.network.YanmagaFeedClient
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultFeedRepository(
   database: DatabaseConnection,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
+  applicationContext: Context? = null,
 ) : FeedRepository {
   private val store = FeedStore(database)
   private val client = FeedClient()
   private val yanmagaClient = YanmagaFeedClient()
+  private val mangaOneClient = applicationContext?.let { MangaOneFeedClient(it.applicationContext) }
 
   override val changes: StateFlow<Long> = dataChanges.version
 
@@ -27,27 +31,28 @@ class DefaultFeedRepository(
 
   override suspend fun inspect(input: String): FeedInspection {
     val normalized = client.normalizeInputUrl(input)
-    return if (yanmagaClient.supports(normalized)) {
-      yanmagaClient.inspect(normalized)
-    } else {
-      client.inspect(normalized)
+    return when {
+      yanmagaClient.supports(normalized) -> yanmagaClient.inspect(normalized)
+      MangaOneFeedClient.companionSupports(normalized) -> requireMangaOneClient().inspect(normalized)
+      else -> client.inspect(normalized)
     }
   }
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
     val normalized = client.normalizeInputUrl(url)
     val isYanmaga = yanmagaClient.supports(normalized)
-    val result = if (isYanmaga) {
-      yanmagaClient.fetchFeed(normalized)
-    } else {
-      client.fetchFeed(normalized)
+    val isMangaOne = MangaOneFeedClient.companionSupports(normalized)
+    val result = when {
+      isYanmaga -> yanmagaClient.fetchFeed(normalized)
+      isMangaOne -> requireMangaOneClient().fetchFeed(normalized)
+      else -> client.fetchFeed(normalized)
     }
     store.addFeed(
       parsed = requireNotNull(result.feed),
       etag = result.etag,
       modified = result.lastModified,
       markExistingArticlesRead = markExistingArticlesRead,
-      contentTypeOverride = ContentType.COMIC.takeIf { isYanmaga },
+      contentTypeOverride = ContentType.COMIC.takeIf { isYanmaga || isMangaOne },
     )
     dataChanges.notifyChanged()
   }
@@ -89,10 +94,14 @@ class DefaultFeedRepository(
 
   override suspend fun refreshFeed(feed: Feed) {
     try {
-      val result = if (yanmagaClient.supports(feed.feedUrl)) {
-        yanmagaClient.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
-      } else {
-        client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+      val result = when {
+        yanmagaClient.supports(feed.feedUrl) -> yanmagaClient.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+        MangaOneFeedClient.companionSupports(feed.feedUrl) -> requireMangaOneClient().fetchFeed(
+          feed.feedUrl,
+          feed.etag,
+          feed.lastModified,
+        )
+        else -> client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
       }
       if (result.notModified) {
         store.updateFeedNotModified(feed.id)
@@ -105,6 +114,10 @@ class DefaultFeedRepository(
       dataChanges.notifyChanged()
       throw error
     }
+  }
+
+  private fun requireMangaOneClient(): MangaOneFeedClient = requireNotNull(mangaOneClient) {
+    "マンガワンのフィード取得にはAndroidコンテキストが必要です"
   }
 }
 

@@ -88,7 +88,7 @@ class AppContainer(private val application: Application) {
     DefaultBookmarkImportRepository(application, databaseConnection, dataChanges)
   }
   val feedRepository: FeedRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultFeedRepository(databaseConnection, dataChanges)
+    DefaultFeedRepository(databaseConnection, dataChanges, application)
   }
   val redditRepository: RedditRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultRedditRepository(feedRepository)
