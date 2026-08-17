@@ -1,39 +1,42 @@
 package dev.terashima.yomitorirss.feature.game
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -64,109 +67,86 @@ private fun SpiderScreen(
   onDealStock: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Column(
-    modifier = modifier
-      .verticalScroll(rememberScrollState())
-      .padding(horizontal = 8.dp, vertical = 10.dp),
-    verticalArrangement = Arrangement.spacedBy(10.dp),
-  ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Column {
-        Text("スパイダーソリティア", style = MaterialTheme.typography.headlineSmall)
-        Text(
-          "手数: ${state.moves} ・ 完成: ${state.completedRuns.size}/8",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      TextButton(onClick = onBack) { Text("ゲーム一覧") }
-    }
+  val validTargets = state.validTableauTargets()
 
-    DifficultySelector(
-      selected = state.difficulty,
-      onSelect = onNewGame,
-    )
-
-    if (state.isWon) {
-      Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-          modifier = Modifier.padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Text("クリアしました", style = MaterialTheme.typography.titleMedium)
-          Text("8組のKからAまでの列を完成させました。")
-          Button(onClick = { onNewGame(state.difficulty) }) { Text("同じ難易度でもう一度") }
-        }
-      }
-    }
-
-    CompletedRuns(state.completedRuns)
-
-    SpiderTableauBoard(
-      state = state,
-      onSelectTableau = onSelectTableau,
-      onMoveSelectedToTableau = onMoveSelectedToTableau,
-    )
-
+  Box(modifier = modifier.fillMaxSize()) {
     Column(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(4.dp),
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 6.dp, vertical = 6.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-      Button(
-        onClick = onDealStock,
-        enabled = state.canDealStock,
+      SpiderHeader(
+        state = state,
+        onBack = onBack,
+        onNewGame = onNewGame,
+      )
+
+      GameTableSurface(
+        modifier = Modifier
+          .fillMaxWidth()
+          .weight(1f),
       ) {
-        Text("山札を配る（残り ${state.stock.size / 10} 回）")
-      }
-      if (state.stock.isNotEmpty() && state.tableau.any { it.isEmpty() }) {
-        Text(
-          "空いている列を埋めると山札を配れます。",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(7.dp),
+          verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Top,
+          ) {
+            SpiderCompletedRuns(
+              completedRuns = state.completedRuns,
+              modifier = Modifier.weight(1f),
+            )
+            SpiderStockControl(
+              state = state,
+              onDealStock = onDealStock,
+              modifier = Modifier.width(52.dp),
+            )
+          }
+
+          SpiderSelectionStatus(
+            state = state,
+            validTargets = validTargets,
+          )
+
+          SpiderTableauBoard(
+            state = state,
+            validTargets = validTargets,
+            onSelectTableau = onSelectTableau,
+            onMoveSelectedToTableau = onMoveSelectedToTableau,
+            modifier = Modifier
+              .fillMaxWidth()
+              .weight(1f),
+          )
+        }
       }
     }
 
-    Text(
-      "カードをタップして選択し、移動先の列をタップします。同一スートで数字が連続する列だけをまとめて移動できます。移動先はスートに関係なく1つ大きいカード、または空列です。同一スートのKからAが揃うと自動で回収されます。",
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(Modifier.height(8.dp))
-  }
-}
-
-@Composable
-private fun DifficultySelector(
-  selected: SpiderDifficulty,
-  onSelect: (SpiderDifficulty) -> Unit,
-) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    Text(
-      "難易度（変更すると新しいゲームを開始）",
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
+    AnimatedVisibility(
+      visible = state.isWon,
+      modifier = Modifier.align(Alignment.Center),
+      enter = fadeIn(),
+      exit = fadeOut(),
     ) {
-      SpiderDifficulty.entries.forEach { difficulty ->
-        if (difficulty == selected) {
+      Card(modifier = Modifier.widthIn(max = 320.dp).padding(20.dp)) {
+        Column(
+          modifier = Modifier.padding(24.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          Text("クリア", style = MaterialTheme.typography.headlineSmall)
+          Text("8組のKからAまでの列を完成させました。")
           Button(
-            onClick = { onSelect(difficulty) },
-            modifier = Modifier.weight(1f),
-          ) { Text(difficulty.label()) }
-        } else {
-          OutlinedButton(
-            onClick = { onSelect(difficulty) },
-            modifier = Modifier.weight(1f),
-          ) { Text(difficulty.label()) }
+            onClick = { onNewGame(state.difficulty) },
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text("同じ難易度でもう一度")
+          }
         }
       }
     }
@@ -174,28 +154,92 @@ private fun DifficultySelector(
 }
 
 @Composable
-private fun CompletedRuns(completedRuns: List<CardSuit>) {
+private fun SpiderHeader(
+  state: SpiderGameState,
+  onBack: () -> Unit,
+  onNewGame: (SpiderDifficulty) -> Unit,
+) {
+  var menuOpen by remember { mutableStateOf(false) }
+
   Row(
     modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(3.dp),
+  ) {
+    TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 5.dp)) {
+      Text("‹ ゲーム")
+    }
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        "スパイダー",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+      )
+      Text(
+        "手数 ${state.moves} · 完成 ${state.completedRuns.size}/8",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    Box {
+      TextButton(
+        onClick = { menuOpen = true },
+        contentPadding = PaddingValues(horizontal = 6.dp),
+      ) {
+        Text("${state.difficulty.label()} ▾")
+      }
+      DropdownMenu(
+        expanded = menuOpen,
+        onDismissRequest = { menuOpen = false },
+      ) {
+        SpiderDifficulty.entries.forEach { difficulty ->
+          DropdownMenuItem(
+            text = { Text(difficulty.label()) },
+            onClick = {
+              menuOpen = false
+              if (difficulty != state.difficulty) onNewGame(difficulty)
+            },
+          )
+        }
+      }
+    }
+    TextButton(
+      onClick = { onNewGame(state.difficulty) },
+      contentPadding = PaddingValues(horizontal = 5.dp),
+    ) {
+      Text("新規")
+    }
+  }
+}
+
+@Composable
+private fun SpiderCompletedRuns(
+  completedRuns: List<CardSuit>,
+  modifier: Modifier = Modifier,
+) {
+  Row(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(3.dp),
   ) {
     repeat(8) { index ->
       val suit = completedRuns.getOrNull(index)
       Box(
         modifier = Modifier
           .weight(1f)
-          .height(28.dp)
-          .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp)),
+          .background(Color.Black.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
+          .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(5.dp))
+          .padding(vertical = 5.dp),
         contentAlignment = Alignment.Center,
       ) {
         Text(
-          text = suit?.symbol() ?: "—",
-          style = MaterialTheme.typography.labelLarge,
+          text = suit?.symbol() ?: "·",
+          style = MaterialTheme.typography.labelMedium,
           color = when {
-            suit == null -> MaterialTheme.colorScheme.onSurfaceVariant
-            suit.isRed -> MaterialTheme.colorScheme.error
-            else -> MaterialTheme.colorScheme.onSurface
+            suit == null -> Color.White.copy(alpha = 0.35f)
+            suit.isRed -> Color(0xFFFF8A80)
+            else -> Color.White
           },
+          fontWeight = FontWeight.Bold,
         )
       }
     }
@@ -203,150 +247,167 @@ private fun CompletedRuns(completedRuns: List<CardSuit>) {
 }
 
 @Composable
-private fun SpiderTableauBoard(
+private fun SpiderStockControl(
   state: SpiderGameState,
-  onSelectTableau: (Int, Int) -> Unit,
-  onMoveSelectedToTableau: (Int) -> Unit,
+  onDealStock: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(470.dp),
-    horizontalArrangement = Arrangement.spacedBy(2.dp),
-  ) {
-    state.tableau.forEachIndexed { pileIndex, pile ->
+  Box(modifier = modifier) {
+    if (state.stock.isNotEmpty()) {
+      CardBackView(
+        modifier = Modifier.fillMaxWidth(),
+        description = "山札を配る。残り ${state.stock.size / 10}回",
+        onClick = if (state.canDealStock) onDealStock else null,
+      )
       Box(
         modifier = Modifier
-          .weight(1f)
-          .fillMaxHeight(),
+          .align(Alignment.BottomCenter)
+          .padding(2.dp)
+          .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(999.dp))
+          .padding(horizontal = 4.dp, vertical = 1.dp),
       ) {
-        if (pile.isEmpty()) {
-          SpiderEmptySlot(
-            modifier = Modifier.fillMaxWidth(),
-            description = "空の場札 ${pileIndex + 1}列目",
-            onClick = if (state.selection != null) {
-              { onMoveSelectedToTableau(pileIndex) }
-            } else {
-              null
-            },
-          )
-        } else {
-          val step = when {
-            pile.size >= 24 -> 13
-            pile.size >= 20 -> 15
-            pile.size >= 16 -> 18
-            else -> 21
-          }
-          pile.forEachIndexed { cardIndex, tableauCard ->
-            val selected = state.selection?.let { selection ->
-              selection.pileIndex == pileIndex && cardIndex >= selection.cardIndex
-            } == true
-            val cardModifier = Modifier
-              .fillMaxWidth()
-              .offset(y = (cardIndex * step).dp)
-
-            if (tableauCard.faceUp) {
-              SpiderFaceCard(
-                card = tableauCard.card,
-                selected = selected,
-                modifier = cardModifier,
-                onClick = {
-                  val current = state.selection
-                  when {
-                    current == null -> onSelectTableau(pileIndex, cardIndex)
-                    current.pileIndex == pileIndex -> onSelectTableau(pileIndex, cardIndex)
-                    else -> onMoveSelectedToTableau(pileIndex)
-                  }
-                },
-              )
-            } else {
-              SpiderBackCard(
-                modifier = cardModifier,
-                description = "伏せ札 ${pileIndex + 1}列目",
-              )
-            }
-          }
-        }
+        Text(
+          text = "×${state.stock.size / 10}",
+          style = MaterialTheme.typography.labelSmall,
+          color = Color.White,
+          fontWeight = FontWeight.Bold,
+        )
       }
+    } else {
+      CardSlotView(
+        modifier = Modifier.fillMaxWidth(),
+        label = "完",
+        description = "山札は空です",
+      )
     }
   }
 }
 
 @Composable
-private fun SpiderFaceCard(
-  card: PlayingCard,
-  selected: Boolean,
-  onClick: () -> Unit,
+private fun SpiderSelectionStatus(
+  state: SpiderGameState,
+  validTargets: Set<Int>,
+) {
+  val message = when {
+    state.selection != null && validTargets.isNotEmpty() ->
+      "${state.selectedCardCount()}枚選択 · 光っている列へ移動"
+    state.selection != null ->
+      "${state.selectedCardCount()}枚選択 · 現在は移動先がありません"
+    state.stock.isNotEmpty() && !state.canDealStock && state.tableau.any { it.isEmpty() } ->
+      "空列を埋めると右上の山札を配れます"
+    else ->
+      "同一スートの連続列を選ぶと移動可能先が光ります"
+  }
+
+  Text(
+    text = message,
+    style = MaterialTheme.typography.labelSmall,
+    color = Color.White.copy(alpha = 0.78f),
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun SpiderTableauBoard(
+  state: SpiderGameState,
+  validTargets: Set<Int>,
+  onSelectTableau: (Int, Int) -> Unit,
+  onMoveSelectedToTableau: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val shape = RoundedCornerShape(4.dp)
-  val borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-  val borderWidth = if (selected) 2.dp else 1.dp
-  Box(
-    modifier = modifier
-      .aspectRatio(0.68f)
-      .clip(shape)
-      .background(MaterialTheme.colorScheme.surface)
-      .border(borderWidth, borderColor, shape)
-      .clickable(onClick = onClick)
-      .padding(horizontal = 1.dp, vertical = 2.dp)
-      .semantics { contentDescription = card.description() },
+  Row(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(2.dp),
   ) {
-    Text(
-      text = "${card.rankLabel()}${card.suit.symbol()}",
-      style = MaterialTheme.typography.labelSmall,
-      fontWeight = FontWeight.Bold,
-      color = if (card.suit.isRed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-      maxLines = 1,
-    )
+    state.tableau.forEachIndexed { pileIndex, pile ->
+      SpiderTableauPile(
+        pile = pile,
+        pileIndex = pileIndex,
+        selection = state.selection,
+        isDestination = pileIndex in validTargets,
+        onSelectTableau = onSelectTableau,
+        onMoveSelectedToTableau = onMoveSelectedToTableau,
+        modifier = Modifier
+          .weight(1f)
+          .fillMaxHeight(),
+      )
+    }
   }
 }
 
 @Composable
-private fun SpiderBackCard(
-  description: String,
+private fun SpiderTableauPile(
+  pile: List<SpiderTableauCard>,
+  pileIndex: Int,
+  selection: SpiderSelection?,
+  isDestination: Boolean,
+  onSelectTableau: (Int, Int) -> Unit,
+  onMoveSelectedToTableau: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Box(
+  BoxWithConstraints(
     modifier = modifier
-      .aspectRatio(0.68f)
-      .clip(RoundedCornerShape(4.dp))
-      .background(MaterialTheme.colorScheme.primaryContainer)
-      .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-      .semantics { contentDescription = description },
-    contentAlignment = Alignment.Center,
+      .then(
+        if (isDestination) {
+          Modifier
+            .border(2.dp, Color(0xFF80CBC4), RoundedCornerShape(7.dp))
+            .background(Color(0xFF80CBC4).copy(alpha = 0.08f), RoundedCornerShape(7.dp))
+            .clickable { onMoveSelectedToTableau(pileIndex) }
+        } else {
+          Modifier
+        },
+      )
+      .padding(1.dp),
   ) {
-    Text(
-      "◆",
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onPrimaryContainer,
-      textAlign = TextAlign.Center,
-    )
-  }
-}
+    if (pile.isEmpty()) {
+      CardSlotView(
+        modifier = Modifier.fillMaxWidth(),
+        label = "+",
+        description = "空の場札 ${pileIndex + 1}列目",
+        emphasis = if (isDestination) CardEmphasis.DESTINATION else CardEmphasis.NORMAL,
+        onClick = if (isDestination) ({ onMoveSelectedToTableau(pileIndex) }) else null,
+      )
+      return@BoxWithConstraints
+    }
 
-@Composable
-private fun SpiderEmptySlot(
-  description: String,
-  modifier: Modifier = Modifier,
-  onClick: (() -> Unit)? = null,
-) {
-  val shape = RoundedCornerShape(4.dp)
-  val clickable = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
-  Box(
-    modifier = modifier
-      .aspectRatio(0.68f)
-      .clip(shape)
-      .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
-      .then(clickable)
-      .semantics { contentDescription = description },
-    contentAlignment = Alignment.Center,
-  ) {
-    Text(
-      "＋",
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    val cardHeight = maxWidth.value / 0.68f
+    val step = if (pile.size <= 1) {
+      0.dp
+    } else {
+      ((maxHeight.value - cardHeight).coerceAtLeast(0f) / (pile.size - 1))
+        .dp
+        .coerceIn(10.dp, 24.dp)
+    }
+
+    pile.forEachIndexed { cardIndex, tableauCard ->
+      val selected = selection?.let { current ->
+        current.pileIndex == pileIndex && cardIndex >= current.cardIndex
+      } == true
+      val cardModifier = Modifier
+        .fillMaxWidth()
+        .offset(y = (step.value * cardIndex).dp)
+
+      if (tableauCard.faceUp) {
+        PlayingCardView(
+          card = tableauCard.card,
+          compact = true,
+          emphasis = if (selected) CardEmphasis.SELECTED else CardEmphasis.NORMAL,
+          modifier = cardModifier,
+          onClick = {
+            if (selection != null && isDestination) {
+              onMoveSelectedToTableau(pileIndex)
+            } else {
+              onSelectTableau(pileIndex, cardIndex)
+            }
+          },
+        )
+      } else {
+        CardBackView(
+          modifier = cardModifier,
+          description = "伏せ札 ${pileIndex + 1}列目",
+        )
+      }
+    }
   }
 }
 
@@ -355,27 +416,3 @@ private fun SpiderDifficulty.label(): String = when (this) {
   SpiderDifficulty.TWO_SUITS -> "2スート"
   SpiderDifficulty.FOUR_SUITS -> "4スート"
 }
-
-private fun PlayingCard.rankLabel(): String = when (rank) {
-  1 -> "A"
-  11 -> "J"
-  12 -> "Q"
-  13 -> "K"
-  else -> rank.toString()
-}
-
-private fun CardSuit.symbol(): String = when (this) {
-  CardSuit.CLUBS -> "♣"
-  CardSuit.DIAMONDS -> "♦"
-  CardSuit.HEARTS -> "♥"
-  CardSuit.SPADES -> "♠"
-}
-
-private fun CardSuit.displayName(): String = when (this) {
-  CardSuit.CLUBS -> "クラブ"
-  CardSuit.DIAMONDS -> "ダイヤ"
-  CardSuit.HEARTS -> "ハート"
-  CardSuit.SPADES -> "スペード"
-}
-
-private fun PlayingCard.description(): String = "${suit.displayName()}の${rankLabel()}"

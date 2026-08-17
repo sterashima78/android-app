@@ -88,6 +88,36 @@ class KlondikeTest {
     assertEquals(state, state.moveSelectedToTableau(0))
   }
 
+  @Test
+  fun `選択中の列から合法な移動先だけを列挙する`() {
+    val redSix = PlayingCard(CardSuit.HEARTS, 6)
+    val blackSeven = PlayingCard(CardSuit.SPADES, 7)
+    val redSeven = PlayingCard(CardSuit.DIAMONDS, 7)
+    val state = emptyState(
+      tableau = listOf(
+        listOf(TableauCard(redSix, true)),
+        listOf(TableauCard(blackSeven, true)),
+        listOf(TableauCard(redSeven, true)),
+        emptyList(), emptyList(), emptyList(), emptyList(),
+      ),
+      selection = KlondikeSelection.Tableau(0, 0),
+    )
+
+    assertEquals(setOf(1), state.validTableauTargets())
+    assertEquals(1, state.selectedCardCount())
+  }
+
+  @Test
+  fun `組札へ移動可能な選択だけ対象スートを返す`() {
+    val ace = PlayingCard(CardSuit.HEARTS, 1)
+    val state = emptyState(
+      waste = listOf(ace),
+      selection = KlondikeSelection.Waste,
+    )
+
+    assertEquals(setOf(CardSuit.HEARTS), state.validFoundationTargets())
+  }
+
   private fun emptyState(
     waste: List<PlayingCard> = emptyList(),
     tableau: List<List<TableauCard>> = List(7) { emptyList() },

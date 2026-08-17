@@ -1,22 +1,24 @@
 package dev.terashima.yomitorirss.feature.game
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -27,12 +29,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -71,75 +69,122 @@ private fun KlondikeScreen(
   onMoveSelectedToFoundation: (CardSuit) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Column(
-    modifier = modifier
-      .verticalScroll(rememberScrollState())
-      .padding(horizontal = 12.dp, vertical = 10.dp),
-    verticalArrangement = Arrangement.spacedBy(10.dp),
-  ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Column {
-        Text("クロンダイク", style = MaterialTheme.typography.headlineSmall)
-        Text(
-          "手数: ${state.moves}",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      TextButton(onClick = onBack) { Text("ゲーム一覧") }
-    }
+  val validTableauTargets = state.validTableauTargets()
+  val validFoundationTargets = state.validFoundationTargets()
 
-    if (state.isWon) {
-      Card(modifier = Modifier.fillMaxWidth()) {
+  Box(modifier = modifier.fillMaxSize()) {
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 8.dp, vertical = 6.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      KlondikeHeader(
+        moves = state.moves,
+        onBack = onBack,
+        onNewGame = onNewGame,
+      )
+
+      GameTableSurface(
+        modifier = Modifier
+          .fillMaxWidth()
+          .weight(1f),
+      ) {
         Column(
-          modifier = Modifier.padding(16.dp),
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          Text("クリアしました", style = MaterialTheme.typography.titleMedium)
-          Text("52枚すべてを組札へ移動しました。")
-          Button(onClick = onNewGame) { Text("新しいゲーム") }
+          KlondikeTopRow(
+            state = state,
+            validFoundationTargets = validFoundationTargets,
+            onDrawStock = onDrawStock,
+            onSelectWaste = onSelectWaste,
+            onSelectFoundation = onSelectFoundation,
+            onMoveSelectedToFoundation = onMoveSelectedToFoundation,
+          )
+
+          KlondikeSelectionStatus(
+            state = state,
+            validTableauTargets = validTableauTargets,
+            validFoundationTargets = validFoundationTargets,
+            onMoveSelectedToFoundation = onMoveSelectedToFoundation,
+          )
+
+          KlondikeTableauBoard(
+            state = state,
+            validTargets = validTableauTargets,
+            onSelectTableau = onSelectTableau,
+            onFlipTableauTop = onFlipTableauTop,
+            onMoveSelectedToTableau = onMoveSelectedToTableau,
+            modifier = Modifier
+              .fillMaxWidth()
+              .weight(1f),
+          )
         }
       }
     }
 
-    KlondikeTopRow(
-      state = state,
-      onDrawStock = onDrawStock,
-      onSelectWaste = onSelectWaste,
-      onSelectFoundation = onSelectFoundation,
-      onMoveSelectedToFoundation = onMoveSelectedToFoundation,
-    )
-
-    TableauBoard(
-      state = state,
-      onSelectTableau = onSelectTableau,
-      onFlipTableauTop = onFlipTableauTop,
-      onMoveSelectedToTableau = onMoveSelectedToTableau,
-    )
-
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.Center,
+    AnimatedVisibility(
+      visible = state.isWon,
+      modifier = Modifier.align(Alignment.Center),
+      enter = fadeIn(),
+      exit = fadeOut(),
     ) {
-      Button(onClick = onNewGame) { Text("新しいゲーム") }
+      Card(modifier = Modifier.widthIn(max = 320.dp).padding(20.dp)) {
+        Column(
+          modifier = Modifier.padding(24.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          Text("クリア", style = MaterialTheme.typography.headlineSmall)
+          Text("52枚すべてを組札へ移動しました。")
+          Button(onClick = onNewGame, modifier = Modifier.fillMaxWidth()) {
+            Text("次のゲーム")
+          }
+        }
+      }
     }
+  }
+}
 
-    Text(
-      "カードをタップして選択し、移動先の列または組札をタップします。場札は赤黒交互の降順、空列にはKのみ置けます。山札は1枚ずつめくり、空になったら捨て札を再利用できます。",
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(Modifier.height(8.dp))
+@Composable
+private fun KlondikeHeader(
+  moves: Int,
+  onBack: () -> Unit,
+  onNewGame: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 6.dp)) {
+      Text("‹ ゲーム")
+    }
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        "クロンダイク",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+      )
+      Text(
+        "手数 $moves",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    TextButton(onClick = onNewGame, contentPadding = PaddingValues(horizontal = 6.dp)) {
+      Text("新しいゲーム")
+    }
   }
 }
 
 @Composable
 private fun KlondikeTopRow(
   state: KlondikeGameState,
+  validFoundationTargets: Set<CardSuit>,
   onDrawStock: () -> Unit,
   onSelectWaste: () -> Unit,
   onSelectFoundation: (CardSuit) -> Unit,
@@ -150,25 +195,44 @@ private fun KlondikeTopRow(
     horizontalArrangement = Arrangement.spacedBy(5.dp),
     verticalAlignment = Alignment.Top,
   ) {
-    EmptyOrBackCard(
-      modifier = Modifier.weight(1f),
-      hasCard = state.stock.isNotEmpty(),
-      emptyLabel = if (state.waste.isNotEmpty()) "↻" else "山",
-      description = if (state.stock.isNotEmpty()) "山札 ${state.stock.size}枚" else "捨て札を山札へ戻す",
-      onClick = onDrawStock,
-    )
+    Box(modifier = Modifier.weight(1f)) {
+      if (state.stock.isNotEmpty()) {
+        CardBackView(
+          modifier = Modifier.fillMaxWidth(),
+          description = "山札 ${state.stock.size}枚",
+          onClick = onDrawStock,
+        )
+      } else {
+        CardSlotView(
+          modifier = Modifier.fillMaxWidth(),
+          label = if (state.waste.isNotEmpty()) "↻" else "山",
+          description = if (state.waste.isNotEmpty()) "捨て札を山札へ戻す" else "山札は空です",
+          onClick = if (state.waste.isNotEmpty()) onDrawStock else null,
+        )
+      }
+      if (state.stock.isNotEmpty()) {
+        CardCountBadge(
+          text = state.stock.size.toString(),
+          modifier = Modifier.align(Alignment.BottomCenter),
+        )
+      }
+    }
 
     val waste = state.waste.lastOrNull()
     if (waste == null) {
-      EmptyCardSlot(
+      CardSlotView(
         modifier = Modifier.weight(1f),
         label = "捨",
         description = "捨て札",
       )
     } else {
-      FaceCard(
+      PlayingCardView(
         card = waste,
-        selected = state.selection == KlondikeSelection.Waste,
+        emphasis = if (state.selection == KlondikeSelection.Waste) {
+          CardEmphasis.SELECTED
+        } else {
+          CardEmphasis.NORMAL
+        },
         modifier = Modifier.weight(1f),
         onClick = onSelectWaste,
       )
@@ -178,24 +242,31 @@ private fun KlondikeTopRow(
       val foundation = state.foundations[suit].orEmpty()
       val top = foundation.lastOrNull()
       val selected = state.selection == KlondikeSelection.Foundation(suit)
+      val destination = suit in validFoundationTargets
       val click = {
-        if (state.selection == null || selected) {
-          onSelectFoundation(suit)
-        } else {
-          onMoveSelectedToFoundation(suit)
+        when {
+          selected || state.selection == null -> onSelectFoundation(suit)
+          destination -> onMoveSelectedToFoundation(suit)
+          else -> onSelectFoundation(suit)
         }
       }
+
       if (top == null) {
-        EmptyCardSlot(
+        CardSlotView(
           modifier = Modifier.weight(1f),
           label = suit.symbol(),
           description = "${suit.displayName()}の組札",
-          onClick = if (state.selection != null) click else null,
+          emphasis = if (destination) CardEmphasis.DESTINATION else CardEmphasis.NORMAL,
+          onClick = if (destination) click else null,
         )
       } else {
-        FaceCard(
+        PlayingCardView(
           card = top,
-          selected = selected,
+          emphasis = when {
+            selected -> CardEmphasis.SELECTED
+            destination -> CardEmphasis.DESTINATION
+            else -> CardEmphasis.NORMAL
+          },
           modifier = Modifier.weight(1f),
           onClick = click,
         )
@@ -205,192 +276,169 @@ private fun KlondikeTopRow(
 }
 
 @Composable
-private fun TableauBoard(
+private fun KlondikeSelectionStatus(
   state: KlondikeGameState,
-  onSelectTableau: (Int, Int) -> Unit,
-  onFlipTableauTop: (Int) -> Unit,
-  onMoveSelectedToTableau: (Int) -> Unit,
+  validTableauTargets: Set<Int>,
+  validFoundationTargets: Set<CardSuit>,
+  onMoveSelectedToFoundation: (CardSuit) -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(410.dp),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(6.dp),
   ) {
-    state.tableau.forEachIndexed { pileIndex, pile ->
-      Box(
-        modifier = Modifier
-          .weight(1f)
-          .fillMaxHeight(),
+    val message = when {
+      state.selection == null -> "カードを選ぶと移動可能先が光ります"
+      validFoundationTargets.isNotEmpty() -> "${state.selectedCardCount()}枚選択 · 組札または光っている列へ移動"
+      validTableauTargets.isNotEmpty() -> "${state.selectedCardCount()}枚選択 · 光っている列へ移動"
+      else -> "${state.selectedCardCount()}枚選択 · 現在は移動先がありません"
+    }
+    Text(
+      text = message,
+      style = MaterialTheme.typography.labelSmall,
+      color = Color.White.copy(alpha = 0.78f),
+      modifier = Modifier.weight(1f),
+    )
+    validFoundationTargets.singleOrNull()?.let { suit ->
+      TextButton(
+        onClick = { onMoveSelectedToFoundation(suit) },
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
       ) {
-        if (pile.isEmpty()) {
-          EmptyCardSlot(
-            modifier = Modifier.fillMaxWidth(),
-            label = "K",
-            description = "空の場札 ${pileIndex + 1}列目",
-            onClick = if (state.selection != null) {
-              { onMoveSelectedToTableau(pileIndex) }
-            } else {
-              null
-            },
-          )
-        } else {
-          pile.forEachIndexed { cardIndex, tableauCard ->
-            val selected = state.selection == KlondikeSelection.Tableau(pileIndex, cardIndex)
-            val isTop = cardIndex == pile.lastIndex
-            val cardModifier = Modifier
-              .fillMaxWidth()
-              .offset(y = (cardIndex * 24).dp)
-
-            if (!tableauCard.faceUp) {
-              EmptyOrBackCard(
-                modifier = cardModifier,
-                hasCard = true,
-                emptyLabel = "",
-                description = "伏せ札 ${pileIndex + 1}列目",
-                onClick = if (isTop && state.selection == null) {
-                  { onFlipTableauTop(pileIndex) }
-                } else {
-                  {}
-                },
-              )
-            } else {
-              FaceCard(
-                card = tableauCard.card,
-                selected = selected,
-                modifier = cardModifier,
-                onClick = {
-                  val current = state.selection
-                  when {
-                    current == null -> onSelectTableau(pileIndex, cardIndex)
-                    current is KlondikeSelection.Tableau && current.pileIndex == pileIndex -> {
-                      onSelectTableau(pileIndex, cardIndex)
-                    }
-                    else -> onMoveSelectedToTableau(pileIndex)
-                  }
-                },
-              )
-            }
-          }
-        }
+        Text("組札へ", color = Color.White)
       }
     }
   }
 }
 
 @Composable
-private fun FaceCard(
-  card: PlayingCard,
-  selected: Boolean,
+private fun KlondikeTableauBoard(
+  state: KlondikeGameState,
+  validTargets: Set<Int>,
+  onSelectTableau: (Int, Int) -> Unit,
+  onFlipTableauTop: (Int) -> Unit,
+  onMoveSelectedToTableau: (Int) -> Unit,
   modifier: Modifier = Modifier,
-  onClick: () -> Unit,
 ) {
-  val shape = RoundedCornerShape(6.dp)
-  val borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-  val borderWidth = if (selected) 2.dp else 1.dp
-  Box(
-    modifier = modifier
-      .aspectRatio(0.68f)
-      .clip(shape)
-      .background(MaterialTheme.colorScheme.surface)
-      .border(borderWidth, borderColor, shape)
-      .clickable(onClick = onClick)
-      .padding(3.dp)
-      .semantics { contentDescription = card.description() },
+  Row(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    Text(
-      text = "${card.rankLabel()}${card.suit.symbol()}",
-      style = MaterialTheme.typography.labelMedium,
-      fontWeight = FontWeight.Bold,
-      color = if (card.suit.isRed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-      maxLines = 1,
-    )
-    Text(
-      text = card.suit.symbol(),
-      style = MaterialTheme.typography.titleMedium,
-      color = if (card.suit.isRed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-      modifier = Modifier.align(Alignment.Center),
-    )
-  }
-}
-
-@Composable
-private fun EmptyOrBackCard(
-  hasCard: Boolean,
-  emptyLabel: String,
-  description: String,
-  onClick: () -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  val shape = RoundedCornerShape(6.dp)
-  Box(
-    modifier = modifier
-      .aspectRatio(0.68f)
-      .clip(shape)
-      .background(
-        if (hasCard) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+    state.tableau.forEachIndexed { pileIndex, pile ->
+      KlondikeTableauPile(
+        pile = pile,
+        pileIndex = pileIndex,
+        selection = state.selection,
+        isDestination = pileIndex in validTargets,
+        onSelectTableau = onSelectTableau,
+        onFlipTableauTop = onFlipTableauTop,
+        onMoveSelectedToTableau = onMoveSelectedToTableau,
+        modifier = Modifier
+          .weight(1f)
+          .fillMaxHeight(),
       )
-      .border(1.dp, MaterialTheme.colorScheme.outline, shape)
-      .clickable(onClick = onClick)
-      .semantics { contentDescription = description },
-    contentAlignment = Alignment.Center,
-  ) {
-    Text(
-      text = if (hasCard) "◆" else emptyLabel,
-      style = MaterialTheme.typography.titleMedium,
-      color = if (hasCard) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-      textAlign = TextAlign.Center,
-    )
+    }
   }
 }
 
 @Composable
-private fun EmptyCardSlot(
-  label: String,
-  description: String,
+private fun KlondikeTableauPile(
+  pile: List<TableauCard>,
+  pileIndex: Int,
+  selection: KlondikeSelection?,
+  isDestination: Boolean,
+  onSelectTableau: (Int, Int) -> Unit,
+  onFlipTableauTop: (Int) -> Unit,
+  onMoveSelectedToTableau: (Int) -> Unit,
   modifier: Modifier = Modifier,
-  onClick: (() -> Unit)? = null,
 ) {
-  val shape = RoundedCornerShape(6.dp)
-  val clickableModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
-  Box(
+  BoxWithConstraints(
     modifier = modifier
-      .aspectRatio(0.68f)
-      .clip(shape)
-      .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
-      .then(clickableModifier)
-      .semantics { contentDescription = description },
-    contentAlignment = Alignment.Center,
+      .then(
+        if (isDestination) {
+          Modifier
+            .border(2.dp, Color(0xFF80CBC4), RoundedCornerShape(9.dp))
+            .background(Color(0xFF80CBC4).copy(alpha = 0.08f), RoundedCornerShape(9.dp))
+            .clickable { onMoveSelectedToTableau(pileIndex) }
+        } else {
+          Modifier
+        },
+      )
+      .padding(2.dp),
   ) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelLarge,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      textAlign = TextAlign.Center,
-    )
+    if (pile.isEmpty()) {
+      CardSlotView(
+        modifier = Modifier.fillMaxWidth(),
+        label = "K",
+        description = "空の場札 ${pileIndex + 1}列目",
+        emphasis = if (isDestination) CardEmphasis.DESTINATION else CardEmphasis.NORMAL,
+        onClick = if (isDestination) ({ onMoveSelectedToTableau(pileIndex) }) else null,
+      )
+      return@BoxWithConstraints
+    }
+
+    val cardHeight = maxWidth.value / 0.68f
+    val step = if (pile.size <= 1) {
+      0.dp
+    } else {
+      ((maxHeight.value - cardHeight).coerceAtLeast(0f) / (pile.size - 1))
+        .dp
+        .coerceIn(13.dp, 29.dp)
+    }
+
+    pile.forEachIndexed { cardIndex, tableauCard ->
+      val selected = selection is KlondikeSelection.Tableau &&
+        selection.pileIndex == pileIndex &&
+        cardIndex >= selection.cardIndex
+      val isTop = cardIndex == pile.lastIndex
+      val cardModifier = Modifier
+        .fillMaxWidth()
+        .offset(y = (step.value * cardIndex).dp)
+
+      if (tableauCard.faceUp) {
+        PlayingCardView(
+          card = tableauCard.card,
+          emphasis = if (selected) CardEmphasis.SELECTED else CardEmphasis.NORMAL,
+          modifier = cardModifier,
+          onClick = {
+            if (selection != null && isDestination) {
+              onMoveSelectedToTableau(pileIndex)
+            } else {
+              onSelectTableau(pileIndex, cardIndex)
+            }
+          },
+        )
+      } else {
+        CardBackView(
+          modifier = cardModifier,
+          description = "伏せ札 ${pileIndex + 1}列目",
+          onClick = if (isTop && selection == null) {
+            { onFlipTableauTop(pileIndex) }
+          } else {
+            null
+          },
+        )
+      }
+    }
   }
 }
 
-private fun PlayingCard.rankLabel(): String = when (rank) {
-  1 -> "A"
-  11 -> "J"
-  12 -> "Q"
-  13 -> "K"
-  else -> rank.toString()
+@Composable
+private fun CardCountBadge(
+  text: String,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    modifier = modifier
+      .padding(3.dp)
+      .background(Color.Black.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
+      .padding(horizontal = 5.dp, vertical = 1.dp),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(
+      text = text,
+      style = MaterialTheme.typography.labelSmall,
+      color = Color.White,
+      fontWeight = FontWeight.Bold,
+    )
+  }
 }
-
-private fun CardSuit.symbol(): String = when (this) {
-  CardSuit.CLUBS -> "♣"
-  CardSuit.DIAMONDS -> "♦"
-  CardSuit.HEARTS -> "♥"
-  CardSuit.SPADES -> "♠"
-}
-
-private fun CardSuit.displayName(): String = when (this) {
-  CardSuit.CLUBS -> "クラブ"
-  CardSuit.DIAMONDS -> "ダイヤ"
-  CardSuit.HEARTS -> "ハート"
-  CardSuit.SPADES -> "スペード"
-}
-
-private fun PlayingCard.description(): String = "${suit.displayName()}の${rankLabel()}"
