@@ -26,7 +26,7 @@ class YanmagaFeedClientTest {
   }
 
   @Test
-  fun `無料公開中のエピソードだけをフィードとして解析する`() = runBlocking {
+  fun `通常無料と期間限定無料のエピソードだけをフィードとして解析する`() = runBlocking {
     val pageUrl = "https://yanmaga.jp/comics/sample_work"
     val httpClient = RecordingHttpClient(
       HttpResponse(
@@ -49,10 +49,18 @@ class YanmagaFeedClientTest {
                     <span class="mod-episode-date">2026/08/17</span>
                   </div>
                   <div class="mod-episode-item" data-is-free="false">
-                    <a class="mod-episode-link" href="/comics/sample_work/paid-episode">
-                      <span class="mod-episode-title">第2話 サンプル</span>
+                    <a class="mod-episode-link" href="/comics/sample_work/limited-free-episode">
+                      <span class="mod-episode-title">第2話 期間限定サンプル</span>
                     </a>
-                    <span class="mod-episode-date">2026/08/24</span>
+                    <span class="mod-episode-date">2026/08/18</span>
+                    <span class="mod-episode-point mod-episode-point--free">無料</span>
+                  </div>
+                  <div class="mod-episode-item" data-is-free="false">
+                    <a class="mod-episode-link" href="/comics/sample_work/paid-episode">
+                      <span class="mod-episode-title">第3話 有料サンプル</span>
+                    </a>
+                    <span class="mod-episode-date">2026/08/19</span>
+                    <span class="mod-episode-point">70</span>
                   </div>
                 </div>
               </main>
@@ -70,10 +78,20 @@ class YanmagaFeedClientTest {
     assertEquals("サンプル作品", feed.title)
     assertEquals(pageUrl, feed.feedUrl)
     assertEquals(pageUrl, feed.siteUrl)
-    assertEquals(1, feed.articles.size)
-    assertEquals("第1話 サンプル", feed.articles.single().title)
-    assertEquals("https://yanmaga.jp/comics/sample_work/free-episode", feed.articles.single().url)
-    assertEquals("2026-08-16T15:00:00Z", feed.articles.single().publishedAt)
+    assertEquals(2, feed.articles.size)
+    assertEquals(
+      listOf("第1話 サンプル", "第2話 期間限定サンプル"),
+      feed.articles.map { it.title },
+    )
+    assertEquals(
+      listOf(
+        "https://yanmaga.jp/comics/sample_work/free-episode",
+        "https://yanmaga.jp/comics/sample_work/limited-free-episode",
+      ),
+      feed.articles.map { it.url },
+    )
+    assertEquals("2026-08-16T15:00:00Z", feed.articles.first().publishedAt)
+    assertEquals("2026-08-17T15:00:00Z", feed.articles.last().publishedAt)
   }
 
   @Test
