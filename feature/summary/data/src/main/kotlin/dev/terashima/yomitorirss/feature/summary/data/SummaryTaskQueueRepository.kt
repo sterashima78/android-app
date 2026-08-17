@@ -66,7 +66,8 @@ class DefaultSummaryTaskQueueRepository(
 
   override suspend fun retryFailedBookmarkTasks(): Int {
     val retried = database.retryFailedBookmarkSummaryTasks()
-    if (retried > 0) SummaryQueue.kick(appContext)
+    // 前回のkickだけが失敗し、対象がすでにqueuedへ遷移済みでも再操作で回復できるよう必ず再スケジュールする。
+    SummaryQueue.kick(appContext)
     return retried
   }
 }
