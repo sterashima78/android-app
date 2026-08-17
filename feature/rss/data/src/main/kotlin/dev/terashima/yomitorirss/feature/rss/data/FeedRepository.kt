@@ -36,21 +36,19 @@ class DefaultFeedRepository(
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
     val normalized = client.normalizeInputUrl(url)
-    val result = if (yanmagaClient.supports(normalized)) {
+    val isYanmaga = yanmagaClient.supports(normalized)
+    val result = if (isYanmaga) {
       yanmagaClient.fetchFeed(normalized)
     } else {
       client.fetchFeed(normalized)
     }
-    val parsed = requireNotNull(result.feed)
-    val feed = store.addFeed(
-      parsed = parsed,
+    store.addFeed(
+      parsed = requireNotNull(result.feed),
       etag = result.etag,
       modified = result.lastModified,
       markExistingArticlesRead = markExistingArticlesRead,
+      contentTypeOverride = ContentType.COMIC.takeIf { isYanmaga },
     )
-    if (yanmagaClient.supports(parsed.feedUrl)) {
-      store.setFeedContentType(feed.id, ContentType.COMIC)
-    }
     dataChanges.notifyChanged()
   }
 
