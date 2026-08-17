@@ -37,6 +37,7 @@ internal class FeedStore(
     modified: String?,
     markExistingArticlesRead: Boolean = false,
     folderId: String? = null,
+    contentTypeOverride: ContentType? = null,
   ): Feed {
     val now = nowIso()
     val feed = Feed(
@@ -50,6 +51,7 @@ internal class FeedStore(
       lastError = null,
       createdAt = now,
       folderId = folderId,
+      contentTypeOverride = contentTypeOverride,
     )
     database.transaction {
       insertOrThrow("feeds", null, feed.values())
