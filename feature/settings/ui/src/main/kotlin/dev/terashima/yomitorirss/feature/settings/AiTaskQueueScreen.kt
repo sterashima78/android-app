@@ -93,6 +93,17 @@ fun AiTaskQueueScreen(
             )
           },
         )
+        ListItem(
+          headlineContent = { Text("失敗したブックマーク") },
+          supportingContent = {
+            Text("生成に失敗した保存済みブックマークをまとめて待機状態へ戻します")
+          },
+          trailingContent = {
+            TextButton(onClick = taskQueueViewModel::retryFailedBookmarkTasks) {
+              Text("一括再実行")
+            }
+          },
+        )
         HorizontalDivider()
 
         val runningCount = state.taskCounts.running
