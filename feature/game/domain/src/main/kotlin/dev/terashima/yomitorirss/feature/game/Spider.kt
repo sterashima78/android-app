@@ -85,6 +85,25 @@ fun SpiderGameState.selectTableau(pileIndex: Int, cardIndex: Int): SpiderGameSta
   return copy(selection = if (selection == next) null else next)
 }
 
+fun SpiderGameState.selectedCardCount(): Int {
+  val selected = selection ?: return 0
+  return movableRun(tableau.getOrNull(selected.pileIndex).orEmpty(), selected.cardIndex)?.size ?: 0
+}
+
+fun SpiderGameState.validTableauTargets(): Set<Int> {
+  val selected = selection ?: return emptySet()
+  val moving = movableRun(tableau.getOrNull(selected.pileIndex).orEmpty(), selected.cardIndex) ?: return emptySet()
+
+  return tableau.indices.filterTo(mutableSetOf()) { targetPileIndex ->
+    if (targetPileIndex == selected.pileIndex) {
+      false
+    } else {
+      val targetTop = tableau[targetPileIndex].lastOrNull()
+      targetTop == null || (targetTop.faceUp && targetTop.card.rank == moving.first().card.rank + 1)
+    }
+  }
+}
+
 fun SpiderGameState.moveSelectedToTableau(targetPileIndex: Int): SpiderGameState {
   val selected = selection ?: return this
   if (selected.pileIndex == targetPileIndex) return copy(selection = null)
