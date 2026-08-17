@@ -79,6 +79,7 @@ fun GameRoute(
         onBack = { screen = GameScreen.LIST.name },
         onNewGame = game2048ViewModel::newGame,
         onMove = game2048ViewModel::move,
+        onAnimationFinished = game2048ViewModel::completeTransition,
       )
     }
 
