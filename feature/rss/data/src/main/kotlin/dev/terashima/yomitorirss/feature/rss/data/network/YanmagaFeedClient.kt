@@ -26,18 +26,25 @@ internal class YanmagaFeedClient(
   fun supports(url: String): Boolean = runCatching {
     val uri = URI(url)
     val host = uri.host?.lowercase(Locale.ROOT)
-    if (host != "yanmaga.jp" && host != "www.yanmaga.jp") return@runCatching false
+    if (host != YANMAGA_HOST && host != WWW_YANMAGA_HOST) return@runCatching false
     val segments = uri.path.orEmpty().trim('/').split('/').filter(String::isNotBlank)
     segments.size == 2 && segments[0] == "comics" && segments[1] != "series"
   }.getOrDefault(false)
 
-  suspend fun inspect(url: String): FeedInspection {
+  fun canonicalWorkUrl(url: String): String {
     require(supports(url)) { "ヤンマガWebの作品URLを入力してください" }
-    val response = client.execute(request(url))
+    val uri = URI(url)
+    val rawPath = uri.rawPath.orEmpty().trimEnd('/')
+    return "https://$YANMAGA_HOST$rawPath"
+  }
+
+  suspend fun inspect(url: String): FeedInspection {
+    val workUrl = canonicalWorkUrl(url)
+    val response = client.execute(request(workUrl))
     response.requireSuccess()
-    require(supports(response.finalUrl)) { "ヤンマガWebの作品ページを取得できませんでした" }
-    parsePage(decode(response.body, response.header("Content-Type")), response.finalUrl)
-    return FeedInspection(directFeedUrl = response.finalUrl)
+    val finalUrl = canonicalWorkUrl(response.finalUrl)
+    parsePage(decode(response.body, response.header("Content-Type")), finalUrl)
+    return FeedInspection(directFeedUrl = finalUrl)
   }
 
   suspend fun fetchFeed(
@@ -45,10 +52,10 @@ internal class YanmagaFeedClient(
     etag: String? = null,
     lastModified: String? = null,
   ): FetchResult {
-    require(supports(url)) { "ヤンマガWebの作品URLを入力してください" }
+    val workUrl = canonicalWorkUrl(url)
     val response = client.execute(
       request(
-        url,
+        workUrl,
         buildMap {
           etag?.let { put("If-None-Match", it) }
           lastModified?.let { put("If-Modified-Since", it) }
@@ -57,9 +64,9 @@ internal class YanmagaFeedClient(
     )
     if (response.statusCode == 304) return FetchResult(null, etag, lastModified, notModified = true)
     response.requireSuccess()
-    require(supports(response.finalUrl)) { "ヤンマガWebの作品ページを取得できませんでした" }
+    val finalUrl = canonicalWorkUrl(response.finalUrl)
     return FetchResult(
-      feed = parsePage(decode(response.body, response.header("Content-Type")), response.finalUrl),
+      feed = parsePage(decode(response.body, response.header("Content-Type")), finalUrl),
       etag = response.header("ETag"),
       lastModified = response.header("Last-Modified"),
     )
@@ -67,7 +74,7 @@ internal class YanmagaFeedClient(
 
   internal fun parsePage(html: String, pageUrl: String): ParsedFeed {
     val document = Jsoup.parse(html, pageUrl)
-    val title = document.selectFirst("h1")?.text()?.trim().orEmpty()
+    val title = document.selectFirst("main h1, h1")?.text()?.trim().orEmpty()
       .ifBlank { document.selectFirst("meta[property=og:title]")?.attr("content")?.trim().orEmpty() }
       .ifBlank { document.title().substringBefore('|').trim() }
     require(title.isNotBlank()) { "ヤンマガWebの作品名を取得できませんでした" }
@@ -148,6 +155,8 @@ internal class YanmagaFeedClient(
     .joinToString("") { "%02x".format(it) }
 
   private companion object {
+    const val YANMAGA_HOST = "yanmaga.jp"
+    const val WWW_YANMAGA_HOST = "www.yanmaga.jp"
     const val EPISODE_LIST_SELECTOR = ".mod-episode-item"
     const val EPISODE_TITLE_SELECTOR = ".mod-episode-title"
     const val EPISODE_URL_SELECTOR = ".mod-episode-link"
