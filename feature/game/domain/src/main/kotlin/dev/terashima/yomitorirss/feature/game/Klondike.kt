@@ -94,6 +94,33 @@ fun KlondikeGameState.selectTableau(pileIndex: Int, cardIndex: Int): KlondikeGam
   return copy(selection = if (selection == next) null else next)
 }
 
+fun KlondikeGameState.selectedCardCount(): Int =
+  selection?.let { selectedCards(it)?.size } ?: 0
+
+fun KlondikeGameState.validTableauTargets(): Set<Int> {
+  val selected = selection ?: return emptySet()
+  val moving = selectedCards(selected) ?: return emptySet()
+  if (!isValidTableauRun(moving)) return emptySet()
+
+  return tableau.indices.filterTo(mutableSetOf()) { targetPileIndex ->
+    if (selected is KlondikeSelection.Tableau && selected.pileIndex == targetPileIndex) {
+      false
+    } else {
+      canPlaceOnTableau(moving.first(), tableau[targetPileIndex].lastOrNull())
+    }
+  }
+}
+
+fun KlondikeGameState.validFoundationTargets(): Set<CardSuit> {
+  val selected = selection ?: return emptySet()
+  val moving = selectedCards(selected) ?: return emptySet()
+  if (moving.size != 1) return emptySet()
+
+  val card = moving.single()
+  val target = foundations[card.suit].orEmpty()
+  return if (card.rank == target.size + 1) setOf(card.suit) else emptySet()
+}
+
 fun KlondikeGameState.flipTableauTop(pileIndex: Int): KlondikeGameState {
   val pile = tableau.getOrNull(pileIndex) ?: return this
   val top = pile.lastOrNull() ?: return this
