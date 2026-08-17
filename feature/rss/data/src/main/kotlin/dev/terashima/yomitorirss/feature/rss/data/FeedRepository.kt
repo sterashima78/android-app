@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
+import dev.terashima.yomitorirss.feature.rss.data.network.YanmagaFeedClient
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultFeedRepository(
@@ -16,6 +17,7 @@ class DefaultFeedRepository(
 ) : FeedRepository {
   private val store = FeedStore(database)
   private val client = FeedClient()
+  private val yanmagaClient = YanmagaFeedClient()
 
   override val changes: StateFlow<Long> = dataChanges.version
 
@@ -23,16 +25,32 @@ class DefaultFeedRepository(
 
   override suspend fun listFolders(): List<FeedFolder> = store.listFolders()
 
-  override suspend fun inspect(input: String): FeedInspection = client.inspect(input)
+  override suspend fun inspect(input: String): FeedInspection {
+    val normalized = client.normalizeInputUrl(input)
+    return if (yanmagaClient.supports(normalized)) {
+      yanmagaClient.inspect(normalized)
+    } else {
+      client.inspect(normalized)
+    }
+  }
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
-    val result = client.fetchFeed(url)
-    store.addFeed(
-      parsed = requireNotNull(result.feed),
+    val normalized = client.normalizeInputUrl(url)
+    val result = if (yanmagaClient.supports(normalized)) {
+      yanmagaClient.fetchFeed(normalized)
+    } else {
+      client.fetchFeed(normalized)
+    }
+    val parsed = requireNotNull(result.feed)
+    val feed = store.addFeed(
+      parsed = parsed,
       etag = result.etag,
       modified = result.lastModified,
       markExistingArticlesRead = markExistingArticlesRead,
     )
+    if (yanmagaClient.supports(parsed.feedUrl)) {
+      store.setFeedContentType(feed.id, ContentType.COMIC)
+    }
     dataChanges.notifyChanged()
   }
 
@@ -73,7 +91,11 @@ class DefaultFeedRepository(
 
   override suspend fun refreshFeed(feed: Feed) {
     try {
-      val result = client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+      val result = if (yanmagaClient.supports(feed.feedUrl)) {
+        yanmagaClient.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+      } else {
+        client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+      }
       if (result.notModified) {
         store.updateFeedNotModified(feed.id)
       } else {
