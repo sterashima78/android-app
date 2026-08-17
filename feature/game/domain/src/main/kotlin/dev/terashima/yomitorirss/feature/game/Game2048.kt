@@ -35,6 +35,24 @@ data class Game2048State(
     }
 }
 
+data class Game2048TileMovement(
+  val fromIndex: Int,
+  val toIndex: Int,
+  val value: Int,
+  val isMerge: Boolean,
+)
+
+data class Game2048MoveResult(
+  val state: Game2048State,
+  val direction: Game2048Direction,
+  val movements: List<Game2048TileMovement>,
+  val spawnedIndex: Int?,
+  val scoreDelta: Int,
+) {
+  val changed: Boolean
+    get() = movements.any { it.fromIndex != it.toIndex || it.isMerge }
+}
+
 class Game2048(
   private val random: Random = Random.Default,
 ) {
@@ -44,55 +62,130 @@ class Game2048(
     return spawnTile(state)
   }
 
-  fun move(state: Game2048State, direction: Game2048Direction): Game2048State {
-    if (state.isGameOver) return state
+  fun move(state: Game2048State, direction: Game2048Direction): Game2048State =
+    moveWithTransition(state, direction).state
+
+  fun moveWithTransition(
+    state: Game2048State,
+    direction: Game2048Direction,
+  ): Game2048MoveResult {
+    if (state.isGameOver) return unchangedMove(state, direction)
 
     val next = MutableList(GAME_2048_CELL_COUNT) { 0 }
+    val movements = mutableListOf<Game2048TileMovement>()
     var gainedScore = 0
 
     for (lineIndex in 0 until GAME_2048_SIZE) {
       val indices = lineIndices(lineIndex, direction)
-      val source = indices.map(state.tiles::get)
-      val (merged, score) = mergeLine(source)
-      gainedScore += score
-      indices.forEachIndexed { position, boardIndex -> next[boardIndex] = merged[position] }
+      val resolved = resolveLine(indices.map(state.tiles::get))
+      gainedScore += resolved.score
+      indices.forEachIndexed { position, boardIndex ->
+        next[boardIndex] = resolved.values[position]
+      }
+      resolved.movements.forEach { movement ->
+        movements += Game2048TileMovement(
+          fromIndex = indices[movement.fromPosition],
+          toIndex = indices[movement.toPosition],
+          value = movement.value,
+          isMerge = movement.isMerge,
+        )
+      }
     }
 
-    if (next == state.tiles) return state
-    return spawnTile(Game2048State(next, state.score + gainedScore))
+    if (next == state.tiles) return unchangedMove(state, direction)
+
+    val beforeSpawn = Game2048State(next, state.score + gainedScore)
+    val spawned = spawnTileWithIndex(beforeSpawn)
+    return Game2048MoveResult(
+      state = spawned.state,
+      direction = direction,
+      movements = movements,
+      spawnedIndex = spawned.index,
+      scoreDelta = gainedScore,
+    )
   }
 
-  private fun spawnTile(state: Game2048State): Game2048State {
+  private fun unchangedMove(
+    state: Game2048State,
+    direction: Game2048Direction,
+  ) = Game2048MoveResult(
+    state = state,
+    direction = direction,
+    movements = emptyList(),
+    spawnedIndex = null,
+    scoreDelta = 0,
+  )
+
+  private fun spawnTile(state: Game2048State): Game2048State = spawnTileWithIndex(state).state
+
+  private fun spawnTileWithIndex(state: Game2048State): Spawned2048Tile {
     val empty = state.tiles.indices.filter { state.tiles[it] == 0 }
-    if (empty.isEmpty()) return state
+    if (empty.isEmpty()) return Spawned2048Tile(state, null)
     val target = empty[random.nextInt(empty.size)]
     val value = if (random.nextInt(10) == 0) 4 else 2
     val next = state.tiles.toMutableList().also { it[target] = value }
-    return state.copy(tiles = next)
+    return Spawned2048Tile(state.copy(tiles = next), target)
   }
 }
 
-internal fun merge2048Line(values: List<Int>): Pair<List<Int>, Int> = mergeLine(values)
+internal fun merge2048Line(values: List<Int>): Pair<List<Int>, Int> {
+  val resolved = resolveLine(values)
+  return resolved.values to resolved.score
+}
 
-private fun mergeLine(values: List<Int>): Pair<List<Int>, Int> {
+private data class Indexed2048Tile(
+  val position: Int,
+  val value: Int,
+)
+
+private data class Line2048Movement(
+  val fromPosition: Int,
+  val toPosition: Int,
+  val value: Int,
+  val isMerge: Boolean,
+)
+
+private data class Resolved2048Line(
+  val values: List<Int>,
+  val score: Int,
+  val movements: List<Line2048Movement>,
+)
+
+private data class Spawned2048Tile(
+  val state: Game2048State,
+  val index: Int?,
+)
+
+private fun resolveLine(values: List<Int>): Resolved2048Line {
   require(values.size == GAME_2048_SIZE)
-  val compact = values.filter { it != 0 }
-  val result = mutableListOf<Int>()
-  var score = 0
-  var index = 0
-  while (index < compact.size) {
-    if (index + 1 < compact.size && compact[index] == compact[index + 1]) {
-      val merged = compact[index] * 2
-      result += merged
-      score += merged
-      index += 2
-    } else {
-      result += compact[index]
-      index += 1
-    }
+  val compact = values.mapIndexedNotNull { position, value ->
+    value.takeIf { it != 0 }?.let { Indexed2048Tile(position, it) }
   }
-  while (result.size < GAME_2048_SIZE) result += 0
-  return result to score
+  val result = MutableList(GAME_2048_SIZE) { 0 }
+  val movements = mutableListOf<Line2048Movement>()
+  var score = 0
+  var sourceIndex = 0
+  var targetPosition = 0
+
+  while (sourceIndex < compact.size) {
+    val current = compact[sourceIndex]
+    val next = compact.getOrNull(sourceIndex + 1)
+    if (next != null && current.value == next.value) {
+      val merged = current.value * 2
+      result[targetPosition] = merged
+      score += merged
+      movements += Line2048Movement(current.position, targetPosition, current.value, isMerge = true)
+      movements += Line2048Movement(next.position, targetPosition, next.value, isMerge = true)
+      sourceIndex += 2
+    } else {
+      result[targetPosition] = current.value
+      movements += Line2048Movement(current.position, targetPosition, current.value, isMerge = false)
+      sourceIndex += 1
+    }
+    targetPosition += 1
+  }
+
+  return Resolved2048Line(result, score, movements)
 }
 
 private fun lineIndices(line: Int, direction: Game2048Direction): List<Int> =
