@@ -5,6 +5,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.espresso.Espresso.pressBack
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -36,5 +38,25 @@ class MainActivityComposeE2ETest {
     composeRule.onNodeWithContentDescription("フォルダ").assertIsDisplayed()
     composeRule.onNodeWithContentDescription("タグ").assertIsDisplayed()
     composeRule.onNodeWithContentDescription("履歴").assertIsDisplayed()
+  }
+
+  @Test
+  fun `戻る操作でドロワーを表示できる`() {
+    pressBack()
+
+    composeRule.onNodeWithText("Yomitori").assertIsDisplayed()
+    composeRule.onNodeWithText("RSS").assertIsDisplayed()
+  }
+
+  @Test
+  fun `ドロワー表示中の戻る操作でActivityを終了する`() {
+    pressBack()
+    composeRule.onNodeWithText("Yomitori").assertIsDisplayed()
+
+    composeRule.runOnUiThread {
+      composeRule.activity.onBackPressedDispatcher.onBackPressed()
+    }
+
+    assertTrue(composeRule.activity.isFinishing)
   }
 }
