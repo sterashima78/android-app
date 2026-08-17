@@ -21,13 +21,6 @@ internal fun YomitoriDatabase.retryFailedBookmarkSummaryTasks(): Int =
       putNull("progress_current")
       putNull("progress_total")
     },
-    """
-      state=? AND EXISTS (
-        SELECT 1
-        FROM articles
-        WHERE articles.id=summary_tasks.article_id
-          AND articles.saved_at IS NOT NULL
-      )
-    """.trimIndent(),
+    "state=? AND article_id IN (SELECT id FROM articles WHERE saved_at IS NOT NULL)",
     arrayOf(SUMMARY_FAILED),
   )
