@@ -99,79 +99,78 @@ class AppContainer(private val application: Application) {
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultFeedImportRepository(application, databaseConnection, dataChanges)
   }
-  val summaryTaskQueueRepository: SummaryTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultSummaryTaskQueueRepository(databaseConnection, dataChanges)
-  }
-  val summaryRepository: SummaryRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultSummaryRepository(
-      databaseConnection,
-      summaryTaskQueueRepository,
-      dataChanges,
-    )
-  }
-  val chatGenerator: ChatGenerator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    LocalChatGenerator(
-      application = application,
-      skills = createAppResourceSkills(
-        articleRepository = articleRepository,
-        bookmarkRepository = bookmarkRepository,
-        feedRepository = feedRepository,
-        taskRepository = taskRepository,
-        knowledgeRepository = knowledgeRepository,
-        libraryRepository = libraryRepository,
-      ),
-    )
-  }
-  val chatRepository: ChatRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultChatRepository(databaseConnection, chatGenerator, dataChanges)
-  }
-  val knowledgeRepository: KnowledgeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    ManagingKnowledgeRepository(
-      delegate = DefaultKnowledgeRepository(databaseConnection, dataChanges),
-      taskQueue = summaryTaskQueueRepository,
-    )
-  }
-  val mailRepository: MailRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultMailRepository(
-      application = application,
-      database = databaseConnection,
-      dataChanges = dataChanges,
-    )
-  }
-  val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultAiModelRepository(application, databaseConnection, LocalModelManager(application))
-  }
-  val taskRepository: TaskRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultTaskRepository(databaseConnection, dataChanges)
-  }
-  val widgetRepository: WidgetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultWidgetRepository(databaseConnection, dataChanges)
-  }
-  val workoutRepository: WorkoutRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultWorkoutRepository(databaseConnection, dataChanges)
+  val refreshFeedsUseCase: RefreshFeedsUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    RefreshFeedsUseCase(feedRepository)
   }
   val backupChangeScheduler: BackupChangeScheduler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AndroidBackupChangeScheduler(application)
   }
-  val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBackupRepository(application, databaseConnection, dataChanges, backupChangeScheduler)
+  val widgetRepository: WidgetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultWidgetRepository(
+      database = database,
+      feedRepository = feedRepository,
+      bookmarkRepository = bookmarkRepository,
+      backupChangeScheduler = backupChangeScheduler,
+      sourceSelector = { feedUrl -> !isRedditFeedUrl(feedUrl) },
+    )
   }
-  val refreshFeedsUseCase: RefreshFeedsUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    RefreshFeedsUseCase(feedRepository)
+  val modelManager: LocalModelManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    LocalModelManager.shared(application)
+  }
+  val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultAiModelRepository(application, modelManager)
+  }
+  val chatRepository: ChatRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultChatRepository(application)
+  }
+  val taskRepository: TaskRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultTaskRepository(application)
+  }
+  val workoutRepository: WorkoutRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultWorkoutRepository(application)
   }
   val gmailAuthorizationManager: GmailAuthorizationManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     GmailAuthorizationManager(application)
   }
-}
-
-private fun shouldRequestBookmarkEnrichment(
-  url: String,
-  sourceFeedUrl: String?,
-  contentType: dev.terashima.yomitorirss.feature.article.ContentType,
-): Boolean {
-  if (!contentType.allowsAutomaticAiEnrichment()) return false
-  if (sourceFeedUrl?.let(::isRedditFeedUrl) == true) return false
-  val host = runCatching { java.net.URI(url).host?.lowercase() }.getOrNull()
-  if (host == "youtube.com" || host == "www.youtube.com" || host == "youtu.be") return false
-  return true
+  val mailRepository: MailRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultMailRepository(
+      context = application,
+      database = databaseConnection,
+      authorization = gmailAuthorizationManager,
+    )
+  }
+  val chatGenerator: ChatGenerator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    LocalChatGenerator(
+      modelManager = modelManager,
+      skills = createAppResourceSkills(
+        articleRepository = articleRepository,
+        bookmarkRepository = bookmarkRepository,
+        feedRepository = feedRepository,
+        redditRepository = redditRepository,
+        summaryRepository = summaryRepository,
+        taskRepository = taskRepository,
+      ),
+    )
+  }
+  val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultBackupRepository(application, database, dataChanges)
+  }
+  val summaryRepository: SummaryRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultSummaryRepository(application, database, modelManager)
+  }
+  val summaryTaskQueueRepository: SummaryTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultSummaryTaskQueueRepository(application, database)
+  }
+  val knowledgeRepository: KnowledgeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    ManagingKnowledgeRepository(
+      delegate = DefaultKnowledgeRepository(
+        database = databaseConnection,
+        bookmarkRepository = bookmarkRepository,
+        summaryRepository = summaryRepository,
+        modelManager = modelManager,
+      ),
+      database = databaseConnection,
+      dataChanges = dataChanges,
+    )
+  }
 }
