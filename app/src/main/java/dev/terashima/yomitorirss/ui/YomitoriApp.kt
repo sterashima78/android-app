@@ -3,6 +3,7 @@
 package dev.terashima.yomitorirss.ui
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -128,6 +129,7 @@ fun YomitoriApp(
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
   onAddMailAccount: () -> Unit,
+  onExitApp: () -> Unit,
 ) {
   val appState by appViewModel.state.collectAsState()
   val rssState by rssViewModel.state.collectAsState()
@@ -307,6 +309,14 @@ fun YomitoriApp(
       }
     },
   ) {
+    BackHandler {
+      if (drawerState.isOpen) {
+        onExitApp()
+      } else {
+        scope.launch { drawerState.open() }
+      }
+    }
+
     Scaffold(
       snackbarHost = { SnackbarHost(snackbarHostState) },
       contentWindowInsets = if (selectedTab == MainTab.X) {
