@@ -67,6 +67,28 @@ class SpiderTest {
   }
 
   @Test
+  fun `選択した連続列の合法な移動先だけを列挙する`() {
+    val source = listOf(
+      SpiderTableauCard(PlayingCard(CardSuit.SPADES, 5), faceUp = true),
+      SpiderTableauCard(PlayingCard(CardSuit.SPADES, 4), faceUp = true),
+    )
+    val valid = listOf(SpiderTableauCard(PlayingCard(CardSuit.HEARTS, 6), faceUp = true))
+    val invalid = listOf(SpiderTableauCard(PlayingCard(CardSuit.CLUBS, 7), faceUp = true))
+    val filler = listOf(SpiderTableauCard(PlayingCard(CardSuit.CLUBS, 10), faceUp = true))
+    val state = SpiderGameState(
+      difficulty = SpiderDifficulty.FOUR_SUITS,
+      stock = emptyList(),
+      tableau = listOf(source, valid, invalid, emptyList()) + List(6) { filler },
+      completedRuns = emptyList(),
+      selection = SpiderSelection(0, 0),
+      moves = 0,
+    )
+
+    assertEquals(setOf(1, 3), state.validTableauTargets())
+    assertEquals(2, state.selectedCardCount())
+  }
+
+  @Test
   fun `KからAの同一スート列が完成すると自動回収して伏せ札を表にする`() {
     val target = (13 downTo 2).map { rank ->
       SpiderTableauCard(PlayingCard(CardSuit.SPADES, rank), faceUp = true)
