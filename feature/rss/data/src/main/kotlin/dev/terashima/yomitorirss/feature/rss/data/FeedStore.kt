@@ -134,7 +134,7 @@ internal class FeedStore(
       }
     }
     val updated = database.writable.update(
-      "feed_folders",
+      "feeds",
       contentValues("folder_id" to folderId),
       "id=?",
       arrayOf(feedId),
