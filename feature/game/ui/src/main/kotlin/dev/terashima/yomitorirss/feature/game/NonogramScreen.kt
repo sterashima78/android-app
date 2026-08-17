@@ -1,0 +1,1 @@
+package dev.terashima78.androidapp_PLACEHOLDER
