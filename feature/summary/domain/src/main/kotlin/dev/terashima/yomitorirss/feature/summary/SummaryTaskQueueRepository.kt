@@ -71,4 +71,7 @@ interface SummaryTaskQueueRepository {
   suspend fun stop(articleId: String): Boolean
   suspend fun cancel(articleId: String): Boolean
   suspend fun resume(articleId: String): Boolean
+
+  /** 失敗済みで、現在もブックマークとして保存されている要約タスクをまとめて待機状態へ戻す。 */
+  suspend fun retryFailedBookmarkTasks(): Int = 0
 }
