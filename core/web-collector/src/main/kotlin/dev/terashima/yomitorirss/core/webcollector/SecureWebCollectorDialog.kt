@@ -128,7 +128,9 @@ private fun CollectorContent(
         config.allowedBridgeOrigins,
       ) { _, message, sourceOrigin, isMainFrame, _ ->
         if (!isMainFrame || !collecting) return@addWebMessageListener
-        if (sourceOrigin.toString() !in config.allowedBridgeOrigins) return@addWebMessageListener
+        if (!isAllowedBridgeOrigin(sourceOrigin.toString(), config.allowedBridgeOrigins)) {
+          return@addWebMessageListener
+        }
         runCatching {
           val envelope = JSONObject(message.data ?: return@addWebMessageListener)
           when (envelope.optString("type")) {
@@ -259,8 +261,21 @@ private fun isCollectableUrl(url: String, prefixes: Set<String>): Boolean = pref
 private fun isAllowedNavigation(url: String, hosts: Set<String>): Boolean {
   val uri = runCatching { URI(url) }.getOrNull() ?: return false
   if (!uri.scheme.equals("https", ignoreCase = true)) return false
+  if (uri.port != -1 && uri.port != 443) return false
   val host = uri.host?.lowercase() ?: return false
-  return hosts.any { allowed -> host == allowed || host.endsWith(".$allowed") }
+  return hosts.any { allowed ->
+    val normalized = allowed.lowercase()
+    host == normalized || host.endsWith(".$normalized")
+  }
+}
+
+private fun isAllowedBridgeOrigin(origin: String, allowedOrigins: Set<String>): Boolean {
+  val uri = runCatching { URI(origin) }.getOrNull() ?: return false
+  if (!uri.scheme.equals("https", ignoreCase = true)) return false
+  if (uri.port != -1 && uri.port != 443) return false
+  val host = uri.host?.lowercase() ?: return false
+  val normalized = "https://$host"
+  return normalized in allowedOrigins.map { it.removeSuffix("/").lowercase() }.toSet()
 }
 
 private fun requirePayloadSize(payload: String) {
