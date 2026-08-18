@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,6 +41,14 @@ class BackupPreferencesTest {
     context.getSharedPreferences("local_context_benchmarks", Context.MODE_PRIVATE)
       .edit().putLong("device-memory", 123L).commit()
 
+    val localModels = context.getSharedPreferences("local_summary_models", Context.MODE_PRIVATE)
+    localModels.edit()
+      .putString("selected_model_id", "model-a")
+      .putString("inference_backend", "CPU")
+      .putString("model_revision.model-a", "source-revision")
+      .putLong("preparing_model.model-a.duration_millis", 123L)
+      .commit()
+
     val store = BackupPreferences(context)
     val bytes = store.encode()
     val encoded = bytes.toString(Charsets.UTF_8)
@@ -47,11 +56,19 @@ class BackupPreferencesTest {
     assertFalse(encoded.contains("encrypted-secret"))
     assertFalse(encoded.contains("persisted-uri"))
     assertFalse(encoded.contains("device-memory"))
+    assertFalse(encoded.contains("source-revision"))
+    assertFalse(encoded.contains("duration_millis"))
+    assertTrue(encoded.contains("selected_model_id"))
 
     context.getSharedPreferences("workout", Context.MODE_PRIVATE)
       .edit().putString("state_v1", "changed").commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().clear().commit()
+    localModels.edit()
+      .putString("selected_model_id", "model-b")
+      .putString("model_revision.model-a", "destination-revision")
+      .putLong("preparing_model.model-a.duration_millis", 999L)
+      .commit()
 
     store.restore(bytes)
 
@@ -67,5 +84,8 @@ class BackupPreferencesTest {
       "encrypted-secret",
       context.getSharedPreferences("smb_library_credentials", Context.MODE_PRIVATE).getString("server", null),
     )
+    assertEquals("model-a", localModels.getString("selected_model_id", null))
+    assertEquals("destination-revision", localModels.getString("model_revision.model-a", null))
+    assertEquals(999L, localModels.getLong("preparing_model.model-a.duration_millis", 0L))
   }
 }
