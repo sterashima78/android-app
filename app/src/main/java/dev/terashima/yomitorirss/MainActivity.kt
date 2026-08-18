@@ -163,9 +163,9 @@ class MainActivity : ComponentActivity() {
       YomitoriTheme {
         var showWebServer by remember { mutableStateOf(false) }
         val lanServerState by LanServerStatus.state.collectAsState()
-        val application = application as YomitoriApplication
-        val container = application.container
-        val routeDependencies = application.routeDependencies
+        val yomitoriApplication = application as YomitoriApplication
+        val container = yomitoriApplication.container
+        val routeDependencies = yomitoriApplication.routeDependencies
         val gmailAuthorization = container.gmailAuthorizationManager
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
           ActivityResultContracts.RequestPermission(),
