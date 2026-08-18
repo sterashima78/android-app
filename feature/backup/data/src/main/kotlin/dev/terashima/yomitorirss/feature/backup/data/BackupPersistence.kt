@@ -10,7 +10,7 @@ import org.json.JSONObject
 
 internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
   put("format", "yomitori-rss-backup")
-  put("version", 5)
+  put("version", 6)
   put("exportedAt", Instant.now().toString())
   put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at,content_type FROM feed_folders ORDER BY normalized_name") { cursor ->
     JSONObject()
@@ -82,14 +82,37 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
         .put("sources", knowledgePageSources(pageId))
     },
   )
+  put(
+    "assetEntries",
+    queryJsonArray(
+      "SELECT snapshot_date,name,amount,account,source FROM asset_entries ORDER BY snapshot_date,name,id",
+    ) { cursor ->
+      JSONObject()
+        .put("snapshotDate", cursor.text("snapshot_date"))
+        .put("name", cursor.text("name"))
+        .put("amount", cursor.long("amount"))
+        .put("account", cursor.text("account"))
+        .put("source", cursor.text("source"))
+    },
+  )
+  put(
+    "assetCategories",
+    queryJsonArray("SELECT asset_name,category FROM asset_categories ORDER BY asset_name") { cursor ->
+      JSONObject()
+        .put("assetName", cursor.text("asset_name"))
+        .put("category", cursor.text("category"))
+    },
+  )
 }
 
 internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   val version = root.optInt("version")
-  require(root.optString("format") == "yomitori-rss-backup" && version in 1..5) {
+  require(root.optString("format") == "yomitori-rss-backup" && version in 1..6) {
     "対応していないバックアップです"
   }
 
+  execSQL("DELETE FROM asset_entries")
+  execSQL("DELETE FROM asset_categories")
   execSQL("DELETE FROM knowledge_pages")
   execSQL("DELETE FROM summary_tasks")
   execSQL("DELETE FROM article_summaries")
@@ -224,6 +247,37 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   if (version >= 4) {
     restoreEditorManagedKnowledge(root.optJSONArray("knowledgePages") ?: JSONArray())
   }
+
+  if (version >= 6) {
+    val assetCategories = root.optJSONArray("assetCategories") ?: JSONArray()
+    for (index in 0 until assetCategories.length()) {
+      val item = assetCategories.getJSONObject(index)
+      insertOrThrow(
+        "asset_categories",
+        null,
+        values(
+          "asset_name" to item.getString("assetName"),
+          "category" to item.getString("category"),
+        ),
+      )
+    }
+
+    val assetEntries = root.optJSONArray("assetEntries") ?: JSONArray()
+    for (index in 0 until assetEntries.length()) {
+      val item = assetEntries.getJSONObject(index)
+      insertOrThrow(
+        "asset_entries",
+        null,
+        ContentValues().apply {
+          put("snapshot_date", item.getString("snapshotDate"))
+          put("name", item.getString("name"))
+          put("amount", item.getLong("amount"))
+          put("account", item.optString("account", ""))
+          put("source", item.optString("source", "file"))
+        },
+      )
+    }
+  }
 }
 
 private fun SQLiteDatabase.restoreEditorManagedKnowledge(pages: JSONArray) {
@@ -319,6 +373,7 @@ private inline fun <T> YomitoriDatabase.transaction(block: SQLiteDatabase.() -> 
 }
 
 private fun Cursor.text(name: String): String = getString(getColumnIndexOrThrow(name))
+private fun Cursor.long(name: String): Long = getLong(getColumnIndexOrThrow(name))
 private fun Cursor.nullableText(name: String): String? =
   getColumnIndexOrThrow(name).let { index -> if (isNull(index)) null else getString(index) }
 private fun JSONObject.nullable(key: String): String? = if (!has(key) || isNull(key)) null else getString(key)

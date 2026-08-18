@@ -7,7 +7,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
+import dev.terashima.yomitorirss.feature.asset.AssetManagementDialog
+import dev.terashima.yomitorirss.feature.asset.AssetViewModel
 import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
@@ -25,6 +29,7 @@ fun SettingsScreen(
   onOpenWebServer: () -> Unit,
 ) {
   val context = LocalContext.current
+  val application = context.applicationContext as YomitoriApplication
   val backgroundDataFetchPreferences = remember(context) {
     BackgroundDataFetchPreferences(context)
   }
@@ -32,6 +37,13 @@ fun SettingsScreen(
     backgroundDataFetchPreferences.wifiOnly
   }
   var showXCssSettings by remember { mutableStateOf(false) }
+  var showAssetManagement by remember { mutableStateOf(false) }
+  val assetViewModel: AssetViewModel = viewModel(
+    factory = AssetViewModel.Factory(
+      repository = application.container.assetRepository,
+      onChanged = application.container.backupChangeScheduler::scheduleAfterChange,
+    ),
+  )
 
   SettingsFeatureScreen(
     modifier = modifier,
@@ -44,6 +56,7 @@ fun SettingsScreen(
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenXCss = { showXCssSettings = true },
+    onOpenAssetManagement = { showAssetManagement = true },
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     taskQueueContent = { onDismiss -> TaskQueueScreen(onDismiss) },
@@ -55,5 +68,11 @@ fun SettingsScreen(
 
   if (showXCssSettings) {
     XViewerCssSettingsSheet(onDismiss = { showXCssSettings = false })
+  }
+  if (showAssetManagement) {
+    AssetManagementDialog(
+      viewModel = assetViewModel,
+      onDismiss = { showAssetManagement = false },
+    )
   }
 }

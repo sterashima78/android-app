@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Dns
@@ -35,6 +36,7 @@ fun SettingsContent(
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenXCss: () -> Unit,
+  onOpenAssetManagement: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
@@ -84,6 +86,17 @@ fun SettingsContent(
         title = "カスタム CSS",
         supporting = "CSS の有効化・編集・デフォルト復元",
         onClick = onOpenXCss,
+      )
+    }
+    item { SettingsDivider() }
+
+    item { SettingsHeader("資産") }
+    item {
+      SettingsRow(
+        icon = Icons.Default.AccountBalanceWallet,
+        title = "資産管理",
+        supporting = "CSV / TSV・MoneyForward 取り込み、推移、カテゴリ設定",
+        onClick = onOpenAssetManagement,
       )
     }
     item { SettingsDivider() }

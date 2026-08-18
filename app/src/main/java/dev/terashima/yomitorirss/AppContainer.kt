@@ -7,6 +7,8 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
+import dev.terashima.yomitorirss.feature.asset.AssetRepository
+import dev.terashima.yomitorirss.feature.asset.data.DefaultAssetRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
@@ -65,6 +67,9 @@ class AppContainer(private val application: Application) {
 
   val articleRepository: ArticleRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultArticleRepository(databaseConnection, dataChanges)
+  }
+  val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultAssetRepository(application, databaseConnection)
   }
   val bookmarkRepository: BookmarkRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkRepository(

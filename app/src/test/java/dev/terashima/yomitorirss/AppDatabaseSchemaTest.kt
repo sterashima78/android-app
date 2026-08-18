@@ -38,7 +38,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(19, db.version)
+    assertEquals(20, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("content_type" in columnNames(db, "articles"))
@@ -67,6 +67,8 @@ class AppDatabaseSchemaTest {
         "library_item_reading_status",
         "library_organization_batches",
         "library_organization_batch_items",
+        "asset_entries",
+        "asset_categories",
       ),
       db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'android_metadata'",
@@ -100,10 +102,12 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(19, upgraded.version)
+    assertEquals(20, upgraded.version)
     assertTrue("content_type" in columnNames(upgraded, "feed_folders"))
     assertTrue("content_type" in columnNames(upgraded, "feeds"))
     assertTrue("content_type" in columnNames(upgraded, "articles"))
+    assertTrue("snapshot_date" in columnNames(upgraded, "asset_entries"))
+    assertTrue("category" in columnNames(upgraded, "asset_categories"))
     assertEquals(
       0,
       countRows(
