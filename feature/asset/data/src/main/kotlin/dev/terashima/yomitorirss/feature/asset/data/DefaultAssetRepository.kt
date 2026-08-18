@@ -68,10 +68,10 @@ class DefaultAssetRepository(
     )
   }
 
-  override suspend fun importDelimited(documentUri: String): AssetImportResult {
+  override suspend fun importTsv(documentUri: String): AssetImportResult {
     val uri = Uri.parse(documentUri)
     val rows = appContext.contentResolver.openInputStream(uri)?.use { input ->
-      BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use(::parseDelimited)
+      BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use(::parseTsv)
     } ?: error("ファイルを開けませんでした")
     require(rows.isNotEmpty()) { "インポートできる資産データがありません" }
     replaceSnapshots(rows, SOURCE_FILE)
@@ -162,22 +162,19 @@ internal data class ParsedAssetRow(
   val categoryHint: String?,
 )
 
-internal fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
+internal fun parseTsv(reader: BufferedReader): List<ParsedAssetRow> {
   val result = mutableListOf<ParsedAssetRow>()
-  var delimiter: Char? = null
   reader.forEachLine { rawLine ->
     val line = rawLine.removePrefix("\uFEFF").trimEnd()
     if (line.isBlank()) return@forEachLine
-    val currentDelimiter = delimiter ?: if ('\t' in line) '\t' else ','
-    delimiter = currentDelimiter
-    val columns = splitDelimitedLine(line, currentDelimiter)
-    if (columns.size < 3) error("3列以上の日付・資産名・金額が必要です")
+    val columns = line.split('\t')
+    if (columns.size < 3) error("TSV は3列以上の日付・資産名・金額が必要です")
     val date = parseDate(columns[0])
     if (date == null && columns[0].trim().lowercase() in setOf("日付", "date")) return@forEachLine
     requireNotNull(date) { "日付を解析できません: ${columns[0]}" }
     val name = columns[1].trim()
     require(name.isNotBlank()) { "資産名が空です" }
-    val amount = columns[2].replace(Regex("[,，円\\s]"), "").toLongOrNull()
+    val amount = columns[2].replace(Regex("[,，円¥￥\\s]"), "").toLongOrNull()
       ?: error("金額を解析できません: ${columns[2]}")
     result += ParsedAssetRow(
       date = date,
@@ -188,33 +185,6 @@ internal fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
     )
   }
   return result
-}
-
-internal fun splitDelimitedLine(line: String, delimiter: Char): List<String> {
-  if (delimiter == '\t') return line.split('\t')
-  val values = mutableListOf<String>()
-  val current = StringBuilder()
-  var quoted = false
-  var index = 0
-  while (index < line.length) {
-    val char = line[index]
-    when {
-      char == '"' && quoted && index + 1 < line.length && line[index + 1] == '"' -> {
-        current.append('"')
-        index++
-      }
-      char == '"' -> quoted = !quoted
-      char == delimiter && !quoted -> {
-        values += current.toString()
-        current.clear()
-      }
-      else -> current.append(char)
-    }
-    index++
-  }
-  require(!quoted) { "CSV の引用符が閉じていません" }
-  values += current.toString()
-  return values
 }
 
 internal fun parseDate(value: String): LocalDate? {
