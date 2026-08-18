@@ -1,44 +1,17 @@
 package dev.terashima.yomitorirss.feature.task.data
 
 import android.content.ContentValues
-import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.task.TaskItem
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
-internal class TaskStore(context: Context) : SQLiteOpenHelper(context.applicationContext, DB_NAME, null, DB_VERSION) {
-  override fun onConfigure(db: SQLiteDatabase) {
-    super.onConfigure(db)
-    db.setForeignKeyConstraintsEnabled(true)
-  }
-
-  override fun onCreate(db: SQLiteDatabase) {
-    db.execSQL(
-      "CREATE TABLE tasks(" +
-        "id TEXT PRIMARY KEY NOT NULL," +
-        "title TEXT NOT NULL," +
-        "description TEXT NOT NULL DEFAULT ''," +
-        "parent_id TEXT REFERENCES tasks(id) ON DELETE CASCADE," +
-        "due_date TEXT," +
-        "completed_at TEXT," +
-        "created_at TEXT NOT NULL," +
-        "sort_order INTEGER NOT NULL" +
-        ")",
-    )
-    db.execSQL("CREATE INDEX task_parent_order ON tasks(parent_id,sort_order,created_at)")
-    db.execSQL("CREATE INDEX task_due_date ON tasks(completed_at,due_date)")
-  }
-
-  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-    if (oldVersion < 2) {
-      db.execSQL("ALTER TABLE tasks ADD COLUMN description TEXT NOT NULL DEFAULT ''")
-    }
-  }
-
-  fun listTasks(): List<TaskItem> = listTasks(readableDatabase)
+internal class TaskStore(
+  private val database: DatabaseConnection,
+) {
+  fun listTasks(): List<TaskItem> = listTasks(database.readable)
 
   fun createTask(title: String, description: String, parentId: String?, dueDate: LocalDate?): TaskItem = transaction { db ->
     val normalizedTitle = title.trim()
@@ -64,7 +37,7 @@ internal class TaskStore(context: Context) : SQLiteOpenHelper(context.applicatio
   fun updateTask(id: String, title: String, description: String, dueDate: LocalDate?) {
     val normalizedTitle = title.trim()
     require(normalizedTitle.isNotEmpty()) { "タスク名を入力してください" }
-    writableDatabase.update(
+    database.writable.update(
       "tasks",
       ContentValues().apply {
         put("title", normalizedTitle)
@@ -190,21 +163,10 @@ internal class TaskStore(context: Context) : SQLiteOpenHelper(context.applicatio
     put("sort_order", sortOrder)
   }
 
-  private fun <T> transaction(block: (SQLiteDatabase) -> T): T {
-    val db = writableDatabase
-    db.beginTransaction()
-    return try {
-      block(db).also { db.setTransactionSuccessful() }
-    } finally {
-      db.endTransaction()
-    }
+  private fun <T> transaction(block: (SQLiteDatabase) -> T): T = database.transaction {
+    block(this)
   }
 
   private fun android.database.Cursor.getStringOrNull(index: Int): String? =
     if (isNull(index)) null else getString(index)
-
-  private companion object {
-    const val DB_NAME = "yomitori-tasks.db"
-    const val DB_VERSION = 2
-  }
 }
