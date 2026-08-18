@@ -29,6 +29,9 @@ class DatabaseBackupArchiveTest {
   fun setUp() {
     context = ApplicationProvider.getApplicationContext()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    BackupPreferences.BACKED_UP_PREFERENCES.forEach { name ->
+      context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+    }
     database = YomitoriDatabase.create(
       context,
       DatabaseSchema(
@@ -52,11 +55,14 @@ class DatabaseBackupArchiveTest {
   }
 
   @Test
-  fun `archiveからDB全体を復元できる`() {
+  fun `archiveからDBとユーザー設定を復元できる`() {
     database.writableDatabase.execSQL(
       "INSERT INTO backup_test(id,value) VALUES(?,?)",
       arrayOf("1", "before"),
     )
+    context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
+      .edit().putString("summary_prompt", "before-prompt").commit()
+
     val archive = DatabaseBackupArchive(context, database)
     val output = ByteArrayOutputStream()
     archive.writeTo(output)
@@ -69,6 +75,9 @@ class DatabaseBackupArchiveTest {
       "UPDATE backup_test SET value = ? WHERE id = ?",
       arrayOf("after", "1"),
     )
+    context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
+      .edit().putString("summary_prompt", "after-prompt").commit()
+
     archive.restore(ByteArrayInputStream(bytes))
 
     val restored = database.readableDatabase.rawQuery(
@@ -79,6 +88,11 @@ class DatabaseBackupArchiveTest {
       cursor.getString(0)
     }
     assertEquals("before", restored)
+    assertEquals(
+      "before-prompt",
+      context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
+        .getString("summary_prompt", null),
+    )
   }
 
   @Test
