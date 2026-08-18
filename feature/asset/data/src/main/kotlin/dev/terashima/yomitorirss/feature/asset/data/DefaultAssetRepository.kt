@@ -68,10 +68,10 @@ class DefaultAssetRepository(
     )
   }
 
-  override suspend fun importDelimited(documentUri: String): AssetImportResult {
+  override suspend fun importTsv(documentUri: String): AssetImportResult {
     val uri = Uri.parse(documentUri)
     val rows = appContext.contentResolver.openInputStream(uri)?.use { input ->
-      BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use(::parseDelimited)
+      BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use(::parseTsv)
     } ?: error("ファイルを開けませんでした")
     require(rows.isNotEmpty()) { "インポートできる資産データがありません" }
     replaceSnapshots(rows, SOURCE_FILE)
@@ -87,15 +87,15 @@ class DefaultAssetRepository(
     val rows = buildList {
       for (index in 0 until entries.length()) {
         val item = entries.getJSONObject(index)
-        val name = item.getString("name").trim()
-        require(name.isNotBlank()) { "資産名が空です" }
+        val baseName = item.getString("name").trim()
+        val account = item.optString("account").trim()
+        require(baseName.isNotBlank()) { "資産名が空です" }
         add(
           ParsedAssetRow(
             date = date,
-            name = name,
+            name = buildAssetRecordName(baseName, account),
             amount = item.getLong("amount"),
-            account = item.optString("account").trim(),
-            categoryHint = null,
+            account = account,
           ),
         )
       }
@@ -137,17 +137,6 @@ class DefaultAssetRepository(
               put("source", source)
             },
           )
-          row.categoryHint?.takeIf(String::isNotBlank)?.let { hint ->
-            insertWithOnConflict(
-              "asset_categories",
-              null,
-              ContentValues().apply {
-                put("asset_name", row.name)
-                put("category", hint)
-              },
-              SQLiteDatabase.CONFLICT_IGNORE,
-            )
-          }
         }
       }
     }
@@ -159,62 +148,39 @@ internal data class ParsedAssetRow(
   val name: String,
   val amount: Long,
   val account: String,
-  val categoryHint: String?,
 )
 
-internal fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
+internal fun parseTsv(reader: BufferedReader): List<ParsedAssetRow> {
   val result = mutableListOf<ParsedAssetRow>()
-  var delimiter: Char? = null
   reader.forEachLine { rawLine ->
-    val line = rawLine.removePrefix("\uFEFF").trimEnd()
+    val line = rawLine.removePrefix("\uFEFF")
     if (line.isBlank()) return@forEachLine
-    val currentDelimiter = delimiter ?: if ('\t' in line) '\t' else ','
-    delimiter = currentDelimiter
-    val columns = splitDelimitedLine(line, currentDelimiter)
-    if (columns.size < 3) error("3列以上の日付・資産名・金額が必要です")
+    val columns = line.split('\t')
+    if (columns.size < 3) error("TSV は3列以上の日付・資産名・金額が必要です")
     val date = parseDate(columns[0])
     if (date == null && columns[0].trim().lowercase() in setOf("日付", "date")) return@forEachLine
     requireNotNull(date) { "日付を解析できません: ${columns[0]}" }
-    val name = columns[1].trim()
-    require(name.isNotBlank()) { "資産名が空です" }
-    val amount = columns[2].replace(Regex("[,，円\\s]"), "").toLongOrNull()
-      ?: error("金額を解析できません: ${columns[2]}")
+    val baseName = columns[1].trim()
+    require(baseName.isNotBlank()) { "資産名が空です" }
+    val amount = parseAmount(columns[2]) ?: error("金額を解析できません: ${columns[2]}")
+    val account = columns.getOrNull(3)?.trim().orEmpty()
     result += ParsedAssetRow(
       date = date,
-      name = name,
+      name = buildAssetRecordName(baseName, account),
       amount = amount,
-      account = columns.getOrNull(3)?.trim().orEmpty(),
-      categoryHint = columns.getOrNull(4)?.trim()?.ifBlank { null },
+      account = account,
     )
   }
   return result
 }
 
-internal fun splitDelimitedLine(line: String, delimiter: Char): List<String> {
-  if (delimiter == '\t') return line.split('\t')
-  val values = mutableListOf<String>()
-  val current = StringBuilder()
-  var quoted = false
-  var index = 0
-  while (index < line.length) {
-    val char = line[index]
-    when {
-      char == '"' && quoted && index + 1 < line.length && line[index + 1] == '"' -> {
-        current.append('"')
-        index++
-      }
-      char == '"' -> quoted = !quoted
-      char == delimiter && !quoted -> {
-        values += current.toString()
-        current.clear()
-      }
-      else -> current.append(char)
-    }
-    index++
-  }
-  require(!quoted) { "CSV の引用符が閉じていません" }
-  values += current.toString()
-  return values
+internal fun parseAmount(value: String): Long? =
+  value.replace(Regex("[,，円¥￥\\s]"), "").toLongOrNull()
+
+internal fun buildAssetRecordName(name: String, account: String): String {
+  val normalizedName = name.trim()
+  val normalizedAccount = account.trim()
+  return if (normalizedAccount.isBlank()) normalizedName else "$normalizedName / $normalizedAccount"
 }
 
 internal fun parseDate(value: String): LocalDate? {
