@@ -66,6 +66,34 @@ class AssetStackedHistoryChartTest {
   }
 
   @Test
+  fun `円グラフは最新カテゴリの正の金額比を表示する`() {
+    val slices = buildAssetPieSlices(mapOf("現金" to 60L, "投資" to 40L))
+
+    assertEquals(listOf("現金", "投資"), slices.map { it.category })
+    assertEquals(-90f, slices[0].startAngle, DELTA)
+    assertEquals(216f, slices[0].sweepAngle, DELTA)
+    assertEquals(126f, slices[1].startAngle, DELTA)
+    assertEquals(144f, slices[1].sweepAngle, DELTA)
+    assertEquals(360.0, slices.sumOf { it.sweepAngle.toDouble() }, DELTA.toDouble())
+  }
+
+  @Test
+  fun `円グラフは0以下のカテゴリを除外する`() {
+    val slices = buildAssetPieSlices(mapOf("資産" to 80L, "調整" to -20L, "ゼロ" to 0L))
+
+    assertEquals(listOf("資産"), slices.map { it.category })
+    assertEquals(80L, slices.single().value)
+    assertEquals(360f, slices.single().sweepAngle, DELTA)
+  }
+
+  @Test
+  fun `円グラフは正の金額がなければ空になる`() {
+    val slices = buildAssetPieSlices(mapOf("調整" to -20L, "ゼロ" to 0L))
+
+    assertEquals(emptyList<AssetPieSlice>(), slices)
+  }
+
+  @Test
   fun `24カテゴリまでは色が重複しない`() {
     val categories = (1..24).map { index -> "カテゴリ%02d".format(index) }
 
