@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
@@ -9,6 +10,7 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
+import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetRefreshObserver
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 
@@ -20,6 +22,17 @@ class YomitoriApplication : Application(),
   KnowledgeRepositoryProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(this)
+  }
+  val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AppRouteDependencies(this, container)
+  }
+  private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    UnreadArticlesWidgetRefreshObserver(
+      context = this,
+      dataChanges = DataChangeNotifier.shared.version,
+    )
   }
 
   override val databaseSchema: DatabaseSchema
@@ -40,6 +53,7 @@ class YomitoriApplication : Application(),
   override fun onCreate() {
     super.onCreate()
     StartupCrashStore.install(this)
+    unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }
 }
