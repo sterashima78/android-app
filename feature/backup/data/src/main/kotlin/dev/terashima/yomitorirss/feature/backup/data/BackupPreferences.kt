@@ -10,11 +10,10 @@ internal class BackupPreferences(context: Context) {
 
   fun encode(): ByteArray {
     val files = JSONObject()
-    BACKED_UP_PREFERENCES.sorted().forEach { name ->
-      val preferences = appContext.getSharedPreferences(name, Context.MODE_PRIVATE)
-      if (preferences.all.isNotEmpty()) {
-        files.put(name, encodeFile(preferences))
-      }
+    BACKUP_RULES.sortedBy(PreferenceBackupRule::name).forEach { rule ->
+      val preferences = appContext.getSharedPreferences(rule.name, Context.MODE_PRIVATE)
+      val encoded = encodeFile(preferences, rule.allowedKeys)
+      if (encoded.length() > 0) files.put(rule.name, encoded)
     }
     return JSONObject()
       .put("format", FORMAT)
@@ -30,17 +29,27 @@ internal class BackupPreferences(context: Context) {
 
   fun restore(bytes: ByteArray) {
     val decoded = decode(bytes)
-    BACKED_UP_PREFERENCES.forEach { name ->
-      val values = decoded[name].orEmpty()
-      val editor = appContext.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear()
+    BACKUP_RULES.forEach { rule ->
+      val values = decoded[rule.name].orEmpty()
+      val editor = appContext.getSharedPreferences(rule.name, Context.MODE_PRIVATE).edit()
+      if (rule.allowedKeys == null) {
+        editor.clear()
+      } else {
+        rule.allowedKeys.forEach(editor::remove)
+      }
       values.forEach { (key, value) -> editor.putValue(key, value) }
-      check(editor.commit()) { "設定を復元できませんでした: $name" }
+      check(editor.commit()) { "設定を復元できませんでした: ${rule.name}" }
     }
   }
 
-  private fun encodeFile(preferences: SharedPreferences): JSONObject = JSONObject().apply {
+  private fun encodeFile(
+    preferences: SharedPreferences,
+    allowedKeys: Set<String>?,
+  ): JSONObject = JSONObject().apply {
     preferences.all.toSortedMap().forEach { (key, value) ->
-      put(key, encodeValue(value))
+      if (allowedKeys == null || key in allowedKeys) {
+        put(key, encodeValue(value))
+      }
     }
   }
 
@@ -68,12 +77,23 @@ internal class BackupPreferences(context: Context) {
       "対応していない設定バックアップです"
     }
     val files = root.optJSONObject("files") ?: error("設定バックアップにfilesがありません")
-    val unknownFiles = files.keys().asSequence().filterNot(BACKED_UP_PREFERENCES::contains).toList()
+    val rulesByName = BACKUP_RULES.associateBy(PreferenceBackupRule::name)
+    val unknownFiles = files.keys().asSequence().filterNot(rulesByName::containsKey).toList()
     require(unknownFiles.isEmpty()) { "未知の設定ファイルが含まれています: ${unknownFiles.joinToString()}" }
 
-    return BACKED_UP_PREFERENCES.associateWith { name ->
-      val file = files.optJSONObject(name) ?: return@associateWith emptyMap()
-      file.keys().asSequence().associateWith { key -> decodeValue(file.getJSONObject(key)) }
+    return BACKUP_RULES.associate { rule ->
+      val file = files.optJSONObject(rule.name)
+      val values = if (file == null) {
+        emptyMap()
+      } else {
+        val keys = file.keys().asSequence().toList()
+        val unknownKeys = rule.allowedKeys?.let { allowed -> keys.filterNot(allowed::contains) }.orEmpty()
+        require(unknownKeys.isEmpty()) {
+          "許可されていない設定キーが含まれています: ${rule.name}: ${unknownKeys.joinToString()}"
+        }
+        keys.associateWith { key -> decodeValue(file.getJSONObject(key)) }
+      }
+      rule.name to values
     }
   }
 
@@ -117,6 +137,11 @@ internal class BackupPreferences(context: Context) {
     data class StringSetValue(val value: Set<String>) : PreferenceValue
   }
 
+  internal data class PreferenceBackupRule(
+    val name: String,
+    val allowedKeys: Set<String>? = null,
+  )
+
   companion object {
     private const val FORMAT = "yomitori-user-preferences"
     private const val VERSION = 1
@@ -124,14 +149,26 @@ internal class BackupPreferences(context: Context) {
 
     // Explicit allowlist: never add credentials, persisted URI permissions, device-specific
     // benchmarks, transient queue state, or crash diagnostics here.
-    internal val BACKED_UP_PREFERENCES = setOf(
-      "background_data_fetch",
-      "book_reader_position",
-      "local_ai_background_execution",
-      "local_summary_models",
-      "summary_preferences",
-      "workout",
-      "x_viewer_preferences",
+    internal val BACKUP_RULES = listOf(
+      PreferenceBackupRule("background_data_fetch"),
+      PreferenceBackupRule("book_reader_position"),
+      PreferenceBackupRule("local_ai_background_execution"),
+      PreferenceBackupRule(
+        name = "local_summary_models",
+        allowedKeys = setOf(
+          "selected_model_id",
+          "inference_backend",
+          "thinking_enabled",
+          "speculative_decoding_enabled",
+          "context_size_mode",
+        ),
+      ),
+      PreferenceBackupRule("summary_preferences"),
+      PreferenceBackupRule("workout"),
+      PreferenceBackupRule("x_viewer_preferences"),
     )
+
+    internal val BACKED_UP_PREFERENCES: Set<String> =
+      BACKUP_RULES.mapTo(linkedSetOf(), PreferenceBackupRule::name)
   }
 }
