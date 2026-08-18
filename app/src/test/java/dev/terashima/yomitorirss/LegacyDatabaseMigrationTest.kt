@@ -8,7 +8,6 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,14 +23,14 @@ class LegacyDatabaseMigrationTest {
   @Before
   fun setUp() {
     context = ApplicationProvider.getApplicationContext()
-    DATABASE_NAMES.forEach(context::deleteDatabase)
+    DATABASE_NAMES.forEach { context.deleteDatabase(it) }
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
   }
 
   @After
   fun tearDown() {
     database?.close()
-    DATABASE_NAMES.forEach(context::deleteDatabase)
+    DATABASE_NAMES.forEach { context.deleteDatabase(it) }
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
   }
 
@@ -60,7 +59,7 @@ class LegacyDatabaseMigrationTest {
 
     assertEquals("", scalarString(db, "SELECT description FROM tasks WHERE id='task-child'"))
     assertEquals(0, scalarInt(db, "SELECT is_watch_later FROM videos WHERE video_id='video-1'"))
-    assertTrue(context.getDatabasePath(CHAT_DATABASE).let { !it.exists() })
+    assertFalse(context.getDatabasePath(CHAT_DATABASE).exists())
     assertFalse(context.getDatabasePath(TASK_DATABASE).exists())
     assertFalse(context.getDatabasePath(YOUTUBE_DATABASE).exists())
   }
