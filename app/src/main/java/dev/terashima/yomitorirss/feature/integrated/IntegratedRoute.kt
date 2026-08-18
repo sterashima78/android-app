@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedItem
 import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedItemAction
@@ -48,21 +47,13 @@ fun IntegratedRoute(
   redditViewModel: RedditViewModel,
   feedViewModel: FeedViewModel,
   mailViewModel: MailViewModel,
+  youtubeViewModelFactory: YouTubeViewModel.Factory,
   onOpenArticle: (Article) -> Unit,
   onOpenMail: (MailThread) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
-  val application = context.applicationContext as YomitoriApplication
-  val youtubeViewModel: YouTubeViewModel = viewModel(
-    factory = remember(application) {
-      YouTubeViewModel.Factory(
-        repository = application.container.youtubeRepository,
-        bookmarkRepository = application.container.bookmarkRepository,
-        backupChangeScheduler = application.container.backupChangeScheduler,
-      )
-    },
-  )
+  val youtubeViewModel: YouTubeViewModel = viewModel(factory = youtubeViewModelFactory)
   val rssState by rssViewModel.state.collectAsState()
   val redditState by redditViewModel.state.collectAsState()
   val feedState by feedViewModel.state.collectAsState()

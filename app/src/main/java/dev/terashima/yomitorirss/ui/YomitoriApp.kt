@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditHost
@@ -47,6 +48,7 @@ fun YomitoriApp(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   chatViewModel: ChatViewModel,
+  routeDependencies: AppRouteDependencies,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
   onAddMailAccount: () -> Unit,
@@ -133,6 +135,7 @@ fun YomitoriApp(
         backupViewModel = backupViewModel,
         aiSettingsViewModel = aiSettingsViewModel,
         chatViewModel = chatViewModel,
+        routeDependencies = routeDependencies,
         rssController = rssController,
         redditController = redditController,
         bookmarkEditController = bookmarkEditController,

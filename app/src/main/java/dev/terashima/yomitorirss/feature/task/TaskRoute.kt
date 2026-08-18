@@ -5,21 +5,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.terashima.yomitorirss.YomitoriApplication
-import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 
 @Composable
-fun TaskScreen(modifier: Modifier = Modifier) {
-  val application = LocalContext.current.applicationContext as YomitoriApplication
-  val taskViewModel: TaskViewModel = viewModel(
-    factory = TaskViewModel.Factory(application.container.taskRepository),
-  )
+fun TaskScreen(
+  viewModelFactory: TaskViewModel.Factory,
+  onTasksChanged: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val taskViewModel: TaskViewModel = viewModel(factory = viewModelFactory)
   val state by taskViewModel.state.collectAsState()
 
   LaunchedEffect(state.tasks) {
-    TaskWidgetUpdater.updateAll(application)
+    onTasksChanged()
   }
 
   TaskScreen(viewModel = taskViewModel, modifier = modifier)

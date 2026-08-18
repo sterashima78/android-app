@@ -64,7 +64,7 @@ class AppContainer(private val application: Application) {
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     YomitoriDatabase.create(application)
   }
-  private val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  internal val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)
   }
   private val bookmarkSourceMetadataReader: BookmarkSourceMetadataReader by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
