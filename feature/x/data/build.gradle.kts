@@ -1,18 +1,13 @@
 plugins {
   id("com.android.library")
-  id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
-  namespace = "dev.terashima.yomitorirss.feature.x.ui"
+  namespace = "dev.terashima.yomitorirss.feature.x.data"
   compileSdk = 36
 
   defaultConfig {
     minSdk = 29
-  }
-
-  buildFeatures {
-    compose = true
   }
 
   compileOptions {
@@ -24,11 +19,7 @@ android {
 dependencies {
   implementation(project(":feature:x:domain"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
-  implementation("androidx.compose.ui:ui")
-  implementation("androidx.compose.foundation:foundation")
-  implementation("androidx.compose.material3:material3")
-
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.robolectric:robolectric:4.16.1")
+  testImplementation("androidx.test:core-ktx:1.7.0")
 }

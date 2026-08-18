@@ -51,4 +51,11 @@ class XViewerCssSettingsTest {
 
     assertEquals("source", settings.cssAt(1))
   }
+
+  @Test
+  fun `CSS が無効なら注入文字列は空になる`() {
+    val settings = XViewerCssSettings(enabled = false, css = "body { display: none; }")
+
+    assertEquals("", settings.cssForInjection())
+  }
 }

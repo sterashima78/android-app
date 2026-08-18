@@ -11,13 +11,17 @@ import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
+import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
+import dev.terashima.yomitorirss.feature.x.XViewerCssRepositoryProvider
+import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
 
 class YomitoriApplication : Application(),
   WidgetRepositoryProvider,
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
   BackupRepositoryProvider,
-  KnowledgeRepositoryProvider {
+  KnowledgeRepositoryProvider,
+  XViewerCssRepositoryProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(this)
   }
@@ -36,6 +40,10 @@ class YomitoriApplication : Application(),
 
   override val knowledgeRepository: KnowledgeRepository
     get() = container.knowledgeRepository
+
+  override val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SharedPreferencesXViewerCssRepository(this)
+  }
 
   override fun onCreate() {
     super.onCreate()
