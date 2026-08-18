@@ -154,7 +154,7 @@ class DefaultAssetRepository(
   }
 }
 
-private data class ParsedAssetRow(
+internal data class ParsedAssetRow(
   val date: LocalDate,
   val name: String,
   val amount: Long,
@@ -162,7 +162,7 @@ private data class ParsedAssetRow(
   val categoryHint: String?,
 )
 
-private fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
+internal fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
   val result = mutableListOf<ParsedAssetRow>()
   var delimiter: Char? = null
   reader.forEachLine { rawLine ->
@@ -173,7 +173,7 @@ private fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
     val columns = splitDelimitedLine(line, currentDelimiter)
     if (columns.size < 3) error("3列以上の日付・資産名・金額が必要です")
     val date = parseDate(columns[0])
-    if (date == null && columns[0].contains("日付")) return@forEachLine
+    if (date == null && columns[0].trim().lowercase() in setOf("日付", "date")) return@forEachLine
     requireNotNull(date) { "日付を解析できません: ${columns[0]}" }
     val name = columns[1].trim()
     require(name.isNotBlank()) { "資産名が空です" }
@@ -190,7 +190,7 @@ private fun parseDelimited(reader: BufferedReader): List<ParsedAssetRow> {
   return result
 }
 
-private fun splitDelimitedLine(line: String, delimiter: Char): List<String> {
+internal fun splitDelimitedLine(line: String, delimiter: Char): List<String> {
   if (delimiter == '\t') return line.split('\t')
   val values = mutableListOf<String>()
   val current = StringBuilder()
@@ -212,11 +212,12 @@ private fun splitDelimitedLine(line: String, delimiter: Char): List<String> {
     }
     index++
   }
+  require(!quoted) { "CSV の引用符が閉じていません" }
   values += current.toString()
   return values
 }
 
-private fun parseDate(value: String): LocalDate? {
+internal fun parseDate(value: String): LocalDate? {
   val text = value.trim()
   val formatters = listOf(
     DateTimeFormatter.ISO_LOCAL_DATE,
