@@ -66,6 +66,26 @@ internal class FeedStore(
     return feed
   }
 
+  fun renameFeed(id: String, name: String) {
+    val display = displayName(name)
+    require(display.isNotBlank()) { "フィード名を入力してください" }
+    database.transaction {
+      val updated = update(
+        "feeds",
+        contentValues("title" to display),
+        "id=?",
+        arrayOf(id),
+      )
+      require(updated > 0) { "フィードが見つかりません" }
+      update(
+        "articles",
+        contentValues("source_title" to display),
+        "feed_id=?",
+        arrayOf(id),
+      )
+    }
+  }
+
   fun createFolder(name: String): FeedFolder {
     val display = displayName(name)
     require(display.isNotBlank()) { "フォルダ名を入力してください" }
@@ -168,7 +188,6 @@ internal class FeedStore(
       update(
         "feeds",
         contentValues(
-          "title" to parsed.title,
           "feed_url" to parsed.feedUrl,
           "site_url" to parsed.siteUrl,
           "etag" to etag,
@@ -179,9 +198,16 @@ internal class FeedStore(
         "id=?",
         arrayOf(feed.id),
       )
+      val currentTitle = rawQuery(
+        "SELECT title FROM feeds WHERE id=? LIMIT 1",
+        arrayOf(feed.id),
+      ).use { cursor ->
+        require(cursor.moveToFirst()) { "フィードが見つかりません" }
+        cursor.getString(0)
+      }
       upsertArticles(
         this,
-        feed.copy(title = parsed.title, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl),
+        feed.copy(title = currentTitle, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl),
         parsed,
         now,
       )
