@@ -1,4 +1,4 @@
-# ADR-0102: app route の composition と navigation metadata の所有境界を明確化する
+# ADR-0103: app route の composition と navigation metadata の所有境界を明確化する
 
 - Status: Accepted
 - Date: 2026-08-19
