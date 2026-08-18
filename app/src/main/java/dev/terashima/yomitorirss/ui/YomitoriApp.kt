@@ -178,7 +178,7 @@ fun YomitoriApp(
   }
 
   val exportLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.CreateDocument("application/json"),
+    ActivityResultContracts.CreateDocument("application/zip"),
   ) { uri -> uri?.toString()?.let(backupViewModel::exportBackup) }
   val importLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.OpenDocument(),
@@ -663,10 +663,12 @@ fun YomitoriApp(
               showBackup = true
             },
             onExportBackup = {
-              exportLauncher.launch("rss-reader-backup-${LocalDate.now()}.json")
+              exportLauncher.launch("rss-reader-backup-${LocalDate.now()}.zip")
             },
             onImportBackup = {
-              importLauncher.launch(arrayOf("application/json", "text/json"))
+              importLauncher.launch(
+                arrayOf("application/zip", "application/json", "text/json", "application/octet-stream"),
+              )
             },
             onOpenWebServer = onOpenWebServer,
           )
