@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(22, db.version)
+    assertEquals(23, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -72,6 +72,11 @@ class AppDatabaseSchemaTest {
         "asset_entries",
         "asset_categories",
         "asset_category_definitions",
+        "tasks",
+        "chat_sessions",
+        "chat_messages",
+        "channels",
+        "videos",
       ),
       db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'android_metadata'",
@@ -82,6 +87,33 @@ class AppDatabaseSchemaTest {
         }
       },
     )
+  }
+
+  @Test
+  fun `version 22 database adds unified feature schemas while upgrading`() {
+    val legacySchema = DatabaseSchema(
+      version = 22,
+      contributions = appDatabaseSchema.contributions.filterNot { contribution ->
+        contribution.owner in setOf("task", "chat", "youtube")
+      },
+    )
+    val legacyDatabase = YomitoriDatabase.create(context, legacySchema)
+    val legacyDb = legacyDatabase.writableDatabase
+    insertBookmarkedArticle(legacyDb, "preserved-article")
+    assertFalse(tableExists(legacyDb, "tasks"))
+    assertFalse(tableExists(legacyDb, "chat_sessions"))
+    assertFalse(tableExists(legacyDb, "channels"))
+    legacyDatabase.close()
+
+    val upgraded = openDatabase().writableDatabase
+
+    assertEquals(23, upgraded.version)
+    assertTrue(tableExists(upgraded, "tasks"))
+    assertTrue(tableExists(upgraded, "chat_sessions"))
+    assertTrue(tableExists(upgraded, "chat_messages"))
+    assertTrue(tableExists(upgraded, "channels"))
+    assertTrue(tableExists(upgraded, "videos"))
+    assertEquals(1, countRows(upgraded, "articles", "id=?", arrayOf("preserved-article")))
   }
 
   @Test
@@ -109,7 +141,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(22, upgraded.version)
+    assertEquals(23, upgraded.version)
     assertTrue("custom_title" in columnNames(upgraded, "feeds"))
   }
 
@@ -134,7 +166,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(22, upgraded.version)
+    assertEquals(23, upgraded.version)
     assertTrue("content_type" in columnNames(upgraded, "feed_folders"))
     assertTrue("content_type" in columnNames(upgraded, "feeds"))
     assertTrue("custom_title" in columnNames(upgraded, "feeds"))
@@ -280,6 +312,11 @@ private fun insertArticleTag(db: SQLiteDatabase, articleId: String, tagId: Strin
     },
   )
 }
+
+private fun tableExists(db: SQLiteDatabase, table: String): Boolean = db.rawQuery(
+  "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+  arrayOf(table),
+).use { it.moveToFirst() }
 
 private fun columnNames(db: SQLiteDatabase, table: String): Set<String> =
   db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->

@@ -1,49 +1,18 @@
 package dev.terashima.yomitorirss.feature.chat.data
 
 import android.content.ContentValues
-import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.chat.ChatRole
 import dev.terashima.yomitorirss.feature.chat.ChatSession
 import dev.terashima.yomitorirss.feature.chat.StoredChatMessage
 import java.time.Instant
 import java.util.UUID
 
-internal class ChatStore(context: Context) : SQLiteOpenHelper(
-  context.applicationContext,
-  DB_NAME,
-  null,
-  DB_VERSION,
+internal class ChatStore(
+  private val database: DatabaseConnection,
 ) {
-  override fun onConfigure(db: SQLiteDatabase) {
-    super.onConfigure(db)
-    db.setForeignKeyConstraintsEnabled(true)
-  }
-
-  override fun onCreate(db: SQLiteDatabase) {
-    db.execSQL(
-      "CREATE TABLE chat_sessions(" +
-        "id TEXT PRIMARY KEY NOT NULL," +
-        "title TEXT NOT NULL," +
-        "created_at TEXT NOT NULL," +
-        "updated_at TEXT NOT NULL)",
-    )
-    db.execSQL(
-      "CREATE TABLE chat_messages(" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-        "session_id TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE," +
-        "role TEXT NOT NULL," +
-        "content TEXT NOT NULL," +
-        "created_at TEXT NOT NULL)",
-    )
-    db.execSQL("CREATE INDEX chat_messages_session ON chat_messages(session_id,id)")
-    db.execSQL("CREATE INDEX chat_sessions_updated ON chat_sessions(updated_at DESC)")
-  }
-
-  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
-
-  fun listSessions(): List<ChatSession> = readableDatabase.rawQuery(
+  fun listSessions(): List<ChatSession> = database.readable.rawQuery(
     "SELECT id,title,created_at,updated_at FROM chat_sessions " +
       "ORDER BY updated_at DESC,created_at DESC LIMIT $MAX_SESSIONS",
     null,
@@ -70,9 +39,8 @@ internal class ChatStore(context: Context) : SQLiteOpenHelper(
       createdAt = timestamp,
       updatedAt = timestamp,
     )
-    writableDatabase.beginTransaction()
-    try {
-      writableDatabase.insertOrThrow(
+    database.transaction {
+      insertOrThrow(
         "chat_sessions",
         null,
         ContentValues().apply {
@@ -82,15 +50,12 @@ internal class ChatStore(context: Context) : SQLiteOpenHelper(
           put("updated_at", session.updatedAt)
         },
       )
-      pruneOldSessions(writableDatabase)
-      writableDatabase.setTransactionSuccessful()
-    } finally {
-      writableDatabase.endTransaction()
+      pruneOldSessions(this)
     }
     return session
   }
 
-  fun listMessages(sessionId: String): List<StoredChatMessage> = readableDatabase.rawQuery(
+  fun listMessages(sessionId: String): List<StoredChatMessage> = database.readable.rawQuery(
     "SELECT id,session_id,role,content,created_at FROM chat_messages WHERE session_id=? ORDER BY id ASC",
     arrayOf(sessionId),
   ).use { cursor ->
@@ -113,10 +78,8 @@ internal class ChatStore(context: Context) : SQLiteOpenHelper(
     val normalized = content.trim()
     require(normalized.isNotBlank()) { "メッセージを入力してください" }
     val timestamp = Instant.now().toString()
-    val database = writableDatabase
-    database.beginTransaction()
-    return try {
-      val id = database.insertOrThrow(
+    return database.transaction {
+      val id = insertOrThrow(
         "chat_messages",
         null,
         ContentValues().apply {
@@ -127,18 +90,15 @@ internal class ChatStore(context: Context) : SQLiteOpenHelper(
         },
       )
       check(id >= 0) { "チャットメッセージを保存できませんでした" }
-      val updatedRows = database.update(
+      val updatedRows = update(
         "chat_sessions",
         ContentValues().apply { put("updated_at", timestamp) },
         "id=?",
         arrayOf(sessionId),
       )
       check(updatedRows == 1) { "チャットセッションが見つかりません" }
-      pruneOldSessions(database)
-      database.setTransactionSuccessful()
+      pruneOldSessions(this)
       StoredChatMessage(id, sessionId, role, normalized, timestamp)
-    } finally {
-      database.endTransaction()
     }
   }
 
@@ -158,8 +118,6 @@ internal class ChatStore(context: Context) : SQLiteOpenHelper(
 
   companion object {
     private const val MAX_SESSIONS = 5
-    private const val DB_NAME = "yomitori-chat.db"
-    private const val DB_VERSION = 1
     private const val TITLE_MAX_CHARS = 28
   }
 }

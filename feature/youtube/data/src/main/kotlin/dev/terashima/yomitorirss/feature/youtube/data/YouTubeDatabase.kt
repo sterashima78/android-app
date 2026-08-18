@@ -1,60 +1,15 @@
 package dev.terashima.yomitorirss.feature.youtube.data
 
 import android.content.ContentValues
-import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.youtube.YouTubeChannel
 import dev.terashima.yomitorirss.feature.youtube.YouTubeVideo
 
-internal class YouTubeDatabase(context: Context) :
-  SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
-
-  override fun onCreate(db: SQLiteDatabase) {
-    db.execSQL(
-      """
-      CREATE TABLE channels (
-        channel_id TEXT PRIMARY KEY NOT NULL,
-        title TEXT NOT NULL,
-        channel_url TEXT NOT NULL,
-        added_at INTEGER NOT NULL
-      )
-      """.trimIndent(),
-    )
-    db.execSQL(
-      """
-      CREATE TABLE videos (
-        video_id TEXT PRIMARY KEY NOT NULL,
-        channel_id TEXT NOT NULL,
-        title TEXT NOT NULL,
-        video_url TEXT NOT NULL,
-        published_at INTEGER NOT NULL,
-        is_read INTEGER NOT NULL DEFAULT 0,
-        is_watch_later INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY(channel_id) REFERENCES channels(channel_id) ON DELETE CASCADE
-      )
-      """.trimIndent(),
-    )
-    db.execSQL("CREATE INDEX videos_channel_idx ON videos(channel_id)")
-    db.execSQL("CREATE INDEX videos_unread_idx ON videos(is_read, is_watch_later, published_at DESC)")
-    db.execSQL("CREATE INDEX videos_watch_later_idx ON videos(is_watch_later, published_at DESC)")
-  }
-
-  override fun onConfigure(db: SQLiteDatabase) {
-    super.onConfigure(db)
-    db.setForeignKeyConstraintsEnabled(true)
-  }
-
-  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-    if (oldVersion < 2) {
-      db.execSQL("ALTER TABLE videos ADD COLUMN is_watch_later INTEGER NOT NULL DEFAULT 0")
-      db.execSQL("DROP INDEX IF EXISTS videos_unread_idx")
-      db.execSQL("CREATE INDEX videos_unread_idx ON videos(is_read, is_watch_later, published_at DESC)")
-      db.execSQL("CREATE INDEX videos_watch_later_idx ON videos(is_watch_later, published_at DESC)")
-    }
-  }
-
-  fun listChannels(): List<YouTubeChannel> = readableDatabase.query(
+internal class YouTubeDatabase(
+  private val database: DatabaseConnection,
+) {
+  fun listChannels(): List<YouTubeChannel> = database.readable.query(
     "channels",
     arrayOf("channel_id", "title", "channel_url"),
     null,
@@ -84,7 +39,7 @@ internal class YouTubeDatabase(context: Context) :
     whereClause = "v.is_watch_later = 1",
   )
 
-  private fun listVideos(whereClause: String): List<YouTubeVideo> = readableDatabase.rawQuery(
+  private fun listVideos(whereClause: String): List<YouTubeVideo> = database.readable.rawQuery(
     """
     SELECT v.video_id, v.channel_id, c.title, v.title, v.video_url, v.published_at, v.is_read, v.is_watch_later
     FROM videos v
@@ -113,29 +68,27 @@ internal class YouTubeDatabase(context: Context) :
   }
 
   fun upsertFeed(feed: ParsedYouTubeFeed): YouTubeChannel {
-    val db = writableDatabase
     val channel = YouTubeChannel(
       id = feed.channelId,
       title = feed.channelTitle,
       url = YouTubeChannelUrl.canonical(feed.channelId),
     )
-    db.beginTransaction()
-    try {
+    database.transaction {
       val insertValues = ContentValues().apply {
         put("channel_id", channel.id)
         put("title", channel.title)
         put("channel_url", channel.url)
         put("added_at", System.currentTimeMillis())
       }
-      db.insertWithOnConflict("channels", null, insertValues, SQLiteDatabase.CONFLICT_IGNORE)
+      insertWithOnConflict("channels", null, insertValues, SQLiteDatabase.CONFLICT_IGNORE)
       val channelValues = ContentValues().apply {
         put("title", channel.title)
         put("channel_url", channel.url)
       }
-      db.update("channels", channelValues, "channel_id = ?", arrayOf(channel.id))
+      update("channels", channelValues, "channel_id = ?", arrayOf(channel.id))
 
       feed.videos.forEach { video ->
-        val exists = db.rawQuery(
+        val exists = rawQuery(
           "SELECT 1 FROM videos WHERE video_id = ? LIMIT 1",
           arrayOf(video.id),
         ).use { it.moveToFirst() }
@@ -151,20 +104,17 @@ internal class YouTubeDatabase(context: Context) :
           }
         }
         if (exists) {
-          db.update("videos", values, "video_id = ?", arrayOf(video.id))
+          update("videos", values, "video_id = ?", arrayOf(video.id))
         } else {
-          db.insertOrThrow("videos", null, values)
+          insertOrThrow("videos", null, values)
         }
       }
-      db.setTransactionSuccessful()
-    } finally {
-      db.endTransaction()
     }
     return channel
   }
 
   fun deleteChannel(channelId: String) {
-    writableDatabase.delete("channels", "channel_id = ?", arrayOf(channelId))
+    database.writable.delete("channels", "channel_id = ?", arrayOf(channelId))
   }
 
   fun markRead(videoId: String) {
@@ -172,7 +122,7 @@ internal class YouTubeDatabase(context: Context) :
       put("is_read", 1)
       put("is_watch_later", 0)
     }
-    writableDatabase.update("videos", values, "video_id = ?", arrayOf(videoId))
+    database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
   }
 
   fun setWatchLater(videoId: String, watchLater: Boolean) {
@@ -180,16 +130,11 @@ internal class YouTubeDatabase(context: Context) :
       put("is_watch_later", if (watchLater) 1 else 0)
       if (watchLater) put("is_read", 0)
     }
-    writableDatabase.update("videos", values, "video_id = ?", arrayOf(videoId))
+    database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
   }
 
   fun markAllRead() {
     val values = ContentValues().apply { put("is_read", 1) }
-    writableDatabase.update("videos", values, "is_read = 0 AND is_watch_later = 0", null)
-  }
-
-  private companion object {
-    const val DATABASE_NAME = "youtube.db"
-    const val DATABASE_VERSION = 2
+    database.writable.update("videos", values, "is_read = 0 AND is_watch_later = 0", null)
   }
 }

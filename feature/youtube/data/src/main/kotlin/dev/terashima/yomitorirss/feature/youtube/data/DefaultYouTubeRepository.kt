@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.youtube.data
 
-import android.content.Context
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.feature.youtube.YouTubeChannel
@@ -11,10 +11,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class DefaultYouTubeRepository(
-  context: Context,
+  database: DatabaseConnection,
   private val httpClient: HttpClient = HttpClient.create(),
 ) : YouTubeRepository {
-  private val database = YouTubeDatabase(context.applicationContext)
+  private val database = YouTubeDatabase(database)
   private val parser = YouTubeFeedParser()
 
   override suspend fun listChannels(): List<YouTubeChannel> = withContext(Dispatchers.IO) {

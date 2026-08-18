@@ -1,12 +1,14 @@
 package dev.terashima.yomitorirss.feature.task.data
 
-import android.content.Context
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.task.TaskItem
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import java.time.LocalDate
 
-class DefaultTaskRepository(context: Context) : TaskRepository {
-  private val store = TaskStore(context)
+class DefaultTaskRepository(
+  database: DatabaseConnection,
+) : TaskRepository {
+  private val store = TaskStore(database)
 
   override suspend fun listTasks(): List<TaskItem> = store.listTasks()
 
