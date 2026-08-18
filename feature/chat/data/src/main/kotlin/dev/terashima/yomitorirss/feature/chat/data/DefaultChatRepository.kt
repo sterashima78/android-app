@@ -1,13 +1,15 @@
 package dev.terashima.yomitorirss.feature.chat.data
 
-import android.content.Context
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.ChatRole
 import dev.terashima.yomitorirss.feature.chat.ChatSession
 import dev.terashima.yomitorirss.feature.chat.StoredChatMessage
 
-class DefaultChatRepository(context: Context) : ChatRepository {
-  private val store = ChatStore(context)
+class DefaultChatRepository(
+  database: DatabaseConnection,
+) : ChatRepository {
+  private val store = ChatStore(database)
 
   override suspend fun listSessions(): List<ChatSession> = store.listSessions()
 
