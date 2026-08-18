@@ -151,7 +151,7 @@ internal data class MangaOneRenderedPage(
     const val RENDER_STATUS_DOCUMENT_LOADING = "document-loading"
     const val RENDER_STATUS_SERVICE_ERROR = "service-error"
     const val RENDER_STATUS_CHAPTER_LIST_MISSING = "chapter-list-missing"
-    const val RENDER_STATUS_CHAPTER_LINKS_MISSING = "chapter-links-missing"
+    const val RENDER_STATUS_CHAPTER_ROWS_MISSING = "chapter-rows-missing"
   }
 }
 
@@ -171,6 +171,15 @@ internal fun chromeLikeUserAgent(defaultUserAgent: String): String = defaultUser
   .replace("Version/4.0 ", "")
   .replace(Regex("\\s+"), " ")
   .trim()
+
+internal fun mangaOneFallbackChapterUrl(pageUrl: String, title: String, dateText: String): String {
+  val source = "$title|$dateText"
+  val suffix = MessageDigest.getInstance("SHA-256")
+    .digest(source.toByteArray(Charsets.UTF_8))
+    .joinToString("") { "%02x".format(it) }
+    .take(16)
+  return "${pageUrl.substringBefore('#')}#chapter-$suffix"
+}
 
 private class WebViewMangaOnePageRenderer(
   private val context: Context,
@@ -218,7 +227,7 @@ private class WebViewMangaOnePageRenderer(
           }
           webView.evaluateJavascript(extractionScript(mangaId)) { raw ->
             if (finished) return@evaluateJavascript
-            val page = runCatching { decodeResult(raw) }.getOrNull()
+            val page = runCatching { decodeResult(raw, url) }.getOrNull()
             if (page == null) {
               lastRenderStatus = MangaOneRenderedPage.RENDER_STATUS_DOCUMENT_LOADING
               handler.postDelayed(probe, PROBE_INTERVAL_MS)
@@ -307,12 +316,12 @@ private class WebViewMangaOnePageRenderer(
       "マンガワン側でページを表示できない状態が続いたため、話一覧を取得できませんでした"
     MangaOneRenderedPage.RENDER_STATUS_CHAPTER_LIST_MISSING ->
       "マンガワンのページは読み込めましたが、話一覧が表示されませんでした"
-    MangaOneRenderedPage.RENDER_STATUS_CHAPTER_LINKS_MISSING ->
-      "マンガワンの話一覧は表示されましたが、話リンクを取得できませんでした"
+    MangaOneRenderedPage.RENDER_STATUS_CHAPTER_ROWS_MISSING ->
+      "マンガワンの話一覧は表示されましたが、話情報を取得できませんでした"
     else -> "マンガワンのページ読み込みが完了しませんでした"
   }
 
-  private fun decodeResult(raw: String): MangaOneRenderedPage? {
+  private fun decodeResult(raw: String, pageUrl: String): MangaOneRenderedPage? {
     if (raw == "null" || raw == "undefined") return null
     val encoded = JSONArray("[$raw]").optString(0)
     if (encoded.isBlank()) return null
@@ -321,12 +330,15 @@ private class WebViewMangaOnePageRenderer(
     val chapters = buildList {
       for (index in 0 until chaptersJson.length()) {
         val chapter = chaptersJson.getJSONObject(index)
+        val title = chapter.optString("title").trim()
+        val dateText = chapter.optString("dateText").trim()
+        val directUrl = chapter.optString("url").trim()
         add(
           MangaOneRenderedChapter(
-            title = chapter.optString("title").trim(),
-            url = chapter.optString("url").trim(),
+            title = title,
+            url = directUrl.ifBlank { mangaOneFallbackChapterUrl(pageUrl, title, dateText) },
             label = chapter.optString("label").trim(),
-            dateText = chapter.optString("dateText").trim(),
+            dateText = dateText,
           ),
         )
       }
@@ -354,30 +366,54 @@ private class WebViewMangaOnePageRenderer(
       }
       root.scrollTop = root.scrollHeight;
       const prefix = '/manga/$mangaId/chapter/';
-      const isChapterLink = (element) => {
-        if (!(element instanceof HTMLAnchorElement)) return false;
-        try {
-          const target = new URL(element.href, location.href);
-          return target.origin === location.origin && target.pathname.startsWith(prefix);
-        } catch (_) {
-          return false;
-        }
-      };
-      const links = Array.from(root.querySelectorAll('a[href]')).filter(isChapterLink);
-      if (links.length === 0) {
-        return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-links-missing' });
+      const titleSelector = 'p[class*="line-clamp-1"]';
+      const titleNodes = Array.from(root.querySelectorAll(titleSelector));
+      if (titleNodes.length === 0) {
+        return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-rows-missing' });
       }
-      const chapters = [];
-      for (const link of links) {
-        let node = link;
-        let row = link;
+
+      const chapterUrlFrom = (row) => {
+        const nodes = [row, ...Array.from(row.querySelectorAll('*'))];
+        let parent = row.parentElement;
+        for (let depth = 0; parent && parent !== root && depth < 3; depth += 1) {
+          nodes.push(parent);
+          parent = parent.parentElement;
+        }
+        for (const element of nodes) {
+          if (!element || !element.attributes) continue;
+          const candidates = [];
+          if (element instanceof HTMLAnchorElement && element.href) candidates.push(element.href);
+          for (const attribute of Array.from(element.attributes)) {
+            if (attribute.value && attribute.value.includes(prefix)) candidates.push(attribute.value);
+          }
+          for (const value of candidates) {
+            try {
+              const target = new URL(value, location.href);
+              if (target.origin === location.origin && target.pathname.startsWith(prefix)) return target.href;
+            } catch (_) {
+              // Ignore attributes that are not URLs.
+            }
+          }
+        }
+        return '';
+      };
+
+      const rowFor = (titleNode) => {
+        let row = titleNode;
+        let node = titleNode.parentElement;
         while (node && node !== root) {
-          let count = node.matches && node.matches('a[href]') && isChapterLink(node) ? 1 : 0;
-          count += Array.from(node.querySelectorAll('a[href]')).filter(isChapterLink).length;
+          const count = node.querySelectorAll(titleSelector).length;
           if (count !== 1) break;
           row = node;
           node = node.parentElement;
         }
+        return row;
+      };
+
+      const chapters = [];
+      const seen = new Set();
+      for (const titleNode of titleNodes) {
+        const row = rowFor(titleNode);
         const spanTexts = Array.from(row.querySelectorAll('span'))
           .map((span) => (span.textContent || '').trim())
           .filter(Boolean);
@@ -385,18 +421,25 @@ private class WebViewMangaOnePageRenderer(
           || spanTexts.find((text) => text.startsWith('毎日無料'))
           || spanTexts.find((text) => text === '先読み')
           || '';
-        const titleNode = row.querySelector('p[class*="line-clamp-1"]');
-        const chapterTitle = ((titleNode && titleNode.textContent) || link.textContent || '')
+        const chapterTitle = (titleNode.textContent || '')
           .replace(/\s+/g, ' ')
           .trim();
         const text = (row.textContent || '').replace(/\s+/g, ' ');
         const dateMatch = text.match(/20\d{2}(?:\/|\.|-|年)\d{1,2}(?:\/|\.|-|月)\d{1,2}日?/);
+        const dateText = dateMatch ? dateMatch[0] : '';
+        if (!chapterTitle) continue;
+        const dedupeKey = chapterTitle + '|' + dateText + '|' + label;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
         chapters.push({
           title: chapterTitle,
-          url: new URL(link.href, location.href).href,
+          url: chapterUrlFrom(row),
           label,
-          dateText: dateMatch ? dateMatch[0] : '',
+          dateText,
         });
+      }
+      if (chapters.length === 0) {
+        return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-rows-missing' });
       }
       return JSON.stringify({ title, chapters, renderStatus: 'ready' });
     })();

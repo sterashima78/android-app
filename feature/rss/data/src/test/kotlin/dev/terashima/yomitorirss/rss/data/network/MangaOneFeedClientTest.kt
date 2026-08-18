@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.rss.data.network
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -67,6 +68,19 @@ class MangaOneFeedClientTest {
         "(KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36",
       userAgent,
     )
+  }
+
+  @Test
+  fun `話リンクがDOMにない場合は一覧URLから安定した代替URLを作る`() {
+    val pageUrl = "https://manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=1&limit=10"
+
+    val first = mangaOneFallbackChapterUrl(pageUrl, "第10話 サンプル", "2026/08/18")
+    val same = mangaOneFallbackChapterUrl(pageUrl, "第10話 サンプル", "2026/08/18")
+    val other = mangaOneFallbackChapterUrl(pageUrl, "第11話 サンプル", "2026/08/18")
+
+    assertEquals(first, same)
+    assertNotEquals(first, other)
+    assertTrue(first.startsWith("$pageUrl#chapter-"))
   }
 
   @Test
