@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.asset
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,13 @@ internal data class AssetAreaChartData(
   val bands: List<AssetAreaBand>,
   val minValue: Float,
   val maxValue: Float,
+)
+
+internal data class AssetPieSlice(
+  val category: String,
+  val value: Long,
+  val startAngle: Float,
+  val sweepAngle: Float,
 )
 
 internal val ASSET_CHART_PALETTE = listOf(
@@ -62,6 +70,31 @@ internal fun buildAssetCategoryColorMap(categories: Collection<String>): Map<Str
     .sorted()
     .mapIndexed { index, category -> category to ASSET_CHART_PALETTE[index % ASSET_CHART_PALETTE.size] }
     .toMap()
+
+internal fun buildAssetPieSlices(byCategory: Map<String, Long>): List<AssetPieSlice> {
+  val positiveEntries = byCategory.entries
+    .filter { it.value > 0L }
+    .sortedWith(compareByDescending<Map.Entry<String, Long>> { it.value }.thenBy { it.key })
+  if (positiveEntries.isEmpty()) return emptyList()
+
+  val total = positiveEntries.sumOf { it.value.toDouble() }
+  var usedSweep = 0f
+  return positiveEntries.mapIndexed { index, entry ->
+    val sweepAngle = if (index == positiveEntries.lastIndex) {
+      360f - usedSweep
+    } else {
+      (entry.value.toDouble() / total * 360.0).toFloat()
+    }
+    AssetPieSlice(
+      category = entry.key,
+      value = entry.value,
+      startAngle = -90f + usedSweep,
+      sweepAngle = sweepAngle,
+    ).also {
+      usedSweep += sweepAngle
+    }
+  }
+}
 
 internal fun buildAssetAreaChartData(
   points: List<AssetHistoryPoint>,
@@ -126,6 +159,7 @@ internal fun AssetStackedHistoryChart(
   categoryColors: Map<String, Color>,
 ) {
   val chartData = remember(points, normalized) { buildAssetAreaChartData(points, normalized) }
+  val latestPieSlices = remember(points) { buildAssetPieSlices(points.last().byCategory) }
   val mutedColor = MaterialTheme.colorScheme.outlineVariant
 
   Column {
@@ -173,6 +207,38 @@ internal fun AssetStackedHistoryChart(
     Row(modifier = Modifier.fillMaxWidth()) {
       Text(points.first().date.toString(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
       Text(points.last().date.toString(), style = MaterialTheme.typography.labelSmall)
+    }
+
+    if (latestPieSlices.isNotEmpty()) {
+      Spacer(Modifier.height(20.dp))
+      Text("最新スナップショットの構成比", style = MaterialTheme.typography.titleMedium)
+      Spacer(Modifier.height(8.dp))
+      Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+        val diameter = minOf(size.width, size.height)
+        val topLeft = Offset(
+          x = (size.width - diameter) / 2f,
+          y = (size.height - diameter) / 2f,
+        )
+        val pieSize = Size(diameter, diameter)
+        latestPieSlices.forEachIndexed { index, slice ->
+          val color = categoryColors[slice.category] ?: ASSET_CHART_PALETTE[index % ASSET_CHART_PALETTE.size]
+          drawArc(
+            color = color,
+            startAngle = slice.startAngle,
+            sweepAngle = slice.sweepAngle,
+            useCenter = true,
+            topLeft = topLeft,
+            size = pieSize,
+          )
+        }
+      }
+      if (points.last().byCategory.values.any { it < 0L }) {
+        Text(
+          "円グラフは正の金額のみで構成比を表示しています。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
     }
   }
 }
