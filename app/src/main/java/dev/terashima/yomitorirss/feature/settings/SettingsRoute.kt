@@ -39,7 +39,10 @@ fun SettingsScreen(
   var showXCssSettings by remember { mutableStateOf(false) }
   var showAssetManagement by remember { mutableStateOf(false) }
   val assetViewModel: AssetViewModel = viewModel(
-    factory = AssetViewModel.Factory(application.container.assetRepository),
+    factory = AssetViewModel.Factory(
+      repository = application.container.assetRepository,
+      onChanged = application.container.backupChangeScheduler::scheduleAfterChange,
+    ),
   )
 
   SettingsFeatureScreen(
