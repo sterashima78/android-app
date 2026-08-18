@@ -272,7 +272,7 @@ fun YomitoriApp(
             .padding(horizontal = 12.dp, vertical = 20.dp),
         ) {
           Text(
-            text = "Yomitori",
+            text = "Mosaic",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(horizontal = 16.dp),
           )
@@ -663,11 +663,11 @@ fun YomitoriApp(
               showBackup = true
             },
             onExportBackup = {
-              exportLauncher.launch("rss-reader-backup-${LocalDate.now()}.zip")
+              exportLauncher.launch("mosaic-backup-${LocalDate.now()}.zip")
             },
             onImportBackup = {
               importLauncher.launch(
-                arrayOf("application/zip", "application/json", "text/json", "application/octet-stream"),
+                arrayOf("application/zip", "application/octet-stream"),
               )
             },
             onOpenWebServer = onOpenWebServer,
