@@ -152,6 +152,7 @@ internal data class MangaOneRenderedPage(
     const val RENDER_STATUS_SERVICE_ERROR = "service-error"
     const val RENDER_STATUS_CHAPTER_LIST_MISSING = "chapter-list-missing"
     const val RENDER_STATUS_CHAPTER_ROWS_MISSING = "chapter-rows-missing"
+    const val RENDER_STATUS_CHAPTER_NAVIGATION_PENDING = "chapter-navigation-pending"
   }
 }
 
@@ -172,14 +173,25 @@ internal fun chromeLikeUserAgent(defaultUserAgent: String): String = defaultUser
   .replace(Regex("\\s+"), " ")
   .trim()
 
-internal fun mangaOneFallbackChapterUrl(pageUrl: String, title: String, dateText: String): String {
-  val source = "$title|$dateText"
-  val suffix = MessageDigest.getInstance("SHA-256")
-    .digest(source.toByteArray(Charsets.UTF_8))
-    .joinToString("") { "%02x".format(it) }
-    .take(16)
-  return "${pageUrl.substringBefore('#')}#chapter-$suffix"
-}
+internal fun normalizeMangaOneChapterUrl(url: String, mangaId: String): String? = runCatching {
+  val uri = URI(url)
+  val scheme = uri.scheme?.lowercase(Locale.ROOT)
+  val host = uri.host?.lowercase(Locale.ROOT)
+  if (scheme !in setOf("http", "https")) return@runCatching null
+  if (host != "manga-one.com" && host != "www.manga-one.com") return@runCatching null
+  val segments = uri.path.orEmpty().trim('/').split('/').filter(String::isNotBlank)
+  if (
+    segments.size != 4 ||
+    segments[0] != "manga" ||
+    segments[1] != mangaId ||
+    segments[2] != "chapter" ||
+    segments[3].isEmpty() ||
+    !segments[3].all(Char::isDigit)
+  ) {
+    return@runCatching null
+  }
+  "https://manga-one.com/manga/$mangaId/chapter/${segments[3]}"
+}.getOrNull()
 
 private class WebViewMangaOnePageRenderer(
   private val context: Context,
@@ -227,7 +239,7 @@ private class WebViewMangaOnePageRenderer(
           }
           webView.evaluateJavascript(extractionScript(mangaId)) { raw ->
             if (finished) return@evaluateJavascript
-            val page = runCatching { decodeResult(raw, url) }.getOrNull()
+            val page = runCatching { decodeResult(raw, mangaId) }.getOrNull()
             if (page == null) {
               lastRenderStatus = MangaOneRenderedPage.RENDER_STATUS_DOCUMENT_LOADING
               handler.postDelayed(probe, PROBE_INTERVAL_MS)
@@ -318,10 +330,12 @@ private class WebViewMangaOnePageRenderer(
       "マンガワンのページは読み込めましたが、話一覧が表示されませんでした"
     MangaOneRenderedPage.RENDER_STATUS_CHAPTER_ROWS_MISSING ->
       "マンガワンの話一覧は表示されましたが、話情報を取得できませんでした"
+    MangaOneRenderedPage.RENDER_STATUS_CHAPTER_NAVIGATION_PENDING ->
+      "マンガワンの話一覧は表示されましたが、無料話の遷移先を取得できませんでした"
     else -> "マンガワンのページ読み込みが完了しませんでした"
   }
 
-  private fun decodeResult(raw: String, pageUrl: String): MangaOneRenderedPage? {
+  private fun decodeResult(raw: String, mangaId: String): MangaOneRenderedPage? {
     if (raw == "null" || raw == "undefined") return null
     val encoded = JSONArray("[$raw]").optString(0)
     if (encoded.isBlank()) return null
@@ -331,14 +345,13 @@ private class WebViewMangaOnePageRenderer(
       for (index in 0 until chaptersJson.length()) {
         val chapter = chaptersJson.getJSONObject(index)
         val title = chapter.optString("title").trim()
-        val dateText = chapter.optString("dateText").trim()
-        val directUrl = chapter.optString("url").trim()
+        val directUrl = normalizeMangaOneChapterUrl(chapter.optString("url").trim(), mangaId).orEmpty()
         add(
           MangaOneRenderedChapter(
             title = title,
-            url = directUrl.ifBlank { mangaOneFallbackChapterUrl(pageUrl, title, dateText) },
+            url = directUrl,
             label = chapter.optString("label").trim(),
-            dateText = dateText,
+            dateText = chapter.optString("dateText").trim(),
           ),
         )
       }
@@ -372,6 +385,62 @@ private class WebViewMangaOnePageRenderer(
         return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-rows-missing' });
       }
 
+      if (!window.__mosaicMangaOneRouteCapture) {
+        const captureState = {
+          activeKey: '',
+          activeAt: 0,
+          routes: {},
+          pushState: history.pushState.bind(history),
+          replaceState: history.replaceState.bind(history),
+          open: window.open.bind(window),
+        };
+        const captureRoute = (value) => {
+          if (!captureState.activeKey || value == null) return false;
+          try {
+            const target = new URL(String(value), location.href);
+            if (target.origin === location.origin && target.pathname.startsWith(prefix)) {
+              captureState.routes[captureState.activeKey] = target.href;
+              captureState.activeKey = '';
+              captureState.activeAt = 0;
+              return true;
+            }
+          } catch (_) {
+            // Ignore values that are not URLs.
+          }
+          return false;
+        };
+        history.pushState = function(state, unused, value) {
+          if (captureState.activeKey) {
+            captureRoute(value);
+            return;
+          }
+          return captureState.pushState(state, unused, value);
+        };
+        history.replaceState = function(state, unused, value) {
+          if (captureState.activeKey) {
+            captureRoute(value);
+            return;
+          }
+          return captureState.replaceState(state, unused, value);
+        };
+        window.open = function(value, ...args) {
+          if (captureState.activeKey) {
+            captureRoute(value);
+            return null;
+          }
+          return captureState.open(value, ...args);
+        };
+        document.addEventListener('click', (event) => {
+          if (event.__mosaicMangaOneProbe) event.preventDefault();
+        }, false);
+        window.__mosaicMangaOneRouteCapture = captureState;
+      }
+      const routeCapture = window.__mosaicMangaOneRouteCapture;
+      if (routeCapture.activeKey && Date.now() - routeCapture.activeAt > 1500) {
+        routeCapture.activeKey = '';
+        routeCapture.activeAt = 0;
+      }
+
       const chapterUrlFrom = (row) => {
         const nodes = [row, ...Array.from(row.querySelectorAll('*'))];
         let parent = row.parentElement;
@@ -398,6 +467,23 @@ private class WebViewMangaOnePageRenderer(
         return '';
       };
 
+      const navigationUrlFrom = (titleNode, key) => {
+        const cached = routeCapture.routes[key] || '';
+        if (cached) return cached;
+        if (routeCapture.activeKey) return '';
+        routeCapture.activeKey = key;
+        routeCapture.activeAt = Date.now();
+        try {
+          const event = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+          Object.defineProperty(event, '__mosaicMangaOneProbe', { value: true });
+          titleNode.dispatchEvent(event);
+        } catch (_) {
+          routeCapture.activeKey = '';
+          routeCapture.activeAt = 0;
+        }
+        return routeCapture.routes[key] || '';
+      };
+
       const rowFor = (titleNode) => {
         let row = titleNode;
         let node = titleNode.parentElement;
@@ -412,7 +498,9 @@ private class WebViewMangaOnePageRenderer(
 
       const chapters = [];
       const seen = new Set();
-      for (const titleNode of titleNodes) {
+      let pendingFreeNavigation = false;
+      for (let index = 0; index < titleNodes.length; index += 1) {
+        const titleNode = titleNodes[index];
         const row = rowFor(titleNode);
         const spanTexts = Array.from(row.querySelectorAll('span'))
           .map((span) => (span.textContent || '').trim())
@@ -431,15 +519,24 @@ private class WebViewMangaOnePageRenderer(
         const dedupeKey = chapterTitle + '|' + dateText + '|' + label;
         if (seen.has(dedupeKey)) continue;
         seen.add(dedupeKey);
+        let chapterUrl = chapterUrlFrom(row);
+        if (!chapterUrl && label === '無料') {
+          const routeKey = dedupeKey + '|' + index;
+          chapterUrl = navigationUrlFrom(titleNode, routeKey);
+          if (!chapterUrl) pendingFreeNavigation = true;
+        }
         chapters.push({
           title: chapterTitle,
-          url: chapterUrlFrom(row),
+          url: chapterUrl,
           label,
           dateText,
         });
       }
       if (chapters.length === 0) {
         return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-rows-missing' });
+      }
+      if (pendingFreeNavigation) {
+        return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-navigation-pending' });
       }
       return JSON.stringify({ title, chapters, renderStatus: 'ready' });
     })();
