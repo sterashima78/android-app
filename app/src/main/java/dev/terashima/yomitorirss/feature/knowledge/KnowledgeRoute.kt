@@ -3,26 +3,15 @@ package dev.terashima.yomitorirss.feature.knowledge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.terashima.yomitorirss.YomitoriApplication
-import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 
 @Composable
-fun KnowledgeRoute(modifier: Modifier = Modifier) {
-  val application = LocalContext.current.applicationContext as YomitoriApplication
-  val buildTaskController = remember(application) {
-    WorkManagerKnowledgeBuildTaskController(application)
-  }
-  val knowledgeViewModel: KnowledgeViewModel = viewModel(
-    factory = KnowledgeViewModel.Factory(
-      repository = application.container.knowledgeRepository,
-      scheduleBackupAfterChange = application.container.backupChangeScheduler::scheduleAfterChange,
-      scheduleRebuild = buildTaskController::enqueue,
-    ),
-  )
+fun KnowledgeRoute(
+  viewModelFactory: KnowledgeViewModel.Factory,
+  modifier: Modifier = Modifier,
+) {
+  val knowledgeViewModel: KnowledgeViewModel = viewModel(factory = viewModelFactory)
   val state by knowledgeViewModel.state.collectAsState()
 
   KnowledgeScreen(
