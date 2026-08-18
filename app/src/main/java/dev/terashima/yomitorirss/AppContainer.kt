@@ -5,6 +5,8 @@ import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
+import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
@@ -42,8 +44,6 @@ import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
-import dev.terashima.yomitorirss.feature.settings.AiTaskQueueRepository
-import dev.terashima.yomitorirss.feature.settings.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.settings.data.DefaultAiModelRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
