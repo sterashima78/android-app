@@ -82,7 +82,7 @@ internal class LibraryTaskQueueAdapter(
     if (globalPaused) return false
     val batch = repository.batchSnapshot() ?: return false
     if (batch.status == LibraryOrganizationBatchStatus.PAUSED) return false
-    val candidate = batch.candidates.firstOrNull { taskId == taskId(it) } ?: return false
+    val candidate = batch.candidates.firstOrNull { taskId == libraryTaskId(it) } ?: return false
     if (
       candidate.status != LibraryOrganizationCandidateStatus.FAILED &&
       candidate.status != LibraryOrganizationCandidateStatus.SKIPPED
@@ -103,7 +103,7 @@ internal class LibraryTaskQueueAdapter(
   ): AiTaskQueueItem {
     val state = taskState(candidate, batchStatus, globalPaused)
     return AiTaskQueueItem(
-      id = taskId(candidate),
+      id = libraryTaskId(candidate),
       kind = AiTaskQueueItemKind.LIBRARY_ORGANIZATION,
       title = book?.title ?: candidate.key.sourceId,
       source = candidate.key.source.label,
@@ -137,7 +137,7 @@ internal class LibraryTaskQueueAdapter(
     }
   }
 
-  private fun taskId(candidate: LibraryOrganizationCandidate): String =
+  private fun libraryTaskId(candidate: LibraryOrganizationCandidate): String =
     "$PREFIX${candidate.batchId}:${candidate.key.source.name}:${candidate.key.sourceId}"
 
   private companion object {
