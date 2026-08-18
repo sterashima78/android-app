@@ -1,21 +1,18 @@
 package dev.terashima.yomitorirss.feature.asset
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -31,6 +28,40 @@ internal data class AssetAreaChartData(
   val minValue: Float,
   val maxValue: Float,
 )
+
+internal val ASSET_CHART_PALETTE = listOf(
+  Color(0xFF4F8EF7),
+  Color(0xFFFF8A3D),
+  Color(0xFF47B881),
+  Color(0xFFE85D75),
+  Color(0xFF9B6EF3),
+  Color(0xFF24B8C4),
+  Color(0xFFE0B43C),
+  Color(0xFFEF6BC1),
+  Color(0xFF7AA35A),
+  Color(0xFFB7794D),
+  Color(0xFF6C8CF5),
+  Color(0xFFFF6B5E),
+  Color(0xFF53C7A2),
+  Color(0xFFC47BEA),
+  Color(0xFF3BA6E8),
+  Color(0xFFD8C33F),
+  Color(0xFFB56B8D),
+  Color(0xFF5FA0A0),
+  Color(0xFFA87B4F),
+  Color(0xFF8BC34A),
+  Color(0xFFEE7B30),
+  Color(0xFF5B7DB1),
+  Color(0xFFD065A6),
+  Color(0xFF6BBF59),
+)
+
+internal fun buildAssetCategoryColorMap(categories: Collection<String>): Map<String, Color> =
+  categories
+    .distinct()
+    .sorted()
+    .mapIndexed { index, category -> category to ASSET_CHART_PALETTE[index % ASSET_CHART_PALETTE.size] }
+    .toMap()
 
 internal fun buildAssetAreaChartData(
   points: List<AssetHistoryPoint>,
@@ -92,22 +123,12 @@ internal fun buildAssetAreaChartData(
 internal fun AssetStackedHistoryChart(
   points: List<AssetHistoryPoint>,
   normalized: Boolean,
+  categoryColors: Map<String, Color>,
 ) {
   val chartData = remember(points, normalized) { buildAssetAreaChartData(points, normalized) }
-  val colorScheme = MaterialTheme.colorScheme
-  val palette = listOf(
-    colorScheme.primary,
-    colorScheme.secondary,
-    colorScheme.tertiary,
-    colorScheme.error,
-    colorScheme.inversePrimary,
-    colorScheme.primaryContainer,
-    colorScheme.secondaryContainer,
-    colorScheme.tertiaryContainer,
-  )
-  val mutedColor = colorScheme.outlineVariant
+  val mutedColor = MaterialTheme.colorScheme.outlineVariant
 
-  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+  Column {
     Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
       val range = chartData.maxValue - chartData.minValue
       fun y(value: Float): Float =
@@ -117,7 +138,7 @@ internal fun AssetStackedHistoryChart(
       drawLine(mutedColor, Offset(0f, zeroY), Offset(size.width, zeroY))
 
       chartData.bands.forEachIndexed { index, band ->
-        val color = palette[index % palette.size]
+        val color = categoryColors[band.category] ?: ASSET_CHART_PALETTE[index % ASSET_CHART_PALETTE.size]
         if (points.size == 1) {
           val startY = y(band.starts.single())
           val endY = y(band.ends.single())
@@ -125,7 +146,7 @@ internal fun AssetStackedHistoryChart(
           val height = kotlin.math.abs(startY - endY)
           if (height > 0f) {
             drawRect(
-              color = color.copy(alpha = 0.62f),
+              color = color.copy(alpha = 0.68f),
               topLeft = Offset(0f, top),
               size = Size(size.width, height),
             )
@@ -143,7 +164,7 @@ internal fun AssetStackedHistoryChart(
             path.lineTo(x, y(band.starts[pointIndex]))
           }
           path.close()
-          drawPath(path, color.copy(alpha = 0.62f))
+          drawPath(path, color.copy(alpha = 0.68f))
           drawPath(path, color, style = Stroke(width = 1.5f))
         }
       }
@@ -152,18 +173,6 @@ internal fun AssetStackedHistoryChart(
     Row(modifier = Modifier.fillMaxWidth()) {
       Text(points.first().date.toString(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
       Text(points.last().date.toString(), style = MaterialTheme.typography.labelSmall)
-    }
-
-    Spacer(Modifier.height(2.dp))
-    chartData.bands.forEachIndexed { index, band ->
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-      ) {
-        val color = palette[index % palette.size]
-        Canvas(Modifier.size(10.dp)) { drawRect(color) }
-        Text(band.category, style = MaterialTheme.typography.labelSmall)
-      }
     }
   }
 }
