@@ -14,7 +14,6 @@ import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkDatabaseInitializ
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import org.json.JSONObject
 
 class DefaultBackupRepository(
   context: Context,
@@ -52,13 +51,7 @@ class DefaultBackupRepository(
         }
         ?: error("バックアップを開けませんでした")
 
-      if (DatabaseBackupArchive.looksLikeArchive(imported)) {
-        FileInputStream(imported).use { input -> archive.restore(input) }
-      } else {
-        // Keep import compatibility with the historical JSON backup format (v1-v8).
-        require(imported.length() <= MAX_LEGACY_JSON_BYTES) { "旧形式バックアップが大きすぎます" }
-        database.restoreBackup(JSONObject(imported.readText(Charsets.UTF_8)))
-      }
+      FileInputStream(imported).use { input -> archive.restore(input) }
     }
     BookmarkDatabaseInitializer.initialize(DatabaseConnection(database))
     dataChanges.notifyChanged()
@@ -126,16 +119,12 @@ class DefaultBackupRepository(
 
   private inline fun withTemporaryImport(block: (File) -> Unit) {
     val directory = File(appContext.cacheDir, "backup").apply { mkdirs() }
-    val file = File.createTempFile("backup-import", ".tmp", directory)
+    val file = File.createTempFile("backup-import", ".zip", directory)
     try {
       block(file)
     } finally {
       file.delete()
     }
-  }
-
-  companion object {
-    private const val MAX_LEGACY_JSON_BYTES = 128L * 1024L * 1024L
   }
 }
 
