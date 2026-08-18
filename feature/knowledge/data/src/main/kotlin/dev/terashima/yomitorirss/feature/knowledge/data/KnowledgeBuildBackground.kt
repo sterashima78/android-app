@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.knowledge
+package dev.terashima.yomitorirss.feature.knowledge.data
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,15 +16,14 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.await
-import dev.terashima.yomitorirss.YomitoriApplication
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
-import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeBuildQueueStateStore
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal enum class KnowledgeBuildTaskState {
+enum class KnowledgeBuildTaskState {
   QUEUED,
   RUNNING,
   PAUSED,
@@ -32,12 +31,12 @@ internal enum class KnowledgeBuildTaskState {
   FAILED,
 }
 
-internal data class KnowledgeBuildTaskSnapshot(
+data class KnowledgeBuildTaskSnapshot(
   val state: KnowledgeBuildTaskState,
   val error: String? = null,
 )
 
-internal class WorkManagerKnowledgeBuildTaskController(
+class WorkManagerKnowledgeBuildTaskController(
   context: Context,
 ) {
   private val appContext = context.applicationContext
@@ -188,9 +187,9 @@ internal class KnowledgeBuildWorker(
           return@withPermit Result.success()
         }
 
-        val app = applicationContext as? YomitoriApplication
-          ?: error("アプリケーションの初期化状態を取得できませんでした")
-        app.container.knowledgeRepository.rebuild()
+        val provider = applicationContext as? KnowledgeRepositoryProvider
+          ?: error("ナレッジリポジトリの初期化状態を取得できませんでした")
+        provider.knowledgeRepository.rebuild()
         state.complete()
         Result.success()
       }

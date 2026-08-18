@@ -26,6 +26,10 @@ import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.ManagingKnowledgeRepository
+import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
+import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
@@ -38,6 +42,8 @@ import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
+import dev.terashima.yomitorirss.feature.settings.AiTaskQueueRepository
+import dev.terashima.yomitorirss.feature.settings.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.settings.data.DefaultAiModelRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
@@ -176,6 +182,15 @@ class AppContainer(private val application: Application) {
       ),
       database = databaseConnection,
       dataChanges = dataChanges,
+    )
+  }
+  val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    CompositeAiTaskQueueRepository(
+      summaryRepository = summaryTaskQueueRepository,
+      libraryRepository = DefaultLibraryOrganizationRepository(databaseConnection),
+      libraryCatalogRepository = DefaultLibraryRepository(databaseConnection),
+      libraryScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
+      knowledgeController = WorkManagerKnowledgeBuildTaskController(application),
     )
   }
 }
