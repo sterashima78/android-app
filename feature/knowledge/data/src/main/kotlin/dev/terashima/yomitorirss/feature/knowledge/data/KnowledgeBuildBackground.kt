@@ -18,27 +18,17 @@ import androidx.work.WorkerParameters
 import androidx.work.await
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskSnapshot
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskState
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-enum class KnowledgeBuildTaskState {
-  QUEUED,
-  RUNNING,
-  PAUSED,
-  STOPPED,
-  FAILED,
-}
-
-data class KnowledgeBuildTaskSnapshot(
-  val state: KnowledgeBuildTaskState,
-  val error: String? = null,
-)
-
 class WorkManagerKnowledgeBuildTaskController(
   context: Context,
-) {
+) : KnowledgeBuildTaskController {
   private val appContext = context.applicationContext
   private val state = KnowledgeBuildQueueStateStore(appContext)
   private val workManager = WorkManager.getInstance(appContext)
@@ -48,7 +38,7 @@ class WorkManagerKnowledgeBuildTaskController(
     kick()
   }
 
-  fun kick() {
+  override fun kick() {
     if (!state.requested || state.stopped || state.failed) return
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
     if (execution.paused) {
@@ -59,19 +49,19 @@ class WorkManagerKnowledgeBuildTaskController(
     enqueueBuildWork()
   }
 
-  suspend fun pauseForGlobalGate() {
+  override suspend fun pauseForGlobalGate() {
     if (!state.requested) return
     workManager.cancelUniqueWork(WORK_NAME).await()
   }
 
-  suspend fun stop(): Boolean {
+  override suspend fun stop(): Boolean {
     if (!state.requested || state.stopped) return false
     state.markStopped()
     workManager.cancelUniqueWork(WORK_NAME).await()
     return true
   }
 
-  suspend fun cancel(): Boolean {
+  override suspend fun cancel(): Boolean {
     if (!state.requested) return false
     state.clear()
     workManager.cancelUniqueWork(WORK_NAME).await()
@@ -79,14 +69,14 @@ class WorkManagerKnowledgeBuildTaskController(
     return true
   }
 
-  suspend fun resume(): Boolean {
+  override suspend fun resume(): Boolean {
     if (!state.requested || (!state.stopped && !state.failed)) return false
     state.markReady()
     kick()
     return true
   }
 
-  suspend fun snapshot(): KnowledgeBuildTaskSnapshot? {
+  override suspend fun snapshot(): KnowledgeBuildTaskSnapshot? {
     if (!state.requested) return null
     if (LocalAiBackgroundExecutionPreferences(appContext).paused) {
       return KnowledgeBuildTaskSnapshot(KnowledgeBuildTaskState.PAUSED)
@@ -111,7 +101,7 @@ class WorkManagerKnowledgeBuildTaskController(
     return KnowledgeBuildTaskSnapshot(workState)
   }
 
-  fun setResumeOnChargingScheduled(enabled: Boolean) {
+  override fun setResumeOnChargingScheduled(enabled: Boolean) {
     if (!enabled) {
       workManager.cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
       return

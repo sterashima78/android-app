@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.settings
+package dev.terashima.yomitorirss.feature.aitaskqueue
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

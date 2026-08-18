@@ -18,7 +18,7 @@ fun SettingsFeatureScreen(
   onOpenXCss: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
-  taskQueueContent: @Composable (onDismiss: () -> Unit) -> Unit,
+  onOpenAiTaskQueue: () -> Unit,
   onOpenDriveBackup: () -> Unit,
   onExportBackup: () -> Unit,
   onImportBackup: () -> Unit,
@@ -27,7 +27,6 @@ fun SettingsFeatureScreen(
   var backgroundFetchWifiOnly by remember(initialBackgroundFetchWifiOnly) {
     mutableStateOf(initialBackgroundFetchWifiOnly)
   }
-  var showTaskQueue by remember { mutableStateOf(false) }
 
   SettingsContent(
     modifier = modifier,
@@ -42,14 +41,10 @@ fun SettingsFeatureScreen(
     onOpenXCss = onOpenXCss,
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
-    onOpenAiTaskQueue = { showTaskQueue = true },
+    onOpenAiTaskQueue = onOpenAiTaskQueue,
     onOpenDriveBackup = onOpenDriveBackup,
     onExportBackup = onExportBackup,
     onImportBackup = onImportBackup,
     onOpenWebServer = onOpenWebServer,
   )
-
-  if (showTaskQueue) {
-    taskQueueContent { showTaskQueue = false }
-  }
 }

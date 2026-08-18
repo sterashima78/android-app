@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package dev.terashima.yomitorirss.feature.settings
+package dev.terashima.yomitorirss.feature.aitaskqueue
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

@@ -1,5 +1,8 @@
-package dev.terashima.yomitorirss.feature.settings
+package dev.terashima.yomitorirss.feature.aitaskqueue.data
 
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueProgressStage
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryBookKey
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.settings
+package dev.terashima.yomitorirss.feature.aitaskqueue
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

@@ -16,6 +16,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "YomitoriRss"
 include(":app")
+include(":feature:ai-task-queue:domain")
+include(":feature:ai-task-queue:data")
+include(":feature:ai-task-queue:ui")
 include(":feature:backup:domain")
 include(":feature:backup:data")
 include(":feature:backup:ui")
