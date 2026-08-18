@@ -21,6 +21,7 @@ class SharedPreferencesXViewerCssRepository(
     PREFS_NAME,
     Context.MODE_PRIVATE,
   )
+  private val defaultCssValue: String by lazy(defaultCssProvider)
 
   override fun load(): XViewerCssSettings {
     val cssSets = List(X_CSS_SET_COUNT) { index ->
@@ -53,7 +54,7 @@ class SharedPreferencesXViewerCssRepository(
     editor.apply()
   }
 
-  override fun defaultCss(): String = defaultCssProvider()
+  override fun defaultCss(): String = defaultCssValue
 
   private fun cssSetKey(index: Int): String = "$KEY_CUSTOM_CSS_SET_PREFIX${index + 1}"
 }
