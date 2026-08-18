@@ -9,16 +9,16 @@ import java.time.Instant
 
 class MangaOneFeedClientTest {
   @Test
-  fun `マンガワンの数値話ID URLを対象にして正規URLへ統一する`() {
+  fun `マンガワンのfirstまたは数値話ID URLを対象にして正規URLへ統一する`() {
     val client = MangaOneFeedClient(renderer = FakeMangaOnePageRenderer(samplePage()))
 
+    assertTrue(client.supports("https://manga-one.com/manga/123/chapter/first"))
     assertTrue(client.supports("https://manga-one.com/manga/123/chapter/100"))
     assertTrue(
       client.supports(
         "https://www.manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=11&limit=10#list",
       ),
     )
-    assertFalse(client.supports("https://manga-one.com/manga/123/chapter/first"))
     assertFalse(client.supports("https://manga-one.com/title/123/100"))
     assertFalse(client.supports("https://manga-one.com/manga/sample/chapter/100"))
     assertFalse(client.supports("https://manga-one.com/manga/123/chapter/sample"))
@@ -28,6 +28,10 @@ class MangaOneFeedClientTest {
       client.canonicalWorkUrl(
         "https://www.manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=11&limit=10#list",
       ),
+    )
+    assertEquals(
+      "https://manga-one.com/manga/123/chapter/first",
+      client.canonicalWorkUrl("https://www.manga-one.com/manga/123/chapter/first?type=chapter"),
     )
   }
 
