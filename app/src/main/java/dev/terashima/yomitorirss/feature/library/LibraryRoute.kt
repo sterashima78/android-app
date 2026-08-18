@@ -12,54 +12,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.terashima.yomitorirss.YomitoriApplication
-import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
-import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
+import dev.terashima.yomitorirss.LibraryRouteDependencies
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
-import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
-import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import kotlinx.coroutines.launch
 
 @Composable
-fun LibraryRoute(modifier: Modifier = Modifier) {
-  val context = LocalContext.current
-  val application = context.applicationContext as YomitoriApplication
-  val databaseConnection = remember(application) {
-    DatabaseConnection(application.container.database)
-  }
-  val authorization = remember(application) { GoogleBooksAuthorizationManager(application) }
-  val repository = remember(databaseConnection) {
-    SeriesAwareLibraryRepository(databaseConnection)
-  }
-  val organizationRepository = remember(databaseConnection) {
-    DefaultLibraryOrganizationRepository(databaseConnection)
-  }
-  val organizationSuggester = remember(application) {
-    LocalLibraryOrganizationSuggester(application.container.modelManager)
-  }
-  val organizationBatchScheduler = remember(application) {
-    WorkManagerLibraryOrganizationBatchScheduler(application)
-  }
-  val smbRepository = remember(application, databaseConnection) {
-    CleaningSmbLibraryRepository(application, databaseConnection)
-  }
+fun LibraryRoute(
+  dependencies: LibraryRouteDependencies,
+  modifier: Modifier = Modifier,
+) {
+  val authorization = dependencies.authorization
+  val smbRepository = dependencies.smbRepository
   val libraryViewModel: LibraryViewModel = viewModel(
-    factory = LibraryViewModel.Factory(repository, smbRepository),
+    factory = dependencies.libraryViewModelFactory,
   )
   val organizationViewModel: LibraryOrganizationViewModel = viewModel(
     key = "library-organization",
-    factory = LibraryOrganizationViewModel.Factory(
-      organizationRepository,
-      organizationSuggester,
-      organizationBatchScheduler,
-    ),
+    factory = dependencies.organizationViewModelFactory,
   )
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
   val scope = rememberCoroutineScope()
