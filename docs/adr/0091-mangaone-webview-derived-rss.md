@@ -2,10 +2,13 @@
 
 - Status: Accepted
 - Date: 2026-08-17
+- Updated: 2026-08-18
 
 ## Context
 
-RSS機能は通常のRSS / Atomに加え、ADR-0090でヤンマガWeb作品ページをHTML由来の合成フィードとして扱っている。マンガワンにも作品単位の公開RSSはないが、Web版の作品第1話URL `https://manga-one.com/manga/{作品ID}/chapter/first` から作品と話一覧へ到達できる。
+RSS機能は通常のRSS / Atomに加え、ADR-0090でヤンマガWeb作品ページをHTML由来の合成フィードとして扱っている。マンガワンにも作品単位の公開RSSはないが、Web版の作品第1話URLから作品と話一覧へ到達できる。
+
+初期実装では第1話URLを `/manga/{作品ID}/chapter/first` のみに限定していた。しかし現在のマンガワンWebでは、作品によって `/manga/{作品ID}/chapter/first` が使われる場合と、第1話にも数値の話IDが割り当てられて `/manga/{作品ID}/chapter/{話ID}` となる場合の両方が存在する。話一覧から遷移したURLには `type`、`sort_type`、`page`、`limit` などの表示状態を表すクエリが付くことがあるため、これらをフィード識別子へ含めると同一作品・同一話が別フィードとして扱われる。
 
 マンガワンの現在の作品ページは、通常のHTTP取得で得られる初期HTMLには話一覧が含まれず、JavaScript実行後に `#chapterList` が構築される。したがって、ADR-0090のHTTP + jsoup方式だけでは無料話の一覧を安定して取得できない。
 
@@ -15,11 +18,16 @@ ADR-0006ではRSS更新をActivityの寿命に依存しない耐久バックグ�
 
 ## Decision
 
-### 1. 作品第1話URLをフィードURLとして直接登録する
+### 1. 第1話URLの `first` と数値話IDの両形式を受け入れる
 
-`manga-one.com` または `www.manga-one.com` のうち、パスが厳密に `/manga/{数字の作品ID}/chapter/first` となるURLだけをマンガワン作品URLとして認識する。
+`manga-one.com` または `www.manga-one.com` のうち、パスが次のいずれかとなるURLをマンガワン作品URLとして認識する。
 
-クエリ・フラグメント・`www` は除去し、`https://manga-one.com/manga/{作品ID}/chapter/first` を正規フィードURLとして保存する。任意の話URLや旧形式URLを推測変換しない。
+- `/manga/{数字の作品ID}/chapter/first`
+- `/manga/{数字の作品ID}/chapter/{数字の話ID}`
+
+ユーザーは作品の第1話URLを入力する。クライアントは数値話IDのURLだけからその話が第1話かどうかを推測せず、マンガワンの正規の話URL形式であることだけを検証する。
+
+クエリ・フラグメント・`www` は除去し、`https://manga-one.com/manga/{作品ID}/chapter/{first または話ID}` を正規フィードURLとして保存する。`type`、`sort_type`、`page`、`limit` など話一覧の表示状態に由来するクエリはフィード識別子へ含めない。既に登録可能だった `chapter/first` 形式は引き続き維持する。
 
 ### 2. RSS data層のサイト固有アダプターでWebViewを使用する
 
@@ -28,6 +36,8 @@ ADR-0006ではRSS更新をActivityの寿命に依存しない耐久バックグ�
 マンガワンの話一覧はJavaScript実行後に生成されるため、AndroidのWebViewをアプリケーションコンテキストからMain dispatcher上で生成し、画面へ表示せずに作品ページを読み込む。ActivityやComposeのライフサイクルには依存させないため、WorkManagerからの更新でも同じ取得処理を利用できる。
 
 WebViewは20秒でタイムアウトし、完了・失敗・キャンセルのいずれでも破棄する。ファイルアクセスとcontent URIアクセスを無効化し、mixed contentを拒否し、トップレベル遷移は `manga-one.com` / `www.manga-one.com` に限定する。JavaScript bridgeは追加しない。
+
+`core:web-collector` はユーザー操作を伴う収集ダイアログの共通基盤であり、バックグラウンドRSS更新のためのヘッドレスレンダラーではない。そのため、現時点ではマンガワンの取得処理を同モジュールへ移さない。将来ヘッドレスWeb取得の共通基盤を導入する場合に統合を再検討する。
 
 ### 3. `#chapterList` から現在の無料話だけを抽出する
 
@@ -53,13 +63,15 @@ WebView経由では既存 `HttpClient` のETag / Last-Modified制御を適用で
 
 ### 7. 公開リポジトリに実購読情報を残さない
 
-テスト・ADR・ログには実際に購読している作品名や作品IDを残さない。テストでは架空の作品名とIDのみを使用する。認証情報やCookieをコードへ埋め込まない。
+テスト・ADR・ログには実際に購読している作品名や作品ID・話IDを残さない。テストでは架空の作品名とIDのみを使用する。認証情報やCookieをコードへ埋め込まない。
 
 ## Consequences
 
 ### Positive
 
-- ユーザーはマンガワン作品の第1話URLを通常のRSS追加欄へ貼り付けるだけで購読できる。
+- ユーザーはマンガワン作品の実際の第1話URLを通常のRSS追加欄へ貼り付けるだけで購読できる。
+- `chapter/first` と数値話IDの両方の現行URL形式へ対応できる。
+- URLにページング等のクエリが付いていても、同一の話URLとして正規化できる。
 - 赤い「無料」話だけがRSS記事になり、毎日無料や先読みを誤って更新扱いしない。
 - 外部RSSサービスや非公開APIの仕様・可用性へ依存しない。
 - Activityに依存しないため、既存のバックグラウンドRSS更新経路へ統合できる。
@@ -67,6 +79,7 @@ WebView経由では既存 `HttpClient` のETag / Last-Modified制御を適用で
 
 ### Negative
 
+- 入力された数値話IDが本当に第1話かどうかはURL構造だけでは検証しない。
 - 通常HTTP取得よりWebViewの起動コストと通信量が大きい。
 - ETag / Last-Modifiedによる304最適化を利用できない。
 - マンガワンのDOM構造やラベル表現が変わった場合はアダプターの修正が必要になる。
