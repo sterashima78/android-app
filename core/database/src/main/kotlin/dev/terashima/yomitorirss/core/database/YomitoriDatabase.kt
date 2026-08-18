@@ -138,15 +138,11 @@ class YomitoriDatabase private constructor(
   }
 
   private fun copyFileSynced(source: File, destination: File) {
-    FileInputStream(source).channel.use { input ->
-      FileOutputStream(destination, false).use { outputStream ->
-        val output = outputStream.channel
-        var offset = 0L
-        while (offset < input.size()) {
-          offset += input.transferTo(offset, input.size() - offset, output)
-        }
-        output.force(true)
-        outputStream.fd.sync()
+    FileInputStream(source).use { input ->
+      FileOutputStream(destination, false).use { output ->
+        input.copyTo(output)
+        output.flush()
+        output.fd.sync()
       }
     }
   }
