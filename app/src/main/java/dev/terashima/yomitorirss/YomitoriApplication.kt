@@ -5,6 +5,8 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
@@ -14,7 +16,8 @@ class YomitoriApplication : Application(),
   WidgetRepositoryProvider,
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
-  BackupRepositoryProvider {
+  BackupRepositoryProvider,
+  KnowledgeRepositoryProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(this)
   }
@@ -30,6 +33,9 @@ class YomitoriApplication : Application(),
 
   override val backupRepository: BackupRepository
     get() = container.backupRepository
+
+  override val knowledgeRepository: KnowledgeRepository
+    get() = container.knowledgeRepository
 
   override fun onCreate() {
     super.onCreate()
