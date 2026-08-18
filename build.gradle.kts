@@ -33,6 +33,11 @@ val variantArchitectureDependencyConfigurationSuffixes =
     "RuntimeOnly",
   )
 
+val appFeatureWorkerExceptions = mapOf(
+  "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/KnowledgeWorkerCompat.kt" to
+    "ADR-0101: legacy WorkManager FQCN compatibility shim",
+)
+
 fun isArchitectureDependencyConfiguration(name: String): Boolean {
   if ("test" in name.lowercase()) return false
 
@@ -42,9 +47,221 @@ fun isArchitectureDependencyConfiguration(name: String): Boolean {
 
 fun projectLayer(path: String): String = path.substringAfterLast(':')
 
+fun sourceArchitectureViolations(
+  projectPath: String,
+  repositoryPath: String,
+  sourceText: String,
+): List<String> {
+  val violations = mutableListOf<String>()
+  val normalizedPath = repositoryPath.replace('\\', '/')
+  val fileName = normalizedPath.substringAfterLast('/')
+
+  val isYomitoriApp = projectPath == ":app" &&
+    normalizedPath.endsWith("/dev/terashima/yomitorirss/ui/YomitoriApp.kt")
+  if (isYomitoriApp) {
+    val featurePresentationImport = Regex(
+      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.(?:[A-Za-z0-9_]*UiState|[A-Za-z0-9_]*Screen|[A-Za-z0-9_]*Dialog)(?:\s+as\s+[A-Za-z0-9_]+)?\s*$""",
+    )
+    if (featurePresentationImport.containsMatchIn(sourceText)) {
+      violations +=
+        "YomitoriApp must not import feature-owned UiState/Screen/Dialog: $normalizedPath"
+    }
+
+    val featureWildcardImport = Regex(
+      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.\*\s*$""",
+    )
+    if (featureWildcardImport.containsMatchIn(sourceText)) {
+      violations +=
+        "YomitoriApp must not use feature wildcard imports: $normalizedPath"
+    }
+
+    val stateCollectorPattern = Regex(
+      """\b([A-Za-z_][A-Za-z0-9_]*)\.state\.collectAsState(?:WithLifecycle)?\s*\(""",
+    )
+    stateCollectorPattern.findAll(sourceText).forEach { match ->
+      val owner = match.groupValues[1]
+      if (owner != "appViewModel") {
+        violations +=
+          "YomitoriApp must not collect feature ViewModel state: $normalizedPath ($owner.state)"
+      }
+    }
+
+    if (
+      sourceText.contains("rememberLauncherForActivityResult") ||
+      sourceText.contains("ActivityResultContracts.")
+    ) {
+      violations +=
+        "YomitoriApp must not own feature Activity Result launchers: $normalizedPath"
+    }
+  }
+
+  if (fileName.endsWith("Screen.kt")) {
+    val concreteFeatureDataImport = Regex(
+      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.data\.""",
+    )
+    if (concreteFeatureDataImport.containsMatchIn(sourceText)) {
+      violations +=
+        "Screen must not import concrete feature data implementations: $normalizedPath"
+    }
+
+    val infrastructureImport = Regex(
+      """(?m)^\s*import\s+(?:dev\.terashima\.yomitorirss\.core\.database\.(?:DatabaseConnection|YomitoriDatabase)\b|androidx\.work\.)""",
+    )
+    if (infrastructureImport.containsMatchIn(sourceText)) {
+      violations +=
+        "Screen must not import database or WorkManager infrastructure: $normalizedPath"
+    }
+
+    val concreteConstruction = Regex(
+      """\b(?:DatabaseConnection|YomitoriDatabase|Default[A-Za-z0-9_]*Repository|WorkManager[A-Za-z0-9_]*(?:Scheduler|Controller))\s*\(""",
+    )
+    concreteConstruction.find(sourceText)?.let { match ->
+      violations +=
+        "Screen must not construct concrete data/background dependencies: $normalizedPath (${match.value.trim()})"
+    }
+  }
+
+  val isAppFeatureSource = projectPath == ":app" &&
+    normalizedPath.startsWith("app/src/main/") &&
+    "/feature/" in normalizedPath
+  val workerDeclaration = Regex(
+    """:\s*(?:androidx\.work\.)?(?:CoroutineWorker|Worker|ListenableWorker)\s*\(""",
+  )
+  if (
+    isAppFeatureSource &&
+    workerDeclaration.containsMatchIn(sourceText) &&
+    normalizedPath !in appFeatureWorkerExceptions
+  ) {
+    violations +=
+      "feature-specific Worker runtime must live in the owning feature data module: $normalizedPath"
+  }
+
+  if (projectPath.startsWith(":feature:") && projectLayer(projectPath) == "data") {
+    val appImplementationReference = Regex(
+      """(?:import\s+dev\.terashima\.yomitorirss\.(?:YomitoriApplication|AppContainer|MainActivity)\b|dev\.terashima\.yomitorirss\.(?:YomitoriApplication|AppContainer|MainActivity)\b)""",
+    )
+    if (appImplementationReference.containsMatchIn(sourceText)) {
+      violations +=
+        "feature data must depend on contracts instead of app implementation types: $normalizedPath"
+    }
+  }
+
+  return violations
+}
+
+val verifyArchitectureRuleTests by tasks.registering {
+  group = "verification"
+  description = "Runs regression fixtures for source-level architecture ownership rules."
+
+  doLast {
+    fun assertViolation(
+      name: String,
+      projectPath: String,
+      repositoryPath: String,
+      sourceText: String,
+      expectedMessage: String,
+    ) {
+      val actual = sourceArchitectureViolations(projectPath, repositoryPath, sourceText)
+      if (actual.none { expectedMessage in it }) {
+        throw GradleException(
+          "Architecture rule fixture failed: $name expected '$expectedMessage' but got $actual",
+        )
+      }
+    }
+
+    fun assertClean(
+      name: String,
+      projectPath: String,
+      repositoryPath: String,
+      sourceText: String,
+    ) {
+      val actual = sourceArchitectureViolations(projectPath, repositoryPath, sourceText)
+      if (actual.isNotEmpty()) {
+        throw GradleException("Architecture rule fixture failed: $name expected no violations but got $actual")
+      }
+    }
+
+    val yomitoriAppPath =
+      "app/src/main/java/dev/terashima/yomitorirss/ui/YomitoriApp.kt"
+    assertViolation(
+      name = "YomitoriApp feature state collection",
+      projectPath = ":app",
+      repositoryPath = yomitoriAppPath,
+      sourceText = "val rssState by rssViewModel.state.collectAsState()",
+      expectedMessage = "YomitoriApp must not collect feature ViewModel state",
+    )
+    assertViolation(
+      name = "YomitoriApp feature presentation import",
+      projectPath = ":app",
+      repositoryPath = yomitoriAppPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.rss.RssScreen",
+      expectedMessage = "YomitoriApp must not import feature-owned UiState/Screen/Dialog",
+    )
+    assertViolation(
+      name = "YomitoriApp Activity Result ownership",
+      projectPath = ":app",
+      repositoryPath = yomitoriAppPath,
+      sourceText = "val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {}",
+      expectedMessage = "YomitoriApp must not own feature Activity Result launchers",
+    )
+    assertClean(
+      name = "YomitoriApp app navigation state",
+      projectPath = ":app",
+      repositoryPath = yomitoriAppPath,
+      sourceText = "val appState by appViewModel.state.collectAsState()",
+    )
+
+    val taskQueueScreenPath =
+      "app/src/main/java/dev/terashima/yomitorirss/feature/settings/TaskQueueScreen.kt"
+    assertViolation(
+      name = "Screen concrete data import",
+      projectPath = ":app",
+      repositoryPath = taskQueueScreenPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository",
+      expectedMessage = "Screen must not import concrete feature data implementations",
+    )
+    assertViolation(
+      name = "Screen concrete dependency construction",
+      projectPath = ":app",
+      repositoryPath = taskQueueScreenPath,
+      sourceText = "val repository = DefaultLibraryRepository(DatabaseConnection(database))",
+      expectedMessage = "Screen must not construct concrete data/background dependencies",
+    )
+    assertClean(
+      name = "Route composition wiring remains allowed",
+      projectPath = ":app",
+      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/library/LibraryRoute.kt",
+      sourceText = "val repository = DefaultLibraryRepository(DatabaseConnection(database))",
+    )
+
+    assertViolation(
+      name = "feature Worker in app",
+      projectPath = ":app",
+      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/NewWorker.kt",
+      sourceText = "class NewWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
+      expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
+    )
+    assertClean(
+      name = "legacy Knowledge Worker compatibility shim",
+      projectPath = ":app",
+      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/KnowledgeWorkerCompat.kt",
+      sourceText = "class KnowledgeBuildWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
+    )
+    assertViolation(
+      name = "feature data imports app implementation",
+      projectPath = ":feature:knowledge:data",
+      repositoryPath =
+        "feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeBuildBackground.kt",
+      sourceText = "import dev.terashima.yomitorirss.YomitoriApplication",
+      expectedMessage = "feature data must depend on contracts instead of app implementation types",
+    )
+  }
+}
+
 val verifyArchitecture by tasks.registering {
   group = "verification"
-  description = "Verifies Gradle dependency rules and production source layout defined by the architecture ADRs."
+  description = "Verifies Gradle dependency rules and production source ownership/layout defined by the architecture ADRs."
+  dependsOn(verifyArchitectureRuleTests)
 
   doLast {
     val edges =
@@ -142,6 +359,14 @@ val verifyArchitecture by tasks.registering {
             include("**/*.kt")
           }.files.sortedBy { it.path }.forEach { sourceFile ->
             val sourceText = sourceFile.readText()
+            val repositoryPath = sourceFile.relativeTo(rootDir).path.replace('\\', '/')
+
+            violations += sourceArchitectureViolations(
+              projectPath = project.path,
+              repositoryPath = repositoryPath,
+              sourceText = sourceText,
+            )
+
             if (projectLayer(project.path) == "domain" && androidImportPattern.containsMatchIn(sourceText)) {
               violations +=
                 "domain must not import Android framework types: ${project.path}:${sourceFile.relativeTo(project.projectDir)}"
