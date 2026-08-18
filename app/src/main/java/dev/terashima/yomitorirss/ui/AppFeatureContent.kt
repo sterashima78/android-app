@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.asset.AssetRoute
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
@@ -63,6 +64,7 @@ internal fun AppFeatureContent(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   chatViewModel: ChatViewModel,
+  routeDependencies: AppRouteDependencies,
   rssController: RssRouteController,
   redditController: RedditRouteController,
   bookmarkEditController: BookmarkEditController,
@@ -80,6 +82,7 @@ internal fun AppFeatureContent(
       redditViewModel = redditViewModel,
       feedViewModel = feedViewModel,
       mailViewModel = mailViewModel,
+      youtubeViewModelFactory = routeDependencies.youtubeViewModelFactory,
       onOpenArticle = onOpenArticle,
       onOpenMail = { thread ->
         mailViewModel.openThread(thread)
@@ -123,15 +126,27 @@ internal fun AppFeatureContent(
       onSummarize = summarize,
     )
 
-    MainTab.LIBRARY -> LibraryRoute(modifier = modifier)
-    MainTab.KNOWLEDGE -> KnowledgeRoute(modifier = modifier)
-    MainTab.ASSETS -> AssetRoute(modifier = modifier)
+    MainTab.LIBRARY -> LibraryRoute(
+      dependencies = routeDependencies.library,
+      modifier = modifier,
+    )
+    MainTab.KNOWLEDGE -> KnowledgeRoute(
+      viewModelFactory = routeDependencies.knowledgeViewModelFactory,
+      modifier = modifier,
+    )
+    MainTab.ASSETS -> AssetRoute(
+      viewModelFactory = routeDependencies.assetViewModelFactory,
+      modifier = modifier,
+    )
     MainTab.MAIL -> MailRoute(
       modifier = modifier,
       mailViewModel = mailViewModel,
       onAddAccount = onAddMailAccount,
     )
-    MainTab.YOUTUBE -> YouTubeRoute(modifier = modifier)
+    MainTab.YOUTUBE -> YouTubeRoute(
+      viewModelFactory = routeDependencies.youtubeViewModelFactory,
+      modifier = modifier,
+    )
     MainTab.X -> Box(modifier = modifier) {
       XViewerScreen(modifier = Modifier.fillMaxSize())
       Surface(
@@ -150,9 +165,16 @@ internal fun AppFeatureContent(
         }
       }
     }
-    MainTab.TASKS -> TaskScreen(modifier = modifier)
+    MainTab.TASKS -> TaskScreen(
+      viewModelFactory = routeDependencies.taskViewModelFactory,
+      onTasksChanged = routeDependencies.updateTaskWidget,
+      modifier = modifier,
+    )
     MainTab.GAME -> GameRoute(modifier = modifier)
-    MainTab.WORKOUT -> WorkoutRoute(modifier = modifier)
+    MainTab.WORKOUT -> WorkoutRoute(
+      viewModelFactory = routeDependencies.workoutViewModelFactory,
+      modifier = modifier,
+    )
     MainTab.AI_CHAT -> ChatRoute(modifier = modifier, chatViewModel = chatViewModel)
     MainTab.FEEDS -> FeedRoute(
       modifier = modifier,
