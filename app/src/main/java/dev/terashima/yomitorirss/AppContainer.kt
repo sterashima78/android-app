@@ -25,7 +25,7 @@ import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
-import dev.terashima.yomitorirss.feature.knowledge.data.ManagingKnowledgeRepository
+import dev.terashima.yomitoririss.feature.knowledge.data.ManagingKnowledgeRepository
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
@@ -56,9 +56,7 @@ class AppContainer(private val application: Application) {
   private val dataChanges = DataChangeNotifier.shared
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    YomitoriDatabase.create(application).also { database ->
-      LegacyDatabaseMigration.migrate(application, database)
-    }
+    YomitoriDatabase.create(application)
   }
   private val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)
