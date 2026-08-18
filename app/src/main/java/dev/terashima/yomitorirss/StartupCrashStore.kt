@@ -28,7 +28,7 @@ object StartupCrashStore {
   fun record(context: Context, threadName: String, throwable: Throwable) {
     runCatching {
       val report = buildString {
-        appendLine("Yomitori crash report")
+        appendLine("Mosaic crash report")
         appendLine("timestamp=${Instant.now()}")
         appendLine("sdk=${Build.VERSION.SDK_INT}")
         appendLine("release=${Build.VERSION.RELEASE}")
