@@ -186,7 +186,7 @@ fun AssetManagementDialog(
                   message,
                   modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(viewModel::dismissMessage)
+                    .clickable { viewModel.dismissMessage() }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                   color = MaterialTheme.colorScheme.primary,
                 )
