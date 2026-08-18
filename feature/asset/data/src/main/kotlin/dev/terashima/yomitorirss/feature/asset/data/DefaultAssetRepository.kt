@@ -95,7 +95,6 @@ class DefaultAssetRepository(
             name = name,
             amount = item.getLong("amount"),
             account = item.optString("account").trim(),
-            categoryHint = null,
           ),
         )
       }
@@ -137,17 +136,6 @@ class DefaultAssetRepository(
               put("source", source)
             },
           )
-          row.categoryHint?.takeIf(String::isNotBlank)?.let { hint ->
-            insertWithOnConflict(
-              "asset_categories",
-              null,
-              ContentValues().apply {
-                put("asset_name", row.name)
-                put("category", hint)
-              },
-              SQLiteDatabase.CONFLICT_IGNORE,
-            )
-          }
         }
       }
     }
@@ -159,32 +147,39 @@ internal data class ParsedAssetRow(
   val name: String,
   val amount: Long,
   val account: String,
-  val categoryHint: String?,
 )
 
 internal fun parseTsv(reader: BufferedReader): List<ParsedAssetRow> {
   val result = mutableListOf<ParsedAssetRow>()
   reader.forEachLine { rawLine ->
-    val line = rawLine.removePrefix("\uFEFF").trimEnd()
+    val line = rawLine.removePrefix("\uFEFF")
     if (line.isBlank()) return@forEachLine
     val columns = line.split('\t')
     if (columns.size < 3) error("TSV は3列以上の日付・資産名・金額が必要です")
     val date = parseDate(columns[0])
     if (date == null && columns[0].trim().lowercase() in setOf("日付", "date")) return@forEachLine
     requireNotNull(date) { "日付を解析できません: ${columns[0]}" }
-    val name = columns[1].trim()
-    require(name.isNotBlank()) { "資産名が空です" }
-    val amount = columns[2].replace(Regex("[,，円¥￥\\s]"), "").toLongOrNull()
-      ?: error("金額を解析できません: ${columns[2]}")
+    val baseName = columns[1].trim()
+    require(baseName.isNotBlank()) { "資産名が空です" }
+    val amount = parseAmount(columns[2]) ?: error("金額を解析できません: ${columns[2]}")
+    val account = columns.getOrNull(3)?.trim().orEmpty()
     result += ParsedAssetRow(
       date = date,
-      name = name,
+      name = buildAssetRecordName(baseName, account),
       amount = amount,
-      account = columns.getOrNull(3)?.trim().orEmpty(),
-      categoryHint = columns.getOrNull(4)?.trim()?.ifBlank { null },
+      account = account,
     )
   }
   return result
+}
+
+internal fun parseAmount(value: String): Long? =
+  value.replace(Regex("[,，円¥￥\\s]"), "").toLongOrNull()
+
+internal fun buildAssetRecordName(name: String, account: String): String {
+  val normalizedName = name.trim()
+  val normalizedAccount = account.trim()
+  return if (normalizedAccount.isBlank()) normalizedName else "$normalizedName / $normalizedAccount"
 }
 
 internal fun parseDate(value: String): LocalDate? {
