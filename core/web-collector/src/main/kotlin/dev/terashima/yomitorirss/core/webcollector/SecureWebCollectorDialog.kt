@@ -44,6 +44,12 @@ import androidx.webkit.WebViewFeature
 import java.net.URI
 import org.json.JSONObject
 
+data class WebCollectorContinuation(
+  val urlPrefixes: Set<String>,
+  val script: String,
+  val statusMessage: String? = null,
+)
+
 data class WebCollectorConfig(
   val title: String,
   val startUrl: String,
@@ -52,6 +58,14 @@ data class WebCollectorConfig(
   val allowedNavigationHosts: Set<String>,
   val collectableUrlPrefixes: Set<String>,
   val collectScript: String,
+  val bridgeName: String = DEFAULT_BRIDGE_NAME,
+  val collectButtonLabel: String = "取得",
+  val acceptThirdPartyCookies: Boolean = false,
+  val externalNavigationSchemes: Set<String> = setOf("https"),
+  val userAgentTransformer: (String) -> String = { it },
+  val continuations: List<WebCollectorContinuation> = emptyList(),
+  val maxResultBytes: Int = DEFAULT_MAX_RESULT_BYTES,
+  val maxChunks: Int = DEFAULT_MAX_CHUNKS,
 )
 
 @Composable
@@ -102,12 +116,18 @@ private fun CollectorContent(
   onResult: (String) -> Unit,
 ) {
   val context = LocalContext.current
-  val chunks = remember { ChunkAccumulator() }
+  val chunks = remember(config.maxResultBytes, config.maxChunks) {
+    WebCollectorChunkAccumulator(
+      maxBytes = config.maxResultBytes,
+      maxChunks = config.maxChunks,
+    )
+  }
   var currentUrl by remember(config) { mutableStateOf(config.startUrl) }
   var loading by remember { mutableStateOf(true) }
   var collecting by remember { mutableStateOf(false) }
   var status by remember { mutableStateOf("ページを開いています") }
   var canGoBack by remember { mutableStateOf(false) }
+  var continuationKey by remember(config) { mutableStateOf<String?>(null) }
 
   val webView = remember(config) {
     WebView(context).also { WebViewCompat.setProfile(it, config.profileName) }.apply {
@@ -119,11 +139,12 @@ private fun CollectorContent(
       settings.javaScriptCanOpenWindowsAutomatically = false
       settings.setSupportMultipleWindows(false)
       settings.safeBrowsingEnabled = true
-      CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+      settings.userAgentString = config.userAgentTransformer(settings.userAgentString)
+      CookieManager.getInstance().setAcceptThirdPartyCookies(this, config.acceptThirdPartyCookies)
 
       WebViewCompat.addWebMessageListener(
         this,
-        BRIDGE_NAME,
+        config.bridgeName,
         config.allowedBridgeOrigins,
       ) { _, message, sourceOrigin, isMainFrame, _ ->
         if (!isMainFrame || !collecting) return@addWebMessageListener
@@ -136,12 +157,13 @@ private fun CollectorContent(
             "progress" -> status = envelope.optString("message").ifBlank { status }
             "error" -> {
               collecting = false
+              continuationKey = null
               chunks.reset()
               status = envelope.optString("message").ifBlank { "データ取得に失敗しました" }
             }
             "result" -> {
               val payload = envelope.getString("payload")
-              requirePayloadSize(payload)
+              requirePayloadSize(payload, config.maxResultBytes)
               collecting = false
               onResult(payload)
               onDismiss()
@@ -166,6 +188,7 @@ private fun CollectorContent(
           }
         }.onFailure { error ->
           collecting = false
+          continuationKey = null
           chunks.reset()
           status = error.message ?: "受信データを処理できませんでした"
         }
@@ -176,7 +199,7 @@ private fun CollectorContent(
           if (!request.isForMainFrame) return false
           val target = request.url.toString()
           if (isAllowedNavigation(target, config.allowedNavigationHosts)) return false
-          if (request.url.scheme == "https") {
+          if (config.externalNavigationSchemes.any { it.equals(request.url.scheme, ignoreCase = true) }) {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
           }
           return true
@@ -191,9 +214,23 @@ private fun CollectorContent(
           currentUrl = url
           loading = false
           canGoBack = view.canGoBack()
-          if (!collecting) {
+
+          if (collecting) {
+            val continuationIndex = config.continuations.indexOfFirst { continuation ->
+              isCollectableUrl(url, continuation.urlPrefixes)
+            }
+            if (continuationIndex >= 0) {
+              val key = "$continuationIndex:$url"
+              if (continuationKey != key) {
+                continuationKey = key
+                val continuation = config.continuations[continuationIndex]
+                continuation.statusMessage?.let { status = it }
+                view.evaluateJavascript(continuation.script, null)
+              }
+            }
+          } else {
             status = if (isCollectableUrl(url, config.collectableUrlPrefixes)) {
-              "対象ページを確認しました。「取得」を押してください"
+              "対象ページを確認しました。「${config.collectButtonLabel}」を押してください"
             } else {
               "ログイン後に対象ページへ移動してください"
             }
@@ -208,6 +245,7 @@ private fun CollectorContent(
   DisposableEffect(webView) {
     onDispose {
       collecting = false
+      continuationKey = null
       chunks.reset()
       webView.stopLoading()
       webView.webViewClient = WebViewClient()
@@ -235,16 +273,23 @@ private fun CollectorContent(
         Text(status, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
       }
       if (!collecting) {
-        Button(
-          modifier = Modifier.fillMaxWidth(),
-          enabled = isCollectableUrl(currentUrl, config.collectableUrlPrefixes),
-          onClick = {
-            chunks.reset()
-            collecting = true
-            status = "ページからデータを取得しています"
-            webView.evaluateJavascript(config.collectScript, null)
-          },
-        ) { Text("取得") }
+        if (isCollectableUrl(currentUrl, config.collectableUrlPrefixes)) {
+          Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+              chunks.reset()
+              continuationKey = null
+              collecting = true
+              status = "ページからデータを取得しています"
+              webView.evaluateJavascript(config.collectScript, null)
+            },
+          ) { Text(config.collectButtonLabel) }
+        } else {
+          Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { webView.loadUrl(config.startUrl) },
+          ) { Text("対象ページへ") }
+        }
       }
       Text(
         "認証情報と Cookie は専用 WebView プロファイル内に保持し、ネイティブ側には collector が明示的に返したデータだけを渡します。",
@@ -255,9 +300,9 @@ private fun CollectorContent(
   }
 }
 
-private fun isCollectableUrl(url: String, prefixes: Set<String>): Boolean = prefixes.any(url::startsWith)
+internal fun isCollectableUrl(url: String, prefixes: Set<String>): Boolean = prefixes.any(url::startsWith)
 
-private fun isAllowedNavigation(url: String, hosts: Set<String>): Boolean {
+internal fun isAllowedNavigation(url: String, hosts: Set<String>): Boolean {
   val uri = runCatching { URI(url) }.getOrNull() ?: return false
   if (!uri.scheme.equals("https", ignoreCase = true)) return false
   if (uri.port != -1 && uri.port != 443) return false
@@ -268,7 +313,7 @@ private fun isAllowedNavigation(url: String, hosts: Set<String>): Boolean {
   }
 }
 
-private fun isAllowedBridgeOrigin(origin: String, allowedOrigins: Set<String>): Boolean {
+internal fun isAllowedBridgeOrigin(origin: String, allowedOrigins: Set<String>): Boolean {
   val uri = runCatching { URI(origin) }.getOrNull() ?: return false
   if (!uri.scheme.equals("https", ignoreCase = true)) return false
   if (uri.port != -1 && uri.port != 443) return false
@@ -277,19 +322,24 @@ private fun isAllowedBridgeOrigin(origin: String, allowedOrigins: Set<String>): 
   return normalized in allowedOrigins.map { it.removeSuffix("/").lowercase() }.toSet()
 }
 
-private fun requirePayloadSize(payload: String) {
-  require(payload.toByteArray(Charsets.UTF_8).size in 1..MAX_RESULT_BYTES) { "取得データが大きすぎます" }
+private fun requirePayloadSize(payload: String, maxBytes: Int) {
+  require(payload.toByteArray(Charsets.UTF_8).size in 1..maxBytes) { "取得データが大きすぎます" }
 }
 
-private class ChunkAccumulator {
+internal class WebCollectorChunkAccumulator(
+  private val maxBytes: Int,
+  private val maxChunks: Int,
+) {
   private var session: String? = null
   private var total = 0
   private var byteLength = 0
   private val parts = mutableMapOf<Int, String>()
+  private var receivedBytes = 0
 
   fun start(session: String, total: Int, byteLength: Int) {
-    require(total in 1..MAX_CHUNKS)
-    require(byteLength in 1..MAX_RESULT_BYTES)
+    require(session.isNotBlank()) { "Web collector セッションが不正です" }
+    require(total in 1..maxChunks) { "Web collector の分割数が不正です" }
+    require(byteLength in 1..maxBytes) { "取得データが大きすぎます" }
     reset()
     this.session = session
     this.total = total
@@ -297,18 +347,25 @@ private class ChunkAccumulator {
   }
 
   fun add(session: String, index: Int, total: Int, data: String) {
-    require(session == this.session)
-    require(total == this.total)
-    require(index in 0 until total)
+    require(session == this.session) { "Web collector セッションが一致しません" }
+    require(total == this.total) { "Web collector の分割数が一致しません" }
+    require(index in 0 until total) { "Web collector の分割位置が不正です" }
+    val existing = parts[index]
+    if (existing != null) {
+      require(existing == data) { "Web collector の分割データが競合しました" }
+      return
+    }
+    val chunkBytes = data.toByteArray(Charsets.UTF_8).size
+    require(receivedBytes + chunkBytes <= maxBytes) { "取得データが大きすぎます" }
     parts[index] = data
+    receivedBytes += chunkBytes
   }
 
   fun finish(session: String): String {
-    require(session == this.session)
-    require(parts.size == total)
+    require(session == this.session) { "Web collector セッションが一致しません" }
+    require(parts.size == total) { "Web collector の取得データが不足しています" }
     val payload = buildString { repeat(total) { append(parts.getValue(it)) } }
-    require(payload.toByteArray(Charsets.UTF_8).size == byteLength)
-    requirePayloadSize(payload)
+    require(payload.toByteArray(Charsets.UTF_8).size == byteLength) { "Web collector の取得データが破損しています" }
     reset()
     return payload
   }
@@ -318,9 +375,10 @@ private class ChunkAccumulator {
     total = 0
     byteLength = 0
     parts.clear()
+    receivedBytes = 0
   }
 }
 
-private const val BRIDGE_NAME = "MosaicCollectorBridge"
-private const val MAX_RESULT_BYTES = 5 * 1024 * 1024
-private const val MAX_CHUNKS = 1024
+private const val DEFAULT_BRIDGE_NAME = "MosaicCollectorBridge"
+private const val DEFAULT_MAX_RESULT_BYTES = 5 * 1024 * 1024
+private const val DEFAULT_MAX_CHUNKS = 1024
