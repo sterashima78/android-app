@@ -56,7 +56,9 @@ class AppContainer(private val application: Application) {
   private val dataChanges = DataChangeNotifier.shared
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    YomitoriDatabase.create(application)
+    YomitoriDatabase.create(application).also { database ->
+      LegacyDatabaseMigration.migrate(application, database)
+    }
   }
   private val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)
@@ -99,7 +101,7 @@ class AppContainer(private val application: Application) {
     DefaultRedditRepository(feedRepository)
   }
   val youtubeRepository: YouTubeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultYouTubeRepository(application)
+    DefaultYouTubeRepository(databaseConnection)
   }
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultFeedImportRepository(application, databaseConnection, dataChanges)
@@ -126,10 +128,10 @@ class AppContainer(private val application: Application) {
     DefaultAiModelRepository(application, modelManager)
   }
   val chatRepository: ChatRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultChatRepository(application)
+    DefaultChatRepository(databaseConnection)
   }
   val taskRepository: TaskRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultTaskRepository(application)
+    DefaultTaskRepository(databaseConnection)
   }
   val workoutRepository: WorkoutRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultWorkoutRepository(application)
