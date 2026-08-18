@@ -9,6 +9,8 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.articleDatabaseSchema
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -81,6 +83,59 @@ class SummaryPersistenceTest {
     assertEquals(null, database.findSummaryTask("saved-failed")?.error)
     assertEquals(SUMMARY_FAILED, database.findSummaryTask("unsaved-failed")?.state)
     assertEquals(SUMMARY_STOPPED, database.findSummaryTask("saved-stopped")?.state)
+  }
+
+  @Test
+  fun `記事本文を準備してから推論タスクをclaimする`() {
+    insertArticle("article")
+    database.enqueueSummaryTask("article", forceRefresh = false)
+
+    assertEquals("article", database.nextSummaryArticleForContentFetch()?.id)
+    assertNull(database.claimNextInferenceReadySummaryTask())
+
+    assertTrue(database.savePreparedSummaryArticleContentIfQueued("article", "prepared body"))
+    assertEquals("prepared body", database.findPreparedSummaryArticleContent("article")?.content)
+
+    val claimed = checkNotNull(database.claimNextInferenceReadySummaryTask())
+    assertEquals("article", claimed.articleId)
+    assertEquals(SUMMARY_RUNNING, claimed.state)
+
+    database.completeRunningSummaryTask("article")
+    assertNull(database.findPreparedSummaryArticleContent("article"))
+  }
+
+  @Test
+  fun `既存要約があれば本文取得なしで推論ステージへ進める`() {
+    insertArticle("cached")
+    database.saveSummary("cached", "cached summary", "model-cache-key")
+    database.enqueueSummaryTask("cached", forceRefresh = false)
+
+    assertNull(database.nextSummaryArticleForContentFetch())
+    assertEquals("cached", database.claimNextInferenceReadySummaryTask()?.articleId)
+  }
+
+  @Test
+  fun `強制再要約では既存要約があっても本文を取得し直す`() {
+    insertArticle("refresh")
+    database.saveSummary("refresh", "old summary", "old-cache-key")
+    database.enqueueSummaryTask("refresh", forceRefresh = true)
+
+    assertEquals("refresh", database.nextSummaryArticleForContentFetch()?.id)
+    assertNull(database.claimNextInferenceReadySummaryTask())
+  }
+
+  @Test
+  fun `推論失敗後の再開では準備済み本文を再利用する`() {
+    insertArticle("retry")
+    database.enqueueSummaryTask("retry", forceRefresh = false)
+    database.savePreparedSummaryArticleContentIfQueued("retry", "prepared body")
+    checkNotNull(database.claimNextInferenceReadySummaryTask())
+    database.failRunningSummaryTask("retry", "generation failed")
+
+    assertEquals("prepared body", database.findPreparedSummaryArticleContent("retry")?.content)
+    assertTrue(database.resumeSummaryTask("retry"))
+    assertNull(database.nextSummaryArticleForContentFetch())
+    assertEquals("retry", database.claimNextInferenceReadySummaryTask()?.articleId)
   }
 
   private fun insertArticle(id: String, bookmarked: Boolean = false) {
