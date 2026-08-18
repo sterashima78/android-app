@@ -19,4 +19,6 @@ android {
 dependencies {
   implementation(project(":core:database"))
   implementation(project(":feature:asset:domain"))
+
+  testImplementation("junit:junit:4.13.2")
 }
