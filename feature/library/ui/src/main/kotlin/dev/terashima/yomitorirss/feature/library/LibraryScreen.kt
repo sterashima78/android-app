@@ -90,6 +90,7 @@ fun LibraryScreen(
   val snackbarHostState = remember { SnackbarHostState() }
   var selectedTabName by rememberSaveable { mutableStateOf(LibraryTab.ALL.name) }
   var selectedSourceName by rememberSaveable { mutableStateOf<String?>(null) }
+  var searchQuery by rememberSaveable { mutableStateOf("") }
   var seriesEditorBook by remember { mutableStateOf<LibraryBook?>(null) }
   val selectedTab = LibraryTab.valueOf(selectedTabName)
   val selectedSource = remember(selectedSourceName) {
@@ -164,7 +165,9 @@ fun LibraryScreen(
             books = state.books,
             hiddenCount = state.hiddenBooks.size,
             selectedSource = selectedSource,
+            searchQuery = searchQuery,
             onSelectedSourceChange = { selectedSourceName = it?.name },
+            onSearchQueryChange = { searchQuery = it },
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -173,7 +176,9 @@ fun LibraryScreen(
             books = state.books,
             hiddenCount = state.hiddenBooks.size,
             selectedSource = selectedSource,
+            searchQuery = searchQuery,
             onSelectedSourceChange = { selectedSourceName = it?.name },
+            onSearchQueryChange = { searchQuery = it },
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -181,7 +186,9 @@ fun LibraryScreen(
           LibraryTab.HIDDEN -> LibraryHiddenTab(
             books = state.hiddenBooks,
             selectedSource = selectedSource,
+            searchQuery = searchQuery,
             onSelectedSourceChange = { selectedSourceName = it?.name },
+            onSearchQueryChange = { searchQuery = it },
             onRestoreBook = onRestoreBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -201,7 +208,9 @@ private fun LibraryAllTab(
   books: List<LibraryBook>,
   hiddenCount: Int,
   selectedSource: LibrarySource?,
+  searchQuery: String,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
+  onSearchQueryChange: (String) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -216,21 +225,32 @@ private fun LibraryAllTab(
     return
   }
 
-  val filteredBooks = remember(books, selectedSource) {
-    filterLibraryBooksBySource(books, selectedSource)
+  val filteredBooks = remember(books, selectedSource, searchQuery) {
+    filterLibraryBooksByText(
+      filterLibraryBooksBySource(books, selectedSource),
+      searchQuery,
+    )
   }
   val sortedBooks = remember(filteredBooks) {
     filteredBooks.sortedWith(compareBy<LibraryBook> { it.title.lowercase() }.thenBy { it.sourceId })
   }
 
   Column(Modifier.fillMaxSize()) {
+    LibrarySearchField(
+      query = searchQuery,
+      onQueryChange = onSearchQueryChange,
+    )
     LibrarySourceFilterBar(
       selectedSource = selectedSource,
       onSelectedSourceChange = onSelectedSourceChange,
     )
     if (sortedBooks.isEmpty()) {
       LibraryEmptyMessage(
-        message = "${selectedSource?.label ?: "選択したサービス"} の蔵書はありません。",
+        message = if (searchQuery.isNotBlank()) {
+          "「${searchQuery.trim()}」に一致する蔵書はありません。"
+        } else {
+          "${selectedSource?.label ?: "選択したサービス"} の蔵書はありません。"
+        },
         modifier = Modifier.weight(1f),
       )
     } else {
@@ -250,7 +270,9 @@ private fun LibrarySeriesTab(
   books: List<LibraryBook>,
   hiddenCount: Int,
   selectedSource: LibrarySource?,
+  searchQuery: String,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
+  onSearchQueryChange: (String) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -266,8 +288,11 @@ private fun LibrarySeriesTab(
   }
 
   var selectedSeriesKey by rememberSaveable { mutableStateOf<String?>(null) }
-  val filteredBooks = remember(books, selectedSource) {
-    filterLibraryBooksBySource(books, selectedSource)
+  val filteredBooks = remember(books, selectedSource, searchQuery) {
+    filterLibraryBooksByText(
+      filterLibraryBooksBySource(books, selectedSource),
+      searchQuery,
+    )
   }
   val groups = remember(filteredBooks) { groupLibraryBooks(filteredBooks) }
   val selectedSeries = groups.series.firstOrNull { it.key == selectedSeriesKey }
@@ -285,6 +310,13 @@ private fun LibrarySeriesTab(
   }
 
   Column(Modifier.fillMaxSize()) {
+    LibrarySearchField(
+      query = searchQuery,
+      onQueryChange = { query ->
+        selectedSeriesKey = null
+        onSearchQueryChange(query)
+      },
+    )
     LibrarySourceFilterBar(
       selectedSource = selectedSource,
       onSelectedSourceChange = { source ->
@@ -294,7 +326,11 @@ private fun LibrarySeriesTab(
     )
     if (filteredBooks.isEmpty()) {
       LibraryEmptyMessage(
-        message = "${selectedSource?.label ?: "選択したサービス"} の蔵書はありません。",
+        message = if (searchQuery.isNotBlank()) {
+          "「${searchQuery.trim()}」に一致する蔵書はありません。"
+        } else {
+          "${selectedSource?.label ?: "選択したサービス"} の蔵書はありません。"
+        },
         modifier = Modifier.weight(1f),
       )
     } else {
@@ -394,6 +430,23 @@ private fun LibrarySeriesBooksSheet(
 }
 
 @Composable
+private fun LibrarySearchField(
+  query: String,
+  onQueryChange: (String) -> Unit,
+) {
+  OutlinedTextField(
+    value = query,
+    onValueChange = onQueryChange,
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 12.dp, vertical = 8.dp),
+    label = { Text("蔵書を検索") },
+    placeholder = { Text("タイトル・著者・シリーズなど") },
+    singleLine = true,
+  )
+}
+
+@Composable
 private fun LibrarySourceFilterBar(
   selectedSource: LibrarySource?,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
@@ -424,18 +477,27 @@ private fun LibrarySourceFilterBar(
 private fun LibraryHiddenTab(
   books: List<LibraryBook>,
   selectedSource: LibrarySource?,
+  searchQuery: String,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
+  onSearchQueryChange: (String) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
-  val filteredBooks = remember(books, selectedSource) {
-    filterLibraryBooksBySource(books, selectedSource)
+  val filteredBooks = remember(books, selectedSource, searchQuery) {
+    filterLibraryBooksByText(
+      filterLibraryBooksBySource(books, selectedSource),
+      searchQuery,
+    )
   }
   val sortedBooks = remember(filteredBooks) {
     filteredBooks.sortedWith(compareBy<LibraryBook> { it.title.lowercase() }.thenBy { it.sourceId })
   }
 
   Column(Modifier.fillMaxSize()) {
+    LibrarySearchField(
+      query = searchQuery,
+      onQueryChange = onSearchQueryChange,
+    )
     LibrarySourceFilterBar(
       selectedSource = selectedSource,
       onSelectedSourceChange = onSelectedSourceChange,
@@ -443,6 +505,11 @@ private fun LibraryHiddenTab(
     when {
       books.isEmpty() -> LibraryEmptyMessage(
         message = "非表示の蔵書はありません。",
+        modifier = Modifier.weight(1f),
+      )
+
+      sortedBooks.isEmpty() && searchQuery.isNotBlank() -> LibraryEmptyMessage(
+        message = "「${searchQuery.trim()}」に一致する非表示の蔵書はありません。",
         modifier = Modifier.weight(1f),
       )
 
