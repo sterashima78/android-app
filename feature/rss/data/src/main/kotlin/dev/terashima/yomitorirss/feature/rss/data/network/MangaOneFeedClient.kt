@@ -38,7 +38,7 @@ internal class MangaOneFeedClient(
 
   fun canonicalWorkUrl(url: String): String {
     require(supports(url)) { "マンガワンの作品第1話URLを入力してください" }
-    return "https://$MANGA_ONE_HOST/manga/${mangaId(url)}/chapter/${chapterId(url)}"
+    return "https://$MANGA_ONE_HOST/manga/${mangaId(url)}/chapter/${chapterKey(url)}"
   }
 
   suspend fun inspect(url: String): FeedInspection {
@@ -110,7 +110,7 @@ internal class MangaOneFeedClient(
 
   private fun mangaId(url: String): String = pathSegments(url).getOrNull(1).orEmpty()
 
-  private fun chapterId(url: String): String = pathSegments(url).getOrNull(3).orEmpty()
+  private fun chapterKey(url: String): String = pathSegments(url).getOrNull(3).orEmpty()
 
   companion object {
     private const val MANGA_ONE_HOST = "manga-one.com"
@@ -126,13 +126,13 @@ internal class MangaOneFeedClient(
       if (scheme !in setOf("http", "https")) return@runCatching false
       if (host != MANGA_ONE_HOST && host != WWW_MANGA_ONE_HOST) return@runCatching false
       val segments = uri.path.orEmpty().trim('/').split('/').filter(String::isNotBlank)
+      val chapterKey = segments.getOrNull(3).orEmpty()
       segments.size == 4 &&
         segments[0] == "manga" &&
         segments[1].all(Char::isDigit) &&
         segments[1].isNotEmpty() &&
         segments[2] == "chapter" &&
-        segments[3].all(Char::isDigit) &&
-        segments[3].isNotEmpty()
+        (chapterKey == "first" || (chapterKey.isNotEmpty() && chapterKey.all(Char::isDigit)))
     }.getOrDefault(false)
   }
 }
