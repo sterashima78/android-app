@@ -168,31 +168,33 @@ fun AssetScreen(
       )
     }
 
-    if (state.loading && state.overview == null) {
-      Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-      }
-    } else {
-      val overview = state.overview ?: AssetOverview(null, 0, emptyMap(), emptyList(), emptyList())
-      when (AssetTab.entries[selectedTabIndex]) {
-        AssetTab.OVERVIEW -> AssetOverviewTab(overview = overview, modifier = Modifier.fillMaxSize())
-        AssetTab.IMPORT -> AssetImportTab(
-          modifier = Modifier.fillMaxSize(),
-          onImportDelimited = {
-            importLauncher.launch(
-              arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
-            )
-          },
-          onImportMoneyForward = { showMoneyForward = true },
-        )
-        AssetTab.SETTINGS -> AssetSettingsTab(
-          settings = overview.categorySettings,
-          modifier = Modifier.fillMaxSize(),
-          onEdit = { setting ->
-            editing = setting
-            categoryText = setting.category
-          },
-        )
+    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+      if (state.loading && state.overview == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+          CircularProgressIndicator()
+        }
+      } else {
+        val overview = state.overview ?: AssetOverview(null, 0, emptyMap(), emptyList(), emptyList())
+        when (AssetTab.entries[selectedTabIndex]) {
+          AssetTab.OVERVIEW -> AssetOverviewTab(overview = overview, modifier = Modifier.fillMaxSize())
+          AssetTab.IMPORT -> AssetImportTab(
+            modifier = Modifier.fillMaxSize(),
+            onImportDelimited = {
+              importLauncher.launch(
+                arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
+              )
+            },
+            onImportMoneyForward = { showMoneyForward = true },
+          )
+          AssetTab.SETTINGS -> AssetSettingsTab(
+            settings = overview.categorySettings,
+            modifier = Modifier.fillMaxSize(),
+            onEdit = { setting ->
+              editing = setting
+              categoryText = setting.category
+            },
+          )
+        }
       }
     }
   }
