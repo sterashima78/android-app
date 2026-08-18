@@ -9,18 +9,25 @@ import java.time.Instant
 
 class MangaOneFeedClientTest {
   @Test
-  fun `マンガワン作品第1話URLだけを対象にして正規URLへ統一する`() {
+  fun `マンガワンの数値話ID URLを対象にして正規URLへ統一する`() {
     val client = MangaOneFeedClient(renderer = FakeMangaOnePageRenderer(samplePage()))
 
-    assertTrue(client.supports("https://manga-one.com/manga/123/chapter/first"))
-    assertTrue(client.supports("https://www.manga-one.com/manga/123/chapter/first?type=chapter#list"))
-    assertFalse(client.supports("https://manga-one.com/manga/123/chapter/456"))
-    assertFalse(client.supports("https://manga-one.com/title/123/456"))
-    assertFalse(client.supports("https://manga-one.com/manga/sample/chapter/first"))
-    assertFalse(client.supports("https://example.com/manga/123/chapter/first"))
+    assertTrue(client.supports("https://manga-one.com/manga/123/chapter/100"))
+    assertTrue(
+      client.supports(
+        "https://www.manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=11&limit=10#list",
+      ),
+    )
+    assertFalse(client.supports("https://manga-one.com/manga/123/chapter/first"))
+    assertFalse(client.supports("https://manga-one.com/title/123/100"))
+    assertFalse(client.supports("https://manga-one.com/manga/sample/chapter/100"))
+    assertFalse(client.supports("https://manga-one.com/manga/123/chapter/sample"))
+    assertFalse(client.supports("https://example.com/manga/123/chapter/100"))
     assertEquals(
-      "https://manga-one.com/manga/123/chapter/first",
-      client.canonicalWorkUrl("https://www.manga-one.com/manga/123/chapter/first?type=chapter#list"),
+      "https://manga-one.com/manga/123/chapter/100",
+      client.canonicalWorkUrl(
+        "https://www.manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=11&limit=10#list",
+      ),
     )
   }
 
@@ -62,13 +69,15 @@ class MangaOneFeedClientTest {
       now = { Instant.parse("2026-08-17T12:00:00Z") },
     )
 
-    val result = client.fetchFeed("https://www.manga-one.com/manga/123/chapter/first?type=chapter")
+    val result = client.fetchFeed(
+      "https://www.manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=11&limit=10",
+    )
     val feed = requireNotNull(result.feed)
 
-    assertEquals("https://manga-one.com/manga/123/chapter/first", renderer.lastUrl)
+    assertEquals("https://manga-one.com/manga/123/chapter/100", renderer.lastUrl)
     assertEquals("123", renderer.lastMangaId)
     assertEquals("サンプル作品", feed.title)
-    assertEquals("https://manga-one.com/manga/123/chapter/first", feed.feedUrl)
+    assertEquals("https://manga-one.com/manga/123/chapter/100", feed.feedUrl)
     assertEquals(1, feed.articles.size)
     assertEquals("第3話 無料公開", feed.articles.single().title)
     assertEquals("https://manga-one.com/manga/123/chapter/300", feed.articles.single().url)
@@ -97,7 +106,7 @@ class MangaOneFeedClientTest {
       now = { Instant.parse("2026-08-17T12:34:56Z") },
     )
 
-    val article = requireNotNull(client.fetchFeed("https://manga-one.com/manga/123/chapter/first").feed)
+    val article = requireNotNull(client.fetchFeed("https://manga-one.com/manga/123/chapter/100").feed)
       .articles.single()
 
     assertEquals("2026-08-17T12:34:56Z", article.publishedAt)
