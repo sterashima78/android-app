@@ -50,6 +50,7 @@ import dev.terashima.yomitorirss.core.webcollector.SecureWebCollectorDialog
 import dev.terashima.yomitorirss.core.webcollector.WebCollectorConfig
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,7 +63,10 @@ data class AssetUiState(
   val message: String? = null,
 )
 
-class AssetViewModel(private val repository: AssetRepository) : ViewModel() {
+class AssetViewModel(
+  private val repository: AssetRepository,
+  private val onChanged: () -> Unit = {},
+) : ViewModel() {
   private val mutableState = MutableStateFlow(AssetUiState())
   val state: StateFlow<AssetUiState> = mutableState.asStateFlow()
 
@@ -85,7 +89,7 @@ class AssetViewModel(private val repository: AssetRepository) : ViewModel() {
   fun dismissMessage() = mutableState.update { it.copy(message = null) }
 
   private fun reload() {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       mutableState.update { it.copy(loading = true) }
       runCatching { repository.loadOverview() }
         .onSuccess { overview -> mutableState.value = AssetUiState(loading = false, overview = overview) }
@@ -98,10 +102,11 @@ class AssetViewModel(private val repository: AssetRepository) : ViewModel() {
   }
 
   private fun runOperation(successMessage: String, operation: suspend () -> Unit) {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       mutableState.update { it.copy(loading = true, message = null) }
       runCatching { operation() }
         .onSuccess {
+          onChanged()
           val overview = repository.loadOverview()
           mutableState.value = AssetUiState(loading = false, overview = overview, message = successMessage)
         }
@@ -111,9 +116,12 @@ class AssetViewModel(private val repository: AssetRepository) : ViewModel() {
     }
   }
 
-  class Factory(private val repository: AssetRepository) : ViewModelProvider.Factory {
+  class Factory(
+    private val repository: AssetRepository,
+    private val onChanged: () -> Unit = {},
+  ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T = AssetViewModel(repository) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = AssetViewModel(repository, onChanged) as T
   }
 }
 
