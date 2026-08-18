@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.View
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -143,7 +144,16 @@ internal class MangaOneFeedClient(
 internal data class MangaOneRenderedPage(
   val title: String,
   val chapters: List<MangaOneRenderedChapter>,
-)
+  val renderStatus: String = RENDER_STATUS_READY,
+) {
+  companion object {
+    const val RENDER_STATUS_READY = "ready"
+    const val RENDER_STATUS_DOCUMENT_LOADING = "document-loading"
+    const val RENDER_STATUS_SERVICE_ERROR = "service-error"
+    const val RENDER_STATUS_CHAPTER_LIST_MISSING = "chapter-list-missing"
+    const val RENDER_STATUS_CHAPTER_LINKS_MISSING = "chapter-links-missing"
+  }
+}
 
 internal data class MangaOneRenderedChapter(
   val title: String,
@@ -156,6 +166,12 @@ internal fun interface MangaOnePageRenderer {
   suspend fun render(url: String, mangaId: String): MangaOneRenderedPage
 }
 
+internal fun chromeLikeUserAgent(defaultUserAgent: String): String = defaultUserAgent
+  .replace("; wv", "")
+  .replace("Version/4.0 ", "")
+  .replace(Regex("\\s+"), " ")
+  .trim()
+
 private class WebViewMangaOnePageRenderer(
   private val context: Context,
 ) : MangaOnePageRenderer {
@@ -166,9 +182,9 @@ private class WebViewMangaOnePageRenderer(
         val handler = Handler(Looper.getMainLooper())
         val webView = WebView(context)
         var finished = false
-        var probing = false
         var lastSignature: String? = null
         var stableCount = 0
+        var lastRenderStatus = MangaOneRenderedPage.RENDER_STATUS_DOCUMENT_LOADING
         val deadline = SystemClock.uptimeMillis() + RENDER_TIMEOUT_MS
 
         fun cleanup() {
@@ -197,13 +213,19 @@ private class WebViewMangaOnePageRenderer(
         probe = Runnable {
           if (finished) return@Runnable
           if (SystemClock.uptimeMillis() >= deadline) {
-            fail(IllegalStateException("マンガワンの話一覧の読み込みがタイムアウトしました"))
+            fail(IllegalStateException(timeoutMessage(lastRenderStatus)))
             return@Runnable
           }
           webView.evaluateJavascript(extractionScript(mangaId)) { raw ->
             if (finished) return@evaluateJavascript
             val page = runCatching { decodeResult(raw) }.getOrNull()
-            if (page == null || page.chapters.isEmpty()) {
+            if (page == null) {
+              lastRenderStatus = MangaOneRenderedPage.RENDER_STATUS_DOCUMENT_LOADING
+              handler.postDelayed(probe, PROBE_INTERVAL_MS)
+              return@evaluateJavascript
+            }
+            lastRenderStatus = page.renderStatus
+            if (page.chapters.isEmpty()) {
               handler.postDelayed(probe, PROBE_INTERVAL_MS)
               return@evaluateJavascript
             }
@@ -224,17 +246,18 @@ private class WebViewMangaOnePageRenderer(
           allowFileAccess = false
           allowContentAccess = false
           mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+          userAgentString = chromeLikeUserAgent(WebSettings.getDefaultUserAgent(context))
+          useWideViewPort = true
+          loadWithOverviewMode = true
         }
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(VIRTUAL_VIEWPORT_WIDTH_PX, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(VIRTUAL_VIEWPORT_HEIGHT_PX, View.MeasureSpec.EXACTLY)
+        webView.measure(widthSpec, heightSpec)
+        webView.layout(0, 0, VIRTUAL_VIEWPORT_WIDTH_PX, VIRTUAL_VIEWPORT_HEIGHT_PX)
+
         webView.webViewClient = object : WebViewClient() {
           override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
             request.isForMainFrame && !isAllowedHost(request.url)
-
-          override fun onPageFinished(view: WebView, loadedUrl: String) {
-            if (!finished && !probing && isAllowedHost(Uri.parse(loadedUrl))) {
-              probing = true
-              handler.postDelayed(probe, PROBE_INTERVAL_MS)
-            }
-          }
 
           override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
             if (request.isForMainFrame) {
@@ -270,12 +293,23 @@ private class WebViewMangaOnePageRenderer(
         }
 
         webView.loadUrl(url)
+        handler.postDelayed(probe, PROBE_INTERVAL_MS)
       }
     }
 
   private fun isAllowedHost(uri: Uri): Boolean {
     val host = uri.host?.lowercase(Locale.ROOT)
     return host == "manga-one.com" || host == "www.manga-one.com"
+  }
+
+  private fun timeoutMessage(status: String): String = when (status) {
+    MangaOneRenderedPage.RENDER_STATUS_SERVICE_ERROR ->
+      "マンガワン側でページを表示できない状態が続いたため、話一覧を取得できませんでした"
+    MangaOneRenderedPage.RENDER_STATUS_CHAPTER_LIST_MISSING ->
+      "マンガワンのページは読み込めましたが、話一覧が表示されませんでした"
+    MangaOneRenderedPage.RENDER_STATUS_CHAPTER_LINKS_MISSING ->
+      "マンガワンの話一覧は表示されましたが、話リンクを取得できませんでした"
+    else -> "マンガワンのページ読み込みが完了しませんでした"
   }
 
   private fun decodeResult(raw: String): MangaOneRenderedPage? {
@@ -300,14 +334,24 @@ private class WebViewMangaOnePageRenderer(
     return MangaOneRenderedPage(
       title = json.optString("title").trim(),
       chapters = chapters,
+      renderStatus = json.optString("renderStatus", MangaOneRenderedPage.RENDER_STATUS_READY),
     )
   }
 
   private fun extractionScript(mangaId: String): String = """
     (() => {
-      window.scrollTo(0, document.body.scrollHeight);
+      const title = (document.title || '')
+        .replace(/\s*\|\s*マンガワン\s*$/, '')
+        .trim();
+      const bodyText = (document.body && document.body.innerText || '').replace(/\s+/g, ' ');
+      if (bodyText.includes('現在、マンガワンは一時的にご利用いただけません')) {
+        return JSON.stringify({ title, chapters: [], renderStatus: 'service-error' });
+      }
+      window.scrollTo(0, document.body ? document.body.scrollHeight : 0);
       const root = document.querySelector('#chapterList');
-      if (!root) return null;
+      if (!root) {
+        return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-list-missing' });
+      }
       root.scrollTop = root.scrollHeight;
       const prefix = '/manga/$mangaId/chapter/';
       const isChapterLink = (element) => {
@@ -320,6 +364,9 @@ private class WebViewMangaOnePageRenderer(
         }
       };
       const links = Array.from(root.querySelectorAll('a[href]')).filter(isChapterLink);
+      if (links.length === 0) {
+        return JSON.stringify({ title, chapters: [], renderStatus: 'chapter-links-missing' });
+      }
       const chapters = [];
       for (const link of links) {
         let node = link;
@@ -339,28 +386,27 @@ private class WebViewMangaOnePageRenderer(
           || spanTexts.find((text) => text === '先読み')
           || '';
         const titleNode = row.querySelector('p[class*="line-clamp-1"]');
-        const title = ((titleNode && titleNode.textContent) || link.textContent || '')
+        const chapterTitle = ((titleNode && titleNode.textContent) || link.textContent || '')
           .replace(/\s+/g, ' ')
           .trim();
         const text = (row.textContent || '').replace(/\s+/g, ' ');
         const dateMatch = text.match(/20\d{2}(?:\/|\.|-|年)\d{1,2}(?:\/|\.|-|月)\d{1,2}日?/);
         chapters.push({
-          title,
+          title: chapterTitle,
           url: new URL(link.href, location.href).href,
           label,
           dateText: dateMatch ? dateMatch[0] : '',
         });
       }
-      const title = (document.title || '')
-        .replace(/\s*\|\s*マンガワン\s*$/, '')
-        .trim();
-      return JSON.stringify({ title, chapters });
+      return JSON.stringify({ title, chapters, renderStatus: 'ready' });
     })();
   """.trimIndent()
 
   private companion object {
-    const val RENDER_TIMEOUT_MS = 45_000L
+    const val RENDER_TIMEOUT_MS = 30_000L
     const val PROBE_INTERVAL_MS = 500L
     const val REQUIRED_STABLE_PROBES = 4
+    const val VIRTUAL_VIEWPORT_WIDTH_PX = 1080
+    const val VIRTUAL_VIEWPORT_HEIGHT_PX = 2400
   }
 }
