@@ -38,9 +38,10 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(21, db.version)
+    assertEquals(22, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
+    assertTrue("custom_title" in columnNames(db, "feeds"))
     assertTrue("content_type" in columnNames(db, "articles"))
     assertEquals(
       setOf(
@@ -103,9 +104,10 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(21, upgraded.version)
+    assertEquals(22, upgraded.version)
     assertTrue("content_type" in columnNames(upgraded, "feed_folders"))
     assertTrue("content_type" in columnNames(upgraded, "feeds"))
+    assertTrue("custom_title" in columnNames(upgraded, "feeds"))
     assertTrue("content_type" in columnNames(upgraded, "articles"))
     assertTrue("snapshot_date" in columnNames(upgraded, "asset_entries"))
     assertTrue("category" in columnNames(upgraded, "asset_categories"))
