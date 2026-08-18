@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -323,7 +322,7 @@ private val MONEY_FORWARD_COLLECT_SCRIPT =
       try {
         const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
         const amount = (value) => {
-          const normalized = clean(value).replace(/[,，円\\]/g, '').replace(/\s/g, '');
+          const normalized = clean(value).replace(/[,，円\s]/g, '');
           const match = normalized.match(/-?\d+/);
           return match ? Number(match[0]) : NaN;
         };
