@@ -5,34 +5,36 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +42,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -124,12 +124,19 @@ class AssetViewModel(
   }
 }
 
+private enum class AssetTab(val label: String) {
+  OVERVIEW("概要"),
+  IMPORT("インポート"),
+  SETTINGS("設定"),
+}
+
 @Composable
-fun AssetManagementDialog(
+fun AssetScreen(
   viewModel: AssetViewModel,
-  onDismiss: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
+  var selectedTabIndex by rememberSaveable { mutableIntStateOf(AssetTab.OVERVIEW.ordinal) }
   var showMoneyForward by remember { mutableStateOf(false) }
   var editing by remember { mutableStateOf<AssetCategorySetting?>(null) }
   var categoryText by remember { mutableStateOf("") }
@@ -137,103 +144,55 @@ fun AssetManagementDialog(
     uri?.toString()?.let(viewModel::importDelimited)
   }
 
-  Dialog(
-    onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-      Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Text("資産管理", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-          TextButton(onClick = onDismiss) { Text("閉じる") }
-        }
-        HorizontalDivider()
-        if (state.loading && state.overview == null) {
-          Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-          ) {
-            CircularProgressIndicator()
-          }
-        } else {
-          val overview = state.overview ?: AssetOverview(null, 0, emptyMap(), emptyList(), emptyList())
-          LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item {
-              Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-              ) {
-                Button(
-                  modifier = Modifier.weight(1f),
-                  onClick = {
-                    importLauncher.launch(
-                      arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
-                    )
-                  },
-                ) { Text("CSV / TSV") }
-                OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMoneyForward = true }) {
-                  Text("MoneyForward")
-                }
-              }
-            }
-            state.message?.let { message ->
-              item {
-                Text(
-                  message,
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.dismissMessage() }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                  color = MaterialTheme.colorScheme.primary,
-                )
-              }
-            }
-            item {
-              Column(modifier = Modifier.padding(16.dp)) {
-                Text("資産総額", style = MaterialTheme.typography.labelLarge)
-                Text(formatYen(overview.total), style = MaterialTheme.typography.headlineMedium)
-                overview.latestDate?.let { Text("${it} 時点", style = MaterialTheme.typography.bodySmall) }
-              }
-            }
-            if (overview.history.isNotEmpty()) {
-              item {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                  Text("資産推移", style = MaterialTheme.typography.titleMedium)
-                  Spacer(Modifier.height(8.dp))
-                  AssetHistoryChart(overview.history)
-                }
-              }
-            }
-            item {
-              Text("最新のカテゴリ別内訳", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
-            }
-            items(overview.latestByCategory.entries.sortedByDescending { it.value }) { entry ->
-              ListItem(
-                headlineContent = { Text(entry.key) },
-                trailingContent = { Text(formatYen(entry.value)) },
-              )
-            }
-            item { HorizontalDivider() }
-            item {
-              Text("資産項目のカテゴリ設定", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
-            }
-            items(overview.categorySettings, key = { it.assetName }) { setting ->
-              ListItem(
-                modifier = Modifier.clickable {
-                  editing = setting
-                  categoryText = setting.category
-                },
-                headlineContent = { Text(setting.assetName) },
-                supportingContent = { Text(setting.category) },
-              )
-            }
-            item { Spacer(Modifier.height(24.dp)) }
-          }
-        }
+  Column(modifier = modifier.fillMaxSize()) {
+    TabRow(selectedTabIndex = selectedTabIndex) {
+      AssetTab.entries.forEach { tab ->
+        Tab(
+          selected = selectedTabIndex == tab.ordinal,
+          onClick = { selectedTabIndex = tab.ordinal },
+          text = { Text(tab.label) },
+        )
+      }
+    }
+    if (state.loading) {
+      LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
+    state.message?.let { message ->
+      Text(
+        message,
+        modifier = Modifier
+          .fillMaxWidth()
+          .clickable { viewModel.dismissMessage() }
+          .padding(horizontal = 16.dp, vertical = 10.dp),
+        color = MaterialTheme.colorScheme.primary,
+      )
+    }
+
+    if (state.loading && state.overview == null) {
+      Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
+      }
+    } else {
+      val overview = state.overview ?: AssetOverview(null, 0, emptyMap(), emptyList(), emptyList())
+      when (AssetTab.entries[selectedTabIndex]) {
+        AssetTab.OVERVIEW -> AssetOverviewTab(overview = overview, modifier = Modifier.fillMaxSize())
+        AssetTab.IMPORT -> AssetImportTab(
+          modifier = Modifier.fillMaxSize(),
+          onImportDelimited = {
+            importLauncher.launch(
+              arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
+            )
+          },
+          onImportMoneyForward = { showMoneyForward = true },
+        )
+        AssetTab.SETTINGS -> AssetSettingsTab(
+          settings = overview.categorySettings,
+          modifier = Modifier.fillMaxSize(),
+          onEdit = { setting ->
+            editing = setting
+            categoryText = setting.category
+          },
+        )
       }
     }
   }
@@ -272,6 +231,131 @@ fun AssetManagementDialog(
       },
       dismissButton = { TextButton(onClick = { editing = null }) { Text("キャンセル") } },
     )
+  }
+}
+
+@Composable
+private fun AssetOverviewTab(
+  overview: AssetOverview,
+  modifier: Modifier,
+) {
+  LazyColumn(modifier = modifier) {
+    item {
+      Column(modifier = Modifier.padding(16.dp)) {
+        Text("資産総額", style = MaterialTheme.typography.labelLarge)
+        Text(formatYen(overview.total), style = MaterialTheme.typography.headlineMedium)
+        overview.latestDate?.let { Text("${it} 時点", style = MaterialTheme.typography.bodySmall) }
+      }
+    }
+    if (overview.history.isNotEmpty()) {
+      item {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+          Text("資産推移", style = MaterialTheme.typography.titleMedium)
+          Spacer(Modifier.height(8.dp))
+          AssetHistoryChart(overview.history)
+        }
+      }
+    }
+    item {
+      Text("最新のカテゴリ別内訳", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+    }
+    if (overview.latestByCategory.isEmpty()) {
+      item {
+        Text(
+          "資産データがありません。インポートタブからデータを追加してください。",
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    } else {
+      items(overview.latestByCategory.entries.sortedByDescending { it.value }) { entry ->
+        ListItem(
+          headlineContent = { Text(entry.key) },
+          trailingContent = { Text(formatYen(entry.value)) },
+        )
+      }
+    }
+    item { Spacer(Modifier.height(24.dp)) }
+  }
+}
+
+@Composable
+private fun AssetImportTab(
+  modifier: Modifier,
+  onImportDelimited: () -> Unit,
+  onImportMoneyForward: () -> Unit,
+) {
+  LazyColumn(modifier = modifier) {
+    item {
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Text("CSV / TSV", style = MaterialTheme.typography.titleMedium)
+        Text(
+          "既存の資産履歴をファイルから取り込みます。日付・資産名・金額を含むCSVまたはTSVを選択してください。",
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(modifier = Modifier.fillMaxWidth(), onClick = onImportDelimited) {
+          Text("ファイルを選択")
+        }
+      }
+    }
+    item { HorizontalDivider() }
+    item {
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Text("MoneyForward ME", style = MaterialTheme.typography.titleMedium)
+        Text(
+          "アプリ内WebViewでMoneyForward MEの資産ページを開き、表示中の資産スナップショットを取得します。",
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onImportMoneyForward) {
+          Text("MoneyForwardを開く")
+        }
+      }
+    }
+    item { Spacer(Modifier.height(24.dp)) }
+  }
+}
+
+@Composable
+private fun AssetSettingsTab(
+  settings: List<AssetCategorySetting>,
+  modifier: Modifier,
+  onEdit: (AssetCategorySetting) -> Unit,
+) {
+  LazyColumn(modifier = modifier) {
+    item {
+      Column(modifier = Modifier.padding(16.dp)) {
+        Text("資産項目のカテゴリ", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+          "カテゴリを変更すると、過去の履歴も現在のカテゴリ設定で再集計されます。",
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+    if (settings.isEmpty()) {
+      item {
+        Text(
+          "設定できる資産項目がありません。先に資産データをインポートしてください。",
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    } else {
+      items(settings, key = { it.assetName }) { setting ->
+        ListItem(
+          modifier = Modifier.clickable { onEdit(setting) },
+          headlineContent = { Text(setting.assetName) },
+          supportingContent = { Text(setting.category) },
+        )
+      }
+    }
+    item { Spacer(Modifier.height(24.dp)) }
   }
 }
 
