@@ -56,7 +56,7 @@ Android Auto Backup / device transfer は引き続き `yomitori-rss.db` を data
 
 SharedPreferences、local model、credential など SQLite 外のデータはこの決定の対象外であり、それぞれの backup policy を維持する。
 
-アプリ独自の Google Drive JSON backup を database snapshot 方式へ変更するかどうかは別の決定とする。本 ADR はまず永続 SQLite database の分散を解消する。
+アプリ独自backupの方式は ADR-0099 で決定し、Google Drive / 手動バックアップを統合DBの整合したSQLite snapshotへ変更する。本 ADR で保留していた独自backupの取りこぼし対策は ADR-0099 に引き継ぐ。
 
 ## Consequences
 
