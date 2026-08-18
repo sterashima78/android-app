@@ -632,6 +632,7 @@ fun YomitoriApp(
               feeds = feedState.feeds,
               folders = feedState.folders,
               onAdd = { showAddFeed = true },
+              onRenameFeed = feedViewModel::renameFeed,
               onDelete = feedViewModel::deleteFeed,
               onCreateFolder = feedViewModel::createFolder,
               onRenameFolder = feedViewModel::renameFolder,
@@ -847,7 +848,6 @@ private fun MainTab.bookmarkTab(): BookmarkTab? = when (this) {
   MainTab.FOLDERS -> BookmarkTab.FOLDERS
   MainTab.TAGS -> BookmarkTab.TAGS
   MainTab.HISTORY -> BookmarkTab.HISTORY
-  else -> null
 }
 
 private fun MainTab.screenTitle(): String = when (this) {
