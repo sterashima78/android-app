@@ -14,6 +14,7 @@ enum class MainTab(val label: String) {
   TAGS("タグ"),
   LIBRARY("蔵書"),
   KNOWLEDGE("ナレッジ"),
+  ASSETS("資産"),
   MAIL("メール"),
   YOUTUBE("YouTube"),
   X("X"),
