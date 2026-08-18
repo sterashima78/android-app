@@ -9,7 +9,7 @@ class GoogleDriveBackupStore(context: Context) {
   private val resolver = appContext.contentResolver
   private val preferences = GoogleDriveBackupPreferences(appContext)
 
-  fun write(archive: DatabaseBackupArchive): String {
+  internal fun write(archive: DatabaseBackupArchive): String {
     val folderUri = preferences.status().folderUri
       ?.let(Uri::parse)
       ?: error("Google Driveのバックアップ先を設定してください")
