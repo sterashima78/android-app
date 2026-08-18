@@ -117,6 +117,9 @@ tasks.configureEach {
 }
 
 dependencies {
+  implementation(project(":feature:ai-task-queue:domain"))
+  implementation(project(":feature:ai-task-queue:data"))
+  implementation(project(":feature:ai-task-queue:ui"))
   implementation(project(":feature:backup:domain"))
   implementation(project(":feature:backup:data"))
   implementation(project(":feature:backup:ui"))
