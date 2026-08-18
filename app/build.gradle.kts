@@ -178,6 +178,8 @@ dependencies {
   implementation(project(":feature:youtube:domain"))
   implementation(project(":feature:youtube:data"))
   implementation(project(":feature:youtube:ui"))
+  implementation(project(":feature:x:domain"))
+  implementation(project(":feature:x:data"))
   implementation(project(":feature:x:ui"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
