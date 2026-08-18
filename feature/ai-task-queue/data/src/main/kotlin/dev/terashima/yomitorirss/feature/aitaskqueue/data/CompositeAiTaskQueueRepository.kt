@@ -91,7 +91,6 @@ class CompositeAiTaskQueueRepository(
       runCatching { summary.setResumeWhenCharging(previous) }
       runCatching {
         val globalPaused = summary.executionState().paused
-        library.setResumeOnChargingScheduled(previous, globalPaused)
         knowledge?.setResumeOnChargingScheduled(previous && globalPaused)
       }
       throw error
