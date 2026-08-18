@@ -59,12 +59,29 @@ class DefaultAssetRepository(
       while (cursor.moveToNext()) settings += AssetCategorySetting(cursor.getString(0), cursor.getString(1))
     }
 
+    val persistedCategories = mutableListOf<String>()
+    database.readable.rawQuery(
+      "SELECT category FROM asset_category_definitions",
+      null,
+    ).use { cursor ->
+      while (cursor.moveToNext()) persistedCategories += cursor.getString(0)
+    }
+    val registeredCategories = (
+      persistedCategories + settings.map(AssetCategorySetting::category) + DEFAULT_CATEGORY
+      )
+      .map(String::trim)
+      .filter(String::isNotBlank)
+      .distinct()
+      .sortedWith(String.CASE_INSENSITIVE_ORDER)
+      .let { categories -> listOf(DEFAULT_CATEGORY) + categories.filterNot { it == DEFAULT_CATEGORY } }
+
     return AssetOverview(
       latestDate = latest?.date,
       total = latest?.total ?: 0L,
       latestByCategory = latest?.byCategory.orEmpty(),
       history = history,
       categorySettings = settings,
+      registeredCategories = registeredCategories,
     )
   }
 
@@ -105,20 +122,40 @@ class DefaultAssetRepository(
     return AssetImportResult(rows.size, 1)
   }
 
+  override suspend fun addCategory(category: String) {
+    val value = category.trim()
+    require(value.isNotBlank()) { "カテゴリ名を入力してください" }
+    val inserted = database.writable.insertWithOnConflict(
+      "asset_category_definitions",
+      null,
+      ContentValues().apply { put("category", value) },
+      SQLiteDatabase.CONFLICT_IGNORE,
+    )
+    require(inserted != -1L) { "同じカテゴリが既に登録されています" }
+  }
+
   override suspend fun setCategory(assetName: String, category: String) {
     val name = assetName.trim()
     val value = category.trim()
     require(name.isNotBlank())
-    require(value.isNotBlank()) { "カテゴリ名を入力してください" }
-    database.writable.insertWithOnConflict(
-      "asset_categories",
-      null,
-      ContentValues().apply {
-        put("asset_name", name)
-        put("category", value)
-      },
-      SQLiteDatabase.CONFLICT_REPLACE,
-    )
+    require(value.isNotBlank()) { "カテゴリ名を選択してください" }
+    database.transaction {
+      insertWithOnConflict(
+        "asset_category_definitions",
+        null,
+        ContentValues().apply { put("category", value) },
+        SQLiteDatabase.CONFLICT_IGNORE,
+      )
+      insertWithOnConflict(
+        "asset_categories",
+        null,
+        ContentValues().apply {
+          put("asset_name", name)
+          put("category", value)
+        },
+        SQLiteDatabase.CONFLICT_REPLACE,
+      )
+    }
   }
 
   private fun replaceSnapshots(rows: List<ParsedAssetRow>, source: String) {

@@ -10,7 +10,7 @@ import org.json.JSONObject
 
 internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
   put("format", "yomitori-rss-backup")
-  put("version", 6)
+  put("version", 7)
   put("exportedAt", Instant.now().toString())
   put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at,content_type FROM feed_folders ORDER BY normalized_name") { cursor ->
     JSONObject()
@@ -103,16 +103,23 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
         .put("category", cursor.text("category"))
     },
   )
+  put(
+    "assetCategoryDefinitions",
+    queryJsonArray("SELECT category FROM asset_category_definitions ORDER BY category COLLATE NOCASE") { cursor ->
+      JSONObject().put("category", cursor.text("category"))
+    },
+  )
 }
 
 internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   val version = root.optInt("version")
-  require(root.optString("format") == "yomitori-rss-backup" && version in 1..6) {
+  require(root.optString("format") == "yomitori-rss-backup" && version in 1..7) {
     "対応していないバックアップです"
   }
 
   execSQL("DELETE FROM asset_entries")
   execSQL("DELETE FROM asset_categories")
+  execSQL("DELETE FROM asset_category_definitions")
   execSQL("DELETE FROM knowledge_pages")
   execSQL("DELETE FROM summary_tasks")
   execSQL("DELETE FROM article_summaries")
@@ -123,6 +130,13 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   execSQL("DELETE FROM tags")
   execSQL("DELETE FROM feeds")
   execSQL("DELETE FROM feed_folders")
+
+  insertWithOnConflict(
+    "asset_category_definitions",
+    null,
+    values("category" to DEFAULT_ASSET_CATEGORY),
+    SQLiteDatabase.CONFLICT_IGNORE,
+  )
 
   val feedFolderIds = mutableSetOf<String>()
   if (version >= 3) {
@@ -248,6 +262,21 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
     restoreEditorManagedKnowledge(root.optJSONArray("knowledgePages") ?: JSONArray())
   }
 
+  if (version >= 7) {
+    val definitions = root.optJSONArray("assetCategoryDefinitions") ?: JSONArray()
+    for (index in 0 until definitions.length()) {
+      val category = definitions.getJSONObject(index).getString("category").trim()
+      if (category.isNotBlank()) {
+        insertWithOnConflict(
+          "asset_category_definitions",
+          null,
+          values("category" to category),
+          SQLiteDatabase.CONFLICT_IGNORE,
+        )
+      }
+    }
+  }
+
   if (version >= 6) {
     val assetCategories = root.optJSONArray("assetCategories") ?: JSONArray()
     for (index in 0 until assetCategories.length()) {
@@ -277,6 +306,15 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
         },
       )
     }
+
+    execSQL(
+      """
+        INSERT OR IGNORE INTO asset_category_definitions(category)
+        SELECT DISTINCT TRIM(category)
+        FROM asset_categories
+        WHERE TRIM(category) <> ''
+      """.trimIndent(),
+    )
   }
 }
 
@@ -380,3 +418,5 @@ private fun JSONObject.nullable(key: String): String? = if (!has(key) || isNull(
 private fun values(vararg entries: Pair<String, String?>): ContentValues = ContentValues().apply {
   entries.forEach { (key, value) -> if (value == null) putNull(key) else put(key, value) }
 }
+
+private const val DEFAULT_ASSET_CATEGORY = "その他"

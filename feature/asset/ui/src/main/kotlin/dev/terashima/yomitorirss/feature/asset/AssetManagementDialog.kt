@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -77,6 +79,10 @@ class AssetViewModel(
 
   fun importMoneyForward(json: String) = runOperation("MoneyForward の資産を記録しました") {
     repository.importMoneyForwardJson(json)
+  }
+
+  fun addCategory(category: String) = runOperation("カテゴリを登録しました") {
+    repository.addCategory(category)
   }
 
   fun setCategory(assetName: String, category: String) = runOperation("カテゴリを更新しました") {
@@ -136,8 +142,10 @@ fun AssetScreen(
   val state by viewModel.state.collectAsState()
   var selectedTabIndex by rememberSaveable { mutableIntStateOf(AssetTab.OVERVIEW.ordinal) }
   var showMoneyForward by remember { mutableStateOf(false) }
+  var showAddCategory by remember { mutableStateOf(false) }
+  var newCategoryText by remember { mutableStateOf("") }
   var editing by remember { mutableStateOf<AssetCategorySetting?>(null) }
-  var categoryText by remember { mutableStateOf("") }
+  var selectedCategory by remember { mutableStateOf("") }
   val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
     uri?.toString()?.let(viewModel::importTsv)
   }
@@ -172,7 +180,7 @@ fun AssetScreen(
           CircularProgressIndicator()
         }
       } else {
-        val overview = state.overview ?: AssetOverview(null, 0, emptyMap(), emptyList(), emptyList())
+        val overview = state.overview ?: AssetOverview(null, 0, emptyMap(), emptyList(), emptyList(), emptyList())
         when (AssetTab.entries[selectedTabIndex]) {
           AssetTab.OVERVIEW -> AssetOverviewTab(overview = overview, modifier = Modifier.fillMaxSize())
           AssetTab.IMPORT -> AssetImportTab(
@@ -185,11 +193,16 @@ fun AssetScreen(
             onImportMoneyForward = { showMoneyForward = true },
           )
           AssetTab.SETTINGS -> AssetSettingsTab(
+            categories = overview.registeredCategories,
             settings = overview.categorySettings,
             modifier = Modifier.fillMaxSize(),
+            onAddCategory = {
+              newCategoryText = ""
+              showAddCategory = true
+            },
             onEdit = { setting ->
               editing = setting
-              categoryText = setting.category
+              selectedCategory = setting.category
             },
           )
         }
@@ -205,29 +218,68 @@ fun AssetScreen(
     )
   }
 
+  if (showAddCategory) {
+    AlertDialog(
+      onDismissRequest = { showAddCategory = false },
+      title = { Text("カテゴリを追加") },
+      text = {
+        OutlinedTextField(
+          value = newCategoryText,
+          onValueChange = { newCategoryText = it },
+          label = { Text("カテゴリ名") },
+          singleLine = true,
+        )
+      },
+      confirmButton = {
+        TextButton(
+          enabled = newCategoryText.isNotBlank(),
+          onClick = {
+            viewModel.addCategory(newCategoryText)
+            showAddCategory = false
+          },
+        ) { Text("追加") }
+      },
+      dismissButton = { TextButton(onClick = { showAddCategory = false }) { Text("キャンセル") } },
+    )
+  }
+
   editing?.let { setting ->
+    val choices = state.overview?.registeredCategories.orEmpty()
+      .plus(setting.category)
+      .distinct()
     AlertDialog(
       onDismissRequest = { editing = null },
-      title = { Text("カテゴリ設定") },
+      title = { Text("カテゴリを変更") },
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text(setting.assetName)
-          OutlinedTextField(
-            value = categoryText,
-            onValueChange = { categoryText = it },
-            label = { Text("カテゴリ") },
-            singleLine = true,
-          )
+          Text(setting.assetName, style = MaterialTheme.typography.bodyMedium)
+          LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+            items(choices, key = { it }) { category ->
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { selectedCategory = category }
+                  .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                RadioButton(
+                  selected = selectedCategory == category,
+                  onClick = { selectedCategory = category },
+                )
+                Text(category, modifier = Modifier.padding(start = 8.dp))
+              }
+            }
+          }
         }
       },
       confirmButton = {
         TextButton(
-          enabled = categoryText.isNotBlank(),
+          enabled = selectedCategory.isNotBlank(),
           onClick = {
-            viewModel.setCategory(setting.assetName, categoryText)
+            viewModel.setCategory(setting.assetName, selectedCategory)
             editing = null
           },
-        ) { Text("保存") }
+        ) { Text("変更") }
       },
       dismissButton = { TextButton(onClick = { editing = null }) { Text("キャンセル") } },
     )
@@ -380,39 +432,91 @@ private fun AssetImportTab(
 
 @Composable
 private fun AssetSettingsTab(
+  categories: List<String>,
   settings: List<AssetCategorySetting>,
   modifier: Modifier,
+  onAddCategory: () -> Unit,
   onEdit: (AssetCategorySetting) -> Unit,
 ) {
+  val groups = remember(categories, settings) { groupAssetCategorySettings(categories, settings) }
   LazyColumn(modifier = modifier) {
     item {
-      Column(modifier = Modifier.padding(16.dp)) {
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
         Text("資産項目のカテゴリ", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(4.dp))
         Text(
-          "カテゴリを変更すると、過去の履歴も現在のカテゴリ設定で再集計されます。",
+          "カテゴリを登録し、各資産項目を登録済みカテゴリから選択して分類します。変更すると過去の履歴も現在のカテゴリ設定で再集計されます。",
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onAddCategory) {
+          Text("カテゴリを追加")
+        }
       }
     }
     if (settings.isEmpty()) {
       item {
         Text(
-          "設定できる資産項目がありません。先に資産データをインポートしてください。",
+          "分類できる資産項目がありません。先に資産データをインポートしてください。",
           modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-    } else {
-      items(settings, key = { it.assetName }) { setting ->
-        ListItem(
-          modifier = Modifier.clickable { onEdit(setting) },
-          headlineContent = { Text(setting.assetName) },
-          supportingContent = { Text(setting.category) },
-        )
+    }
+    groups.forEach { group ->
+      item(key = "category:${group.category}") {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(group.category, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+          Text(
+            "${group.entries.size}件",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
+      if (group.entries.isEmpty()) {
+        item(key = "empty:${group.category}") {
+          Text(
+            "項目なし",
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      } else {
+        items(group.entries, key = { it.assetName }) { setting ->
+          ListItem(
+            modifier = Modifier.clickable { onEdit(setting) },
+            headlineContent = { Text(setting.assetName) },
+            supportingContent = { Text("タップしてカテゴリを変更") },
+          )
+        }
+      }
+      item(key = "divider:${group.category}") { HorizontalDivider() }
     }
     item { Spacer(Modifier.height(24.dp)) }
+  }
+}
+
+internal data class AssetCategoryGroup(
+  val category: String,
+  val entries: List<AssetCategorySetting>,
+)
+
+internal fun groupAssetCategorySettings(
+  categories: List<String>,
+  settings: List<AssetCategorySetting>,
+): List<AssetCategoryGroup> {
+  val grouped = settings.groupBy(AssetCategorySetting::category)
+  val orderedCategories = (categories + settings.map(AssetCategorySetting::category)).distinct()
+  return orderedCategories.map { category ->
+    AssetCategoryGroup(
+      category = category,
+      entries = grouped[category].orEmpty().sortedBy { it.assetName.lowercase(Locale.ROOT) },
+    )
   }
 }
 
