@@ -35,7 +35,7 @@ internal class BackupPreferences(context: Context) {
       if (rule.allowedKeys == null) {
         editor.clear()
       } else {
-        rule.allowedKeys.forEach(editor::remove)
+        rule.allowedKeys.forEach { key -> editor.remove(key) }
       }
       values.forEach { (key, value) -> editor.putValue(key, value) }
       check(editor.commit()) { "設定を復元できませんでした: ${rule.name}" }
