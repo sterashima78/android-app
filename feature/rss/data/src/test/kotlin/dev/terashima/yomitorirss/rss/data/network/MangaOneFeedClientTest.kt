@@ -54,7 +54,7 @@ class MangaOneFeedClientTest {
   @Test
   fun `WebViewのUAから埋め込みブラウザ識別子を除去する`() {
     val defaultUserAgent =
-      "Mozilla/5.0 (Linux; Android 17; Pixel 9 Build/ABC; wv) AppleWebKit/537.36 " +
+      "Mozilla/5.0 (Linux; Android 17; Sample Device Build/ABC; wv) AppleWebKit/537.36 " +
         "(KHTML, like Gecko) Version/4.0 Chrome/145.0.0.0 Mobile Safari/537.36"
 
     val userAgent = chromeLikeUserAgent(defaultUserAgent)
@@ -63,7 +63,7 @@ class MangaOneFeedClientTest {
     assertFalse(userAgent.contains("Version/4.0"))
     assertTrue(userAgent.contains("Chrome/145.0.0.0"))
     assertEquals(
-      "Mozilla/5.0 (Linux; Android 17; Pixel 9 Build/ABC) AppleWebKit/537.36 " +
+      "Mozilla/5.0 (Linux; Android 17; Sample Device Build/ABC) AppleWebKit/537.36 " +
         "(KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36",
       userAgent,
     )
