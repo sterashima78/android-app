@@ -3,7 +3,7 @@ package dev.terashima.yomitorirss.feature.rss.data.network
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -71,16 +71,21 @@ class MangaOneFeedClientTest {
   }
 
   @Test
-  fun `話リンクがDOMにない場合は一覧URLから安定した代替URLを作る`() {
-    val pageUrl = "https://manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=1&limit=10"
-
-    val first = mangaOneFallbackChapterUrl(pageUrl, "第10話 サンプル", "2026/08/18")
-    val same = mangaOneFallbackChapterUrl(pageUrl, "第10話 サンプル", "2026/08/18")
-    val other = mangaOneFallbackChapterUrl(pageUrl, "第11話 サンプル", "2026/08/18")
-
-    assertEquals(first, same)
-    assertNotEquals(first, other)
-    assertTrue(first.startsWith("$pageUrl#chapter-"))
+  fun `pushStateで得た話URLから一覧表示クエリを除去して正規化する`() {
+    assertEquals(
+      "https://manga-one.com/manga/123/chapter/300",
+      normalizeMangaOneChapterUrl(
+        "https://manga-one.com/manga/123/chapter/300?type=chapter&sort_type=desc&page=1&limit=10",
+        "123",
+      ),
+    )
+    assertEquals(
+      "https://manga-one.com/manga/123/chapter/300",
+      normalizeMangaOneChapterUrl("https://www.manga-one.com/manga/123/chapter/300#list", "123"),
+    )
+    assertNull(normalizeMangaOneChapterUrl("https://manga-one.com/manga/999/chapter/300", "123"))
+    assertNull(normalizeMangaOneChapterUrl("https://example.com/manga/123/chapter/300", "123"))
+    assertNull(normalizeMangaOneChapterUrl("https://manga-one.com/manga/123/chapter/free", "123"))
   }
 
   @Test
