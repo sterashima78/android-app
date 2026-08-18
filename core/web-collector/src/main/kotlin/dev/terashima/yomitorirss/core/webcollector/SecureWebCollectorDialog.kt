@@ -61,6 +61,7 @@ data class WebCollectorConfig(
   val bridgeName: String = DEFAULT_BRIDGE_NAME,
   val collectButtonLabel: String = "取得",
   val acceptThirdPartyCookies: Boolean = false,
+  val externalNavigationSchemes: Set<String> = setOf("https"),
   val userAgentTransformer: (String) -> String = { it },
   val continuations: List<WebCollectorContinuation> = emptyList(),
   val maxResultBytes: Int = DEFAULT_MAX_RESULT_BYTES,
@@ -198,7 +199,7 @@ private fun CollectorContent(
           if (!request.isForMainFrame) return false
           val target = request.url.toString()
           if (isAllowedNavigation(target, config.allowedNavigationHosts)) return false
-          if (request.url.scheme == "https") {
+          if (config.externalNavigationSchemes.any { it.equals(request.url.scheme, ignoreCase = true) }) {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
           }
           return true
