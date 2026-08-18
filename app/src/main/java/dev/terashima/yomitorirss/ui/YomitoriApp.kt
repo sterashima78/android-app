@@ -61,7 +61,7 @@ fun YomitoriApp(
   val rssController = rememberRssRouteController()
   val redditController = rememberRedditRouteController()
   val bookmarkEditController = rememberBookmarkEditController()
-  val openDrawer = { scope.launch { drawerState.open() } }
+  val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
 
   FeatureMessageEffects(
     snackbarHostState = snackbarHostState,
