@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 
 internal fun YomitoriDatabase.peekNextSummaryTaskPriority(): LocalAiBackgroundTaskPriority? {
   val hasReadLaterSchema = hasReadLaterBookmarkSchema()
+  val readiness = summaryInferenceReadyWhereClause()
   val sql = if (hasReadLaterSchema) {
     """
       SELECT CASE WHEN EXISTS(
@@ -15,12 +16,12 @@ internal fun YomitoriDatabase.peekNextSummaryTaskPriority(): LocalAiBackgroundTa
         WHERE af.article_id = q.article_id AND bf.system_kind = 'read_later'
       ) THEN 1 ELSE 0 END AS read_later
       FROM summary_tasks q
-      WHERE q.state=?
+      WHERE q.state=? AND $readiness
       ORDER BY read_later DESC,q.queued_at ASC
       LIMIT 1
     """.trimIndent()
   } else {
-    "SELECT 0 AS read_later FROM summary_tasks q WHERE q.state=? ORDER BY q.queued_at ASC LIMIT 1"
+    "SELECT 0 AS read_later FROM summary_tasks q WHERE q.state=? AND $readiness ORDER BY q.queued_at ASC LIMIT 1"
   }
   return readableDatabase.rawQuery(sql, arrayOf(SUMMARY_QUEUED)).use { cursor ->
     if (!cursor.moveToFirst()) null else if (cursor.getInt(0) == 1) {
@@ -32,7 +33,7 @@ internal fun YomitoriDatabase.peekNextSummaryTaskPriority(): LocalAiBackgroundTa
 }
 
 internal fun YomitoriDatabase.claimNextSummaryTaskByPriority(): SummaryTaskRecord? =
-  claimNextSummaryTask()
+  claimNextInferenceReadySummaryTask()
 
 internal fun YomitoriDatabase.summaryTaskPriorityOrderByClause(): String =
   if (hasReadLaterBookmarkSchema()) {
