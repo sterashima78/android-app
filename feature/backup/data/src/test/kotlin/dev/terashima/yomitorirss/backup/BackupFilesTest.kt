@@ -22,7 +22,7 @@ class BackupFilesTest {
     }
     val names = backups + listOf(
       "manual.zip",
-      "yomitori-auto-20260701T010000000+0900-v2.zip",
+      "other-app-auto-20260701T010000000+0900.zip",
       "mosaic-auto-invalid.txt",
     )
 
