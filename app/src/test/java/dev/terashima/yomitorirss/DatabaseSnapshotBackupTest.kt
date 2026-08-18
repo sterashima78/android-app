@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(application = YomitoriApplication::class)
+@Config(application = YomitoriApplication::class, sdk = [35])
 class DatabaseSnapshotBackupTest {
   private lateinit var context: Context
 
