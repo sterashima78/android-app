@@ -8,6 +8,10 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -30,9 +34,12 @@ class DatabaseBackupArchiveTest {
       DatabaseSchema(
         version = 1,
         contributions = listOf(
-          DatabaseSchemaContribution("test") { db ->
-            db.execSQL("CREATE TABLE IF NOT EXISTS backup_test(id TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)")
-          },
+          DatabaseSchemaContribution(
+            owner = "test",
+            createSchema = { db ->
+              db.execSQL("CREATE TABLE IF NOT EXISTS backup_test(id TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)")
+            },
+          ),
         ),
       ),
     )
@@ -83,10 +90,7 @@ class DatabaseBackupArchiveTest {
     val archive = DatabaseBackupArchive(context, database)
     val output = ByteArrayOutputStream()
     archive.writeTo(output)
-    val bytes = output.toByteArray().also { data ->
-      val index = data.lastIndex - 16
-      data[index] = (data[index].toInt() xor 0x01).toByte()
-    }
+    val bytes = withWrongChecksum(output.toByteArray())
 
     runCatching { archive.restore(ByteArrayInputStream(bytes)) }
       .onSuccess { error("壊れたarchiveが復元されました") }
@@ -110,5 +114,27 @@ class DatabaseBackupArchiveTest {
     } finally {
       file.delete()
     }
+  }
+
+  private fun withWrongChecksum(bytes: ByteArray): ByteArray {
+    val output = ByteArrayOutputStream()
+    ZipInputStream(ByteArrayInputStream(bytes)).use { input ->
+      ZipOutputStream(output).use { zip ->
+        while (true) {
+          val entry = input.nextEntry ?: break
+          zip.putNextEntry(ZipEntry(entry.name))
+          if (entry.name == "manifest.json") {
+            val manifest = JSONObject(input.readBytes().toString(Charsets.UTF_8))
+              .put("databaseSha256", "0".repeat(64))
+            zip.write(manifest.toString().toByteArray(Charsets.UTF_8))
+          } else {
+            input.copyTo(zip)
+          }
+          zip.closeEntry()
+          input.closeEntry()
+        }
+      }
+    }
+    return output.toByteArray()
   }
 }
