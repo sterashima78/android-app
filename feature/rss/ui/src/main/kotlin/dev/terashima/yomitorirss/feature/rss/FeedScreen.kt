@@ -54,6 +54,7 @@ fun FeedScreen(
   feeds: List<Feed>,
   folders: List<FeedFolder>,
   onAdd: () -> Unit,
+  onRenameFeed: (Feed, String) -> Unit,
   onDelete: (Feed) -> Unit,
   onCreateFolder: (String) -> Unit,
   onRenameFolder: (FeedFolder, String) -> Unit,
@@ -63,6 +64,7 @@ fun FeedScreen(
   onSetFolderContentType: (FeedFolder, ContentType?) -> Unit,
 ) {
   var creatingFolder by remember { mutableStateOf(false) }
+  var renamingFeed by remember { mutableStateOf<Feed?>(null) }
   var renamingFolder by remember { mutableStateOf<FeedFolder?>(null) }
   var deletingFolder by remember { mutableStateOf<FeedFolder?>(null) }
   var movingFeed by remember { mutableStateOf<Feed?>(null) }
@@ -115,6 +117,7 @@ fun FeedScreen(
         FeedCard(
           feed = feed,
           inheritedContentType = ContentType.ARTICLE,
+          onRename = { renamingFeed = feed },
           onMove = { movingFeed = feed },
           onEditContentType = { editingFeedContentType = feed },
           onDelete = onDelete,
@@ -149,6 +152,7 @@ fun FeedScreen(
           FeedCard(
             feed = feed,
             inheritedContentType = folder.effectiveContentType(),
+            onRename = { renamingFeed = feed },
             onMove = { movingFeed = feed },
             onEditContentType = { editingFeedContentType = feed },
             onDelete = onDelete,
@@ -159,9 +163,10 @@ fun FeedScreen(
   }
 
   if (creatingFolder) {
-    FeedFolderNameDialog(
+    NameDialog(
       title = "フォルダを作成",
       confirmLabel = "作成",
+      fieldLabel = "フォルダ名",
       initialValue = "",
       onDismiss = { creatingFolder = false },
       onConfirm = {
@@ -171,10 +176,25 @@ fun FeedScreen(
     )
   }
 
+  renamingFeed?.let { feed ->
+    NameDialog(
+      title = "フィード名を変更",
+      confirmLabel = "保存",
+      fieldLabel = "フィード名",
+      initialValue = feed.title,
+      onDismiss = { renamingFeed = null },
+      onConfirm = {
+        renamingFeed = null
+        onRenameFeed(feed, it)
+      },
+    )
+  }
+
   renamingFolder?.let { folder ->
-    FeedFolderNameDialog(
+    NameDialog(
       title = "フォルダ名を変更",
       confirmLabel = "保存",
+      fieldLabel = "フォルダ名",
       initialValue = folder.name,
       onDismiss = { renamingFolder = null },
       onConfirm = {
@@ -287,6 +307,7 @@ private fun FeedFolderHeader(
 private fun FeedCard(
   feed: Feed,
   inheritedContentType: ContentType,
+  onRename: () -> Unit,
   onMove: () -> Unit,
   onEditContentType: () -> Unit,
   onDelete: (Feed) -> Unit,
@@ -318,6 +339,9 @@ private fun FeedCard(
           Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
       }
+      IconButton(onClick = onRename) {
+        Icon(Icons.Default.Edit, contentDescription = "フィード名を変更")
+      }
       IconButton(onClick = onEditContentType) {
         Icon(Icons.Default.Tune, contentDescription = "コンテンツ種別を変更")
       }
@@ -332,9 +356,10 @@ private fun FeedCard(
 }
 
 @Composable
-private fun FeedFolderNameDialog(
+private fun NameDialog(
   title: String,
   confirmLabel: String,
+  fieldLabel: String,
   initialValue: String,
   onDismiss: () -> Unit,
   onConfirm: (String) -> Unit,
@@ -347,7 +372,7 @@ private fun FeedFolderNameDialog(
       OutlinedTextField(
         value = value,
         onValueChange = { value = it },
-        label = { Text("フォルダ名") },
+        label = { Text(fieldLabel) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
       )
