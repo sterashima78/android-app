@@ -16,7 +16,7 @@ internal class FeedStore(
   private val database: DatabaseConnection,
 ) {
   fun listFeeds(): List<Feed> = database.readable
-    .rawQuery("SELECT * FROM feeds ORDER BY title COLLATE NOCASE", null)
+    .rawQuery("SELECT * FROM feeds ORDER BY COALESCE(custom_title,title) COLLATE NOCASE", null)
     .use { cursor ->
       buildList {
         while (cursor.moveToNext()) add(cursor.feed())
@@ -72,7 +72,7 @@ internal class FeedStore(
     database.transaction {
       val updated = update(
         "feeds",
-        contentValues("title" to display),
+        contentValues("custom_title" to display),
         "id=?",
         arrayOf(id),
       )
@@ -188,6 +188,7 @@ internal class FeedStore(
       update(
         "feeds",
         contentValues(
+          "title" to parsed.title,
           "feed_url" to parsed.feedUrl,
           "site_url" to parsed.siteUrl,
           "etag" to etag,
@@ -198,8 +199,8 @@ internal class FeedStore(
         "id=?",
         arrayOf(feed.id),
       )
-      val currentTitle = rawQuery(
-        "SELECT title FROM feeds WHERE id=? LIMIT 1",
+      val displayTitle = rawQuery(
+        "SELECT COALESCE(custom_title,title) FROM feeds WHERE id=? LIMIT 1",
         arrayOf(feed.id),
       ).use { cursor ->
         require(cursor.moveToFirst()) { "フィードが見つかりません" }
@@ -207,7 +208,7 @@ internal class FeedStore(
       }
       upsertArticles(
         this,
-        feed.copy(title = currentTitle, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl),
+        feed.copy(title = displayTitle, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl),
         parsed,
         now,
       )
@@ -335,7 +336,7 @@ private fun contentValues(vararg values: Pair<String, String?>): ContentValues =
 
 private fun Cursor.feed(): Feed = Feed(
   id = string("id"),
-  title = string("title"),
+  title = nullableString("custom_title") ?: string("title"),
   feedUrl = string("feed_url"),
   siteUrl = nullableString("site_url"),
   etag = nullableString("etag"),
