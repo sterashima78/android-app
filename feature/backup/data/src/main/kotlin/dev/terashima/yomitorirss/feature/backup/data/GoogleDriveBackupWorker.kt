@@ -20,8 +20,7 @@ class GoogleDriveBackupWorker(
       onSuccess = { Result.success() },
       onFailure = { error ->
         when {
-          error is SecurityException || error is IllegalArgumentException || error is IllegalStateException ->
-            Result.failure()
+          error is SecurityException || error is IllegalArgumentException -> Result.failure()
           runAttemptCount >= MAX_RETRY_COUNT -> Result.failure()
           else -> Result.retry()
         }
