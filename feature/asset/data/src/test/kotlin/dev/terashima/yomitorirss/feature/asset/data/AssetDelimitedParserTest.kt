@@ -21,30 +21,45 @@ class AssetDelimitedParserTest {
     assertEquals("Asset A", rows[0].name)
     assertEquals(1000L, rows[0].amount)
     assertEquals("", rows[0].account)
-    assertEquals(null, rows[0].categoryHint)
   }
 
   @Test
-  fun `CSVの引用符と任意列を読み込める`() {
-    val rows = parse(
-      """
-        date,name,amount,account,category
-        2026-08-18,"Asset, B","1,234",Account B,Category B
-      """.trimIndent(),
-    )
+  fun `円記号とカンマを含む金額を読み込める`() {
+    val rows = parse("2026-08-18\tDeposit\t¥12,345\tBank A")
 
     assertEquals(1, rows.size)
-    assertEquals("Asset, B", rows.single().name)
-    assertEquals(1234L, rows.single().amount)
-    assertEquals("Account B", rows.single().account)
-    assertEquals("Category B", rows.single().categoryHint)
+    assertEquals(12345L, rows.single().amount)
   }
 
-  @Test(expected = IllegalArgumentException::class)
-  fun `閉じていないCSV引用符は拒否する`() {
-    parse("2026-08-18,\"Asset A,100")
+  @Test
+  fun `2列目と4列目を組み合わせて資産を識別する`() {
+    val row = parse("2026-08-18\tDeposit\t12345\tBank A").single()
+
+    assertEquals("Deposit / Bank A", row.name)
+    assertEquals("Bank A", row.account)
+  }
+
+  @Test
+  fun `4列目が空なら2列目だけを資産名にする`() {
+    val row = parse("2026-08-18\tCash\t12345\t").single()
+
+    assertEquals("Cash", row.name)
+    assertEquals("", row.account)
+  }
+
+  @Test
+  fun `5列目以降は取り込まない`() {
+    val row = parse("2026-08-18\tDeposit\t12345\tBank A\tIgnored").single()
+
+    assertEquals("Deposit / Bank A", row.name)
+    assertEquals("Bank A", row.account)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `CSVは受け付けない`() {
+    parse("2026-08-18,Asset A,12345")
   }
 
   private fun parse(text: String): List<ParsedAssetRow> =
-    BufferedReader(StringReader(text)).use(::parseDelimited)
+    BufferedReader(StringReader(text)).use(::parseTsv)
 }
