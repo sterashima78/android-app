@@ -8,7 +8,7 @@
 
 RSS機能は通常のRSS / Atomに加え、ADR-0090でヤンマガWeb作品ページをHTML由来の合成フィードとして扱っている。マンガワンにも作品単位の公開RSSはないが、Web版の作品第1話URLから作品と話一覧へ到達できる。
 
-初期実装では第1話URLを `/manga/{作品ID}/chapter/first` と仮定していた。しかし実際のマンガワンWebでは第1話にも数値の話IDが割り当てられ、`/manga/{作品ID}/chapter/{話ID}` 形式になる。話一覧から遷移したURLには `type`、`sort_type`、`page`、`limit` などの表示状態を表すクエリが付くことがあるため、これらをフィード識別子へ含めると同一作品・同一話が別フィードとして扱われる。
+初期実装では第1話URLを `/manga/{作品ID}/chapter/first` のみに限定していた。しかし現在のマンガワンWebでは、作品によって `/manga/{作品ID}/chapter/first` が使われる場合と、第1話にも数値の話IDが割り当てられて `/manga/{作品ID}/chapter/{話ID}` となる場合の両方が存在する。話一覧から遷移したURLには `type`、`sort_type`、`page`、`limit` などの表示状態を表すクエリが付くことがあるため、これらをフィード識別子へ含めると同一作品・同一話が別フィードとして扱われる。
 
 マンガワンの現在の作品ページは、通常のHTTP取得で得られる初期HTMLには話一覧が含まれず、JavaScript実行後に `#chapterList` が構築される。したがって、ADR-0090のHTTP + jsoup方式だけでは無料話の一覧を安定して取得できない。
 
@@ -18,13 +18,16 @@ ADR-0006ではRSS更新をActivityの寿命に依存しない耐久バックグ�
 
 ## Decision
 
-### 1. 数値の話IDを持つ第1話URLをフィードURLとして直接登録する
+### 1. 第1話URLの `first` と数値話IDの両形式を受け入れる
 
-`manga-one.com` または `www.manga-one.com` のうち、パスが厳密に `/manga/{数字の作品ID}/chapter/{数字の話ID}` となるURLをマンガワン作品URLとして認識する。
+`manga-one.com` または `www.manga-one.com` のうち、パスが次のいずれかとなるURLをマンガワン作品URLとして認識する。
 
-ユーザーは作品の第1話URLを入力する。クライアントはURLだけからその話が第1話かどうかを推測せず、数値の作品IDと話IDを持つ正規の話URLであることだけを検証する。これにより将来のURL規則を推測したり、存在しない `chapter/first` へ変換したりしない。
+- `/manga/{数字の作品ID}/chapter/first`
+- `/manga/{数字の作品ID}/chapter/{数字の話ID}`
 
-クエリ・フラグメント・`www` は除去し、`https://manga-one.com/manga/{作品ID}/chapter/{話ID}` を正規フィードURLとして保存する。`type`、`sort_type`、`page`、`limit` など話一覧の表示状態に由来するクエリはフィード識別子へ含めない。
+ユーザーは作品の第1話URLを入力する。クライアントは数値話IDのURLだけからその話が第1話かどうかを推測せず、マンガワンの正規の話URL形式であることだけを検証する。
+
+クエリ・フラグメント・`www` は除去し、`https://manga-one.com/manga/{作品ID}/chapter/{first または話ID}` を正規フィードURLとして保存する。`type`、`sort_type`、`page`、`limit` など話一覧の表示状態に由来するクエリはフィード識別子へ含めない。既に登録可能だった `chapter/first` 形式は引き続き維持する。
 
 ### 2. RSS data層のサイト固有アダプターでWebViewを使用する
 
@@ -67,8 +70,8 @@ WebView経由では既存 `HttpClient` のETag / Last-Modified制御を適用で
 ### Positive
 
 - ユーザーはマンガワン作品の実際の第1話URLを通常のRSS追加欄へ貼り付けるだけで購読できる。
+- `chapter/first` と数値話IDの両方の現行URL形式へ対応できる。
 - URLにページング等のクエリが付いていても、同一の話URLとして正規化できる。
-- 存在しない `chapter/first` というURL規則へ依存しない。
 - 赤い「無料」話だけがRSS記事になり、毎日無料や先読みを誤って更新扱いしない。
 - 外部RSSサービスや非公開APIの仕様・可用性へ依存しない。
 - Activityに依存しないため、既存のバックグラウンドRSS更新経路へ統合できる。
