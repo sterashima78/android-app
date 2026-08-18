@@ -44,7 +44,7 @@ snapshot には SQLite `application_id` として `YOMI` (`0x594F4D49`) を付�
 - entry 名と重複
 - schema version が現在のアプリ以下であること
 - database / preferences のfile sizeとSHA-256 checksum
-- preference file / value type
+- preference file / value type / restricted key
 - SQLite `application_id`
 - SQLite `PRAGMA quick_check`
 
@@ -58,17 +58,17 @@ scheduled backup は app composition root が保持する共有 `YomitoriDatabas
 
 SQLite snapshot には統合DB内の全ユーザーデータが含まれる。これにはRSS、記事、ブックマーク、要約、メール本文とローカル状態、蔵書、ナレッジ、資産、Task、Chat、YouTubeなどが含まれる。
 
-DB外でユーザーが明示的に作成・選択した設定は、SharedPreferences file名のallowlistで `preferences/user-preferences.json` に保存する。現在の対象は次のとおり。
+DB外でユーザーが明示的に作成・選択した設定は、SharedPreferences file / key のallowlistで `preferences/user-preferences.json` に保存する。現在の対象は次のとおり。
 
 - `background_data_fetch`: background data取得設定
 - `book_reader_position`: 読書位置・reader mode
 - `local_ai_background_execution`: local AI background実行設定
-- `local_summary_models`: model選択と推論設定
+- `local_summary_models`: `selected_model_id`、`inference_backend`、`thinking_enabled`、`speculative_decoding_enabled`、`context_size_mode` のみ
 - `summary_preferences`: custom要約prompt
 - `workout`: workout履歴・設定
 - `x_viewer_preferences`: X custom CSS
 
-allowlist方式とし、将来追加されるSharedPreferencesを暗黙には含めない。credentialや端末固有値が後から自動的にbackupへ混入することを防ぐためである。
+allowlist方式とし、将来追加されるSharedPreferencesを暗黙には含めない。credentialや端末固有値が後から自動的にbackupへ混入することを防ぐためである。`local_summary_models` のようにユーザー設定と端末・artifact依存stateが同居するfileはkey単位で制限し、復元時も許可keyだけを置換して他のkeyは維持する。
 
 次の値は明示的にbackup対象外とする。
 
@@ -76,8 +76,11 @@ allowlist方式とし、将来追加されるSharedPreferencesを暗黙には含
 - `smb_library_credentials`: Android Keystore keyで暗号化されたSMB password
 - `google_drive_backup`: persisted URI permissionに依存する保存先設定
 - `local_context_benchmarks`: 端末memory / performance依存のbenchmark
-- local model file / cache
+- `local_summary_models` 内のmodel revision marker、download / inference時間推定など端末・artifact依存state
+- local model file / cache（アプリ独自backup）
 - transient queue state / download state / crash diagnostics
+
+Android Auto Backup / device transfer はSharedPreferencesのkey単位除外ができないため、`local_summary_models.xml` はfile全体を対象外にする。device transferではlocal model artifact自体は従来どおり `local-summary-models/` を移行し、artifact revision markerは移行先で現行artifactを検証して再生成する。アプリ独自backupでは上記の安全なuser settingだけを移行する。
 
 新端末ではGmailやSMBなど必要なcredentialを再認証・再入力する。
 
@@ -92,12 +95,14 @@ allowlist方式とし、将来追加されるSharedPreferencesを暗黙には含
 - checksum、application id、SQLite integrity checkにより破損や別DBの誤復元を検出できる。
 - workout履歴、custom prompt、CSS、読書位置などSQLite外のユーザーデータも移行できる。
 - preference allowlistによりcredentialやdevice-specific stateを意図せず含めにくい。
+- user settingとdevice-specific stateが同居するpreferencesもkey単位で分離できる。
 
 ### Negative
 
 - JSONよりbackup sizeが増え、メール本文など従来含まれなかった個人データもユーザが選択したGoogle Drive folderへ保存される。
 - backup作成中は短時間WALを停止し、snapshot copy中はwriterを待たせる。
-- 新しいSharedPreferences user dataを追加した場合はallowlistへの追加判断が必要になる。
+- 新しいSharedPreferences user dataを追加した場合はfile / key allowlistへの追加判断が必要になる。
+- Android標準backupはkey単位policyを表現できないため、mixed-state preferencesはfile全体を除外する必要がある。
 - database file置換のため、復元は通常のrow-level importよりdatabase lifecycleへの影響が大きい。
 
 ## Alternatives considered
