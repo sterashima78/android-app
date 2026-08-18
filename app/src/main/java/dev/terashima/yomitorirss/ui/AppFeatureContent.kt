@@ -71,6 +71,8 @@ internal fun AppFeatureContent(
   onAddMailAccount: () -> Unit,
   onOpenDrawer: () -> Unit,
 ) {
+  val summarize: (Article) -> Unit = { article -> summaryViewModel.summarize(article) }
+
   when (selectedTab) {
     MainTab.INTEGRATED -> IntegratedRoute(
       modifier = modifier,
@@ -93,7 +95,7 @@ internal fun AppFeatureContent(
       feedViewModel = feedViewModel,
       controller = rssController,
       onOpen = onOpenArticle,
-      onSummarize = summaryViewModel::summarize,
+      onSummarize = summarize,
       onEditTags = bookmarkEditController::editTags,
       onMoveFolder = bookmarkEditController::moveFolder,
     )
@@ -106,7 +108,7 @@ internal fun AppFeatureContent(
       redditViewModel = redditViewModel,
       controller = redditController,
       onOpen = onOpenArticle,
-      onSummarize = summaryViewModel::summarize,
+      onSummarize = summarize,
     )
 
     MainTab.SAVED,
@@ -118,7 +120,7 @@ internal fun AppFeatureContent(
       bookmarkViewModel = bookmarkViewModel,
       editController = bookmarkEditController,
       onOpen = onOpenArticle,
-      onSummarize = summaryViewModel::summarize,
+      onSummarize = summarize,
     )
 
     MainTab.LIBRARY -> LibraryRoute(modifier = modifier)
