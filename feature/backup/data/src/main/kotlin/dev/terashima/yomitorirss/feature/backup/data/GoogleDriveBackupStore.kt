@@ -3,16 +3,13 @@ package dev.terashima.yomitorirss.feature.backup.data
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
-import org.json.JSONObject
 
 class GoogleDriveBackupStore(context: Context) {
   private val appContext = context.applicationContext
   private val resolver = appContext.contentResolver
   private val preferences = GoogleDriveBackupPreferences(appContext)
 
-  fun write(json: String): String {
-    validateBackup(json)
-
+  internal fun write(archive: DatabaseBackupArchive): String {
     val folderUri = preferences.status().folderUri
       ?.let(Uri::parse)
       ?: error("Google Driveのバックアップ先を設定してください")
@@ -26,24 +23,18 @@ class GoogleDriveBackupStore(context: Context) {
     val documentUri = DocumentsContract.createDocument(
       resolver,
       parentDocumentUri,
-      MIME_TYPE_JSON,
+      DatabaseBackupArchive.MIME_TYPE,
       fileName,
     ) ?: error("Google Driveにバックアップファイルを作成できませんでした")
 
     try {
       resolver.openOutputStream(documentUri, "w")
-        ?.bufferedWriter(Charsets.UTF_8)
-        ?.use {
-          it.write(json)
-          it.flush()
-        }
+        ?.use(archive::writeTo)
         ?: error("Google Driveのバックアップファイルを開けませんでした")
 
-      val saved = resolver.openInputStream(documentUri)
-        ?.bufferedReader(Charsets.UTF_8)
-        ?.use { it.readText() }
+      resolver.openInputStream(documentUri)
+        ?.use(archive::validate)
         ?: error("保存したバックアップを検証できませんでした")
-      validateBackup(saved)
       pruneOldBackups(folderUri)
       return fileName
     } catch (error: Throwable) {
@@ -89,20 +80,5 @@ class GoogleDriveBackupStore(context: Context) {
         runCatching { DocumentsContract.deleteDocument(resolver, uri) }
       }
     }
-  }
-
-  private fun validateBackup(json: String) {
-    val root = JSONObject(json)
-    require(
-      root.optString("format") == "yomitori-rss-backup" &&
-        root.optInt("version") in SUPPORTED_BACKUP_VERSIONS,
-    ) {
-      "作成したバックアップの形式が正しくありません"
-    }
-  }
-
-  companion object {
-    private const val MIME_TYPE_JSON = "application/json"
-    private val SUPPORTED_BACKUP_VERSIONS = 1..8
   }
 }

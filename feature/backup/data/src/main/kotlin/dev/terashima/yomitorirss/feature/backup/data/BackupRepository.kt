@@ -11,6 +11,9 @@ import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.ConfigureGoogleDriveResult
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupStatus
 import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkDatabaseInitializer
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import org.json.JSONObject
 
 class DefaultBackupRepository(
@@ -20,7 +23,8 @@ class DefaultBackupRepository(
 ) : BackupRepository {
   private val appContext = context.applicationContext
   private val preferences = GoogleDriveBackupPreferences(appContext)
-  private val service = GoogleDriveBackupService(appContext)
+  private val archive = DatabaseBackupArchive(appContext, database)
+  private val service = GoogleDriveBackupService(appContext, database)
 
   override fun status(): GoogleDriveBackupStatus = preferences.status()
 
@@ -34,20 +38,28 @@ class DefaultBackupRepository(
 
   override suspend fun exportTo(documentUri: String) {
     val uri = Uri.parse(documentUri)
-    val json = database.exportBackup().toString(2)
     appContext.contentResolver.openOutputStream(uri, "w")
-      ?.bufferedWriter(Charsets.UTF_8)
-      ?.use { it.write(json) }
+      ?.use { output -> archive.writeTo(output) }
       ?: error("保存先を開けませんでした")
   }
 
   override suspend fun restoreFrom(documentUri: String) {
     val uri = Uri.parse(documentUri)
-    val text = appContext.contentResolver.openInputStream(uri)
-      ?.bufferedReader(Charsets.UTF_8)
-      ?.use { it.readText() }
-      ?: error("バックアップを開けませんでした")
-    database.restoreBackup(JSONObject(text))
+    withTemporaryImport { imported ->
+      appContext.contentResolver.openInputStream(uri)
+        ?.use { input ->
+          FileOutputStream(imported, false).use { output -> input.copyTo(output) }
+        }
+        ?: error("バックアップを開けませんでした")
+
+      if (DatabaseBackupArchive.looksLikeArchive(imported)) {
+        FileInputStream(imported).use { input -> archive.restore(input) }
+      } else {
+        // Keep import compatibility with the historical JSON backup format (v1-v8).
+        require(imported.length() <= MAX_LEGACY_JSON_BYTES) { "旧形式バックアップが大きすぎます" }
+        database.restoreBackup(JSONObject(imported.readText(Charsets.UTF_8)))
+      }
+    }
     BookmarkDatabaseInitializer.initialize(DatabaseConnection(database))
     dataChanges.notifyChanged()
     scheduleAfterChange()
@@ -110,6 +122,20 @@ class DefaultBackupRepository(
     )?.use { cursor ->
       if (cursor.moveToFirst()) cursor.getString(0) else null
     }?.takeIf(String::isNotBlank) ?: "Google Drive"
+  }
+
+  private inline fun withTemporaryImport(block: (File) -> Unit) {
+    val directory = File(appContext.cacheDir, "backup").apply { mkdirs() }
+    val file = File.createTempFile("backup-import", ".tmp", directory)
+    try {
+      block(file)
+    } finally {
+      file.delete()
+    }
+  }
+
+  companion object {
+    private const val MAX_LEGACY_JSON_BYTES = 128L * 1024L * 1024L
   }
 }
 

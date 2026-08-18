@@ -3,5 +3,8 @@
   <include domain="database" path="yomitori-rss.db" />
   <include domain="sharedpref" path="." />
   <exclude domain="sharedpref" path="google_drive_backup.xml" />
+  <exclude domain="sharedpref" path="smb_library_credentials.xml" />
+  <exclude domain="sharedpref" path="local_context_benchmarks.xml" />
+  <exclude domain="sharedpref" path="local_summary_models.xml" />
   <include domain="file" path="local-summary-models/" />
 </full-backup-content>

@@ -3,12 +3,18 @@ package dev.terashima.yomitorirss
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
+import dev.terashima.yomitorirss.feature.backup.BackupRepository
+import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 
-class YomitoriApplication : Application(), WidgetRepositoryProvider, TaskRepositoryProvider, DatabaseSchemaProvider {
+class YomitoriApplication : Application(),
+  WidgetRepositoryProvider,
+  TaskRepositoryProvider,
+  DatabaseSchemaProvider,
+  BackupRepositoryProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(this)
   }
@@ -21,6 +27,9 @@ class YomitoriApplication : Application(), WidgetRepositoryProvider, TaskReposit
 
   override val taskRepository: TaskRepository
     get() = container.taskRepository
+
+  override val backupRepository: BackupRepository
+    get() = container.backupRepository
 
   override fun onCreate() {
     super.onCreate()

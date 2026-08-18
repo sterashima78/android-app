@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.backup.data
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
 
 class GoogleDriveBackupWorker(
   appContext: Context,
@@ -12,13 +13,14 @@ class GoogleDriveBackupWorker(
     if (!GoogleDriveBackupPreferences(applicationContext).isConfigured()) return Result.success()
 
     return runCatching {
-      GoogleDriveBackupService(applicationContext).backup()
+      val provider = applicationContext as? BackupRepositoryProvider
+        ?: error("Application must implement BackupRepositoryProvider")
+      provider.backupRepository.backupToGoogleDriveNow()
     }.fold(
       onSuccess = { Result.success() },
       onFailure = { error ->
         when {
-          error is SecurityException || error is IllegalArgumentException || error is IllegalStateException ->
-            Result.failure()
+          error is SecurityException || error is IllegalArgumentException -> Result.failure()
           runAttemptCount >= MAX_RETRY_COUNT -> Result.failure()
           else -> Result.retry()
         }
