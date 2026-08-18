@@ -43,7 +43,7 @@ internal class MangaOneFeedClient(
 
   suspend fun inspect(url: String): FeedInspection {
     val workUrl = canonicalWorkUrl(url)
-    validate(renderer.render(workUrl, mangaId(workUrl)))
+    validate(renderer.render(renderUrl(workUrl), mangaId(workUrl)))
     return FeedInspection(directFeedUrl = workUrl)
   }
 
@@ -53,7 +53,7 @@ internal class MangaOneFeedClient(
     lastModified: String? = null,
   ): FetchResult {
     val workUrl = canonicalWorkUrl(url)
-    val rendered = renderer.render(workUrl, mangaId(workUrl))
+    val rendered = renderer.render(renderUrl(workUrl), mangaId(workUrl))
     validate(rendered)
     val discoveredAt = now().toString()
     val articles = rendered.chapters
@@ -83,6 +83,8 @@ internal class MangaOneFeedClient(
       lastModified = null,
     )
   }
+
+  private fun renderUrl(workUrl: String): String = "$workUrl?$CHAPTER_LIST_QUERY"
 
   private fun validate(page: MangaOneRenderedPage) {
     require(page.title.isNotBlank()) { "マンガワンの作品名を取得できませんでした" }
@@ -116,6 +118,7 @@ internal class MangaOneFeedClient(
     private const val MANGA_ONE_HOST = "manga-one.com"
     private const val WWW_MANGA_ONE_HOST = "www.manga-one.com"
     private const val FREE_LABEL = "無料"
+    private const val CHAPTER_LIST_QUERY = "type=chapter&sort_type=desc&page=1&limit=10"
     private val FULL_DATE_PATTERN = Regex("(20\\d{2})(?:/|\\.|-|年)(\\d{1,2})(?:/|\\.|-|月)(\\d{1,2})日?")
     private val TOKYO: ZoneId = ZoneId.of("Asia/Tokyo")
 
@@ -302,8 +305,10 @@ private class WebViewMangaOnePageRenderer(
 
   private fun extractionScript(mangaId: String): String = """
     (() => {
+      window.scrollTo(0, document.body.scrollHeight);
       const root = document.querySelector('#chapterList');
       if (!root) return null;
+      root.scrollTop = root.scrollHeight;
       const prefix = '/manga/$mangaId/chapter/';
       const isChapterLink = (element) => {
         if (!(element instanceof HTMLAnchorElement)) return false;
@@ -346,8 +351,6 @@ private class WebViewMangaOnePageRenderer(
           dateText: dateMatch ? dateMatch[0] : '',
         });
       }
-      root.scrollTop = root.scrollHeight;
-      window.scrollTo(0, document.body.scrollHeight);
       const title = (document.title || '')
         .replace(/\s*\|\s*マンガワン\s*$/, '')
         .trim();
@@ -356,7 +359,7 @@ private class WebViewMangaOnePageRenderer(
   """.trimIndent()
 
   private companion object {
-    const val RENDER_TIMEOUT_MS = 20_000L
+    const val RENDER_TIMEOUT_MS = 45_000L
     const val PROBE_INTERVAL_MS = 500L
     const val REQUIRED_STABLE_PROBES = 4
   }
