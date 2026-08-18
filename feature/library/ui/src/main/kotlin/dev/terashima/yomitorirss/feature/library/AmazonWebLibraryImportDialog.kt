@@ -94,6 +94,7 @@ private fun amazonCollectorConfig(
   bridgeName = WEB_LIBRARY_BRIDGE_NAME,
   collectButtonLabel = collectButtonLabel,
   acceptThirdPartyCookies = true,
+  externalNavigationSchemes = setOf("http", "https"),
   userAgentTransformer = { it.toBrowserCompatibleImportUserAgent() },
   continuations = continuations,
   maxResultBytes = MAX_WEB_LIBRARY_EXPORT_BYTES,
