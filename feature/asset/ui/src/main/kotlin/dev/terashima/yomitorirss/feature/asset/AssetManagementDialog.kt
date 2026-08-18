@@ -73,8 +73,8 @@ class AssetViewModel(
     reload()
   }
 
-  fun importDelimited(uri: String) = runOperation("資産履歴をインポートしました") {
-    repository.importDelimited(uri)
+  fun importTsv(uri: String) = runOperation("資産履歴をインポートしました") {
+    repository.importTsv(uri)
   }
 
   fun importMoneyForward(json: String) = runOperation("MoneyForward の資産を記録しました") {
@@ -134,7 +134,7 @@ fun AssetManagementDialog(
   var editing by remember { mutableStateOf<AssetCategorySetting?>(null) }
   var categoryText by remember { mutableStateOf("") }
   val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-    uri?.toString()?.let(viewModel::importDelimited)
+    uri?.toString()?.let(viewModel::importTsv)
   }
 
   Dialog(
@@ -171,10 +171,10 @@ fun AssetManagementDialog(
                   modifier = Modifier.weight(1f),
                   onClick = {
                     importLauncher.launch(
-                      arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
+                      arrayOf("text/tab-separated-values", "text/plain"),
                     )
                   },
-                ) { Text("CSV / TSV") }
+                ) { Text("TSV") }
                 OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMoneyForward = true }) {
                   Text("MoneyForward")
                 }
