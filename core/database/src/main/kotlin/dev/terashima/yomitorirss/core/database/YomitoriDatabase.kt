@@ -64,7 +64,7 @@ class YomitoriDatabase private constructor(
     val db = SQLiteDatabase.openDatabase(snapshot.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
     return db.use {
       val applicationId = it.longPragma("application_id")
-      require(applicationId == APPLICATION_ID.toLong()) { "YomitoriのバックアップDBではありません" }
+      require(applicationId == APPLICATION_ID.toLong()) { "MosaicのバックアップDBではありません" }
       val version = it.version
       require(version in 1..schema.version) {
         "このアプリより新しいDB形式です (backup=$version, app=${schema.version})"
@@ -155,7 +155,7 @@ class YomitoriDatabase private constructor(
 
   companion object {
     const val DB_NAME = "yomitori-rss.db"
-    const val APPLICATION_ID = 0x594F4D49 // ASCII "YOMI"
+    const val APPLICATION_ID = 0x4D4F5341 // ASCII "MOSA"
 
     fun create(context: Context): YomitoriDatabase {
       val app = context.applicationContext
