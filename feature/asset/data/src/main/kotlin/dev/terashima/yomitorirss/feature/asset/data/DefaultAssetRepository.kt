@@ -87,14 +87,15 @@ class DefaultAssetRepository(
     val rows = buildList {
       for (index in 0 until entries.length()) {
         val item = entries.getJSONObject(index)
-        val name = item.getString("name").trim()
-        require(name.isNotBlank()) { "資産名が空です" }
+        val baseName = item.getString("name").trim()
+        val account = item.optString("account").trim()
+        require(baseName.isNotBlank()) { "資産名が空です" }
         add(
           ParsedAssetRow(
             date = date,
-            name = name,
+            name = buildAssetRecordName(baseName, account),
             amount = item.getLong("amount"),
-            account = item.optString("account").trim(),
+            account = account,
           ),
         )
       }
