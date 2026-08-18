@@ -428,7 +428,7 @@ private class WebViewMangaOnePageRenderer(
         const dateMatch = text.match(/20\d{2}(?:\/|\.|-|年)\d{1,2}(?:\/|\.|-|月)\d{1,2}日?/);
         const dateText = dateMatch ? dateMatch[0] : '';
         if (!chapterTitle) continue;
-        const dedupeKey = `${chapterTitle}|${dateText}|${label}`;
+        const dedupeKey = chapterTitle + '|' + dateText + '|' + label;
         if (seen.has(dedupeKey)) continue;
         seen.add(dedupeKey);
         chapters.push({
