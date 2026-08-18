@@ -22,12 +22,12 @@ internal fun filterLibraryBooksByText(
     val searchableValues = buildList {
       add(book.title)
       addAll(book.authors)
-      book.publisher?.let(::add)
-      book.publishedDate?.let(::add)
-      book.series?.name?.let(::add)
+      book.publisher?.let { add(it) }
+      book.publishedDate?.let { add(it) }
+      book.series?.name?.let { add(it) }
       addAll(book.narrators)
-      book.isbn10?.let(::add)
-      book.isbn13?.let(::add)
+      book.isbn10?.let { add(it) }
+      book.isbn13?.let { add(it) }
       add(book.sourceId)
     }
     terms.all { term ->
