@@ -2,7 +2,6 @@ package dev.terashima.yomitorirss.feature.asset
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,9 +37,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -241,6 +237,8 @@ private fun AssetOverviewTab(
   overview: AssetOverview,
   modifier: Modifier,
 ) {
+  var normalizedChart by rememberSaveable { mutableStateOf(false) }
+
   LazyColumn(modifier = modifier) {
     item {
       Column(modifier = Modifier.padding(16.dp)) {
@@ -252,9 +250,34 @@ private fun AssetOverviewTab(
     if (overview.history.isNotEmpty()) {
       item {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-          Text("資産推移", style = MaterialTheme.typography.titleMedium)
+          Text("資産構成推移", style = MaterialTheme.typography.titleMedium)
           Spacer(Modifier.height(8.dp))
-          AssetHistoryChart(overview.history)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            if (normalizedChart) {
+              OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = { normalizedChart = false },
+              ) { Text("金額") }
+              Button(
+                modifier = Modifier.weight(1f),
+                onClick = { normalizedChart = true },
+              ) { Text("100%構成比") }
+            } else {
+              Button(
+                modifier = Modifier.weight(1f),
+                onClick = { normalizedChart = false },
+              ) { Text("金額") }
+              OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = { normalizedChart = true },
+              ) { Text("100%構成比") }
+            }
+          }
+          Spacer(Modifier.height(8.dp))
+          AssetStackedHistoryChart(overview.history, normalized = normalizedChart)
         }
       }
     }
@@ -273,7 +296,16 @@ private fun AssetOverviewTab(
       items(overview.latestByCategory.entries.sortedByDescending { it.value }) { entry ->
         ListItem(
           headlineContent = { Text(entry.key) },
-          trailingContent = { Text(formatYen(entry.value)) },
+          trailingContent = {
+            Column(horizontalAlignment = Alignment.End) {
+              Text(formatYen(entry.value))
+              Text(
+                formatPercentage(entry.value, overview.total),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          },
         )
       }
     }
@@ -361,35 +393,6 @@ private fun AssetSettingsTab(
   }
 }
 
-@Composable
-private fun AssetHistoryChart(points: List<AssetHistoryPoint>) {
-  val lineColor = MaterialTheme.colorScheme.primary
-  val mutedColor = MaterialTheme.colorScheme.outlineVariant
-  val totals = points.map { it.total }
-  val min = totals.minOrNull() ?: 0L
-  val max = totals.maxOrNull() ?: 0L
-  Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-    drawLine(mutedColor, Offset(0f, size.height - 1f), Offset(size.width, size.height - 1f))
-    if (points.size == 1) {
-      drawCircle(lineColor, 6f, Offset(size.width / 2f, size.height / 2f))
-      return@Canvas
-    }
-    val range = (max - min).takeIf { it > 0 } ?: 1L
-    val path = Path()
-    points.forEachIndexed { index, point ->
-      val x = size.width * index / (points.size - 1f)
-      val normalized = (point.total - min).toFloat() / range.toFloat()
-      val y = size.height - (normalized * (size.height - 16f)) - 8f
-      if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-    }
-    drawPath(path, lineColor, style = Stroke(width = 4f))
-  }
-  Row(modifier = Modifier.fillMaxWidth()) {
-    Text(points.first().date.toString(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-    Text(points.last().date.toString(), style = MaterialTheme.typography.labelSmall)
-  }
-}
-
 private fun moneyForwardCollectorConfig() = WebCollectorConfig(
   title = "MoneyForward ME 資産取得",
   startUrl = MONEY_FORWARD_PORTFOLIO_URL,
@@ -454,5 +457,13 @@ private val MONEY_FORWARD_COLLECT_SCRIPT =
   """.trimIndent()
 
 private fun formatYen(value: Long): String = "¥${NumberFormat.getNumberInstance(Locale.JAPAN).format(value)}"
+
+private fun formatPercentage(value: Long, total: Long): String {
+  if (total == 0L) return "—"
+  return NumberFormat.getPercentInstance(Locale.JAPAN).apply {
+    minimumFractionDigits = 1
+    maximumFractionDigits = 1
+  }.format(value.toDouble() / total.toDouble())
+}
 
 private const val MONEY_FORWARD_PORTFOLIO_URL = "https://moneyforward.com/bs/portfolio"
