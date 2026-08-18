@@ -21,12 +21,14 @@ internal class DatabaseBackupArchive(
   private val database: YomitoriDatabase,
 ) {
   private val appContext = context.applicationContext
+  private val backupPreferences = BackupPreferences(appContext)
 
   fun writeTo(output: OutputStream) {
     withTempFile("backup-snapshot", ".db") { snapshot ->
       database.createSnapshot(snapshot)
       database.markSnapshot(snapshot)
-      val sha256 = snapshot.sha256()
+      val databaseSha256 = snapshot.sha256()
+      val preferencesBytes = backupPreferences.encode()
       val manifest = JSONObject()
         .put("format", FORMAT)
         .put("version", VERSION)
@@ -34,7 +36,9 @@ internal class DatabaseBackupArchive(
         .put("databaseName", YomitoriDatabase.DB_NAME)
         .put("schemaVersion", database.schemaVersion)
         .put("databaseBytes", snapshot.length())
-        .put("databaseSha256", sha256)
+        .put("databaseSha256", databaseSha256)
+        .put("preferencesBytes", preferencesBytes.size)
+        .put("preferencesSha256", preferencesBytes.sha256())
 
       ZipOutputStream(BufferedOutputStream(output)).use { zip ->
         zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
@@ -44,24 +48,39 @@ internal class DatabaseBackupArchive(
         zip.putNextEntry(ZipEntry(DATABASE_ENTRY))
         FileInputStream(snapshot).use { it.copyTo(zip) }
         zip.closeEntry()
+
+        zip.putNextEntry(ZipEntry(PREFERENCES_ENTRY))
+        zip.write(preferencesBytes)
+        zip.closeEntry()
       }
     }
   }
 
   fun validate(input: InputStream) {
-    extract(input) { manifest, snapshot ->
-      validateManifestAndSnapshot(manifest, snapshot)
+    extract(input) { manifest, snapshot, preferencesBytes ->
+      validateManifestAndSnapshot(manifest, snapshot, preferencesBytes)
     }
   }
 
   fun restore(input: InputStream) {
-    extract(input) { manifest, snapshot ->
-      validateManifestAndSnapshot(manifest, snapshot)
-      database.replaceWithSnapshot(snapshot)
+    extract(input) { manifest, snapshot, preferencesBytes ->
+      validateManifestAndSnapshot(manifest, snapshot, preferencesBytes)
+      val currentPreferences = backupPreferences.encode()
+      try {
+        backupPreferences.restore(preferencesBytes)
+        database.replaceWithSnapshot(snapshot)
+      } catch (error: Throwable) {
+        runCatching { backupPreferences.restore(currentPreferences) }
+        throw error
+      }
     }
   }
 
-  private fun validateManifestAndSnapshot(manifest: JSONObject, snapshot: File) {
+  private fun validateManifestAndSnapshot(
+    manifest: JSONObject,
+    snapshot: File,
+    preferencesBytes: ByteArray,
+  ) {
     require(manifest.optString("format") == FORMAT && manifest.optInt("version") == VERSION) {
       "対応していないバックアップです"
     }
@@ -78,17 +97,30 @@ internal class DatabaseBackupArchive(
     require(declaredSha256.length == SHA256_HEX_LENGTH && declaredSha256 == snapshot.sha256()) {
       "バックアップDBのチェックサムが一致しません"
     }
+    val declaredPreferencesBytes = manifest.optLong("preferencesBytes", -1L)
+    require(declaredPreferencesBytes == preferencesBytes.size.toLong()) {
+      "設定バックアップのサイズが一致しません"
+    }
+    val declaredPreferencesSha256 = manifest.optString("preferencesSha256")
+    require(
+      declaredPreferencesSha256.length == SHA256_HEX_LENGTH &&
+        declaredPreferencesSha256 == preferencesBytes.sha256(),
+    ) {
+      "設定バックアップのチェックサムが一致しません"
+    }
+    backupPreferences.validate(preferencesBytes)
     val actualSchemaVersion = database.validateSnapshot(snapshot)
     require(actualSchemaVersion == schemaVersion) { "バックアップDBのschema versionが一致しません" }
   }
 
   private fun extract(
     input: InputStream,
-    block: (manifest: JSONObject, snapshot: File) -> Unit,
+    block: (manifest: JSONObject, snapshot: File, preferencesBytes: ByteArray) -> Unit,
   ) {
     withTempFile("backup-restore", ".db") { snapshot ->
       var manifest: JSONObject? = null
       var databaseFound = false
+      var preferencesBytes: ByteArray? = null
       ZipInputStream(BufferedInputStream(input)).use { zip ->
         while (true) {
           val entry = zip.nextEntry ?: break
@@ -107,6 +139,10 @@ internal class DatabaseBackupArchive(
                 output.fd.sync()
               }
             }
+            PREFERENCES_ENTRY -> {
+              require(preferencesBytes == null) { "preferences entryが重複しています" }
+              preferencesBytes = zip.readLimited(MAX_PREFERENCES_BYTES)
+            }
             else -> require(false) { "未知のbackup entryです: ${entry.name}" }
           }
           zip.closeEntry()
@@ -114,7 +150,8 @@ internal class DatabaseBackupArchive(
       }
       val parsedManifest = requireNotNull(manifest) { "manifestがありません" }
       require(databaseFound && snapshot.isFile) { "database entryがありません" }
-      block(parsedManifest, snapshot)
+      val parsedPreferences = requireNotNull(preferencesBytes) { "preferences entryがありません" }
+      block(parsedManifest, snapshot, parsedPreferences)
     }
   }
 
@@ -130,13 +167,14 @@ internal class DatabaseBackupArchive(
 
   companion object {
     const val MIME_TYPE = "application/zip"
-    const val MANUAL_FILE_EXTENSION = ".zip"
     private const val FORMAT = "yomitori-rss-database-backup"
     private const val VERSION = 1
     private const val MANIFEST_ENTRY = "manifest.json"
     private const val DATABASE_ENTRY = "database/yomitori-rss.db"
+    private const val PREFERENCES_ENTRY = "preferences/user-preferences.json"
     private const val SHA256_HEX_LENGTH = 64
     private const val MAX_MANIFEST_BYTES = 64 * 1024L
+    private const val MAX_PREFERENCES_BYTES = 16 * 1024 * 1024L
     private const val MAX_DATABASE_BYTES = 4L * 1024L * 1024L * 1024L
 
     fun looksLikeArchive(file: File): Boolean {
@@ -151,15 +189,17 @@ internal class DatabaseBackupArchive(
   }
 }
 
-private fun File.sha256(): String {
+private fun File.sha256(): String = FileInputStream(this).use { it.sha256() }
+
+private fun ByteArray.sha256(): String = inputStream().use { it.sha256() }
+
+private fun InputStream.sha256(): String {
   val digest = MessageDigest.getInstance("SHA-256")
-  FileInputStream(this).use { input ->
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    while (true) {
-      val read = input.read(buffer)
-      if (read < 0) break
-      if (read > 0) digest.update(buffer, 0, read)
-    }
+  val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+  while (true) {
+    val read = read(buffer)
+    if (read < 0) break
+    if (read > 0) digest.update(buffer, 0, read)
   }
   return digest.digest().joinToString("") { "%02x".format(it) }
 }
