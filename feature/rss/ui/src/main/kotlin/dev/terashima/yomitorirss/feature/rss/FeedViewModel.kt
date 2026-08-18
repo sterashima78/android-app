@@ -17,12 +17,16 @@ data class FeedUiState(
   val feeds: List<Feed> = emptyList(),
   val folders: List<FeedFolder> = emptyList(),
   val refreshing: Boolean = false,
-  val refreshProgress: String? = null,
+  val refreshStatus: String? = null,
+  val addFeedProgress: String? = null,
   val message: String? = null,
   val feedCandidates: List<FeedCandidate> = emptyList(),
   val importCompleted: Boolean = false,
   val feedAdded: Boolean = false,
-)
+) {
+  val refreshProgress: String?
+    get() = addFeedProgress ?: refreshStatus
+}
 
 class FeedViewModel(
   private val repository: FeedRepository,
@@ -56,17 +60,17 @@ class FeedViewModel(
       _state.update {
         it.copy(
           refreshing = true,
-          refreshProgress = if (feeds.isEmpty()) null else "0 / ${feeds.size}",
+          refreshStatus = if (feeds.isEmpty()) null else "0 / ${feeds.size}",
         )
       }
       val result = refreshFeeds(feeds) { completed, total ->
-        _state.update { it.copy(refreshProgress = "$completed / $total") }
+        _state.update { it.copy(refreshStatus = "$completed / $total") }
       }
       reload()
       _state.update {
         it.copy(
           refreshing = false,
-          refreshProgress = null,
+          refreshStatus = null,
           message = when {
             !showCompletionMessage -> it.message
             result.total == 0 -> "登録済みフィードはありません"
@@ -81,7 +85,7 @@ class FeedViewModel(
         it.copy(
           initialized = true,
           refreshing = false,
-          refreshProgress = null,
+          refreshStatus = null,
           message = "フィードを更新できませんでした: ${error.userMessage()}",
         )
       }
@@ -93,13 +97,26 @@ class FeedViewModel(
       _state.update { it.copy(message = "このURLはRSSではなく専用画面から追加してください") }
       return
     }
+    if (_state.value.addFeedProgress != null) {
+      _state.update { it.copy(message = "フィードを追加中です") }
+      return
+    }
+    _state.update { it.copy(addFeedProgress = "フィード情報を確認中…") }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.inspect(input) }
         .onSuccess { inspection ->
           inspection.directFeedUrl?.let { addFeedUrl(it) }
-            ?: _state.update { it.copy(feedCandidates = inspection.candidates) }
+            ?: _state.update {
+              it.copy(
+                addFeedProgress = null,
+                feedCandidates = inspection.candidates,
+              )
+            }
         }
-        .onFailure(::showError)
+        .onFailure { error ->
+          _state.update { it.copy(addFeedProgress = null) }
+          showError(error)
+        }
     }
   }
 
@@ -119,20 +136,30 @@ class FeedViewModel(
     markExistingArticlesRead: Boolean = false,
   ) {
     if (!canAddInput(url)) {
-      _state.update { it.copy(message = "このフィードはRSSではなく専用画面から追加してください") }
+      _state.update {
+        it.copy(
+          addFeedProgress = null,
+          message = "このフィードはRSSではなく専用画面から追加してください",
+        )
+      }
       return
     }
+    _state.update { it.copy(addFeedProgress = "フィードを追加中…") }
     runCatching { repository.addFeed(url, markExistingArticlesRead) }
       .onSuccess {
         backupChangeScheduler.scheduleAfterChange()
         _state.update {
           it.copy(
+            addFeedProgress = null,
             message = successMessage,
             feedAdded = it.feedAdded || markFeedAdded,
           )
         }
       }
-      .onFailure(::showError)
+      .onFailure { error ->
+        _state.update { it.copy(addFeedProgress = null) }
+        showError(error)
+      }
   }
 
   fun consumeFeedAdded() {

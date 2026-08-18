@@ -36,6 +36,22 @@ class MangaOneFeedClientTest {
   }
 
   @Test
+  fun `描画時は最新話一覧の表示パラメータを固定しフィードURLには残さない`() = runBlocking {
+    val renderer = FakeMangaOnePageRenderer(samplePage())
+    val client = MangaOneFeedClient(renderer = renderer)
+
+    val inspection = client.inspect(
+      "https://www.manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=11&limit=10#list",
+    )
+
+    assertEquals(
+      "https://manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=1&limit=10",
+      renderer.lastUrl,
+    )
+    assertEquals("https://manga-one.com/manga/123/chapter/100", inspection.directFeedUrl)
+  }
+
+  @Test
   fun `赤い無料ラベルの話だけをフィードとして返す`() = runBlocking {
     val renderer = FakeMangaOnePageRenderer(
       MangaOneRenderedPage(
@@ -78,7 +94,10 @@ class MangaOneFeedClientTest {
     )
     val feed = requireNotNull(result.feed)
 
-    assertEquals("https://manga-one.com/manga/123/chapter/100", renderer.lastUrl)
+    assertEquals(
+      "https://manga-one.com/manga/123/chapter/100?type=chapter&sort_type=desc&page=1&limit=10",
+      renderer.lastUrl,
+    )
     assertEquals("123", renderer.lastMangaId)
     assertEquals("サンプル作品", feed.title)
     assertEquals("https://manga-one.com/manga/123/chapter/100", feed.feedUrl)
