@@ -53,7 +53,7 @@ class BackupViewModel(
         .onSuccess {
           updateStatus(
             running = false,
-            message = "バックアップから復元しました",
+            message = "バックアップから復元しました。設定を完全に反映するにはアプリを再起動してください",
             restoreCompleted = true,
           )
         }
