@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -81,6 +82,35 @@ class AppDatabaseSchemaTest {
         }
       },
     )
+  }
+
+  @Test
+  fun `version 21 database adds custom feed title while upgrading`() {
+    val legacySchema = DatabaseSchema(
+      version = 21,
+      contributions = appDatabaseSchema.contributions.map { contribution ->
+        if (contribution.owner == "rss") {
+          DatabaseSchemaContribution(
+            owner = "rss",
+            createSchema = ::createVersion21RssSchema,
+          )
+        } else {
+          DatabaseSchemaContribution(
+            owner = contribution.owner,
+            createSchema = contribution.createSchema,
+          )
+        }
+      },
+    )
+    val legacyDatabase = YomitoriDatabase.create(context, legacySchema)
+    val legacyDb = legacyDatabase.writableDatabase
+    assertFalse("custom_title" in columnNames(legacyDb, "feeds"))
+    legacyDatabase.close()
+
+    val upgraded = openDatabase().writableDatabase
+
+    assertEquals(22, upgraded.version)
+    assertTrue("custom_title" in columnNames(upgraded, "feeds"))
   }
 
   @Test
@@ -161,6 +191,12 @@ class AppDatabaseSchemaTest {
   private fun openDatabase(): YomitoriDatabase = YomitoriDatabase.create(context, appDatabaseSchema).also {
     database = it
   }
+}
+
+private fun createVersion21RssSchema(db: SQLiteDatabase) {
+  db.execSQL("CREATE TABLE IF NOT EXISTS feed_folders(id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,normalized_name TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,content_type TEXT)")
+  db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,feed_url TEXT NOT NULL UNIQUE,site_url TEXT,etag TEXT,last_modified TEXT,last_fetched_at TEXT,last_error TEXT,created_at TEXT NOT NULL,folder_id TEXT REFERENCES feed_folders(id) ON DELETE SET NULL,content_type TEXT)")
+  db.execSQL("CREATE INDEX IF NOT EXISTS feeds_folder_id ON feeds(folder_id,title)")
 }
 
 private fun insertLibraryOrganizationBatch(db: SQLiteDatabase, batchId: String) {
