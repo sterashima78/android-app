@@ -19,6 +19,7 @@ data class AssetOverview(
   val latestByCategory: Map<String, Long>,
   val history: List<AssetHistoryPoint>,
   val categorySettings: List<AssetCategorySetting>,
+  val registeredCategories: List<String>,
 )
 
 data class AssetImportResult(
