@@ -27,7 +27,7 @@ import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Treats a MangaONE first-chapter URL as a synthetic feed of currently free chapters. */
+/** Treats a MangaONE chapter URL as a synthetic feed of currently free chapters. */
 internal class MangaOneFeedClient(
   private val renderer: MangaOnePageRenderer,
   private val now: () -> Instant = Instant::now,
@@ -38,7 +38,7 @@ internal class MangaOneFeedClient(
 
   fun canonicalWorkUrl(url: String): String {
     require(supports(url)) { "マンガワンの作品第1話URLを入力してください" }
-    return "https://$MANGA_ONE_HOST/manga/${mangaId(url)}/chapter/first"
+    return "https://$MANGA_ONE_HOST/manga/${mangaId(url)}/chapter/${chapterId(url)}"
   }
 
   suspend fun inspect(url: String): FeedInspection {
@@ -104,11 +104,13 @@ internal class MangaOneFeedClient(
     .digest(url.toByteArray(Charsets.UTF_8))
     .joinToString("") { "%02x".format(it) }
 
-  private fun mangaId(url: String): String = URI(url).path
+  private fun pathSegments(url: String): List<String> = URI(url).path
     .trim('/')
     .split('/')
-    .getOrNull(1)
-    .orEmpty()
+
+  private fun mangaId(url: String): String = pathSegments(url).getOrNull(1).orEmpty()
+
+  private fun chapterId(url: String): String = pathSegments(url).getOrNull(3).orEmpty()
 
   companion object {
     private const val MANGA_ONE_HOST = "manga-one.com"
@@ -129,7 +131,8 @@ internal class MangaOneFeedClient(
         segments[1].all(Char::isDigit) &&
         segments[1].isNotEmpty() &&
         segments[2] == "chapter" &&
-        segments[3] == "first"
+        segments[3].all(Char::isDigit) &&
+        segments[3].isNotEmpty()
     }.getOrDefault(false)
   }
 }
