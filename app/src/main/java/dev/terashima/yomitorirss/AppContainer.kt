@@ -56,9 +56,7 @@ class AppContainer(private val application: Application) {
   private val dataChanges = DataChangeNotifier.shared
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    YomitoriDatabase.create(application).also { database ->
-      LegacyDatabaseMigration.migrate(application, database)
-    }
+    YomitoriDatabase.create(application)
   }
   private val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)

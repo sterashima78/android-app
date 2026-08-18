@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-18
 - Amends: ADR-0010, ADR-0047
+- Amended by: ADR-0100
 
 ## Context
 
@@ -50,6 +51,8 @@ youtube.db
 - copy transaction が成功した database だけ旧 file を削除する。
 - migration が失敗した場合は旧 file を残し、silent data loss を避ける。
 
+このone-time migrationはDB統合版を実端末で適用して移行完了を確認するまでの暫定処理である。移行完了後の現行ベースラインと互換処理の廃止はADR-0100で決定する。
+
 ## Backup implications
 
 Android Auto Backup / device transfer は引き続き `yomitori-rss.db` を database 対象として指定する。Task / Chat / YouTube がこの file に統合されるため、feature ごとに database file の include を追加する必要がなくなる。
@@ -79,3 +82,5 @@ SharedPreferences、local model、credential など SQLite 外のデータはこ
 ADR-0047 の「単一 database + feature-owned schema contribution」という決定を Task / Chat / YouTube にも適用し、例外的に残っていた独立 database を解消する。
 
 ADR-0010 の YouTube concept ownership と RSS からの domain/data/UI 分離は維持する。ただし ADR-0010 section 5 の「専用 `youtube.db` を持つ」という physical persistence decision は本 ADR で置き換える。YouTube table の ownership は `:feature:youtube:data` に残る。
+
+ADR-0100 は、本ADRで導入した旧独立DBからのone-time migrationについて実端末で完了確認済みとして廃止し、version 23の統合済み共有DBを現行互換性ベースラインとする。

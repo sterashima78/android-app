@@ -33,7 +33,7 @@ internal class DatabaseBackupArchive(
         .put("format", FORMAT)
         .put("version", VERSION)
         .put("exportedAt", Instant.now().toString())
-        .put("databaseName", YomitoriDatabase.DB_NAME)
+        .put("databaseName", BACKUP_DATABASE_NAME)
         .put("schemaVersion", database.schemaVersion)
         .put("databaseBytes", snapshot.length())
         .put("databaseSha256", databaseSha256)
@@ -82,14 +82,14 @@ internal class DatabaseBackupArchive(
     preferencesBytes: ByteArray,
   ) {
     require(manifest.optString("format") == FORMAT && manifest.optInt("version") == VERSION) {
-      "対応していないバックアップです"
+      "対応していないMosaicバックアップです"
     }
-    require(manifest.optString("databaseName") == YomitoriDatabase.DB_NAME) {
+    require(manifest.optString("databaseName") == BACKUP_DATABASE_NAME) {
       "バックアップDB名が一致しません"
     }
     val schemaVersion = manifest.optInt("schemaVersion", -1)
-    require(schemaVersion in 1..database.schemaVersion) {
-      "このアプリより新しいバックアップです"
+    require(schemaVersion in MIN_SUPPORTED_SCHEMA_VERSION..database.schemaVersion) {
+      "対応していないDB schema versionです (backup=$schemaVersion, app=${database.schemaVersion})"
     }
     val declaredBytes = manifest.optLong("databaseBytes", -1L)
     require(declaredBytes == snapshot.length()) { "バックアップDBのサイズが一致しません" }
@@ -167,25 +167,17 @@ internal class DatabaseBackupArchive(
 
   companion object {
     const val MIME_TYPE = "application/zip"
-    private const val FORMAT = "yomitori-rss-database-backup"
+    private const val FORMAT = "mosaic-database-backup"
     private const val VERSION = 1
+    private const val BACKUP_DATABASE_NAME = "mosaic.db"
+    private const val MIN_SUPPORTED_SCHEMA_VERSION = 23
     private const val MANIFEST_ENTRY = "manifest.json"
-    private const val DATABASE_ENTRY = "database/yomitori-rss.db"
+    private const val DATABASE_ENTRY = "database/mosaic.db"
     private const val PREFERENCES_ENTRY = "preferences/user-preferences.json"
     private const val SHA256_HEX_LENGTH = 64
     private const val MAX_MANIFEST_BYTES = 64 * 1024L
     private const val MAX_PREFERENCES_BYTES = 16 * 1024 * 1024L
     private const val MAX_DATABASE_BYTES = 4L * 1024L * 1024L * 1024L
-
-    fun looksLikeArchive(file: File): Boolean {
-      if (!file.isFile || file.length() < ZIP_SIGNATURE.size) return false
-      FileInputStream(file).use { input ->
-        val bytes = ByteArray(ZIP_SIGNATURE.size)
-        return input.read(bytes) == bytes.size && bytes.contentEquals(ZIP_SIGNATURE)
-      }
-    }
-
-    private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4b, 0x03, 0x04)
   }
 }
 

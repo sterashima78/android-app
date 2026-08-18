@@ -7,7 +7,6 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -37,7 +36,7 @@ class DatabaseBackupArchiveTest {
     database = YomitoriDatabase.create(
       context,
       DatabaseSchema(
-        version = 1,
+        version = 23,
         contributions = listOf(
           DatabaseSchemaContribution(
             owner = "test",
@@ -122,14 +121,39 @@ class DatabaseBackupArchiveTest {
   }
 
   @Test
-  fun `ZIP以外は新形式と判定しない`() {
-    val file = File(context.cacheDir, "legacy.json")
-    file.writeText("{\"format\":\"yomitori-rss-backup\",\"version\":8}")
-    try {
-      assertEquals(false, DatabaseBackupArchive.looksLikeArchive(file))
-    } finally {
-      file.delete()
+  fun `archiveはMosaic形式の名前を使う`() {
+    val archive = DatabaseBackupArchive(context, database)
+    val output = ByteArrayOutputStream()
+    archive.writeTo(output)
+
+    val entries = mutableSetOf<String>()
+    var manifest: JSONObject? = null
+    ZipInputStream(ByteArrayInputStream(output.toByteArray())).use { input ->
+      while (true) {
+        val entry = input.nextEntry ?: break
+        entries += entry.name
+        if (entry.name == "manifest.json") {
+          manifest = JSONObject(input.readBytes().toString(Charsets.UTF_8))
+        }
+        input.closeEntry()
+      }
     }
+
+    assertEquals("mosaic-database-backup", manifest?.getString("format"))
+    assertEquals("mosaic.db", manifest?.getString("databaseName"))
+    assertEquals(
+      setOf("manifest.json", "database/mosaic.db", "preferences/user-preferences.json"),
+      entries,
+    )
+  }
+
+  @Test
+  fun `JSONバックアップは受け付けない`() {
+    val archive = DatabaseBackupArchive(context, database)
+    val bytes = "{\"format\":\"legacy-json\",\"version\":8}".toByteArray()
+
+    runCatching { archive.restore(ByteArrayInputStream(bytes)) }
+      .onSuccess { error("JSONバックアップが復元されました") }
   }
 
   private fun withWrongChecksum(bytes: ByteArray): ByteArray {
