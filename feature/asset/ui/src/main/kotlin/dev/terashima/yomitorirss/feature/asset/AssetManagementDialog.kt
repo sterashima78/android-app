@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.asset
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -238,6 +240,11 @@ private fun AssetOverviewTab(
   modifier: Modifier,
 ) {
   var normalizedChart by rememberSaveable { mutableStateOf(false) }
+  val categoryColors = remember(overview.history, overview.latestByCategory) {
+    buildAssetCategoryColorMap(
+      overview.history.flatMap { it.byCategory.keys } + overview.latestByCategory.keys,
+    )
+  }
 
   LazyColumn(modifier = modifier) {
     item {
@@ -277,12 +284,19 @@ private fun AssetOverviewTab(
             }
           }
           Spacer(Modifier.height(8.dp))
-          AssetStackedHistoryChart(overview.history, normalized = normalizedChart)
+          AssetStackedHistoryChart(
+            points = overview.history,
+            normalized = normalizedChart,
+            categoryColors = categoryColors,
+          )
+          Spacer(Modifier.height(12.dp))
+          Text("最新のカテゴリ別内訳", style = MaterialTheme.typography.titleMedium)
         }
       }
-    }
-    item {
-      Text("最新のカテゴリ別内訳", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+    } else {
+      item {
+        Text("最新のカテゴリ別内訳", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+      }
     }
     if (overview.latestByCategory.isEmpty()) {
       item {
@@ -295,7 +309,16 @@ private fun AssetOverviewTab(
     } else {
       items(overview.latestByCategory.entries.sortedByDescending { it.value }) { entry ->
         ListItem(
-          headlineContent = { Text(entry.key) },
+          headlineContent = {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+              val categoryColor = categoryColors[entry.key] ?: MaterialTheme.colorScheme.outline
+              Canvas(Modifier.size(12.dp)) { drawCircle(categoryColor) }
+              Text(entry.key)
+            }
+          },
           trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
               Text(formatYen(entry.value))
