@@ -5,22 +5,23 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class GoogleDriveBackupService(context: Context) {
+class GoogleDriveBackupService(
+  context: Context,
+  database: YomitoriDatabase,
+) {
   private val appContext = context.applicationContext
   private val preferences = GoogleDriveBackupPreferences(appContext)
   private val store = GoogleDriveBackupStore(appContext)
+  private val archive = DatabaseBackupArchive(appContext, database)
 
   suspend fun backup(): String = withContext(Dispatchers.IO) {
-    val database = YomitoriDatabase.create(appContext)
     try {
-      val fileName = store.write(database.exportBackup().toString(2))
+      val fileName = store.write(archive)
       preferences.recordSuccess(fileName)
       fileName
     } catch (error: Throwable) {
       preferences.recordFailure(error)
       throw error
-    } finally {
-      database.close()
     }
   }
 }
