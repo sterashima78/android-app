@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,7 +89,11 @@ class AssetViewModel(private val repository: AssetRepository) : ViewModel() {
       mutableState.update { it.copy(loading = true) }
       runCatching { repository.loadOverview() }
         .onSuccess { overview -> mutableState.value = AssetUiState(loading = false, overview = overview) }
-        .onFailure { error -> mutableState.update { it.copy(loading = false, message = error.message ?: "資産データを読み込めませんでした") } }
+        .onFailure { error ->
+          mutableState.update {
+            it.copy(loading = false, message = error.message ?: "資産データを読み込めませんでした")
+          }
+        }
     }
   }
 
@@ -101,7 +105,9 @@ class AssetViewModel(private val repository: AssetRepository) : ViewModel() {
           val overview = repository.loadOverview()
           mutableState.value = AssetUiState(loading = false, overview = overview, message = successMessage)
         }
-        .onFailure { error -> mutableState.update { it.copy(loading = false, message = error.message ?: "処理に失敗しました") } }
+        .onFailure { error ->
+          mutableState.update { it.copy(loading = false, message = error.message ?: "処理に失敗しました") }
+        }
     }
   }
 
@@ -116,7 +122,7 @@ fun AssetManagementDialog(
   viewModel: AssetViewModel,
   onDismiss: () -> Unit,
 ) {
-  val state by viewModel.state.collectAsStateWithLifecycleCompat()
+  val state by viewModel.state.collectAsState()
   var showMoneyForward by remember { mutableStateOf(false) }
   var editing by remember { mutableStateOf<AssetCategorySetting?>(null) }
   var categoryText by remember { mutableStateOf("") }
@@ -139,7 +145,11 @@ fun AssetManagementDialog(
         }
         HorizontalDivider()
         if (state.loading && state.overview == null) {
-          Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+          Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+          ) {
             CircularProgressIndicator()
           }
         } else {
@@ -152,7 +162,11 @@ fun AssetManagementDialog(
               ) {
                 Button(
                   modifier = Modifier.weight(1f),
-                  onClick = { importLauncher.launch(arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv")) },
+                  onClick = {
+                    importLauncher.launch(
+                      arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
+                    )
+                  },
                 ) { Text("CSV / TSV") }
                 OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMoneyForward = true }) {
                   Text("MoneyForward")
@@ -163,7 +177,10 @@ fun AssetManagementDialog(
               item {
                 Text(
                   message,
-                  modifier = Modifier.fillMaxWidth().clickable(viewModel::dismissMessage).padding(horizontal = 16.dp, vertical = 8.dp),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(viewModel::dismissMessage)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                   color = MaterialTheme.colorScheme.primary,
                 )
               }
@@ -324,9 +341,15 @@ private val MONEY_FORWARD_COLLECT_SCRIPT =
             if (name && Number.isFinite(value)) entries.push({ name, amount: value, account });
           });
         });
-        if (!entries.length) throw new Error('資産テーブルを解析できませんでした。MoneyForward の資産ページを表示してから再実行してください。');
+        if (!entries.length) {
+          throw new Error('資産テーブルを解析できませんでした。MoneyForward の資産ページを表示してから再実行してください。');
+        }
         const now = new Date();
-        const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+        const date = [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, '0'),
+          String(now.getDate()).padStart(2, '0'),
+        ].join('-');
         send({
           type: 'result',
           payload: JSON.stringify({ format: 'moneyforward-asset-snapshot', version: 1, date, entries }),
@@ -338,9 +361,5 @@ private val MONEY_FORWARD_COLLECT_SCRIPT =
   """.trimIndent()
 
 private fun formatYen(value: Long): String = "¥${NumberFormat.getNumberInstance(Locale.JAPAN).format(value)}"
-
-@Composable
-private fun <T> StateFlow<T>.collectAsStateWithLifecycleCompat(): androidx.compose.runtime.State<T> =
-  androidx.compose.runtime.collectAsState()
 
 private const val MONEY_FORWARD_PORTFOLIO_URL = "https://moneyforward.com/bs/portfolio"
