@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Amended by: ADR-0059
+- Amended by: ADR-0059, ADR-0098
 
 ## Context
 
@@ -47,6 +47,31 @@ ADR-0003 は `:core:database` を横断的な database capability とし、接�
   mail_labels
   mail_threads
   mail_messages
+
+:feature:library:data
+  smb_library_servers
+  library_organization_*
+  library_item_*
+
+:feature:knowledge:data
+  knowledge_pages
+  knowledge_page_sources
+
+:feature:asset:data
+  asset_entries
+  asset_categories
+  asset_category_definitions
+
+:feature:task:data
+  tasks
+
+:feature:chat:data
+  chat_sessions
+  chat_messages
+
+:feature:youtube:data
+  channels
+  videos
 ```
 
 ## Migration ordering
@@ -68,10 +93,11 @@ SQLite の database version は単一DB全体の値であり、特定 feature �
 ### Positive
 
 - ADR-0003 の `core` と feature ownership の境界に一致する。
-- RSS、Bookmark、Summary、Mail の schema 変更がそれぞれの feature 内で完結する。
+- 各 feature の schema 変更がそれぞれの feature 内で完結する。
 - `:core:database` に新しいアプリ固有概念が蓄積しにくくなる。
 - Worker や Service は同じ application-level schema composition を利用できる。
 - 過去 migration を削除しても、今後の schema migration の ownership と実行機構を維持できる。
+- ADR-0098 により Task / Chat / YouTube も同じ physical database と schema contribution mechanism に統一された。
 
 ### Negative
 
@@ -79,8 +105,10 @@ SQLite の database version は単一DB全体の値であり、特定 feature �
 - 新しい migration では app-level database version の更新と feature contribution の追加を同時に行う必要がある。
 - feature 間の外部キー依存があるため、`:app` の contribution 順序には意味がある。
 
-## Relationship to ADR-0003 and ADR-0059
+## Relationship to ADR-0003, ADR-0059 and ADR-0098
 
 ADR-0003 の「`:core:database` は汎用的な schema migration mechanism を提供し、feature 固有 migration の意味は feature の `data` が所有する」という決定を具体化する。ADR-0003 を変更または置き換えるものではない。
 
 ADR-0059 はサポートする更新元のベースラインを version 12 へ進め、本 ADR に記録されていた過去 migration を廃止する。本 ADR の schema/migration ownership の決定は維持する。
+
+ADR-0098 は Task / Chat / YouTube に残っていた独立 SQLite database を `yomitori-rss.db` へ統合し、本 ADR の単一 database 方針を全 durable user data に適用する。
