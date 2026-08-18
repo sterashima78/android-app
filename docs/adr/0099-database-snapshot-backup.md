@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-18
 - Extends: ADR-0098
+- Amended by: ADR-0100
 
 ## Context
 
@@ -122,3 +123,9 @@ live database backupとして有効だが、Android API 29相当のSQLite versio
 ### `.db` fileを稼働中に直接copyする
 
 WALにのみ存在するcommitted dataを欠落させ得るため採用しない。
+
+## Relationship to ADR-0100
+
+本ADRはdatabase snapshot方式への移行時点の判断を記録している。実端末でDB統合とsnapshot backupの動作確認が完了した後、ADR-0100で現行互換性ベースラインを更新した。
+
+ADR-0100は、旧JSON backup version 1–8のimport互換と旧自動バックアップ世代の混在管理を廃止する。また、ユーザーに見えるbackup名とarchive識別子をMosaicへ統一し、snapshot `application_id` を `MOSA` (`0x4D4F5341`) に変更する。snapshot作成方式、checksum / integrity検証、preference allowlist、credential除外方針は本ADRの決定を維持する。
