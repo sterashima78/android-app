@@ -39,7 +39,7 @@ class DefaultBackupRepository(
   override suspend fun exportTo(documentUri: String) {
     val uri = Uri.parse(documentUri)
     appContext.contentResolver.openOutputStream(uri, "w")
-      ?.use(archive::writeTo)
+      ?.use { output -> archive.writeTo(output) }
       ?: error("保存先を開けませんでした")
   }
 
@@ -47,13 +47,16 @@ class DefaultBackupRepository(
     val uri = Uri.parse(documentUri)
     withTemporaryImport { imported ->
       appContext.contentResolver.openInputStream(uri)
-        ?.use { input -> FileOutputStream(imported, false).use(input::copyTo) }
+        ?.use { input ->
+          FileOutputStream(imported, false).use { output -> input.copyTo(output) }
+        }
         ?: error("バックアップを開けませんでした")
 
       if (DatabaseBackupArchive.looksLikeArchive(imported)) {
-        FileInputStream(imported).use(archive::restore)
+        FileInputStream(imported).use { input -> archive.restore(input) }
       } else {
         // Keep import compatibility with the historical JSON backup format (v1-v8).
+        require(imported.length() <= MAX_LEGACY_JSON_BYTES) { "旧形式バックアップが大きすぎます" }
         database.restoreBackup(JSONObject(imported.readText(Charsets.UTF_8)))
       }
     }
@@ -129,6 +132,10 @@ class DefaultBackupRepository(
     } finally {
       file.delete()
     }
+  }
+
+  companion object {
+    private const val MAX_LEGACY_JSON_BYTES = 128L * 1024L * 1024L
   }
 }
 
