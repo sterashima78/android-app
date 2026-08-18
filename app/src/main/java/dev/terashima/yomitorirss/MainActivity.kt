@@ -25,7 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,7 +56,6 @@ import dev.terashima.yomitorirss.feature.web.LanServerStatus
 import dev.terashima.yomitorirss.feature.web.WebServerDialog
 import dev.terashima.yomitorirss.feature.web.data.LanWebServerService
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider
-import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetUpdater
 import dev.terashima.yomitorirss.ui.YomitoriApp
 import dev.terashima.yomitorirss.ui.YomitoriTheme
 import kotlinx.coroutines.Dispatchers
@@ -165,8 +163,9 @@ class MainActivity : ComponentActivity() {
       YomitoriTheme {
         var showWebServer by remember { mutableStateOf(false) }
         val lanServerState by LanServerStatus.state.collectAsState()
-        val rssState by viewModels.rss.state.collectAsState()
-        val container = (application as YomitoriApplication).container
+        val application = application as YomitoriApplication
+        val container = application.container
+        val routeDependencies = application.routeDependencies
         val gmailAuthorization = container.gmailAuthorizationManager
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
           ActivityResultContracts.RequestPermission(),
@@ -238,12 +237,6 @@ class MainActivity : ComponentActivity() {
           }
         }
 
-        LaunchedEffect(rssState.unread) {
-          withContext(Dispatchers.IO) {
-            runCatching { UnreadArticlesWidgetUpdater.updateAll(applicationContext) }
-          }
-        }
-
         YomitoriApp(
           appViewModel = viewModels.app,
           rssViewModel = viewModels.rss,
@@ -255,6 +248,7 @@ class MainActivity : ComponentActivity() {
           backupViewModel = viewModels.backup,
           aiSettingsViewModel = viewModels.aiSettings,
           chatViewModel = viewModels.chat,
+          routeDependencies = routeDependencies,
           onOpenArticle = ::openArticle,
           onOpenWebServer = { showWebServer = true },
           onAddMailAccount = requestMailAccount,
