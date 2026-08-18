@@ -95,7 +95,7 @@ fun SettingsContent(
       SettingsRow(
         icon = Icons.Default.AccountBalanceWallet,
         title = "資産管理",
-        supporting = "CSV / TSV・MoneyForward 取り込み、推移、カテゴリ設定",
+        supporting = "TSV・MoneyForward 取り込み、推移、カテゴリ設定",
         onClick = onOpenAssetManagement,
       )
     }
