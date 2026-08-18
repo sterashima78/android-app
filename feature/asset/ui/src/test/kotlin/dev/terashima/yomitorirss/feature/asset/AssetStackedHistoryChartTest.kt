@@ -65,6 +65,26 @@ class AssetStackedHistoryChartTest {
     assertBand(chart, "調整B", listOf(-0.75f), listOf(-1f))
   }
 
+  @Test
+  fun `24カテゴリまでは色が重複しない`() {
+    val categories = (1..24).map { index -> "カテゴリ%02d".format(index) }
+
+    val colors = buildAssetCategoryColorMap(categories)
+
+    assertEquals(24, colors.size)
+    assertEquals(24, colors.values.toSet().size)
+  }
+
+  @Test
+  fun `カテゴリ色は入力順に依存しない`() {
+    val categories = listOf("現金", "株式", "債券", "その他")
+
+    val forward = buildAssetCategoryColorMap(categories)
+    val reversed = buildAssetCategoryColorMap(categories.reversed())
+
+    assertEquals(forward, reversed)
+  }
+
   private fun point(date: String, byCategory: Map<String, Long>) = AssetHistoryPoint(
     date = LocalDate.parse(date),
     total = byCategory.values.sum(),
