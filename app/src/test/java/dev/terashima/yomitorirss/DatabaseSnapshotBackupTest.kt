@@ -36,7 +36,7 @@ class DatabaseSnapshotBackupTest {
     try {
       database.writableDatabase.execSQL(
         "INSERT INTO tasks(id,title,description,created_at,sort_order) VALUES(?,?,?,?,?)",
-        arrayOf("task-1", "バックアップ前", "", "2026-08-18T00:00:00Z", 0),
+        arrayOf<Any?>("task-1", "バックアップ前", "", "2026-08-18T00:00:00Z", 0),
       )
 
       database.createSnapshot(snapshot)
