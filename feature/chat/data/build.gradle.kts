@@ -17,6 +17,7 @@ android {
 }
 
 dependencies {
+  implementation(project(":core:database"))
   implementation(project(":feature:chat:domain"))
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:bookmark:domain"))
