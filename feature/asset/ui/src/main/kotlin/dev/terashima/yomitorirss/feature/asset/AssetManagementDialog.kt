@@ -73,8 +73,8 @@ class AssetViewModel(
     reload()
   }
 
-  fun importDelimited(uri: String) = runOperation("資産履歴をインポートしました") {
-    repository.importDelimited(uri)
+  fun importTsv(uri: String) = runOperation("資産履歴をインポートしました") {
+    repository.importTsv(uri)
   }
 
   fun importMoneyForward(json: String) = runOperation("MoneyForward の資産を記録しました") {
@@ -141,7 +141,7 @@ fun AssetScreen(
   var editing by remember { mutableStateOf<AssetCategorySetting?>(null) }
   var categoryText by remember { mutableStateOf("") }
   val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-    uri?.toString()?.let(viewModel::importDelimited)
+    uri?.toString()?.let(viewModel::importTsv)
   }
 
   Column(modifier = modifier.fillMaxSize()) {
@@ -179,9 +179,9 @@ fun AssetScreen(
           AssetTab.OVERVIEW -> AssetOverviewTab(overview = overview, modifier = Modifier.fillMaxSize())
           AssetTab.IMPORT -> AssetImportTab(
             modifier = Modifier.fillMaxSize(),
-            onImportDelimited = {
+            onImportTsv = {
               importLauncher.launch(
-                arrayOf("text/csv", "text/tab-separated-values", "text/plain", "application/csv"),
+                arrayOf("text/tab-separated-values", "text/plain"),
               )
             },
             onImportMoneyForward = { showMoneyForward = true },
@@ -284,7 +284,7 @@ private fun AssetOverviewTab(
 @Composable
 private fun AssetImportTab(
   modifier: Modifier,
-  onImportDelimited: () -> Unit,
+  onImportTsv: () -> Unit,
   onImportMoneyForward: () -> Unit,
 ) {
   LazyColumn(modifier = modifier) {
@@ -293,13 +293,13 @@ private fun AssetImportTab(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        Text("CSV / TSV", style = MaterialTheme.typography.titleMedium)
+        Text("TSV", style = MaterialTheme.typography.titleMedium)
         Text(
-          "既存の資産履歴をファイルから取り込みます。日付・資産名・金額を含むCSVまたはTSVを選択してください。",
+          "既存の資産履歴をTSVから取り込みます。1列目は日付、2列目は資産名、3列目は金額、4列目は金融機関・口座名（空欄可）です。",
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(modifier = Modifier.fillMaxWidth(), onClick = onImportDelimited) {
-          Text("ファイルを選択")
+        Button(modifier = Modifier.fillMaxWidth(), onClick = onImportTsv) {
+          Text("TSVを選択")
         }
       }
     }
