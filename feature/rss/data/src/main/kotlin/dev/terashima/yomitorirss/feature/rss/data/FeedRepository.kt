@@ -57,6 +57,11 @@ class DefaultFeedRepository(
     dataChanges.notifyChanged()
   }
 
+  override suspend fun renameFeed(feedId: String, name: String) {
+    store.renameFeed(feedId, name)
+    dataChanges.notifyChanged()
+  }
+
   override suspend fun deleteFeed(feedId: String) {
     store.deleteFeed(feedId)
     dataChanges.notifyChanged()

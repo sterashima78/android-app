@@ -9,6 +9,7 @@ interface FeedRepository {
   suspend fun listFolders(): List<FeedFolder>
   suspend fun inspect(input: String): FeedInspection
   suspend fun addFeed(url: String, markExistingArticlesRead: Boolean = false)
+  suspend fun renameFeed(feedId: String, name: String)
   suspend fun deleteFeed(feedId: String)
   suspend fun createFolder(name: String)
   suspend fun renameFolder(folderId: String, name: String)

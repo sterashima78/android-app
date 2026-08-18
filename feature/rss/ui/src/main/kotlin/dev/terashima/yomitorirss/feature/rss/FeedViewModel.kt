@@ -166,6 +166,17 @@ class FeedViewModel(
     _state.update { it.copy(feedAdded = false) }
   }
 
+  fun renameFeed(feed: Feed, name: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.renameFeed(feed.id, name) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          _state.update { it.copy(message = "フィード名を変更しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun deleteFeed(feed: Feed) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.deleteFeed(feed.id) }

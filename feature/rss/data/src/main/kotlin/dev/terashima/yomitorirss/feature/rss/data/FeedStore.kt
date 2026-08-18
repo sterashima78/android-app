@@ -16,7 +16,7 @@ internal class FeedStore(
   private val database: DatabaseConnection,
 ) {
   fun listFeeds(): List<Feed> = database.readable
-    .rawQuery("SELECT * FROM feeds ORDER BY title COLLATE NOCASE", null)
+    .rawQuery("SELECT * FROM feeds ORDER BY COALESCE(custom_title,title) COLLATE NOCASE", null)
     .use { cursor ->
       buildList {
         while (cursor.moveToNext()) add(cursor.feed())
@@ -64,6 +64,26 @@ internal class FeedStore(
       )
     }
     return feed
+  }
+
+  fun renameFeed(id: String, name: String) {
+    val display = displayName(name)
+    require(display.isNotBlank()) { "フィード名を入力してください" }
+    database.transaction {
+      val updated = update(
+        "feeds",
+        contentValues("custom_title" to display),
+        "id=?",
+        arrayOf(id),
+      )
+      require(updated > 0) { "フィードが見つかりません" }
+      update(
+        "articles",
+        contentValues("source_title" to display),
+        "feed_id=?",
+        arrayOf(id),
+      )
+    }
   }
 
   fun createFolder(name: String): FeedFolder {
@@ -179,9 +199,16 @@ internal class FeedStore(
         "id=?",
         arrayOf(feed.id),
       )
+      val displayTitle = rawQuery(
+        "SELECT COALESCE(custom_title,title) FROM feeds WHERE id=? LIMIT 1",
+        arrayOf(feed.id),
+      ).use { cursor ->
+        require(cursor.moveToFirst()) { "フィードが見つかりません" }
+        cursor.getString(0)
+      }
       upsertArticles(
         this,
-        feed.copy(title = parsed.title, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl),
+        feed.copy(title = displayTitle, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl),
         parsed,
         now,
       )
@@ -309,7 +336,7 @@ private fun contentValues(vararg values: Pair<String, String?>): ContentValues =
 
 private fun Cursor.feed(): Feed = Feed(
   id = string("id"),
-  title = string("title"),
+  title = nullableString("custom_title") ?: string("title"),
   feedUrl = string("feed_url"),
   siteUrl = nullableString("site_url"),
   etag = nullableString("etag"),

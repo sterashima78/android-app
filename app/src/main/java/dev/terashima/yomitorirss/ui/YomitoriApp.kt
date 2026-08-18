@@ -632,6 +632,7 @@ fun YomitoriApp(
               feeds = feedState.feeds,
               folders = feedState.folders,
               onAdd = { showAddFeed = true },
+              onRenameFeed = feedViewModel::renameFeed,
               onDelete = feedViewModel::deleteFeed,
               onCreateFolder = feedViewModel::createFolder,
               onRenameFolder = feedViewModel::renameFolder,

@@ -10,7 +10,7 @@ import org.json.JSONObject
 
 internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
   put("format", "yomitori-rss-backup")
-  put("version", 7)
+  put("version", 8)
   put("exportedAt", Instant.now().toString())
   put("feedFolders", queryJsonArray("SELECT id,name,normalized_name,created_at,content_type FROM feed_folders ORDER BY normalized_name") { cursor ->
     JSONObject()
@@ -20,10 +20,11 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
       .put("createdAt", cursor.text("created_at"))
       .put("contentType", cursor.nullableText("content_type"))
   })
-  put("feeds", queryJsonArray("SELECT id,title,feed_url,site_url,created_at,folder_id,content_type FROM feeds ORDER BY title") { cursor ->
+  put("feeds", queryJsonArray("SELECT id,title,custom_title,feed_url,site_url,created_at,folder_id,content_type FROM feeds ORDER BY COALESCE(custom_title,title)") { cursor ->
     JSONObject()
       .put("id", cursor.text("id"))
       .put("title", cursor.text("title"))
+      .put("customTitle", cursor.nullableText("custom_title"))
       .put("feedUrl", cursor.text("feed_url"))
       .put("siteUrl", cursor.nullableText("site_url"))
       .put("createdAt", cursor.text("created_at"))
@@ -113,7 +114,7 @@ internal fun YomitoriDatabase.exportBackup(): JSONObject = JSONObject().apply {
 
 internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
   val version = root.optInt("version")
-  require(root.optString("format") == "yomitori-rss-backup" && version in 1..7) {
+  require(root.optString("format") == "yomitori-rss-backup" && version in 1..8) {
     "対応していないバックアップです"
   }
 
@@ -171,6 +172,7 @@ internal fun YomitoriDatabase.restoreBackup(root: JSONObject) = transaction {
       values(
         "id" to id,
         "title" to item.getString("title"),
+        "custom_title" to item.nullable("customTitle").takeIf { version >= 8 },
         "feed_url" to item.getString("feedUrl"),
         "site_url" to item.nullable("siteUrl"),
         "created_at" to item.getString("createdAt"),

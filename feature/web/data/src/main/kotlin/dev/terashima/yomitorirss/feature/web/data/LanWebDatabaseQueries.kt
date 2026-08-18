@@ -23,7 +23,7 @@ internal fun YomitoriDatabase.listReadLaterArticles(): List<BookmarkedArticle> =
 )
 
 internal fun YomitoriDatabase.listFeeds(): List<Feed> = readableDatabase.rawQuery(
-  "SELECT * FROM feeds ORDER BY title COLLATE NOCASE",
+  "SELECT * FROM feeds ORDER BY COALESCE(custom_title,title) COLLATE NOCASE",
   null,
 ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.feed()) } }
 
@@ -92,7 +92,7 @@ private fun Cursor.article(): Article = Article(
 
 private fun Cursor.feed(): Feed = Feed(
   id = text("id"),
-  title = text("title"),
+  title = nullableText("custom_title") ?: text("title"),
   feedUrl = text("feed_url"),
   siteUrl = nullableText("site_url"),
   etag = nullableText("etag"),

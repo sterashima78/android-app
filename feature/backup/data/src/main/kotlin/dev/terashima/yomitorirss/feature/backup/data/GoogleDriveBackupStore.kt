@@ -103,6 +103,6 @@ class GoogleDriveBackupStore(context: Context) {
 
   companion object {
     private const val MIME_TYPE_JSON = "application/json"
-    private val SUPPORTED_BACKUP_VERSIONS = 1..2
+    private val SUPPORTED_BACKUP_VERSIONS = 1..8
   }
 }
