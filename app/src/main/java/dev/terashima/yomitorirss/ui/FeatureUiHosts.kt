@@ -5,7 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditController
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditHost
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.navigation.AppViewModel
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
@@ -19,14 +23,16 @@ import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 internal fun FeatureMessageEffects(
   snackbarHostState: SnackbarHostState,
   appViewModel: AppViewModel,
-  rssViewModel: RssViewModel,
-  redditViewModel: RedditViewModel,
-  feedViewModel: FeedViewModel,
-  bookmarkViewModel: BookmarkViewModel,
-  summaryViewModel: SummaryViewModel,
-  backupViewModel: BackupViewModel,
-  aiSettingsViewModel: AiSettingsViewModel,
+  routeDependencies: AppRouteDependencies,
 ) {
+  val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
+  val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
+  val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
+  val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+  val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+  val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
+  val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
+
   val appState by appViewModel.state.collectAsState()
   val rssState by rssViewModel.state.collectAsState()
   val redditState by redditViewModel.state.collectAsState()
@@ -79,10 +85,21 @@ internal fun FeatureMessageEffects(
 }
 
 @Composable
-internal fun SummaryOverlay(
-  summaryViewModel: SummaryViewModel,
-  aiSettingsViewModel: AiSettingsViewModel,
+internal fun BookmarkEditOverlay(
+  routeDependencies: AppRouteDependencies,
+  controller: BookmarkEditController,
 ) {
+  val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+  BookmarkEditHost(
+    bookmarkViewModel = bookmarkViewModel,
+    controller = controller,
+  )
+}
+
+@Composable
+internal fun SummaryOverlay(routeDependencies: AppRouteDependencies) {
+  val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+  val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
   val summaryState by summaryViewModel.state.collectAsState()
   val aiState by aiSettingsViewModel.state.collectAsState()
   summaryState.article?.let { article ->
