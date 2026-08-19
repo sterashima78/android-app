@@ -97,8 +97,6 @@ android {
   }
 }
 
-// Keep release analysis (for example lintRelease) usable without secrets, but fail closed
-// before any APK/AAB packaging task can produce an unsigned release artifact.
 tasks.configureEach {
   val releasePackagingTask = name.lowercase() in setOf(
     "packagerelease",
@@ -138,6 +136,9 @@ dependencies {
   implementation(project(":feature:chat:domain"))
   implementation(project(":feature:chat:data"))
   implementation(project(":feature:chat:ui"))
+  implementation(project(":feature:calendar:domain"))
+  implementation(project(":feature:calendar:data"))
+  implementation(project(":feature:calendar:ui"))
   implementation(project(":feature:game:domain"))
   implementation(project(":feature:game:ui"))
   implementation(project(":feature:health:domain"))
