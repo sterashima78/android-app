@@ -15,7 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultBookmarkRepository(
-  database: DatabaseConnection,
+  private val database: DatabaseConnection,
   private val articleRepository: ArticleRepository,
   private val articleGateway: BookmarkArticleGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
@@ -82,6 +82,20 @@ class DefaultBookmarkRepository(
   override suspend fun deleteTag(tagId: String) {
     tagStore.deleteTag(tagId)
     dataChanges.notifyChanged()
+  }
+
+  override suspend fun deleteUnusedTags(): Int {
+    val deletedCount = database.transaction {
+      val associatedTagIds = associationStore.listAssociatedTagIds()
+      val unusedTagIds = tagStore.listTags()
+        .asSequence()
+        .map(Tag::id)
+        .filterNot(associatedTagIds::contains)
+        .toSet()
+      tagStore.deleteTags(unusedTagIds)
+    }
+    if (deletedCount > 0) dataChanges.notifyChanged()
+    return deletedCount
   }
 
   override suspend fun replaceArticleTags(articleId: String, tagIds: Set<String>) {
