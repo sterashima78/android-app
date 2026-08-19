@@ -33,6 +33,7 @@ import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditController
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRoute
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
+import dev.terashima.yomitorirss.feature.calendar.CalendarRoute
 import dev.terashima.yomitorirss.feature.chat.ChatRoute
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.game.GameRoute
@@ -188,6 +189,10 @@ internal fun AppFeatureContent(
     MainTab.TASKS -> TaskScreen(
       viewModelFactory = routeDependencies.taskViewModelFactory,
       onTasksChanged = routeDependencies.updateTaskWidget,
+      modifier = modifier,
+    )
+    MainTab.CALENDAR -> CalendarRoute(
+      viewModelFactory = routeDependencies.calendarViewModelFactory,
       modifier = modifier,
     )
     MainTab.GAME -> GameRoute(modifier = modifier)
