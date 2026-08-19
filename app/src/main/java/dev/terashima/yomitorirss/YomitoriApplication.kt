@@ -8,7 +8,7 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.knowledge.BuildKnowledgeUseCase
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
@@ -45,7 +45,7 @@ class YomitoriApplication : Application(),
   override val taskRepository: TaskRepository get() = container.taskRepository
   override val backupRepository: BackupRepository get() = container.backupRepository
   override val knowledgeRepository: KnowledgeRepository get() = container.knowledgeRepository
-  override val buildKnowledgeUseCase: BuildKnowledgeUseCase get() = container.buildKnowledgeUseCase
+  override val knowledgeBuilder: KnowledgeBuilder get() = container.knowledgeBuilder
   override val summaryRuntimeDependencies: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SummaryRuntimeDependencies(container.articleRepository, container.bookmarkContentQuery, container.bookmarkEnrichmentRepository)
   }
