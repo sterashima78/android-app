@@ -11,13 +11,13 @@
 
 ## Build SDK
 
-- `compileSdk`: API 37
+- `compileSdk`: API 36
 - `targetSdk`: API 36
 - `minSdk`: API 34
 
-`compileSdk` は利用可能な新しい Android API をコンパイル・lint 対象にするため最新化する。一方、`targetSdk` の更新は target-specific behavior change を受け入れる操作なので、compile SDK 更新とは分離して互換性を検証する。
+`compileSdk` と `targetSdk` は stable API 36 を維持する。Android 17 / API 37 は現在 preview SDK なので、通常 CI に preview channel を要求せず、SDK の提供状態と target-specific behavior change を確認する別変更で採用を判断する。
 
-Android library module は app より低い `minSdk` / `compileSdk` を宣言していても app のインストール下限を下げない。module 単体で API 34 前提の分岐を削除する場合に、その module の SDK 宣言も API 34 / 37 へ合わせる。全 module の宣言値を機械的に同一化すること自体は今回の目的としない。
+Android library module は app より低い `minSdk` / `compileSdk` を宣言していても app のインストール下限を下げない。module 単体で API 34 前提の分岐を削除する場合に、その module の min SDK 宣言を API 34 へ合わせる。全 module の宣言値を機械的に同一化すること自体は今回の目的としない。
 
 ## Implementation guidance
 
@@ -31,15 +31,15 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 
 ## CI
 
-CI は Android API 37 platform を導入し、少なくとも次を検証する。
+CI は stable Android API 36 platform を利用し、少なくとも次を検証する。
 
 - architecture verification
 - unit tests
 - release lint
 - main branch の signed release APK build
 
-`targetSdk` を API 37 に変更する際は、Android 17 の behavior change を確認するテストを追加または更新してから行う。
+Android 17 / API 37 を採用する際は、SDK の提供状態と behavior change を確認するテストを追加または更新してから行う。
 
 ## Sources
 
-- [ADR-0124](../adr/0124-android-platform-baseline.md)
+- [ADR-0125](../adr/0125-android-platform-baseline.md)
