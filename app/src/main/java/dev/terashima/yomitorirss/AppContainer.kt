@@ -4,7 +4,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitoririss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
