@@ -12,13 +12,20 @@ import java.util.UUID
 internal class BookmarkAssociationStore(
   private val database: DatabaseConnection,
 ) {
-  fun listAssociatedTagIds(): Set<String> = database.readable
-    .rawQuery("SELECT DISTINCT tag_id FROM article_tags", null)
-    .use { cursor ->
-      buildSet {
-        while (cursor.moveToNext()) add(cursor.getString(0))
+  fun listAssociatedTagIds(articleIds: Set<String>): Set<String> {
+    if (articleIds.isEmpty()) return emptySet()
+    return buildSet {
+      articleIds.chunked(ASSOCIATION_QUERY_CHUNK_SIZE).forEach { ids ->
+        val placeholders = ids.joinToString(",") { "?" }
+        database.readable.rawQuery(
+          "SELECT DISTINCT tag_id FROM article_tags WHERE article_id IN($placeholders)",
+          ids.toTypedArray(),
+        ).use { cursor ->
+          while (cursor.moveToNext()) add(cursor.getString(0))
+        }
       }
     }
+  }
 
   fun replaceArticleTags(articleId: String, tagIds: Set<String>) {
     database.transaction {
@@ -136,3 +143,4 @@ private fun values(vararg entries: Pair<String, String?>): ContentValues = Conte
 private fun displayName(name: String): String = name.trim().replace(Regex("\\s+"), " ")
 private fun normalizeName(name: String): String = displayName(name).lowercase()
 private fun nowIso(): String = Instant.now().toString()
+private const val ASSOCIATION_QUERY_CHUNK_SIZE = 400

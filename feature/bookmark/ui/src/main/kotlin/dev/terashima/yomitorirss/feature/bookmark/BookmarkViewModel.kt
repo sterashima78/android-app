@@ -226,17 +226,14 @@ class BookmarkViewModel(
         folders.any { it.id == selectedFolder } -> selectedFolder
         else -> null
       }
-      val allSaved = bookmarkRepository.listSavedArticles(null, null)
-      val saved = if (validSelectedTag == null && validSelectedFolder == null) {
-        allSaved
-      } else {
-        bookmarkRepository.listSavedArticles(validSelectedTag, validSelectedFolder)
-      }
+      // listSavedArticles is intentionally capped for the article list. Tag counts/details need the full set.
+      val bookmarkDetails = bookmarkRepository.listAllSavedArticles()
+      val saved = bookmarkRepository.listSavedArticles(validSelectedTag, validSelectedFolder)
       _state.update {
         it.copy(
           initialized = true,
           saved = saved,
-          bookmarkDetails = allSaved.associateBy { bookmarked -> bookmarked.article.id },
+          bookmarkDetails = bookmarkDetails.associateBy { bookmarked -> bookmarked.article.id },
           folders = folders,
           tags = tags,
           selectedFolderId = validSelectedFolder,
