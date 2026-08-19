@@ -6,7 +6,6 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -95,7 +94,6 @@ class MainActivity : ComponentActivity() {
             onDismiss = { showWebServer = false },
             onStart = {
               if (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(
                   this,
                   Manifest.permission.POST_NOTIFICATIONS,

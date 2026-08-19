@@ -25,11 +25,11 @@ if (hasAnyReleaseSigningValue && !hasCompleteReleaseSigning) {
 
 android {
   namespace = "dev.terashima.yomitorirss"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "dev.terashima.yomitorirss"
-    minSdk = 29
+    minSdk = 34
     targetSdk = 36
     versionCode = 2
     versionName = "0.2.0"

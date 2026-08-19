@@ -4,10 +4,10 @@ plugins {
 
 android {
   namespace = "dev.terashima.yomitorirss.feature.summary.data"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
-    minSdk = 29
+    minSdk = 34
   }
 
   compileOptions {
