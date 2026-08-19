@@ -7,9 +7,11 @@ sealed interface SummaryRequestResult {
   data class Enqueued(val accepted: Boolean, val forceRefresh: Boolean) : SummaryRequestResult
 }
 
-interface SummaryRepository {
+interface SummaryRequester {
   suspend fun request(articleId: String, forceRefresh: Boolean): SummaryRequestResult
+}
 
+interface BookmarkEnrichmentRequester {
   /**
    * ブックマーク追加を起点に、要約とAIタグの準備をバックグラウンドで要求する。
    * 既存要約がある場合は再生成せず、その要約をタグ生成へ再利用する。
@@ -21,7 +23,11 @@ interface SummaryRepository {
    * 既存要約または既存タスクがある記事は変更せず、新規タスクだけを1回のworker起動で処理する。
    */
   suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int
+}
 
+interface SummaryReader {
   /** 保存済みの要約を返す。AIチャット等の読み取り用途向け。 */
   suspend fun findSummary(articleId: String): String?
 }
+
+interface SummaryRepository : SummaryRequester, BookmarkEnrichmentRequester, SummaryReader

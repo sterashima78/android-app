@@ -207,7 +207,6 @@ class MainActivity : ComponentActivity() {
           dependencies.saveSharedArticle(bookmark.url, bookmark.title, bookmark.sourceTitle)
         }
       }.onSuccess { result ->
-        if (result == BookmarkSaveResult.ADDED) dependencies.scheduleBackupAfterBookmarkChange()
         appViewModel.selectTab(MainTab.SAVED)
         val message = when (result) {
           BookmarkSaveResult.ADDED -> "ブックマークに追加しました"

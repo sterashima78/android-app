@@ -31,6 +31,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0101: feature route と background runtime ownership](0101-feature-route-and-background-runtime-ownership.md)
 - [ADR-0116: route-owned root ViewModel wiring](0116-route-owned-root-viewmodel-wiring.md)
 - [ADR-0120: Bookmark application service / framework provider boundary](0120-bookmark-application-service-and-framework-provider-boundary.md)
+- [ADR-0125: Application Service と capability interface を責務境界として使う](0125-application-service-and-capability-segregation.md)
 
 ### Domain / Context / persistence
 
@@ -69,6 +70,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0105: summary content preparation pipeline](0105-summary-content-preparation-pipeline.md)
 - [ADR-0109: generated Knowledge wiki](0109-generated-knowledge-wiki.md)
 - [ADR-0113: Knowledge page lifecycle management](0113-knowledge-page-lifecycle-management.md)
+- [ADR-0125: Application Service と capability interface を責務境界として使う](0125-application-service-and-capability-segregation.md)
 
 この索引は「現在の architecture source set」を優先した案内であり、全 ADR の機能別目録ではない。特定 feature の設計履歴は `docs/adr/` の番号順ファイルまたは repository search から辿る。
 

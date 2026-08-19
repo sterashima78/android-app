@@ -29,6 +29,7 @@ Local / Remote / Android platform
 - Domain は Android、DB、HTTP の実装型へ依存しない。
 - Repository の単一メソッドを転送するだけの UseCase は作らない。
 - 複数 Repository の orchestration、再試行、並列処理、複数画面から再利用される業務ルール等に UseCase / Application Service を利用する。
+- consumer が Repository の一部の用途しか必要としない場合は、Reader / Writer / application capability 等の narrow interface を優先する。
 - feature 固有 UI state は owning feature が所有し、`:app` は app shell、navigation、composition、platform wiring に限定する。
 
 ## Module ownership
@@ -76,6 +77,8 @@ module 名を Domain 名へ機械的に合わせるための rename は行わな
 - 複数 Context / Aggregate の command orchestration: Application Service
 - 永続状態を所有せず複数 Aggregate の情報から domain rule を解決: Domain Service
 - 大量の cross-context read で API 合成に実測上の問題がある場合: named read-only Projection
+
+Application Service の呼び出し元は業務判定を再実装せず、framework entry point や composition root は入力変換・依存の組み立て・結果の presentation に限定する。
 
 Projection は read-only とし、参照 Context/table を明示し、generic な `cross-feature` module を作らない。
 
@@ -126,3 +129,4 @@ Android framework が永続化する class name 等の互換性が必要な場�
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
+- [ADR-0125](../adr/0125-application-service-and-capability-segregation.md)

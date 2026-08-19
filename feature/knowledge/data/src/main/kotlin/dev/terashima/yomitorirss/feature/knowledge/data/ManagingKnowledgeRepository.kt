@@ -4,9 +4,9 @@ import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildResult
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePage
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageSummary
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeReader
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeSource
 import java.security.MessageDigest
@@ -16,17 +16,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Adds user-driven lifecycle operations to the generated Knowledge repository.
+ * Adds user-driven lifecycle operations to the persisted Knowledge read model.
  *
  * User deletion of an automatic page is represented by an editor-managed tombstone. The underlying
- * automatic repository therefore treats the topic as protected during rebuilds, while this decorator
+ * automatic generator therefore treats the topic as protected during rebuilds, while this repository
  * hides the tombstone from readers. Pages whose identity was created by the user can be deleted physically.
  */
 class ManagingKnowledgeRepository(
-  private val delegate: KnowledgeRepository,
+  private val delegate: KnowledgeReader,
   private val database: DatabaseConnection,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier.shared,
-) : KnowledgeRepository by delegate {
+) : KnowledgeRepository, KnowledgeReader by delegate {
 
   override suspend fun listPages(query: String): List<KnowledgePageSummary> = withContext(Dispatchers.IO) {
     val suppressedIds = loadSuppressedIds()
@@ -36,8 +36,6 @@ class ManagingKnowledgeRepository(
   override suspend fun findPage(id: String): KnowledgePage? = withContext(Dispatchers.IO) {
     if (isSuppressed(id)) null else delegate.findPage(id)
   }
-
-  override suspend fun rebuild(): KnowledgeBuildResult = delegate.rebuild()
 
   override suspend fun deletePage(id: String) = withContext(Dispatchers.IO) {
     val header = loadStorageHeader(id) ?: error("削除するナレッジページが見つかりません")

@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
@@ -33,13 +34,10 @@ class YomitoriApplication : Application(),
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppContainer(this) }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
   override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    MainActivityDependencies(routeDependencies, container.bookmarkRepository, container.backupChangeScheduler::scheduleAfterChange)
+    MainActivityDependencies(routeDependencies, container.saveSharedBookmarkUseCase)
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     UnreadArticlesWidgetRefreshObserver(this, DataChangeNotifier.shared.version)
-  }
-  private val bookmarkAutoEnrichmentBackfillUseCase: BookmarkAutoEnrichmentBackfillUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    BookmarkAutoEnrichmentBackfillUseCase(container.bookmarkRepository, container.summaryRepository)
   }
 
   override val databaseSchema: DatabaseSchema get() = appDatabaseSchema
@@ -47,6 +45,7 @@ class YomitoriApplication : Application(),
   override val taskRepository: TaskRepository get() = container.taskRepository
   override val backupRepository: BackupRepository get() = container.backupRepository
   override val knowledgeRepository: KnowledgeRepository get() = container.knowledgeRepository
+  override val knowledgeBuilder: KnowledgeBuilder get() = container.knowledgeBuilder
   override val summaryRuntimeDependencies: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SummaryRuntimeDependencies(container.articleRepository, container.bookmarkContentQuery, container.bookmarkEnrichmentRepository)
   }
@@ -55,7 +54,7 @@ class YomitoriApplication : Application(),
   override val lanWebFeedRepository: FeedRepository get() = container.feedRepository
 
   override suspend fun runBookmarkAutoEnrichmentBackfill() {
-    bookmarkAutoEnrichmentBackfillUseCase()
+    container.backfillBookmarkAutoEnrichmentUseCase()
   }
 
   override fun onCreate() {
