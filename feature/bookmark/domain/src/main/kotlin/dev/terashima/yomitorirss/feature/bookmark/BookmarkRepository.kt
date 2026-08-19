@@ -31,6 +31,7 @@ interface BookmarkRepository {
   ): BookmarkSaveResult
 }
 
+/** UI-facing import entry point retained while orchestration lives in [ImportBookmarksUseCase]. */
 interface BookmarkImportRepository {
   suspend fun importBookmarkCsv(documentUri: String): BookmarkImportResult
   suspend fun importBookmarkHtml(documentUri: String): BookmarkImportResult

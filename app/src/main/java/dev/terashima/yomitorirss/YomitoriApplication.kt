@@ -27,7 +27,8 @@ class YomitoriApplication : Application(),
   BackupRepositoryProvider,
   KnowledgeRepositoryProvider,
   BookmarkEnrichmentRepositoryProvider,
-  LanWebRepositoryProvider {
+  LanWebRepositoryProvider,
+  BookmarkAutoEnrichmentBackfillProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(this)
   }
@@ -40,6 +41,14 @@ class YomitoriApplication : Application(),
     UnreadArticlesWidgetRefreshObserver(
       context = this,
       dataChanges = DataChangeNotifier.shared.version,
+    )
+  }
+  private val bookmarkAutoEnrichmentBackfillUseCase: BookmarkAutoEnrichmentBackfillUseCase by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    BookmarkAutoEnrichmentBackfillUseCase(
+      bookmarkRepository = container.bookmarkRepository,
+      summaryRepository = container.summaryRepository,
     )
   }
 
@@ -69,6 +78,10 @@ class YomitoriApplication : Application(),
 
   override val lanWebFeedRepository: FeedRepository
     get() = container.feedRepository
+
+  override suspend fun runBookmarkAutoEnrichmentBackfill() {
+    bookmarkAutoEnrichmentBackfillUseCase()
+  }
 
   override fun onCreate() {
     super.onCreate()
