@@ -31,9 +31,9 @@ data class KnowledgeUiState(
 
 class KnowledgeViewModel(
   private val repository: KnowledgeRepository,
-  private val buildKnowledge: BuildKnowledgeUseCase,
-  private val createKnowledgePage: CreateKnowledgePageUseCase,
-  private val editKnowledgePage: EditKnowledgePageUseCase,
+  private val builder: KnowledgeBuilder,
+  private val creator: KnowledgePageCreator,
+  private val editor: KnowledgePageEditor,
   private val scheduleBackupAfterChange: () -> Unit = {},
   private val scheduleRebuild: (() -> Unit)? = null,
 ) : ViewModel() {
@@ -126,7 +126,7 @@ class KnowledgeViewModel(
     }
     _state.update { it.copy(working = true, message = null) }
     viewModelScope.launch {
-      runCatching { createKnowledgePage(request, current.composerSourcePageId) }
+      runCatching { creator.createPage(request, current.composerSourcePageId) }
         .onSuccess { page ->
           runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
@@ -166,7 +166,7 @@ class KnowledgeViewModel(
     }
     _state.update { it.copy(working = true, message = null) }
     viewModelScope.launch {
-      runCatching { editKnowledgePage(page.id, instruction) }
+      runCatching { editor.editPage(page.id, instruction) }
         .onSuccess { updatedPage ->
           runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
@@ -334,7 +334,7 @@ class KnowledgeViewModel(
 
     _state.update { it.copy(building = true, message = null) }
     viewModelScope.launch {
-      runCatching { buildKnowledge() }
+      runCatching { builder.rebuild() }
         .onSuccess { result ->
           val pages = repository.listPages(_state.value.query)
           _state.update {
@@ -407,9 +407,9 @@ class KnowledgeViewModel(
 
   class Factory(
     private val repository: KnowledgeRepository,
-    private val buildKnowledge: BuildKnowledgeUseCase,
-    private val createKnowledgePage: CreateKnowledgePageUseCase,
-    private val editKnowledgePage: EditKnowledgePageUseCase,
+    private val builder: KnowledgeBuilder,
+    private val creator: KnowledgePageCreator,
+    private val editor: KnowledgePageEditor,
     private val scheduleBackupAfterChange: () -> Unit = {},
     private val scheduleRebuild: (() -> Unit)? = null,
   ) : ViewModelProvider.Factory {
@@ -418,9 +418,9 @@ class KnowledgeViewModel(
       require(modelClass.isAssignableFrom(KnowledgeViewModel::class.java))
       return KnowledgeViewModel(
         repository = repository,
-        buildKnowledge = buildKnowledge,
-        createKnowledgePage = createKnowledgePage,
-        editKnowledgePage = editKnowledgePage,
+        builder = builder,
+        creator = creator,
+        editor = editor,
         scheduleBackupAfterChange = scheduleBackupAfterChange,
         scheduleRebuild = scheduleRebuild,
       ) as T
