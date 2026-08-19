@@ -56,12 +56,14 @@ internal fun TagManagerScreen(
   onCreate: (String) -> Unit,
   onRename: (Tag, String) -> Unit,
   onDelete: (Tag) -> Unit,
+  onDeleteUnused: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var newName by remember { mutableStateOf("") }
   var selectedTagId by remember { mutableStateOf<String?>(null) }
   var editing by remember { mutableStateOf<Tag?>(null) }
   var editingName by remember { mutableStateOf("") }
+  var confirmingDeleteUnused by remember { mutableStateOf(false) }
 
   val articleCounts = remember(bookmarks, hiddenArticleIds) {
     countArticlesByTag(bookmarks, hiddenArticleIds)
@@ -94,6 +96,19 @@ internal fun TagManagerScreen(
         enabled = newName.isNotBlank(),
       ) {
         Icon(Icons.Default.Add, "追加")
+      }
+    }
+
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+      horizontalArrangement = Arrangement.End,
+    ) {
+      TextButton(
+        onClick = { confirmingDeleteUnused = true },
+        enabled = tags.isNotEmpty(),
+      ) {
+        Icon(Icons.Default.Delete, contentDescription = null)
+        Text("未使用タグを一括削除")
       }
     }
 
@@ -176,6 +191,31 @@ internal fun TagManagerScreen(
         )
       }
     }
+  }
+
+  if (confirmingDeleteUnused) {
+    AlertDialog(
+      onDismissRequest = { confirmingDeleteUnused = false },
+      title = { Text("未使用タグを削除") },
+      text = {
+        Text("記事に1件も付いていないタグをすべて削除します。記事があるタグは削除されません。この操作は元に戻せません。")
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            confirmingDeleteUnused = false
+            onDeleteUnused()
+          },
+        ) {
+          Text("削除")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { confirmingDeleteUnused = false }) {
+          Text("キャンセル")
+        }
+      },
+    )
   }
 
   editing?.let { tag ->
