@@ -84,6 +84,10 @@ class DefaultBookmarkRepository(
     dataChanges.notifyChanged()
   }
 
+  override suspend fun deleteUnusedTags(): Int = tagStore.deleteUnusedTags().also { deletedCount ->
+    if (deletedCount > 0) dataChanges.notifyChanged()
+  }
+
   override suspend fun replaceArticleTags(articleId: String, tagIds: Set<String>) {
     associationStore.replaceArticleTags(articleId, tagIds)
     dataChanges.notifyChanged()
