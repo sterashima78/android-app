@@ -12,8 +12,15 @@ import java.util.UUID
 internal class BookmarkAssociationStore(
   private val database: DatabaseConnection,
 ) {
-  fun listAssociatedTagIds(): Set<String> = database.readable
-    .rawQuery("SELECT DISTINCT tag_id FROM article_tags", null)
+  fun listBookmarkAssociatedTagIds(): Set<String> = database.readable
+    .rawQuery(
+      """
+        SELECT DISTINCT x.tag_id
+        FROM article_tags x
+        JOIN bookmarks b ON b.article_id=x.article_id
+      """.trimIndent(),
+      null,
+    )
     .use { cursor ->
       buildSet {
         while (cursor.moveToNext()) add(cursor.getString(0))
