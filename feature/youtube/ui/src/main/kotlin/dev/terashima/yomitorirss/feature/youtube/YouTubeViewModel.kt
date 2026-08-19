@@ -25,6 +25,7 @@ data class YouTubeUiState(
   val initialized: Boolean = false,
   val selectedTab: YouTubeTab = YouTubeTab.UNREAD,
   val unread: List<YouTubeVideo> = emptyList(),
+  val history: List<YouTubeVideo> = emptyList(),
   val watchLater: List<YouTubeVideo> = emptyList(),
   val saved: List<YouTubeVideo> = emptyList(),
   val channels: List<YouTubeChannel> = emptyList(),
@@ -111,9 +112,29 @@ class YouTubeViewModel(
     removeFromVideoLists(video.id)
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.markRead(video.id) }
+        .onSuccess { reload() }
         .onFailure { error ->
           reload()
           _state.update { it.copy(message = "既読にできませんでした: ${error.userMessage()}") }
+        }
+    }
+  }
+
+  fun markUnread(video: YouTubeVideo) {
+    val unreadVideo = video.copy(isRead = false, isWatchLater = false)
+    _state.update { state ->
+      state.copy(
+        history = state.history.filterNot { it.id == video.id },
+        unread = (state.unread + unreadVideo)
+          .distinctBy(YouTubeVideo::id)
+          .sortedByDescending(YouTubeVideo::publishedAtEpochMillis),
+      )
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.markUnread(video.id) }
+        .onFailure { error ->
+          reload()
+          _state.update { it.copy(message = "未読に戻せませんでした: ${error.userMessage()}") }
         }
     }
   }
@@ -135,7 +156,7 @@ class YouTubeViewModel(
         backupChangeScheduler.scheduleAfterChange()
         repository.markRead(video.id)
       }.onSuccess {
-        reloadSavedVideos()
+        reload()
       }.onFailure { error ->
         reload()
         _state.update { it.copy(message = "動画を保存できませんでした: ${error.userMessage()}") }
@@ -200,6 +221,7 @@ class YouTubeViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.markAllRead() }
         .onSuccess {
+          reload()
           _state.update { it.copy(message = "${count}件を既読にしました") }
         }
         .onFailure { error ->
@@ -222,6 +244,7 @@ class YouTubeViewModel(
     runCatching {
       YouTubeSnapshot(
         unread = repository.listUnreadVideos(),
+        history = repository.listHistoryVideos(),
         watchLater = repository.listWatchLaterVideos(),
         saved = loadSavedVideos(),
         channels = repository.listChannels(),
@@ -231,6 +254,7 @@ class YouTubeViewModel(
         it.copy(
           initialized = true,
           unread = snapshot.unread,
+          history = snapshot.history,
           watchLater = snapshot.watchLater,
           saved = snapshot.saved,
           channels = snapshot.channels,
@@ -288,6 +312,7 @@ class YouTubeViewModel(
 
 private data class YouTubeSnapshot(
   val unread: List<YouTubeVideo>,
+  val history: List<YouTubeVideo>,
   val watchLater: List<YouTubeVideo>,
   val saved: List<YouTubeVideo>,
   val channels: List<YouTubeChannel>,
