@@ -8,7 +8,11 @@ class KnowledgeUseCaseTest {
   @Test
   fun `build UseCaseは生成capabilityへ委譲する`() = runBlocking {
     val expected = KnowledgeBuildResult(generated = 1, reused = 2, pending = 3, skippedWithoutSummary = 4)
-    val useCase = BuildKnowledgeUseCase(KnowledgeBuilder { expected })
+    val useCase = BuildKnowledgeUseCase(
+      object : KnowledgeBuilder {
+        override suspend fun rebuild(): KnowledgeBuildResult = expected
+      },
+    )
 
     assertEquals(expected, useCase())
   }
