@@ -95,6 +95,20 @@ fun sourceArchitectureViolations(
     }
   }
 
+  val isAppUiAdapter = projectPath == ":app" &&
+    normalizedPath.startsWith("app/src/main/") &&
+    "/ui/" in normalizedPath &&
+    (fileName.endsWith("Adapter.kt") || fileName.endsWith("Adapters.kt"))
+  if (isAppUiAdapter) {
+    val appServiceLocatorReference = Regex(
+      """(?:\bYomitoriApplication\b|\bAppContainer\b|\.container\b)""",
+    )
+    if (appServiceLocatorReference.containsMatchIn(sourceText)) {
+      violations +=
+        "app UI adapter must not use app container/service locator for feature dependencies: $normalizedPath"
+    }
+  }
+
   if (fileName.endsWith("Screen.kt")) {
     val concreteFeatureDataImport = Regex(
       """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.data\.""",
@@ -209,6 +223,22 @@ val verifyArchitectureRuleTests by tasks.registering {
       projectPath = ":app",
       repositoryPath = yomitoriAppPath,
       sourceText = "val appState by appViewModel.state.collectAsState()",
+    )
+
+    val featureUiAdaptersPath =
+      "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiAdapters.kt"
+    assertViolation(
+      name = "app UI adapter service locator",
+      projectPath = ":app",
+      repositoryPath = featureUiAdaptersPath,
+      sourceText = "val repository = (LocalContext.current.applicationContext as YomitoriApplication).container.aiModelRepository",
+      expectedMessage = "app UI adapter must not use app container/service locator",
+    )
+    assertClean(
+      name = "app UI adapter presentation bridge",
+      projectPath = ":app",
+      repositoryPath = featureUiAdaptersPath,
+      sourceText = "fun SummaryPromptDialog() = FeatureSummaryPromptDialog()",
     )
 
     val taskQueueScreenPath =
