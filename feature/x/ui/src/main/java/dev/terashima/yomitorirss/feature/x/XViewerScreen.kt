@@ -55,14 +55,17 @@ private val WEBVIEW_VERSION_TOKEN = Regex("\\bVersion/4\\.0\\s+")
 
 @SuppressLint("ClickableViewAccessibility", "SetJavaScriptEnabled")
 @Composable
-fun XViewerScreen(modifier: Modifier = Modifier) {
+fun XViewerScreen(
+  repository: XViewerCssRepository,
+  modifier: Modifier = Modifier,
+) {
   val context = LocalContext.current
-  val defaultCss = remember(context) { context.readDefaultXViewerCss() }
+  val defaultCss = remember(repository) { repository.defaultCss() }
   val snackbarHostState = remember { SnackbarHostState() }
   val scope = rememberCoroutineScope()
   var pickerActive by remember { mutableStateOf(false) }
 
-  val webView = remember(context, defaultCss) {
+  val webView = remember(context, defaultCss, repository) {
     WebView(context).apply {
       settings.javaScriptEnabled = true
       settings.domStorageEnabled = true
@@ -111,7 +114,7 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
         override fun onPageFinished(view: WebView, url: String) {
           super.onPageFinished(view, url)
           if (url.isXUrl()) {
-            val css = XViewerCssPreferences.load(context, defaultCss).cssForInjection()
+            val css = repository.load().cssForInjection()
             view.injectCss(css)
           } else {
             pickerActive = false
@@ -201,7 +204,7 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
                   return@takeSelectedElementSelector
                 }
 
-                val savedSettings = XViewerCssPreferences.load(context, defaultCss)
+                val savedSettings = repository.load()
                 if (!savedSettings.enabled) {
                   scope.launch {
                     snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
@@ -212,7 +215,7 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
                 val updatedSettings = savedSettings.copy(
                   css = appendHiddenElementRule(savedSettings.css, selector),
                 )
-                XViewerCssPreferences.save(context, updatedSettings)
+                repository.save(updatedSettings)
                 webView.injectCss(updatedSettings.cssForInjection())
                 scope.launch {
                   snackbarHostState.showSnackbar("選択した要素を非表示にしました")
@@ -226,7 +229,7 @@ fun XViewerScreen(modifier: Modifier = Modifier) {
       } else {
         TextButton(
           onClick = {
-            val settings = XViewerCssPreferences.load(context, defaultCss)
+            val settings = repository.load()
             when {
               !settings.enabled -> scope.launch {
                 snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
