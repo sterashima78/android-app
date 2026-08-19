@@ -25,6 +25,12 @@ class VerifyAdrIntegrityTest(unittest.TestCase):
 
         self.assertEqual([], verify_adr_integrity(self.root))
 
+    def test_accepts_readme_as_non_adr_index(self) -> None:
+        self.write_adr("README.md", "# Architecture Decision Log\n")
+        self.write_adr("0001-first.md", "# ADR-0001: First\n")
+
+        self.assertEqual([], verify_adr_integrity(self.root))
+
     def test_rejects_duplicate_numbers(self) -> None:
         self.write_adr("0001-first.md", "# ADR-0001: First\n")
         self.write_adr("0001-second.md", "# ADR-0001: Second\n")
