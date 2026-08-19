@@ -1,9 +1,10 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.feature.library.data
 
 import android.content.ContentValues
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
@@ -11,7 +12,6 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationCandidateSta
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
 import dev.terashima.yomitorirss.feature.library.LibraryReadingStatus
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.organizationKey
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -24,7 +24,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35], application = YomitoriApplication::class)
+@Config(sdk = [35])
 class LibraryOrganizationQueueTest {
   private lateinit var context: Context
   private lateinit var database: YomitoriDatabase
@@ -34,7 +34,13 @@ class LibraryOrganizationQueueTest {
   fun setUp() {
     context = ApplicationProvider.getApplicationContext()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
-    database = YomitoriDatabase.create(context, appDatabaseSchema)
+    database = YomitoriDatabase.create(
+      context,
+      DatabaseSchema(
+        version = libraryDatabaseSchema.migrations.maxOfOrNull { it.targetVersion } ?: 1,
+        contributions = listOf(libraryDatabaseSchema),
+      ),
+    )
     repository = DefaultLibraryOrganizationRepository(DatabaseConnection(database))
   }
 

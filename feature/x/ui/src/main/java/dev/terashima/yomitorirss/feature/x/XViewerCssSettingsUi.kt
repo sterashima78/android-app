@@ -2,7 +2,6 @@
 
 package dev.terashima.yomitorirss.feature.x
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,39 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-private fun Context.requireXViewerCssRepository(): XViewerCssRepository {
-  val provider = applicationContext as? XViewerCssRepositoryProvider
-    ?: error("Application must implement XViewerCssRepositoryProvider")
-  return provider.xViewerCssRepository
-}
-
-internal object XViewerCssPreferences {
-  @Suppress("UNUSED_PARAMETER")
-  fun load(context: Context, defaultCss: String): XViewerCssSettings =
-    context.requireXViewerCssRepository().load()
-
-  fun save(context: Context, settings: XViewerCssSettings) {
-    context.requireXViewerCssRepository().save(settings)
-  }
-}
-
-internal fun Context.readDefaultXViewerCss(): String =
-  requireXViewerCssRepository().defaultCss()
-
 @Composable
-fun XViewerCssSettingsSheet(onDismiss: () -> Unit) {
-  val context = LocalContext.current
-  XViewerCssSettingsSheet(
-    repository = context.requireXViewerCssRepository(),
-    onDismiss = onDismiss,
-  )
-}
-
-@Composable
-private fun XViewerCssSettingsSheet(
+fun XViewerCssSettingsSheet(
   repository: XViewerCssRepository,
   onDismiss: () -> Unit,
 ) {
