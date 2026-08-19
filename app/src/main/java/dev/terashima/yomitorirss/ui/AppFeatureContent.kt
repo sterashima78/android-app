@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -80,6 +82,12 @@ internal fun AppFeatureContent(
   val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
   val chatViewModel: ChatViewModel = viewModel(factory = routeDependencies.chatViewModelFactory)
   val summarize: (Article) -> Unit = { article -> summaryViewModel.summarize(article) }
+  val bookmarkCsvImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importCsv) }
+  val bookmarkHtmlImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importHtml) }
 
   LaunchedEffect(bookmarkViewModel) {
     bookmarkViewModel.refresh()
@@ -132,13 +140,25 @@ internal fun AppFeatureContent(
 
     MainTab.SAVED,
     MainTab.FOLDERS,
-    MainTab.TAGS -> BookmarkRoute(
+    MainTab.TAGS,
+    MainTab.BOOKMARK_IMPORT -> BookmarkRoute(
       modifier = modifier,
       tab = requireNotNull(selectedTab.bookmarkTab()),
       bookmarkViewModel = bookmarkViewModel,
       editController = bookmarkEditController,
       onOpen = onOpenArticle,
       onSummarize = summarize,
+      onImportCsv = {
+        bookmarkCsvImportLauncher.launch(
+          arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
+        )
+      },
+      onImportHtml = {
+        bookmarkHtmlImportLauncher.launch(
+          arrayOf("text/html", "application/xhtml+xml", "text/plain"),
+        )
+      },
+      onImportCompleted = { appViewModel.selectTab(MainTab.SAVED) },
     )
 
     MainTab.LIBRARY -> LibraryRoute(
@@ -188,7 +208,6 @@ internal fun AppFeatureContent(
     )
     MainTab.SETTINGS -> SettingsRoute(
       modifier = modifier,
-      bookmarkViewModel = bookmarkViewModel,
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
       aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
