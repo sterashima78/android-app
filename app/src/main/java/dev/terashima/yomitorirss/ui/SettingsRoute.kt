@@ -79,7 +79,10 @@ internal fun SettingsRoute(
         arrayOf("text/html", "application/xhtml+xml", "text/plain"),
       )
     },
-    onOpenModels = { showModels = true },
+    onOpenModels = {
+      aiSettingsViewModel.prepareModelManager()
+      showModels = true
+    },
     onOpenSummaryPrompt = { showSummaryPrompt = true },
     onOpenDriveBackup = {
       backupViewModel.refreshStatus()
