@@ -12,6 +12,7 @@ enum class AppSection(val label: String) {
   YOUTUBE("YouTube"),
   X("X"),
   TASKS("タスク"),
+  CALENDAR("カレンダー"),
   GAME("ゲーム"),
   HEALTH("ヘルス"),
   WORKOUT("ワークアウト"),

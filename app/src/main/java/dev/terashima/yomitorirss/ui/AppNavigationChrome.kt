@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DoneAll
@@ -94,6 +95,7 @@ internal fun AppDrawerContent(
                 AppSection.YOUTUBE -> Icons.Default.PlayArrow
                 AppSection.X -> Icons.Default.Public
                 AppSection.TASKS -> Icons.Default.Checklist
+                AppSection.CALENDAR -> Icons.Default.CalendarMonth
                 AppSection.GAME -> Icons.Default.SportsEsports
                 AppSection.HEALTH -> Icons.Default.Favorite
                 AppSection.WORKOUT -> Icons.Default.FitnessCenter

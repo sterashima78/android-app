@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.asset.AssetViewModel
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
+import dev.terashima.yomitorirss.feature.calendar.CalendarViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthViewModel
 import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
@@ -159,6 +160,10 @@ class AppRouteDependencies internal constructor(
 
   val taskViewModelFactory: TaskViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     TaskViewModel.Factory(container.taskRepository)
+  }
+
+  val calendarViewModelFactory: CalendarViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    CalendarViewModel.Factory(container.calendarRepository)
   }
 
   val updateTaskWidget: () -> Unit = {
