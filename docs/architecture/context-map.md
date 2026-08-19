@@ -172,4 +172,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
-- [ADR-0124](../adr/0124-calendar-read-model-and-android-calendar-provider.md)
+- [ADR-0125](../adr/0125-calendar-read-model-and-android-calendar-provider.md)
