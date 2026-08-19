@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.summary.data
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import kotlinx.coroutines.CancellationException
@@ -21,12 +22,18 @@ class SummaryContentFetchWorker(
     return withContext(Dispatchers.IO) {
       val database = YomitoriDatabase.create(applicationContext)
       val articleContentClient = ArticleContentClient()
+      val modelManager = LocalModelManager.shared(applicationContext)
       try {
         while (!SummaryQueue.executionState(applicationContext).paused) {
           currentCoroutineContext().ensureActive()
           if (database.countPreparedSummaryArticleContentsForActiveTasks() >= PREFETCH_LIMIT) break
 
           val article = database.nextSummaryArticleForContentFetch() ?: break
+          if (modelManager.selectedModel() == null) {
+            database.failQueuedSummaryTask(article.id, MODEL_NOT_SELECTED_MESSAGE)
+            continue
+          }
+
           database.updateQueuedSummaryTaskProgress(article.id, SUMMARY_PROGRESS_FETCHING_ARTICLE)
           try {
             val articleText = articleContentClient.fetchArticleText(article.url)
@@ -49,6 +56,7 @@ class SummaryContentFetchWorker(
 
   companion object {
     internal const val PREFETCH_LIMIT = 2
+    internal const val MODEL_NOT_SELECTED_MESSAGE = "要約モデルをダウンロードして選択してください"
   }
 }
 
