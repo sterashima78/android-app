@@ -1,0 +1,31 @@
+name: ADR integrity
+
+on:
+  pull_request:
+    paths:
+      - "docs/adr/**"
+      - "scripts/verify_adr_integrity.py"
+      - "scripts/test_verify_adr_integrity.py"
+      - ".github/workflows/adr-integrity.yml"
+  push:
+    paths:
+      - "docs/adr/**"
+      - "scripts/verify_adr_integrity.py"
+      - "scripts/test_verify_adr_integrity.py"
+      - ".github/workflows/adr-integrity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test ADR verifier
+        run: python3 -m unittest scripts.test_verify_adr_integrity
+
+      - name: Verify ADR integrity
+        run: python3 scripts/verify_adr_integrity.py
