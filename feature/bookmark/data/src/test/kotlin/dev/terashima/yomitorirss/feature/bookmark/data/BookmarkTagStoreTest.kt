@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.bookmark.Tag
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -15,7 +16,9 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class BookmarkTagStoreTest {
   private lateinit var helper: SQLiteOpenHelper
-  private lateinit var store: BookmarkTagStore
+  private lateinit var database: DatabaseConnection
+  private lateinit var tagStore: BookmarkTagStore
+  private lateinit var associationStore: BookmarkAssociationStore
 
   @Before
   fun setUp() {
@@ -38,7 +41,9 @@ class BookmarkTagStoreTest {
 
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
-    store = BookmarkTagStore(DatabaseConnection(helper))
+    database = DatabaseConnection(helper)
+    tagStore = BookmarkTagStore(database)
+    associationStore = BookmarkAssociationStore(database)
   }
 
   @After
@@ -57,9 +62,17 @@ class BookmarkTagStoreTest {
     )
     db.execSQL("INSERT INTO article_tags(article_id,tag_id) VALUES('article','used')")
 
-    val deletedCount = store.deleteUnusedTags()
+    val deletedCount = database.transaction {
+      val associatedTagIds = associationStore.listAssociatedTagIds()
+      val unusedTagIds = tagStore.listTags()
+        .asSequence()
+        .map(Tag::id)
+        .filterNot(associatedTagIds::contains)
+        .toSet()
+      tagStore.deleteTags(unusedTagIds)
+    }
 
     assertEquals(2, deletedCount)
-    assertEquals(listOf("used"), store.listTags().map { it.id })
+    assertEquals(listOf("used"), tagStore.listTags().map { it.id })
   }
 }
