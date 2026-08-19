@@ -4,4 +4,4 @@
 
 この path は既存 link の互換性のため残す。内容の更新は `docs/architecture/context-map.md` に対して行う。
 
-移動方針は [ADR-0121](adr/0121-current-architecture-documentation.md) を参照する。
+移動方針は [ADR-0122](adr/0122-current-architecture-documentation.md) を参照する。
