@@ -27,21 +27,20 @@ class DefaultArticleRepository(
   override val changes: StateFlow<Long> = dataChanges.version
 
   override suspend fun cleanupExpiredArticles() {
-    val expiredCandidateIds = database.readable.rawQuery(
-      "SELECT id FROM articles WHERE saved_at IS NULL AND read_at IS NOT NULL AND read_at<?",
-      arrayOf(contentRetentionPolicy.expiryCutoff(Instant.now()).toString()),
-    ).use { cursor ->
-      buildSet {
-        while (cursor.moveToNext()) add(cursor.getString(0))
-      }
-    }
-    if (expiredCandidateIds.isEmpty()) return
-
-    val protectedIds = contentRetentionProtectionQuery.protectedContentIds(expiredCandidateIds)
-    val deletableIds = contentRetentionPolicy.deletableContentIds(expiredCandidateIds, protectedIds)
-    if (deletableIds.isEmpty()) return
-
+    val cutoff = contentRetentionPolicy.expiryCutoff(Instant.now()).toString()
     val deleted = database.transaction {
+      val expiredCandidateIds = rawQuery(
+        "SELECT id FROM articles WHERE saved_at IS NULL AND read_at IS NOT NULL AND read_at<?",
+        arrayOf(cutoff),
+      ).use { cursor ->
+        buildSet {
+          while (cursor.moveToNext()) add(cursor.getString(0))
+        }
+      }
+      if (expiredCandidateIds.isEmpty()) return@transaction 0
+
+      val protectedIds = contentRetentionProtectionQuery.protectedContentIds(expiredCandidateIds)
+      val deletableIds = contentRetentionPolicy.deletableContentIds(expiredCandidateIds, protectedIds)
       deletableIds.chunked(500).sumOf { ids ->
         val placeholders = ids.joinToString(",") { "?" }
         delete("articles", "id IN ($placeholders)", ids.toTypedArray())
