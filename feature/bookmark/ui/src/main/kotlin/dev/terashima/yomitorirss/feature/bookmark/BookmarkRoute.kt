@@ -36,6 +36,8 @@ fun BookmarkRoute(
   editController: BookmarkEditController,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
+  onImportCsv: () -> Unit,
+  onImportHtml: () -> Unit,
 ) {
   val state by bookmarkViewModel.state.collectAsState()
 
@@ -64,6 +66,8 @@ fun BookmarkRoute(
     onCreateTag = bookmarkViewModel::createTag,
     onRenameTag = bookmarkViewModel::renameTag,
     onDeleteTag = bookmarkViewModel::deleteTag,
+    onImportCsv = onImportCsv,
+    onImportHtml = onImportHtml,
   )
 }
 
