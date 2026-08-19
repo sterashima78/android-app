@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.workout
 
+import android.content.ClipData
 import android.media.AudioManager
 import android.media.ToneGenerator
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
@@ -25,6 +27,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -40,12 +43,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun WorkoutScreen(
@@ -298,6 +305,8 @@ private fun WorkoutTimerScreen(state: WorkoutUiState, viewModel: WorkoutViewMode
 
 @Composable
 private fun WorkoutHistoryScreen(state: WorkoutUiState, modifier: Modifier) {
+  val clipboard = LocalClipboard.current
+  val coroutineScope = rememberCoroutineScope()
   LazyColumn(
     modifier = modifier,
     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -309,19 +318,39 @@ private fun WorkoutHistoryScreen(state: WorkoutUiState, modifier: Modifier) {
     items(state.snapshot.history, key = { it.id }) { history ->
       Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text(history.date, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+          ) {
+            Text(
+              history.date,
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+            )
+            IconButton(
+              onClick = {
+                coroutineScope.launch {
+                  clipboard.setClipEntry(
+                    ClipEntry(
+                      ClipData.newPlainText(
+                        "ワークアウト ${history.date}",
+                        formatWorkoutHistoryForCopy(history),
+                      ),
+                    ),
+                  )
+                }
+              },
+            ) {
+              Icon(
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = "${history.date}のワークアウト履歴をコピー",
+              )
+            }
+          }
           Text("${history.sets.size} セット", style = MaterialTheme.typography.bodySmall)
           history.sets.groupBy { it.exerciseId }.values.forEach { sets ->
-            val first = sets.first()
-            val total = sets.sumOf { it.amount }
-            val steps = sets.sumOf { it.steps ?: 0 }
-            Text(
-              buildString {
-                append("${first.exerciseName}: ${sets.size}セット / ")
-                append(if (first.unit == WorkoutUnit.SECONDS) formatDuration(total) else "$total${first.unit.label}")
-                if (steps > 0) append(" / ${steps}段")
-              },
-            )
+            Text(formatWorkoutHistoryExercise(sets))
           }
         }
       }
