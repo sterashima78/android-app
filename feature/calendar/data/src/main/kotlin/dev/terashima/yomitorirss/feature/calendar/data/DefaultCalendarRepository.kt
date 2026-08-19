@@ -141,7 +141,7 @@ private class AndroidCalendarEventSource(
       CalendarContract.Events.EVENT_LOCATION,
       CalendarContract.Instances.CALENDAR_ID,
       CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
-      CalendarContract.Events.DISPLAY_COLOR,
+      CalendarContract.EventsColumns.DISPLAY_COLOR,
     )
 
     val cursor = try {
@@ -165,7 +165,7 @@ private class AndroidCalendarEventSource(
       val locationIndex = rows.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)
       val calendarIdIndex = rows.getColumnIndexOrThrow(CalendarContract.Instances.CALENDAR_ID)
       val calendarNameIndex = rows.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
-      val colorIndex = rows.getColumnIndexOrThrow(CalendarContract.Events.DISPLAY_COLOR)
+      val colorIndex = rows.getColumnIndexOrThrow(CalendarContract.EventsColumns.DISPLAY_COLOR)
 
       return buildList {
         while (rows.moveToNext()) {
