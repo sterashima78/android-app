@@ -9,15 +9,19 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
+import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
 import dev.terashima.yomitorirss.feature.asset.data.DefaultAssetRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.data.DefaultBackupRepository
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkArticleGateway
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkSourceMetadataReader
+import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkRepository
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
@@ -70,6 +74,9 @@ class AppContainer(private val application: Application) {
   private val bookmarkSourceMetadataReader: BookmarkSourceMetadataReader by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     BookmarkSourceMetadataReader(databaseConnection)
   }
+  private val bookmarkArticleGateway: BookmarkArticleGateway by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultBookmarkArticleGateway(databaseConnection)
+  }
 
   val articleRepository: ArticleRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultArticleRepository(databaseConnection, dataChanges)
@@ -80,6 +87,7 @@ class AppContainer(private val application: Application) {
   val bookmarkRepository: BookmarkRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkRepository(
       database = databaseConnection,
+      articleGateway = bookmarkArticleGateway,
       dataChanges = dataChanges,
       onBookmarkAdded = { articleId ->
         val source = bookmarkSourceMetadataReader.find(articleId)
@@ -95,8 +103,16 @@ class AppContainer(private val application: Application) {
       },
     )
   }
+  val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultBookmarkEnrichmentRepository(databaseConnection, dataChanges)
+  }
   val bookmarkImportRepository: BookmarkImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBookmarkImportRepository(application, databaseConnection, dataChanges)
+    DefaultBookmarkImportRepository(
+      context = application,
+      database = databaseConnection,
+      articleGateway = bookmarkArticleGateway,
+      dataChanges = dataChanges,
+    )
   }
   val feedRepository: FeedRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultFeedRepository(databaseConnection, dataChanges, application)
@@ -118,7 +134,7 @@ class AppContainer(private val application: Application) {
   }
   val widgetRepository: WidgetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultWidgetRepository(
-      database = database,
+      articleRepository = articleRepository,
       feedRepository = feedRepository,
       bookmarkRepository = bookmarkRepository,
       backupChangeScheduler = backupChangeScheduler,
