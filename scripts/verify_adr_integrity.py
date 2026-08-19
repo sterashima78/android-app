@@ -6,6 +6,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+ADR_INDEX_FILENAME = "README.md"
 ADR_FILENAME = re.compile(r"^(?P<number>\d{4})-(?P<slug>[a-z0-9][a-z0-9-]*)\.md$")
 ADR_HEADING = re.compile(r"^# ADR-(?P<number>\d{4}):\s+\S.*$")
 ADR_REFERENCE = re.compile(r"\bADR-(?P<number>\d{4})\b")
@@ -25,6 +26,9 @@ def verify_adr_integrity(root: Path) -> list[str]:
     paths_by_number: dict[str, list[Path]] = defaultdict(list)
 
     for path in sorted(adr_dir.glob("*.md")):
+        if path.name == ADR_INDEX_FILENAME:
+            continue
+
         match = ADR_FILENAME.fullmatch(path.name)
         if match is None:
             violations.append(
@@ -86,7 +90,13 @@ def main() -> int:
             print(f"- {violation}", file=sys.stderr)
         return 1
 
-    count = len(list((root / "docs" / "adr").glob("*.md")))
+    count = len(
+        [
+            path
+            for path in (root / "docs" / "adr").glob("*.md")
+            if path.name != ADR_INDEX_FILENAME
+        ]
+    )
     print(f"ADR integrity verification passed ({count} ADR files).")
     return 0
 
