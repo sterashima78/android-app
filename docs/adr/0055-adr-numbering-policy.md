@@ -46,13 +46,13 @@ ADR のファイル名と見出しに使用する4桁番号は、リポジトリ
 
 `scripts/verify_adr_integrity.py` を ADR 文書群の構造検査の正本とする。検査は少なくとも次を保証する。
 
-- `docs/adr/*.md` の ADR ファイル名が `NNNN-lowercase-kebab-case.md` 形式である。ADR-0121 で定義した非 ADR 索引 `docs/adr/README.md` だけは除外する
+- `docs/adr/*.md` のファイル名が `NNNN-lowercase-kebab-case.md` 形式である
 - ADR 番号が一意である
 - 文書先頭の `# ADR-NNNN: ...` とファイル名の番号が一致する
 - 本文中の `ADR-NNNN` 参照先が存在する
 - `docs/adr/...md` または ADR 間の相対 Markdown link が実在する ADR ファイルを指す
 
-検査器そのものの回帰は `scripts/test_verify_adr_integrity.py` で行う。重複番号、見出し不一致、存在しない番号参照、存在しないファイルリンク、不正なファイル名、および README 索引の明示的な許可を fixture で検証する。
+検査器そのものの回帰は `scripts/test_verify_adr_integrity.py` で行う。重複番号、見出し不一致、存在しない番号参照、存在しないファイルリンク、不正なファイル名を fixture で失敗させる。
 
 `.github/workflows/adr-integrity.yml` は ADR、検査器、または workflow 自身が変更された push / pull request で検査器の unit test と実リポジトリ全体の検査を実行する。workflow の権限は `contents: read` のみにする。
 
@@ -80,12 +80,9 @@ python3 scripts/verify_adr_integrity.py
 - 並行ブランチではマージ前に再採番が必要になる場合がある
 - 過去に外部から特定ファイル名へ直接リンクしている場合、再採番によって外部リンクが切れる可能性がある
 - 数字として有効な別 ADR へ誤って参照を書き換えた場合、機械検査だけでは意味的な誤参照を検出できない
-- `docs/adr/README.md` は番号付き ADR ではない単一の明示的例外として checker に認識させる必要がある
 
 ## Relationship to existing ADRs
 
 既存 ADR の設計内容は変更しない。本 ADR は ADR 文書群そのものの識別子管理規則を定める。
 
 ADR-0046 の `verifyArchitecture` がアプリコードの module / package / layer 境界を検査するのに対し、本 ADR の検査は ADR 文書群自身の識別子・参照整合性を担当する。両者は別の検査責務として維持する。
-
-ADR-0121 は `docs/adr/README.md` を Decision Log 索引として追加し、このファイルだけを番号付き ADR の filename/header 検査から除外する。本 ADR の ADR 番号一意性と参照整合性の方針は維持する。
