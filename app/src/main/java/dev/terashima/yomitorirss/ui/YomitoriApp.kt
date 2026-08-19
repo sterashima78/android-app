@@ -19,39 +19,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.backup.BackupViewModel
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditHost
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
-import dev.terashima.yomitorirss.feature.chat.ChatViewModel
-import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.navigation.AppViewModel
 import dev.terashima.yomitorirss.feature.navigation.MainTab
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.reddit.rememberRedditRouteController
-import dev.terashima.yomitorirss.feature.rss.FeedViewModel
-import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.rss.rememberRssRouteController
-import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
-import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun YomitoriApp(
   appViewModel: AppViewModel,
-  rssViewModel: RssViewModel,
-  redditViewModel: RedditViewModel,
-  feedViewModel: FeedViewModel,
-  bookmarkViewModel: BookmarkViewModel,
-  mailViewModel: MailViewModel,
-  summaryViewModel: SummaryViewModel,
-  backupViewModel: BackupViewModel,
-  aiSettingsViewModel: AiSettingsViewModel,
-  chatViewModel: ChatViewModel,
   routeDependencies: AppRouteDependencies,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
-  onAddMailAccount: () -> Unit,
   onExitApp: () -> Unit,
 ) {
   val appState by appViewModel.state.collectAsState()
@@ -68,13 +48,7 @@ fun YomitoriApp(
   FeatureMessageEffects(
     snackbarHostState = snackbarHostState,
     appViewModel = appViewModel,
-    rssViewModel = rssViewModel,
-    redditViewModel = redditViewModel,
-    feedViewModel = feedViewModel,
-    bookmarkViewModel = bookmarkViewModel,
-    summaryViewModel = summaryViewModel,
-    backupViewModel = backupViewModel,
-    aiSettingsViewModel = aiSettingsViewModel,
+    routeDependencies = routeDependencies,
   )
 
   ModalNavigationDrawer(
@@ -107,9 +81,7 @@ fun YomitoriApp(
       topBar = {
         AppTopBar(
           selectedTab = selectedTab,
-          rssViewModel = rssViewModel,
-          redditViewModel = redditViewModel,
-          feedViewModel = feedViewModel,
+          routeDependencies = routeDependencies,
           rssController = rssController,
           redditController = redditController,
           onOpenDrawer = openDrawer,
@@ -126,33 +98,20 @@ fun YomitoriApp(
         selectedTab = selectedTab,
         modifier = Modifier.fillMaxSize().padding(padding),
         appViewModel = appViewModel,
-        rssViewModel = rssViewModel,
-        redditViewModel = redditViewModel,
-        feedViewModel = feedViewModel,
-        bookmarkViewModel = bookmarkViewModel,
-        mailViewModel = mailViewModel,
-        summaryViewModel = summaryViewModel,
-        backupViewModel = backupViewModel,
-        aiSettingsViewModel = aiSettingsViewModel,
-        chatViewModel = chatViewModel,
         routeDependencies = routeDependencies,
         rssController = rssController,
         redditController = redditController,
         bookmarkEditController = bookmarkEditController,
         onOpenArticle = onOpenArticle,
         onOpenWebServer = onOpenWebServer,
-        onAddMailAccount = onAddMailAccount,
         onOpenDrawer = openDrawer,
       )
     }
   }
 
-  BookmarkEditHost(
-    bookmarkViewModel = bookmarkViewModel,
+  BookmarkEditOverlay(
+    routeDependencies = routeDependencies,
     controller = bookmarkEditController,
   )
-  SummaryOverlay(
-    summaryViewModel = summaryViewModel,
-    aiSettingsViewModel = aiSettingsViewModel,
-  )
+  SummaryOverlay(routeDependencies = routeDependencies)
 }
