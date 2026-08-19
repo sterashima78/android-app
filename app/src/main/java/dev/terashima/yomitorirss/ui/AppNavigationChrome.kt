@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -252,7 +251,6 @@ internal fun AppBottomBar(
                 BookmarkTab.BOOKMARKS -> Icons.Default.Bookmark
                 BookmarkTab.FOLDERS -> Icons.Default.Folder
                 BookmarkTab.TAGS -> Icons.Default.Label
-                BookmarkTab.HISTORY -> Icons.Default.History
               },
               contentDescription = tab.label,
             )
