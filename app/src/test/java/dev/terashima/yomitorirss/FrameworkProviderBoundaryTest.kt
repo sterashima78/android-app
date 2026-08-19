@@ -44,7 +44,7 @@ class FrameworkProviderBoundaryTest {
     val violations = productionKotlinFiles(root).flatMap { file ->
       val relativePath = file.relativeTo(root).path.replace('\\', '/')
       APPLICATION_CAST.findAll(file.readText()).map { "$relativePath:${it.value}" }.toList()
-    }
+    }.toList()
 
     assertTrue(
       "Use an audited framework provider contract instead of YomitoriApplication service locator: $violations",
