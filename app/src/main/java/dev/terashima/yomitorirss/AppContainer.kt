@@ -47,12 +47,14 @@ import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
+import dev.terashima.yomitorirss.feature.rss.data.RssContentClassificationSourceQuery
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.data.DefaultAiModelRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryRepository
 import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryTaskQueueRepository
+import dev.terashima.yomitorirss.feature.summary.data.SummaryContentRetentionProtectionQuery
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.task.data.DefaultTaskRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
@@ -77,9 +79,20 @@ class AppContainer(private val application: Application) {
   private val bookmarkArticleGateway: BookmarkArticleGateway by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkArticleGateway(databaseConnection)
   }
+  private val contentClassificationSourceQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    RssContentClassificationSourceQuery(databaseConnection)
+  }
+  private val contentRetentionProtectionQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SummaryContentRetentionProtectionQuery(databaseConnection)
+  }
 
   val articleRepository: ArticleRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultArticleRepository(databaseConnection, dataChanges)
+    DefaultArticleRepository(
+      database = databaseConnection,
+      contentClassificationSourceQuery = contentClassificationSourceQuery,
+      contentRetentionProtectionQuery = contentRetentionProtectionQuery,
+      dataChanges = dataChanges,
+    )
   }
   val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAssetRepository(application, databaseConnection)
