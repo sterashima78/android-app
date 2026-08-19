@@ -35,7 +35,7 @@ internal class BookmarkReadStore(
     }
     val where = clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND ")?.let { " WHERE $it" }.orEmpty()
     return bookmarkRecords(
-      "SELECT b.article_id,b.saved_at FROM bookmarks b$where ORDER BY b.saved_at DESC LIMIT 500",
+      "SELECT b.article_id,b.saved_at FROM bookmarks b$where ORDER BY b.saved_at DESC",
       args.toTypedArray(),
     )
   }
