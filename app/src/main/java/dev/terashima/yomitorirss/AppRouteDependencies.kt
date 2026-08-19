@@ -6,6 +6,8 @@ import dev.terashima.yomitorirss.feature.asset.AssetViewModel
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
+import dev.terashima.yomitorirss.feature.health.HealthViewModel
+import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
@@ -117,6 +119,14 @@ class AppRouteDependencies internal constructor(
     )
   }
 
+  val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val repository = HealthConnectHealthRepository(application)
+    HealthRouteDependencies(
+      viewModelFactory = HealthViewModel.Factory(repository),
+      readPermissions = HealthConnectHealthRepository.READ_PERMISSIONS,
+    )
+  }
+
   val knowledgeViewModelFactory: KnowledgeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val buildTaskController = WorkManagerKnowledgeBuildTaskController(application)
     KnowledgeViewModel.Factory(
@@ -171,6 +181,11 @@ class AppRouteDependencies internal constructor(
     )
   }
 }
+
+data class HealthRouteDependencies internal constructor(
+  val viewModelFactory: HealthViewModel.Factory,
+  val readPermissions: Set<String>,
+)
 
 data class LibraryRouteDependencies internal constructor(
   val authorization: GoogleBooksAuthorizationManager,

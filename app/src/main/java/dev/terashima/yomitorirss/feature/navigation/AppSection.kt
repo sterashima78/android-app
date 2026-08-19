@@ -13,6 +13,7 @@ enum class AppSection(val label: String) {
   X("X"),
   TASKS("タスク"),
   GAME("ゲーム"),
+  HEALTH("ヘルス"),
   WORKOUT("ワークアウト"),
   AI_CHAT("AIチャット"),
   SETTINGS("設定"),

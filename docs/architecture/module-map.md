@@ -49,6 +49,7 @@
 | book-reader | domain / data / ui |
 | chat | domain / data / ui |
 | game | domain / ui |
+| health | domain / data / ui |
 | integrated | ui |
 | library | domain / data / ui |
 | knowledge | domain / data / ui |
@@ -121,3 +122,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0004](../adr/0004-concept-oriented-modules.md)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
+- [ADR-0127](../adr/0127-health-connect-read-only.md)

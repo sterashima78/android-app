@@ -1,4 +1,4 @@
-# ADR-0125: Android 14 を最小プラットフォーム基準とする
+# ADR-0126: Android 14 を最小プラットフォーム基準とする
 
 - Status: Accepted
 - Date: 2026-08-19

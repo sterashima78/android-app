@@ -36,6 +36,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatRoute
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.game.GameRoute
+import dev.terashima.yomitorirss.feature.health.HealthRoute
 import dev.terashima.yomitorirss.feature.integrated.IntegratedRoute
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.library.LibraryRoute
@@ -190,6 +191,11 @@ internal fun AppFeatureContent(
       modifier = modifier,
     )
     MainTab.GAME -> GameRoute(modifier = modifier)
+    MainTab.HEALTH -> HealthRoute(
+      viewModelFactory = routeDependencies.health.viewModelFactory,
+      readPermissions = routeDependencies.health.readPermissions,
+      modifier = modifier,
+    )
     MainTab.WORKOUT -> WorkoutRoute(
       viewModelFactory = routeDependencies.workoutViewModelFactory,
       modifier = modifier,
