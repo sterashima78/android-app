@@ -20,7 +20,6 @@ data class BookmarkUiState(
   val initialized: Boolean = false,
   val saved: List<BookmarkedArticle> = emptyList(),
   val bookmarkDetails: Map<String, BookmarkedArticle> = emptyMap(),
-  val history: List<Article> = emptyList(),
   val folders: List<BookmarkFolder> = emptyList(),
   val tags: List<Tag> = emptyList(),
   val selectedFolderId: String? = null,
@@ -69,10 +68,6 @@ class BookmarkViewModel(
 
   fun unsave(article: Article) = performArticleAction(article) {
     bookmarkRepository.unsaveArticle(article.id)
-  }
-
-  fun markUnread(article: Article) = performArticleAction(article) {
-    articleRepository.markArticleUnread(article.id)
   }
 
   fun setArticleContentType(article: Article, contentType: ContentType?) {
@@ -220,13 +215,11 @@ class BookmarkViewModel(
       } else {
         bookmarkRepository.listSavedArticles(validSelectedTag, validSelectedFolder)
       }
-      val history = articleRepository.listHistoryArticles()
       _state.update {
         it.copy(
           initialized = true,
           saved = saved,
           bookmarkDetails = allSaved.associateBy { bookmarked -> bookmarked.article.id },
-          history = history,
           folders = folders,
           tags = tags,
           selectedFolderId = validSelectedFolder,
