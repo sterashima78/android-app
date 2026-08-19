@@ -99,7 +99,7 @@ class ArticleRepositoryBoundaryTest {
     var requestedCandidateIds: Set<String> = emptySet()
     val repository = repository(
       retentionQuery = object : ContentRetentionProtectionQuery {
-        override suspend fun protectedContentIds(contentIds: Set<String>): Set<String> {
+        override fun protectedContentIds(contentIds: Set<String>): Set<String> {
           requestedCandidateIds = contentIds
           return setOf("keep-me")
         }
@@ -118,7 +118,7 @@ class ArticleRepositoryBoundaryTest {
       override suspend fun findOverrides(sourceIds: Set<String>) = emptyMap<String, SourceContentTypeOverrides>()
     },
     retentionQuery: ContentRetentionProtectionQuery = object : ContentRetentionProtectionQuery {
-      override suspend fun protectedContentIds(contentIds: Set<String>) = emptySet<String>()
+      override fun protectedContentIds(contentIds: Set<String>) = emptySet<String>()
     },
   ) = DefaultArticleRepository(
     database = database,
