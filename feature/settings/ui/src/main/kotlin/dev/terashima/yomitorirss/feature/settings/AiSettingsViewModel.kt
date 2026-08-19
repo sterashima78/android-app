@@ -75,6 +75,10 @@ class AiSettingsViewModel(
     }
   }
 
+  fun prepareModelManager() {
+    if (!_state.value.benchmarkRunning) clearBenchmark()
+  }
+
   fun updateSummaryPrompt(prompt: String) {
     runCatching { repository.updateSummaryPrompt(prompt) }
       .onSuccess { _state.update { it.copy(message = "要約プロンプトを保存しました") } }
