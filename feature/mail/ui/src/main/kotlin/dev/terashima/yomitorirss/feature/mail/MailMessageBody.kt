@@ -26,12 +26,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlin.math.roundToInt
 
 private val MIN_HTML_BODY_HEIGHT = 80.dp
 private val MAX_HTML_BODY_HEIGHT = 1_200.dp
 private const val MAIL_HTML_BASE_URL = "https://mail.invalid/"
 private const val MAIL_HTML_BASE_HOST = "mail.invalid"
+private val HEAD_OPEN_TAG = Regex("<head\\b[^>]*>", RegexOption.IGNORE_CASE)
+private val HEAD_CLOSE_TAG = Regex("</head\\s*>", RegexOption.IGNORE_CASE)
+private val HTML_OPEN_TAG = Regex("<html\\b[^>]*>", RegexOption.IGNORE_CASE)
+private val VIEWPORT_META_TAG = Regex(
+  "<meta\\b[^>]*name\\s*=\\s*['\"]?viewport['\"]?[^>]*>",
+  RegexOption.IGNORE_CASE,
+)
 
 @Composable
 internal fun MailMessageBody(
@@ -102,15 +108,11 @@ private fun HtmlMailBody(
   val webView = remember(context, document) {
     createMailWebView(
       context = context,
-      onContentHeightChanged = { height -> contentHeightPx = height },
+      onContentHeightChanged = { height ->
+        if (height != contentHeightPx) contentHeightPx = height
+      },
     ).also { view ->
-      view.loadDataWithBaseURL(
-        MAIL_HTML_BASE_URL,
-        document,
-        "text/html",
-        Charsets.UTF_8.name(),
-        null,
-      )
+      view.setMailDocument(document)
     }
   }
 
@@ -130,10 +132,53 @@ private fun HtmlMailBody(
   )
 }
 
+private class MailWebView(
+  context: Context,
+  private val onContentHeightChanged: (Int) -> Unit,
+) : WebView(context) {
+  private var pendingDocument: String? = null
+
+  fun setMailDocument(document: String) {
+    pendingDocument = document
+    loadPendingDocumentIfAttached()
+  }
+
+  fun reportContentHeight() {
+    post {
+      if (!isAttachedToWindow || width <= 0) return@post
+      val heightPx = computeVerticalScrollRange()
+      if (heightPx > 0) onContentHeightChanged(heightPx)
+    }
+  }
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    loadPendingDocumentIfAttached()
+  }
+
+  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    super.onSizeChanged(w, h, oldw, oldh)
+    if (w > 0 && w != oldw) reportContentHeight()
+  }
+
+  private fun loadPendingDocumentIfAttached() {
+    if (!isAttachedToWindow) return
+    val document = pendingDocument ?: return
+    pendingDocument = null
+    loadDataWithBaseURL(
+      MAIL_HTML_BASE_URL,
+      document,
+      "text/html",
+      null,
+      MAIL_HTML_BASE_URL,
+    )
+  }
+}
+
 private fun createMailWebView(
   context: Context,
   onContentHeightChanged: (Int) -> Unit,
-): WebView = WebView(context).apply {
+): MailWebView = MailWebView(context, onContentHeightChanged).apply {
   settings.javaScriptEnabled = false
   settings.domStorageEnabled = false
   settings.allowFileAccess = false
@@ -159,12 +204,19 @@ private fun createMailWebView(
       return true
     }
 
+    override fun onPageCommitVisible(view: WebView, url: String) {
+      super.onPageCommitVisible(view, url)
+      (view as? MailWebView)?.reportContentHeight()
+    }
+
     override fun onPageFinished(view: WebView, url: String) {
       super.onPageFinished(view, url)
-      view.post {
-        val height = (view.contentHeight * view.resources.displayMetrics.density).roundToInt()
-        if (height > 0) onContentHeightChanged(height)
-      }
+      (view as? MailWebView)?.reportContentHeight()
+    }
+
+    override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
+      super.onScaleChanged(view, oldScale, newScale)
+      (view as? MailWebView)?.reportContentHeight()
     }
   }
 }
@@ -181,15 +233,58 @@ private fun Context.openExternalUri(uri: Uri) {
   }
 }
 
-private fun htmlDocument(
+internal fun htmlDocument(
   html: String,
   textColor: Color,
   linkColor: Color,
-): String = """
-  <!doctype html>
-  <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+): String {
+  val headContent = mailHtmlHeadContent(
+    includeViewport = !VIEWPORT_META_TAG.containsMatchIn(html),
+    textColor = textColor,
+    linkColor = linkColor,
+  )
+
+  HEAD_CLOSE_TAG.find(html)?.let { closingHead ->
+    return html.replaceRange(
+      closingHead.range.first,
+      closingHead.range.first,
+      headContent,
+    )
+  }
+
+  HEAD_OPEN_TAG.find(html)?.let { openingHead ->
+    val insertionPoint = openingHead.range.last + 1
+    return html.replaceRange(insertionPoint, insertionPoint, headContent)
+  }
+
+  HTML_OPEN_TAG.find(html)?.let { openingHtml ->
+    val insertionPoint = openingHtml.range.last + 1
+    return html.replaceRange(
+      insertionPoint,
+      insertionPoint,
+      "<head>$headContent</head>",
+    )
+  }
+
+  return """
+    <!doctype html>
+    <html>
+      <head>$headContent</head>
+      <body>$html</body>
+    </html>
+  """.trimIndent()
+}
+
+private fun mailHtmlHeadContent(
+  includeViewport: Boolean,
+  textColor: Color,
+  linkColor: Color,
+): String = buildString {
+  if (includeViewport) {
+    append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
+  }
+  append(
+    """
       <style>
         html, body {
           margin: 0;
@@ -201,14 +296,13 @@ private fun htmlDocument(
           line-height: 1.45;
           overflow-wrap: anywhere;
         }
-        img, video, svg { max-width: 100%; height: auto; }
-        table { max-width: 100%; }
-        pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+        img, video, svg { max-width: 100% !important; height: auto !important; }
+        table { max-width: 100% !important; }
+        pre { white-space: pre-wrap !important; overflow-wrap: anywhere !important; }
         a { color: ${linkColor.toCssHex()}; }
       </style>
-    </head>
-    <body>$html</body>
-  </html>
-""".trimIndent()
+    """.trimIndent(),
+  )
+}
 
 private fun Color.toCssHex(): String = String.format("#%06X", toArgb() and 0x00FFFFFF)
