@@ -6,25 +6,48 @@ import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.article.ContentClassificationService
+import dev.terashima.yomitorirss.feature.article.ContentClassificationSourceQuery
+import dev.terashima.yomitorirss.feature.article.ContentRetentionPolicy
+import dev.terashima.yomitorirss.feature.article.ContentRetentionProtectionQuery
 import dev.terashima.yomitorirss.feature.article.ContentType
-import dev.terashima.yomitorirss.feature.article.resolveContentType
+import dev.terashima.yomitorirss.feature.article.SourceContentTypeOverrides
 import dev.terashima.yomitorirss.feature.article.toContentTypeOrNull
 import java.time.Instant
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultArticleRepository(
   private val database: DatabaseConnection,
+  private val contentClassificationSourceQuery: ContentClassificationSourceQuery,
+  private val contentRetentionProtectionQuery: ContentRetentionProtectionQuery,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
+  private val contentClassificationService: ContentClassificationService = ContentClassificationService(),
+  private val contentRetentionPolicy: ContentRetentionPolicy = ContentRetentionPolicy(),
 ) : ArticleRepository {
   override val changes: StateFlow<Long> = dataChanges.version
 
   override suspend fun cleanupExpiredArticles() {
-    database.writable.delete(
-      "articles",
-      "saved_at IS NULL AND read_at IS NOT NULL AND read_at<? AND NOT EXISTS(SELECT 1 FROM article_summaries s WHERE s.article_id=articles.id) AND NOT EXISTS(SELECT 1 FROM summary_tasks q WHERE q.article_id=articles.id AND q.state IN('queued','running'))",
-      arrayOf(Instant.now().minusSeconds(30L * 86400).toString()),
-    )
-    dataChanges.notifyChanged()
+    val expiredCandidateIds = database.readable.rawQuery(
+      "SELECT id FROM articles WHERE saved_at IS NULL AND read_at IS NOT NULL AND read_at<?",
+      arrayOf(contentRetentionPolicy.expiryCutoff(Instant.now()).toString()),
+    ).use { cursor ->
+      buildSet {
+        while (cursor.moveToNext()) add(cursor.getString(0))
+      }
+    }
+    if (expiredCandidateIds.isEmpty()) return
+
+    val protectedIds = contentRetentionProtectionQuery.protectedContentIds(expiredCandidateIds)
+    val deletableIds = contentRetentionPolicy.deletableContentIds(expiredCandidateIds, protectedIds)
+    if (deletableIds.isEmpty()) return
+
+    val deleted = database.transaction {
+      deletableIds.chunked(500).sumOf { ids ->
+        val placeholders = ids.joinToString(",") { "?" }
+        delete("articles", "id IN ($placeholders)", ids.toTypedArray())
+      }
+    }
+    if (deleted > 0) dataChanges.notifyChanged()
   }
 
   override suspend fun listUnreadArticles(): List<Article> = articles(
@@ -61,43 +84,79 @@ class DefaultArticleRepository(
     database.writable.update("articles", values(column to value), "id=?", arrayOf(id))
   }
 
-  private fun articles(sql: String, args: Array<String> = emptyArray()): List<Article> =
-    database.readable.rawQuery(sql, args).use { cursor ->
-      buildList { while (cursor.moveToNext()) add(cursor.article()) }
+  private suspend fun articles(sql: String, args: Array<String> = emptyArray()): List<Article> {
+    val rows = database.readable.rawQuery(sql, args).use { cursor ->
+      buildList { while (cursor.moveToNext()) add(cursor.articleRow()) }
     }
+    val sourceIds = rows.mapNotNull(ArticleRow::sourceId).toSet()
+    val sourceOverrides = if (sourceIds.isEmpty()) {
+      emptyMap()
+    } else {
+      contentClassificationSourceQuery.findOverrides(sourceIds)
+    }
+    return rows.map { row ->
+      row.article(
+        sourceOverrides = row.sourceId?.let(sourceOverrides::get),
+        service = contentClassificationService,
+      )
+    }
+  }
 }
 
-private const val ARTICLE_SELECT = """
-  SELECT a.*, f.content_type AS feed_content_type, ff.content_type AS folder_content_type
-  FROM articles a
-  LEFT JOIN feeds f ON f.id = a.feed_id
-  LEFT JOIN feed_folders ff ON ff.id = f.folder_id
-"""
+private const val ARTICLE_SELECT = "SELECT a.* FROM articles a"
+
+private data class ArticleRow(
+  val id: String,
+  val sourceId: String?,
+  val externalId: String?,
+  val identityKey: String,
+  val url: String,
+  val title: String,
+  val publishedAt: String,
+  val fetchedAt: String,
+  val readAt: String?,
+  val sourceTitle: String,
+  val sourceFeedUrl: String,
+  val contentTypeOverride: ContentType?,
+)
 
 private fun values(vararg entries: Pair<String, String?>): ContentValues = ContentValues().apply {
   entries.forEach { (key, value) -> if (value == null) putNull(key) else put(key, value) }
 }
 
-private fun Cursor.article(): Article {
-  val articleOverride = nullableString("content_type").toContentTypeOrNull()
-  val feedOverride = nullableString("feed_content_type").toContentTypeOrNull()
-  val folderOverride = nullableString("folder_content_type").toContentTypeOrNull()
-  return Article(
-    id = string("id"),
-    feedId = nullableString("feed_id"),
-    externalId = nullableString("external_id"),
-    identityKey = string("identity_key"),
-    url = string("url"),
-    title = string("title"),
-    publishedAt = string("published_at"),
-    fetchedAt = string("fetched_at"),
-    readAt = nullableString("read_at"),
-    sourceTitle = string("source_title"),
-    sourceFeedUrl = string("source_feed_url"),
-    contentTypeOverride = articleOverride,
-    effectiveContentType = resolveContentType(articleOverride, feedOverride, folderOverride),
-  )
-}
+private fun Cursor.articleRow(): ArticleRow = ArticleRow(
+  id = string("id"),
+  sourceId = nullableString("feed_id"),
+  externalId = nullableString("external_id"),
+  identityKey = string("identity_key"),
+  url = string("url"),
+  title = string("title"),
+  publishedAt = string("published_at"),
+  fetchedAt = string("fetched_at"),
+  readAt = nullableString("read_at"),
+  sourceTitle = string("source_title"),
+  sourceFeedUrl = string("source_feed_url"),
+  contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
+)
+
+private fun ArticleRow.article(
+  sourceOverrides: SourceContentTypeOverrides?,
+  service: ContentClassificationService,
+): Article = Article(
+  id = id,
+  feedId = sourceId,
+  externalId = externalId,
+  identityKey = identityKey,
+  url = url,
+  title = title,
+  publishedAt = publishedAt,
+  fetchedAt = fetchedAt,
+  readAt = readAt,
+  sourceTitle = sourceTitle,
+  sourceFeedUrl = sourceFeedUrl,
+  contentTypeOverride = contentTypeOverride,
+  effectiveContentType = service.resolve(contentTypeOverride, sourceOverrides),
+)
 
 private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
 
