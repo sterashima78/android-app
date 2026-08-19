@@ -6,7 +6,6 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -37,7 +36,7 @@ class SummaryContentRetentionProtectionQueryTest {
   }
 
   @Test
-  fun `保存済み要約と実行中タスクだけを削除保護対象として返す`() = runBlocking {
+  fun `保存済み要約と実行中タスクだけを削除保護対象として返す`() {
     insertSummary("summary")
     insertTask("queued", "queued")
     insertTask("running", "running")
@@ -47,6 +46,15 @@ class SummaryContentRetentionProtectionQueryTest {
     val actual = query.protectedContentIds(setOf("summary", "queued", "running", "failed", "missing"))
 
     assertEquals(setOf("summary", "queued", "running"), actual)
+  }
+
+  @Test
+  fun `大量のContent候補もSQLite変数上限を超えずに処理する`() {
+    val candidates = (1..600).mapTo(linkedSetOf()) { "article-$it" }
+    insertSummary("article-600")
+    val query = SummaryContentRetentionProtectionQuery(DatabaseConnection(helper))
+
+    assertEquals(setOf("article-600"), query.protectedContentIds(candidates))
   }
 
   private fun insertSummary(articleId: String) {
