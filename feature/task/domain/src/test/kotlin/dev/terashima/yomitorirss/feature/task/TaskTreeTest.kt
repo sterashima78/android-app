@@ -53,11 +53,64 @@ class TaskTreeTest {
     assertEquals(listOf(parent.id), rows.map { it.task.id })
   }
 
+  @Test
+  fun `登録順では既存の並び順を維持する`() {
+    val first = task("first", dueDate = today.plusDays(5), sortOrder = 0)
+    val noDueDate = task("no-due-date", sortOrder = 1)
+    val earliest = task("earliest", dueDate = today.plusDays(1), sortOrder = 2)
+
+    val rows = taskTreeRows(
+      tasks = listOf(earliest, first, noDueDate),
+      filter = TaskFilter.ALL,
+      expandedIds = emptySet(),
+      today = today,
+      sort = TaskSort.REGISTERED,
+    )
+
+    assertEquals(listOf(first.id, noDueDate.id, earliest.id), rows.map { it.task.id })
+  }
+
+  @Test
+  fun `期日順では近い期日から並べて期日なしを末尾にする`() {
+    val first = task("first", dueDate = today.plusDays(5), sortOrder = 0)
+    val noDueDate = task("no-due-date", sortOrder = 1)
+    val earliest = task("earliest", dueDate = today.plusDays(1), sortOrder = 2)
+
+    val rows = taskTreeRows(
+      tasks = listOf(first, noDueDate, earliest),
+      filter = TaskFilter.ALL,
+      expandedIds = emptySet(),
+      today = today,
+      sort = TaskSort.DUE_DATE,
+    )
+
+    assertEquals(listOf(earliest.id, first.id, noDueDate.id), rows.map { it.task.id })
+  }
+
+  @Test
+  fun `期日順でも子タスクは親の直下で期日順に並べる`() {
+    val parent = task("parent", sortOrder = 0)
+    val laterChild = task("later", parentId = parent.id, dueDate = today.plusDays(3), sortOrder = 0)
+    val earlierChild = task("earlier", parentId = parent.id, dueDate = today.plusDays(1), sortOrder = 1)
+
+    val rows = taskTreeRows(
+      tasks = listOf(parent, laterChild, earlierChild),
+      filter = TaskFilter.ALL,
+      expandedIds = setOf(parent.id),
+      today = today,
+      sort = TaskSort.DUE_DATE,
+    )
+
+    assertEquals(listOf(parent.id, earlierChild.id, laterChild.id), rows.map { it.task.id })
+    assertEquals(listOf(0, 1, 1), rows.map { it.depth })
+  }
+
   private fun task(
     id: String,
     parentId: String? = null,
     dueDate: LocalDate? = null,
     completed: Boolean = false,
+    sortOrder: Long = 0,
   ) = TaskItem(
     id = id,
     title = id,
@@ -65,6 +118,6 @@ class TaskTreeTest {
     dueDate = dueDate,
     completedAt = if (completed) Instant.parse("2026-08-01T00:00:00Z") else null,
     createdAt = Instant.parse("2026-07-01T00:00:00Z"),
-    sortOrder = 0,
+    sortOrder = sortOrder,
   )
 }

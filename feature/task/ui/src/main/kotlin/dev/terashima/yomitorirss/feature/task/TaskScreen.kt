@@ -72,7 +72,12 @@ fun TaskScreen(
   val state by viewModel.state.collectAsState()
   var editorRequest by remember { mutableStateOf<TaskEditorRequest?>(null) }
   var deleteTarget by remember { mutableStateOf<TaskItem?>(null) }
-  val rows = taskTreeRows(state.tasks, state.filter, state.expandedIds)
+  val rows = taskTreeRows(
+    tasks = state.tasks,
+    filter = state.filter,
+    expandedIds = state.expandedIds,
+    sort = state.sort,
+  )
 
   Box(modifier = modifier.fillMaxSize()) {
     if (!state.initialized) {
@@ -91,6 +96,28 @@ fun TaskScreen(
               selected = state.filter == item,
               onClick = { viewModel.selectFilter(item) },
               label = { Text("${item.label} ${taskCount(state.tasks, item)}") },
+            )
+          }
+        }
+
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = "並び順",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          TaskSort.entries.forEach { item ->
+            FilterChip(
+              selected = state.sort == item,
+              onClick = { viewModel.selectSort(item) },
+              label = { Text(item.label) },
             )
           }
         }

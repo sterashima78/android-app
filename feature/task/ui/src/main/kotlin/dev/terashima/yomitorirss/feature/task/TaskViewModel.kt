@@ -15,6 +15,7 @@ data class TaskUiState(
   val initialized: Boolean = false,
   val tasks: List<TaskItem> = emptyList(),
   val filter: TaskFilter = TaskFilter.UNFINISHED,
+  val sort: TaskSort = TaskSort.REGISTERED,
   val expandedIds: Set<String> = emptySet(),
   val error: String? = null,
 )
@@ -28,6 +29,8 @@ class TaskViewModel(
   init { reload() }
 
   fun selectFilter(filter: TaskFilter) { _state.update { it.copy(filter = filter) } }
+
+  fun selectSort(sort: TaskSort) { _state.update { it.copy(sort = sort) } }
 
   fun toggleExpanded(taskId: String) {
     _state.update {
