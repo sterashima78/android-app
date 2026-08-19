@@ -2,11 +2,12 @@
 
 - Status: Accepted
 - Date: 2026-08-19
-- Amends: ADR-0107
+- Amends: ADR-0115
+- Amended by: ADR-0107
 
 ## Context
 
-ADR-0107 では X feature が小規模だったため、カスタム CSS の状態、SharedPreferences 永続化、asset 読み込みを `:feature:x:ui` 内に置き、domain/data module を作らない判断をした。
+ADR-0115 では X feature が小規模だったため、カスタム CSS の状態、SharedPreferences 永続化、asset 読み込みを `:feature:x:ui` 内に置き、domain/data module を作らない判断をした。
 
 その後、CSS の有効/無効、3セットの切り替え、セット間コピー、デフォルト復元、WebView 上の要素選択からの CSS 追記が追加され、`XViewerCssSettings.kt` が次の異なる変更理由を同時に持つようになった。
 
@@ -91,4 +92,4 @@ UI は SharedPreferences や asset stream を直接扱わず `XViewerCssReposito
 
 ## Follow-up
 
-X 画面自体に screen-level state holder を導入する必要が生じた場合は、provider lookup を廃止し `XViewerCssRepository` を route/ViewModel から明示注入する。
+ADR-0107 で provider lookup を廃止し、`XViewerCssRepository` を app-level route から明示注入する形へ移行した。

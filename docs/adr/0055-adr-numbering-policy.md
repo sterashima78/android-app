@@ -28,9 +28,9 @@ ADR のファイル名と見出しに使用する4桁番号は、リポジトリ
 
 ### 既存衝突の解消
 
-既存番号の意味を可能な限り維持するため、参照が多い側または後続 ADR の基準として使われている側を旧番号に残し、衝突した別の設計判断だけを現在の最大番号 0106 より後ろへ再採番する。
+既存番号の意味を可能な限り維持するため、参照が多い側または後続 ADR の基準として使われている側を旧番号に残す。作業中に最新 `main` へ ADR-0107 が追加されたため、その番号も維持し、衝突側には ADR-0108〜0115 を割り当てる。
 
-- X WebView / CSS: ADR-0047 → ADR-0107。feature-owned database schema の ADR-0047 は維持する。
+- X WebView / CSS: ADR-0047 → ADR-0115。feature-owned database schema の ADR-0047 は維持する。
 - 蔵書整理と AI suggestions: ADR-0065 → ADR-0108。SMB Library / Book Reader の ADR-0065 は維持する。
 - Generated Knowledge Wiki: ADR-0066 → ADR-0109。background library AI organization queue の ADR-0066 は維持する。
 - SMB library deduplication: ADR-0067 → ADR-0110。background bookmark AI enrichment の ADR-0067 は維持する。
