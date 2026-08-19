@@ -24,10 +24,12 @@ interface YouTubeRepository {
   suspend fun listChannels(): List<YouTubeChannel>
   suspend fun listUnreadVideos(): List<YouTubeVideo>
   suspend fun listWatchLaterVideos(): List<YouTubeVideo>
+  suspend fun listHistoryVideos(): List<YouTubeVideo>
   suspend fun subscribe(channelUrl: String): YouTubeChannel
   suspend fun unsubscribe(channelId: String)
   suspend fun refresh()
   suspend fun markRead(videoId: String)
+  suspend fun markUnread(videoId: String)
   suspend fun setWatchLater(videoId: String, watchLater: Boolean)
   suspend fun markAllRead()
 }
