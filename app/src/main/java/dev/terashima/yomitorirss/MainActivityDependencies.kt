@@ -14,8 +14,8 @@ class MainActivityDependencies internal constructor(
 ) {
   suspend fun saveSharedArticle(
     url: String,
-    title: String?,
-    sourceTitle: String?,
+    title: String,
+    sourceTitle: String,
   ): BookmarkSaveResult = bookmarkRepository.saveSharedArticle(url, title, sourceTitle)
 
   fun scheduleBackupAfterBookmarkChange() {
