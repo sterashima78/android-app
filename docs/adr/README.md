@@ -45,7 +45,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 ### Documentation governance
 
 - [ADR-0055: ADR 番号を一意な単調増加番号として管理する](0055-adr-numbering-policy.md)
-- [ADR-0121: ADR を根拠とする current architecture documentation を維持する](0121-current-architecture-documentation.md)
+- [ADR-0122: ADR を根拠とする current architecture documentation を維持する](0122-current-architecture-documentation.md)
 
 ## Supporting architecture areas
 
@@ -89,4 +89,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 ## Sources
 
 - [ADR-0055](0055-adr-numbering-policy.md)
-- [ADR-0121](0121-current-architecture-documentation.md)
+- [ADR-0122](0122-current-architecture-documentation.md)
