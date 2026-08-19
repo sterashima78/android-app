@@ -9,6 +9,11 @@ enum class TaskFilter(val label: String) {
   ALL("すべて"),
 }
 
+enum class TaskSort(val label: String) {
+  REGISTERED("登録順"),
+  DUE_DATE("期日順"),
+}
+
 enum class TaskStatus {
   UNFINISHED,
   COMPLETED,
@@ -35,10 +40,12 @@ fun taskTreeRows(
   filter: TaskFilter,
   expandedIds: Set<String>,
   today: LocalDate = LocalDate.now(),
+  sort: TaskSort = TaskSort.REGISTERED,
 ): List<TaskTreeRow> {
   if (tasks.isEmpty()) return emptyList()
   val byId = tasks.associateBy { it.id }
-  val children = tasks.groupBy { it.parentId }.mapValues { (_, value) -> value.sortedWith(taskComparator) }
+  val comparator = taskComparator(sort)
+  val children = tasks.groupBy { it.parentId }.mapValues { (_, value) -> value.sortedWith(comparator) }
   val visibleIds = if (filter == TaskFilter.ALL) {
     tasks.mapTo(mutableSetOf()) { it.id }
   } else {
@@ -66,7 +73,7 @@ fun taskTreeRows(
 
   val roots = tasks
     .filter { it.parentId == null || byId[it.parentId] == null }
-    .sortedWith(taskComparator)
+    .sortedWith(comparator)
   roots.forEach { append(it, 0) }
   return rows
 }
@@ -78,4 +85,18 @@ private fun TaskItem.matches(filter: TaskFilter, today: LocalDate): Boolean = wh
   TaskFilter.ALL -> true
 }
 
-private val taskComparator = compareBy<TaskItem>({ it.sortOrder }, { it.createdAt }, { it.title })
+private fun taskComparator(sort: TaskSort): Comparator<TaskItem> = when (sort) {
+  TaskSort.REGISTERED -> registeredTaskComparator
+  TaskSort.DUE_DATE -> Comparator { left, right ->
+    when {
+      left.dueDate == null && right.dueDate != null -> 1
+      left.dueDate != null && right.dueDate == null -> -1
+      else -> {
+        val dueDateComparison = compareValues(left.dueDate, right.dueDate)
+        if (dueDateComparison != 0) dueDateComparison else registeredTaskComparator.compare(left, right)
+      }
+    }
+  }
+}
+
+private val registeredTaskComparator = compareBy<TaskItem>({ it.sortOrder }, { it.createdAt }, { it.title })
