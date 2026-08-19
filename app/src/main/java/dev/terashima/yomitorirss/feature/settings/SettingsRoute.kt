@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
 import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 
@@ -15,6 +16,7 @@ import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 fun SettingsScreen(
   modifier: Modifier,
   tagCount: Int,
+  aiTaskQueueRepository: AiTaskQueueRepository,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
   onOpenModels: () -> Unit,
@@ -53,6 +55,9 @@ fun SettingsScreen(
   )
 
   if (showAiTaskQueue) {
-    AiTaskQueueRoute(onDismiss = { showAiTaskQueue = false })
+    AiTaskQueueRoute(
+      repository = aiTaskQueueRepository,
+      onDismiss = { showAiTaskQueue = false },
+    )
   }
 }
