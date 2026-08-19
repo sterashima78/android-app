@@ -1,4 +1,4 @@
-# ADR 0038: Android テストを4層に分けて E2E を実行する
+# ADR-0038: Android テストを4層に分けて E2E を実行する
 
 ## Status
 

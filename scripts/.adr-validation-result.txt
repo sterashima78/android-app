@@ -1,15 +1,13 @@
 unit tests:
 ......
 ----------------------------------------------------------------------
-Ran 6 tests in 0.005s
+Ran 6 tests in 0.004s
 
 OK
 
 repository verification:
-ADR integrity verification failed:
-- docs/adr/0024-task-home-screen-widget.md: first line must be '# ADR-0024: <title>'
-- docs/adr/0038-android-test-layers-and-e2e.md: first line must be '# ADR-0038: <title>'
+ADR integrity verification passed (114 ADR files).
 
 git diff check:
 
-RESULT=FAIL unit=0 verify=1 diff=0
+RESULT=PASS
