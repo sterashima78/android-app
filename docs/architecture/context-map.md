@@ -41,7 +41,7 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
            +---- content integration ----> Content context
 
 Presentation / delivery:
-  Web / Widget / Integrated UI
+  Web / Widget / Integrated UI / Calendar
   -> Domain API または named read-only Query API の consumer
   -> durable Domain table は所有しない
 ```
@@ -101,6 +101,18 @@ Health Connect の Record 型と permission API は Data/UI の platform boundar
 
 Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態を所有し、Health は Health Connect のデータを参照する。相互同期や永続コピーは行わず、将来統合表示が必要な場合は目的別 read-only Query / Projection で接続する。
 
+### Calendar
+
+現在の主要な実装 module は `:feature:calendar:{domain,data,ui}`。Calendar は独自の durable event state を所有せず、日付軸の read-only projection として扱う。
+
+- Android Calendar Provider の `CalendarContract.Instances` を端末カレンダー source として読む。
+- Task は `TaskReader` 経由で期限を `DEADLINE` event へ投影する。
+- Workout は `WorkoutReader` 経由で実績を `ACTIVITY` event へ投影する。
+- Domain からは全 source を共通 `CalendarEvent` として扱い、`source` / `kind` / external source metadata で表示上の意味を保持する。
+- Task / Workout の table や private storage は直接参照しない。
+
+Calendar は Task / Workout / device calendar の command owner ではなく、初期実装は読み取り専用とする。
+
 ### Other application contexts
 
 Library、Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
@@ -141,6 +153,7 @@ Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds
 - `BookmarkContentQuery.readLaterContentIds`
 - `ContentClassificationSourceQuery`
 - `ContentRetentionProtectionQuery`
+- Calendar の `TaskReader` / `WorkoutReader` 合成 read model
 
 大量 read で owner API の合成が実測上問題になる場合だけ、read-only かつ purpose-specific な Named Projection を検討する。
 
@@ -166,3 +179,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
+- [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
