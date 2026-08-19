@@ -15,8 +15,8 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.web.LanServerStatus
+import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
 import java.net.Inet4Address
 import java.security.SecureRandom
 import java.util.Base64
@@ -25,7 +25,6 @@ import java.util.concurrent.Executors
 
 class LanWebServerService : Service() {
   private val executor: ExecutorService = Executors.newSingleThreadExecutor()
-  private lateinit var database: YomitoriDatabase
   private lateinit var connectivityManager: ConnectivityManager
   private lateinit var accessToken: String
   private var server: LanWebServer? = null
@@ -42,7 +41,6 @@ class LanWebServerService : Service() {
     super.onCreate()
     createNotificationChannel()
     accessToken = loadOrCreateToken()
-    database = YomitoriDatabase.create(applicationContext)
     connectivityManager = getSystemService(ConnectivityManager::class.java)
     LanServerStatus.starting()
     ServiceCompat.startForeground(
@@ -70,7 +68,6 @@ class LanWebServerService : Service() {
     networkCallbackRegistered = false
     runCatching { server?.close() }
     server = null
-    runCatching { database.close() }
     executor.shutdownNow()
     LanServerStatus.stopped(terminalError)
     super.onDestroy()
@@ -78,7 +75,14 @@ class LanWebServerService : Service() {
 
   private fun startServer() {
     runCatching {
-      LanWebServer(database, accessToken).also {
+      val repositories = applicationContext as? LanWebRepositoryProvider
+        ?: error("Application must provide LAN web repositories")
+      LanWebServer(
+        articleRepository = repositories.lanWebArticleRepository,
+        bookmarkRepository = repositories.lanWebBookmarkRepository,
+        feedRepository = repositories.lanWebFeedRepository,
+        accessToken = accessToken,
+      ).also {
         it.start()
         server = it
       }

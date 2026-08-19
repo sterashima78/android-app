@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkFolder
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportResult
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 class DefaultBookmarkRepository(
   private val database: DatabaseConnection,
+  private val articleGateway: BookmarkArticleGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
   private val onBookmarkAdded: suspend (articleId: String) -> Unit = {},
 ) : BookmarkRepository {
@@ -34,7 +36,7 @@ class DefaultBookmarkRepository(
 
   override suspend fun listReadLaterArticles(): List<BookmarkedArticle> = store.listReadLaterArticles()
 
-  override suspend fun isBookmarked(articleId: String): Boolean = store.isBookmarked(articleId)
+  override suspend fun isBookmarked(articleId: String): Boolean = articleGateway.isBookmarked(articleId)
 
   override suspend fun listFolders(): List<BookmarkFolder> {
     ensureYouTubeFolder()
@@ -61,6 +63,7 @@ class DefaultBookmarkRepository(
   }
 
   override suspend fun moveArticleToFolder(articleId: String, folderId: String?) {
+    require(articleGateway.isBookmarked(articleId)) { "ブックマークされていない記事です" }
     store.moveArticleToFolder(articleId, folderId)
     dataChanges.notifyChanged()
   }
@@ -86,21 +89,23 @@ class DefaultBookmarkRepository(
   }
 
   override suspend fun saveAndReadArticle(articleId: String) {
-    val wasBookmarked = store.isBookmarked(articleId)
-    store.saveAndReadArticle(articleId)
+    val wasBookmarked = articleGateway.isBookmarked(articleId)
+    articleGateway.saveAndRead(articleId)
     dataChanges.notifyChanged()
     notifyNewBookmark(articleId, wasBookmarked)
   }
 
   override suspend fun markReadLater(articleId: String) {
-    val wasBookmarked = store.isBookmarked(articleId)
-    store.markReadLater(articleId)
+    val wasBookmarked = articleGateway.isBookmarked(articleId)
+    articleGateway.saveAndRead(articleId)
+    store.addReadLater(articleId)
     dataChanges.notifyChanged()
     notifyNewBookmark(articleId, wasBookmarked)
   }
 
   override suspend fun unsaveArticle(articleId: String) {
-    store.unsaveArticle(articleId)
+    articleGateway.unsave(articleId)
+    store.clearArticleAssociations(articleId)
     dataChanges.notifyChanged()
   }
 
@@ -138,21 +143,14 @@ class DefaultBookmarkRepository(
     sourceTitle: String,
     folderId: String?,
   ): BookmarkSaveResult {
-    val result = store.saveSharedArticle(url, title, sourceTitle)
-    val articleId = findSavedArticleIdByUrl(url)
-      ?: error("保存したブックマークが見つかりません")
-    if (folderId != null) store.moveArticleToFolder(articleId, folderId)
+    val saved = articleGateway.saveSharedArticle(url, title, sourceTitle)
+    if (folderId != null) store.moveArticleToFolder(saved.articleId, folderId)
     dataChanges.notifyChanged()
-    if (result == BookmarkSaveResult.ADDED) {
-      notifyNewBookmark(articleId, wasBookmarked = false)
+    if (saved.result == BookmarkSaveResult.ADDED) {
+      notifyNewBookmark(saved.articleId, wasBookmarked = false)
     }
-    return result
+    return saved.result
   }
-
-  private fun findSavedArticleIdByUrl(url: String): String? = database.readable.rawQuery(
-    "SELECT id FROM articles WHERE url=? ORDER BY CASE WHEN saved_at IS NULL THEN 1 ELSE 0 END,fetched_at DESC LIMIT 1",
-    arrayOf(url),
-  ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
 
   private fun ensureYouTubeFolder() {
     val normalizedName = normalizeFolderName(YOUTUBE_FOLDER_NAME)
@@ -223,7 +221,7 @@ class DefaultBookmarkRepository(
   }
 
   private suspend fun notifyNewBookmark(articleId: String, wasBookmarked: Boolean) {
-    if (wasBookmarked || !store.isBookmarked(articleId)) return
+    if (wasBookmarked || !articleGateway.isBookmarked(articleId)) return
     try {
       onBookmarkAdded(articleId)
     } catch (error: CancellationException) {
@@ -237,34 +235,55 @@ class DefaultBookmarkRepository(
 class DefaultBookmarkImportRepository(
   context: Context,
   database: DatabaseConnection,
+  private val articleGateway: BookmarkArticleGateway,
   private val dataChanges: DataChangeNotifier,
 ) : BookmarkImportRepository {
   private val appContext = context.applicationContext
   private val store = BookmarkStore(database)
 
-  override suspend fun importBookmarkCsv(documentUri: String): BookmarkImportResult =
-    openReader(documentUri, "CSVファイルを開けませんでした") { reader ->
-      val parsed = parseBookmarkCsv(reader)
-      store.importBookmarks(
-        entries = parsed.entries.map { entry ->
-          ImportedBookmarkEntry(entry.title, entry.url, entry.createdAt, entry.sourceTitle, entry.tagNames)
-        },
-        skipped = parsed.skippedRows,
-        identityPrefix = "csv",
-      )
-    }.also { dataChanges.notifyChanged() }
+  override suspend fun importBookmarkCsv(documentUri: String): BookmarkImportResult {
+    val parsed = openReader(documentUri, "CSVファイルを開けませんでした", ::parseBookmarkCsv)
+    return importEntries(
+      entries = parsed.entries.map { entry ->
+        ImportedBookmarkEntry(entry.title, entry.url, entry.createdAt, entry.sourceTitle, entry.tagNames)
+      },
+      skipped = parsed.skippedRows,
+      identityPrefix = "csv",
+    ).also { dataChanges.notifyChanged() }
+  }
 
-  override suspend fun importBookmarkHtml(documentUri: String): BookmarkImportResult =
-    openReader(documentUri, "HTMLファイルを開けませんでした") { reader ->
-      val parsed = parseBookmarkHtml(reader)
-      store.importBookmarks(
-        entries = parsed.entries.map { entry ->
-          ImportedBookmarkEntry(entry.title, entry.url, entry.createdAt, entry.sourceTitle, entry.tagNames)
-        },
-        skipped = parsed.skippedEntries,
-        identityPrefix = "html",
+  override suspend fun importBookmarkHtml(documentUri: String): BookmarkImportResult {
+    val parsed = openReader(documentUri, "HTMLファイルを開けませんでした", ::parseBookmarkHtml)
+    return importEntries(
+      entries = parsed.entries.map { entry ->
+        ImportedBookmarkEntry(entry.title, entry.url, entry.createdAt, entry.sourceTitle, entry.tagNames)
+      },
+      skipped = parsed.skippedEntries,
+      identityPrefix = "html",
+    ).also { dataChanges.notifyChanged() }
+  }
+
+  private suspend fun importEntries(
+    entries: List<ImportedBookmarkEntry>,
+    skipped: Int,
+    identityPrefix: String,
+  ): BookmarkImportResult {
+    var added = 0
+    var duplicates = 0
+    entries.forEach { entry ->
+      val imported = articleGateway.importSavedArticle(
+        url = entry.url,
+        title = entry.title,
+        sourceTitle = entry.sourceTitle,
+        createdAt = entry.createdAt,
+        identityPrefix = identityPrefix,
       )
-    }.also { dataChanges.notifyChanged() }
+      if (imported.added) added += 1
+      if (imported.duplicate) duplicates += 1
+      store.addImportedTags(imported.articleId, entry.tagNames)
+    }
+    return BookmarkImportResult(added = added, duplicates = duplicates, skipped = skipped)
+  }
 
   private fun <T> openReader(
     documentUri: String,

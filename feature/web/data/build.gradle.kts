@@ -22,7 +22,7 @@ dependencies {
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:rss:domain"))
-  implementation(project(":core:database"))
   implementation("androidx.core:core-ktx:1.17.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
   testImplementation("junit:junit:4.13.2")
 }

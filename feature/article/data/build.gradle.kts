@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:article:domain"))
+  implementation(project(":feature:bookmark:domain"))
   implementation(project(":core:database"))
   implementation(project(":core:network"))
 
@@ -25,4 +26,6 @@ dependencies {
   implementation("org.jsoup:jsoup:1.22.2")
 
   testImplementation("junit:junit:4.13.2")
+  testImplementation("androidx.test:core-ktx:1.7.0")
+  testImplementation("org.robolectric:robolectric:4.16.1")
 }
