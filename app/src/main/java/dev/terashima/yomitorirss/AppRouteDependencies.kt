@@ -83,8 +83,9 @@ class AppRouteDependencies internal constructor(
     MailViewModel.Factory(container.mailRepository)
   }
 
-  val mailAuthorization: GmailAuthorizationManager
-    get() = container.gmailAuthorizationManager
+  val mailAuthorization: GmailAuthorizationManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    container.gmailAuthorizationManager
+  }
 
   val summaryViewModelFactory: SummaryViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SummaryViewModel.Factory(container.summaryRepository)
