@@ -24,7 +24,6 @@ enum class BookmarkTab(val label: String) {
   BOOKMARKS("一覧"),
   FOLDERS("フォルダ"),
   TAGS("タグ"),
-  HISTORY("履歴"),
 }
 
 @Composable
@@ -40,7 +39,6 @@ fun BookmarkScreen(
   onMoveFolder: (Article) -> Unit,
   onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
-  onMarkUnread: (Article) -> Unit,
   onCreateFolder: (String) -> Unit,
   onRenameFolder: (BookmarkFolder, String) -> Unit,
   onDeleteFolder: (BookmarkFolder) -> Unit,
@@ -84,19 +82,6 @@ fun BookmarkScreen(
       onCreate = onCreateTag,
       onRename = onRenameTag,
       onDelete = onDeleteTag,
-    )
-
-    BookmarkTab.HISTORY -> ArticleList(
-      modifier = modifier,
-      articles = state.history.filterNot { it.id in state.hiddenArticleIds },
-      bookmarkDetails = state.bookmarkDetails,
-      emptyText = "履歴はありません",
-      right = SwipeChoice("未読に戻す", MaterialTheme.colorScheme.secondary, onMarkUnread),
-      onOpen = onOpen,
-      onSummarize = onSummarize,
-      onEditTags = onEditTags,
-      onMoveFolder = onMoveFolder,
-      onSetContentType = onSetContentType,
     )
   }
 }
