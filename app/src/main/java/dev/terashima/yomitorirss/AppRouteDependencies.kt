@@ -121,9 +121,9 @@ class AppRouteDependencies internal constructor(
     val buildTaskController = WorkManagerKnowledgeBuildTaskController(application)
     KnowledgeViewModel.Factory(
       repository = container.knowledgeRepository,
-      buildKnowledge = container.buildKnowledgeUseCase,
-      createKnowledgePage = container.createKnowledgePageUseCase,
-      editKnowledgePage = container.editKnowledgePageUseCase,
+      builder = container.knowledgeBuilder,
+      creator = container.knowledgePageCreator,
+      editor = container.knowledgePageEditor,
       scheduleBackupAfterChange = container.backupChangeScheduler::scheduleAfterChange,
       scheduleRebuild = buildTaskController::enqueue,
     )
