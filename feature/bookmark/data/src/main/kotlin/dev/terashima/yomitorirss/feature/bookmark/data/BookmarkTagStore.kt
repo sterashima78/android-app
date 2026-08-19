@@ -40,6 +40,13 @@ internal class BookmarkTagStore(
   fun deleteTag(id: String) {
     database.writable.delete("tags", "id=?", arrayOf(id))
   }
+
+  /** Deletes only catalog entries that have no article/tag association at execution time. */
+  fun deleteUnusedTags(): Int = database.writable.delete(
+    "tags",
+    "NOT EXISTS (SELECT 1 FROM article_tags WHERE article_tags.tag_id = tags.id)",
+    null,
+  )
 }
 
 private fun Tag.values(): ContentValues = values(
