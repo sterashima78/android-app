@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -113,11 +112,11 @@ private fun HealthContent(
       ) {
         HealthPeriod.entries.forEach { period ->
           if (period == state.period) {
-            Button(onClick = { onSelectPeriod(period) }, modifier = Modifier.weight(1f)) {
+            Button(onClick = { onSelectPeriod(period) }) {
               Text(period.label)
             }
           } else {
-            OutlinedButton(onClick = { onSelectPeriod(period) }, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = { onSelectPeriod(period) }) {
               Text(period.label)
             }
           }
