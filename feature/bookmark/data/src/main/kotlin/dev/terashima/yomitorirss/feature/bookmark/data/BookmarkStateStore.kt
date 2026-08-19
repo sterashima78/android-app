@@ -14,6 +14,14 @@ internal class BookmarkStateStore(
     arrayOf(articleId),
   ).use { cursor -> cursor.moveToFirst() }
 
+  fun listBookmarkedArticleIds(): Set<String> = database.readable
+    .rawQuery("SELECT article_id FROM bookmarks", null)
+    .use { cursor ->
+      buildSet {
+        while (cursor.moveToNext()) add(cursor.getString(0))
+      }
+    }
+
   fun save(articleId: String, savedAt: String = Instant.now().toString()): Boolean =
     database.writable.insertWithOnConflict(
       "bookmarks",

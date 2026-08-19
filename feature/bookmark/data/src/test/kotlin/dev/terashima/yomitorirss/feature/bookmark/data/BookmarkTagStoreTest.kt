@@ -17,6 +17,7 @@ import org.robolectric.RobolectricTestRunner
 class BookmarkTagStoreTest {
   private lateinit var helper: SQLiteOpenHelper
   private lateinit var database: DatabaseConnection
+  private lateinit var stateStore: BookmarkStateStore
   private lateinit var tagStore: BookmarkTagStore
   private lateinit var associationStore: BookmarkAssociationStore
 
@@ -33,6 +34,11 @@ class BookmarkTagStoreTest {
             "created_at TEXT NOT NULL)",
         )
         db.execSQL(
+          "CREATE TABLE bookmarks(" +
+            "article_id TEXT PRIMARY KEY," +
+            "saved_at TEXT NOT NULL)",
+        )
+        db.execSQL(
           "CREATE TABLE article_tags(" +
             "article_id TEXT NOT NULL," +
             "tag_id TEXT NOT NULL)",
@@ -42,6 +48,7 @@ class BookmarkTagStoreTest {
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
     database = DatabaseConnection(helper)
+    stateStore = BookmarkStateStore(database)
     tagStore = BookmarkTagStore(database)
     associationStore = BookmarkAssociationStore(database)
   }
@@ -52,18 +59,24 @@ class BookmarkTagStoreTest {
   }
 
   @Test
-  fun `記事に関連付いていないタグだけを一括削除する`() {
+  fun `ブックマークに関連付いていないタグだけを一括削除する`() {
     val db = helper.writableDatabase
     db.execSQL(
       "INSERT INTO tags(id,name,normalized_name,created_at) VALUES" +
         "('used','Used','used','now')," +
-        "('unused-1','Unused 1','unused 1','now')," +
-        "('unused-2','Unused 2','unused 2','now')",
+        "('stale','Stale','stale','now')," +
+        "('unused','Unused','unused','now')",
     )
-    db.execSQL("INSERT INTO article_tags(article_id,tag_id) VALUES('article','used')")
+    db.execSQL("INSERT INTO bookmarks(article_id,saved_at) VALUES('bookmarked','now')")
+    db.execSQL(
+      "INSERT INTO article_tags(article_id,tag_id) VALUES" +
+        "('bookmarked','used')," +
+        "('not-bookmarked','stale')",
+    )
 
     val deletedCount = database.transaction {
-      val associatedTagIds = associationStore.listAssociatedTagIds()
+      val bookmarkedArticleIds = stateStore.listBookmarkedArticleIds()
+      val associatedTagIds = associationStore.listAssociatedTagIds(bookmarkedArticleIds)
       val unusedTagIds = tagStore.listTags()
         .asSequence()
         .map(Tag::id)
