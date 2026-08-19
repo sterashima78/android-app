@@ -47,6 +47,7 @@
 | article | domain / data / ui |
 | asset | domain / data / ui |
 | book-reader | domain / data / ui |
+| calendar | domain / data / ui |
 | chat | domain / data / ui |
 | game | domain / ui |
 | integrated | ui |
@@ -65,6 +66,8 @@
 | x | domain / data / ui |
 
 全 feature に3 layer を強制しない。独立した責務・依存・ビルド境界として価値がある layer だけを module 化する。
+
+Calendar は durable event state を所有せず、`:feature:calendar:data` が Android Calendar Provider と Task / Workout の公開 Domain API を統一 `CalendarEvent` へ投影する read model として構成する。
 
 ## Layer relationship
 
@@ -121,3 +124,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0004](../adr/0004-concept-oriented-modules.md)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
+- [ADR-0124](../adr/0124-calendar-read-model-and-android-calendar-provider.md)
