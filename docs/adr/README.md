@@ -50,7 +50,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 
 ### Platform / Android runtime
 
-- [ADR-0124: Android 14 を最小プラットフォーム基準とする](0124-android-platform-baseline.md)
+- [ADR-0125: Android 14 を最小プラットフォーム基準とする](0125-android-platform-baseline.md)
 
 ### Background / AI runtime
 
