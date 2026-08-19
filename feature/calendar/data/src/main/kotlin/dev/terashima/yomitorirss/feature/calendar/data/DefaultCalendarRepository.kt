@@ -82,9 +82,7 @@ internal fun workoutCalendarEvents(
   fromInclusive: LocalDate,
   untilExclusive: LocalDate,
 ): List<CalendarEvent> = days.mapNotNull { day ->
-  val date = runCatching(LocalDate::parse).getOrNull()?.let { parsed ->
-    if (day.date == parsed.toString()) parsed else null
-  } ?: runCatching { LocalDate.parse(day.date) }.getOrNull()
+  val date = runCatching { LocalDate.parse(day.date) }.getOrNull()
   if (date == null || date < fromInclusive || date >= untilExclusive || day.sets.isEmpty()) {
     return@mapNotNull null
   }
