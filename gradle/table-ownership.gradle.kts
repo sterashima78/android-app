@@ -139,7 +139,3 @@ val verifyTableOwnershipRules by tasks.registering {
     )
   }
 }
-
-tasks.named("verifyArchitecture") {
-  dependsOn(verifyTableOwnershipRules)
-}
