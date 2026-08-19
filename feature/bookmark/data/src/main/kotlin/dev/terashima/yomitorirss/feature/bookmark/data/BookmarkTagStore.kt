@@ -40,6 +40,10 @@ internal class BookmarkTagStore(
   fun deleteTag(id: String) {
     database.writable.delete("tags", "id=?", arrayOf(id))
   }
+
+  fun deleteTags(ids: Set<String>): Int = ids.sumOf { id ->
+    database.writable.delete("tags", "id=?", arrayOf(id))
+  }
 }
 
 private fun Tag.values(): ContentValues = values(
