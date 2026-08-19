@@ -46,6 +46,7 @@ fun BookmarkScreen(
   onCreateTag: (String) -> Unit,
   onRenameTag: (Tag, String) -> Unit,
   onDeleteTag: (Tag) -> Unit,
+  onDeleteUnusedTags: () -> Unit,
   onImportCsv: () -> Unit,
   onImportHtml: () -> Unit,
 ) {
@@ -85,6 +86,7 @@ fun BookmarkScreen(
       onCreate = onCreateTag,
       onRename = onRenameTag,
       onDelete = onDeleteTag,
+      onDeleteUnused = onDeleteUnusedTags,
     )
 
     BookmarkTab.IMPORT -> BookmarkImportScreen(
