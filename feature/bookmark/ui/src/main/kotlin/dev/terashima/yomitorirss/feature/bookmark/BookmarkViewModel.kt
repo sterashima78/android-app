@@ -124,6 +124,23 @@ class BookmarkViewModel(
     bookmarkRepository.deleteTag(tag.id)
   }
 
+  fun deleteUnusedTags() {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { bookmarkRepository.deleteUnusedTags() }
+        .onSuccess { deletedCount ->
+          reload()
+          if (deletedCount > 0) backupChangeScheduler.scheduleAfterChange()
+          val message = if (deletedCount > 0) {
+            "未使用のタグを${deletedCount}件削除しました"
+          } else {
+            "削除対象のタグはありません"
+          }
+          _state.update { it.copy(message = message) }
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun replaceArticleTags(article: Article, tagIds: Set<String>) = mutateBookmark {
     bookmarkRepository.replaceArticleTags(article.id, tagIds)
   }
