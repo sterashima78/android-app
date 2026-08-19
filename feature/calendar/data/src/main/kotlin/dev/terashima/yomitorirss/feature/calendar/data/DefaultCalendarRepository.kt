@@ -100,6 +100,22 @@ internal fun workoutCalendarEvents(
   )
 }
 
+internal fun CalendarEvent.overlapsDateRange(
+  fromInclusive: LocalDate,
+  untilExclusive: LocalDate,
+  zoneId: ZoneId = ZoneId.systemDefault(),
+): Boolean = when (val eventTime = time) {
+  is CalendarEventTime.AllDay ->
+    eventTime.startDate < untilExclusive && eventTime.endDateExclusive > fromInclusive
+
+  is CalendarEventTime.Timed -> {
+    val rangeStart = fromInclusive.atStartOfDay(zoneId).toInstant()
+    val rangeEnd = untilExclusive.atStartOfDay(zoneId).toInstant()
+    val eventEnd = eventTime.endExclusive ?: eventTime.start.plusMillis(1)
+    eventTime.start < rangeEnd && eventEnd > rangeStart
+  }
+}
+
 private fun workoutDescription(sets: List<WorkoutSet>): String = sets
   .groupBy(WorkoutSet::exerciseName)
   .entries
@@ -189,7 +205,7 @@ private class AndroidCalendarEventSource(
             ),
           )
         }
-      }
+      }.filter { event -> event.overlapsDateRange(fromInclusive, untilExclusive, zoneId) }
     }
   }
 }
