@@ -18,7 +18,7 @@ internal fun YomitoriDatabase.findPreparedSummaryArticleContent(articleId: Strin
     )
   }
 
-internal fun YomitoriDatabase.listSummaryContentFetchCandidates(limit: Int = 200): List<SummaryTaskRecord> =
+internal fun YomitoriDatabase.listSummaryContentFetchCandidates(): List<SummaryTaskRecord> =
   readableDatabase.rawQuery(
     """
       SELECT q.*
@@ -31,9 +31,8 @@ internal fun YomitoriDatabase.listSummaryContentFetchCandidates(limit: Int = 200
           SELECT 1 FROM summary_article_content c WHERE c.article_id=q.article_id
         )
       ORDER BY q.queued_at ASC
-      LIMIT ?
     """.trimIndent(),
-    arrayOf(SUMMARY_QUEUED, limit.toString()),
+    arrayOf(SUMMARY_QUEUED),
   ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.summaryTaskRecord()) } }
 
 internal fun YomitoriDatabase.countPreparedSummaryArticleContentsForActiveTasks(): Int =

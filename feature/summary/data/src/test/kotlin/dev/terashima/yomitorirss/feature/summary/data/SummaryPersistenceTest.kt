@@ -43,12 +43,15 @@ class SummaryPersistenceTest {
   }
 
   @Test
-  fun `表示上限を超える待機タスクも集計する`() {
+  fun `表示上限を超える待機タスクも実行候補と集計に含める`() {
     repeat(206) { index ->
       val articleId = "article-$index"
       insertArticle(articleId)
       database.enqueueSummaryTask(articleId, forceRefresh = false)
     }
+
+    assertEquals(206, database.listSummaryContentFetchCandidates().size)
+
     val completed = checkNotNull(database.claimNextSummaryTask())
     database.completeRunningSummaryTask(completed.articleId)
 

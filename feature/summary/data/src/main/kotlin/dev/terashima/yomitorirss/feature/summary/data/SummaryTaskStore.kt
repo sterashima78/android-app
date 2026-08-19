@@ -65,10 +65,10 @@ internal fun YomitoriDatabase.listSummaryTasks(): List<SummaryTaskRecord> = read
   null,
 ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.summaryTaskRecord()) } }
 
-internal fun YomitoriDatabase.listInferenceReadySummaryTasks(limit: Int = 200): List<SummaryTaskRecord> =
+internal fun YomitoriDatabase.listInferenceReadySummaryTasks(): List<SummaryTaskRecord> =
   readableDatabase.rawQuery(
-    "SELECT q.* FROM summary_tasks q WHERE q.state=? AND ${summaryInferenceReadyWhereClause()} ORDER BY q.queued_at ASC LIMIT ?",
-    arrayOf(SUMMARY_QUEUED, limit.toString()),
+    "SELECT q.* FROM summary_tasks q WHERE q.state=? AND ${summaryInferenceReadyWhereClause()} ORDER BY q.queued_at ASC",
+    arrayOf(SUMMARY_QUEUED),
   ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.summaryTaskRecord()) } }
 
 internal fun YomitoriDatabase.claimSummaryTask(articleId: String, requireInferenceReady: Boolean = true): SummaryTaskRecord? {
@@ -103,7 +103,7 @@ internal fun YomitoriDatabase.claimNextSummaryTask(): SummaryTaskRecord? =
   }
 
 internal fun YomitoriDatabase.claimNextInferenceReadySummaryTask(): SummaryTaskRecord? =
-  listInferenceReadySummaryTasks(limit = 1).firstOrNull()?.let { claimSummaryTask(it.articleId) }
+  listInferenceReadySummaryTasks().firstOrNull()?.let { claimSummaryTask(it.articleId) }
 
 internal fun summaryInferenceReadyWhereClause(alias: String = "q"): String =
   """
