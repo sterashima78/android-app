@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss
 
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
+import dev.terashima.yomitorirss.feature.bookmark.SaveSharedBookmarkUseCase
 
 interface MainActivityDependenciesProvider {
   val mainActivityDependencies: MainActivityDependencies
@@ -9,16 +9,11 @@ interface MainActivityDependenciesProvider {
 
 class MainActivityDependencies internal constructor(
   val routeDependencies: AppRouteDependencies,
-  private val bookmarkRepository: BookmarkRepository,
-  private val onBookmarkChanged: () -> Unit,
+  private val saveSharedBookmark: SaveSharedBookmarkUseCase,
 ) {
   suspend fun saveSharedArticle(
     url: String,
     title: String,
     sourceTitle: String,
-  ): BookmarkSaveResult = bookmarkRepository.saveSharedArticle(url, title, sourceTitle)
-
-  fun scheduleBackupAfterBookmarkChange() {
-    onBookmarkChanged()
-  }
+  ): BookmarkSaveResult = saveSharedBookmark(url, title, sourceTitle)
 }
