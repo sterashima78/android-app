@@ -25,6 +25,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkContentQuery
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.bookmark.SaveSharedBookmarkUseCase
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkContentQuery
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
@@ -34,9 +35,14 @@ import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
+import dev.terashima.yomitorirss.feature.knowledge.BuildKnowledgeUseCase
+import dev.terashima.yomitorirss.feature.knowledge.CreateKnowledgePageUseCase
+import dev.terashima.yomitorirss.feature.knowledge.EditKnowledgePageUseCase
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
+import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeGenerationService
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.ManagingKnowledgeRepository
+import dev.terashima.yomitorirss.feature.knowledge.data.SqlKnowledgePageStore
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
@@ -55,6 +61,8 @@ import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
 import dev.terashima.yomitorirss.feature.rss.data.RssContentClassificationSourceQuery
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.data.DefaultAiModelRepository
+import dev.terashima.yomitorirss.feature.summary.BackfillBookmarkAutoEnrichmentUseCase
+import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryRepository
@@ -110,24 +118,21 @@ class AppContainer(private val application: Application) {
   val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAssetRepository(application, databaseConnection)
   }
+  private val bookmarkAutoEnrichmentUseCase: BookmarkAutoEnrichmentUseCase by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    BookmarkAutoEnrichmentUseCase(
+      articleRepository = articleRepository,
+      enrichmentRequester = summaryRepository,
+    )
+  }
   val bookmarkRepository: BookmarkRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkRepository(
       database = databaseConnection,
       articleRepository = articleRepository,
       articleGateway = bookmarkArticleGateway,
       dataChanges = dataChanges,
-      onBookmarkAdded = { articleId ->
-        val source = articleRepository.findArticle(articleId)
-        if (
-          source != null && shouldRequestBookmarkEnrichment(
-            url = source.url,
-            sourceFeedUrl = source.sourceFeedUrl,
-            contentType = source.effectiveContentType,
-          )
-        ) {
-          summaryRepository.requestBookmarkEnrichment(articleId)
-        }
-      },
+      onBookmarkAdded = bookmarkAutoEnrichmentUseCase::invoke,
     )
   }
   val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -168,6 +173,12 @@ class AppContainer(private val application: Application) {
   }
   val backupChangeScheduler: BackupChangeScheduler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AndroidBackupChangeScheduler(application)
+  }
+  val saveSharedBookmarkUseCase: SaveSharedBookmarkUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SaveSharedBookmarkUseCase(
+      saver = bookmarkRepository,
+      onBookmarkChanged = backupChangeScheduler::scheduleAfterChange,
+    )
   }
   val widgetRepository: WidgetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultWidgetRepository(
@@ -222,6 +233,14 @@ class AppContainer(private val application: Application) {
   val summaryRepository: SummaryRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultSummaryRepository(application, database, modelManager)
   }
+  val backfillBookmarkAutoEnrichmentUseCase: BackfillBookmarkAutoEnrichmentUseCase by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    BackfillBookmarkAutoEnrichmentUseCase(
+      bookmarks = bookmarkRepository,
+      enrichmentRequester = summaryRepository,
+    )
+  }
   val summaryTaskQueueRepository: SummaryTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultSummaryTaskQueueRepository(
       context = application,
@@ -230,17 +249,35 @@ class AppContainer(private val application: Application) {
       bookmarkContentQuery = bookmarkContentQuery,
     )
   }
+  private val knowledgePageStore: SqlKnowledgePageStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SqlKnowledgePageStore(databaseConnection, dataChanges)
+  }
+  private val knowledgeReader by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultKnowledgeRepository(knowledgePageStore)
+  }
   val knowledgeRepository: KnowledgeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ManagingKnowledgeRepository(
-      delegate = DefaultKnowledgeRepository(
-        database = databaseConnection,
-        bookmarkRepository = bookmarkRepository,
-        summaryRepository = summaryRepository,
-        modelManager = modelManager,
-      ),
+      delegate = knowledgeReader,
       database = databaseConnection,
       dataChanges = dataChanges,
     )
+  }
+  private val knowledgeGenerationService by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultKnowledgeGenerationService(
+      store = knowledgePageStore,
+      bookmarks = bookmarkRepository,
+      summaries = summaryRepository,
+      modelManager = modelManager,
+    )
+  }
+  val buildKnowledgeUseCase: BuildKnowledgeUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    BuildKnowledgeUseCase(knowledgeGenerationService)
+  }
+  val createKnowledgePageUseCase: CreateKnowledgePageUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    CreateKnowledgePageUseCase(knowledgeGenerationService)
+  }
+  val editKnowledgePageUseCase: EditKnowledgePageUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    EditKnowledgePageUseCase(knowledgeGenerationService)
   }
   val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     CompositeAiTaskQueueRepository(
