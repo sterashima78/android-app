@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
@@ -25,14 +24,12 @@ import java.time.LocalDate
 @Composable
 internal fun SettingsRoute(
   modifier: Modifier,
-  bookmarkViewModel: BookmarkViewModel,
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   aiTaskQueueRepository: AiTaskQueueRepository,
   onOpenWebServer: () -> Unit,
   onNavigate: (MainTab) -> Unit,
 ) {
-  val bookmarkState by bookmarkViewModel.state.collectAsState()
   val backupState by backupViewModel.state.collectAsState()
   val aiState by aiSettingsViewModel.state.collectAsState()
   var showModels by remember { mutableStateOf(false) }
@@ -45,12 +42,6 @@ internal fun SettingsRoute(
   val importLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.OpenDocument(),
   ) { uri -> uri?.toString()?.let(backupViewModel::importBackup) }
-  val bookmarkCsvImportLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.OpenDocument(),
-  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importCsv) }
-  val bookmarkHtmlImportLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.OpenDocument(),
-  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importHtml) }
   val backupFolderLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.OpenDocumentTree(),
   ) { uri -> uri?.toString()?.let(backupViewModel::configureGoogleDrive) }
@@ -61,27 +52,10 @@ internal fun SettingsRoute(
       backupViewModel.consumeRestoreCompleted()
     }
   }
-  LaunchedEffect(bookmarkState.importCompleted) {
-    if (bookmarkState.importCompleted) {
-      onNavigate(MainTab.SAVED)
-      bookmarkViewModel.consumeImportCompleted()
-    }
-  }
 
   SettingsScreen(
     modifier = modifier,
-    tagCount = bookmarkState.tags.size,
     aiTaskQueueRepository = aiTaskQueueRepository,
-    onImportBookmarkCsv = {
-      bookmarkCsvImportLauncher.launch(
-        arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
-      )
-    },
-    onImportBookmarkHtml = {
-      bookmarkHtmlImportLauncher.launch(
-        arrayOf("text/html", "application/xhtml+xml", "text/plain"),
-      )
-    },
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
       showModels = true
