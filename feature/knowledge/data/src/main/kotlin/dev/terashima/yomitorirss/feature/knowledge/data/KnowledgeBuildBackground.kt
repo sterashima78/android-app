@@ -179,7 +179,7 @@ internal class KnowledgeBuildWorker(
 
         val provider = applicationContext as? KnowledgeRepositoryProvider
           ?: error("ナレッジリポジトリの初期化状態を取得できませんでした")
-        provider.buildKnowledgeUseCase()
+        provider.knowledgeBuilder.rebuild()
         state.complete()
         Result.success()
       }
