@@ -12,7 +12,6 @@ class BookmarkUiStateTest {
 
     assertFalse(state.initialized)
     assertTrue(state.saved.isEmpty())
-    assertTrue(state.history.isEmpty())
     assertTrue(state.folders.isEmpty())
     assertTrue(state.tags.isEmpty())
     assertNull(state.selectedFolderId)

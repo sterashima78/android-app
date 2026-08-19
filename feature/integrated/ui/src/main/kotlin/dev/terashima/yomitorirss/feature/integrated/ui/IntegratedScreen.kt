@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Star
@@ -60,6 +61,7 @@ import java.time.format.DateTimeFormatter
 enum class IntegratedTab(val label: String) {
   UNREAD("未読"),
   READ_LATER("あとで読む"),
+  HISTORY("履歴"),
 }
 
 enum class IntegratedSource(val label: String) {
@@ -87,6 +89,7 @@ data class IntegratedItemAction(
 
 internal enum class IntegratedSwipeOperation {
   MARK_PROCESSED,
+  MARK_UNREAD,
   SAVE,
   DEFER,
   UNSAVE,
@@ -123,6 +126,7 @@ fun IntegratedScreen(
   onSelectTab: (IntegratedTab) -> Unit,
   onRefresh: () -> Unit,
   onMarkProcessed: (IntegratedItem) -> Unit,
+  onMarkUnread: (IntegratedItem) -> Unit,
   onSave: (IntegratedItem) -> Unit,
   onDefer: (IntegratedItem) -> Unit,
   onUnsave: (IntegratedItem) -> Unit,
@@ -176,6 +180,7 @@ fun IntegratedScreen(
               item = item,
               tab = selectedTab,
               onMarkProcessed = { onMarkProcessed(item) },
+              onMarkUnread = { onMarkUnread(item) },
               onSave = { onSave(item) },
               onDefer = { onDefer(item) },
               onUnsave = { onUnsave(item) },
@@ -207,6 +212,7 @@ fun IntegratedScreen(
               imageVector = when (tab) {
                 IntegratedTab.UNREAD -> Icons.Default.RssFeed
                 IntegratedTab.READ_LATER -> Icons.Default.AccessTime
+                IntegratedTab.HISTORY -> Icons.Default.History
               },
               contentDescription = tab.label,
             )
@@ -231,13 +237,18 @@ private fun InboxSummary(total: Int, tab: IntegratedTab) {
     ) {
       Column(modifier = Modifier.weight(1f)) {
         Text(
-          text = if (tab == IntegratedTab.UNREAD) "未処理" else "あとで読む",
+          text = when (tab) {
+            IntegratedTab.UNREAD -> "未処理"
+            IntegratedTab.READ_LATER -> "あとで読む"
+            IntegratedTab.HISTORY -> "履歴"
+          },
           style = MaterialTheme.typography.labelLarge,
         )
         Text(
           text = when (tab) {
             IntegratedTab.UNREAD -> if (total == 0) "インボックスゼロ" else "$total 件を仕分けできます"
             IntegratedTab.READ_LATER -> if (total == 0) "保留中のアイテムはありません" else "$total 件をあとで確認できます"
+            IntegratedTab.HISTORY -> if (total == 0) "履歴はありません" else "$total 件の履歴があります"
           },
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.SemiBold,
@@ -286,6 +297,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   item: IntegratedItem,
   tab: IntegratedTab,
   onMarkProcessed: () -> Unit,
+  onMarkUnread: () -> Unit,
   onSave: () -> Unit,
   onDefer: () -> Unit,
   onUnsave: () -> Unit,
@@ -300,6 +312,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   val onOperation: (IntegratedSwipeOperation) -> Unit = { operation ->
     when (operation) {
       IntegratedSwipeOperation.MARK_PROCESSED -> onMarkProcessed()
+      IntegratedSwipeOperation.MARK_UNREAD -> onMarkUnread()
       IntegratedSwipeOperation.SAVE -> onSave()
       IntegratedSwipeOperation.DEFER -> onDefer()
       IntegratedSwipeOperation.UNSAVE -> onUnsave()
@@ -365,7 +378,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
             )
           }
         }
-        if (item.source == IntegratedSource.MAIL) {
+        if (item.source == IntegratedSource.MAIL && tab != IntegratedTab.HISTORY) {
           IconButton(
             onClick = if (tab == IntegratedTab.UNREAD) onDefer else onRemoveDeferred,
           ) {
@@ -475,6 +488,18 @@ internal fun integratedSwipeActions(
     )
     IntegratedSource.ALL -> noSwipeActions()
   }
+
+  IntegratedTab.HISTORY -> when (item.source) {
+    IntegratedSource.RSS,
+    IntegratedSource.REDDIT,
+    IntegratedSource.YOUTUBE,
+    IntegratedSource.MAIL -> IntegratedSwipeActions(
+      left = null,
+      right = IntegratedSwipeActionSpec("未読に戻す", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.MARK_UNREAD),
+      farRight = null,
+    )
+    IntegratedSource.ALL -> noSwipeActions()
+  }
 }
 
 private fun noSwipeActions() = IntegratedSwipeActions(left = null, right = null, farRight = null)
@@ -489,6 +514,11 @@ private fun emptyMessage(tab: IntegratedTab, source: IntegratedSource): String =
     "あとで読むアイテムはありません"
   } else {
     "${source.label} のあとで読むアイテムはありません"
+  }
+  IntegratedTab.HISTORY -> if (source == IntegratedSource.ALL) {
+    "履歴はありません"
+  } else {
+    "${source.label} の履歴はありません"
   }
 }
 

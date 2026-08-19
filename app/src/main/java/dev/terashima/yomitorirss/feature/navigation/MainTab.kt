@@ -8,7 +8,6 @@ enum class MainTab(val label: String) {
   REDDIT_READ_LATER("あとで読む"),
   REDDIT_SUBSCRIPTIONS("購読管理"),
   SAVED("ブックマーク"),
-  HISTORY("履歴"),
   FEEDS("フィード管理"),
   FOLDERS("フォルダ"),
   TAGS("タグ"),

@@ -83,6 +83,48 @@ class IntegratedRouteAdapterTest {
   }
 
   @Test
+  fun `履歴を各機能から新しい順に統合し記事は既読日時を優先する`() {
+    val rss = article("rss-history", "2026-08-11T09:00:00Z").copy(readAt = "2026-08-11T17:00:00Z")
+    val reddit = article("reddit-history", "2026-08-11T10:00:00Z").copy(readAt = "2026-08-11T14:00:00Z")
+    val youtube = youtube("youtube-history", "2026-08-11T15:00:00Z", isRead = true)
+    val mail = mail("mail-history", "2026-08-11T16:00:00Z", isUnread = false)
+
+    val entries = integratedEntries(
+      rssState = RssUiState(initialized = true, history = listOf(rss)),
+      redditState = RedditUiState(initialized = true, history = listOf(reddit)),
+      youtubeState = YouTubeUiState(initialized = true, history = listOf(youtube)),
+      mailState = MailUiState(
+        initialized = true,
+        accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
+        threads = listOf(mail),
+      ),
+      tab = IntegratedTab.HISTORY,
+    )
+
+    assertEquals(
+      listOf(IntegratedSource.RSS, IntegratedSource.MAIL, IntegratedSource.YOUTUBE, IntegratedSource.REDDIT),
+      entries.map { it.item.source },
+    )
+    assertEquals(Instant.parse("2026-08-11T17:00:00Z").toEpochMilli(), entries.first().item.timestamp)
+  }
+
+  @Test
+  fun `履歴には未読メールと受信トレイ外メールを含めない`() {
+    val unread = mail("unread", "2026-08-11T10:00:00Z", isUnread = true)
+    val archivedRead = mail("archived-read", "2026-08-11T11:00:00Z", isUnread = false, isInInbox = false)
+
+    val entries = integratedEntries(
+      rssState = RssUiState(initialized = true),
+      redditState = RedditUiState(initialized = true),
+      youtubeState = YouTubeUiState(initialized = true),
+      mailState = MailUiState(initialized = true, threads = listOf(unread, archivedRead)),
+      tab = IntegratedTab.HISTORY,
+    )
+
+    assertFalse(entries.isNotEmpty())
+  }
+
+  @Test
   fun `非表示中の記事と未読受信トレイ外のメールは統合しない`() {
     val hidden = article("hidden", "2026-08-11T09:00:00Z")
     val archivedUnread = mail("archived", "2026-08-11T09:00:00Z", isUnread = true, isInInbox = false)
@@ -178,6 +220,7 @@ class IntegratedRouteAdapterTest {
     id: String,
     publishedAt: String,
     isWatchLater: Boolean = false,
+    isRead: Boolean = false,
   ) = YouTubeVideo(
     id = id,
     channelId = "channel",
@@ -185,7 +228,7 @@ class IntegratedRouteAdapterTest {
     title = "YouTube",
     url = "https://example.com/$id",
     publishedAtEpochMillis = Instant.parse(publishedAt).toEpochMilli(),
-    isRead = false,
+    isRead = isRead,
     isWatchLater = isWatchLater,
   )
 

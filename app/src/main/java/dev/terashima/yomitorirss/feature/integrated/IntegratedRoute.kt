@@ -73,6 +73,7 @@ fun IntegratedRoute(
       when (selectedTab) {
         IntegratedTab.UNREAD -> Mailbox.UNREAD
         IntegratedTab.READ_LATER -> Mailbox.READ_LATER
+        IntegratedTab.HISTORY -> Mailbox.INBOX
       },
     )
   }
@@ -124,6 +125,15 @@ fun IntegratedRoute(
             is IntegratedTarget.Rss -> rssViewModel.markRead(target.article)
             is IntegratedTarget.Reddit -> redditViewModel.markRead(target.article)
             is IntegratedTarget.YouTube -> youtubeViewModel.markRead(target.video)
+            is IntegratedTarget.Mail -> mailViewModel.toggleRead(target.thread)
+            null -> Unit
+          }
+        },
+        onMarkUnread = { item ->
+          when (val target = targetsByKey[item.key]) {
+            is IntegratedTarget.Rss -> rssViewModel.markUnread(target.article)
+            is IntegratedTarget.Reddit -> redditViewModel.markUnread(target.article)
+            is IntegratedTarget.YouTube -> youtubeViewModel.markUnread(target.video)
             is IntegratedTarget.Mail -> mailViewModel.toggleRead(target.thread)
             null -> Unit
           }
@@ -250,11 +260,29 @@ internal fun integratedEntries(
           .filter(MailThread::isReadLater)
           .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
       }
+
+      IntegratedTab.HISTORY -> {
+        rssState.history
+          .filterNot { it.id in rssState.hiddenArticleIds }
+          .forEach {
+            add(articleEntry(it, IntegratedSource.RSS, IntegratedTarget.Rss(it), it.historyTimeMillis()))
+          }
+        redditState.history
+          .filterNot { it.id in redditState.hiddenArticleIds }
+          .forEach {
+            add(articleEntry(it, IntegratedSource.REDDIT, IntegratedTarget.Reddit(it), it.historyTimeMillis()))
+          }
+        youtubeState.history.forEach { video -> add(youtubeEntry(video)) }
+        mailState.threads
+          .filter { !it.isUnread && it.isInInbox }
+          .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
+      }
     }
   }
   return when (tab) {
     IntegratedTab.UNREAD -> entries.sortedByDescending { it.item.timestamp }
     IntegratedTab.READ_LATER -> entries.sortedBy { it.item.timestamp }
+    IntegratedTab.HISTORY -> entries.sortedByDescending { it.item.timestamp }
   }
 }
 
@@ -305,13 +333,14 @@ private fun articleEntry(
   article: Article,
   source: IntegratedSource,
   target: IntegratedTarget,
+  timestamp: Long = article.eventTimeMillis(),
 ): IntegratedEntry = IntegratedEntry(
   item = IntegratedItem(
     key = "${source.name.lowercase()}:${article.id}",
     source = source,
     title = article.title,
     subtitle = article.sourceTitle,
-    timestamp = article.eventTimeMillis(),
+    timestamp = timestamp,
   ),
   target = target,
 )
@@ -350,6 +379,12 @@ private fun mailEntry(thread: MailThread, accountLabel: String): IntegratedEntry
 private fun Article.eventTimeMillis(): Long =
   sequenceOf(publishedAt, fetchedAt)
     .mapNotNull { value -> runCatching { Instant.parse(value).toEpochMilli() }.getOrNull() }
+    .firstOrNull()
+    ?: 0L
+
+private fun Article.historyTimeMillis(): Long =
+  sequenceOf(readAt, publishedAt, fetchedAt)
+    .mapNotNull { value -> value?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() } }
     .firstOrNull()
     ?: 0L
 

@@ -29,6 +29,10 @@ class DefaultYouTubeRepository(
     database.listWatchLaterVideos()
   }
 
+  override suspend fun listHistoryVideos(): List<YouTubeVideo> = withContext(Dispatchers.IO) {
+    database.listHistoryVideos()
+  }
+
   override suspend fun subscribe(channelUrl: String): YouTubeChannel = withContext(Dispatchers.IO) {
     val requestedChannelId = YouTubeChannelUrl.channelId(channelUrl)
     val feed = fetchFeed(requestedChannelId)
@@ -56,6 +60,10 @@ class DefaultYouTubeRepository(
 
   override suspend fun markRead(videoId: String) = withContext(Dispatchers.IO) {
     database.markRead(videoId)
+  }
+
+  override suspend fun markUnread(videoId: String) = withContext(Dispatchers.IO) {
+    database.markUnread(videoId)
   }
 
   override suspend fun setWatchLater(videoId: String, watchLater: Boolean) = withContext(Dispatchers.IO) {
