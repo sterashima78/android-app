@@ -39,30 +39,39 @@ internal class YouTubeDatabase(
     whereClause = "v.is_watch_later = 1",
   )
 
-  private fun listVideos(whereClause: String): List<YouTubeVideo> = database.readable.rawQuery(
-    """
-    SELECT v.video_id, v.channel_id, c.title, v.title, v.video_url, v.published_at, v.is_read, v.is_watch_later
-    FROM videos v
-    JOIN channels c ON c.channel_id = v.channel_id
-    WHERE $whereClause
-    ORDER BY v.published_at DESC
-    """.trimIndent(),
-    null,
-  ).use { cursor ->
-    buildList {
-      while (cursor.moveToNext()) {
-        add(
-          YouTubeVideo(
-            id = cursor.getString(0),
-            channelId = cursor.getString(1),
-            channelTitle = cursor.getString(2),
-            title = cursor.getString(3),
-            url = cursor.getString(4),
-            publishedAtEpochMillis = cursor.getLong(5),
-            isRead = cursor.getInt(6) != 0,
-            isWatchLater = cursor.getInt(7) != 0,
-          ),
-        )
+  fun listHistoryVideos(): List<YouTubeVideo> = listVideos(
+    whereClause = "v.is_read = 1 AND v.is_watch_later = 0",
+    limit = 500,
+  )
+
+  private fun listVideos(whereClause: String, limit: Int? = null): List<YouTubeVideo> {
+    val limitClause = limit?.let { "LIMIT $it" }.orEmpty()
+    return database.readable.rawQuery(
+      """
+      SELECT v.video_id, v.channel_id, c.title, v.title, v.video_url, v.published_at, v.is_read, v.is_watch_later
+      FROM videos v
+      JOIN channels c ON c.channel_id = v.channel_id
+      WHERE $whereClause
+      ORDER BY v.published_at DESC
+      $limitClause
+      """.trimIndent(),
+      null,
+    ).use { cursor ->
+      buildList {
+        while (cursor.moveToNext()) {
+          add(
+            YouTubeVideo(
+              id = cursor.getString(0),
+              channelId = cursor.getString(1),
+              channelTitle = cursor.getString(2),
+              title = cursor.getString(3),
+              url = cursor.getString(4),
+              publishedAtEpochMillis = cursor.getLong(5),
+              isRead = cursor.getInt(6) != 0,
+              isWatchLater = cursor.getInt(7) != 0,
+            ),
+          )
+        }
       }
     }
   }
@@ -120,6 +129,14 @@ internal class YouTubeDatabase(
   fun markRead(videoId: String) {
     val values = ContentValues().apply {
       put("is_read", 1)
+      put("is_watch_later", 0)
+    }
+    database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
+  }
+
+  fun markUnread(videoId: String) {
+    val values = ContentValues().apply {
+      put("is_read", 0)
       put("is_watch_later", 0)
     }
     database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
