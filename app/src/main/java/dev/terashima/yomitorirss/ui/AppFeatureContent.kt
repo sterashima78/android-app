@@ -18,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,7 +75,6 @@ internal fun AppFeatureContent(
   val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
   val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
   val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
-  val bookmarkState by bookmarkViewModel.state.collectAsState()
   val mailViewModel: MailViewModel = viewModel(factory = routeDependencies.mailViewModelFactory)
   val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
   val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
@@ -97,12 +95,6 @@ internal fun AppFeatureContent(
     if (selectedTab == MainTab.SAVED) {
       bookmarkViewModel.selectTag(null)
       bookmarkViewModel.selectFolder(null)
-    }
-  }
-  LaunchedEffect(bookmarkState.importCompleted) {
-    if (bookmarkState.importCompleted) {
-      appViewModel.selectTab(MainTab.SAVED)
-      bookmarkViewModel.consumeImportCompleted()
     }
   }
 
@@ -165,6 +157,7 @@ internal fun AppFeatureContent(
           arrayOf("text/html", "application/xhtml+xml", "text/plain"),
         )
       },
+      onImportCompleted = { appViewModel.selectTab(MainTab.SAVED) },
     )
 
     MainTab.LIBRARY -> LibraryRoute(
