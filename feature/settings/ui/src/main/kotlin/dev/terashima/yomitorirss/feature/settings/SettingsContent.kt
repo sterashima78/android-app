@@ -34,7 +34,6 @@ fun SettingsContent(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
-  onOpenXCss: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
@@ -73,17 +72,6 @@ fun SettingsContent(
         icon = Icons.Default.UploadFile,
         title = "HTMLからインポート",
         onClick = onImportBookmarkHtml,
-      )
-    }
-    item { SettingsDivider() }
-
-    item { SettingsHeader("X") }
-    item {
-      SettingsRow(
-        icon = Icons.Default.Edit,
-        title = "カスタム CSS",
-        supporting = "CSS の有効化・編集・デフォルト復元",
-        onClick = onOpenXCss,
       )
     }
     item { SettingsDivider() }
