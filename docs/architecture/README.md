@@ -11,6 +11,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [context-map.md](context-map.md): Domain Context と Context 間関係
 - [persistence.md](persistence.md): schema・table access・migration ownership
 - [testing.md](testing.md): テスト責務と architecture verification
+- [platform.md](platform.md): Android runtime / SDK の現在の基準
 - [glossary.md](glossary.md): ubiquitous language とアーキテクチャ用語
 - [../adr/README.md](../adr/README.md): Decision Log の読み方と主要 ADR の索引
 - [../spec.md](../spec.md): ユーザーから見たアプリ仕様
@@ -59,3 +60,4 @@ Architecture document の規範的な節には末尾の `Sources` で根拠 ADR 
 - [ADR-0055](../adr/0055-adr-numbering-policy.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
+- [ADR-0125](../adr/0125-android-platform-baseline.md)

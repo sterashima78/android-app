@@ -6,7 +6,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import dev.terashima.yomitorirss.feature.widget.ui.R
@@ -120,8 +119,7 @@ private fun updateWidget(
     action = UnreadArticlesWidgetProvider.ACTION_ITEM
     putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
   }
-  val itemFlags = PendingIntent.FLAG_UPDATE_CURRENT or
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+  val itemFlags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
   views.setPendingIntentTemplate(
     R.id.unread_widget_list,
     PendingIntent.getBroadcast(context, appWidgetId, itemIntent, itemFlags),

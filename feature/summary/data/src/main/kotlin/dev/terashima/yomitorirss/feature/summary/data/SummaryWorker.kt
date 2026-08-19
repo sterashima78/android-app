@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -166,8 +165,11 @@ class SummaryWorker(appContext: Context, params: WorkerParameters) : CoroutineWo
     applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.let { launchIntent ->
       PendingIntent.getActivity(applicationContext, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }?.let(notificationBuilder::setContentIntent)
-    val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
-    return ForegroundInfo(NOTIFICATION_ID, notificationBuilder.build(), serviceType)
+    return ForegroundInfo(
+      NOTIFICATION_ID,
+      notificationBuilder.build(),
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+    )
   }
 
   companion object {
