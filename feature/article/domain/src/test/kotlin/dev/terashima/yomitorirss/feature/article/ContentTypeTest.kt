@@ -1,7 +1,5 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.feature.article
 
-import dev.terashima.yomitorirss.feature.article.ContentType
-import dev.terashima.yomitorirss.feature.article.resolveContentType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

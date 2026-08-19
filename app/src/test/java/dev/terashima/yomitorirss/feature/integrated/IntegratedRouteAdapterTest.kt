@@ -19,7 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
 
-class IntegratedScreenTest {
+class IntegratedRouteAdapterTest {
   @Test
   fun `各機能の未処理アイテムを時刻の新しい順に統合する`() {
     val rss = article("rss", "2026-08-11T09:00:00Z")
@@ -143,7 +143,10 @@ class IntegratedScreenTest {
       listOf("はてなブックマークコメントを見る", "スレッドの購読を解除"),
       actionLabels(IntegratedTarget.Reddit(redditArticle), redditState),
     )
-    assertEquals(emptyList<String>(), actionLabels(IntegratedTarget.YouTube(youtube("youtube", "2026-08-11T11:00:00Z")), redditState))
+    assertEquals(
+      emptyList<String>(),
+      actionLabels(IntegratedTarget.YouTube(youtube("youtube", "2026-08-11T11:00:00Z")), redditState),
+    )
   }
 
   private fun actionLabels(
