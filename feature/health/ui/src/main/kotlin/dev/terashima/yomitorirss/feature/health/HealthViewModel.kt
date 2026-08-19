@@ -8,6 +8,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,6 +82,8 @@ class HealthViewModel(
           period = selectedPeriod,
           overview = repository.readOverview(start, end),
         )
+      } catch (error: CancellationException) {
+        throw error
       } catch (_: SecurityException) {
         _state.value = HealthUiState.PermissionRequired
       } catch (error: Exception) {

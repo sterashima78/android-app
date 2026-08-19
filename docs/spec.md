@@ -1,7 +1,7 @@
 # Android RSSリーダー仕様書
 
-- 文書バージョン: 0.2.2
-- 更新日: 2026-08-15
+- 文書バージョン: 0.2.3
+- 更新日: 2026-08-19
 - 状態: Kotlinネイティブ版
 
 ## 1. 目的
@@ -19,8 +19,8 @@
 
 ## 2. 対象環境
 
-- 対象OS: Android 10（API 29）以降
-- ターゲットAPI: Android API 37
+- 対象OS: Android 14（API 34）以降
+- compile/target API: Android API 36
 - 対象CPU: arm64-v8a
 - 対象端末: Androidスマートフォン
 - 画面方向: 縦向きのみ
@@ -41,6 +41,7 @@
 | HTTP | OkHttp |
 | XML・HTML解析 | jsoup |
 | 端末内AI | Gemma 4、LiteRT-LM |
+| 健康データ | Health Connect（読み取り専用） |
 | バックアップ | Storage Access Framework、UTF-8 JSON |
 
 Expo、React Native、JavaScriptランタイム、Metro、EASは使用しない。
@@ -54,6 +55,7 @@ Expo、React Native、JavaScriptランタイム、Metro、EASは使用しない�
 | あとで読む | 専用タグが付いた保存記事を処理する |
 | 履歴 | 過去30日間の既読記事を確認する |
 | フィード | フィードの追加、更新状態確認、削除を行う |
+| ヘルス | Health Connect の歩数・運動・心拍・睡眠・体重を確認する |
 
 補助ダイアログとして、タグ管理、記事タグ編集、要約モデル管理、要約結果、フィード候補選択を提供する。
 
@@ -236,7 +238,15 @@ Expo版が使用していた `files/SQLite/yomitori-rss.db` からAndroid標準D
 - 横向き表示
 - ライトテーマ
 
-## 14. ビルドと配布
+## 14. Health Connect
+
+- Health Connect から歩数、運動セッション、心拍、睡眠、体重を読み取り専用で参照する。
+- 表示期間は今日、直近7日、直近30日とする。
+- Health Connect 由来データはアプリ DB に保存せず、バックアップ、AI 処理、外部サービスへ送信しない。
+- バックグラウンド読み取り権限と30日を超える履歴権限は要求しない。
+- Health Connect とアプリ内ワークアウト記録は別データとして扱い、自動同期しない。
+
+## 15. ビルドと配布
 
 - JDK 17を使用する
 - Android Gradle Plugin 9.3系とGradle 9.5系を使用する
