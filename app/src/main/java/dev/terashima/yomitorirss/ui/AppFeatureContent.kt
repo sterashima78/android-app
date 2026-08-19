@@ -131,8 +131,7 @@ internal fun AppFeatureContent(
 
     MainTab.SAVED,
     MainTab.FOLDERS,
-    MainTab.TAGS,
-    MainTab.HISTORY -> BookmarkRoute(
+    MainTab.TAGS -> BookmarkRoute(
       modifier = modifier,
       tab = requireNotNull(selectedTab.bookmarkTab()),
       bookmarkViewModel = bookmarkViewModel,
