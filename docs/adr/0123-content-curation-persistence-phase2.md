@@ -1,4 +1,4 @@
-# ADR-0122: Content / Curation 永続化境界の第二段階を完了する
+# ADR-0123: Content / Curation 永続化境界の第二段階を完了する
 
 - Status: Accepted
 - Date: 2026-08-19
@@ -13,6 +13,8 @@ ADR-0106 では ContentItem（現 Article）と Bookmark を別 Aggregate とし
 - Summary が Article metadata と Read Later membership を直接 SQL で読む。
 - RSS FeedStore が Content rows を直接作成・更新・削除する。
 - Summary の永続化 helper が summary、task lifecycle、prepared content、Content read model を一つのファイルで所有する。
+
+ADR-0122 により current architecture の正本が `docs/architecture/` に整理されたため、本判断と同じ変更で current Context Map / persistence documentation も更新する。
 
 ## Decision
 
