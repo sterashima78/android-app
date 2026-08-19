@@ -17,6 +17,7 @@ import org.robolectric.RobolectricTestRunner
 class BookmarkTagStoreTest {
   private lateinit var helper: SQLiteOpenHelper
   private lateinit var database: DatabaseConnection
+  private lateinit var stateStore: BookmarkStateStore
   private lateinit var tagStore: BookmarkTagStore
   private lateinit var associationStore: BookmarkAssociationStore
 
@@ -47,6 +48,7 @@ class BookmarkTagStoreTest {
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
     database = DatabaseConnection(helper)
+    stateStore = BookmarkStateStore(database)
     tagStore = BookmarkTagStore(database)
     associationStore = BookmarkAssociationStore(database)
   }
@@ -73,7 +75,8 @@ class BookmarkTagStoreTest {
     )
 
     val deletedCount = database.transaction {
-      val associatedTagIds = associationStore.listAssociatedTagIds()
+      val bookmarkedArticleIds = stateStore.listBookmarkedArticleIds()
+      val associatedTagIds = associationStore.listAssociatedTagIds(bookmarkedArticleIds)
       val unusedTagIds = tagStore.listTags()
         .asSequence()
         .map(Tag::id)
