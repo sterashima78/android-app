@@ -10,7 +10,6 @@ import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
 import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
-import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
 @Composable
 fun SettingsScreen(
@@ -18,6 +17,7 @@ fun SettingsScreen(
   tagCount: Int,
   onImportBookmarkCsv: () -> Unit,
   onImportBookmarkHtml: () -> Unit,
+  onOpenXCss: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenDriveBackup: () -> Unit,
@@ -32,7 +32,6 @@ fun SettingsScreen(
   val initialBackgroundFetchWifiOnly = remember(backgroundDataFetchPreferences) {
     backgroundDataFetchPreferences.wifiOnly
   }
-  var showXCssSettings by remember { mutableStateOf(false) }
   var showAiTaskQueue by remember { mutableStateOf(false) }
 
   SettingsFeatureScreen(
@@ -45,7 +44,7 @@ fun SettingsScreen(
     },
     onImportBookmarkCsv = onImportBookmarkCsv,
     onImportBookmarkHtml = onImportBookmarkHtml,
-    onOpenXCss = { showXCssSettings = true },
+    onOpenXCss = onOpenXCss,
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     onOpenAiTaskQueue = { showAiTaskQueue = true },
@@ -54,10 +53,6 @@ fun SettingsScreen(
     onImportBackup = onImportBackup,
     onOpenWebServer = onOpenWebServer,
   )
-
-  if (showXCssSettings) {
-    XViewerCssSettingsSheet(onDismiss = { showXCssSettings = false })
-  }
 
   if (showAiTaskQueue) {
     AiTaskQueueRoute(onDismiss = { showAiTaskQueue = false })
