@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Amended by: ADR-0059, ADR-0098
+- Amended by: ADR-0059, ADR-0098, ADR-0106
 
 ## Context
 
@@ -112,3 +112,5 @@ ADR-0003 の「`:core:database` は汎用的な schema migration mechanism を�
 ADR-0059 はサポートする更新元のベースラインを version 12 へ進め、本 ADR に記録されていた過去 migration を廃止する。本 ADR の schema/migration ownership の決定は維持する。
 
 ADR-0098 は Task / Chat / YouTube に残っていた独立 SQLite database を `yomitori-rss.db` へ統合し、本 ADR の単一 database 方針を全 durable user data に適用する。
+
+ADR-0106 は本 ADR の schema/migration ownership を通常の persistence access ownership まで拡張し、他 Context 所有 table への直接 write を禁止する。単一 database 方針は維持する。

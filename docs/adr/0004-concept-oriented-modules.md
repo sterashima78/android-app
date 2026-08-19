@@ -4,6 +4,7 @@
 - Date: 2026-08-08
 - Updated: 2026-08-08
 - Amends: ADR-0003
+- Amended by: ADR-0106
 
 ## Context
 
