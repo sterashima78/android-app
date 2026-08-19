@@ -57,8 +57,4 @@ interface XViewerCssRepository {
   fun defaultCss(): String
 }
 
-interface XViewerCssRepositoryProvider {
-  val xViewerCssRepository: XViewerCssRepository
-}
-
 fun XViewerCssSettings.cssForInjection(): String = if (enabled) css else ""
