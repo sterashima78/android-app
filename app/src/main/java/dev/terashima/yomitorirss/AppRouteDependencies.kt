@@ -30,6 +30,8 @@ import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
+import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
+import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 class AppRouteDependencies internal constructor(
@@ -147,6 +149,10 @@ class AppRouteDependencies internal constructor(
 
   val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     WorkoutViewModel.Factory(container.workoutRepository)
+  }
+
+  val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SharedPreferencesXViewerCssRepository(application)
   }
 
   val youtubeViewModelFactory: YouTubeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
