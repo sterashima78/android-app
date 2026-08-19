@@ -432,11 +432,15 @@ internal fun YomitoriDatabase.stopSummaryTask(articleId: String): String? = tran
   allowedStates = setOf(SUMMARY_QUEUED, SUMMARY_RUNNING),
 )
 
-internal fun YomitoriDatabase.cancelSummaryTask(articleId: String): String? = transitionSummaryTask(
-  articleId = articleId,
-  targetState = SUMMARY_CANCELLED,
-  allowedStates = setOf(SUMMARY_QUEUED, SUMMARY_RUNNING, SUMMARY_STOPPED),
-)
+internal fun YomitoriDatabase.cancelSummaryTask(articleId: String): String? = transaction {
+  val previousState = transitionSummaryTaskInTransaction(
+    articleId = articleId,
+    targetState = SUMMARY_CANCELLED,
+    allowedStates = setOf(SUMMARY_QUEUED, SUMMARY_RUNNING, SUMMARY_STOPPED),
+  ) ?: return@transaction null
+  delete("summary_article_content", "article_id=?", arrayOf(articleId))
+  previousState
+}
 
 internal fun YomitoriDatabase.resumeSummaryTask(articleId: String): Boolean {
   return writableDatabase.update(
@@ -461,11 +465,19 @@ private fun YomitoriDatabase.transitionSummaryTask(
   targetState: String,
   allowedStates: Set<String>,
 ): String? = transaction {
+  transitionSummaryTaskInTransaction(articleId, targetState, allowedStates)
+}
+
+private fun SQLiteDatabase.transitionSummaryTaskInTransaction(
+  articleId: String,
+  targetState: String,
+  allowedStates: Set<String>,
+): String? {
   val currentState = rawQuery(
     "SELECT state FROM summary_tasks WHERE article_id=?",
     arrayOf(articleId),
   ).use { cursor -> if (!cursor.moveToFirst()) null else cursor.getString(0) }
-  if (currentState !in allowedStates) return@transaction null
+  if (currentState !in allowedStates) return null
 
   update(
     "summary_tasks",
@@ -480,7 +492,7 @@ private fun YomitoriDatabase.transitionSummaryTask(
     "article_id=?",
     arrayOf(articleId),
   )
-  currentState
+  return currentState
 }
 
 private inline fun <T> YomitoriDatabase.transaction(block: SQLiteDatabase.() -> T): T {
