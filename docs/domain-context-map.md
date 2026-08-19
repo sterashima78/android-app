@@ -1,6 +1,6 @@
 # Domain Context Map
 
-この文書は ADR-0106 と ADR-0121 に基づく現在の Domain model の作業用 Context Map である。
+この文書は ADR-0106 と ADR-0122 に基づく現在の Domain model の作業用 Context Map である。
 
 Gradle の `feature/<name>` は ownership / build boundary であり、Bounded Context や Aggregate と 1 対 1 で対応するとは限らない。
 
@@ -150,12 +150,12 @@ Foreign table write
 
 ## Current migration exception
 
-通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0121 で解消した。
+通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0122 で解消した。
 
 残る明示的な例外は v24 -> v25 migration のみである。
 
 - `BookmarkDatabaseSchema` が legacy `articles.saved_at` を一度だけ読み、Curation-owned `bookmarks` へ ownership transfer する。
-- この参照は `foreign-table-access-allowlist.tsv` に ADR-0121 とともに固定する。
+- この参照は `foreign-table-access-allowlist.tsv` に ADR-0122 とともに固定する。
 - migration 完了後の runtime code は legacy column を参照しない。
 
 ## Other application contexts

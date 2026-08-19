@@ -1,4 +1,4 @@
-# ADR-0121: Content / Curation 永続化境界の第二段階を完了する
+# ADR-0122: Content / Curation 永続化境界の第二段階を完了する
 
 - Status: Accepted
 - Date: 2026-08-19
@@ -39,7 +39,7 @@ Curation は `BookmarkContentQuery` として次を公開する。
 
 Content cleanup、Summary priority / retry、Source 切断時の Content 保持判定はこの query を利用する。低レベル Bookmark CRUD や table layout は公開しない。
 
-Content retention は `CompositeContentRetentionProtectionQuery` で Curation と Summary の protection query を合成し、Bookmark された既読 Content を30日 cleanup から保護する。
+Content retention は `CompositeContentRetentionProtectionQuery` で Curation と Summary の protection query を合成し、Bookmark された既読 Content を30日 cleanup から保護する。Curation の公開 API は Content の retention port を継承せず、composition root が `BookmarkContentQuery.bookmarkedContentIds` を Content-owned `ContentRetentionProtectionQuery` へ適合させる。
 
 ### 4. Summary persistence を変更理由で分割する
 
@@ -83,7 +83,7 @@ RSS と Content の更新は別 Context の command になるため、従来の�
 - BookmarkContentQuery test: Bookmark / Read Later query semantics
 - Bookmark repository / enrichment tests: Content schema を直接読まず Curation state で動くこと
 - Article boundary test: Content cleanup が Curation/Summary protection query だけに依存すること
-- ContentSourceGateway test: Source ingestion と Feed 削除時の Bookmark Content 保持
+- ContentSourceGateway test: Source ingestion、detached Bookmark Content の再関連付け、Feed 削除時の Bookmark Content 保持
 - Summary persistence tests: Summary-owned schema だけで task / prepared-content lifecycle が動くこと
 - Summary priority test: Curation SQL なしの純粋 priority rule
 - CI: `verifyArchitecture`、table ownership verification、全 unit test、lint
