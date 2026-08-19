@@ -15,9 +15,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.asset.AssetRoute
@@ -31,7 +33,6 @@ import dev.terashima.yomitorirss.feature.game.GameRoute
 import dev.terashima.yomitorirss.feature.integrated.IntegratedRoute
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.library.LibraryRoute
-import dev.terashima.yomitorirss.feature.mail.MailRoute
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.navigation.AppViewModel
 import dev.terashima.yomitorirss.feature.navigation.MainTab
@@ -55,25 +56,34 @@ internal fun AppFeatureContent(
   selectedTab: MainTab,
   modifier: Modifier,
   appViewModel: AppViewModel,
-  rssViewModel: RssViewModel,
-  redditViewModel: RedditViewModel,
-  feedViewModel: FeedViewModel,
-  bookmarkViewModel: BookmarkViewModel,
-  mailViewModel: MailViewModel,
-  summaryViewModel: SummaryViewModel,
-  backupViewModel: BackupViewModel,
-  aiSettingsViewModel: AiSettingsViewModel,
-  chatViewModel: ChatViewModel,
   routeDependencies: AppRouteDependencies,
   rssController: RssRouteController,
   redditController: RedditRouteController,
   bookmarkEditController: BookmarkEditController,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
-  onAddMailAccount: () -> Unit,
   onOpenDrawer: () -> Unit,
 ) {
+  val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
+  val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
+  val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
+  val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+  val mailViewModel: MailViewModel = viewModel(factory = routeDependencies.mailViewModelFactory)
+  val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+  val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
+  val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
+  val chatViewModel: ChatViewModel = viewModel(factory = routeDependencies.chatViewModelFactory)
   val summarize: (Article) -> Unit = { article -> summaryViewModel.summarize(article) }
+
+  LaunchedEffect(bookmarkViewModel) {
+    bookmarkViewModel.refresh()
+  }
+  LaunchedEffect(selectedTab) {
+    if (selectedTab == MainTab.SAVED) {
+      bookmarkViewModel.selectTag(null)
+      bookmarkViewModel.selectFolder(null)
+    }
+  }
 
   when (selectedTab) {
     MainTab.INTEGRATED -> IntegratedRoute(
@@ -138,10 +148,9 @@ internal fun AppFeatureContent(
       viewModelFactory = routeDependencies.assetViewModelFactory,
       modifier = modifier,
     )
-    MainTab.MAIL -> MailRoute(
+    MainTab.MAIL -> MailRouteHost(
       modifier = modifier,
-      mailViewModel = mailViewModel,
-      onAddAccount = onAddMailAccount,
+      routeDependencies = routeDependencies,
     )
     MainTab.YOUTUBE -> YouTubeRoute(
       viewModelFactory = routeDependencies.youtubeViewModelFactory,

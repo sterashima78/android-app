@@ -31,7 +31,9 @@ private const val ACCOUNT_WORK_TAG_PREFIX = "gmail-mail-account:"
 
 class MailSyncScheduler(context: Context) {
   private val appContext = context.applicationContext
-  private val workManager = WorkManager.getInstance(appContext)
+  private val workManager: WorkManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkManager.getInstance(appContext)
+  }
 
   fun scheduleInitialPage(accountId: String, expectedPageToken: String?) {
     if (expectedPageToken == null) schedulePeriodic()
