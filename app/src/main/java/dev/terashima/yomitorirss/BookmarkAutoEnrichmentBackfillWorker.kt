@@ -6,8 +6,6 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -26,28 +24,6 @@ internal object BookmarkAutoEnrichmentBackfillScheduler {
 
 interface BookmarkAutoEnrichmentBackfillProvider {
   suspend fun runBookmarkAutoEnrichmentBackfill()
-}
-
-internal class BookmarkAutoEnrichmentBackfillUseCase(
-  private val bookmarkRepository: BookmarkRepository,
-  private val summaryRepository: SummaryRepository,
-) {
-  suspend operator fun invoke() {
-    val articleIds = bookmarkRepository.listAllSavedArticles()
-      .asSequence()
-      .map { it.article }
-      .filter { article ->
-        shouldRequestBookmarkEnrichment(
-          url = article.url,
-          sourceFeedUrl = article.sourceFeedUrl,
-          contentType = article.effectiveContentType,
-        )
-      }
-      .map { it.id }
-      .toList()
-
-    summaryRepository.enqueueMissingBookmarkEnrichment(articleIds)
-  }
 }
 
 internal class BookmarkAutoEnrichmentBackfillWorker(
