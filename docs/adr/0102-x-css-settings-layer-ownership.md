@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-19
 - Amends: ADR-0047
+- Amended by: ADR-0107
 
 ## Context
 
@@ -91,4 +92,4 @@ UI は SharedPreferences や asset stream を直接扱わず `XViewerCssReposito
 
 ## Follow-up
 
-X 画面自体に screen-level state holder を導入する必要が生じた場合は、provider lookup を廃止し `XViewerCssRepository` を route/ViewModel から明示注入する。
+ADR-0107 で provider lookup を廃止し、`XViewerCssRepository` を app-level route から明示注入する形へ移行した。
