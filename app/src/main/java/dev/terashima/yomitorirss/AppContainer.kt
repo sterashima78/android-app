@@ -15,7 +15,7 @@ import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultContentSourceGateway
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
-import dev.terashima.yomitorirss.feature.asset.data.DefaultAssetRepository
+import dev.terashima.yomitoririss.feature.asset.data.DefaultAssetRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
@@ -29,6 +29,8 @@ import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkContentQue
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkRepository
+import dev.terashima.yomitorirss.feature.calendar.CalendarRepository
+import dev.terashima.yomitorirss.feature.calendar.data.DefaultCalendarRepository
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
 import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
@@ -192,6 +194,13 @@ class AppContainer(private val application: Application) {
   }
   val workoutRepository: WorkoutRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultWorkoutRepository(application)
+  }
+  val calendarRepository: CalendarRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultCalendarRepository(
+      context = application,
+      taskRepository = taskRepository,
+      workoutRepository = workoutRepository,
+    )
   }
   val gmailAuthorizationManager: GmailAuthorizationManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     GmailAuthorizationManager(application)
