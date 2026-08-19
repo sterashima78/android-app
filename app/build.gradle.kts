@@ -97,6 +97,8 @@ android {
   }
 }
 
+// Keep release analysis (for example lintRelease) usable without secrets, but fail closed
+// before any APK/AAB packaging task can produce an unsigned release artifact.
 tasks.configureEach {
   val releasePackagingTask = name.lowercase() in setOf(
     "packagerelease",
