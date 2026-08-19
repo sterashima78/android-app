@@ -110,7 +110,7 @@ jobs:
             -f state=success \
             -f context='apk/main' \
             -f description='Signed release APK uploaded' \
-            -f target_url='${{ github.server_url }}/${{ github.repository}/actions/runs/${{ github.run_id }}'
+            -f target_url='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
       - name: Remove release keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/yomitori-release.keystore"
