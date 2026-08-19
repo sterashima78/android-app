@@ -125,4 +125,4 @@ Android framework が永続化する class name 等の互換性が必要な場�
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
-- [ADR-0121](../adr/0121-current-architecture-documentation.md)
+- [ADR-0122](../adr/0122-current-architecture-documentation.md)
