@@ -187,7 +187,6 @@ internal fun AppFeatureContent(
       bookmarkViewModel = bookmarkViewModel,
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
-      xViewerCssRepository = routeDependencies.xViewerCssRepository,
       onOpenWebServer = onOpenWebServer,
       onNavigate = appViewModel::selectTab,
     )

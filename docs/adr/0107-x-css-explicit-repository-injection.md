@@ -16,13 +16,14 @@ ADR-0102 では X feature を UI / Domain / Data に分離した際、段階的�
 
 `XViewerCssRepositoryProvider` と UI 側の provider lookup / compatibility adapter を廃止する。
 
-X CSS repository は application composition root で `SharedPreferencesXViewerCssRepository` として構築し、`AppRouteDependencies.xViewerCssRepository` から以下へ明示的に渡す。
+X CSS repository は application composition root で `SharedPreferencesXViewerCssRepository` として構築し、`AppRouteDependencies.xViewerCssRepository` から X feature host へ明示的に渡す。X feature host は同じ repository を以下へ渡す。
 
 - `XViewerScreen(repository = ...)`
-- app-level `SettingsRoute`
 - `XViewerCssSettingsSheet(repository = ...)`
 
-feature settings の `SettingsScreen` は X CSS repository を直接知らず、`onOpenXCss` event のみを app-level route へ通知する。X feature の UI は `Context` から repository を解決せず、引数として受け取った `XViewerCssRepository` のみを利用する。
+CSS 設定は X 画面右上の歯車から直接開くため、feature settings および app-level `SettingsRoute` は X CSS repository や CSS 設定用 callback を持たない。
+
+X feature の UI は `Context` から repository を解決せず、引数として受け取った `XViewerCssRepository` のみを利用する。
 
 `XViewerCssRepository` contract と `SharedPreferencesXViewerCssRepository` の責務、および既存の保存 key / asset 形式は ADR-0102 のまま変更しない。
 
@@ -35,11 +36,11 @@ feature settings の `SettingsScreen` は X CSS repository を直接知らず、
 - `Context.applicationContext` cast による service locator を除去できる
 - `XViewerCssPreferences` 互換 adapter を削除できる
 - X screen と CSS settings sheet に fake repository を直接渡せるため、UI テストの差し替えが容易になる
+- settings feature が X 固有の設定導線を持たず、X CSS 設定の責務が X feature host に閉じる
 
 ### Negative
 
-- app-level route が X repository を wiring する責務を持つ
-- `SettingsScreen` に X CSS dialog を開く callback が追加される
+- X feature host が WebView と CSS settings sheet の repository wiring を担う
 
 ## Superseded part of ADR-0102
 
