@@ -8,8 +8,6 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.resolveContentType
 import dev.terashima.yomitorirss.feature.article.toContentTypeOrNull
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkFolder
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportResult
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.bookmark.READ_LATER_FOLDER_ID
 import dev.terashima.yomitorirss.feature.bookmark.READ_LATER_FOLDER_KIND
@@ -69,11 +67,6 @@ internal class BookmarkStore(
       "ORDER BY articles.published_at DESC",
     arrayOf(READ_LATER_FOLDER_ID),
   )
-
-  fun isBookmarked(articleId: String): Boolean = database.readable.rawQuery(
-    "SELECT 1 FROM articles WHERE id=? AND saved_at IS NOT NULL LIMIT 1",
-    arrayOf(articleId),
-  ).use(Cursor::moveToFirst)
 
   fun listTags(): List<Tag> = database.readable
     .rawQuery("SELECT * FROM tags ORDER BY normalized_name", null)
@@ -178,9 +171,6 @@ internal class BookmarkStore(
 
   fun moveArticleToFolder(articleId: String, folderId: String?) {
     database.transaction {
-      rawQuery("SELECT saved_at FROM articles WHERE id=?", arrayOf(articleId)).use { cursor ->
-        require(cursor.moveToFirst() && !cursor.isNull(0)) { "ブックマークされていない記事です" }
-      }
       if (folderId == null || folderId == UNCATEGORIZED_FOLDER_ID) {
         delete("article_folders", "article_id=?", arrayOf(articleId))
       } else {
@@ -197,15 +187,9 @@ internal class BookmarkStore(
     }
   }
 
-  fun saveAndReadArticle(articleId: String) {
-    val now = nowIso()
-    database.writable.update("articles", values("read_at" to now, "saved_at" to now), "id=?", arrayOf(articleId))
-  }
-
-  fun markReadLater(articleId: String) {
+  fun addReadLater(articleId: String) {
     database.transaction {
       val now = nowIso()
-      update("articles", values("read_at" to now, "saved_at" to now), "id=?", arrayOf(articleId))
       ensureReadLaterFolder(this, now)
       insertWithOnConflict(
         "article_folders",
@@ -216,11 +200,10 @@ internal class BookmarkStore(
     }
   }
 
-  fun unsaveArticle(articleId: String) {
+  fun clearArticleAssociations(articleId: String) {
     database.transaction {
       delete("article_tags", "article_id=?", arrayOf(articleId))
       delete("article_folders", "article_id=?", arrayOf(articleId))
-      update("articles", values("saved_at" to null), "id=?", arrayOf(articleId))
     }
   }
 
@@ -232,130 +215,22 @@ internal class BookmarkStore(
     )
   }
 
-  fun saveSharedArticle(url: String, title: String, sourceTitle: String): BookmarkSaveResult =
+  fun addImportedTags(articleId: String, tagNames: List<String>) {
+    if (tagNames.isEmpty()) return
     database.transaction {
-      val now = nowIso()
-      var existingId: String? = null
-      var alreadyBookmarked = false
-      rawQuery(
-        "SELECT id,saved_at FROM articles WHERE url=? ORDER BY CASE WHEN saved_at IS NULL THEN 1 ELSE 0 END,fetched_at DESC LIMIT 1",
-        arrayOf(url),
-      ).use { cursor ->
-        if (cursor.moveToFirst()) {
-          existingId = cursor.getString(0)
-          alreadyBookmarked = !cursor.isNull(1)
-        }
-      }
-
-      val articleId = existingId
-      if (articleId == null) {
-        insertOrThrow(
-          "articles",
-          null,
-          values(
-            "id" to UUID.randomUUID().toString(),
-            "feed_id" to null,
-            "external_id" to null,
-            "identity_key" to "shared:$url",
-            "url" to url,
-            "title" to title,
-            "published_at" to now,
-            "fetched_at" to now,
-            "read_at" to now,
-            "saved_at" to now,
-            "source_title" to sourceTitle,
-            "source_feed_url" to "",
-          ),
-        )
-      } else if (!alreadyBookmarked) {
-        update("articles", values("read_at" to now, "saved_at" to now), "id=?", arrayOf(articleId))
-      }
-
-      if (alreadyBookmarked) BookmarkSaveResult.ALREADY_BOOKMARKED else BookmarkSaveResult.ADDED
-    }
-
-  fun importBookmarks(
-    entries: List<ImportedBookmarkEntry>,
-    skipped: Int,
-    identityPrefix: String,
-  ): BookmarkImportResult = database.transaction {
-    val importedAt = nowIso()
-    var added = 0
-    var duplicates = 0
-
-    entries.forEach { entry ->
-      var articleId: String? = null
-      var savedAt: String? = null
-      var readAt: String? = null
-      rawQuery(
-        "SELECT id,saved_at,read_at FROM articles WHERE url=? ORDER BY CASE WHEN saved_at IS NULL THEN 1 ELSE 0 END,fetched_at DESC LIMIT 1",
-        arrayOf(entry.url),
-      ).use { cursor ->
-        if (cursor.moveToFirst()) {
-          articleId = cursor.getString(0)
-          savedAt = if (cursor.isNull(1)) null else cursor.getString(1)
-          readAt = if (cursor.isNull(2)) null else cursor.getString(2)
-        }
-      }
-
-      val targetArticleId = articleId ?: UUID.randomUUID().toString().also { id ->
-        insertOrThrow(
-          "articles",
-          null,
-          values(
-            "id" to id,
-            "feed_id" to null,
-            "external_id" to null,
-            "identity_key" to "$identityPrefix:${entry.url}",
-            "url" to entry.url,
-            "title" to entry.title,
-            "published_at" to entry.createdAt,
-            "fetched_at" to importedAt,
-            "read_at" to entry.createdAt,
-            "saved_at" to entry.createdAt,
-            "source_title" to entry.sourceTitle,
-            "source_feed_url" to "",
-          ),
-        )
-        added += 1
-      }
-
-      if (articleId != null) {
-        if (savedAt == null) {
-          update(
-            "articles",
-            values("read_at" to entry.createdAt, "saved_at" to entry.createdAt),
-            "id=?",
-            arrayOf(targetArticleId),
-          )
-          added += 1
-        } else {
-          duplicates += 1
-          if (readAt == null) {
-            update(
-              "articles",
-              values("read_at" to (savedAt ?: entry.createdAt)),
-              "id=?",
-              arrayOf(targetArticleId),
-            )
-          }
-        }
-      }
-
-      entry.tagNames.forEach { tagName ->
+      val importedAt = nowIso()
+      tagNames.forEach { tagName ->
         insertWithOnConflict(
           "article_tags",
           null,
           values(
-            "article_id" to targetArticleId,
+            "article_id" to articleId,
             "tag_id" to ensureImportedTag(this, tagName, importedAt),
           ),
           SQLiteDatabase.CONFLICT_IGNORE,
         )
       }
     }
-
-    BookmarkImportResult(added = added, duplicates = duplicates, skipped = skipped)
   }
 
   private fun bookmarkedArticles(sql: String, args: Array<String> = emptyArray()): List<BookmarkedArticle> {
