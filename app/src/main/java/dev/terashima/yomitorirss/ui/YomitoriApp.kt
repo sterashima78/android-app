@@ -104,7 +104,6 @@ fun YomitoriApp(
         bookmarkEditController = bookmarkEditController,
         onOpenArticle = onOpenArticle,
         onOpenWebServer = onOpenWebServer,
-        onOpenDrawer = openDrawer,
       )
     }
   }
