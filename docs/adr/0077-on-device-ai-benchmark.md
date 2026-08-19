@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR-0075でGemma 4のSpeculative Decodingをユーザー設定として追加したが、その効果は端末、CPU/GPU backend、モデル、処理内容によって異なる。特にモバイルGPUではSpeculative Decodingが常に高速になるとは限らないため、固定の既定値だけでは端末ごとの最適設定を判断できない。
+ADR-0112でGemma 4のSpeculative Decodingをユーザー設定として追加したが、その効果は端末、CPU/GPU backend、モデル、処理内容によって異なる。特にモバイルGPUではSpeculative Decodingが常に高速になるとは限らないため、固定の既定値だけでは端末ごとの最適設定を判断できない。
 
 また、通常の要約時間だけを計測すると、ネットワーク取得、本文抽出、モデル初期化、prefill、decodeなど複数の要因が混ざり、Speculative Decoding自体の効果を判断しにくい。
 
@@ -86,7 +86,7 @@ LiteRT-LM benchmark APIは、プロンプトがprefill token数より短い場�
 
 ## References
 
-- ADR-0075: Gemma artifact revisionとSpeculative Decoding設定
+- ADR-0112: Gemma artifact revisionとSpeculative Decoding設定
 - ADR-0076: ブックマークの要約・タグ・フォルダ分類を最終推論へ統合する
 - LiteRT-LM 0.14.0 `Benchmark.kt`
 - `LocalAiBackgroundTaskGate`

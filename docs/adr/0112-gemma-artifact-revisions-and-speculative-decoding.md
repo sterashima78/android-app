@@ -1,4 +1,4 @@
-# ADR-0075: Gemma 4 artifact revisionとSpeculative Decodingを管理する
+# ADR-0112: Gemma 4 artifact revisionとSpeculative Decodingを管理する
 
 - Status: Accepted
 - Date: 2026-08-16

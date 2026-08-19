@@ -2,11 +2,11 @@
 
 - Status: Accepted
 - Date: 2026-08-19
-- Amends: ADR-0047
+- Amends: ADR-0107
 
 ## Context
 
-ADR-0047 では X feature が小規模だったため、カスタム CSS の状態、SharedPreferences 永続化、asset 読み込みを `:feature:x:ui` 内に置き、domain/data module を作らない判断をした。
+ADR-0107 では X feature が小規模だったため、カスタム CSS の状態、SharedPreferences 永続化、asset 読み込みを `:feature:x:ui` 内に置き、domain/data module を作らない判断をした。
 
 その後、CSS の有効/無効、3セットの切り替え、セット間コピー、デフォルト復元、WebView 上の要素選択からの CSS 追記が追加され、`XViewerCssSettings.kt` が次の異なる変更理由を同時に持つようになった。
 

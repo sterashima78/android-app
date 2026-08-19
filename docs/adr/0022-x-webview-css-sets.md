@@ -6,7 +6,7 @@
 
 ## Context
 
-ADR-0047 では X WebView にローカル CSS を注入し、CSS の有効/無効、編集、要素選択からの非表示ルール追加を `:feature:x:ui` 内で扱う方針を決定した。また将来変更として複数 stylesheet の切り替えを挙げていた。
+ADR-0107 では X WebView にローカル CSS を注入し、CSS の有効/無効、編集、要素選択からの非表示ルール追加を `:feature:x:ui` 内で扱う方針を決定した。また将来変更として複数 stylesheet の切り替えを挙げていた。
 
 その後、X 本来の表示を初期状態とするため `x_viewer.css` のデフォルト内容は空になった。一方、用途ごとに CSS を切り替えて試せるよう、複数の CSS を端末内に保持し、現在の CSS を別のセットへ複製したい要件が生じた。
 
@@ -27,7 +27,7 @@ CSS は X の表示だけに関係する presentation preference であり、同
 
 当初は従来の単一 CSS 設定キー `custom_css` をセット1へ読み替える互換処理を持たせていた。この互換処理は ADR-0060 により現行版の更新ベースラインから外し、3セット形式のみを読み書きする。
 
-この決定は ADR-0047 の「単一の保存済み CSS を使用する」という部分と、「複数 stylesheet の切り替えを将来変更とする」という部分を更新する。また ADR-0047 に記載されたデフォルト CSS の sidebar/Grok 非表示ルールは現在の実装には適用せず、デフォルト CSS は空とする。
+この決定は ADR-0107 の「単一の保存済み CSS を使用する」という部分と、「複数 stylesheet の切り替えを将来変更とする」という部分を更新する。また ADR-0107 に記載されたデフォルト CSS の sidebar/Grok 非表示ルールは現在の実装には適用せず、デフォルト CSS は空とする。
 
 ## Consequences
 
@@ -47,6 +47,6 @@ CSS は X の表示だけに関係する presentation preference であり、同
 
 ## Relationship to other ADRs
 
-- ADR-0047 の X WebView / CSS 注入 / 要素選択方針を維持し、CSS の保存モデルとデフォルト CSS に関する部分だけを本 ADR で更新する。
+- ADR-0107 の X WebView / CSS 注入 / 要素選択方針を維持し、CSS の保存モデルとデフォルト CSS に関する部分だけを本 ADR で更新する。
 - ADR-0003 の feature-first 構成に従い、`:feature:x:ui` 内で完結させる。
 - ADR-0060 により、単一 CSS 設定キーから3セット形式への互換読み取りを廃止する。

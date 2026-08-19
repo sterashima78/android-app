@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR-0066 で導入した Knowledge の自動Wiki再構築は、`KnowledgeViewModel` から `KnowledgeRepository.rebuild()` を直接呼び、ローカルLLM推論もその呼び出し中に実行していた。そのため長時間のWiki生成が画面操作のライフサイクルに結び付き、ADR-0069 で導入した共通AIタスクキューから状態を確認したり、全体一時停止、充電時自動再開、個別停止・キャンセル・再開を行えなかった。
+ADR-0109 で導入した Knowledge の自動Wiki再構築は、`KnowledgeViewModel` から `KnowledgeRepository.rebuild()` を直接呼び、ローカルLLM推論もその呼び出し中に実行していた。そのため長時間のWiki生成が画面操作のライフサイクルに結び付き、ADR-0069 で導入した共通AIタスクキューから状態を確認したり、全体一時停止、充電時自動再開、個別停止・キャンセル・再開を行えなかった。
 
 一方、LLM Editor の「記事を作成」「記事を編集」は、ユーザーが入力した依頼に対して生成結果をその場で開く対話操作である。自動Wiki構築とは完了後のUI遷移と要求される永続入力が異なる。
 
@@ -62,7 +62,7 @@ Knowledge固有の生成ロジックは引き続き `:feature:knowledge` が所�
 
 ## Relationship to existing ADRs
 
-- ADR-0066: 自動Wiki生成の入力、fingerprint、1回最大8ページという生成ポリシーは維持し、その実行場所だけをバックグラウンドジョブへ変更する。「バックグラウンドでの無制限再生成」は引き続きDeferredであり、本Decisionは上限付きの明示的構築だけを対象とする。
+- ADR-0109: 自動Wiki生成の入力、fingerprint、1回最大8ページという生成ポリシーは維持し、その実行場所だけをバックグラウンドジョブへ変更する。「バックグラウンドでの無制限再生成」は引き続きDeferredであり、本Decisionは上限付きの明示的構築だけを対象とする。
 - ADR-0069: feature固有のタスク意味論を維持したまま共通AIタスクキューへ投影する方針をKnowledgeへ拡張する。
 - ADR-0056: Wiki生成ポリシーはKnowledge feature、推論実行の直列化は汎用AI/background capabilityという責務境界を維持する。
 - ADR-0063: settings UIはfeature側に残し、appはWorkManagerと既存featureを接続するcomposition adapterに限定する。
