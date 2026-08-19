@@ -19,6 +19,8 @@ import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.ModelManagerDialog
 import dev.terashima.yomitorirss.feature.settings.SettingsScreen
+import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
+import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 import java.time.LocalDate
 
 @Composable
@@ -27,6 +29,7 @@ internal fun SettingsRoute(
   bookmarkViewModel: BookmarkViewModel,
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
+  xViewerCssRepository: XViewerCssRepository,
   onOpenWebServer: () -> Unit,
   onNavigate: (MainTab) -> Unit,
 ) {
@@ -36,6 +39,7 @@ internal fun SettingsRoute(
   var showModels by remember { mutableStateOf(false) }
   var showSummaryPrompt by remember { mutableStateOf(false) }
   var showBackup by remember { mutableStateOf(false) }
+  var showXCssSettings by remember { mutableStateOf(false) }
 
   val exportLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.CreateDocument("application/zip"),
@@ -79,6 +83,7 @@ internal fun SettingsRoute(
         arrayOf("text/html", "application/xhtml+xml", "text/plain"),
       )
     },
+    onOpenXCss = { showXCssSettings = true },
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
       showModels = true
@@ -97,6 +102,12 @@ internal fun SettingsRoute(
     onOpenWebServer = onOpenWebServer,
   )
 
+  if (showXCssSettings) {
+    XViewerCssSettingsSheet(
+      repository = xViewerCssRepository,
+      onDismiss = { showXCssSettings = false },
+    )
+  }
   if (showModels) {
     ModelManagerDialog(
       supported = aiState.supported,
