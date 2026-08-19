@@ -47,6 +47,5 @@ class BookmarkContentQueryTest {
 
     assertEquals(setOf("saved", "later"), query.bookmarkedContentIds(ids))
     assertEquals(setOf("later"), query.readLaterContentIds(ids))
-    assertEquals(setOf("saved", "later"), query.protectedContentIds(ids))
   }
 }

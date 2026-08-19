@@ -1,6 +1,6 @@
 # Domain Context Map
 
-この文書は ADR-0106 に基づく現在の Domain model の作業用 Context Map である。
+この文書は ADR-0106 と ADR-0121 に基づく現在の Domain model の作業用 Context Map である。
 
 Gradle の `feature/<name>` は ownership / build boundary であり、Bounded Context や Aggregate と 1 対 1 で対応するとは限らない。
 
@@ -50,11 +50,9 @@ Presentation / delivery:
 
 ### Content
 
-現在の実装は `:feature:article`。
+現在の実装は `:feature:article`。Domain 上は RSS の記事に限定されない ContentItem に近い。
 
-Domain 上は RSS の記事に限定されない ContentItem に近い。
-
-所有候補:
+所有する状態:
 
 - content identity
 - URL / title / source metadata
@@ -62,37 +60,34 @@ Domain 上は RSS の記事に限定されない ContentItem に近い。
 - reading state
 - content classification override
 
-現段階では `Article` から `ContentItem` への rename は行わない。
+Bookmark の保存状態は所有しない。`Article` から `ContentItem` への rename は ubiquitous language がさらに安定した後に判断する。
 
 ### Curation
 
 現在の実装は主に `:feature:bookmark`。
 
-所有する概念:
+所有する状態:
 
-- Bookmark
-- savedAt
-- Tag
-- Folder
+- `bookmarks(article_id, saved_at)`
+- Tag / Folder
 - Read Later membership
 
-Bookmark は ContentItemId を参照する。
-
-`articles.saved_at` は現在の物理 schema と Domain ownership が一致していないため migration 対象とする。
+Bookmark は ContentItemId を参照する。v25 以降、`savedAt` の正規 persistence は Curation-owned `bookmarks` table である。upgrade 済み DB に残る legacy `articles.saved_at` column は runtime state として利用しない。
 
 ### RSS / Reddit / YouTube
 
-Content の上流 Source Context として扱う。
+Content の上流 Source Context として扱う。各 Source 固有の購読、同期、取得状態、認証、外部 API semantics は各 Context が所有する。
 
-各 Source 固有の購読、同期、取得状態、認証、外部 API semantics は各 Context が所有する。
-
-同じ Content を供給するという理由だけで1つの generic source module には統合しない。
+RSS から Content への ingestion は Content-owned `ContentSourceGateway` を利用し、Source data は Content table を直接更新しない。
 
 ### Summary
 
 Content を入力として派生 summary と task lifecycle を所有する。
 
-Curation の tag 等を変更する場合は Curation の公開 command を利用する。
+- Article metadata は `ArticleRepository` から取得する。
+- Read Later priority / Bookmark retry は `BookmarkContentQuery` を利用する。
+- Curation tag/folder 更新は `BookmarkEnrichmentRepository` を利用する。
+- Summary data は Article / Curation table を直接参照しない。
 
 ### Knowledge
 
@@ -100,41 +95,40 @@ Content / Curation を資料として参照し、Knowledge page / source relatio
 
 ## Cross-context operation classification
 
-### Application Service
+### Application Service / command port
 
-複数 Aggregate の command を1つのユーザー操作としてまとめる。
+複数 Aggregate の command を1つの操作としてまとめる場合、owner API / command port を利用する。
 
-候補:
+現在の例:
 
-- Save shared content
-- Save and mark read
-- Mark read later
+- Bookmark import: `ImportBookmarksUseCase`
+- Curation -> Content: `BookmarkArticleGateway`
+- RSS -> Content: `ContentSourceGateway`
 
-各 owner の Domain API を利用し、foreign table には直接 write しない。
+同一 SQLite database を共有していても foreign table へ直接 write しない。
 
 ### Domain Service
 
-永続状態を所有せず、複数 Aggregate / Context の情報から Domain rule を解決する。
+永続状態を所有せず、複数 Context の情報から Domain rule を解決する。
 
-候補:
+現在の例:
 
 - Content Classification
-  - ContentItem override
-  - Feed override
-  - FeedFolder override
-  - effective ContentType
+- Content Retention Policy
 
-### Read Model / Projection
+Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds` と Summary の protection query を composition root で Content-owned `ContentRetentionProtectionQuery` へ適合・合成する。Curation の公開 API 自体は Content の retention policy に依存しない。
 
-複数 Context の大量 read で、Repository 合成が実測上問題になる場合だけ導入する。
+### Read Model / named Query
 
-ルール:
+複数 Context が owner state を必要とする場合、低レベル SQL ではなく目的を表す query contract を利用する。
 
-- read-only
-- named responsibility
-- referenced contexts/tables を明示
-- generic `cross-feature` module を作らない
-- command を提供しない
+現在の例:
+
+- `ArticleRepository.findArticle(s)`
+- `BookmarkContentQuery.bookmarkedContentIds`
+- `BookmarkContentQuery.readLaterContentIds`
+- `ContentClassificationSourceQuery`
+- `ContentRetentionProtectionQuery`
 
 ## Persistence ownership rule
 
@@ -143,7 +137,7 @@ Owner data module
   -> owned table の直接 SELECT / INSERT / UPDATE / DELETE
 
 Other context
-  -> owner Domain API / named Query API
+  -> owner Domain API / named Query / command port
 
 Named Projection
   -> 明示された foreign table の SELECT のみ
@@ -154,34 +148,18 @@ Foreign table write
 
 同じ SQLite database を共有していることは共同 ownership を意味しない。
 
-## Current violations / migration targets
+## Current migration exception
 
-### High priority
+通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0121 で解消した。
 
-- `feature/widget:data` が `articles` を直接 read/write
-- `feature/web:data` が Article / RSS / Bookmark table を直接 read
-- `feature/bookmark:data` が `articles.saved_at` と Article row を直接 write
-- `feature:summary:data` が Bookmark-owned tag table を直接 write
+残る明示的な例外は v24 -> v25 migration のみである。
 
-### Requires domain redesign
-
-- ArticleRepository が RSS table を JOIN して effective content type を解決
-- Article cleanup が Summary table を参照
-- BookmarkSourceMetadataReader が Article / RSS table を JOIN
-
-これらは単純な SQL 移動ではなく Domain Service / Application Service / Projection のどれに該当するかを決めてから移行する。
-
-## Migration order
-
-1. Web / Widget の不要な foreign table access を owner API に置換する。
-2. Bookmark-owned `bookmarks` table を導入し `articles.saved_at` を移行する。
-3. Summary -> Curation write を Curation command API に置換する。
-4. Content Classification と retention rule を明示的な Domain Service / Query contract にする。
-5. foreign table access を architecture verification で検出する。
-6. ubiquitous language が安定した後、Article -> ContentItem rename と module restructuring の必要性を再評価する。
+- `BookmarkDatabaseSchema` が legacy `articles.saved_at` を一度だけ読み、Curation-owned `bookmarks` へ ownership transfer する。
+- この参照は `foreign-table-access-allowlist.tsv` に ADR-0121 とともに固定する。
+- migration 完了後の runtime code は legacy column を参照しない。
 
 ## Other application contexts
 
-Library、Knowledge、Asset、Task、Workout、Mail、Chat などは現時点では Content/Curation の Aggregate に統合しない。
+Library、Knowledge、Asset、Task、Workout、Mail、Chat などは Content/Curation の Aggregate に統合しない。
 
 AI Task Queue、Backup、Settings は主に supporting/application capability として扱い、Domain table の共同 owner にはしない。

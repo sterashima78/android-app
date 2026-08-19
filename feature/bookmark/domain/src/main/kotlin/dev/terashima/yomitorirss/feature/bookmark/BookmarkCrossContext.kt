@@ -1,7 +1,5 @@
 package dev.terashima.yomitorirss.feature.bookmark
 
-import dev.terashima.yomitorirss.feature.article.ContentRetentionProtectionQuery
-
 /** Content の検索・作成・閲覧状態更新だけを要求する Curation -> Content command port。 */
 interface BookmarkArticleGateway {
   suspend fun markRead(articleId: String)
@@ -22,11 +20,9 @@ interface BookmarkArticleGateway {
 }
 
 /** Curation が他 Context に公開する bookmark/read-later の named query。 */
-interface BookmarkContentQuery : ContentRetentionProtectionQuery {
+interface BookmarkContentQuery {
   fun bookmarkedContentIds(contentIds: Set<String>): Set<String>
   fun readLaterContentIds(contentIds: Set<String>): Set<String>
-
-  override fun protectedContentIds(contentIds: Set<String>): Set<String> = bookmarkedContentIds(contentIds)
 }
 
 data class BookmarkEnrichmentContext(

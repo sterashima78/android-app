@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.CompositeContentRetentionProtectionQuery
+import dev.terashima.yomitorirss.feature.article.ContentRetentionProtectionQuery
 import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
@@ -89,7 +90,7 @@ class AppContainer(private val application: Application) {
   private val contentRetentionProtectionQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     CompositeContentRetentionProtectionQuery(
       listOf(
-        bookmarkContentQuery,
+        ContentRetentionProtectionQuery(bookmarkContentQuery::bookmarkedContentIds),
         SummaryContentRetentionProtectionQuery(databaseConnection),
       ),
     )

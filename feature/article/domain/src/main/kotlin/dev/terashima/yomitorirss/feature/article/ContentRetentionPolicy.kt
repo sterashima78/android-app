@@ -4,7 +4,7 @@ import java.time.Duration
 import java.time.Instant
 
 /** Summary や Curation 等の別 Context が Content 削除を保護する必要があるかを返す query port。 */
-interface ContentRetentionProtectionQuery {
+fun interface ContentRetentionProtectionQuery {
   fun protectedContentIds(contentIds: Set<String>): Set<String>
 }
 
