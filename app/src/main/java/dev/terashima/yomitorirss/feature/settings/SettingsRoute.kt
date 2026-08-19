@@ -15,10 +15,7 @@ import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 @Composable
 fun SettingsScreen(
   modifier: Modifier,
-  tagCount: Int,
   aiTaskQueueRepository: AiTaskQueueRepository,
-  onImportBookmarkCsv: () -> Unit,
-  onImportBookmarkHtml: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenDriveBackup: () -> Unit,
@@ -37,14 +34,11 @@ fun SettingsScreen(
 
   SettingsFeatureScreen(
     modifier = modifier,
-    tagCount = tagCount,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundDataFetchPreferences.wifiOnly = wifiOnly
       MailSyncScheduler(context).refreshPeriodicNetworkPolicy()
     },
-    onImportBookmarkCsv = onImportBookmarkCsv,
-    onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     onOpenAiTaskQueue = { showAiTaskQueue = true },

@@ -10,11 +10,8 @@ import androidx.compose.ui.Modifier
 @Composable
 fun SettingsFeatureScreen(
   modifier: Modifier,
-  tagCount: Int,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
-  onImportBookmarkCsv: () -> Unit,
-  onImportBookmarkHtml: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
@@ -29,14 +26,11 @@ fun SettingsFeatureScreen(
 
   SettingsContent(
     modifier = modifier,
-    tagCount = tagCount,
     backgroundFetchWifiOnly = backgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundFetchWifiOnly = wifiOnly
       onBackgroundFetchWifiOnlyChange(wifiOnly)
     },
-    onImportBookmarkCsv = onImportBookmarkCsv,
-    onImportBookmarkHtml = onImportBookmarkHtml,
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     onOpenAiTaskQueue = onOpenAiTaskQueue,
