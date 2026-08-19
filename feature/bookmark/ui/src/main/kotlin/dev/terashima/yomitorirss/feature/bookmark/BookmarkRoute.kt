@@ -58,7 +58,6 @@ fun BookmarkRoute(
     onMoveFolder = editController::moveFolder,
     onSetContentType = bookmarkViewModel::setArticleContentType,
     onUnsave = bookmarkViewModel::unsave,
-    onMarkUnread = bookmarkViewModel::markUnread,
     onCreateFolder = bookmarkViewModel::createFolder,
     onRenameFolder = bookmarkViewModel::renameFolder,
     onDeleteFolder = bookmarkViewModel::deleteFolder,
