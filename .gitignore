@@ -7,6 +7,10 @@ captures/
 .externalNativeBuild/
 .cxx/
 
+# Python tooling caches
+__pycache__/
+*.py[cod]
+
 # Signing credentials and generated packages
 *.keystore
 *.jks

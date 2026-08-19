@@ -1,4 +1,4 @@
-# ADR-0066: 出典付きLLM編集Wikiをナレッジベースの第一段階とする
+# ADR-0109: 出典付きLLM編集Wikiをナレッジベースの第一段階とする
 
 - Status: Accepted
 - Date: 2026-08-15
@@ -9,7 +9,7 @@ RSS、ブックマーク、蔵書などに蓄積された情報を一覧とし�
 
 また、Wiki本文をユーザーが直接Markdown編集すると、自動再生成との所有権やマージが複雑になる。本アプリではLLMをWiki編集者として扱い、ユーザーは作成・変更意図を自然言語で指示する。
 
-ADR-0065はSMB蔵書と内蔵Book Readerに割り当てられたため、本DecisionはADR-0066として記録する。
+ADR-0065はSMB蔵書と内蔵Book Readerに割り当てられたため、本DecisionはADR-0109として記録する。
 
 ## Decision
 
