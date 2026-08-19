@@ -3,9 +3,17 @@ package dev.terashima.yomitorirss.feature.article
 import java.time.Duration
 import java.time.Instant
 
-/** Summary 等の別 Context が Content 削除を保護する必要があるかを返す query port。 */
+/** Summary や Curation 等の別 Context が Content 削除を保護する必要があるかを返す query port。 */
 interface ContentRetentionProtectionQuery {
   fun protectedContentIds(contentIds: Set<String>): Set<String>
+}
+
+class CompositeContentRetentionProtectionQuery(
+  private val queries: List<ContentRetentionProtectionQuery>,
+) : ContentRetentionProtectionQuery {
+  override fun protectedContentIds(contentIds: Set<String>): Set<String> = buildSet {
+    queries.forEach { query -> addAll(query.protectedContentIds(contentIds)) }
+  }
 }
 
 /** Content の保持期間と、外部 Context に保護された Content を削除しない規則を表す Domain Service。 */

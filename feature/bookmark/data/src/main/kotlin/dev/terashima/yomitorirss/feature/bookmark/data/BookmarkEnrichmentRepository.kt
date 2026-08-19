@@ -63,17 +63,16 @@ private fun SQLiteDatabase.listExistingFolderNames(): List<String> = rawQuery(
 ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.getString(0)) } }
 
 private fun SQLiteDatabase.isBookmarked(articleId: String): Boolean = rawQuery(
-  "SELECT 1 FROM articles WHERE id=? AND saved_at IS NOT NULL LIMIT 1",
+  "SELECT 1 FROM bookmarks WHERE article_id=? LIMIT 1",
   arrayOf(articleId),
 ).use { cursor -> cursor.moveToFirst() }
 
 private fun SQLiteDatabase.isUncategorizedBookmark(articleId: String): Boolean = rawQuery(
   """
     SELECT 1
-    FROM articles a
-    WHERE a.id=?
-      AND a.saved_at IS NOT NULL
-      AND NOT EXISTS(SELECT 1 FROM article_folders f WHERE f.article_id=a.id)
+    FROM bookmarks b
+    WHERE b.article_id=?
+      AND NOT EXISTS(SELECT 1 FROM article_folders f WHERE f.article_id=b.article_id)
     LIMIT 1
   """.trimIndent(),
   arrayOf(articleId),
@@ -102,16 +101,12 @@ private fun SQLiteDatabase.addGeneratedTags(articleId: String, tagNames: List<St
           SQLiteDatabase.CONFLICT_IGNORE,
         )
       }.let { candidateId ->
-        rawQuery(
-          "SELECT id FROM tags WHERE normalized_name=? LIMIT 1",
-          arrayOf(normalized),
-        ).use { cursor ->
+        rawQuery("SELECT id FROM tags WHERE normalized_name=? LIMIT 1", arrayOf(normalized)).use { cursor ->
           if (cursor.moveToFirst()) cursor.getString(0) else candidateId
         }
       }
 
-    if (
-      insertWithOnConflict(
+    if (insertWithOnConflict(
         "article_tags",
         null,
         ContentValues().apply {
@@ -120,9 +115,7 @@ private fun SQLiteDatabase.addGeneratedTags(articleId: String, tagNames: List<St
         },
         SQLiteDatabase.CONFLICT_IGNORE,
       ) != -1L
-    ) {
-      changed = true
-    }
+    ) changed = true
   }
   return changed
 }
@@ -131,8 +124,7 @@ private fun SQLiteDatabase.assignExistingFolder(articleId: String, folderName: S
   val folderId = rawQuery(
     "SELECT id FROM bookmark_folders WHERE system_kind IS NULL AND normalized_name=? LIMIT 1",
     arrayOf(normalizeName(folderName)),
-  ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
-    ?: return false
+  ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null } ?: return false
   return insertWithOnConflict(
     "article_folders",
     null,

@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.bookmark.data
 
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkFolder
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
@@ -9,15 +10,18 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.bookmark.Tag
 import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_NAME
+import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultBookmarkRepository(
   database: DatabaseConnection,
+  private val articleRepository: ArticleRepository,
   private val articleGateway: BookmarkArticleGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
   private val onBookmarkAdded: suspend (articleId: String) -> Unit = {},
 ) : BookmarkRepository {
+  private val stateStore = BookmarkStateStore(database)
   private val readStore = BookmarkReadStore(database)
   private val tagStore = BookmarkTagStore(database)
   private val folderStore = BookmarkFolderStore(database)
@@ -25,13 +29,15 @@ class DefaultBookmarkRepository(
   override val changes: StateFlow<Long> = dataChanges.version
 
   override suspend fun listSavedArticles(tagId: String?, folderId: String?): List<BookmarkedArticle> =
-    readStore.listSavedArticles(tagId, folderId)
+    compose(readStore.listSavedRecords(tagId, folderId), limit = 500)
 
-  override suspend fun listAllSavedArticles(): List<BookmarkedArticle> = readStore.listAllSavedArticles()
+  override suspend fun listAllSavedArticles(): List<BookmarkedArticle> =
+    compose(readStore.listAllSavedRecords())
 
-  override suspend fun listReadLaterArticles(): List<BookmarkedArticle> = readStore.listReadLaterArticles()
+  override suspend fun listReadLaterArticles(): List<BookmarkedArticle> =
+    compose(readStore.listReadLaterRecords())
 
-  override suspend fun isBookmarked(articleId: String): Boolean = articleGateway.isBookmarked(articleId)
+  override suspend fun isBookmarked(articleId: String): Boolean = stateStore.isBookmarked(articleId)
 
   override suspend fun listFolders(): List<BookmarkFolder> {
     folderStore.ensureYouTubeFolder()
@@ -58,7 +64,7 @@ class DefaultBookmarkRepository(
   }
 
   override suspend fun moveArticleToFolder(articleId: String, folderId: String?) {
-    require(articleGateway.isBookmarked(articleId)) { "ブックマークされていない記事です" }
+    require(stateStore.isBookmarked(articleId)) { "ブックマークされていない記事です" }
     associationStore.moveArticleToFolder(articleId, folderId)
     dataChanges.notifyChanged()
   }
@@ -84,22 +90,24 @@ class DefaultBookmarkRepository(
   }
 
   override suspend fun saveAndReadArticle(articleId: String) {
-    val wasBookmarked = articleGateway.isBookmarked(articleId)
-    articleGateway.saveAndRead(articleId)
+    val wasBookmarked = stateStore.isBookmarked(articleId)
+    articleGateway.markRead(articleId)
+    stateStore.save(articleId)
     dataChanges.notifyChanged()
     notifyNewBookmark(articleId, wasBookmarked)
   }
 
   override suspend fun markReadLater(articleId: String) {
-    val wasBookmarked = articleGateway.isBookmarked(articleId)
-    articleGateway.saveAndRead(articleId)
+    val wasBookmarked = stateStore.isBookmarked(articleId)
+    articleGateway.markRead(articleId)
+    stateStore.save(articleId)
     associationStore.addReadLater(articleId)
     dataChanges.notifyChanged()
     notifyNewBookmark(articleId, wasBookmarked)
   }
 
   override suspend fun unsaveArticle(articleId: String) {
-    articleGateway.unsave(articleId)
+    stateStore.unsave(articleId)
     associationStore.clearArticleAssociations(articleId)
     dataChanges.notifyChanged()
   }
@@ -113,24 +121,14 @@ class DefaultBookmarkRepository(
     url: String,
     title: String,
     sourceTitle: String,
-  ): BookmarkSaveResult = saveSharedArticleInternal(
-    url = url,
-    title = title,
-    sourceTitle = sourceTitle,
-    folderId = null,
-  )
+  ): BookmarkSaveResult = saveSharedArticleInternal(url, title, sourceTitle, folderId = null)
 
   override suspend fun saveSharedArticleToFolder(
     url: String,
     title: String,
     sourceTitle: String,
     folderId: String,
-  ): BookmarkSaveResult = saveSharedArticleInternal(
-    url = url,
-    title = title,
-    sourceTitle = sourceTitle,
-    folderId = folderId,
-  )
+  ): BookmarkSaveResult = saveSharedArticleInternal(url, title, sourceTitle, folderId)
 
   private suspend fun saveSharedArticleInternal(
     url: String,
@@ -138,13 +136,28 @@ class DefaultBookmarkRepository(
     sourceTitle: String,
     folderId: String?,
   ): BookmarkSaveResult {
-    val saved = articleGateway.saveSharedArticle(url, title, sourceTitle)
-    if (folderId != null) associationStore.moveArticleToFolder(saved.articleId, folderId)
+    val articleId = articleGateway.findOrCreateSharedArticle(url, title, sourceTitle)
+    val added = stateStore.save(articleId)
+    if (folderId != null) associationStore.moveArticleToFolder(articleId, folderId)
     dataChanges.notifyChanged()
-    if (saved.result == BookmarkSaveResult.ADDED) {
-      notifyNewBookmark(saved.articleId, wasBookmarked = false)
-    }
-    return saved.result
+    if (added) notifyNewBookmark(articleId, wasBookmarked = false)
+    return if (added) BookmarkSaveResult.ADDED else BookmarkSaveResult.ALREADY_BOOKMARKED
+  }
+
+  private suspend fun compose(records: List<BookmarkRecord>, limit: Int? = null): List<BookmarkedArticle> {
+    if (records.isEmpty()) return emptyList()
+    val articles = articleRepository.findArticles(records.map(BookmarkRecord::articleId)).associateBy { it.id }
+    val composed = records.mapNotNull { record ->
+      articles[record.articleId]?.let { article ->
+        BookmarkedArticle(
+          article = article,
+          savedAt = record.savedAt,
+          tags = record.tags,
+          folder = record.folder,
+        )
+      }
+    }.sortedByDescending { it.article.publishedAt }
+    return limit?.let(composed::take) ?: composed
   }
 
   private fun requireUserFolderName(name: String) {
@@ -154,7 +167,7 @@ class DefaultBookmarkRepository(
   }
 
   private suspend fun notifyNewBookmark(articleId: String, wasBookmarked: Boolean) {
-    if (wasBookmarked || !articleGateway.isBookmarked(articleId)) return
+    if (wasBookmarked || !stateStore.isBookmarked(articleId)) return
     try {
       onBookmarkAdded(articleId)
     } catch (error: CancellationException) {

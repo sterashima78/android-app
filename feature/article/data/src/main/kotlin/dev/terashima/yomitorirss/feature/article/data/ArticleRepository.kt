@@ -30,23 +30,30 @@ class DefaultArticleRepository(
     val cutoff = contentRetentionPolicy.expiryCutoff(Instant.now()).toString()
     val deleted = database.transaction {
       val expiredCandidateIds = rawQuery(
-        "SELECT id FROM articles WHERE saved_at IS NULL AND read_at IS NOT NULL AND read_at<?",
+        "SELECT id FROM articles WHERE read_at IS NOT NULL AND read_at<?",
         arrayOf(cutoff),
-      ).use { cursor ->
-        buildSet {
-          while (cursor.moveToNext()) add(cursor.getString(0))
-        }
-      }
+      ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
       if (expiredCandidateIds.isEmpty()) return@transaction 0
 
       val protectedIds = contentRetentionProtectionQuery.protectedContentIds(expiredCandidateIds)
       val deletableIds = contentRetentionPolicy.deletableContentIds(expiredCandidateIds, protectedIds)
-      deletableIds.chunked(500).sumOf { ids ->
+      deletableIds.chunked(400).sumOf { ids ->
         val placeholders = ids.joinToString(",") { "?" }
         delete("articles", "id IN ($placeholders)", ids.toTypedArray())
       }
     }
     if (deleted > 0) dataChanges.notifyChanged()
+  }
+
+  override suspend fun findArticle(articleId: String): Article? = findArticles(listOf(articleId)).firstOrNull()
+
+  override suspend fun findArticles(articleIds: Collection<String>): List<Article> {
+    val ids = articleIds.asSequence().filter(String::isNotBlank).distinct().toList()
+    if (ids.isEmpty()) return emptyList()
+    return ids.chunked(400).flatMap { chunk ->
+      val placeholders = chunk.joinToString(",") { "?" }
+      articles("$ARTICLE_SELECT WHERE a.id IN($placeholders)", chunk.toTypedArray())
+    }
   }
 
   override suspend fun listUnreadArticles(): List<Article> = articles(
@@ -88,16 +95,9 @@ class DefaultArticleRepository(
       buildList { while (cursor.moveToNext()) add(cursor.articleRow()) }
     }
     val sourceIds = rows.mapNotNull(ArticleRow::sourceId).toSet()
-    val sourceOverrides = if (sourceIds.isEmpty()) {
-      emptyMap()
-    } else {
-      contentClassificationSourceQuery.findOverrides(sourceIds)
-    }
+    val sourceOverrides = if (sourceIds.isEmpty()) emptyMap() else contentClassificationSourceQuery.findOverrides(sourceIds)
     return rows.map { row ->
-      row.article(
-        sourceOverrides = row.sourceId?.let(sourceOverrides::get),
-        service = contentClassificationService,
-      )
+      row.article(row.sourceId?.let(sourceOverrides::get), contentClassificationService)
     }
   }
 }
@@ -138,10 +138,7 @@ private fun Cursor.articleRow(): ArticleRow = ArticleRow(
   contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
 )
 
-private fun ArticleRow.article(
-  sourceOverrides: SourceContentTypeOverrides?,
-  service: ContentClassificationService,
-): Article = Article(
+private fun ArticleRow.article(sourceOverrides: SourceContentTypeOverrides?, service: ContentClassificationService): Article = Article(
   id = id,
   feedId = sourceId,
   externalId = externalId,
@@ -158,8 +155,6 @@ private fun ArticleRow.article(
 )
 
 private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
-
 private fun Cursor.nullableString(name: String): String? =
   getColumnIndexOrThrow(name).let { index -> if (isNull(index)) null else getString(index) }
-
 private fun nowIso(): String = Instant.now().toString()

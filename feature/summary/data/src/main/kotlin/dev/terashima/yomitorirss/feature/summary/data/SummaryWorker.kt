@@ -14,8 +14,8 @@ import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepositoryProvider
+import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
+import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependenciesProvider
 import dev.terashima.yomitorirss.feature.summary.summaryCacheKey
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
@@ -30,30 +30,30 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class SummaryWorker(
-  appContext: Context,
-  params: WorkerParameters,
-) : CoroutineWorker(appContext, params) {
-  private val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository by lazy(LazyThreadSafetyMode.NONE) {
-    (applicationContext as? BookmarkEnrichmentRepositoryProvider)?.bookmarkEnrichmentRepository
-      ?: error("Application must provide BookmarkEnrichmentRepository")
+class SummaryWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+  private val runtime: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.NONE) {
+    (applicationContext as? SummaryRuntimeDependenciesProvider)?.summaryRuntimeDependencies
+      ?: error("Application must provide SummaryRuntimeDependencies")
   }
 
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
-
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     return withContext(Dispatchers.IO) {
       val database = YomitoriDatabase.create(applicationContext)
       try {
         database.requeueInterruptedSummaryTasks()
-
         while (!SummaryQueue.executionState(applicationContext).paused) {
           currentCoroutineContext().ensureActive()
-          val priority = database.peekNextSummaryTaskPriority() ?: break
-          LocalAiBackgroundTaskGate.withPermit(priority) {
+          val candidates = database.listInferenceReadySummaryTasks()
+          if (candidates.isEmpty()) break
+          val highPriorityIds = runtime.bookmarkContentQuery.readLaterContentIds(
+            candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
+          )
+          val candidate = selectNextSummaryTask(candidates, highPriorityIds) ?: break
+          LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
             if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
-            val task = database.claimNextSummaryTaskByPriority() ?: return@withPermit
+            val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
             processTask(database, task)
           }
           SummaryQueue.kickContentFetch(applicationContext)
@@ -65,39 +65,27 @@ class SummaryWorker(
     }
   }
 
-  private suspend fun processTask(
-    database: YomitoriDatabase,
-    task: SummaryTaskRecord,
-  ) {
-    val article = database.findArticle(task.articleId)
+  private suspend fun processTask(database: YomitoriDatabase, task: SummaryTaskRecord) {
+    val article = runtime.articleRepository.findArticle(task.articleId)
     if (article == null) {
       database.failRunningSummaryTask(task.articleId, "記事が見つかりません")
       return
     }
-
     val modelManager = LocalModelManager.shared(applicationContext)
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
       setForeground(createForegroundInfo(article.title))
-      val enrichmentContext = bookmarkEnrichmentRepository.context(task.articleId)
+      val enrichmentContext = runtime.bookmarkEnrichmentRepository.context(task.articleId)
       val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
       val summaryForMetadata = if (cached != null) {
         cached.summary
       } else {
-        val selectedModel = modelManager.selectedModel()
-          ?: error("要約モデルをダウンロードして選択してください")
+        val selectedModel = modelManager.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
         val prompt = summaryPromptStore.prompt.value
         val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
         val preparedContent = database.findPreparedSummaryArticleContent(task.articleId)
           ?: error("記事本文の準備が完了していません")
-
-        val generated = summarizeWithProgress(
-          database = database,
-          modelManager = modelManager,
-          articleId = task.articleId,
-          articleText = preparedContent.content,
-          prompt = prompt,
-        )
+        val generated = summarizeWithProgress(database, modelManager, task.articleId, preparedContent.content, prompt)
         currentCoroutineContext().ensureActive()
         database.saveSummary(task.articleId, generated, cacheKey)
         generated
@@ -105,8 +93,7 @@ class SummaryWorker(
 
       if (enrichmentContext != null) {
         currentCoroutineContext().ensureActive()
-        modelManager.selectedModel()
-          ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
+        modelManager.selectedModel() ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
         val generatedMetadata = parseBookmarkMetadataEnrichment(
           raw = modelManager.summarizeText(
             text = summaryForMetadata,
@@ -119,27 +106,14 @@ class SummaryWorker(
           ),
           existingFolderNames = enrichmentContext.existingFolderNames,
         )
-        applyBookmarkMetadata(task.articleId, generatedMetadata)
+        runtime.bookmarkEnrichmentRepository.applyGeneratedMetadata(task.articleId, generatedMetadata.tags, generatedMetadata.folder)
       }
-
       database.completeRunningSummaryTask(task.articleId)
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
       database.failRunningSummaryTask(task.articleId, error.userMessage())
     }
-  }
-
-  private suspend fun applyBookmarkMetadata(
-    articleId: String,
-    metadata: BookmarkAiGeneratedMetadata,
-  ) {
-    currentCoroutineContext().ensureActive()
-    bookmarkEnrichmentRepository.applyGeneratedMetadata(
-      articleId = articleId,
-      tagNames = metadata.tags,
-      folderName = metadata.folder,
-    )
   }
 
   private suspend fun summarizeWithProgress(
@@ -153,36 +127,19 @@ class SummaryWorker(
     val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
       modelManager.inferenceProgress.filterNotNull().collect { progress ->
         when (progress.stage) {
-          LocalInferenceStage.PREPARING_MODEL -> database.updateRunningSummaryTaskProgress(
-            articleId,
-            SUMMARY_PROGRESS_PREPARING_MODEL,
-          )
+          LocalInferenceStage.PREPARING_MODEL -> database.updateRunningSummaryTaskProgress(articleId, SUMMARY_PROGRESS_PREPARING_MODEL)
           LocalInferenceStage.GENERATING_RESPONSE -> {
             val stored = hierarchyProgress.get().toStoredProgress()
-            database.updateRunningSummaryTaskProgress(
-              articleId = articleId,
-              stage = stored.stage,
-              current = stored.current,
-              total = stored.total,
-            )
+            database.updateRunningSummaryTaskProgress(articleId, stored.stage, stored.current, stored.total)
           }
         }
       }
     }
-
     try {
-      modelManager.summarizeHierarchically(
-        text = articleText,
-        prompt = prompt,
-      ) { progress ->
+      modelManager.summarizeHierarchically(text = articleText, prompt = prompt) { progress ->
         hierarchyProgress.set(progress)
         val stored = progress.toStoredProgress()
-        database.updateRunningSummaryTaskProgress(
-          articleId = articleId,
-          stage = stored.stage,
-          current = stored.current,
-          total = stored.total,
-        )
+        database.updateRunningSummaryTaskProgress(articleId, stored.stage, stored.current, stored.total)
       }
     } finally {
       progressCollector.cancelAndJoin()
@@ -192,16 +149,11 @@ class SummaryWorker(
   private fun createForegroundInfo(articleTitle: String): ForegroundInfo {
     val notificationManager = applicationContext.getSystemService(NotificationManager::class.java)
     notificationManager.createNotificationChannel(
-      NotificationChannel(
-        CHANNEL_ID,
-        "記事の要約とタグ付け",
-        NotificationManager.IMPORTANCE_LOW,
-      ).apply {
+      NotificationChannel(CHANNEL_ID, "記事の要約とタグ付け", NotificationManager.IMPORTANCE_LOW).apply {
         description = "ローカルAIで記事をバックグラウンド要約・タグ付けしている間に表示します"
         setShowBadge(false)
       },
     )
-
     val notificationBuilder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.stat_notify_sync)
       .setContentTitle("記事をAI処理しています")
@@ -211,24 +163,10 @@ class SummaryWorker(
       .setOnlyAlertOnce(true)
       .setCategory(NotificationCompat.CATEGORY_PROGRESS)
       .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-
-    applicationContext.packageManager
-      .getLaunchIntentForPackage(applicationContext.packageName)
-      ?.let { launchIntent ->
-        PendingIntent.getActivity(
-          applicationContext,
-          0,
-          launchIntent,
-          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-      }
-      ?.let(notificationBuilder::setContentIntent)
-
-    val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-    } else {
-      0
-    }
+    applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.let { launchIntent ->
+      PendingIntent.getActivity(applicationContext, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }?.let(notificationBuilder::setContentIntent)
+    val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
     return ForegroundInfo(NOTIFICATION_ID, notificationBuilder.build(), serviceType)
   }
 
@@ -238,30 +176,14 @@ class SummaryWorker(
   }
 }
 
-private data class StoredSummaryProgress(
-  val stage: String,
-  val current: Int? = null,
-  val total: Int? = null,
-)
+private data class StoredSummaryProgress(val stage: String, val current: Int? = null, val total: Int? = null)
 
 private fun HierarchicalSummaryProgress?.toStoredProgress(): StoredSummaryProgress = when (this?.stage) {
-  HierarchicalSummaryProgressStage.CHUNK -> StoredSummaryProgress(
-    stage = SUMMARY_PROGRESS_SUMMARIZING_CHUNK,
-    current = this?.current,
-    total = this?.total,
-  )
-  HierarchicalSummaryProgressStage.REDUCTION -> StoredSummaryProgress(
-    stage = SUMMARY_PROGRESS_REDUCING_SUMMARY,
-    current = this?.current,
-    total = this?.total,
-  )
+  HierarchicalSummaryProgressStage.CHUNK -> StoredSummaryProgress(SUMMARY_PROGRESS_SUMMARIZING_CHUNK, this?.current, this?.total)
+  HierarchicalSummaryProgressStage.REDUCTION -> StoredSummaryProgress(SUMMARY_PROGRESS_REDUCING_SUMMARY, this?.current, this?.total)
   HierarchicalSummaryProgressStage.FINAL -> StoredSummaryProgress(SUMMARY_PROGRESS_FINALIZING_SUMMARY)
-  HierarchicalSummaryProgressStage.DIRECT,
-  null -> StoredSummaryProgress(SUMMARY_PROGRESS_GENERATING_SUMMARY)
+  HierarchicalSummaryProgressStage.DIRECT, null -> StoredSummaryProgress(SUMMARY_PROGRESS_GENERATING_SUMMARY)
 }
 
 private fun Throwable.userMessage(): String =
-  generateSequence(this) { it.cause }
-    .mapNotNull(Throwable::message)
-    .firstOrNull(String::isNotBlank)
-    ?: javaClass.simpleName
+  generateSequence(this) { it.cause }.mapNotNull(Throwable::message).firstOrNull(String::isNotBlank) ?: javaClass.simpleName

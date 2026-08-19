@@ -8,8 +8,11 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.article.CompositeContentRetentionProtectionQuery
+import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
+import dev.terashima.yomitorirss.feature.article.data.DefaultContentSourceGateway
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
 import dev.terashima.yomitorirss.feature.asset.data.DefaultAssetRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
@@ -17,10 +20,11 @@ import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.data.DefaultBackupRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkArticleGateway
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkContentQuery
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkSourceMetadataReader
+import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkContentQuery
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkRepository
@@ -73,8 +77,8 @@ class AppContainer(private val application: Application) {
   internal val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)
   }
-  private val bookmarkSourceMetadataReader: BookmarkSourceMetadataReader by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    BookmarkSourceMetadataReader(databaseConnection)
+  val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultBookmarkContentQuery(databaseConnection)
   }
   private val bookmarkArticleGateway: BookmarkArticleGateway by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkArticleGateway(databaseConnection)
@@ -83,7 +87,12 @@ class AppContainer(private val application: Application) {
     RssContentClassificationSourceQuery(databaseConnection)
   }
   private val contentRetentionProtectionQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    SummaryContentRetentionProtectionQuery(databaseConnection)
+    CompositeContentRetentionProtectionQuery(
+      listOf(
+        bookmarkContentQuery,
+        SummaryContentRetentionProtectionQuery(databaseConnection),
+      ),
+    )
   }
 
   val articleRepository: ArticleRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -94,16 +103,20 @@ class AppContainer(private val application: Application) {
       dataChanges = dataChanges,
     )
   }
+  private val contentSourceGateway: ContentSourceGateway by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultContentSourceGateway(databaseConnection, bookmarkContentQuery)
+  }
   val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAssetRepository(application, databaseConnection)
   }
   val bookmarkRepository: BookmarkRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkRepository(
       database = databaseConnection,
+      articleRepository = articleRepository,
       articleGateway = bookmarkArticleGateway,
       dataChanges = dataChanges,
       onBookmarkAdded = { articleId ->
-        val source = bookmarkSourceMetadataReader.find(articleId)
+        val source = articleRepository.findArticle(articleId)
         if (
           source != null && shouldRequestBookmarkEnrichment(
             url = source.url,
@@ -128,7 +141,12 @@ class AppContainer(private val application: Application) {
     )
   }
   val feedRepository: FeedRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultFeedRepository(databaseConnection, dataChanges, application)
+    DefaultFeedRepository(
+      database = databaseConnection,
+      contentSourceGateway = contentSourceGateway,
+      dataChanges = dataChanges,
+      applicationContext = application,
+    )
   }
   val redditRepository: RedditRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultRedditRepository(feedRepository)
@@ -137,7 +155,12 @@ class AppContainer(private val application: Application) {
     DefaultYouTubeRepository(databaseConnection)
   }
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultFeedImportRepository(application, databaseConnection, dataChanges)
+    DefaultFeedImportRepository(
+      context = application,
+      database = databaseConnection,
+      contentSourceGateway = contentSourceGateway,
+      dataChanges = dataChanges,
+    )
   }
   val refreshFeedsUseCase: RefreshFeedsUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     RefreshFeedsUseCase(feedRepository)
@@ -199,7 +222,12 @@ class AppContainer(private val application: Application) {
     DefaultSummaryRepository(application, database, modelManager)
   }
   val summaryTaskQueueRepository: SummaryTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultSummaryTaskQueueRepository(application, database)
+    DefaultSummaryTaskQueueRepository(
+      context = application,
+      database = database,
+      articleRepository = articleRepository,
+      bookmarkContentQuery = bookmarkContentQuery,
+    )
   }
   val knowledgeRepository: KnowledgeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ManagingKnowledgeRepository(

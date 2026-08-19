@@ -7,12 +7,12 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepositoryProvider
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
+import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependenciesProvider
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
@@ -27,67 +27,32 @@ class YomitoriApplication : Application(),
   DatabaseSchemaProvider,
   BackupRepositoryProvider,
   KnowledgeRepositoryProvider,
-  BookmarkEnrichmentRepositoryProvider,
   LanWebRepositoryProvider,
+  SummaryRuntimeDependenciesProvider,
   BookmarkAutoEnrichmentBackfillProvider {
-  val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AppContainer(this)
+  val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppContainer(this) }
+  val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
+  override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    MainActivityDependencies(routeDependencies, container.bookmarkRepository, container.backupChangeScheduler::scheduleAfterChange)
   }
-  val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AppRouteDependencies(this, container)
+  private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    UnreadArticlesWidgetRefreshObserver(this, DataChangeNotifier.shared.version)
   }
-  override val mainActivityDependencies: MainActivityDependencies by lazy(
-    LazyThreadSafetyMode.SYNCHRONIZED,
-  ) {
-    MainActivityDependencies(
-      routeDependencies = routeDependencies,
-      bookmarkRepository = container.bookmarkRepository,
-      onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-  }
-  private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(
-    LazyThreadSafetyMode.SYNCHRONIZED,
-  ) {
-    UnreadArticlesWidgetRefreshObserver(
-      context = this,
-      dataChanges = DataChangeNotifier.shared.version,
-    )
-  }
-  private val bookmarkAutoEnrichmentBackfillUseCase: BookmarkAutoEnrichmentBackfillUseCase by lazy(
-    LazyThreadSafetyMode.SYNCHRONIZED,
-  ) {
-    BookmarkAutoEnrichmentBackfillUseCase(
-      bookmarkRepository = container.bookmarkRepository,
-      summaryRepository = container.summaryRepository,
-    )
+  private val bookmarkAutoEnrichmentBackfillUseCase: BookmarkAutoEnrichmentBackfillUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    BookmarkAutoEnrichmentBackfillUseCase(container.bookmarkRepository, container.summaryRepository)
   }
 
-  override val databaseSchema: DatabaseSchema
-    get() = appDatabaseSchema
-
-  override val widgetRepository: WidgetRepository
-    get() = container.widgetRepository
-
-  override val taskRepository: TaskRepository
-    get() = container.taskRepository
-
-  override val backupRepository: BackupRepository
-    get() = container.backupRepository
-
-  override val knowledgeRepository: KnowledgeRepository
-    get() = container.knowledgeRepository
-
-  override val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository
-    get() = container.bookmarkEnrichmentRepository
-
-  override val lanWebArticleRepository: ArticleRepository
-    get() = container.articleRepository
-
-  override val lanWebBookmarkRepository: BookmarkRepository
-    get() = container.bookmarkRepository
-
-  override val lanWebFeedRepository: FeedRepository
-    get() = container.feedRepository
+  override val databaseSchema: DatabaseSchema get() = appDatabaseSchema
+  override val widgetRepository: WidgetRepository get() = container.widgetRepository
+  override val taskRepository: TaskRepository get() = container.taskRepository
+  override val backupRepository: BackupRepository get() = container.backupRepository
+  override val knowledgeRepository: KnowledgeRepository get() = container.knowledgeRepository
+  override val summaryRuntimeDependencies: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SummaryRuntimeDependencies(container.articleRepository, container.bookmarkContentQuery, container.bookmarkEnrichmentRepository)
+  }
+  override val lanWebArticleRepository: ArticleRepository get() = container.articleRepository
+  override val lanWebBookmarkRepository: BookmarkRepository get() = container.bookmarkRepository
+  override val lanWebFeedRepository: FeedRepository get() = container.feedRepository
 
   override suspend fun runBookmarkAutoEnrichmentBackfill() {
     bookmarkAutoEnrichmentBackfillUseCase()

@@ -1,37 +1,32 @@
 package dev.terashima.yomitorirss.feature.bookmark
 
-data class BookmarkArticleSave(
-  val articleId: String,
-  val result: BookmarkSaveResult,
-)
+import dev.terashima.yomitorirss.feature.article.ContentRetentionProtectionQuery
 
-data class BookmarkImportedArticle(
-  val articleId: String,
-  val added: Boolean,
-  val duplicate: Boolean,
-)
-
-/**
- * Transitional port for bookmark use cases that still store bookmark state in the Content-owned articles table.
- *
- * The implementation belongs to Article data. This port must disappear when saved_at moves to Curation-owned storage.
- */
+/** Content の検索・作成・閲覧状態更新だけを要求する Curation -> Content command port。 */
 interface BookmarkArticleGateway {
-  suspend fun isBookmarked(articleId: String): Boolean
-  suspend fun saveAndRead(articleId: String)
-  suspend fun unsave(articleId: String)
-  suspend fun saveSharedArticle(
+  suspend fun markRead(articleId: String)
+
+  suspend fun findOrCreateSharedArticle(
     url: String,
     title: String,
     sourceTitle: String,
-  ): BookmarkArticleSave
-  suspend fun importSavedArticle(
+  ): String
+
+  suspend fun findOrCreateImportedArticle(
     url: String,
     title: String,
     sourceTitle: String,
     createdAt: String,
     identityPrefix: String,
-  ): BookmarkImportedArticle
+  ): String
+}
+
+/** Curation が他 Context に公開する bookmark/read-later の named query。 */
+interface BookmarkContentQuery : ContentRetentionProtectionQuery {
+  fun bookmarkedContentIds(contentIds: Set<String>): Set<String>
+  fun readLaterContentIds(contentIds: Set<String>): Set<String>
+
+  override fun protectedContentIds(contentIds: Set<String>): Set<String> = bookmarkedContentIds(contentIds)
 }
 
 data class BookmarkEnrichmentContext(
@@ -46,8 +41,4 @@ interface BookmarkEnrichmentRepository {
     tagNames: List<String>,
     folderName: String?,
   ): Boolean
-}
-
-interface BookmarkEnrichmentRepositoryProvider {
-  val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository
 }
