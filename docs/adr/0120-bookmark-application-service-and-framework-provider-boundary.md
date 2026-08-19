@@ -12,8 +12,9 @@ ADR-0106 / ADR-0117 / ADR-0119 により Content / Curation 周辺の cross-cont
 - `DefaultBookmarkImportRepository` が Android document I/O、CSV/HTML parse、Content への import/save、Curation tag 永続化、結果集計まで一つの data class で orchestration していた。
 - X CSS では ADR-0107 により Application cast を使う service locator を廃止したが、コードベース全体として `RepositoryProvider` 等の lookup を許可する条件は機械的に固定されていなかった。
 - 棚卸し中、`BookmarkAutoEnrichmentBackfillWorker` が `YomitoriApplication` に直接 cast し、`AppContainer` から複数 Repository を取得する未監査の service locator を持つことが判明した。
+- 境界テスト導入後、`MainActivity` と `AiTaskQueueRoute` にも既存の `YomitoriApplication` 直接 cast が残っていることが検出された。
 
-Provider lookup 自体を一律禁止すると、Android が constructor を所有する `Worker` / `Service` / `AppWidgetProvider` の entry point に不自然な依存解決を強いる。一方、通常の Route / UI / application composition で Provider lookup を許すと、ADR-0107 で解消した hidden dependency が再発する。
+Provider lookup 自体を一律禁止すると、Android が constructor を所有する `Activity` / `Worker` / `Service` / `AppWidgetProvider` の entry point に不自然な依存解決を強いる。一方、通常の Route / UI / application composition で Provider lookup を許すと、ADR-0107 で解消した hidden dependency が再発する。
 
 ## Decision
 
@@ -48,12 +49,15 @@ UseCase は entry の反復、added/duplicate/skipped 集計、各 port の呼�
 
 許可対象は Android / WorkManager が constructor を所有する entry point に限る。
 
+- Android Activity の composition root
 - WorkManager Worker
 - Android Service
-- AppWidgetProvider から到達する repository access
+- AppWidgetProvider / RemoteViewsService から到達する repository access
 - background entry point が共有 database を Context から生成するための schema provider
 
 通常の Route、Screen、ViewModel、application service、data object で Provider lookup を新設してはならず、composition root から明示注入する。
+
+`MainActivity` は Android が生成するため `MainActivityDependenciesProvider` だけを Application から取得し、`AppContainer` 自体は参照しない。共有ブックマーク保存と backup change notification は `MainActivityDependencies` が限定された契約として公開する。
 
 `FrameworkProviderBoundaryTest` は production Kotlin source の Provider cast 集合と manifest を完全一致させる。これにより新規 lookup だけでなく不要になった stale manifest entry も検出する。
 
@@ -62,6 +66,10 @@ UseCase は entry の反復、added/duplicate/skipped 集計、各 port の呼�
 `BookmarkAutoEnrichmentBackfillWorker` の `YomitoriApplication` cast と `AppContainer` lookup を削除する。
 
 backfill の cross-context orchestration は `BookmarkAutoEnrichmentBackfillUseCase` に移し、Worker は `BookmarkAutoEnrichmentBackfillProvider` という framework entry point contract だけを取得する。`YomitoriApplication` は composition root としてその contract を実装する。
+
+`AiTaskQueueRoute` は Application を参照せず、`AppRouteDependencies` から `SettingsRoute` を通して `AiTaskQueueRepository` を明示注入する。
+
+`MainActivity` も `YomitoriApplication` implementation type へ cast せず、framework entry point 用の `MainActivityDependenciesProvider` のみに依存する。
 
 production code の `as` / `as? YomitoriApplication` は architecture test で禁止する。
 
@@ -73,7 +81,8 @@ production code の `as` / `as? YomitoriApplication` は architecture test で�
 - import の workflow を Android I/O や SQLite から独立して unit test できる。
 - cross-context import が data implementation の暗黙 orchestration ではなく Application Service として表現される。
 - framework provider の例外範囲が監査可能になり、通常経路への service locator 再導入を検出できる。
-- Bookmark backfill Worker が app implementation type と AppContainer を知らなくなる。
+- Bookmark backfill Worker、MainActivity、AI task queue Route が `YomitoriApplication` implementation type を知らなくなる。
+- Compose Route の AI task queue dependency は他の Route dependency と同様に composition root から追跡できる。
 
 ### Negative
 
