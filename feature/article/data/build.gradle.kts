@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:article:domain"))
+  implementation(project(":feature:bookmark:domain"))
   implementation(project(":core:database"))
   implementation(project(":core:network"))
 
