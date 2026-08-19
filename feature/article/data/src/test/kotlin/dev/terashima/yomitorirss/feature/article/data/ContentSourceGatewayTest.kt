@@ -75,6 +75,27 @@ class ContentSourceGatewayTest {
   }
 
   @Test
+  fun `Source ingestionは一致するBookmark済みdetached Contentをすべて再関連付けする`() {
+    insertDetached("saved-1", "old-identity-1", "https://example.com/shared")
+    insertDetached("saved-2", "old-identity-2", "https://example.com/shared")
+    bookmarks.bookmarkedIds = setOf("saved-1", "saved-2")
+
+    gateway.upsertSourceContent(
+      source = ContentSourceSnapshot("feed-1", "Feed", "https://example.com/feed"),
+      items = listOf(SourceContentItem("ext", "new-identity", "https://example.com/shared", "Article", "2026-08-19T00:00:00Z")),
+      fetchedAt = "2026-08-19T01:00:00Z",
+    )
+
+    helper.readableDatabase.rawQuery(
+      "SELECT COUNT(*) FROM articles WHERE id IN('saved-1','saved-2') AND feed_id='feed-1'",
+      null,
+    ).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals(2, cursor.getInt(0))
+    }
+  }
+
+  @Test
   fun `Source削除はBookmark Contentを保持して未保存Contentを削除する`() {
     gateway.upsertSourceContent(
       source = ContentSourceSnapshot("feed-1", "Feed", "https://example.com/feed"),
@@ -95,6 +116,27 @@ class ContentSourceGatewayTest {
       assertEquals(ContentType.COMIC.name, cursor.getString(1))
     }
     assertFalse(articleExists("https://example.com/other"))
+  }
+
+  private fun insertDetached(id: String, identityKey: String, url: String) {
+    helper.writableDatabase.execSQL(
+      """
+        INSERT INTO articles(
+          id,feed_id,external_id,identity_key,url,title,published_at,fetched_at,read_at,
+          source_title,source_feed_url,content_type
+        ) VALUES(?,NULL,NULL,?,?,?, ?,?,NULL,?,?,NULL)
+      """.trimIndent(),
+      arrayOf(
+        id,
+        identityKey,
+        url,
+        id,
+        "2026-08-18T00:00:00Z",
+        "2026-08-18T01:00:00Z",
+        "Shared",
+        "",
+      ),
+    )
   }
 
   private fun articleId(url: String): String = helper.readableDatabase.rawQuery(

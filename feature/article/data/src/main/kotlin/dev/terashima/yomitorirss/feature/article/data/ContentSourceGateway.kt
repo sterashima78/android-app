@@ -22,14 +22,13 @@ class DefaultContentSourceGateway(
   ) {
     database.transaction {
       items.take(500).forEach { item ->
-        val detachedId = rawQuery(
-          "SELECT id FROM articles WHERE feed_id IS NULL AND (identity_key=? OR url=?) ORDER BY fetched_at DESC LIMIT 1",
+        val detachedIds = rawQuery(
+          "SELECT id FROM articles WHERE feed_id IS NULL AND (identity_key=? OR url=?)",
           arrayOf(item.identityKey, item.url),
-        ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
-        if (
-          detachedId != null &&
-          detachedId in bookmarkContentQuery.bookmarkedContentIds(setOf(detachedId))
-        ) {
+        ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
+        val bookmarkedDetachedIds = bookmarkContentQuery.bookmarkedContentIds(detachedIds)
+        bookmarkedDetachedIds.chunked(QUERY_CHUNK_SIZE).forEach { ids ->
+          val placeholders = ids.joinToString(",") { "?" }
           update(
             "articles",
             values(
@@ -37,8 +36,8 @@ class DefaultContentSourceGateway(
               "source_title" to source.title,
               "source_feed_url" to source.sourceUrl,
             ),
-            "id=?",
-            arrayOf(detachedId),
+            "id IN($placeholders)",
+            ids.toTypedArray(),
           )
         }
         insertWithOnConflict(
