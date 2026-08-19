@@ -12,7 +12,7 @@ import java.util.UUID
 internal class BookmarkAssociationStore(
   private val database: DatabaseConnection,
 ) {
-  fun listBookmarkAssociatedTagIds(): Set<String> = database.readable
+  fun listAssociatedTagIds(): Set<String> = database.readable
     .rawQuery(
       """
         SELECT DISTINCT x.tag_id
