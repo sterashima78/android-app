@@ -22,6 +22,7 @@ interface BookmarkCatalog {
   suspend fun createTag(name: String)
   suspend fun renameTag(tagId: String, name: String)
   suspend fun deleteTag(tagId: String)
+  suspend fun deleteUnusedTags(): Int
 }
 
 interface BookmarkMutator {
