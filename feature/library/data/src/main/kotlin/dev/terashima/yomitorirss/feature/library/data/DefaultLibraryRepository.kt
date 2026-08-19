@@ -24,6 +24,7 @@ class DefaultLibraryRepository(
 
   override suspend fun snapshot(): LibrarySnapshot {
     ensureSchema()
+    normalizeStoredKindleBookTitles()
     val books = queryBooks(hidden = false)
     val hiddenBooks = queryBooks(hidden = true)
     val sourceStates = database.readable.rawQuery(
@@ -165,6 +166,13 @@ class DefaultLibraryRepository(
       "Kindle 通常本と Personal Document が混在したインポートはできません"
     }
     val isPersonalDocumentImport = personalDocuments.isNotEmpty()
+    val normalizedBooks = books.map { book ->
+      if (book.isKindlePersonalDocument()) {
+        book
+      } else {
+        book.copy(title = normalizeKindleBookTitle(book.title))
+      }
+    }
     val syncedAt = System.currentTimeMillis()
     database.transaction {
       val prefixPattern = "$KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX%"
@@ -174,7 +182,7 @@ class DefaultLibraryRepository(
         "source = ? AND source_id NOT LIKE ?"
       }
       delete("library_items", where, arrayOf(LibrarySource.KINDLE.name, prefixPattern))
-      books.forEach { book ->
+      normalizedBooks.forEach { book ->
         insertOrThrow("library_items", null, book.toValues(syncedAt))
       }
       updateSourceState(LibrarySource.KINDLE, accountLabel = null, syncedAt = syncedAt)
@@ -313,6 +321,46 @@ class DefaultLibraryRepository(
           )
         """.trimIndent(),
       )
+    }
+  }
+
+  private fun normalizeStoredKindleBookTitles() {
+    val updates = database.readable.rawQuery(
+      """
+        SELECT source_id, title
+        FROM library_items
+        WHERE source = ?
+          AND source_id NOT LIKE ?
+          AND title LIKE ?
+      """.trimIndent(),
+      arrayOf(
+        LibrarySource.KINDLE.name,
+        "$KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX%",
+        "%$KINDLE_JAPANESE_EDITION_SUFFIX%",
+      ),
+    ).use { cursor ->
+      buildList {
+        val sourceIdIndex = cursor.getColumnIndexOrThrow("source_id")
+        val titleIndex = cursor.getColumnIndexOrThrow("title")
+        while (cursor.moveToNext()) {
+          val sourceId = cursor.getString(sourceIdIndex)
+          val title = cursor.getString(titleIndex)
+          val normalizedTitle = normalizeKindleBookTitle(title)
+          if (normalizedTitle != title) add(sourceId to normalizedTitle)
+        }
+      }
+    }
+    if (updates.isEmpty()) return
+
+    database.transaction {
+      updates.forEach { (sourceId, title) ->
+        update(
+          "library_items",
+          ContentValues().apply { put("title", title) },
+          "source = ? AND source_id = ?",
+          arrayOf(LibrarySource.KINDLE.name, sourceId),
+        )
+      }
     }
   }
 
