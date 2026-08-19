@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -29,11 +28,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SettingsContent(
   modifier: Modifier,
-  tagCount: Int,
   backgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
-  onImportBookmarkCsv: () -> Unit,
-  onImportBookmarkHtml: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
@@ -54,24 +50,6 @@ fun SettingsContent(
         supporting = "RSS・メール・表紙・AIモデルのバックグラウンド取得を Wi-Fi 接続中に限定",
         checked = backgroundFetchWifiOnly,
         onCheckedChange = onBackgroundFetchWifiOnlyChange,
-      )
-    }
-    item { SettingsDivider() }
-
-    item { SettingsHeader("ブックマーク") }
-    item {
-      SettingsRow(
-        icon = Icons.Default.UploadFile,
-        title = "CSVからインポート",
-        supporting = "登録済みタグ ${tagCount}件",
-        onClick = onImportBookmarkCsv,
-      )
-    }
-    item {
-      SettingsRow(
-        icon = Icons.Default.UploadFile,
-        title = "HTMLからインポート",
-        onClick = onImportBookmarkHtml,
       )
     }
     item { SettingsDivider() }
