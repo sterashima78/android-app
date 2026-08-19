@@ -60,4 +60,4 @@ Architecture document の規範的な節には末尾の `Sources` で根拠 ADR 
 - [ADR-0055](../adr/0055-adr-numbering-policy.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
-- [ADR-0124](../adr/0124-android-platform-baseline.md)
+- [ADR-0125](../adr/0125-android-platform-baseline.md)
