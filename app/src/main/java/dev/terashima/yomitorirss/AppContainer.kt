@@ -15,7 +15,7 @@ import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultContentSourceGateway
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
-import dev.terashima.yomitoririss.feature.asset.data.DefaultAssetRepository
+import dev.terashima.yomitorirss.feature.asset.data.DefaultAssetRepository
 import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
