@@ -20,6 +20,7 @@ internal fun MainTab.appSection(): AppSection = when (this) {
   MainTab.YOUTUBE -> AppSection.YOUTUBE
   MainTab.X -> AppSection.X
   MainTab.TASKS -> AppSection.TASKS
+  MainTab.CALENDAR -> AppSection.CALENDAR
   MainTab.GAME -> AppSection.GAME
   MainTab.WORKOUT -> AppSection.WORKOUT
   MainTab.AI_CHAT -> AppSection.AI_CHAT
@@ -66,6 +67,7 @@ internal fun MainTab.screenTitle(): String = when (this) {
   MainTab.YOUTUBE -> "YouTube"
   MainTab.X -> "X"
   MainTab.TASKS -> "タスク"
+  MainTab.CALENDAR -> "カレンダー"
   MainTab.GAME -> "ゲーム"
   MainTab.WORKOUT -> "ワークアウト"
   MainTab.AI_CHAT -> "AIチャット"
@@ -85,6 +87,7 @@ internal fun AppSection.defaultTab(): MainTab = when (this) {
   AppSection.YOUTUBE -> MainTab.YOUTUBE
   AppSection.X -> MainTab.X
   AppSection.TASKS -> MainTab.TASKS
+  AppSection.CALENDAR -> MainTab.CALENDAR
   AppSection.GAME -> MainTab.GAME
   AppSection.WORKOUT -> MainTab.WORKOUT
   AppSection.AI_CHAT -> MainTab.AI_CHAT
