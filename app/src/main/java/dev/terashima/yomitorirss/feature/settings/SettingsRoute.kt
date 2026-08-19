@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
 import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
+import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettingsSheet
 
 @Composable
@@ -55,11 +56,37 @@ fun SettingsScreen(
     onOpenWebServer = onOpenWebServer,
   )
 
-  if (showXCssSettings) {
-    XViewerCssSettingsSheet(onDismiss = { showXCssSettings = false })
-  }
-
   if (showAiTaskQueue) {
     AiTaskQueueRoute(onDismiss = { showAiTaskQueue = false })
+  }
+}
+
+@Composable
+fun SettingsRoute(
+  modifier: Modifier,
+  bookmarkViewModel: dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel,
+  backupViewModel: dev.terashima.yomitorirss.feature.backup.BackupViewModel,
+  aiSettingsViewModel: AiSettingsViewModel,
+  xViewerCssRepository: XViewerCssRepository,
+  onOpenWebServer: () -> Unit,
+  onNavigate: (dev.terashima.yomitorirss.feature.navigation.MainTab) -> Unit,
+) {
+  var showXCssSettings by remember { mutableStateOf(false) }
+
+  SettingsRouteContent(
+    modifier = modifier,
+    bookmarkViewModel = bookmarkViewModel,
+    backupViewModel = backupViewModel,
+    aiSettingsViewModel = aiSettingsViewModel,
+    onOpenWebServer = onOpenWebServer,
+    onNavigate = onNavigate,
+    onOpenXCss = { showXCssSettings = true },
+  )
+
+  if (showXCssSettings) {
+    XViewerCssSettingsSheet(
+      repository = xViewerCssRepository,
+      onDismiss = { showXCssSettings = false },
+    )
   }
 }
