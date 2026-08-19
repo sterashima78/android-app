@@ -138,6 +138,16 @@ class SummaryPersistenceTest {
     assertEquals("retry", database.claimNextInferenceReadySummaryTask()?.articleId)
   }
 
+  @Test
+  fun `キャンセルしたタスクは準備済み本文を破棄する`() {
+    insertArticle("cancelled")
+    database.enqueueSummaryTask("cancelled", forceRefresh = false)
+    database.savePreparedSummaryArticleContentIfQueued("cancelled", "prepared body")
+
+    assertEquals(SUMMARY_QUEUED, database.cancelSummaryTask("cancelled"))
+    assertNull(database.findPreparedSummaryArticleContent("cancelled"))
+  }
+
   private fun insertArticle(id: String, bookmarked: Boolean = false) {
     database.writableDatabase.insertOrThrow(
       "articles",
