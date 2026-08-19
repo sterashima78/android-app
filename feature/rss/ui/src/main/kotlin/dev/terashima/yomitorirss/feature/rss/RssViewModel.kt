@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.withLock
 data class RssUiState(
   val initialized: Boolean = false,
   val unread: List<Article> = emptyList(),
+  val history: List<Article> = emptyList(),
   val readLater: List<BookmarkedArticle> = emptyList(),
   val hiddenArticleIds: Set<String> = emptySet(),
   val message: String? = null,
@@ -63,6 +64,13 @@ class RssViewModel(
     shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
   ) {
     articleRepository.markArticleRead(article.id)
+  }
+
+  fun markUnread(article: Article) = performArticleAction(
+    article = article,
+    shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
+  ) {
+    articleRepository.markArticleUnread(article.id)
   }
 
   fun saveAndRead(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
@@ -149,10 +157,20 @@ class RssViewModel(
   private suspend fun reload() {
     reloadMutex.withLock {
       runCatching {
-        articleRepository.listUnreadArticles().filter(articleSelector) to
-          bookmarkRepository.listReadLaterArticles().filter { articleSelector(it.article) }
-      }.onSuccess { (unread, readLater) ->
-        _state.update { it.copy(initialized = true, unread = unread, readLater = readLater) }
+        Triple(
+          articleRepository.listUnreadArticles().filter(articleSelector),
+          articleRepository.listHistoryArticles().filter(articleSelector),
+          bookmarkRepository.listReadLaterArticles().filter { articleSelector(it.article) },
+        )
+      }.onSuccess { (unread, history, readLater) ->
+        _state.update {
+          it.copy(
+            initialized = true,
+            unread = unread,
+            history = history,
+            readLater = readLater,
+          )
+        }
       }.onFailure { error ->
         _state.update { it.copy(initialized = true, message = "記事を読み込めませんでした: ${error.userMessage()}") }
       }
