@@ -37,10 +37,8 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Verify table ownership
-        run: ./gradlew --no-daemon -b gradle/table-ownership.gradle.kts verifyTableOwnershipRules
       - name: Verify architecture
-        run: ./gradlew --no-daemon verifyArchitecture
+        run: ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
       - name: Test
         run: ./gradlew --no-daemon test
       - name: Lint
@@ -68,10 +66,8 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Verify table ownership
-        run: ./gradlew --no-daemon -b gradle/table-ownership.gradle.kts verifyTableOwnershipRules
       - name: Verify architecture
-        run: ./gradlew --no-daemon verifyArchitecture
+        run: ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
       - name: Restore release keystore
         env:
           ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
