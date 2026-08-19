@@ -21,8 +21,14 @@ class IntegratedScreenTest {
     assertEquals(listOf("既読", "保存", "未読へ戻す"), swipeLabels(youtube, IntegratedTab.READ_LATER))
     assertEquals(listOf("あとで読む解除", "スター解除", "アーカイブ"), swipeLabels(mail, IntegratedTab.READ_LATER))
 
+    assertEquals(listOf(null, "未読に戻す", null), swipeLabels(rss, IntegratedTab.HISTORY))
+    assertEquals(listOf(null, "未読に戻す", null), swipeLabels(reddit, IntegratedTab.HISTORY))
+    assertEquals(listOf(null, "未読に戻す", null), swipeLabels(youtube, IntegratedTab.HISTORY))
+    assertEquals(listOf(null, "未読に戻す", null), swipeLabels(mail, IntegratedTab.HISTORY))
+
     assertEquals(listOf(false, false, false), swipeDismisses(youtube, IntegratedTab.READ_LATER))
     assertEquals(listOf(true, false, false), swipeDismisses(mail, IntegratedTab.READ_LATER))
+    assertEquals(listOf(null, true, null), swipeDismisses(mail, IntegratedTab.HISTORY))
   }
 
   @Test
