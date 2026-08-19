@@ -16,34 +16,17 @@ interface KnowledgePageManager {
 
 interface KnowledgeRepository : KnowledgeReader, KnowledgePageManager
 
+/** AI生成を含むKnowledge再構築application capability。 */
 interface KnowledgeBuilder {
   suspend fun rebuild(): KnowledgeBuildResult
 }
 
+/** ユーザー要求からKnowledge pageを生成するapplication capability。 */
 interface KnowledgePageCreator {
   suspend fun createPage(request: String, sourcePageId: String? = null): KnowledgePage
 }
 
+/** 既存Knowledge pageをAIで編集するapplication capability。 */
 interface KnowledgePageEditor {
   suspend fun editPage(id: String, instruction: String): KnowledgePage
-}
-
-class BuildKnowledgeUseCase(
-  private val builder: KnowledgeBuilder,
-) {
-  suspend operator fun invoke(): KnowledgeBuildResult = builder.rebuild()
-}
-
-class CreateKnowledgePageUseCase(
-  private val creator: KnowledgePageCreator,
-) {
-  suspend operator fun invoke(request: String, sourcePageId: String? = null): KnowledgePage =
-    creator.createPage(request, sourcePageId)
-}
-
-class EditKnowledgePageUseCase(
-  private val editor: KnowledgePageEditor,
-) {
-  suspend operator fun invoke(id: String, instruction: String): KnowledgePage =
-    editor.editPage(id, instruction)
 }
