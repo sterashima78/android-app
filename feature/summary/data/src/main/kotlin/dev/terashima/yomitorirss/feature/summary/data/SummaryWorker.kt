@@ -13,8 +13,9 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
-import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepositoryProvider
 import dev.terashima.yomitorirss.feature.summary.summaryCacheKey
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
@@ -33,6 +34,11 @@ class SummaryWorker(
   appContext: Context,
   params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
+  private val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository by lazy(LazyThreadSafetyMode.NONE) {
+    (applicationContext as? BookmarkEnrichmentRepositoryProvider)?.bookmarkEnrichmentRepository
+      ?: error("Application must provide BookmarkEnrichmentRepository")
+  }
+
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
 
@@ -73,7 +79,7 @@ class SummaryWorker(
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
       setForeground(createForegroundInfo(article.title))
-      val enrichmentContext = database.bookmarkEnrichmentContext(task.articleId)
+      val enrichmentContext = bookmarkEnrichmentRepository.context(task.articleId)
       val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
       val summaryForMetadata = if (cached != null) {
         cached.summary
@@ -113,7 +119,7 @@ class SummaryWorker(
           ),
           existingFolderNames = enrichmentContext.existingFolderNames,
         )
-        applyBookmarkMetadata(database, task.articleId, generatedMetadata)
+        applyBookmarkMetadata(task.articleId, generatedMetadata)
       }
 
       database.completeRunningSummaryTask(task.articleId)
@@ -125,22 +131,15 @@ class SummaryWorker(
   }
 
   private suspend fun applyBookmarkMetadata(
-    database: YomitoriDatabase,
     articleId: String,
     metadata: BookmarkAiGeneratedMetadata,
   ) {
     currentCoroutineContext().ensureActive()
-    var metadataChanged = database.addAiGeneratedTags(articleId, metadata.tags)
-    currentCoroutineContext().ensureActive()
-    if (
-      metadata.folder != null &&
-      database.assignExistingFolderForAiEnrichment(articleId, metadata.folder)
-    ) {
-      metadataChanged = true
-    }
-    if (metadataChanged) {
-      DataChangeNotifier.shared.notifyChanged()
-    }
+    bookmarkEnrichmentRepository.applyGeneratedMetadata(
+      articleId = articleId,
+      tagNames = metadata.tags,
+      folderName = metadata.folder,
+    )
   }
 
   private suspend fun summarizeWithProgress(
@@ -237,24 +236,6 @@ class SummaryWorker(
     private const val CHANNEL_ID = "article_summary"
     private const val NOTIFICATION_ID = 8766
   }
-}
-
-private data class BookmarkEnrichmentContext(
-  val existingTagNames: List<String>,
-  val existingFolderNames: List<String>,
-)
-
-private fun YomitoriDatabase.bookmarkEnrichmentContext(articleId: String): BookmarkEnrichmentContext? {
-  if (!isBookmarkedForAiEnrichment(articleId)) return null
-  val existingFolders = if (isUncategorizedBookmarkForAiEnrichment(articleId)) {
-    listExistingFolderNamesForAiEnrichment()
-  } else {
-    emptyList()
-  }
-  return BookmarkEnrichmentContext(
-    existingTagNames = listExistingTagNamesForAiEnrichment(),
-    existingFolderNames = existingFolders,
-  )
 }
 
 private data class StoredSummaryProgress(
