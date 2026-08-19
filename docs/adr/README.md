@@ -40,6 +40,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0117: cross-context persistence boundary phase 1](0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119: Content Classification・Retention・table ownership enforcement](0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0123: Content / Curation 永続化境界の第二段階を完了する](0123-content-curation-persistence-phase2.md)
+- [ADR-0125: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0125-calendar-read-model-and-android-calendar-provider.md)
 
 ### Documentation governance
 
