@@ -186,6 +186,7 @@ internal fun AppFeatureContent(
       bookmarkViewModel = bookmarkViewModel,
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
+      aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
       onOpenWebServer = onOpenWebServer,
       onNavigate = appViewModel::selectTab,
     )

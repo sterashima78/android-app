@@ -21,18 +21,29 @@ import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 
 class YomitoriApplication : Application(),
+  MainActivityDependenciesProvider,
   WidgetRepositoryProvider,
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
   BackupRepositoryProvider,
   KnowledgeRepositoryProvider,
   BookmarkEnrichmentRepositoryProvider,
-  LanWebRepositoryProvider {
+  LanWebRepositoryProvider,
+  BookmarkAutoEnrichmentBackfillProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(this)
   }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppRouteDependencies(this, container)
+  }
+  override val mainActivityDependencies: MainActivityDependencies by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    MainActivityDependencies(
+      routeDependencies = routeDependencies,
+      bookmarkRepository = container.bookmarkRepository,
+      onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
+    )
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
@@ -40,6 +51,14 @@ class YomitoriApplication : Application(),
     UnreadArticlesWidgetRefreshObserver(
       context = this,
       dataChanges = DataChangeNotifier.shared.version,
+    )
+  }
+  private val bookmarkAutoEnrichmentBackfillUseCase: BookmarkAutoEnrichmentBackfillUseCase by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    BookmarkAutoEnrichmentBackfillUseCase(
+      bookmarkRepository = container.bookmarkRepository,
+      summaryRepository = container.summaryRepository,
     )
   }
 
@@ -69,6 +88,10 @@ class YomitoriApplication : Application(),
 
   override val lanWebFeedRepository: FeedRepository
     get() = container.feedRepository
+
+  override suspend fun runBookmarkAutoEnrichmentBackfill() {
+    bookmarkAutoEnrichmentBackfillUseCase()
+  }
 
   override fun onCreate() {
     super.onCreate()

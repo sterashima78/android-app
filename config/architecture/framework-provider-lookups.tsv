@@ -1,0 +1,11 @@
+# repository path	provider contract	reason
+app/src/main/java/dev/terashima/yomitorirss/BookmarkAutoEnrichmentBackfillWorker.kt	BookmarkAutoEnrichmentBackfillProvider	WorkManager constructs the bookmark enrichment backfill Worker
+app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt	MainActivityDependenciesProvider	Android constructs MainActivity and the Activity resolves its composition dependencies from Application
+core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt	DatabaseSchemaProvider	Framework-owned background entry points create the shared database from Context
+feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/GoogleDriveBackupWorker.kt	BackupRepositoryProvider	WorkManager constructs the backup Worker
+feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeBuildBackground.kt	KnowledgeRepositoryProvider	WorkManager constructs the knowledge build Worker
+feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryWorker.kt	BookmarkEnrichmentRepositoryProvider	WorkManager constructs the Summary Worker
+feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt	LanWebRepositoryProvider	Android constructs the LAN web Service
+feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetProvider.kt	WidgetRepositoryProvider	Android constructs the RemoteViewsService factory path without constructor injection
+feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/WidgetRepositoryAccess.kt	WidgetRepositoryProvider	Android constructs AppWidgetProvider entry points without constructor injection
+feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/WidgetRepositoryAccess.kt	TaskRepositoryProvider	Android constructs AppWidgetProvider entry points without constructor injection

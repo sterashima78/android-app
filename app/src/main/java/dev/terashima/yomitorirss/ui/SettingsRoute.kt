@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
@@ -27,6 +28,7 @@ internal fun SettingsRoute(
   bookmarkViewModel: BookmarkViewModel,
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
+  aiTaskQueueRepository: AiTaskQueueRepository,
   onOpenWebServer: () -> Unit,
   onNavigate: (MainTab) -> Unit,
 ) {
@@ -69,6 +71,7 @@ internal fun SettingsRoute(
   SettingsScreen(
     modifier = modifier,
     tagCount = bookmarkState.tags.size,
+    aiTaskQueueRepository = aiTaskQueueRepository,
     onImportBookmarkCsv = {
       bookmarkCsvImportLauncher.launch(
         arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),

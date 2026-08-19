@@ -6,6 +6,8 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -22,14 +24,16 @@ internal object BookmarkAutoEnrichmentBackfillScheduler {
   }
 }
 
-internal class BookmarkAutoEnrichmentBackfillWorker(
-  appContext: Context,
-  params: WorkerParameters,
-) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-    val app = applicationContext as? YomitoriApplication ?: return@withContext Result.failure()
-    val container = app.container
-    val articleIds = container.bookmarkRepository.listAllSavedArticles()
+interface BookmarkAutoEnrichmentBackfillProvider {
+  suspend fun runBookmarkAutoEnrichmentBackfill()
+}
+
+internal class BookmarkAutoEnrichmentBackfillUseCase(
+  private val bookmarkRepository: BookmarkRepository,
+  private val summaryRepository: SummaryRepository,
+) {
+  suspend operator fun invoke() {
+    val articleIds = bookmarkRepository.listAllSavedArticles()
       .asSequence()
       .map { it.article }
       .filter { article ->
@@ -42,9 +46,19 @@ internal class BookmarkAutoEnrichmentBackfillWorker(
       .map { it.id }
       .toList()
 
-    runCatching {
-      container.summaryRepository.enqueueMissingBookmarkEnrichment(articleIds)
-    }.fold(
+    summaryRepository.enqueueMissingBookmarkEnrichment(articleIds)
+  }
+}
+
+internal class BookmarkAutoEnrichmentBackfillWorker(
+  appContext: Context,
+  params: WorkerParameters,
+) : CoroutineWorker(appContext, params) {
+  override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+    val provider = applicationContext as? BookmarkAutoEnrichmentBackfillProvider
+      ?: return@withContext Result.failure()
+
+    runCatching { provider.runBookmarkAutoEnrichmentBackfill() }.fold(
       onSuccess = { Result.success() },
       onFailure = { Result.retry() },
     )

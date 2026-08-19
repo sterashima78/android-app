@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.asset.AssetViewModel
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
@@ -99,6 +100,10 @@ class AppRouteDependencies internal constructor(
 
   val aiSettingsViewModelFactory: AiSettingsViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AiSettingsViewModel.Factory(container.aiModelRepository)
+  }
+
+  val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    container.aiTaskQueueRepository
   }
 
   val chatViewModelFactory: ChatViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
