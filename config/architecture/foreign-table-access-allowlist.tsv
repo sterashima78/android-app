@@ -1,0 +1,13 @@
+# repository path	table	reason
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkStore.kt	articles	ADR-0117: saved_at migration and Bookmark read model remain transitional
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkStore.kt	feeds	ADR-0117: Bookmark read model classification migration remains
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkStore.kt	feed_folders	ADR-0117: Bookmark read model classification migration remains
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkSourceMetadataReader.kt	articles	ADR-0117: bookmark enrichment metadata still uses transitional Content persistence
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkSourceMetadataReader.kt	feeds	ADR-0117: bookmark enrichment classification migration remains
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkSourceMetadataReader.kt	feed_folders	ADR-0117: bookmark enrichment classification migration remains
+feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkEnrichmentRepository.kt	articles	ADR-0117: saved_at remains in Content schema until physical Curation migration
+feature/rss/data/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/data/FeedStore.kt	articles	ADR-0106: Source ingestion still persists Content through the shared database
+feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryPersistence.kt	articles	ADR-0106: Summary queue read model still requires Content metadata
+feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/FailedBookmarkSummaryRetry.kt	articles	ADR-0117: failed-task retry still checks transitional saved_at state
+feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryTaskPriority.kt	article_folders	ADR-0071: Summary priority still reads Curation read-later membership
+feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryTaskPriority.kt	bookmark_folders	ADR-0071: Summary priority still reads Curation read-later membership

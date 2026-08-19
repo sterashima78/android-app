@@ -18,6 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:summary:domain"))
+  implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:data"))
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":core:background"))
