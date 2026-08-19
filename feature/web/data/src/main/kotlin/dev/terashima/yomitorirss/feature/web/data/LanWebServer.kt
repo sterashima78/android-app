@@ -1,11 +1,13 @@
 package dev.terashima.yomitorirss.feature.web.data
 
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.Article
+import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
 import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import java.io.BufferedReader
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -17,9 +19,12 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.runBlocking
 
 class LanWebServer(
-  private val database: YomitoriDatabase,
+  private val articleRepository: ArticleRepository,
+  private val bookmarkRepository: BookmarkRepository,
+  private val feedRepository: FeedRepository,
   private val accessToken: String,
 ) : AutoCloseable {
   private val running = AtomicBoolean(false)
@@ -126,7 +131,7 @@ class LanWebServer(
     }
   }
 
-  private fun renderHome(requestedView: String?): String {
+  private fun renderHome(requestedView: String?): String = runBlocking {
     val view = requestedView?.takeIf { it in VIEWS } ?: VIEW_UNREAD
     val title: String
     val body: String
@@ -134,32 +139,32 @@ class LanWebServer(
       VIEW_REDDIT -> {
         title = "Reddit"
         body = renderArticles(
-          database.listUnreadArticles().filter(Article::isRedditArticle),
+          articleRepository.listUnreadArticles().filter(Article::isRedditArticle),
           "Redditの未読はありません。",
         )
       }
       VIEW_SAVED -> {
         title = "ブックマーク"
-        body = renderBookmarkedArticles(database.listSavedArticles(), "ブックマークはありません。")
+        body = renderBookmarkedArticles(bookmarkRepository.listSavedArticles(null, null), "ブックマークはありません。")
       }
       VIEW_READ_LATER -> {
         title = "あとで読む"
-        body = renderBookmarkedArticles(database.listReadLaterArticles(), "あとで読む記事はありません。")
+        body = renderBookmarkedArticles(bookmarkRepository.listReadLaterArticles(), "あとで読む記事はありません。")
       }
       VIEW_FEEDS -> {
         title = "RSSフィード"
-        body = renderFeeds(database.listFeeds().filterNot { isRedditFeedUrl(it.feedUrl) })
+        body = renderFeeds(feedRepository.listFeeds().filterNot { isRedditFeedUrl(it.feedUrl) })
       }
       else -> {
         title = "RSS未読"
         body = renderArticles(
-          database.listUnreadArticles().filterNot(Article::isRedditArticle),
+          articleRepository.listUnreadArticles().filterNot(Article::isRedditArticle),
           "RSSの未読記事はありません。",
         )
       }
     }
 
-    return """<!doctype html>
+    """<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
