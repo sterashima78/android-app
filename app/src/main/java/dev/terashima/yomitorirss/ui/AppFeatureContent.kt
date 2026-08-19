@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -16,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,12 +76,19 @@ internal fun AppFeatureContent(
   val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
   val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
   val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+  val bookmarkState by bookmarkViewModel.state.collectAsState()
   val mailViewModel: MailViewModel = viewModel(factory = routeDependencies.mailViewModelFactory)
   val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
   val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
   val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
   val chatViewModel: ChatViewModel = viewModel(factory = routeDependencies.chatViewModelFactory)
   val summarize: (Article) -> Unit = { article -> summaryViewModel.summarize(article) }
+  val bookmarkCsvImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importCsv) }
+  val bookmarkHtmlImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importHtml) }
 
   LaunchedEffect(bookmarkViewModel) {
     bookmarkViewModel.refresh()
@@ -87,6 +97,12 @@ internal fun AppFeatureContent(
     if (selectedTab == MainTab.SAVED) {
       bookmarkViewModel.selectTag(null)
       bookmarkViewModel.selectFolder(null)
+    }
+  }
+  LaunchedEffect(bookmarkState.importCompleted) {
+    if (bookmarkState.importCompleted) {
+      appViewModel.selectTab(MainTab.SAVED)
+      bookmarkViewModel.consumeImportCompleted()
     }
   }
 
@@ -131,13 +147,24 @@ internal fun AppFeatureContent(
 
     MainTab.SAVED,
     MainTab.FOLDERS,
-    MainTab.TAGS -> BookmarkRoute(
+    MainTab.TAGS,
+    MainTab.BOOKMARK_IMPORT -> BookmarkRoute(
       modifier = modifier,
       tab = requireNotNull(selectedTab.bookmarkTab()),
       bookmarkViewModel = bookmarkViewModel,
       editController = bookmarkEditController,
       onOpen = onOpenArticle,
       onSummarize = summarize,
+      onImportCsv = {
+        bookmarkCsvImportLauncher.launch(
+          arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
+        )
+      },
+      onImportHtml = {
+        bookmarkHtmlImportLauncher.launch(
+          arrayOf("text/html", "application/xhtml+xml", "text/plain"),
+        )
+      },
     )
 
     MainTab.LIBRARY -> LibraryRoute(
@@ -183,7 +210,6 @@ internal fun AppFeatureContent(
     )
     MainTab.SETTINGS -> SettingsRoute(
       modifier = modifier,
-      bookmarkViewModel = bookmarkViewModel,
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
       aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
