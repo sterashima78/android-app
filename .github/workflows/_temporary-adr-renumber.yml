@@ -23,6 +23,23 @@ jobs:
       - name: Apply migration idempotently
         run: python3 scripts/renumber_adr_collisions.py
 
+      - name: Normalize legacy ADR headings
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          fixes = {
+              "docs/adr/0024-task-home-screen-widget.md": ("# ADR 0024:", "# ADR-0024:"),
+              "docs/adr/0038-android-test-layers-and-e2e.md": ("# ADR 0038:", "# ADR-0038:"),
+          }
+          for filename, (old, new) in fixes.items():
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              if text.startswith(old):
+                  path.write_text(new + text[len(old):], encoding="utf-8")
+          PY
+
       - name: Run ADR tests and repository verification
         shell: bash
         run: |
@@ -58,7 +75,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "Record temporary ADR validation result"
+            git commit -m "Normalize ADR headings and validate numbering"
             git push origin HEAD:agent/adr-integrity-validation
           fi
 
