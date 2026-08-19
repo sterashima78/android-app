@@ -15,7 +15,9 @@ import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.navigation.MainTab
+import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
+import dev.terashima.yomitorirss.feature.settings.ModelManagerDialog
 import dev.terashima.yomitorirss.feature.settings.SettingsScreen
 import java.time.LocalDate
 
@@ -77,7 +79,10 @@ internal fun SettingsRoute(
         arrayOf("text/html", "application/xhtml+xml", "text/plain"),
       )
     },
-    onOpenModels = { showModels = true },
+    onOpenModels = {
+      aiSettingsViewModel.prepareModelManager()
+      showModels = true
+    },
     onOpenSummaryPrompt = { showSummaryPrompt = true },
     onOpenDriveBackup = {
       backupViewModel.refreshStatus()
@@ -98,6 +103,14 @@ internal fun SettingsRoute(
       models = aiState.models,
       inferenceBackend = aiState.inferenceBackend,
       thinkingEnabled = aiState.thinkingEnabled,
+      speculativeDecodingEnabled = aiState.speculativeDecodingEnabled,
+      contextSizeMode = aiState.contextSizeMode,
+      effectiveContextTokens = aiState.models.firstOrNull(AiModelStatus::selected)?.contextTokens,
+      benchmarkRunning = aiState.benchmarkRunning,
+      benchmarkResult = aiState.benchmarkResult,
+      benchmarkError = aiState.benchmarkError,
+      contextBenchmarkResult = aiState.contextBenchmarkResult,
+      contextBenchmarkError = aiState.contextBenchmarkError,
       progressModelId = aiState.downloadProgress?.modelId,
       progressText = aiState.downloadProgress?.let {
         val percent = if (it.totalBytes > 0) it.downloadedBytes * 100 / it.totalBytes else 0
@@ -106,6 +119,10 @@ internal fun SettingsRoute(
       onDismiss = { showModels = false },
       onBackendChange = aiSettingsViewModel::setInferenceBackend,
       onThinkingChange = aiSettingsViewModel::setThinkingEnabled,
+      onSpeculativeDecodingChange = aiSettingsViewModel::setSpeculativeDecodingEnabled,
+      onContextSizeChange = aiSettingsViewModel::setContextSizeMode,
+      onRunBenchmark = aiSettingsViewModel::runModelBenchmark,
+      onRunContextBenchmark = aiSettingsViewModel::runContextBenchmark,
       onDownload = aiSettingsViewModel::downloadModel,
       onSelect = aiSettingsViewModel::selectModel,
       onDelete = aiSettingsViewModel::deleteModel,

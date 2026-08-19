@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,18 @@ data class AiSettingsUiState(
   val contextSizeMode: AiContextSizeMode = AiContextSizeMode.AUTO,
   val thinkingEnabled: Boolean = false,
   val speculativeDecodingEnabled: Boolean = false,
+  val benchmarkRunning: Boolean = false,
+  val benchmarkResult: AiModelBenchmarkComparison? = null,
+  val benchmarkError: String? = null,
+  val contextBenchmarkResult: AiContextBenchmarkReport? = null,
+  val contextBenchmarkError: String? = null,
   val message: String? = null,
+)
+
+private data class ContextBenchmarkKey(
+  val modelId: String?,
+  val backend: AiInferenceBackend,
+  val speculativeDecodingEnabled: Boolean,
 )
 
 class AiSettingsViewModel(
@@ -29,9 +41,14 @@ class AiSettingsViewModel(
   private val _state = MutableStateFlow(AiSettingsUiState(supported = repository.isSupported()))
   val state: StateFlow<AiSettingsUiState> = _state.asStateFlow()
 
+  private var lastContextBenchmarkKey: ContextBenchmarkKey? = null
+
   init {
     viewModelScope.launch {
-      repository.models.collect { models -> _state.update { it.copy(models = models) } }
+      repository.models.collect { models ->
+        _state.update { it.copy(models = models) }
+        refreshContextBenchmarkIfNeeded()
+      }
     }
     viewModelScope.launch {
       repository.downloadProgress.collect { progress ->
@@ -54,8 +71,13 @@ class AiSettingsViewModel(
             speculativeDecodingEnabled = settings.speculativeDecodingEnabled,
           )
         }
+        refreshContextBenchmarkIfNeeded()
       }
     }
+  }
+
+  fun prepareModelManager() {
+    if (!_state.value.benchmarkRunning) clearBenchmark()
   }
 
   fun updateSummaryPrompt(prompt: String) {
@@ -71,10 +93,12 @@ class AiSettingsViewModel(
   }
 
   fun setInferenceBackend(backend: AiInferenceBackend) {
+    clearBenchmark(clearContextResult = true)
     runCatching { repository.setInferenceBackend(backend) }.onFailure(::showError)
   }
 
   fun setContextSizeMode(mode: AiContextSizeMode) {
+    clearBenchmark()
     runCatching { repository.setContextSizeMode(mode) }.onFailure(::showError)
   }
 
@@ -83,7 +107,56 @@ class AiSettingsViewModel(
   }
 
   fun setSpeculativeDecodingEnabled(enabled: Boolean) {
+    clearBenchmark(clearContextResult = true)
     runCatching { repository.setSpeculativeDecodingEnabled(enabled) }.onFailure(::showError)
+  }
+
+  fun runModelBenchmark() {
+    if (_state.value.benchmarkRunning) return
+    _state.update {
+      it.copy(
+        benchmarkRunning = true,
+        benchmarkResult = null,
+        benchmarkError = null,
+        contextBenchmarkError = null,
+      )
+    }
+    viewModelScope.launch {
+      try {
+        val result = repository.benchmarkSelectedModel()
+        _state.update { it.copy(benchmarkResult = result) }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(benchmarkError = error.userMessage()) }
+      } finally {
+        _state.update { it.copy(benchmarkRunning = false) }
+      }
+    }
+  }
+
+  fun runContextBenchmark() {
+    if (_state.value.benchmarkRunning) return
+    _state.update {
+      it.copy(
+        benchmarkRunning = true,
+        benchmarkResult = null,
+        benchmarkError = null,
+        contextBenchmarkError = null,
+      )
+    }
+    viewModelScope.launch {
+      try {
+        val result = repository.benchmarkSelectedModelContexts()
+        _state.update { it.copy(contextBenchmarkResult = result) }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(contextBenchmarkError = error.userMessage()) }
+      } finally {
+        _state.update { it.copy(benchmarkRunning = false) }
+      }
+    }
   }
 
   fun downloadModel(modelId: String) {
@@ -95,10 +168,12 @@ class AiSettingsViewModel(
   }
 
   fun selectModel(modelId: String) {
+    clearBenchmark(clearContextResult = true)
     runCatching { repository.selectModel(modelId) }.onFailure(::showError)
   }
 
   fun deleteModel(modelId: String) {
+    clearBenchmark(clearContextResult = true)
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.deleteModel(modelId) }
         .onSuccess { _state.update { it.copy(message = "モデルを削除しました") } }
@@ -110,15 +185,46 @@ class AiSettingsViewModel(
     _state.update { it.copy(message = null) }
   }
 
-  private fun showError(error: Throwable) {
+  private fun refreshContextBenchmarkIfNeeded() {
+    val current = _state.value
+    val key = ContextBenchmarkKey(
+      modelId = current.models.firstOrNull(AiModelStatus::selected)?.id,
+      backend = current.inferenceBackend,
+      speculativeDecodingEnabled = current.speculativeDecodingEnabled,
+    )
+    if (lastContextBenchmarkKey == key) return
+    lastContextBenchmarkKey = key
+    _state.update { it.copy(contextBenchmarkResult = null, contextBenchmarkError = null) }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val report = repository.lastContextBenchmark()
+        if (lastContextBenchmarkKey == key) {
+          _state.update { it.copy(contextBenchmarkResult = report) }
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        if (lastContextBenchmarkKey == key) {
+          _state.update { it.copy(contextBenchmarkError = error.userMessage()) }
+        }
+      }
+    }
+  }
+
+  private fun clearBenchmark(clearContextResult: Boolean = false) {
     _state.update {
       it.copy(
-        message = generateSequence(error) { cause -> cause.cause }
-          .mapNotNull(Throwable::message)
-          .firstOrNull(String::isNotBlank)
-          ?: error.javaClass.simpleName,
+        benchmarkResult = null,
+        benchmarkError = null,
+        contextBenchmarkResult = if (clearContextResult) null else it.contextBenchmarkResult,
+        contextBenchmarkError = null,
       )
     }
+  }
+
+  private fun showError(error: Throwable) {
+    _state.update { it.copy(message = error.userMessage()) }
   }
 
   class Factory(
@@ -131,3 +237,9 @@ class AiSettingsViewModel(
     }
   }
 }
+
+private fun Throwable.userMessage(): String =
+  generateSequence(this) { cause -> cause.cause }
+    .mapNotNull(Throwable::message)
+    .firstOrNull(String::isNotBlank)
+    ?: javaClass.simpleName
