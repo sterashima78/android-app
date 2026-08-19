@@ -15,7 +15,6 @@ import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
-import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.summary.summaryCacheKey
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
@@ -51,6 +50,7 @@ class SummaryWorker(
             val task = database.claimNextSummaryTaskByPriority() ?: return@withPermit
             processTask(database, task)
           }
+          SummaryQueue.kickContentFetch(applicationContext)
         }
         Result.success()
       } finally {
@@ -82,15 +82,14 @@ class SummaryWorker(
           ?: error("要約モデルをダウンロードして選択してください")
         val prompt = summaryPromptStore.prompt.value
         val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
+        val preparedContent = database.findPreparedSummaryArticleContent(task.articleId)
+          ?: error("記事本文の準備が完了していません")
 
-        database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
-        val articleText = ArticleContentClient().fetchArticleText(article.url)
-        currentCoroutineContext().ensureActive()
         val generated = summarizeWithProgress(
           database = database,
           modelManager = modelManager,
           articleId = task.articleId,
-          articleText = articleText,
+          articleText = preparedContent.content,
           prompt = prompt,
         )
         currentCoroutineContext().ensureActive()

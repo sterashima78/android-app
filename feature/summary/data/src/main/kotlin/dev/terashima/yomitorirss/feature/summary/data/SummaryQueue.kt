@@ -12,8 +12,10 @@ import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import java.util.concurrent.TimeUnit
 
 object SummaryQueue {
-  private const val QUEUE_NAME = "article-summary-queue"
-  private const val TAG = "article-summary"
+  private const val INFERENCE_QUEUE_NAME = "article-summary-queue"
+  private const val CONTENT_FETCH_QUEUE_NAME = "article-summary-content-fetch-queue"
+  private const val INFERENCE_TAG = "article-summary"
+  private const val CONTENT_FETCH_TAG = "article-summary-content-fetch"
   private const val CLEANUP_WORK_NAME = "article-summary-task-log-cleanup"
   private const val RESUME_ON_CHARGING_WORK_NAME = "article-summary-resume-on-charging"
 
@@ -29,7 +31,7 @@ object SummaryQueue {
 
     ensureCleanupScheduled(appContext)
     return runCatching {
-      scheduleWorker(appContext)
+      schedulePipelineWorkers(appContext)
       true
     }.getOrElse { error ->
       val retryDatabase = YomitoriDatabase.create(appContext)
@@ -58,7 +60,7 @@ object SummaryQueue {
     if (acceptedIds.isEmpty()) return 0
 
     ensureCleanupScheduled(appContext)
-    runCatching { scheduleWorker(appContext) }
+    runCatching { schedulePipelineWorkers(appContext) }
       .onFailure { error ->
         val retryDatabase = YomitoriDatabase.create(appContext)
         try {
@@ -76,7 +78,19 @@ object SummaryQueue {
   fun kick(context: Context) {
     val appContext = context.applicationContext
     ensureCleanupScheduled(appContext)
-    scheduleWorker(appContext)
+    schedulePipelineWorkers(appContext)
+  }
+
+  internal fun kickInference(context: Context) {
+    val appContext = context.applicationContext
+    if (SummaryQueueExecutionPreferences(appContext).paused) return
+    scheduleInferenceWorker(appContext)
+  }
+
+  internal fun kickContentFetch(context: Context) {
+    val appContext = context.applicationContext
+    if (SummaryQueueExecutionPreferences(appContext).paused) return
+    scheduleContentFetchWorker(appContext)
   }
 
   fun executionState(context: Context): SummaryQueueExecutionState {
@@ -95,7 +109,7 @@ object SummaryQueue {
         ensureResumeOnChargingScheduled(appContext)
       } else {
         ensureCleanupScheduled(appContext)
-        scheduleWorker(appContext)
+        schedulePipelineWorkers(appContext)
       }
       return
     }
@@ -103,12 +117,14 @@ object SummaryQueue {
     if (paused) {
       preferences.paused = true
       try {
-        WorkManager.getInstance(appContext).cancelUniqueWork(QUEUE_NAME).result.get()
+        val workManager = WorkManager.getInstance(appContext)
+        workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
+        workManager.cancelUniqueWork(CONTENT_FETCH_QUEUE_NAME).result.get()
         requeueInterruptedTasks(appContext)
         ensureResumeOnChargingScheduled(appContext)
       } catch (error: Throwable) {
         preferences.paused = false
-        runCatching { scheduleWorker(appContext) }
+        runCatching { schedulePipelineWorkers(appContext) }
         throw error
       }
     } else {
@@ -116,7 +132,7 @@ object SummaryQueue {
       preferences.paused = false
       try {
         ensureCleanupScheduled(appContext)
-        scheduleWorker(appContext)
+        schedulePipelineWorkers(appContext)
       } catch (error: Throwable) {
         preferences.paused = true
         ensureResumeOnChargingScheduled(appContext)
@@ -148,7 +164,7 @@ object SummaryQueue {
     preferences.paused = false
     try {
       ensureCleanupScheduled(appContext)
-      scheduleWorker(appContext)
+      schedulePipelineWorkers(appContext)
     } catch (error: Throwable) {
       preferences.paused = true
       throw error
@@ -164,7 +180,7 @@ object SummaryQueue {
       database.close()
     } ?: return false
 
-    if (previousState == SUMMARY_RUNNING) restartWorker(appContext)
+    if (previousState == SUMMARY_RUNNING) restartInferenceWorker(appContext)
     return true
   }
 
@@ -177,7 +193,7 @@ object SummaryQueue {
       database.close()
     } ?: return false
 
-    if (previousState == SUMMARY_RUNNING) restartWorker(appContext)
+    if (previousState == SUMMARY_RUNNING) restartInferenceWorker(appContext)
     return true
   }
 
@@ -191,27 +207,42 @@ object SummaryQueue {
     }
     if (!resumed) return false
     ensureCleanupScheduled(appContext)
-    scheduleWorker(appContext)
+    schedulePipelineWorkers(appContext)
     return true
   }
 
-  private fun restartWorker(context: Context) {
+  private fun restartInferenceWorker(context: Context) {
     val workManager = WorkManager.getInstance(context)
-    workManager.cancelUniqueWork(QUEUE_NAME).result.get()
-    scheduleWorker(context)
+    workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
+    scheduleInferenceWorker(context)
   }
 
-  private fun scheduleWorker(context: Context) {
+  private fun schedulePipelineWorkers(context: Context) {
     if (SummaryQueueExecutionPreferences(context).paused) {
       ensureResumeOnChargingScheduled(context)
       return
     }
+    scheduleContentFetchWorker(context)
+    scheduleInferenceWorker(context)
+  }
 
+  private fun scheduleInferenceWorker(context: Context) {
     val request = OneTimeWorkRequestBuilder<SummaryWorker>()
-      .addTag(TAG)
+      .addTag(INFERENCE_TAG)
       .build()
     WorkManager.getInstance(context).enqueueUniqueWork(
-      QUEUE_NAME,
+      INFERENCE_QUEUE_NAME,
+      ExistingWorkPolicy.APPEND_OR_REPLACE,
+      request,
+    )
+  }
+
+  private fun scheduleContentFetchWorker(context: Context) {
+    val request = OneTimeWorkRequestBuilder<SummaryContentFetchWorker>()
+      .addTag(CONTENT_FETCH_TAG)
+      .build()
+    WorkManager.getInstance(context).enqueueUniqueWork(
+      CONTENT_FETCH_QUEUE_NAME,
       ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )

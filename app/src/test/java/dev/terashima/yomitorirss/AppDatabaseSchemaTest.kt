@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(23, db.version)
+    assertEquals(24, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -55,6 +55,7 @@ class AppDatabaseSchemaTest {
         "article_folders",
         "article_summaries",
         "summary_tasks",
+        "summary_article_content",
         "knowledge_pages",
         "knowledge_page_sources",
         "mail_accounts",
@@ -90,6 +91,50 @@ class AppDatabaseSchemaTest {
   }
 
   @Test
+  fun `version 23 database adds summary article content while upgrading`() {
+    val legacySchema = DatabaseSchema(
+      version = 23,
+      contributions = appDatabaseSchema.contributions.map { contribution ->
+        if (contribution.owner == "summary") {
+          DatabaseSchemaContribution(
+            owner = "summary",
+            createSchema = ::createVersion23SummarySchema,
+          )
+        } else {
+          DatabaseSchemaContribution(
+            owner = contribution.owner,
+            createSchema = contribution.createSchema,
+          )
+        }
+      },
+    )
+    val legacyDatabase = YomitoriDatabase.create(context, legacySchema)
+    val legacyDb = legacyDatabase.writableDatabase
+    insertBookmarkedArticle(legacyDb, "preserved-summary-task")
+    legacyDb.insertOrThrow(
+      "summary_tasks",
+      null,
+      ContentValues().apply {
+        put("article_id", "preserved-summary-task")
+        put("state", "queued")
+        put("force_refresh", 0)
+        put("queued_at", "2026-08-19T00:00:00Z")
+      },
+    )
+    assertFalse(tableExists(legacyDb, "summary_article_content"))
+    legacyDatabase.close()
+
+    val upgraded = openDatabase().writableDatabase
+
+    assertEquals(24, upgraded.version)
+    assertTrue(tableExists(upgraded, "summary_article_content"))
+    assertEquals(
+      1,
+      countRows(upgraded, "summary_tasks", "article_id=?", arrayOf("preserved-summary-task")),
+    )
+  }
+
+  @Test
   fun `version 22 database adds unified feature schemas while upgrading`() {
     val legacySchema = DatabaseSchema(
       version = 22,
@@ -107,7 +152,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(23, upgraded.version)
+    assertEquals(24, upgraded.version)
     assertTrue(tableExists(upgraded, "tasks"))
     assertTrue(tableExists(upgraded, "chat_sessions"))
     assertTrue(tableExists(upgraded, "chat_messages"))
@@ -141,7 +186,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(23, upgraded.version)
+    assertEquals(24, upgraded.version)
     assertTrue("custom_title" in columnNames(upgraded, "feeds"))
   }
 
@@ -166,7 +211,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(23, upgraded.version)
+    assertEquals(24, upgraded.version)
     assertTrue("content_type" in columnNames(upgraded, "feed_folders"))
     assertTrue("content_type" in columnNames(upgraded, "feeds"))
     assertTrue("custom_title" in columnNames(upgraded, "feeds"))
@@ -223,6 +268,12 @@ class AppDatabaseSchemaTest {
   private fun openDatabase(): YomitoriDatabase = YomitoriDatabase.create(context, appDatabaseSchema).also {
     database = it
   }
+}
+
+private fun createVersion23SummarySchema(db: SQLiteDatabase) {
+  db.execSQL("CREATE TABLE IF NOT EXISTS article_summaries(article_id TEXT PRIMARY KEY NOT NULL REFERENCES articles(id) ON DELETE CASCADE,summary TEXT NOT NULL,model_id TEXT NOT NULL,created_at TEXT NOT NULL)")
+  db.execSQL("CREATE TABLE IF NOT EXISTS summary_tasks(article_id TEXT PRIMARY KEY NOT NULL REFERENCES articles(id) ON DELETE CASCADE,state TEXT NOT NULL,force_refresh INTEGER NOT NULL DEFAULT 0,queued_at TEXT NOT NULL,started_at TEXT,finished_at TEXT,error TEXT,progress_stage TEXT,progress_current INTEGER,progress_total INTEGER)")
+  db.execSQL("CREATE INDEX IF NOT EXISTS summary_task_state ON summary_tasks(state,queued_at)")
 }
 
 private fun createVersion21RssSchema(db: SQLiteDatabase) {

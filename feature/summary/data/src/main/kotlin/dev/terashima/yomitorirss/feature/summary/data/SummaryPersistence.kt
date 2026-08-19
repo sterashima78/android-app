@@ -38,6 +38,12 @@ internal data class SummaryArticle(
   val title: String,
 )
 
+internal data class PreparedSummaryArticleContent(
+  val articleId: String,
+  val content: String,
+  val fetchedAt: String,
+)
+
 internal const val SUMMARY_QUEUED = "queued"
 internal const val SUMMARY_RUNNING = "running"
 internal const val SUMMARY_COMPLETED = "completed"
@@ -78,6 +84,88 @@ internal fun YomitoriDatabase.saveSummary(id: String, text: String, model: Strin
     values("article_id" to id, "summary" to text, "model_id" to model, "created_at" to nowIso()),
     SQLiteDatabase.CONFLICT_REPLACE,
   )
+}
+
+internal fun YomitoriDatabase.findPreparedSummaryArticleContent(articleId: String): PreparedSummaryArticleContent? =
+  readableDatabase.rawQuery(
+    "SELECT article_id,content,fetched_at FROM summary_article_content WHERE article_id=? LIMIT 1",
+    arrayOf(articleId),
+  ).use { cursor ->
+    if (!cursor.moveToFirst()) null else PreparedSummaryArticleContent(
+      articleId = cursor.text("article_id"),
+      content = cursor.text("content"),
+      fetchedAt = cursor.text("fetched_at"),
+    )
+  }
+
+internal fun YomitoriDatabase.nextSummaryArticleForContentFetch(): SummaryArticle? {
+  val orderBy = summaryTaskPriorityOrderByClause()
+  return readableDatabase.rawQuery(
+    """
+      SELECT a.id,a.url,a.title
+      FROM summary_tasks q
+      JOIN articles a ON a.id = q.article_id
+      WHERE q.state=?
+        AND (q.force_refresh=1 OR NOT EXISTS(
+          SELECT 1 FROM article_summaries s WHERE s.article_id=q.article_id
+        ))
+        AND NOT EXISTS(
+          SELECT 1 FROM summary_article_content c WHERE c.article_id=q.article_id
+        )
+      ORDER BY $orderBy
+      LIMIT 1
+    """.trimIndent(),
+    arrayOf(SUMMARY_QUEUED),
+  ).use { cursor ->
+    if (!cursor.moveToFirst()) null else SummaryArticle(cursor.getString(0), cursor.getString(1), cursor.getString(2))
+  }
+}
+
+internal fun YomitoriDatabase.countPreparedSummaryArticleContentsForActiveTasks(): Int =
+  readableDatabase.rawQuery(
+    """
+      SELECT COUNT(*)
+      FROM summary_article_content c
+      JOIN summary_tasks q ON q.article_id = c.article_id
+      WHERE q.state IN (?,?)
+    """.trimIndent(),
+    arrayOf(SUMMARY_QUEUED, SUMMARY_RUNNING),
+  ).use { cursor ->
+    check(cursor.moveToFirst())
+    cursor.getInt(0)
+  }
+
+internal fun YomitoriDatabase.savePreparedSummaryArticleContentIfQueued(
+  articleId: String,
+  content: String,
+): Boolean = transaction {
+  val stillQueued = rawQuery(
+    "SELECT 1 FROM summary_tasks WHERE article_id=? AND state=? LIMIT 1",
+    arrayOf(articleId, SUMMARY_QUEUED),
+  ).use(Cursor::moveToFirst)
+  if (!stillQueued) return@transaction false
+
+  insertWithOnConflict(
+    "summary_article_content",
+    null,
+    values(
+      "article_id" to articleId,
+      "content" to content,
+      "fetched_at" to nowIso(),
+    ),
+    SQLiteDatabase.CONFLICT_REPLACE,
+  )
+  update(
+    "summary_tasks",
+    values(
+      "progress_stage" to null,
+      "progress_current" to null,
+      "progress_total" to null,
+    ),
+    "article_id=? AND state=?",
+    arrayOf(articleId, SUMMARY_QUEUED),
+  )
+  true
 }
 
 internal fun YomitoriDatabase.findSummaryTask(id: String): SummaryTaskRecord? = readableDatabase.rawQuery(
@@ -161,13 +249,20 @@ internal fun YomitoriDatabase.listSummaryTaskItems(): List<SummaryTaskListItem> 
     }
   }
 
-internal fun YomitoriDatabase.claimNextSummaryTask(): SummaryTaskRecord? {
+internal fun YomitoriDatabase.claimNextSummaryTask(): SummaryTaskRecord? =
+  claimNextSummaryTaskMatching(extraWhere = null)
+
+internal fun YomitoriDatabase.claimNextInferenceReadySummaryTask(): SummaryTaskRecord? =
+  claimNextSummaryTaskMatching(extraWhere = summaryInferenceReadyWhereClause())
+
+private fun YomitoriDatabase.claimNextSummaryTaskMatching(extraWhere: String?): SummaryTaskRecord? {
   val orderBy = summaryTaskPriorityOrderByClause()
   val db = writableDatabase
   db.beginTransaction()
   try {
+    val readiness = extraWhere?.let { " AND $it" }.orEmpty()
     val task = db.rawQuery(
-      "SELECT q.* FROM summary_tasks q WHERE q.state=? ORDER BY $orderBy LIMIT 1",
+      "SELECT q.* FROM summary_tasks q WHERE q.state=?$readiness ORDER BY $orderBy LIMIT 1",
       arrayOf(SUMMARY_QUEUED),
     ).use { cursor -> if (!cursor.moveToFirst()) null else cursor.summaryTask() } ?: run {
       db.setTransactionSuccessful()
@@ -208,6 +303,18 @@ internal fun YomitoriDatabase.claimNextSummaryTask(): SummaryTaskRecord? {
   }
 }
 
+internal fun summaryInferenceReadyWhereClause(alias: String = "q"): String =
+  """
+    (
+      ($alias.force_refresh=0 AND EXISTS(
+        SELECT 1 FROM article_summaries s WHERE s.article_id=$alias.article_id
+      ))
+      OR EXISTS(
+        SELECT 1 FROM summary_article_content c WHERE c.article_id=$alias.article_id
+      )
+    )
+  """.trimIndent()
+
 internal fun YomitoriDatabase.requeueInterruptedSummaryTasks() {
   writableDatabase.update(
     "summary_tasks",
@@ -222,6 +329,22 @@ internal fun YomitoriDatabase.requeueInterruptedSummaryTasks() {
     ),
     "state=?",
     arrayOf(SUMMARY_RUNNING),
+  )
+}
+
+internal fun YomitoriDatabase.updateQueuedSummaryTaskProgress(
+  articleId: String,
+  stage: String,
+) {
+  writableDatabase.update(
+    "summary_tasks",
+    values(
+      "progress_stage" to stage,
+      "progress_current" to null,
+      "progress_total" to null,
+    ),
+    "article_id=? AND state=?",
+    arrayOf(articleId, SUMMARY_QUEUED),
   )
 }
 
@@ -244,19 +367,24 @@ internal fun YomitoriDatabase.updateRunningSummaryTaskProgress(
 }
 
 internal fun YomitoriDatabase.completeRunningSummaryTask(articleId: String) {
-  writableDatabase.update(
-    "summary_tasks",
-    values(
-      "state" to SUMMARY_COMPLETED,
-      "finished_at" to nowIso(),
-      "error" to null,
-      "progress_stage" to null,
-      "progress_current" to null,
-      "progress_total" to null,
-    ),
-    "article_id=? AND state=?",
-    arrayOf(articleId, SUMMARY_RUNNING),
-  )
+  transaction {
+    val completed = update(
+      "summary_tasks",
+      values(
+        "state" to SUMMARY_COMPLETED,
+        "finished_at" to nowIso(),
+        "error" to null,
+        "progress_stage" to null,
+        "progress_current" to null,
+        "progress_total" to null,
+      ),
+      "article_id=? AND state=?",
+      arrayOf(articleId, SUMMARY_RUNNING),
+    )
+    if (completed == 1) {
+      delete("summary_article_content", "article_id=?", arrayOf(articleId))
+    }
+  }
 }
 
 internal fun YomitoriDatabase.failRunningSummaryTask(articleId: String, error: String) {
@@ -275,6 +403,22 @@ internal fun YomitoriDatabase.failRunningSummaryTask(articleId: String, error: S
   )
 }
 
+internal fun YomitoriDatabase.failQueuedSummaryTask(articleId: String, error: String) {
+  writableDatabase.update(
+    "summary_tasks",
+    values(
+      "state" to SUMMARY_FAILED,
+      "finished_at" to nowIso(),
+      "error" to error.take(500),
+      "progress_stage" to null,
+      "progress_current" to null,
+      "progress_total" to null,
+    ),
+    "article_id=? AND state=?",
+    arrayOf(articleId, SUMMARY_QUEUED),
+  )
+}
+
 internal fun YomitoriDatabase.deleteFinishedSummaryTasksBefore(cutoff: String): Int =
   writableDatabase.delete(
     "summary_tasks",
@@ -288,11 +432,15 @@ internal fun YomitoriDatabase.stopSummaryTask(articleId: String): String? = tran
   allowedStates = setOf(SUMMARY_QUEUED, SUMMARY_RUNNING),
 )
 
-internal fun YomitoriDatabase.cancelSummaryTask(articleId: String): String? = transitionSummaryTask(
-  articleId = articleId,
-  targetState = SUMMARY_CANCELLED,
-  allowedStates = setOf(SUMMARY_QUEUED, SUMMARY_RUNNING, SUMMARY_STOPPED),
-)
+internal fun YomitoriDatabase.cancelSummaryTask(articleId: String): String? = transaction {
+  val previousState = transitionSummaryTaskInTransaction(
+    articleId = articleId,
+    targetState = SUMMARY_CANCELLED,
+    allowedStates = setOf(SUMMARY_QUEUED, SUMMARY_RUNNING, SUMMARY_STOPPED),
+  ) ?: return@transaction null
+  delete("summary_article_content", "article_id=?", arrayOf(articleId))
+  previousState
+}
 
 internal fun YomitoriDatabase.resumeSummaryTask(articleId: String): Boolean {
   return writableDatabase.update(
@@ -317,11 +465,19 @@ private fun YomitoriDatabase.transitionSummaryTask(
   targetState: String,
   allowedStates: Set<String>,
 ): String? = transaction {
+  transitionSummaryTaskInTransaction(articleId, targetState, allowedStates)
+}
+
+private fun SQLiteDatabase.transitionSummaryTaskInTransaction(
+  articleId: String,
+  targetState: String,
+  allowedStates: Set<String>,
+): String? {
   val currentState = rawQuery(
     "SELECT state FROM summary_tasks WHERE article_id=?",
     arrayOf(articleId),
   ).use { cursor -> if (!cursor.moveToFirst()) null else cursor.getString(0) }
-  if (currentState !in allowedStates) return@transaction null
+  if (currentState !in allowedStates) return null
 
   update(
     "summary_tasks",
@@ -336,7 +492,7 @@ private fun YomitoriDatabase.transitionSummaryTask(
     "article_id=?",
     arrayOf(articleId),
   )
-  currentState
+  return currentState
 }
 
 private inline fun <T> YomitoriDatabase.transaction(block: SQLiteDatabase.() -> T): T {

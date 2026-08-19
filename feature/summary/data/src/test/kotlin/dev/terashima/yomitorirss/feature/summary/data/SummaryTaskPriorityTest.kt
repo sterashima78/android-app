@@ -52,6 +52,8 @@ class SummaryTaskPriorityTest {
     insertArticle("read-later")
     database.enqueueSummaryTask("normal", forceRefresh = false)
     database.enqueueSummaryTask("read-later", forceRefresh = false)
+    database.savePreparedSummaryArticleContentIfQueued("normal", "normal body")
+    database.savePreparedSummaryArticleContentIfQueued("read-later", "read later body")
     database.writableDatabase.update(
       "summary_tasks",
       ContentValues().apply { put("queued_at", "2026-08-16T00:00:00Z") },
@@ -78,6 +80,7 @@ class SummaryTaskPriorityTest {
   fun `待機中のブックマークをあとで読むへ移すと優先度が上がる`() {
     insertArticle("article")
     database.enqueueSummaryTask("article", forceRefresh = false)
+    database.savePreparedSummaryArticleContentIfQueued("article", "body")
 
     assertEquals(LocalAiBackgroundTaskPriority.NORMAL, database.peekNextSummaryTaskPriority())
 
@@ -85,6 +88,20 @@ class SummaryTaskPriorityTest {
 
     assertEquals(LocalAiBackgroundTaskPriority.HIGH, database.peekNextSummaryTaskPriority())
     assertEquals(setOf("article"), database.readLaterSummaryTaskIds(listOf("article")))
+  }
+
+  @Test
+  fun `本文未取得の高優先度タスクは推論候補から除外する`() {
+    insertArticle("normal-ready")
+    insertArticle("read-later-fetching")
+    database.enqueueSummaryTask("normal-ready", forceRefresh = false)
+    database.enqueueSummaryTask("read-later-fetching", forceRefresh = false)
+    database.savePreparedSummaryArticleContentIfQueued("normal-ready", "ready body")
+    markReadLater("read-later-fetching")
+
+    assertEquals(LocalAiBackgroundTaskPriority.NORMAL, database.peekNextSummaryTaskPriority())
+    val claimed = checkNotNull(database.claimNextSummaryTaskByPriority())
+    assertEquals("normal-ready", claimed.articleId)
   }
 
   private fun insertArticle(id: String) {
