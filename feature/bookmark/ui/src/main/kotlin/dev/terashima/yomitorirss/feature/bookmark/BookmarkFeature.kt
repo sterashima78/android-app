@@ -24,6 +24,7 @@ enum class BookmarkTab(val label: String) {
   BOOKMARKS("一覧"),
   FOLDERS("フォルダ"),
   TAGS("タグ"),
+  IMPORT("インポート"),
 }
 
 @Composable
@@ -45,6 +46,9 @@ fun BookmarkScreen(
   onCreateTag: (String) -> Unit,
   onRenameTag: (Tag, String) -> Unit,
   onDeleteTag: (Tag) -> Unit,
+  onDeleteUnusedTags: () -> Unit,
+  onImportCsv: () -> Unit,
+  onImportHtml: () -> Unit,
 ) {
   when (tab) {
     BookmarkTab.BOOKMARKS -> BookmarkSavedScreen(
@@ -82,6 +86,14 @@ fun BookmarkScreen(
       onCreate = onCreateTag,
       onRename = onRenameTag,
       onDelete = onDeleteTag,
+      onDeleteUnused = onDeleteUnusedTags,
+    )
+
+    BookmarkTab.IMPORT -> BookmarkImportScreen(
+      modifier = modifier,
+      tagCount = state.tags.size,
+      onImportCsv = onImportCsv,
+      onImportHtml = onImportHtml,
     )
   }
 }
