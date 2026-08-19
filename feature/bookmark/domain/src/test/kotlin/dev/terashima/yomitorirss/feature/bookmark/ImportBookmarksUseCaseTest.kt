@@ -7,7 +7,7 @@ import org.junit.Test
 
 class ImportBookmarksUseCaseTest {
   @Test
-  fun `import は解析とContent保存とタグ付与をapplication serviceで連携する`() = runBlocking {
+  fun `import はContent作成とCuration保存とタグ付与をapplication serviceで連携する`() = runBlocking {
     val source = FakeImportSource(
       BookmarkImportBatch(
         entries = listOf(
@@ -29,20 +29,13 @@ class ImportBookmarksUseCaseTest {
         skipped = 3,
       ),
     )
-    val gateway = FakeArticleGateway(
-      results = ArrayDeque(
-        listOf(
-          BookmarkImportedArticle("article-1", added = true, duplicate = false),
-          BookmarkImportedArticle("article-2", added = false, duplicate = true),
-        ),
-      ),
-    )
-    val tagWriter = RecordingTagWriter()
+    val gateway = FakeArticleGateway(ArrayDeque(listOf("article-1", "article-2")))
+    val writer = RecordingImportWriter(ArrayDeque(listOf(true, false)))
     var changed = 0
     val useCase = ImportBookmarksUseCase(
       source = source,
       articleGateway = gateway,
-      tagWriter = tagWriter,
+      writer = writer,
       onChanged = { changed += 1 },
     )
 
@@ -52,10 +45,17 @@ class ImportBookmarksUseCaseTest {
     assertEquals(listOf("html", "html"), gateway.identityPrefixes)
     assertEquals(
       listOf(
+        "article-1" to "2026-08-01T00:00:00Z",
+        "article-2" to "2026-08-02T00:00:00Z",
+      ),
+      writer.saved,
+    )
+    assertEquals(
+      listOf(
         "article-1" to listOf("news", "android"),
         "article-2" to emptyList(),
       ),
-      tagWriter.calls,
+      writer.tags,
     )
     assertEquals(1, changed)
     assertEquals(listOf("content://bookmarks" to BookmarkImportFormat.HTML), source.calls)
@@ -71,13 +71,11 @@ class ImportBookmarksUseCaseTest {
         }
       },
       articleGateway = FakeArticleGateway(ArrayDeque()),
-      tagWriter = RecordingTagWriter(),
+      writer = RecordingImportWriter(ArrayDeque()),
       onChanged = { changed = true },
     )
 
-    val failure = runCatching {
-      useCase("content://invalid", BookmarkImportFormat.CSV)
-    }
+    val failure = runCatching { useCase("content://invalid", BookmarkImportFormat.CSV) }
 
     assertTrue(failure.isFailure)
     assertEquals(false, changed)
@@ -95,39 +93,43 @@ private class FakeImportSource(
   }
 }
 
-private class RecordingTagWriter : BookmarkImportTagWriter {
-  val calls = mutableListOf<Pair<String, List<String>>>()
+private class RecordingImportWriter(
+  private val saveResults: ArrayDeque<Boolean>,
+) : BookmarkImportWriter {
+  val saved = mutableListOf<Pair<String, String>>()
+  val tags = mutableListOf<Pair<String, List<String>>>()
+
+  override suspend fun saveBookmark(articleId: String, savedAt: String): Boolean {
+    saved += articleId to savedAt
+    return saveResults.removeFirst()
+  }
 
   override suspend fun addTags(articleId: String, tagNames: List<String>) {
-    calls += articleId to tagNames
+    tags += articleId to tagNames
   }
 }
 
 private class FakeArticleGateway(
-  private val results: ArrayDeque<BookmarkImportedArticle>,
+  private val articleIds: ArrayDeque<String>,
 ) : BookmarkArticleGateway {
   val identityPrefixes = mutableListOf<String>()
 
-  override suspend fun isBookmarked(articleId: String): Boolean = false
+  override suspend fun markRead(articleId: String) = Unit
 
-  override suspend fun saveAndRead(articleId: String) = Unit
-
-  override suspend fun unsave(articleId: String) = Unit
-
-  override suspend fun saveSharedArticle(
+  override suspend fun findOrCreateSharedArticle(
     url: String,
     title: String,
     sourceTitle: String,
-  ): BookmarkArticleSave = error("not used")
+  ): String = error("not used")
 
-  override suspend fun importSavedArticle(
+  override suspend fun findOrCreateImportedArticle(
     url: String,
     title: String,
     sourceTitle: String,
     createdAt: String,
     identityPrefix: String,
-  ): BookmarkImportedArticle {
+  ): String {
     identityPrefixes += identityPrefix
-    return results.removeFirst()
+    return articleIds.removeFirst()
   }
 }
