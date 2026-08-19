@@ -20,6 +20,7 @@ import kotlinx.coroutines.sync.withLock
 data class RedditUiState(
   val initialized: Boolean = false,
   val unread: List<Article> = emptyList(),
+  val history: List<Article> = emptyList(),
   val readLater: List<BookmarkedArticle> = emptyList(),
   val subscriptions: List<RedditSubscription> = emptyList(),
   val hiddenArticleIds: Set<String> = emptySet(),
@@ -158,6 +159,13 @@ class RedditViewModel(
     articleRepository.markArticleRead(article.id)
   }
 
+  fun markUnread(article: Article) = performArticleAction(
+    article = article,
+    shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
+  ) {
+    articleRepository.markArticleUnread(article.id)
+  }
+
   fun saveAndRead(article: Article) = performArticleAction(
     article = article,
     shouldScheduleBackup = { true },
@@ -250,17 +258,20 @@ class RedditViewModel(
   private suspend fun reload() {
     reloadMutex.withLock {
       runCatching {
-        val unread = articleRepository.listUnreadArticles().filter(Article::isRedditArticle)
-        val readLater = bookmarkRepository.listReadLaterArticles().filter { it.article.isRedditArticle() }
-        val subscriptions = redditRepository.listSubscriptions()
-        Triple(unread, readLater, subscriptions)
-      }.onSuccess { (unread, readLater, subscriptions) ->
+        RedditSnapshot(
+          unread = articleRepository.listUnreadArticles().filter(Article::isRedditArticle),
+          history = articleRepository.listHistoryArticles().filter(Article::isRedditArticle),
+          readLater = bookmarkRepository.listReadLaterArticles().filter { it.article.isRedditArticle() },
+          subscriptions = redditRepository.listSubscriptions(),
+        )
+      }.onSuccess { snapshot ->
         _state.update {
           it.copy(
             initialized = true,
-            unread = unread,
-            readLater = readLater,
-            subscriptions = subscriptions,
+            unread = snapshot.unread,
+            history = snapshot.history,
+            readLater = snapshot.readLater,
+            subscriptions = snapshot.subscriptions,
           )
         }
       }.onFailure { error ->
@@ -293,6 +304,13 @@ class RedditViewModel(
     }
   }
 }
+
+private data class RedditSnapshot(
+  val unread: List<Article>,
+  val history: List<Article>,
+  val readLater: List<BookmarkedArticle>,
+  val subscriptions: List<RedditSubscription>,
+)
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
