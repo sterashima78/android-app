@@ -41,7 +41,7 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
            +---- content integration ----> Content context
 
 Presentation / delivery:
-  Web / Widget / Integrated UI
+  Web / Widget / Integrated UI / Calendar
   -> Domain API または named read-only Query API の consumer
   -> durable Domain table は所有しない
 ```
@@ -93,6 +93,20 @@ Content を入力として generated summary と task lifecycle / priority の S
 
 Content / Curation を資料として参照し、Knowledge page、source relationship、generated / edited state、Knowledge 固有 background build lifecycle を所有する。
 
+### Calendar
+
+`:feature:calendar` は durable event state を所有しない read-only projection / viewer とする。
+
+Calendar domain は device calendar、Task deadline、Workout activity の source 差を `CalendarEvent` へ統一する一方、表示上必要な `source` / `kind` / source metadata は保持する。
+
+Calendar data は次の owner API / framework provider を source とする。
+
+- Android Calendar Provider `CalendarContract.Instances`: 端末へ同期済み calendar event
+- `TaskRepository`: Task-owned deadline
+- `WorkoutRepository`: Workout-owned activity history
+
+Task / Workout の table や private storage を Calendar が直接参照しない。Calendar event を複製する database / file も作らない。初期実装の device calendar access は `READ_CALENDAR` のみで、Calendar から外部予定を書き換えない。
+
 ### Other application contexts
 
 Library、Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
@@ -133,6 +147,7 @@ Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds
 - `BookmarkContentQuery.readLaterContentIds`
 - `ContentClassificationSourceQuery`
 - `ContentRetentionProtectionQuery`
+- Calendar `CalendarRepository.events` が `TaskRepository` / `WorkoutRepository` と Android Calendar Provider を `CalendarEvent` へ合成する read model
 
 大量 read で owner API の合成が実測上問題になる場合だけ、read-only かつ purpose-specific な Named Projection を検討する。
 
@@ -157,3 +172,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
+- [ADR-0124](../adr/0124-calendar-read-model-and-android-calendar-provider.md)
