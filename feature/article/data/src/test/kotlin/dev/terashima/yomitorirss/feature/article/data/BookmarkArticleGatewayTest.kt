@@ -5,11 +5,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
@@ -38,7 +36,6 @@ class BookmarkArticleGatewayTest {
               published_at TEXT,
               fetched_at TEXT,
               read_at TEXT,
-              saved_at TEXT,
               source_title TEXT,
               source_feed_url TEXT
             )
@@ -57,31 +54,28 @@ class BookmarkArticleGatewayTest {
   }
 
   @Test
-  fun `共有URLの初回保存はContentを作成して保存済みにする`() = runBlocking {
-    val saved = gateway.saveSharedArticle(
+  fun `共有URLの初回処理はContentを作成して既読にする`() = runBlocking {
+    val articleId = gateway.findOrCreateSharedArticle(
       url = "https://example.com/article",
       title = "Example",
       sourceTitle = "Shared",
     )
 
-    assertEquals(BookmarkSaveResult.ADDED, saved.result)
     helper.readableDatabase.rawQuery(
-      "SELECT read_at,saved_at FROM articles WHERE id=?",
-      arrayOf(saved.articleId),
+      "SELECT read_at FROM articles WHERE id=?",
+      arrayOf(articleId),
     ).use { cursor ->
       assertEquals(true, cursor.moveToFirst())
       assertNotNull(cursor.getString(0))
-      assertNotNull(cursor.getString(1))
     }
   }
 
   @Test
-  fun `同じ共有URLを再保存してもContentを重複作成しない`() = runBlocking {
-    val first = gateway.saveSharedArticle("https://example.com/article", "Example", "Shared")
-    val second = gateway.saveSharedArticle("https://example.com/article", "Example", "Shared")
+  fun `同じ共有URLを再処理してもContentを重複作成しない`() = runBlocking {
+    val first = gateway.findOrCreateSharedArticle("https://example.com/article", "Example", "Shared")
+    val second = gateway.findOrCreateSharedArticle("https://example.com/article", "Example", "Shared")
 
-    assertEquals(first.articleId, second.articleId)
-    assertEquals(BookmarkSaveResult.ALREADY_BOOKMARKED, second.result)
+    assertEquals(first, second)
     helper.readableDatabase.rawQuery(
       "SELECT COUNT(*) FROM articles WHERE url=?",
       arrayOf("https://example.com/article"),
@@ -92,19 +86,17 @@ class BookmarkArticleGatewayTest {
   }
 
   @Test
-  fun `保存解除では既読状態を残してbookmark状態だけを外す`() = runBlocking {
-    val saved = gateway.saveSharedArticle("https://example.com/article", "Example", "Shared")
+  fun `import は既存Contentを再利用する`() = runBlocking {
+    val shared = gateway.findOrCreateSharedArticle("https://example.com/article", "Example", "Shared")
 
-    gateway.unsave(saved.articleId)
+    val imported = gateway.findOrCreateImportedArticle(
+      url = "https://example.com/article",
+      title = "Imported",
+      sourceTitle = "example.com",
+      createdAt = "2026-08-01T00:00:00Z",
+      identityPrefix = "html",
+    )
 
-    assertFalse(gateway.isBookmarked(saved.articleId))
-    helper.readableDatabase.rawQuery(
-      "SELECT read_at,saved_at FROM articles WHERE id=?",
-      arrayOf(saved.articleId),
-    ).use { cursor ->
-      cursor.moveToFirst()
-      assertNotNull(cursor.getString(0))
-      assertEquals(true, cursor.isNull(1))
-    }
+    assertEquals(shared, imported)
   }
 }

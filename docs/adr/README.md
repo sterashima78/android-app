@@ -20,8 +20,6 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 
 ## Core architecture source set
 
-現在の Architecture Documentation を読む際に特に重要な ADR は次のとおり。
-
 ### Layer / module / ownership
 
 - [ADR-0001: UI・Domain・Data レイヤの責務を分離する](0001-layered-architecture.md)
@@ -41,6 +39,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0106: Domain context・Aggregate・persistence ownership](0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0117: cross-context persistence boundary phase 1](0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119: Content Classification・Retention・table ownership enforcement](0119-content-classification-retention-and-table-ownership-enforcement.md)
+- [ADR-0123: Content / Curation 永続化境界の第二段階を完了する](0123-content-curation-persistence-phase2.md)
 
 ### Documentation governance
 

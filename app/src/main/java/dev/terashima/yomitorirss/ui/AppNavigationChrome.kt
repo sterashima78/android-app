@@ -251,7 +251,6 @@ internal fun AppBottomBar(
                 BookmarkTab.BOOKMARKS -> Icons.Default.Bookmark
                 BookmarkTab.FOLDERS -> Icons.Default.Folder
                 BookmarkTab.TAGS -> Icons.Default.Label
-                BookmarkTab.IMPORT -> Icons.Default.UploadFile
               },
               contentDescription = tab.label,
             )

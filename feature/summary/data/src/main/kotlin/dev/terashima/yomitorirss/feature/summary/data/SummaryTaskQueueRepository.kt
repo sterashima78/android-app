@@ -2,6 +2,8 @@ package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkContentQuery
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskCounts
@@ -13,60 +15,48 @@ import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 class DefaultSummaryTaskQueueRepository(
   context: Context,
   private val database: YomitoriDatabase,
+  private val articleRepository: ArticleRepository,
+  private val bookmarkContentQuery: BookmarkContentQuery,
 ) : SummaryTaskQueueRepository {
   private val appContext = context.applicationContext
 
   override suspend fun listTasks(): List<SummaryQueueTask> {
-    val items = database.listSummaryTaskItems()
-    val highPriorityArticleIds = database.readLaterSummaryTaskIds(items.map { it.task.articleId })
-    return items.map { item ->
+    val tasks = database.listSummaryTasks()
+    val articleIds = tasks.mapTo(linkedSetOf(), SummaryTaskRecord::articleId)
+    val articles = articleRepository.findArticles(articleIds).associateBy { it.id }
+    val highPriorityArticleIds = bookmarkContentQuery.readLaterContentIds(articleIds)
+    return tasks.map { task ->
+      val article = articles[task.articleId]
       SummaryQueueTask(
-        articleId = item.task.articleId,
-        articleTitle = item.articleTitle,
-        sourceTitle = item.sourceTitle,
-        state = item.task.state.toSummaryQueueTaskState(),
-        queuedAt = item.task.queuedAt,
-        startedAt = item.task.startedAt,
-        finishedAt = item.task.finishedAt,
-        error = item.task.error,
-        priority = if (item.task.articleId in highPriorityArticleIds) {
-          SummaryQueueTaskPriority.HIGH
-        } else {
-          SummaryQueueTaskPriority.NORMAL
-        },
-        progressStage = item.task.progressStage.toSummaryQueueTaskProgressStage(),
-        progressCurrent = item.task.progressCurrent,
-        progressTotal = item.task.progressTotal,
+        articleId = task.articleId,
+        articleTitle = article?.title ?: "記事が見つかりません",
+        sourceTitle = article?.sourceTitle.orEmpty(),
+        state = task.state.toSummaryQueueTaskState(),
+        queuedAt = task.queuedAt,
+        startedAt = task.startedAt,
+        finishedAt = task.finishedAt,
+        error = task.error,
+        priority = if (task.articleId in highPriorityArticleIds) SummaryQueueTaskPriority.HIGH else SummaryQueueTaskPriority.NORMAL,
+        progressStage = task.progressStage.toSummaryQueueTaskProgressStage(),
+        progressCurrent = task.progressCurrent,
+        progressTotal = task.progressTotal,
       )
     }
   }
 
   override suspend fun taskCounts(): SummaryQueueTaskCounts = database.countSummaryQueueTasks()
-
-  override suspend fun executionState(): SummaryQueueExecutionState =
-    SummaryQueue.executionState(appContext)
-
-  override suspend fun kick() {
-    SummaryQueue.kick(appContext)
-  }
-
-  override suspend fun setPaused(paused: Boolean) {
-    SummaryQueue.setPaused(appContext, paused)
-  }
-
-  override suspend fun setResumeWhenCharging(enabled: Boolean) {
-    SummaryQueue.setResumeWhenCharging(appContext, enabled)
-  }
-
+  override suspend fun executionState(): SummaryQueueExecutionState = SummaryQueue.executionState(appContext)
+  override suspend fun kick() = SummaryQueue.kick(appContext)
+  override suspend fun setPaused(paused: Boolean) = SummaryQueue.setPaused(appContext, paused)
+  override suspend fun setResumeWhenCharging(enabled: Boolean) = SummaryQueue.setResumeWhenCharging(appContext, enabled)
   override suspend fun stop(articleId: String): Boolean = SummaryQueue.stop(appContext, articleId)
-
   override suspend fun cancel(articleId: String): Boolean = SummaryQueue.cancel(appContext, articleId)
-
   override suspend fun resume(articleId: String): Boolean = SummaryQueue.resume(appContext, articleId)
 
   override suspend fun retryFailedBookmarkTasks(): Int {
-    val retried = database.retryFailedBookmarkSummaryTasks()
-    // 前回のkickだけが失敗し、対象がすでにqueuedへ遷移済みでも再操作で回復できるよう必ず再スケジュールする。
+    val failedIds = database.listFailedSummaryTaskIds()
+    val bookmarkedIds = bookmarkContentQuery.bookmarkedContentIds(failedIds)
+    val retried = database.requeueFailedSummaryTasks(bookmarkedIds)
     SummaryQueue.kick(appContext)
     return retried
   }

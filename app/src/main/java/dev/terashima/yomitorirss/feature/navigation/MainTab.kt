@@ -11,7 +11,6 @@ enum class MainTab(val label: String) {
   FEEDS("フィード管理"),
   FOLDERS("フォルダ"),
   TAGS("タグ"),
-  BOOKMARK_IMPORT("インポート"),
   LIBRARY("蔵書"),
   KNOWLEDGE("ナレッジ"),
   ASSETS("資産"),

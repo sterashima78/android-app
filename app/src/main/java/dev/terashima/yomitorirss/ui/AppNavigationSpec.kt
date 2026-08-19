@@ -12,7 +12,7 @@ internal fun MainTab.appSection(): AppSection = when (this) {
   MainTab.INTEGRATED -> AppSection.HOME
   MainTab.UNREAD, MainTab.READ_LATER, MainTab.FEEDS -> AppSection.RSS
   MainTab.REDDIT_UNREAD, MainTab.REDDIT_READ_LATER, MainTab.REDDIT_SUBSCRIPTIONS -> AppSection.REDDIT
-  MainTab.SAVED, MainTab.FOLDERS, MainTab.TAGS, MainTab.BOOKMARK_IMPORT -> AppSection.BOOKMARKS
+  MainTab.SAVED, MainTab.FOLDERS, MainTab.TAGS -> AppSection.BOOKMARKS
   MainTab.LIBRARY -> AppSection.LIBRARY
   MainTab.KNOWLEDGE -> AppSection.KNOWLEDGE
   MainTab.ASSETS -> AppSection.ASSETS
@@ -44,7 +44,6 @@ internal fun MainTab.bookmarkTab(): BookmarkTab? = when (this) {
   MainTab.SAVED -> BookmarkTab.BOOKMARKS
   MainTab.FOLDERS -> BookmarkTab.FOLDERS
   MainTab.TAGS -> BookmarkTab.TAGS
-  MainTab.BOOKMARK_IMPORT -> BookmarkTab.IMPORT
   else -> null
 }
 
@@ -58,7 +57,6 @@ internal fun MainTab.screenTitle(): String = when (this) {
   MainTab.SAVED -> "ブックマーク・一覧"
   MainTab.FOLDERS -> "ブックマーク・フォルダ"
   MainTab.TAGS -> "ブックマーク・タグ"
-  MainTab.BOOKMARK_IMPORT -> "ブックマーク・インポート"
   MainTab.LIBRARY -> "蔵書"
   MainTab.KNOWLEDGE -> "ナレッジ"
   MainTab.ASSETS -> "資産"
@@ -107,5 +105,4 @@ internal fun BookmarkTab.mainTab(): MainTab = when (this) {
   BookmarkTab.BOOKMARKS -> MainTab.SAVED
   BookmarkTab.FOLDERS -> MainTab.FOLDERS
   BookmarkTab.TAGS -> MainTab.TAGS
-  BookmarkTab.IMPORT -> MainTab.BOOKMARK_IMPORT
 }

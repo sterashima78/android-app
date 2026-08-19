@@ -60,7 +60,7 @@ Presentation / delivery:
 - reading state
 - content classification override
 
-`Article` -> `ContentItem` の rename は migration のため現時点では行わない。persistence ownership と公開 API 境界を優先して整える。
+Bookmark の保存状態は所有しない。`Article` -> `ContentItem` の rename は ubiquitous language がさらに安定した後に判断する。
 
 ### Curation
 
@@ -68,46 +68,30 @@ Presentation / delivery:
 
 所有する概念:
 
-- Bookmark
-- savedAt
-- Tag
-- Folder
+- `bookmarks(article_id, saved_at)`
+- Tag / Folder
 - Read Later membership
 
-Bookmark は ContentItemId を参照する。`articles.saved_at` は Domain ownership と現在の物理 schema が一致していない transitional state であり、Curation-owned persistence への migration 対象とする。
+Bookmark は ContentItemId を参照する。v25 以降、`savedAt` の正規 persistence は Curation-owned `bookmarks` table である。upgrade 済み DB に残る legacy `articles.saved_at` column は runtime state として利用しない。
 
 ### Source contexts: RSS / Reddit / YouTube
 
-Content の上流 Source Context として扱う。
+Content の上流 Source Context として扱う。各 Source 固有の subscription、synchronization / fetch state、authentication、external API / site semantics、source-specific metadata は各 Context が所有する。
 
-各 Source 固有の次の責務は各 Context が所有する。
-
-- subscription
-- synchronization / fetch state
-- authentication
-- external API / site semantics
-- source-specific metadata
-
-同じ Content を供給することだけを理由に generic `source` module へ統合しない。ubiquitous language と lifecycle が実際に収束した場合にのみ再評価する。
+RSS から Content への ingestion は Content-owned `ContentSourceGateway` を利用し、RSS data は Content table を直接更新しない。
 
 ### Summary
 
-Content を入力として次を所有する。
+Content を入力として generated summary と task lifecycle / priority の Summary 側規則を所有する。
 
-- generated summary
-- summary persistence
-- task lifecycle / priority の Summary 側規則
-
-Curation state を変更する場合は Curation の公開 command を利用する。Content retention を保護する情報は Summary が query contract として公開する。
+- Article metadata は `ArticleRepository` から取得する。
+- Read Later priority / Bookmark retry は `BookmarkContentQuery` を利用する。
+- Curation tag/folder 更新は `BookmarkEnrichmentRepository` を利用する。
+- Summary data は Content / Curation table を直接参照しない。
 
 ### Knowledge
 
-Content / Curation を資料として参照し、次を所有する。
-
-- Knowledge page
-- source relationship
-- generated / edited state
-- Knowledge 固有 background build lifecycle
+Content / Curation を資料として参照し、Knowledge page、source relationship、generated / edited state、Knowledge 固有 background build lifecycle を所有する。
 
 ### Other application contexts
 
@@ -117,47 +101,54 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 
 ## Cross-context operation classification
 
-### Application Service
+### Application Service / command port
 
-複数 Aggregate / Context の command を1つのユーザー操作として orchestration する。
+複数 Aggregate / Context の command を1つの操作として orchestration する場合、各 owner の公開 Domain API / command port を利用し、foreign table を直接 write しない。
 
-例:
+現在の例:
 
-- shared content の保存
-- save and mark read
-- mark read later
-- bookmark import
-
-各 owner の公開 Domain API / port を利用し、foreign table を直接 write しない。
+- Bookmark import: `ImportBookmarksUseCase`
+- Curation -> Content: `BookmarkArticleGateway`
+- RSS -> Content: `ContentSourceGateway`
 
 ### Domain Service
 
 永続状態を所有せず、複数 Aggregate / Context の情報から Domain rule を解決する。
 
-代表例は Content Classification で、Content 自身、Source、Source container の override から effective ContentType を決定する。
+現在の例:
 
-### Read Model / Projection
+- Content Classification
+- Content Retention Policy
 
-複数 Context の大量 read で Repository / Query API 合成が実測上問題になる場合だけ導入する。
+Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds` と Summary の protection query を composition root で Content-owned `ContentRetentionProtectionQuery` へ適合・合成する。Curation の公開 API 自体は Content の retention policy に依存しない。
 
-- read-only
-- named responsibility
-- referenced Context/table を明示
-- generic `cross-feature` module に置かない
-- Domain command を提供しない
+### Read Model / named Query
+
+他 Context が owner state を必要とする場合、低レベル SQL ではなく目的を表す query contract を利用する。
+
+現在の例:
+
+- `ArticleRepository.findArticle(s)`
+- `BookmarkContentQuery.bookmarkedContentIds`
+- `BookmarkContentQuery.readLaterContentIds`
+- `ContentClassificationSourceQuery`
+- `ContentRetentionProtectionQuery`
+
+大量 read で owner API の合成が実測上問題になる場合だけ、read-only かつ purpose-specific な Named Projection を検討する。
 
 ## Current transition targets
 
-主要な既知 migration target は次のとおり。
+ADR-0123 により、次の移行は完了した。
 
-1. `articles.saved_at` を Curation-owned persistence へ移す。
-2. Bookmark read model の Content / RSS table 直接 read を公開 read contract へ移す。
-3. Summary の Read Later priority を Curation の named query へ移す。
-4. RSS ingestion の Content write を Content command / application boundary へ移す。
-5. foreign-table allowlist を follow-up 完了ごとに削除する。
-6. ubiquitous language が安定した後に `Article` -> `ContentItem` rename / module restructuring を再評価する。
+1. `articles.saved_at` の Curation-owned persistence への移行。
+2. Bookmark read model の Content / RSS table 直接 read の owner API 化。
+3. Summary の Read Later / Bookmark cross-context read の named query 化。
+4. RSS ingestion の Content write の Content-owned command port 化。
+5. これら runtime path に対する foreign-table allowlist の削除。
 
-現在の transitional foreign access の正確な一覧は [`config/architecture/foreign-table-access-allowlist.tsv`](../../config/architecture/foreign-table-access-allowlist.tsv) を正本とする。
+残る例外は v24 -> v25 migration が legacy `articles.saved_at` を一度だけ読む ownership transfer のみである。正確な一覧は [`config/architecture/foreign-table-access-allowlist.tsv`](../../config/architecture/foreign-table-access-allowlist.tsv) を正本とする。
+
+`Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
 ## Sources
 
@@ -165,3 +156,4 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 - [ADR-0117](../adr/0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
+- [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)

@@ -25,22 +25,17 @@ interface BookmarkImportSource {
   suspend fun read(documentUri: String, format: BookmarkImportFormat): BookmarkImportBatch
 }
 
-/** Writes only the Curation-owned tag associations required by bookmark import. */
-interface BookmarkImportTagWriter {
+/** Writes only the Curation-owned bookmark state and tag associations required by import. */
+interface BookmarkImportWriter {
+  suspend fun saveBookmark(articleId: String, savedAt: String): Boolean
   suspend fun addTags(articleId: String, tagNames: List<String>)
 }
 
-/**
- * Application service for bookmark import.
- *
- * Parsing belongs to [BookmarkImportSource], Content creation/save is delegated to
- * [BookmarkArticleGateway], and Curation tag persistence is delegated to
- * [BookmarkImportTagWriter]. The use case owns only the cross-boundary workflow.
- */
+/** Cross-context import workflow. Content creation and Curation persistence remain owner-specific. */
 class ImportBookmarksUseCase(
   private val source: BookmarkImportSource,
   private val articleGateway: BookmarkArticleGateway,
-  private val tagWriter: BookmarkImportTagWriter,
+  private val writer: BookmarkImportWriter,
   private val onChanged: () -> Unit = {},
 ) {
   suspend operator fun invoke(
@@ -52,16 +47,19 @@ class ImportBookmarksUseCase(
     var duplicates = 0
 
     batch.entries.forEach { entry ->
-      val imported = articleGateway.importSavedArticle(
+      val articleId = articleGateway.findOrCreateImportedArticle(
         url = entry.url,
         title = entry.title,
         sourceTitle = entry.sourceTitle,
         createdAt = entry.createdAt,
         identityPrefix = format.identityPrefix,
       )
-      if (imported.added) added += 1
-      if (imported.duplicate) duplicates += 1
-      tagWriter.addTags(imported.articleId, entry.tagNames)
+      if (writer.saveBookmark(articleId, entry.createdAt)) {
+        added += 1
+      } else {
+        duplicates += 1
+      }
+      writer.addTags(articleId, entry.tagNames)
     }
 
     onChanged()

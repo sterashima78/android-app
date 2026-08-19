@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.rss.data
 import android.content.Context
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedFolder
@@ -15,10 +16,11 @@ import kotlinx.coroutines.flow.StateFlow
 
 class DefaultFeedRepository(
   database: DatabaseConnection,
+  private val contentSourceGateway: ContentSourceGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
   applicationContext: Context? = null,
 ) : FeedRepository {
-  private val store = FeedStore(database)
+  private val store = FeedStore(database, contentSourceGateway)
   private val client = FeedClient()
   private val yanmagaClient = YanmagaFeedClient()
   private val mangaOneClient = applicationContext?.let { MangaOneFeedClient(it.applicationContext) }
@@ -26,7 +28,6 @@ class DefaultFeedRepository(
   override val changes: StateFlow<Long> = dataChanges.version
 
   override suspend fun listFeeds(): List<Feed> = store.listFeeds()
-
   override suspend fun listFolders(): List<FeedFolder> = store.listFolders()
 
   override suspend fun inspect(input: String): FeedInspection {
@@ -101,11 +102,7 @@ class DefaultFeedRepository(
     try {
       val result = when {
         yanmagaClient.supports(feed.feedUrl) -> yanmagaClient.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
-        MangaOneFeedClient.companionSupports(feed.feedUrl) -> requireMangaOneClient().fetchFeed(
-          feed.feedUrl,
-          feed.etag,
-          feed.lastModified,
-        )
+        MangaOneFeedClient.companionSupports(feed.feedUrl) -> requireMangaOneClient().fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
         else -> client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
       }
       if (result.notModified) {

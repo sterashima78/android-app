@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedOpmlImportResult
 import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
@@ -11,10 +12,11 @@ import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
 class DefaultFeedImportRepository(
   context: Context,
   database: DatabaseConnection,
+  contentSourceGateway: ContentSourceGateway,
   private val dataChanges: DataChangeNotifier,
 ) : FeedImportRepository {
   private val appContext = context.applicationContext
-  private val store = FeedStore(database)
+  private val store = FeedStore(database, contentSourceGateway)
 
   override suspend fun importFeedOpml(documentUri: String): FeedOpmlImportResult {
     val parsed = openReader(documentUri, "OPMLファイルを開けませんでした", ::parseFeedOpml)

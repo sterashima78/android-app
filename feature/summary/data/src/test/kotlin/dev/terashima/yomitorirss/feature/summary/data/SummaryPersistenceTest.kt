@@ -43,46 +43,42 @@ class SummaryPersistenceTest {
   }
 
   @Test
-  fun `表示上限を超える待機タスクも集計する`() {
+  fun `表示上限を超える待機タスクも実行候補と集計に含める`() {
     repeat(206) { index ->
       val articleId = "article-$index"
       insertArticle(articleId)
       database.enqueueSummaryTask(articleId, forceRefresh = false)
     }
+
+    assertEquals(206, database.listSummaryContentFetchCandidates().size)
+
     val completed = checkNotNull(database.claimNextSummaryTask())
     database.completeRunningSummaryTask(completed.articleId)
 
-    val tasks = database.listSummaryTaskItems()
+    val tasks = database.listSummaryTasks()
     val counts = database.countSummaryQueueTasks()
 
     assertEquals(200, tasks.size)
-    assertEquals(200, tasks.count { it.task.state == SUMMARY_QUEUED })
+    assertEquals(200, tasks.count { it.state == SUMMARY_QUEUED })
     assertEquals(205, counts.queued)
     assertEquals(0, counts.running)
     assertEquals(0, counts.stopped)
   }
 
   @Test
-  fun `失敗した保存済みブックマークだけを一括で待機に戻す`() {
-    insertArticle("saved-failed", bookmarked = true)
-    database.enqueueSummaryTask("saved-failed", forceRefresh = false)
-    database.markSummaryTaskFailed("saved-failed", "generation failed")
+  fun `指定した失敗タスクだけを待機へ戻す`() {
+    insertArticle("retry")
+    insertArticle("leave")
+    database.enqueueSummaryTask("retry", forceRefresh = false)
+    database.enqueueSummaryTask("leave", forceRefresh = false)
+    database.markSummaryTaskFailed("retry", "generation failed")
+    database.markSummaryTaskFailed("leave", "generation failed")
 
-    insertArticle("unsaved-failed")
-    database.enqueueSummaryTask("unsaved-failed", forceRefresh = false)
-    database.markSummaryTaskFailed("unsaved-failed", "generation failed")
-
-    insertArticle("saved-stopped", bookmarked = true)
-    database.enqueueSummaryTask("saved-stopped", forceRefresh = false)
-    database.stopSummaryTask("saved-stopped")
-
-    val retried = database.retryFailedBookmarkSummaryTasks()
+    val retried = database.requeueFailedSummaryTasks(setOf("retry"))
 
     assertEquals(1, retried)
-    assertEquals(SUMMARY_QUEUED, database.findSummaryTask("saved-failed")?.state)
-    assertEquals(null, database.findSummaryTask("saved-failed")?.error)
-    assertEquals(SUMMARY_FAILED, database.findSummaryTask("unsaved-failed")?.state)
-    assertEquals(SUMMARY_STOPPED, database.findSummaryTask("saved-stopped")?.state)
+    assertEquals(SUMMARY_QUEUED, database.findSummaryTask("retry")?.state)
+    assertEquals(SUMMARY_FAILED, database.findSummaryTask("leave")?.state)
   }
 
   @Test
@@ -90,7 +86,7 @@ class SummaryPersistenceTest {
     insertArticle("article")
     database.enqueueSummaryTask("article", forceRefresh = false)
 
-    assertEquals("article", database.nextSummaryArticleForContentFetch()?.id)
+    assertEquals("article", database.listSummaryContentFetchCandidates().single().articleId)
     assertNull(database.claimNextInferenceReadySummaryTask())
 
     assertTrue(database.savePreparedSummaryArticleContentIfQueued("article", "prepared body"))
@@ -110,7 +106,7 @@ class SummaryPersistenceTest {
     database.saveSummary("cached", "cached summary", "model-cache-key")
     database.enqueueSummaryTask("cached", forceRefresh = false)
 
-    assertNull(database.nextSummaryArticleForContentFetch())
+    assertTrue(database.listSummaryContentFetchCandidates().isEmpty())
     assertEquals("cached", database.claimNextInferenceReadySummaryTask()?.articleId)
   }
 
@@ -120,7 +116,7 @@ class SummaryPersistenceTest {
     database.saveSummary("refresh", "old summary", "old-cache-key")
     database.enqueueSummaryTask("refresh", forceRefresh = true)
 
-    assertEquals("refresh", database.nextSummaryArticleForContentFetch()?.id)
+    assertEquals("refresh", database.listSummaryContentFetchCandidates().single().articleId)
     assertNull(database.claimNextInferenceReadySummaryTask())
   }
 
@@ -134,7 +130,7 @@ class SummaryPersistenceTest {
 
     assertEquals("prepared body", database.findPreparedSummaryArticleContent("retry")?.content)
     assertTrue(database.resumeSummaryTask("retry"))
-    assertNull(database.nextSummaryArticleForContentFetch())
+    assertTrue(database.listSummaryContentFetchCandidates().isEmpty())
     assertEquals("retry", database.claimNextInferenceReadySummaryTask()?.articleId)
   }
 
@@ -148,7 +144,7 @@ class SummaryPersistenceTest {
     assertNull(database.findPreparedSummaryArticleContent("cancelled"))
   }
 
-  private fun insertArticle(id: String, bookmarked: Boolean = false) {
+  private fun insertArticle(id: String) {
     database.writableDatabase.insertOrThrow(
       "articles",
       null,
@@ -162,11 +158,6 @@ class SummaryPersistenceTest {
         put("published_at", "2026-08-16T00:00:00Z")
         put("fetched_at", "2026-08-16T00:00:00Z")
         putNull("read_at")
-        if (bookmarked) {
-          put("saved_at", "2026-08-16T00:00:00Z")
-        } else {
-          putNull("saved_at")
-        }
         put("source_title", "test")
         put("source_feed_url", "")
       },
@@ -176,11 +167,8 @@ class SummaryPersistenceTest {
   private companion object {
     val testFeedSchema = DatabaseSchemaContribution(
       owner = "test-feed",
-      createSchema = { db ->
-        db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL)")
-      },
+      createSchema = { db -> db.execSQL("CREATE TABLE IF NOT EXISTS feeds(id TEXT PRIMARY KEY NOT NULL)") },
     )
-
     val testArticleSchema = DatabaseSchemaContribution(
       owner = articleDatabaseSchema.owner,
       createSchema = articleDatabaseSchema.createSchema,

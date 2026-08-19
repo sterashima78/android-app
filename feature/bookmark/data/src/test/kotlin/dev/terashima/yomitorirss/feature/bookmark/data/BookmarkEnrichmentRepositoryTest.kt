@@ -26,7 +26,7 @@ class BookmarkEnrichmentRepositoryTest {
     val context = ApplicationProvider.getApplicationContext<Context>()
     helper = object : SQLiteOpenHelper(context, null, null, 1) {
       override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE articles(id TEXT PRIMARY KEY, saved_at TEXT)")
+        db.execSQL("CREATE TABLE bookmarks(article_id TEXT PRIMARY KEY, saved_at TEXT NOT NULL)")
         db.execSQL("CREATE TABLE tags(id TEXT PRIMARY KEY, name TEXT, normalized_name TEXT UNIQUE, created_at TEXT)")
         db.execSQL("CREATE TABLE article_tags(article_id TEXT, tag_id TEXT, PRIMARY KEY(article_id,tag_id))")
         db.execSQL("CREATE TABLE bookmark_folders(id TEXT PRIMARY KEY, name TEXT, normalized_name TEXT UNIQUE, system_kind TEXT, created_at TEXT)")
@@ -45,15 +45,13 @@ class BookmarkEnrichmentRepositoryTest {
 
   @Test
   fun `未保存Contentにはenrichment候補を返さない`() = runBlocking {
-    helper.writableDatabase.execSQL("INSERT INTO articles(id,saved_at) VALUES('a1',NULL)")
-
     assertNull(repository.context("a1"))
   }
 
   @Test
   fun `保存済み未分類Bookmarkには既存tagとfolder候補を返す`() = runBlocking {
     val db = helper.writableDatabase
-    db.execSQL("INSERT INTO articles(id,saved_at) VALUES('a1','2026-08-19T00:00:00Z')")
+    db.execSQL("INSERT INTO bookmarks(article_id,saved_at) VALUES('a1','2026-08-19T00:00:00Z')")
     db.execSQL("INSERT INTO tags(id,name,normalized_name,created_at) VALUES('t1','Android','android','now')")
     db.execSQL("INSERT INTO bookmark_folders(id,name,normalized_name,system_kind,created_at) VALUES('f1','開発','開発',NULL,'now')")
 
@@ -66,7 +64,7 @@ class BookmarkEnrichmentRepositoryTest {
   @Test
   fun `生成metadataの適用はCuration tableだけを更新する`() = runBlocking {
     val db = helper.writableDatabase
-    db.execSQL("INSERT INTO articles(id,saved_at) VALUES('a1','2026-08-19T00:00:00Z')")
+    db.execSQL("INSERT INTO bookmarks(article_id,saved_at) VALUES('a1','2026-08-19T00:00:00Z')")
     db.execSQL("INSERT INTO bookmark_folders(id,name,normalized_name,system_kind,created_at) VALUES('f1','開発','開発',NULL,'now')")
 
     val changed = repository.applyGeneratedMetadata(

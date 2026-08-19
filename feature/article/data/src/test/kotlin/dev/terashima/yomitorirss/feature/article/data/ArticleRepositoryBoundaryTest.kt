@@ -30,7 +30,6 @@ class ArticleRepositoryBoundaryTest {
     val context = ApplicationProvider.getApplicationContext<Context>()
     helper = object : SQLiteOpenHelper(context, null, null, 1) {
       override fun onCreate(db: SQLiteDatabase) {
-        // Article repository が RSS schema の列を直接参照していないことを検証するため、id 以外を持たせない。
         db.execSQL("CREATE TABLE feeds(id TEXT PRIMARY KEY NOT NULL)")
         db.execSQL(
           """
@@ -44,7 +43,6 @@ class ArticleRepositoryBoundaryTest {
               published_at TEXT NOT NULL,
               fetched_at TEXT NOT NULL,
               read_at TEXT,
-              saved_at TEXT,
               source_title TEXT NOT NULL,
               source_feed_url TEXT NOT NULL,
               content_type TEXT
@@ -52,7 +50,6 @@ class ArticleRepositoryBoundaryTest {
           """.trimIndent(),
         )
       }
-
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
     database = DatabaseConnection(helper)
@@ -65,35 +62,26 @@ class ArticleRepositoryBoundaryTest {
 
   @Test
   fun `実効ContentTypeはSource query portから解決する`() = runBlocking {
-    helper.writableDatabase.insertOrThrow(
-      "feeds",
-      null,
-      ContentValues().apply { put("id", "feed-1") },
-    )
+    helper.writableDatabase.insertOrThrow("feeds", null, ContentValues().apply { put("id", "feed-1") })
     insertArticle(id = "article-1", feedId = "feed-1", readAt = null)
     var requestedSourceIds: Set<String> = emptySet()
     val repository = repository(
       classificationQuery = object : ContentClassificationSourceQuery {
         override suspend fun findOverrides(sourceIds: Set<String>): Map<String, SourceContentTypeOverrides> {
           requestedSourceIds = sourceIds
-          return mapOf(
-            "feed-1" to SourceContentTypeOverrides(
-              sourceOverride = ContentType.COMIC,
-              sourceContainerOverride = null,
-            ),
-          )
+          return mapOf("feed-1" to SourceContentTypeOverrides(ContentType.COMIC, null))
         }
       },
     )
 
-    val article = repository.listUnreadArticles().single()
+    val article = repository.findArticle("article-1")
 
     assertEquals(setOf("feed-1"), requestedSourceIds)
-    assertEquals(ContentType.COMIC, article.effectiveContentType)
+    assertEquals(ContentType.COMIC, article?.effectiveContentType)
   }
 
   @Test
-  fun `cleanupはSummary schemaを直接参照せず保護queryの結果を使う`() = runBlocking {
+  fun `cleanupは外部schemaを直接参照せず保護queryの結果を使う`() = runBlocking {
     insertArticle(id = "delete-me", readAt = "2026-01-01T00:00:00Z")
     insertArticle(id = "keep-me", readAt = "2026-01-01T00:00:00Z")
     var requestedCandidateIds: Set<String> = emptySet()
@@ -126,11 +114,7 @@ class ArticleRepositoryBoundaryTest {
     contentRetentionProtectionQuery = retentionQuery,
   )
 
-  private fun insertArticle(
-    id: String,
-    feedId: String? = null,
-    readAt: String?,
-  ) {
+  private fun insertArticle(id: String, feedId: String? = null, readAt: String?) {
     helper.writableDatabase.insertOrThrow(
       "articles",
       null,
@@ -144,7 +128,6 @@ class ArticleRepositoryBoundaryTest {
         put("published_at", "2026-01-01T00:00:00Z")
         put("fetched_at", "2026-01-01T00:00:00Z")
         if (readAt == null) putNull("read_at") else put("read_at", readAt)
-        putNull("saved_at")
         put("source_title", "test")
         put("source_feed_url", "")
         putNull("content_type")
@@ -155,5 +138,5 @@ class ArticleRepositoryBoundaryTest {
   private fun articleExists(id: String): Boolean = helper.readableDatabase.rawQuery(
     "SELECT 1 FROM articles WHERE id=? LIMIT 1",
     arrayOf(id),
-  ).use { cursor -> cursor.moveToFirst() }
+  ).use { it.moveToFirst() }
 }

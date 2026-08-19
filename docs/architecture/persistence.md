@@ -33,7 +33,7 @@ Owner data module
   -> owned table の直接 SELECT / INSERT / UPDATE / DELETE
 
 Other context
-  -> owner Domain API / named Query API
+  -> owner Domain API / named Query API / command port
 
 Named Projection
   -> 明示された foreign table の SELECT のみ
@@ -50,13 +50,14 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 
 `config/architecture/table-ownership.tsv` は `gradle/table-ownership.gradle.kts` が検査する durable table ownership の機械可読な正本である。
 
-現在 manifest に登録されている ownership は次のとおり。
+主要な ownership は次のとおり。
 
 | Table | Owner module |
 | --- | --- |
 | `articles` | `:feature:article:data` |
 | `feeds` | `:feature:rss:data` |
 | `feed_folders` | `:feature:rss:data` |
+| `bookmarks` | `:feature:bookmark:data` |
 | `tags` | `:feature:bookmark:data` |
 | `article_tags` | `:feature:bookmark:data` |
 | `bookmark_folders` | `:feature:bookmark:data` |
@@ -67,45 +68,33 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 
 この表を手作業の完全な schema catalog として扱わない。正確な検査対象は [`config/architecture/table-ownership.tsv`](../../config/architecture/table-ownership.tsv)、実際の schema definition は各 feature data module の `DatabaseSchemaContribution` を参照する。
 
-ADR-0047 が記録する broader ownership には Mail、Library、Knowledge、Asset、Task、Chat、YouTube 等の durable data も含まれる。table ownership verification の対象を拡張するときは manifest と fixture を同じ変更で更新する。
+## Cross-context query / command patterns
 
-## Cross-context query patterns
+通常は owner が Repository / named Query / command port を公開する。他 Context は table layout ではなく意味のある contract に依存する。
 
-### Owner API
-
-通常は owner が Repository / Query port を公開する。他 Context は table layout ではなく意味のある contract に依存する。
-
-例:
+現在の例:
 
 - Content Classification は RSS table を JOIN せず `ContentClassificationSourceQuery` を利用する。
-- Content retention は Summary table を参照せず `ContentRetentionProtectionQuery` を利用する。
-- Summary が Curation state を変更する場合は Curation command を利用する。
+- Content retention は Curation の `BookmarkContentQuery` と Summary protection query を composition root で `ContentRetentionProtectionQuery` へ適合・合成する。
+- Bookmark read model は Article metadata を `ArticleRepository.findArticle(s)` から取得する。
+- Summary は Article metadata を `ArticleRepository`、Bookmark / Read Later membership を `BookmarkContentQuery` から取得する。
+- RSS ingestion は Content table を直接 write せず `ContentSourceGateway` を利用する。
 
 ### Named Projection
 
-owner API の合成で実測上の性能問題がある read path に限り read-only Projection を利用できる。
-
-Projection は次を満たす。
-
-- purpose-specific name を持つ
-- read-only
-- 参照 Context / table を明示する
-- generic `shared` / `cross-feature` module に置かない
-- command API を提供しない
-- schema change を検出できる integration test を持つ
+owner API の合成で実測上の性能問題がある read path に限り read-only Projection を利用できる。Projection は purpose-specific name、read-only、参照 Context/table の明示、integration test を必要とし、command API を提供しない。
 
 ## Transitional foreign access
 
-既知の移行負債は [`config/architecture/foreign-table-access-allowlist.tsv`](../../config/architecture/foreign-table-access-allowlist.tsv) に repository path、table、ADR に基づく理由を明示する。
+通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0123 で解消した。
 
-現時点では主に次が残る。
+残る明示的な例外は v24 -> v25 migration のみである。
 
-- Bookmark read/enrichment から Content / RSS persistence への transitional read
-- RSS ingestion から Content persistence への transitional write path
-- Summary queue/read model から Content metadata への transitional read
-- Summary priority から Curation Read Later membership への transitional read
+- `BookmarkDatabaseSchema` が legacy `articles.saved_at` を一度だけ読み、Curation-owned `bookmarks` へ ownership transfer する。
+- この参照は `foreign-table-access-allowlist.tsv` に ADR-0123 とともに固定する。
+- migration 完了後の runtime code は legacy column を参照しない。
 
-allowlist は恒久的な例外集ではない。file/table が消えた entry は stale として verification を失敗させ、follow-up 完了時に削除する。
+allowlist は恒久的な例外集ではない。file/table が消えた entry は stale として verification を失敗させる。
 
 ## Persistence change checklist
 
@@ -116,9 +105,10 @@ allowlist は恒久的な例外集ではない。file/table が消えた entry �
 3. app-level database version / contribution order の変更が必要か。
 4. 他 Context が table を直接参照していないか。
 5. cross-context read が必要なら owner Query API で十分か。
-6. Projection が必要なら目的、参照 table、read-only 制約、integration test が明示されているか。
-7. `table-ownership.tsv` または allowlist の更新が必要か。
-8. backup/restore compatibility への影響があるか。
+6. cross-context write が必要なら owner command port / Application Service を利用しているか。
+7. Projection が必要なら目的、参照 table、read-only 制約、integration test が明示されているか。
+8. `table-ownership.tsv` または allowlist の更新が必要か。
+9. backup/restore compatibility への影響があるか。
 
 ## Sources
 
@@ -129,3 +119,4 @@ allowlist は恒久的な例外集ではない。file/table が消えた entry �
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0117](../adr/0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
+- [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)

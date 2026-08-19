@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.feature.bookmark
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,18 +36,8 @@ fun BookmarkRoute(
   editController: BookmarkEditController,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
-  onImportCsv: () -> Unit,
-  onImportHtml: () -> Unit,
-  onImportCompleted: () -> Unit,
 ) {
   val state by bookmarkViewModel.state.collectAsState()
-
-  LaunchedEffect(state.importCompleted) {
-    if (state.importCompleted) {
-      onImportCompleted()
-      bookmarkViewModel.consumeImportCompleted()
-    }
-  }
 
   if (!state.initialized) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -75,8 +64,6 @@ fun BookmarkRoute(
     onCreateTag = bookmarkViewModel::createTag,
     onRenameTag = bookmarkViewModel::renameTag,
     onDeleteTag = bookmarkViewModel::deleteTag,
-    onImportCsv = onImportCsv,
-    onImportHtml = onImportHtml,
   )
 }
 
