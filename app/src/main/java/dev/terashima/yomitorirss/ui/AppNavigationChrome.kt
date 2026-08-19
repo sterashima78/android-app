@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Forum
@@ -94,6 +95,7 @@ internal fun AppDrawerContent(
                 AppSection.X -> Icons.Default.Public
                 AppSection.TASKS -> Icons.Default.Checklist
                 AppSection.GAME -> Icons.Default.SportsEsports
+                AppSection.HEALTH -> Icons.Default.Favorite
                 AppSection.WORKOUT -> Icons.Default.FitnessCenter
                 AppSection.AI_CHAT -> Icons.Default.Chat
                 AppSection.SETTINGS -> Icons.Default.Settings
