@@ -148,7 +148,10 @@ internal fun AppFeatureContent(
       modifier = modifier,
     )
     MainTab.X -> Box(modifier = modifier) {
-      XViewerScreen(modifier = Modifier.fillMaxSize())
+      XViewerScreen(
+        repository = routeDependencies.xViewerCssRepository,
+        modifier = Modifier.fillMaxSize(),
+      )
       Surface(
         modifier = Modifier
           .align(Alignment.TopEnd)
@@ -187,6 +190,7 @@ internal fun AppFeatureContent(
       bookmarkViewModel = bookmarkViewModel,
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
+      xViewerCssRepository = routeDependencies.xViewerCssRepository,
       onOpenWebServer = onOpenWebServer,
       onNavigate = appViewModel::selectTab,
     )
