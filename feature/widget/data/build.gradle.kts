@@ -22,6 +22,5 @@ dependencies {
   implementation(project(":feature:rss:domain"))
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:backup:domain"))
-  implementation(project(":core:database"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 }
