@@ -48,7 +48,7 @@ Executable configuration / verification / implementation
 - `testing.md`: test boundary と architecture verification
 - `glossary.md`: ubiquitous language と architecture terminology
 
-`docs/adr/README.md` は Decision Log の読み方と current architecture に重要な ADR の索引を提供する。
+`docs/adr/README.md` は Decision Log の読み方と current architecture に重要な ADR の索引を提供する。この README は ADR 自体ではないため ADR 番号を持たず、`scripts/verify_adr_integrity.py` はこのファイルだけを ADR filename/header 検査対象から除外する。それ以外の `docs/adr/*.md` は ADR-0055 の命名規則に従う。
 
 ### 3. Architecture Documentation は根拠 ADR を明示する
 
@@ -101,6 +101,7 @@ Architecture Documentation、ADR、manifest、test fixture には credential、t
 - machine-readable source を既に持つ情報の二重管理を最小化できる。
 - architecture-changing PR で「ADR 更新」と「current docs 更新」を別の責務として確認できる。
 - AI/agent に architecture context を与える場合も、まず少数の current docs を渡し、必要な rationale だけ ADR へ遡れる。
+- ADR index を追加しても ADR numbering/integrity checker の規則を曖昧にしない。
 
 ### Negative
 
@@ -108,6 +109,7 @@ Architecture Documentation、ADR、manifest、test fixture には credential、t
 - prose の意味的整合性は完全には自動検証できない。
 - architecture-changing PR で documentation update の確認項目が増える。
 - current docs の要約が古くなる可能性は残るため、review と executable verification の両方が必要になる。
+- ADR checker に `README.md` という単一の非 ADR 例外を持つ。
 
 ## Testing and verification
 
@@ -116,6 +118,7 @@ Architecture Documentation、ADR、manifest、test fixture には credential、t
 次を確認する。
 
 - `scripts/verify_adr_integrity.py` で ADR-0121 の番号・見出し・参照整合性が成立すること
+- `docs/adr/README.md` だけが non-ADR index として許可され、その他の不正 filename は引き続き失敗すること
 - architecture documents の相対 link と source ADR が存在すること
 - `docs/domain-context-map.md` の旧 path が新 Context Map へ案内すること
 - public repository に公開してはいけない credential / personal data が追加されていないこと
@@ -126,6 +129,6 @@ Architecture Documentation、ADR、manifest、test fixture には credential、t
 
 ADR-0046 の executable architecture verification は維持する。本 ADR は prose documentation へ置き換えるものではなく、machine-verifiable constraint と current architecture explanation の責務を分ける。
 
-ADR-0055 の ADR numbering / integrity policy は維持する。`docs/adr/README.md` は索引を提供するが ADR identifier の正本にはならない。
+ADR-0055 の ADR numbering / integrity policy は維持しつつ、`docs/adr/README.md` だけを非 ADR index として明示的に除外する。その他の `docs/adr/*.md` の命名・番号・参照 integrity は従来どおり検査する。
 
 ADR-0106 の Domain Context / Aggregate / persistence ownership の決定は変更しない。既存 `docs/domain-context-map.md` を `docs/architecture/context-map.md` 配下へ整理する。
