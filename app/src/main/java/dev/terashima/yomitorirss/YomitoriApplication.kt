@@ -21,6 +21,7 @@ import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 
 class YomitoriApplication : Application(),
+  MainActivityDependenciesProvider,
   WidgetRepositoryProvider,
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
@@ -34,6 +35,15 @@ class YomitoriApplication : Application(),
   }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppRouteDependencies(this, container)
+  }
+  override val mainActivityDependencies: MainActivityDependencies by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    MainActivityDependencies(
+      routeDependencies = routeDependencies,
+      bookmarkRepository = container.bookmarkRepository,
+      onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
+    )
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
