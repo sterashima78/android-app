@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -121,10 +122,16 @@ class AiSettingsViewModel(
       )
     }
     viewModelScope.launch {
-      runCatching { repository.benchmarkSelectedModel() }
-        .onSuccess { result -> _state.update { it.copy(benchmarkResult = result) } }
-        .onFailure { error -> _state.update { it.copy(benchmarkError = error.userMessage()) } }
-      _state.update { it.copy(benchmarkRunning = false) }
+      try {
+        val result = repository.benchmarkSelectedModel()
+        _state.update { it.copy(benchmarkResult = result) }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(benchmarkError = error.userMessage()) }
+      } finally {
+        _state.update { it.copy(benchmarkRunning = false) }
+      }
     }
   }
 
@@ -139,10 +146,16 @@ class AiSettingsViewModel(
       )
     }
     viewModelScope.launch {
-      runCatching { repository.benchmarkSelectedModelContexts() }
-        .onSuccess { result -> _state.update { it.copy(contextBenchmarkResult = result) } }
-        .onFailure { error -> _state.update { it.copy(contextBenchmarkError = error.userMessage()) } }
-      _state.update { it.copy(benchmarkRunning = false) }
+      try {
+        val result = repository.benchmarkSelectedModelContexts()
+        _state.update { it.copy(contextBenchmarkResult = result) }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(contextBenchmarkError = error.userMessage()) }
+      } finally {
+        _state.update { it.copy(benchmarkRunning = false) }
+      }
     }
   }
 
@@ -184,11 +197,18 @@ class AiSettingsViewModel(
     _state.update { it.copy(contextBenchmarkResult = null, contextBenchmarkError = null) }
 
     viewModelScope.launch(Dispatchers.IO) {
-      val result = runCatching { repository.lastContextBenchmark() }
-      if (lastContextBenchmarkKey != key) return@launch
-      result
-        .onSuccess { report -> _state.update { it.copy(contextBenchmarkResult = report) } }
-        .onFailure { error -> _state.update { it.copy(contextBenchmarkError = error.userMessage()) } }
+      try {
+        val report = repository.lastContextBenchmark()
+        if (lastContextBenchmarkKey == key) {
+          _state.update { it.copy(contextBenchmarkResult = report) }
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        if (lastContextBenchmarkKey == key) {
+          _state.update { it.copy(contextBenchmarkError = error.userMessage()) }
+        }
+      }
     }
   }
 
