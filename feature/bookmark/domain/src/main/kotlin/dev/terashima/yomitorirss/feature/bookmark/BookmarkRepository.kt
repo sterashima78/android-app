@@ -17,6 +17,7 @@ interface BookmarkRepository {
   suspend fun createTag(name: String)
   suspend fun renameTag(tagId: String, name: String)
   suspend fun deleteTag(tagId: String)
+  suspend fun deleteUnusedTags(): Int
   suspend fun replaceArticleTags(articleId: String, tagIds: Set<String>)
   suspend fun saveAndReadArticle(articleId: String)
   suspend fun markReadLater(articleId: String)

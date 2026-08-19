@@ -12,6 +12,14 @@ import java.util.UUID
 internal class BookmarkAssociationStore(
   private val database: DatabaseConnection,
 ) {
+  fun listAssociatedTagIds(): Set<String> = database.readable
+    .rawQuery("SELECT DISTINCT tag_id FROM article_tags", null)
+    .use { cursor ->
+      buildSet {
+        while (cursor.moveToNext()) add(cursor.getString(0))
+      }
+    }
+
   fun replaceArticleTags(articleId: String, tagIds: Set<String>) {
     database.transaction {
       val existingTagIds = rawQuery(

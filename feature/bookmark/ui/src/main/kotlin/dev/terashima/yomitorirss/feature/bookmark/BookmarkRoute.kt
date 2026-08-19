@@ -75,6 +75,7 @@ fun BookmarkRoute(
     onCreateTag = bookmarkViewModel::createTag,
     onRenameTag = bookmarkViewModel::renameTag,
     onDeleteTag = bookmarkViewModel::deleteTag,
+    onDeleteUnusedTags = bookmarkViewModel::deleteUnusedTags,
     onImportCsv = onImportCsv,
     onImportHtml = onImportHtml,
   )
