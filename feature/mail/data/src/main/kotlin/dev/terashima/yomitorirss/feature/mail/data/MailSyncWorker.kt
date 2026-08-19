@@ -120,40 +120,57 @@ class MailSyncWorker(
     return try {
       if (initialSync) {
         require(!accountId.isNullOrBlank()) { "初回同期の Gmail アカウントが指定されていません" }
-        val expectedPageToken = inputData.getString(INPUT_PAGE_TOKEN)
-          ?.takeIf { inputData.getBoolean(INPUT_HAS_PAGE_TOKEN, false) }
+        val expectedPageToken = if (inputData.getBoolean(INPUT_HAS_PAGE_TOKEN, false)) {
+          inputData.getString(INPUT_PAGE_TOKEN)
+        } else {
+          null
+        }
         when (val step = repository.syncInitialPage(accountId, expectedPageToken)) {
           is InitialSyncStep.Continue -> {
             MailSyncScheduler(applicationContext).scheduleInitialPage(accountId, step.nextPageToken)
+            Result.success()
           }
-          InitialSyncStep.Complete,
-          InitialSyncStep.Stale -> Unit
+          InitialSyncStep.Complete -> Result.success()
+          InitialSyncStep.Stale -> {
+            // The previous attempt may have persisted its next checkpoint and been interrupted
+            // before enqueueing the continuation. Reconcile from the durable DB state here.
+            repository.sync(accountId)
+            Result.success()
+          }
         }
       } else {
         repository.sync(accountId)
+        Result.success()
       }
-      Result.success()
     } catch (error: MailAuthorizationRequiredException) {
-      if (initialSync && !accountId.isNullOrBlank()) {
+      if (initialSync && accountId != null) {
         repository.markInitialSyncError(accountId, error.message)
+        Result.failure()
+      } else {
+        Result.success()
       }
-      Result.failure(workDataOf("error" to (error.message ?: "Google アカウントの再認証が必要です")))
     } catch (error: IOException) {
-      if (initialSync && !accountId.isNullOrBlank()) {
+      if (initialSync && accountId != null) {
         repository.markInitialSyncWaitingForNetwork(accountId, error.message)
       }
       Result.retry()
     } catch (error: GmailApiException) {
-      if (initialSync && !accountId.isNullOrBlank()) {
-        repository.markInitialSyncError(accountId, error.message)
+      val retryable = error.statusCode == 429 || error.statusCode >= 500
+      if (initialSync && accountId != null) {
+        if (retryable) {
+          repository.markInitialSyncWaitingForNetwork(accountId, error.message)
+        } else {
+          repository.markInitialSyncError(accountId, error.message)
+        }
       }
-      if (error.statusCode in 500..599) Result.retry()
-      else Result.failure(workDataOf("error" to (error.message ?: "Gmail の同期に失敗しました")))
-    } catch (error: Exception) {
-      if (initialSync && !accountId.isNullOrBlank()) {
-        repository.markInitialSyncError(accountId, error.message)
+      if (retryable) Result.retry() else Result.failure()
+    } catch (error: Throwable) {
+      if (initialSync && accountId != null) {
+        repository.markInitialSyncError(accountId, error.message ?: "Gmail の同期に失敗しました")
       }
-      Result.failure(workDataOf("error" to (error.message ?: "Gmail の同期に失敗しました")))
+      Result.failure()
+    } finally {
+      database.close()
     }
   }
 }
