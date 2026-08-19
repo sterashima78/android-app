@@ -4,32 +4,32 @@ import android.content.ContentValues
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildResult
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePage
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageCreator
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageEditor
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageSummary
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeReader
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeSource
-import dev.terashima.yomitorirss.feature.summary.SummaryRepository
+import dev.terashima.yomitorirss.feature.summary.SummaryReader
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
-class DefaultKnowledgeRepository(
+class SqlKnowledgePageStore(
   private val database: DatabaseConnection,
-  private val bookmarkRepository: BookmarkRepository,
-  private val summaryRepository: SummaryRepository,
-  private val modelManager: LocalModelManager,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier.shared,
-) : KnowledgeRepository {
-  override val changes: StateFlow<Long> = dataChanges.version
+) {
+  val changes: StateFlow<Long> = dataChanges.version
 
-  override suspend fun listPages(query: String): List<KnowledgePageSummary> = withContext(Dispatchers.IO) {
+  fun listPages(query: String): List<KnowledgePageSummary> {
     val normalized = query.trim()
     val pattern = "%$normalized%"
-    database.readable.rawQuery(
+    return database.readable.rawQuery(
       "SELECT id,title,source_count,generated_at,editor_managed FROM knowledge_pages " +
         "WHERE (? = '' OR title LIKE ? OR body_markdown LIKE ?) " +
         "ORDER BY editor_managed DESC,generated_at DESC,title COLLATE NOCASE",
@@ -51,8 +51,8 @@ class DefaultKnowledgeRepository(
     }
   }
 
-  override suspend fun findPage(id: String): KnowledgePage? = withContext(Dispatchers.IO) {
-    val header = loadPageHeader(id) ?: return@withContext null
+  fun findPage(id: String): KnowledgePage? {
+    val header = loadPageHeader(id) ?: return null
     val sources = database.readable.rawQuery(
       "SELECT citation_index,article_id,title,url,source_title,saved_at FROM knowledge_page_sources " +
         "WHERE page_id = ? ORDER BY citation_index",
@@ -74,7 +74,7 @@ class DefaultKnowledgeRepository(
       }
     }
 
-    KnowledgePage(
+    return KnowledgePage(
       id = header.id,
       title = header.title,
       bodyMarkdown = header.bodyMarkdown,
@@ -85,172 +85,13 @@ class DefaultKnowledgeRepository(
     )
   }
 
-  override suspend fun rebuild(): KnowledgeBuildResult = withContext(Dispatchers.IO) {
-    val snapshot = loadSourceSnapshot()
-    val topics = buildKnowledgeTopics(snapshot.sources)
-    deleteObsoletePages(topics.mapTo(linkedSetOf(), KnowledgeTopic::id))
-
-    val fingerprints = loadFingerprints()
-    val editorManagedIds = loadEditorManagedIds()
-    var generated = 0
-    var reused = 0
-    var pending = 0
-    val inputBudget = promptBudgetChars()
-
-    topics.forEach { topic ->
-      if (topic.id in editorManagedIds || fingerprints[topic.id] == topic.sourceFingerprint) {
-        reused += 1
-        return@forEach
-      }
-      if (generated >= MAX_GENERATED_PAGES_PER_BUILD) {
-        pending += 1
-        return@forEach
-      }
-
-      val generatedDocument = parseGeneratedKnowledgeDocument(
-        raw = modelManager.generate(buildKnowledgePagePrompt(topic, inputBudget)),
-        fallbackTitle = topic.title,
-      )
-      persistPage(
-        id = topic.id,
-        title = topic.title,
-        body = generatedDocument.bodyMarkdown,
-        topicKind = topic.kind,
-        topicKey = topic.key,
-        editorManaged = false,
-        sources = topic.sources,
-        sourceFingerprint = topic.sourceFingerprint,
-        generatedAt = Instant.now().toString(),
-      )
-      generated += 1
-    }
-
-    dataChanges.notifyChanged()
-    KnowledgeBuildResult(
-      generated = generated,
-      reused = reused,
-      pending = pending,
-      skippedWithoutSummary = snapshot.skippedWithoutSummary,
-    )
-  }
-
-  override suspend fun createPage(
-    request: String,
-    sourcePageId: String?,
-  ): KnowledgePage = withContext(Dispatchers.IO) {
-    val normalizedRequest = request.trim()
-    require(normalizedRequest.isNotBlank()) { "作成したい記事の内容を入力してください" }
-
-    val snapshot = loadSourceSnapshot()
-    val basePage = sourcePageId?.let { id ->
-      findPage(id) ?: error("元にするナレッジページが見つかりません")
-    }
-    val preferredIds = basePage?.sources?.mapTo(linkedSetOf(), KnowledgeSource::articleId).orEmpty()
-    val sources = selectKnowledgeSources(
-      query = normalizedRequest,
-      sources = snapshot.sources,
-      preferredArticleIds = preferredIds,
-    )
-    check(sources.isNotEmpty()) { "記事作成に使える要約済みブックマークがありません" }
-
-    val fallbackTitle = fallbackKnowledgeTitle(normalizedRequest)
-    val generated = modelManager.generate(
-      buildKnowledgeCreationPrompt(
-        request = normalizedRequest,
-        sources = sources,
-        basePage = basePage,
-        promptBudgetChars = promptBudgetChars(),
-      ),
-    )
-    val document = parseGeneratedKnowledgeDocument(generated, fallbackTitle)
-    val id = "kb-llm-${UUID.randomUUID().toString().replace("-", "").take(24)}"
-    val now = Instant.now().toString()
-    persistPage(
-      id = id,
-      title = document.title,
-      body = document.bodyMarkdown,
-      topicKind = EDITOR_TOPIC_KIND,
-      topicKey = normalizedRequest,
-      editorManaged = true,
-      sources = sources,
-      sourceFingerprint = editorFingerprint(normalizedRequest, sources),
-      generatedAt = now,
-    )
-    dataChanges.notifyChanged()
-    findPage(id) ?: error("生成したナレッジページを読み込めませんでした")
-  }
-
-  override suspend fun editPage(
-    id: String,
-    instruction: String,
-  ): KnowledgePage = withContext(Dispatchers.IO) {
-    val normalizedInstruction = instruction.trim()
-    require(normalizedInstruction.isNotBlank()) { "編集内容を入力してください" }
-    val header = loadPageHeader(id) ?: error("編集するナレッジページが見つかりません")
-    val page = findPage(id) ?: error("編集するナレッジページが見つかりません")
-    val snapshot = loadSourceSnapshot()
-    val preferredIds = page.sources.mapTo(linkedSetOf(), KnowledgeSource::articleId)
-    val sources = selectKnowledgeSources(
-      query = "${page.title}\n$normalizedInstruction",
-      sources = snapshot.sources,
-      preferredArticleIds = preferredIds,
-    )
-    check(sources.isNotEmpty()) { "記事編集に使える要約済みブックマークがありません" }
-
-    val generated = modelManager.generate(
-      buildKnowledgeEditPrompt(
-        page = page,
-        instruction = normalizedInstruction,
-        sources = sources,
-        promptBudgetChars = promptBudgetChars(),
-      ),
-    )
-    val document = parseGeneratedKnowledgeDocument(generated, page.title)
-    val now = Instant.now().toString()
-    persistPage(
-      id = id,
-      title = document.title,
-      body = document.bodyMarkdown,
-      topicKind = header.topicKind,
-      topicKey = header.topicKey,
-      editorManaged = true,
-      sources = sources,
-      sourceFingerprint = editorFingerprint(normalizedInstruction, sources),
-      generatedAt = now,
-    )
-    dataChanges.notifyChanged()
-    findPage(id) ?: error("編集したナレッジページを読み込めませんでした")
-  }
-
-  private suspend fun loadSourceSnapshot(): SourceSnapshot {
-    val bookmarks = bookmarkRepository.listAllSavedArticles()
-    val sources = bookmarks.mapNotNull { bookmark ->
-      val summary = summaryRepository.findSummary(bookmark.article.id)?.trim()
-      if (summary.isNullOrBlank()) return@mapNotNull null
-      KnowledgeGenerationSource(
-        articleId = bookmark.article.id,
-        title = bookmark.article.title,
-        url = bookmark.article.url,
-        sourceTitle = bookmark.article.sourceTitle,
-        savedAt = bookmark.savedAt,
-        summary = summary,
-        tags = bookmark.tags.map { it.name },
-        folderName = bookmark.folder?.takeUnless { it.isSystem }?.name,
-      )
-    }
-    return SourceSnapshot(
-      sources = sources,
-      skippedWithoutSummary = bookmarks.size - sources.size,
-    )
-  }
-
-  private fun loadPageHeader(id: String): PageHeader? = database.readable.rawQuery(
+  internal fun loadPageHeader(id: String): KnowledgePageHeader? = database.readable.rawQuery(
     "SELECT id,title,body_markdown,topic_kind,topic_key,source_count,generated_at,editor_managed " +
       "FROM knowledge_pages WHERE id = ?",
     arrayOf(id),
   ).use { cursor ->
     if (!cursor.moveToFirst()) return@use null
-    PageHeader(
+    KnowledgePageHeader(
       id = cursor.getString(0),
       title = cursor.getString(1),
       bodyMarkdown = cursor.getString(2),
@@ -262,7 +103,7 @@ class DefaultKnowledgeRepository(
     )
   }
 
-  private fun loadFingerprints(): Map<String, String> = database.readable.rawQuery(
+  internal fun loadFingerprints(): Map<String, String> = database.readable.rawQuery(
     "SELECT id,source_fingerprint FROM knowledge_pages WHERE editor_managed = 0",
     emptyArray(),
   ).use { cursor ->
@@ -271,7 +112,7 @@ class DefaultKnowledgeRepository(
     }
   }
 
-  private fun loadEditorManagedIds(): Set<String> = database.readable.rawQuery(
+  internal fun loadEditorManagedIds(): Set<String> = database.readable.rawQuery(
     "SELECT id FROM knowledge_pages WHERE editor_managed = 1",
     emptyArray(),
   ).use { cursor ->
@@ -280,7 +121,7 @@ class DefaultKnowledgeRepository(
     }
   }
 
-  private fun deleteObsoletePages(activeIds: Set<String>) {
+  internal fun deleteObsoletePages(activeIds: Set<String>) {
     database.transaction {
       if (activeIds.isEmpty()) {
         delete("knowledge_pages", "editor_managed = 0", null)
@@ -295,7 +136,7 @@ class DefaultKnowledgeRepository(
     }
   }
 
-  private fun persistPage(
+  internal fun persistPage(
     id: String,
     title: String,
     body: String,
@@ -340,19 +181,192 @@ class DefaultKnowledgeRepository(
     }
   }
 
+  internal fun notifyChanged() {
+    dataChanges.notifyChanged()
+  }
+}
+
+class DefaultKnowledgeRepository(
+  private val store: SqlKnowledgePageStore,
+) : KnowledgeReader {
+  override val changes: StateFlow<Long> = store.changes
+
+  override suspend fun listPages(query: String): List<KnowledgePageSummary> = withContext(Dispatchers.IO) {
+    store.listPages(query)
+  }
+
+  override suspend fun findPage(id: String): KnowledgePage? = withContext(Dispatchers.IO) {
+    store.findPage(id)
+  }
+}
+
+class DefaultKnowledgeGenerationService(
+  private val store: SqlKnowledgePageStore,
+  private val bookmarks: BookmarkReader,
+  private val summaries: SummaryReader,
+  private val modelManager: LocalModelManager,
+) : KnowledgeBuilder, KnowledgePageCreator, KnowledgePageEditor {
+  override suspend fun rebuild(): KnowledgeBuildResult = withContext(Dispatchers.IO) {
+    val snapshot = loadSourceSnapshot()
+    val topics = buildKnowledgeTopics(snapshot.sources)
+    store.deleteObsoletePages(topics.mapTo(linkedSetOf(), KnowledgeTopic::id))
+
+    val fingerprints = store.loadFingerprints()
+    val editorManagedIds = store.loadEditorManagedIds()
+    var generated = 0
+    var reused = 0
+    var pending = 0
+    val inputBudget = promptBudgetChars()
+
+    topics.forEach { topic ->
+      if (topic.id in editorManagedIds || fingerprints[topic.id] == topic.sourceFingerprint) {
+        reused += 1
+        return@forEach
+      }
+      if (generated >= MAX_GENERATED_PAGES_PER_BUILD) {
+        pending += 1
+        return@forEach
+      }
+
+      val generatedDocument = parseGeneratedKnowledgeDocument(
+        raw = modelManager.generate(buildKnowledgePagePrompt(topic, inputBudget)),
+        fallbackTitle = topic.title,
+      )
+      store.persistPage(
+        id = topic.id,
+        title = topic.title,
+        body = generatedDocument.bodyMarkdown,
+        topicKind = topic.kind,
+        topicKey = topic.key,
+        editorManaged = false,
+        sources = topic.sources,
+        sourceFingerprint = topic.sourceFingerprint,
+        generatedAt = Instant.now().toString(),
+      )
+      generated += 1
+    }
+
+    store.notifyChanged()
+    KnowledgeBuildResult(
+      generated = generated,
+      reused = reused,
+      pending = pending,
+      skippedWithoutSummary = snapshot.skippedWithoutSummary,
+    )
+  }
+
+  override suspend fun createPage(
+    request: String,
+    sourcePageId: String?,
+  ): KnowledgePage = withContext(Dispatchers.IO) {
+    val normalizedRequest = request.trim()
+    require(normalizedRequest.isNotBlank()) { "作成したい記事の内容を入力してください" }
+
+    val snapshot = loadSourceSnapshot()
+    val basePage = sourcePageId?.let { id ->
+      store.findPage(id) ?: error("元にするナレッジページが見つかりません")
+    }
+    val preferredIds = basePage?.sources?.mapTo(linkedSetOf(), KnowledgeSource::articleId).orEmpty()
+    val sources = selectKnowledgeSources(
+      query = normalizedRequest,
+      sources = snapshot.sources,
+      preferredArticleIds = preferredIds,
+    )
+    check(sources.isNotEmpty()) { "記事作成に使える要約済みブックマークがありません" }
+
+    val fallbackTitle = fallbackKnowledgeTitle(normalizedRequest)
+    val generated = modelManager.generate(
+      buildKnowledgeCreationPrompt(
+        request = normalizedRequest,
+        sources = sources,
+        basePage = basePage,
+        promptBudgetChars = promptBudgetChars(),
+      ),
+    )
+    val document = parseGeneratedKnowledgeDocument(generated, fallbackTitle)
+    val id = "kb-llm-${UUID.randomUUID().toString().replace("-", "").take(24)}"
+    val now = Instant.now().toString()
+    store.persistPage(
+      id = id,
+      title = document.title,
+      body = document.bodyMarkdown,
+      topicKind = EDITOR_TOPIC_KIND,
+      topicKey = normalizedRequest,
+      editorManaged = true,
+      sources = sources,
+      sourceFingerprint = editorFingerprint(normalizedRequest, sources),
+      generatedAt = now,
+    )
+    store.notifyChanged()
+    store.findPage(id) ?: error("生成したナレッジページを読み込めませんでした")
+  }
+
+  override suspend fun editPage(
+    id: String,
+    instruction: String,
+  ): KnowledgePage = withContext(Dispatchers.IO) {
+    val normalizedInstruction = instruction.trim()
+    require(normalizedInstruction.isNotBlank()) { "編集内容を入力してください" }
+    val header = store.loadPageHeader(id) ?: error("編集するナレッジページが見つかりません")
+    val page = store.findPage(id) ?: error("編集するナレッジページが見つかりません")
+    val snapshot = loadSourceSnapshot()
+    val preferredIds = page.sources.mapTo(linkedSetOf(), KnowledgeSource::articleId)
+    val sources = selectKnowledgeSources(
+      query = "${page.title}\n$normalizedInstruction",
+      sources = snapshot.sources,
+      preferredArticleIds = preferredIds,
+    )
+    check(sources.isNotEmpty()) { "記事編集に使える要約済みブックマークがありません" }
+
+    val generated = modelManager.generate(
+      buildKnowledgeEditPrompt(
+        page = page,
+        instruction = normalizedInstruction,
+        sources = sources,
+        promptBudgetChars = promptBudgetChars(),
+      ),
+    )
+    val document = parseGeneratedKnowledgeDocument(generated, page.title)
+    val now = Instant.now().toString()
+    store.persistPage(
+      id = id,
+      title = document.title,
+      body = document.bodyMarkdown,
+      topicKind = header.topicKind,
+      topicKey = header.topicKey,
+      editorManaged = true,
+      sources = sources,
+      sourceFingerprint = editorFingerprint(normalizedInstruction, sources),
+      generatedAt = now,
+    )
+    store.notifyChanged()
+    store.findPage(id) ?: error("編集したナレッジページを読み込めませんでした")
+  }
+
+  private suspend fun loadSourceSnapshot(): SourceSnapshot {
+    val bookmarkItems = bookmarks.listAllSavedArticles()
+    val sources = bookmarkItems.mapNotNull { bookmark ->
+      val summary = summaries.findSummary(bookmark.article.id)?.trim()
+      if (summary.isNullOrBlank()) return@mapNotNull null
+      KnowledgeGenerationSource(
+        articleId = bookmark.article.id,
+        title = bookmark.article.title,
+        url = bookmark.article.url,
+        sourceTitle = bookmark.article.sourceTitle,
+        savedAt = bookmark.savedAt,
+        summary = summary,
+        tags = bookmark.tags.map { it.name },
+        folderName = bookmark.folder?.takeUnless { it.isSystem }?.name,
+      )
+    }
+    return SourceSnapshot(
+      sources = sources,
+      skippedWithoutSummary = bookmarkItems.size - sources.size,
+    )
+  }
+
   private fun promptBudgetChars(): Int =
     modelManager.selectedModel()?.promptBudgetChars ?: DEFAULT_PROMPT_BUDGET_CHARS
-
-  private data class PageHeader(
-    val id: String,
-    val title: String,
-    val bodyMarkdown: String,
-    val topicKind: String,
-    val topicKey: String,
-    val sourceCount: Int,
-    val generatedAt: String,
-    val editorManaged: Boolean,
-  )
 
   private data class SourceSnapshot(
     val sources: List<KnowledgeGenerationSource>,
@@ -365,6 +379,17 @@ class DefaultKnowledgeRepository(
     private const val EDITOR_TOPIC_KIND = "llm"
   }
 }
+
+internal data class KnowledgePageHeader(
+  val id: String,
+  val title: String,
+  val bodyMarkdown: String,
+  val topicKind: String,
+  val topicKey: String,
+  val sourceCount: Int,
+  val generatedAt: String,
+  val editorManaged: Boolean,
+)
 
 internal fun buildKnowledgePagePrompt(topic: KnowledgeTopic, promptBudgetChars: Int): String {
   val sourceText = buildSourcePromptText(
