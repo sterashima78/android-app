@@ -93,6 +93,14 @@ Content を入力として generated summary と task lifecycle / priority の S
 
 Content / Curation を資料として参照し、Knowledge page、source relationship、generated / edited state、Knowledge 固有 background build lifecycle を所有する。
 
+### Health
+
+現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview を提供する。
+
+Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は集計済みの `HealthOverview` と availability のみを扱う。初期実装では durable table を所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
+
+Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態を所有し、Health は Health Connect のデータを参照する。相互同期や永続コピーは行わず、将来統合表示が必要な場合は目的別 read-only Query / Projection で接続する。
+
 ### Other application contexts
 
 Library、Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
@@ -157,3 +165,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
+- [ADR-0127](../adr/0127-health-connect-read-only.md)

@@ -32,6 +32,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0116: route-owned root ViewModel wiring](0116-route-owned-root-viewmodel-wiring.md)
 - [ADR-0120: Bookmark application service / framework provider boundary](0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0125: Application Service と capability interface を責務境界として使う](0125-application-service-and-capability-segregation.md)
+- [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 
 ### Domain / Context / persistence
 
@@ -51,7 +52,11 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 
 ### Platform / Android runtime
 
-- [ADR-0125: Android 14 を最小プラットフォーム基準とする](0125-android-platform-baseline.md)
+- [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
+
+### Health
+
+- [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 
 ### Background / AI runtime
 
