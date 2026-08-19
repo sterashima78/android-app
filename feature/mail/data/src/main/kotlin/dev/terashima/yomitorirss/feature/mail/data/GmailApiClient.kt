@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.feature.mail.data
 
 import android.text.Html
-import android.util.Base64
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpMethod
 import dev.terashima.yomitorirss.core.network.HttpRequest
@@ -305,10 +304,16 @@ internal class GmailApiClient(
     payload: JSONObject,
     mimeType: String,
   ): String? {
-    if (payload.optString("mimeType").equals(mimeType, ignoreCase = true)) {
+    val isRequestedType = payload.optString("mimeType").equals(mimeType, ignoreCase = true)
+    val isDisplayBody = isDisplayMailBodyPart(
+      filename = payload.optString("filename"),
+      contentDisposition = header(payload, "Content-Disposition"),
+    )
+    if (isRequestedType && isDisplayBody) {
       val body = payload.optJSONObject("body") ?: JSONObject()
+      val contentType = header(payload, "Content-Type")
       val inlineData = body.optString("data")
-      if (inlineData.isNotBlank()) return decodeBody(inlineData)
+      if (inlineData.isNotBlank()) return decodeMailBody(inlineData, contentType)
 
       val attachmentId = body.optString("attachmentId")
       if (attachmentId.isNotBlank() && messageId.isNotBlank()) {
@@ -317,7 +322,7 @@ internal class GmailApiClient(
           path = "messages/${encodePath(messageId)}/attachments/${encodePath(attachmentId)}",
         )
         val attachmentData = attachment.optString("data")
-        if (attachmentData.isNotBlank()) return decodeBody(attachmentData)
+        if (attachmentData.isNotBlank()) return decodeMailBody(attachmentData, contentType)
       }
     }
     val parts = payload.optJSONArray("parts") ?: return null
@@ -327,10 +332,6 @@ internal class GmailApiClient(
     }
     return null
   }
-
-  private fun decodeBody(data: String): String = runCatching {
-    String(Base64.decode(data, Base64.URL_SAFE or Base64.NO_WRAP), Charsets.UTF_8)
-  }.getOrDefault("")
 
   private fun threadIds(response: JSONObject): List<String> {
     val threads = response.optJSONArray("threads") ?: JSONArray()
