@@ -79,7 +79,7 @@ fun YomitoriApp(
         ScaffoldDefaults.contentWindowInsets
       },
       topBar = {
-        AppTopBar(
+        AppTopBarRoute(
           selectedTab = selectedTab,
           routeDependencies = routeDependencies,
           rssController = rssController,
