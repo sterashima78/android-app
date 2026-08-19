@@ -1,0 +1,11 @@
+# table	owner project
+articles	:feature:article:data
+feeds	:feature:rss:data
+feed_folders	:feature:rss:data
+tags	:feature:bookmark:data
+article_tags	:feature:bookmark:data
+bookmark_folders	:feature:bookmark:data
+article_folders	:feature:bookmark:data
+article_summaries	:feature:summary:data
+summary_tasks	:feature:summary:data
+summary_article_content	:feature:summary:data
