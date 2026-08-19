@@ -49,6 +49,11 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
   private val appViewModel: AppViewModel by viewModels()
+  private val dependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.NONE) {
+    val provider = application as? MainActivityDependenciesProvider
+      ?: error("Application must implement MainActivityDependenciesProvider")
+    provider.mainActivityDependencies
+  }
 
   private var showingCrashDiagnostics = false
 
@@ -66,7 +71,6 @@ class MainActivity : ComponentActivity() {
       YomitoriTheme {
         var showWebServer by remember { mutableStateOf(false) }
         val lanServerState by LanServerStatus.state.collectAsState()
-        val routeDependencies = (application as YomitoriApplication).routeDependencies
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
           ActivityResultContracts.RequestPermission(),
         ) { granted ->
@@ -79,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
         YomitoriApp(
           appViewModel = appViewModel,
-          routeDependencies = routeDependencies,
+          routeDependencies = dependencies.routeDependencies,
           onOpenArticle = ::openArticle,
           onOpenWebServer = { showWebServer = true },
           onExitApp = ::finish,
@@ -199,14 +203,13 @@ class MainActivity : ComponentActivity() {
       return
     }
 
-    val container = (application as YomitoriApplication).container
     lifecycleScope.launch {
       runCatching {
         withContext(Dispatchers.IO) {
-          container.bookmarkRepository.saveSharedArticle(bookmark.url, bookmark.title, bookmark.sourceTitle)
+          dependencies.saveSharedArticle(bookmark.url, bookmark.title, bookmark.sourceTitle)
         }
       }.onSuccess { result ->
-        if (result == BookmarkSaveResult.ADDED) container.backupChangeScheduler.scheduleAfterChange()
+        if (result == BookmarkSaveResult.ADDED) dependencies.scheduleBackupAfterBookmarkChange()
         appViewModel.selectTab(MainTab.SAVED)
         val message = when (result) {
           BookmarkSaveResult.ADDED -> "ブックマークに追加しました"
