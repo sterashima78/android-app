@@ -4,7 +4,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitoririss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
@@ -35,9 +35,9 @@ import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
-import dev.terashima.yomitorirss.feature.knowledge.BuildKnowledgeUseCase
-import dev.terashima.yomitorirss.feature.knowledge.CreateKnowledgePageUseCase
-import dev.terashima.yomitorirss.feature.knowledge.EditKnowledgePageUseCase
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageCreator
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageEditor
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeGenerationService
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
@@ -270,15 +270,10 @@ class AppContainer(private val application: Application) {
       modelManager = modelManager,
     )
   }
-  val buildKnowledgeUseCase: BuildKnowledgeUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    BuildKnowledgeUseCase(knowledgeGenerationService)
-  }
-  val createKnowledgePageUseCase: CreateKnowledgePageUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    CreateKnowledgePageUseCase(knowledgeGenerationService)
-  }
-  val editKnowledgePageUseCase: EditKnowledgePageUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    EditKnowledgePageUseCase(knowledgeGenerationService)
-  }
+  val knowledgeBuilder: KnowledgeBuilder get() = knowledgeGenerationService
+  val knowledgePageCreator: KnowledgePageCreator get() = knowledgeGenerationService
+  val knowledgePageEditor: KnowledgePageEditor get() = knowledgeGenerationService
+
   val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     CompositeAiTaskQueueRepository(
       summaryRepository = summaryTaskQueueRepository,
