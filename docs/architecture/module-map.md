@@ -124,4 +124,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0004](../adr/0004-concept-oriented-modules.md)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
-- [ADR-0124](../adr/0124-calendar-read-model-and-android-calendar-provider.md)
+- [ADR-0125](../adr/0125-calendar-read-model-and-android-calendar-provider.md)
