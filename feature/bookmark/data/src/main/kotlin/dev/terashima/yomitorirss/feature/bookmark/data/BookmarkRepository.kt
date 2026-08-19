@@ -86,7 +86,8 @@ class DefaultBookmarkRepository(
 
   override suspend fun deleteUnusedTags(): Int {
     val deletedCount = database.transaction {
-      val associatedTagIds = associationStore.listAssociatedTagIds()
+      val bookmarkedArticleIds = stateStore.listBookmarkedArticleIds()
+      val associatedTagIds = associationStore.listAssociatedTagIds(bookmarkedArticleIds)
       val unusedTagIds = tagStore.listTags()
         .asSequence()
         .map(Tag::id)
