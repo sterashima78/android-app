@@ -63,7 +63,7 @@ private fun HealthScreen(
     }
     HealthUiState.PermissionRequired -> CenteredMessage(modifier) {
       Text("Health Connect のアクセス権限が必要です", style = MaterialTheme.typography.titleMedium)
-      Text("歩数・運動・心拍・睡眠・体重・体脂肪率・栄養を読み取り、このアプリで終了したワークアウトのみ運動データとして書き込みます。")
+      Text("歩数・活動消費カロリー・運動・心拍・睡眠・体重・体脂肪率・栄養を読み取り、このアプリで終了したワークアウトのみ運動データとして書き込みます。")
       Button(onClick = onRequestPermissions) { Text("アクセスを許可") }
     }
     HealthUiState.Unavailable -> CenteredMessage(modifier) {
@@ -98,6 +98,7 @@ private fun HealthContent(
   val latestBodyFatPercentage = latestBodyFatPercentage(state.overview.bodyFatMeasurements)
   val metrics = listOf(
     Metric("歩数", formatLong(state.overview.steps), "歩"),
+    Metric("活動消費", formatCalories(state.overview.activeCaloriesKcal), "kcal"),
     Metric("運動", formatLong(state.overview.exerciseMinutes), "分"),
     Metric("平均心拍", formatLong(state.overview.averageHeartRateBpm), "bpm"),
     Metric("睡眠", formatLong(state.overview.sleepMinutes), "分"),
@@ -191,6 +192,9 @@ private fun CenteredMessage(
 }
 
 private fun formatLong(value: Long?): String = value?.toString() ?: "—"
+
+private fun formatCalories(value: Double?): String =
+  value?.let { String.format(Locale.getDefault(), "%.0f", it) } ?: "—"
 
 private fun formatWeight(value: Double?): String =
   value?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "—"
