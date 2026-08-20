@@ -121,13 +121,15 @@ python3 scripts/verify_adr_integrity.py
 
 ## CI baseline
 
-`.github/workflows/build-apk.yml` の pull request quality job は現在次を実行する。
+`.github/workflows/build-apk.yml` の pull request quality checks は、次の3検証を matrix の独立 runner で並列実行する。
 
 ```bash
 ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
 ```
+
+matrix は `fail-fast: false` とし、1つの検証が失敗しても他の検証結果を取得する。並列検証の完了後は互換性維持用の `quality` 集約 job が全体結果を判定する。
 
 `main` push では architecture verification の後に signed release APK を build / signature verify する。
 
