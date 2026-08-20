@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Updated: 2026-08-19
+- Updated: 2026-08-21
 
 ## Context
 
@@ -89,10 +89,10 @@ fixture では少なくとも次を固定する。
 
 GitHub Actions では次のタイミングで `./gradlew verifyArchitecture` を実行する。
 
-- `main` 向け pull request の quality job
+- `main` 向け pull request の quality checks。architecture / test / lint は独立 runner で並列実行し、完了後に `quality` job で結果を集約する
 - `main` push 時の release build job
 
-これにより pull request だけでなく main への直接 push に対しても同じ制約を適用する。
+これにより pull request だけでなく main への直接 push に対しても同じ制約を適用する。pull request の各検証は相互依存しないため並列化し、CI のリードタイムを最長の検証時間に近づける。
 
 ## Scope
 
@@ -122,6 +122,7 @@ GitHub Actions では次のタイミングで `./gradlew verifyArchitecture` を
 - architecture checker 自体の rule regression を fixture で検出できる
 - 例外が一か所に明示され、理由を ADR と関連付けられる
 - main への直接 push でも architecture drift を検出できる
+- pull request の architecture / test / lint を並列実行し、独立した検証の待ち時間を直列加算しない
 
 ### Negative
 
@@ -129,6 +130,7 @@ GitHub Actions では次のタイミングで `./gradlew verifyArchitecture` を
 - regex / source text ベースのため意味上同等な全パターンを捕捉できるわけではない
 - 正当な新しい composition pattern を導入する場合は rule または ADR の更新が必要になる
 - compatibility exception は不要になった時点で明示的に削除する必要がある
+- pull request では複数 runner が同時に Gradle / Android SDK setup を行うため、runner 使用量は増える
 
 ## Relationship to ADR-0003 / ADR-0101
 
