@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.ExerciseSegment
 import androidx.health.connect.client.records.ExerciseSessionRecord
@@ -64,6 +65,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     val exerciseSessions = readExerciseSessions(timeRange)
     return HealthOverview(
       steps = aggregation[StepsRecord.COUNT_TOTAL],
+      activeCaloriesKcal = aggregation[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
       exerciseMinutes = totalExerciseMinutes(exerciseSessions),
       averageHeartRateBpm = aggregation[HeartRateRecord.BPM_AVG],
       sleepMinutes = aggregation[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes(),
@@ -220,6 +222,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
   companion object {
     val READ_PERMISSIONS: Set<String> = setOf(
       HealthPermission.getReadPermission(StepsRecord::class),
+      HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
       HealthPermission.getReadPermission(ExerciseSessionRecord::class),
       HealthPermission.getReadPermission(HeartRateRecord::class),
       HealthPermission.getReadPermission(SleepSessionRecord::class),
@@ -236,6 +239,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
 
     private val AGGREGATE_METRICS: Set<AggregateMetric<*>> = setOf(
       StepsRecord.COUNT_TOTAL,
+      ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
       HeartRateRecord.BPM_AVG,
       SleepSessionRecord.SLEEP_DURATION_TOTAL,
       WeightRecord.WEIGHT_AVG,
