@@ -3,28 +3,33 @@ package dev.terashima.yomitorirss.feature.health.data
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
 import java.time.Instant
 
+internal data class ExerciseSessionCandidate(
+  val exerciseType: Int,
+  val summary: HealthExerciseSessionSummary,
+)
+
 internal fun deduplicateExerciseSessions(
-  sessions: List<HealthExerciseSessionSummary>,
+  sessions: List<ExerciseSessionCandidate>,
 ): List<HealthExerciseSessionSummary> =
   sessions
-    .groupBy { session ->
+    .groupBy { candidate ->
       ExerciseSessionIdentity(
-        startTime = session.startTime,
-        endTime = session.endTime,
-        exerciseName = session.exerciseName,
+        startTime = candidate.summary.startTime,
+        endTime = candidate.summary.endTime,
+        exerciseType = candidate.exerciseType,
       )
     }
     .values
     .mapNotNull { duplicates ->
       duplicates.maxWithOrNull(
-        compareBy<HealthExerciseSessionSummary> { it.segments.size }
-          .thenBy { it.notes?.length ?: 0 }
-          .thenBy { it.title?.length ?: 0 },
-      )
+        compareBy<ExerciseSessionCandidate> { it.summary.segments.size }
+          .thenBy { it.summary.notes?.length ?: 0 }
+          .thenBy { it.summary.title?.length ?: 0 },
+      )?.summary
     }
 
 private data class ExerciseSessionIdentity(
   val startTime: Instant,
   val endTime: Instant,
-  val exerciseName: String,
+  val exerciseType: Int,
 )
