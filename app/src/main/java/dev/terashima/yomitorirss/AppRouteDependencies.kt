@@ -72,7 +72,7 @@ class AppRouteDependencies internal constructor(
       refreshFeeds = container.refreshFeedsUseCase,
       imports = container.feedImportRepository,
       backupChangeScheduler = container.backupChangeScheduler,
-      feedSelector = { feed -> !feed.isRedditArticle() },
+      feedSelector = { feed -> !isRedditFeedUrl(feed.feedUrl) },
       canAddInput = { input ->
         redditCommunityFeedUrl(input) == null &&
           redditThreadId(input) == null &&
