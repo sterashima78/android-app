@@ -57,6 +57,8 @@ fun LibraryFeatureRoute(
       onSync = viewModel::syncSmbLibrary,
       onSave = viewModel::saveSmbServer,
       onDelete = viewModel::deleteSmbServer,
+      onEnqueueCovers = viewModel::enqueueMissingSmbCovers,
+      onRetryFailedCovers = viewModel::retryFailedSmbCovers,
     )
   }
   val smbBookFileActionBinding = remember(viewModel) {
