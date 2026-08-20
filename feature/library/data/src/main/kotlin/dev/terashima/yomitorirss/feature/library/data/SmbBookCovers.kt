@@ -19,6 +19,18 @@ import java.util.Locale
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 
+internal fun existingSmbBookCoverUrl(
+  context: Context,
+  sourceId: String,
+  size: Long,
+  modifiedAt: Long,
+): String? {
+  val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
+  if (!coverFile.isFile || coverFile.length() <= 0L) return null
+  coverFile.setLastModified(System.currentTimeMillis())
+  return Uri.fromFile(coverFile).toString()
+}
+
 internal fun resolveSmbBookCover(
   context: Context,
   share: DiskShare,
@@ -29,8 +41,8 @@ internal fun resolveSmbBookCover(
   format: SmbBookFormat,
   cachedBookFile: File,
 ): String? {
+  existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
   val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
-  if (coverFile.isFile && coverFile.length() > 0L) return Uri.fromFile(coverFile).toString()
 
   val generated = when {
     cachedBookFile.isFile && cachedBookFile.length() == size ->
@@ -54,9 +66,9 @@ internal fun ensureSmbBookCoverFromLocal(
   format: SmbBookFormat,
   localBookFile: File,
 ): String? {
+  existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
   val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
-  val ready = (coverFile.isFile && coverFile.length() > 0L) ||
-    generateLocalBookCover(localBookFile, format, coverFile)
+  val ready = generateLocalBookCover(localBookFile, format, coverFile)
   return coverFile.takeIf { ready && it.isFile && it.length() > 0L }
     ?.let(Uri::fromFile)
     ?.toString()
@@ -86,7 +98,7 @@ private fun smbBookCoverFile(
   sourceId: String,
   size: Long,
   modifiedAt: Long,
-): File = File(smbBookCoverRoot(context), "$sourceId-$size-$modifiedAt.png")
+): File = File(smbBookCoverRoot(context), "$sourceId-$size-$modifiedAt.jpg")
 
 private fun smbBookCoverRoot(context: Context): File =
   File(context.applicationContext.cacheDir, COVER_CACHE_DIRECTORY).apply { mkdirs() }
@@ -197,7 +209,7 @@ private fun saveBitmapCover(bitmap: Bitmap, coverFile: File): Boolean {
   val temp = File(coverFile.parentFile, "${coverFile.name}.tmp")
   return try {
     temp.outputStream().buffered().use { output ->
-      check(outputBitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+      check(outputBitmap.compress(Bitmap.CompressFormat.JPEG, COVER_JPEG_QUALITY, output)) {
         "SMB書籍の表紙を保存できませんでした"
       }
     }
@@ -206,6 +218,7 @@ private fun saveBitmapCover(bitmap: Bitmap, coverFile: File): Boolean {
       temp.copyTo(coverFile, overwrite = true)
       temp.delete()
     }
+    coverFile.setLastModified(System.currentTimeMillis())
     coverFile.isFile && coverFile.length() > 0L
   } finally {
     temp.delete()
@@ -278,8 +291,9 @@ private class LimitedInputStream(
 
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
 private const val COVER_CACHE_DIRECTORY = "smb-book-covers"
-private const val COVER_MAX_DIMENSION = 1200
-private const val COVER_DECODE_MAX_DIMENSION = 2400
-private const val PDF_COVER_WIDTH = 720
+private const val COVER_MAX_DIMENSION = 640
+private const val COVER_DECODE_MAX_DIMENSION = 1600
+private const val COVER_JPEG_QUALITY = 85
+private const val PDF_COVER_WIDTH = 640
 private const val MAX_REMOTE_COVER_SCAN_BYTES = 32L * 1024 * 1024
 private const val MAX_COVER_SOURCE_BYTES = 32L * 1024 * 1024
