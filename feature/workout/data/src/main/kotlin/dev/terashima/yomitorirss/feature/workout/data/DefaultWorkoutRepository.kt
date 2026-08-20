@@ -84,6 +84,8 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     value.steps?.let { put("steps", it) }
     put("memo", value.memo)
     put("recordedAt", value.recordedAt)
+    put("startedAt", value.startedAt ?: JSONObject.NULL)
+    put("finishedAt", value.finishedAt ?: JSONObject.NULL)
   }
 
   private fun decodeSet(json: JSONObject): WorkoutSet {
@@ -99,6 +101,8 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
       steps = if (json.has("steps") && !json.isNull("steps")) json.optInt("steps") else null,
       memo = json.optString("memo"),
       recordedAt = json.optString("recordedAt", json.optString("at")),
+      startedAt = json.nullableString("startedAt"),
+      finishedAt = json.nullableString("finishedAt"),
     )
   }
 
