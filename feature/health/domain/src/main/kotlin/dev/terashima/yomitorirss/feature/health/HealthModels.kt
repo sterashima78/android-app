@@ -112,6 +112,7 @@ object AdultMaleNutritionReference {
 
 data class HealthOverview(
   val steps: Long? = null,
+  val activeCaloriesKcal: Double? = null,
   val exerciseMinutes: Long? = null,
   val averageHeartRateBpm: Long? = null,
   val sleepMinutes: Long? = null,
