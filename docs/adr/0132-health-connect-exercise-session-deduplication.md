@@ -14,12 +14,12 @@ Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の reco
 
 ## Decision
 
-- Health Connect から取得した運動セッションは `:feature:health:data` でアプリ向けモデルへ変換した後に重複除去する。
-- 開始時刻、終了時刻、標準化済み運動種別が完全一致するセッションだけを同一候補とする。
+- Health Connect から取得した運動セッションは `:feature:health:data` でアプリ向けモデルへ変換する際に、Health Connect の exercise type を Data 層内の重複判定キーとして保持する。
+- 開始時刻、終了時刻、Health Connect exercise type が完全一致するセッションだけを同一候補とする。
 - 時刻の近似一致や区間の重なりだけでは統合しない。
 - 同一候補が複数ある場合は、segment 数、notes の情報量、title の情報量の順に詳細が多いセッションを代表として残す。
 - 重複除去後の同じ一覧を履歴表示と合計運動時間の算出に利用する。
-- Health Connect の record ID や提供元 package は Domain/UI へ公開しない。
+- Health Connect の exercise type、record ID、提供元 package は Domain/UI へ公開しない。
 - この処理のために Health Connect 由来データを永続化しない。
 
 ## Consequences
@@ -29,6 +29,7 @@ Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の reco
 - 完全一致する重複セッションを履歴に二重表示しない。
 - 合計運動時間も同じ重複除去済み一覧から算出できる。
 - 詳細情報を持つ候補を優先するため、segment や notes を失いにくい。
+- 表示名ではなく Data 層内の Health Connect exercise type を識別に使うため、表示文言の変更が重複判定へ影響しない。
 - 重複判定は Data 層に閉じ、既存の Context 境界を維持できる。
 
 ### Negative
@@ -40,7 +41,7 @@ Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の reco
 
 - 完全一致する同一種別セッションが1件になることを unit test する。
 - 重複候補では詳細情報が多いセッションが残ることを unit test する。
-- 同一時刻でも種別が異なるセッションは別件として残ることを unit test する。
+- 同一時刻でも Health Connect exercise type が異なるセッションは別件として残ることを unit test する。
 - 重複除去後の一覧から合計時間を算出し、二重計上しないことを unit test する。
 - `verifyArchitecture` と Health feature の unit test を実行する。
 - 変更差分に利用者固有の実データが含まれていないことをレビューする。
