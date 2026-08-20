@@ -27,4 +27,14 @@ class BodyFatHistoryChartTest {
 
     assertEquals(BodyFatChartBounds(98.0, 100.0), bounds)
   }
+
+  @Test
+  fun `最新値は入力順ではなく測定日時で決める`() {
+    val measurements = listOf(
+      BodyFatMeasurement(Instant.parse("2026-08-20T12:00:00Z"), 21.5),
+      BodyFatMeasurement(Instant.parse("2026-08-19T12:00:00Z"), 22.0),
+    )
+
+    assertEquals(21.5, latestBodyFatPercentage(measurements)!!, 0.0)
+  }
 }
