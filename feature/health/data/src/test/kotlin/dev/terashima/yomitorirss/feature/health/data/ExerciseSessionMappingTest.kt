@@ -69,6 +69,25 @@ class ExerciseSessionMappingTest {
   }
 
   @Test
+  fun `同一種別でも時刻が完全一致しないセッションは統合しない`() {
+    val first = session("2026-08-20T08:50:00Z", "2026-08-20T09:17:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+    val shifted = session("2026-08-20T08:50:01Z", "2026-08-20T09:17:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, first),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, shifted),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
   fun `主要な運動種別を表示名へ変換する`() {
     assertEquals("ウォーキング", exerciseSessionName(ExerciseSessionRecord.EXERCISE_TYPE_WALKING))
     assertEquals("ランニング", exerciseSessionName(ExerciseSessionRecord.EXERCISE_TYPE_RUNNING))
