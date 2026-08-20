@@ -44,7 +44,8 @@ data class NutritionReferenceProfile(
 object AdultMaleNutritionReference {
   const val REFERENCE_AGE_LABEL = "30〜49歳男性・身体活動ふつう"
   const val STANDARD_ENERGY_KCAL = 2750.0
-  const val WEIGHT_LOSS_ENERGY_KCAL = 2250.0
+  const val WEIGHT_LOSS_ENERGY_DEFICIT_KCAL = 500.0
+  const val WEIGHT_LOSS_ENERGY_KCAL = STANDARD_ENERGY_KCAL - WEIGHT_LOSS_ENERGY_DEFICIT_KCAL
   const val PROTEIN_RECOMMENDED_GRAMS = 65.0
 
   val standard: NutritionReferenceProfile = profile(
