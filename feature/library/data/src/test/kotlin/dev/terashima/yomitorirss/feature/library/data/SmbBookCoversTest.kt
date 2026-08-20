@@ -32,6 +32,16 @@ class SmbBookCoversTest {
     assertNull(extractFirstZipImage(ByteArrayInputStream(archive), maxBytes = 1024 * 1024))
   }
 
+  @Test
+  fun `ZIP走査上限までに画像へ到達できなければ表紙候補を返さない`() {
+    val archive = zipOf(
+      "metadata.txt" to ByteArray(4096) { index -> (index % 251).toByte() },
+      "pages/001.jpg" to byteArrayOf(1, 2, 3),
+    )
+
+    assertNull(extractFirstZipImage(ByteArrayInputStream(archive), maxBytes = 16))
+  }
+
   private fun zipOf(vararg entries: Pair<String, ByteArray>): ByteArray =
     ByteArrayOutputStream().use { output ->
       ZipOutputStream(output).use { zip ->
