@@ -20,6 +20,7 @@ class CleaningSmbLibraryRepository private constructor(
 ) : SmbLibraryRepository by delegate {
   private val appContext = context.applicationContext
   private val coverPrefetchQueue = SmbCoverPrefetchQueueStore(database)
+  private val coverCacheCoordinator = SmbCoverCacheCoordinator(appContext, database)
 
   constructor(
     context: Context,
@@ -48,6 +49,7 @@ class CleaningSmbLibraryRepository private constructor(
         importedCount = (result.importedCount - redundantSourceIds.size).coerceAtLeast(0),
       )
     }
+    coverCacheCoordinator.trim()
     coverPrefetchQueue.enqueueMissing()
     return cleanedResult
   }
@@ -57,6 +59,7 @@ class CleaningSmbLibraryRepository private constructor(
     newFileName: String,
   ): LibraryBook {
     val renamed = delegate.renameBook(book, newFileName)
+    coverCacheCoordinator.trim()
     coverPrefetchQueue.enqueueMissing()
     return renamed
   }
