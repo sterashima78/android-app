@@ -44,12 +44,12 @@ data class SmbCoverPrefetchItem(
 
 data class SmbCoverPrefetchSnapshot(
   val items: List<SmbCoverPrefetchItem> = emptyList(),
+  val pendingCount: Int = 0,
+  val runningCount: Int = 0,
+  val failedCount: Int = 0,
+  val completedCount: Int = 0,
+  val skippedCount: Int = 0,
 ) {
-  val pendingCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.PENDING }
-  val runningCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.RUNNING }
-  val failedCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.FAILED }
-  val completedCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.COMPLETED }
-  val skippedCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.SKIPPED }
   val hasActiveWork: Boolean get() = pendingCount > 0 || runningCount > 0
 }
 
