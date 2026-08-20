@@ -30,6 +30,8 @@ data class WorkoutSet(
   val steps: Int? = null,
   val memo: String = "",
   val recordedAt: String,
+  val startedAt: String? = null,
+  val finishedAt: String? = null,
 )
 
 data class WorkoutDay(
