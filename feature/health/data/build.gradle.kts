@@ -19,4 +19,6 @@ android {
 dependencies {
   implementation(project(":feature:health:domain"))
   implementation("androidx.health.connect:connect-client:1.1.0")
+
+  testImplementation("junit:junit:4.13.2")
 }

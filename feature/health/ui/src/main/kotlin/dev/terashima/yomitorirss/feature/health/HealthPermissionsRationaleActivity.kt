@@ -25,7 +25,8 @@ class HealthPermissionsRationaleActivity : ComponentActivity() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
           ) {
             Text("Health Connect データの利用について", style = MaterialTheme.typography.headlineSmall)
-            Text("このアプリは、歩数・運動・心拍・睡眠・体重・体脂肪率を Health Connect から読み取り、アプリ内で表示するために利用します。")
+            Text("このアプリは、歩数・運動・心拍・睡眠・体重・体脂肪率・栄養を Health Connect から読み取り、アプリ内で表示するために利用します。")
+            Text("栄養情報は摂取カロリー、たんぱく質、脂質、炭水化物を日ごとに集計し、一般的な摂取目安との比較表示に利用します。")
             Text("このアプリ内で終了して保存したワークアウトは、運動セッションとして Health Connect へ書き込みます。Health Connect から読み取った運動を Workout へ取り込んだり、そのまま書き戻したりはしません。")
             Text("Health Connect から読み取ったデータは、この機能ではアプリのデータベースへ保存せず、バックアップ、外部サービス、AI 処理へ送信しません。")
             Text("権限は Android の Health Connect 設定からいつでも変更できます。")
