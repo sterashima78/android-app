@@ -49,6 +49,9 @@ internal fun bodyFatChartBounds(measurements: List<BodyFatMeasurement>): BodyFat
   return BodyFatChartBounds(lower, upper)
 }
 
+internal fun latestBodyFatPercentage(measurements: List<BodyFatMeasurement>): Double? =
+  measurements.maxByOrNull { it.time }?.percentage
+
 @Composable
 internal fun BodyFatHistoryChart(
   measurements: List<BodyFatMeasurement>,
