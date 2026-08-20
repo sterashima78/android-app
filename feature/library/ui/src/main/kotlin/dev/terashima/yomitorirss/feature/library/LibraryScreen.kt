@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Settings
@@ -84,6 +85,7 @@ fun LibraryScreen(
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
   onClearBookSeries: (LibraryBook) -> Unit,
+  onOpenOrganization: () -> Unit,
   onDismissMessage: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -132,6 +134,19 @@ fun LibraryScreen(
     bottomBar = {
       NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
         LibraryTab.entries.forEach { tab ->
+          if (tab == LibraryTab.SETTINGS) {
+            NavigationBarItem(
+              selected = false,
+              onClick = onOpenOrganization,
+              icon = {
+                Icon(
+                  imageVector = Icons.Default.Edit,
+                  contentDescription = "整理",
+                )
+              },
+              label = { Text("整理", maxLines = 1) },
+            )
+          }
           NavigationBarItem(
             selected = selectedTab == tab,
             onClick = { selectedTabName = tab.name },
