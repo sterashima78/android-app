@@ -87,7 +87,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       endTime = session.endTime,
       endZoneOffset = zoneOffsetAt(session.endTime),
       metadata = Metadata.manualEntry(clientRecordId = session.clientRecordId),
-      exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
+      exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
       title = session.title,
       notes = session.notes,
       segments = session.segments.map { segment ->
