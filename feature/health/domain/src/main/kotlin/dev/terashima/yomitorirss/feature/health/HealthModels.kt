@@ -22,6 +22,22 @@ data class DailyNutritionIntake(
   val carbohydrateGrams: Double = 0.0,
 )
 
+data class HealthExerciseSegmentSummary(
+  val startTime: Instant,
+  val endTime: Instant,
+  val exerciseName: String,
+  val repetitions: Int = 0,
+)
+
+data class HealthExerciseSessionSummary(
+  val startTime: Instant,
+  val endTime: Instant,
+  val exerciseName: String,
+  val title: String? = null,
+  val notes: String? = null,
+  val segments: List<HealthExerciseSegmentSummary> = emptyList(),
+)
+
 data class NutritionReferenceRange(
   val min: Double,
   val max: Double,
@@ -102,6 +118,7 @@ data class HealthOverview(
   val averageWeightKg: Double? = null,
   val bodyFatMeasurements: List<BodyFatMeasurement> = emptyList(),
   val nutritionDailyIntakes: List<DailyNutritionIntake> = emptyList(),
+  val exerciseSessions: List<HealthExerciseSessionSummary> = emptyList(),
 )
 
 interface HealthRepository {

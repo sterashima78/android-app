@@ -129,6 +129,9 @@ private fun HealthContent(
     }
     items(metrics) { metric -> MetricCard(metric) }
     item {
+      ExerciseHistoryCard(state.overview.exerciseSessions)
+    }
+    item {
       NutritionHistoryCard(state.overview.nutritionDailyIntakes)
     }
     item {

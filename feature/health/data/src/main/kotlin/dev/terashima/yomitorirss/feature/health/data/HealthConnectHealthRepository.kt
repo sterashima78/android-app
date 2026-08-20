@@ -19,7 +19,9 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import dev.terashima.yomitorirss.feature.health.BodyFatMeasurement
 import dev.terashima.yomitorirss.feature.health.DailyNutritionIntake
 import dev.terashima.yomitorirss.feature.health.HealthAvailability
+import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentSummary
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentType
+import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
 import dev.terashima.yomitorirss.feature.health.HealthOverview
 import dev.terashima.yomitorirss.feature.health.HealthRepository
 import dev.terashima.yomitorirss.feature.health.HealthWorkoutSession
@@ -59,14 +61,16 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
         timeRangeFilter = timeRange,
       ),
     )
+    val exerciseSessions = readExerciseSessions(timeRange)
     return HealthOverview(
       steps = aggregation[StepsRecord.COUNT_TOTAL],
-      exerciseMinutes = readExerciseMinutes(timeRange),
+      exerciseMinutes = totalExerciseMinutes(exerciseSessions),
       averageHeartRateBpm = aggregation[HeartRateRecord.BPM_AVG],
       sleepMinutes = aggregation[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes(),
       averageWeightKg = aggregation[WeightRecord.WEIGHT_AVG]?.inKilograms,
       bodyFatMeasurements = readBodyFatMeasurements(timeRange),
       nutritionDailyIntakes = readDailyNutrition(timeRange),
+      exerciseSessions = exerciseSessions,
     )
   }
 
@@ -107,26 +111,41 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     return HealthWorkoutWriteResult.WRITTEN
   }
 
-  private suspend fun readExerciseMinutes(timeRange: TimeRangeFilter): Long? {
+  private suspend fun readExerciseSessions(timeRange: TimeRangeFilter): List<HealthExerciseSessionSummary> {
+    val sessions = mutableListOf<HealthExerciseSessionSummary>()
     var pageToken: String? = null
-    var total = Duration.ZERO
-    var hasRecords = false
     do {
       val response = client.readRecords(
         ReadRecordsRequest(
           recordType = ExerciseSessionRecord::class,
           timeRangeFilter = timeRange,
+          ascendingOrder = false,
           pageSize = 1000,
           pageToken = pageToken,
         ),
       )
-      response.records.forEach { session ->
-        hasRecords = true
-        total = total.plus(Duration.between(session.startTime, session.endTime))
+      response.records.forEach { record ->
+        sessions += HealthExerciseSessionSummary(
+          startTime = record.startTime,
+          endTime = record.endTime,
+          exerciseName = exerciseSessionName(record.exerciseType),
+          title = record.title?.takeIf(String::isNotBlank),
+          notes = record.notes?.takeIf(String::isNotBlank),
+          segments = record.segments
+            .sortedBy(ExerciseSegment::startTime)
+            .map { segment ->
+              HealthExerciseSegmentSummary(
+                startTime = segment.startTime,
+                endTime = segment.endTime,
+                exerciseName = exerciseSegmentName(segment.segmentType),
+                repetitions = segment.repetitions,
+              )
+            },
+        )
       }
       pageToken = response.pageToken
     } while (pageToken != null)
-    return if (hasRecords) total.toMinutes() else null
+    return sessions.sortedByDescending(HealthExerciseSessionSummary::startTime)
   }
 
   private suspend fun readBodyFatMeasurements(timeRange: TimeRangeFilter): List<BodyFatMeasurement> {
@@ -222,6 +241,77 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       WeightRecord.WEIGHT_AVG,
     )
   }
+}
+
+internal fun totalExerciseMinutes(sessions: List<HealthExerciseSessionSummary>): Long? {
+  if (sessions.isEmpty()) return null
+  val duration = sessions.fold(Duration.ZERO) { total, session ->
+    total.plus(Duration.between(session.startTime, session.endTime))
+  }
+  return duration.toMinutes()
+}
+
+internal fun exerciseSessionName(exerciseType: Int): String = when (exerciseType) {
+  ExerciseSessionRecord.EXERCISE_TYPE_BADMINTON -> "バドミントン"
+  ExerciseSessionRecord.EXERCISE_TYPE_BASEBALL -> "野球"
+  ExerciseSessionRecord.EXERCISE_TYPE_BASKETBALL -> "バスケットボール"
+  ExerciseSessionRecord.EXERCISE_TYPE_BIKING -> "サイクリング"
+  ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> "エアロバイク"
+  ExerciseSessionRecord.EXERCISE_TYPE_BOXING -> "ボクシング"
+  ExerciseSessionRecord.EXERCISE_TYPE_CALISTHENICS -> "自重トレーニング"
+  ExerciseSessionRecord.EXERCISE_TYPE_DANCING -> "ダンス"
+  ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL -> "エリプティカル"
+  ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING -> "HIIT"
+  ExerciseSessionRecord.EXERCISE_TYPE_HIKING -> "ハイキング"
+  ExerciseSessionRecord.EXERCISE_TYPE_MARTIAL_ARTS -> "武道"
+  ExerciseSessionRecord.EXERCISE_TYPE_PILATES -> "ピラティス"
+  ExerciseSessionRecord.EXERCISE_TYPE_ROCK_CLIMBING -> "ロッククライミング"
+  ExerciseSessionRecord.EXERCISE_TYPE_ROWING -> "ローイング"
+  ExerciseSessionRecord.EXERCISE_TYPE_ROWING_MACHINE -> "ローイングマシン"
+  ExerciseSessionRecord.EXERCISE_TYPE_RUNNING -> "ランニング"
+  ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> "トレッドミル"
+  ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING -> "階段昇降"
+  ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE -> "ステアクライマー"
+  ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING -> "筋力トレーニング"
+  ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING -> "ストレッチ"
+  ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_OPEN_WATER -> "オープンウォータースイミング"
+  ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL -> "水泳"
+  ExerciseSessionRecord.EXERCISE_TYPE_TABLE_TENNIS -> "卓球"
+  ExerciseSessionRecord.EXERCISE_TYPE_TENNIS -> "テニス"
+  ExerciseSessionRecord.EXERCISE_TYPE_WALKING -> "ウォーキング"
+  ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING -> "ウェイトリフティング"
+  ExerciseSessionRecord.EXERCISE_TYPE_YOGA -> "ヨガ"
+  ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT -> "その他の運動"
+  else -> "運動"
+}
+
+internal fun exerciseSegmentName(segmentType: Int): String = when (segmentType) {
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_ARM_CURL -> "アームカール"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_BENCH_PRESS -> "ベンチプレス"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_BIKING -> "サイクリング"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_BIKING_STATIONARY -> "エアロバイク"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_BURPEE -> "バーピー"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_CRUNCH -> "クランチ"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_DEADLIFT -> "デッドリフト"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_LUNGE -> "ランジ"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_OTHER_WORKOUT -> "その他"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_PAUSE -> "一時停止"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_PLANK -> "プランク"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_PULL_UP -> "懸垂"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_REST -> "休憩"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_ROWING_MACHINE -> "ローイングマシン"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_RUNNING -> "ランニング"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_RUNNING_TREADMILL -> "トレッドミル"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_SIT_UP -> "シットアップ"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_SQUAT -> "スクワット"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_STAIR_CLIMBING -> "階段昇降"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_STAIR_CLIMBING_MACHINE -> "ステアクライマー"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_STRETCHING -> "ストレッチ"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_SWIMMING_FREESTYLE -> "自由形"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_SWIMMING_OPEN_WATER -> "オープンウォータースイミング"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_SWIMMING_POOL -> "水泳"
+  ExerciseSegment.EXERCISE_SEGMENT_TYPE_WALKING -> "ウォーキング"
+  else -> "その他"
 }
 
 internal data class NutritionSample(
