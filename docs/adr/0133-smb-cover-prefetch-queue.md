@@ -35,7 +35,7 @@ ADR-0065 では SMB 蔵書の同期時に ZIP / CBZ の入力ストリームを�
 
 process death 等で `RUNNING` のまま残った項目は次回 Worker 開始時に `PENDING` へ戻す。完了・対象外の履歴は最大 200 件へ制限する。
 
-WorkManager は `NetworkType.UNMETERED` を要求し、従量制ネットワークでは表紙先読みを開始しない。1冊ずつ直列処理し、同じ unique work を重複起動しない。
+WorkManager は `NetworkType.UNMETERED` と battery-not-low を要求し、従量制ネットワークやバッテリー低下中には表紙先読みを開始しない。1冊ずつ直列処理する。unique work は `APPEND_OR_REPLACE` を使い、Worker 終了直前に新規ジョブが追加されても後続実行要求を失わない。
 
 ### ZIP / CBZ は最大 32 MiB の streaming 走査とする
 
@@ -54,6 +54,8 @@ PDF の転送中は `downloaded_bytes` / `total_bytes` をキューへ保存し�
 ### 表紙キャッシュ自体も小容量化する
 
 一覧表示用表紙は最大辺 640 px の JPEG quality 85 とし、原本画像や PDF page bitmap をそのまま永続保存しない。remote file size と modified time をキャッシュキーへ含める既存方針を維持する。
+
+表紙キャッシュ全体は 200 MiB を上限とする。表紙を利用した時刻を file last-modified として更新し、上限超過時は現在生成した表紙を保護した上で古い表紙から LRU 相当で削除する。削除された表紙は `library_items.thumbnail_url` を null に戻し、キュー履歴へ `SKIPPED` として理由を残す。通常の自動同期では直ちに再取得せず、ユーザーが「未取得表紙を先読み」を明示実行した場合に再評価できる。
 
 以前の PNG 表紙キャッシュは再生成可能な派生キャッシュなので migration 対象とせず、必要に応じて新形式へ再生成する。
 
@@ -82,7 +84,8 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 - 未読 PDF でも小さなファイルなら表紙を事前生成できる。
 - PDF 本体は表紙生成後に残らず、永続的な端末容量増加を抑えられる。
 - ZIP / CBZ の remote read は1冊最大 32 MiB、PDF は1冊最大 64 MiBに上限がある。
-- 従量制ネットワークではバックグラウンド転送を行わない。
+- 表紙キャッシュは最大 200 MiB に制限される。
+- 従量制ネットワークとバッテリー低下中はバックグラウンド転送を行わない。
 - process death 後も待機・失敗状態を確認して再開できる。
 - ユーザーが処理件数、進捗、失敗理由を確認できる。
 
@@ -91,6 +94,7 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 - PDF は表紙だけが必要でも最大 64 MiB の原本全体を一時転送する場合がある。
 - 64 MiB 超の PDF は未読状態では自動表紙生成されない。
 - ZIP / CBZ の表紙画像が archive の先頭 32 MiB より後にある場合は自動取得できない。
+- 200 MiB 超過時は古い表紙が一覧から消え、必要なら明示的な再取得が必要になる。
 - Library DB に派生処理のキューtableが1つ増える。
 - active queue 表示中は定期的な DB snapshot read が発生する。
 
