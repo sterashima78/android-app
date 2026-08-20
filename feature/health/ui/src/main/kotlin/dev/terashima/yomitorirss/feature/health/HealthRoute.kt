@@ -62,8 +62,8 @@ private fun HealthScreen(
       Text("ヘルスデータを読み込み中")
     }
     HealthUiState.PermissionRequired -> CenteredMessage(modifier) {
-      Text("Health Connect の読み取り権限が必要です", style = MaterialTheme.typography.titleMedium)
-      Text("歩数・運動・心拍・睡眠・体重・体脂肪率のみを読み取ります。")
+      Text("Health Connect のアクセス権限が必要です", style = MaterialTheme.typography.titleMedium)
+      Text("歩数・運動・心拍・睡眠・体重・体脂肪率を読み取り、このアプリで終了したワークアウトのみ運動データとして書き込みます。")
       Button(onClick = onRequestPermissions) { Text("アクセスを許可") }
     }
     HealthUiState.Unavailable -> CenteredMessage(modifier) {
@@ -81,6 +81,7 @@ private fun HealthScreen(
       state = state,
       onSelectPeriod = onSelectPeriod,
       onRefresh = onRefresh,
+      onRequestPermissions = onRequestPermissions,
       modifier = modifier,
     )
   }
@@ -91,6 +92,7 @@ private fun HealthContent(
   state: HealthUiState.Content,
   onSelectPeriod: (HealthPeriod) -> Unit,
   onRefresh: () -> Unit,
+  onRequestPermissions: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val latestBodyFatPercentage = latestBodyFatPercentage(state.overview.bodyFatMeasurements)
@@ -128,6 +130,14 @@ private fun HealthContent(
     items(metrics) { metric -> MetricCard(metric) }
     item {
       BodyFatHistoryChart(state.overview.bodyFatMeasurements)
+    }
+    item {
+      OutlinedButton(
+        onClick = onRequestPermissions,
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        Text("Health Connect 権限を確認")
+      }
     }
     item {
       OutlinedButton(
