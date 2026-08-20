@@ -114,7 +114,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
   }
 
   private suspend fun readExerciseSessions(timeRange: TimeRangeFilter): List<HealthExerciseSessionSummary> {
-    val sessions = mutableListOf<HealthExerciseSessionSummary>()
+    val sessions = mutableListOf<ExerciseSessionCandidate>()
     var pageToken: String? = null
     do {
       val response = client.readRecords(
@@ -127,27 +127,31 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
         ),
       )
       response.records.forEach { record ->
-        sessions += HealthExerciseSessionSummary(
-          startTime = record.startTime,
-          endTime = record.endTime,
-          exerciseName = exerciseSessionName(record.exerciseType),
-          title = record.title?.takeIf(String::isNotBlank),
-          notes = record.notes?.takeIf(String::isNotBlank),
-          segments = record.segments
-            .sortedBy(ExerciseSegment::startTime)
-            .map { segment ->
-              HealthExerciseSegmentSummary(
-                startTime = segment.startTime,
-                endTime = segment.endTime,
-                exerciseName = exerciseSegmentName(segment.segmentType),
-                repetitions = segment.repetitions,
-              )
-            },
+        sessions += ExerciseSessionCandidate(
+          exerciseType = record.exerciseType,
+          summary = HealthExerciseSessionSummary(
+            startTime = record.startTime,
+            endTime = record.endTime,
+            exerciseName = exerciseSessionName(record.exerciseType),
+            title = record.title?.takeIf(String::isNotBlank),
+            notes = record.notes?.takeIf(String::isNotBlank),
+            segments = record.segments
+              .sortedBy(ExerciseSegment::startTime)
+              .map { segment ->
+                HealthExerciseSegmentSummary(
+                  startTime = segment.startTime,
+                  endTime = segment.endTime,
+                  exerciseName = exerciseSegmentName(segment.segmentType),
+                  repetitions = segment.repetitions,
+                )
+              },
+          ),
         )
       }
       pageToken = response.pageToken
     } while (pageToken != null)
-    return sessions.sortedByDescending(HealthExerciseSessionSummary::startTime)
+    return deduplicateExerciseSessions(sessions)
+      .sortedByDescending(HealthExerciseSessionSummary::startTime)
   }
 
   private suspend fun readBodyFatMeasurements(timeRange: TimeRangeFilter): List<BodyFatMeasurement> {
