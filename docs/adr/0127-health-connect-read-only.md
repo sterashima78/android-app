@@ -4,6 +4,7 @@
 - Date: 2026-08-19
 - Amended: 2026-08-20
 - Refines: [ADR-0001](0001-layered-architecture.md), [ADR-0003](0003-multi-module-architecture.md), [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md), [ADR-0126](0126-android-platform-baseline.md)
+- Refined by: [ADR-0130](0130-workout-health-connect-export.md) for the one-way Workout -> Health Connect write path
 
 ## Context
 
