@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchStatus
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -94,7 +95,7 @@ class SmbCoverPrefetchQueueStoreTest {
     val retried = queue.snapshot()
     assertEquals(1, retried.pendingCount)
     assertEquals(0, retried.failedCount)
-    assertEquals(null, retried.items.first().message)
+    assertNull(retried.items.first().message)
   }
 
   @Test
