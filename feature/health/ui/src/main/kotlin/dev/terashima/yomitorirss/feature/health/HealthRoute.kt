@@ -93,7 +93,7 @@ private fun HealthContent(
   onRefresh: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val latestBodyFatPercentage = state.overview.bodyFatMeasurements.lastOrNull()?.percentage
+  val latestBodyFatPercentage = latestBodyFatPercentage(state.overview.bodyFatMeasurements)
   val metrics = listOf(
     Metric("歩数", formatLong(state.overview.steps), "歩"),
     Metric("運動", formatLong(state.overview.exerciseMinutes), "分"),
