@@ -53,7 +53,7 @@ class SmbCoverPrefetchWorker(
     val database = YomitoriDatabase.create(applicationContext)
     val connection = DatabaseConnection(database)
     val queue = SmbCoverPrefetchQueueStore(connection)
-    val repository = DefaultSmbLibraryRepository(applicationContext, connection)
+    val processor = SmbCoverPrefetchProcessor(applicationContext, connection)
     var current: SmbCoverPrefetchQueueEntry? = null
 
     try {
@@ -68,7 +68,7 @@ class SmbCoverPrefetchWorker(
 
         try {
           var lastReportedBytes = 0L
-          val outcome = repository.prefetchCover(item.sourceId) { downloadedBytes, totalBytes ->
+          val outcome = processor.prefetchCover(item.sourceId) { downloadedBytes, totalBytes ->
             if (
               downloadedBytes == totalBytes ||
               downloadedBytes - lastReportedBytes >= PROGRESS_PERSIST_STEP_BYTES
@@ -206,7 +206,8 @@ internal class SmbCoverPrefetchQueueStore(
         }
         if (existingStatus == SmbCoverPrefetchStatus.PENDING.name ||
           existingStatus == SmbCoverPrefetchStatus.RUNNING.name ||
-          existingStatus == SmbCoverPrefetchStatus.FAILED.name
+          existingStatus == SmbCoverPrefetchStatus.FAILED.name ||
+          existingStatus == SmbCoverPrefetchStatus.SKIPPED.name
         ) {
           return@forEach
         }
