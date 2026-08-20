@@ -181,4 +181,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
-- [ADR-0130](../adr/0130-workout-health-connect-export.md)
+- [ADR-0131](../adr/0131-workout-health-connect-export.md)
