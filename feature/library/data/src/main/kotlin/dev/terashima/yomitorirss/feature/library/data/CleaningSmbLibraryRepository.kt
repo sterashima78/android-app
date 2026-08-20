@@ -70,7 +70,7 @@ class CleaningSmbLibraryRepository private constructor(
     coverPrefetchQueue.snapshot()
 
   override suspend fun enqueueMissingCoverPrefetch(): Int =
-    coverPrefetchQueue.enqueueMissing()
+    coverPrefetchQueue.enqueueMissing(retrySkipped = true)
 
   override suspend fun retryFailedCoverPrefetch(): Int =
     coverPrefetchQueue.retryFailed()
