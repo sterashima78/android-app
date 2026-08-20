@@ -17,10 +17,21 @@ permissions:
   contents: read
 
 jobs:
-  quality:
+  quality-check:
+    name: ${{ matrix.name }}
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Architecture
+            command: ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
+          - name: Test
+            command: ./gradlew --no-daemon test
+          - name: Lint
+            command: ./gradlew --no-daemon :app:lintRelease
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -37,12 +48,21 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Verify architecture
-        run: ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
-      - name: Test
-        run: ./gradlew --no-daemon test
-      - name: Lint
-        run: ./gradlew --no-daemon :app:lintRelease
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
+
+  quality:
+    if: always() && github.event_name == 'pull_request'
+    needs:
+      - quality-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify parallel quality checks passed
+        env:
+          QUALITY_CHECK_RESULT: ${{ needs.quality-check.result }}
+        run: test "$QUALITY_CHECK_RESULT" = success
+
   build:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     permissions:
