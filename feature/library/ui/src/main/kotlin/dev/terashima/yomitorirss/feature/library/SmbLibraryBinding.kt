@@ -8,6 +8,8 @@ internal data class SmbLibraryUiBinding(
   val onSync: () -> Unit,
   val onSave: (SmbServerSettings, String?) -> Unit,
   val onDelete: (String) -> Unit,
+  val onEnqueueCovers: () -> Unit,
+  val onRetryFailedCovers: () -> Unit,
 )
 
 internal val LocalSmbLibraryUiBinding = staticCompositionLocalOf<SmbLibraryUiBinding?> { null }
@@ -19,8 +21,12 @@ internal fun SmbLibrarySettingsFromBinding() {
     servers = binding.state.smbServers,
     busy = binding.state.smbSettingsBusy,
     syncing = binding.state.smbSyncing,
+    coverPrefetchBusy = binding.state.smbCoverPrefetchBusy,
+    coverPrefetch = binding.state.smbCoverPrefetch,
     onSync = binding.onSync,
     onSave = binding.onSave,
     onDelete = binding.onDelete,
+    onEnqueueCovers = binding.onEnqueueCovers,
+    onRetryFailedCovers = binding.onRetryFailedCovers,
   )
 }
