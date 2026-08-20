@@ -31,6 +31,7 @@ internal fun existingSmbBookCoverUrl(
   return Uri.fromFile(coverFile).toString()
 }
 
+@Suppress("UNUSED_PARAMETER")
 internal fun resolveSmbBookCover(
   context: Context,
   share: DiskShare,
@@ -42,17 +43,25 @@ internal fun resolveSmbBookCover(
   cachedBookFile: File,
 ): String? {
   existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
+  if (!cachedBookFile.isFile || cachedBookFile.length() != size) return null
   val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
+  val generated = generateLocalBookCover(cachedBookFile, format, coverFile)
+  return coverFile.takeIf { generated && it.isFile && it.length() > 0L }
+    ?.let(Uri::fromFile)
+    ?.toString()
+}
 
-  val generated = when {
-    cachedBookFile.isFile && cachedBookFile.length() == size ->
-      generateLocalBookCover(cachedBookFile, format, coverFile)
-
-    format == SmbBookFormat.ZIP ->
-      generateRemoteZipCover(share, remotePath, coverFile)
-
-    else -> false
-  }
+internal fun prefetchRemoteSmbZipCover(
+  context: Context,
+  share: DiskShare,
+  remotePath: String,
+  sourceId: String,
+  size: Long,
+  modifiedAt: Long,
+): String? {
+  existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
+  val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
+  val generated = generateRemoteZipCover(share, remotePath, coverFile)
   return coverFile.takeIf { generated && it.isFile && it.length() > 0L }
     ?.let(Uri::fromFile)
     ?.toString()
