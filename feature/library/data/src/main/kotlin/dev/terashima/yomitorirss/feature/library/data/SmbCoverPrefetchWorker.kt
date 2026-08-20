@@ -33,6 +33,7 @@ class WorkManagerSmbCoverPrefetchScheduler(
       .setConstraints(
         Constraints.Builder()
           .setRequiredNetworkType(NetworkType.UNMETERED)
+          .setRequiresBatteryNotLow(true)
           .build(),
       )
       .addTag(SmbCoverPrefetchWorker.WORK_TAG)
@@ -319,6 +320,25 @@ internal class SmbCoverPrefetchQueueStore(
   fun fail(sourceId: String, message: String) = finish(sourceId, SmbCoverPrefetchStatus.FAILED, message)
 
   fun requeue(sourceId: String) = finish(sourceId, SmbCoverPrefetchStatus.PENDING, null)
+
+  fun markSkipped(sourceId: String, title: String, reason: String) {
+    ensureSchema()
+    database.writable.insertWithOnConflict(
+      TABLE,
+      null,
+      ContentValues().apply {
+        put("source_id", sourceId)
+        put("title", title)
+        put("status", SmbCoverPrefetchStatus.SKIPPED.name)
+        put("downloaded_bytes", 0L)
+        put("total_bytes", 0L)
+        put("message", reason)
+        put("updated_at", System.currentTimeMillis())
+      },
+      android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+    )
+    trimHistory()
+  }
 
   private fun finish(sourceId: String, status: SmbCoverPrefetchStatus, message: String?) {
     ensureSchema()
