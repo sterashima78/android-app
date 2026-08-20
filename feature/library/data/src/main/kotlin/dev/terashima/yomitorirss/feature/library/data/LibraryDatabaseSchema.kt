@@ -21,6 +21,22 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
         )
       """.trimIndent(),
     )
+    db.execSQL(
+      """
+        CREATE TABLE IF NOT EXISTS smb_cover_prefetch_queue(
+          source_id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL,
+          status TEXT NOT NULL,
+          downloaded_bytes INTEGER NOT NULL DEFAULT 0,
+          total_bytes INTEGER NOT NULL DEFAULT 0,
+          message TEXT,
+          updated_at INTEGER NOT NULL
+        )
+      """.trimIndent(),
+    )
+    db.execSQL(
+      "CREATE INDEX IF NOT EXISTS idx_smb_cover_prefetch_status ON smb_cover_prefetch_queue(status, updated_at)",
+    )
     ensureLibraryOrganizationSchema(db)
   },
   migrations = listOf(

@@ -5,8 +5,10 @@ import android.content.Context
 import android.net.Uri
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
+import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchSnapshot
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import java.io.File
 import java.util.Locale
@@ -17,6 +19,8 @@ class CleaningSmbLibraryRepository private constructor(
   private val delegate: SmbLibraryRepository,
 ) : SmbLibraryRepository by delegate {
   private val appContext = context.applicationContext
+  private val coverPrefetchQueue = SmbCoverPrefetchQueueStore(database)
+  private val coverCacheCoordinator = SmbCoverCacheCoordinator(appContext, database)
 
   constructor(
     context: Context,
@@ -30,20 +34,49 @@ class CleaningSmbLibraryRepository private constructor(
   override suspend fun sync(): LibrarySyncResult {
     val result = delegate.sync()
     val redundantSourceIds = redundantSmbSourceIds(deduplicationCandidates())
-    if (redundantSourceIds.isEmpty()) return result
+    val cleanedResult = if (redundantSourceIds.isEmpty()) {
+      result
+    } else {
+      database.transaction {
+        redundantSourceIds.forEach { sourceId -> deleteSmbBookMetadata(sourceId) }
+      }
+      redundantSourceIds.forEach { sourceId ->
+        File(appContext.cacheDir, "smb-books/$sourceId").deleteRecursively()
+      }
+      deleteSmbBookCovers(appContext, redundantSourceIds)
 
-    database.transaction {
-      redundantSourceIds.forEach { sourceId -> deleteSmbBookMetadata(sourceId) }
+      result.copy(
+        importedCount = (result.importedCount - redundantSourceIds.size).coerceAtLeast(0),
+      )
     }
-    redundantSourceIds.forEach { sourceId ->
-      File(appContext.cacheDir, "smb-books/$sourceId").deleteRecursively()
-    }
-    deleteSmbBookCovers(appContext, redundantSourceIds)
-
-    return result.copy(
-      importedCount = (result.importedCount - redundantSourceIds.size).coerceAtLeast(0),
-    )
+    coverCacheCoordinator.trim()
+    coverPrefetchQueue.enqueueMissing()
+    return cleanedResult
   }
+
+  override suspend fun renameBook(
+    book: LibraryBook,
+    newFileName: String,
+  ): LibraryBook {
+    val renamed = delegate.renameBook(book, newFileName)
+    coverCacheCoordinator.trim()
+    coverPrefetchQueue.enqueueMissing()
+    return renamed
+  }
+
+  override suspend fun deleteBook(book: LibraryBook) {
+    delegate.deleteBook(book)
+    coverPrefetchQueue.enqueueMissing()
+  }
+
+  override suspend fun coverPrefetchSnapshot(): SmbCoverPrefetchSnapshot =
+    coverPrefetchQueue.snapshot()
+
+  override suspend fun enqueueMissingCoverPrefetch(): Int =
+    coverPrefetchQueue.enqueueMissing(retrySkipped = true)
+
+  override suspend fun retryFailedCoverPrefetch(): Int =
+    coverPrefetchQueue.retryFailed()
 
   override suspend fun deleteServer(serverId: String) {
     val sourceIds = sourceIdsForServer(serverId)
@@ -71,6 +104,7 @@ class CleaningSmbLibraryRepository private constructor(
       File(appContext.cacheDir, "smb-books/$sourceId").deleteRecursively()
     }
     deleteSmbBookCovers(appContext, sourceIds)
+    coverPrefetchQueue.enqueueMissing()
   }
 
   private fun deduplicationCandidates(): List<SmbLibraryDeduplicationCandidate> = database.readable.rawQuery(

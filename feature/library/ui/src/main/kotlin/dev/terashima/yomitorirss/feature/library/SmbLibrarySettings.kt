@@ -9,6 +9,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,9 +31,13 @@ internal fun SmbLibrarySettingsSection(
   servers: List<SmbServerSettings>,
   busy: Boolean,
   syncing: Boolean,
+  coverPrefetchBusy: Boolean,
+  coverPrefetch: SmbCoverPrefetchSnapshot,
   onSync: () -> Unit,
   onSave: (SmbServerSettings, String?) -> Unit,
   onDelete: (String) -> Unit,
+  onEnqueueCovers: () -> Unit,
+  onRetryFailedCovers: () -> Unit,
 ) {
   var editingServer by remember { mutableStateOf<SmbServerSettings?>(null) }
   var creatingServer by remember { mutableStateOf(false) }
@@ -156,7 +162,145 @@ internal fun SmbLibrarySettingsSection(
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+
+    HorizontalDivider()
+    SmbCoverPrefetchQueueSection(
+      snapshot = coverPrefetch,
+      busy = coverPrefetchBusy,
+      enabled = servers.isNotEmpty() && !syncing,
+      onEnqueue = onEnqueueCovers,
+      onRetryFailed = onRetryFailedCovers,
+    )
   }
+}
+
+@Composable
+private fun SmbCoverPrefetchQueueSection(
+  snapshot: SmbCoverPrefetchSnapshot,
+  busy: Boolean,
+  enabled: Boolean,
+  onEnqueue: () -> Unit,
+  onRetryFailed: () -> Unit,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Text("表紙先読みキュー", style = MaterialTheme.typography.titleMedium)
+    Text(
+      "未取得の表紙をバックグラウンドで取得します。処理は従量制でないネットワーク接続時だけ実行します。ZIP / CBZ は先頭32MBまでを走査し、PDFは64MB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。",
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+      "実行中 ${snapshot.runningCount} ・ 待機 ${snapshot.pendingCount} ・ 完了 ${snapshot.completedCount} ・ 失敗 ${snapshot.failedCount} ・ 対象外 ${snapshot.skippedCount}",
+      style = MaterialTheme.typography.bodySmall,
+    )
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      Button(
+        enabled = enabled && !busy,
+        onClick = onEnqueue,
+      ) {
+        if (busy) {
+          CircularProgressIndicator(strokeWidth = 2.dp)
+        } else {
+          Text("未取得表紙を先読み")
+        }
+      }
+      if (snapshot.failedCount > 0) {
+        TextButton(
+          enabled = enabled && !busy,
+          onClick = onRetryFailed,
+        ) { Text("失敗を再試行") }
+      }
+    }
+
+    if (snapshot.items.isEmpty()) {
+      Text(
+        "表紙先読みジョブはありません。ファイルサーバ同期時にも未取得分が自動でキューへ追加されます。",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    } else {
+      snapshot.items.take(MAX_VISIBLE_QUEUE_ROWS).forEach { item ->
+        SmbCoverPrefetchRow(item)
+      }
+      if (snapshot.items.size > MAX_VISIBLE_QUEUE_ROWS) {
+        Text(
+          "最新 $MAX_VISIBLE_QUEUE_ROWS 件を表示しています。",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun SmbCoverPrefetchRow(item: SmbCoverPrefetchItem) {
+  Card(Modifier.fillMaxWidth()) {
+    Column(
+      modifier = Modifier.padding(10.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Text(
+        item.title,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        coverPrefetchStatusLabel(item.status),
+        style = MaterialTheme.typography.labelSmall,
+        color = if (item.status == SmbCoverPrefetchStatus.FAILED) {
+          MaterialTheme.colorScheme.error
+        } else {
+          MaterialTheme.colorScheme.onSurfaceVariant
+        },
+      )
+      if (item.status == SmbCoverPrefetchStatus.RUNNING) {
+        if (item.totalBytes > 0L) {
+          val fraction = (item.downloadedBytes.toDouble() / item.totalBytes.toDouble())
+            .coerceIn(0.0, 1.0)
+            .toFloat()
+          Text(
+            "${formatBytes(item.downloadedBytes)} / ${formatBytes(item.totalBytes)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          LinearProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier.fillMaxWidth(),
+          )
+        } else {
+          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+      }
+      item.message?.takeIf(String::isNotBlank)?.let { message ->
+        Text(
+          message,
+          style = MaterialTheme.typography.labelSmall,
+          color = if (item.status == SmbCoverPrefetchStatus.FAILED) {
+            MaterialTheme.colorScheme.error
+          } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+          },
+        )
+      }
+    }
+  }
+}
+
+private fun coverPrefetchStatusLabel(status: SmbCoverPrefetchStatus): String = when (status) {
+  SmbCoverPrefetchStatus.PENDING -> "待機中"
+  SmbCoverPrefetchStatus.RUNNING -> "取得中"
+  SmbCoverPrefetchStatus.FAILED -> "失敗"
+  SmbCoverPrefetchStatus.COMPLETED -> "完了"
+  SmbCoverPrefetchStatus.SKIPPED -> "対象外"
+}
+
+private fun formatBytes(bytes: Long): String = when {
+  bytes >= 1024L * 1024L -> String.format("%.1f MB", bytes.toDouble() / (1024.0 * 1024.0))
+  bytes >= 1024L -> String.format("%.1f KB", bytes.toDouble() / 1024.0)
+  else -> "$bytes B"
 }
 
 @Composable
@@ -268,3 +412,5 @@ private fun SmbServerDialog(
     },
   )
 }
+
+private const val MAX_VISIBLE_QUEUE_ROWS = 30

@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(25, db.version)
+    assertEquals(26, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -65,6 +65,7 @@ class AppDatabaseSchemaTest {
         "mail_threads",
         "mail_messages",
         "smb_library_servers",
+        "smb_cover_prefetch_queue",
         "library_organization_tags",
         "library_organization_collections",
         "library_item_organization_tags",
@@ -108,7 +109,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(25, upgraded.version)
+    assertEquals(26, upgraded.version)
     assertTrue(tableExists(upgraded, "bookmarks"))
     assertEquals(1, countRows(upgraded, "bookmarks", "article_id=?", arrayOf("migrated")))
     assertEquals(
@@ -147,7 +148,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(25, upgraded.version)
+    assertEquals(26, upgraded.version)
     assertTrue(tableExists(upgraded, "summary_article_content"))
     assertEquals(1, countRows(upgraded, "summary_tasks", "article_id=?", arrayOf("preserved-summary-task")))
   }
@@ -170,7 +171,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(25, upgraded.version)
+    assertEquals(26, upgraded.version)
     assertTrue(tableExists(upgraded, "tasks"))
     assertTrue(tableExists(upgraded, "chat_sessions"))
     assertTrue(tableExists(upgraded, "chat_messages"))
@@ -196,7 +197,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(25, upgraded.version)
+    assertEquals(26, upgraded.version)
     assertTrue("custom_title" in columnNames(upgraded, "feeds"))
   }
 
@@ -216,7 +217,7 @@ class AppDatabaseSchemaTest {
 
     val upgraded = openDatabase().writableDatabase
 
-    assertEquals(25, upgraded.version)
+    assertEquals(26, upgraded.version)
     assertTrue("content_type" in columnNames(upgraded, "feed_folders"))
     assertTrue("content_type" in columnNames(upgraded, "feeds"))
     assertTrue("custom_title" in columnNames(upgraded, "feeds"))

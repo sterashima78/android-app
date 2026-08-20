@@ -20,6 +20,7 @@ import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationMa
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
@@ -146,11 +147,13 @@ class AppRouteDependencies internal constructor(
   val library: LibraryRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val database = container.databaseConnection
     val smbRepository = CleaningSmbLibraryRepository(application, database)
+    val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
     LibraryRouteDependencies(
       authorization = GoogleBooksAuthorizationManager(application),
       libraryViewModelFactory = LibraryViewModel.Factory(
         repository = SeriesAwareLibraryRepository(database),
         smbRepository = smbRepository,
+        smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
       ),
       organizationViewModelFactory = LibraryOrganizationViewModel.Factory(
         repository = DefaultLibraryOrganizationRepository(database),

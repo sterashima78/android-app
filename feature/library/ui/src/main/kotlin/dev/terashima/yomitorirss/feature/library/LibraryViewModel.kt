@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class LibraryUiState(
@@ -18,7 +21,9 @@ data class LibraryUiState(
   val smbSyncing: Boolean = false,
   val smbSettingsBusy: Boolean = false,
   val smbBookActionBusy: Boolean = false,
+  val smbCoverPrefetchBusy: Boolean = false,
   val smbServers: List<SmbServerSettings> = emptyList(),
+  val smbCoverPrefetch: SmbCoverPrefetchSnapshot = SmbCoverPrefetchSnapshot(),
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
   val sourceStates: Map<LibrarySource, LibrarySourceState> = emptyMap(),
@@ -28,9 +33,11 @@ data class LibraryUiState(
 class LibraryViewModel(
   private val repository: LibraryRepository,
   private val smbRepository: SmbLibraryRepository? = null,
+  private val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler? = null,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LibraryUiState())
   val state: StateFlow<LibraryUiState> = _state.asStateFlow()
+  private var coverQueuePollingJob: Job? = null
 
   init {
     refresh()
@@ -57,7 +64,50 @@ class LibraryViewModel(
       _state.update { it.copy(smbSyncing = true) }
       runCatching { smb.sync() }
         .onSuccess { result ->
+          smbCoverPrefetchScheduler?.kick()
           loadSnapshot(message = "ファイルサーバから ${result.importedCount} 冊を同期しました")
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun enqueueMissingSmbCovers() {
+    val smb = smbRepository ?: return
+    if (_state.value.smbCoverPrefetchBusy) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbCoverPrefetchBusy = true) }
+      runCatching { smb.enqueueMissingCoverPrefetch() }
+        .onSuccess { count ->
+          if (count > 0 || smb.coverPrefetchSnapshot().hasActiveWork) {
+            smbCoverPrefetchScheduler?.kick()
+          }
+          loadSnapshot(
+            message = if (count > 0) {
+              "表紙先読みを $count 冊キューに追加しました"
+            } else {
+              "新しく追加する表紙先読みはありません"
+            },
+          )
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun retryFailedSmbCovers() {
+    val smb = smbRepository ?: return
+    if (_state.value.smbCoverPrefetchBusy) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbCoverPrefetchBusy = true) }
+      runCatching { smb.retryFailedCoverPrefetch() }
+        .onSuccess { count ->
+          if (count > 0) smbCoverPrefetchScheduler?.kick()
+          loadSnapshot(
+            message = if (count > 0) {
+              "失敗した表紙先読み $count 冊を再試行します"
+            } else {
+              "再試行する失敗ジョブはありません"
+            },
+          )
         }
         .onFailure(::showError)
     }
@@ -94,6 +144,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbBookActionBusy = true) }
       runCatching { smb.renameBook(book, newFileName) }
         .onSuccess { renamed ->
+          smbCoverPrefetchScheduler?.kick()
           loadSnapshot(message = "「${book.title}」を「${renamed.title}」へ変更しました")
         }
         .onFailure(::showError)
@@ -208,9 +259,10 @@ class LibraryViewModel(
     runCatching {
       val snapshot = repository.snapshot()
       val servers = smbRepository?.servers().orEmpty()
-      snapshot to servers
+      val coverPrefetch = smbRepository?.coverPrefetchSnapshot() ?: SmbCoverPrefetchSnapshot()
+      Triple(snapshot, servers, coverPrefetch)
     }
-      .onSuccess { (snapshot, servers) ->
+      .onSuccess { (snapshot, servers, coverPrefetch) ->
         _state.update {
           it.copy(
             initialized = true,
@@ -219,15 +271,39 @@ class LibraryViewModel(
             smbSyncing = false,
             smbSettingsBusy = false,
             smbBookActionBusy = false,
+            smbCoverPrefetchBusy = false,
             smbServers = servers,
+            smbCoverPrefetch = coverPrefetch,
             books = snapshot.books,
             hiddenBooks = snapshot.hiddenBooks,
             sourceStates = snapshot.sourceStates,
             message = message,
           )
         }
+        ensureCoverQueuePolling(coverPrefetch)
       }
       .onFailure(::showError)
+  }
+
+  private fun ensureCoverQueuePolling(snapshot: SmbCoverPrefetchSnapshot) {
+    if (!snapshot.hasActiveWork) {
+      coverQueuePollingJob?.cancel()
+      coverQueuePollingJob = null
+      return
+    }
+    if (coverQueuePollingJob?.isActive == true) return
+    val smb = smbRepository ?: return
+    coverQueuePollingJob = viewModelScope.launch(Dispatchers.IO) {
+      while (isActive) {
+        delay(COVER_QUEUE_POLL_INTERVAL_MILLIS)
+        val latest = runCatching { smb.coverPrefetchSnapshot() }.getOrNull() ?: continue
+        _state.update { it.copy(smbCoverPrefetch = latest) }
+        if (!latest.hasActiveWork) {
+          loadSnapshot()
+          break
+        }
+      }
+    }
   }
 
   private fun showError(error: Throwable) {
@@ -239,6 +315,7 @@ class LibraryViewModel(
         smbSyncing = false,
         smbSettingsBusy = false,
         smbBookActionBusy = false,
+        smbCoverPrefetchBusy = false,
         message = error.message ?: "蔵書の操作に失敗しました",
       )
     }
@@ -247,11 +324,16 @@ class LibraryViewModel(
   class Factory(
     private val repository: LibraryRepository,
     private val smbRepository: SmbLibraryRepository? = null,
+    private val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler? = null,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(LibraryViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return LibraryViewModel(repository, smbRepository) as T
+      return LibraryViewModel(repository, smbRepository, smbCoverPrefetchScheduler) as T
     }
+  }
+
+  private companion object {
+    const val COVER_QUEUE_POLL_INTERVAL_MILLIS = 2_000L
   }
 }

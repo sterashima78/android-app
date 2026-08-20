@@ -19,6 +19,19 @@ import java.util.Locale
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 
+internal fun existingSmbBookCoverUrl(
+  context: Context,
+  sourceId: String,
+  size: Long,
+  modifiedAt: Long,
+): String? {
+  val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
+  if (!coverFile.isFile || coverFile.length() <= 0L) return null
+  coverFile.setLastModified(System.currentTimeMillis())
+  return Uri.fromFile(coverFile).toString()
+}
+
+@Suppress("UNUSED_PARAMETER")
 internal fun resolveSmbBookCover(
   context: Context,
   share: DiskShare,
@@ -29,18 +42,26 @@ internal fun resolveSmbBookCover(
   format: SmbBookFormat,
   cachedBookFile: File,
 ): String? {
+  existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
+  if (!cachedBookFile.isFile || cachedBookFile.length() != size) return null
   val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
-  if (coverFile.isFile && coverFile.length() > 0L) return Uri.fromFile(coverFile).toString()
+  val generated = generateLocalBookCover(cachedBookFile, format, coverFile)
+  return coverFile.takeIf { generated && it.isFile && it.length() > 0L }
+    ?.let(Uri::fromFile)
+    ?.toString()
+}
 
-  val generated = when {
-    cachedBookFile.isFile && cachedBookFile.length() == size ->
-      generateLocalBookCover(cachedBookFile, format, coverFile)
-
-    format == SmbBookFormat.ZIP ->
-      generateRemoteZipCover(share, remotePath, coverFile)
-
-    else -> false
-  }
+internal fun prefetchRemoteSmbZipCover(
+  context: Context,
+  share: DiskShare,
+  remotePath: String,
+  sourceId: String,
+  size: Long,
+  modifiedAt: Long,
+): String? {
+  existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
+  val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
+  val generated = generateRemoteZipCover(share, remotePath, coverFile)
   return coverFile.takeIf { generated && it.isFile && it.length() > 0L }
     ?.let(Uri::fromFile)
     ?.toString()
@@ -54,9 +75,9 @@ internal fun ensureSmbBookCoverFromLocal(
   format: SmbBookFormat,
   localBookFile: File,
 ): String? {
+  existingSmbBookCoverUrl(context, sourceId, size, modifiedAt)?.let { return it }
   val coverFile = smbBookCoverFile(context, sourceId, size, modifiedAt)
-  val ready = (coverFile.isFile && coverFile.length() > 0L) ||
-    generateLocalBookCover(localBookFile, format, coverFile)
+  val ready = generateLocalBookCover(localBookFile, format, coverFile)
   return coverFile.takeIf { ready && it.isFile && it.length() > 0L }
     ?.let(Uri::fromFile)
     ?.toString()
@@ -81,12 +102,70 @@ internal fun deleteSmbBookCovers(context: Context, sourceIds: Collection<String>
   }
 }
 
+internal data class SmbCoverCacheEntry(
+  val path: String,
+  val size: Long,
+  val lastModified: Long,
+)
+
+internal fun smbCoverCachePathsToEvict(
+  entries: List<SmbCoverCacheEntry>,
+  maxBytes: Long = COVER_CACHE_MAX_BYTES,
+  protectedPath: String? = null,
+): List<String> {
+  var totalBytes = entries.sumOf { it.size.coerceAtLeast(0L) }
+  if (totalBytes <= maxBytes) return emptyList()
+
+  val evicted = mutableListOf<String>()
+  entries
+    .asSequence()
+    .filter { it.path != protectedPath }
+    .sortedWith(compareBy<SmbCoverCacheEntry>({ it.lastModified }, { it.path }))
+    .forEach { entry ->
+      if (totalBytes <= maxBytes) return@forEach
+      evicted += entry.path
+      totalBytes -= entry.size.coerceAtLeast(0L)
+    }
+  return evicted
+}
+
+internal fun trimSmbBookCoverCache(
+  context: Context,
+  protectedUrl: String? = null,
+): List<String> {
+  val protectedPath = protectedUrl
+    ?.let { runCatching { Uri.parse(it) }.getOrNull() }
+    ?.takeIf { it.scheme == "file" }
+    ?.path
+  val root = smbBookCoverRoot(context)
+  val files = root.listFiles()
+    ?.filter { file -> file.isFile && !file.name.endsWith(".tmp") }
+    .orEmpty()
+  val pathsToEvict = smbCoverCachePathsToEvict(
+    entries = files.map { file ->
+      SmbCoverCacheEntry(
+        path = file.absolutePath,
+        size = file.length(),
+        lastModified = file.lastModified(),
+      )
+    },
+    protectedPath = protectedPath,
+  ).toSet()
+  if (pathsToEvict.isEmpty()) return emptyList()
+
+  return files.mapNotNull { file ->
+    if (file.absolutePath !in pathsToEvict) return@mapNotNull null
+    val url = Uri.fromFile(file).toString()
+    url.takeIf { file.delete() }
+  }
+}
+
 private fun smbBookCoverFile(
   context: Context,
   sourceId: String,
   size: Long,
   modifiedAt: Long,
-): File = File(smbBookCoverRoot(context), "$sourceId-$size-$modifiedAt.png")
+): File = File(smbBookCoverRoot(context), "$sourceId-$size-$modifiedAt.jpg")
 
 private fun smbBookCoverRoot(context: Context): File =
   File(context.applicationContext.cacheDir, COVER_CACHE_DIRECTORY).apply { mkdirs() }
@@ -197,7 +276,7 @@ private fun saveBitmapCover(bitmap: Bitmap, coverFile: File): Boolean {
   val temp = File(coverFile.parentFile, "${coverFile.name}.tmp")
   return try {
     temp.outputStream().buffered().use { output ->
-      check(outputBitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+      check(outputBitmap.compress(Bitmap.CompressFormat.JPEG, COVER_JPEG_QUALITY, output)) {
         "SMB書籍の表紙を保存できませんでした"
       }
     }
@@ -206,6 +285,7 @@ private fun saveBitmapCover(bitmap: Bitmap, coverFile: File): Boolean {
       temp.copyTo(coverFile, overwrite = true)
       temp.delete()
     }
+    coverFile.setLastModified(System.currentTimeMillis())
     coverFile.isFile && coverFile.length() > 0L
   } finally {
     temp.delete()
@@ -278,8 +358,10 @@ private class LimitedInputStream(
 
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
 private const val COVER_CACHE_DIRECTORY = "smb-book-covers"
-private const val COVER_MAX_DIMENSION = 1200
-private const val COVER_DECODE_MAX_DIMENSION = 2400
-private const val PDF_COVER_WIDTH = 720
+private const val COVER_MAX_DIMENSION = 640
+private const val COVER_DECODE_MAX_DIMENSION = 1600
+private const val COVER_JPEG_QUALITY = 85
+private const val PDF_COVER_WIDTH = 640
 private const val MAX_REMOTE_COVER_SCAN_BYTES = 32L * 1024 * 1024
 private const val MAX_COVER_SOURCE_BYTES = 32L * 1024 * 1024
+private const val COVER_CACHE_MAX_BYTES = 200L * 1024 * 1024
