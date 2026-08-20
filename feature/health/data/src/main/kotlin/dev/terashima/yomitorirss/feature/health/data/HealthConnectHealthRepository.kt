@@ -147,7 +147,8 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       }
       pageToken = response.pageToken
     } while (pageToken != null)
-    return sessions.sortedByDescending(HealthExerciseSessionSummary::startTime)
+    return deduplicateExerciseSessions(sessions)
+      .sortedByDescending(HealthExerciseSessionSummary::startTime)
   }
 
   private suspend fun readBodyFatMeasurements(timeRange: TimeRangeFilter): List<BodyFatMeasurement> {
