@@ -8,7 +8,9 @@
 
 ## Context
 
-アプリから歩数、運動、心拍、睡眠、体重、体脂肪率、栄養情報を参照したい。Android 14 以降では Health Connect が platform の健康・フィットネスデータ共有基盤であり、このアプリの最小 API 34 と整合する。
+アプリから歩数、活動消費カロリー、運動、心拍、睡眠、体重、体脂肪率、栄養情報を参照したい。Android 14 以降では Health Connect が platform の健康・フィットネスデータ共有基盤であり、このアプリの最小 API 34 と整合する。
+
+活動量については、ワークアウトの回数や時間からアプリ独自に消費カロリーを推定せず、Health Connect に記録された `ActiveCaloriesBurnedRecord` を参照する。これは基礎代謝を含まない活動由来の消費エネルギーであり、Workout Context が所有する運動記録とは別の健康指標として扱う。心拍数も同様に Health Connect の測定値を Health Context で参照する。
 
 運動については合計時間だけでなく、Health Connect に記録された個々の運動セッションと、そのセッションが持つ種目内訳を確認したい。`ExerciseSessionRecord` は運動種別、タイトル、メモ、開始・終了時刻、`ExerciseSegment` を持ち、`ExerciseSegment` は種目、開始・終了時刻、反復回数を持つ。一方で、提供元アプリが segment を書き込まないセッションも存在する。
 
@@ -20,7 +22,9 @@
 
 - `:feature:health:{domain,data,ui}` を独立 feature とする。
 - Health Connect は `:feature:health:data` の外部データソースとし、Health Connect の Record 型を Domain/UI へ公開しない。
-- 読み取り対象は歩数、運動セッション、心拍、睡眠、体重、体脂肪率、栄養情報とする。
+- 読み取り対象は歩数、活動消費カロリー、運動セッション、心拍、睡眠、体重、体脂肪率、栄養情報とする。
+- 活動消費カロリーは `ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL` を選択期間で集計し、kcal として表示する。基礎代謝を含む総消費カロリーは現時点の表示対象にしない。
+- 活動消費カロリー、心拍数、歩数などの健康指標は Health Context の責務とする。Workout Context ではこれらを推定、計算、永続化しない。
 - 運動セッションは選択期間内の record を新しい順に表示し、タイトルまたは運動種別、開始・終了時刻、所要時間を確認できるようにする。
 - 運動セッションに `notes` または `segments` がある場合は、セッションを展開して詳細を表示する。segment は標準化された種目名、開始・終了時刻、所要時間、反復回数を表示する。提供元が segment を記録していない場合は「内訳データなし」として通常状態で扱う。
 - Health Connect の Record/segment type の整数値は Data 層でアプリ向けの表示名へ変換し、Domain/UI に platform 定数を漏らさない。
@@ -46,6 +50,7 @@
 - Workout の ownership を変更せず導入できる。
 - 要求権限とデータ流通範囲を最小化できる。
 - Android platform / Health Connect 型が Data 層へ閉じる。
+- 歩数、活動消費カロリー、心拍数などをヘルスケアへ集約し、Workout を運動内容の記録に集中させられる。
 - 合計運動時間だけでなく、どの運動をいつ行い、Health Connect にどの種目内訳が記録されているかを同じ画面で確認できる。
 - アプリ内 Workout から書き出した title、notes、segments も再読込時に詳細として確認できる。
 - 体脂肪率と栄養摂取の推移を、追加の永続化や同期機構なしで確認できる。
@@ -56,6 +61,7 @@
 - Health Connect が利用できない状態や権限未付与時は表示できない。
 - 30日より古い履歴は参照しない。
 - オフラインキャッシュや長期トレンドのアプリ独自保存は行えない。
+- 活動消費カロリーは Health Connect に対応 record が存在しない期間では表示できない。Workout の回数や時間からの補完推定は行わない。
 - 運動時間は stable 1.1.0 に総運動時間 aggregate がないため、取得した運動セッション時間を合計する。複数データソースが同一運動を重複記録する場合の正規化は将来課題とする。
 - 運動の segment は任意情報なので、提供元アプリが書き込まない場合はセッション単位の情報しか表示できない。
 - stable 1.1.0 のままでは segment の重量、set index、RPE は表示できない。
@@ -73,7 +79,7 @@
 - 標準目安と減量参考のP/F/C換算値を unit test する。
 - `verifyArchitecture` で UI -> Data の依存がないことを確認する。
 - `:feature:health:domain:test`、`:feature:health:data:test`、`:feature:health:ui:test`、全体 unit tests、release lint を実行する。
-- read 側の Health Connect 権限が歩数・運動・心拍・睡眠・体重・体脂肪率・栄養の7種類に限定されることをレビューする。Workout export に必要な write 権限は ADR-0131 に従う。
+- read 側の Health Connect 権限が歩数・活動消費カロリー・運動・心拍・睡眠・体重・体脂肪率・栄養の8種類に限定されることをレビュー・unit test する。Workout export に必要な write 権限は ADR-0131 に従う。
 - 公開リポジトリへ実健康データ、credential、token が追加されていないことをレビューする。
 
 ## Public repository note
