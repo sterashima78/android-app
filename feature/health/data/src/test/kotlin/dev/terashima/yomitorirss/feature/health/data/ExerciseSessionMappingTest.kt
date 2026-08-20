@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.health.data
 
 import androidx.health.connect.client.records.ExerciseSegment
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentSummary
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -20,6 +21,39 @@ class ExerciseSessionMappingTest {
     val second = session("2026-08-20T11:00:00Z", "2026-08-20T11:00:40Z")
 
     assertEquals(1L, totalExerciseMinutes(listOf(first, second)))
+  }
+
+  @Test
+  fun `同一時刻と種別の重複セッションは詳細情報が多い一件にまとめる`() {
+    val plain = session("2026-08-20T09:38:00Z", "2026-08-20T09:59:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+    val detailed = plain.copy(
+      title = "朝のウォーキング",
+      notes = "テスト用の架空データ",
+      segments = listOf(
+        HealthExerciseSegmentSummary(
+          startTime = Instant.parse("2026-08-20T09:38:00Z"),
+          endTime = Instant.parse("2026-08-20T09:59:00Z"),
+          exerciseName = "ウォーキング",
+        ),
+      ),
+    )
+
+    val deduplicated = deduplicateExerciseSessions(listOf(plain, detailed))
+
+    assertEquals(listOf(detailed), deduplicated)
+    assertEquals(21L, totalExerciseMinutes(deduplicated))
+  }
+
+  @Test
+  fun `同一時刻でも種別が異なるセッションは別の運動として保持する`() {
+    val walking = session("2026-08-20T09:38:00Z", "2026-08-20T09:59:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+    val running = walking.copy(exerciseName = "ランニング")
+
+    assertEquals(2, deduplicateExerciseSessions(listOf(walking, running)).size)
   }
 
   @Test
