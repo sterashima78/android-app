@@ -97,7 +97,7 @@ Content / Curation を資料として参照し、Knowledge page、source relatio
 
 現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview と、体脂肪率の read-only 測定履歴を提供する。また Workout Context が所有する完了済みワークアウトに限り、Health Connect へ一方向 export する write capability を提供する。
 
-Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は `HealthOverview`、`BodyFatMeasurement`、availability に加え、Health Connect 非依存の `HealthWorkoutWriter` と export 用モデルのみを扱う。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
+Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は `HealthOverview`、`BodyFatMeasurement`、availability に加え、Health Connect 非依存の `HealthWorkoutWriter` と export 用モデルのみを扱う。運動セッションの raw read で複数提供元由来の完全一致レコードが返る場合は、Data 層で開始時刻・終了時刻・標準化済み運動種別をキーに保守的に重複除去してから Domain へ公開する。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
 
 Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態の source of truth であり、Health Connect への export は app composition 層の adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続して行う。Health Connect -> Workout の import / 同期や、Health Connect から読み取った運動の書き戻しは行わない。書き込み失敗や権限未付与でも Workout のローカル記録は維持する。
 
@@ -182,3 +182,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131](../adr/0131-workout-health-connect-export.md)
+- [ADR-0132](../adr/0132-health-connect-exercise-session-deduplication.md)
