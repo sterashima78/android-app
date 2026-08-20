@@ -25,6 +25,7 @@ import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriteResult
 import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriter
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 class HealthConnectHealthRepository(context: Context) : HealthRepository, HealthWorkoutWriter {
@@ -156,7 +157,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     HealthExerciseSegmentType.OTHER -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_OTHER_WORKOUT
   }
 
-  private fun zoneOffsetAt(instant: Instant): ZoneOffset = ZoneOffset.systemDefault().rules.getOffset(instant)
+  private fun zoneOffsetAt(instant: Instant): ZoneOffset = ZoneId.systemDefault().rules.getOffset(instant)
 
   companion object {
     val READ_PERMISSIONS: Set<String> = setOf(
