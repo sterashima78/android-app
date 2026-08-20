@@ -22,7 +22,7 @@ ADR-0127 では Health Connect 導入時の権限とデータ流通を最小化�
 - Workout と Health のモデル変換は app composition 層の application adapter が担当し、Health Connect の Record 型は `:feature:health:data` に閉じる。
 - Health Connect への書き込み権限は `WRITE_EXERCISE` のみ追加する。既存の read permissions、バックグラウンド権限、履歴権限は拡大しない。
 - 書き込み前に毎回権限を確認し、未許可・Health Connect 利用不可・書き込み失敗でもローカルの Workout 保存は維持する。
-- Health Connect の `ExerciseSessionRecord` を筋力トレーニングとして書き込み、各セットを可能な範囲で `ExerciseSegment` に変換する。
+- Health Connect の `ExerciseSessionRecord` は、筋力系と踏み台昇降など複数カテゴリが同一メニューに混在できるよう `EXERCISE_TYPE_OTHER_WORKOUT` として書き込み、各セットを可能な範囲で `ExerciseSegment` に変換する。Health Connect は session type と segment type の互換性を検証するため、session 全体を strength training 固定にはしない。
   - リバースクランチ: crunch
   - ランジ: lunge
   - プランク: plank
@@ -49,6 +49,7 @@ ADR-0127 では Health Connect 導入時の権限とデータ流通を最小化�
 ### Negative
 
 - Health Connect 側で編集・削除された内容は Workout Context へ反映されない。
+- session type は mixed workout を安全に表現するため generic な other workout となり、詳細な種目種別は segment 側で表現する。
 - stable 1.1.0 では腕立て伏せ専用 segment type や set index / weight を十分に表現できない。
 - 既存記録にはセットの厳密な開始/終了時刻がないため、export 時の時刻は補完値になる。
 - 権限未許可や一時的な書き込み失敗時に自動バックグラウンド再試行は行わない。
