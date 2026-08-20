@@ -4,8 +4,8 @@ import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import java.time.OffsetDateTime
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,6 +40,7 @@ data class WorkoutUiState(
   val plankRunning: Boolean = false,
   val stepUpSeconds: Int = 0,
   val stepUpRunning: Boolean = false,
+  val exportMessage: String? = null,
 ) {
   val activeExercise: WorkoutExercise?
     get() = snapshot.exercises.firstOrNull { it.id == selectedExerciseId } ?: snapshot.exercises.firstOrNull()
@@ -48,7 +49,10 @@ data class WorkoutUiState(
     get() = activeExercise?.let { exercise -> snapshot.today.sets.filter { it.exerciseId == exercise.id } }.orEmpty()
 }
 
-class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() {
+class WorkoutViewModel(
+  private val repository: WorkoutRepository,
+  private val historyExporter: WorkoutHistoryExporter,
+) : ViewModel() {
   private val _state = MutableStateFlow(WorkoutUiState())
   val state: StateFlow<WorkoutUiState> = _state.asStateFlow()
 
@@ -121,6 +125,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
       finishedAt = finishedAt,
       sets = current.today.sets,
     )
+    _state.update { it.copy(exportMessage = null) }
     updateSnapshot(
       current.copy(
         today = WorkoutDay(date = LocalDate.now().toString()),
@@ -128,6 +133,10 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
       ),
     )
     resetTimers()
+    viewModelScope.launch {
+      val result = runCatching { historyExporter.export(history) }.getOrDefault(WorkoutExportResult.FAILED)
+      _state.update { it.copy(exportMessage = exportMessage(result)) }
+    }
   }
 
   fun resetToday() {
@@ -141,6 +150,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     val exercise = ui.activeExercise ?: return
     val amount = ui.amount.toIntOrNull()?.coerceAtLeast(0) ?: return
     if (amount <= 0) return
+    val recordedAt = nowIso()
     appendSet(
       WorkoutSet(
         id = UUID.randomUUID().toString(),
@@ -150,7 +160,9 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         type = exercise.type,
         amount = amount,
         memo = ui.memo.trim(),
-        recordedAt = nowIso(),
+        recordedAt = recordedAt,
+        startedAt = setStartIso(recordedAt, exercise.unit, amount),
+        finishedAt = recordedAt,
       ),
       lastAmount = amount,
     )
@@ -255,6 +267,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     val ui = _state.value
     val exercise = ui.activeExercise ?: return
     if (exercise.type != WorkoutExerciseType.PLANK || ui.plankSeconds <= 0) return
+    val recordedAt = nowIso()
     appendSet(
       WorkoutSet(
         id = UUID.randomUUID().toString(),
@@ -264,7 +277,9 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         type = WorkoutExerciseType.PLANK,
         amount = ui.plankSeconds,
         memo = ui.memo.trim().ifEmpty { "タイマー記録" },
-        recordedAt = nowIso(),
+        recordedAt = recordedAt,
+        startedAt = setStartIso(recordedAt, WorkoutUnit.SECONDS, ui.plankSeconds),
+        finishedAt = recordedAt,
       ),
       lastAmount = ui.plankSeconds,
     )
@@ -299,6 +314,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     val exercise = ui.activeExercise ?: return
     if (exercise.type != WorkoutExerciseType.STEP_UP || ui.stepUpSeconds <= 0) return
     val steps = ui.stepCount.toIntOrNull()?.coerceAtLeast(0) ?: 0
+    val recordedAt = nowIso()
     appendSet(
       WorkoutSet(
         id = UUID.randomUUID().toString(),
@@ -309,7 +325,9 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         amount = ui.stepUpSeconds,
         steps = steps,
         memo = ui.memo.trim(),
-        recordedAt = nowIso(),
+        recordedAt = recordedAt,
+        startedAt = setStartIso(recordedAt, WorkoutUnit.SECONDS, ui.stepUpSeconds),
+        finishedAt = recordedAt,
       ),
       lastAmount = ui.stepUpSeconds,
       lastSteps = steps,
@@ -320,7 +338,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
 
   private fun appendSet(set: WorkoutSet, lastAmount: Int, lastSteps: Int? = null) {
     val current = _state.value.snapshot
-    val startedAt = current.today.startedAt ?: nowIso()
+    val startedAt = current.today.startedAt ?: set.startedAt ?: set.recordedAt
     val lastStepCounts = if (lastSteps == null) current.lastStepCounts else current.lastStepCounts + (set.exerciseId to lastSteps)
     updateSnapshot(
       current.copy(
@@ -375,10 +393,25 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     return (snapshot.lastAmounts[exerciseId] ?: fallback).toString()
   }
 
+  private fun setStartIso(recordedAt: String, unit: WorkoutUnit, amount: Int): String {
+    val durationSeconds = if (unit == WorkoutUnit.SECONDS) amount.coerceAtLeast(1) else 1
+    return OffsetDateTime.parse(recordedAt).minusSeconds(durationSeconds.toLong()).toString()
+  }
+
+  private fun exportMessage(result: WorkoutExportResult): String = when (result) {
+    WorkoutExportResult.EXPORTED -> "Health Connect にワークアウトを書き込みました"
+    WorkoutExportResult.PERMISSION_REQUIRED -> "端末内に保存しました。Health Connect への書き込みは「ヘルス」画面で権限を許可すると有効になります。"
+    WorkoutExportResult.UNAVAILABLE -> "端末内に保存しました。Health Connect は現在利用できません。"
+    WorkoutExportResult.FAILED -> "端末内に保存しました。Health Connect への書き込みに失敗しました。"
+  }
+
   private fun nowIso(): String = OffsetDateTime.now().toString()
 
-  class Factory(private val repository: WorkoutRepository) : ViewModelProvider.Factory {
+  class Factory(
+    private val repository: WorkoutRepository,
+    private val historyExporter: WorkoutHistoryExporter,
+  ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T = WorkoutViewModel(repository) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = WorkoutViewModel(repository, historyExporter) as T
   }
 }
