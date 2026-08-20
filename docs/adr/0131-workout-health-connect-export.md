@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-20
+- Amended: 2026-08-20
 - Refines: [ADR-0127](0127-health-connect-read-only.md), [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md)
 
 ## Context
@@ -12,6 +13,8 @@ ADR-0127 では Health Connect 導入時の権限とデータ流通を最小化�
 
 ただし Health Connect から読み取った運動を Workout の永続状態へ取り込んだり、読み取ったデータをそのまま Health Connect へ書き戻したりすると、source of truth、重複、同期ループが曖昧になる。また Health Connect は機微な健康データを扱うため、書き込み対象と権限を必要最小限に保つ必要がある。
 
+Workout は運動内容を記録する機能に特化させる。歩数、活動消費カロリー、心拍数などの身体活動指標は Health Connect が保持する測定・推定値を Health Context で参照し、Workout Context では推定、計算、保存しない。
+
 ## Decision
 
 - Workout Context は引き続きアプリ内ワークアウト記録の source of truth とする。
@@ -21,6 +24,7 @@ ADR-0127 では Health Connect 導入時の権限とデータ流通を最小化�
 - Health Domain は `HealthWorkoutWriter` capability と、Health Connect 非依存のワークアウト書き込みモデルを公開する。
 - Workout と Health のモデル変換は app composition 層の application adapter が担当し、Health Connect の Record 型は `:feature:health:data` に閉じる。
 - Health Connect への書き込み権限は `WRITE_EXERCISE` のみ追加する。既存の read permissions、バックグラウンド権限、履歴権限は拡大しない。
+- Workout export では `ExerciseSessionRecord` とその `ExerciseSegment` だけを書き込む。歩数、活動消費カロリー、総消費カロリー、心拍数などを Workout の回数・時間から推定して Health Connect へ書き込まない。
 - 書き込み前に毎回権限を確認し、未許可・Health Connect 利用不可・書き込み失敗でもローカルの Workout 保存は維持する。
 - Health Connect の `ExerciseSessionRecord` は、筋力系と踏み台昇降など複数カテゴリが同一メニューに混在できるよう `EXERCISE_TYPE_OTHER_WORKOUT` として書き込み、各セットを可能な範囲で `ExerciseSegment` に変換する。Health Connect は session type と segment type の互換性を検証するため、session 全体を strength training 固定にはしない。
   - リバースクランチ: crunch
@@ -45,6 +49,7 @@ ADR-0127 では Health Connect 導入時の権限とデータ流通を最小化�
 - Health Connect API 依存を Health Data 層に閉じ、Workout Domain/UI の platform 依存を増やさない。
 - client record ID により export の再試行を安全に行いやすい。
 - 自由記述 memo を外部健康データ基盤へ送らず、必要なデータだけに限定できる。
+- Workout は種目、セット、回数、時間などの運動記録に集中し、活動量や生体指標の責務を Health Context と明確に分離できる。
 
 ### Negative
 
@@ -53,12 +58,14 @@ ADR-0127 では Health Connect 導入時の権限とデータ流通を最小化�
 - stable 1.1.0 では腕立て伏せ専用 segment type や set index / weight を十分に表現できない。
 - 既存記録にはセットの厳密な開始/終了時刻がないため、export 時の時刻は補完値になる。
 - 権限未許可や一時的な書き込み失敗時に自動バックグラウンド再試行は行わない。
+- Workout 単独では消費カロリーや心拍数を表示できない。これらは Health Connect に対応データが存在する場合に Health 画面で確認する。
 
 ## Verification
 
 - Workout history から Health workout session への mapping を unit test し、種目、repetitions、時刻、segment 非重複を確認する。
 - Health Connect writer が `WRITE_EXERCISE` を毎回確認し、`ExerciseSessionRecord` / `ExerciseSegment` のみに書き込むことをレビューする。
 - final merged manifest に追加される write permission が `android.permission.health.WRITE_EXERCISE` のみであることを確認する。
+- Health Connect の write permission set が `WRITE_EXERCISE` だけであり、活動消費カロリー・総消費カロリー・心拍数の write permission を含まないことを unit test する。
 - `verifyArchitecture`、影響 module の unit tests、全体 unit tests、release lint を CI で実行する。
 - Workout Domain/UI から `androidx.health.connect` への直接依存がないことを確認する。
 - Health Connect 由来データを Workout DB、Backup、AI task、外部 API へコピーする経路が追加されていないことを確認する。
