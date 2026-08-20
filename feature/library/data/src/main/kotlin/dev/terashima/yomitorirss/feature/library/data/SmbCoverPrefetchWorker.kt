@@ -39,7 +39,7 @@ class WorkManagerSmbCoverPrefetchScheduler(
       .build()
     WorkManager.getInstance(appContext).enqueueUniqueWork(
       SmbCoverPrefetchWorker.WORK_NAME,
-      ExistingWorkPolicy.KEEP,
+      ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )
   }
@@ -175,7 +175,7 @@ internal class SmbCoverPrefetchQueueStore(
     )
   }
 
-  fun enqueueMissing(): Int {
+  fun enqueueMissing(retrySkipped: Boolean = false): Int {
     ensureSchema()
     pruneMissingBooks()
     val candidates = database.readable.rawQuery(
@@ -207,7 +207,7 @@ internal class SmbCoverPrefetchQueueStore(
         if (existingStatus == SmbCoverPrefetchStatus.PENDING.name ||
           existingStatus == SmbCoverPrefetchStatus.RUNNING.name ||
           existingStatus == SmbCoverPrefetchStatus.FAILED.name ||
-          existingStatus == SmbCoverPrefetchStatus.SKIPPED.name
+          (!retrySkipped && existingStatus == SmbCoverPrefetchStatus.SKIPPED.name)
         ) {
           return@forEach
         }
