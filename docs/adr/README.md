@@ -34,7 +34,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0125: Application Service と capability interface を責務境界として使う](0125-application-service-and-capability-segregation.md)
 - [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
-- [ADR-0130: Workout を source of truth として Health Connect へ一方向 export する](0130-workout-health-connect-export.md)
+- [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 
 ### Domain / Context / persistence
 
@@ -45,7 +45,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0119: Content Classification・Retention・table ownership enforcement](0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0123: Content / Curation 永続化境界の第二段階を完了する](0123-content-curation-persistence-phase2.md)
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
-- [ADR-0130: Workout を source of truth として Health Connect へ一方向 export する](0130-workout-health-connect-export.md)
+- [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 
 ### Documentation governance
 
@@ -61,7 +61,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 ### Health
 
 - [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
-- [ADR-0130: Workout を source of truth として Health Connect へ一方向 export する](0130-workout-health-connect-export.md)
+- [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 
 ### Calendar
 
