@@ -24,6 +24,39 @@ enum class SmbBookFormat {
   PDF,
 }
 
+enum class SmbCoverPrefetchStatus {
+  PENDING,
+  RUNNING,
+  FAILED,
+  COMPLETED,
+  SKIPPED,
+}
+
+data class SmbCoverPrefetchItem(
+  val sourceId: String,
+  val title: String,
+  val status: SmbCoverPrefetchStatus,
+  val downloadedBytes: Long,
+  val totalBytes: Long,
+  val message: String?,
+  val updatedAtEpochMillis: Long,
+)
+
+data class SmbCoverPrefetchSnapshot(
+  val items: List<SmbCoverPrefetchItem> = emptyList(),
+) {
+  val pendingCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.PENDING }
+  val runningCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.RUNNING }
+  val failedCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.FAILED }
+  val completedCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.COMPLETED }
+  val skippedCount: Int get() = items.count { it.status == SmbCoverPrefetchStatus.SKIPPED }
+  val hasActiveWork: Boolean get() = pendingCount > 0 || runningCount > 0
+}
+
+interface SmbCoverPrefetchScheduler {
+  fun kick()
+}
+
 interface SmbLibraryRepository {
   suspend fun servers(): List<SmbServerSettings>
 
@@ -47,4 +80,10 @@ interface SmbLibraryRepository {
     book: LibraryBook,
     onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
   ): PreparedLibraryBook
+
+  suspend fun coverPrefetchSnapshot(): SmbCoverPrefetchSnapshot
+
+  suspend fun enqueueMissingCoverPrefetch(): Int
+
+  suspend fun retryFailedCoverPrefetch(): Int
 }
