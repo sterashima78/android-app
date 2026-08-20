@@ -98,15 +98,13 @@ internal class SmbCoverPrefetchProcessor(
     server: SmbServerSettings,
     password: String,
   ): SmbCoverPrefetchOutcome = withShare(server, password) { share ->
-    val coverUrl = resolveSmbBookCover(
+    val coverUrl = prefetchRemoteSmbZipCover(
       context = appContext,
       share = share,
       remotePath = location.path,
       sourceId = sourceId,
       size = location.size,
       modifiedAt = location.modifiedAt,
-      format = location.format,
-      cachedBookFile = cachedBookFile(sourceId, location),
     ) ?: return@withShare SmbCoverPrefetchOutcome.Skipped(
       "ZIP先頭${MAX_ZIP_SCAN_BYTES / (1024 * 1024)}MB以内から表紙画像を見つけられませんでした",
     )
