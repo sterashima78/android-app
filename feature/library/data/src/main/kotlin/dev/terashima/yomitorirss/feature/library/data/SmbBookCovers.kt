@@ -102,6 +102,64 @@ internal fun deleteSmbBookCovers(context: Context, sourceIds: Collection<String>
   }
 }
 
+internal data class SmbCoverCacheEntry(
+  val path: String,
+  val size: Long,
+  val lastModified: Long,
+)
+
+internal fun smbCoverCachePathsToEvict(
+  entries: List<SmbCoverCacheEntry>,
+  maxBytes: Long = COVER_CACHE_MAX_BYTES,
+  protectedPath: String? = null,
+): List<String> {
+  var totalBytes = entries.sumOf { it.size.coerceAtLeast(0L) }
+  if (totalBytes <= maxBytes) return emptyList()
+
+  val evicted = mutableListOf<String>()
+  entries
+    .asSequence()
+    .filter { it.path != protectedPath }
+    .sortedWith(compareBy<SmbCoverCacheEntry>({ it.lastModified }, { it.path }))
+    .forEach { entry ->
+      if (totalBytes <= maxBytes) return@forEach
+      evicted += entry.path
+      totalBytes -= entry.size.coerceAtLeast(0L)
+    }
+  return evicted
+}
+
+internal fun trimSmbBookCoverCache(
+  context: Context,
+  protectedUrl: String? = null,
+): List<String> {
+  val protectedPath = protectedUrl
+    ?.let { runCatching { Uri.parse(it) }.getOrNull() }
+    ?.takeIf { it.scheme == "file" }
+    ?.path
+  val root = smbBookCoverRoot(context)
+  val files = root.listFiles()
+    ?.filter { file -> file.isFile && !file.name.endsWith(".tmp") }
+    .orEmpty()
+  val pathsToEvict = smbCoverCachePathsToEvict(
+    entries = files.map { file ->
+      SmbCoverCacheEntry(
+        path = file.absolutePath,
+        size = file.length(),
+        lastModified = file.lastModified(),
+      )
+    },
+    protectedPath = protectedPath,
+  ).toSet()
+  if (pathsToEvict.isEmpty()) return emptyList()
+
+  return files.mapNotNull { file ->
+    if (file.absolutePath !in pathsToEvict) return@mapNotNull null
+    val url = Uri.fromFile(file).toString()
+    url.takeIf { file.delete() }
+  }
+}
+
 private fun smbBookCoverFile(
   context: Context,
   sourceId: String,
@@ -306,3 +364,4 @@ private const val COVER_JPEG_QUALITY = 85
 private const val PDF_COVER_WIDTH = 640
 private const val MAX_REMOTE_COVER_SCAN_BYTES = 32L * 1024 * 1024
 private const val MAX_COVER_SOURCE_BYTES = 32L * 1024 * 1024
+private const val COVER_CACHE_MAX_BYTES = 200L * 1024 * 1024
