@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -60,7 +59,7 @@ internal fun NutritionHistoryCard(
     ) {
       Text("栄養摂取の推移", style = MaterialTheme.typography.titleMedium)
       Text(
-        "Health Connect の食事記録を日ごとに合算します。",
+        "Health Connect の食事記録を日ごとに合算します。当日分はその時点までに記録された途中経過です。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
