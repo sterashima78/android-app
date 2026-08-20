@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 jobs:
-  quality-check:
+  quality_checks:
     name: ${{ matrix.name }}
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -54,13 +54,13 @@ jobs:
   quality:
     if: always() && github.event_name == 'pull_request'
     needs:
-      - quality-check
+      - quality_checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Verify parallel quality checks passed
         env:
-          QUALITY_CHECK_RESULT: ${{ needs.quality-check.result }}
+          QUALITY_CHECK_RESULT: ${{ needs.quality_checks.result }}
         run: test "$QUALITY_CHECK_RESULT" = success
 
   build:
