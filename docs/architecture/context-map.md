@@ -95,11 +95,11 @@ Content / Curation を資料として参照し、Knowledge page、source relatio
 
 ### Health
 
-現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview と、体脂肪率の read-only 測定履歴を提供する。
+現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview と、体脂肪率の read-only 測定履歴を提供する。また Workout Context が所有する完了済みワークアウトに限り、Health Connect へ一方向 export する write capability を提供する。
 
-Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は `HealthOverview`、`BodyFatMeasurement`、availability のみを扱う。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
+Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は `HealthOverview`、`BodyFatMeasurement`、availability に加え、Health Connect 非依存の `HealthWorkoutWriter` と export 用モデルのみを扱う。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
 
-Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態を所有し、Health は Health Connect のデータを参照する。相互同期や永続コピーは行わず、将来統合表示が必要な場合は目的別 read-only Query / Projection で接続する。
+Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態の source of truth であり、Health Connect への export は app composition 層の adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続して行う。Health Connect -> Workout の import / 同期や、Health Connect から読み取った運動の書き戻しは行わない。書き込み失敗や権限未付与でも Workout のローカル記録は維持する。
 
 ### Calendar
 
@@ -130,6 +130,7 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 - Bookmark import: `ImportBookmarksUseCase`
 - Curation -> Content: `BookmarkArticleGateway`
 - RSS -> Content: `ContentSourceGateway`
+- Workout -> Health Connect: app composition adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続する一方向 export
 
 ### Domain Service
 
@@ -180,3 +181,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
+- [ADR-0130](../adr/0130-workout-health-connect-export.md)
