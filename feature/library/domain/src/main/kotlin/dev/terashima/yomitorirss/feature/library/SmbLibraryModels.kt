@@ -81,9 +81,9 @@ interface SmbLibraryRepository {
     onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
   ): PreparedLibraryBook
 
-  suspend fun coverPrefetchSnapshot(): SmbCoverPrefetchSnapshot
+  suspend fun coverPrefetchSnapshot(): SmbCoverPrefetchSnapshot = SmbCoverPrefetchSnapshot()
 
-  suspend fun enqueueMissingCoverPrefetch(): Int
+  suspend fun enqueueMissingCoverPrefetch(): Int = 0
 
-  suspend fun retryFailedCoverPrefetch(): Int
+  suspend fun retryFailedCoverPrefetch(): Int = 0
 }
