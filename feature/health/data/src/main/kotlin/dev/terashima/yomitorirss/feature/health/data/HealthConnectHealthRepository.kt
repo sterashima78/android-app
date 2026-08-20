@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
@@ -12,6 +13,7 @@ import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import dev.terashima.yomitorirss.feature.health.BodyFatMeasurement
 import dev.terashima.yomitorirss.feature.health.HealthAvailability
 import dev.terashima.yomitorirss.feature.health.HealthOverview
 import dev.terashima.yomitorirss.feature.health.HealthRepository
@@ -52,6 +54,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository {
       averageHeartRateBpm = aggregation[HeartRateRecord.BPM_AVG],
       sleepMinutes = aggregation[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes(),
       averageWeightKg = aggregation[WeightRecord.WEIGHT_AVG]?.inKilograms,
+      bodyFatMeasurements = readBodyFatMeasurements(timeRange),
     )
   }
 
@@ -77,6 +80,30 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository {
     return if (hasRecords) total.toMinutes() else null
   }
 
+  private suspend fun readBodyFatMeasurements(timeRange: TimeRangeFilter): List<BodyFatMeasurement> {
+    val measurements = mutableListOf<BodyFatMeasurement>()
+    var pageToken: String? = null
+    do {
+      val response = client.readRecords(
+        ReadRecordsRequest(
+          recordType = BodyFatRecord::class,
+          timeRangeFilter = timeRange,
+          ascendingOrder = true,
+          pageSize = 1000,
+          pageToken = pageToken,
+        ),
+      )
+      response.records.forEach { record ->
+        measurements += BodyFatMeasurement(
+          time = record.time,
+          percentage = record.percentage.value,
+        )
+      }
+      pageToken = response.pageToken
+    } while (pageToken != null)
+    return measurements
+  }
+
   companion object {
     val READ_PERMISSIONS: Set<String> = setOf(
       HealthPermission.getReadPermission(StepsRecord::class),
@@ -84,6 +111,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository {
       HealthPermission.getReadPermission(HeartRateRecord::class),
       HealthPermission.getReadPermission(SleepSessionRecord::class),
       HealthPermission.getReadPermission(WeightRecord::class),
+      HealthPermission.getReadPermission(BodyFatRecord::class),
     )
 
     private val AGGREGATE_METRICS: Set<AggregateMetric<*>> = setOf(
