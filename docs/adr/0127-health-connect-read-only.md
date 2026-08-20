@@ -4,6 +4,7 @@
 - Date: 2026-08-19
 - Amended: 2026-08-20
 - Refines: [ADR-0001](0001-layered-architecture.md), [ADR-0003](0003-multi-module-architecture.md), [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md), [ADR-0126](0126-android-platform-baseline.md)
+- Refined by: [ADR-0131](0131-workout-health-connect-export.md) for the one-way Workout -> Health Connect write path
 
 ## Context
 
@@ -46,7 +47,7 @@
 - 体脂肪率グラフの表示範囲計算を unit test し、単一値と境界値を検証する。
 - `verifyArchitecture` で UI -> Data の依存がないことを確認する。
 - `:feature:health:ui:test`、全体 unit tests、release lint を実行する。
-- final merged manifest に読み取り専用の6権限だけが追加されることをレビューする。
+- read 側の Health Connect 権限が歩数・運動・心拍・睡眠・体重・体脂肪率の6種類に限定されることをレビューする。Workout export に必要な write 権限は ADR-0131 に従う。
 - 公開リポジトリへ実健康データ、credential、token が追加されていないことをレビューする。
 
 ## Public repository note

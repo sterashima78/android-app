@@ -42,6 +42,10 @@ class AppRouteDependencies internal constructor(
   application: Application,
   container: AppContainer,
 ) {
+  private val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    HealthConnectHealthRepository(application)
+  }
+
   val rssViewModelFactory: RssViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     RssViewModel.Factory(
       articleRepository = container.articleRepository,
@@ -121,10 +125,9 @@ class AppRouteDependencies internal constructor(
   }
 
   val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val repository = HealthConnectHealthRepository(application)
     HealthRouteDependencies(
-      viewModelFactory = HealthViewModel.Factory(repository),
-      readPermissions = HealthConnectHealthRepository.READ_PERMISSIONS,
+      viewModelFactory = HealthViewModel.Factory(healthRepository),
+      readPermissions = HealthConnectHealthRepository.REQUEST_PERMISSIONS,
     )
   }
 
@@ -171,7 +174,10 @@ class AppRouteDependencies internal constructor(
   }
 
   val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    WorkoutViewModel.Factory(container.workoutRepository)
+    WorkoutViewModel.Factory(
+      repository = container.workoutRepository,
+      historyExporter = WorkoutHealthConnectExporter(healthRepository),
+    )
   }
 
   val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

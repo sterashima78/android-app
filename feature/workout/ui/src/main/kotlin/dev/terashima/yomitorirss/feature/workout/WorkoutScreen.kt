@@ -134,6 +134,9 @@ private fun WorkoutLogScreen(state: WorkoutUiState, viewModel: WorkoutViewModel,
             OutlinedButton(onClick = viewModel::finishWorkout, enabled = state.snapshot.today.sets.isNotEmpty()) { Text("終了して保存") }
             TextButton(onClick = viewModel::resetToday) { Text("リセット") }
           }
+          state.exportMessage?.let { message ->
+            Text(message, style = MaterialTheme.typography.bodySmall)
+          }
         }
       }
     }

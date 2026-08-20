@@ -5,22 +5,30 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.ExerciseSegment
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dev.terashima.yomitorirss.feature.health.BodyFatMeasurement
 import dev.terashima.yomitorirss.feature.health.HealthAvailability
+import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentType
 import dev.terashima.yomitorirss.feature.health.HealthOverview
 import dev.terashima.yomitorirss.feature.health.HealthRepository
+import dev.terashima.yomitorirss.feature.health.HealthWorkoutSession
+import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriteResult
+import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriter
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 
-class HealthConnectHealthRepository(context: Context) : HealthRepository {
+class HealthConnectHealthRepository(context: Context) : HealthRepository, HealthWorkoutWriter {
   private val applicationContext = context.applicationContext
 
   private val client: HealthConnectClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -56,6 +64,43 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository {
       averageWeightKg = aggregation[WeightRecord.WEIGHT_AVG]?.inKilograms,
       bodyFatMeasurements = readBodyFatMeasurements(timeRange),
     )
+  }
+
+  override suspend fun writeWorkout(session: HealthWorkoutSession): HealthWorkoutWriteResult {
+    if (availability() != HealthAvailability.AVAILABLE) return HealthWorkoutWriteResult.UNAVAILABLE
+    val grantedPermissions = client.permissionController.getGrantedPermissions()
+    if (!grantedPermissions.containsAll(WRITE_PERMISSIONS)) {
+      return HealthWorkoutWriteResult.PERMISSION_REQUIRED
+    }
+
+    require(session.startTime < session.endTime) { "Workout startTime must be before endTime" }
+    require(session.segments.all { it.startTime >= session.startTime && it.endTime <= session.endTime }) {
+      "Workout segments must be contained in the session"
+    }
+    require(session.segments.zipWithNext().all { (current, next) -> current.endTime <= next.startTime }) {
+      "Workout segments must not overlap"
+    }
+
+    val record = ExerciseSessionRecord(
+      startTime = session.startTime,
+      startZoneOffset = zoneOffsetAt(session.startTime),
+      endTime = session.endTime,
+      endZoneOffset = zoneOffsetAt(session.endTime),
+      metadata = Metadata.manualEntry(clientRecordId = session.clientRecordId),
+      exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
+      title = session.title,
+      notes = session.notes,
+      segments = session.segments.map { segment ->
+        ExerciseSegment(
+          startTime = segment.startTime,
+          endTime = segment.endTime,
+          segmentType = segmentType(segment.type),
+          repetitions = segment.repetitions.coerceAtLeast(0),
+        )
+      },
+    )
+    client.insertRecords(listOf(record))
+    return HealthWorkoutWriteResult.WRITTEN
   }
 
   private suspend fun readExerciseMinutes(timeRange: TimeRangeFilter): Long? {
@@ -104,6 +149,16 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository {
     return measurements
   }
 
+  private fun segmentType(type: HealthExerciseSegmentType): Int = when (type) {
+    HealthExerciseSegmentType.CRUNCH -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_CRUNCH
+    HealthExerciseSegmentType.LUNGE -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_LUNGE
+    HealthExerciseSegmentType.PLANK -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_PLANK
+    HealthExerciseSegmentType.STAIR_CLIMBING -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_STAIR_CLIMBING
+    HealthExerciseSegmentType.OTHER -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_OTHER_WORKOUT
+  }
+
+  private fun zoneOffsetAt(instant: Instant): ZoneOffset = ZoneId.systemDefault().rules.getOffset(instant)
+
   companion object {
     val READ_PERMISSIONS: Set<String> = setOf(
       HealthPermission.getReadPermission(StepsRecord::class),
@@ -113,6 +168,12 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository {
       HealthPermission.getReadPermission(WeightRecord::class),
       HealthPermission.getReadPermission(BodyFatRecord::class),
     )
+
+    val WRITE_PERMISSIONS: Set<String> = setOf(
+      HealthPermission.getWritePermission(ExerciseSessionRecord::class),
+    )
+
+    val REQUEST_PERMISSIONS: Set<String> = READ_PERMISSIONS + WRITE_PERMISSIONS
 
     private val AGGREGATE_METRICS: Set<AggregateMetric<*>> = setOf(
       StepsRecord.COUNT_TOTAL,
