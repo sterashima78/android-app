@@ -2,15 +2,16 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchStatus
 
 internal class SmbCoverCacheCoordinator(
   context: Context,
   private val database: DatabaseConnection,
 ) {
   private val appContext = context.applicationContext
-  private val queue = SmbCoverPrefetchQueueStore(database)
 
   fun trim(protectedUrl: String? = null) {
     val evictedUrls = trimSmbBookCoverCache(appContext, protectedUrl)
@@ -32,19 +33,32 @@ internal class SmbCoverCacheCoordinator(
         }
       }
     }
+    if (books.isEmpty()) return
 
-    books.forEach { (sourceId, title) ->
-      database.writable.update(
-        "library_items",
-        ContentValues().apply { putNull("thumbnail_url") },
-        "source = ? AND source_id = ?",
-        arrayOf(LibrarySource.SMB.name, sourceId),
-      )
-      queue.markSkipped(
-        sourceId = sourceId,
-        title = title,
-        reason = "表紙キャッシュの200MiB上限によりLRU削除しました",
-      )
+    val now = System.currentTimeMillis()
+    database.transaction {
+      books.forEach { (sourceId, title) ->
+        update(
+          "library_items",
+          ContentValues().apply { putNull("thumbnail_url") },
+          "source = ? AND source_id = ?",
+          arrayOf(LibrarySource.SMB.name, sourceId),
+        )
+        insertWithOnConflict(
+          "smb_cover_prefetch_queue",
+          null,
+          ContentValues().apply {
+            put("source_id", sourceId)
+            put("title", title)
+            put("status", SmbCoverPrefetchStatus.SKIPPED.name)
+            put("downloaded_bytes", 0L)
+            put("total_bytes", 0L)
+            put("message", "表紙キャッシュの200MiB上限によりLRU削除しました")
+            put("updated_at", now)
+          },
+          SQLiteDatabase.CONFLICT_REPLACE,
+        )
+      }
     }
   }
 }
