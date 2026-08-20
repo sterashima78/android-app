@@ -13,6 +13,7 @@ import java.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WorkoutHealthConnectExporterTest {
@@ -32,7 +33,7 @@ class WorkoutHealthConnectExporterTest {
       ),
     )
 
-    val session = assertNotNull(history.toHealthWorkoutSession()) as HealthWorkoutSession
+    val session = requireNotNull(history.toHealthWorkoutSession())
 
     assertEquals("workout:history-1", session.clientRecordId)
     assertEquals(Instant.parse("2026-08-20T01:00:00Z"), session.startTime)
@@ -48,7 +49,7 @@ class WorkoutHealthConnectExporterTest {
       session.segments.map { it.type },
     )
     assertEquals(listOf(10, 12, 16, 0, 0), session.segments.map { it.repetitions })
-    assertEquals(true, session.notes?.contains("踏み台昇降: 1セット / 60秒 / 80段"))
+    assertTrue(session.notes?.contains("踏み台昇降: 1セット / 60秒 / 80段") == true)
   }
 
   @Test
