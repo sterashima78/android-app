@@ -8,12 +8,18 @@ enum class HealthAvailability {
   PROVIDER_UPDATE_REQUIRED,
 }
 
+data class BodyFatMeasurement(
+  val time: Instant,
+  val percentage: Double,
+)
+
 data class HealthOverview(
   val steps: Long? = null,
   val exerciseMinutes: Long? = null,
   val averageHeartRateBpm: Long? = null,
   val sleepMinutes: Long? = null,
   val averageWeightKg: Double? = null,
+  val bodyFatMeasurements: List<BodyFatMeasurement> = emptyList(),
 )
 
 interface HealthRepository {

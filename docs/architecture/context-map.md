@@ -95,9 +95,9 @@ Content / Curation を資料として参照し、Knowledge page、source relatio
 
 ### Health
 
-現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview を提供する。
+現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview と、体脂肪率の read-only 測定履歴を提供する。
 
-Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は集計済みの `HealthOverview` と availability のみを扱う。初期実装では durable table を所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
+Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は `HealthOverview`、`BodyFatMeasurement`、availability のみを扱う。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
 
 Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態を所有し、Health は Health Connect のデータを参照する。相互同期や永続コピーは行わず、将来統合表示が必要な場合は目的別 read-only Query / Projection で接続する。
 

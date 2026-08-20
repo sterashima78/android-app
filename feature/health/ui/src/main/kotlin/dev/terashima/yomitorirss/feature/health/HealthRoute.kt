@@ -63,7 +63,7 @@ private fun HealthScreen(
     }
     HealthUiState.PermissionRequired -> CenteredMessage(modifier) {
       Text("Health Connect の読み取り権限が必要です", style = MaterialTheme.typography.titleMedium)
-      Text("歩数・運動・心拍・睡眠・体重のみを読み取ります。")
+      Text("歩数・運動・心拍・睡眠・体重・体脂肪率のみを読み取ります。")
       Button(onClick = onRequestPermissions) { Text("アクセスを許可") }
     }
     HealthUiState.Unavailable -> CenteredMessage(modifier) {
@@ -93,12 +93,14 @@ private fun HealthContent(
   onRefresh: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val latestBodyFatPercentage = latestBodyFatPercentage(state.overview.bodyFatMeasurements)
   val metrics = listOf(
     Metric("歩数", formatLong(state.overview.steps), "歩"),
     Metric("運動", formatLong(state.overview.exerciseMinutes), "分"),
     Metric("平均心拍", formatLong(state.overview.averageHeartRateBpm), "bpm"),
     Metric("睡眠", formatLong(state.overview.sleepMinutes), "分"),
     Metric("平均体重", formatWeight(state.overview.averageWeightKg), "kg"),
+    Metric("最新体脂肪率", formatBodyFat(latestBodyFatPercentage), "%"),
   )
 
   LazyColumn(
@@ -124,6 +126,9 @@ private fun HealthContent(
       }
     }
     items(metrics) { metric -> MetricCard(metric) }
+    item {
+      BodyFatHistoryChart(state.overview.bodyFatMeasurements)
+    }
     item {
       OutlinedButton(
         onClick = onRefresh,
@@ -173,3 +178,5 @@ private fun formatLong(value: Long?): String = value?.toString() ?: "—"
 
 private fun formatWeight(value: Double?): String =
   value?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "—"
+
+private fun formatBodyFat(value: Double?): String = value?.let(::formatBodyFatPercentage) ?: "—"
