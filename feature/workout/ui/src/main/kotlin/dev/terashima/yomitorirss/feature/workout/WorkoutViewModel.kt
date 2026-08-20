@@ -125,16 +125,17 @@ class WorkoutViewModel(
       finishedAt = finishedAt,
       sets = current.today.sets,
     )
-    _state.update { it.copy(exportMessage = null) }
-    updateSnapshot(
-      current.copy(
-        today = WorkoutDay(date = LocalDate.now().toString()),
-        history = (listOf(history) + current.history).take(50),
-      ),
+    val nextSnapshot = current.copy(
+      today = WorkoutDay(date = LocalDate.now().toString()),
+      history = (listOf(history) + current.history).take(50),
     )
+    _state.update { it.copy(snapshot = nextSnapshot, exportMessage = null) }
     resetTimers()
     viewModelScope.launch {
-      val result = runCatching { historyExporter.export(history) }.getOrDefault(WorkoutExportResult.FAILED)
+      val result = runCatching {
+        repository.save(nextSnapshot)
+        historyExporter.export(history)
+      }.getOrDefault(WorkoutExportResult.FAILED)
       _state.update { it.copy(exportMessage = exportMessage(result)) }
     }
   }
