@@ -33,6 +33,7 @@ internal class SmbCoverPrefetchProcessor(
 ) {
   private val appContext = context.applicationContext
   private val credentialReader = SmbCoverPrefetchCredentialReader(appContext)
+  private val coverCacheCoordinator = SmbCoverCacheCoordinator(appContext, database)
   private val bookCacheRoot = File(appContext.cacheDir, BOOK_CACHE_DIRECTORY)
   private val tempRoot = File(appContext.cacheDir, TEMP_DIRECTORY).apply { mkdirs() }
 
@@ -224,6 +225,7 @@ internal class SmbCoverPrefetchProcessor(
       "source = ? AND source_id = ?",
       arrayOf(LibrarySource.SMB.name, sourceId),
     )
+    coverCacheCoordinator.trim(protectedUrl = coverUrl)
   }
 
   private fun <T> withShare(
