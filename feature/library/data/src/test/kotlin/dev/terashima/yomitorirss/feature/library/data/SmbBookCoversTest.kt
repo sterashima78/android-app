@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -40,6 +41,48 @@ class SmbBookCoversTest {
     )
 
     assertNull(extractFirstZipImage(ByteArrayInputStream(archive), maxBytes = 16))
+  }
+
+  @Test
+  fun `表紙キャッシュは古いものから上限内になるまで削除する`() {
+    val entries = listOf(
+      SmbCoverCacheEntry(path = "/cover/old.jpg", size = 40, lastModified = 100),
+      SmbCoverCacheEntry(path = "/cover/middle.jpg", size = 40, lastModified = 200),
+      SmbCoverCacheEntry(path = "/cover/new.jpg", size = 40, lastModified = 300),
+    )
+
+    assertEquals(
+      listOf("/cover/old.jpg", "/cover/middle.jpg"),
+      smbCoverCachePathsToEvict(entries, maxBytes = 50),
+    )
+  }
+
+  @Test
+  fun `新しく生成した表紙はLRU削除対象から保護する`() {
+    val entries = listOf(
+      SmbCoverCacheEntry(path = "/cover/protected.jpg", size = 40, lastModified = 100),
+      SmbCoverCacheEntry(path = "/cover/middle.jpg", size = 40, lastModified = 200),
+      SmbCoverCacheEntry(path = "/cover/new.jpg", size = 40, lastModified = 300),
+    )
+
+    assertEquals(
+      listOf("/cover/middle.jpg", "/cover/new.jpg"),
+      smbCoverCachePathsToEvict(
+        entries = entries,
+        maxBytes = 50,
+        protectedPath = "/cover/protected.jpg",
+      ),
+    )
+  }
+
+  @Test
+  fun `表紙キャッシュが上限内なら削除しない`() {
+    val entries = listOf(
+      SmbCoverCacheEntry(path = "/cover/a.jpg", size = 20, lastModified = 100),
+      SmbCoverCacheEntry(path = "/cover/b.jpg", size = 30, lastModified = 200),
+    )
+
+    assertEquals(emptyList<String>(), smbCoverCachePathsToEvict(entries, maxBytes = 50))
   }
 
   private fun zipOf(vararg entries: Pair<String, ByteArray>): ByteArray =
