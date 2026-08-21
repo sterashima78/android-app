@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-21
-- Refines: ADR-0013, ADR-0017, ADR-0056, ADR-0066, ADR-0071, ADR-0079, ADR-0104, ADR-0111, ADR-0133
+- Refines: ADR-0056, ADR-0065, ADR-0066, ADR-0071, ADR-0079, ADR-0104, ADR-0108, ADR-0111, ADR-0133
 
 ## Context
 
@@ -32,7 +32,7 @@ smb_metadata_normalization_decisions
 
 正規化 worker は SMB 書籍本体を直接読み込んで表紙を抽出しない。
 
-表紙が未取得の対象は `WAITING_FOR_COVER` とし、ADR-0133 の `smb_cover_prefetch_queue` に取得を委ねる。表紙キャッシュが利用可能になった後だけ AI 推論へ進む。これにより ZIP / CBZ の 32 MiB streaming 上限、PDF の 64 MiB 一時取得上限、Wi-Fi 条件、credential 境界を重複実装しない。
+表紙が未取得の対象は `WAITING_FOR_COVER` とし、ADR-0133 の `smb_cover_prefetch_queue` に取得を委ねる。表紙キャッシュが利用可能になった後だけ AI 推論へ進む。これにより ZIP / CBZ の 64 MiB streaming 上限、PDF の 128 MiB 一時取得上限、Wi-Fi 条件、credential 境界を重複実装しない。
 
 AI入力は次の2点だけとする。
 
@@ -63,7 +63,7 @@ Library 側は LiteRT-LM の `Engine` を直接所有せず、書誌推定の pr
 
 追加 field、型不一致、件数・文字数制約違反は失敗として扱う。不正出力時は validation error だけを返して1回だけ再生成し、不正出力本文そのものは再入力しない。
 
-AI に SMB path や変更後ファイル名を自由生成させない。変更後ファイル名はアプリ側で title と seriesPosition から決定的に生成し、元拡張子を維持する。`/`、`\\`、制御文字等の path / filename 危険文字を拒否・正規化し、レビュー時にユーザーが編集した名前にも同じ検証を適用する。
+AI に SMB path や変更後ファイル名を自由生成させない。変更後ファイル名はアプリ側で title と seriesPosition から決定的に生成し、元拡張子を維持する。`/`、`\`、制御文字等の path / filename 危険文字を拒否・正規化し、レビュー時にユーザーが編集した名前にも同じ検証を適用する。
 
 ### 5. SMB rename は必ずユーザー確認後に行う
 
@@ -144,7 +144,7 @@ ADR-0111 のタグ・コレクション整理では大量承認を避けるた�
 
 ### 書誌確定値を `library_items` だけへ保存する
 
-SMB 同期で再構築されるため確定判断が失われる。ユーザー管理状態を同期キャッシュから分離する ADR-0017 の方針にも反するため採用しない。
+SMB 同期で再構築されるため確定判断が失われる。ユーザー管理状態を同期キャッシュから分離する ADR-0108 の方針にも反するため採用しない。
 
 ### 正規化 worker が SMB 本体から直接表紙を読む
 
@@ -152,12 +152,12 @@ ADR-0133 の転送量制限、Wi-Fi制約、credential管理、失敗状態を�
 
 ## Sources
 
-- [ADR-0013](0013-library-repository.md)
-- [ADR-0017](0017-user-owned-library-metadata.md)
 - [ADR-0056](0056-feature-owned-local-ai-policies.md)
+- [ADR-0065](0065-smb-library-and-built-in-book-reader.md)
 - [ADR-0066](0066-background-library-ai-organization-review-queue.md)
 - [ADR-0071](0071-prioritized-background-ai-task-scheduling.md)
 - [ADR-0079](0079-process-wide-local-ai-inference-sessions.md)
 - [ADR-0104](0104-ai-task-queue-feature-ownership.md)
+- [ADR-0108](0108-library-organization-and-ai-suggestions.md)
 - [ADR-0111](0111-auto-apply-validated-series-aware-library-organization.md)
 - [ADR-0133](0133-smb-cover-prefetch-queue.md)
