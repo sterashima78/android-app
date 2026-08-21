@@ -23,6 +23,7 @@ android {
 dependencies {
   implementation(project(":feature:backup:domain"))
   implementation(project(":feature:bookmark:data"))
+  implementation(project(":feature:library:data"))
   implementation(project(":core:database"))
 
   implementation("androidx.work:work-runtime-ktx:2.11.2")
