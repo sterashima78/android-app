@@ -12,8 +12,10 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentBackfillProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependenciesProvider
+import dev.terashima.yomitorirss.feature.summary.data.BookmarkAutoEnrichmentBackfillScheduler
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
