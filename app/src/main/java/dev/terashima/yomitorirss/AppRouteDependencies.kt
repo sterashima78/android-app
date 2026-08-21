@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganization
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
+import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
@@ -152,6 +153,8 @@ class AppRouteDependencies internal constructor(
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
     val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
     val smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application)
+    val smbMetadataNormalizationPromptRepository =
+      SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     LibraryRouteDependencies(
       authorization = GoogleBooksAuthorizationManager(application),
       libraryViewModelFactory = LibraryViewModel.Factory(
@@ -160,6 +163,7 @@ class AppRouteDependencies internal constructor(
         smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
         smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
         smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
+        smbMetadataNormalizationPromptRepository = smbMetadataNormalizationPromptRepository,
       ),
       organizationViewModelFactory = LibraryOrganizationViewModel.Factory(
         repository = DefaultLibraryOrganizationRepository(database),
