@@ -362,6 +362,6 @@ private const val COVER_MAX_DIMENSION = 640
 private const val COVER_DECODE_MAX_DIMENSION = 1600
 private const val COVER_JPEG_QUALITY = 85
 private const val PDF_COVER_WIDTH = 640
-private const val MAX_REMOTE_COVER_SCAN_BYTES = 32L * 1024 * 1024
+private const val MAX_REMOTE_COVER_SCAN_BYTES = 64L * 1024 * 1024
 private const val MAX_COVER_SOURCE_BYTES = 32L * 1024 * 1024
 private const val COVER_CACHE_MAX_BYTES = 200L * 1024 * 1024
