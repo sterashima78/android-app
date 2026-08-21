@@ -38,6 +38,7 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
       "CREATE INDEX IF NOT EXISTS idx_smb_cover_prefetch_status ON smb_cover_prefetch_queue(status, updated_at)",
     )
     ensureLibraryOrganizationSchema(db)
+    ensureSmbMetadataNormalizationSchema(db)
   },
   migrations = listOf(
     DatabaseMigration(targetVersion = 18) { db ->
@@ -59,6 +60,9 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
             )
         """.trimIndent(),
       )
+    },
+    DatabaseMigration(targetVersion = 27) { db ->
+      ensureSmbMetadataNormalizationSchema(db)
     },
   ),
 )

@@ -22,8 +22,10 @@ data class LibraryUiState(
   val smbSettingsBusy: Boolean = false,
   val smbBookActionBusy: Boolean = false,
   val smbCoverPrefetchBusy: Boolean = false,
+  val smbMetadataNormalizationBusy: Boolean = false,
   val smbServers: List<SmbServerSettings> = emptyList(),
   val smbCoverPrefetch: SmbCoverPrefetchSnapshot = SmbCoverPrefetchSnapshot(),
+  val smbMetadataNormalization: SmbMetadataNormalizationBatchSnapshot? = null,
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
   val sourceStates: Map<LibrarySource, LibrarySourceState> = emptyMap(),
@@ -34,10 +36,13 @@ class LibraryViewModel(
   private val repository: LibraryRepository,
   private val smbRepository: SmbLibraryRepository? = null,
   private val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler? = null,
+  private val smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
+  private val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LibraryUiState())
   val state: StateFlow<LibraryUiState> = _state.asStateFlow()
   private var coverQueuePollingJob: Job? = null
+  private var normalizationPollingJob: Job? = null
   private var coverQueueSchedulingEnsured = false
 
   init {
@@ -66,6 +71,7 @@ class LibraryViewModel(
       runCatching { smb.sync() }
         .onSuccess { result ->
           enqueueCoverPrefetch()
+          smbMetadataNormalizationScheduler?.kick()
           loadSnapshot(message = "ファイルサーバから ${result.importedCount} 冊を同期しました")
         }
         .onFailure(::showError)
@@ -102,6 +108,7 @@ class LibraryViewModel(
       runCatching { smb.retryFailedCoverPrefetch() }
         .onSuccess { count ->
           if (count > 0) enqueueCoverPrefetch()
+          smbMetadataNormalizationScheduler?.kick()
           loadSnapshot(
             message = if (count > 0) {
               "失敗した表紙先読み $count 冊を再試行します"
@@ -132,6 +139,84 @@ class LibraryViewModel(
           coverQueueSchedulingEnsured = true
           loadSnapshot(message = "WorkManagerへ表紙先読みの実行を再要求しました")
         }
+        .onFailure(::showError)
+    }
+  }
+
+  fun startSmbMetadataNormalization() {
+    val normalizer = smbMetadataNormalizationRepository ?: return
+    val smb = smbRepository ?: return
+    if (isBusy()) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbMetadataNormalizationBusy = true) }
+      runCatching {
+        val books = _state.value.let { it.books + it.hiddenBooks }
+        val count = normalizer.startBatch(books)
+        val coverCount = smb.enqueueMissingCoverPrefetch()
+        if (coverCount > 0 || smb.coverPrefetchSnapshot().hasActiveWork) enqueueCoverPrefetch()
+        smbMetadataNormalizationScheduler?.kick()
+        count
+      }
+        .onSuccess { count ->
+          loadSnapshot(message = "ファイルサーバ書籍 $count 冊の書誌解析を開始しました")
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun applySmbMetadataCandidate(
+    sourceId: String,
+    proposedFileName: String,
+    proposal: SmbBookMetadataProposal,
+  ) {
+    val normalizer = smbMetadataNormalizationRepository ?: return
+    if (_state.value.smbMetadataNormalizationBusy) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbMetadataNormalizationBusy = true) }
+      runCatching { normalizer.applyCandidate(sourceId, proposedFileName, proposal) }
+        .onSuccess {
+          enqueueCoverPrefetch()
+          loadSnapshot(message = "書誌情報とファイル名を反映しました")
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun deferSmbMetadataCandidate(sourceId: String) = updateNormalizationCandidate(
+    sourceId = sourceId,
+    message = "書誌候補を保留しました",
+  ) { it.deferCandidate(sourceId) }
+
+  fun rejectSmbMetadataCandidate(sourceId: String) = updateNormalizationCandidate(
+    sourceId = sourceId,
+    message = "書誌候補を却下して確定しました",
+  ) { it.rejectCandidate(sourceId) }
+
+  fun reopenSmbMetadataCandidate(sourceId: String) = updateNormalizationCandidate(
+    sourceId = sourceId,
+    message = "書誌候補を未確認へ戻しました",
+  ) { it.reopenCandidate(sourceId) }
+
+  fun retrySmbMetadataCandidate(sourceId: String) {
+    val normalizer = smbMetadataNormalizationRepository ?: return
+    val smb = smbRepository ?: return
+    if (_state.value.smbMetadataNormalizationBusy) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbMetadataNormalizationBusy = true) }
+      runCatching {
+        normalizer.retryCandidate(sourceId)
+        val failedCoverCount = smb.retryFailedCoverPrefetch()
+        val missingCoverCount = smb.enqueueMissingCoverPrefetch()
+        if (
+          failedCoverCount > 0 ||
+          missingCoverCount > 0 ||
+          smb.coverPrefetchSnapshot().hasActiveWork
+        ) {
+          enqueueCoverPrefetch()
+        }
+        smbMetadataNormalizationScheduler?.kick()
+      }
+        .onSuccess { loadSnapshot(message = "書誌候補を再解析します") }
         .onFailure(::showError)
     }
   }
@@ -274,18 +359,36 @@ class LibraryViewModel(
     _state.update { it.copy(message = null) }
   }
 
+  private fun updateNormalizationCandidate(
+    sourceId: String,
+    message: String,
+    action: suspend (SmbMetadataNormalizationRepository) -> Unit,
+  ) {
+    val normalizer = smbMetadataNormalizationRepository ?: return
+    if (_state.value.smbMetadataNormalizationBusy) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbMetadataNormalizationBusy = true) }
+      runCatching { action(normalizer) }
+        .onSuccess { loadSnapshot(message = message) }
+        .onFailure(::showError)
+    }
+  }
+
   private fun isBusy(): Boolean = _state.value.let {
-    it.syncing || it.importingSource != null || it.smbSyncing || it.smbSettingsBusy || it.smbBookActionBusy
+    it.syncing || it.importingSource != null || it.smbSyncing || it.smbSettingsBusy ||
+      it.smbBookActionBusy || it.smbMetadataNormalizationBusy
   }
 
   private suspend fun loadSnapshot(message: String? = null) {
     runCatching {
-      val snapshot = repository.snapshot()
-      val servers = smbRepository?.servers().orEmpty()
-      val coverPrefetch = smbRepository?.coverPrefetchSnapshot() ?: SmbCoverPrefetchSnapshot()
-      Triple(snapshot, servers, coverPrefetch)
+      LoadedLibraryState(
+        snapshot = repository.snapshot(),
+        servers = smbRepository?.servers().orEmpty(),
+        coverPrefetch = smbRepository?.coverPrefetchSnapshot() ?: SmbCoverPrefetchSnapshot(),
+        normalization = smbMetadataNormalizationRepository?.batchSnapshot(),
+      )
     }
-      .onSuccess { (snapshot, servers, coverPrefetch) ->
+      .onSuccess { loaded ->
         _state.update {
           it.copy(
             initialized = true,
@@ -295,16 +398,19 @@ class LibraryViewModel(
             smbSettingsBusy = false,
             smbBookActionBusy = false,
             smbCoverPrefetchBusy = false,
-            smbServers = servers,
-            smbCoverPrefetch = coverPrefetch,
-            books = snapshot.books,
-            hiddenBooks = snapshot.hiddenBooks,
-            sourceStates = snapshot.sourceStates,
+            smbMetadataNormalizationBusy = false,
+            smbServers = loaded.servers,
+            smbCoverPrefetch = loaded.coverPrefetch,
+            smbMetadataNormalization = loaded.normalization,
+            books = loaded.snapshot.books,
+            hiddenBooks = loaded.snapshot.hiddenBooks,
+            sourceStates = loaded.snapshot.sourceStates,
             message = message,
           )
         }
-        ensureCoverPrefetchScheduled(coverPrefetch)
-        ensureCoverQueuePolling(coverPrefetch)
+        ensureCoverPrefetchScheduled(loaded.coverPrefetch)
+        ensureCoverQueuePolling(loaded.coverPrefetch)
+        ensureNormalizationPolling(loaded.normalization)
       }
       .onFailure(::showError)
   }
@@ -331,10 +437,32 @@ class LibraryViewModel(
     val smb = smbRepository ?: return
     coverQueuePollingJob = viewModelScope.launch(Dispatchers.IO) {
       while (isActive) {
-        delay(COVER_QUEUE_POLL_INTERVAL_MILLIS)
+        delay(POLL_INTERVAL_MILLIS)
         val latest = runCatching { smb.coverPrefetchSnapshot() }.getOrNull() ?: continue
         _state.update { it.copy(smbCoverPrefetch = latest) }
         if (!latest.hasActiveWork) {
+          smbMetadataNormalizationScheduler?.kick()
+          loadSnapshot()
+          break
+        }
+      }
+    }
+  }
+
+  private fun ensureNormalizationPolling(snapshot: SmbMetadataNormalizationBatchSnapshot?) {
+    if (snapshot?.hasActiveWork != true) {
+      normalizationPollingJob?.cancel()
+      normalizationPollingJob = null
+      return
+    }
+    if (normalizationPollingJob?.isActive == true) return
+    val normalizer = smbMetadataNormalizationRepository ?: return
+    normalizationPollingJob = viewModelScope.launch(Dispatchers.IO) {
+      while (isActive) {
+        delay(POLL_INTERVAL_MILLIS)
+        val latest = runCatching { normalizer.batchSnapshot() }.getOrNull() ?: continue
+        _state.update { it.copy(smbMetadataNormalization = latest) }
+        if (latest?.hasActiveWork != true) {
           loadSnapshot()
           break
         }
@@ -352,6 +480,7 @@ class LibraryViewModel(
         smbSettingsBusy = false,
         smbBookActionBusy = false,
         smbCoverPrefetchBusy = false,
+        smbMetadataNormalizationBusy = false,
         message = error.message ?: "蔵書の操作に失敗しました",
       )
     }
@@ -361,15 +490,30 @@ class LibraryViewModel(
     private val repository: LibraryRepository,
     private val smbRepository: SmbLibraryRepository? = null,
     private val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler? = null,
+    private val smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
+    private val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(LibraryViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return LibraryViewModel(repository, smbRepository, smbCoverPrefetchScheduler) as T
+      return LibraryViewModel(
+        repository = repository,
+        smbRepository = smbRepository,
+        smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
+        smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
+        smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
+      ) as T
     }
   }
 
+  private data class LoadedLibraryState(
+    val snapshot: LibrarySnapshot,
+    val servers: List<SmbServerSettings>,
+    val coverPrefetch: SmbCoverPrefetchSnapshot,
+    val normalization: SmbMetadataNormalizationBatchSnapshot?,
+  )
+
   private companion object {
-    const val COVER_QUEUE_POLL_INTERVAL_MILLIS = 2_000L
+    const val POLL_INTERVAL_MILLIS = 2_000L
   }
 }

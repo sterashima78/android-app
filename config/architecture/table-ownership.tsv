@@ -10,3 +10,8 @@ article_folders	:feature:bookmark:data
 article_summaries	:feature:summary:data
 summary_tasks	:feature:summary:data
 summary_article_content	:feature:summary:data
+smb_library_servers	:feature:library:data
+smb_cover_prefetch_queue	:feature:library:data
+smb_metadata_normalization_batches	:feature:library:data
+smb_metadata_normalization_items	:feature:library:data
+smb_metadata_normalization_decisions	:feature:library:data

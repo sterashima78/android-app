@@ -46,9 +46,12 @@ import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeReposito
 import dev.terashima.yomitorirss.feature.knowledge.data.ManagingKnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.SqlKnowledgePageStore
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
+import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
+import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
@@ -284,12 +287,16 @@ class AppContainer(private val application: Application) {
   val knowledgePageEditor: KnowledgePageEditor get() = knowledgeGenerationService
 
   val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val smbRepository = CleaningSmbLibraryRepository(application, databaseConnection)
+    val smbMetadataRepository = DefaultSmbMetadataNormalizationRepository(databaseConnection, smbRepository)
     CompositeAiTaskQueueRepository(
       summaryRepository = summaryTaskQueueRepository,
       libraryRepository = DefaultLibraryOrganizationRepository(databaseConnection),
-      libraryCatalogRepository = DefaultLibraryRepository(databaseConnection),
+      libraryCatalogRepository = SmbMetadataAwareLibraryRepository(databaseConnection),
       libraryScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
       knowledgeController = WorkManagerKnowledgeBuildTaskController(application),
+      smbMetadataNormalizationRepository = smbMetadataRepository,
+      smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application),
     )
   }
 }

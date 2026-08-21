@@ -60,6 +60,12 @@ fun LibraryFeatureRoute(
       onEnqueueCovers = viewModel::enqueueMissingSmbCovers,
       onRetryFailedCovers = viewModel::retryFailedSmbCovers,
       onRescheduleCovers = viewModel::rescheduleSmbCoverPrefetch,
+      onStartMetadataNormalization = viewModel::startSmbMetadataNormalization,
+      onApplyMetadataCandidate = viewModel::applySmbMetadataCandidate,
+      onDeferMetadataCandidate = viewModel::deferSmbMetadataCandidate,
+      onRejectMetadataCandidate = viewModel::rejectSmbMetadataCandidate,
+      onReopenMetadataCandidate = viewModel::reopenSmbMetadataCandidate,
+      onRetryMetadataCandidate = viewModel::retrySmbMetadataCandidate,
     )
   }
   val smbBookFileActionBinding = remember(viewModel) {

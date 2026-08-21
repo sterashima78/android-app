@@ -11,6 +11,12 @@ internal data class SmbLibraryUiBinding(
   val onEnqueueCovers: () -> Unit,
   val onRetryFailedCovers: () -> Unit,
   val onRescheduleCovers: () -> Unit,
+  val onStartMetadataNormalization: () -> Unit,
+  val onApplyMetadataCandidate: (String, String, SmbBookMetadataProposal) -> Unit,
+  val onDeferMetadataCandidate: (String) -> Unit,
+  val onRejectMetadataCandidate: (String) -> Unit,
+  val onReopenMetadataCandidate: (String) -> Unit,
+  val onRetryMetadataCandidate: (String) -> Unit,
 )
 
 internal val LocalSmbLibraryUiBinding = staticCompositionLocalOf<SmbLibraryUiBinding?> { null }
@@ -30,5 +36,16 @@ internal fun SmbLibrarySettingsFromBinding() {
     onEnqueueCovers = binding.onEnqueueCovers,
     onRetryFailedCovers = binding.onRetryFailedCovers,
     onRescheduleCovers = binding.onRescheduleCovers,
+  )
+  SmbMetadataNormalizationSettingsSection(
+    enabled = binding.state.smbServers.isNotEmpty() && !binding.state.smbSyncing,
+    busy = binding.state.smbMetadataNormalizationBusy,
+    snapshot = binding.state.smbMetadataNormalization,
+    onStart = binding.onStartMetadataNormalization,
+    onApply = binding.onApplyMetadataCandidate,
+    onDefer = binding.onDeferMetadataCandidate,
+    onReject = binding.onRejectMetadataCandidate,
+    onReopen = binding.onReopenMetadataCandidate,
+    onRetry = binding.onRetryMetadataCandidate,
   )
 }

@@ -60,6 +60,11 @@ class CleaningSmbLibraryRepository private constructor(
     newFileName: String,
   ): LibraryBook {
     val renamed = delegate.renameBook(book, newFileName)
+    if (renamed.sourceId != book.sourceId) {
+      database.transaction {
+        migrateSmbMetadataNormalizationDecisionIdentity(this, book.sourceId, renamed.sourceId)
+      }
+    }
     coverCacheCoordinator.trim()
     coverPrefetchQueue.enqueueMissing()
     return renamed
@@ -67,6 +72,9 @@ class CleaningSmbLibraryRepository private constructor(
 
   override suspend fun deleteBook(book: LibraryBook) {
     delegate.deleteBook(book)
+    database.transaction {
+      deleteSmbMetadataNormalizationIdentity(this, book.sourceId)
+    }
     coverPrefetchQueue.enqueueMissing()
   }
 
@@ -155,6 +163,7 @@ class CleaningSmbLibraryRepository private constructor(
         arrayOf(LibrarySource.SMB.name, sourceId),
       )
     }
+    deleteSmbMetadataNormalizationIdentity(this, sourceId)
   }
 
   private fun sourceIdsForServer(serverId: String): List<String> = database.readable.rawQuery(

@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.aitaskqueue
 enum class AiTaskQueueItemKind {
   SUMMARY,
   LIBRARY_ORGANIZATION,
+  SMB_METADATA_NORMALIZATION,
   KNOWLEDGE_WIKI,
 }
 
