@@ -13,7 +13,8 @@ class SharedPreferencesSmbMetadataNormalizationPromptRepository(
     Context.MODE_PRIVATE,
   )
 
-  override fun prompt(): String = preferences.getString(PROMPT_KEY, null)
+  override fun prompt(): String = runCatching { preferences.getString(PROMPT_KEY, null) }
+    .getOrNull()
     ?.let { runCatching { normalizeSmbMetadataNormalizationPrompt(it) }.getOrNull() }
     ?: DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT
 
