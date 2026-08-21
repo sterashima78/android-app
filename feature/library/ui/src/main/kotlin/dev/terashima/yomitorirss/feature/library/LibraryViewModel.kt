@@ -168,12 +168,7 @@ class LibraryViewModel(
 
   fun saveSmbMetadataNormalizationPrompt(prompt: String) {
     val prompts = smbMetadataNormalizationPromptRepository ?: return
-    if (
-      _state.value.smbMetadataNormalizationBusy ||
-      _state.value.smbMetadataNormalization?.hasActiveWork == true
-    ) {
-      return
-    }
+    if (_state.value.smbMetadataNormalizationBusy) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(smbMetadataNormalizationBusy = true) }
       runCatching { prompts.update(prompt) }
@@ -184,12 +179,7 @@ class LibraryViewModel(
 
   fun resetSmbMetadataNormalizationPrompt() {
     val prompts = smbMetadataNormalizationPromptRepository ?: return
-    if (
-      _state.value.smbMetadataNormalizationBusy ||
-      _state.value.smbMetadataNormalization?.hasActiveWork == true
-    ) {
-      return
-    }
+    if (_state.value.smbMetadataNormalizationBusy) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(smbMetadataNormalizationBusy = true) }
       runCatching { prompts.reset() }

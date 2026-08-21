@@ -23,6 +23,9 @@ internal data class SmbLibraryUiBinding(
 
 internal val LocalSmbLibraryUiBinding = staticCompositionLocalOf<SmbLibraryUiBinding?> { null }
 
+internal fun LibraryUiState.canEditSmbMetadataNormalizationPrompt(): Boolean =
+  !smbMetadataNormalizationBusy
+
 @Composable
 internal fun SmbLibrarySettingsFromBinding() {
   val binding = LocalSmbLibraryUiBinding.current ?: return
@@ -41,8 +44,7 @@ internal fun SmbLibrarySettingsFromBinding() {
   )
   SmbMetadataNormalizationPromptSettingsSection(
     prompt = binding.state.smbMetadataNormalizationPrompt,
-    editable = !binding.state.smbMetadataNormalizationBusy &&
-      binding.state.smbMetadataNormalization?.hasActiveWork != true,
+    editable = binding.state.canEditSmbMetadataNormalizationPrompt(),
     onSave = binding.onSaveMetadataNormalizationPrompt,
     onReset = binding.onResetMetadataNormalizationPrompt,
   )
