@@ -135,14 +135,13 @@ fun sourceArchitectureViolations(
     }
   }
 
-  val isAppFeatureSource = projectPath == ":app" &&
-    normalizedPath.startsWith("app/src/main/") &&
-    "/feature/" in normalizedPath
+  val isAppProductionSource = projectPath == ":app" &&
+    normalizedPath.startsWith("app/src/main/")
   val workerDeclaration = Regex(
     """:\s*(?:androidx\.work\.)?(?:CoroutineWorker|Worker|ListenableWorker)\s*\(""",
   )
   if (
-    isAppFeatureSource &&
+    isAppProductionSource &&
     workerDeclaration.containsMatchIn(sourceText) &&
     normalizedPath !in appFeatureWorkerExceptions
   ) {
@@ -269,6 +268,13 @@ val verifyArchitectureRuleTests by tasks.registering {
       projectPath = ":app",
       repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/NewWorker.kt",
       sourceText = "class NewWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
+      expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
+    )
+    assertViolation(
+      name = "root package Worker in app",
+      projectPath = ":app",
+      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/BookmarkBackfillWorker.kt",
+      sourceText = "class BookmarkBackfillWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
       expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
     )
     assertClean(
