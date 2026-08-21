@@ -13,7 +13,6 @@ val DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT = """
   シリーズ物では title に巻数表現を含めず、シリーズ名を seriesName、数値の巻数を seriesPosition に分離してください。
   巻数を判別できた場合は seriesName と seriesPosition を必ず両方指定してください。例えば12巻目なら seriesPosition は 12 とします。
   ISBNは表紙画像またはファイル名から明確に読み取れる場合だけ指定してください。
-  解析結果の説明文は返さず、必ず submit_book_metadata ツールを1回だけ呼び出してください。
 
   現在のファイル名:
   $SMB_METADATA_NORMALIZATION_FILE_NAME_PLACEHOLDER
