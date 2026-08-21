@@ -23,4 +23,12 @@ class SmbCoverPrefetchProcessorTest {
     assertEquals("256.0 MiB", formatSmbBookFileSize(256L * 1024 * 1024))
     assertEquals("1.5 GiB", formatSmbBookFileSize(1536L * 1024 * 1024))
   }
+
+  @Test
+  fun `対象外理由にはファイルサイズを付加する`() {
+    assertEquals(
+      "PDFが256MiBを超えるため自動取得しません（ファイルサイズ: 300.0 MiB）",
+      smbCoverPrefetchSkippedReason("PDFが256MiBを超えるため自動取得しません", 300L * 1024 * 1024),
+    )
+  }
 }
