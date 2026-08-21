@@ -70,7 +70,7 @@ fun AiTaskQueueScreen(
               if (state.queuePaused) {
                 "新しいAIタスクも待機させ、バックグラウンドのローカルAI処理を開始しません"
               } else {
-                "要約・タグ付け・蔵書整理・LLM Wiki生成などのAIタスクをバックグラウンドで順次実行します"
+                "要約・タグ付け・蔵書整理・書誌正規化・LLM Wiki生成などのAIタスクをバックグラウンドで順次実行します"
               },
             )
           },
@@ -254,6 +254,7 @@ private fun taskTitle(item: AiTaskQueueItem): String = item.title
 private fun taskSource(item: AiTaskQueueItem): String = when (item.kind) {
   AiTaskQueueItemKind.SUMMARY -> "要約 ・ ${item.source}"
   AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書整理 ・ ${item.source}"
+  AiTaskQueueItemKind.SMB_METADATA_NORMALIZATION -> "書誌正規化 ・ ${item.source}"
   AiTaskQueueItemKind.KNOWLEDGE_WIKI -> "LLM Wiki ・ ${item.source}"
 }
 
