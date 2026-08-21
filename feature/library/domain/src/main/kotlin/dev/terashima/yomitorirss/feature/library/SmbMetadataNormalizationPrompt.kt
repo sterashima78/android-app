@@ -20,9 +20,9 @@ val DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT = """
   先頭の0は巻数値には含めません。例えば 08 は seriesPosition = 8 です。
 
   例:
-  - ニコイチ08.pdf -> title = ニコイチ, seriesName = ニコイチ, seriesPosition = 8
-  - ドラゴンボール12.cbz -> title = ドラゴンボール, seriesName = ドラゴンボール, seriesPosition = 12
-  - DragonBall_vol_12.zip かつ表紙が「ドラゴンボール 第12巻」 -> title = ドラゴンボール, seriesName = ドラゴンボール, seriesPosition = 12
+  - 架空冒険譚08.pdf -> title = 架空冒険譚, seriesName = 架空冒険譚, seriesPosition = 8
+  - 架空探偵録12.cbz -> title = 架空探偵録, seriesName = 架空探偵録, seriesPosition = 12
+  - Kakuu_Bouken_Tan_vol_12.zip かつ表紙が「架空冒険譚 第12巻」 -> title = 架空冒険譚, seriesName = 架空冒険譚, seriesPosition = 12
 
   ただし、出版年、ISBN、版数、話数、日付、管理番号、または「1984」のように数字自体がタイトルの一部である場合は巻数にしないでください。
   ファイル名がローマ字・英字でも、表紙から日本語の正式名称を確認できる場合は title と seriesName に日本語の名称を使用してください。
