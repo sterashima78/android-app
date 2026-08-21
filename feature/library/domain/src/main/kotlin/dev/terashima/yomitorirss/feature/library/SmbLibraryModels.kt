@@ -76,7 +76,9 @@ data class SmbCoverPrefetchSnapshot(
 }
 
 interface SmbCoverPrefetchScheduler {
-  fun kick()
+  fun enqueue()
+
+  fun reschedule()
 }
 
 interface SmbLibraryRepository {
