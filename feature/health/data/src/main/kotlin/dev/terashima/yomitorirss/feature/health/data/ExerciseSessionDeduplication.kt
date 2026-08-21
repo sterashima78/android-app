@@ -12,42 +12,15 @@ internal data class ExerciseSessionCandidate(
 internal fun deduplicateExerciseSessions(
   sessions: List<ExerciseSessionCandidate>,
 ): List<HealthExerciseSessionSummary> {
-  if (sessions.size < 2) return sessions.map(ExerciseSessionCandidate::summary)
-
-  val parents = IntArray(sessions.size) { it }
-
-  fun find(index: Int): Int {
-    var current = index
-    while (parents[current] != current) {
-      parents[current] = parents[parents[current]]
-      current = parents[current]
-    }
-    return current
-  }
-
-  fun union(first: Int, second: Int) {
-    val firstRoot = find(first)
-    val secondRoot = find(second)
-    if (firstRoot != secondRoot) parents[secondRoot] = firstRoot
-  }
-
-  sessions.indices.forEach { first ->
-    for (second in first + 1 until sessions.size) {
-      if (sameRealWorldExercise(sessions[first], sessions[second])) {
-        union(first, second)
+  val kept = mutableListOf<ExerciseSessionCandidate>()
+  sessions
+    .sortedWith(EXERCISE_SESSION_PREFERENCE.reversed())
+    .forEach { candidate ->
+      if (kept.none { representative -> sameRealWorldExercise(representative, candidate) }) {
+        kept += candidate
       }
     }
-  }
-
-  return sessions.indices
-    .groupBy(::find)
-    .values
-    .mapNotNull { duplicateIndexes ->
-      duplicateIndexes
-        .map(sessions::get)
-        .maxWithOrNull(EXERCISE_SESSION_PREFERENCE)
-        ?.summary
-    }
+  return kept.map(ExerciseSessionCandidate::summary)
 }
 
 private fun sameRealWorldExercise(
