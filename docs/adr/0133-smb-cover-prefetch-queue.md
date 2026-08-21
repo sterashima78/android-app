@@ -35,7 +35,9 @@ ADR-0065 では SMB 蔵書の同期時に ZIP / CBZ の入力ストリームを�
 
 process death 等で `RUNNING` のまま残った項目は次回 Worker 開始時に `PENDING` へ戻す。完了・対象外の履歴は最大 200 件へ制限する。
 
-WorkManager は `NetworkType.UNMETERED` と battery-not-low を要求し、従量制ネットワークやバッテリー低下中には表紙先読みを開始しない。1冊ずつ直列処理する。unique work は `APPEND_OR_REPLACE` を使い、Worker 終了直前に新規ジョブが追加されても後続実行要求を失わない。
+WorkManager は `NetworkRequest` で Wi-Fi transport と battery-not-low を要求する。SMB は LAN 上のサーバへ接続する機能なので、モバイル回線を避ける条件は「非従量制」ではなく「Wi-Fi 接続」とする。Android が Wi-Fi を従量制として扱っている場合も表紙先読みを許可する。1冊ずつ直列処理し、通常は unique work の `APPEND_OR_REPLACE` を使って Worker 終了直前に新規ジョブが追加されても後続実行要求を失わない。
+
+旧実装の `NetworkType.UNMETERED` で待機中の WorkRequest が残っている端末では、新しい Wi-Fi 制約の WorkRequest を単純に append すると旧 WorkRequest の後ろで待ち続ける。そのため Wi-Fi 制約への初回移行時だけ `REPLACE` で既存 unique work を置き換え、以後は `APPEND_OR_REPLACE` に戻す。durable queue は Library DB 側にあるため、置換で Worker がキャンセルされても実行中項目を `PENDING` へ戻して再開できる。
 
 ### ZIP / CBZ は最大 32 MiB の streaming 走査とする
 
@@ -64,13 +66,14 @@ PDF の転送中は `downloaded_bytes` / `total_bytes` をキューへ保存し�
 SMB 設定画面に「表紙先読みキュー」を追加し、次を表示する。
 
 - 実行中 / 待機 / 完了 / 失敗 / 対象外の件数
+- WorkManager の実行状態と、Wi-Fi・バッテリー・OS scheduler のどこで待っているか
 - 最新ジョブの書籍名と状態
 - PDF 実行中の転送済み bytes / total bytes と progress indicator
 - 失敗理由または対象外理由
 - 未取得表紙のキュー投入操作
 - 失敗ジョブの一括再試行
 
-表示中は active job がある間だけ ViewModel がキュー snapshot を定期再読込し、処理完了時に Library snapshot も再読込して新しい表紙を一覧へ反映する。
+表示中は active job がある間だけ ViewModel がキュー snapshot を定期再読込し、処理完了時に Library snapshot も再読込して新しい表紙を一覧へ反映する。WorkManager の状態は永続キューの業務状態へ混ぜず、観測用 runtime snapshot として UI に投影する。
 
 ### Credential の公開境界は変更しない
 
@@ -85,9 +88,9 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 - PDF 本体は表紙生成後に残らず、永続的な端末容量増加を抑えられる。
 - ZIP / CBZ の remote read は1冊最大 32 MiB、PDF は1冊最大 64 MiBに上限がある。
 - 表紙キャッシュは最大 200 MiB に制限される。
-- 従量制ネットワークとバッテリー低下中はバックグラウンド転送を行わない。
+- モバイル回線とバッテリー低下中はバックグラウンド転送を行わず、従量制設定の Wi-Fi では実行できる。
 - process death 後も待機・失敗状態を確認して再開できる。
-- ユーザーが処理件数、進捗、失敗理由を確認できる。
+- ユーザーが処理件数、進捗、失敗理由に加えて WorkManager の待機状態を確認できる。
 
 ### Negative
 
@@ -96,9 +99,13 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 - ZIP / CBZ の表紙画像が archive の先頭 32 MiB より後にある場合は自動取得できない。
 - 200 MiB 超過時は古い表紙が一覧から消え、必要なら明示的な再取得が必要になる。
 - Library DB に派生処理のキューtableが1つ増える。
-- active queue 表示中は定期的な DB snapshot read が発生する。
+- active queue 表示中は定期的な DB snapshot read と WorkManager state read が発生する。
 
 ## Alternatives considered
+
+### `NetworkType.UNMETERED` を維持する
+
+通信量の制御としては単純だが、ユーザーが Wi-Fi に接続していても Android 側の従量制判定だけで SMB の LAN 内処理が無期限に止まる可能性がある。SMB の到達経路を表す条件としては Wi-Fi transport の方が直接的なので採用しない。
 
 ### すべての書籍本体をバックグラウンドでキャッシュする
 
