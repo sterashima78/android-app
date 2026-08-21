@@ -117,24 +117,26 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
-  fun `カスタムpromptのfileName placeholderを展開する`() {
+  fun `カスタムpromptのfileName placeholderを展開し固定tool指示を維持する`() {
     val prompt = buildSmbMetadataNormalizationPrompt(
       currentFileName = "Kakuu_Bouken_Tan_03.pdf",
       promptTemplate = "ファイル名 {{fileName}} と表紙を照合してください。",
     )
 
-    assertEquals("ファイル名 Kakuu_Bouken_Tan_03.pdf と表紙を照合してください。", prompt)
+    assertTrue(prompt.startsWith("ファイル名 Kakuu_Bouken_Tan_03.pdf と表紙を照合してください。"))
+    assertTrue(prompt.endsWith("submit_book_metadata ツールを1回だけ呼び出してください。"))
   }
 
   @Test
-  fun `fileName placeholderがないカスタムpromptには現在名を追記する`() {
+  fun `fileName placeholderがないカスタムpromptには現在名と固定tool指示を追記する`() {
     val prompt = buildSmbMetadataNormalizationPrompt(
       currentFileName = "Kakuu_Bouken_Tan_03.pdf",
       promptTemplate = "表紙を中心に書誌を推定してください。",
     )
 
     assertTrue(prompt.startsWith("表紙を中心に書誌を推定してください。"))
-    assertTrue(prompt.endsWith("現在のファイル名:\nKakuu_Bouken_Tan_03.pdf"))
+    assertTrue(prompt.contains("現在のファイル名:\nKakuu_Bouken_Tan_03.pdf"))
+    assertTrue(prompt.endsWith("submit_book_metadata ツールを1回だけ呼び出してください。"))
   }
 
   @Test
