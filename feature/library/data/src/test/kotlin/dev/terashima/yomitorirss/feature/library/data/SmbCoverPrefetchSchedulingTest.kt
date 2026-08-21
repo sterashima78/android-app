@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.library.data
 
 import android.net.NetworkCapabilities
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.WorkInfo
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchWorkerState
@@ -25,6 +26,30 @@ class SmbCoverPrefetchSchedulingTest {
     assertTrue(networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
     assertFalse(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
     assertTrue(constraints.requiresBatteryNotLow())
+  }
+
+  @Test
+  fun `Wi-Fi制約移行後の通常要求は既存チェーンへ追加する`() {
+    assertEquals(
+      ExistingWorkPolicy.APPEND_OR_REPLACE,
+      smbCoverPrefetchExistingWorkPolicy(migrated = true, forceReschedule = false),
+    )
+  }
+
+  @Test
+  fun `Wi-Fi制約への初回移行は既存workを置き換える`() {
+    assertEquals(
+      ExistingWorkPolicy.REPLACE,
+      smbCoverPrefetchExistingWorkPolicy(migrated = false, forceReschedule = false),
+    )
+  }
+
+  @Test
+  fun `明示的な再要求は移行済みでも既存workを置き換える`() {
+    assertEquals(
+      ExistingWorkPolicy.REPLACE,
+      smbCoverPrefetchExistingWorkPolicy(migrated = true, forceReschedule = true),
+    )
   }
 
   @Test
