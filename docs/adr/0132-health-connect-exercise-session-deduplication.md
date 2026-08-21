@@ -20,7 +20,7 @@ Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の reco
 - 開始時刻・終了時刻・exercise type が完全一致する record は従来どおり同一候補として扱う。
 - 提供元が異なる場合は、次の両条件を満たす強い時間的重なりも同一の実運動候補として扱う。
   - 重複区間が短い方のセッション時間の 80% 以上
-  - 短い方のセッション時間が長い方の 60% 以上
+  - 短い方のセッション時間が長い方の 55% 以上
 - この近似重複判定では exercise type の一致を必須としない。複数アプリが同じ実運動を `OTHER_WORKOUT` と `WALKING` など別 type で記録するケースを吸収するためである。
 - 同一提供元の近似した時間帯は統合しない。提供元自身が別 record として記録した意図を優先する。
 - 同一候補群からは segment 数、notes の情報量、title の情報量、セッション長の順で情報量が多い record を代表として残す。
@@ -42,7 +42,7 @@ Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の reco
 ### Negative
 
 - 異なる提供元が、時間帯と長さの近い別の実運動を同時に記録した場合は誤って統合する可能性が残る。
-- 80% / 60% の閾値は Health Connect 自体が提供する duplicate identity ではなく、履歴表示用のアプリ側 heuristic である。
+- 80% / 55% の閾値は Health Connect 自体が提供する duplicate identity ではなく、履歴表示用のアプリ側 heuristic である。
 - Aggregate API の合計時間と履歴カードの duration 単純合計は一致しない場合がある。合計時間では Health Connect の優先度ルールを正とする。
 
 ## Verification
@@ -51,7 +51,7 @@ Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の reco
 - 提供元が異なり、時刻・exercise type が少し異なる強重複セッションが1件になることを unit test する。
 - 同一提供元の近似セッションは別件として残ることを unit test する。
 - 異なる提供元でも重複区間が小さい場合は別件として残ることを unit test する。
-- 長時間セッションに短時間セッションが含まれるだけのケースを統合しないことを unit test する。
+- 長時間セッションに半分の長さの短時間セッションが含まれるだけのケースを統合しないことを unit test する。
 - `ExerciseSessionRecord.EXERCISE_DURATION_TOTAL` を Aggregate request に含め、overview の合計運動時間に利用することを compile / CI で確認する。
 - `verifyArchitecture` と Health feature の unit test を実行する。
 - 変更差分に利用者固有の健康データ、提供元 package の実値、credential 等が含まれていないことをレビューする。
