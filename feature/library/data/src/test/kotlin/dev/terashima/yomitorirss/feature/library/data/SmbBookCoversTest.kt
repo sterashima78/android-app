@@ -44,8 +44,8 @@ class SmbBookCoversTest {
   }
 
   @Test
-  fun `ZIP表紙先読みの既定走査上限は64MB`() {
-    assertEquals(64L * 1024 * 1024, SMB_ZIP_COVER_SCAN_MAX_BYTES)
+  fun `ZIP表紙先読みの既定走査上限は128MiB`() {
+    assertEquals(128L * 1024 * 1024, SMB_ZIP_COVER_SCAN_MAX_BYTES)
   }
 
   @Test

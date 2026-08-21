@@ -192,7 +192,7 @@ private fun SmbCoverPrefetchQueueSection(
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Text("表紙先読みキュー", style = MaterialTheme.typography.titleMedium)
     Text(
-      "未取得の表紙をバックグラウンドで取得します。処理はWi-Fi接続時かつバッテリー低下中でない場合に実行し、Wi-Fiが従量制設定でも停止しません。ZIP / CBZ は先頭64MBまでを走査し、PDFは128MB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。",
+      "未取得の表紙をバックグラウンドで取得します。処理はWi-Fi接続時かつバッテリー低下中でない場合に実行し、Wi-Fiが従量制設定でも停止しません。ZIP / CBZ は先頭128MiBまでを走査し、PDFは256MiB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。対象外になった場合は理由とファイルサイズを表示します。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
