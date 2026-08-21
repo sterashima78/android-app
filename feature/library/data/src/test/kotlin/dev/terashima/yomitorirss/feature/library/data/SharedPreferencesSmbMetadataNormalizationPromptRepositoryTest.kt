@@ -42,6 +42,18 @@ class SharedPreferencesSmbMetadataNormalizationPromptRepositoryTest {
   }
 
   @Test
+  fun `不正な型で保存されていても既定promptへfallbackする`() {
+    context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
+      .edit()
+      .putInt("smb_metadata_normalization_prompt", 1)
+      .commit()
+
+    val repository = SharedPreferencesSmbMetadataNormalizationPromptRepository(context)
+
+    assertEquals(DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT, repository.prompt())
+  }
+
+  @Test
   fun `resetすると既定promptへ戻る`() {
     val repository = SharedPreferencesSmbMetadataNormalizationPromptRepository(context)
     repository.update("カスタム指示")
