@@ -152,6 +152,10 @@ internal class BackupPreferences(context: Context) {
     internal val BACKUP_RULES = listOf(
       PreferenceBackupRule("background_data_fetch"),
       PreferenceBackupRule("book_reader_position"),
+      PreferenceBackupRule(
+        name = "library_ai_preferences",
+        allowedKeys = setOf("smb_metadata_normalization_prompt"),
+      ),
       PreferenceBackupRule("local_ai_background_execution"),
       PreferenceBackupRule(
         name = "local_summary_models",
