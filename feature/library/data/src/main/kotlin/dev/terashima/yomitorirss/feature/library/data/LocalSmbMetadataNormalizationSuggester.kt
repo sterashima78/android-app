@@ -73,7 +73,11 @@ internal fun Throwable.isSmbMetadataToolCallParseFailure(): Boolean =
 internal fun buildSmbMetadataNormalizationPrompt(
   currentFileName: String,
   promptTemplate: String = DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
-): String = renderSmbMetadataNormalizationPrompt(promptTemplate, currentFileName)
+): String = buildString {
+  append(renderSmbMetadataNormalizationPrompt(promptTemplate, currentFileName))
+  append("\n\n")
+  append(SMB_METADATA_STRUCTURED_OUTPUT_INSTRUCTION)
+}
 
 internal fun parseSmbBookMetadataProposal(arguments: Map<String, Any?>): SmbBookMetadataProposal {
   val allowed = setOf(
@@ -266,6 +270,8 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
 )
 
 private const val SMB_METADATA_OUTPUT_TOOL_NAME = "submit_book_metadata"
+private const val SMB_METADATA_STRUCTURED_OUTPUT_INSTRUCTION =
+  "解析結果の説明文は返さず、必ず submit_book_metadata ツールを1回だけ呼び出してください。"
 private const val SMB_METADATA_SYSTEM_INSTRUCTION =
   "あなたは書籍の表紙画像とファイル名を照合して書誌情報を抽出するアシスタントです。ファイル名のローマ字・英字情報も重要な根拠として利用し、最終結果は説明文ではなく指定された出力ツールだけで提出してください。"
 private val INVALID_FILE_NAME_CHARS = Regex("""[<>:"/\\|?*\x00-\x1F]""")
