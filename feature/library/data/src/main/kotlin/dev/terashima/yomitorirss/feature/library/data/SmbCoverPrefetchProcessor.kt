@@ -174,7 +174,7 @@ internal class SmbCoverPrefetchProcessor(
   }
 
   private fun skippedWithFileSize(reason: String, size: Long): SmbCoverPrefetchOutcome.Skipped =
-    SmbCoverPrefetchOutcome.Skipped("$reason（ファイルサイズ: ${formatSmbBookFileSize(size)}）")
+    SmbCoverPrefetchOutcome.Skipped(smbCoverPrefetchSkippedReason(reason, size))
 
   private fun queryBook(sourceId: String): SmbCoverBookRow? = database.readable.rawQuery(
     "SELECT info_url FROM library_items WHERE source = ? AND source_id = ? LIMIT 1",
@@ -270,6 +270,9 @@ internal const val SMB_PDF_COVER_PREFETCH_MAX_BYTES = 256L * 1024 * 1024
 
 internal fun shouldPrefetchPdf(size: Long): Boolean =
   size in 0L..SMB_PDF_COVER_PREFETCH_MAX_BYTES
+
+internal fun smbCoverPrefetchSkippedReason(reason: String, size: Long): String =
+  "$reason（ファイルサイズ: ${formatSmbBookFileSize(size)}）"
 
 internal fun formatSmbBookFileSize(bytes: Long): String = when {
   bytes >= 1024L * 1024L * 1024L -> String.format(
