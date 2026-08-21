@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.StatFs
 import android.os.SystemClock
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
@@ -318,6 +319,17 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
+  fun generateWithImage(
+    prompt: String,
+    imageBytes: ByteArray,
+  ): String {
+    require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
+    require(imageBytes.isNotEmpty()) { "画像データがありません" }
+    return withInference(visionEnabled = true) { inference ->
+      inference.generateWithImage(prompt, imageBytes)
+    }
+  }
+
   fun generateConversation(
     request: LocalInferenceConversationRequest,
     streaming: Boolean = false,
@@ -337,7 +349,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
-  private fun <T> withInference(block: (LiteRtLmInference) -> T): T {
+  private fun <T> withInference(
+    visionEnabled: Boolean = false,
+    block: (LiteRtLmInference) -> T,
+  ): T {
     check(isSupported()) { "この端末ではローカルモデルを利用できません" }
     val model = resolveSelectedModel() ?: error("AIモデルをダウンロードして選択してください")
     val file = modelFile(model)
@@ -350,13 +365,15 @@ class LocalModelManager(context: Context) : AutoCloseable {
         try {
           val settings = currentInferenceSettings()
           val contextTokens = effectiveContextTokens(model, settings)
-          val speculativeDecodingEnabled = settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
+          val speculativeDecodingEnabled =
+            !visionEnabled && settings.speculativeDecodingEnabled && model.supportsSpeculativeDecoding
           val cacheHit = hasReusableInference(
             model = model,
             file = file,
             backend = settings.backend,
             contextTokens = contextTokens,
             speculativeDecodingEnabled = speculativeDecodingEnabled,
+            visionEnabled = visionEnabled,
           )
           val preparationStartedAt = if (cacheHit) null else SystemClock.elapsedRealtime()
           if (!cacheHit) {
@@ -372,6 +389,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
             backend = settings.backend,
             contextTokens = contextTokens,
             speculativeDecodingEnabled = speculativeDecodingEnabled,
+            visionEnabled = visionEnabled,
           )
           preparationStartedAt?.let { startedAt ->
             recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
@@ -411,12 +429,14 @@ class LocalModelManager(context: Context) : AutoCloseable {
     backend: LocalInferenceBackend,
     contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
+    visionEnabled: Boolean,
   ): Boolean = cachedInference?.key == inferenceCacheKey(
     model = model,
     file = file,
     backend = backend,
     contextTokens = contextTokens,
     speculativeDecodingEnabled = speculativeDecodingEnabled,
+    visionEnabled = visionEnabled,
   )
 
   private fun acquireInference(
@@ -425,8 +445,16 @@ class LocalModelManager(context: Context) : AutoCloseable {
     backend: LocalInferenceBackend,
     contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
+    visionEnabled: Boolean,
   ): LiteRtLmInference {
-    val key = inferenceCacheKey(model, file, backend, contextTokens, speculativeDecodingEnabled)
+    val key = inferenceCacheKey(
+      model,
+      file,
+      backend,
+      contextTokens,
+      speculativeDecodingEnabled,
+      visionEnabled,
+    )
     cachedInference?.takeIf { it.key == key }?.let { cached -> return cached.inference }
 
     releaseCachedInferenceLocked()
@@ -437,10 +465,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
         backend = backend,
         contextTokens = contextTokens,
         speculativeDecodingEnabled = speculativeDecodingEnabled,
+        visionEnabled = visionEnabled,
       ),
       backend = backend,
       contextTokens = contextTokens,
       speculativeDecodingEnabled = speculativeDecodingEnabled,
+      visionEnabled = visionEnabled,
     )
     cachedInference = CachedInference(key, inference)
     return inference
@@ -468,11 +498,13 @@ class LocalModelManager(context: Context) : AutoCloseable {
     backend: LocalInferenceBackend,
     contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
+    visionEnabled: Boolean,
   ) = InferenceCacheKey(
     modelId = model.id,
     backend = backend,
     contextTokens = contextTokens,
     speculativeDecodingEnabled = speculativeDecodingEnabled,
+    visionEnabled = visionEnabled,
     fileLength = file.length(),
     fileModifiedAt = file.lastModified(),
   )
@@ -589,9 +621,11 @@ class LocalModelManager(context: Context) : AutoCloseable {
     backend: LocalInferenceBackend,
     contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
+    visionEnabled: Boolean,
   ) = File(
     modelCacheDirectory(model),
-    "${backend.name.lowercase()}/${if (speculativeDecodingEnabled) "speculative" else "standard"}/context-$contextTokens",
+    "${backend.name.lowercase()}/${if (speculativeDecodingEnabled) "speculative" else "standard"}/" +
+      "context-$contextTokens${if (visionEnabled) "-vision" else ""}",
   ).apply { mkdirs() }
   private fun modelTokenizerCacheDirectory(model: ModelDefinition) =
     File(modelCacheDirectory(model), "tokenizer").apply { mkdirs() }
@@ -676,6 +710,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val backend: LocalInferenceBackend,
     val contextTokens: Int,
     val speculativeDecodingEnabled: Boolean,
+    val visionEnabled: Boolean,
     val fileLength: Long,
     val fileModifiedAt: Long,
   )
@@ -801,6 +836,7 @@ private class LiteRtLmInference(
   backend: LocalInferenceBackend,
   contextTokens: Int,
   speculativeDecodingEnabled: Boolean,
+  visionEnabled: Boolean,
 ) : AutoCloseable {
   private val engine = createEngine(
     file = file,
@@ -808,11 +844,22 @@ private class LiteRtLmInference(
     backend = backend,
     contextTokens = contextTokens,
     speculativeDecodingEnabled = speculativeDecodingEnabled,
+    visionEnabled = visionEnabled,
   )
 
   fun generate(prompt: String): String =
     engine.createConversation().use { conversation ->
       conversation.sendMessage(prompt).toString()
+    }
+
+  fun generateWithImage(prompt: String, imageBytes: ByteArray): String =
+    engine.createConversation().use { conversation ->
+      conversation.sendMessage(
+        Contents.of(
+          Content.ImageBytes(imageBytes),
+          Content.Text(prompt),
+        ),
+      ).toString()
     }
 
   fun generateStreaming(prompt: String, onChunk: (String) -> Unit): String =
@@ -873,17 +920,20 @@ private class LiteRtLmInference(
     backend: LocalInferenceBackend,
     contextTokens: Int,
     speculativeDecodingEnabled: Boolean,
+    visionEnabled: Boolean,
   ): Engine = engineInitializationLock.withLock {
     val previous = ExperimentalFlags.enableSpeculativeDecoding
     ExperimentalFlags.enableSpeculativeDecoding = speculativeDecodingEnabled
     try {
+      val textBackend = when (backend) {
+        LocalInferenceBackend.CPU -> Backend.CPU()
+        LocalInferenceBackend.GPU -> Backend.GPU()
+      }
       Engine(
         EngineConfig(
           modelPath = file.absolutePath,
-          backend = when (backend) {
-            LocalInferenceBackend.CPU -> Backend.CPU()
-            LocalInferenceBackend.GPU -> Backend.GPU()
-          },
+          backend = textBackend,
+          visionBackend = Backend.GPU().takeIf { visionEnabled },
           cacheDir = cacheDirectory.absolutePath,
           maxNumTokens = contextTokens,
         ),
