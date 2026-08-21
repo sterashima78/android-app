@@ -53,7 +53,7 @@ class SmbCoverPrefetchDatabaseMigrationTest {
 
     val upgraded = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }
 
-    assertEquals(26, upgraded.writableDatabase.version)
+    assertEquals(27, upgraded.writableDatabase.version)
     assertTrue(tableExists(upgraded.writableDatabase, "smb_cover_prefetch_queue"))
   }
 }
