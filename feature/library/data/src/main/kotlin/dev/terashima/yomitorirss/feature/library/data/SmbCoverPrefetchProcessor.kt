@@ -107,7 +107,7 @@ internal class SmbCoverPrefetchProcessor(
       size = location.size,
       modifiedAt = location.modifiedAt,
     ) ?: return@withShare SmbCoverPrefetchOutcome.Skipped(
-      "ZIP先頭${MAX_ZIP_SCAN_BYTES / (1024 * 1024)}MB以内から表紙画像を見つけられませんでした",
+      "ZIP先頭${SMB_ZIP_COVER_SCAN_MAX_BYTES / (1024 * 1024)}MB以内から表紙画像を見つけられませんでした",
     )
     updateThumbnail(sourceId, coverUrl)
     SmbCoverPrefetchOutcome.Completed
@@ -122,7 +122,7 @@ internal class SmbCoverPrefetchProcessor(
   ): SmbCoverPrefetchOutcome {
     if (!shouldPrefetchPdf(location.size)) {
       return SmbCoverPrefetchOutcome.Skipped(
-        "PDFが${MAX_PDF_PREFETCH_BYTES / (1024 * 1024)}MBを超えるため自動取得しません",
+        "PDFが${SMB_PDF_COVER_PREFETCH_MAX_BYTES / (1024 * 1024)}MBを超えるため自動取得しません",
       )
     }
 
@@ -257,13 +257,13 @@ internal class SmbCoverPrefetchProcessor(
     const val BOOK_CACHE_DIRECTORY = "smb-books"
     const val TEMP_DIRECTORY = "smb-cover-prefetch-temp"
     const val COPY_BUFFER_SIZE = 128 * 1024
-    const val MAX_PDF_PREFETCH_BYTES = 64L * 1024 * 1024
-    const val MAX_ZIP_SCAN_BYTES = 32L * 1024 * 1024
   }
 }
 
+internal const val SMB_PDF_COVER_PREFETCH_MAX_BYTES = 128L * 1024 * 1024
+
 internal fun shouldPrefetchPdf(size: Long): Boolean =
-  size in 0L..(64L * 1024 * 1024)
+  size in 0L..SMB_PDF_COVER_PREFETCH_MAX_BYTES
 
 private class SmbCoverPrefetchCredentialReader(context: Context) {
   private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
