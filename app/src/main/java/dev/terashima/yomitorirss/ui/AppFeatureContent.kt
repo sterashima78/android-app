@@ -109,6 +109,7 @@ internal fun AppFeatureContent(
       mailViewModel = mailViewModel,
       youtubeViewModelFactory = routeDependencies.youtubeViewModelFactory,
       onOpenArticle = onOpenArticle,
+      onSummarize = summarize,
       onOpenMail = { thread ->
         mailViewModel.openThread(thread)
         appViewModel.selectTab(MainTab.MAIL)
