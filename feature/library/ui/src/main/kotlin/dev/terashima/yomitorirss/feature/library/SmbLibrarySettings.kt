@@ -185,7 +185,7 @@ private fun SmbCoverPrefetchQueueSection(
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Text("表紙先読みキュー", style = MaterialTheme.typography.titleMedium)
     Text(
-      "未取得の表紙をバックグラウンドで取得します。処理は従量制でないネットワーク接続時だけ実行します。ZIP / CBZ は先頭32MBまでを走査し、PDFは64MB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。",
+      "未取得の表紙をバックグラウンドで取得します。処理はWi-Fi接続時かつバッテリー低下中でない場合に実行し、Wi-Fiが従量制設定でも停止しません。ZIP / CBZ は先頭32MBまでを走査し、PDFは64MB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -193,6 +193,20 @@ private fun SmbCoverPrefetchQueueSection(
       "実行中 ${snapshot.runningCount} ・ 待機 ${snapshot.pendingCount} ・ 完了 ${snapshot.completedCount} ・ 失敗 ${snapshot.failedCount} ・ 対象外 ${snapshot.skippedCount}",
       style = MaterialTheme.typography.bodySmall,
     )
+    if (snapshot.hasActiveWork || snapshot.runtime.state != SmbCoverPrefetchWorkerState.IDLE) {
+      Text(
+        "WorkManager: ${coverPrefetchWorkerStateLabel(snapshot.runtime.state)}",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      snapshot.runtime.waitReason?.let { reason ->
+        Text(
+          coverPrefetchWaitReasonLabel(reason),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       Button(
@@ -295,6 +309,23 @@ private fun coverPrefetchStatusLabel(status: SmbCoverPrefetchStatus): String = w
   SmbCoverPrefetchStatus.FAILED -> "失敗"
   SmbCoverPrefetchStatus.COMPLETED -> "完了"
   SmbCoverPrefetchStatus.SKIPPED -> "対象外"
+}
+
+private fun coverPrefetchWorkerStateLabel(state: SmbCoverPrefetchWorkerState): String = when (state) {
+  SmbCoverPrefetchWorkerState.IDLE -> "未実行"
+  SmbCoverPrefetchWorkerState.ENQUEUED -> "実行待ち"
+  SmbCoverPrefetchWorkerState.RUNNING -> "実行中"
+  SmbCoverPrefetchWorkerState.BLOCKED -> "前段ジョブ待ち"
+  SmbCoverPrefetchWorkerState.FAILED -> "失敗"
+  SmbCoverPrefetchWorkerState.CANCELLED -> "キャンセル済み"
+  SmbCoverPrefetchWorkerState.UNKNOWN -> "状態を取得できません"
+}
+
+private fun coverPrefetchWaitReasonLabel(reason: SmbCoverPrefetchWaitReason): String = when (reason) {
+  SmbCoverPrefetchWaitReason.WIFI -> "待機理由: Wi-Fi接続を待っています。"
+  SmbCoverPrefetchWaitReason.BATTERY -> "待機理由: バッテリー残量が低いため待機しています。"
+  SmbCoverPrefetchWaitReason.SCHEDULER ->
+    "待機理由: Wi-Fi・バッテリー条件は満たしているため、OS / WorkManager の実行待ちです。"
 }
 
 private fun formatBytes(bytes: Long): String = when {
@@ -408,8 +439,7 @@ private fun SmbServerDialog(
       ) { Text("保存") }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) { Text("キャンセル") }
-    },
+      TextButton(onClick = onDismiss) { Text("キャンセル") }</n    },
   )
 }
 
