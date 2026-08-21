@@ -36,6 +36,8 @@ class BackupPreferencesTest {
       .edit().putString("state_v1", "workout-history").commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().putString("summary_prompt", "custom-prompt").commit()
+    context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
+      .edit().putString("smb_metadata_normalization_prompt", "custom-library-prompt").commit()
     context.getSharedPreferences("smb_library_credentials", Context.MODE_PRIVATE)
       .edit().putString("server", "encrypted-secret").commit()
     context.getSharedPreferences("google_drive_backup", Context.MODE_PRIVATE)
@@ -61,11 +63,14 @@ class BackupPreferencesTest {
     assertFalse(encoded.contains("source-revision"))
     assertFalse(encoded.contains("duration_millis"))
     assertTrue(encoded.contains("selected_model_id"))
+    assertTrue(encoded.contains("custom-library-prompt"))
 
     context.getSharedPreferences("workout", Context.MODE_PRIVATE)
       .edit().putString("state_v1", "changed").commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().clear().commit()
+    context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
+      .edit().putString("smb_metadata_normalization_prompt", "changed-library-prompt").commit()
     localModels.edit()
       .putString("selected_model_id", "model-b")
       .putString("model_revision.model-a", "destination-revision")
@@ -81,6 +86,11 @@ class BackupPreferencesTest {
     assertEquals(
       "custom-prompt",
       context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE).getString("summary_prompt", null),
+    )
+    assertEquals(
+      "custom-library-prompt",
+      context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
+        .getString("smb_metadata_normalization_prompt", null),
     )
     assertEquals(
       "encrypted-secret",
