@@ -79,7 +79,7 @@ internal fun SmbMetadataNormalizationSettingsSection(
     HorizontalDivider()
     Text("書誌・ファイル名の正規化", style = MaterialTheme.typography.titleMedium)
     Text(
-      "ファイルサーバ由来の未確定書籍について、現在のファイル名と取得済み表紙を端末内AIへ入力し、書誌情報と正規化ファイル名を提案します。ファイル名はレビューで反映するまで変更しません。反映済み・却下済みの書籍は次回の一括解析から除外されます。",
+      "ファイルサーバ由来の未確定書籍について、現在のファイル名と取得済み表紙を端末内AIへ入力し、書誌情報と正規化ファイル名を提案します。ファイル名はレビューで反映するまで変更しません。反映済み・却下済みの書籍は、明示的に再解析しない限り次回の一括解析から除外されます。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -325,11 +325,14 @@ private fun SmbMetadataNormalizationReviewCard(
           }
         }
 
+        SmbMetadataNormalizationStatus.REJECTED -> {
+          TextButton(enabled = !busy, onClick = onRetry) { Text("再解析") }
+        }
+
         SmbMetadataNormalizationStatus.WAITING_FOR_COVER,
         SmbMetadataNormalizationStatus.QUEUED,
         SmbMetadataNormalizationStatus.PROCESSING,
         SmbMetadataNormalizationStatus.APPLIED,
-        SmbMetadataNormalizationStatus.REJECTED,
         -> Unit
       }
     }
