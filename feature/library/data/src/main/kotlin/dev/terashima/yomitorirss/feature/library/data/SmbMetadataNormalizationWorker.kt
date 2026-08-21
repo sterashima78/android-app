@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.library.data
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
@@ -163,7 +164,17 @@ class SmbMetadataNormalizationWorker(
               }
               val coverFile = localCoverFile(book.thumbnailUrl)
               if (coverFile == null) {
-                repository.requeue(item)
+                repository.fail(item, "表紙キャッシュが失われたため再取得します")
+                connection.writable.update(
+                  "library_items",
+                  ContentValues().apply { putNull("thumbnail_url") },
+                  "source = ? AND source_id = ?",
+                  arrayOf(LibrarySource.SMB.name, item.sourceId),
+                )
+                repository.retryCandidate(item.sourceId)
+                if (smbRepository.enqueueMissingCoverPrefetch() > 0) {
+                  WorkManagerSmbCoverPrefetchScheduler(applicationContext).kick()
+                }
                 current = null
                 return@withPermit
               }
@@ -203,7 +214,7 @@ class SmbMetadataNormalizationWorker(
         }
         DataChangeNotifier.shared.notifyChanged()
         val latest = repository.batchSnapshot()
-        if (latest?.waitingForCover ?: 0 > 0) Result.retry() else Result.success()
+        if ((latest?.waitingForCover ?: 0) > 0) Result.retry() else Result.success()
       } catch (cancelled: CancellationException) {
         current?.let(repository::requeue)
         DataChangeNotifier.shared.notifyChanged()
