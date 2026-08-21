@@ -213,10 +213,7 @@ class DefaultSmbMetadataNormalizationRepository(
   override suspend fun retryCandidate(sourceId: String): Unit = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
     val item = queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
-    require(
-      item.status == SmbMetadataNormalizationStatus.FAILED ||
-        item.status == SmbMetadataNormalizationStatus.SKIPPED,
-    ) { "再解析できる候補がありません" }
+    require(item.status in REANALYZABLE_STATUSES) { "再解析できる候補がありません" }
 
     val snapshot = DefaultLibraryRepository(database).snapshot()
     val currentBook = (snapshot.books + snapshot.hiddenBooks).firstOrNull {
@@ -229,6 +226,9 @@ class DefaultSmbMetadataNormalizationRepository(
     database.transaction {
       if (!coverReady) {
         clearStaleCoverReference(this, sourceId, currentBook.thumbnailUrl)
+      }
+      if (item.status == SmbMetadataNormalizationStatus.REJECTED) {
+        delete(DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
       }
       update(
         ITEM_TABLE,
@@ -982,6 +982,14 @@ private val UNRESOLVED_STATUSES = setOf(
   SmbMetadataNormalizationStatus.PROCESSING,
   SmbMetadataNormalizationStatus.PENDING_REVIEW,
   SmbMetadataNormalizationStatus.DEFERRED,
+  SmbMetadataNormalizationStatus.FAILED,
+  SmbMetadataNormalizationStatus.SKIPPED,
+)
+
+private val REANALYZABLE_STATUSES = setOf(
+  SmbMetadataNormalizationStatus.PENDING_REVIEW,
+  SmbMetadataNormalizationStatus.DEFERRED,
+  SmbMetadataNormalizationStatus.REJECTED,
   SmbMetadataNormalizationStatus.FAILED,
   SmbMetadataNormalizationStatus.SKIPPED,
 )
