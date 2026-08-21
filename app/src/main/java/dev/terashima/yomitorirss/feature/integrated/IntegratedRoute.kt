@@ -49,6 +49,7 @@ fun IntegratedRoute(
   mailViewModel: MailViewModel,
   youtubeViewModelFactory: YouTubeViewModel.Factory,
   onOpenArticle: (Article) -> Unit,
+  onSummarize: (Article) -> Unit,
   onOpenMail: (MailThread) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -197,6 +198,7 @@ fun IntegratedRoute(
               target = target,
               redditState = redditState,
               onOpenArticle = onOpenArticle,
+              onSummarize = onSummarize,
               onSubscribeRedditThread = redditViewModel::subscribeThread,
               onUnsubscribeRedditThread = redditViewModel::unsubscribeThread,
             )
@@ -290,6 +292,7 @@ internal fun integratedItemActions(
   target: IntegratedTarget,
   redditState: RedditUiState,
   onOpenArticle: (Article) -> Unit,
+  onSummarize: (Article) -> Unit,
   onSubscribeRedditThread: (Article) -> Unit,
   onUnsubscribeRedditThread: (Article) -> Unit,
 ): List<IntegratedItemAction> = when (target) {
@@ -303,6 +306,11 @@ internal fun integratedItemActions(
     add(
       IntegratedItemAction("はてなブックマークコメントを見る") {
         onOpenArticle(target.article.withHatenaBookmarkCommentsUrl())
+      },
+    )
+    add(
+      IntegratedItemAction("要約") {
+        onSummarize(target.article)
       },
     )
     val threadId = redditThreadId(target.article.url)

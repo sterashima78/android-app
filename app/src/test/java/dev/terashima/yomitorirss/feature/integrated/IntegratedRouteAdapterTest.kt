@@ -182,13 +182,34 @@ class IntegratedRouteAdapterTest {
       actionLabels(IntegratedTarget.Rss(rss), redditState),
     )
     assertEquals(
-      listOf("はてなブックマークコメントを見る", "スレッドの購読を解除"),
+      listOf("はてなブックマークコメントを見る", "要約", "スレッドの購読を解除"),
       actionLabels(IntegratedTarget.Reddit(redditArticle), redditState),
     )
     assertEquals(
       emptyList<String>(),
       actionLabels(IntegratedTarget.YouTube(youtube("youtube", "2026-08-11T11:00:00Z")), redditState),
     )
+  }
+
+  @Test
+  fun `Redditの要約アクションは元記事を要約対象として渡す`() {
+    val redditArticle = article("reddit-summary", "2026-08-11T10:00:00Z").copy(
+      url = "https://www.reddit.com/r/androiddev/comments/abc123/sample/",
+    )
+    var summarized: Article? = null
+
+    val actions = integratedItemActions(
+      target = IntegratedTarget.Reddit(redditArticle),
+      redditState = RedditUiState(initialized = true),
+      onOpenArticle = {},
+      onSummarize = { summarized = it },
+      onSubscribeRedditThread = {},
+      onUnsubscribeRedditThread = {},
+    )
+
+    actions.single { it.label == "要約" }.action()
+
+    assertEquals(redditArticle, summarized)
   }
 
   private fun actionLabels(
@@ -198,6 +219,7 @@ class IntegratedRouteAdapterTest {
     target = target,
     redditState = redditState,
     onOpenArticle = {},
+    onSummarize = {},
     onSubscribeRedditThread = {},
     onUnsubscribeRedditThread = {},
   ).map(IntegratedItemAction::label)
