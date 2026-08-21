@@ -124,6 +124,7 @@ class SmbMetadataNormalizationWorker(
       val connection = DatabaseConnection(database)
       val smbRepository = CleaningSmbLibraryRepository(applicationContext, connection)
       val repository = DefaultSmbMetadataNormalizationRepository(connection, smbRepository)
+      val promptTemplate = SharedPreferencesSmbMetadataNormalizationPromptRepository(applicationContext).prompt()
       var current: ClaimedSmbMetadataNormalizationItem? = null
       try {
         repository.requeueInterrupted()
@@ -188,6 +189,7 @@ class SmbMetadataNormalizationWorker(
               val proposal = suggester.suggest(
                 currentFileName = item.originalFileName,
                 coverBytes = coverFile.readBytes(),
+                promptTemplate = promptTemplate,
               )
               currentCoroutineContext().ensureActive()
               repository.saveGeneratedCandidate(
