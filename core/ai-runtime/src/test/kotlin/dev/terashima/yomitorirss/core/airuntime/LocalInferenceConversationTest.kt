@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.core.airuntime
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -27,6 +28,46 @@ class LocalInferenceConversationTest {
     assertTrue(schema.contains("\"query\""))
     assertTrue(schema.contains("\"limit\""))
     assertTrue(schema.contains("\"required\":[\"limit\"]"))
+  }
+
+  @Test
+  fun `tool引数型をOpenAPI schemaへ反映する`() {
+    val definition = LocalInferenceTool(
+      name = "submit_book_metadata",
+      description = "書誌情報を提出する",
+      arguments = listOf(
+        LocalInferenceToolArgument(
+          "authors",
+          "著者",
+          required = true,
+          type = LocalInferenceToolArgumentType.STRING_ARRAY,
+        ),
+        LocalInferenceToolArgument(
+          "seriesPosition",
+          "巻数",
+          type = LocalInferenceToolArgumentType.INTEGER,
+        ),
+        LocalInferenceToolArgument(
+          "confidence",
+          "確信度",
+          type = LocalInferenceToolArgumentType.NUMBER,
+        ),
+      ),
+      execute = { "ok" },
+    )
+
+    val parameters = Json.parseToJsonElement(toolDescriptionJson(definition))
+      .jsonObject.getValue("parameters").jsonObject
+    val properties = parameters.getValue("properties").jsonObject
+
+    assertFalse(parameters.getValue("additionalProperties").jsonPrimitive.boolean)
+    assertEquals("array", properties.getValue("authors").jsonObject.getValue("type").jsonPrimitive.content)
+    assertEquals(
+      "string",
+      properties.getValue("authors").jsonObject.getValue("items").jsonObject.getValue("type").jsonPrimitive.content,
+    )
+    assertEquals("integer", properties.getValue("seriesPosition").jsonObject.getValue("type").jsonPrimitive.content)
+    assertEquals("number", properties.getValue("confidence").jsonObject.getValue("type").jsonPrimitive.content)
   }
 
   @Test
