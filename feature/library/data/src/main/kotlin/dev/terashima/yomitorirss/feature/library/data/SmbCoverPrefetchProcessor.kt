@@ -266,7 +266,7 @@ internal class SmbCoverPrefetchProcessor(
   }
 }
 
-internal const val SMB_PDF_COVER_PREFETCH_MAX_BYTES = 256L * 1024 * 1024
+internal const val SMB_PDF_COVER_PREFETCH_MAX_BYTES = 512L * 1024 * 1024
 
 internal fun shouldPrefetchPdf(size: Long): Boolean =
   size in 0L..SMB_PDF_COVER_PREFETCH_MAX_BYTES
