@@ -103,17 +103,43 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
-  fun `promptは元ファイル名のローマ字情報も書誌根拠として利用する`() {
+  fun `promptは元ファイル名のローマ字情報と巻数を書誌根拠として利用する`() {
     val prompt = buildSmbMetadataNormalizationPrompt("Kakuu_Bouken_Tan_authorA_12.pdf")
 
     assertTrue(prompt.contains("ローマ字"))
     assertTrue(prompt.contains("著者名"))
     assertTrue(prompt.contains("seriesName"))
     assertTrue(prompt.contains("seriesPosition"))
+    assertTrue(prompt.contains("末尾の1〜3桁"))
+    assertTrue(prompt.contains("12Kan"))
+    assertTrue(prompt.contains("架空冒険譚08.pdf"))
     assertTrue(prompt.contains("Kakuu_Bouken_Tan_authorA_12.pdf"))
+    assertTrue(prompt.contains("現在のファイル名末尾の 12 は巻数候補です。"))
     assertTrue(prompt.contains("submit_book_metadata"))
     assertFalse(prompt.contains("JSON Schema"))
     assertFalse(prompt.contains("additionalProperties"))
+  }
+
+  @Test
+  fun `明示的な1Kan表記は固定promptでも巻数候補として示す`() {
+    val prompt = buildSmbMetadataNormalizationPrompt(
+      currentFileName = "Kakuu_Bouken_Tan_1Kan_(KakuuSha).pdf",
+      promptTemplate = "表紙から書誌を推定してください。",
+    )
+
+    assertTrue(prompt.contains("明示的な巻数表現があり、巻数候補は 1 です。"))
+  }
+
+  @Test
+  fun `カスタムpromptでも固定指示で巻数メタデータを保持させる`() {
+    val prompt = buildSmbMetadataNormalizationPrompt(
+      currentFileName = "架空冒険譚08.pdf",
+      promptTemplate = "表紙から書誌を推定してください。",
+    )
+
+    assertTrue(prompt.contains("seriesName と seriesPosition を必ず保持してください"))
+    assertTrue(prompt.contains("現在のファイル名:\n架空冒険譚08.pdf"))
+    assertTrue(prompt.endsWith("submit_book_metadata ツールを1回だけ呼び出してください。"))
   }
 
   @Test
@@ -140,7 +166,66 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
-  fun `明示的な巻数表記がなければ数値だけをファイル名へ付与する`() {
+  fun `タイトルに一致する末尾番号から欠落したシリーズ情報を補完する`() {
+    val result = completeSmbSeriesMetadataFromFileName(
+      currentFileName = "架空冒険譚08.pdf",
+      proposal = SmbBookMetadataProposal(title = "架空冒険譚"),
+    )
+
+    assertEquals("架空冒険譚", result.seriesName)
+    assertEquals(8, result.seriesPosition)
+  }
+
+  @Test
+  fun `区切り付き末尾番号から欠落したシリーズ情報を補完する`() {
+    val result = completeSmbSeriesMetadataFromFileName(
+      currentFileName = "架空冒険譚_０８.pdf",
+      proposal = SmbBookMetadataProposal(title = "架空冒険譚"),
+    )
+
+    assertEquals("架空冒険譚", result.seriesName)
+    assertEquals(8, result.seriesPosition)
+  }
+
+  @Test
+  fun `明示的な1Kan表記は日本語タイトルでもシリーズ情報を補完する`() {
+    val result = completeSmbSeriesMetadataFromFileName(
+      currentFileName = "Kakuu_Bouken_Tan_1Kan_(KakuuSha).pdf",
+      proposal = SmbBookMetadataProposal(title = "架空冒険譚"),
+    )
+
+    assertEquals("架空冒険譚", result.seriesName)
+    assertEquals(1, result.seriesPosition)
+  }
+
+  @Test
+  fun `タイトル自体に数字を含む場合は末尾番号を巻数として補完しない`() {
+    val result = completeSmbSeriesMetadataFromFileName(
+      currentFileName = "架空規格11.pdf",
+      proposal = SmbBookMetadataProposal(title = "架空規格 11"),
+    )
+
+    assertNull(result.seriesName)
+    assertNull(result.seriesPosition)
+  }
+
+  @Test
+  fun `既存のシリーズ情報はファイル名ヒューリスティックで上書きしない`() {
+    val result = completeSmbSeriesMetadataFromFileName(
+      currentFileName = "架空冒険譚08.pdf",
+      proposal = SmbBookMetadataProposal(
+        title = "架空冒険譚",
+        seriesName = "架空冒険譚",
+        seriesPosition = 7,
+      ),
+    )
+
+    assertEquals("架空冒険譚", result.seriesName)
+    assertEquals(7, result.seriesPosition)
+  }
+
+  @Test
+  fun `巻数があれば第n巻形式でファイル名へ付与する`() {
     val result = normalizedSmbBookFileName(
       originalFileName = "Kakuu_Bouken_Tan_12.CBZ",
       proposal = SmbBookMetadataProposal(
@@ -150,11 +235,11 @@ class LocalSmbMetadataNormalizationSuggesterTest {
       ),
     )
 
-    assertEquals("架空冒険譚 12.cbz", result)
+    assertEquals("架空冒険譚 第12巻.cbz", result)
   }
 
   @Test
-  fun `元ファイル名の第n巻表記は正規化後も維持する`() {
+  fun `元ファイル名の第n巻表記も正規化後は第n巻形式にする`() {
     val result = normalizedSmbBookFileName(
       originalFileName = "Kakuu_Bouken_Tan_第3巻.CBZ",
       proposal = SmbBookMetadataProposal(
@@ -168,7 +253,7 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
-  fun `元ファイル名の巻数表記が推定巻数と異なる場合は維持しない`() {
+  fun `元ファイル名の巻数表記が推定巻数と異なる場合は推定巻数を使う`() {
     val result = normalizedSmbBookFileName(
       originalFileName = "Kakuu_Bouken_Tan_第2巻.CBZ",
       proposal = SmbBookMetadataProposal(
@@ -178,11 +263,11 @@ class LocalSmbMetadataNormalizationSuggesterTest {
       ),
     )
 
-    assertEquals("架空冒険譚 3.cbz", result)
+    assertEquals("架空冒険譚 第3巻.cbz", result)
   }
 
   @Test
-  fun `元ファイル名のVol表記は対応する巻数なら維持する`() {
+  fun `元ファイル名がVol表記でも第n巻形式へ正規化する`() {
     val result = normalizedSmbBookFileName(
       originalFileName = "Kakuu_Bouken_Tan_Vol.03.pdf",
       proposal = SmbBookMetadataProposal(
@@ -192,7 +277,22 @@ class LocalSmbMetadataNormalizationSuggesterTest {
       ),
     )
 
-    assertEquals("架空冒険譚 Vol.03.pdf", result)
+    assertEquals("架空冒険譚 第3巻.pdf", result)
+  }
+
+  @Test
+  fun `長いタイトルでも巻数ラベルを切り捨てない`() {
+    val result = normalizedSmbBookFileName(
+      originalFileName = "scan_012.cbz",
+      proposal = SmbBookMetadataProposal(
+        title = "架".repeat(240),
+        seriesName = "架空シリーズ",
+        seriesPosition = 12,
+      ),
+    )
+
+    assertTrue(result.endsWith(" 第12巻.cbz"))
+    assertTrue(result.length <= 240)
   }
 
   @Test
@@ -206,7 +306,7 @@ class LocalSmbMetadataNormalizationSuggesterTest {
       ),
     )
 
-    assertEquals("架空 シリーズ 特別版 3.cbz", result)
+    assertEquals("架空 シリーズ 特別版 第3巻.cbz", result)
   }
 
   @Test

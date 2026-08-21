@@ -23,7 +23,10 @@ internal class LocalSmbMetadataNormalizationSuggester(
 
     val initialPrompt = buildSmbMetadataNormalizationPrompt(currentFileName, promptTemplate)
     return try {
-      generateStructuredProposal(initialPrompt, coverBytes)
+      completeSmbSeriesMetadataFromFileName(
+        currentFileName,
+        generateStructuredProposal(initialPrompt, coverBytes),
+      )
     } catch (firstError: IllegalArgumentException) {
       val repairPrompt = buildString {
         append(initialPrompt)
@@ -32,7 +35,10 @@ internal class LocalSmbMetadataNormalizationSuggester(
         append(firstError.message.orEmpty().take(MAX_VALIDATION_ERROR_CHARS))
       }
       try {
-        generateStructuredProposal(repairPrompt, coverBytes)
+        completeSmbSeriesMetadataFromFileName(
+          currentFileName,
+          generateStructuredProposal(repairPrompt, coverBytes),
+        )
       } catch (secondError: IllegalArgumentException) {
         throw IllegalArgumentException(
           "AIが構造化された書誌情報を返せませんでした。再解析してください",
@@ -75,6 +81,19 @@ internal fun buildSmbMetadataNormalizationPrompt(
   promptTemplate: String = DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
 ): String = buildString {
   append(renderSmbMetadataNormalizationPrompt(promptTemplate, currentFileName))
+  val stem = currentFileName.substringBeforeLast('.', currentFileName).trim()
+  val explicitPosition = explicitSeriesPositionHint(stem)
+  if (explicitPosition != null) {
+    append("\n\n")
+    append("現在のファイル名には明示的な巻数表現があり、巻数候補は $explicitPosition です。")
+    append("表紙と照合し、巻数なら seriesName と seriesPosition を指定してください。")
+  } else {
+    trailingBareSeriesPositionHint(stem)?.let { hint ->
+      append("\n\n")
+      append("現在のファイル名末尾の ${hint.position} は巻数候補です。")
+      append("表紙と照合し、巻数なら seriesName と seriesPosition を指定し、巻数でなければ巻数として扱わないでください。")
+    }
+  }
   append("\n\n")
   append(SMB_METADATA_STRUCTURED_OUTPUT_INSTRUCTION)
 }
@@ -138,40 +157,84 @@ internal fun parseSmbBookMetadataProposal(arguments: Map<String, Any?>): SmbBook
   )
 }
 
+internal fun completeSmbSeriesMetadataFromFileName(
+  currentFileName: String,
+  proposal: SmbBookMetadataProposal,
+): SmbBookMetadataProposal {
+  if (proposal.seriesPosition != null) return proposal
+
+  val stem = currentFileName.substringBeforeLast('.', currentFileName).trim()
+  explicitSeriesPositionHint(stem)?.let { position ->
+    return proposal.copy(
+      seriesName = proposal.seriesName ?: proposal.title,
+      seriesPosition = position,
+    )
+  }
+
+  val hint = trailingBareSeriesPositionHint(stem) ?: return proposal
+  if (!sameBibliographicText(hint.titlePart, proposal.title)) return proposal
+
+  return proposal.copy(
+    seriesName = proposal.seriesName ?: proposal.title,
+    seriesPosition = hint.position,
+  )
+}
+
 internal fun normalizedSmbBookFileName(
   originalFileName: String,
   proposal: SmbBookMetadataProposal,
 ): String {
   val extension = originalFileName.substringAfterLast('.', "").trim().lowercase(Locale.ROOT)
   require(extension.isNotEmpty()) { "元ファイルの拡張子を判定できません" }
-  var stem = proposal.title
+  var titleStem = proposal.title
     .trim()
     .replace(INVALID_FILE_NAME_CHARS, " ")
     .replace(WHITESPACE, " ")
     .trim(' ', '.')
-  require(stem.isNotEmpty()) { "タイトルからファイル名を生成できません" }
-
-  proposal.seriesPosition?.takeIf { it > 0 }?.let { position ->
-    val volumeLabel = explicitSeriesPositionLabel(originalFileName, position) ?: position.toString()
-    if (!stem.endsWith(volumeLabel, ignoreCase = true)) stem = "$stem $volumeLabel"
-  }
-  stem = stem.replace(WHITESPACE, " ").trim()
+  require(titleStem.isNotEmpty()) { "タイトルからファイル名を生成できません" }
 
   val suffix = ".$extension"
-  val maxStemLength = (MAX_NORMALIZED_FILE_NAME_CHARS - suffix.length).coerceAtLeast(1)
-  if (stem.length > maxStemLength) stem = stem.take(maxStemLength).trimEnd(' ', '.')
+  val volumeSuffix = proposal.seriesPosition
+    ?.takeIf { it > 0 }
+    ?.let { position -> " 第${position}巻" }
+    .orEmpty()
+  val maxTitleLength = (MAX_NORMALIZED_FILE_NAME_CHARS - suffix.length - volumeSuffix.length).coerceAtLeast(1)
+  if (titleStem.length > maxTitleLength) titleStem = titleStem.take(maxTitleLength).trimEnd(' ', '.')
+  val stem = (titleStem + volumeSuffix).replace(WHITESPACE, " ").trim()
   return validateProposedSmbFileName(originalFileName, stem + suffix)
 }
 
-private fun explicitSeriesPositionLabel(originalFileName: String, position: Int): String? {
-  val stem = originalFileName.substringBeforeLast('.', originalFileName)
-  for (pattern in EXPLICIT_SERIES_POSITION_PATTERNS) {
-    for (match in pattern.findAll(stem)) {
-      val digits = match.groupValues.getOrNull(1) ?: continue
-      if (digits.toSeriesPositionOrNull() == position) return match.value.trim()
-    }
+private fun explicitSeriesPositionHint(stem: String): Int? {
+  val positions = EXPLICIT_SERIES_POSITION_PATTERNS
+    .asSequence()
+    .flatMap { pattern -> pattern.findAll(stem).asSequence() }
+    .mapNotNull { match -> match.groupValues.getOrNull(1)?.toSeriesPositionOrNull() }
+    .filter { it > 0 }
+    .distinct()
+    .toList()
+  return positions.singleOrNull()
+}
+
+private fun trailingBareSeriesPositionHint(stem: String): SeriesPositionHint? {
+  val match = TRAILING_BARE_SERIES_POSITION.matchEntire(stem) ?: return null
+  val position = match.groupValues[2].toSeriesPositionOrNull()
+    ?.takeIf { it in 1..MAX_INFERRED_TRAILING_SERIES_POSITION }
+    ?: return null
+  val titlePart = match.groupValues[1].trimEnd(' ', '_', '-', '.', '・')
+  if (titlePart.isBlank()) return null
+  return SeriesPositionHint(titlePart = titlePart, position = position)
+}
+
+private fun sameBibliographicText(first: String, second: String): Boolean {
+  val firstKey = bibliographicTextKey(first)
+  val secondKey = bibliographicTextKey(second)
+  return firstKey.isNotEmpty() && firstKey == secondKey
+}
+
+private fun bibliographicTextKey(value: String): String = buildString(value.length) {
+  value.lowercase(Locale.ROOT).forEach { character ->
+    if (character.isLetterOrDigit()) append(character)
   }
-  return null
 }
 
 private fun String.toSeriesPositionOrNull(): Int? = buildString(length) {
@@ -232,11 +295,11 @@ private fun Map<String, Any?>.optionalDouble(name: String): Double? {
 
 private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
   name = SMB_METADATA_OUTPUT_TOOL_NAME,
-  description = "表紙画像と現在のファイル名から推定した書誌情報を、解析結果として提出する。書誌解析が完了したら必ずこのツールを1回だけ呼び出す。",
+  description = "表紙画像と現在のファイル名から推定した書誌情報を、解析結果として提出する。漫画等の巻数情報を title から除いた場合も捨てず、seriesName と seriesPosition に保持する。書誌解析が完了したら必ずこのツールを1回だけ呼び出す。",
   arguments = listOf(
     LocalInferenceToolArgument(
       name = "title",
-      description = "書籍タイトル。巻数表現は含めない。1〜240文字。",
+      description = "書籍タイトル。巻数表現は含めない。巻数を認識した場合は削除するだけでなく seriesPosition へ移す。1〜240文字。",
       required = true,
     ),
     LocalInferenceToolArgument(
@@ -251,11 +314,11 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
     LocalInferenceToolArgument("isbn13", "ISBN-13。明確に読み取れる場合だけ指定する。"),
     LocalInferenceToolArgument(
       "seriesName",
-      "シリーズ名。巻数を判別できた場合は必ず指定する。シリーズ物でない、または判別できない場合は省略する。",
+      "シリーズ名。漫画・ライトノベル・小説等で巻数を判別できた場合は必須。独立したシリーズ名の表記がなければ、巻数を除いた作品タイトルを指定する。",
     ),
     LocalInferenceToolArgument(
       name = "seriesPosition",
-      description = "シリーズ内の数値の巻数。1以上の整数。判別できた場合は seriesName とセットで指定する。",
+      description = "シリーズ内の数値の巻数。1以上の整数。第8巻、Vol.8、1Kan、末尾の08などを巻数と判別した場合は省略せず 8 を指定し、seriesName とセットで提出する。",
       type = LocalInferenceToolArgumentType.INTEGER,
     ),
     LocalInferenceToolArgument(
@@ -271,16 +334,24 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
 
 private const val SMB_METADATA_OUTPUT_TOOL_NAME = "submit_book_metadata"
 private const val SMB_METADATA_STRUCTURED_OUTPUT_INSTRUCTION =
-  "解析結果の説明文は返さず、必ず submit_book_metadata ツールを1回だけ呼び出してください。"
+  "漫画等のシリーズ作品で巻数を認識した場合、title から巻数を除くだけで終わらせず、seriesName と seriesPosition を必ず保持してください。解析結果の説明文は返さず、必ず submit_book_metadata ツールを1回だけ呼び出してください。"
 private const val SMB_METADATA_SYSTEM_INSTRUCTION =
-  "あなたは書籍の表紙画像とファイル名を照合して書誌情報を抽出するアシスタントです。ファイル名のローマ字・英字情報も重要な根拠として利用し、最終結果は説明文ではなく指定された出力ツールだけで提出してください。"
+  "あなたは書籍の表紙画像とファイル名を照合して書誌情報を抽出するアシスタントです。シリーズ作品では巻数を見落とさず、巻数を title から除いた場合も seriesName と seriesPosition に保持してください。ファイル名のローマ字・英字情報も重要な根拠として利用し、最終結果は説明文ではなく指定された出力ツールだけで提出してください。"
 private val INVALID_FILE_NAME_CHARS = Regex("""[<>:"/\\|?*\x00-\x1F]""")
 private val WHITESPACE = Regex("\\s+")
 private val EXPLICIT_SERIES_POSITION_PATTERNS = listOf(
-  Regex("""第\s*([0-9０-９]+)\s*巻"""),
-  Regex("""(?i:vol(?:ume)?\.?)\s*([0-9０-９]+)"""),
-  Regex("""([0-9０-９]+)\s*巻"""),
+  Regex("""第\s*([0-9０-９]{1,3})\s*巻"""),
+  Regex("""(?i:vol(?:ume)?\.?)\s*[_-]?\s*([0-9０-９]{1,3})"""),
+  Regex("""([0-9０-９]{1,3})\s*巻"""),
+  Regex("""(?i)([0-9０-９]{1,3})\s*kan(?=$|[^a-z0-9])"""),
 )
+private val TRAILING_BARE_SERIES_POSITION = Regex("""^(.*[^0-9０-９])([0-9０-９]{1,3})$""")
+private const val MAX_INFERRED_TRAILING_SERIES_POSITION = 300
 private const val MAX_NORMALIZED_FILE_NAME_CHARS = 240
 private const val MAX_COVER_INPUT_BYTES = 8 * 1024 * 1024
 private const val MAX_VALIDATION_ERROR_CHARS = 500
+
+private data class SeriesPositionHint(
+  val titlePart: String,
+  val position: Int,
+)
