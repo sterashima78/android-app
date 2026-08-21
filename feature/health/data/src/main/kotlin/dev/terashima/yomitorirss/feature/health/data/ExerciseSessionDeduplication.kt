@@ -5,8 +5,8 @@ import java.time.Duration
 
 internal data class ExerciseSessionCandidate(
   val exerciseType: Int,
-  val dataOriginPackageName: String,
   val summary: HealthExerciseSessionSummary,
+  val dataOriginPackageName: String = "",
 )
 
 internal fun deduplicateExerciseSessions(
@@ -60,7 +60,11 @@ private fun sameRealWorldExercise(
       first.summary.endTime == second.summary.endTime
   if (exactIdentity) return true
 
-  if (first.dataOriginPackageName == second.dataOriginPackageName) return false
+  val sameKnownOrigin =
+    first.dataOriginPackageName.isNotBlank() &&
+      first.dataOriginPackageName == second.dataOriginPackageName
+  if (sameKnownOrigin) return false
+
   return hasStrongTemporalOverlap(first.summary, second.summary)
 }
 
