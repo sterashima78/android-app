@@ -38,6 +38,7 @@ internal fun SmbLibrarySettingsSection(
   onDelete: (String) -> Unit,
   onEnqueueCovers: () -> Unit,
   onRetryFailedCovers: () -> Unit,
+  onRescheduleCovers: () -> Unit,
 ) {
   var editingServer by remember { mutableStateOf<SmbServerSettings?>(null) }
   var creatingServer by remember { mutableStateOf(false) }
@@ -170,6 +171,7 @@ internal fun SmbLibrarySettingsSection(
       enabled = servers.isNotEmpty() && !syncing,
       onEnqueue = onEnqueueCovers,
       onRetryFailed = onRetryFailedCovers,
+      onReschedule = onRescheduleCovers,
     )
   }
 }
@@ -181,11 +183,16 @@ private fun SmbCoverPrefetchQueueSection(
   enabled: Boolean,
   onEnqueue: () -> Unit,
   onRetryFailed: () -> Unit,
+  onReschedule: () -> Unit,
 ) {
+  val canReschedule = snapshot.pendingCount > 0 &&
+    snapshot.runtime.state == SmbCoverPrefetchWorkerState.ENQUEUED &&
+    snapshot.runtime.waitReason == SmbCoverPrefetchWaitReason.SCHEDULER
+
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Text("表紙先読みキュー", style = MaterialTheme.typography.titleMedium)
     Text(
-      "未取得の表紙をバックグラウンドで取得します。処理はWi-Fi接続時かつバッテリー低下中でない場合に実行し、Wi-Fiが従量制設定でも停止しません。ZIP / CBZ は先頭32MBまでを走査し、PDFは64MB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。",
+      "未取得の表紙をバックグラウンドで取得します。処理はWi-Fi接続時かつバッテリー低下中でない場合に実行し、Wi-Fiが従量制設定でも停止しません。ZIP / CBZ は先頭64MBまでを走査し、PDFは128MB以下だけ一時取得して1ページ目を表紙化し、本体は処理後に削除します。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -205,6 +212,14 @@ private fun SmbCoverPrefetchQueueSection(
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+      }
+      if (canReschedule) {
+        Button(
+          enabled = enabled && !busy,
+          onClick = onReschedule,
+        ) {
+          Text("実行を再要求")
+        }
       }
     }
 
@@ -325,7 +340,7 @@ private fun coverPrefetchWaitReasonLabel(reason: SmbCoverPrefetchWaitReason): St
   SmbCoverPrefetchWaitReason.WIFI -> "待機理由: Wi-Fi接続を待っています。"
   SmbCoverPrefetchWaitReason.BATTERY -> "待機理由: バッテリー残量が低いため待機しています。"
   SmbCoverPrefetchWaitReason.SCHEDULER ->
-    "待機理由: Wi-Fi・バッテリー条件は満たしているため、OS / WorkManager の実行待ちです。"
+    "実行条件は満たしています。通常は自動的に開始しますが、OSのバックグラウンド実行制御により開始が遅れることがあります。"
 }
 
 private fun formatBytes(bytes: Long): String = when {
