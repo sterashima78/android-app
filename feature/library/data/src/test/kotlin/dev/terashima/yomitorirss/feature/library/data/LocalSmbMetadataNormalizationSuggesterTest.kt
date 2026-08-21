@@ -145,6 +145,20 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
+  fun `元ファイル名の巻数表記が推定巻数と異なる場合は維持しない`() {
+    val result = normalizedSmbBookFileName(
+      originalFileName = "Kakuu_Bouken_Tan_第2巻.CBZ",
+      proposal = SmbBookMetadataProposal(
+        title = "架空冒険譚",
+        seriesName = "架空冒険譚",
+        seriesPosition = 3,
+      ),
+    )
+
+    assertEquals("架空冒険譚 3.cbz", result)
+  }
+
+  @Test
   fun `元ファイル名のVol表記は対応する巻数なら維持する`() {
     val result = normalizedSmbBookFileName(
       originalFileName = "Kakuu_Bouken_Tan_Vol.03.pdf",
