@@ -71,4 +71,4 @@ private val EXERCISE_SESSION_PREFERENCE =
     .thenBy { durationMillis(it.summary) }
 
 private const val MIN_OVERLAP_RATIO = 0.80
-private const val MIN_DURATION_RATIO = 0.60
+private const val MIN_DURATION_RATIO = 0.55
