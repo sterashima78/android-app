@@ -191,7 +191,7 @@ private fun JSONObject.requireNullableDouble(name: String): Double? {
   return value.toDouble()
 }
 
-private val INVALID_FILE_NAME_CHARS = Regex("[<>:\\"/\\\\|?*\\u0000-\\u001F]")
+private val INVALID_FILE_NAME_CHARS = Regex("""[<>:"/\\|?*\x00-\x1F]""")
 private val WHITESPACE = Regex("\\s+")
 private const val MAX_FILE_NAME_PROMPT_CHARS = 500
 private const val MAX_NORMALIZED_FILE_NAME_CHARS = 240
