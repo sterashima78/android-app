@@ -232,7 +232,7 @@ private fun generateLocalPdfCover(bookFile: File, coverFile: File): Boolean = ru
 
 internal fun extractFirstZipImage(
   input: InputStream,
-  maxBytes: Long = MAX_REMOTE_COVER_SCAN_BYTES,
+  maxBytes: Long = SMB_ZIP_COVER_SCAN_MAX_BYTES,
 ): ByteArray? = runCatching {
   var result: ByteArray? = null
   ZipInputStream(LimitedInputStream(input, maxBytes)).use { zip ->
@@ -356,12 +356,12 @@ private class LimitedInputStream(
   }
 }
 
+internal const val SMB_ZIP_COVER_SCAN_MAX_BYTES = 64L * 1024 * 1024
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
 private const val COVER_CACHE_DIRECTORY = "smb-book-covers"
 private const val COVER_MAX_DIMENSION = 640
 private const val COVER_DECODE_MAX_DIMENSION = 1600
 private const val COVER_JPEG_QUALITY = 85
 private const val PDF_COVER_WIDTH = 640
-private const val MAX_REMOTE_COVER_SCAN_BYTES = 64L * 1024 * 1024
 private const val MAX_COVER_SOURCE_BYTES = 32L * 1024 * 1024
 private const val COVER_CACHE_MAX_BYTES = 200L * 1024 * 1024
