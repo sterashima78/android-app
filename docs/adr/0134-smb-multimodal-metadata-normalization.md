@@ -89,7 +89,9 @@ AI に SMB path や変更後ファイル名を自由生成させない。変更�
 
 候補生成時には source ID に加え、元ファイル名、remote file size、modified time を保持する。
 
-反映時に現在の SMB 蔵書情報と一致しなければ rename を行わず、古い候補として拒否する。レビュー待ちの間にユーザーや別プロセスがファイルを変更した場合、古い AI 結果で上書きしない。
+反映時に現在の SMB 蔵書情報と一致しなければ rename を行わず、古い候補を `SKIPPED` に移して再解析可能にする。再解析時は現在のファイル名・size・modified time を再取得して保存し、古い候補 payload は破棄する。レビュー待ちの間にユーザーや別プロセスがファイルを変更した場合、古い AI 結果で上書きしない。
+
+表紙キャッシュの `file:` URL が残っていても実体ファイルが失われている場合は、その stale `thumbnail_url` を解除して ADR-0133 の表紙先読みキューへ戻す。書誌候補の再解析時に表紙先読みが `FAILED` なら、表紙側の失敗キューも再試行してから正規化 worker を再開する。
 
 rename 自体は既存の `SmbLibraryRepository.renameBook` を再利用し、SMB rename、`sourceId`、Library identity、reader cache、cover cache の既存移行規則を維持する。
 
