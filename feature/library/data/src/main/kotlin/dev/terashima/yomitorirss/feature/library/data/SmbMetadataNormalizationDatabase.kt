@@ -213,11 +213,7 @@ class DefaultSmbMetadataNormalizationRepository(
   override suspend fun retryCandidate(sourceId: String): Unit = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
     val item = queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
-    require(
-      item.status == SmbMetadataNormalizationStatus.FAILED ||
-        item.status == SmbMetadataNormalizationStatus.SKIPPED ||
-        item.status == SmbMetadataNormalizationStatus.REJECTED,
-    ) { "再解析できる候補がありません" }
+    require(item.status in REANALYZABLE_STATUSES) { "再解析できる候補がありません" }
 
     val snapshot = DefaultLibraryRepository(database).snapshot()
     val currentBook = (snapshot.books + snapshot.hiddenBooks).firstOrNull {
@@ -226,36 +222,65 @@ class DefaultSmbMetadataNormalizationRepository(
     val currentInput = smbNormalizationInput(currentBook)
       ?: error("対象書籍のファイル情報を読み取れません")
     val coverReady = validCoverFile(currentBook.thumbnailUrl) != null
+    val latestBatchId = queryLatestBatchSnapshot()?.batchId ?: item.batchId
     val now = System.currentTimeMillis()
     database.transaction {
-      if (item.status == SmbMetadataNormalizationStatus.REJECTED) {
-        delete(DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
-      }
       if (!coverReady) {
         clearStaleCoverReference(this, sourceId, currentBook.thumbnailUrl)
       }
-      update(
-        ITEM_TABLE,
-        ContentValues().apply {
-          put("original_file_name", currentInput.fileName)
-          put("input_size", currentInput.size)
-          put("input_modified_at", currentInput.modifiedAt)
-          put(
-            "status",
-            if (coverReady) {
-              SmbMetadataNormalizationStatus.QUEUED.name
-            } else {
-              SmbMetadataNormalizationStatus.WAITING_FOR_COVER.name
-            },
-          )
-          putNull("proposed_file_name")
-          putNull("metadata_json")
-          putNull("error")
-          put("updated_at", now)
-        },
-        "batch_id = ? AND source_id = ?",
-        arrayOf(item.batchId, sourceId),
-      )
+      if (item.status == SmbMetadataNormalizationStatus.REJECTED) {
+        delete(DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
+        insertWithOnConflict(
+          ITEM_TABLE,
+          null,
+          ContentValues().apply {
+            put("batch_id", latestBatchId)
+            put("source_id", sourceId)
+            put("original_file_name", currentInput.fileName)
+            put("input_size", currentInput.size)
+            put("input_modified_at", currentInput.modifiedAt)
+            put(
+              "status",
+              if (coverReady) {
+                SmbMetadataNormalizationStatus.QUEUED.name
+              } else {
+                SmbMetadataNormalizationStatus.WAITING_FOR_COVER.name
+              },
+            )
+            putNull("proposed_file_name")
+            putNull("metadata_json")
+            putNull("error")
+            put("created_at", now)
+            put("updated_at", now)
+          },
+          SQLiteDatabase.CONFLICT_REPLACE,
+        )
+      } else {
+        val changed = update(
+          ITEM_TABLE,
+          ContentValues().apply {
+            put("original_file_name", currentInput.fileName)
+            put("input_size", currentInput.size)
+            put("input_modified_at", currentInput.modifiedAt)
+            put(
+              "status",
+              if (coverReady) {
+                SmbMetadataNormalizationStatus.QUEUED.name
+              } else {
+                SmbMetadataNormalizationStatus.WAITING_FOR_COVER.name
+              },
+            )
+            putNull("proposed_file_name")
+            putNull("metadata_json")
+            putNull("error")
+            put("updated_at", now)
+          },
+          "batch_id = ? AND source_id = ? AND status = ?",
+          arrayOf(item.batchId, sourceId, item.status.name),
+        )
+        require(changed == 1) { "再解析対象をキューへ戻せませんでした" }
+      }
+      val targetBatchId = if (item.status == SmbMetadataNormalizationStatus.REJECTED) latestBatchId else item.batchId
       update(
         BATCH_TABLE,
         ContentValues().apply {
@@ -263,7 +288,7 @@ class DefaultSmbMetadataNormalizationRepository(
           put("updated_at", now)
         },
         "batch_id = ?",
-        arrayOf(item.batchId),
+        arrayOf(targetBatchId),
       )
     }
   }
@@ -581,7 +606,7 @@ class DefaultSmbMetadataNormalizationRepository(
       )
     } ?: return null
     val covers = queryBookCovers(db)
-    val items = db.rawQuery(
+    val currentItems = db.rawQuery(
       """
         SELECT source_id, original_file_name, input_size, input_modified_at, status,
                proposed_file_name, metadata_json, error, updated_at
@@ -624,13 +649,64 @@ class DefaultSmbMetadataNormalizationRepository(
         }
       }
     }
+    val historicalRejected = queryHistoricalRejectedItems(
+      db = db,
+      currentBatchId = header.batchId,
+      currentSourceIds = currentItems.mapTo(mutableSetOf(), SmbMetadataNormalizationItem::sourceId),
+      covers = covers,
+    )
     return SmbMetadataNormalizationBatchSnapshot(
       batchId = header.batchId,
       status = header.status,
-      items = items,
+      items = currentItems + historicalRejected,
       createdAtEpochMillis = header.createdAt,
       updatedAtEpochMillis = header.updatedAt,
     )
+  }
+
+  private fun queryHistoricalRejectedItems(
+    db: SQLiteDatabase,
+    currentBatchId: String,
+    currentSourceIds: Set<String>,
+    covers: Map<String, String?>,
+  ): List<SmbMetadataNormalizationItem> = db.rawQuery(
+    """
+      SELECT i.batch_id, i.source_id, i.original_file_name, i.input_size, i.input_modified_at,
+             i.proposed_file_name, i.metadata_json, i.error, i.updated_at
+      FROM $ITEM_TABLE i
+      JOIN $DECISION_TABLE d ON d.source_id = i.source_id
+      WHERE d.decision_status = ? AND i.status = ? AND i.batch_id <> ?
+      ORDER BY i.updated_at DESC
+    """.trimIndent(),
+    arrayOf(
+      SmbMetadataNormalizationStatus.REJECTED.name,
+      SmbMetadataNormalizationStatus.REJECTED.name,
+      currentBatchId,
+    ),
+  ).use { cursor ->
+    buildList {
+      val seenSourceIds = currentSourceIds.toMutableSet()
+      while (cursor.moveToNext()) {
+        val sourceId = cursor.getString(1)
+        if (!seenSourceIds.add(sourceId)) continue
+        val metadata = if (cursor.isNull(6)) null else proposalFromJson(cursor.getString(6))
+        add(
+          SmbMetadataNormalizationItem(
+            batchId = cursor.getString(0),
+            sourceId = sourceId,
+            originalFileName = cursor.getString(2),
+            inputSize = cursor.getLong(3),
+            inputModifiedAt = cursor.getLong(4),
+            status = SmbMetadataNormalizationStatus.REJECTED,
+            proposedFileName = if (cursor.isNull(5)) null else cursor.getString(5),
+            proposal = metadata,
+            coverUrl = covers[sourceId],
+            error = if (cursor.isNull(7)) null else cursor.getString(7),
+            updatedAtEpochMillis = cursor.getLong(8),
+          ),
+        )
+      }
+    }
   }
 
   private fun queryConfirmedSourceIds(db: SQLiteDatabase): Set<String> = db.rawQuery(
@@ -986,6 +1062,14 @@ private val UNRESOLVED_STATUSES = setOf(
   SmbMetadataNormalizationStatus.PROCESSING,
   SmbMetadataNormalizationStatus.PENDING_REVIEW,
   SmbMetadataNormalizationStatus.DEFERRED,
+  SmbMetadataNormalizationStatus.FAILED,
+  SmbMetadataNormalizationStatus.SKIPPED,
+)
+
+private val REANALYZABLE_STATUSES = setOf(
+  SmbMetadataNormalizationStatus.PENDING_REVIEW,
+  SmbMetadataNormalizationStatus.DEFERRED,
+  SmbMetadataNormalizationStatus.REJECTED,
   SmbMetadataNormalizationStatus.FAILED,
   SmbMetadataNormalizationStatus.SKIPPED,
 )
