@@ -113,6 +113,7 @@ class LocalSmbMetadataNormalizationSuggesterTest {
     assertTrue(prompt.contains("末尾の1〜3桁"))
     assertTrue(prompt.contains("架空冒険譚08.pdf"))
     assertTrue(prompt.contains("Kakuu_Bouken_Tan_authorA_12.pdf"))
+    assertTrue(prompt.contains("現在のファイル名末尾の 12 は巻数候補です。"))
     assertTrue(prompt.contains("submit_book_metadata"))
     assertFalse(prompt.contains("JSON Schema"))
     assertFalse(prompt.contains("additionalProperties"))
