@@ -68,10 +68,13 @@ internal fun Throwable.isSmbMetadataToolCallParseFailure(): Boolean =
     }
 
 internal fun buildSmbMetadataNormalizationPrompt(currentFileName: String): String = """
-表紙画像と現在のファイル名から、日本語を含む書籍の書誌情報を推定してください。
-現在のファイル名は誤りや表記揺れを含む可能性があるため、表紙画像を強い根拠として利用してください。
+表紙画像と現在のファイル名の両方から、日本語を含む書籍の書誌情報を推定してください。
+現在のファイル名は重要な書誌情報の根拠です。誤りやノイズ、表記揺れがあり得ても、捨てずに表紙画像と照合してください。
+ファイル名にローマ字・英字で書籍名、著者名、シリーズ名、巻数が含まれている場合は、日本語の書誌情報を同定する手がかりとして積極的に利用してください。
+表紙とファイル名が矛盾する場合は、片方を機械的に優先せず、両方の一致点と書誌としての自然さから判断してください。
 判別できない任意項目は推測で埋めず、ツール引数を省略してください。著者を判別できない場合は authors を空配列にしてください。
-シリーズ物では title に巻数表現を含めず、seriesName と seriesPosition に分離してください。
+シリーズ物では title に巻数表現を含めず、シリーズ名を seriesName、数値の巻数を seriesPosition に分離してください。
+巻数を判別できた場合は seriesName と seriesPosition を必ず両方指定してください。例えば12巻目なら seriesPosition は 12 とします。
 ISBNは表紙画像またはファイル名から明確に読み取れる場合だけ指定してください。
 解析結果の説明文は返さず、必ず submit_book_metadata ツールを1回だけ呼び出してください。
 
@@ -116,6 +119,9 @@ internal fun parseSmbBookMetadataProposal(arguments: Map<String, Any?>): SmbBook
   val seriesPosition = arguments.optionalInt("seriesPosition")?.also {
     require(it > 0) { "seriesPosition は1以上である必要があります" }
   }
+  if (seriesPosition != null) {
+    require(seriesName != null) { "seriesPosition がある場合は seriesName も必要です" }
+  }
   val confidence = arguments.optionalDouble("confidence")?.also {
     require(it in 0.0..1.0) { "confidence は0〜1である必要があります" }
   }?.toFloat()
@@ -149,8 +155,8 @@ internal fun normalizedSmbBookFileName(
   require(stem.isNotEmpty()) { "タイトルからファイル名を生成できません" }
 
   proposal.seriesPosition?.takeIf { it > 0 }?.let { position ->
-    val volumeLabel = "第${position}巻"
-    if (!stem.contains(volumeLabel, ignoreCase = true)) stem = "$stem $volumeLabel"
+    val volumeLabel = explicitSeriesPositionLabel(originalFileName, position) ?: position.toString()
+    if (!stem.endsWith(volumeLabel, ignoreCase = true)) stem = "$stem $volumeLabel"
   }
   stem = stem.replace(WHITESPACE, " ").trim()
 
@@ -159,6 +165,29 @@ internal fun normalizedSmbBookFileName(
   if (stem.length > maxStemLength) stem = stem.take(maxStemLength).trimEnd(' ', '.')
   return validateProposedSmbFileName(originalFileName, stem + suffix)
 }
+
+private fun explicitSeriesPositionLabel(originalFileName: String, position: Int): String? {
+  val stem = originalFileName.substringBeforeLast('.', originalFileName)
+  for (pattern in EXPLICIT_SERIES_POSITION_PATTERNS) {
+    for (match in pattern.findAll(stem)) {
+      val digits = match.groupValues.getOrNull(1) ?: continue
+      if (digits.toSeriesPositionOrNull() == position) return match.value.trim()
+    }
+  }
+  return null
+}
+
+private fun String.toSeriesPositionOrNull(): Int? = buildString(length) {
+  for (character in this@toSeriesPositionOrNull) {
+    append(
+      if (character in '０'..'９') {
+        ('0'.code + character.code - '０'.code).toChar()
+      } else {
+        character
+      },
+    )
+  }
+}.toIntOrNull()
 
 private fun Map<String, Any?>.requireString(name: String, maxLength: Int): String {
   val value = get(name)
@@ -215,7 +244,7 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
     ),
     LocalInferenceToolArgument(
       name = "authors",
-      description = "著者名の配列。判別できない場合は空配列。最大12件。",
+      description = "著者名の配列。判別できない場合は空配列。最大12件。ファイル名がローマ字・英字表記の場合も書誌同定の手がかりにする。",
       required = true,
       type = LocalInferenceToolArgumentType.STRING_ARRAY,
     ),
@@ -223,10 +252,13 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
     LocalInferenceToolArgument("publishedDate", "出版日。判別できない場合は省略する。"),
     LocalInferenceToolArgument("isbn10", "ISBN-10。明確に読み取れる場合だけ指定する。"),
     LocalInferenceToolArgument("isbn13", "ISBN-13。明確に読み取れる場合だけ指定する。"),
-    LocalInferenceToolArgument("seriesName", "シリーズ名。シリーズ物でない、または判別できない場合は省略する。"),
+    LocalInferenceToolArgument(
+      "seriesName",
+      "シリーズ名。巻数を判別できた場合は必ず指定する。シリーズ物でない、または判別できない場合は省略する。",
+    ),
     LocalInferenceToolArgument(
       name = "seriesPosition",
-      description = "シリーズ内の巻数。1以上の整数。判別できない場合は省略する。",
+      description = "シリーズ内の数値の巻数。1以上の整数。判別できた場合は seriesName とセットで指定する。",
       type = LocalInferenceToolArgumentType.INTEGER,
     ),
     LocalInferenceToolArgument(
@@ -242,9 +274,14 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
 
 private const val SMB_METADATA_OUTPUT_TOOL_NAME = "submit_book_metadata"
 private const val SMB_METADATA_SYSTEM_INSTRUCTION =
-  "あなたは書籍の表紙画像とファイル名から書誌情報を抽出するアシスタントです。最終結果は説明文ではなく、指定された出力ツールだけで提出してください。"
+  "あなたは書籍の表紙画像とファイル名を照合して書誌情報を抽出するアシスタントです。ファイル名のローマ字・英字情報も重要な根拠として利用し、最終結果は説明文ではなく指定された出力ツールだけで提出してください。"
 private val INVALID_FILE_NAME_CHARS = Regex("""[<>:"/\\|?*\x00-\x1F]""")
 private val WHITESPACE = Regex("\\s+")
+private val EXPLICIT_SERIES_POSITION_PATTERNS = listOf(
+  Regex("""第\s*([0-9０-９]+)\s*巻"""),
+  Regex("""(?i:vol(?:ume)?\.?)\s*([0-9０-９]+)"""),
+  Regex("""([0-9０-９]+)\s*巻"""),
+)
 private const val MAX_FILE_NAME_PROMPT_CHARS = 500
 private const val MAX_NORMALIZED_FILE_NAME_CHARS = 240
 private const val MAX_COVER_INPUT_BYTES = 8 * 1024 * 1024
