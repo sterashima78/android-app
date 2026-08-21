@@ -32,6 +32,27 @@ enum class SmbCoverPrefetchStatus {
   SKIPPED,
 }
 
+enum class SmbCoverPrefetchWorkerState {
+  IDLE,
+  ENQUEUED,
+  RUNNING,
+  BLOCKED,
+  FAILED,
+  CANCELLED,
+  UNKNOWN,
+}
+
+enum class SmbCoverPrefetchWaitReason {
+  WIFI,
+  BATTERY,
+  SCHEDULER,
+}
+
+data class SmbCoverPrefetchRuntimeSnapshot(
+  val state: SmbCoverPrefetchWorkerState = SmbCoverPrefetchWorkerState.IDLE,
+  val waitReason: SmbCoverPrefetchWaitReason? = null,
+)
+
 data class SmbCoverPrefetchItem(
   val sourceId: String,
   val title: String,
@@ -49,6 +70,7 @@ data class SmbCoverPrefetchSnapshot(
   val failedCount: Int = 0,
   val completedCount: Int = 0,
   val skippedCount: Int = 0,
+  val runtime: SmbCoverPrefetchRuntimeSnapshot = SmbCoverPrefetchRuntimeSnapshot(),
 ) {
   val hasActiveWork: Boolean get() = pendingCount > 0 || runningCount > 0
 }

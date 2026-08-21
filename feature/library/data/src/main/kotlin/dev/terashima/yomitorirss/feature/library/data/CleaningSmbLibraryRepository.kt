@@ -2,8 +2,8 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import android.content.ContentValues
 import android.content.Context
-import android.net.Uri
 import android.database.sqlite.SQLiteDatabase
+import android.net.Uri
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
@@ -20,6 +20,7 @@ class CleaningSmbLibraryRepository private constructor(
 ) : SmbLibraryRepository by delegate {
   private val appContext = context.applicationContext
   private val coverPrefetchQueue = SmbCoverPrefetchQueueStore(database)
+  private val coverPrefetchRuntimeInspector = SmbCoverPrefetchRuntimeInspector(appContext)
   private val coverCacheCoordinator = SmbCoverCacheCoordinator(appContext, database)
 
   constructor(
@@ -69,8 +70,12 @@ class CleaningSmbLibraryRepository private constructor(
     coverPrefetchQueue.enqueueMissing()
   }
 
-  override suspend fun coverPrefetchSnapshot(): SmbCoverPrefetchSnapshot =
-    coverPrefetchQueue.snapshot()
+  override suspend fun coverPrefetchSnapshot(): SmbCoverPrefetchSnapshot {
+    val queueSnapshot = coverPrefetchQueue.snapshot()
+    return queueSnapshot.copy(
+      runtime = coverPrefetchRuntimeInspector.snapshot(queueSnapshot.hasActiveWork),
+    )
+  }
 
   override suspend fun enqueueMissingCoverPrefetch(): Int =
     coverPrefetchQueue.enqueueMissing(retrySkipped = true)

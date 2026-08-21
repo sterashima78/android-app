@@ -2,11 +2,18 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.BatteryManager
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
@@ -14,36 +21,115 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchItem
+import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchRuntimeSnapshot
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchSnapshot
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchStatus
+import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchWaitReason
+import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchWorkerState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class WorkManagerSmbCoverPrefetchScheduler(
   context: Context,
 ) : SmbCoverPrefetchScheduler {
   private val appContext = context.applicationContext
+  private val preferences = appContext.getSharedPreferences(SCHEDULER_PREFERENCES, Context.MODE_PRIVATE)
 
   override fun kick() {
     val request = OneTimeWorkRequestBuilder<SmbCoverPrefetchWorker>()
-      .setConstraints(
-        Constraints.Builder()
-          .setRequiredNetworkType(NetworkType.UNMETERED)
-          .setRequiresBatteryNotLow(true)
-          .build(),
-      )
+      .setConstraints(smbCoverPrefetchConstraints())
       .addTag(SmbCoverPrefetchWorker.WORK_TAG)
       .build()
+    val migrated = preferences.getBoolean(KEY_WIFI_CONSTRAINT_MIGRATED, false)
     WorkManager.getInstance(appContext).enqueueUniqueWork(
       SmbCoverPrefetchWorker.WORK_NAME,
-      ExistingWorkPolicy.APPEND_OR_REPLACE,
+      if (migrated) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE,
       request,
     )
+    if (!migrated) {
+      preferences.edit().putBoolean(KEY_WIFI_CONSTRAINT_MIGRATED, true).apply()
+    }
   }
+
+  private companion object {
+    const val SCHEDULER_PREFERENCES = "smb_cover_prefetch_scheduler"
+    const val KEY_WIFI_CONSTRAINT_MIGRATED = "wifi_constraint_v1"
+  }
+}
+
+internal fun smbCoverPrefetchConstraints(): Constraints = Constraints.Builder()
+  .setRequiredNetworkRequest(
+    NetworkRequest.Builder()
+      .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+      .build(),
+    NetworkType.CONNECTED,
+  )
+  .setRequiresBatteryNotLow(true)
+  .build()
+
+internal class SmbCoverPrefetchRuntimeInspector(context: Context) {
+  private val appContext = context.applicationContext
+
+  suspend fun snapshot(queueHasActiveWork: Boolean): SmbCoverPrefetchRuntimeSnapshot {
+    val states = runCatching {
+      WorkManager.getInstance(appContext)
+        .getWorkInfosForUniqueWorkFlow(SmbCoverPrefetchWorker.WORK_NAME)
+        .first()
+        .map { it.state }
+    }.getOrElse {
+      return SmbCoverPrefetchRuntimeSnapshot(
+        state = SmbCoverPrefetchWorkerState.UNKNOWN,
+        waitReason = SmbCoverPrefetchWaitReason.SCHEDULER.takeIf { queueHasActiveWork },
+      )
+    }
+    val state = smbCoverPrefetchWorkerState(states)
+    val waitReason = when {
+      !queueHasActiveWork || state == SmbCoverPrefetchWorkerState.RUNNING -> null
+      !isWifiAvailable() -> SmbCoverPrefetchWaitReason.WIFI
+      isBatteryLow() -> SmbCoverPrefetchWaitReason.BATTERY
+      else -> SmbCoverPrefetchWaitReason.SCHEDULER
+    }
+    return SmbCoverPrefetchRuntimeSnapshot(state = state, waitReason = waitReason)
+  }
+
+  private fun isWifiAvailable(): Boolean = runCatching {
+    val connectivity = appContext.getSystemService(ConnectivityManager::class.java)
+    connectivity.allNetworks.any { network ->
+      connectivity.getNetworkCapabilities(network)
+        ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+    }
+  }.getOrDefault(false)
+
+  @Suppress("DEPRECATION")
+  private fun isBatteryLow(): Boolean {
+    val battery = appContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
+    val status = battery.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
+    if (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL) {
+      return false
+    }
+    val level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+    val scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+    if (level < 0 || scale <= 0) return false
+    return level.toFloat() / scale.toFloat() <= BATTERY_LOW_THRESHOLD
+  }
+
+  private companion object {
+    const val BATTERY_LOW_THRESHOLD = 0.15f
+  }
+}
+
+internal fun smbCoverPrefetchWorkerState(states: List<WorkInfo.State>): SmbCoverPrefetchWorkerState = when {
+  WorkInfo.State.RUNNING in states -> SmbCoverPrefetchWorkerState.RUNNING
+  WorkInfo.State.ENQUEUED in states -> SmbCoverPrefetchWorkerState.ENQUEUED
+  WorkInfo.State.BLOCKED in states -> SmbCoverPrefetchWorkerState.BLOCKED
+  WorkInfo.State.FAILED in states -> SmbCoverPrefetchWorkerState.FAILED
+  WorkInfo.State.CANCELLED in states -> SmbCoverPrefetchWorkerState.CANCELLED
+  else -> SmbCoverPrefetchWorkerState.IDLE
 }
 
 class SmbCoverPrefetchWorker(
