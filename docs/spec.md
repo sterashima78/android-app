@@ -1,265 +1,238 @@
-# Android RSSリーダー仕様書
+# Mosaic 現行仕様
 
-- 文書バージョン: 0.2.7
-- 更新日: 2026-08-20
-- 状態: Kotlinネイティブ版
+- 更新日: 2026-08-22
+- 対象: 現在の `main` 系列
 
 ## 1. 目的
 
-自分で登録した情報源だけを対象に、未読記事を短時間で処理し、必要な記事を保存・分類・要約できるAndroid向けRSSリーダーを提供する。
+Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メール、蔵書、タスク、健康・運動、資産などの個人情報を端末内で整理・閲覧する Android アプリである。
 
-プロダクト原則は次のとおり。
+主な方針は次のとおり。
 
-- アカウントや同期サーバーを使用しない
-- 主要データを端末内に保存する
-- 記事本文は既定ブラウザーで閲覧する
-- 未読処理を少ない操作で完了できるようにする
-- スワイプ操作では永続化の完了を待たず、画面を先に更新する
-- 要約はダウンロード済みの端末内モデルだけで実行する
+- 主要なユーザーデータは端末内に保持する。
+- Mosaic 独自のアカウントや同期サーバーを必須としない。
+- RSS、Reddit、YouTube、Gmail、蔵書など source 固有の意味を維持しつつ、必要な箇所だけ共通の閲覧・整理・AI処理へ接続する。
+- 要約、チャット、書誌推定などのAI処理は、ダウンロード済みの端末内モデルを利用する。
+- バックグラウンド処理は画面の寿命から分離し、必要に応じて WorkManager と永続キューを利用する。
+- credential、token、外部サービスの認証情報は、通常のユーザーデータと分離して扱う。
 
-## 2. 対象環境
+## 2. この文書の責務
 
-- 対象OS: Android 14（API 34）以降
-- compile/target API: Android API 36
-- 対象CPU: arm64-v8a
-- 対象端末: Androidスマートフォン
-- 画面方向: 縦向きのみ
-- カラーテーマ: ダークテーマのみ
-- 配布方法: APKを端末へ直接導入
-- アプリID: `dev.terashima.yomitorirss`
+この文書はユーザーから見た現行機能と、互換性に影響する主要な振る舞いを説明する。
 
-## 3. 技術構成
+アーキテクチャ上の依存方向、module ownership、table ownership、テスト戦略、Android platform 基準は `docs/architecture/` を正本とする。設計判断の理由と変更履歴は `docs/adr/` を正本とする。
 
-| 領域 | 実装 |
-| --- | --- |
-| 言語 | Kotlin |
-| UI | Jetpack Compose |
-| 状態管理 | Android ViewModel、StateFlow |
-| 一覧 | Compose LazyColumn |
-| ジェスチャー | Compose pointer input |
-| 永続化 | SQLiteOpenHelper |
-| HTTP | OkHttp |
-| XML・HTML解析 | jsoup |
-| 端末内AI | Gemma 4、LiteRT-LM |
-| 健康データ | Health Connect（参照 + アプリ内ワークアウト書き出し） |
-| バックアップ | Storage Access Framework、UTF-8 JSON |
+データベースの現在version、module一覧、table一覧、依存ライブラリversion、CIコマンドなどコードから一意に決まる値はこの文書へ複製しない。現在値は次を参照する。
 
-Expo、React Native、JavaScriptランタイム、Metro、EASは使用しない。
+- database schema: `app/src/main/java/dev/terashima/yomitorirss/AppDatabaseSchema.kt`
+- module一覧: `settings.gradle.kts`
+- table ownership: `config/architecture/table-ownership.tsv`
+- CI: `.github/workflows/`
+- Android platform: `docs/architecture/platform.md`
 
-## 4. 主要画面
+## 3. 対象環境
 
-| 画面 | 目的 |
-| --- | --- |
-| 未読 | 全フィードの未読記事を処理する |
-| 保存 | 保存済み記事を確認し、タグで絞り込む |
-| あとで読む | 専用タグが付いた保存記事を処理する |
-| 履歴 | 過去30日間の既読記事を確認する |
-| フィード | フィードの追加、更新状態確認、削除を行う |
-| ヘルス | Health Connect の歩数・活動消費カロリー・運動・心拍・睡眠・体重・体脂肪率・栄養情報と各種推移を確認する |
+- Android 14（API 34）以降を対象とする。
+- compile / target API は Android API 36 系とする。
+- 配布対象CPUは arm64-v8a とする。
+- Kotlin と Jetpack Compose を主要実装技術とする。
+- ユーザー向け名称は Mosaic とする。
+- 既存インストールとの互換性のため application id `dev.terashima.yomitorirss` と内部 database file 名 `yomitori-rss.db` は維持する。
 
-補助ダイアログとして、タグ管理、記事タグ編集、要約モデル管理、要約結果、フィード候補選択を提供する。
+## 4. コンテンツ閲覧と整理
 
-## 5. 記事一覧
+### 4.1 RSS
 
-一覧項目には次を表示する。
+- RSS / Atom 系フィードを登録して記事を取得する。
+- 未読、既読、履歴を管理する。
+- フィードの追加、削除、手動更新、OPMLインポートを提供する。
+- コンテンツ取得や分類は source 固有情報を維持しつつ Content Context へ接続する。
 
-- 記事タイトル
-- 配信元名
-- 公開日時
-- 付与済みタグ
-- 記事メニュー
+### 4.2 ブックマークとあとで読む
 
-記事をタップするとAndroidの既定ブラウザーで開く。長押しまたは記事メニューから要約を実行できる。保存記事では記事メニューからタグを編集できる。
+- コンテンツをブックマークとして保存できる。
+- タグとフォルダで整理できる。
+- 「あとで読む」は Curation Context が所有する system folder として扱う。
+- 共有インテントやインポートからブックマークを追加できる。
+- 保存済みコンテンツへAI要約・タグ等の補完処理を行える。
 
-記事は端末のローカル日付ごとにグループ化し、新しい順で表示する。
+### 4.3 Reddit / YouTube
 
-## 6. スワイプ操作
+- Reddit と YouTube は source 固有の購読・表示・判定を持つ。
+- 共通コンテンツとして扱う箇所でも source の種類を失わない。
+- 自動AI処理の対象可否は source / content type の方針に従う。
 
-### 6.1 未読
+### 4.4 統合ビューと履歴
 
-- 左スワイプ: 既読にする
-- 右スワイプ: 保存して既読にする
-- 大きく右スワイプ: 「あとで読む」タグを付与して保存し、既読にする
+- 複数sourceのコンテンツを横断して閲覧するpresentationを提供する。
+- 履歴や保存状態は owner Context の API を通して参照する。
 
-### 6.2 保存
+## 5. 端末内AI
 
-- 左スワイプ: 保存を解除する
+### 5.1 共通runtime
 
-### 6.3 あとで読む
+- LiteRT-LM を利用する端末内AI runtime を共有する。
+- モデルのダウンロード、選択、削除、推論設定、端末上のベンチマークを管理できる。
+- 長時間処理は foreground UI へ閉じず、feature 所有の background runtime または task queue へ委譲する。
 
-- 左スワイプ: 保存を解除する
-- 右スワイプ: 「あとで読む」タグだけを解除し、通常の保存状態に戻す
+### 5.2 要約
 
-### 6.4 履歴
+- コンテンツ本文を取得・前処理したうえで要約を生成する。
+- 取得、前処理、推論、metadata生成は分離した処理段階として扱う。
+- 要約結果とtask状態は永続化し、失敗taskの再実行や一時停止・再開を行える。
+- ブックマークの自動補完は Summary が所有する background runtime から既存の要約キューへ投入する。
 
-- 右スワイプ: 未読に戻す
+### 5.3 AIチャット
 
-### 6.5 確定条件と楽観的更新
+- 端末内モデルを利用してチャットできる。
+- アプリ内情報を参照する場合は、定義済みの読み取り用tool / skillを利用する。
+- 任意SQLや任意コード実行をAIへ公開しない。
 
-- 通常操作の閾値は92dpとする
-- 大きな右スワイプの閾値は176dpとする
-- 閾値未満で指を離した場合はスプリングアニメーションで原点へ戻す
-- 閾値を超えた場合はカードを画面外へ移動し、一覧から即座に除外する
-- SQLite更新はIOスレッドで実行する
-- 更新成功時は一覧を再読込する
-- 更新失敗時は対象記事だけを一覧へアニメーション復帰し、エラーを表示する
-- 複数記事の操作は記事ID単位で独立して処理する
+### 5.4 Knowledge
 
-ジェスチャー中の移動はCompose側の描画処理だけで行い、データベース処理やJavaScriptスレッドを待たない。
+- 保存済みコンテンツや要約を資料としてKnowledge pageを生成・更新できる。
+- 自動生成は永続background taskとして実行し、既存pageの拡張と追加page作成を扱う。
 
-## 7. フィード
+## 6. メール
 
-### 7.1 対応形式
+- Gmail連携を提供する。
+- 認証済みアカウントのメールを取得し、未読、スター、アーカイブ等の状態を扱う。
+- HTMLメールを表示できる。
+- メールのlocal cache / stateは Mail Context が所有する。
+- OAuth credentialやtokenを通常のdatabase backupへ含めない。
 
-- RSS 2.0
-- Atom 1.0
-- RSS 1.0（RDF）
+## 7. 蔵書とBook Reader
 
-XML宣言とHTTP Content-Typeの文字コードを確認し、日本語をUTF-8以外で配信するフィードも復号する。相対URLは最終取得URLを基準に絶対URLへ変換する。
+### 7.1 蔵書
 
-### 7.2 登録
+- Kindle、Audible、Google Books、ファイルサーバー由来の蔵書情報を扱う。
+- シリーズ、タイトル、著者、表紙などを表示・整理する。
+- タイトル検索、シリーズ表示、source別の操作を提供する。
 
-- RSS・Atom URLを直接登録できる
-- WebサイトURLを入力した場合はHTMLの `link[rel~=alternate]` から候補を検出する
-- 複数候補は選択ダイアログへ表示する
-- 登録前にフィードを取得・解析する
-- 同一フィードURLの重複登録を禁止する
+### 7.2 SMB / ファイルサーバー
 
-### 7.3 更新
+- SMB server上の書籍を蔵書へ取り込む。
+- 表紙画像は再生成可能なcacheとして扱い、backgroundで先読みできる。
+- SMB credentialはAndroid Keystoreを利用して保護し、アプリ独自backupへ含めない。
 
-- アプリ起動時に全フィードを更新する
-- 未読画面とフィード画面から手動更新できる
-- 最大4フィードを並列取得する
-- ETagとLast-Modifiedを保存し、条件付きリクエストを使用する
-- 1件が失敗してもほかのフィードを継続する
-- 更新件数の進捗、部分失敗、直近エラーを表示する
-- 記事のGUID・Atom IDまたはURLを基準に重複登録を防ぐ
+### 7.3 書誌正規化
 
-## 8. 保存、タグ、履歴
+- SMB書籍について、現在のファイル名と表紙画像を入力として書誌候補を端末内AIで生成できる。
+- 候補はレビュー画面で確認し、適用または却下する。
+- 確定済み判断を保持し、必要な状態では再解析できる。
+- 生成結果は構造化出力として受け取り、アプリ側validationを通してから利用する。
 
-- 保存した記事は既読にする
-- 保存記事には複数のタグを付与できる
-- 保存画面では1つのタグを選択して絞り込める
-- タグタブではタグごとの保存記事数を表示する
-- タグタブでタグを選択すると、そのタグが付いた保存記事一覧を表示する
-- タグの作成、名前変更、削除ができる
-- タグ名は前後空白と連続空白を正規化し、大文字小文字を区別せず重複を防ぐ
-- 「あとで読む」は通常タグと同じデータ構造で保持する
-- 未保存の既読記事は既読から30日後に削除する
-- 保存済み記事は30日を超えても保持する
-- フィード削除時、保存済み記事は配信元情報を残して保持する
+### 7.4 Book Reader
 
-## 9. 端末内AI
+- 対応するローカル書籍をアプリ内readerで閲覧する。
+- 読書位置などユーザー所有のreader設定を保持する。
 
-記事本文を取得し、ダウンロード済みのGemma 4モデルで日本語要約を生成する。本文そのものはデータベースへ保存しない。AIチャットも同じGemma 4 / LiteRT-LM runtimeを利用する。
+## 8. タスク、カレンダー、ワークアウト、ヘルス
 
-モデル管理画面では次を行える。
+### 8.1 Task
 
-- 対応モデルの一覧表示
-- モデルのダウンロード
-- ダウンロード進捗表示
-- 使用モデルの選択
-- モデルの削除
-- 端末メモリが推奨量を下回る場合の警告
-- 推論バックエンドのCPU/GPU切り替え
+- 階層を持つタスクを管理する。
+- 完了状態、期限、並び順などを扱う。
+- ホーム画面widgetからタスクを参照できる。
 
-モデル候補は次のとおり。
+### 8.2 Calendar
 
-- Gemma 4 E2B Instruct（既定・推奨）
-- Gemma 4 E4B Instruct（品質優先）
+- Calendar は日付軸のread-only projectionとして扱う。
+- Android Calendar Provider の予定に加え、Task の期限や Workout の実績を共通 `CalendarEvent` として表示する。
+- Calendar 自身は Task / Workout の永続状態を所有しない。
 
-Qwen系モデルとMediaPipe Tasks GenAI runtimeは使用しない。旧Qwenモデルが端末に残っている場合は、最新版起動時にモデルファイル・一時ファイル・runtime cacheを削除する。
+### 8.3 Workout
 
-CPUを既定の実行バックエンドとする。GPUを選択した場合はLiteRT-LMのGPU backendで推論する。GPUが利用できない端末では自動的にCPUへ切り替えずエラーを表示する。
+- アプリ内で種目、セット、回数、時間などの運動記録を作成する。
+- Workout の記録を source of truth とする。
+- 完了したWorkoutは、許可されている場合にHealth Connectへ一方向exportできる。
+- Workoutから活動消費カロリーや心拍数を推定して保存・書き込みしない。
 
-AIチャットがアプリ内データを必要とする場合は、Gemma 4のFunction CallingとLiteRT-LMの `ConversationConfig.tools` / `OpenApiTool` を利用する。RSS、Reddit、ブックマーク、既読履歴、タスクの読み取り専用Toolを登録し、Tool CallとTool Responseの反復はLiteRT-LMのnative Conversationへ委譲する。任意コード実行、任意SQL、書き込みToolは提供しない。
+### 8.4 Health
 
-モデル読込中と生成中を区別して表示する。生成済み要約は記事IDとモデルID、要約設定を表すキャッシュキーとともにSQLiteへキャッシュし、再生成も可能とする。
+- Health Connectから歩数、活動消費カロリー、運動、心拍、睡眠、体重、体脂肪率、栄養情報等を読み取る。
+- Health Connect由来のread dataはアプリdatabaseへ複製せず、Health画面のread modelとして利用する。
+- Health ConnectからWorkoutへのimport / 双方向同期は行わない。
+- アプリ内Workoutのexport以外の健康データを書き込まない。
 
-## 10. データベース
+## 9. 資産
 
-データベース名は `yomitori-rss.db` とする。
+- dated snapshotとして資産情報を保存し、時系列で参照する。
+- TSV等のデータをインポートできる。
+- WebView / Web Collectorを利用するsource adapterから資産情報を取り込める。
+- 資産項目をカテゴリ分類し、カテゴリ別の構成と推移を表示できる。
 
-主要テーブル:
+## 10. Web、X、Widget、補助機能
 
-- `feeds`
-- `articles`
-- `tags`
-- `article_tags`
-- `article_summaries`
+- X向けWebView表示とカスタムCSS設定を提供する。
+- 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
+- LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。
+- RSS未読やTask等をホーム画面widgetへ表示する。
+- Gameなど独立した補助featureを含む。
 
-外部キー制約とWALを有効にする。データベース version 12 を現在の更新元ベースラインとし、今後のスキーマ変更は version 12 以降からの migration を提供する。
+## 11. 永続化
 
-## 11. バックアップと復元
+- durable relational user dataは原則として単一のSQLite database `yomitori-rss.db` に保存する。
+- database fileを共有していてもtable ownershipは共有しない。
+- 各feature data moduleが自身のschema contributionとmigrationを所有し、`:app` がapplication-level schemaをcompositionする。
+- 他Contextのtableへ直接writeしない。cross-context操作はowner API、command port、query APIを利用する。
+- 現在のschema versionやtable一覧はコードとmachine-readable manifestを正本とし、この仕様書では固定値を持たない。
 
-バックアップは暗号化しないUTF-8 JSONとして出力する。
+詳細は `docs/architecture/persistence.md` を参照する。
 
-含めるデータ:
+## 12. バックアップと復元
 
-- 購読フィード
-- 保存記事
-- 保存記事の既読状態
-- タグ
-- 記事とタグの関連
-- 形式バージョン
-- 出力日時
+- アプリ独自backupは、統合SQLite databaseの整合したsnapshotを含むMosaic形式のZIP archiveとする。
+- backupにはmanifest、database snapshot、allowlistされたuser preferencesを含む。
+- checksum、SQLite application id、integrity check等を利用して復元前にarchiveを検証する。
+- database snapshotが対応する過去schemaである場合は、通常のdatabase migrationを通して現行schemaへ更新する。
+- credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
+- SMB表紙cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
 
-復元時は現在のフィード、記事、タグをトランザクション内で置き換える。形式名とバージョンが一致しないファイルは拒否する。
+詳細は ADR-0099、ADR-0100、ADR-0135 と `docs/architecture/persistence.md` を参照する。
 
-## 12. 更新互換性
+## 13. Background execution
 
-現在配布中の最新版を更新元の基準とする。最新版で完了済みの一時的な移行処理は保持しない。
+- durableなbackground処理にはWorkManagerを利用する。
+- feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
+- `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
+- Android / WorkManagerがconstructorを所有するentry pointは、監査済みProvider contractを通してapplication-level dependencyを取得できる。
+- frameworkが永続化した旧class nameとの互換が必要な場合だけ、ADRで根拠を持つcompatibility shimを残す。
 
-最新版からの上書き更新を可能にするため、次を維持する。
+## 14. 更新互換性
 
-- アプリID `dev.terashima.yomitorirss`
-- React Native・Expoテンプレートと同一の公開開発用署名
-- データベース名 `yomitori-rss.db`
+- 現在配布中の最新版を次版への更新互換性baselineとする。
+- 移行完了が確認された一時的migrationや旧形式fallbackは恒久的に保持しない。
+- 現在のユーザーデータを失う可能性がある形式変更では、現行形式へ安全に収束してから旧処理を削除する。
+- frameworkがclass name等を永続化する場合は、必要な期間だけ明示的compatibilityを維持する。
+- application idと内部database file名は既存インストールの継続性のため維持する。
 
-Expo版が使用していた `files/SQLite/yomitori-rss.db` からAndroid標準DB保存先への自動コピーは行わない。データベース version 12 より古いアプリから最新版への直接更新もサポート対象外とする。
+## 15. Privacy / security
 
-公開開発用署名は既存の直接配布APKとの上書き互換性維持だけに使用し、Google Play等の本番配布には使用しない。
+- 公開リポジトリへcredential、token、OAuth secret、実ユーザーのメールアドレス、健康データ、バックアップ、SMB接続情報等を保存しない。
+- fixtureとtest dataには人工データを利用する。
+- backup対象のSharedPreferencesはallowlist方式とし、将来追加される値を暗黙に外部backupへ含めない。
+- Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
+- AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
 
-## 13. 非対象
+## 16. 現在の非目標
 
-- ユーザー登録とログイン
-- 複数端末同期
-- サーバー側のデータ保存
-- OPML入出力
-- フィード検索とおすすめ
-- バックグラウンド更新
-- 新着通知
-- アプリ内WebView
-- 記事本文の全文保存
-- 全文検索
-- 画像サムネイル
-- JSON Feed
-- タブレット・折りたたみ端末向けの個別最適化
-- 横向き表示
-- ライトテーマ
+- Mosaic独自のユーザー登録 / ログイン基盤
+- Mosaic独自serverを介した複数端末の常時同期
+- durable user dataを必須のremote backendへ保存する構成
+- Health ConnectとWorkoutの双方向同期
+- AIからの任意SQL、任意コード実行、無制限の書き込みtool
+- credentialやmodel artifactをアプリ独自backupへ含めること
 
-## 14. Health Connect
+feature追加・廃止に伴い非目標が変わる場合は、対応するADRまたは仕様変更と同じPRで更新する。
 
-- Health Connect から歩数、活動消費カロリー、運動セッション、心拍、睡眠、体重、体脂肪率、栄養情報を参照する。
-- 活動消費カロリーは基礎代謝を含まない `ActiveCaloriesBurnedRecord` の選択期間合計を表示する。Workout の回数や時間からアプリ独自に推定しない。
-- 歩数、活動消費カロリー、心拍数などの身体活動・生体指標はヘルス機能で表示し、Workout は種目、セット、回数、時間などの運動記録に特化する。
-- 運動は選択期間の合計時間に加えて個々のセッションを新しい順に表示し、タイトルまたは運動種別、開始・終了時刻、所要時間を確認できるようにする。
-- 運動セッションにメモまたは種目内訳がある場合はタップで展開し、メモ、segment の種目名、開始・終了時刻、所要時間、反復回数を表示する。提供元が segment を記録していない場合は内訳データなしとして扱う。
-- 栄養情報は摂取カロリー、たんぱく質、脂質、炭水化物を日単位に合算して表示する。
-- 表示期間は今日、直近7日、直近30日とする。
-- 体脂肪率は選択期間内の最新値と測定履歴の時系列グラフを表示する。
-- 栄養情報は熱量・P・F・Cを切り替える時系列グラフで表示し、厚生労働省「日本人の食事摂取基準（2025年版）」を基にした標準目安と減量参考を比較できるようにする。
-- 標準目安は30〜49歳男性・身体活動レベル「普通」の2,750 kcal/日を代表値とし、P 13〜20%E、F 20〜30%E、C 50〜65%Eを比較帯として利用する。たんぱく質推奨量65 g/日も表示する。
-- 減量参考は標準代表値から500 kcal/日を差し引いた2,250 kcal/日を比較値とし、公的な個別減量基準ではないことを表示する。
-- Health Connect 由来の読み取りデータはアプリ DB に保存せず、バックアップ、AI 処理、外部サービスへ送信しない。
-- バックグラウンド読み取り権限と30日を超える履歴権限は要求しない。
-- Health Connect とアプリ内ワークアウト記録は別データとして扱い、Health Connect から Workout への自動同期は行わない。
-- アプリ内で完了・保存したワークアウトのみ、ADR-0131に従って Health Connect へ一方向に書き出す。書き出し対象は運動セッションと種目内訳に限定し、活動消費カロリーや心拍数は書き込まない。
+## 17. 関連文書
 
-## 15. ビルドと配布
-
-- JDK 17を使用する
-- Android Gradle Plugin 9.3系とGradle 9.5系を使用する
-- `main`へのコミット時だけテスト、Lint、release APKビルドを実行する
-- 同一ブランチで古い実行が残っている場合はキャンセルする
-- APK成果物の保持期間は3日とする
+- `docs/architecture/README.md`: current architecture documentの入口
+- `docs/architecture/principles.md`: layer / ownership / framework boundary
+- `docs/architecture/context-map.md`: Domain ContextとContext間関係
+- `docs/architecture/module-map.md`: Gradle module構成
+- `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
+- `docs/architecture/testing.md`: testとarchitecture verification
+- `docs/architecture/platform.md`: Android platform基準
+- `docs/adr/README.md`: ADR索引
