@@ -236,6 +236,7 @@ private val SMB_METADATA_OUTPUT_TOOL = LocalInferenceTool(
     ),
     LocalInferenceToolArgument("reason", "表紙とファイル名のどの情報を根拠にしたかを500文字以内で簡潔に説明する。"),
   ),
+  allowAdditionalArguments = false,
   execute = { "accepted" },
 )
 
