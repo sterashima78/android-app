@@ -205,8 +205,15 @@ class LibraryViewModel(
       _state.update { it.copy(smbMetadataNormalizationBusy = true) }
       runCatching {
         normalizer.retryCandidate(sourceId)
-        val count = smb.enqueueMissingCoverPrefetch()
-        if (count > 0 || smb.coverPrefetchSnapshot().hasActiveWork) enqueueCoverPrefetch()
+        val failedCoverCount = smb.retryFailedCoverPrefetch()
+        val missingCoverCount = smb.enqueueMissingCoverPrefetch()
+        if (
+          failedCoverCount > 0 ||
+          missingCoverCount > 0 ||
+          smb.coverPrefetchSnapshot().hasActiveWork
+        ) {
+          enqueueCoverPrefetch()
+        }
         smbMetadataNormalizationScheduler?.kick()
       }
         .onSuccess { loadSnapshot(message = "書誌候補を再解析します") }
