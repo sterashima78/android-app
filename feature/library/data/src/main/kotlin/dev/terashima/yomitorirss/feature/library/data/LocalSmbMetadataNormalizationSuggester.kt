@@ -4,7 +4,9 @@ import dev.terashima.yomitorirss.core.airuntime.LocalInferenceTool
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceToolArgument
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceToolArgumentType
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.feature.library.DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT
 import dev.terashima.yomitorirss.feature.library.SmbBookMetadataProposal
+import dev.terashima.yomitorirss.feature.library.renderSmbMetadataNormalizationPrompt
 import java.util.Locale
 
 internal class LocalSmbMetadataNormalizationSuggester(
@@ -13,12 +15,13 @@ internal class LocalSmbMetadataNormalizationSuggester(
   fun suggest(
     currentFileName: String,
     coverBytes: ByteArray,
+    promptTemplate: String = DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
   ): SmbBookMetadataProposal {
     require(currentFileName.isNotBlank()) { "現在のファイル名がありません" }
     require(coverBytes.isNotEmpty()) { "表紙画像がありません" }
     require(coverBytes.size <= MAX_COVER_INPUT_BYTES) { "表紙画像が大きすぎます" }
 
-    val initialPrompt = buildSmbMetadataNormalizationPrompt(currentFileName)
+    val initialPrompt = buildSmbMetadataNormalizationPrompt(currentFileName, promptTemplate)
     return try {
       generateStructuredProposal(initialPrompt, coverBytes)
     } catch (firstError: IllegalArgumentException) {
@@ -67,20 +70,10 @@ internal fun Throwable.isSmbMetadataToolCallParseFailure(): Boolean =
         message.contains("Failed to parse FC tool calls", ignoreCase = true)
     }
 
-internal fun buildSmbMetadataNormalizationPrompt(currentFileName: String): String = """
-表紙画像と現在のファイル名の両方から、日本語を含む書籍の書誌情報を推定してください。
-現在のファイル名は重要な書誌情報の根拠です。誤りやノイズ、表記揺れがあり得ても、捨てずに表紙画像と照合してください。
-ファイル名にローマ字・英字で書籍名、著者名、シリーズ名、巻数が含まれている場合は、日本語の書誌情報を同定する手がかりとして積極的に利用してください。
-表紙とファイル名が矛盾する場合は、片方を機械的に優先せず、両方の一致点と書誌としての自然さから判断してください。
-判別できない任意項目は推測で埋めず、ツール引数を省略してください。著者を判別できない場合は authors を空配列にしてください。
-シリーズ物では title に巻数表現を含めず、シリーズ名を seriesName、数値の巻数を seriesPosition に分離してください。
-巻数を判別できた場合は seriesName と seriesPosition を必ず両方指定してください。例えば12巻目なら seriesPosition は 12 とします。
-ISBNは表紙画像またはファイル名から明確に読み取れる場合だけ指定してください。
-解析結果の説明文は返さず、必ず submit_book_metadata ツールを1回だけ呼び出してください。
-
-現在のファイル名:
-${currentFileName.trim().take(MAX_FILE_NAME_PROMPT_CHARS)}
-""".trimIndent()
+internal fun buildSmbMetadataNormalizationPrompt(
+  currentFileName: String,
+  promptTemplate: String = DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
+): String = renderSmbMetadataNormalizationPrompt(promptTemplate, currentFileName)
 
 internal fun parseSmbBookMetadataProposal(arguments: Map<String, Any?>): SmbBookMetadataProposal {
   val allowed = setOf(
@@ -282,7 +275,6 @@ private val EXPLICIT_SERIES_POSITION_PATTERNS = listOf(
   Regex("""(?i:vol(?:ume)?\.?)\s*([0-9０-９]+)"""),
   Regex("""([0-9０-９]+)\s*巻"""),
 )
-private const val MAX_FILE_NAME_PROMPT_CHARS = 500
 private const val MAX_NORMALIZED_FILE_NAME_CHARS = 240
 private const val MAX_COVER_INPUT_BYTES = 8 * 1024 * 1024
 private const val MAX_VALIDATION_ERROR_CHARS = 500
