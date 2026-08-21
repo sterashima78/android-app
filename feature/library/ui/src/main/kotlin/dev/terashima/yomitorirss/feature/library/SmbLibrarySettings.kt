@@ -439,7 +439,8 @@ private fun SmbServerDialog(
       ) { Text("保存") }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) { Text("キャンセル") }</n    },
+      TextButton(onClick = onDismiss) { Text("キャンセル") }
+    },
   )
 }
 
