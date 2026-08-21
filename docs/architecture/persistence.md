@@ -67,8 +67,13 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `summary_article_content` | `:feature:summary:data` |
 | `smb_library_servers` | `:feature:library:data` |
 | `smb_cover_prefetch_queue` | `:feature:library:data` |
+| `smb_metadata_normalization_batches` | `:feature:library:data` |
+| `smb_metadata_normalization_items` | `:feature:library:data` |
+| `smb_metadata_normalization_decisions` | `:feature:library:data` |
 
 SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は `libraryDatabaseSchema` に含め、app-level database version 26 で既存 DB に追加する。
+
+SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema は app-level database version 27 で追加する。
 
 この表を手作業の完全な schema catalog として扱わない。正確な検査対象は [`config/architecture/table-ownership.tsv`](../../config/architecture/table-ownership.tsv)、実際の schema definition は各 feature data module の `DatabaseSchemaContribution` を参照する。
 
@@ -83,6 +88,7 @@ SMB 表紙先読みキューは Library Context が所有する派生処理状�
 - Bookmark read model は Article metadata を `ArticleRepository.findArticle(s)` から取得する。
 - Summary は Article metadata を `ArticleRepository`、Bookmark / Read Later membership を `BookmarkContentQuery` から取得する。
 - RSS ingestion は Content table を直接 write せず `ContentSourceGateway` を利用する。
+- AI task queue は SMB 書誌正規化 table を直接参照せず、Library-owned `SmbMetadataNormalizationRepository` を通じて task projection と再試行を行う。
 
 ### Named Projection
 
@@ -125,3 +131,4 @@ allowlist は恒久的な例外集ではない。file/table が消えた entry �
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
 - [ADR-0133](../adr/0133-smb-cover-prefetch-queue.md)
+- [ADR-0134](../adr/0134-smb-multimodal-metadata-normalization.md)
