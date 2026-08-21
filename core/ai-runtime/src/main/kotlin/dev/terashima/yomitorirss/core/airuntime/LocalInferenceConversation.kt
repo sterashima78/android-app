@@ -21,10 +21,19 @@ data class LocalInferenceMessage(
   val content: String,
 )
 
+enum class LocalInferenceToolArgumentType(val schemaType: String) {
+  STRING("string"),
+  INTEGER("integer"),
+  NUMBER("number"),
+  BOOLEAN("boolean"),
+  STRING_ARRAY("array"),
+}
+
 data class LocalInferenceToolArgument(
   val name: String,
   val description: String,
   val required: Boolean = false,
+  val type: LocalInferenceToolArgumentType = LocalInferenceToolArgumentType.STRING,
 )
 
 data class LocalInferenceTool(
@@ -41,6 +50,11 @@ data class LocalInferenceTool(
     }
   }
 }
+
+data class LocalInferenceToolCall(
+  val name: String,
+  val arguments: Map<String, Any?>,
+)
 
 data class LocalInferenceConversationRequest(
   val systemInstruction: String,
@@ -86,6 +100,7 @@ internal fun toolDescriptionJson(tool: LocalInferenceTool): String = buildJsonOb
     "parameters",
     buildJsonObject {
       put("type", "object")
+      put("additionalProperties", false)
       put(
         "properties",
         buildJsonObject {
@@ -93,7 +108,15 @@ internal fun toolDescriptionJson(tool: LocalInferenceTool): String = buildJsonOb
             put(
               argument.name,
               buildJsonObject {
-                put("type", "string")
+                put("type", argument.type.schemaType)
+                if (argument.type == LocalInferenceToolArgumentType.STRING_ARRAY) {
+                  put(
+                    "items",
+                    buildJsonObject {
+                      put("type", "string")
+                    },
+                  )
+                }
                 put("description", argument.description)
               },
             )
