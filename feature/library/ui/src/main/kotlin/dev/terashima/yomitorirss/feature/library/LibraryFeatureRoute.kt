@@ -60,6 +60,8 @@ fun LibraryFeatureRoute(
       onEnqueueCovers = viewModel::enqueueMissingSmbCovers,
       onRetryFailedCovers = viewModel::retryFailedSmbCovers,
       onRescheduleCovers = viewModel::rescheduleSmbCoverPrefetch,
+      onSaveMetadataNormalizationPrompt = viewModel::saveSmbMetadataNormalizationPrompt,
+      onResetMetadataNormalizationPrompt = viewModel::resetSmbMetadataNormalizationPrompt,
       onStartMetadataNormalization = viewModel::startSmbMetadataNormalization,
       onApplyMetadataCandidate = viewModel::applySmbMetadataCandidate,
       onDeferMetadataCandidate = viewModel::deferSmbMetadataCandidate,
