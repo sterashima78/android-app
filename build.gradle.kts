@@ -34,6 +34,8 @@ val variantArchitectureDependencyConfigurationSuffixes =
   )
 
 val appFeatureWorkerExceptions = mapOf(
+  "app/src/main/java/dev/terashima/yomitorirss/BookmarkAutoEnrichmentBackfillWorker.kt" to
+    "ADR-0101: legacy WorkManager FQCN compatibility shim",
   "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/KnowledgeWorkerCompat.kt" to
     "ADR-0101: legacy WorkManager FQCN compatibility shim",
 )
@@ -276,6 +278,12 @@ val verifyArchitectureRuleTests by tasks.registering {
       repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/BookmarkBackfillWorker.kt",
       sourceText = "class BookmarkBackfillWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
       expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
+    )
+    assertClean(
+      name = "legacy bookmark backfill Worker compatibility shim",
+      projectPath = ":app",
+      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/BookmarkAutoEnrichmentBackfillWorker.kt",
+      sourceText = "class BookmarkAutoEnrichmentBackfillWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
     )
     assertClean(
       name = "legacy Knowledge Worker compatibility shim",
