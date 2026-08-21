@@ -40,6 +40,7 @@ data class LocalInferenceTool(
   val name: String,
   val description: String,
   val arguments: List<LocalInferenceToolArgument> = emptyList(),
+  val allowAdditionalArguments: Boolean = true,
   val execute: suspend (Map<String, String>) -> String,
 ) {
   init {
@@ -100,7 +101,7 @@ internal fun toolDescriptionJson(tool: LocalInferenceTool): String = buildJsonOb
     "parameters",
     buildJsonObject {
       put("type", "object")
-      put("additionalProperties", false)
+      if (!tool.allowAdditionalArguments) put("additionalProperties", false)
       put(
         "properties",
         buildJsonObject {
