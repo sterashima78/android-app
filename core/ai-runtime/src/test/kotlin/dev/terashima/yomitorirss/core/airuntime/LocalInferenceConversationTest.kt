@@ -27,6 +27,7 @@ class LocalInferenceConversationTest {
     assertTrue(schema.contains("\"query\""))
     assertTrue(schema.contains("\"limit\""))
     assertTrue(schema.contains("\"required\":[\"limit\"]"))
+    assertFalse(schema.contains("\"additionalProperties\""))
   }
 
   @Test
@@ -52,6 +53,7 @@ class LocalInferenceConversationTest {
           type = LocalInferenceToolArgumentType.NUMBER,
         ),
       ),
+      allowAdditionalArguments = false,
       execute = { "ok" },
     )
 
