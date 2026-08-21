@@ -77,6 +77,17 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
+  fun `LiteRTのtool call parse failureを構造化出力失敗として判定する`() {
+    val parseFailure = IllegalStateException(
+      "outer",
+      IllegalArgumentException("Failed to parse FC tool calls"),
+    )
+
+    assertTrue(parseFailure.isSmbMetadataToolCallParseFailure())
+    assertFalse(IllegalStateException("GPU unavailable").isSmbMetadataToolCallParseFailure())
+  }
+
+  @Test
   fun `promptはJSON直書きではなく出力toolを要求する`() {
     val prompt = buildSmbMetadataNormalizationPrompt("sample.pdf")
 
