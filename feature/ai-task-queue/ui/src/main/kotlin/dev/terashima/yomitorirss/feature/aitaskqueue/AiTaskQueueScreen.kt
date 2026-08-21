@@ -188,9 +188,15 @@ private fun AiTaskRow(
               modifier = Modifier.padding(top = 4.dp),
             )
           }
-          item.error?.takeIf(String::isNotBlank)?.let { error ->
+          aiTaskFailureReason(item)?.let { reason ->
             Text(
-              text = error,
+              text = "失敗理由",
+              color = MaterialTheme.colorScheme.error,
+              style = MaterialTheme.typography.labelSmall,
+              modifier = Modifier.padding(top = 6.dp),
+            )
+            Text(
+              text = reason,
               color = MaterialTheme.colorScheme.error,
               style = MaterialTheme.typography.bodySmall,
             )
@@ -247,6 +253,12 @@ internal fun aiTaskProgressPresentation(item: AiTaskQueueItem): AiTaskProgressPr
     null
   }
   return AiTaskProgressPresentation(label = label, fraction = fraction)
+}
+
+internal fun aiTaskFailureReason(item: AiTaskQueueItem): String? {
+  if (item.state != AiTaskQueueItemState.FAILED) return null
+  return item.error?.trim()?.takeIf(String::isNotEmpty)
+    ?: "詳細な失敗理由は記録されていません"
 }
 
 private fun taskTitle(item: AiTaskQueueItem): String = item.title
