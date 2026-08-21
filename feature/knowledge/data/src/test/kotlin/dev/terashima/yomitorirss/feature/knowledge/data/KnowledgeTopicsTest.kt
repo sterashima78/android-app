@@ -149,6 +149,47 @@ class KnowledgeTopicsTest {
   }
 
   @Test
+  fun `自動更新プロンプトは既存記事を維持しつつ追加出典を反映する`() {
+    val topic = buildKnowledgeTopics(
+      listOf(
+        source("old", summary = "既存の知見", tags = listOf("Android")),
+        source(
+          "new",
+          title = "新しいAndroid検証",
+          summary = "追加された知見",
+          tags = listOf("Android"),
+          savedAt = "2026-08-16T00:00:00Z",
+        ),
+      ),
+    ).single()
+
+    val prompt = buildKnowledgeRefreshPrompt(
+      page = page("## 概要\n既存の記事本文 [1]"),
+      topic = topic,
+      promptBudgetChars = 12_000,
+    )
+
+    assertTrue(prompt.orEmpty().contains("既存の記事本文"))
+    assertTrue(prompt.orEmpty().contains("新しいAndroid検証"))
+    assertTrue(prompt.orEmpty().contains("既存節の拡張"))
+  }
+
+  @Test
+  fun `自動更新で既存記事全文が収まらない場合は新規生成へフォールバックできる`() {
+    val topic = buildKnowledgeTopics(
+      listOf(source("a", tags = listOf("Android"))),
+    ).single()
+
+    val prompt = buildKnowledgeRefreshPrompt(
+      page = page("長文".repeat(4_000)),
+      topic = topic,
+      promptBudgetChars = 8_000,
+    )
+
+    assertEquals(null, prompt)
+  }
+
+  @Test
   fun `編集プロンプトには記事本文の末尾まで含める`() {
     val body = "本文".repeat(2_000) + "末尾マーカー"
     val prompt = buildKnowledgeEditPrompt(
