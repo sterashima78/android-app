@@ -111,7 +111,7 @@ class LocalSmbMetadataNormalizationSuggesterTest {
     assertTrue(prompt.contains("seriesName"))
     assertTrue(prompt.contains("seriesPosition"))
     assertTrue(prompt.contains("末尾の1〜3桁"))
-    assertTrue(prompt.contains("ニコイチ08.pdf"))
+    assertTrue(prompt.contains("架空冒険譚08.pdf"))
     assertTrue(prompt.contains("Kakuu_Bouken_Tan_authorA_12.pdf"))
     assertTrue(prompt.contains("submit_book_metadata"))
     assertFalse(prompt.contains("JSON Schema"))
@@ -121,12 +121,12 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   @Test
   fun `カスタムpromptでも固定指示で巻数メタデータを保持させる`() {
     val prompt = buildSmbMetadataNormalizationPrompt(
-      currentFileName = "ニコイチ08.pdf",
+      currentFileName = "架空冒険譚08.pdf",
       promptTemplate = "表紙から書誌を推定してください。",
     )
 
     assertTrue(prompt.contains("seriesName と seriesPosition を必ず保持してください"))
-    assertTrue(prompt.contains("現在のファイル名:\nニコイチ08.pdf"))
+    assertTrue(prompt.contains("現在のファイル名:\n架空冒険譚08.pdf"))
     assertTrue(prompt.endsWith("submit_book_metadata ツールを1回だけ呼び出してください。"))
   }
 
@@ -156,30 +156,30 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   @Test
   fun `タイトルに一致する末尾番号から欠落したシリーズ情報を補完する`() {
     val result = completeSmbSeriesMetadataFromFileName(
-      currentFileName = "ニコイチ08.pdf",
-      proposal = SmbBookMetadataProposal(title = "ニコイチ"),
+      currentFileName = "架空冒険譚08.pdf",
+      proposal = SmbBookMetadataProposal(title = "架空冒険譚"),
     )
 
-    assertEquals("ニコイチ", result.seriesName)
+    assertEquals("架空冒険譚", result.seriesName)
     assertEquals(8, result.seriesPosition)
   }
 
   @Test
   fun `区切り付き末尾番号から欠落したシリーズ情報を補完する`() {
     val result = completeSmbSeriesMetadataFromFileName(
-      currentFileName = "ニコイチ_０８.pdf",
-      proposal = SmbBookMetadataProposal(title = "ニコイチ"),
+      currentFileName = "架空冒険譚_０８.pdf",
+      proposal = SmbBookMetadataProposal(title = "架空冒険譚"),
     )
 
-    assertEquals("ニコイチ", result.seriesName)
+    assertEquals("架空冒険譚", result.seriesName)
     assertEquals(8, result.seriesPosition)
   }
 
   @Test
   fun `タイトル自体に数字を含む場合は末尾番号を巻数として補完しない`() {
     val result = completeSmbSeriesMetadataFromFileName(
-      currentFileName = "Windows11.pdf",
-      proposal = SmbBookMetadataProposal(title = "Windows 11"),
+      currentFileName = "架空規格11.pdf",
+      proposal = SmbBookMetadataProposal(title = "架空規格 11"),
     )
 
     assertNull(result.seriesName)
@@ -189,15 +189,15 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   @Test
   fun `既存のシリーズ情報はファイル名ヒューリスティックで上書きしない`() {
     val result = completeSmbSeriesMetadataFromFileName(
-      currentFileName = "ニコイチ08.pdf",
+      currentFileName = "架空冒険譚08.pdf",
       proposal = SmbBookMetadataProposal(
-        title = "ニコイチ",
-        seriesName = "ニコイチ",
+        title = "架空冒険譚",
+        seriesName = "架空冒険譚",
         seriesPosition = 7,
       ),
     )
 
-    assertEquals("ニコイチ", result.seriesName)
+    assertEquals("架空冒険譚", result.seriesName)
     assertEquals(7, result.seriesPosition)
   }
 
