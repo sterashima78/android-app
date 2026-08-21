@@ -32,7 +32,7 @@ import dev.terashima.yomitorirss.feature.mail.Mailbox
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
-import dev.terashima.yomitoririss.feature.reddit.redditThreadId
+import dev.terashima.yomitorirss.feature.reddit.redditThreadId
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssUiState
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
