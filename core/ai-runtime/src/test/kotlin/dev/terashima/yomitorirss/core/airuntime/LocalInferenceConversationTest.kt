@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.core.airuntime
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -60,7 +59,7 @@ class LocalInferenceConversationTest {
       .jsonObject.getValue("parameters").jsonObject
     val properties = parameters.getValue("properties").jsonObject
 
-    assertFalse(parameters.getValue("additionalProperties").jsonPrimitive.boolean)
+    assertEquals("false", parameters.getValue("additionalProperties").jsonPrimitive.content)
     assertEquals("array", properties.getValue("authors").jsonObject.getValue("type").jsonPrimitive.content)
     assertEquals(
       "string",
