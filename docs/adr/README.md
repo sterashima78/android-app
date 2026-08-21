@@ -72,6 +72,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0065: SMB 蔵書と組み込み Book Reader を分離して提供する](0065-smb-library-and-built-in-book-reader.md)
 - [ADR-0108: 蔵書整理を Library 所有の metadata と AI suggestion に分離する](0108-library-organization-and-ai-suggestions.md)
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
+- [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 
 ### Background / AI runtime
 
@@ -83,6 +84,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0079: process-wide local AI inference sessions](0079-process-wide-local-ai-inference-sessions.md)
 - [ADR-0104: AI task queue feature ownership](0104-ai-task-queue-feature-ownership.md)
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
+- [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 
 ### Content / summary / knowledge
 
