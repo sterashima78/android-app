@@ -43,16 +43,29 @@ internal class LocalSmbMetadataNormalizationSuggester(
     prompt: String,
     coverBytes: ByteArray,
   ): SmbBookMetadataProposal {
-    val call = modelManager.generateImageToolCall(
-      systemInstruction = SMB_METADATA_SYSTEM_INSTRUCTION,
-      userMessage = prompt,
-      imageBytes = coverBytes,
-      tools = listOf(SMB_METADATA_OUTPUT_TOOL),
-    ) ?: throw IllegalArgumentException("submit_book_metadata が呼び出されませんでした")
+    val call = try {
+      modelManager.generateImageToolCall(
+        systemInstruction = SMB_METADATA_SYSTEM_INSTRUCTION,
+        userMessage = prompt,
+        imageBytes = coverBytes,
+        tools = listOf(SMB_METADATA_OUTPUT_TOOL),
+      )
+    } catch (error: Throwable) {
+      if (!error.isSmbMetadataToolCallParseFailure()) throw error
+      throw IllegalArgumentException("構造化ツール呼び出しを解析できませんでした", error)
+    } ?: throw IllegalArgumentException("submit_book_metadata が1回だけ呼び出されませんでした")
     require(call.name == SMB_METADATA_OUTPUT_TOOL_NAME) { "想定外のツールが呼び出されました" }
     return parseSmbBookMetadataProposal(call.arguments)
   }
 }
+
+internal fun Throwable.isSmbMetadataToolCallParseFailure(): Boolean =
+  generateSequence(this) { error -> error.cause }
+    .mapNotNull(Throwable::message)
+    .any { message ->
+      message.contains("Failed to parse tool calls", ignoreCase = true) ||
+        message.contains("Failed to parse FC tool calls", ignoreCase = true)
+    }
 
 internal fun buildSmbMetadataNormalizationPrompt(currentFileName: String): String = """
 表紙画像と現在のファイル名から、日本語を含む書籍の書誌情報を推定してください。
