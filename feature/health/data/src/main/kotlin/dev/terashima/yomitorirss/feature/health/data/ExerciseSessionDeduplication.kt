@@ -1,35 +1,74 @@
 package dev.terashima.yomitorirss.feature.health.data
 
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
-import java.time.Instant
+import java.time.Duration
 
 internal data class ExerciseSessionCandidate(
   val exerciseType: Int,
   val summary: HealthExerciseSessionSummary,
+  val dataOriginPackageName: String = "",
 )
 
 internal fun deduplicateExerciseSessions(
   sessions: List<ExerciseSessionCandidate>,
-): List<HealthExerciseSessionSummary> =
+): List<HealthExerciseSessionSummary> {
+  val kept = mutableListOf<ExerciseSessionCandidate>()
   sessions
-    .groupBy { candidate ->
-      ExerciseSessionIdentity(
-        startTime = candidate.summary.startTime,
-        endTime = candidate.summary.endTime,
-        exerciseType = candidate.exerciseType,
-      )
+    .sortedWith(EXERCISE_SESSION_PREFERENCE.reversed())
+    .forEach { candidate ->
+      if (kept.none { representative -> sameRealWorldExercise(representative, candidate) }) {
+        kept += candidate
+      }
     }
-    .values
-    .mapNotNull { duplicates ->
-      duplicates.maxWithOrNull(
-        compareBy<ExerciseSessionCandidate> { it.summary.segments.size }
-          .thenBy { it.summary.notes?.length ?: 0 }
-          .thenBy { it.summary.title?.length ?: 0 },
-      )?.summary
-    }
+  return kept.map(ExerciseSessionCandidate::summary)
+}
 
-private data class ExerciseSessionIdentity(
-  val startTime: Instant,
-  val endTime: Instant,
-  val exerciseType: Int,
-)
+private fun sameRealWorldExercise(
+  first: ExerciseSessionCandidate,
+  second: ExerciseSessionCandidate,
+): Boolean {
+  val exactIdentity =
+    first.exerciseType == second.exerciseType &&
+      first.summary.startTime == second.summary.startTime &&
+      first.summary.endTime == second.summary.endTime
+  if (exactIdentity) return true
+
+  val sameKnownOrigin =
+    first.dataOriginPackageName.isNotBlank() &&
+      first.dataOriginPackageName == second.dataOriginPackageName
+  if (sameKnownOrigin) return false
+
+  return hasStrongTemporalOverlap(first.summary, second.summary)
+}
+
+private fun hasStrongTemporalOverlap(
+  first: HealthExerciseSessionSummary,
+  second: HealthExerciseSessionSummary,
+): Boolean {
+  val firstDuration = durationMillis(first)
+  val secondDuration = durationMillis(second)
+  if (firstDuration <= 0L || secondDuration <= 0L) return false
+
+  val overlapStart = maxOf(first.startTime, second.startTime)
+  val overlapEnd = minOf(first.endTime, second.endTime)
+  if (overlapStart >= overlapEnd) return false
+
+  val overlapDuration = Duration.between(overlapStart, overlapEnd).toMillis().toDouble()
+  val shorterDuration = minOf(firstDuration, secondDuration).toDouble()
+  val longerDuration = maxOf(firstDuration, secondDuration).toDouble()
+
+  return overlapDuration / shorterDuration >= MIN_OVERLAP_RATIO &&
+    shorterDuration / longerDuration >= MIN_DURATION_RATIO
+}
+
+private fun durationMillis(summary: HealthExerciseSessionSummary): Long =
+  Duration.between(summary.startTime, summary.endTime).toMillis()
+
+private val EXERCISE_SESSION_PREFERENCE =
+  compareBy<ExerciseSessionCandidate> { it.summary.segments.size }
+    .thenBy { it.summary.notes?.length ?: 0 }
+    .thenBy { it.summary.title?.length ?: 0 }
+    .thenBy { durationMillis(it.summary) }
+
+private const val MIN_OVERLAP_RATIO = 0.80
+private const val MIN_DURATION_RATIO = 0.55

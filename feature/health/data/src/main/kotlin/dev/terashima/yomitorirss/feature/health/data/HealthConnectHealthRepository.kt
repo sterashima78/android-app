@@ -66,7 +66,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     return HealthOverview(
       steps = aggregation[StepsRecord.COUNT_TOTAL],
       activeCaloriesKcal = aggregation[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
-      exerciseMinutes = totalExerciseMinutes(exerciseSessions),
+      exerciseMinutes = aggregation[ExerciseSessionRecord.EXERCISE_DURATION_TOTAL]?.toMinutes(),
       averageHeartRateBpm = aggregation[HeartRateRecord.BPM_AVG],
       sleepMinutes = aggregation[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes(),
       averageWeightKg = aggregation[WeightRecord.WEIGHT_AVG]?.inKilograms,
@@ -129,6 +129,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       response.records.forEach { record ->
         sessions += ExerciseSessionCandidate(
           exerciseType = record.exerciseType,
+          dataOriginPackageName = record.metadata.dataOrigin.packageName,
           summary = HealthExerciseSessionSummary(
             startTime = record.startTime,
             endTime = record.endTime,
@@ -244,6 +245,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     private val AGGREGATE_METRICS: Set<AggregateMetric<*>> = setOf(
       StepsRecord.COUNT_TOTAL,
       ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
+      ExerciseSessionRecord.EXERCISE_DURATION_TOTAL,
       HeartRateRecord.BPM_AVG,
       SleepSessionRecord.SLEEP_DURATION_TOTAL,
       WeightRecord.WEIGHT_AVG,
