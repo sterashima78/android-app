@@ -257,13 +257,13 @@ internal class SmbCoverPrefetchProcessor(
     const val BOOK_CACHE_DIRECTORY = "smb-books"
     const val TEMP_DIRECTORY = "smb-cover-prefetch-temp"
     const val COPY_BUFFER_SIZE = 128 * 1024
-    const val MAX_PDF_PREFETCH_BYTES = 64L * 1024 * 1024
-    const val MAX_ZIP_SCAN_BYTES = 32L * 1024 * 1024
+    const val MAX_PDF_PREFETCH_BYTES = 128L * 1024 * 1024
+    const val MAX_ZIP_SCAN_BYTES = 64L * 1024 * 1024
   }
 }
 
 internal fun shouldPrefetchPdf(size: Long): Boolean =
-  size in 0L..(64L * 1024 * 1024)
+  size in 0L..(128L * 1024 * 1024)
 
 private class SmbCoverPrefetchCredentialReader(context: Context) {
   private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
