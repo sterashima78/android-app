@@ -117,6 +117,27 @@ class LocalSmbMetadataNormalizationSuggesterTest {
   }
 
   @Test
+  fun `カスタムpromptのfileName placeholderを展開する`() {
+    val prompt = buildSmbMetadataNormalizationPrompt(
+      currentFileName = "Kakuu_Bouken_Tan_03.pdf",
+      promptTemplate = "ファイル名 {{fileName}} と表紙を照合してください。",
+    )
+
+    assertEquals("ファイル名 Kakuu_Bouken_Tan_03.pdf と表紙を照合してください。", prompt)
+  }
+
+  @Test
+  fun `fileName placeholderがないカスタムpromptには現在名を追記する`() {
+    val prompt = buildSmbMetadataNormalizationPrompt(
+      currentFileName = "Kakuu_Bouken_Tan_03.pdf",
+      promptTemplate = "表紙を中心に書誌を推定してください。",
+    )
+
+    assertTrue(prompt.startsWith("表紙を中心に書誌を推定してください。"))
+    assertTrue(prompt.endsWith("現在のファイル名:\nKakuu_Bouken_Tan_03.pdf"))
+  }
+
+  @Test
   fun `明示的な巻数表記がなければ数値だけをファイル名へ付与する`() {
     val result = normalizedSmbBookFileName(
       originalFileName = "Kakuu_Bouken_Tan_12.CBZ",
