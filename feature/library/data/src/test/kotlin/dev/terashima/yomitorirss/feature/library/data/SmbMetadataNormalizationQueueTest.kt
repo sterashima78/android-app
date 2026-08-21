@@ -21,6 +21,7 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -108,26 +109,76 @@ class SmbMetadataNormalizationQueueTest {
   }
 
   @Test
-  fun `候補生成後にファイルrevisionが変わった場合は反映しない`() = runBlocking {
-    val book = insertSmbBook(sourceId = "changed-book", fileName = "scan_003.cbz", modifiedAt = 20L)
+  fun `表紙キャッシュが失われた書籍は表紙再取得キューへ戻せる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "stale-cover-book", fileName = "scan_003.cbz")
+    coverFile.delete()
+
+    repository.startBatch(listOf(book))
+
+    val storedCover = connection.readable.rawQuery(
+      "SELECT thumbnail_url FROM library_items WHERE source = ? AND source_id = ?",
+      arrayOf(LibrarySource.SMB.name, book.sourceId),
+    ).use { cursor ->
+      cursor.moveToFirst()
+      if (cursor.isNull(0)) null else cursor.getString(0)
+    }
+    assertNull(storedCover)
+    assertEquals(
+      SmbMetadataNormalizationStatus.WAITING_FOR_COVER,
+      repository.batchSnapshot()!!.items.single().status,
+    )
+    assertEquals(1, SmbCoverPrefetchQueueStore(connection).enqueueMissing())
+  }
+
+  @Test
+  fun `候補生成後にファイルrevisionが変わった場合は再解析可能な状態へ移す`() = runBlocking {
+    val book = insertSmbBook(sourceId = "changed-book", fileName = "scan_004.cbz", modifiedAt = 20L)
     repository.startBatch(listOf(book))
     val item = repository.claimNext()!!
     val proposal = proposal("変更候補")
-    repository.saveGeneratedCandidate(item, "scan_003.cbz", proposal)
+    repository.saveGeneratedCandidate(item, "scan_004.cbz", proposal)
 
     connection.writable.update(
       "library_items",
       ContentValues().apply {
-        put("info_url", smbInfoUrl("changed-book", "scan_003.cbz", size = 10L, modifiedAt = 21L))
+        put("info_url", smbInfoUrl("changed-book", "scan_004.cbz", size = 10L, modifiedAt = 21L))
       },
       "source = ? AND source_id = ?",
       arrayOf(LibrarySource.SMB.name, book.sourceId),
     )
 
     val error = assertThrows(IllegalArgumentException::class.java) {
-      runBlocking { repository.applyCandidate(book.sourceId, "scan_003.cbz", proposal) }
+      runBlocking { repository.applyCandidate(book.sourceId, "scan_004.cbz", proposal) }
     }
     assertTrue(error.message.orEmpty().contains("変更されています"))
+    val staleCandidate = repository.batchSnapshot()!!.items.single()
+    assertEquals(SmbMetadataNormalizationStatus.SKIPPED, staleCandidate.status)
+    assertNull(staleCandidate.proposedFileName)
+    assertNull(staleCandidate.proposal)
+  }
+
+  @Test
+  fun `再解析では現在のファイルrevisionを保存して処理を再開する`() = runBlocking {
+    val book = insertSmbBook(sourceId = "retry-book", fileName = "scan_005.cbz", size = 10L, modifiedAt = 20L)
+    repository.startBatch(listOf(book))
+    val firstClaim = repository.claimNext()!!
+    repository.skip(firstClaim, "ファイルが変更されました")
+
+    connection.writable.update(
+      "library_items",
+      ContentValues().apply {
+        put("info_url", smbInfoUrl("retry-book", "renamed_005.cbz", size = 12L, modifiedAt = 22L))
+      },
+      "source = ? AND source_id = ?",
+      arrayOf(LibrarySource.SMB.name, book.sourceId),
+    )
+
+    repository.retryCandidate(book.sourceId)
+    val retried = repository.claimNext()!!
+
+    assertEquals("renamed_005.cbz", retried.originalFileName)
+    assertEquals(12L, retried.inputSize)
+    assertEquals(22L, retried.inputModifiedAt)
   }
 
   private fun insertSmbBook(
