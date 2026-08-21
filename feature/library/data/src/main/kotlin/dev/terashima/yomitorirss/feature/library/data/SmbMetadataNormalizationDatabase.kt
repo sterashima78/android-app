@@ -522,7 +522,7 @@ class DefaultSmbMetadataNormalizationRepository(
       null,
     ).use { cursor ->
       if (!cursor.moveToFirst()) return@use null
-      BatchHeader(
+      SmbMetadataNormalizationBatchHeader(
         batchId = cursor.getString(0),
         status = SmbMetadataNormalizationBatchStatus.valueOf(cursor.getString(1)),
         createdAt = cursor.getLong(2),
@@ -892,7 +892,7 @@ private fun validCoverFile(url: String?): File? {
   return uri.path?.let(::File)?.takeIf { it.isFile && it.length() > 0L }
 }
 
-private data class BatchHeader(
+private data class SmbMetadataNormalizationBatchHeader(
   val batchId: String,
   val status: SmbMetadataNormalizationBatchStatus,
   val createdAt: Long,
