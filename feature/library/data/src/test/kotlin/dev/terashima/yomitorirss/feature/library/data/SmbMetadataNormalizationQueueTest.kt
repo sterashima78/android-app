@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.feature.library.PreparedLibraryBook
 import dev.terashima.yomitorirss.feature.library.SmbBookFormat
 import dev.terashima.yomitorirss.feature.library.SmbBookMetadataProposal
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationBatchStatus
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationStatus
 import dev.terashima.yomitorirss.feature.library.SmbServerSettings
 import java.io.File
@@ -93,19 +94,63 @@ class SmbMetadataNormalizationQueueTest {
 
     repository.retryCandidate(book.sourceId)
 
-    val decisionCount = connection.readable.rawQuery(
-      "SELECT COUNT(*) FROM $SMB_METADATA_NORMALIZATION_DECISION_TABLE WHERE source_id = ?",
-      arrayOf(book.sourceId),
-    ).use { cursor ->
-      cursor.moveToFirst()
-      cursor.getInt(0)
-    }
-    assertEquals(0, decisionCount)
+    assertEquals(0, normalizationDecisionCount(book.sourceId))
     assertEquals(
       SmbMetadataNormalizationStatus.QUEUED,
       repository.batchSnapshot()!!.items.single().status,
     )
     assertEquals(book.sourceId, repository.claimNext()!!.sourceId)
+  }
+
+  @Test
+  fun `未確認と保留の候補は古い提案を破棄して再解析できる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "review-retry-book", fileName = "scan_review.cbz")
+    repository.startBatch(listOf(book))
+    val first = repository.claimNext()!!
+    repository.saveGeneratedCandidate(first, "最初の候補.cbz", proposal("最初の候補"))
+
+    repository.retryCandidate(book.sourceId)
+    var retried = repository.batchSnapshot()!!.items.single()
+    assertEquals(SmbMetadataNormalizationStatus.QUEUED, retried.status)
+    assertNull(retried.proposedFileName)
+    assertNull(retried.proposal)
+
+    val second = repository.claimNext()!!
+    repository.saveGeneratedCandidate(second, "二回目の候補.cbz", proposal("二回目の候補"))
+    repository.deferCandidate(book.sourceId)
+    repository.retryCandidate(book.sourceId)
+
+    retried = repository.batchSnapshot()!!.items.single()
+    assertEquals(SmbMetadataNormalizationStatus.QUEUED, retried.status)
+    assertNull(retried.proposedFileName)
+    assertNull(retried.proposal)
+  }
+
+  @Test
+  fun `過去バッチで却下した書籍もレビューに残り最新バッチへ再解析できる`() = runBlocking {
+    val rejectedBook = insertSmbBook(sourceId = "historical-rejected-book", fileName = "scan_old.cbz")
+    repository.startBatch(listOf(rejectedBook))
+    val rejectedClaim = repository.claimNext()!!
+    repository.saveGeneratedCandidate(rejectedClaim, "過去の候補.cbz", proposal("過去の候補"))
+    repository.rejectCandidate(rejectedBook.sourceId)
+
+    val currentBook = insertSmbBook(sourceId = "current-book", fileName = "scan_current.cbz")
+    repository.startBatch(listOf(rejectedBook, currentBook))
+    val beforeRetry = repository.batchSnapshot()!!
+    val historical = beforeRetry.items.single { it.sourceId == rejectedBook.sourceId }
+    assertEquals(SmbMetadataNormalizationStatus.REJECTED, historical.status)
+    assertTrue(historical.batchId != beforeRetry.batchId)
+
+    repository.retryCandidate(rejectedBook.sourceId)
+
+    val afterRetry = repository.batchSnapshot()!!
+    val requeued = afterRetry.items.single { it.sourceId == rejectedBook.sourceId }
+    assertEquals(afterRetry.batchId, requeued.batchId)
+    assertEquals(SmbMetadataNormalizationStatus.QUEUED, requeued.status)
+    assertNull(requeued.proposedFileName)
+    assertNull(requeued.proposal)
+    assertEquals(0, normalizationDecisionCount(rejectedBook.sourceId))
+    assertEquals(SmbMetadataNormalizationBatchStatus.RUNNING, afterRetry.status)
   }
 
   @Test
@@ -204,6 +249,14 @@ class SmbMetadataNormalizationQueueTest {
     assertEquals("renamed_005.cbz", retried.originalFileName)
     assertEquals(12L, retried.inputSize)
     assertEquals(22L, retried.inputModifiedAt)
+  }
+
+  private fun normalizationDecisionCount(sourceId: String): Int = connection.readable.rawQuery(
+    "SELECT COUNT(*) FROM $SMB_METADATA_NORMALIZATION_DECISION_TABLE WHERE source_id = ?",
+    arrayOf(sourceId),
+  ).use { cursor ->
+    cursor.moveToFirst()
+    cursor.getInt(0)
   }
 
   private fun insertSmbBook(
