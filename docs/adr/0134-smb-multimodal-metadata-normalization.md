@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-21
+- Amended: 2026-08-21
 - Refines: ADR-0056, ADR-0065, ADR-0066, ADR-0071, ADR-0079, ADR-0104, ADR-0108, ADR-0111, ADR-0133
 
 ## Context
@@ -32,7 +33,7 @@ smb_metadata_normalization_decisions
 
 正規化 worker は SMB 書籍本体を直接読み込んで表紙を抽出しない。
 
-表紙が未取得の対象は `WAITING_FOR_COVER` とし、ADR-0133 の `smb_cover_prefetch_queue` に取得を委ねる。表紙キャッシュが利用可能になった後だけ AI 推論へ進む。これにより ZIP / CBZ の 64 MiB streaming 上限、PDF の 128 MiB 一時取得上限、Wi-Fi 条件、credential 境界を重複実装しない。
+表紙が未取得の対象は `WAITING_FOR_COVER` とし、ADR-0133 の `smb_cover_prefetch_queue` に取得を委ねる。表紙キャッシュが利用可能になった後だけ AI 推論へ進む。これにより ZIP / CBZ の 128 MiB streaming 上限、PDF の 512 MiB 一時取得上限、Wi-Fi 条件、credential 境界を重複実装しない。
 
 AI入力は次の2点だけとする。
 
@@ -47,21 +48,29 @@ AI入力は次の2点だけとする。
 
 Library 側は LiteRT-LM の `Engine` を直接所有せず、書誌推定の prompt、schema、validation policy だけを所有する。これは ADR-0056 と ADR-0079 の責務境界を維持する。
 
-### 4. AI は構造化書誌情報だけを提案し、ファイル名は決定的に生成する
+### 4. AI は出力 Tool で構造化書誌情報だけを提出し、ファイル名は決定的に生成する
 
-モデル出力は JSON object に固定し、少なくとも次を扱う。
+自由テキストとして JSON object を生成させない。`feature:library:data` は `submit_book_metadata` という出力専用 Tool を定義し、Gemma 4 には画像とファイル名を入力した同一 Conversation でこの Tool を1回だけ呼び出させる。
 
-- title
-- authors
-- publisher
-- publishedDate
-- isbn10 / isbn13
-- seriesName
-- seriesPosition
-- confidence
-- reason
+`core:ai-runtime` は feature 非依存の transport capability として、OpenAPI Tool 引数の `string` / `integer` / `number` / `boolean` / `string array` schema と、画像入力を伴う manual Tool Calling を提供する。`ConversationConfig.automaticToolCalling = false` とし、Tool の副作用を実行せず `Message.toolCalls` の引数を結果として受け取る。Tool 名、各 field の意味、必須性、validation policy は Library が所有する。
 
-追加 field、型不一致、件数・文字数制約違反は失敗として扱う。不正出力時は validation error だけを返して1回だけ再生成し、不正出力本文そのものは再入力しない。
+出力 Tool は次を扱う。
+
+- `title`: 必須
+- `authors`: 必須。判別不能なら空配列
+- `publisher`: 任意
+- `publishedDate`: 任意
+- `isbn10` / `isbn13`: 任意
+- `seriesName`: 任意
+- `seriesPosition`: 任意の整数
+- `confidence`: 任意の数値
+- `reason`: 任意
+
+判別不能な任意 field は null を強制せず Tool 引数自体を省略できる。これにより小型ローカルモデルへ不要な field の生成を強制しない。
+
+追加 field、型不一致、件数・文字数制約違反、Tool 未呼び出し、複数 Tool Call は失敗として扱う。不正出力時は validation error だけを返して1回だけ再生成し、不正出力本文そのものは再入力しない。2回目も構造化できない場合は内部 schema 文言をそのまま UI へ露出せず、再解析可能な失敗として扱う。
+
+LiteRT-LM の安定版で JSON Schema による constrained decoding の response format が利用可能になった場合は、同じ Library-owned schema / validation policy を維持したまま transport を置き換えられる。未リリース API へこの機能だけのために追従しない。
 
 AI に SMB path や変更後ファイル名を自由生成させない。変更後ファイル名はアプリ側で title と seriesPosition から決定的に生成し、元拡張子を維持する。`/`、`\`、制御文字等の path / filename 危険文字を拒否・正規化し、レビュー時にユーザーが編集した名前にも同じ検証を適用する。
 
@@ -120,6 +129,7 @@ source、test fixture、ADR、PR説明、log には実在するユーザー蔵�
 ### Positive
 
 - ファイル名だけでなく表紙の視覚情報を使って、乱れた SMB 蔵書の書誌候補を一括生成できる。
+- JSON の Markdown fence、前置き文章、末尾説明など、自由テキスト出力由来の schema failure を避けられる。
 - AI誤認が即座にファイルサーバの rename へ波及せず、人が確認してから反映できる。
 - 却下も確定判断として残るため、同じ本を一括実行のたびに再解析しない。
 - SMB 同期後も確定済みのタイトル・著者等が保持される。
@@ -131,10 +141,19 @@ source、test fixture、ADR、PR説明、log には実在するユーザー蔵�
 - 書誌候補、確定判断、レビュー状態の永続 table が増える。
 - 表紙未取得本は表紙先読み完了まで推論を開始できない。
 - 画像推論では GPU vision backend を使うため、text-only 推論と異なる engine configuration の初期化が必要になる。
+- Tool Calling 自体をモデルが遵守しない場合は、1回の修復再生成後に `FAILED` として人の再解析操作が必要になる。
 - AIによる誤認、OCR失敗、表紙だけでは判別不能な書籍は人による編集・却下が必要になる。
 - 外部でファイルが rename された場合は source identity が変わるため、アプリ外変更を確定判断へ自動追跡しない。
 
 ## Alternatives considered
+
+### 自由テキストの JSON object を要求する
+
+Markdown code fence、説明文、必須 null field の欠落など、モデルが内容を正しく推定していても serialization 形式だけで失敗しやすい。現行 LiteRT-LM が提供する Tool Calling を利用できるため採用しない。
+
+### 未リリースの constrained decoding API へ追従する
+
+将来的には JSON Schema constrained decoding がより直接的だが、現行の安定版依存から外れて runtime 全体の更新リスクを増やすため採用しない。安定版へ入った時点で再評価する。
 
 ### AI出力のファイル名をそのまま使用する
 

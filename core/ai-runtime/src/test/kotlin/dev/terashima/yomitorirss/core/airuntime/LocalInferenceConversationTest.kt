@@ -27,6 +27,48 @@ class LocalInferenceConversationTest {
     assertTrue(schema.contains("\"query\""))
     assertTrue(schema.contains("\"limit\""))
     assertTrue(schema.contains("\"required\":[\"limit\"]"))
+    assertFalse(schema.contains("\"additionalProperties\""))
+  }
+
+  @Test
+  fun `tool引数型をOpenAPI schemaへ反映する`() {
+    val definition = LocalInferenceTool(
+      name = "submit_book_metadata",
+      description = "書誌情報を提出する",
+      arguments = listOf(
+        LocalInferenceToolArgument(
+          "authors",
+          "著者",
+          required = true,
+          type = LocalInferenceToolArgumentType.STRING_ARRAY,
+        ),
+        LocalInferenceToolArgument(
+          "seriesPosition",
+          "巻数",
+          type = LocalInferenceToolArgumentType.INTEGER,
+        ),
+        LocalInferenceToolArgument(
+          "confidence",
+          "確信度",
+          type = LocalInferenceToolArgumentType.NUMBER,
+        ),
+      ),
+      allowAdditionalArguments = false,
+      execute = { "ok" },
+    )
+
+    val parameters = Json.parseToJsonElement(toolDescriptionJson(definition))
+      .jsonObject.getValue("parameters").jsonObject
+    val properties = parameters.getValue("properties").jsonObject
+
+    assertEquals("false", parameters.getValue("additionalProperties").jsonPrimitive.content)
+    assertEquals("array", properties.getValue("authors").jsonObject.getValue("type").jsonPrimitive.content)
+    assertEquals(
+      "string",
+      properties.getValue("authors").jsonObject.getValue("items").jsonObject.getValue("type").jsonPrimitive.content,
+    )
+    assertEquals("integer", properties.getValue("seriesPosition").jsonObject.getValue("type").jsonPrimitive.content)
+    assertEquals("number", properties.getValue("confidence").jsonObject.getValue("type").jsonPrimitive.content)
   }
 
   @Test
