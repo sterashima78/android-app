@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.feature.library.PreparedLibraryBook
 import dev.terashima.yomitorirss.feature.library.SmbBookFormat
 import dev.terashima.yomitorirss.feature.library.SmbBookMetadataProposal
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationBatchStatus
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationStatus
 import dev.terashima.yomitorirss.feature.library.SmbServerSettings
 import java.io.File
@@ -81,6 +82,51 @@ class SmbMetadataNormalizationQueueTest {
       runBlocking { repository.startBatch(listOf(book)) }
     }
     assertTrue(error.message.orEmpty().contains("未確定"))
+  }
+
+  @Test
+  fun `未確認と保留の候補は再解析して新しい候補を生成できる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "review-retry-book", fileName = "scan_review.cbz")
+    repository.startBatch(listOf(book))
+    val firstClaim = repository.claimNext()!!
+    repository.saveGeneratedCandidate(firstClaim, "最初の候補.cbz", proposal("最初の候補"))
+
+    repository.retryCandidate(book.sourceId)
+    val pendingRetried = repository.batchSnapshot()!!.items.single()
+    assertEquals(SmbMetadataNormalizationStatus.QUEUED, pendingRetried.status)
+    assertNull(pendingRetried.proposedFileName)
+    assertNull(pendingRetried.proposal)
+
+    val secondClaim = repository.claimNext()!!
+    repository.saveGeneratedCandidate(secondClaim, "二回目の候補.cbz", proposal("二回目の候補"))
+    repository.deferCandidate(book.sourceId)
+    repository.retryCandidate(book.sourceId)
+
+    val deferredRetried = repository.batchSnapshot()!!.items.single()
+    assertEquals(SmbMetadataNormalizationStatus.QUEUED, deferredRetried.status)
+    assertNull(deferredRetried.proposedFileName)
+    assertNull(deferredRetried.proposal)
+  }
+
+  @Test
+  fun `却下済み候補を再解析すると却下判断を解除してバッチを再開する`() = runBlocking {
+    val book = insertSmbBook(sourceId = "rejected-retry-book", fileName = "scan_rejected.cbz")
+    repository.startBatch(listOf(book))
+    val item = repository.claimNext()!!
+    repository.saveGeneratedCandidate(item, "却下前候補.cbz", proposal("却下前候補"))
+    repository.rejectCandidate(book.sourceId)
+
+    assertEquals(1, normalizationDecisionCount(book.sourceId))
+    assertEquals(SmbMetadataNormalizationBatchStatus.COMPLETED, repository.batchSnapshot()!!.status)
+
+    repository.retryCandidate(book.sourceId)
+
+    val retried = repository.batchSnapshot()!!
+    assertEquals(SmbMetadataNormalizationBatchStatus.RUNNING, retried.status)
+    assertEquals(SmbMetadataNormalizationStatus.QUEUED, retried.items.single().status)
+    assertNull(retried.items.single().proposedFileName)
+    assertNull(retried.items.single().proposal)
+    assertEquals(0, normalizationDecisionCount(book.sourceId))
   }
 
   @Test
@@ -179,6 +225,14 @@ class SmbMetadataNormalizationQueueTest {
     assertEquals("renamed_005.cbz", retried.originalFileName)
     assertEquals(12L, retried.inputSize)
     assertEquals(22L, retried.inputModifiedAt)
+  }
+
+  private fun normalizationDecisionCount(sourceId: String): Int = connection.readable.rawQuery(
+    "SELECT COUNT(*) FROM $SMB_METADATA_NORMALIZATION_DECISION_TABLE WHERE source_id = ?",
+    arrayOf(sourceId),
+  ).use { cursor ->
+    cursor.moveToFirst()
+    cursor.getInt(0)
   }
 
   private fun insertSmbBook(
