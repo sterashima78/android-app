@@ -356,7 +356,7 @@ private class LimitedInputStream(
   }
 }
 
-internal const val SMB_ZIP_COVER_SCAN_MAX_BYTES = 64L * 1024 * 1024
+internal const val SMB_ZIP_COVER_SCAN_MAX_BYTES = 128L * 1024 * 1024
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
 private const val COVER_CACHE_DIRECTORY = "smb-book-covers"
 private const val COVER_MAX_DIMENSION = 640
