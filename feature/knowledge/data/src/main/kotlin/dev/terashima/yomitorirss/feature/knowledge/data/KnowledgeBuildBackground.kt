@@ -35,10 +35,14 @@ class WorkManagerKnowledgeBuildTaskController(
 
   fun enqueue() {
     state.request()
-    kick()
+    kick(forceReschedule = true)
   }
 
   override fun kick() {
+    kick(forceReschedule = false)
+  }
+
+  private fun kick(forceReschedule: Boolean) {
     if (!state.requested || state.stopped || state.failed) return
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
     if (execution.paused) {
@@ -46,7 +50,7 @@ class WorkManagerKnowledgeBuildTaskController(
       return
     }
     setResumeOnChargingScheduled(false)
-    enqueueBuildWork()
+    enqueueBuildWork(knowledgeBuildExistingWorkPolicy(forceReschedule))
   }
 
   override suspend fun pauseForGlobalGate() {
@@ -125,16 +129,16 @@ class WorkManagerKnowledgeBuildTaskController(
 
   internal fun kickFromChargingResume() {
     if (!state.requested || state.stopped || state.failed) return
-    enqueueBuildWork()
+    enqueueBuildWork(ExistingWorkPolicy.KEEP)
   }
 
-  private fun enqueueBuildWork() {
+  private fun enqueueBuildWork(policy: ExistingWorkPolicy) {
     val request = OneTimeWorkRequestBuilder<KnowledgeBuildWorker>()
       .addTag(WORK_TAG)
       .build()
     workManager.enqueueUniqueWork(
       WORK_NAME,
-      ExistingWorkPolicy.KEEP,
+      policy,
       request,
     )
   }
@@ -145,6 +149,9 @@ class WorkManagerKnowledgeBuildTaskController(
     private const val RESUME_ON_CHARGING_WORK_NAME = "knowledge-ai-wiki-resume-on-charging"
   }
 }
+
+internal fun knowledgeBuildExistingWorkPolicy(forceReschedule: Boolean): ExistingWorkPolicy =
+  if (forceReschedule) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
 
 internal class KnowledgeBuildResumeOnChargingWorker(
   appContext: Context,
