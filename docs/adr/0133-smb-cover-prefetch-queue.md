@@ -41,6 +41,8 @@ WorkManager は `NetworkRequest` で Wi-Fi transport と battery-not-low を要�
 
 旧実装の `NetworkType.UNMETERED` で待機中の WorkRequest が残っている端末では、新しい Wi-Fi 制約の WorkRequest を単純に append すると旧 WorkRequest の後ろで待ち続ける。そのため Wi-Fi 制約への初回移行時だけ `REPLACE` で既存 unique work を置き換え、以後は `APPEND_OR_REPLACE` に戻す。durable queue は Library DB 側にあるため、置換で Worker がキャンセルされても実行中項目を `PENDING` へ戻して再開できる。
 
+Wi-Fi・battery-not-low 条件を満たしているにもかかわらず WorkManager が `ENQUEUED` のまま OS scheduler 待ちになっている場合、設定画面から「実行を再要求」を明示できる。この操作は durable queue を作り直さず、既存 unique work を `REPLACE` して同じ制約の WorkRequest を再登録する。通常のキュー追加と明示的な再要求は Scheduler API でも分離し、再要求を通常の `APPEND_OR_REPLACE` と混同しない。WorkManager は即時実行を保証しないため、UI 上も「今すぐ実行」ではなく再要求として扱う。
+
 ### ZIP / CBZ は最大 64 MiB の streaming 走査とする
 
 ZIP / CBZ は SMB stream の先頭から最大 64 MiB だけを読み、最初に到達した JPEG / PNG / WebP を表紙候補とする。書籍本体を読書用キャッシュへ保存しない。
@@ -69,6 +71,7 @@ SMB 設定画面に「表紙先読みキュー」を追加し、次を表示す�
 
 - 実行中 / 待機 / 完了 / 失敗 / 対象外の件数
 - WorkManager の実行状態と、Wi-Fi・バッテリー・OS scheduler のどこで待っているか
+- Wi-Fi・バッテリー条件を満たした `ENQUEUED` 状態では、通常は自動開始する旨と OS により遅延し得る旨、および「実行を再要求」操作
 - 最新ジョブの書籍名と状態
 - PDF 実行中の転送済み bytes / total bytes と progress indicator
 - 失敗理由または対象外理由
@@ -93,6 +96,7 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 - モバイル回線とバッテリー低下中はバックグラウンド転送を行わず、従量制設定の Wi-Fi では実行できる。
 - process death 後も待機・失敗状態を確認して再開できる。
 - ユーザーが処理件数、進捗、失敗理由に加えて WorkManager の待機状態を確認できる。
+- OS scheduler 待ちが長い場合に、永続キューを失わず実行要求だけを明示的に再登録できる。
 
 ### Negative
 
@@ -102,6 +106,7 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 - 200 MiB 超過時は古い表紙が一覧から消え、必要なら明示的な再取得が必要になる。
 - Library DB に派生処理のキューtableが1つ増える。
 - active queue 表示中は定期的な DB snapshot read と WorkManager state read が発生する。
+- 「実行を再要求」は OS scheduler の判断を迂回するものではなく、押しても即時開始しない場合がある。
 
 ## Alternatives considered
 
