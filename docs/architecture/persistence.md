@@ -73,6 +73,8 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 
 SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は `libraryDatabaseSchema` に含め、app-level database version 26 で既存 DB に追加する。
 
+SMB 表紙画像は app cache に置く再生成可能な派生データで、database snapshot backup には画像本体を含めない。復元後は Backup Context が Library-owned `LibraryBackupRestoreInitializer` を呼び、SMB の `file:` scheme の `thumbnail_url` と復元前の `smb_cover_prefetch_queue` を無効化する。Backup Context 自身は Library table を直接 write しない。SMB credential は backup 対象外なので復元直後には自動実行せず、credential 再設定後の通常の Library 経路で未取得表紙を再キューする。
+
 SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema は app-level database version 27 で追加する。
 
 この表を手作業の完全な schema catalog として扱わない。正確な検査対象は [`config/architecture/table-ownership.tsv`](../../config/architecture/table-ownership.tsv)、実際の schema definition は各 feature data module の `DatabaseSchemaContribution` を参照する。
@@ -89,6 +91,7 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - Summary は Article metadata を `ArticleRepository`、Bookmark / Read Later membership を `BookmarkContentQuery` から取得する。
 - RSS ingestion は Content table を直接 write せず `ContentSourceGateway` を利用する。
 - AI task queue は SMB 書誌正規化 table を直接参照せず、Library-owned `SmbMetadataNormalizationRepository` を通じて task projection と再試行を行う。
+- Backup restore は Library の cache invalidation を `LibraryBackupRestoreInitializer` に委譲し、Library-owned table を直接変更しない。
 
 ### Named Projection
 
@@ -132,3 +135,4 @@ allowlist は恒久的な例外集ではない。file/table が消えた entry �
 - [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
 - [ADR-0133](../adr/0133-smb-cover-prefetch-queue.md)
 - [ADR-0134](../adr/0134-smb-multimodal-metadata-normalization.md)
+- [ADR-0135](../adr/0135-smb-cover-cache-backup-restore.md)

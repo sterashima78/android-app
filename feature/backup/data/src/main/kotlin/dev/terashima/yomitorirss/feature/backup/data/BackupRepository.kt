@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.ConfigureGoogleDriveResult
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupStatus
 import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkDatabaseInitializer
+import dev.terashima.yomitorirss.feature.library.data.LibraryBackupRestoreInitializer
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -53,7 +54,9 @@ class DefaultBackupRepository(
 
       FileInputStream(imported).use { input -> archive.restore(input) }
     }
-    BookmarkDatabaseInitializer.initialize(DatabaseConnection(database))
+    val connection = DatabaseConnection(database)
+    LibraryBackupRestoreInitializer(connection).initialize()
+    BookmarkDatabaseInitializer.initialize(connection)
     dataChanges.notifyChanged()
     scheduleAfterChange()
   }

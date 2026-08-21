@@ -73,6 +73,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0108: 蔵書整理を Library 所有の metadata と AI suggestion に分離する](0108-library-organization-and-ai-suggestions.md)
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
+- [ADR-0135: SMB 表紙キャッシュをバックアップ復元後に再関連付けする](0135-smb-cover-cache-backup-restore.md)
 
 ### Background / AI runtime
 

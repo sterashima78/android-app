@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchSnapshot
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.SmbServerSettings
 import java.io.File
 import java.util.Locale
 
@@ -31,6 +32,15 @@ class CleaningSmbLibraryRepository private constructor(
     database = database,
     delegate = DefaultSmbLibraryRepository(context, database),
   )
+
+  override suspend fun saveServer(
+    settings: SmbServerSettings,
+    password: String?,
+  ): SmbServerSettings {
+    val saved = delegate.saveServer(settings, password)
+    coverPrefetchQueue.enqueueMissing()
+    return saved
+  }
 
   override suspend fun sync(): LibrarySyncResult {
     val result = delegate.sync()
