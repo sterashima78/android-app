@@ -215,7 +215,8 @@ class DefaultSmbMetadataNormalizationRepository(
     val item = queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
     require(
       item.status == SmbMetadataNormalizationStatus.FAILED ||
-        item.status == SmbMetadataNormalizationStatus.SKIPPED,
+        item.status == SmbMetadataNormalizationStatus.SKIPPED ||
+        item.status == SmbMetadataNormalizationStatus.REJECTED,
     ) { "再解析できる候補がありません" }
 
     val snapshot = DefaultLibraryRepository(database).snapshot()
@@ -227,6 +228,9 @@ class DefaultSmbMetadataNormalizationRepository(
     val coverReady = validCoverFile(currentBook.thumbnailUrl) != null
     val now = System.currentTimeMillis()
     database.transaction {
+      if (item.status == SmbMetadataNormalizationStatus.REJECTED) {
+        delete(DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
+      }
       if (!coverReady) {
         clearStaleCoverReference(this, sourceId, currentBook.thumbnailUrl)
       }

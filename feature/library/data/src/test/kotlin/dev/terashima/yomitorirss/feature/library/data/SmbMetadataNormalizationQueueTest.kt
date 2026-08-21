@@ -84,6 +84,31 @@ class SmbMetadataNormalizationQueueTest {
   }
 
   @Test
+  fun `却下済み書籍は明示的な再解析で確定を解除してキューへ戻せる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "retry-rejected-book", fileName = "scan_rejected.cbz")
+    repository.startBatch(listOf(book))
+    val item = repository.claimNext()!!
+    repository.saveGeneratedCandidate(item, "架空再解析本.cbz", proposal("架空再解析本"))
+    repository.rejectCandidate(book.sourceId)
+
+    repository.retryCandidate(book.sourceId)
+
+    val decisionCount = connection.readable.rawQuery(
+      "SELECT COUNT(*) FROM $SMB_METADATA_NORMALIZATION_DECISION_TABLE WHERE source_id = ?",
+      arrayOf(book.sourceId),
+    ).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    }
+    assertEquals(0, decisionCount)
+    assertEquals(
+      SmbMetadataNormalizationStatus.QUEUED,
+      repository.batchSnapshot()!!.items.single().status,
+    )
+    assertEquals(book.sourceId, repository.claimNext()!!.sourceId)
+  }
+
+  @Test
   fun `確定書誌情報はlibrary itemsの同期キャッシュが書き戻されても表示に合成される`() = runBlocking {
     val book = insertSmbBook(sourceId = "apply-book", fileName = "scan_002.cbz")
     repository.startBatch(listOf(book))
