@@ -52,6 +52,10 @@ class DefaultSmbMetadataNormalizationRepository(
       val targets = smbBooks.filterNot { (book, _) -> book.sourceId in confirmed }
       require(targets.isNotEmpty()) { "未確定のファイルサーバ書籍はありません" }
 
+      targets.forEach { (book, _) ->
+        clearStaleCoverReference(this, book.sourceId, book.thumbnailUrl)
+      }
+
       val batchId = "smbmeta-${UUID.randomUUID()}"
       insertOrThrow(
         BATCH_TABLE,
@@ -114,11 +118,15 @@ class DefaultSmbMetadataNormalizationRepository(
     } ?: error("対象のファイルサーバ書籍が見つかりません")
     val currentInput = smbNormalizationInput(currentBook)
       ?: error("対象書籍のファイル情報を読み取れません")
-    require(
+    val revisionMatches =
       currentInput.fileName == item.originalFileName &&
         currentInput.size == item.inputSize &&
-        currentInput.modifiedAt == item.inputModifiedAt,
-    ) { "候補生成後にファイルが変更されています。再解析してください" }
+        currentInput.modifiedAt == item.inputModifiedAt
+    if (!revisionMatches) {
+      val message = "候補生成後にファイルが変更されています。再解析してください"
+      markCandidateRetriable(item, message)
+      throw IllegalArgumentException(message)
+    }
 
     val renamedBook = if (normalizedFileName == currentInput.fileName) {
       currentBook
@@ -209,20 +217,35 @@ class DefaultSmbMetadataNormalizationRepository(
       item.status == SmbMetadataNormalizationStatus.FAILED ||
         item.status == SmbMetadataNormalizationStatus.SKIPPED,
     ) { "再解析できる候補がありません" }
-    val cover = queryBookCover(sourceId)
+
+    val snapshot = DefaultLibraryRepository(database).snapshot()
+    val currentBook = (snapshot.books + snapshot.hiddenBooks).firstOrNull {
+      it.source == LibrarySource.SMB && it.sourceId == sourceId
+    } ?: error("対象のファイルサーバ書籍が見つかりません")
+    val currentInput = smbNormalizationInput(currentBook)
+      ?: error("対象書籍のファイル情報を読み取れません")
+    val coverReady = validCoverFile(currentBook.thumbnailUrl) != null
     val now = System.currentTimeMillis()
     database.transaction {
+      if (!coverReady) {
+        clearStaleCoverReference(this, sourceId, currentBook.thumbnailUrl)
+      }
       update(
         ITEM_TABLE,
         ContentValues().apply {
+          put("original_file_name", currentInput.fileName)
+          put("input_size", currentInput.size)
+          put("input_modified_at", currentInput.modifiedAt)
           put(
             "status",
-            if (validCoverFile(cover) != null) {
+            if (coverReady) {
               SmbMetadataNormalizationStatus.QUEUED.name
             } else {
               SmbMetadataNormalizationStatus.WAITING_FOR_COVER.name
             },
           )
+          putNull("proposed_file_name")
+          putNull("metadata_json")
           putNull("error")
           put("updated_at", now)
         },
@@ -485,6 +508,30 @@ class DefaultSmbMetadataNormalizationRepository(
       )
       require(changed == 1) { "候補の状態を変更できませんでした" }
       touchBatch(item.batchId, now)
+    }
+  }
+
+  private fun markCandidateRetriable(
+    item: SmbMetadataNormalizationItem,
+    message: String,
+  ) {
+    val now = System.currentTimeMillis()
+    database.transaction {
+      val changed = update(
+        ITEM_TABLE,
+        ContentValues().apply {
+          put("status", SmbMetadataNormalizationStatus.SKIPPED.name)
+          putNull("proposed_file_name")
+          putNull("metadata_json")
+          put("error", message)
+          put("updated_at", now)
+        },
+        "batch_id = ? AND source_id = ? AND status = ?",
+        arrayOf(item.batchId, item.sourceId, item.status.name),
+      )
+      check(changed == 1) { "書誌正規化候補を再解析可能な状態へ変更できませんでした" }
+      touchBatch(item.batchId, now)
+      finishBatchIfIdle(this, item.batchId, now)
     }
   }
 
@@ -786,6 +833,20 @@ private fun finishBatchIfIdle(db: SQLiteDatabase, batchId: String, now: Long) {
       arrayOf(batchId),
     )
   }
+}
+
+private fun clearStaleCoverReference(
+  db: SQLiteDatabase,
+  sourceId: String,
+  coverUrl: String?,
+) {
+  if (coverUrl.isNullOrBlank() || validCoverFile(coverUrl) != null) return
+  db.update(
+    "library_items",
+    ContentValues().apply { putNull("thumbnail_url") },
+    "source = ? AND source_id = ? AND thumbnail_url = ?",
+    arrayOf(LibrarySource.SMB.name, sourceId, coverUrl),
+  )
 }
 
 private fun sanitizeSmbBookMetadataProposal(proposal: SmbBookMetadataProposal): SmbBookMetadataProposal {
