@@ -42,34 +42,45 @@ class ExerciseSessionMappingTest {
 
     val deduplicated = deduplicateExerciseSessions(
       listOf(
-        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, plain),
-        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, detailed),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, plain, "example.tracker.a"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, detailed, "example.tracker.b"),
       ),
     )
 
     assertEquals(listOf(detailed), deduplicated)
-    assertEquals(21L, totalExerciseMinutes(deduplicated))
   }
 
   @Test
-  fun `同一時刻でもHealth Connect種別が異なるセッションは別の運動として保持する`() {
-    val walking = session("2026-08-20T09:38:00Z", "2026-08-20T09:59:00Z").copy(
+  fun `提供元ごとに時刻と種別が少し異なる同一運動は一件にまとめる`() {
+    val detailedWorkout = session("2026-08-21T09:23:00Z", "2026-08-21T09:46:31Z").copy(
+      exerciseName = "その他の運動",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-08-21T09:23:00Z", "2026-08-21T09:30:00Z", "クランチ"),
+        segment("2026-08-21T09:31:00Z", "2026-08-21T09:38:00Z", "ランジ"),
+        segment("2026-08-21T09:39:00Z", "2026-08-21T09:46:31Z", "プランク"),
+      ),
+    )
+    val longWalking = session("2026-08-21T09:26:00Z", "2026-08-21T09:48:00Z").copy(
       exerciseName = "ウォーキング",
     )
-    val running = walking.copy(exerciseName = "ランニング")
+    val shortWalking = session("2026-08-21T09:26:00Z", "2026-08-21T09:40:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
 
     val deduplicated = deduplicateExerciseSessions(
       listOf(
-        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, walking),
-        candidate(ExerciseSessionRecord.EXERCISE_TYPE_RUNNING, running),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, longWalking, "example.tracker.a"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, shortWalking, "example.tracker.b"),
       ),
     )
 
-    assertEquals(2, deduplicated.size)
+    assertEquals(listOf(detailedWorkout), deduplicated)
   }
 
   @Test
-  fun `同一種別でも時刻が完全一致しないセッションは統合しない`() {
+  fun `同じ提供元の重なったセッションは別の運動として保持する`() {
     val first = session("2026-08-20T08:50:00Z", "2026-08-20T09:17:00Z").copy(
       exerciseName = "ウォーキング",
     )
@@ -79,8 +90,55 @@ class ExerciseSessionMappingTest {
 
     val deduplicated = deduplicateExerciseSessions(
       listOf(
-        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, first),
-        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, shifted),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, first, "example.tracker"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, shifted, "example.tracker"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
+  fun `異なる提供元でも重なりが小さいセッションは別の運動として保持する`() {
+    val first = session("2026-08-20T08:00:00Z", "2026-08-20T08:30:00Z")
+    val second = session("2026-08-20T08:20:00Z", "2026-08-20T08:50:00Z")
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, first, "example.tracker.a"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, second, "example.tracker.b"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
+  fun `長時間セッションに短時間セッションが含まれるだけでは統合しない`() {
+    val longSession = session("2026-08-20T08:00:00Z", "2026-08-20T12:00:00Z")
+    val shortSession = session("2026-08-20T09:00:00Z", "2026-08-20T09:30:00Z")
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, longSession, "example.tracker.a"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, shortSession, "example.tracker.b"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
+  fun `同一提供元では同一時刻でもHealth Connect種別が異なるセッションを保持する`() {
+    val walking = session("2026-08-20T09:38:00Z", "2026-08-20T09:59:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+    val running = walking.copy(exerciseName = "ランニング")
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, walking, "example.tracker"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_RUNNING, running, "example.tracker"),
       ),
     )
 
@@ -106,9 +164,11 @@ class ExerciseSessionMappingTest {
   private fun candidate(
     exerciseType: Int,
     summary: HealthExerciseSessionSummary,
+    dataOriginPackageName: String,
   ): ExerciseSessionCandidate = ExerciseSessionCandidate(
     exerciseType = exerciseType,
     summary = summary,
+    dataOriginPackageName = dataOriginPackageName,
   )
 
   private fun session(start: String, end: String): HealthExerciseSessionSummary = HealthExerciseSessionSummary(
@@ -116,4 +176,11 @@ class ExerciseSessionMappingTest {
     endTime = Instant.parse(end),
     exerciseName = "運動",
   )
+
+  private fun segment(start: String, end: String, name: String): HealthExerciseSegmentSummary =
+    HealthExerciseSegmentSummary(
+      startTime = Instant.parse(start),
+      endTime = Instant.parse(end),
+      exerciseName = name,
+    )
 }
