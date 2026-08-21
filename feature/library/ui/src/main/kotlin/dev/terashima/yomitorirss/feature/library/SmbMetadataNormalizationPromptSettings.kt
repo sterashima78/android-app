@@ -55,7 +55,8 @@ internal fun SmbMetadataNormalizationPromptSettingsSection(
       },
       confirmButton = {
         TextButton(
-          enabled = draft.isNotBlank() && draft.length <= SMB_METADATA_NORMALIZATION_PROMPT_MAX_LENGTH,
+          enabled = editable && draft.isNotBlank() &&
+            draft.length <= SMB_METADATA_NORMALIZATION_PROMPT_MAX_LENGTH,
           onClick = {
             onSave(draft)
             editorVisible = false
