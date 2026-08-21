@@ -18,6 +18,7 @@ import dev.terashima.yomitorirss.feature.library.SmbServerSettings
 import java.io.File
 import java.security.KeyStore
 import java.util.EnumSet
+import java.util.Locale
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -65,13 +66,13 @@ internal class SmbCoverPrefetchProcessor(
         modifiedAt = location.modifiedAt,
         format = location.format,
         localBookFile = cachedBookFile,
-      ) ?: return SmbCoverPrefetchOutcome.Skipped("キャッシュ済み書籍から表紙を生成できませんでした")
+      ) ?: return skippedWithFileSize("キャッシュ済み書籍から表紙を生成できませんでした", location.size)
       updateThumbnail(sourceId, coverUrl)
       return SmbCoverPrefetchOutcome.Completed
     }
 
     val server = queryServer(location.serverId)
-      ?: return SmbCoverPrefetchOutcome.Skipped("SMBサーバ設定が見つかりません")
+      ?: return skippedWithFileSize("SMBサーバ設定が見つかりません", location.size)
     val password = credentialReader.load(server.id)
       ?: error("${server.name} のSMB認証情報を読み取れません")
 
@@ -106,8 +107,9 @@ internal class SmbCoverPrefetchProcessor(
       sourceId = sourceId,
       size = location.size,
       modifiedAt = location.modifiedAt,
-    ) ?: return@withShare SmbCoverPrefetchOutcome.Skipped(
-      "ZIP先頭${SMB_ZIP_COVER_SCAN_MAX_BYTES / (1024 * 1024)}MB以内から表紙画像を見つけられませんでした",
+    ) ?: return@withShare skippedWithFileSize(
+      "ZIP先頭${SMB_ZIP_COVER_SCAN_MAX_BYTES / (1024 * 1024)}MiB以内から表紙画像を見つけられませんでした",
+      location.size,
     )
     updateThumbnail(sourceId, coverUrl)
     SmbCoverPrefetchOutcome.Completed
@@ -121,8 +123,9 @@ internal class SmbCoverPrefetchProcessor(
     onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
   ): SmbCoverPrefetchOutcome {
     if (!shouldPrefetchPdf(location.size)) {
-      return SmbCoverPrefetchOutcome.Skipped(
-        "PDFが${SMB_PDF_COVER_PREFETCH_MAX_BYTES / (1024 * 1024)}MBを超えるため自動取得しません",
+      return skippedWithFileSize(
+        "PDFが${SMB_PDF_COVER_PREFETCH_MAX_BYTES / (1024 * 1024)}MiBを超えるため自動取得しません",
+        location.size,
       )
     }
 
@@ -162,13 +165,16 @@ internal class SmbCoverPrefetchProcessor(
         modifiedAt = location.modifiedAt,
         format = SmbBookFormat.PDF,
         localBookFile = temp,
-      ) ?: return SmbCoverPrefetchOutcome.Skipped("PDFの1ページ目から表紙を生成できませんでした")
+      ) ?: return skippedWithFileSize("PDFの1ページ目から表紙を生成できませんでした", location.size)
       updateThumbnail(sourceId, coverUrl)
       SmbCoverPrefetchOutcome.Completed
     } finally {
       temp.delete()
     }
   }
+
+  private fun skippedWithFileSize(reason: String, size: Long): SmbCoverPrefetchOutcome.Skipped =
+    SmbCoverPrefetchOutcome.Skipped("$reason（ファイルサイズ: ${formatSmbBookFileSize(size)}）")
 
   private fun queryBook(sourceId: String): SmbCoverBookRow? = database.readable.rawQuery(
     "SELECT info_url FROM library_items WHERE source = ? AND source_id = ? LIMIT 1",
@@ -260,10 +266,25 @@ internal class SmbCoverPrefetchProcessor(
   }
 }
 
-internal const val SMB_PDF_COVER_PREFETCH_MAX_BYTES = 128L * 1024 * 1024
+internal const val SMB_PDF_COVER_PREFETCH_MAX_BYTES = 256L * 1024 * 1024
 
 internal fun shouldPrefetchPdf(size: Long): Boolean =
   size in 0L..SMB_PDF_COVER_PREFETCH_MAX_BYTES
+
+internal fun formatSmbBookFileSize(bytes: Long): String = when {
+  bytes >= 1024L * 1024L * 1024L -> String.format(
+    Locale.US,
+    "%.1f GiB",
+    bytes.toDouble() / (1024.0 * 1024.0 * 1024.0),
+  )
+  bytes >= 1024L * 1024L -> String.format(
+    Locale.US,
+    "%.1f MiB",
+    bytes.toDouble() / (1024.0 * 1024.0),
+  )
+  bytes >= 1024L -> String.format(Locale.US, "%.1f KiB", bytes.toDouble() / 1024.0)
+  else -> "$bytes B"
+}
 
 private class SmbCoverPrefetchCredentialReader(context: Context) {
   private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
