@@ -16,11 +16,13 @@ import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
-import dev.terashima.yomitorirss.feature.library.data.SeriesAwareLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
@@ -148,12 +150,16 @@ class AppRouteDependencies internal constructor(
     val database = container.databaseConnection
     val smbRepository = CleaningSmbLibraryRepository(application, database)
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
+    val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
+    val smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application)
     LibraryRouteDependencies(
       authorization = GoogleBooksAuthorizationManager(application),
       libraryViewModelFactory = LibraryViewModel.Factory(
-        repository = SeriesAwareLibraryRepository(database),
+        repository = SmbMetadataAwareLibraryRepository(database),
         smbRepository = smbRepository,
         smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
+        smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
+        smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
       ),
       organizationViewModelFactory = LibraryOrganizationViewModel.Factory(
         repository = DefaultLibraryOrganizationRepository(database),
