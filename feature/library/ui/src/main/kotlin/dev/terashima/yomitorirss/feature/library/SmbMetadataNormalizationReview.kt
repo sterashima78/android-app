@@ -304,6 +304,7 @@ private fun SmbMetadataNormalizationReviewCard(
           }
           Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TextButton(enabled = !busy, onClick = onDefer) { Text("保留") }
+            TextButton(enabled = !busy, onClick = onRetry) { Text("再解析") }
             TextButton(enabled = !busy, onClick = onReject) { Text("却下") }
           }
         }
@@ -312,6 +313,9 @@ private fun SmbMetadataNormalizationReviewCard(
           Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TextButton(enabled = !busy, onClick = onReopen) { Text("未確認へ戻す") }
             TextButton(enabled = !busy && item.proposal != null, onClick = onEdit) { Text("編集して反映") }
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TextButton(enabled = !busy, onClick = onRetry) { Text("再解析") }
             TextButton(enabled = !busy, onClick = onReject) { Text("却下") }
           }
         }
@@ -325,11 +329,14 @@ private fun SmbMetadataNormalizationReviewCard(
           }
         }
 
+        SmbMetadataNormalizationStatus.REJECTED -> {
+          TextButton(enabled = !busy, onClick = onRetry) { Text("再解析") }
+        }
+
         SmbMetadataNormalizationStatus.WAITING_FOR_COVER,
         SmbMetadataNormalizationStatus.QUEUED,
         SmbMetadataNormalizationStatus.PROCESSING,
         SmbMetadataNormalizationStatus.APPLIED,
-        SmbMetadataNormalizationStatus.REJECTED,
         -> Unit
       }
     }
