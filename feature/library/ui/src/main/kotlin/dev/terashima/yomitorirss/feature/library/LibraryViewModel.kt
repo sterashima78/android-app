@@ -65,7 +65,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbSyncing = true) }
       runCatching { smb.sync() }
         .onSuccess { result ->
-          kickCoverPrefetch()
+          enqueueCoverPrefetch()
           loadSnapshot(message = "ファイルサーバから ${result.importedCount} 冊を同期しました")
         }
         .onFailure(::showError)
@@ -80,7 +80,7 @@ class LibraryViewModel(
       runCatching { smb.enqueueMissingCoverPrefetch() }
         .onSuccess { count ->
           if (count > 0 || smb.coverPrefetchSnapshot().hasActiveWork) {
-            kickCoverPrefetch()
+            enqueueCoverPrefetch()
           }
           loadSnapshot(
             message = if (count > 0) {
@@ -101,7 +101,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbCoverPrefetchBusy = true) }
       runCatching { smb.retryFailedCoverPrefetch() }
         .onSuccess { count ->
-          if (count > 0) kickCoverPrefetch()
+          if (count > 0) enqueueCoverPrefetch()
           loadSnapshot(
             message = if (count > 0) {
               "失敗した表紙先読み $count 冊を再試行します"
@@ -109,6 +109,28 @@ class LibraryViewModel(
               "再試行する失敗ジョブはありません"
             },
           )
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun rescheduleSmbCoverPrefetch() {
+    val scheduler = smbCoverPrefetchScheduler ?: return
+    val snapshot = _state.value.smbCoverPrefetch
+    if (
+      _state.value.smbCoverPrefetchBusy ||
+      snapshot.pendingCount <= 0 ||
+      snapshot.runtime.state != SmbCoverPrefetchWorkerState.ENQUEUED ||
+      snapshot.runtime.waitReason != SmbCoverPrefetchWaitReason.SCHEDULER
+    ) {
+      return
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbCoverPrefetchBusy = true) }
+      runCatching { scheduler.reschedule() }
+        .onSuccess {
+          coverQueueSchedulingEnsured = true
+          loadSnapshot(message = "WorkManagerへ表紙先読みの実行を再要求しました")
         }
         .onFailure(::showError)
     }
@@ -145,7 +167,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbBookActionBusy = true) }
       runCatching { smb.renameBook(book, newFileName) }
         .onSuccess { renamed ->
-          kickCoverPrefetch()
+          enqueueCoverPrefetch()
           loadSnapshot(message = "「${book.title}」を「${renamed.title}」へ変更しました")
         }
         .onFailure(::showError)
@@ -287,14 +309,14 @@ class LibraryViewModel(
       .onFailure(::showError)
   }
 
-  private fun kickCoverPrefetch() {
-    smbCoverPrefetchScheduler?.kick()
+  private fun enqueueCoverPrefetch() {
+    smbCoverPrefetchScheduler?.enqueue()
     coverQueueSchedulingEnsured = true
   }
 
   private fun ensureCoverPrefetchScheduled(snapshot: SmbCoverPrefetchSnapshot) {
     if (!snapshot.hasActiveWork || coverQueueSchedulingEnsured) return
-    if (runCatching { smbCoverPrefetchScheduler?.kick() }.isSuccess) {
+    if (runCatching { smbCoverPrefetchScheduler?.enqueue() }.isSuccess) {
       coverQueueSchedulingEnsured = true
     }
   }
