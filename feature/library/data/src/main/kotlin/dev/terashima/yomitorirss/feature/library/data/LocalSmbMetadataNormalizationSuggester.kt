@@ -81,6 +81,12 @@ internal fun buildSmbMetadataNormalizationPrompt(
   promptTemplate: String = DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
 ): String = buildString {
   append(renderSmbMetadataNormalizationPrompt(promptTemplate, currentFileName))
+  val stem = currentFileName.substringBeforeLast('.', currentFileName).trim()
+  trailingBareSeriesPositionHint(stem)?.let { hint ->
+    append("\n\n")
+    append("現在のファイル名末尾の ${hint.position} は巻数候補です。")
+    append("表紙と照合し、巻数なら seriesName と seriesPosition を指定し、巻数でなければ巻数として扱わないでください。")
+  }
   append("\n\n")
   append(SMB_METADATA_STRUCTURED_OUTPUT_INSTRUCTION)
 }
