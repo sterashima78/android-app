@@ -173,7 +173,7 @@ class SmbMetadataNormalizationWorker(
                 )
                 repository.retryCandidate(item.sourceId)
                 if (smbRepository.enqueueMissingCoverPrefetch() > 0) {
-                  WorkManagerSmbCoverPrefetchScheduler(applicationContext).kick()
+                  WorkManagerSmbCoverPrefetchScheduler(applicationContext).enqueue()
                 }
                 current = null
                 return@withPermit

@@ -70,7 +70,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbSyncing = true) }
       runCatching { smb.sync() }
         .onSuccess { result ->
-          kickCoverPrefetch()
+          enqueueCoverPrefetch()
           smbMetadataNormalizationScheduler?.kick()
           loadSnapshot(message = "ファイルサーバから ${result.importedCount} 冊を同期しました")
         }
@@ -86,7 +86,7 @@ class LibraryViewModel(
       runCatching { smb.enqueueMissingCoverPrefetch() }
         .onSuccess { count ->
           if (count > 0 || smb.coverPrefetchSnapshot().hasActiveWork) {
-            kickCoverPrefetch()
+            enqueueCoverPrefetch()
           }
           loadSnapshot(
             message = if (count > 0) {
@@ -107,7 +107,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbCoverPrefetchBusy = true) }
       runCatching { smb.retryFailedCoverPrefetch() }
         .onSuccess { count ->
-          if (count > 0) kickCoverPrefetch()
+          if (count > 0) enqueueCoverPrefetch()
           smbMetadataNormalizationScheduler?.kick()
           loadSnapshot(
             message = if (count > 0) {
@@ -116,6 +116,28 @@ class LibraryViewModel(
               "再試行する失敗ジョブはありません"
             },
           )
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun rescheduleSmbCoverPrefetch() {
+    val scheduler = smbCoverPrefetchScheduler ?: return
+    val snapshot = _state.value.smbCoverPrefetch
+    if (
+      _state.value.smbCoverPrefetchBusy ||
+      snapshot.pendingCount <= 0 ||
+      snapshot.runtime.state != SmbCoverPrefetchWorkerState.ENQUEUED ||
+      snapshot.runtime.waitReason != SmbCoverPrefetchWaitReason.SCHEDULER
+    ) {
+      return
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbCoverPrefetchBusy = true) }
+      runCatching { scheduler.reschedule() }
+        .onSuccess {
+          coverQueueSchedulingEnsured = true
+          loadSnapshot(message = "WorkManagerへ表紙先読みの実行を再要求しました")
         }
         .onFailure(::showError)
     }
@@ -131,7 +153,7 @@ class LibraryViewModel(
         val books = _state.value.let { it.books + it.hiddenBooks }
         val count = normalizer.startBatch(books)
         val coverCount = smb.enqueueMissingCoverPrefetch()
-        if (coverCount > 0 || smb.coverPrefetchSnapshot().hasActiveWork) kickCoverPrefetch()
+        if (coverCount > 0 || smb.coverPrefetchSnapshot().hasActiveWork) enqueueCoverPrefetch()
         smbMetadataNormalizationScheduler?.kick()
         count
       }
@@ -153,7 +175,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbMetadataNormalizationBusy = true) }
       runCatching { normalizer.applyCandidate(sourceId, proposedFileName, proposal) }
         .onSuccess {
-          kickCoverPrefetch()
+          enqueueCoverPrefetch()
           loadSnapshot(message = "書誌情報とファイル名を反映しました")
         }
         .onFailure(::showError)
@@ -184,7 +206,7 @@ class LibraryViewModel(
       runCatching {
         normalizer.retryCandidate(sourceId)
         val count = smb.enqueueMissingCoverPrefetch()
-        if (count > 0 || smb.coverPrefetchSnapshot().hasActiveWork) kickCoverPrefetch()
+        if (count > 0 || smb.coverPrefetchSnapshot().hasActiveWork) enqueueCoverPrefetch()
         smbMetadataNormalizationScheduler?.kick()
       }
         .onSuccess { loadSnapshot(message = "書誌候補を再解析します") }
@@ -223,7 +245,7 @@ class LibraryViewModel(
       _state.update { it.copy(smbBookActionBusy = true) }
       runCatching { smb.renameBook(book, newFileName) }
         .onSuccess { renamed ->
-          kickCoverPrefetch()
+          enqueueCoverPrefetch()
           loadSnapshot(message = "「${book.title}」を「${renamed.title}」へ変更しました")
         }
         .onFailure(::showError)
@@ -386,14 +408,14 @@ class LibraryViewModel(
       .onFailure(::showError)
   }
 
-  private fun kickCoverPrefetch() {
-    smbCoverPrefetchScheduler?.kick()
+  private fun enqueueCoverPrefetch() {
+    smbCoverPrefetchScheduler?.enqueue()
     coverQueueSchedulingEnsured = true
   }
 
   private fun ensureCoverPrefetchScheduled(snapshot: SmbCoverPrefetchSnapshot) {
     if (!snapshot.hasActiveWork || coverQueueSchedulingEnsured) return
-    if (runCatching { smbCoverPrefetchScheduler?.kick() }.isSuccess) {
+    if (runCatching { smbCoverPrefetchScheduler?.enqueue() }.isSuccess) {
       coverQueueSchedulingEnsured = true
     }
   }

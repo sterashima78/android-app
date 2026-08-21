@@ -59,6 +59,7 @@ fun LibraryFeatureRoute(
       onDelete = viewModel::deleteSmbServer,
       onEnqueueCovers = viewModel::enqueueMissingSmbCovers,
       onRetryFailedCovers = viewModel::retryFailedSmbCovers,
+      onRescheduleCovers = viewModel::rescheduleSmbCoverPrefetch,
       onStartMetadataNormalization = viewModel::startSmbMetadataNormalization,
       onApplyMetadataCandidate = viewModel::applySmbMetadataCandidate,
       onDeferMetadataCandidate = viewModel::deferSmbMetadataCandidate,

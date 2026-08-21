@@ -40,7 +40,15 @@ class WorkManagerSmbCoverPrefetchScheduler(
   private val appContext = context.applicationContext
   private val preferences = appContext.getSharedPreferences(SCHEDULER_PREFERENCES, Context.MODE_PRIVATE)
 
-  override fun kick() {
+  override fun enqueue() {
+    schedule(forceReschedule = false)
+  }
+
+  override fun reschedule() {
+    schedule(forceReschedule = true)
+  }
+
+  private fun schedule(forceReschedule: Boolean) {
     val request = OneTimeWorkRequestBuilder<SmbCoverPrefetchWorker>()
       .setConstraints(smbCoverPrefetchConstraints())
       .addTag(SmbCoverPrefetchWorker.WORK_TAG)
@@ -48,7 +56,7 @@ class WorkManagerSmbCoverPrefetchScheduler(
     val migrated = preferences.getBoolean(KEY_WIFI_CONSTRAINT_MIGRATED, false)
     WorkManager.getInstance(appContext).enqueueUniqueWork(
       SmbCoverPrefetchWorker.WORK_NAME,
-      if (migrated) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE,
+      smbCoverPrefetchExistingWorkPolicy(migrated, forceReschedule),
       request,
     )
     if (!migrated) {
@@ -60,6 +68,15 @@ class WorkManagerSmbCoverPrefetchScheduler(
     const val SCHEDULER_PREFERENCES = "smb_cover_prefetch_scheduler"
     const val KEY_WIFI_CONSTRAINT_MIGRATED = "wifi_constraint_v1"
   }
+}
+
+internal fun smbCoverPrefetchExistingWorkPolicy(
+  migrated: Boolean,
+  forceReschedule: Boolean,
+): ExistingWorkPolicy = when {
+  forceReschedule -> ExistingWorkPolicy.REPLACE
+  !migrated -> ExistingWorkPolicy.REPLACE
+  else -> ExistingWorkPolicy.APPEND_OR_REPLACE
 }
 
 internal fun smbCoverPrefetchConstraints(): Constraints = Constraints.Builder()

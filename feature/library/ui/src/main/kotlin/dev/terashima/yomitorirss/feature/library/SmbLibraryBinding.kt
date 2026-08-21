@@ -10,6 +10,7 @@ internal data class SmbLibraryUiBinding(
   val onDelete: (String) -> Unit,
   val onEnqueueCovers: () -> Unit,
   val onRetryFailedCovers: () -> Unit,
+  val onRescheduleCovers: () -> Unit,
   val onStartMetadataNormalization: () -> Unit,
   val onApplyMetadataCandidate: (String, String, SmbBookMetadataProposal) -> Unit,
   val onDeferMetadataCandidate: (String) -> Unit,
@@ -34,6 +35,7 @@ internal fun SmbLibrarySettingsFromBinding() {
     onDelete = binding.onDelete,
     onEnqueueCovers = binding.onEnqueueCovers,
     onRetryFailedCovers = binding.onRetryFailedCovers,
+    onRescheduleCovers = binding.onRescheduleCovers,
   )
   SmbMetadataNormalizationSettingsSection(
     enabled = binding.state.smbServers.isNotEmpty() && !binding.state.smbSyncing,

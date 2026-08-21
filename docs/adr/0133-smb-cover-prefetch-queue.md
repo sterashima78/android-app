@@ -13,6 +13,8 @@ ADR-0065 では SMB 蔵書の同期時に ZIP / CBZ の入力ストリームを�
 
 また大量の表紙取得では、実行中・待機・失敗・対象外をユーザーが確認でき、PDF の一時転送量も把握できる必要がある。アプリ終了や process death 後もキュー状態を失わないことが望ましい。
 
+初期実装では ZIP / CBZ の走査を 32 MiB、PDF の一時取得を 64 MiB に制限したが、実際の蔵書ではこの制限による `SKIPPED` が多い。表紙生成後に PDF 一時ファイルを必ず削除すること、処理は Wi-Fi 接続かつ battery-not-low 条件で直列実行することから、永続ストレージ消費を増やさずに転送上限を緩和できる。
+
 ## Decision
 
 ### SMB 同期は remote 表紙取得を待たない
@@ -39,17 +41,19 @@ WorkManager は `NetworkRequest` で Wi-Fi transport と battery-not-low を要�
 
 旧実装の `NetworkType.UNMETERED` で待機中の WorkRequest が残っている端末では、新しい Wi-Fi 制約の WorkRequest を単純に append すると旧 WorkRequest の後ろで待ち続ける。そのため Wi-Fi 制約への初回移行時だけ `REPLACE` で既存 unique work を置き換え、以後は `APPEND_OR_REPLACE` に戻す。durable queue は Library DB 側にあるため、置換で Worker がキャンセルされても実行中項目を `PENDING` へ戻して再開できる。
 
-### ZIP / CBZ は最大 32 MiB の streaming 走査とする
+Wi-Fi・battery-not-low 条件を満たしているにもかかわらず WorkManager が `ENQUEUED` のまま OS scheduler 待ちになっている場合、設定画面から「実行を再要求」を明示できる。この操作は durable queue を作り直さず、既存 unique work を `REPLACE` して同じ制約の WorkRequest を再登録する。通常のキュー追加と明示的な再要求は Scheduler API でも分離し、再要求を通常の `APPEND_OR_REPLACE` と混同しない。WorkManager は即時実行を保証しないため、UI 上も「今すぐ実行」ではなく再要求として扱う。
 
-ZIP / CBZ は SMB stream の先頭から最大 32 MiB だけを読み、最初に到達した JPEG / PNG / WebP を表紙候補とする。書籍本体を読書用キャッシュへ保存しない。
+### ZIP / CBZ は最大 64 MiB の streaming 走査とする
 
-32 MiB 以内で画像へ到達できない場合は `SKIPPED` とし、無制限に原本を転送しない。
+ZIP / CBZ は SMB stream の先頭から最大 64 MiB だけを読み、最初に到達した JPEG / PNG / WebP を表紙候補とする。書籍本体を読書用キャッシュへ保存しない。
 
-### PDF は 64 MiB 以下だけ一時取得する
+64 MiB 以内で画像へ到達できない場合は `SKIPPED` とし、無制限に原本を転送しない。
 
-Android `PdfRenderer` は local random access を必要とするため、PDF の表紙生成だけは原本全体の一時取得を許可する。ただし対象を 64 MiB 以下に限定する。
+### PDF は 128 MiB 以下だけ一時取得する
 
-一時ファイルは app cache の専用ディレクトリに置き、1ページ目を表紙へ変換した後、成功・失敗を問わず `finally` で削除する。読書用の `smb-books` キャッシュへ移動しない。64 MiB を超える PDF は `SKIPPED` とし、通常の読書時に書籍本体がキャッシュされた場合のみ既存経路で表紙を生成できる。
+Android `PdfRenderer` は local random access を必要とするため、PDF の表紙生成だけは原本全体の一時取得を許可する。ただし対象を 128 MiB 以下に限定する。
+
+一時ファイルは app cache の専用ディレクトリに置き、1ページ目を表紙へ変換した後、成功・失敗を問わず `finally` で削除する。読書用の `smb-books` キャッシュへ移動しない。128 MiB を超える PDF は `SKIPPED` とし、通常の読書時に書籍本体がキャッシュされた場合のみ既存経路で表紙を生成できる。
 
 PDF の転送中は `downloaded_bytes` / `total_bytes` をキューへ保存し、UI から進捗率と転送量を確認できる。DB 書き込みは概ね 1 MiB ごとに間引く。
 
@@ -67,6 +71,7 @@ SMB 設定画面に「表紙先読みキュー」を追加し、次を表示す�
 
 - 実行中 / 待機 / 完了 / 失敗 / 対象外の件数
 - WorkManager の実行状態と、Wi-Fi・バッテリー・OS scheduler のどこで待っているか
+- Wi-Fi・バッテリー条件を満たした `ENQUEUED` 状態では、通常は自動開始する旨と OS により遅延し得る旨、および「実行を再要求」操作
 - 最新ジョブの書籍名と状態
 - PDF 実行中の転送済み bytes / total bytes と progress indicator
 - 失敗理由または対象外理由
@@ -84,22 +89,24 @@ SMB Worker は既存の app-private encrypted credential を読み取って接�
 ### Positive
 
 - 蔵書同期が ZIP / CBZ の表紙読み込み待ちから分離される。
-- 未読 PDF でも小さなファイルなら表紙を事前生成できる。
+- 未読 PDF でも 128 MiB 以下なら表紙を事前生成できる。
 - PDF 本体は表紙生成後に残らず、永続的な端末容量増加を抑えられる。
-- ZIP / CBZ の remote read は1冊最大 32 MiB、PDF は1冊最大 64 MiBに上限がある。
+- ZIP / CBZ の remote read は1冊最大 64 MiB、PDF は1冊最大 128 MiBに上限がある。
 - 表紙キャッシュは最大 200 MiB に制限される。
 - モバイル回線とバッテリー低下中はバックグラウンド転送を行わず、従量制設定の Wi-Fi では実行できる。
 - process death 後も待機・失敗状態を確認して再開できる。
 - ユーザーが処理件数、進捗、失敗理由に加えて WorkManager の待機状態を確認できる。
+- OS scheduler 待ちが長い場合に、永続キューを失わず実行要求だけを明示的に再登録できる。
 
 ### Negative
 
-- PDF は表紙だけが必要でも最大 64 MiB の原本全体を一時転送する場合がある。
-- 64 MiB 超の PDF は未読状態では自動表紙生成されない。
-- ZIP / CBZ の表紙画像が archive の先頭 32 MiB より後にある場合は自動取得できない。
+- PDF は表紙だけが必要でも最大 128 MiB の原本全体を一時転送する場合がある。
+- 128 MiB 超の PDF は未読状態では自動表紙生成されない。
+- ZIP / CBZ の表紙画像が archive の先頭 64 MiB より後にある場合は自動取得できない。
 - 200 MiB 超過時は古い表紙が一覧から消え、必要なら明示的な再取得が必要になる。
 - Library DB に派生処理のキューtableが1つ増える。
 - active queue 表示中は定期的な DB snapshot read と WorkManager state read が発生する。
+- 「実行を再要求」は OS scheduler の判断を迂回するものではなく、押しても即時開始しない場合がある。
 
 ## Alternatives considered
 
