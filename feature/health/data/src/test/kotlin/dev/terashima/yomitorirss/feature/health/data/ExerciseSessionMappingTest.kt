@@ -114,9 +114,9 @@ class ExerciseSessionMappingTest {
   }
 
   @Test
-  fun `長時間セッションに短時間セッションが含まれるだけでは統合しない`() {
-    val longSession = session("2026-08-20T08:00:00Z", "2026-08-20T12:00:00Z")
-    val shortSession = session("2026-08-20T09:00:00Z", "2026-08-20T09:30:00Z")
+  fun `長時間セッションに半分の長さの短時間セッションが含まれるだけでは統合しない`() {
+    val longSession = session("2026-08-20T08:00:00Z", "2026-08-20T09:00:00Z")
+    val shortSession = session("2026-08-20T08:15:00Z", "2026-08-20T08:45:00Z")
 
     val deduplicated = deduplicateExerciseSessions(
       listOf(
