@@ -330,6 +330,22 @@ class LocalModelManager(context: Context) : AutoCloseable {
     }
   }
 
+  fun generateImageToolCall(
+    systemInstruction: String,
+    userMessage: String,
+    imageBytes: ByteArray,
+    tools: List<LocalInferenceTool>,
+  ): LocalInferenceToolCall? {
+    require(systemInstruction.isNotBlank()) { "System instruction must not be blank" }
+    require(userMessage.isNotBlank()) { "User message must not be blank" }
+    require(imageBytes.isNotEmpty()) { "画像データがありません" }
+    require(tools.isNotEmpty()) { "At least one tool is required" }
+    require(tools.map(LocalInferenceTool::name).distinct().size == tools.size) { "Tool names must be unique" }
+    return withInference(visionEnabled = true) { inference ->
+      inference.generateImageToolCall(systemInstruction, userMessage, imageBytes, tools)
+    }
+  }
+
   fun generateConversation(
     request: LocalInferenceConversationRequest,
     streaming: Boolean = false,
@@ -861,6 +877,30 @@ private class LiteRtLmInference(
         ),
       ).toString()
     }
+
+  fun generateImageToolCall(
+    systemInstruction: String,
+    userMessage: String,
+    imageBytes: ByteArray,
+    tools: List<LocalInferenceTool>,
+  ): LocalInferenceToolCall? {
+    val config = ConversationConfig(
+      systemInstruction = Contents.of(systemInstruction),
+      tools = tools.map { definition -> tool(LocalOpenApiTool(definition)) },
+      automaticToolCalling = false,
+    )
+    return engine.createConversation(config).use { conversation ->
+      val response = conversation.sendMessage(
+        Contents.of(
+          Content.ImageBytes(imageBytes),
+          Content.Text(userMessage),
+        ),
+      )
+      response.toolCalls.singleOrNull()?.let { call ->
+        LocalInferenceToolCall(call.name, call.arguments)
+      }
+    }
+  }
 
   fun generateStreaming(prompt: String, onChunk: (String) -> Unit): String =
     engine.createConversation().use { conversation ->
