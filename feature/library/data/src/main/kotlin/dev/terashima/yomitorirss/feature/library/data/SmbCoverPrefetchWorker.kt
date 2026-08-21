@@ -80,7 +80,7 @@ internal class SmbCoverPrefetchRuntimeInspector(context: Context) {
       WorkManager.getInstance(appContext)
         .getWorkInfosForUniqueWorkFlow(SmbCoverPrefetchWorker.WORK_NAME)
         .first()
-        .map(WorkInfo::getState)
+        .map { it.state }
     }.getOrElse {
       return SmbCoverPrefetchRuntimeSnapshot(
         state = SmbCoverPrefetchWorkerState.UNKNOWN,
