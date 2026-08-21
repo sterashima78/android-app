@@ -1,5 +1,5 @@
 # repository path	provider contract	reason
-app/src/main/java/dev/terashima/yomitorirss/BookmarkAutoEnrichmentBackfillWorker.kt	BookmarkAutoEnrichmentBackfillProvider	WorkManager constructs the bookmark enrichment backfill Worker
+feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/BookmarkAutoEnrichmentBackfillWorker.kt	BookmarkAutoEnrichmentBackfillProvider	WorkManager constructs the Summary-owned bookmark enrichment backfill Worker
 app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt	MainActivityDependenciesProvider	Android constructs MainActivity and the Activity resolves its composition dependencies from Application
 core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt	DatabaseSchemaProvider	Framework-owned background entry points create the shared database from Context
 feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/GoogleDriveBackupWorker.kt	BackupRepositoryProvider	WorkManager constructs the backup Worker

@@ -47,6 +47,11 @@ class BackfillBookmarkAutoEnrichmentUseCase(
   }
 }
 
+/** WorkManager-owned Summary entry points resolve this application capability from Application. */
+interface BookmarkAutoEnrichmentBackfillProvider {
+  suspend fun runBookmarkAutoEnrichmentBackfill()
+}
+
 fun shouldRequestBookmarkEnrichment(
   url: String,
   sourceFeedUrl: String,
