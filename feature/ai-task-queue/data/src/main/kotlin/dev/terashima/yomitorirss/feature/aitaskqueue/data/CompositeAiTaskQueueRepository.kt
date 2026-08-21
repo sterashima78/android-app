@@ -7,6 +7,8 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
+import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
+import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 
 class CompositeAiTaskQueueRepository(
@@ -15,6 +17,8 @@ class CompositeAiTaskQueueRepository(
   libraryCatalogRepository: LibraryRepository,
   libraryScheduler: LibraryOrganizationBatchScheduler,
   knowledgeController: KnowledgeBuildTaskController? = null,
+  smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
+  smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
 ) : AiTaskQueueRepository {
   private val summary = SummaryTaskQueueAdapter(summaryRepository)
   private val library = LibraryTaskQueueAdapter(
@@ -22,11 +26,24 @@ class CompositeAiTaskQueueRepository(
     catalogRepository = libraryCatalogRepository,
     scheduler = libraryScheduler,
   )
+  private val smbMetadata = if (
+    smbMetadataNormalizationRepository != null && smbMetadataNormalizationScheduler != null
+  ) {
+    SmbMetadataNormalizationTaskQueueAdapter(
+      repository = smbMetadataNormalizationRepository,
+      scheduler = smbMetadataNormalizationScheduler,
+    )
+  } else {
+    null
+  }
   private val knowledge = knowledgeController?.let(::KnowledgeTaskQueueAdapter)
 
   override suspend fun listTasks(): List<AiTaskQueueItem> {
     val globalPaused = summary.executionState().paused
-    return library.tasks(globalPaused) + summary.tasks() + knowledge.orEmptyTasks()
+    return library.tasks(globalPaused) +
+      smbMetadata.orEmptyTasks(globalPaused) +
+      summary.tasks() +
+      knowledge.orEmptyTasks()
   }
 
   override suspend fun executionState(): AiTaskQueueExecutionState =
@@ -40,6 +57,7 @@ class CompositeAiTaskQueueRepository(
   override suspend fun kick() {
     summary.kick()
     library.kickIfRunning()
+    smbMetadata?.kickIfRunning()
     knowledge?.kick()
   }
 
@@ -49,11 +67,13 @@ class CompositeAiTaskQueueRepository(
       summary.setPaused(true)
       try {
         library.pauseForGlobalGate(libraryStatus)
+        smbMetadata?.pauseForGlobalGate()
         knowledge?.pauseForGlobalGate()
         knowledge?.setResumeOnChargingScheduled(true)
       } catch (error: Throwable) {
         runCatching { summary.setPaused(false) }
         runCatching { library.restoreAfterPauseFailure(libraryStatus) }
+        runCatching { smbMetadata?.resumeFromGlobalGate() }
         runCatching {
           knowledge?.setResumeOnChargingScheduled(false)
           knowledge?.kick()
@@ -66,11 +86,13 @@ class CompositeAiTaskQueueRepository(
     summary.setPaused(false)
     try {
       library.resumeFromGlobalGate(libraryStatus)
+      smbMetadata?.resumeFromGlobalGate()
       knowledge?.setResumeOnChargingScheduled(false)
       knowledge?.kick()
     } catch (error: Throwable) {
       runCatching { summary.setPaused(true) }
       runCatching { library.restorePauseAfterResumeFailure(libraryStatus) }
+      runCatching { smbMetadata?.pauseForGlobalGate() }
       runCatching {
         knowledge?.pauseForGlobalGate()
         knowledge?.setResumeOnChargingScheduled(true)
@@ -85,11 +107,14 @@ class CompositeAiTaskQueueRepository(
     try {
       val globalPaused = summary.executionState().paused
       library.setResumeOnChargingScheduled(enabled, globalPaused)
+      smbMetadata?.setResumeOnChargingScheduled(enabled, globalPaused)
       knowledge?.setResumeOnChargingScheduled(enabled && globalPaused)
     } catch (error: Throwable) {
       runCatching { summary.setResumeWhenCharging(previous) }
       runCatching {
         val globalPaused = summary.executionState().paused
+        library.setResumeOnChargingScheduled(previous, globalPaused)
+        smbMetadata?.setResumeOnChargingScheduled(previous, globalPaused)
         knowledge?.setResumeOnChargingScheduled(previous && globalPaused)
       }
       throw error
@@ -104,7 +129,9 @@ class CompositeAiTaskQueueRepository(
 
   override suspend fun resume(taskId: String): Boolean {
     summary.resume(taskId)?.let { return it }
-    library.resume(taskId, globalPaused = summary.executionState().paused)?.let { return it }
+    val globalPaused = summary.executionState().paused
+    library.resume(taskId, globalPaused = globalPaused)?.let { return it }
+    smbMetadata?.resume(taskId, globalPaused = globalPaused)?.let { return it }
     return knowledge?.resume(taskId) ?: false
   }
 
@@ -112,4 +139,8 @@ class CompositeAiTaskQueueRepository(
 
   private suspend fun KnowledgeTaskQueueAdapter?.orEmptyTasks(): List<AiTaskQueueItem> =
     this?.tasks().orEmpty()
+
+  private suspend fun SmbMetadataNormalizationTaskQueueAdapter?.orEmptyTasks(
+    globalPaused: Boolean,
+  ): List<AiTaskQueueItem> = this?.tasks(globalPaused).orEmpty()
 }
