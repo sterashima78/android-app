@@ -26,6 +26,7 @@ data class LibraryUiState(
   val smbServers: List<SmbServerSettings> = emptyList(),
   val smbCoverPrefetch: SmbCoverPrefetchSnapshot = SmbCoverPrefetchSnapshot(),
   val smbMetadataNormalization: SmbMetadataNormalizationBatchSnapshot? = null,
+  val smbMetadataNormalizationPrompt: String = DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
   val books: List<LibraryBook> = emptyList(),
   val hiddenBooks: List<LibraryBook> = emptyList(),
   val sourceStates: Map<LibrarySource, LibrarySourceState> = emptyMap(),
@@ -38,6 +39,7 @@ class LibraryViewModel(
   private val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler? = null,
   private val smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
   private val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
+  private val smbMetadataNormalizationPromptRepository: SmbMetadataNormalizationPromptRepository? = null,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LibraryUiState())
   val state: StateFlow<LibraryUiState> = _state.asStateFlow()
@@ -160,6 +162,38 @@ class LibraryViewModel(
         .onSuccess { count ->
           loadSnapshot(message = "ファイルサーバ書籍 $count 冊の書誌解析を開始しました")
         }
+        .onFailure(::showError)
+    }
+  }
+
+  fun saveSmbMetadataNormalizationPrompt(prompt: String) {
+    val prompts = smbMetadataNormalizationPromptRepository ?: return
+    if (
+      _state.value.smbMetadataNormalizationBusy ||
+      _state.value.smbMetadataNormalization?.hasActiveWork == true
+    ) {
+      return
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbMetadataNormalizationBusy = true) }
+      runCatching { prompts.update(prompt) }
+        .onSuccess { loadSnapshot(message = "書誌正規化プロンプトを保存しました") }
+        .onFailure(::showError)
+    }
+  }
+
+  fun resetSmbMetadataNormalizationPrompt() {
+    val prompts = smbMetadataNormalizationPromptRepository ?: return
+    if (
+      _state.value.smbMetadataNormalizationBusy ||
+      _state.value.smbMetadataNormalization?.hasActiveWork == true
+    ) {
+      return
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      _state.update { it.copy(smbMetadataNormalizationBusy = true) }
+      runCatching { prompts.reset() }
+        .onSuccess { loadSnapshot(message = "書誌正規化プロンプトを既定値へ戻しました") }
         .onFailure(::showError)
     }
   }
@@ -386,6 +420,8 @@ class LibraryViewModel(
         servers = smbRepository?.servers().orEmpty(),
         coverPrefetch = smbRepository?.coverPrefetchSnapshot() ?: SmbCoverPrefetchSnapshot(),
         normalization = smbMetadataNormalizationRepository?.batchSnapshot(),
+        normalizationPrompt = smbMetadataNormalizationPromptRepository?.prompt()
+          ?: DEFAULT_SMB_METADATA_NORMALIZATION_PROMPT,
       )
     }
       .onSuccess { loaded ->
@@ -402,6 +438,7 @@ class LibraryViewModel(
             smbServers = loaded.servers,
             smbCoverPrefetch = loaded.coverPrefetch,
             smbMetadataNormalization = loaded.normalization,
+            smbMetadataNormalizationPrompt = loaded.normalizationPrompt,
             books = loaded.snapshot.books,
             hiddenBooks = loaded.snapshot.hiddenBooks,
             sourceStates = loaded.snapshot.sourceStates,
@@ -492,6 +529,7 @@ class LibraryViewModel(
     private val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler? = null,
     private val smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
     private val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
+    private val smbMetadataNormalizationPromptRepository: SmbMetadataNormalizationPromptRepository? = null,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(LibraryViewModel::class.java))
@@ -502,6 +540,7 @@ class LibraryViewModel(
         smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
         smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
         smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
+        smbMetadataNormalizationPromptRepository = smbMetadataNormalizationPromptRepository,
       ) as T
     }
   }
@@ -511,6 +550,7 @@ class LibraryViewModel(
     val servers: List<SmbServerSettings>,
     val coverPrefetch: SmbCoverPrefetchSnapshot,
     val normalization: SmbMetadataNormalizationBatchSnapshot?,
+    val normalizationPrompt: String,
   )
 
   private companion object {

@@ -80,6 +80,16 @@ AI に SMB path や変更後ファイル名を自由生成させない。変更�
 
 `/`、`\`、制御文字等の path / filename 危険文字を拒否・正規化し、レビュー時にユーザーが編集した名前にも同じ検証を適用する。
 
+### 4.1. 書誌推定プロンプトは Library-owned 設定として調整可能にする
+
+書誌推定の精度調整をアプリ更新から切り離すため、既定の user prompt は `feature:library:domain` が所有し、設定画面から編集・既定値へのリセットを可能にする。`feature:library:data` は SharedPreferences に保存し、UI は domain の `SmbMetadataNormalizationPromptRepository` を介して扱う。これは要約プロンプトと同様に feature 固有の AI policy を feature 内へ閉じる ADR-0056 の境界に従う。
+
+テンプレートでは `{{fileName}}` を現在のファイル名の差し込み位置として使用できる。placeholder を省略した場合も現在のファイル名を入力から失わないよう、renderer が末尾へ自動追加する。プロンプトは空文字を拒否し、最大 4,000 文字とする。
+
+ユーザーが変更できるのは user prompt のみとする。`submit_book_metadata` の Tool 名、schema、必須 field、validation、system instruction、修復再生成、ファイル名安全化は固定し、カスタムプロンプトから構造化出力や rename の安全境界を変更できないようにする。
+
+実行中の一括解析ではプロンプト編集を無効化し、worker は開始時に保存済みプロンプトを1回読み取って同一 worker 実行中の全候補で固定する。これにより1つの実行途中で推論方針が切り替わることを避ける。保存するカスタムプロンプトは端末内設定であり、実ユーザーの設定値を source、test fixture、ADR、PR説明へコミットしない。
+
 ### 5. SMB rename は必ずユーザー確認後に行う
 
 一括解析の正常経路は自動 rename しない。
@@ -149,6 +159,7 @@ source、test fixture、ADR、PR説明、log には実在するユーザー蔵�
 - SMB 同期後も確定済みのタイトル・著者等が保持される。
 - 表紙取得の通信量・Wi-Fi・credential 規則を ADR-0133 と二重管理しない。
 - 既存の process-wide AI runtime と共通 AI queue の直列化・一時停止を再利用できる。
+- 書誌推定の指示をアプリ更新なしで調整しつつ、構造化 Tool と rename の安全規則は固定できる。
 
 ### Negative
 
@@ -160,6 +171,7 @@ source、test fixture、ADR、PR説明、log には実在するユーザー蔵�
 - AIによる誤認、OCR失敗、表紙だけでは判別不能な書籍は人による編集・却下が必要になる。
 - 却下済み候補を再解析すると却下 decision は解除されるため、新しい解析が完了するまで一時的に未確定状態へ戻る。
 - 外部でファイルが rename された場合は source identity が変わるため、アプリ外変更を確定判断へ自動追跡しない。
+- カスタムプロンプトの内容によって推論精度が低下する可能性があるため、既定値へ戻す操作を提供する必要がある。
 
 ## Alternatives considered
 
