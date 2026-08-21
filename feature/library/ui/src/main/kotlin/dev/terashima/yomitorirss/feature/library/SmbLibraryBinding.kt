@@ -10,6 +10,7 @@ internal data class SmbLibraryUiBinding(
   val onDelete: (String) -> Unit,
   val onEnqueueCovers: () -> Unit,
   val onRetryFailedCovers: () -> Unit,
+  val onRescheduleCovers: () -> Unit,
 )
 
 internal val LocalSmbLibraryUiBinding = staticCompositionLocalOf<SmbLibraryUiBinding?> { null }
@@ -28,5 +29,6 @@ internal fun SmbLibrarySettingsFromBinding() {
     onDelete = binding.onDelete,
     onEnqueueCovers = binding.onEnqueueCovers,
     onRetryFailedCovers = binding.onRetryFailedCovers,
+    onRescheduleCovers = binding.onRescheduleCovers,
   )
 }
