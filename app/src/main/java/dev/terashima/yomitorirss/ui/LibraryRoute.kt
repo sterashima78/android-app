@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.library
+package dev.terashima.yomitorirss.ui
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -6,10 +6,10 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
@@ -17,18 +17,21 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.LibraryAuthorizationOutcome
 import dev.terashima.yomitorirss.LibraryRouteDependencies
+import dev.terashima.yomitorirss.feature.library.LibraryBook
+import dev.terashima.yomitorirss.feature.library.LibraryFeatureRoute
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
+import dev.terashima.yomitorirss.feature.library.LibraryViewModel
+import dev.terashima.yomitorirss.feature.library.SmbBookReaderRoute
 import kotlinx.coroutines.launch
 
 @Composable
-fun LibraryRoute(
+internal fun LibraryRoute(
   dependencies: LibraryRouteDependencies,
   modifier: Modifier = Modifier,
 ) {
   val authorization = dependencies.authorization
   val smbRepository = dependencies.smbRepository
-  val libraryViewModel: LibraryViewModel = viewModel(
-    factory = dependencies.libraryViewModelFactory,
-  )
+  val libraryViewModel: LibraryViewModel = viewModel(factory = dependencies.libraryViewModelFactory)
   val organizationViewModel: LibraryOrganizationViewModel = viewModel(
     key = "library-organization",
     factory = dependencies.organizationViewModelFactory,
@@ -42,9 +45,7 @@ fun LibraryRoute(
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
-      .onSuccess { account ->
-        libraryViewModel.syncGooglePlayBooks(account.accessToken, account.accountLabel)
-      }
+      .onSuccess { account -> libraryViewModel.syncGooglePlayBooks(account.accessToken, account.accountLabel) }
       .onFailure(libraryViewModel::reportError)
   }
 
@@ -68,7 +69,6 @@ fun LibraryRoute(
               val account = outcome.account
               libraryViewModel.syncGooglePlayBooks(account.accessToken, account.accountLabel)
             }
-
             is LibraryAuthorizationOutcome.RequiresResolution -> {
               authorizationLauncher.launch(
                 IntentSenderRequest.Builder(outcome.pendingIntent.intentSender).build(),
@@ -99,7 +99,8 @@ fun LibraryRoute(
       SmbBookReaderRoute(
         book = book,
         repository = smbRepository,
-        dependencies = dependencies.bookReader,
+        pageSourceFactory = dependencies.bookReader.pageSourceFactory,
+        readingPositionStore = dependencies.bookReader.readingPositionStore,
         onBack = closeSmbBook,
         modifier = Modifier.fillMaxSize(),
       )

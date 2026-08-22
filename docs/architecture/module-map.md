@@ -22,6 +22,10 @@
 
 `:app` は Application / Activity entry point、navigation graph、feature wiring、application-level configuration を担当する。feature 固有 business logic、durable persistence implementation、feature 固有 UI state の恒久的な所有場所にはしない。
 
+feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。Android permission / Activity Result、外部 Intent、複数 feature の state/action mapping など application composition が必要な adapter は `app/src/main/.../ui` に置く。
+
+`app/src/main/.../feature` は feature implementation の配置場所として使わない。現在ここに残る `feature/navigation` は Gradle feature module ではなく app shell navigation state の歴史的 package であり、architecture regression test で唯一の明示例外とする。新しい feature Route / Screen / adapter をこの path へ追加しない。
+
 ## Core capabilities
 
 ```text
@@ -114,6 +118,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - module の追加・削除・layer 構成変更: `settings.gradle.kts` を更新し、本表も同じ PR で更新する。
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
+- app composition adapter の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
 
 ## Sources
 
@@ -125,3 +130,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
+- [ADR-0141](../adr/0141-app-route-and-task-widget-ownership-cleanup.md)

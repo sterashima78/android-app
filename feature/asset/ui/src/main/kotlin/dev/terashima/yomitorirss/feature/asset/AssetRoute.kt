@@ -10,9 +10,5 @@ fun AssetRoute(
   modifier: Modifier,
 ) {
   val assetViewModel: AssetViewModel = viewModel(factory = viewModelFactory)
-
-  AssetScreen(
-    viewModel = assetViewModel,
-    modifier = modifier,
-  )
+  AssetScreen(viewModel = assetViewModel, modifier = modifier)
 }

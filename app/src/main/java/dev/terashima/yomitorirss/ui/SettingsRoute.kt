@@ -18,7 +18,6 @@ import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.ModelManagerDialog
-import dev.terashima.yomitorirss.feature.settings.SettingsScreen
 import java.time.LocalDate
 
 @Composable
@@ -55,7 +54,7 @@ internal fun SettingsRoute(
     }
   }
 
-  SettingsScreen(
+  SettingsFeatureHost(
     modifier = modifier,
     aiTaskQueueRepository = aiTaskQueueRepository,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
@@ -69,12 +68,8 @@ internal fun SettingsRoute(
       backupViewModel.refreshStatus()
       showBackup = true
     },
-    onExportBackup = {
-      exportLauncher.launch("mosaic-backup-${LocalDate.now()}.zip")
-    },
-    onImportBackup = {
-      importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
-    },
+    onExportBackup = { exportLauncher.launch("mosaic-backup-${LocalDate.now()}.zip") },
+    onImportBackup = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
     onOpenWebServer = onOpenWebServer,
   )
 

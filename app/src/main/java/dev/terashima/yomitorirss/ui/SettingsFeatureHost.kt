@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.settings
+package dev.terashima.yomitorirss.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,9 +8,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
+import dev.terashima.yomitorirss.feature.settings.SettingsFeatureScreen
 
 @Composable
-fun SettingsScreen(
+internal fun SettingsFeatureHost(
   modifier: Modifier,
   aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
