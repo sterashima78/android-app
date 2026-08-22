@@ -1,7 +1,5 @@
 package dev.terashima.yomitorirss.feature.article.data
 
-import android.database.sqlite.SQLiteDatabase
-import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val articleDatabaseSchema = DatabaseSchemaContribution(
@@ -13,23 +11,4 @@ val articleDatabaseSchema = DatabaseSchemaContribution(
     db.execSQL("CREATE INDEX IF NOT EXISTS article_read_date ON articles(read_at DESC)")
     db.execSQL("CREATE INDEX IF NOT EXISTS article_url ON articles(url)")
   },
-  migrations = listOf(
-    DatabaseMigration(targetVersion = 19) { db ->
-      db.addColumnIfMissing("articles", "content_type", "content_type TEXT")
-    },
-  ),
 )
-
-private fun SQLiteDatabase.addColumnIfMissing(table: String, column: String, definition: String) {
-  val exists = rawQuery("PRAGMA table_info($table)", null).use { cursor ->
-    var found = false
-    while (cursor.moveToNext()) {
-      if (cursor.getString(cursor.getColumnIndexOrThrow("name")) == column) {
-        found = true
-        break
-      }
-    }
-    found
-  }
-  if (!exists) execSQL("ALTER TABLE $table ADD COLUMN $definition")
-}
