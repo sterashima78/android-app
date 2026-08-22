@@ -120,8 +120,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
   }
 
   fun isSupported(): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-      Build.SUPPORTED_ABIS.any { it == "arm64-v8a" } &&
+    Build.SUPPORTED_ABIS.any { it == "arm64-v8a" } &&
       deviceMemoryBytes() >= MINIMUM_DEVICE_MEMORY_BYTES
 
   fun refreshModels() {
@@ -698,11 +697,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val manager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     val info = ActivityManager.MemoryInfo()
     manager.getMemoryInfo(info)
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      info.advertisedMem.takeIf { it > 0 } ?: info.totalMem
-    } else {
-      info.totalMem
-    }
+    return info.advertisedMem.takeIf { it > 0 } ?: info.totalMem
   }
 
   private fun estimatedStageDurationMillis(stage: String, modelId: String): Long? =
