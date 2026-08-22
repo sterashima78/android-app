@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.health
 import java.time.Instant
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ExerciseHistoryCardTest {
@@ -37,5 +38,33 @@ class ExerciseHistoryCardTest {
         Instant.parse("2026-08-20T10:01:05Z"),
       ),
     )
+  }
+
+  @Test
+  fun `運動時間帯の活動量をまとめて表示する`() {
+    val session = HealthExerciseSessionSummary(
+      startTime = Instant.parse("2026-08-20T10:00:00Z"),
+      endTime = Instant.parse("2026-08-20T10:32:00Z"),
+      exerciseName = "ウォーキング",
+      activeCaloriesKcal = 120.4,
+      averageHeartRateBpm = 132,
+      steps = 1560,
+    )
+
+    assertEquals(
+      "活動消費 120 kcal  ・  平均心拍 132 bpm  ・  1560 歩",
+      formatExerciseActivitySummary(session),
+    )
+  }
+
+  @Test
+  fun `活動量がない運動には補助情報を表示しない`() {
+    val session = HealthExerciseSessionSummary(
+      startTime = Instant.parse("2026-08-20T10:00:00Z"),
+      endTime = Instant.parse("2026-08-20T10:32:00Z"),
+      exerciseName = "ストレッチ",
+    )
+
+    assertNull(formatExerciseActivitySummary(session))
   }
 }
