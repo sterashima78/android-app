@@ -188,6 +188,7 @@ private fun SmbCoverPrefetchQueueSection(
   val canReschedule = snapshot.pendingCount > 0 &&
     snapshot.runtime.state == SmbCoverPrefetchWorkerState.ENQUEUED &&
     snapshot.runtime.waitReason == SmbCoverPrefetchWaitReason.SCHEDULER
+  val visibleItems = visibleSmbCoverPrefetchItems(snapshot.items)
 
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Text("表紙先読みキュー", style = MaterialTheme.typography.titleMedium)
@@ -242,17 +243,17 @@ private fun SmbCoverPrefetchQueueSection(
       }
     }
 
-    if (snapshot.items.isEmpty()) {
+    if (visibleItems.isEmpty()) {
       Text(
-        "表紙先読みジョブはありません。ファイルサーバ同期時にも未取得分が自動でキューへ追加されます。",
+        "表示する表紙先読みジョブはありません。ファイルサーバ同期時にも未取得分が自動でキューへ追加されます。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     } else {
-      snapshot.items.take(MAX_VISIBLE_QUEUE_ROWS).forEach { item ->
+      visibleItems.take(MAX_VISIBLE_QUEUE_ROWS).forEach { item ->
         SmbCoverPrefetchRow(item)
       }
-      if (snapshot.items.size > MAX_VISIBLE_QUEUE_ROWS) {
+      if (visibleItems.size > MAX_VISIBLE_QUEUE_ROWS) {
         Text(
           "最新 $MAX_VISIBLE_QUEUE_ROWS 件を表示しています。",
           style = MaterialTheme.typography.labelSmall,
@@ -261,6 +262,12 @@ private fun SmbCoverPrefetchQueueSection(
       }
     }
   }
+}
+
+internal fun visibleSmbCoverPrefetchItems(
+  items: List<SmbCoverPrefetchItem>,
+): List<SmbCoverPrefetchItem> = items.filterNot { item ->
+  item.status == SmbCoverPrefetchStatus.COMPLETED
 }
 
 @Composable
