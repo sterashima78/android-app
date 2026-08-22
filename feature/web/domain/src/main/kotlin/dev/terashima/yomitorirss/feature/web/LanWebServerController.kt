@@ -16,6 +16,4 @@ interface LanWebServerController {
   fun start()
 
   fun stop()
-
-  fun reportError(message: String)
 }
