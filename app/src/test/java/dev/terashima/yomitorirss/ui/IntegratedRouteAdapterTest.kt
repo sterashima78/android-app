@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.integrated
+package dev.terashima.yomitorirss.ui
 
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
