@@ -19,10 +19,6 @@ class LocalAiBackgroundExecutionPreferencesTest {
       LocalAiBackgroundExecutionPreferences.PREFERENCES_NAME,
       Context.MODE_PRIVATE,
     ).edit().clear().commit()
-    context.getSharedPreferences(
-      LocalAiBackgroundExecutionPreferences.LEGACY_SUMMARY_PREFERENCES_NAME,
-      Context.MODE_PRIVATE,
-    ).edit().clear().commit()
   }
 
   @Test
@@ -31,22 +27,6 @@ class LocalAiBackgroundExecutionPreferencesTest {
 
     assertFalse(preferences.paused)
     assertTrue(preferences.resumeWhenCharging)
-  }
-
-  @Test
-  fun `旧要約キューの実行設定を共通AI実行設定へ移行する`() {
-    context.getSharedPreferences(
-      LocalAiBackgroundExecutionPreferences.LEGACY_SUMMARY_PREFERENCES_NAME,
-      Context.MODE_PRIVATE,
-    ).edit()
-      .putBoolean(LocalAiBackgroundExecutionPreferences.KEY_PAUSED, true)
-      .putBoolean(LocalAiBackgroundExecutionPreferences.KEY_RESUME_WHEN_CHARGING, false)
-      .commit()
-
-    val preferences = LocalAiBackgroundExecutionPreferences(context)
-
-    assertTrue(preferences.paused)
-    assertFalse(preferences.resumeWhenCharging)
   }
 
   @Test
