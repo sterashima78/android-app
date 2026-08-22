@@ -15,7 +15,6 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import dev.terashima.yomitorirss.feature.web.LanServerStatus
 import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
 import java.net.Inet4Address
 import java.security.SecureRandom
@@ -42,7 +41,7 @@ class LanWebServerService : Service() {
     createNotificationChannel()
     accessToken = loadOrCreateToken()
     connectivityManager = getSystemService(ConnectivityManager::class.java)
-    LanServerStatus.starting()
+    LanWebServerStateStore.starting()
     ServiceCompat.startForeground(
       this,
       NOTIFICATION_ID,
@@ -69,7 +68,7 @@ class LanWebServerService : Service() {
     runCatching { server?.close() }
     server = null
     executor.shutdownNow()
-    LanServerStatus.stopped(terminalError)
+    LanWebServerStateStore.stopped(terminalError)
     super.onDestroy()
   }
 
@@ -91,7 +90,7 @@ class LanWebServerService : Service() {
     }.onFailure { error ->
       val message = error.message?.takeIf(String::isNotBlank) ?: "Webサーバを起動できませんでした"
       terminalError = message
-      LanServerStatus.stopped(message)
+      LanWebServerStateStore.stopped(message)
       stopForeground(STOP_FOREGROUND_REMOVE)
       stopSelf()
     }
@@ -120,7 +119,7 @@ class LanWebServerService : Service() {
         ?.firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
         ?.hostAddress
       val accessUrl = address?.let { "http://$it:${LanWebServer.PORT}/?token=$accessToken" }
-      LanServerStatus.running(address, accessUrl)
+      LanWebServerStateStore.running(address, accessUrl)
       getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(address))
     }
   }
