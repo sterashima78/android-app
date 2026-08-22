@@ -129,14 +129,14 @@ class AppRouteDependencies internal constructor(
   }
 
   val knowledgeViewModelFactory: KnowledgeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val buildTaskController = container.featureRuntimeDependencies.knowledgeBuildTaskController
+    val buildScheduler = container.featureRuntimeDependencies.knowledgeBuildScheduler
     KnowledgeViewModel.Factory(
       repository = container.knowledgeRepository,
       builder = container.knowledgeBuilder,
       creator = container.knowledgePageCreator,
       editor = container.knowledgePageEditor,
       scheduleBackupAfterChange = container.backupChangeScheduler::scheduleAfterChange,
-      scheduleRebuild = buildTaskController::enqueue,
+      scheduleRebuild = buildScheduler::enqueue,
     )
   }
 
