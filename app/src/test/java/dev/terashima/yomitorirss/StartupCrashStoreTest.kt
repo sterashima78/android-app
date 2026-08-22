@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss
 
+import android.app.ApplicationExitInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -26,5 +27,35 @@ class StartupCrashStoreTest {
     val source = "java.lang.IllegalStateException: synthetic failure"
 
     assertEquals(source, redactCrashDetails(source))
+  }
+
+  @Test
+  fun `MemoryLimiter による終了をメモリ関連として扱う`() {
+    assertTrue(
+      isMemoryRelatedProcessExit(
+        reason = ApplicationExitInfo.REASON_OTHER,
+        description = "MemoryLimiter:AnonSwap",
+      ),
+    )
+  }
+
+  @Test
+  fun `low memory 終了は description がなくてもメモリ関連として扱う`() {
+    assertTrue(
+      isMemoryRelatedProcessExit(
+        reason = ApplicationExitInfo.REASON_LOW_MEMORY,
+        description = null,
+      ),
+    )
+  }
+
+  @Test
+  fun `通常の終了理由をメモリ関連として扱わない`() {
+    assertFalse(
+      isMemoryRelatedProcessExit(
+        reason = ApplicationExitInfo.REASON_USER_REQUESTED,
+        description = "user requested",
+      ),
+    )
   }
 }
