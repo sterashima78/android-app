@@ -9,9 +9,25 @@ enum class HealthAvailability {
   PROVIDER_UPDATE_REQUIRED,
 }
 
+enum class HealthHistoryAccess {
+  AVAILABLE,
+  PERMISSION_REQUIRED,
+  UNSUPPORTED,
+}
+
 data class BodyFatMeasurement(
   val time: Instant,
   val percentage: Double,
+)
+
+data class DailyHealthSummary(
+  val date: LocalDate,
+  val steps: Long? = null,
+  val activeCaloriesKcal: Double? = null,
+  val exerciseMinutes: Long? = null,
+  val averageHeartRateBpm: Long? = null,
+  val sleepMinutes: Long? = null,
+  val averageWeightKg: Double? = null,
 )
 
 data class DailyNutritionIntake(
@@ -120,12 +136,15 @@ data class HealthOverview(
   val bodyFatMeasurements: List<BodyFatMeasurement> = emptyList(),
   val nutritionDailyIntakes: List<DailyNutritionIntake> = emptyList(),
   val exerciseSessions: List<HealthExerciseSessionSummary> = emptyList(),
+  val dailySummaries: List<DailyHealthSummary> = emptyList(),
 )
 
 interface HealthRepository {
   fun availability(): HealthAvailability
 
   suspend fun hasRequiredPermissions(): Boolean
+
+  suspend fun historyAccess(): HealthHistoryAccess
 
   suspend fun readOverview(startTime: Instant, endTime: Instant): HealthOverview
 }

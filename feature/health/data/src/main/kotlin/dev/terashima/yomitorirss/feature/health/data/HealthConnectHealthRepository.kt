@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.health.data
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
@@ -14,15 +15,18 @@ import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dev.terashima.yomitorirss.feature.health.BodyFatMeasurement
+import dev.terashima.yomitorirss.feature.health.DailyHealthSummary
 import dev.terashima.yomitorirss.feature.health.DailyNutritionIntake
 import dev.terashima.yomitorirss.feature.health.HealthAvailability
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentSummary
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentType
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
+import dev.terashima.yomitorirss.feature.health.HealthHistoryAccess
 import dev.terashima.yomitorirss.feature.health.HealthOverview
 import dev.terashima.yomitorirss.feature.health.HealthRepository
 import dev.terashima.yomitorirss.feature.health.HealthWorkoutSession
@@ -31,6 +35,8 @@ import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriter
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.Period
 import java.time.ZoneId
 import java.time.ZoneOffset
 
@@ -53,6 +59,20 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     return client.permissionController.getGrantedPermissions().containsAll(READ_PERMISSIONS)
   }
 
+  override suspend fun historyAccess(): HealthHistoryAccess {
+    if (!historyFeatureAvailable()) return HealthHistoryAccess.UNSUPPORTED
+    val grantedPermissions = client.permissionController.getGrantedPermissions()
+    return if (HISTORY_PERMISSION in grantedPermissions) {
+      HealthHistoryAccess.AVAILABLE
+    } else {
+      HealthHistoryAccess.PERMISSION_REQUIRED
+    }
+  }
+
+  fun requestPermissions(): Set<String> =
+    READ_PERMISSIONS + WRITE_PERMISSIONS +
+      if (historyFeatureAvailable()) setOf(HISTORY_PERMISSION) else emptySet()
+
   override suspend fun readOverview(startTime: Instant, endTime: Instant): HealthOverview {
     require(startTime < endTime) { "startTime must be before endTime" }
     val timeRange = TimeRangeFilter.between(startTime, endTime)
@@ -73,6 +93,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       bodyFatMeasurements = readBodyFatMeasurements(timeRange),
       nutritionDailyIntakes = readDailyNutrition(timeRange),
       exerciseSessions = exerciseSessions,
+      dailySummaries = readDailySummaries(startTime, endTime),
     )
   }
 
@@ -111,6 +132,41 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     )
     client.insertRecords(listOf(record))
     return HealthWorkoutWriteResult.WRITTEN
+  }
+
+  private suspend fun readDailySummaries(startTime: Instant, endTime: Instant): List<DailyHealthSummary> {
+    val zoneId = ZoneId.systemDefault()
+    val localStart = startTime.atZone(zoneId).toLocalDateTime()
+    val localEnd = endTime.atZone(zoneId).toLocalDateTime()
+    val grouped = client.aggregateGroupByPeriod(
+      AggregateGroupByPeriodRequest(
+        metrics = AGGREGATE_METRICS,
+        timeRangeFilter = TimeRangeFilter.between(localStart, localEnd),
+        timeRangeSlicer = Period.ofDays(1),
+      ),
+    ).associateBy { it.startTime.toLocalDate() }
+
+    val endDateExclusive = if (localEnd.toLocalTime() == LocalTime.MIDNIGHT) {
+      localEnd.toLocalDate()
+    } else {
+      localEnd.toLocalDate().plusDays(1)
+    }
+
+    return generateSequence(localStart.toLocalDate()) { it.plusDays(1) }
+      .takeWhile { it < endDateExclusive }
+      .map { date ->
+        val result = grouped[date]?.result
+        DailyHealthSummary(
+          date = date,
+          steps = result?.get(StepsRecord.COUNT_TOTAL),
+          activeCaloriesKcal = result?.get(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)?.inKilocalories,
+          exerciseMinutes = result?.get(ExerciseSessionRecord.EXERCISE_DURATION_TOTAL)?.toMinutes(),
+          averageHeartRateBpm = result?.get(HeartRateRecord.BPM_AVG),
+          sleepMinutes = result?.get(SleepSessionRecord.SLEEP_DURATION_TOTAL)?.toMinutes(),
+          averageWeightKg = result?.get(WeightRecord.WEIGHT_AVG)?.inKilograms,
+        )
+      }
+      .toList()
   }
 
   private suspend fun readExerciseSessions(timeRange: TimeRangeFilter): List<HealthExerciseSessionSummary> {
@@ -214,6 +270,11 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
     return aggregateNutritionByDay(samples)
   }
 
+  private fun historyFeatureAvailable(): Boolean =
+    availability() == HealthAvailability.AVAILABLE &&
+      client.features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY) ==
+      HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+
   private fun segmentType(type: HealthExerciseSegmentType): Int = when (type) {
     HealthExerciseSegmentType.CRUNCH -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_CRUNCH
     HealthExerciseSegmentType.LUNGE -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_LUNGE
@@ -240,7 +301,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       HealthPermission.getWritePermission(ExerciseSessionRecord::class),
     )
 
-    val REQUEST_PERMISSIONS: Set<String> = READ_PERMISSIONS + WRITE_PERMISSIONS
+    const val HISTORY_PERMISSION: String = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
 
     private val AGGREGATE_METRICS: Set<AggregateMetric<*>> = setOf(
       StepsRecord.COUNT_TOTAL,

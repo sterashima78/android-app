@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-19
-- Amended: 2026-08-20
+- Amended: 2026-08-22
 - Refines: [ADR-0001](0001-layered-architecture.md), [ADR-0003](0003-multi-module-architecture.md), [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md), [ADR-0126](0126-android-platform-baseline.md)
 - Refined by: [ADR-0131](0131-workout-health-connect-export.md) for the one-way Workout -> Health Connect write path
 
@@ -18,6 +18,10 @@
 
 一方、既存の Workout Context はユーザーがこのアプリで記録するワークアウト状態を所有している。Health Connect 由来データを Workout の永続状態へコピーすると、所有権、重複、同期方向が曖昧になる。また健康データは機微性が高いため、不要な永続化、バックアップ、バックグラウンドアクセス、AI 利用を増やすべきではない。
 
+当初は「今日・直近7日・直近30日」のローリング期間だけを扱っていたが、Health Connect 側で過去データが後から修正・追加された場合、対象日を明示して再読込できない。また日次の詳細確認と週・月の傾向確認では適切な表示粒度が異なる。選択日を基準に日・週・月を移動でき、表示中の期間を Health Connect から明示的に再取得できる必要がある。
+
+Health Connect の通常の読み取り範囲は、最初に権限が付与された時点から30日前までに制限される。より古い他アプリ由来データを選択可能にする場合、対応する Health Connect 実装では `READ_HEALTH_DATA_HISTORY` を要求する必要がある。この capability は Android OS の API level だけではなく Health Connect feature status で確認する。
+
 ## Decision
 
 - `:feature:health:{domain,data,ui}` を独立 feature とする。
@@ -32,12 +36,18 @@
 - 現在の `androidx.health.connect:connect-client:1.1.0` で安定して利用できる title、notes、segments、segment repetitions を対象とする。1.2.0 alpha で追加された segment の重量、set index、RPE は安定版へ更新する別判断まで利用しない。
 - 栄養情報は `NutritionRecord` の摂取カロリー、たんぱく質、脂質、炭水化物を読み取り、record の開始日時を利用者が経験したタイムゾーンの日付へ変換した上で日単位に合算する。
 - 栄養情報は Health Connect 上の対象 record を合算し、特定の提供元アプリ package には依存しない。複数提供元が同一食事を重複記録する場合の正規化は将来課題とする。
-- UI は今日、直近7日、直近30日の概要をオンデマンドで取得する。体脂肪率は選択期間内の測定値を時系列で表示し、最新値も確認できるようにする。
+- UI の期間は `日`、`週`、`月` のカレンダー単位とする。日は選択日の0時から翌日0時、週は月曜日から翌月曜日、月は月初から翌月初を期間境界とする。現在を含む期間の終了時刻は現在時刻へ切り詰める。
+- 任意の日付を選択でき、前後の期間へ移動できる。未来のみの期間は表示しない。
+- 表示中の期間には「選択期間を Health Connect から再取得」を提供し、アプリ内キャッシュを介さず同じ期間を Health Connect へ再問い合わせする。最終取得時刻を画面上で確認できるようにする。
+- 日表示は当日の指標と運動セッションなどの詳細確認を優先する。週表示は期間合計・平均に加えて日別内訳と運動セッションを表示する。月表示は期間合計・平均と日別内訳・時系列グラフを中心とし、長大になり得る個別運動セッション一覧は表示しない。
+- 週・月の日別指標は `AggregateGroupByPeriodRequest` を1日単位で使用し、歩数など累積型を個別 record の単純合算で二重計上しない。
+- 体脂肪率は選択期間内の測定値を時系列で表示し、最新値も確認できるようにする。
 - 栄養情報は熱量・P・F・Cを切り替える時系列グラフで表示し、標準目安と減量参考を同じグラフ上で比較できるようにする。
 - 標準目安は「日本人の食事摂取基準（2025年版）」の30〜49歳男性・身体活動レベル「普通」の推定エネルギー必要量2,750 kcal/日を代表値とする。たんぱく質13〜20%E、脂質20〜30%E、炭水化物50〜65%Eをグラムへ換算して比較帯を作る。たんぱく質推奨量65 g/日も説明として表示する。
 - 減量参考は2,250 kcal/日（標準代表値から500 kcal/日減）とし、同じP/F/Cエネルギー比率から比較帯を再計算する。これは厚生労働省による個別の減量基準ではなく、アプリ内の比較用参考値であることをUIに明示する。
-- Health Connect 由来データをアプリ DB へ永続化しない。Backup、AI task、外部 API にも渡さない。
-- `READ_HEALTH_DATA_IN_BACKGROUND` と `READ_HEALTH_DATA_HISTORY` は要求しない。最大期間を30日に制限する。
+- Health Connect 由来データをアプリ DB へ永続化しない。Backup、AI task、外部 API にも渡さない。期間再取得のための永続キャッシュも追加しない。
+- `READ_HEALTH_DATA_IN_BACKGROUND` は要求しない。画面表示・明示更新時の foreground read のみとする。
+- `READ_HEALTH_DATA_HISTORY` は `HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY` が利用可能な場合だけ権限要求候補へ含める。通常の読み取り範囲より古い期間を選択し、履歴権限が未付与なら専用状態を表示して権限付与を促す。feature 自体が利用できない場合は古い期間を利用不可として扱う。
 - Health と Workout は別 Context とする。Workout から Health Connect への一方向 write は ADR-0131 に従い、Health Connect の read data を Workout へ同期しない。
 - 権限は利用時に Health Connect へ再確認し、ユーザーによる権限取り消しを通常状態として扱う。
 - Android 14 以降の Health Connect permission usage から開ける利用説明 Activity を提供する。
@@ -47,8 +57,10 @@
 ### Positive
 
 - 健康データをアプリ側へ複製せず、Health Connect を source of truth として扱える。
+- Health Connect で後から修正・追加された過去日も、対象期間を選んで明示的に再取得できる。
+- 日の詳細、週の短期傾向、月の長期傾向を同じ画面で適切な粒度に切り替えられる。
+- 30日より古い履歴も Health Connect が対応し、利用者が権限を付与した場合に参照できる。
 - Workout の ownership を変更せず導入できる。
-- 要求権限とデータ流通範囲を最小化できる。
 - Android platform / Health Connect 型が Data 層へ閉じる。
 - 歩数、活動消費カロリー、心拍数などをヘルスケアへ集約し、Workout を運動内容の記録に集中させられる。
 - 合計運動時間だけでなく、どの運動をいつ行い、Health Connect にどの種目内訳が記録されているかを同じ画面で確認できる。
@@ -59,10 +71,9 @@
 ### Negative
 
 - Health Connect が利用できない状態や権限未付与時は表示できない。
-- 30日より古い履歴は参照しない。
-- オフラインキャッシュや長期トレンドのアプリ独自保存は行えない。
+- 30日より古い他アプリ由来データは Health Connect の履歴読み取り capability と追加権限に依存する。
+- オフラインキャッシュや長期トレンドのアプリ独自保存は行えないため、表示や再取得には Health Connect が利用可能である必要がある。
 - 活動消費カロリーは Health Connect に対応 record が存在しない期間では表示できない。Workout の回数や時間からの補完推定は行わない。
-- 運動時間は stable 1.1.0 に総運動時間 aggregate がないため、取得した運動セッション時間を合計する。複数データソースが同一運動を重複記録する場合の正規化は将来課題とする。
 - 運動の segment は任意情報なので、提供元アプリが書き込まない場合はセッション単位の情報しか表示できない。
 - stable 1.1.0 のままでは segment の重量、set index、RPE は表示できない。
 - 栄養情報も複数データソースが同じ食事を重複して書き込んだ場合は二重計上し得る。
@@ -70,7 +81,10 @@
 
 ## Verification
 
-- Health ViewModel の権限未付与、読取成功、期間変更を unit test する。
+- Health ViewModel の権限未付与、読取成功、日・週・月のカレンダー境界、任意日選択、未来日制限を unit test する。
+- 30日より前を含む期間について、履歴権限未付与と history feature 非対応を別状態として unit test する。
+- 通常の read 権限8種類と Workout export の write 権限を増やさず、履歴用途だけ `PERMISSION_READ_HEALTH_DATA_HISTORY` を追加することを unit test・レビューで確認する。
+- 週・月の日別内訳は Health Connect の1日単位 aggregate group を利用し、期間にデータのない日も日付軸を維持することを確認する。
 - 運動セッションがない場合の合計時間を未取得として扱い、複数セッションの duration を合計してから分へ変換することを unit test する。
 - 主要な session/segment type がアプリ向け表示名へ変換されることを Data 層の unit test で確認する。
 - 運動履歴の同日・日跨ぎ時刻表示と秒を含む duration 表示を UI 層の unit test で確認する。
@@ -79,7 +93,6 @@
 - 標準目安と減量参考のP/F/C換算値を unit test する。
 - `verifyArchitecture` で UI -> Data の依存がないことを確認する。
 - `:feature:health:domain:test`、`:feature:health:data:test`、`:feature:health:ui:test`、全体 unit tests、release lint を実行する。
-- read 側の Health Connect 権限が歩数・活動消費カロリー・運動・心拍・睡眠・体重・体脂肪率・栄養の8種類に限定されることをレビュー・unit test する。Workout export に必要な write 権限は ADR-0131 に従う。
 - 公開リポジトリへ実健康データ、credential、token が追加されていないことをレビューする。
 
 ## Public repository note

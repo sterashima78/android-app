@@ -27,6 +27,7 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 - Widget の fill-in intent 用 `PendingIntent` は mutability を明示する。
 - API 34 の foreground service type を利用する background worker では、API 34 未満へフォールバックする `SDK_INT` 分岐を持たない。
 - Health Connect など API 34 で platform 統合される capability を導入する module は、必要に応じて module 自身の `minSdk` も 34 とする。
+- Health Connect の capability は API level だけで利用可能性を決めない。`READ_HEALTH_DATA_HISTORY` など extension / provider 更新に依存する機能は `HealthConnectFeatures` で feature status を確認してから対応 API や権限を利用する。
 
 新しい platform API を導入する際は、アプリの min SDK だけでなく、その API を直接参照する Android library module の SDK 宣言も確認する。
 

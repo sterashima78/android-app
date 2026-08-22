@@ -14,7 +14,7 @@ import org.junit.Test
 
 class HealthConnectPermissionsTest {
   @Test
-  fun `ヘルスの読取権限には活動消費カロリーを含める`() {
+  fun `ヘルスの通常読取権限は対象データ種別だけに限定する`() {
     assertEquals(
       setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
@@ -27,6 +27,14 @@ class HealthConnectPermissionsTest {
         HealthPermission.getReadPermission(NutritionRecord::class),
       ),
       HealthConnectHealthRepository.READ_PERMISSIONS,
+    )
+  }
+
+  @Test
+  fun `古い選択期間の読取にはHealth Connect標準の履歴権限を使う`() {
+    assertEquals(
+      HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
+      HealthConnectHealthRepository.HISTORY_PERMISSION,
     )
   }
 
