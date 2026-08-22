@@ -50,7 +50,7 @@ settings.gradle.kts / config/architecture/* / Gradle verification / production c
 
 Architecture document の規範的な節には末尾の `Sources` で根拠 ADR を示す。理由・議論・代替案は重複記載せず ADR を参照する。
 
-公開リポジトリであるため、architecture document、ADR、manifest、fixture には credential、token、OAuth secret、実ユーザーの URL・メールアドレス・個人データを記載しない。
+公開リポジトリであるため、architecture document、ADR、manifest、fixture には credential、token、OAuth secret、実ユーザーの URL・メールアドレス・個人データを記載しない。高確度な credential / private artifact は `scripts/verify_public_repository.py` でも検査し、意味的な個人情報判定は独立レビューで補完する。
 
 ## Sources
 
@@ -62,3 +62,4 @@ Architecture document の規範的な節には末尾の `Sources` で根拠 ADR 
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
 - [ADR-0126](../adr/0126-android-platform-baseline.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
+- [ADR-0136](../adr/0136-public-repository-content-verification.md)
