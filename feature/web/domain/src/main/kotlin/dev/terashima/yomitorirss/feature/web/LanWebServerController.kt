@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss.feature.web
 
 import kotlinx.coroutines.flow.StateFlow
 
-data class LanServerUiState(
+data class LanWebServerState(
   val running: Boolean = false,
   val address: String? = null,
   val port: Int = 8765,
@@ -11,7 +11,7 @@ data class LanServerUiState(
 )
 
 interface LanWebServerController {
-  val state: StateFlow<LanServerUiState>
+  val state: StateFlow<LanWebServerState>
 
   fun start()
 
