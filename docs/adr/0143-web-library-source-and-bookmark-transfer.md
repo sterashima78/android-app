@@ -36,7 +36,7 @@ Library data layer の `WebLibraryMetadataClient` が HTTP(S) ページを取得
 
 Web 蔵書の追加・削除は `WebLibraryMutator` capability として公開し、Library の広い Repository contract に Web 固有操作を混在させない。
 
-Android の共有 entry point は `WebLibraryMutatorProvider` から capability を取得し、共有された URL の解析と capability 呼び出しだけを担当する。Bookmark 用の既存共有 target は変更せず、「蔵書へ追加」を独立した共有 target として登録する。
+Bookmark 用の既存共有 target は変更せず、「蔵書へ追加」を独立した共有 target として登録する。専用の `LibraryShareActivity` は framework dependency provider を直接 lookup せず、共有 payload を既に監査済みの `MainActivity` へ専用 action で転送する。URL 解析と `WebLibraryMutator` の実行は `MainActivityDependencies` を通じた app composition で行う。
 
 Library の app-owned Route は `LibraryRouteDependencies` からこの capability と cross-context callback を受け取り、feature UI の `WebLibraryActions` を composition する。feature UI 自体は app/container や Bookmark implementation に依存しない。
 
@@ -64,6 +64,7 @@ Context を跨ぐ単一 DB transaction は作らない。途中失敗時には�
 
 - Web の書籍・作品ページを既存 Library catalog、検索、source filter の対象として扱える。
 - Android 共有シートでは既存 Bookmark target と Library target をユーザーが明示的に選択できる。
+- 共有専用 Activity を新たな dependency composition root にせず、framework provider lookup の監査対象を増やさない。
 - Bookmark と Web Library の移動でネットワーク失敗が起きても、コピー先の作成前に元データが消えない。
 - 最新の app Route ownership を維持し、Library feature UI / data と cross-context orchestration の責務が混在しない。
 - Web page metadata はサイト側の OGP 品質に依存するため、完全な書誌情報は保証しない。
@@ -73,4 +74,5 @@ Context を跨ぐ単一 DB transaction は作らない。途中失敗時には�
 
 - OGP、HTML title fallback、相対表紙 URL、HTTPS 表紙制約を unit test する。
 - Bookmark ↔ Library の更新順序と、Library 追加失敗時に Bookmark を削除しないことを unit test する。
+- framework provider boundary test で共有専用 Activity が新しい provider lookup を追加していないことを検証する。
 - architecture verification、public repository verification、既存 unit test、lint を CI で実行する。
