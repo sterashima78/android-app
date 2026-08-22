@@ -12,7 +12,9 @@ interface LibraryRepository {
     series: LibrarySeries,
   )
 
-  suspend fun setBookSeries(updates: List<LibraryBookSeriesUpdate>)
+  suspend fun setBookSeries(updates: List<LibraryBookSeriesUpdate>) {
+    updates.forEach { update -> setBookSeries(update.book, update.series) }
+  }
 
   suspend fun clearBookSeries(book: LibraryBook)
 
