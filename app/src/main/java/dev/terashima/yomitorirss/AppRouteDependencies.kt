@@ -8,7 +8,6 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.calendar.CalendarViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthViewModel
-import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
@@ -39,10 +38,6 @@ class AppRouteDependencies internal constructor(
   application: Application,
   container: AppContainer,
 ) {
-  private val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    HealthConnectHealthRepository(application)
-  }
-
   val rssViewModelFactory: RssViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     RssViewModel.Factory(
       articleRepository = container.articleRepository,
@@ -122,9 +117,10 @@ class AppRouteDependencies internal constructor(
   }
 
   val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val repository = container.featureRuntimeDependencies.healthRepository
     HealthRouteDependencies(
-      viewModelFactory = HealthViewModel.Factory(healthRepository),
-      readPermissions = healthRepository.requestPermissions(),
+      viewModelFactory = HealthViewModel.Factory(repository),
+      readPermissions = repository.requestPermissions(),
     )
   }
 
@@ -179,7 +175,7 @@ class AppRouteDependencies internal constructor(
   val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     WorkoutViewModel.Factory(
       repository = container.workoutRepository,
-      historyExporter = WorkoutHealthConnectExporter(healthRepository),
+      historyExporter = WorkoutHealthConnectExporter(container.featureRuntimeDependencies.healthRepository),
     )
   }
 
