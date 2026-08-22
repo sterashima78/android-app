@@ -10,14 +10,11 @@ import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditController
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRoute
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
-import dev.terashima.yomitorirss.feature.calendar.CalendarRoute
 import dev.terashima.yomitorirss.feature.chat.ChatRoute
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.game.GameRoute
 import dev.terashima.yomitorirss.feature.health.HealthRoute
-import dev.terashima.yomitorirss.feature.integrated.IntegratedRoute
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
-import dev.terashima.yomitorirss.feature.library.LibraryRoute
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.navigation.AppViewModel
 import dev.terashima.yomitorirss.feature.navigation.MainTab
@@ -31,10 +28,9 @@ import dev.terashima.yomitorirss.feature.rss.RssRouteController
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
-import dev.terashima.yomitorirss.feature.task.TaskScreen
+import dev.terashima.yomitorirss.feature.task.TaskRoute
 import dev.terashima.yomitorirss.feature.workout.WorkoutRoute
 import dev.terashima.yomitorirss.feature.x.XViewerRoute
-import dev.terashima.yomitorirss.feature.youtube.YouTubeRoute
 
 @Composable
 internal fun AppFeatureContent(
@@ -128,7 +124,7 @@ internal fun AppFeatureContent(
       modifier = modifier,
       routeDependencies = routeDependencies,
     )
-    MainTab.YOUTUBE -> YouTubeRoute(
+    MainTab.YOUTUBE -> YouTubeRouteHost(
       viewModelFactory = routeDependencies.youtubeViewModelFactory,
       modifier = modifier,
     )
@@ -136,9 +132,8 @@ internal fun AppFeatureContent(
       repository = routeDependencies.xViewerCssRepository,
       modifier = modifier,
     )
-    MainTab.TASKS -> TaskScreen(
+    MainTab.TASKS -> TaskRoute(
       viewModelFactory = routeDependencies.taskViewModelFactory,
-      onTasksChanged = routeDependencies.updateTaskWidget,
       modifier = modifier,
     )
     MainTab.CALENDAR -> CalendarRoute(

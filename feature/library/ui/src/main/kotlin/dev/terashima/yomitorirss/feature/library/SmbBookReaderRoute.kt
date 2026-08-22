@@ -24,23 +24,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.BookReaderRouteDependencies
 import dev.terashima.yomitorirss.feature.bookreader.BookDocument
 import dev.terashima.yomitorirss.feature.bookreader.BookFormat
+import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
+import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.bookreader.ui.BookReaderScreen
-import dev.terashima.yomitorirss.feature.library.LibraryBook
-import dev.terashima.yomitorirss.feature.library.PreparedLibraryBook
-import dev.terashima.yomitorirss.feature.library.SmbBookFormat
-import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun SmbBookReaderRoute(
+fun SmbBookReaderRoute(
   book: LibraryBook,
   repository: SmbLibraryRepository,
-  dependencies: BookReaderRouteDependencies,
+  pageSourceFactory: BookPageSourceFactory,
+  readingPositionStore: ReadingPositionStore,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -91,8 +89,8 @@ internal fun SmbBookReaderRoute(
       localPath = ready.localPath,
     )
   }
-  val sourceResult = remember(document, dependencies.pageSourceFactory) {
-    runCatching { dependencies.pageSourceFactory.open(document) }
+  val sourceResult = remember(document, pageSourceFactory) {
+    runCatching { pageSourceFactory.open(document) }
   }
   val source = sourceResult.getOrNull()
   if (source == null) {
@@ -113,7 +111,7 @@ internal fun SmbBookReaderRoute(
   BookReaderScreen(
     document = document,
     source = source,
-    positionStore = dependencies.readingPositionStore,
+    positionStore = readingPositionStore,
     onBack = onBack,
     modifier = modifier,
   )

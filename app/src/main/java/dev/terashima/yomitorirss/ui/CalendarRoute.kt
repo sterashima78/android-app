@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.calendar
+package dev.terashima.yomitorirss.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -13,9 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.feature.calendar.CalendarScreen
+import dev.terashima.yomitorirss.feature.calendar.CalendarViewModel
 
 @Composable
-fun CalendarRoute(
+internal fun CalendarRoute(
   viewModelFactory: CalendarViewModel.Factory,
   modifier: Modifier = Modifier,
 ) {

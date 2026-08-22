@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.integrated
+package dev.terashima.yomitorirss.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -42,7 +42,7 @@ import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 import java.time.Instant
 
 @Composable
-fun IntegratedRoute(
+internal fun IntegratedRoute(
   rssViewModel: RssViewModel,
   redditViewModel: RedditViewModel,
   feedViewModel: FeedViewModel,

@@ -35,6 +35,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
+import dev.terashima.yomitorirss.feature.task.TaskChangeNotifyingRepository
 import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
@@ -222,15 +223,14 @@ class AppRouteDependencies internal constructor(
   }
 
   val taskViewModelFactory: TaskViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    TaskViewModel.Factory(container.taskRepository)
+    val repository = TaskChangeNotifyingRepository(container.taskRepository) {
+      runCatching { TaskWidgetUpdater.updateAll(application) }
+    }
+    TaskViewModel.Factory(repository)
   }
 
   val calendarViewModelFactory: CalendarViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     CalendarViewModel.Factory(container.calendarRepository)
-  }
-
-  val updateTaskWidget: () -> Unit = {
-    TaskWidgetUpdater.updateAll(application)
   }
 
   val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

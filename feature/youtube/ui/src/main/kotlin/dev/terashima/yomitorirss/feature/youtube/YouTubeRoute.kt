@@ -1,7 +1,5 @@
 package dev.terashima.yomitorirss.feature.youtube
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -14,15 +12,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun YouTubeRoute(
   viewModelFactory: YouTubeViewModel.Factory,
+  onOpen: (YouTubeVideo) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val context = LocalContext.current
   val viewModel: YouTubeViewModel = viewModel(factory = viewModelFactory)
   val state by viewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -49,11 +46,7 @@ fun YouTubeRoute(
         onUnsave = viewModel::unsave,
         onToggleWatchLater = viewModel::toggleWatchLater,
         onMarkAllRead = viewModel::markAllRead,
-        onOpen = { video ->
-          runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(video.url)))
-          }
-        },
+        onOpen = onOpen,
       )
     }
     SnackbarHost(
