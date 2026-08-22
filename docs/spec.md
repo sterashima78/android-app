@@ -1,6 +1,6 @@
 # Mosaic 現行仕様
 
-- 更新日: 2026-08-22
+- 更新日: 2026-08-23
 - 対象: 現在の `main` 系列
 
 ## 1. 目的
@@ -105,9 +105,11 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 ### 7.1 蔵書
 
-- Kindle、Audible、Google Books、ファイルサーバー由来の蔵書情報を扱う。
+- Kindle、Audible、Google Books、ファイルサーバー、Web URL 由来の蔵書情報を扱う。
 - シリーズ、タイトル、著者、表紙などを表示・整理する。
 - タイトル検索、シリーズ表示、source別の操作を提供する。
+- `text/plain` の共有から HTTP / HTTPS URL を Web 蔵書として追加できる。
+- Web 蔵書とブックマークは、重複する永続状態を残さず相互に移動できる。
 
 ### 7.2 SMB / ファイルサーバー
 
@@ -215,6 +217,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - backup対象のSharedPreferencesはallowlist方式とし、将来追加される値を暗黙に外部backupへ含めない。
 - Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
 - AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
+- ユーザーがコピーして共有できるクラッシュ診断は保存前にサニタイズし、URL の path/query、メールアドレス、credential-like 値、端末内 private path を伏せる。
 
 ## 16. 現在の非目標
 
