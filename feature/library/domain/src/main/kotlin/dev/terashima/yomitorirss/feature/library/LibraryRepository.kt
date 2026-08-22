@@ -12,6 +12,8 @@ interface LibraryRepository {
     series: LibrarySeries,
   )
 
+  suspend fun setBookSeries(updates: List<LibraryBookSeriesUpdate>)
+
   suspend fun clearBookSeries(book: LibraryBook)
 
   suspend fun syncGooglePlayBooks(
