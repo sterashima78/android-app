@@ -130,20 +130,19 @@ class ExerciseSessionMappingTest {
 
   @Test
   fun `詳細セッションの内訳と一致する別提供元の単独セッションは統合する`() {
-    val detailedWorkout = session("2026-08-22T06:32:00Z", "2026-08-22T07:41:00Z").copy(
+    val detailedWorkout = session("2026-01-15T10:00:00Z", "2026-01-15T11:00:00Z").copy(
       exerciseName = "ウォーキング",
       title = "ワークアウト",
       segments = listOf(
-        segment("2026-08-22T06:32:00Z", "2026-08-22T06:48:14Z", "ウォーキング"),
-        segment("2026-08-22T06:57:00Z", "2026-08-22T07:12:13Z", "ウォーキング"),
-        segment("2026-08-22T07:26:00Z", "2026-08-22T07:26:23Z", "ウォーキング"),
-        segment("2026-08-22T07:26:42Z", "2026-08-22T07:41:00Z", "ウォーキング"),
+        segment("2026-01-15T10:00:00Z", "2026-01-15T10:15:00Z", "ウォーキング"),
+        segment("2026-01-15T10:20:00Z", "2026-01-15T10:35:00Z", "ウォーキング"),
+        segment("2026-01-15T10:40:00Z", "2026-01-15T10:55:00Z", "ウォーキング"),
       ),
     )
-    val firstStandalone = session("2026-08-22T06:35:00Z", "2026-08-22T06:47:00Z").copy(
+    val firstStandalone = session("2026-01-15T10:02:00Z", "2026-01-15T10:14:00Z").copy(
       exerciseName = "ウォーキング",
     )
-    val secondStandalone = session("2026-08-22T07:22:00Z", "2026-08-22T07:42:00Z").copy(
+    val secondStandalone = session("2026-01-15T10:36:00Z", "2026-01-15T10:56:00Z").copy(
       exerciseName = "ウォーキング",
     )
 
@@ -160,14 +159,14 @@ class ExerciseSessionMappingTest {
 
   @Test
   fun `詳細セッションの内訳と十分に一致しない単独セッションは保持する`() {
-    val detailedWorkout = session("2026-08-22T06:30:00Z", "2026-08-22T07:30:00Z").copy(
+    val detailedWorkout = session("2026-01-15T10:00:00Z", "2026-01-15T11:00:00Z").copy(
       exerciseName = "ウォーキング",
       title = "ワークアウト",
       segments = listOf(
-        segment("2026-08-22T06:30:00Z", "2026-08-22T06:40:00Z", "ウォーキング"),
+        segment("2026-01-15T10:00:00Z", "2026-01-15T10:10:00Z", "ウォーキング"),
       ),
     )
-    val standalone = session("2026-08-22T06:35:00Z", "2026-08-22T07:00:00Z").copy(
+    val standalone = session("2026-01-15T10:05:00Z", "2026-01-15T10:30:00Z").copy(
       exerciseName = "ウォーキング",
     )
 
