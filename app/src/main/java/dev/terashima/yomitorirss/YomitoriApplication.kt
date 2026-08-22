@@ -11,6 +11,8 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
+import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.WebLibraryMutatorProvider
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.MailRepositoryProvider
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
@@ -35,7 +37,8 @@ class YomitoriApplication : Application(),
   MailRepositoryProvider,
   LanWebRepositoryProvider,
   SummaryRuntimeDependenciesProvider,
-  BookmarkAutoEnrichmentBackfillProvider {
+  BookmarkAutoEnrichmentBackfillProvider,
+  WebLibraryMutatorProvider {
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppContainer(this) }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
   override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -43,6 +46,12 @@ class YomitoriApplication : Application(),
       routeDependencies = routeDependencies,
       lanWebServerController = container.lanWebServerController,
       saveSharedBookmark = container.saveSharedBookmarkUseCase,
+    )
+  }
+  override val webLibraryMutator: WebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    NotifyingWebLibraryMutator(
+      delegate = container.featureRuntimeDependencies.library.webLibraryMutator,
+      onChanged = container.backupChangeScheduler::scheduleAfterChange,
     )
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
