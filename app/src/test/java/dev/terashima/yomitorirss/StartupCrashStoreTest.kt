@@ -36,12 +36,13 @@ class StartupCrashStoreTest {
 
     val sanitized = sanitizeCrashDetails(source)
 
-    assertTrue(sanitized.contains("https://example.invalid/[redacted]"))
+    assertTrue(sanitized.contains("https://[redacted]"))
     assertTrue(sanitized.contains("[redacted-email]"))
     assertTrue(sanitized.contains("access_token=[redacted]"))
     assertTrue(sanitized.contains("Authorization=[redacted]"))
     assertTrue(sanitized.contains("Bearer [redacted]"))
     assertTrue(sanitized.contains("[redacted-path]"))
+    assertFalse(sanitized.contains("example.invalid"))
     assertFalse(sanitized.contains("private/book"))
     assertFalse(sanitized.contains("reader@example.invalid"))
     assertFalse(sanitized.contains("synthetic-token"))
