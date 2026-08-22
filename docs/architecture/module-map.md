@@ -130,4 +130,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
-- [ADR-0141](../adr/0141-app-route-and-task-widget-ownership-cleanup.md)
+- [ADR-0142](../adr/0142-app-route-and-task-widget-ownership-cleanup.md)
