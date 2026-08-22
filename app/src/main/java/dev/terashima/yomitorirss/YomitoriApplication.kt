@@ -36,7 +36,11 @@ class YomitoriApplication : Application(),
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppContainer(this) }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
   override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    MainActivityDependencies(routeDependencies, container.saveSharedBookmarkUseCase)
+    MainActivityDependencies(
+      routeDependencies = routeDependencies,
+      lanWebServerController = container.lanWebServerController,
+      saveSharedBookmark = container.saveSharedBookmarkUseCase,
+    )
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     UnreadArticlesWidgetRefreshObserver(this, DataChangeNotifier.shared.version)
