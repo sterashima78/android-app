@@ -68,12 +68,12 @@ object StartupCrashStore {
       if (unseen.isEmpty()) return@runCatching
 
       preferences.edit()
-        .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf(ApplicationExitInfo::getTimestamp))
+        .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf { it.timestamp })
         .commit()
 
       val memoryExit = unseen
         .filter { isMemoryRelatedProcessExit(it.reason, it.description) }
-        .maxByOrNull(ApplicationExitInfo::getTimestamp)
+        .maxByOrNull { it.timestamp }
         ?: return@runCatching
 
       val report = buildString {
