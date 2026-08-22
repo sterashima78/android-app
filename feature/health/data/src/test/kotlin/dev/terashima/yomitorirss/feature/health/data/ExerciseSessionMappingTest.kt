@@ -52,19 +52,19 @@ class ExerciseSessionMappingTest {
 
   @Test
   fun `提供元ごとに時刻と種別が少し異なる同一運動は一件にまとめる`() {
-    val detailedWorkout = session("2026-08-21T09:23:00Z", "2026-08-21T09:46:31Z").copy(
+    val detailedWorkout = session("2026-01-14T12:00:00Z", "2026-01-14T12:24:00Z").copy(
       exerciseName = "その他の運動",
       title = "ワークアウト",
       segments = listOf(
-        segment("2026-08-21T09:23:00Z", "2026-08-21T09:30:00Z", "クランチ"),
-        segment("2026-08-21T09:31:00Z", "2026-08-21T09:38:00Z", "ランジ"),
-        segment("2026-08-21T09:39:00Z", "2026-08-21T09:46:31Z", "プランク"),
+        segment("2026-01-14T12:00:00Z", "2026-01-14T12:08:00Z", "クランチ"),
+        segment("2026-01-14T12:08:30Z", "2026-01-14T12:16:30Z", "ランジ"),
+        segment("2026-01-14T12:17:00Z", "2026-01-14T12:24:00Z", "プランク"),
       ),
     )
-    val longWalking = session("2026-08-21T09:26:00Z", "2026-08-21T09:48:00Z").copy(
+    val longWalking = session("2026-01-14T12:03:00Z", "2026-01-14T12:26:00Z").copy(
       exerciseName = "ウォーキング",
     )
-    val shortWalking = session("2026-08-21T09:26:00Z", "2026-08-21T09:40:00Z").copy(
+    val shortWalking = session("2026-01-14T12:03:00Z", "2026-01-14T12:17:00Z").copy(
       exerciseName = "ウォーキング",
     )
 
