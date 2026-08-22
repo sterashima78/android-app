@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-23
 - Refines: ADR-0079, ADR-0134, ADR-0139
+- Refined by: [ADR-0148](0148-sanitize-shareable-crash-diagnostics.md)
 
 ## Context
 
@@ -60,6 +61,8 @@ LiteRT-LM の Android GPU/OpenCL 画像推論に関する upstream 問題が解�
 
 既に処理した process exit timestamp を記録し、同じ終了理由を起動ごとに再報告しない。通常の user-requested exit 等はクラッシュ診断へ変換しない。
 
+共有可能な report の privacy boundary は ADR-0148 で追加され、uncaught exception / process-exit report の最終文字列を保存前に共通 sanitizer へ通す。
+
 ### 5. upstream 修正後は実端末の連続画像推論で再評価する
 
 LiteRT-LM 側で GPU/OpenCL の Conversation/Engine 間メモリ解放問題が修正された版へ更新する場合、次を実端末で確認してから画像 Engine の再利用を戻す。
@@ -90,6 +93,7 @@ LiteRT-LM 側で GPU/OpenCL の Conversation/Engine 間メモリ解放問題が�
 - ADR-0079: text-only の process-wide Engine reuse と5分 idle eviction は維持し、Android GPU 画像推論に限って安全性優先の例外を追加する。
 - ADR-0134: SMB マルチモーダル書誌正規化の GPU vision backend は維持するが、Engine retention は1冊ごとに打ち切る。
 - ADR-0139: Android runtime 固有の process termination は `ApplicationExitInfo` を使って起動時診断へ取り込む。
+- ADR-0148: 共有可能な crash / process-exit report は保存前にサニタイズし、個人情報や credential-like detail の accidental disclosure を抑える。
 
 ## References
 
