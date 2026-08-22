@@ -89,20 +89,25 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - foreign table write は禁止する。
 - cross-context の最適化 read は明示された read-only Projection に限定する。
 - 同じ SQLite database を共有していることや foreign key の存在は共同 ownership の根拠にならない。
+- feature schema は owner の `DatabaseSchemaContribution` / explicit initializer を正本とし、Repository の read method や `snapshot()` の副作用を schema 初期化として利用しない。
+- durable table はすべて `config/architecture/table-ownership.tsv` に owner を登録する。
 - 移行中の例外は `config/architecture/foreign-table-access-allowlist.tsv` に path、table、ADR に基づく理由を明示し、不要になったら削除する。現在の allowlist に例外 entry はない。
 
 ## Composition and framework boundaries
 
 - `:app` は composition root として feature implementation を組み立てる。
-- application scope で複数の adapter / route から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、`AppRouteDependencies` や framework entry point 用 dependencies は同じ instance を再利用する。並行した repository / scheduler graph を route ごとに再構築しない。
-- Screen と `:app` の Route で concrete Repository、database connection、WorkManager dependency を生成・import しない。
+- application scope で複数の adapter / route / framework entry point から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、同じ instance / graph を再利用する。並行した repository / scheduler graph を route や Worker ごとに再構築しない。
+- Screen、`:app` の Route、`:app` の `ui` composition（`*Host.kt` 等を含む）で concrete Repository、database connection、WorkManager dependency を生成・import しない。
 - `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel は `AppViewModel` を除いて所有しない。
 - `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
 - Android / WorkManager が constructor を所有する Activity、Worker、Service、AppWidgetProvider 等の framework entry point だけ、明示された Provider contract を利用できる。
+- framework entry point 用 Provider は既存 application scope graph への接続に限定し、任意の dependency を取得する service locator として拡張しない。
 - `YomitoriApplication` implementation type への直接 cast は行わない。
 
 LAN Web Server では `MainActivity` は notification permission と dialog presentation を所有する一方、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。
+
+Mail Worker は `MailRepositoryProvider` を介して application scope の `MailRepository` graph を再利用する。Worker 内で database / Repository graph を別構築しない。
 
 ## Background runtime ownership
 
@@ -110,18 +115,28 @@ feature 固有の Worker、scheduler/controller、queue-state interpretation は
 
 現在の互換性基準は最新版アプリからの更新であり、過去の app package FQCN を参照する WorkManager request のための shim は維持しない。将来 Worker class を移動し互換性対応が必要になった場合は、対象期間と終了条件を ADR で明示する。
 
+## Android platform baseline
+
+- 全 Android application/library module は `minSdk = 34` 以上を宣言する。
+- API 34 未満だけを支える `SDK_INT` fallback は持たない。
+- API 35/36 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
+- `compileSdk` / `targetSdk` は stable API 36 を基準とし、preview SDK 採用は別判断とする。
+
 ## Architecture enforcement
 
 機械的に検査できる規則はレビューだけに依存しない。
 
 - Gradle dependency / source ownership: `verifyArchitecture`
-- durable table ownership: `gradle/table-ownership.gradle.kts` と `config/architecture/table-ownership.tsv`
+- durable table ownership / created-table registration / app UI composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
+- durable table manifest: `config/architecture/table-ownership.tsv`
 - transitional foreign access: `config/architecture/foreign-table-access-allowlist.tsv`
 - framework provider exception: `config/architecture/framework-provider-lookups.tsv`
 - ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
 - public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
 
 `verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
+
+Architecture job の init script は `:app` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
 検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化、実ユーザー情報かどうかの意味判定等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
 
@@ -139,6 +154,7 @@ feature 固有の Worker、scheduler/controller、queue-state interpretation は
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
 - [ADR-0125](../adr/0125-application-service-and-capability-segregation.md)
+- [ADR-0126](../adr/0126-android-platform-baseline.md)
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
