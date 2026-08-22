@@ -35,6 +35,8 @@ data class LibraryBook(
   val duration: String? = null,
 ) {
   fun openUrl(): String? {
+    if (source == LibrarySource.SMB) return null
+
     if (isKindlePersonalDocument()) {
       val encodedTitle = URLEncoder.encode(title, StandardCharsets.UTF_8)
       return "$KINDLE_PERSONAL_DOCUMENT_OPEN_URI_PREFIX$encodedTitle"
