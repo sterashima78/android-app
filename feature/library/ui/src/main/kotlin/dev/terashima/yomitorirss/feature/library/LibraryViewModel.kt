@@ -363,6 +363,18 @@ class LibraryViewModel(
     }
   }
 
+  fun mergeSeries(updates: List<LibraryBookSeriesUpdate>) {
+    if (updates.isEmpty()) return
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.setBookSeries(updates) }
+        .onSuccess {
+          val seriesName = updates.first().series.name
+          loadSnapshot(message = "シリーズを「$seriesName」にマージしました")
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun clearBookSeries(book: LibraryBook) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.clearBookSeries(book) }
