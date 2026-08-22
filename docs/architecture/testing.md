@@ -82,6 +82,8 @@ cross-context Projection を導入する場合は integration test を必須と�
 - schema change で破壊される場合に test が検出できること
 - owner Repository/API の通常合成より Projection が必要な理由が ADR または計測で説明されていること
 
+Integrated のように application composition で複数 feature の state を表示モデルへ写像する場合、pure projection と Android/Compose host を分離し、projection semantics は通常の JVM unit test で固定する。platform action は app adapter に残す。
+
 ## Architecture verification
 
 ### `verifyArchitecture`
@@ -103,6 +105,19 @@ Gradle dependency と production source の構造的 guardrail を検査する�
 - feature data から app implementation への依存禁止
 
 rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture に加え、MainActivity の concrete feature data / feature ViewModel、WorkManager Worker の import alias も違反として固定する。
+
+app composition の回帰は `AppCompositionSourceArchitectureTest` でも固定する。`AppContainer` へ concrete feature data construction を戻さないこと、Integrated の pure projection が Android/Compose framework dependency を持たないことを検査する。
+
+### Module map consistency
+
+`settings.gradle.kts` を Gradle module 一覧の正本とし、`docs/architecture/module-map.md` の feature/layer 表は機械検証する。
+
+```bash
+python3 -m unittest scripts.test_verify_module_map
+python3 scripts/verify_module_map.py
+```
+
+表は `feature-modules:start/end` marker 内だけを比較対象とし、feature の追加・削除、layer の追加・削除、stale row を Architecture CI で検出する。これにより日付付きの手動スナップショットとして扱わない。
 
 ### Architecture ownership init script
 
@@ -160,6 +175,8 @@ verifier は private key、代表的 credential literal、keystore / OAuth secre
 `.github/workflows/build-apk.yml` の pull request quality checks は、Android の3検証を matrix の独立 runner で並列実行し、public repository verification も独立 job で並列実行する。
 
 ```bash
+python3 -m unittest scripts.test_verify_module_map
+python3 scripts/verify_module_map.py
 ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
@@ -169,7 +186,7 @@ python3 scripts/verify_public_repository.py
 
 matrix は `fail-fast: false` とし、1つのAndroid検証が失敗しても他の検証結果を取得する。全検証の完了後は互換性維持用の `quality` 集約 job が Android matrix と `Public repository` job の両方を判定する。
 
-`main` push では public repository verification と architecture verification の後に signed release APK を build / signature verify する。repository scan は release keystore を runner へ復元する前に実行する。
+`main` push では public repository verification、module map consistency、architecture verification の後に signed release APK を build / signature verify する。PR で unit test / lint を完了する運用とし、main の APK build 前には unit test / lint を重複実行しない。repository scan は release keystore を runner へ復元する前に実行する。
 
 ADR 関連変更は `.github/workflows/adr-integrity.yml` でも ADR integrity checker を実行する。
 
@@ -189,7 +206,9 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | parser / external adapter | adapter/parser test |
 | cross-context read optimization | Projection integration test |
 | mutable runtime state ownership | owner data/runtime unit test + presentation derivation test where needed |
+| app composition projection split | pure projection unit test + source architecture regression |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
+| module map update | module-map verifier unit test + consistency verification |
 | new table ownership rule | table ownership manifest/fixture + verification |
 | Android platform baseline | architecture fixture + all module `minSdk` verification |
 | framework Provider exception | boundary manifest/test |
@@ -202,6 +221,7 @@ PR review では test の「数」ではなく、変更した responsibility と
 ## Sources
 
 - [`.github/workflows/build-apk.yml`](../../.github/workflows/build-apk.yml)
+- [`scripts/verify_module_map.py`](../../scripts/verify_module_map.py)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
 - [ADR-0055](../adr/0055-adr-numbering-policy.md)
@@ -212,3 +232,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)

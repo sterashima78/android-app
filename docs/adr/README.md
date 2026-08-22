@@ -37,6 +37,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0142: app Route の presentation ownership と Task widget 更新境界を整理する](0142-app-route-and-task-widget-ownership-cleanup.md)
+- [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
 
 ### Domain / Context / persistence
 
@@ -55,6 +56,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0055: ADR 番号を一意な単調増加番号として管理する](0055-adr-numbering-policy.md)
 - [ADR-0122: ADR を根拠とする current architecture documentation を維持する](0122-current-architecture-documentation.md)
 - [ADR-0136: 公開リポジトリの高確度な秘密情報を CI で検査する](0136-public-repository-content-verification.md)
+- [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
 
 ## Supporting architecture areas
 
