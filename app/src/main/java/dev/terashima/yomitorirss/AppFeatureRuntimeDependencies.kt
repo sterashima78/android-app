@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss
 
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildScheduler
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
@@ -27,8 +28,17 @@ internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
 ) {
-  val knowledgeBuildTaskController: KnowledgeBuildTaskController by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  private val knowledgeBuildRuntime: WorkManagerKnowledgeBuildTaskController by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
     WorkManagerKnowledgeBuildTaskController(application)
+  }
+
+  val knowledgeBuildTaskController: KnowledgeBuildTaskController
+    get() = knowledgeBuildRuntime
+
+  val knowledgeBuildScheduler: KnowledgeBuildScheduler = KnowledgeBuildScheduler {
+    knowledgeBuildRuntime.enqueue()
   }
 
   val library: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
