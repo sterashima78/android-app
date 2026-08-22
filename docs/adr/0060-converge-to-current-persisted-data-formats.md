@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-14
 - Amends: ADR-0022, ADR-0056, ADR-0059
-- Amended by: [ADR-0147](0147-retire-local-model-revision-marker-migration.md)
+- Amended by: [ADR-0148](0148-retire-local-model-revision-marker-migration.md)
 
 ## Context
 
