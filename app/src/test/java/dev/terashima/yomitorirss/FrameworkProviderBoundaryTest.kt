@@ -31,10 +31,55 @@ class FrameworkProviderBoundaryTest {
       .toSet()
 
     assertEquals(
-      "Provider lookup must be limited to audited Android/WorkManager entry points. " +
+      "Provider lookup must be limited to audited Android framework entry points. " +
         "Update code instead of extending the manifest for normal composition paths.",
       expected,
       actual,
+    )
+  }
+
+  @Test
+  fun `WorkManager Worker は Application provider lookupを使わない`() {
+    val root = repositoryRoot()
+    val violations = productionKotlinFiles(root)
+      .filter { file -> WORKER_IMPORT.containsMatchIn(file.readText()) }
+      .flatMap { file ->
+        val relativePath = file.relativeTo(root).path.replace('\\', '/')
+        PROVIDER_CAST.findAll(file.readText()).map { match ->
+          "$relativePath:${match.value}"
+        }.toList()
+      }
+      .toList()
+
+    assertTrue(
+      "WorkManager Workers must receive dependencies through WorkerFactory constructor injection: $violations",
+      violations.isEmpty(),
+    )
+  }
+
+  @Test
+  fun `WorkManager は application WorkerFactory を on-demand 設定する`() {
+    val root = repositoryRoot()
+    val applicationSource = File(
+      root,
+      "app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt",
+    ).readText()
+    val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
+
+    assertTrue(
+      "YomitoriApplication must provide WorkManager Configuration",
+      "Configuration.Provider" in applicationSource,
+    )
+    assertTrue(
+      "WorkManager configuration must install the application WorkerFactory",
+      ".setWorkerFactory(" in applicationSource,
+    )
+    assertTrue(
+      "Default WorkManager startup initializer must be removed for on-demand configuration",
+      "androidx.work.WorkManagerInitializer" in manifest &&
+        Regex(
+          """(?s)android:name=\"androidx\.work\.WorkManagerInitializer\".*?tools:node=\"remove\"""",
+        ).containsMatchIn(manifest),
     )
   }
 
@@ -72,4 +117,7 @@ private data class ProviderLookup(
 
 private val PROVIDER_CAST = Regex("""\bas\?\s*([A-Za-z_][A-Za-z0-9_]*Provider)\b""")
 private val APPLICATION_CAST = Regex("""\bas\??\s*YomitoriApplication\b""")
+private val WORKER_IMPORT = Regex(
+  """(?m)^import androidx\.work\.(?:CoroutineWorker|Worker|ListenableWorker)\b""",
+)
 private const val PROVIDER_MANIFEST = "config/architecture/framework-provider-lookups.tsv"
