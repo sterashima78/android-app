@@ -37,7 +37,7 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 - uncaught exception は app entry point で起動時診断用の report として保持し、次回起動時に表示・コピーできる。
 - Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。
 - local AI の画像推論では memory diagnostics を process-exit report に補足できるが、raw user content や画像 payload を診断へ保存しない。
-- ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL の path/query、メールアドレス、credential-like value、Bearer token、Android private path 等を伏せ、version、commit、SDK、device、PSS/RSS 等の高レベル診断値は維持する。
+- ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL は authority/path/query/fragment を伏せて scheme だけを残し、メールアドレス、credential-like value、Bearer token、Android private path 等も伏せる。version、commit、SDK、device、PSS/RSS 等の高レベル診断値は維持する。
 - diagnostic sanitizer は共有を安全にするための defense-in-depth であり、高機密情報を exception message や diagnostic section に意図的に含めてよい根拠にはしない。
 
 ## CI
