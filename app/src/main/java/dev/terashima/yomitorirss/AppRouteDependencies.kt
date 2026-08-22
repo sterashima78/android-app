@@ -22,7 +22,6 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
-import dev.terashima.yomitorirss.feature.library.WebLibraryMutatorProvider
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
@@ -55,7 +54,10 @@ class AppRouteDependencies internal constructor(
     BackgroundDataFetchPreferences(application)
   }
   private val webLibraryMutator: WebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    (application as WebLibraryMutatorProvider).webLibraryMutator
+    NotifyingWebLibraryMutator(
+      delegate = container.featureRuntimeDependencies.library.webLibraryMutator,
+      onChanged = container.backupChangeScheduler::scheduleAfterChange,
+    )
   }
   val libraryTransfers: LibraryTransferDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val service = BookmarkLibraryTransferService(
