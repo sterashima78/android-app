@@ -35,6 +35,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
+- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 
 ### Domain / Context / persistence
 
@@ -59,6 +60,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 ### Platform / Android runtime
 
 - [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
+- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 
 ### Health
 
@@ -89,6 +91,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
+- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 
 ### Content / summary / knowledge
 
