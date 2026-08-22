@@ -49,9 +49,25 @@ class BookmarkLibraryTransferServiceTest {
     assertEquals(listOf("bookmark:save", "library:remove", "changed"), events)
   }
 
+  @Test
+  fun `ブックマーク保存に失敗した場合はWeb蔵書を残す`() = runBlocking {
+    val events = mutableListOf<String>()
+    val service = service(events = events, failBookmarkSave = true)
+
+    try {
+      service.moveWebBookToBookmark(webBook())
+      fail("ブックマーク保存失敗を通知する必要があります")
+    } catch (_: IllegalStateException) {
+      // Expected: source Web library item must remain untouched.
+    }
+
+    assertEquals(listOf("bookmark:save"), events)
+  }
+
   private fun service(
     events: MutableList<String>,
     failLibraryAdd: Boolean = false,
+    failBookmarkSave: Boolean = false,
   ): BookmarkLibraryTransferService {
     val webLibrary = object : WebLibraryMutator {
       override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook {
@@ -81,6 +97,7 @@ class BookmarkLibraryTransferServiceTest {
         sourceTitle: String,
       ): BookmarkSaveResult {
         events += "bookmark:save"
+        if (failBookmarkSave) error("bookmark save failed")
         return BookmarkSaveResult.ADDED
       }
 
