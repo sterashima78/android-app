@@ -21,10 +21,6 @@ class AndroidLanWebServerController(
   override fun stop() {
     LanWebServerService.stop(appContext)
   }
-
-  override fun reportError(message: String) {
-    LanWebServerStateStore.reportError(message)
-  }
 }
 
 internal object LanWebServerStateStore {
@@ -45,9 +41,5 @@ internal object LanWebServerStateStore {
 
   fun stopped(error: String? = null) {
     mutableState.value = LanWebServerState(error = error)
-  }
-
-  fun reportError(message: String) {
-    mutableState.value = mutableState.value.copy(error = message)
   }
 }
