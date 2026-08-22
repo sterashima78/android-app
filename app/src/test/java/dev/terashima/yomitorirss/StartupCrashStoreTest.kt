@@ -14,7 +14,7 @@ class StartupCrashStoreTest {
       Caused by: android.content.ActivityNotFoundException: No Activity found to handle Intent { dat=yomitori://smb-book/open?sourceId=synthetic-source&serverId=synthetic-server&path=folder%5Cbook.pdf }
     """.trimIndent()
 
-    val redacted = redactCrashDetails(source)
+    val redacted = sanitizeCrashDetails(source)
 
     assertTrue(redacted.contains("yomitori://smb-book/open?[redacted]"))
     assertFalse(redacted.contains("synthetic-source"))
@@ -23,10 +23,39 @@ class StartupCrashStoreTest {
   }
 
   @Test
-  fun `SMB 書籍 URI を含まないクラッシュ情報は変更しない`() {
+  fun `共有可能なクラッシュ情報からURL認証値メールとprivate pathを除去する`() {
+    val source = """
+      java.lang.IllegalStateException: failed at https://example.invalid/private/book?id=abc&token=query-secret
+      account=reader@example.invalid
+      access_token=synthetic-token
+      Authorization=synthetic-authorization
+      header=Bearer synthetic-bearer
+      file=/storage/emulated/0/Documents/private-book.pdf
+      cache=/data/user/0/dev.terashima.yomitorirss/files/local-summary-models/private-model.litertlm
+    """.trimIndent()
+
+    val sanitized = sanitizeCrashDetails(source)
+
+    assertTrue(sanitized.contains("https://example.invalid/[redacted]"))
+    assertTrue(sanitized.contains("[redacted-email]"))
+    assertTrue(sanitized.contains("access_token=[redacted]"))
+    assertTrue(sanitized.contains("Authorization=[redacted]"))
+    assertTrue(sanitized.contains("Bearer [redacted]"))
+    assertTrue(sanitized.contains("[redacted-path]"))
+    assertFalse(sanitized.contains("private/book"))
+    assertFalse(sanitized.contains("reader@example.invalid"))
+    assertFalse(sanitized.contains("synthetic-token"))
+    assertFalse(sanitized.contains("synthetic-authorization"))
+    assertFalse(sanitized.contains("synthetic-bearer"))
+    assertFalse(sanitized.contains("private-book.pdf"))
+    assertFalse(sanitized.contains("private-model.litertlm"))
+  }
+
+  @Test
+  fun `機密情報を含まないクラッシュ情報は変更しない`() {
     val source = "java.lang.IllegalStateException: synthetic failure"
 
-    assertEquals(source, redactCrashDetails(source))
+    assertEquals(source, sanitizeCrashDetails(source))
   }
 
   @Test
