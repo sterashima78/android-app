@@ -4,57 +4,34 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.lifecycle.lifecycleScope
-import dev.terashima.yomitorirss.feature.library.WebLibraryMutatorProvider
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class LibraryShareActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    consumeShareIntent(intent)
+    forwardShareIntent(intent)
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    consumeShareIntent(intent)
+    forwardShareIntent(intent)
   }
 
-  private fun consumeShareIntent(intent: Intent) {
-    if (intent.action != Intent.ACTION_SEND || intent.type != "text/plain") {
-      finishWithMessage("共有された URL を読み取れませんでした")
+  private fun forwardShareIntent(incoming: Intent) {
+    if (incoming.action != Intent.ACTION_SEND || incoming.type != "text/plain") {
+      Toast.makeText(this, "共有された URL を読み取れませんでした", Toast.LENGTH_LONG).show()
+      finish()
       return
     }
-    val shared = parseSharedBookmark(
-      text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT),
-      subject = intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT),
+
+    startActivity(
+      Intent(this, MainActivity::class.java).apply {
+        action = MainActivity.ACTION_ADD_SHARED_URL_TO_LIBRARY
+        incoming.getCharSequenceExtra(Intent.EXTRA_TEXT)?.let { putExtra(Intent.EXTRA_TEXT, it) }
+        incoming.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+      },
     )
-    if (shared == null) {
-      finishWithMessage("共有内容に http/https の URL がありません")
-      return
-    }
-    val provider = applicationContext as? WebLibraryMutatorProvider
-    if (provider == null) {
-      finishWithMessage("蔵書への追加を開始できませんでした")
-      return
-    }
-
-    lifecycleScope.launch {
-      val result = runCatching {
-        withContext(Dispatchers.IO) {
-          provider.webLibraryMutator.addWebBook(shared.url, shared.title)
-        }
-      }
-      result
-        .onSuccess { book -> finishWithMessage("「${book.title}」を蔵書へ追加しました") }
-        .onFailure { error -> finishWithMessage(error.message ?: "蔵書への追加に失敗しました") }
-    }
-  }
-
-  private fun finishWithMessage(message: String) {
-    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     finish()
   }
 }
