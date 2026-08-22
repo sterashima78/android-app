@@ -1,8 +1,8 @@
 package dev.terashima.yomitorirss.feature.web.data
 
 import android.content.Context
-import dev.terashima.yomitorirss.feature.web.LanServerUiState
 import dev.terashima.yomitorirss.feature.web.LanWebServerController
+import dev.terashima.yomitorirss.feature.web.LanWebServerState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +12,7 @@ class AndroidLanWebServerController(
 ) : LanWebServerController {
   private val appContext = context.applicationContext
 
-  override val state: StateFlow<LanServerUiState> = LanWebServerStateStore.state
+  override val state: StateFlow<LanWebServerState> = LanWebServerStateStore.state
 
   override fun start() {
     LanWebServerService.start(appContext)
@@ -28,15 +28,15 @@ class AndroidLanWebServerController(
 }
 
 internal object LanWebServerStateStore {
-  private val mutableState = MutableStateFlow(LanServerUiState())
-  val state: StateFlow<LanServerUiState> = mutableState.asStateFlow()
+  private val mutableState = MutableStateFlow(LanWebServerState())
+  val state: StateFlow<LanWebServerState> = mutableState.asStateFlow()
 
   fun starting() {
-    mutableState.value = LanServerUiState(running = true)
+    mutableState.value = LanWebServerState(running = true)
   }
 
   fun running(address: String?, accessUrl: String?) {
-    mutableState.value = LanServerUiState(
+    mutableState.value = LanWebServerState(
       running = true,
       address = address,
       accessUrl = accessUrl,
@@ -44,7 +44,7 @@ internal object LanWebServerStateStore {
   }
 
   fun stopped(error: String? = null) {
-    mutableState.value = LanServerUiState(error = error)
+    mutableState.value = LanWebServerState(error = error)
   }
 
   fun reportError(message: String) {
