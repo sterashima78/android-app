@@ -46,6 +46,10 @@ interface BookPageSource : AutoCloseable {
   override fun close() = Unit
 }
 
+fun interface BookPageSourceFactory {
+  fun open(document: BookDocument): BookPageSource
+}
+
 interface ReadingPositionStore {
   fun load(bookId: String): ReadingPosition
 
