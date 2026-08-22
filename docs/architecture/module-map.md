@@ -26,6 +26,8 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 
 `app/src/main/.../feature` は feature implementation の配置場所として使わない。現在ここに残る `feature/navigation` は Gradle feature module ではなく app shell navigation state の歴史的 package であり、architecture regression test で唯一の明示例外とする。新しい feature Route / Screen / adapter をこの path へ追加しない。
 
+`AppContainer` は application-scope graph の公開 facade とし、concrete feature graph の構築は責務別の `App*RuntimeDependencies` に分割する。これは repository lifetime を変えるための分割ではなく、composition root 内の可読性と変更局所性を保つための構造である。DI framework や route-level service locator は導入しない。
+
 ## Core capabilities
 
 ```text
@@ -41,8 +43,9 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 
 ## Feature modules
 
-2026-08-19 時点の `settings.gradle.kts` では次の feature module が含まれる。
+この表は `settings.gradle.kts` を正本とし、`scripts/verify_module_map.py` が feature / layer の一致を検査する。表を更新し忘れた場合は Architecture CI を失敗させる。
 
+<!-- feature-modules:start -->
 | Feature | Layers |
 | --- | --- |
 | ai-task-queue | domain / data / ui |
@@ -69,6 +72,7 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 | workout | domain / data / ui |
 | youtube | domain / data / ui |
 | x | domain / data / ui |
+<!-- feature-modules:end -->
 
 全 feature に3 layer を強制しない。独立した責務・依存・ビルド境界として価値がある layer だけを module 化する。
 
@@ -115,14 +119,16 @@ Data -> other feature Data は物理 dependency として許容される場合�
 
 ## How to update
 
-- module の追加・削除・layer 構成変更: `settings.gradle.kts` を更新し、本表も同じ PR で更新する。
+- module の追加・削除・layer 構成変更: `settings.gradle.kts` と本表を同じ PR で更新する。Architecture CI が両者の不一致を検出する。
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
 - app composition adapter の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
+- AppContainer の runtime group 分割を変更する: application scope / caller contract を維持し、必要なら ADR と本 `App` 節を更新する。
 
 ## Sources
 
 - [`settings.gradle.kts`](../../settings.gradle.kts)
+- [`scripts/verify_module_map.py`](../../scripts/verify_module_map.py)
 - [ADR-0001](../adr/0001-layered-architecture.md)
 - [ADR-0003](../adr/0003-multi-module-architecture.md)
 - [ADR-0004](../adr/0004-concept-oriented-modules.md)
@@ -131,3 +137,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0142](../adr/0142-app-route-and-task-widget-ownership-cleanup.md)
+- [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
