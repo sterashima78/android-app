@@ -112,10 +112,8 @@ class DefaultSmbMetadataNormalizationRepository(
     ) { "反映できる書誌正規化候補がありません" }
     val normalizedFileName = validateProposedSmbFileName(item.originalFileName, proposedFileName)
 
-    val snapshot = DefaultLibraryRepository(database).snapshot()
-    val currentBook = (snapshot.books + snapshot.hiddenBooks).firstOrNull {
-      it.source == LibrarySource.SMB && it.sourceId == sourceId
-    } ?: error("対象のファイルサーバ書籍が見つかりません")
+    val currentBook = findLibraryBook(database, LibrarySource.SMB, sourceId)
+      ?: error("対象のファイルサーバ書籍が見つかりません")
     val currentInput = smbNormalizationInput(currentBook)
       ?: error("対象書籍のファイル情報を読み取れません")
     val revisionMatches =
@@ -215,10 +213,8 @@ class DefaultSmbMetadataNormalizationRepository(
     val item = queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
     require(item.status in REANALYZABLE_STATUSES) { "再解析できる候補がありません" }
 
-    val snapshot = DefaultLibraryRepository(database).snapshot()
-    val currentBook = (snapshot.books + snapshot.hiddenBooks).firstOrNull {
-      it.source == LibrarySource.SMB && it.sourceId == sourceId
-    } ?: error("対象のファイルサーバ書籍が見つかりません")
+    val currentBook = findLibraryBook(database, LibrarySource.SMB, sourceId)
+      ?: error("対象のファイルサーバ書籍が見つかりません")
     val currentInput = smbNormalizationInput(currentBook)
       ?: error("対象書籍のファイル情報を読み取れません")
     val coverReady = validCoverFile(currentBook.thumbnailUrl) != null
