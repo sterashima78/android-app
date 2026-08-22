@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
+import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.asset.AssetViewModel
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
@@ -16,9 +17,12 @@ import dev.terashima.yomitorirss.feature.calendar.CalendarViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthViewModel
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
+import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.WebLibraryMutatorProvider
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
@@ -48,6 +52,21 @@ class AppRouteDependencies internal constructor(
 ) {
   private val backgroundDataFetchPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     BackgroundDataFetchPreferences(application)
+  }
+  private val webLibraryMutator: WebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    (application as WebLibraryMutatorProvider).webLibraryMutator
+  }
+  val libraryTransfers: LibraryTransferDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val service = BookmarkLibraryTransferService(
+      webLibrary = webLibraryMutator,
+      bookmarkMutator = container.bookmarkRepository,
+      saveSharedBookmark = container.saveSharedBookmarkUseCase,
+      onChanged = container.backupChangeScheduler::scheduleAfterChange,
+    )
+    LibraryTransferDependencies(
+      moveBookmarkToLibrary = service::moveBookmarkToLibrary,
+      moveWebBookToBookmark = service::moveWebBookToBookmark,
+    )
   }
 
   val rssViewModelFactory: RssViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -214,6 +233,8 @@ class AppRouteDependencies internal constructor(
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
+      webLibraryMutator = webLibraryMutator,
+      moveWebBookToBookmark = libraryTransfers.moveWebBookToBookmark,
       bookReader = BookReaderRouteDependencies(
         pageSourceFactory = DefaultBookPageSourceFactory(),
         readingPositionStore = SharedPreferencesReadingPositionStore(application),
@@ -281,11 +302,18 @@ sealed interface MailAuthorizationOutcome {
   data class RequiresResolution(val pendingIntent: PendingIntent) : MailAuthorizationOutcome
 }
 
+data class LibraryTransferDependencies internal constructor(
+  val moveBookmarkToLibrary: suspend (Article) -> Unit,
+  val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
+)
+
 data class LibraryRouteDependencies internal constructor(
   val authorization: LibraryAuthorizationDependencies,
   val libraryViewModelFactory: LibraryViewModel.Factory,
   val organizationViewModelFactory: LibraryOrganizationViewModel.Factory,
   val smbRepository: SmbLibraryRepository,
+  val webLibraryMutator: WebLibraryMutator,
+  val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val bookReader: BookReaderRouteDependencies,
 )
 
