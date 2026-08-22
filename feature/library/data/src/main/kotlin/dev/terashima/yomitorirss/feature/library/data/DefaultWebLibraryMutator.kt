@@ -226,7 +226,7 @@ private fun decodeHtmlEntities(value: String): String {
 }
 
 private val META_TAG = Regex("<meta\\b[^>]*>", RegexOption.IGNORE_CASE)
-private val ATTRIBUTE = Regex("""([:\\w-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'=<>`]+))""")
+private val ATTRIBUTE = Regex("""([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))""")
 private val TITLE = Regex("<title\\b[^>]*>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
 private val NUMERIC_ENTITY = Regex("&#(x[0-9a-fA-F]+|[0-9]+);")
 private const val MAX_HTML_BYTES = 4 * 1024 * 1024
