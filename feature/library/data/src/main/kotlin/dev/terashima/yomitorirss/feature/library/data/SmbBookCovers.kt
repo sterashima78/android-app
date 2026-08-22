@@ -31,11 +31,8 @@ internal fun existingSmbBookCoverUrl(
   return Uri.fromFile(coverFile).toString()
 }
 
-@Suppress("UNUSED_PARAMETER")
 internal fun resolveSmbBookCover(
   context: Context,
-  share: DiskShare,
-  remotePath: String,
   sourceId: String,
   size: Long,
   modifiedAt: Long,
