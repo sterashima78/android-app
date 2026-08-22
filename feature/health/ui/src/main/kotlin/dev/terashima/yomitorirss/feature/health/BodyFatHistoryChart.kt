@@ -14,7 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -22,6 +25,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal data class BodyFatChartBounds(
+  val min: Double,
+  val max: Double,
+)
+
+internal data class WeightChartBounds(
   val min: Double,
   val max: Double,
 )
@@ -49,85 +57,154 @@ internal fun bodyFatChartBounds(measurements: List<BodyFatMeasurement>): BodyFat
   return BodyFatChartBounds(lower, upper)
 }
 
+internal fun weightChartBounds(summaries: List<DailyHealthSummary>): WeightChartBounds {
+  val weights = summaries.mapNotNull(DailyHealthSummary::averageWeightKg)
+  if (weights.isEmpty()) return WeightChartBounds(0.0, 1.0)
+  val measuredMin = weights.min()
+  val measuredMax = weights.max()
+  val padding = max((measuredMax - measuredMin) * 0.15, 0.5)
+  return WeightChartBounds(
+    min = max(0.0, measuredMin - padding),
+    max = measuredMax + padding,
+  )
+}
+
 internal fun latestBodyFatPercentage(measurements: List<BodyFatMeasurement>): Double? =
   measurements.maxByOrNull { it.time }?.percentage
 
 @Composable
-internal fun BodyFatHistoryChart(
+internal fun BodyCompositionHistoryChart(
   measurements: List<BodyFatMeasurement>,
+  dailySummaries: List<DailyHealthSummary>,
+  showWeight: Boolean,
   modifier: Modifier = Modifier,
 ) {
-  val orderedMeasurements = remember(measurements) { measurements.sortedBy { it.time } }
-  val bounds = remember(orderedMeasurements) { bodyFatChartBounds(orderedMeasurements) }
-  val lineColor = MaterialTheme.colorScheme.primary
-  val guideColor = MaterialTheme.colorScheme.outlineVariant
-  val dateFormatter = remember { DateTimeFormatter.ofPattern("M/d H:mm") }
   val zoneId = remember { ZoneId.systemDefault() }
+  val orderedMeasurements = remember(measurements) { measurements.sortedBy { it.time } }
+  val weightPoints = remember(dailySummaries, showWeight) {
+    if (!showWeight) {
+      emptyList()
+    } else {
+      dailySummaries
+        .mapNotNull { summary -> summary.averageWeightKg?.let { summary.date to it } }
+        .sortedBy { it.first }
+    }
+  }
+  val bodyFatBounds = remember(orderedMeasurements) { bodyFatChartBounds(orderedMeasurements) }
+  val weightBounds = remember(dailySummaries, showWeight) { weightChartBounds(dailySummaries) }
+  val weightColor = MaterialTheme.colorScheme.primary
+  val bodyFatColor = MaterialTheme.colorScheme.tertiary
+  val guideColor = MaterialTheme.colorScheme.outlineVariant
+  val axisColor = MaterialTheme.colorScheme.outline
+  val dateFormatter = remember { DateTimeFormatter.ofPattern("M/d") }
+  val bodyFatPoints = remember(orderedMeasurements, zoneId) {
+    orderedMeasurements.map { measurement ->
+      measurement.time.atZone(zoneId).toLocalDate() to measurement.percentage
+    }
+  }
+  val allDates = remember(bodyFatPoints, weightPoints) {
+    (bodyFatPoints.map { it.first } + weightPoints.map { it.first }).sorted()
+  }
 
   Card(modifier = modifier.fillMaxWidth()) {
     Column(
       modifier = Modifier.padding(16.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Text("体脂肪率の推移", style = MaterialTheme.typography.titleMedium)
-      if (orderedMeasurements.isEmpty()) {
+      Text(
+        if (showWeight) "体重・体脂肪率の推移" else "体脂肪率の推移",
+        style = MaterialTheme.typography.titleMedium,
+      )
+      if (bodyFatPoints.isEmpty() && weightPoints.isEmpty()) {
         Text(
-          "選択期間に体脂肪率の測定データはありません。",
+          "選択期間に体重・体脂肪率の測定データはありません。",
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return@Column
       }
 
-      val latest = orderedMeasurements.last()
-      Text(
-        "最新 ${formatBodyFatPercentage(latest.percentage)} %",
-        style = MaterialTheme.typography.headlineSmall,
-      )
-      Text(
-        "${orderedMeasurements.size} 件の測定値",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        if (showWeight) {
+          Text("左軸 体重", style = MaterialTheme.typography.labelMedium, color = weightColor)
+        }
+        Text("右軸 体脂肪率", style = MaterialTheme.typography.labelMedium, color = bodyFatColor)
+      }
 
-      Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-        val valueRange = (bounds.max - bounds.min).coerceAtLeast(0.0001)
-        val firstTime = orderedMeasurements.first().time.toEpochMilli()
-        val lastTime = orderedMeasurements.last().time.toEpochMilli()
-        val timeRange = (lastTime - firstTime).coerceAtLeast(1L)
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          weightPoints.lastOrNull()?.let { "最新体重 ${formatWeightChartValue(it.second)} kg" }.orEmpty(),
+          style = MaterialTheme.typography.bodySmall,
+          color = weightColor,
+        )
+        Text(
+          orderedMeasurements.lastOrNull()?.let { "最新体脂肪率 ${formatBodyFatPercentage(it.percentage)} %" }.orEmpty(),
+          style = MaterialTheme.typography.bodySmall,
+          color = bodyFatColor,
+        )
+      }
 
-        fun x(timeMillis: Long): Float = if (orderedMeasurements.size == 1) {
-          size.width / 2f
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          if (weightPoints.isEmpty()) "" else "${formatWeightChartValue(weightBounds.max)} kg",
+          style = MaterialTheme.typography.labelSmall,
+          color = weightColor,
+        )
+        Text(
+          if (bodyFatPoints.isEmpty()) "" else "${formatBodyFatPercentage(bodyFatBounds.max)} %",
+          style = MaterialTheme.typography.labelSmall,
+          color = bodyFatColor,
+        )
+      }
+
+      Canvas(modifier = Modifier.fillMaxWidth().height(190.dp)) {
+        val left = 8.dp.toPx()
+        val right = size.width - 8.dp.toPx()
+        val plotWidth = (right - left).coerceAtLeast(1f)
+        val firstDay = allDates.first().toEpochDay()
+        val lastDay = allDates.last().toEpochDay()
+        val dayRange = (lastDay - firstDay).coerceAtLeast(1L)
+
+        fun x(date: LocalDate): Float = if (allDates.size == 1) {
+          left + plotWidth / 2f
         } else {
-          size.width * ((timeMillis - firstTime).toDouble() / timeRange.toDouble()).toFloat()
+          left + plotWidth * ((date.toEpochDay() - firstDay).toDouble() / dayRange.toDouble()).toFloat()
         }
 
-        fun y(percentage: Double): Float =
-          size.height - (size.height * ((percentage - bounds.min) / valueRange)).toFloat()
+        fun weightY(value: Double): Float {
+          val range = (weightBounds.max - weightBounds.min).coerceAtLeast(0.0001)
+          return size.height - (size.height * ((value - weightBounds.min) / range)).toFloat()
+        }
+
+        fun bodyFatY(value: Double): Float {
+          val range = (bodyFatBounds.max - bodyFatBounds.min).coerceAtLeast(0.0001)
+          return size.height - (size.height * ((value - bodyFatBounds.min) / range)).toFloat()
+        }
 
         repeat(3) { index ->
           val guideY = size.height * index / 2f
           drawLine(
             color = guideColor,
-            start = Offset(0f, guideY),
-            end = Offset(size.width, guideY),
+            start = Offset(left, guideY),
+            end = Offset(right, guideY),
             strokeWidth = 1f,
           )
         }
-
-        orderedMeasurements.zipWithNext().forEach { (previous, current) ->
-          drawLine(
-            color = lineColor,
-            start = Offset(x(previous.time.toEpochMilli()), y(previous.percentage)),
-            end = Offset(x(current.time.toEpochMilli()), y(current.percentage)),
-            strokeWidth = 4f,
-          )
+        if (weightPoints.isNotEmpty()) {
+          drawLine(axisColor, Offset(left, 0f), Offset(left, size.height), strokeWidth = 2f)
+          drawMetricSeries(weightPoints, weightColor, ::x, ::weightY)
         }
-        orderedMeasurements.forEach { measurement ->
-          drawCircle(
-            color = lineColor,
-            radius = 6f,
-            center = Offset(x(measurement.time.toEpochMilli()), y(measurement.percentage)),
-          )
+        if (bodyFatPoints.isNotEmpty()) {
+          drawLine(axisColor, Offset(right, 0f), Offset(right, size.height), strokeWidth = 2f)
+          drawMetricSeries(bodyFatPoints, bodyFatColor, ::x, ::bodyFatY)
         }
       }
 
@@ -136,22 +213,53 @@ internal fun BodyFatHistoryChart(
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(
-          dateFormatter.format(orderedMeasurements.first().time.atZone(zoneId)),
+          if (weightPoints.isEmpty()) "" else "${formatWeightChartValue(weightBounds.min)} kg",
           style = MaterialTheme.typography.labelSmall,
+          color = weightColor,
         )
         Text(
-          dateFormatter.format(orderedMeasurements.last().time.atZone(zoneId)),
+          if (bodyFatPoints.isEmpty()) "" else "${formatBodyFatPercentage(bodyFatBounds.min)} %",
           style = MaterialTheme.typography.labelSmall,
+          color = bodyFatColor,
         )
       }
-      Text(
-        "グラフ範囲 ${formatBodyFatPercentage(bounds.min)}〜${formatBodyFatPercentage(bounds.max)} %",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(dateFormatter.format(allDates.first()), style = MaterialTheme.typography.labelSmall)
+        Text(dateFormatter.format(allDates.last()), style = MaterialTheme.typography.labelSmall)
+      }
     }
   }
 }
 
+private fun DrawScope.drawMetricSeries(
+  points: List<Pair<LocalDate, Double>>,
+  color: Color,
+  x: (LocalDate) -> Float,
+  y: (Double) -> Float,
+) {
+  points.zipWithNext().forEach { (previous, current) ->
+    drawLine(
+      color = color,
+      start = Offset(x(previous.first), y(previous.second)),
+      end = Offset(x(current.first), y(current.second)),
+      strokeWidth = 4f,
+    )
+  }
+  points.forEach { point ->
+    drawCircle(
+      color = color,
+      radius = 6f,
+      center = Offset(x(point.first), y(point.second)),
+    )
+  }
+}
+
 internal fun formatBodyFatPercentage(value: Double): String =
+  String.format(Locale.getDefault(), "%.1f", value)
+
+internal fun formatWeightChartValue(value: Double): String =
   String.format(Locale.getDefault(), "%.1f", value)
