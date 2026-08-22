@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.health
 
 import java.time.Instant
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -36,5 +37,15 @@ class BodyFatHistoryChartTest {
     )
 
     assertEquals(21.5, latestBodyFatPercentage(measurements)!!, 0.0)
+  }
+
+  @Test
+  fun `体重グラフは変化が小さくても表示範囲を確保する`() {
+    val summaries = listOf(
+      DailyHealthSummary(date = LocalDate.of(2026, 8, 18), averageWeightKg = 68.2),
+      DailyHealthSummary(date = LocalDate.of(2026, 8, 19), averageWeightKg = 68.4),
+    )
+
+    assertEquals(WeightChartBounds(67.7, 68.9), weightChartBounds(summaries))
   }
 }
