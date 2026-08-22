@@ -54,6 +54,11 @@ data class LibraryBook(
   }
 }
 
+data class LibraryBookSeriesUpdate(
+  val book: LibraryBook,
+  val series: LibrarySeries,
+)
+
 fun LibraryBook.isKindlePersonalDocument(): Boolean =
   source == LibrarySource.KINDLE && sourceId.startsWith(KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX)
 
