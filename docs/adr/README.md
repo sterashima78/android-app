@@ -38,7 +38,8 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0142: app Route の presentation ownership と Task widget 更新境界を整理する](0142-app-route-and-task-widget-ownership-cleanup.md)
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
-- [ADR-0146: app composition は選択中タブに必要な ViewModel だけ起動する](0146-active-tab-viewmodel-activation.md)
+- [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
+- [ADR-0147: app composition は選択中タブに必要な ViewModel だけ起動する](0147-active-tab-viewmodel-activation.md)
 
 ### Domain / Context / persistence
 
@@ -58,7 +59,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0122: ADR を根拠とする current architecture documentation を維持する](0122-current-architecture-documentation.md)
 - [ADR-0136: 公開リポジトリの高確度な秘密情報を CI で検査する](0136-public-repository-content-verification.md)
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
-- [ADR-0148: 共有可能なクラッシュ診断を保存前にサニタイズする](0148-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
 
 ## Supporting architecture areas
 
@@ -67,7 +68,8 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
-- [ADR-0148: 共有可能なクラッシュ診断を保存前にサニタイズする](0148-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
+- [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
 
 ### Health
 
@@ -104,7 +106,8 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
-- [ADR-0147: local model revision marker の互換 migration を終了する](0147-retire-local-model-revision-marker-migration.md)
+- [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
+- [ADR-0148: local model revision marker の互換 migration を終了する](0148-retire-local-model-revision-marker-migration.md)
 
 ### Content / summary / knowledge
 
