@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import java.io.File
@@ -71,6 +72,24 @@ class DatabaseSnapshotBackupTest {
     snapshot.delete()
     try {
       database.createSnapshot(snapshot)
+      database.validateSnapshot(snapshot)
+    } finally {
+      database.close()
+      snapshot.delete()
+    }
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `現在と異なるschema versionのsnapshotは復元対象にしない`() {
+    val database = YomitoriDatabase.create(context)
+    val snapshot = File(context.cacheDir, "old-version-snapshot.db")
+    snapshot.delete()
+    try {
+      database.createSnapshot(snapshot)
+      database.markSnapshot(snapshot)
+      SQLiteDatabase.openDatabase(snapshot.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use {
+        it.version = appDatabaseSchema.version - 1
+      }
       database.validateSnapshot(snapshot)
     } finally {
       database.close()
