@@ -5,10 +5,7 @@ internal object CrashDiagnosticsSanitizer {
     var sanitized = value
     sanitized = SMB_BOOK_URI_PATTERN.replace(sanitized, "yomitori://smb-book/open?[redacted]")
     sanitized = WEB_URL_PATTERN.replace(sanitized) { match ->
-      val scheme = match.groupValues[1]
-      val authority = match.groupValues[2]
-      val suffix = match.groupValues[3]
-      if (suffix.isEmpty()) match.value else "$scheme://$authority/[redacted]"
+      "${match.groupValues[1]}://[redacted]"
     }
     sanitized = GENERIC_URI_QUERY_PATTERN.replace(sanitized) { match ->
       "${match.groupValues[1]}?[redacted]"
@@ -28,7 +25,7 @@ internal object CrashDiagnosticsSanitizer {
 internal fun sanitizeCrashDetails(value: String): String = CrashDiagnosticsSanitizer.sanitize(value)
 
 private val SMB_BOOK_URI_PATTERN = Regex("""yomitori://smb-book/open\?[^\s}]+""")
-private val WEB_URL_PATTERN = Regex("""(?i)\b(https?)://([^/\s?#]+)([/?#][^\s]*)?""")
+private val WEB_URL_PATTERN = Regex("""(?i)\b(https?)://[^\s]+""")
 private val GENERIC_URI_QUERY_PATTERN = Regex("""\b([A-Za-z][A-Za-z0-9+.-]*://[^\s?]+)\?[^\s}]+""")
 private val EMAIL_PATTERN = Regex("""\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b""")
 private val SENSITIVE_ASSIGNMENT_PATTERN = Regex(
