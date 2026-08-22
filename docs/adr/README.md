@@ -36,7 +36,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
-- [ADR-0141: app Route の presentation ownership と Task widget 更新境界を整理する](0141-app-route-and-task-widget-ownership-cleanup.md)
+- [ADR-0142: app Route の presentation ownership と Task widget 更新境界を整理する](0142-app-route-and-task-widget-ownership-cleanup.md)
 
 ### Domain / Context / persistence
 
