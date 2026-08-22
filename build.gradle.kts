@@ -111,13 +111,16 @@ fun sourceArchitectureViolations(
     }
   }
 
-  if (fileName.endsWith("Screen.kt")) {
+  val isAppRoute = projectPath == ":app" &&
+    normalizedPath.startsWith("app/src/main/") &&
+    fileName.endsWith("Route.kt")
+  if (fileName.endsWith("Screen.kt") || isAppRoute) {
     val concreteFeatureDataImport = Regex(
       """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.data\.""",
     )
     if (concreteFeatureDataImport.containsMatchIn(sourceText)) {
       violations +=
-        "Screen must not import concrete feature data implementations: $normalizedPath"
+        "Screen/Route must not import concrete feature data implementations: $normalizedPath"
     }
 
     val infrastructureImport = Regex(
@@ -125,7 +128,7 @@ fun sourceArchitectureViolations(
     )
     if (infrastructureImport.containsMatchIn(sourceText)) {
       violations +=
-        "Screen must not import database or WorkManager infrastructure: $normalizedPath"
+        "Screen/Route must not import database or WorkManager infrastructure: $normalizedPath"
     }
 
     val concreteConstruction = Regex(
@@ -133,7 +136,7 @@ fun sourceArchitectureViolations(
     )
     concreteConstruction.find(sourceText)?.let { match ->
       violations +=
-        "Screen must not construct concrete data/background dependencies: $normalizedPath (${match.value.trim()})"
+        "Screen/Route must not construct concrete data/background dependencies: $normalizedPath (${match.value.trim()})"
     }
   }
 
@@ -249,20 +252,21 @@ val verifyArchitectureRuleTests by tasks.registering {
       projectPath = ":app",
       repositoryPath = taskQueueScreenPath,
       sourceText = "import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryRepository",
-      expectedMessage = "Screen must not import concrete feature data implementations",
+      expectedMessage = "Screen/Route must not import concrete feature data implementations",
     )
     assertViolation(
       name = "Screen concrete dependency construction",
       projectPath = ":app",
       repositoryPath = taskQueueScreenPath,
       sourceText = "val repository = DefaultLibraryRepository(DatabaseConnection(database))",
-      expectedMessage = "Screen must not construct concrete data/background dependencies",
+      expectedMessage = "Screen/Route must not construct concrete data/background dependencies",
     )
-    assertClean(
-      name = "Route composition wiring remains allowed",
+    assertViolation(
+      name = "Route concrete dependency construction",
       projectPath = ":app",
       repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/library/LibraryRoute.kt",
       sourceText = "val repository = DefaultLibraryRepository(DatabaseConnection(database))",
+      expectedMessage = "Screen/Route must not construct concrete data/background dependencies",
     )
 
     assertViolation(
