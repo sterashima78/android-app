@@ -60,4 +60,4 @@ Android 17 / API 37 を採用する際は、SDK の提供状態と behavior chan
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145](../adr/0145-bound-vision-inference-memory-lifetime.md)
-- [ADR-0148](../adr/0148-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)
