@@ -66,6 +66,8 @@ Data implementation は owner contract と persistence / remote semantics を検
 
 他 Context の実 table schema がなくても成立すべき Repository は boundary test でそれを固定する。例えば Content Repository は RSS/Summary の table schema を直接必要としないことを検証する。
 
+mutable runtime state の transition は、その mutable state を所有する runtime/data module でテストする。presentation は公開された immutable state から表示を導出する部分だけを UI test で固定する。
+
 ## Projection tests
 
 cross-context Projection を導入する場合は integration test を必須とする。
@@ -93,9 +95,11 @@ Gradle dependency と production source の構造的 guardrail を検査する�
 - Domain から Android import 禁止
 - root app shell への feature UI ownership drift
 - Screen / `:app` Route での concrete dependency construction / import 禁止
+- `MainActivity` での feature ViewModel ownership（`AppViewModel` を除く）と concrete feature data import 禁止
+- `:app` production source での feature Worker 禁止。`CoroutineWorker` / `Worker` / `ListenableWorker` の import alias も検出対象
 - feature data から app implementation への依存禁止
 
-rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture も concrete repository + database construction を違反として固定する。
+rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture に加え、MainActivity の concrete feature data / feature ViewModel、WorkManager Worker の import alias も違反として固定する。
 
 ### Table ownership verification
 
@@ -110,6 +114,8 @@ CI では次のように table ownership init script を併用する。
 ### Framework provider boundary
 
 Provider lookup は framework-owned entry point に限定し、manifest と production lookup の集合を architecture test で一致させる。不要になった manifest entry も stale として削除する。
+
+LAN Web Server の Android Service は framework-owned entry point として `LanWebRepositoryProvider` を利用するが、Activity から Service implementation を直接参照しない。Activity は injected `LanWebServerController` contract を利用する。
 
 ### ADR integrity
 
@@ -167,6 +173,7 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | backup compatibility baseline | current snapshot round-trip + unsupported schema rejection |
 | parser / external adapter | adapter/parser test |
 | cross-context read optimization | Projection integration test |
+| mutable runtime state ownership | owner data/runtime unit test + presentation derivation test where needed |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
 | new table ownership rule | table ownership manifest/fixture + verification |
 | framework Provider exception | boundary manifest/test |
@@ -186,3 +193,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
+- [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
