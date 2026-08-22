@@ -82,7 +82,11 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
         timeRangeFilter = timeRange,
       ),
     )
-    val exerciseSessions = readExerciseSessions(timeRange)
+    val includeExerciseActivityMetrics = Duration.between(startTime, endTime) <= Duration.ofDays(8)
+    val exerciseSessions = readExerciseSessions(
+      timeRange = timeRange,
+      includeActivityMetrics = includeExerciseActivityMetrics,
+    )
     return HealthOverview(
       steps = aggregation[StepsRecord.COUNT_TOTAL],
       activeCaloriesKcal = aggregation[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
@@ -169,7 +173,10 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       .toList()
   }
 
-  private suspend fun readExerciseSessions(timeRange: TimeRangeFilter): List<HealthExerciseSessionSummary> {
+  private suspend fun readExerciseSessions(
+    timeRange: TimeRangeFilter,
+    includeActivityMetrics: Boolean,
+  ): List<HealthExerciseSessionSummary> {
     val sessions = mutableListOf<ExerciseSessionCandidate>()
     var pageToken: String? = null
     do {
@@ -208,9 +215,13 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       pageToken = response.pageToken
     } while (pageToken != null)
 
-    return deduplicateExerciseSessions(sessions)
+    val orderedSessions = deduplicateExerciseSessions(sessions)
       .sortedByDescending(HealthExerciseSessionSummary::startTime)
-      .map { session -> enrichExerciseSessionActivity(session) }
+    return if (includeActivityMetrics) {
+      orderedSessions.map { session -> enrichExerciseSessionActivity(session) }
+    } else {
+      orderedSessions
+    }
   }
 
   private suspend fun enrichExerciseSessionActivity(
