@@ -15,8 +15,7 @@ internal fun MainTab.usesSummaryOverlay(): Boolean = when (this) {
   MainTab.REDDIT_UNREAD,
   MainTab.REDDIT_READ_LATER,
   MainTab.SAVED,
-  MainTab.TAGS,
-  -> true
+  MainTab.TAGS -> true
 
   else -> false
 }
@@ -25,8 +24,7 @@ internal fun MainTab.usesBookmarkEditOverlay(): Boolean = when (this) {
   MainTab.UNREAD,
   MainTab.READ_LATER,
   MainTab.SAVED,
-  MainTab.TAGS,
-  -> true
+  MainTab.TAGS -> true
 
   else -> false
 }
