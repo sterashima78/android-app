@@ -33,13 +33,6 @@ val variantArchitectureDependencyConfigurationSuffixes =
     "RuntimeOnly",
   )
 
-val appFeatureWorkerExceptions = mapOf(
-  "app/src/main/java/dev/terashima/yomitorirss/BookmarkAutoEnrichmentBackfillWorker.kt" to
-    "ADR-0101: legacy WorkManager FQCN compatibility shim",
-  "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/KnowledgeWorkerCompat.kt" to
-    "ADR-0101: legacy WorkManager FQCN compatibility shim",
-)
-
 fun isArchitectureDependencyConfiguration(name: String): Boolean {
   if ("test" in name.lowercase()) return false
 
@@ -97,6 +90,29 @@ fun sourceArchitectureViolations(
     }
   }
 
+  val isMainActivity = projectPath == ":app" &&
+    normalizedPath.endsWith("/dev/terashima/yomitorirss/MainActivity.kt")
+  if (isMainActivity) {
+    val featureViewModelImport = Regex(
+      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.([A-Za-z0-9_.]+ViewModel)(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*$""",
+    )
+    val hasForbiddenFeatureViewModelImport = featureViewModelImport
+      .findAll(sourceText)
+      .any { match -> match.groupValues[1] != "navigation.AppViewModel" }
+    if (hasForbiddenFeatureViewModelImport) {
+      violations +=
+        "MainActivity must not import feature-owned ViewModels: $normalizedPath"
+    }
+
+    val concreteFeatureDataImport = Regex(
+      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.data\.""",
+    )
+    if (concreteFeatureDataImport.containsMatchIn(sourceText)) {
+      violations +=
+        "MainActivity must use injected contracts instead of concrete feature data: $normalizedPath"
+    }
+  }
+
   val isAppUiAdapter = projectPath == ":app" &&
     normalizedPath.startsWith("app/src/main/") &&
     "/ui/" in normalizedPath &&
@@ -142,14 +158,16 @@ fun sourceArchitectureViolations(
 
   val isAppProductionSource = projectPath == ":app" &&
     normalizedPath.startsWith("app/src/main/")
+  val workerBaseClassAliases = Regex(
+    """(?m)^\s*import\s+androidx\.work\.(?:CoroutineWorker|Worker|ListenableWorker)\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\s*$""",
+  ).findAll(sourceText).map { it.groupValues[1] }.toList()
+  val workerBaseClassPattern = (
+    listOf("CoroutineWorker", "Worker", "ListenableWorker") + workerBaseClassAliases
+  ).joinToString("|") { Regex.escape(it) }
   val workerDeclaration = Regex(
-    """:\s*(?:androidx\.work\.)?(?:CoroutineWorker|Worker|ListenableWorker)\s*\(""",
+    """:\s*(?:androidx\.work\.)?(?:$workerBaseClassPattern)\s*\(""",
   )
-  if (
-    isAppProductionSource &&
-    workerDeclaration.containsMatchIn(sourceText) &&
-    normalizedPath !in appFeatureWorkerExceptions
-  ) {
+  if (isAppProductionSource && workerDeclaration.containsMatchIn(sourceText)) {
     violations +=
       "feature-specific Worker runtime must live in the owning feature data module: $normalizedPath"
   }
@@ -229,6 +247,42 @@ val verifyArchitectureRuleTests by tasks.registering {
       sourceText = "val appState by appViewModel.state.collectAsState()",
     )
 
+    val mainActivityPath =
+      "app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt"
+    assertViolation(
+      name = "MainActivity feature ViewModel ownership",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.rss.RssViewModel",
+      expectedMessage = "MainActivity must not import feature-owned ViewModels",
+    )
+    assertViolation(
+      name = "MainActivity aliased feature ViewModel ownership",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.rss.RssViewModel as FeedModel",
+      expectedMessage = "MainActivity must not import feature-owned ViewModels",
+    )
+    assertViolation(
+      name = "MainActivity concrete feature data import",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.web.data.LanWebServerService",
+      expectedMessage = "MainActivity must use injected contracts instead of concrete feature data",
+    )
+    assertClean(
+      name = "MainActivity app navigation ViewModel",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.navigation.AppViewModel",
+    )
+    assertClean(
+      name = "MainActivity aliased app navigation ViewModel",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.navigation.AppViewModel as NavigationModel",
+    )
+
     val featureUiAdaptersPath =
       "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiAdapters.kt"
     assertViolation(
@@ -283,17 +337,22 @@ val verifyArchitectureRuleTests by tasks.registering {
       sourceText = "class BookmarkBackfillWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
       expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
     )
-    assertClean(
-      name = "legacy bookmark backfill Worker compatibility shim",
+    assertViolation(
+      name = "aliased WorkManager Worker in app",
       projectPath = ":app",
-      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/BookmarkAutoEnrichmentBackfillWorker.kt",
-      sourceText = "class BookmarkAutoEnrichmentBackfillWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
+      repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/AliasedWorker.kt",
+      sourceText = """
+        import androidx.work.CoroutineWorker as BackgroundWorker
+        class AliasedWorker(context: Context, params: WorkerParameters) : BackgroundWorker(context, params)
+      """.trimIndent(),
+      expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
     )
-    assertClean(
-      name = "legacy Knowledge Worker compatibility shim",
+    assertViolation(
+      name = "former compatibility path is not exempt",
       projectPath = ":app",
       repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/feature/knowledge/KnowledgeWorkerCompat.kt",
       sourceText = "class KnowledgeBuildWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params)",
+      expectedMessage = "feature-specific Worker runtime must live in the owning feature data module",
     )
     assertViolation(
       name = "feature data imports app implementation",

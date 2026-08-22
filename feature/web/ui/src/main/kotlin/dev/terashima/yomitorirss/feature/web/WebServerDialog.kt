@@ -12,11 +12,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.feature.web.LanServerUiState
 
 @Composable
 fun WebServerDialog(
-  state: LanServerUiState,
+  state: LanWebServerState,
   onDismiss: () -> Unit,
   onStart: () -> Unit,
   onStop: () -> Unit,
@@ -65,5 +64,5 @@ fun WebServerDialog(
   )
 }
 
-internal fun webServerStatusText(state: LanServerUiState): String =
+internal fun webServerStatusText(state: LanWebServerState): String =
   if (state.running) "起動中" else "停止中"

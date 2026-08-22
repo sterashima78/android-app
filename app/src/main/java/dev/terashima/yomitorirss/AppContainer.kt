@@ -68,6 +68,8 @@ import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryTaskQueueRep
 import dev.terashima.yomitorirss.feature.summary.data.SummaryContentRetentionProtectionQuery
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.task.data.DefaultTaskRepository
+import dev.terashima.yomitorirss.feature.web.LanWebServerController
+import dev.terashima.yomitorirss.feature.web.data.AndroidLanWebServerController
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.data.DefaultWidgetRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
@@ -213,6 +215,9 @@ class AppContainer(private val application: Application) {
       taskReader = taskRepository,
       workoutReader = workoutRepository,
     )
+  }
+  val lanWebServerController: LanWebServerController by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AndroidLanWebServerController(application)
   }
   val gmailAuthorizationManager: GmailAuthorizationManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     GmailAuthorizationManager(application)

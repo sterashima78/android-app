@@ -36,9 +36,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.navigation.AppViewModel
 import dev.terashima.yomitorirss.feature.navigation.MainTab
-import dev.terashima.yomitorirss.feature.web.LanServerStatus
 import dev.terashima.yomitorirss.feature.web.WebServerDialog
-import dev.terashima.yomitorirss.feature.web.data.LanWebServerService
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider
 import dev.terashima.yomitorirss.ui.YomitoriApp
 import dev.terashima.yomitorirss.ui.YomitoriTheme
@@ -69,14 +67,16 @@ class MainActivity : ComponentActivity() {
     setContent {
       YomitoriTheme {
         var showWebServer by remember { mutableStateOf(false) }
-        val lanServerState by LanServerStatus.state.collectAsState()
+        var webServerPermissionError by remember { mutableStateOf<String?>(null) }
+        val lanServerState by dependencies.lanWebServerController.state.collectAsState()
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
           ActivityResultContracts.RequestPermission(),
         ) { granted ->
           if (granted) {
-            LanWebServerService.start(applicationContext)
+            webServerPermissionError = null
+            dependencies.lanWebServerController.start()
           } else {
-            LanServerStatus.reportError("通知を許可しないとWebサーバを起動できません。")
+            webServerPermissionError = "通知を許可しないとWebサーバを起動できません。"
           }
         }
 
@@ -84,15 +84,21 @@ class MainActivity : ComponentActivity() {
           appViewModel = appViewModel,
           routeDependencies = dependencies.routeDependencies,
           onOpenArticle = ::openArticle,
-          onOpenWebServer = { showWebServer = true },
+          onOpenWebServer = {
+            webServerPermissionError = null
+            showWebServer = true
+          },
           onExitApp = ::finish,
         )
 
         if (showWebServer) {
           WebServerDialog(
-            state = lanServerState,
+            state = lanServerState.copy(
+              error = webServerPermissionError ?: lanServerState.error,
+            ),
             onDismiss = { showWebServer = false },
             onStart = {
+              webServerPermissionError = null
               if (
                 ContextCompat.checkSelfPermission(
                   this,
@@ -101,10 +107,13 @@ class MainActivity : ComponentActivity() {
               ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
               } else {
-                LanWebServerService.start(applicationContext)
+                dependencies.lanWebServerController.start()
               }
             },
-            onStop = { LanWebServerService.stop(applicationContext) },
+            onStop = {
+              webServerPermissionError = null
+              dependencies.lanWebServerController.stop()
+            },
           )
         }
       }
