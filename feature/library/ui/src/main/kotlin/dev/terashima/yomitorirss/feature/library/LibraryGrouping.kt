@@ -11,11 +11,6 @@ internal data class LibraryBookGroups(
   val ungrouped: List<LibraryBook>,
 )
 
-internal data class LibrarySeriesMergeAssignment(
-  val book: LibraryBook,
-  val series: LibrarySeries,
-)
-
 private val parenthesizedSeriesPosition = Regex(
   """^(.*?)[\s　]*[\(（][\s　]*([0-9０-９]+)[\s　]*[\)）][\s　]*$""",
 )
@@ -87,13 +82,13 @@ internal fun groupLibraryBooks(books: List<LibraryBook>): LibraryBookGroups {
 internal fun mergeLibrarySeries(
   source: LibrarySeriesSection,
   target: LibrarySeriesSection,
-): List<LibrarySeriesMergeAssignment> {
+): List<LibraryBookSeriesUpdate> {
   require(source.key != target.key) { "同じシリーズにはマージできません" }
   val targetName = target.name.trim()
   require(targetName.isNotEmpty()) { "マージ先のシリーズ名がありません" }
 
   return (target.books + source.books).map { book ->
-    LibrarySeriesMergeAssignment(
+    LibraryBookSeriesUpdate(
       book = book,
       series = LibrarySeries(
         name = targetName,
