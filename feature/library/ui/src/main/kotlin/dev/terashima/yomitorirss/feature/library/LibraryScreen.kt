@@ -68,7 +68,6 @@ import coil3.compose.AsyncImage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private enum class LibraryTab(val label: String) {
   ALL("全体"),
@@ -77,10 +76,24 @@ private enum class LibraryTab(val label: String) {
   SETTINGS("設定"),
 }
 
+internal sealed interface LibraryBookTapAction {
+  data object OpenSmbBook : LibraryBookTapAction
+
+  data class OpenExternalUri(val uri: String) : LibraryBookTapAction
+
+  data object OpenMenu : LibraryBookTapAction
+}
+
+internal fun LibraryBook.tapAction(): LibraryBookTapAction = when {
+  source == LibrarySource.SMB -> LibraryBookTapAction.OpenSmbBook
+  else -> openUrl()?.let(LibraryBookTapAction::OpenExternalUri) ?: LibraryBookTapAction.OpenMenu
+}
+
 @Composable
 fun LibraryScreen(
   state: LibraryUiState,
   onSyncGooglePlayBooks: () -> Unit,
+  onOpenSmbBook: (LibraryBook) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
@@ -184,6 +197,7 @@ fun LibraryScreen(
             searchQuery = searchQuery,
             onSelectedSourceChange = { selectedSourceName = it?.name },
             onSearchQueryChange = { searchQuery = it },
+            onOpenSmbBook = onOpenSmbBook,
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -195,6 +209,7 @@ fun LibraryScreen(
             searchQuery = searchQuery,
             onSelectedSourceChange = { selectedSourceName = it?.name },
             onSearchQueryChange = { searchQuery = it },
+            onOpenSmbBook = onOpenSmbBook,
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
             onMergeSeries = onMergeSeries,
@@ -206,6 +221,7 @@ fun LibraryScreen(
             searchQuery = searchQuery,
             onSelectedSourceChange = { selectedSourceName = it?.name },
             onSearchQueryChange = { searchQuery = it },
+            onOpenSmbBook = onOpenSmbBook,
             onRestoreBook = onRestoreBook,
             onEditSeries = { seriesEditorBook = it },
           )
@@ -228,6 +244,7 @@ private fun LibraryAllTab(
   searchQuery: String,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
   onSearchQueryChange: (String) -> Unit,
+  onOpenSmbBook: (LibraryBook) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -274,6 +291,7 @@ private fun LibraryAllTab(
       LibraryBookGrid(
         books = sortedBooks,
         actionLabel = "非表示",
+        onOpenSmbBook = onOpenSmbBook,
         onAction = onHideBook,
         onEditSeries = onEditSeries,
         modifier = Modifier.weight(1f),
@@ -290,6 +308,7 @@ private fun LibrarySeriesTab(
   searchQuery: String,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
   onSearchQueryChange: (String) -> Unit,
+  onOpenSmbBook: (LibraryBook) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
   onMergeSeries: (List<LibraryBookSeriesUpdate>) -> Unit,
@@ -322,6 +341,7 @@ private fun LibrarySeriesTab(
       section = section,
       mergeTargets = allGroups.series.filter { it.key != section.key },
       onDismiss = { selectedSeriesKey = null },
+      onOpenSmbBook = onOpenSmbBook,
       onHideBook = onHideBook,
       onEditSeries = { book ->
         selectedSeriesKey = null
@@ -400,6 +420,7 @@ private fun LibrarySeriesTab(
             LibraryBookThumbnail(
               book = book,
               actionLabel = "非表示",
+              onOpenSmbBook = { onOpenSmbBook(book) },
               onAction = { onHideBook(book) },
               onEditSeries = { onEditSeries(book) },
             )
@@ -416,6 +437,7 @@ private fun LibrarySeriesBooksSheet(
   section: LibrarySeriesSection,
   mergeTargets: List<LibrarySeriesSection>,
   onDismiss: () -> Unit,
+  onOpenSmbBook: (LibraryBook) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
   onMerge: (LibrarySeriesSection) -> Unit,
@@ -482,6 +504,7 @@ private fun LibrarySeriesBooksSheet(
       LibraryBookGrid(
         books = section.books,
         actionLabel = "非表示",
+        onOpenSmbBook = onOpenSmbBook,
         onAction = onHideBook,
         onEditSeries = onEditSeries,
         modifier = Modifier.weight(1f),
@@ -541,6 +564,7 @@ private fun LibraryHiddenTab(
   searchQuery: String,
   onSelectedSourceChange: (LibrarySource?) -> Unit,
   onSearchQueryChange: (String) -> Unit,
+  onOpenSmbBook: (LibraryBook) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
 ) {
@@ -582,6 +606,7 @@ private fun LibraryHiddenTab(
       else -> LibraryBookGrid(
         books = sortedBooks,
         actionLabel = "再表示",
+        onOpenSmbBook = onOpenSmbBook,
         onAction = onRestoreBook,
         onEditSeries = onEditSeries,
         modifier = Modifier.weight(1f),
@@ -623,6 +648,7 @@ private fun LibrarySettingsTab(
 private fun LibraryBookGrid(
   books: List<LibraryBook>,
   actionLabel: String,
+  onOpenSmbBook: (LibraryBook) -> Unit,
   onAction: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
   modifier: Modifier = Modifier,
@@ -641,6 +667,7 @@ private fun LibraryBookGrid(
       LibraryBookThumbnail(
         book = book,
         actionLabel = actionLabel,
+        onOpenSmbBook = { onOpenSmbBook(book) },
         onAction = { onAction(book) },
         onEditSeries = { onEditSeries(book) },
       )
@@ -784,6 +811,7 @@ private fun LibrarySeriesThumbnail(
 private fun LibraryBookThumbnail(
   book: LibraryBook,
   actionLabel: String,
+  onOpenSmbBook: () -> Unit,
   onAction: () -> Unit,
   onEditSeries: () -> Unit,
 ) {
@@ -792,8 +820,8 @@ private fun LibraryBookThumbnail(
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var renameDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var deleteDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
-  val openUrl = remember(book.source, book.sourceId, book.infoUrl) { book.openUrl() }
-  val hasInfoUrl = openUrl != null
+  val tapAction = remember(book) { book.tapAction() }
+  val canOpen = tapAction != LibraryBookTapAction.OpenMenu
 
   Box(modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -802,14 +830,14 @@ private fun LibraryBookThumbnail(
           .fillMaxWidth()
           .aspectRatio(0.68f)
           .combinedClickable(
-            onClickLabel = if (hasInfoUrl) "書籍を開く" else "操作メニュー",
+            onClickLabel = if (canOpen) "書籍を開く" else "操作メニュー",
             onLongClickLabel = "操作メニュー",
             onLongClick = { actionMenuExpanded = true },
             onClick = {
-              if (openUrl != null) {
-                uriHandler.openUri(openUrl)
-              } else {
-                actionMenuExpanded = true
+              when (val action = tapAction) {
+                LibraryBookTapAction.OpenSmbBook -> onOpenSmbBook()
+                is LibraryBookTapAction.OpenExternalUri -> uriHandler.openUri(action.uri)
+                LibraryBookTapAction.OpenMenu -> actionMenuExpanded = true
               }
             },
           ),
@@ -1130,17 +1158,6 @@ private fun LibrarySeriesDialog(
     },
   )
 }
-
-private fun LibraryBook.openUrl(): String? {
-  infoUrl?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
-  if (source != LibrarySource.AUDIBLE) return null
-
-  val asin = sourceId.trim().uppercase(Locale.ROOT)
-  if (!AUDIBLE_ASIN.matches(asin)) return null
-  return "https://www.audible.co.jp/pd/$asin"
-}
-
-private val AUDIBLE_ASIN = Regex("^[A-Z0-9]{10}$")
 
 private fun formatSyncTime(epochMillis: Long): String {
   val formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
