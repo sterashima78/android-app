@@ -17,6 +17,19 @@ permissions:
   contents: read
 
 jobs:
+  public_repository:
+    name: Public repository
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test repository verifier
+        run: python3 scripts/test_verify_public_repository.py
+      - name: Verify tracked public content
+        run: python3 scripts/verify_public_repository.py
+
   quality_checks:
     name: ${{ matrix.name }}
     if: github.event_name == 'pull_request'
@@ -54,14 +67,18 @@ jobs:
   quality:
     if: always() && github.event_name == 'pull_request'
     needs:
+      - public_repository
       - quality_checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Verify parallel quality checks passed
         env:
+          PUBLIC_REPOSITORY_RESULT: ${{ needs.public_repository.result }}
           QUALITY_CHECK_RESULT: ${{ needs.quality_checks.result }}
-        run: test "$QUALITY_CHECK_RESULT" = success
+        run: |
+          test "$PUBLIC_REPOSITORY_RESULT" = success
+          test "$QUALITY_CHECK_RESULT" = success
 
   build:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -73,6 +90,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify tracked public content
+        run: python3 scripts/verify_public_repository.py
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
