@@ -82,7 +82,7 @@ LiteRT-LM 側で GPU/OpenCL の Conversation/Engine 間メモリ解放問題が�
 ### Negative
 
 - SMB 書誌解析は各冊で画像 Engine の再初期化が必要になり、連続処理の速度が低下する。
-- `LocalModelManager.close()` が共有 Manager の retained runtime を解放するため、画像推論終了と同時期に別の foreground 推論が待機している場合、その推論が再初期化を必要とする可能性がある。
+- `LocalModelManager.close()` は共有 Manager の cancel state も更新するため、画像推論終了と同時期に別の foreground 推論が既に同じ lock を待っている競合では、その要求がキャンセル扱いになり再試行が必要になる可能性がある。独立 Manager へ分離して直列化を失うよりメモリ安全性を優先する一時的なトレードオフとする。
 - upstream 修正を取り込んだ後に、この一時的な bounded lifecycle を再評価する作業が必要になる。
 
 ## Relationship to existing ADRs
