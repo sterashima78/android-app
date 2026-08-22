@@ -10,20 +10,13 @@ import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthViewModel
 import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
-import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
-import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
-import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
@@ -136,41 +129,38 @@ class AppRouteDependencies internal constructor(
   }
 
   val knowledgeViewModelFactory: KnowledgeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val buildTaskController = WorkManagerKnowledgeBuildTaskController(application)
+    val buildScheduler = container.featureRuntimeDependencies.knowledgeBuildScheduler
     KnowledgeViewModel.Factory(
       repository = container.knowledgeRepository,
       builder = container.knowledgeBuilder,
       creator = container.knowledgePageCreator,
       editor = container.knowledgePageEditor,
       scheduleBackupAfterChange = container.backupChangeScheduler::scheduleAfterChange,
-      scheduleRebuild = buildTaskController::enqueue,
+      scheduleRebuild = buildScheduler::enqueue,
     )
   }
 
   val library: LibraryRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val database = container.databaseConnection
-    val smbRepository = CleaningSmbLibraryRepository(application, database)
+    val runtime = container.featureRuntimeDependencies.library
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
-    val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
-    val smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application)
     val smbMetadataNormalizationPromptRepository =
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     LibraryRouteDependencies(
       authorization = GoogleBooksAuthorizationManager(application),
       libraryViewModelFactory = LibraryViewModel.Factory(
-        repository = SmbMetadataAwareLibraryRepository(database),
-        smbRepository = smbRepository,
+        repository = runtime.catalogRepository,
+        smbRepository = runtime.smbRepository,
         smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
-        smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
-        smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
+        smbMetadataNormalizationRepository = runtime.smbMetadataNormalizationRepository,
+        smbMetadataNormalizationScheduler = runtime.smbMetadataNormalizationScheduler,
         smbMetadataNormalizationPromptRepository = smbMetadataNormalizationPromptRepository,
       ),
       organizationViewModelFactory = LibraryOrganizationViewModel.Factory(
-        repository = DefaultLibraryOrganizationRepository(database),
+        repository = runtime.organizationRepository,
         suggester = LocalLibraryOrganizationSuggester(container.modelManager),
-        batchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
+        batchScheduler = runtime.organizationBatchScheduler,
       ),
-      smbRepository = smbRepository,
+      smbRepository = runtime.smbRepository,
     )
   }
 

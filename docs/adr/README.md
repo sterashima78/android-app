@@ -47,10 +47,11 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 
-### Documentation governance
+### Documentation / repository governance
 
 - [ADR-0055: ADR 番号を一意な単調増加番号として管理する](0055-adr-numbering-policy.md)
 - [ADR-0122: ADR を根拠とする current architecture documentation を維持する](0122-current-architecture-documentation.md)
+- [ADR-0136: 公開リポジトリの高確度な秘密情報を CI で検査する](0136-public-repository-content-verification.md)
 
 ## Supporting architecture areas
 
@@ -86,6 +87,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0104: AI task queue feature ownership](0104-ai-task-queue-feature-ownership.md)
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
+- [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
 
 ### Content / summary / knowledge
 
@@ -115,7 +117,10 @@ python3 scripts/verify_adr_integrity.py
 
 ADR には設計判断に必要な情報だけを記録し、credential、token、OAuth secret、実ユーザー URL、メールアドレス、個人データ、公開を意図しない endpoint 等を含めない。
 
+高確度な credential / private artifact は `scripts/verify_public_repository.py` でも検査するが、意味的な個人情報レビューは引き続き必須とする。
+
 ## Sources
 
 - [ADR-0055](0055-adr-numbering-policy.md)
 - [ADR-0122](0122-current-architecture-documentation.md)
+- [ADR-0136](0136-public-repository-content-verification.md)

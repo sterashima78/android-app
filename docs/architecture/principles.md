@@ -94,6 +94,7 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 ## Composition and framework boundaries
 
 - `:app` は composition root として feature implementation を組み立てる。
+- application scope で複数の adapter / route から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、`AppRouteDependencies` 等は同じ instance を再利用する。並行した repository / scheduler graph を route ごとに再構築しない。
 - Screen で concrete Repository、database connection、WorkManager dependency を生成しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
 - Android / WorkManager が constructor を所有する Activity、Worker、Service、AppWidgetProvider 等の framework entry point だけ、明示された Provider contract を利用できる。
@@ -114,8 +115,9 @@ Android framework が永続化する class name 等の互換性が必要な場�
 - transitional foreign access: `config/architecture/foreign-table-access-allowlist.tsv`
 - framework provider exception: `config/architecture/framework-provider-lookups.tsv`
 - ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
+- public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
 
-検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
+検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化、実ユーザー情報かどうかの意味判定等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
 
 ## Sources
 
@@ -125,8 +127,10 @@ Android framework が永続化する class name 等の互換性が必要な場�
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
 - [ADR-0101](../adr/0101-feature-route-and-background-runtime-ownership.md)
+- [ADR-0103](../adr/0103-app-route-composition-and-navigation-spec.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
 - [ADR-0125](../adr/0125-application-service-and-capability-segregation.md)
+- [ADR-0136](../adr/0136-public-repository-content-verification.md)
