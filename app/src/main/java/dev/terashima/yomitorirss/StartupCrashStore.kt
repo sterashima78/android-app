@@ -30,13 +30,16 @@ object StartupCrashStore {
       val report = buildString {
         appendLine("Mosaic crash report")
         appendLine("timestamp=${Instant.now()}")
+        appendLine("version=${BuildConfig.VERSION_NAME}")
+        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+        appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
         appendLine("sdk=${Build.VERSION.SDK_INT}")
         appendLine("release=${Build.VERSION.RELEASE}")
         appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
         appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
         appendLine("thread=$threadName")
         appendLine()
-        append(throwable.stackTraceToString())
+        append(redactCrashDetails(throwable.stackTraceToString()))
       }
       preferences(context).edit().putString(REPORT_KEY, report).commit()
     }
@@ -52,3 +55,8 @@ object StartupCrashStore {
   private fun preferences(context: Context) =
     context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 }
+
+internal fun redactCrashDetails(value: String): String =
+  SMB_BOOK_URI_PATTERN.replace(value, "yomitori://smb-book/open?[redacted]")
+
+private val SMB_BOOK_URI_PATTERN = Regex("""yomitori://smb-book/open\?[^\s}]+""")
