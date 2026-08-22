@@ -2,20 +2,21 @@ package dev.terashima.yomitorirss.feature.backup.data
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ListenableWorker
+import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.feature.backup.BackupRepositoryProvider
+import dev.terashima.yomitorirss.feature.backup.BackupRepository
 
 class GoogleDriveBackupWorker(
   appContext: Context,
   parameters: WorkerParameters,
+  private val backupRepository: BackupRepository,
 ) : CoroutineWorker(appContext, parameters) {
   override suspend fun doWork(): Result {
     if (!GoogleDriveBackupPreferences(applicationContext).isConfigured()) return Result.success()
 
     return runCatching {
-      val provider = applicationContext as? BackupRepositoryProvider
-        ?: error("Application must implement BackupRepositoryProvider")
-      provider.backupRepository.backupToGoogleDriveNow()
+      backupRepository.backupToGoogleDriveNow()
     }.fold(
       onSuccess = { Result.success() },
       onFailure = { error ->
@@ -31,4 +32,19 @@ class GoogleDriveBackupWorker(
   companion object {
     private const val MAX_RETRY_COUNT = 2
   }
+}
+
+class BackupWorkerFactory(
+  private val repositoryProvider: () -> BackupRepository,
+) : WorkerFactory() {
+  override fun createWorker(
+    appContext: Context,
+    workerClassName: String,
+    workerParameters: WorkerParameters,
+  ): ListenableWorker? =
+    if (workerClassName == GoogleDriveBackupWorker::class.java.name) {
+      GoogleDriveBackupWorker(appContext, workerParameters, repositoryProvider())
+    } else {
+      null
+    }
 }

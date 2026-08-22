@@ -14,7 +14,6 @@ import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
-import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependenciesProvider
 import dev.terashima.yomitorirss.feature.summary.summaryCacheKey
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
@@ -29,12 +28,11 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class SummaryWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-  private val runtime: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.NONE) {
-    (applicationContext as? SummaryRuntimeDependenciesProvider)?.summaryRuntimeDependencies
-      ?: error("Application must provide SummaryRuntimeDependencies")
-  }
-
+class SummaryWorker(
+  appContext: Context,
+  params: WorkerParameters,
+  private val runtime: SummaryRuntimeDependencies,
+) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
