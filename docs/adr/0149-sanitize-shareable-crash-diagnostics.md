@@ -10,7 +10,7 @@ Mosaic は起動時クラッシュを調査できるよう、uncaught exception 
 
 SMB 書籍を内部 URI で開いていた時期のクラッシュでは `yomitori://smb-book/open?...` に server identifier や path が含まれたため、SMB query 専用の redaction を導入していた。
 
-ADR-0145 では Android の memory-related process exit も起動時診断へ追加し、`ApplicationExitInfo.description` と local AI memory diagnostics を同じ共有可能レポートへ含めるようになった。診断面が広がった一方、一般の exception message には HTTP URL の path/query、メールアドレス、credential-like parameter、端末内 private path 等が含まれる可能性があり、SMB 専用 redaction だけでは共有前の保護として不十分である。
+ADR-0145 では Android の memory-related process exit も起動時診断へ追加し、`ApplicationExitInfo.description` と local AI memory diagnostics を同じ共有可能レポートへ含めるようになった。診断面が広がった一方、一般の exception message には HTTP URL の host/path/query、メールアドレス、credential-like parameter、端末内 private path 等が含まれる可能性があり、SMB 専用 redaction だけでは共有前の保護として不十分である。
 
 ## Decision
 
@@ -29,7 +29,7 @@ uncaught exception report と previous process-exit report は、個別 field �
 現在の sanitizer は次を対象とする。
 
 - SMB internal URI の query 全体
-- HTTP / HTTPS URL の path、query、fragment。scheme と authority は診断用に残す
+- HTTP / HTTPS URL の authority、path、query、fragment。scheme だけを診断用に残す
 - その他 URI の query component
 - メールアドレス
 - `token`、`password`、`secret`、`api_key`、`authorization` 等の assignment value
@@ -37,6 +37,8 @@ uncaught exception report と previous process-exit report は、個別 field �
 - Android app/private storage を示す代表的な absolute path
 
 version、versionCode、commit、SDK、device model、ABI、process-exit reason、PSS / RSS 等の高レベル診断値は維持する。
+
+HTTP(S) authority も private LAN hostname、内部 domain、user-specific host になり得るため共有用 report では保持しない。
 
 ### 4. sanitizer の test data は人工データに限定する
 
@@ -52,12 +54,12 @@ redaction test では `.invalid` domain、synthetic token、人工 path を利�
 
 ### Negative
 
-- URL path や private file path が原因特定に重要なケースでは診断情報が減る。
+- URL host/path や private file path が原因特定に重要なケースでは診断情報が減る。
 - regex ベースの sanitizer は任意の秘密情報を完全に識別できるものではなく、高機密情報を diagnostic report に意図的に追加してよい根拠にはならない。
 
 ## Verification
 
-- `StartupCrashStoreTest` で SMB URI、Web URL、メール、credential-like assignment、Bearer token、Android private path を人工値から redaction することを確認する。
+- `StartupCrashStoreTest` で SMB URI、Web URL の authority/path/query、メール、credential-like assignment、Bearer token、Android private path を人工値から redaction することを確認する。
 - 機密情報を含まない通常の exception text は変更しないことを確認する。
 - process-exit classification の既存 test を維持する。
 - public repository verifier、unit tests、release lint、architecture verification を実行する。
