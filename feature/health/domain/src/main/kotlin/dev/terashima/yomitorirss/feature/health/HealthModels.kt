@@ -52,6 +52,9 @@ data class HealthExerciseSessionSummary(
   val title: String? = null,
   val notes: String? = null,
   val segments: List<HealthExerciseSegmentSummary> = emptyList(),
+  val activeCaloriesKcal: Double? = null,
+  val averageHeartRateBpm: Long? = null,
+  val steps: Long? = null,
 )
 
 data class NutritionReferenceRange(

@@ -1,11 +1,19 @@
 package dev.terashima.yomitorirss.feature.health
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +29,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val SESSION_DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d HH:mm")
 private val SESSION_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -35,6 +44,11 @@ internal fun ExerciseHistoryCard(
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Text("運動履歴", style = MaterialTheme.typography.titleMedium)
+    Text(
+      "活動消費・平均心拍・歩数は、各運動セッションと同じ時間帯の Health Connect データを集計して表示します。",
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     if (sessions.isEmpty()) {
       Card(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -44,20 +58,49 @@ internal fun ExerciseHistoryCard(
         )
       }
     } else {
-      sessions.forEach { session -> ExerciseSessionCard(session) }
+      sessions.forEachIndexed { index, session ->
+        Row(
+          modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Column(
+            modifier = Modifier.width(20.dp).fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            Box(
+              modifier = Modifier
+                .size(10.dp)
+                .background(MaterialTheme.colorScheme.primary, CircleShape),
+            )
+            if (index < sessions.lastIndex) {
+              Box(
+                modifier = Modifier
+                  .width(2.dp)
+                  .weight(1f)
+                  .background(MaterialTheme.colorScheme.outlineVariant),
+              )
+            }
+          }
+          ExerciseSessionCard(
+            session = session,
+            modifier = Modifier.weight(1f),
+          )
+        }
+      }
     }
   }
 }
 
 @Composable
-private fun ExerciseSessionCard(session: HealthExerciseSessionSummary) {
+private fun ExerciseSessionCard(
+  session: HealthExerciseSessionSummary,
+  modifier: Modifier = Modifier,
+) {
   var expanded by remember(session.startTime, session.endTime) { mutableStateOf(false) }
   val hasDetails = session.notes != null || session.segments.isNotEmpty()
 
   Card(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clickable(enabled = hasDetails) { expanded = !expanded },
+    modifier = modifier.clickable(enabled = hasDetails) { expanded = !expanded },
   ) {
     Column(
       modifier = Modifier.padding(16.dp),
@@ -95,6 +138,13 @@ private fun ExerciseSessionCard(session: HealthExerciseSessionSummary) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
+
+      formatExerciseActivitySummary(session)?.let { activitySummary ->
+        Text(
+          activitySummary,
+          style = MaterialTheme.typography.bodyMedium,
+        )
+      }
 
       Text(
         when {
@@ -145,6 +195,17 @@ private fun ExerciseSegmentRow(segment: HealthExerciseSegmentSummary) {
       )
     }
   }
+}
+
+internal fun formatExerciseActivitySummary(session: HealthExerciseSessionSummary): String? {
+  val values = buildList {
+    session.activeCaloriesKcal?.let {
+      add("活動消費 ${String.format(Locale.getDefault(), "%.0f", it)} kcal")
+    }
+    session.averageHeartRateBpm?.let { add("平均心拍 $it bpm") }
+    session.steps?.let { add("$it 歩") }
+  }
+  return values.takeIf(List<String>::isNotEmpty)?.joinToString("  ・  ")
 }
 
 internal fun formatExerciseSessionTimeRange(

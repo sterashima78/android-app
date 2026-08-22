@@ -4,11 +4,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -145,8 +145,8 @@ private fun HealthContent(
     Metric(if (isDay) "活動消費" else "活動消費合計", formatCalories(state.overview.activeCaloriesKcal), "kcal"),
     Metric(if (isDay) "運動" else "運動合計", formatLong(state.overview.exerciseMinutes), "分"),
     Metric("平均心拍", formatLong(state.overview.averageHeartRateBpm), "bpm"),
-    Metric(if (isDay) "睡眠" else "睡眠合計", formatLong(state.overview.sleepMinutes), "分"),
-    Metric("平均体重", formatWeight(state.overview.averageWeightKg), "kg"),
+    Metric(if (isDay) "睡眠" else "睡眠合計", formatSleepHours(state.overview.sleepMinutes), "時間"),
+    Metric(if (isDay) "体重" else "平均体重", formatWeight(state.overview.averageWeightKg), "kg"),
     Metric("最新体脂肪率", formatBodyFat(latestBodyFatPercentage), "%"),
   )
 
@@ -207,30 +207,47 @@ private fun HealthContent(
         )
       }
     }
-    items(metrics) { metric -> MetricCard(metric) }
+    item {
+      MetricGrid(metrics)
+    }
     if (!isDay) {
       item {
         DailySummaryCard(state.overview.dailySummaries)
       }
     }
-    if (state.period != HealthPeriod.MONTH) {
-      item {
-        ExerciseHistoryCard(state.overview.exerciseSessions)
+    item {
+      if (isDay) {
+        NutritionSummaryCard(state.overview.nutritionDailyIntakes)
+      } else {
+        NutritionHistoryCard(state.overview.nutritionDailyIntakes)
       }
     }
-    item {
-      NutritionHistoryCard(state.overview.nutritionDailyIntakes)
-    }
-    item {
-      BodyFatHistoryChart(state.overview.bodyFatMeasurements)
+    if (!isDay) {
+      item {
+        BodyCompositionHistoryChart(
+          measurements = state.overview.bodyFatMeasurements,
+          dailySummaries = state.overview.dailySummaries,
+          showWeight = state.period == HealthPeriod.WEEK,
+        )
+      }
     }
     item {
       OutlinedButton(
         onClick = onRequestPermissions,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
       ) {
         Text("Health Connect 権限を確認")
       }
+    }
+    if (state.period != HealthPeriod.MONTH) {
+      item {
+        ExerciseHistoryCard(
+          sessions = state.overview.exerciseSessions,
+          modifier = Modifier.padding(bottom = 24.dp),
+        )
+      }
+    } else {
+      item { Spacer(modifier = Modifier.padding(bottom = 12.dp)) }
     }
   }
 }
@@ -314,7 +331,7 @@ private fun DailySummaryCard(summaries: List<DailyHealthSummary>) {
               style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-              "睡眠 ${formatLong(summary.sleepMinutes)} 分  ・  心拍 ${formatLong(summary.averageHeartRateBpm)} bpm  ・  体重 ${formatWeight(summary.averageWeightKg)} kg",
+              "睡眠 ${formatSleepHours(summary.sleepMinutes)} 時間  ・  心拍 ${formatLong(summary.averageHeartRateBpm)} bpm  ・  体重 ${formatWeight(summary.averageWeightKg)} kg",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -328,8 +345,30 @@ private fun DailySummaryCard(summaries: List<DailyHealthSummary>) {
 private data class Metric(val title: String, val value: String, val unit: String)
 
 @Composable
-private fun MetricCard(metric: Metric) {
-  Card(modifier = Modifier.fillMaxWidth()) {
+private fun MetricGrid(metrics: List<Metric>) {
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    metrics.chunked(2).forEach { rowMetrics ->
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        rowMetrics.forEach { metric ->
+          MetricCard(metric = metric, modifier = Modifier.weight(1f))
+        }
+        if (rowMetrics.size == 1) {
+          Spacer(modifier = Modifier.weight(1f))
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun MetricCard(
+  metric: Metric,
+  modifier: Modifier = Modifier,
+) {
+  Card(modifier = modifier) {
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       Text(metric.title, style = MaterialTheme.typography.labelLarge)
       Text(
@@ -379,6 +418,9 @@ private fun formatWeight(value: Double?): String =
   value?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "—"
 
 private fun formatBodyFat(value: Double?): String = value?.let(::formatBodyFatPercentage) ?: "—"
+
+internal fun formatSleepHours(minutes: Long?): String =
+  minutes?.let { String.format(Locale.getDefault(), "%.1f", it / 60.0) } ?: "—"
 
 private val DAY_FORMATTER = DateTimeFormatter.ofPattern("yyyy年M月d日(E)", Locale.JAPANESE)
 private val SHORT_DATE_FORMATTER = DateTimeFormatter.ofPattern("M/d(E)", Locale.JAPANESE)

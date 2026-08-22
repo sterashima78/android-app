@@ -82,7 +82,11 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
         timeRangeFilter = timeRange,
       ),
     )
-    val exerciseSessions = readExerciseSessions(timeRange)
+    val includeExerciseActivityMetrics = Duration.between(startTime, endTime) <= Duration.ofDays(8)
+    val exerciseSessions = readExerciseSessions(
+      timeRange = timeRange,
+      includeActivityMetrics = includeExerciseActivityMetrics,
+    )
     return HealthOverview(
       steps = aggregation[StepsRecord.COUNT_TOTAL],
       activeCaloriesKcal = aggregation[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
@@ -169,7 +173,10 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       .toList()
   }
 
-  private suspend fun readExerciseSessions(timeRange: TimeRangeFilter): List<HealthExerciseSessionSummary> {
+  private suspend fun readExerciseSessions(
+    timeRange: TimeRangeFilter,
+    includeActivityMetrics: Boolean,
+  ): List<HealthExerciseSessionSummary> {
     val sessions = mutableListOf<ExerciseSessionCandidate>()
     var pageToken: String? = null
     do {
@@ -207,8 +214,31 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       }
       pageToken = response.pageToken
     } while (pageToken != null)
-    return deduplicateExerciseSessions(sessions)
+
+    val orderedSessions = deduplicateExerciseSessions(sessions)
       .sortedByDescending(HealthExerciseSessionSummary::startTime)
+    return if (includeActivityMetrics) {
+      orderedSessions.map { session -> enrichExerciseSessionActivity(session) }
+    } else {
+      orderedSessions
+    }
+  }
+
+  private suspend fun enrichExerciseSessionActivity(
+    session: HealthExerciseSessionSummary,
+  ): HealthExerciseSessionSummary {
+    if (session.startTime >= session.endTime) return session
+    val aggregation = client.aggregate(
+      AggregateRequest(
+        metrics = EXERCISE_ACTIVITY_METRICS,
+        timeRangeFilter = TimeRangeFilter.between(session.startTime, session.endTime),
+      ),
+    )
+    return session.copy(
+      activeCaloriesKcal = aggregation[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
+      averageHeartRateBpm = aggregation[HeartRateRecord.BPM_AVG],
+      steps = aggregation[StepsRecord.COUNT_TOTAL],
+    )
   }
 
   private suspend fun readBodyFatMeasurements(timeRange: TimeRangeFilter): List<BodyFatMeasurement> {
@@ -310,6 +340,12 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       HeartRateRecord.BPM_AVG,
       SleepSessionRecord.SLEEP_DURATION_TOTAL,
       WeightRecord.WEIGHT_AVG,
+    )
+
+    private val EXERCISE_ACTIVITY_METRICS: Set<AggregateMetric<*>> = setOf(
+      ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
+      HeartRateRecord.BPM_AVG,
+      StepsRecord.COUNT_TOTAL,
     )
   }
 }
