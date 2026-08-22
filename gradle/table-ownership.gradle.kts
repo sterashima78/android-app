@@ -33,6 +33,27 @@ fun referencedDatabaseTables(sourceText: String): Set<String> {
   return tables
 }
 
+fun createdDatabaseTables(sourceText: String): Set<String> {
+  val constants = Regex(
+    """(?m)^\s*(?:(?:private|internal|public)\s+)?const\s+val\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"([A-Za-z_][A-Za-z0-9_]*)\"""",
+  ).findAll(sourceText).associate { match -> match.groupValues[1] to match.groupValues[2].lowercase() }
+
+  val tables = linkedSetOf<String>()
+  val createPattern = Regex(
+    """CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(?:\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?|[`\"]?([A-Za-z_][A-Za-z0-9_]*))""",
+    RegexOption.IGNORE_CASE,
+  )
+  createPattern.findAll(sourceText).forEach { match ->
+    val constantName = match.groupValues[1]
+    val literalName = match.groupValues[2]
+    when {
+      constantName.isNotBlank() -> constants[constantName]?.let(tables::add)
+      literalName.isNotBlank() -> tables += literalName.lowercase()
+    }
+  }
+  return tables
+}
+
 gradle.projectsEvaluated {
   val root = gradle.rootProject
   val tableOwners: Map<String, String> =
@@ -60,6 +81,18 @@ gradle.projectsEvaluated {
     }
   }
 
+  fun createdTableViolations(
+    projectPath: String,
+    repositoryPath: String,
+    sourceText: String,
+  ): List<String> = createdDatabaseTables(sourceText).mapNotNull { table ->
+    when (val owner = tableOwners[table]) {
+      null -> "durable table '$table' must be registered in table-ownership.tsv: $repositoryPath"
+      projectPath -> null
+      else -> "durable table '$table' is created by $projectPath but registered to $owner: $repositoryPath"
+    }
+  }
+
   val fixtureViolation = foreignTableViolations(
     projectPath = ":feature:article:data",
     repositoryPath = "feature/article/data/src/main/kotlin/example/Fixture.kt",
@@ -78,6 +111,17 @@ gradle.projectsEvaluated {
     throw GradleException("Table ownership rule fixture rejected owner access: $ownerFixture")
   }
 
+  val createFixture = createdDatabaseTables(
+    """
+      private const val TABLE = "fixture_table"
+      db.execSQL("CREATE TABLE IF NOT EXISTS ${'$'}TABLE(id TEXT PRIMARY KEY)")
+      db.execSQL("CREATE TABLE IF NOT EXISTS literal_table(id TEXT PRIMARY KEY)")
+    """.trimIndent(),
+  )
+  if (createFixture != setOf("fixture_table", "literal_table")) {
+    throw GradleException("Table ownership create-table fixture failed: $createFixture")
+  }
+
   val violations = mutableListOf<String>()
   root.subprojects
     .filter { it.path.startsWith(":feature:") && it.path.endsWith(":data") }
@@ -90,10 +134,16 @@ gradle.projectsEvaluated {
           .sortedBy { it.path }
           .forEach { sourceFile ->
             val repositoryPath = sourceFile.relativeTo(root.rootDir).path.replace('\\', '/')
+            val sourceText = sourceFile.readText()
             violations += foreignTableViolations(
               projectPath = project.path,
               repositoryPath = repositoryPath,
-              sourceText = sourceFile.readText(),
+              sourceText = sourceText,
+            )
+            violations += createdTableViolations(
+              projectPath = project.path,
+              repositoryPath = repositoryPath,
+              sourceText = sourceText,
             )
           }
       }
@@ -124,7 +174,7 @@ gradle.projectsEvaluated {
       buildString {
         appendLine("Table ownership verification failed (${violations.size} violation(s)):")
         violations.sorted().forEach { appendLine("- $it") }
-        append("See docs/adr/0106-domain-context-aggregate-and-persistence-ownership.md.")
+        append("See docs/architecture/persistence.md.")
       },
     )
   }
