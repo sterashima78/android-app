@@ -37,17 +37,7 @@ fun LibraryFeatureRoute(
   val organizationState by organizationViewModel.state.collectAsState()
   var organizationVisible by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
-  val booksBySourceId = remember(state.books, state.hiddenBooks) {
-    (state.books + state.hiddenBooks)
-      .filter { it.source == LibrarySource.SMB }
-      .associateBy(LibraryBook::sourceId)
-  }
-  val libraryUriHandler = remember(context, booksBySourceId, onOpenSmbBook) {
-    LibraryUriHandler(context) { sourceId ->
-      booksBySourceId[sourceId]?.let(onOpenSmbBook)
-        ?: Toast.makeText(context, "SMB書籍が見つかりません", Toast.LENGTH_LONG).show()
-    }
-  }
+  val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
   val webLibraryImportHandler = remember(viewModel) {
     { source: LibrarySource, json: String -> viewModel.importAmazonLibraryJson(source, json) }
   }
@@ -87,6 +77,7 @@ fun LibraryFeatureRoute(
       modifier = modifier.fillMaxSize(),
       state = state,
       onSyncGooglePlayBooks = onSyncGooglePlayBooks,
+      onOpenSmbBook = onOpenSmbBook,
       onHideBook = viewModel::hideBook,
       onRestoreBook = viewModel::restoreBook,
       onSetBookSeries = viewModel::setBookSeries,
@@ -118,15 +109,9 @@ fun LibraryFeatureRoute(
 
 private class LibraryUriHandler(
   private val context: Context,
-  private val onOpenSmbBook: (String) -> Unit,
 ) : UriHandler {
   override fun openUri(uri: String) {
     val parsedUri = Uri.parse(uri)
-    if (isSmbBookOpenUri(parsedUri)) {
-      val sourceId = parsedUri.getQueryParameter("sourceId")?.trim().orEmpty()
-      if (sourceId.isNotEmpty()) onOpenSmbBook(sourceId)
-      return
-    }
     if (isKindlePersonalDocumentOpenUri(parsedUri)) {
       openKindlePersonalDocument(parsedUri)
       return
@@ -233,9 +218,6 @@ private class LibraryUriHandler(
     false
   }
 }
-
-private fun isSmbBookOpenUri(uri: Uri): Boolean =
-  uri.scheme == "yomitori" && uri.host == "smb-book" && uri.path == "/open"
 
 private fun isKindlePersonalDocumentOpenUri(uri: Uri): Boolean =
   uri.scheme == "yomitori" && uri.host == "kindle-personal-document" && uri.path == "/open"
