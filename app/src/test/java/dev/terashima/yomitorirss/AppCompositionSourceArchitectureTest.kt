@@ -56,4 +56,30 @@ class AppCompositionSourceArchitectureTest {
       Regex("(?m)^import (?:android\\.|androidx\\.compose\\.)").containsMatchIn(source),
     )
   }
+
+  @Test
+  fun `app compositionはactive tab判定より前にfeature ViewModelを生成しない`() {
+    assertNoViewModelBeforeTabDispatch(
+      path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppFeatureContent.kt",
+      functionMarker = "internal fun AppFeatureContent(",
+    )
+    assertNoViewModelBeforeTabDispatch(
+      path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppTopBarRoute.kt",
+      functionMarker = "internal fun AppTopBarRoute(",
+    )
+    assertNoViewModelBeforeTabDispatch(
+      path = "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
+      functionMarker = "internal fun FeatureMessageEffects(",
+    )
+  }
+
+  private fun assertNoViewModelBeforeTabDispatch(path: String, functionMarker: String) {
+    val source = File(repositoryRoot, path).readText()
+    val function = source.substringAfter(functionMarker)
+    val beforeDispatch = function.substringBefore("when (selectedTab)")
+    assertFalse(
+      "$path must dispatch by selectedTab before resolving feature ViewModels",
+      Regex("=\\s*viewModel\\(").containsMatchIn(beforeDispatch),
+    )
+  }
 }
