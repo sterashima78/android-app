@@ -14,9 +14,9 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
-import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.mail.MailAuthorizationRequiredException
+import dev.terashima.yomitorirss.feature.mail.MailInitialSyncStep
+import dev.terashima.yomitorirss.feature.mail.MailRepositoryProvider
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -110,12 +110,8 @@ class MailSyncWorker(
     val initialSync = inputData.getBoolean(INPUT_INITIAL_SYNC, false)
     if (!initialSync && !isBackgroundDataFetchAllowed(applicationContext)) return Result.success()
 
-    val database = YomitoriDatabase.create(applicationContext)
-    val repository = DefaultMailRepository(
-      context = applicationContext,
-      database = DatabaseConnection(database),
-      authorization = GmailAuthorizationManager(applicationContext),
-    )
+    val repository = (applicationContext as? MailRepositoryProvider)?.mailRepository
+      ?: error("メールリポジトリの初期化状態を取得できませんでした")
     val accountId = inputData.getString(INPUT_ACCOUNT_ID)
     return try {
       if (initialSync) {
@@ -126,12 +122,12 @@ class MailSyncWorker(
           null
         }
         when (val step = repository.syncInitialPage(accountId, expectedPageToken)) {
-          is InitialSyncStep.Continue -> {
+          is MailInitialSyncStep.Continue -> {
             MailSyncScheduler(applicationContext).scheduleInitialPage(accountId, step.nextPageToken)
             Result.success()
           }
-          InitialSyncStep.Complete -> Result.success()
-          InitialSyncStep.Stale -> {
+          MailInitialSyncStep.Complete -> Result.success()
+          MailInitialSyncStep.Stale -> {
             // The previous attempt may have persisted its next checkpoint and been interrupted
             // before enqueueing the continuation. Reconcile from the durable DB state here.
             repository.sync(accountId)
@@ -169,8 +165,6 @@ class MailSyncWorker(
         repository.markInitialSyncError(accountId, error.message ?: "Gmail の同期に失敗しました")
       }
       Result.failure()
-    } finally {
-      database.close()
     }
   }
 }
