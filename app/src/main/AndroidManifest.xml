@@ -49,6 +49,21 @@
       </intent-filter>
     </activity>
 
+    <activity
+      android:name=".LibraryShareActivity"
+      android:excludeFromRecents="true"
+      android:exported="true"
+      android:label="@string/share_to_library"
+      android:noHistory="true"
+      android:screenOrientation="portrait"
+      android:theme="@style/Theme.Yomitori">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/plain" />
+      </intent-filter>
+    </activity>
+
     <receiver
       android:name="dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider"
       android:exported="false">
@@ -75,11 +90,6 @@
         android:name="android.appwidget.provider"
         android:resource="@xml/task_widget_info" />
     </receiver>
-
-    <service
-      android:name="dev.terashima.yomitorirss.feature.widget.TaskWidgetService"
-      android:exported="false"
-      android:permission="android.permission.BIND_REMOTEVIEWS" />
 
     <service
       android:name="dev.terashima.yomitorirss.feature.web.data.LanWebServerService"
