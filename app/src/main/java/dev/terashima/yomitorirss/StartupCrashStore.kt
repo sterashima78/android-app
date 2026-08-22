@@ -32,20 +32,22 @@ object StartupCrashStore {
 
   fun record(context: Context, threadName: String, throwable: Throwable) {
     runCatching {
-      val report = buildString {
-        appendLine("Mosaic crash report")
-        appendLine("timestamp=${Instant.now()}")
-        appendLine("version=${BuildConfig.VERSION_NAME}")
-        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
-        appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
-        appendLine("sdk=${Build.VERSION.SDK_INT}")
-        appendLine("release=${Build.VERSION.RELEASE}")
-        appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
-        appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
-        appendLine("thread=$threadName")
-        appendLine()
-        append(redactCrashDetails(throwable.stackTraceToString()))
-      }
+      val report = sanitizeCrashDetails(
+        buildString {
+          appendLine("Mosaic crash report")
+          appendLine("timestamp=${Instant.now()}")
+          appendLine("version=${BuildConfig.VERSION_NAME}")
+          appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+          appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
+          appendLine("sdk=${Build.VERSION.SDK_INT}")
+          appendLine("release=${Build.VERSION.RELEASE}")
+          appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
+          appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
+          appendLine("thread=$threadName")
+          appendLine()
+          append(throwable.stackTraceToString())
+        },
+      )
       preferences(context).edit().putString(REPORT_KEY, report).commit()
     }
   }
@@ -76,30 +78,32 @@ object StartupCrashStore {
         .maxByOrNull { it.timestamp }
         ?: return@runCatching
 
-      val report = buildString {
-        appendLine("Mosaic process exit report")
-        appendLine("timestamp=${Instant.ofEpochMilli(memoryExit.timestamp)}")
-        appendLine("version=${BuildConfig.VERSION_NAME}")
-        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
-        appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
-        appendLine("sdk=${Build.VERSION.SDK_INT}")
-        appendLine("release=${Build.VERSION.RELEASE}")
-        appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
-        appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
-        appendLine("reason=${memoryExit.reason}")
-        appendLine("status=${memoryExit.status}")
-        appendLine("importance=${memoryExit.importance}")
-        appendLine("pssKb=${memoryExit.pss}")
-        appendLine("rssKb=${memoryExit.rss}")
-        memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
-          appendLine("description=${redactCrashDetails(description)}")
-        }
-        LocalAiMemoryDiagnostics.recentVisionInferenceReport(application)?.let { diagnostics ->
-          appendLine()
-          appendLine("localAiMemoryDiagnostics:")
-          append(diagnostics)
-        }
-      }
+      val report = sanitizeCrashDetails(
+        buildString {
+          appendLine("Mosaic process exit report")
+          appendLine("timestamp=${Instant.ofEpochMilli(memoryExit.timestamp)}")
+          appendLine("version=${BuildConfig.VERSION_NAME}")
+          appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+          appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
+          appendLine("sdk=${Build.VERSION.SDK_INT}")
+          appendLine("release=${Build.VERSION.RELEASE}")
+          appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
+          appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
+          appendLine("reason=${memoryExit.reason}")
+          appendLine("status=${memoryExit.status}")
+          appendLine("importance=${memoryExit.importance}")
+          appendLine("pssKb=${memoryExit.pss}")
+          appendLine("rssKb=${memoryExit.rss}")
+          memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
+            appendLine("description=$description")
+          }
+          LocalAiMemoryDiagnostics.recentVisionInferenceReport(application)?.let { diagnostics ->
+            appendLine()
+            appendLine("localAiMemoryDiagnostics:")
+            append(diagnostics)
+          }
+        },
+      )
       preferences.edit().putString(REPORT_KEY, report).commit()
     }
   }
@@ -111,8 +115,3 @@ object StartupCrashStore {
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
     description?.contains("MemoryLimiter", ignoreCase = true) == true
-
-internal fun redactCrashDetails(value: String): String =
-  SMB_BOOK_URI_PATTERN.replace(value, "yomitori://smb-book/open?[redacted]")
-
-private val SMB_BOOK_URI_PATTERN = Regex("""yomitori://smb-book/open\?[^\s}]+""")
