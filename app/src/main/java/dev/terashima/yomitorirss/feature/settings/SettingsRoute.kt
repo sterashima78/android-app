@@ -6,16 +6,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
-import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 
 @Composable
 fun SettingsScreen(
   modifier: Modifier,
   aiTaskQueueRepository: AiTaskQueueRepository,
+  initialBackgroundFetchWifiOnly: Boolean,
+  onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenDriveBackup: () -> Unit,
@@ -23,22 +22,12 @@ fun SettingsScreen(
   onImportBackup: () -> Unit,
   onOpenWebServer: () -> Unit,
 ) {
-  val context = LocalContext.current
-  val backgroundDataFetchPreferences = remember(context) {
-    BackgroundDataFetchPreferences(context)
-  }
-  val initialBackgroundFetchWifiOnly = remember(backgroundDataFetchPreferences) {
-    backgroundDataFetchPreferences.wifiOnly
-  }
   var showAiTaskQueue by remember { mutableStateOf(false) }
 
   SettingsFeatureScreen(
     modifier = modifier,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
-    onBackgroundFetchWifiOnlyChange = { wifiOnly ->
-      backgroundDataFetchPreferences.wifiOnly = wifiOnly
-      MailSyncScheduler(context).refreshPeriodicNetworkPolicy()
-    },
+    onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     onOpenModels = onOpenModels,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     onOpenAiTaskQueue = { showAiTaskQueue = true },
