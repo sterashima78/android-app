@@ -167,6 +167,8 @@ internal fun AppFeatureContent(
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
       aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
+      initialBackgroundFetchWifiOnly = routeDependencies.backgroundFetchWifiOnly(),
+      onBackgroundFetchWifiOnlyChange = routeDependencies::setBackgroundFetchWifiOnly,
       onOpenWebServer = onOpenWebServer,
       onNavigate = appViewModel::selectTab,
     )
