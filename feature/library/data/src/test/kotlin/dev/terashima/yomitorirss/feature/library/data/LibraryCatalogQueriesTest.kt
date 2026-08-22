@@ -27,7 +27,7 @@ class LibraryCatalogQueriesTest {
   @Before
   fun setUp() {
     context = ApplicationProvider.getApplicationContext()
-    context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    context.deleteDatabase(TEST_DATABASE_NAME)
     database = YomitoriDatabase.create(
       context,
       DatabaseSchema(version = 1, contributions = emptyList()),
@@ -38,7 +38,7 @@ class LibraryCatalogQueriesTest {
   @After
   fun tearDown() {
     database.close()
-    context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    context.deleteDatabase(TEST_DATABASE_NAME)
   }
 
   @Test
@@ -105,4 +105,8 @@ class LibraryCatalogQueriesTest {
     "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
     arrayOf(name),
   ).use { it.moveToFirst() }
+
+  private companion object {
+    const val TEST_DATABASE_NAME = "yomitori-rss.db"
+  }
 }
