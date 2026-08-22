@@ -10,7 +10,7 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFails
+import org.junit.Assert.fail
 import org.junit.Test
 
 class BookmarkLibraryTransferServiceTest {
@@ -29,7 +29,12 @@ class BookmarkLibraryTransferServiceTest {
     val events = mutableListOf<String>()
     val service = service(events = events, failLibraryAdd = true)
 
-    assertFails { runBlocking { service.moveBookmarkToLibrary(article()) } }
+    try {
+      service.moveBookmarkToLibrary(article())
+      fail("蔵書追加失敗を通知する必要があります")
+    } catch (_: IllegalStateException) {
+      // Expected: source bookmark must remain untouched.
+    }
 
     assertEquals(listOf("library:add"), events)
   }
