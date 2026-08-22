@@ -7,19 +7,17 @@ import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
-import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependenciesProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-class SummaryContentFetchWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-  private val runtime: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.NONE) {
-    (applicationContext as? SummaryRuntimeDependenciesProvider)?.summaryRuntimeDependencies
-      ?: error("Application must provide SummaryRuntimeDependencies")
-  }
-
+class SummaryContentFetchWorker(
+  appContext: Context,
+  params: WorkerParameters,
+  private val runtime: SummaryRuntimeDependencies,
+) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     return withContext(Dispatchers.IO) {

@@ -52,7 +52,3 @@ interface MailRepository {
 
   suspend fun applyLabel(accountId: String, threadId: String, labelId: String)
 }
-
-interface MailRepositoryProvider {
-  val mailRepository: MailRepository
-}

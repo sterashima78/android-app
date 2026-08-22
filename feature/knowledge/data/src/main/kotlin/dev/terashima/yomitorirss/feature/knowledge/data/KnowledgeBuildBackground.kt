@@ -10,9 +10,11 @@ import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
+import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.await
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
@@ -20,7 +22,7 @@ import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskSnapshot
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskState
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -169,6 +171,7 @@ internal class KnowledgeBuildResumeOnChargingWorker(
 internal class KnowledgeBuildWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val knowledgeBuilder: KnowledgeBuilder,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     val state = KnowledgeBuildQueueStateStore(applicationContext)
@@ -183,9 +186,7 @@ internal class KnowledgeBuildWorker(
           return@withPermit Result.success()
         }
 
-        val provider = applicationContext as? KnowledgeRepositoryProvider
-          ?: error("ナレッジリポジトリの初期化状態を取得できませんでした")
-        provider.knowledgeBuilder.rebuild()
+        knowledgeBuilder.rebuild()
         state.complete()
         Result.success()
       }
@@ -242,6 +243,21 @@ internal class KnowledgeBuildWorker(
     const val CHANNEL_ID = "knowledge_ai_generation"
     const val NOTIFICATION_ID = 8770
   }
+}
+
+class KnowledgeWorkerFactory(
+  private val knowledgeBuilderProvider: () -> KnowledgeBuilder,
+) : WorkerFactory() {
+  override fun createWorker(
+    appContext: Context,
+    workerClassName: String,
+    workerParameters: WorkerParameters,
+  ): ListenableWorker? =
+    if (workerClassName == KnowledgeBuildWorker::class.java.name) {
+      KnowledgeBuildWorker(appContext, workerParameters, knowledgeBuilderProvider())
+    } else {
+      null
+    }
 }
 
 private fun Throwable.userMessage(): String =

@@ -9,8 +9,3 @@ data class SummaryRuntimeDependencies(
   val bookmarkContentQuery: BookmarkContentQuery,
   val bookmarkEnrichmentRepository: BookmarkEnrichmentRepository,
 )
-
-/** WorkManager-owned Summary entry points resolve these domain contracts from Application. */
-interface SummaryRuntimeDependenciesProvider {
-  val summaryRuntimeDependencies: SummaryRuntimeDependencies
-}
