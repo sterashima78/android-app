@@ -67,16 +67,16 @@ class MainActivity : ComponentActivity() {
     setContent {
       YomitoriTheme {
         var showWebServer by remember { mutableStateOf(false) }
+        var webServerPermissionError by remember { mutableStateOf<String?>(null) }
         val lanServerState by dependencies.lanWebServerController.state.collectAsState()
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
           ActivityResultContracts.RequestPermission(),
         ) { granted ->
           if (granted) {
+            webServerPermissionError = null
             dependencies.lanWebServerController.start()
           } else {
-            dependencies.lanWebServerController.reportError(
-              "通知を許可しないとWebサーバを起動できません。",
-            )
+            webServerPermissionError = "通知を許可しないとWebサーバを起動できません。"
           }
         }
 
@@ -84,15 +84,21 @@ class MainActivity : ComponentActivity() {
           appViewModel = appViewModel,
           routeDependencies = dependencies.routeDependencies,
           onOpenArticle = ::openArticle,
-          onOpenWebServer = { showWebServer = true },
+          onOpenWebServer = {
+            webServerPermissionError = null
+            showWebServer = true
+          },
           onExitApp = ::finish,
         )
 
         if (showWebServer) {
           WebServerDialog(
-            state = lanServerState,
+            state = lanServerState.copy(
+              error = webServerPermissionError ?: lanServerState.error,
+            ),
             onDismiss = { showWebServer = false },
             onStart = {
+              webServerPermissionError = null
               if (
                 ContextCompat.checkSelfPermission(
                   this,
@@ -104,7 +110,10 @@ class MainActivity : ComponentActivity() {
                 dependencies.lanWebServerController.start()
               }
             },
-            onStop = dependencies.lanWebServerController::stop,
+            onStop = {
+              webServerPermissionError = null
+              dependencies.lanWebServerController.stop()
+            },
           )
         }
       }
