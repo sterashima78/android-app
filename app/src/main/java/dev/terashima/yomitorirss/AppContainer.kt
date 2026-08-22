@@ -45,13 +45,6 @@ import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeGenerati
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.ManagingKnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.SqlKnowledgePageStore
-import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
-import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
-import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
-import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
@@ -90,6 +83,11 @@ class AppContainer(private val application: Application) {
   }
   internal val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseConnection(database)
+  }
+  internal val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    AppFeatureRuntimeDependencies(application, databaseConnection)
   }
   val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkContentQuery(databaseConnection)
@@ -287,16 +285,16 @@ class AppContainer(private val application: Application) {
   val knowledgePageEditor: KnowledgePageEditor get() = knowledgeGenerationService
 
   val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val smbRepository = CleaningSmbLibraryRepository(application, databaseConnection)
-    val smbMetadataRepository = DefaultSmbMetadataNormalizationRepository(databaseConnection, smbRepository)
+    val runtime = featureRuntimeDependencies
+    val library = runtime.library
     CompositeAiTaskQueueRepository(
       summaryRepository = summaryTaskQueueRepository,
-      libraryRepository = DefaultLibraryOrganizationRepository(databaseConnection),
-      libraryCatalogRepository = SmbMetadataAwareLibraryRepository(databaseConnection),
-      libraryScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
-      knowledgeController = WorkManagerKnowledgeBuildTaskController(application),
-      smbMetadataNormalizationRepository = smbMetadataRepository,
-      smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application),
+      libraryRepository = library.organizationRepository,
+      libraryCatalogRepository = library.catalogRepository,
+      libraryScheduler = library.organizationBatchScheduler,
+      knowledgeController = runtime.knowledgeBuildTaskController,
+      smbMetadataNormalizationRepository = library.smbMetadataNormalizationRepository,
+      smbMetadataNormalizationScheduler = library.smbMetadataNormalizationScheduler,
     )
   }
 }
