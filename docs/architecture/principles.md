@@ -103,19 +103,21 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel は `AppViewModel` を除いて所有しない。
 - `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
-- Android / WorkManager が constructor を所有する Activity、Worker、Service、AppWidgetProvider 等の framework entry point だけ、明示された Provider contract を利用できる。
+- Android が直接生成する Activity、Service、AppWidgetProvider 等で constructor injection を差し込めない entry point に限り、監査済みの narrow Provider contract を利用できる。
+- WorkManager Worker が application-scope dependency を必要とする場合は、owning feature data module の `WorkerFactory` から constructor injection する。Worker 自身は `Application as? ...Provider` lookup を行わない。
+- feature-owned `WorkerFactory` は dependency の concrete implementation を構築せず、`:app` の application worker factory が `AppContainer` の既存 graph と接続する。
 - framework entry point 用 Provider は既存 application scope graph への接続に限定し、任意の dependency を取得する service locator として拡張しない。
 - `YomitoriApplication` implementation type への直接 cast は行わない。
 
 LAN Web Server では `MainActivity` は notification permission と dialog presentation を所有する一方、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。
 
-Mail Worker は `MailRepositoryProvider` を介して application scope の `MailRepository` graph を再利用する。Worker 内に parallel database / Repository graph を作らない。
+Mail Worker は `MailWorkerFactory` から application scope の `MailRepository` を constructor injection される。Worker 内で database / Repository graph を別構築しない。
 
 ## Background runtime ownership
 
-feature 固有の Worker、scheduler/controller、queue-state interpretation は owning feature の data/runtime 側に置く。`:app` には feature 固有 background business logic や compatibility Worker を置かない。
+feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state interpretation は owning feature の data/runtime 側に置く。`:app` には feature 固有 background business logic や compatibility Worker を置かず、application worker factory では feature factory と application-scope dependency graph の接続だけを行う。
 
-framework が class identity を永続化する background job 互換は現在配布中の最新版からの更新範囲で維持し、過去の app package FQCN を参照する WorkManager request のための shim は恒久保持しない。将来 Worker class を移動し互換性対応が必要になった場合は、対象期間と終了条件を ADR で明示する。
+現在の互換性基準は最新版アプリからの更新であり、過去の app package FQCN を参照する WorkManager request のための shim は維持しない。将来 Worker class を移動し互換性対応が必要になった場合は、対象期間と終了条件を ADR で明示する。依存注入方式だけを変更する場合も enqueue 済み request が参照する Worker FQCN は維持する。
 
 ## Compatibility baseline
 
@@ -139,11 +141,13 @@ framework が class identity を永続化する background job 互換は現在�
 - durable table ownership / created-table registration / app UI composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
 - durable table manifest: `config/architecture/table-ownership.tsv`
 - transitional foreign access: `config/architecture/foreign-table-access-allowlist.tsv`
-- framework provider exception: `config/architecture/framework-provider-lookups.tsv`
+- Android 直生成 entry point の framework provider exception: `config/architecture/framework-provider-lookups.tsv`
 - ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
 - public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
 
 `verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
+
+`FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
 
 Architecture job の init script は `:app` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
@@ -171,5 +175,6 @@ App composition の active-tab ViewModel activation は `AppCompositionSourceArc
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
-- [ADR-0146](../adr/0146-active-tab-viewmodel-activation.md)
-- [ADR-0147](../adr/0147-retire-local-model-revision-marker-migration.md)
+- [ADR-0146](../adr/0146-workmanager-worker-factory-injection.md)
+- [ADR-0147](../adr/0147-active-tab-viewmodel-activation.md)
+- [ADR-0148](../adr/0148-retire-local-model-revision-marker-migration.md)
