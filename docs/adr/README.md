@@ -87,6 +87,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0104: AI task queue feature ownership](0104-ai-task-queue-feature-ownership.md)
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
+- [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
 
 ### Content / summary / knowledge
 
