@@ -138,13 +138,23 @@ CI の Architecture job は `gradle/table-ownership.gradle.kts` を init script 
 
 `MailRouteHost.kt` 相当の concrete data import と API 29 module を fixture として持ち、guardrail 自体が退行しないことも固定する。
 
-### Framework provider boundary
+### Framework provider / WorkerFactory boundary
 
-Provider lookup は framework-owned entry point に限定し、manifest と production lookup の集合を architecture test で一致させる。不要になった manifest entry も stale として削除する。
+Application への Provider lookup は Android が直接生成し constructor injection を差し込めない entry point に限定し、`config/architecture/framework-provider-lookups.tsv` と production lookup の集合を `FrameworkProviderBoundaryTest` で一致させる。不要になった manifest entry は stale として削除する。
 
-LAN Web Server の Android Service は framework-owned entry point として `LanWebRepositoryProvider` を利用するが、Activity から Service implementation を直接参照しない。Activity は injected `LanWebServerController` contract を利用する。
+LAN Web Server の Android Service は `LanWebRepositoryProvider` を利用するが、Activity から Service implementation を直接参照しない。Activity は injected `LanWebServerController` contract を利用する。
 
-Mail Worker は framework-owned entry point として `MailRepositoryProvider` を利用し、application scope の既存 `MailRepository` graph へ接続する。Worker 内に parallel database / Repository graph を作らない。
+WorkManager Worker は Provider lookup の例外に含めない。application-scope dependency は owning feature data module の `WorkerFactory` から constructor injection し、`:app` の `DelegatingWorkerFactory` が feature factory を `AppContainer` graph へ接続する。Worker 内に parallel database / Repository graph を作らず、`Application as? ...Provider` lookup も行わない。
+
+`FrameworkProviderBoundaryTest` は次を固定する。
+
+- Android 直生成 entry point の Provider lookup と監査 manifest が完全一致すること
+- WorkManager Worker source に Provider cast がないこと
+- `YomitoriApplication` が `Configuration.Provider` を実装すること
+- application WorkManager configuration が custom WorkerFactory を登録すること
+- default `WorkManagerInitializer` が manifest merge で削除されること
+
+Application startup smoke test は `YomitoriApplication.onCreate()` から WorkManager を使う backfill schedule を通すため、custom WorkManager configuration の初期化経路も回帰検査する。
 
 ### ADR integrity
 
@@ -209,6 +219,7 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | app composition projection split | pure projection unit test + source architecture regression |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
 | module map update | module-map verifier unit test + consistency verification |
+| WorkManager dependency injection | WorkerFactory boundary test + startup smoke + affected Worker behavior tests |
 | new table ownership rule | table ownership manifest/fixture + verification |
 | Android platform baseline | architecture fixture + all module `minSdk` verification |
 | framework Provider exception | boundary manifest/test |
@@ -233,3 +244,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
+- [ADR-0146](../adr/0146-workmanager-worker-factory-injection.md)

@@ -6,17 +6,19 @@ import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ListenableWorker
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.feature.mail.MailAuthorizationRequiredException
 import dev.terashima.yomitorirss.feature.mail.MailInitialSyncStep
-import dev.terashima.yomitorirss.feature.mail.MailRepositoryProvider
+import dev.terashima.yomitorirss.feature.mail.MailRepository
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -105,13 +107,12 @@ class MailSyncScheduler(context: Context) {
 class MailSyncWorker(
   appContext: Context,
   workerParams: WorkerParameters,
+  private val repository: MailRepository,
 ) : CoroutineWorker(appContext, workerParams) {
   override suspend fun doWork(): Result {
     val initialSync = inputData.getBoolean(INPUT_INITIAL_SYNC, false)
     if (!initialSync && !isBackgroundDataFetchAllowed(applicationContext)) return Result.success()
 
-    val repository = (applicationContext as? MailRepositoryProvider)?.mailRepository
-      ?: error("メールリポジトリの初期化状態を取得できませんでした")
     val accountId = inputData.getString(INPUT_ACCOUNT_ID)
     return try {
       if (initialSync) {
@@ -167,4 +168,19 @@ class MailSyncWorker(
       Result.failure()
     }
   }
+}
+
+class MailWorkerFactory(
+  private val repositoryProvider: () -> MailRepository,
+) : WorkerFactory() {
+  override fun createWorker(
+    appContext: Context,
+    workerClassName: String,
+    workerParameters: WorkerParameters,
+  ): ListenableWorker? =
+    if (workerClassName == MailSyncWorker::class.java.name) {
+      MailSyncWorker(appContext, workerParameters, repositoryProvider())
+    } else {
+      null
+    }
 }

@@ -38,6 +38,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0142: app Route の presentation ownership と Task widget 更新境界を整理する](0142-app-route-and-task-widget-ownership-cleanup.md)
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
+- [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 
 ### Domain / Context / persistence
 
@@ -65,6 +66,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
+- [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 
 ### Health
 
@@ -101,6 +103,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
+- [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 
 ### Content / summary / knowledge
 

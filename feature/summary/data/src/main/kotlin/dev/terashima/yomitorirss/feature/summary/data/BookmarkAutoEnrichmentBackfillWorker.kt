@@ -7,7 +7,6 @@ import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentBackfillProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -27,17 +26,16 @@ object BookmarkAutoEnrichmentBackfillScheduler {
 class BookmarkAutoEnrichmentBackfillWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val runBackfill: suspend () -> Unit,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result = runBookmarkAutoEnrichmentBackfillWorker(applicationContext)
+  override suspend fun doWork(): Result = runBookmarkAutoEnrichmentBackfillWorker(runBackfill)
 }
 
-suspend fun runBookmarkAutoEnrichmentBackfillWorker(context: Context): ListenableWorker.Result =
-  withContext(Dispatchers.IO) {
-    val provider = context.applicationContext as? BookmarkAutoEnrichmentBackfillProvider
-      ?: return@withContext ListenableWorker.Result.failure()
-
-    runCatching { provider.runBookmarkAutoEnrichmentBackfill() }.fold(
-      onSuccess = { ListenableWorker.Result.success() },
-      onFailure = { ListenableWorker.Result.retry() },
-    )
-  }
+suspend fun runBookmarkAutoEnrichmentBackfillWorker(
+  runBackfill: suspend () -> Unit,
+): ListenableWorker.Result = withContext(Dispatchers.IO) {
+  runCatching { runBackfill() }.fold(
+    onSuccess = { ListenableWorker.Result.success() },
+    onFailure = { ListenableWorker.Result.retry() },
+  )
+}
