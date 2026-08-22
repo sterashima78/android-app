@@ -52,19 +52,19 @@ class ExerciseSessionMappingTest {
 
   @Test
   fun `提供元ごとに時刻と種別が少し異なる同一運動は一件にまとめる`() {
-    val detailedWorkout = session("2026-08-21T09:23:00Z", "2026-08-21T09:46:31Z").copy(
+    val detailedWorkout = session("2026-01-14T12:00:00Z", "2026-01-14T12:24:00Z").copy(
       exerciseName = "その他の運動",
       title = "ワークアウト",
       segments = listOf(
-        segment("2026-08-21T09:23:00Z", "2026-08-21T09:30:00Z", "クランチ"),
-        segment("2026-08-21T09:31:00Z", "2026-08-21T09:38:00Z", "ランジ"),
-        segment("2026-08-21T09:39:00Z", "2026-08-21T09:46:31Z", "プランク"),
+        segment("2026-01-14T12:00:00Z", "2026-01-14T12:08:00Z", "クランチ"),
+        segment("2026-01-14T12:08:30Z", "2026-01-14T12:16:30Z", "ランジ"),
+        segment("2026-01-14T12:17:00Z", "2026-01-14T12:24:00Z", "プランク"),
       ),
     )
-    val longWalking = session("2026-08-21T09:26:00Z", "2026-08-21T09:48:00Z").copy(
+    val longWalking = session("2026-01-14T12:03:00Z", "2026-01-14T12:26:00Z").copy(
       exerciseName = "ウォーキング",
     )
-    val shortWalking = session("2026-08-21T09:26:00Z", "2026-08-21T09:40:00Z").copy(
+    val shortWalking = session("2026-01-14T12:03:00Z", "2026-01-14T12:17:00Z").copy(
       exerciseName = "ウォーキング",
     )
 
@@ -122,6 +122,81 @@ class ExerciseSessionMappingTest {
       listOf(
         candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, longSession, "example.tracker.a"),
         candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, shortSession, "example.tracker.b"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
+  fun `詳細セッションの内訳と一致する別提供元の単独セッションは統合する`() {
+    val detailedWorkout = session("2026-01-15T10:00:00Z", "2026-01-15T11:00:00Z").copy(
+      exerciseName = "ウォーキング",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-01-15T10:00:00Z", "2026-01-15T10:15:00Z", "ウォーキング"),
+        segment("2026-01-15T10:20:00Z", "2026-01-15T10:35:00Z", "ウォーキング"),
+        segment("2026-01-15T10:40:00Z", "2026-01-15T10:55:00Z", "ウォーキング"),
+      ),
+    )
+    val firstStandalone = session("2026-01-15T10:02:00Z", "2026-01-15T10:14:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+    val secondStandalone = session("2026-01-15T10:36:00Z", "2026-01-15T10:56:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, firstStandalone, "example.tracker.a"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, secondStandalone, "example.tracker.b"),
+      ),
+    )
+
+    assertEquals(listOf(detailedWorkout), deduplicated)
+  }
+
+  @Test
+  fun `詳細セッションの内訳と十分に一致しない単独セッションは保持する`() {
+    val detailedWorkout = session("2026-01-15T10:00:00Z", "2026-01-15T11:00:00Z").copy(
+      exerciseName = "ウォーキング",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-01-15T10:00:00Z", "2026-01-15T10:10:00Z", "ウォーキング"),
+      ),
+    )
+    val standalone = session("2026-01-15T10:05:00Z", "2026-01-15T10:30:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, standalone, "example.tracker"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
+  fun `詳細セッションの内訳と運動種別が異なる単独セッションは保持する`() {
+    val detailedWorkout = session("2026-01-16T10:00:00Z", "2026-01-16T11:00:00Z").copy(
+      exerciseName = "その他の運動",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-01-16T10:10:00Z", "2026-01-16T10:25:00Z", "クランチ"),
+      ),
+    )
+    val standaloneWalking = session("2026-01-16T10:10:00Z", "2026-01-16T10:25:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, standaloneWalking, "example.tracker"),
       ),
     )
 

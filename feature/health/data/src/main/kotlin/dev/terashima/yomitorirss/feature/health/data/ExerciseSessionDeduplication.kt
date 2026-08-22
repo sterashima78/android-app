@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.health.data
 
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
 import java.time.Duration
+import java.time.Instant
 
 internal data class ExerciseSessionCandidate(
   val exerciseType: Int,
@@ -38,19 +39,50 @@ private fun sameRealWorldExercise(
       first.dataOriginPackageName == second.dataOriginPackageName
   if (sameKnownOrigin) return false
 
-  return hasStrongTemporalOverlap(first.summary, second.summary)
+  if (hasStrongTemporalOverlap(first.summary, second.summary)) return true
+
+  return hasSegmentEquivalent(first, second) || hasSegmentEquivalent(second, first)
+}
+
+private fun hasSegmentEquivalent(
+  detailed: ExerciseSessionCandidate,
+  standalone: ExerciseSessionCandidate,
+): Boolean {
+  if (detailed.summary.segments.isEmpty() || standalone.summary.segments.isNotEmpty()) return false
+
+  return detailed.summary.segments.any { segment ->
+    segment.exerciseName == standalone.summary.exerciseName &&
+      hasStrongTemporalOverlap(
+        firstStart = segment.startTime,
+        firstEnd = segment.endTime,
+        secondStart = standalone.summary.startTime,
+        secondEnd = standalone.summary.endTime,
+      )
+  }
 }
 
 private fun hasStrongTemporalOverlap(
   first: HealthExerciseSessionSummary,
   second: HealthExerciseSessionSummary,
+): Boolean = hasStrongTemporalOverlap(
+  firstStart = first.startTime,
+  firstEnd = first.endTime,
+  secondStart = second.startTime,
+  secondEnd = second.endTime,
+)
+
+private fun hasStrongTemporalOverlap(
+  firstStart: Instant,
+  firstEnd: Instant,
+  secondStart: Instant,
+  secondEnd: Instant,
 ): Boolean {
-  val firstDuration = durationMillis(first)
-  val secondDuration = durationMillis(second)
+  val firstDuration = durationMillis(firstStart, firstEnd)
+  val secondDuration = durationMillis(secondStart, secondEnd)
   if (firstDuration <= 0L || secondDuration <= 0L) return false
 
-  val overlapStart = maxOf(first.startTime, second.startTime)
-  val overlapEnd = minOf(first.endTime, second.endTime)
+  val overlapStart = maxOf(firstStart, secondStart)
+  val overlapEnd = minOf(firstEnd, secondEnd)
   if (overlapStart >= overlapEnd) return false
 
   val overlapDuration = Duration.between(overlapStart, overlapEnd).toMillis().toDouble()
@@ -62,7 +94,10 @@ private fun hasStrongTemporalOverlap(
 }
 
 private fun durationMillis(summary: HealthExerciseSessionSummary): Long =
-  Duration.between(summary.startTime, summary.endTime).toMillis()
+  durationMillis(summary.startTime, summary.endTime)
+
+private fun durationMillis(startTime: Instant, endTime: Instant): Long =
+  Duration.between(startTime, endTime).toMillis()
 
 private val EXERCISE_SESSION_PREFERENCE =
   compareBy<ExerciseSessionCandidate> { it.summary.segments.size }
