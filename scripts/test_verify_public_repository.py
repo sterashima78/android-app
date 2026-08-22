@@ -7,7 +7,7 @@ from verify_public_repository import secret_reasons, sensitive_path_reason
 
 class PublicRepositoryVerifierTest(unittest.TestCase):
     def test_rejects_sensitive_files(self) -> None:
-        self.assertIsNotNone(sensitive_path_reason("local.env"))
+        self.assertIsNotNone(sensitive_path_reason(".env.local"))
         self.assertIsNotNone(sensitive_path_reason("release/app.keystore"))
         self.assertIsNotNone(sensitive_path_reason("fixtures/user-backup.zip"))
         self.assertIsNotNone(sensitive_path_reason("cache/example.db"))
