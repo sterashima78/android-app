@@ -49,9 +49,6 @@ fun BookmarkRoute(
     ActivityResultContracts.OpenDocument(),
   ) { uri -> uri?.toString()?.let(bookmarkViewModel::importHtml) }
 
-  LaunchedEffect(bookmarkViewModel) {
-    bookmarkViewModel.refresh()
-  }
   LaunchedEffect(tab) {
     if (tab == BookmarkTab.BOOKMARKS) {
       bookmarkViewModel.selectTag(null)
@@ -110,6 +107,10 @@ fun BookmarkEditHost(
   controller: BookmarkEditController,
 ) {
   val state by bookmarkViewModel.state.collectAsState()
+
+  LaunchedEffect(bookmarkViewModel) {
+    bookmarkViewModel.refresh()
+  }
 
   controller.editTagsFor?.let { article ->
     ArticleTagsDialog(
