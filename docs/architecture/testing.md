@@ -22,6 +22,9 @@ Cross-context Query / Projection
 Module / source / table ownership
   -> architecture verification
 
+Public repository safety
+  -> high-confidence repository scan + semantic review
+
 Android framework integration
   -> framework-aware test only where needed
 ```
@@ -119,19 +122,34 @@ python3 scripts/verify_adr_integrity.py
 
 新しい ADR は現在存在する最大番号より大きい一意な番号を使用し、見出し・ファイル名・参照先を一致させる。
 
+### Public repository verification
+
+tracked source へ高確度な credential / private artifact を追加していないことを次で検査する。
+
+```bash
+python3 scripts/test_verify_public_repository.py
+python3 scripts/verify_public_repository.py
+```
+
+verifier は private key、代表的 credential literal、keystore / OAuth secret file、tracked database、backup/export archive 等を検出する。matching secret value 自体は CI log へ出力しない。
+
+実ユーザーのメールアドレス・URL・書籍情報・健康データ等は文字列形式だけでは private かを判定できないため、自動検査を通過しても PR 作成前の意味的な公開情報レビューを必須とする。
+
 ## CI baseline
 
-`.github/workflows/build-apk.yml` の pull request quality checks は、次の3検証を matrix の独立 runner で並列実行する。
+`.github/workflows/build-apk.yml` の pull request quality checks は、Android の3検証を matrix の独立 runner で並列実行し、public repository verification も独立 job で並列実行する。
 
 ```bash
 ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
+python3 scripts/test_verify_public_repository.py
+python3 scripts/verify_public_repository.py
 ```
 
-matrix は `fail-fast: false` とし、1つの検証が失敗しても他の検証結果を取得する。並列検証の完了後は互換性維持用の `quality` 集約 job が全体結果を判定する。
+matrix は `fail-fast: false` とし、1つのAndroid検証が失敗しても他の検証結果を取得する。全検証の完了後は互換性維持用の `quality` 集約 job が Android matrix と `Public repository` job の両方を判定する。
 
-`main` push では architecture verification の後に signed release APK を build / signature verify する。
+`main` push では public repository verification と architecture verification の後に signed release APK を build / signature verify する。repository scan は release keystore を runner へ復元する前に実行する。
 
 ADR 関連変更は `.github/workflows/adr-integrity.yml` でも ADR integrity checker を実行する。
 
@@ -151,6 +169,7 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
 | new table ownership rule | table ownership manifest/fixture + verification |
 | framework Provider exception | boundary manifest/test |
+| public repository verifier | verifier unit test + repository scan + semantic review |
 | ADR-only change | ADR integrity; functional test追加は原則不要 |
 | architecture docs only | link/source review; code behavior test追加は原則不要 |
 
@@ -164,3 +183,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
+- [ADR-0136](../adr/0136-public-repository-content-verification.md)
