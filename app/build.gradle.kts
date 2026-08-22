@@ -18,6 +18,9 @@ val releaseSigningValues = listOf(
 )
 val hasAnyReleaseSigningValue = releaseSigningValues.any { !it.isNullOrBlank() }
 val hasCompleteReleaseSigning = releaseSigningValues.all { !it.isNullOrBlank() }
+val gitCommitSha = providers.environmentVariable("GITHUB_SHA").orNull
+  ?.takeIf { it.matches(Regex("[0-9a-fA-F]{7,40}")) }
+  ?: "local"
 
 if (hasAnyReleaseSigningValue && !hasCompleteReleaseSigning) {
   throw GradleException("Release signing configuration is incomplete.")
@@ -33,6 +36,7 @@ android {
     targetSdk = 36
     versionCode = 2
     versionName = "0.2.0"
+    buildConfigField("String", "GIT_COMMIT_SHA", "\"$gitCommitSha\"")
 
     ndk {
       abiFilters += "arm64-v8a"
