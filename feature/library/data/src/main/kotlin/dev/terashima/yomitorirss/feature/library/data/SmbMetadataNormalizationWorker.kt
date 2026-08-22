@@ -17,6 +17,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.await
+import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnosticPhase
+import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
@@ -182,14 +184,27 @@ class SmbMetadataNormalizationWorker(
 
               setForeground(createForegroundInfo(item.originalFileName))
               currentCoroutineContext().ensureActive()
-              val suggester = LocalSmbMetadataNormalizationSuggester(
-                LocalModelManager.shared(applicationContext),
+              LocalAiMemoryDiagnostics.recordVisionInference(
+                applicationContext,
+                LocalAiMemoryDiagnosticPhase.VISION_BEFORE,
               )
-              val proposal = suggester.suggest(
-                currentFileName = item.originalFileName,
-                coverBytes = coverFile.readBytes(),
-                promptTemplate = promptTemplate,
-              )
+              val modelManager = LocalModelManager.shared(applicationContext)
+              val proposal = try {
+                LocalSmbMetadataNormalizationSuggester(modelManager).suggest(
+                  currentFileName = item.originalFileName,
+                  coverBytes = coverFile.readBytes(),
+                  promptTemplate = promptTemplate,
+                )
+              } finally {
+                // LiteRT-LM 0.14.0 can retain GPU/OpenCL allocations across image conversations
+                // while the Engine stays cached. Keep the process-wide lock/manager, but release
+                // its heavy runtime after every SMB vision item until the upstream issue is fixed.
+                modelManager.close()
+                LocalAiMemoryDiagnostics.recordVisionInference(
+                  applicationContext,
+                  LocalAiMemoryDiagnosticPhase.VISION_AFTER_ENGINE_RELEASE,
+                )
+              }
               currentCoroutineContext().ensureActive()
               repository.saveGeneratedCandidate(
                 item = item,

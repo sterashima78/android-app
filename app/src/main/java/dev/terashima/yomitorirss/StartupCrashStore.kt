@@ -1,13 +1,17 @@
 package dev.terashima.yomitorirss
 
+import android.app.ActivityManager
 import android.app.Application
+import android.app.ApplicationExitInfo
 import android.content.Context
 import android.os.Build
+import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
 import java.time.Instant
 
 object StartupCrashStore {
   private const val PREFERENCES_NAME = "startup_crash_diagnostics"
   private const val REPORT_KEY = "last_crash_report"
+  private const val LAST_EXIT_TIMESTAMP_KEY = "last_process_exit_timestamp"
 
   @Volatile
   private var installed = false
@@ -16,6 +20,7 @@ object StartupCrashStore {
     if (installed) return
     synchronized(this) {
       if (installed) return
+      recordPreviousMemoryExit(application)
       val previous = Thread.getDefaultUncaughtExceptionHandler()
       Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
         record(application, thread.name, throwable)
@@ -52,9 +57,60 @@ object StartupCrashStore {
     preferences(context).edit().remove(REPORT_KEY).commit()
   }
 
+  private fun recordPreviousMemoryExit(application: Application) {
+    runCatching {
+      val preferences = preferences(application)
+      val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
+      val activityManager = application.getSystemService(ActivityManager::class.java)
+      val unseen = activityManager
+        .getHistoricalProcessExitReasons(application.packageName, 0, 8)
+        .filter { it.timestamp > lastSeen }
+      if (unseen.isEmpty()) return@runCatching
+
+      preferences.edit()
+        .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf { it.timestamp })
+        .commit()
+
+      val memoryExit = unseen
+        .filter { isMemoryRelatedProcessExit(it.reason, it.description) }
+        .maxByOrNull { it.timestamp }
+        ?: return@runCatching
+
+      val report = buildString {
+        appendLine("Mosaic process exit report")
+        appendLine("timestamp=${Instant.ofEpochMilli(memoryExit.timestamp)}")
+        appendLine("version=${BuildConfig.VERSION_NAME}")
+        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+        appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
+        appendLine("sdk=${Build.VERSION.SDK_INT}")
+        appendLine("release=${Build.VERSION.RELEASE}")
+        appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
+        appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
+        appendLine("reason=${memoryExit.reason}")
+        appendLine("status=${memoryExit.status}")
+        appendLine("importance=${memoryExit.importance}")
+        appendLine("pssKb=${memoryExit.pss}")
+        appendLine("rssKb=${memoryExit.rss}")
+        memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
+          appendLine("description=${redactCrashDetails(description)}")
+        }
+        LocalAiMemoryDiagnostics.recentVisionInferenceReport(application)?.let { diagnostics ->
+          appendLine()
+          appendLine("localAiMemoryDiagnostics:")
+          append(diagnostics)
+        }
+      }
+      preferences.edit().putString(REPORT_KEY, report).commit()
+    }
+  }
+
   private fun preferences(context: Context) =
     context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 }
+
+internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
+  reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
+    description?.contains("MemoryLimiter", ignoreCase = true) == true
 
 internal fun redactCrashDetails(value: String): String =
   SMB_BOOK_URI_PATTERN.replace(value, "yomitori://smb-book/open?[redacted]")

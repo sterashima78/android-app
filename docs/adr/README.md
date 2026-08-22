@@ -64,6 +64,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 
 - [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 
 ### Health
 
@@ -84,6 +85,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0135: SMB 表紙キャッシュをバックアップ復元後に再関連付けする](0135-smb-cover-cache-backup-restore.md)
 - [ADR-0141: SMB 書籍の読書開始を明示的な application callback で接続する](0141-explicit-smb-book-open-routing.md)
 - [ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する](0143-web-library-source-and-bookmark-transfer.md)
+- [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 
 ### Background / AI runtime
 
@@ -98,6 +100,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
 - [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 
 ### Content / summary / knowledge
 
