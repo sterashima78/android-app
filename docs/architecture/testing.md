@@ -92,10 +92,10 @@ Gradle dependency と production source の構造的 guardrail を検査する�
 - package / physical path consistency
 - Domain から Android import 禁止
 - root app shell への feature UI ownership drift
-- Screen での concrete dependency construction 禁止
+- Screen / `:app` Route での concrete dependency construction / import 禁止
 - feature data から app implementation への依存禁止
 
-rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。
+rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture も concrete repository + database construction を違反として固定する。
 
 ### Table ownership verification
 
@@ -105,7 +105,7 @@ CI では次のように table ownership init script を併用する。
 ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
 ```
 
-`config/architecture/table-ownership.tsv` の owner 以外から durable table を参照した production source を原則失敗させる。既知の移行負債だけ `foreign-table-access-allowlist.tsv` で明示する。
+`config/architecture/table-ownership.tsv` の owner 以外から durable table を参照した production source を原則失敗させる。既知の移行負債だけ `foreign-table-access-allowlist.tsv` で明示する。現在の allowlist に例外 entry はない。
 
 ### Framework provider boundary
 
@@ -164,6 +164,7 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | pure Domain rule | unit test |
 | multi-port orchestration | UseCase/Application Service unit test |
 | SQL / migration | Repository/integration + migration-related test |
+| backup compatibility baseline | current snapshot round-trip + unsupported schema rejection |
 | parser / external adapter | adapter/parser test |
 | cross-context read optimization | Projection integration test |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
@@ -184,3 +185,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
+- [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)

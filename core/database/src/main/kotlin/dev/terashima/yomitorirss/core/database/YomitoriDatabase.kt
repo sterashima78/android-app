@@ -66,8 +66,8 @@ class YomitoriDatabase private constructor(
       val applicationId = it.longPragma("application_id")
       require(applicationId == APPLICATION_ID.toLong()) { "MosaicのバックアップDBではありません" }
       val version = it.version
-      require(version in 1..schema.version) {
-        "このアプリより新しいDB形式です (backup=$version, app=${schema.version})"
+      require(version == schema.version) {
+        "現在のDB形式と一致しないバックアップです (backup=$version, app=${schema.version})"
       }
       it.rawQuery("PRAGMA quick_check(1)", null).use { cursor ->
         require(cursor.moveToFirst() && cursor.getString(0) == "ok") { "バックアップDBが破損しています" }
@@ -108,8 +108,6 @@ class YomitoriDatabase private constructor(
       }
       check(staged.renameTo(current)) { "復元DBを配置できませんでした" }
 
-      // Opening through SQLiteOpenHelper applies normal schema migrations when the
-      // snapshot was produced by an older compatible app version.
       val restored = writableDatabase
       restored.rawQuery("PRAGMA quick_check(1)", null).use { cursor ->
         check(cursor.moveToFirst() && cursor.getString(0) == "ok") { "復元後のDB検証に失敗しました" }

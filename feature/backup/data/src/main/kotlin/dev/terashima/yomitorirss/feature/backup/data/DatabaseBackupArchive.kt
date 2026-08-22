@@ -88,8 +88,8 @@ internal class DatabaseBackupArchive(
       "バックアップDB名が一致しません"
     }
     val schemaVersion = manifest.optInt("schemaVersion", -1)
-    require(schemaVersion in MIN_SUPPORTED_SCHEMA_VERSION..database.schemaVersion) {
-      "対応していないDB schema versionです (backup=$schemaVersion, app=${database.schemaVersion})"
+    require(schemaVersion == database.schemaVersion) {
+      "現在のDB schema versionと一致しないバックアップです (backup=$schemaVersion, app=${database.schemaVersion})"
     }
     val declaredBytes = manifest.optLong("databaseBytes", -1L)
     require(declaredBytes == snapshot.length()) { "バックアップDBのサイズが一致しません" }
@@ -170,7 +170,6 @@ internal class DatabaseBackupArchive(
     private const val FORMAT = "mosaic-database-backup"
     private const val VERSION = 1
     private const val BACKUP_DATABASE_NAME = "mosaic.db"
-    private const val MIN_SUPPORTED_SCHEMA_VERSION = 23
     private const val MANIFEST_ENTRY = "manifest.json"
     private const val DATABASE_ENTRY = "database/mosaic.db"
     private const val PREFERENCES_ENTRY = "preferences/user-preferences.json"

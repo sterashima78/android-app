@@ -23,12 +23,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.BookReaderRouteDependencies
 import dev.terashima.yomitorirss.feature.bookreader.BookDocument
 import dev.terashima.yomitorirss.feature.bookreader.BookFormat
-import dev.terashima.yomitorirss.feature.bookreader.data.DefaultBookPageSourceFactory
-import dev.terashima.yomitorirss.feature.bookreader.data.SharedPreferencesReadingPositionStore
 import dev.terashima.yomitorirss.feature.bookreader.ui.BookReaderScreen
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.PreparedLibraryBook
@@ -42,12 +40,12 @@ import kotlinx.coroutines.withContext
 internal fun SmbBookReaderRoute(
   book: LibraryBook,
   repository: SmbLibraryRepository,
+  dependencies: BookReaderRouteDependencies,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   BackHandler(onBack = onBack)
 
-  val context = LocalContext.current
   val progress = remember(book.sourceId) { MutableStateFlow(DownloadProgress()) }
   val currentProgress by progress.collectAsState()
   var prepared by remember(book.sourceId) { mutableStateOf<PreparedLibraryBook?>(null) }
@@ -93,8 +91,8 @@ internal fun SmbBookReaderRoute(
       localPath = ready.localPath,
     )
   }
-  val sourceResult = remember(document) {
-    runCatching { DefaultBookPageSourceFactory().open(document) }
+  val sourceResult = remember(document, dependencies.pageSourceFactory) {
+    runCatching { dependencies.pageSourceFactory.open(document) }
   }
   val source = sourceResult.getOrNull()
   if (source == null) {
@@ -112,11 +110,10 @@ internal fun SmbBookReaderRoute(
   DisposableEffect(source) {
     onDispose { source.close() }
   }
-  val positionStore = remember(context) { SharedPreferencesReadingPositionStore(context.applicationContext) }
   BookReaderScreen(
     document = document,
     source = source,
-    positionStore = positionStore,
+    positionStore = dependencies.readingPositionStore,
     onBack = onBack,
     modifier = modifier,
   )

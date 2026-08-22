@@ -27,6 +27,8 @@ internal fun SettingsRoute(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   aiTaskQueueRepository: AiTaskQueueRepository,
+  initialBackgroundFetchWifiOnly: Boolean,
+  onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onOpenWebServer: () -> Unit,
   onNavigate: (MainTab) -> Unit,
 ) {
@@ -56,6 +58,8 @@ internal fun SettingsRoute(
   SettingsScreen(
     modifier = modifier,
     aiTaskQueueRepository = aiTaskQueueRepository,
+    initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
+    onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
       showModels = true

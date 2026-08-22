@@ -15,8 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.LibraryAuthorizationOutcome
 import dev.terashima.yomitorirss.LibraryRouteDependencies
-import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,12 +64,12 @@ fun LibraryRoute(
       runCatching { authorization.requestAccount() }
         .onSuccess { outcome ->
           when (outcome) {
-            is GoogleBooksAuthorizationOutcome.Authorized -> {
+            is LibraryAuthorizationOutcome.Authorized -> {
               val account = outcome.account
               libraryViewModel.syncGooglePlayBooks(account.accessToken, account.accountLabel)
             }
 
-            is GoogleBooksAuthorizationOutcome.RequiresResolution -> {
+            is LibraryAuthorizationOutcome.RequiresResolution -> {
               authorizationLauncher.launch(
                 IntentSenderRequest.Builder(outcome.pendingIntent.intentSender).build(),
               )
@@ -99,6 +99,7 @@ fun LibraryRoute(
       SmbBookReaderRoute(
         book = book,
         repository = smbRepository,
+        dependencies = dependencies.bookReader,
         onBack = closeSmbBook,
         modifier = Modifier.fillMaxSize(),
       )

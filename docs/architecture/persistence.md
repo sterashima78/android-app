@@ -26,6 +26,10 @@ Single physical SQLite database
 - Worker / Service が独自の schema composition を持たず、application-level schema composition を利用する。
 - database version は単一 DB 全体の値であり、個別 feature の ownership ではない。
 
+現在の互換性 baseline は database version 27 である。version 27 到達のための過去 migration は削除済みで、fresh install は各 feature の `createSchema` を正本とする。今後 schema version を上げる場合は version 27 以降の直前 baseline から必要な migration を owner data module に追加する。
+
+バックアップも現在の application schema と同じ database version の snapshot のみを復元対象とする。schema version が異なる snapshot は復元処理へ進む前に拒否する。今後 database version を上げる際に直前 version のバックアップを維持する場合は、schema migration と restore baseline を同じ変更で更新する。
+
 ## Access ownership rule
 
 ```text
@@ -71,11 +75,11 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `smb_metadata_normalization_items` | `:feature:library:data` |
 | `smb_metadata_normalization_decisions` | `:feature:library:data` |
 
-SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は `libraryDatabaseSchema` に含め、app-level database version 26 で既存 DB に追加する。
+SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は現行 `libraryDatabaseSchema` の一部として定義する。
 
 SMB 表紙画像は app cache に置く再生成可能な派生データで、database snapshot backup には画像本体を含めない。復元後は Backup Context が Library-owned `LibraryBackupRestoreInitializer` を呼び、SMB の `file:` scheme の `thumbnail_url` と復元前の `smb_cover_prefetch_queue` を無効化する。Backup Context 自身は Library table を直接 write しない。SMB credential は backup 対象外なので復元直後には自動実行せず、credential 再設定後の通常の Library 経路で未取得表紙を再キューする。
 
-SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema は app-level database version 27 で追加する。
+SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema も現行 `libraryDatabaseSchema` に含める。
 
 この表を手作業の完全な schema catalog として扱わない。正確な検査対象は [`config/architecture/table-ownership.tsv`](../../config/architecture/table-ownership.tsv)、実際の schema definition は各 feature data module の `DatabaseSchemaContribution` を参照する。
 
@@ -99,15 +103,9 @@ owner API の合成で実測上の性能問題がある read path に限り read
 
 ## Transitional foreign access
 
-通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0123 で解消した。
+通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0123 で解消済みである。ADR-0138 で v24 -> v25 の bookmark ownership transfer migration も互換性 baseline から外れたため、現在の `foreign-table-access-allowlist.tsv` に例外 entry はない。
 
-残る明示的な例外は v24 -> v25 migration のみである。
-
-- `BookmarkDatabaseSchema` が legacy `articles.saved_at` を一度だけ読み、Curation-owned `bookmarks` へ ownership transfer する。
-- この参照は `foreign-table-access-allowlist.tsv` に ADR-0123 とともに固定する。
-- migration 完了後の runtime code は legacy column を参照しない。
-
-allowlist は恒久的な例外集ではない。file/table が消えた entry は stale として verification を失敗させる。
+allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
 
 ## Persistence change checklist
 
@@ -121,7 +119,7 @@ allowlist は恒久的な例外集ではない。file/table が消えた entry �
 6. cross-context write が必要なら owner command port / Application Service を利用しているか。
 7. Projection が必要なら目的、参照 table、read-only 制約、integration test が明示されているか。
 8. `table-ownership.tsv` または allowlist の更新が必要か。
-9. backup/restore compatibility への影響があるか。
+9. 現在の database / backup compatibility baseline をどこまで維持するか。
 
 ## Sources
 
@@ -136,3 +134,4 @@ allowlist は恒久的な例外集ではない。file/table が消えた entry �
 - [ADR-0133](../adr/0133-smb-cover-prefetch-queue.md)
 - [ADR-0134](../adr/0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0135](../adr/0135-smb-cover-cache-backup-restore.md)
+- [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)

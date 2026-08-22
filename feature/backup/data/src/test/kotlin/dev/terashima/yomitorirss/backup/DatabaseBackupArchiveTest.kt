@@ -36,7 +36,7 @@ class DatabaseBackupArchiveTest {
     database = YomitoriDatabase.create(
       context,
       DatabaseSchema(
-        version = 23,
+        version = TEST_SCHEMA_VERSION,
         contributions = listOf(
           DatabaseSchemaContribution(
             owner = "test",
@@ -105,7 +105,9 @@ class DatabaseBackupArchiveTest {
     val archive = DatabaseBackupArchive(context, database)
     val output = ByteArrayOutputStream()
     archive.writeTo(output)
-    val bytes = withWrongChecksum(output.toByteArray())
+    val bytes = rewriteManifest(output.toByteArray()) { manifest ->
+      manifest.put("databaseSha256", "0".repeat(64))
+    }
 
     runCatching { archive.restore(ByteArrayInputStream(bytes)) }
       .onSuccess { error("壊れたarchiveが復元されました") }
@@ -118,6 +120,19 @@ class DatabaseBackupArchiveTest {
       cursor.getString(0)
     }
     assertEquals("current", current)
+  }
+
+  @Test
+  fun `現在と異なるschema versionのarchiveを復元しない`() {
+    val archive = DatabaseBackupArchive(context, database)
+    val output = ByteArrayOutputStream()
+    archive.writeTo(output)
+    val bytes = rewriteManifest(output.toByteArray()) { manifest ->
+      manifest.put("schemaVersion", TEST_SCHEMA_VERSION - 1)
+    }
+
+    runCatching { archive.restore(ByteArrayInputStream(bytes)) }
+      .onSuccess { error("異なるschema versionのarchiveが復元されました") }
   }
 
   @Test
@@ -141,6 +156,7 @@ class DatabaseBackupArchiveTest {
 
     assertEquals("mosaic-database-backup", manifest?.getString("format"))
     assertEquals("mosaic.db", manifest?.getString("databaseName"))
+    assertEquals(TEST_SCHEMA_VERSION, manifest?.getInt("schemaVersion"))
     assertEquals(
       setOf("manifest.json", "database/mosaic.db", "preferences/user-preferences.json"),
       entries,
@@ -156,7 +172,7 @@ class DatabaseBackupArchiveTest {
       .onSuccess { error("JSONバックアップが復元されました") }
   }
 
-  private fun withWrongChecksum(bytes: ByteArray): ByteArray {
+  private fun rewriteManifest(bytes: ByteArray, transform: (JSONObject) -> JSONObject): ByteArray {
     val output = ByteArrayOutputStream()
     ZipInputStream(ByteArrayInputStream(bytes)).use { input ->
       ZipOutputStream(output).use { zip ->
@@ -164,8 +180,7 @@ class DatabaseBackupArchiveTest {
           val entry = input.nextEntry ?: break
           zip.putNextEntry(ZipEntry(entry.name))
           if (entry.name == "manifest.json") {
-            val manifest = JSONObject(input.readBytes().toString(Charsets.UTF_8))
-              .put("databaseSha256", "0".repeat(64))
+            val manifest = transform(JSONObject(input.readBytes().toString(Charsets.UTF_8)))
             zip.write(manifest.toString().toByteArray(Charsets.UTF_8))
           } else {
             input.copyTo(zip)
@@ -176,5 +191,9 @@ class DatabaseBackupArchiveTest {
       }
     }
     return output.toByteArray()
+  }
+
+  private companion object {
+    const val TEST_SCHEMA_VERSION = 27
   }
 }

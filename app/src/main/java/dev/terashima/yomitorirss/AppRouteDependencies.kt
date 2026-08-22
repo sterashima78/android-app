@@ -1,24 +1,32 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
+import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.asset.AssetViewModel
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
+import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
+import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
+import dev.terashima.yomitorirss.feature.bookreader.data.DefaultBookPageSourceFactory
+import dev.terashima.yomitorirss.feature.bookreader.data.SharedPreferencesReadingPositionStore
 import dev.terashima.yomitorirss.feature.calendar.CalendarViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthViewModel
-import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
+import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
+import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
@@ -36,11 +44,11 @@ import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepos
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 class AppRouteDependencies internal constructor(
-  application: Application,
+  private val application: Application,
   container: AppContainer,
 ) {
-  private val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    HealthConnectHealthRepository(application)
+  private val backgroundDataFetchPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    BackgroundDataFetchPreferences(application)
   }
 
   val rssViewModelFactory: RssViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -122,9 +130,10 @@ class AppRouteDependencies internal constructor(
   }
 
   val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val repository = container.featureRuntimeDependencies.healthRepository
     HealthRouteDependencies(
-      viewModelFactory = HealthViewModel.Factory(healthRepository),
-      readPermissions = healthRepository.requestPermissions(),
+      viewModelFactory = HealthViewModel.Factory(repository),
+      readPermissions = repository.requestPermissions(),
     )
   }
 
@@ -142,11 +151,33 @@ class AppRouteDependencies internal constructor(
 
   val library: LibraryRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val runtime = container.featureRuntimeDependencies.library
+    val authorizationManager = GoogleBooksAuthorizationManager(application)
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
     val smbMetadataNormalizationPromptRepository =
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     LibraryRouteDependencies(
-      authorization = GoogleBooksAuthorizationManager(application),
+      authorization = LibraryAuthorizationDependencies(
+        requestAccount = {
+          when (val outcome = authorizationManager.requestAccount()) {
+            is GoogleBooksAuthorizationOutcome.Authorized -> LibraryAuthorizationOutcome.Authorized(
+              LibraryAuthorizedAccount(
+                accessToken = outcome.account.accessToken,
+                accountLabel = outcome.account.accountLabel,
+              ),
+            )
+            is GoogleBooksAuthorizationOutcome.RequiresResolution ->
+              LibraryAuthorizationOutcome.RequiresResolution(outcome.pendingIntent)
+          }
+        },
+        resultFromIntent = { data ->
+          authorizationManager.resultFromIntent(data).let { account ->
+            LibraryAuthorizedAccount(
+              accessToken = account.accessToken,
+              accountLabel = account.accountLabel,
+            )
+          }
+        },
+      ),
       libraryViewModelFactory = LibraryViewModel.Factory(
         repository = runtime.catalogRepository,
         smbRepository = runtime.smbRepository,
@@ -161,6 +192,10 @@ class AppRouteDependencies internal constructor(
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
+      bookReader = BookReaderRouteDependencies(
+        pageSourceFactory = DefaultBookPageSourceFactory(),
+        readingPositionStore = SharedPreferencesReadingPositionStore(application),
+      ),
     )
   }
 
@@ -179,7 +214,7 @@ class AppRouteDependencies internal constructor(
   val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     WorkoutViewModel.Factory(
       repository = container.workoutRepository,
-      historyExporter = WorkoutHealthConnectExporter(healthRepository),
+      historyExporter = WorkoutHealthConnectExporter(container.featureRuntimeDependencies.healthRepository),
     )
   }
 
@@ -194,6 +229,13 @@ class AppRouteDependencies internal constructor(
       backupChangeScheduler = container.backupChangeScheduler,
     )
   }
+
+  fun backgroundFetchWifiOnly(): Boolean = backgroundDataFetchPreferences.wifiOnly
+
+  fun setBackgroundFetchWifiOnly(wifiOnly: Boolean) {
+    backgroundDataFetchPreferences.wifiOnly = wifiOnly
+    MailSyncScheduler(application).refreshPeriodicNetworkPolicy()
+  }
 }
 
 data class HealthRouteDependencies internal constructor(
@@ -202,8 +244,29 @@ data class HealthRouteDependencies internal constructor(
 )
 
 data class LibraryRouteDependencies internal constructor(
-  val authorization: GoogleBooksAuthorizationManager,
+  val authorization: LibraryAuthorizationDependencies,
   val libraryViewModelFactory: LibraryViewModel.Factory,
   val organizationViewModelFactory: LibraryOrganizationViewModel.Factory,
   val smbRepository: SmbLibraryRepository,
+  val bookReader: BookReaderRouteDependencies,
+)
+
+data class LibraryAuthorizationDependencies internal constructor(
+  val requestAccount: suspend () -> LibraryAuthorizationOutcome,
+  val resultFromIntent: (Intent) -> LibraryAuthorizedAccount,
+)
+
+data class LibraryAuthorizedAccount internal constructor(
+  val accessToken: String,
+  val accountLabel: String?,
+)
+
+sealed interface LibraryAuthorizationOutcome {
+  data class Authorized(val account: LibraryAuthorizedAccount) : LibraryAuthorizationOutcome
+  data class RequiresResolution(val pendingIntent: PendingIntent) : LibraryAuthorizationOutcome
+}
+
+data class BookReaderRouteDependencies internal constructor(
+  val pageSourceFactory: BookPageSourceFactory,
+  val readingPositionStore: ReadingPositionStore,
 )

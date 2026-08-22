@@ -72,7 +72,7 @@ Bookmark の保存状態は所有しない。`Article` -> `ContentItem` の rena
 - Tag / Folder
 - Read Later membership
 
-Bookmark は ContentItemId を参照する。v25 以降、`savedAt` の正規 persistence は Curation-owned `bookmarks` table である。upgrade 済み DB に残る legacy `articles.saved_at` column は runtime state として利用しない。
+Bookmark は ContentItemId を参照する。`savedAt` の正規 persistence は Curation-owned `bookmarks` table である。legacy `articles.saved_at` は現行 schema に存在せず、runtime state としても利用しない。
 
 ### Source contexts: RSS / Reddit / YouTube
 
@@ -168,7 +168,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-残る例外は v24 -> v25 migration が legacy `articles.saved_at` を一度だけ読む ownership transfer のみである。正確な一覧は [`config/architecture/foreign-table-access-allowlist.tsv`](../../config/architecture/foreign-table-access-allowlist.tsv) を正本とする。
+ADR-0138 で database version 27 を互換性 baseline としたため、最後に残っていた v24 -> v25 ownership transfer migration も終了した。現在 `foreign-table-access-allowlist.tsv` に例外 entry はない。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -183,3 +183,4 @@ ADR-0123 により、次の移行は完了した。
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131](../adr/0131-workout-health-connect-export.md)
 - [ADR-0132](../adr/0132-health-connect-exercise-session-deduplication.md)
+- [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)

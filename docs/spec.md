@@ -185,11 +185,11 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - アプリ独自backupは、統合SQLite databaseの整合したsnapshotを含むMosaic形式のZIP archiveとする。
 - backupにはmanifest、database snapshot、allowlistされたuser preferencesを含む。
 - checksum、SQLite application id、integrity check等を利用して復元前にarchiveを検証する。
-- database snapshotが対応する過去schemaである場合は、通常のdatabase migrationを通して現行schemaへ更新する。
+- database snapshotは現在のapplication schema versionと一致する場合だけ復元対象とし、異なるschema versionのbackupは復元前に拒否する。
 - credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
 - SMB表紙cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
 
-詳細は ADR-0099、ADR-0100、ADR-0135 と `docs/architecture/persistence.md` を参照する。
+詳細は ADR-0099、ADR-0100、ADR-0135、ADR-0138 と `docs/architecture/persistence.md` を参照する。
 
 ## 13. Background execution
 
@@ -203,6 +203,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - 現在配布中の最新版を次版への更新互換性baselineとする。
 - 移行完了が確認された一時的migrationや旧形式fallbackは恒久的に保持しない。
+- databaseとアプリ独自backupは、現在利用中の最新版へ収束した状態を基準に互換性範囲を定める。
 - 現在のユーザーデータを失う可能性がある形式変更では、現行形式へ安全に収束してから旧処理を削除する。
 - frameworkがclass name等を永続化する場合は、必要な期間だけ明示的compatibilityを維持する。
 - application idと内部database file名は既存インストールの継続性のため維持する。

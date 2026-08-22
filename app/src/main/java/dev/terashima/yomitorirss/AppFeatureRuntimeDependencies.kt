@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss
 
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildScheduler
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
@@ -28,6 +29,10 @@ internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
 ) {
+  val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    HealthConnectHealthRepository(application)
+  }
+
   private val knowledgeBuildRuntime: WorkManagerKnowledgeBuildTaskController by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {

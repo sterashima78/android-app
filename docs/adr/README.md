@@ -46,6 +46,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0123: Content / Curation 永続化境界の第二段階を完了する](0123-content-curation-persistence-phase2.md)
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
+- [ADR-0138: database version 27 を更新・バックアップ互換性の基準とする](0138-database-v27-compatibility-baseline.md)
 
 ### Documentation / repository governance
 

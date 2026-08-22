@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-14
 - Amends: ADR-0047
-- Amended by: ADR-0060
+- Amended by: ADR-0060, [ADR-0138](0138-database-v27-compatibility-baseline.md)
 
 ## Context
 

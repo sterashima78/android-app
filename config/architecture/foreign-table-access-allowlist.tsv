@@ -1,2 +1,1 @@
 # repository path	table	reason
-feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkDatabaseSchema.kt	articles	ADR-0123: one-time v24 saved_at migration reads the legacy Content column before Curation becomes the sole bookmark owner

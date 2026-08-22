@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.asset.data
 
-import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val assetDatabaseSchema = DatabaseSchemaContribution(
@@ -30,11 +29,6 @@ val assetDatabaseSchema = DatabaseSchemaContribution(
     db.execSQL("CREATE INDEX IF NOT EXISTS idx_asset_entries_date ON asset_entries(snapshot_date)")
     db.execSQL("CREATE INDEX IF NOT EXISTS idx_asset_entries_name ON asset_entries(name)")
   },
-  migrations = listOf(
-    DatabaseMigration(targetVersion = 21) { db ->
-      createCategoryDefinitions(db)
-    },
-  ),
 )
 
 private fun createCategoryDefinitions(db: android.database.sqlite.SQLiteDatabase) {

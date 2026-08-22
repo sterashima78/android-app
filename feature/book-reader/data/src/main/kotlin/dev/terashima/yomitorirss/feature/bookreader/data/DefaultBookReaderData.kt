@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.bookreader.BookDocument
 import dev.terashima.yomitorirss.feature.bookreader.BookFormat
 import dev.terashima.yomitorirss.feature.bookreader.BookPageImage
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSource
+import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReaderMode
 import dev.terashima.yomitorirss.feature.bookreader.ReadingDirection
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPosition
@@ -22,8 +23,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class DefaultBookPageSourceFactory {
-  fun open(document: BookDocument): BookPageSource = when (document.format) {
+class DefaultBookPageSourceFactory : BookPageSourceFactory {
+  override fun open(document: BookDocument): BookPageSource = when (document.format) {
     BookFormat.ZIP -> ZipBookPageSource(File(document.localPath))
     BookFormat.PDF -> PdfBookPageSource(File(document.localPath))
   }
