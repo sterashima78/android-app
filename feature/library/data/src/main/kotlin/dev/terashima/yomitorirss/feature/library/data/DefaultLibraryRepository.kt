@@ -262,78 +262,7 @@ class DefaultLibraryRepository(
   }
 
   private fun ensureSchema() {
-    database.transaction {
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS library_items(
-            source TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            title TEXT NOT NULL,
-            authors TEXT NOT NULL,
-            publisher TEXT,
-            published_date TEXT,
-            description TEXT,
-            isbn10 TEXT,
-            isbn13 TEXT,
-            thumbnail_url TEXT,
-            info_url TEXT,
-            narrators TEXT NOT NULL DEFAULT '[]',
-            duration TEXT,
-            synced_at INTEGER NOT NULL,
-            PRIMARY KEY(source, source_id)
-          )
-        """.trimIndent(),
-      )
-      execSQL(
-        "CREATE INDEX IF NOT EXISTS library_items_source_title " +
-          "ON library_items(source, title COLLATE NOCASE)",
-      )
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS library_sources(
-            source TEXT PRIMARY KEY NOT NULL,
-            account_label TEXT,
-            last_synced_at INTEGER
-          )
-        """.trimIndent(),
-      )
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS hidden_library_items(
-            source TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            hidden_at INTEGER NOT NULL,
-            PRIMARY KEY(source, source_id)
-          )
-        """.trimIndent(),
-      )
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS library_item_series(
-            source TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            series_name TEXT NOT NULL,
-            series_position INTEGER,
-            updated_at INTEGER NOT NULL,
-            PRIMARY KEY(source, source_id)
-          )
-        """.trimIndent(),
-      )
-      execSQL(
-        "CREATE INDEX IF NOT EXISTS library_item_series_name " +
-          "ON library_item_series(series_name COLLATE NOCASE)",
-      )
-      execSQL(
-        """
-          CREATE TABLE IF NOT EXISTS library_item_series_exclusions(
-            source TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            updated_at INTEGER NOT NULL,
-            PRIMARY KEY(source, source_id)
-          )
-        """.trimIndent(),
-      )
-    }
+    ensureLibraryCatalogSchema(database.writable)
   }
 
   private fun normalizeStoredKindleBookTitles() {
