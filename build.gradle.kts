@@ -94,9 +94,12 @@ fun sourceArchitectureViolations(
     normalizedPath.endsWith("/dev/terashima/yomitorirss/MainActivity.kt")
   if (isMainActivity) {
     val featureViewModelImport = Regex(
-      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.(?!navigation\.AppViewModel\s*$)[A-Za-z0-9_.]+ViewModel\s*$""",
+      """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.([A-Za-z0-9_.]+ViewModel)(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*$""",
     )
-    if (featureViewModelImport.containsMatchIn(sourceText)) {
+    val hasForbiddenFeatureViewModelImport = featureViewModelImport
+      .findAll(sourceText)
+      .any { match -> match.groupValues[1] != "navigation.AppViewModel" }
+    if (hasForbiddenFeatureViewModelImport) {
       violations +=
         "MainActivity must not import feature-owned ViewModels: $normalizedPath"
     }
@@ -254,6 +257,13 @@ val verifyArchitectureRuleTests by tasks.registering {
       expectedMessage = "MainActivity must not import feature-owned ViewModels",
     )
     assertViolation(
+      name = "MainActivity aliased feature ViewModel ownership",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.rss.RssViewModel as FeedModel",
+      expectedMessage = "MainActivity must not import feature-owned ViewModels",
+    )
+    assertViolation(
       name = "MainActivity concrete feature data import",
       projectPath = ":app",
       repositoryPath = mainActivityPath,
@@ -265,6 +275,12 @@ val verifyArchitectureRuleTests by tasks.registering {
       projectPath = ":app",
       repositoryPath = mainActivityPath,
       sourceText = "import dev.terashima.yomitorirss.feature.navigation.AppViewModel",
+    )
+    assertClean(
+      name = "MainActivity aliased app navigation ViewModel",
+      projectPath = ":app",
+      repositoryPath = mainActivityPath,
+      sourceText = "import dev.terashima.yomitorirss.feature.navigation.AppViewModel as NavigationModel",
     )
 
     val featureUiAdaptersPath =
