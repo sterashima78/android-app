@@ -8,9 +8,9 @@
 
 Health Connect の `ReadRecordsRequest<ExerciseSessionRecord>` は個々の record を返すため、複数の提供元が同じ実運動を記録していると、開始・終了時刻や exercise type が少し異なる複数セッションとして返ることがある。
 
-完全一致だけを重複として扱う実装では、実端末上で同じ運動について `09:23-09:46` の詳細付き Workout と `09:26-09:48` / `09:26-09:40` の Walking のような重複が残ることが確認された。
+完全一致だけを重複として扱う実装では、詳細付き Workout と、別提供元が数分ずれた時刻で記録した Walking が同じ実運動について複数表示されるケースが確認された。
 
-さらに、長い詳細付きセッションの中に複数の `ExerciseSegment` がある場合、別提供元がその一部を独立した Walking session として記録するケースがある。例えば約69分の詳細付き session 内に約16分 / 15分の walking segment があり、別提供元から約12分 / 20分の standalone session が返る場合、session 全体同士の duration 比だけを見ると別件と判定されるが、segment と standalone session はほぼ同一の時間帯を表している。
+さらに、長い詳細付きセッションの中に複数の `ExerciseSegment` がある場合、別提供元がその一部を独立した Walking session として記録するケースがある。この場合、session 全体同士の duration 比だけを見ると別件と判定されても、segment と standalone session はほぼ同一の時間帯を表していることがある。
 
 一方で、単に時間帯が重なるだけのセッションを全て統合すると、同じ提供元が意図的に記録した別セッションや、長い運動の一部として発生した別運動を誤って消す可能性がある。
 
