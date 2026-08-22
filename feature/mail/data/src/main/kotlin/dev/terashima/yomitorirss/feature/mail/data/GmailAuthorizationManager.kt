@@ -40,9 +40,6 @@ class GmailAuthorizationManager(context: Context) {
     is GmailAuthorizationOutcome.RequiresResolution -> throw MailAuthorizationRequiredException(email)
   }
 
-  // Access tokens are intentionally not cached by the app. Google Play services owns token refresh.
-  fun remember(email: String, accessToken: String) = Unit
-
   suspend fun resultFromIntent(data: Intent): GmailAuthorizedAccount = account(
     client.getAuthorizationResultFromIntent(data),
     fallbackEmail = null,
