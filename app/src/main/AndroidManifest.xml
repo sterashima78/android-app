@@ -92,6 +92,11 @@
     </receiver>
 
     <service
+      android:name="dev.terashima.yomitorirss.feature.widget.TaskWidgetService"
+      android:exported="false"
+      android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+    <service
       android:name="dev.terashima.yomitorirss.feature.web.data.LanWebServerService"
       android:exported="false"
       android:foregroundServiceType="specialUse"
