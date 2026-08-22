@@ -94,17 +94,21 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 ## Composition and framework boundaries
 
 - `:app` は composition root として feature implementation を組み立てる。
-- application scope で複数の adapter / route から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、`AppRouteDependencies` 等は同じ instance を再利用する。並行した repository / scheduler graph を route ごとに再構築しない。
+- application scope で複数の adapter / route から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、`AppRouteDependencies` や framework entry point 用 dependencies は同じ instance を再利用する。並行した repository / scheduler graph を route ごとに再構築しない。
 - Screen と `:app` の Route で concrete Repository、database connection、WorkManager dependency を生成・import しない。
+- `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel は `AppViewModel` を除いて所有しない。
+- `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
 - Android / WorkManager が constructor を所有する Activity、Worker、Service、AppWidgetProvider 等の framework entry point だけ、明示された Provider contract を利用できる。
 - `YomitoriApplication` implementation type への直接 cast は行わない。
 
+LAN Web Server では `MainActivity` は notification permission と dialog presentation を所有する一方、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。
+
 ## Background runtime ownership
 
-feature 固有の Worker、scheduler/controller、queue-state interpretation は owning feature の data/runtime 側に置く。`:app` には feature 固有 background business logic を置かない。
+feature 固有の Worker、scheduler/controller、queue-state interpretation は owning feature の data/runtime 側に置く。`:app` には feature 固有 background business logic や compatibility Worker を置かない。
 
-Android framework が永続化する class name 等の互換性が必要な場合は、ADR を根拠とする明示的 compatibility shim に限定する。
+現在の互換性基準は最新版アプリからの更新であり、過去の app package FQCN を参照する WorkManager request のための shim は維持しない。将来 Worker class を移動し互換性対応が必要になった場合は、対象期間と終了条件を ADR で明示する。
 
 ## Architecture enforcement
 
@@ -117,7 +121,7 @@ Android framework が永続化する class name 等の互換性が必要な場�
 - ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
 - public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
 
-`verifyArchitecture` は Screen に加え `:app` の `*Route.kt` も concrete feature data / database / WorkManager dependency の侵入対象として検査する。
+`verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
 
 検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化、実ユーザー情報かどうかの意味判定等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
 
@@ -137,3 +141,4 @@ Android framework が永続化する class name 等の互換性が必要な場�
 - [ADR-0125](../adr/0125-application-service-and-capability-segregation.md)
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
+- [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
