@@ -10,6 +10,7 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
 
 internal fun ensureLibrarySchema(db: SQLiteDatabase) {
   ensureLibraryCatalogSchema(db)
+  ensureLibraryStructuredSeriesSchema(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS smb_library_servers(
@@ -115,5 +116,40 @@ internal fun ensureLibraryCatalogSchema(db: SQLiteDatabase) {
         PRIMARY KEY(source, source_id)
       )
     """.trimIndent(),
+  )
+}
+
+internal fun ensureLibraryStructuredSeriesSchema(db: SQLiteDatabase) {
+  db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS library_source_series(
+        source TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        series_id TEXT NOT NULL,
+        series_name TEXT NOT NULL,
+        series_position INTEGER,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(source, source_id)
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS library_source_series_name " +
+      "ON library_source_series(source, series_name COLLATE NOCASE)",
+  )
+  db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS library_audible_source_series(
+        source_id TEXT PRIMARY KEY NOT NULL,
+        series_id TEXT,
+        series_name TEXT NOT NULL,
+        series_position INTEGER,
+        updated_at INTEGER NOT NULL
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS library_audible_source_series_name " +
+      "ON library_audible_source_series(series_name COLLATE NOCASE)",
   )
 }
