@@ -66,6 +66,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 
 - [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
+- [ADR-0140: Health の期間別表示と運動時間帯の活動量表示を整理する](0140-health-presentation-and-session-activity.md)
 
 ### Calendar
 
