@@ -109,6 +109,7 @@ internal fun AppFeatureContent(
       editController = bookmarkEditController,
       onOpen = onOpenArticle,
       onSummarize = summarize,
+      onMoveToLibrary = routeDependencies.libraryTransfers.moveBookmarkToLibrary,
       onImportCompleted = { appViewModel.selectTab(MainTab.SAVED) },
     )
 
