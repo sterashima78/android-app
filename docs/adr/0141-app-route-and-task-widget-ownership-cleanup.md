@@ -92,7 +92,7 @@ widget refresh が失敗しても Task command 自体を失敗扱いにしない
 
 - `TaskChangeNotifyingRepositoryTest` で read では通知せず、各 mutation の成功後だけ通知し、mutation failure では通知しないことを確認する。
 - `AppCompositionSourceArchitectureTest` で `app/src/main/.../feature` に navigation 以外の production Kotlin source が存在しないことを確認する。
-- 既存 `IntegratedRouteAdapterTest` を test bridge 経由で維持し、物理移動で mapping semantics を変えないことを確認する。
+- 既存 `IntegratedRouteAdapterTest` を app composition package へ移動し、物理移動で mapping semantics を変えないことを確認する。
 - `verifyArchitecture` で feature UI -> concrete data dependency、package/source path、app Route の infrastructure dependency が増えていないことを確認する。
 - 全 unit tests と release lint を実行する。
 - YouTube / Library のユーザー操作意味、Task の CRUD semantics、永続 schema は変更しない。
