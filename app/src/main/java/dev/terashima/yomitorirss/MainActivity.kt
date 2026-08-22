@@ -45,6 +45,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+  companion object {
+    const val ACTION_ADD_SHARED_URL_TO_LIBRARY =
+      "dev.terashima.yomitorirss.action.ADD_SHARED_URL_TO_LIBRARY"
+  }
+
   private val appViewModel: AppViewModel by viewModels()
   private val dependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.NONE) {
     val provider = application as? MainActivityDependenciesProvider
@@ -118,6 +123,7 @@ class MainActivity : ComponentActivity() {
         }
       }
     }
+    consumeSharedLibrary(intent)
     consumeSharedBookmark(intent)
     consumeWidgetArticle(intent)
   }
@@ -126,6 +132,7 @@ class MainActivity : ComponentActivity() {
     super.onNewIntent(intent)
     setIntent(intent)
     if (showingCrashDiagnostics) return
+    consumeSharedLibrary(intent)
     consumeSharedBookmark(intent)
     consumeWidgetArticle(intent)
   }
@@ -191,6 +198,41 @@ class MainActivity : ComponentActivity() {
       startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }.onFailure {
       Toast.makeText(this, "記事を開けませんでした", Toast.LENGTH_LONG).show()
+    }
+  }
+
+  private fun consumeSharedLibrary(incoming: Intent) {
+    if (incoming.action != ACTION_ADD_SHARED_URL_TO_LIBRARY) return
+
+    val shared = parseSharedBookmark(
+      text = incoming.getCharSequenceExtra(Intent.EXTRA_TEXT),
+      subject = incoming.getCharSequenceExtra(Intent.EXTRA_SUBJECT),
+    )
+    incoming.action = null
+    incoming.removeExtra(Intent.EXTRA_TEXT)
+    incoming.removeExtra(Intent.EXTRA_SUBJECT)
+
+    if (shared == null) {
+      Toast.makeText(this, "共有内容に http/https の URL がありません", Toast.LENGTH_LONG).show()
+      return
+    }
+
+    lifecycleScope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) {
+          dependencies.addSharedWebBook(shared.url, shared.title)
+        }
+      }.onSuccess { book ->
+        appViewModel.selectTab(MainTab.LIBRARY)
+        Toast.makeText(
+          this@MainActivity,
+          "「${book.title}」を蔵書へ追加しました",
+          Toast.LENGTH_SHORT,
+        ).show()
+      }.onFailure { error ->
+        val message = error.message?.takeIf(String::isNotBlank) ?: "蔵書への追加に失敗しました"
+        Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+      }
     }
   }
 
