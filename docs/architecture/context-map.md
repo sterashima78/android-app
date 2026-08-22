@@ -113,9 +113,17 @@ Health と Workout は別 Context とする。Workout はアプリ内でユー�
 
 Calendar は Task / Workout / device calendar の command owner ではなく、初期実装は読み取り専用とする。
 
+### Library
+
+現在の主要な実装 module は `:feature:library:{domain,data,ui}`。Library は Google Play Books、Kindle、Audible、SMB、Web を `LibraryBook` catalog の source として扱い、`library_items` と Library 固有の整理 metadata を所有する。
+
+Web source は URL を identity とし、Library data layer が HTTP(S) ページの OGP / HTML metadata を取得する。Web 固有の追加・削除は `WebLibraryMutator` capability として Library が公開し、Bookmark / Curation の永続化には触れない。
+
+Bookmark と Web Library の相互移動は Context 間 command であるため、app composition の `BookmarkLibraryTransferService` が各 owner capability を順に呼び出す。コピー先の保存成功前に元側を削除せず、foreign table を直接 write しない。
+
 ### Other application contexts
 
-Library、Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
+Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
 
 AI Task Queue、Backup、Settings は主に supporting/application capability として扱い、他 Domain table の共同 owner にはしない。
 
@@ -131,6 +139,7 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 - Curation -> Content: `BookmarkArticleGateway`
 - RSS -> Content: `ContentSourceGateway`
 - Workout -> Health Connect: app composition adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続する一方向 export
+- Bookmark ↔ Web Library: app composition の `BookmarkLibraryTransferService` が `BookmarkMutator` / `SaveSharedBookmarkUseCase` と `WebLibraryMutator` を調停する
 
 ### Domain Service
 
@@ -184,3 +193,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0131](../adr/0131-workout-health-connect-export.md)
 - [ADR-0132](../adr/0132-health-connect-exercise-session-deduplication.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
+- [ADR-0143](../adr/0143-web-library-source-and-bookmark-transfer.md)

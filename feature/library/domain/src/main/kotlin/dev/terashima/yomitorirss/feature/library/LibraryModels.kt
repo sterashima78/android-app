@@ -9,6 +9,7 @@ enum class LibrarySource(val label: String) {
   KINDLE("Kindle"),
   AUDIBLE("Audible"),
   SMB("ファイルサーバ"),
+  WEB("Web"),
 }
 
 data class LibrarySeries(

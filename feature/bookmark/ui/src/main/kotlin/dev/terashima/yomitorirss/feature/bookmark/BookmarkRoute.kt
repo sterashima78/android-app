@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.bookmark
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -10,10 +11,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.feature.article.Article
+import kotlinx.coroutines.launch
 
 class BookmarkEditController internal constructor() {
   internal var editTagsFor by mutableStateOf<Article?>(null)
@@ -39,9 +43,12 @@ fun BookmarkRoute(
   editController: BookmarkEditController,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
+  onMoveToLibrary: suspend (Article) -> Unit,
   onImportCompleted: () -> Unit,
 ) {
   val state by bookmarkViewModel.state.collectAsState()
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   val csvImportLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.OpenDocument(),
   ) { uri -> uri?.toString()?.let(bookmarkViewModel::importCsv) }
@@ -79,6 +86,22 @@ fun BookmarkRoute(
     onSummarize = onSummarize,
     onEditTags = editController::editTags,
     onMoveFolder = editController::moveFolder,
+    onMoveToLibrary = { article ->
+      scope.launch {
+        runCatching { onMoveToLibrary(article) }
+          .onSuccess {
+            bookmarkViewModel.refresh()
+            Toast.makeText(context, "「${article.title}」を蔵書へ移動しました", Toast.LENGTH_LONG).show()
+          }
+          .onFailure { error ->
+            Toast.makeText(
+              context,
+              error.message ?: "蔵書への移動に失敗しました",
+              Toast.LENGTH_LONG,
+            ).show()
+          }
+      }
+    },
     onSetContentType = bookmarkViewModel::setArticleContentType,
     onUnsave = bookmarkViewModel::unsave,
     onCreateFolder = bookmarkViewModel::createFolder,
