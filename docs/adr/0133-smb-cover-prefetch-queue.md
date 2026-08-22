@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-21
-- Updated: 2026-08-21
+- Updated: 2026-08-22
 - Refines: ADR-0006, ADR-0047, ADR-0065, ADR-0101
 - Supersedes: ADR-0065 の「表紙は派生キャッシュとして段階的に生成する」にある同期時の remote ZIP / CBZ 表紙走査方針
 
@@ -73,11 +73,13 @@ SMB 設定画面に「表紙先読みキュー」を追加し、次を表示す�
 - 実行中 / 待機 / 完了 / 失敗 / 対象外の件数
 - WorkManager の実行状態と、Wi-Fi・バッテリー・OS scheduler のどこで待っているか
 - Wi-Fi・バッテリー条件を満たした `ENQUEUED` 状態では、通常は自動開始する旨と OS により遅延し得る旨、および「実行を再要求」操作
-- 最新ジョブの書籍名と状態
+- `COMPLETED` を除く最新ジョブの書籍名と状態
 - PDF 実行中の転送済み bytes / total bytes と progress indicator
 - 失敗理由または対象外理由。書籍位置情報から取得可能な場合は対象外理由にファイルサイズを含める
 - 未取得表紙のキュー投入操作
 - 失敗ジョブの一括再試行
+
+`COMPLETED` は履歴・件数として保持するが、個別ジョブ一覧には表示しない。完了済み項目が一覧を埋めて、待機・実行中・失敗・対象外の確認を妨げないことを優先する。
 
 表示中は active job がある間だけ ViewModel がキュー snapshot を定期再読込し、処理完了時に Library snapshot も再読込して新しい表紙を一覧へ反映する。WorkManager の状態は永続キューの業務状態へ混ぜず、観測用 runtime snapshot として UI に投影する。
 
