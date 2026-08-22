@@ -33,6 +33,70 @@ fun referencedDatabaseTables(sourceText: String): Set<String> {
   return tables
 }
 
+fun createdDatabaseTables(sourceText: String): Set<String> {
+  val constants = Regex(
+    """(?m)^\s*(?:(?:private|internal|public)\s+)?const\s+val\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"([A-Za-z_][A-Za-z0-9_]*)\"""",
+  ).findAll(sourceText).associate { match -> match.groupValues[1] to match.groupValues[2].lowercase() }
+
+  val tables = linkedSetOf<String>()
+  val createPattern = Regex(
+    """CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(?:\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?|[`\"]?([A-Za-z_][A-Za-z0-9_]*))""",
+    RegexOption.IGNORE_CASE,
+  )
+  createPattern.findAll(sourceText).forEach { match ->
+    val constantName = match.groupValues[1]
+    val literalName = match.groupValues[2]
+    when {
+      constantName.isNotBlank() -> constants[constantName]?.let(tables::add)
+      literalName.isNotBlank() -> tables += literalName.lowercase()
+    }
+  }
+  return tables
+}
+
+fun appUiDependencyViolations(repositoryPath: String, sourceText: String): List<String> {
+  val violations = mutableListOf<String>()
+  val concreteFeatureDataImport = Regex(
+    """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.data\.""",
+  )
+  if (concreteFeatureDataImport.containsMatchIn(sourceText)) {
+    violations += "app UI composition must not import concrete feature data: $repositoryPath"
+  }
+
+  val infrastructureImport = Regex(
+    """(?m)^\s*import\s+(?:dev\.terashima\.yomitorirss\.core\.database\.(?:DatabaseConnection|YomitoriDatabase)\b|androidx\.work\.)""",
+  )
+  if (infrastructureImport.containsMatchIn(sourceText)) {
+    violations += "app UI composition must not import database or WorkManager infrastructure: $repositoryPath"
+  }
+
+  val concreteConstruction = Regex(
+    """\b(?:DatabaseConnection|YomitoriDatabase|Default[A-Za-z0-9_]*Repository|WorkManager[A-Za-z0-9_]*(?:Scheduler|Controller))\s*\(""",
+  )
+  concreteConstruction.find(sourceText)?.let { match ->
+    violations += "app UI composition must not construct concrete data/background dependencies: $repositoryPath (${match.value.trim()})"
+  }
+  return violations
+}
+
+fun androidPlatformBaselineViolations(repositoryPath: String, buildText: String): List<String> {
+  val isAndroidModule = buildText.contains("id(\"com.android.application\")") ||
+    buildText.contains("id(\"com.android.library\")")
+  if (!isAndroidModule) return emptyList()
+
+  val minSdk = Regex("""\bminSdk\s*=\s*(\d+)""")
+    .find(buildText)
+    ?.groupValues
+    ?.get(1)
+    ?.toIntOrNull()
+    ?: return listOf("Android module must declare minSdk = 34 or newer: $repositoryPath")
+  return if (minSdk < 34) {
+    listOf("Android module minSdk must be API 34 or newer, found $minSdk: $repositoryPath")
+  } else {
+    emptyList()
+  }
+}
+
 gradle.projectsEvaluated {
   val root = gradle.rootProject
   val tableOwners: Map<String, String> =
@@ -60,6 +124,18 @@ gradle.projectsEvaluated {
     }
   }
 
+  fun createdTableViolations(
+    projectPath: String,
+    repositoryPath: String,
+    sourceText: String,
+  ): List<String> = createdDatabaseTables(sourceText).mapNotNull { table ->
+    when (val owner = tableOwners[table]) {
+      null -> "durable table '$table' must be registered in table-ownership.tsv: $repositoryPath"
+      projectPath -> null
+      else -> "durable table '$table' is created by $projectPath but registered to $owner: $repositoryPath"
+    }
+  }
+
   val fixtureViolation = foreignTableViolations(
     projectPath = ":feature:article:data",
     repositoryPath = "feature/article/data/src/main/kotlin/example/Fixture.kt",
@@ -78,7 +154,53 @@ gradle.projectsEvaluated {
     throw GradleException("Table ownership rule fixture rejected owner access: $ownerFixture")
   }
 
+  val createFixture = createdDatabaseTables(
+    """
+      private const val TABLE = "fixture_table"
+      db.execSQL("CREATE TABLE IF NOT EXISTS ${'$'}TABLE(id TEXT PRIMARY KEY)")
+      db.execSQL("CREATE TABLE IF NOT EXISTS literal_table(id TEXT PRIMARY KEY)")
+    """.trimIndent(),
+  )
+  if (createFixture != setOf("fixture_table", "literal_table")) {
+    throw GradleException("Table ownership create-table fixture failed: $createFixture")
+  }
+
+  val appUiFixture = appUiDependencyViolations(
+    repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/ui/MailRouteHost.kt",
+    sourceText = "import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome",
+  )
+  if (appUiFixture.none { "concrete feature data" in it }) {
+    throw GradleException("App UI ownership fixture failed to detect Host concrete data import")
+  }
+
+  val platformFixture = androidPlatformBaselineViolations(
+    repositoryPath = "feature/example/ui/build.gradle.kts",
+    buildText = "id(\"com.android.library\")\nandroid { defaultConfig { minSdk = 29 } }",
+  )
+  if (platformFixture.none { "API 34" in it }) {
+    throw GradleException("Android platform baseline fixture failed to detect minSdk 29")
+  }
+
   val violations = mutableListOf<String>()
+  root.subprojects.forEach { project ->
+    val buildFile = project.buildFile
+    if (buildFile.isFile) {
+      val repositoryPath = buildFile.relativeTo(root.rootDir).path.replace('\\', '/')
+      violations += androidPlatformBaselineViolations(repositoryPath, buildFile.readText())
+    }
+  }
+
+  val appUiRoot = root.file("app/src/main")
+  if (appUiRoot.isDirectory) {
+    root.fileTree(appUiRoot) { include("**/ui/**/*.kt") }
+      .files
+      .sortedBy { it.path }
+      .forEach { sourceFile ->
+        val repositoryPath = sourceFile.relativeTo(root.rootDir).path.replace('\\', '/')
+        violations += appUiDependencyViolations(repositoryPath, sourceFile.readText())
+      }
+  }
+
   root.subprojects
     .filter { it.path.startsWith(":feature:") && it.path.endsWith(":data") }
     .forEach { project ->
@@ -90,10 +212,16 @@ gradle.projectsEvaluated {
           .sortedBy { it.path }
           .forEach { sourceFile ->
             val repositoryPath = sourceFile.relativeTo(root.rootDir).path.replace('\\', '/')
+            val sourceText = sourceFile.readText()
             violations += foreignTableViolations(
               projectPath = project.path,
               repositoryPath = repositoryPath,
-              sourceText = sourceFile.readText(),
+              sourceText = sourceText,
+            )
+            violations += createdTableViolations(
+              projectPath = project.path,
+              repositoryPath = repositoryPath,
+              sourceText = sourceText,
             )
           }
       }
@@ -122,15 +250,15 @@ gradle.projectsEvaluated {
   if (violations.isNotEmpty()) {
     throw GradleException(
       buildString {
-        appendLine("Table ownership verification failed (${violations.size} violation(s)):")
+        appendLine("Architecture ownership verification failed (${violations.size} violation(s)):")
         violations.sorted().forEach { appendLine("- $it") }
-        append("See docs/adr/0106-domain-context-aggregate-and-persistence-ownership.md.")
+        append("See docs/architecture/principles.md and docs/architecture/persistence.md.")
       },
     )
   }
 
   root.logger.lifecycle(
-    "Table ownership verification passed for ${tableOwners.size} owned table(s) with " +
+    "Architecture ownership verification passed for ${tableOwners.size} owned table(s) with " +
       "${foreignTableAllowlist.size} explicit migration allowance(s).",
   )
 }

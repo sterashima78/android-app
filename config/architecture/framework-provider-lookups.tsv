@@ -4,6 +4,7 @@ app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt	MainActivityDependen
 core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt	DatabaseSchemaProvider	Framework-owned background entry points create the shared database from Context
 feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/GoogleDriveBackupWorker.kt	BackupRepositoryProvider	WorkManager constructs the backup Worker
 feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeBuildBackground.kt	KnowledgeRepositoryProvider	WorkManager constructs the knowledge build Worker
+feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt	MailRepositoryProvider	WorkManager constructs the Mail-owned sync Worker
 feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryContentFetchWorker.kt	SummaryRuntimeDependenciesProvider	WorkManager constructs the Summary content fetch Worker
 feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryWorker.kt	SummaryRuntimeDependenciesProvider	WorkManager constructs the Summary inference Worker
 feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt	LanWebRepositoryProvider	Android constructs the LAN web Service

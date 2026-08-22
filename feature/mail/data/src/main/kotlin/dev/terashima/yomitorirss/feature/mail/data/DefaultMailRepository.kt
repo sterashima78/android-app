@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.mail.MailAccount
+import dev.terashima.yomitorirss.feature.mail.MailInitialSyncStep
 import dev.terashima.yomitorirss.feature.mail.MailLabel
 import dev.terashima.yomitorirss.feature.mail.MailMessage
 import dev.terashima.yomitorirss.feature.mail.MailRepository
@@ -16,12 +17,6 @@ import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-
-internal sealed interface InitialSyncStep {
-  data class Continue(val nextPageToken: String) : InitialSyncStep
-  data object Complete : InitialSyncStep
-  data object Stale : InitialSyncStep
-}
 
 class DefaultMailRepository(
   context: Context,
@@ -48,7 +43,6 @@ class DefaultMailRepository(
   ): MailAccount {
     val normalizedEmail = email.trim().lowercase()
     require(normalizedEmail.isNotBlank()) { "Google アカウントを取得できませんでした" }
-    authorization.remember(normalizedEmail, accessToken)
     val account = MailAccount(
       id = normalizedEmail,
       email = normalizedEmail,
@@ -65,6 +59,10 @@ class DefaultMailRepository(
     syncScheduler.cancelAccount(accountId)
     database.writable.delete("mail_accounts", "id = ?", arrayOf(accountId))
     if (getAccounts().isEmpty()) syncScheduler.cancelPeriodic()
+  }
+
+  override fun refreshPeriodicSyncPolicy() {
+    syncScheduler.refreshPeriodicNetworkPolicy()
   }
 
   override suspend fun getThreads(
@@ -166,13 +164,13 @@ class DefaultMailRepository(
     }
   }
 
-  internal suspend fun syncInitialPage(
+  override suspend fun syncInitialPage(
     accountId: String,
     expectedPageToken: String?,
-  ): InitialSyncStep {
+  ): MailInitialSyncStep {
     val account = account(accountId)
     val state = initialSyncState(accountId)
-    if (state.pageToken != expectedPageToken) return InitialSyncStep.Stale
+    if (state.pageToken != expectedPageToken) return MailInitialSyncStep.Stale
 
     markInitialSyncRunning(accountId)
     val accessToken = authorization.accessToken(account.email)
@@ -208,7 +206,7 @@ class DefaultMailRepository(
     val nextPageToken = page.nextPageToken
     if (nextPageToken != null) {
       updateInitialSyncCheckpoint(accountId, pageToken = nextPageToken, updatePageToken = true)
-      return InitialSyncStep.Continue(nextPageToken)
+      return MailInitialSyncStep.Continue(nextPageToken)
     }
 
     replaceLabels(account.id, api.listLabels(accessToken, account.id))
@@ -218,14 +216,14 @@ class DefaultMailRepository(
       historyId = startHistoryId,
       syncedAt = System.currentTimeMillis(),
     )
-    return InitialSyncStep.Complete
+    return MailInitialSyncStep.Complete
   }
 
-  internal fun markInitialSyncWaitingForNetwork(accountId: String, message: String?) {
+  override fun markInitialSyncWaitingForNetwork(accountId: String, message: String?) {
     updateInitialSyncStatus(accountId, SYNC_STATE_WAITING_FOR_NETWORK, message)
   }
 
-  internal fun markInitialSyncError(accountId: String, message: String?) {
+  override fun markInitialSyncError(accountId: String, message: String?) {
     updateInitialSyncStatus(accountId, SYNC_STATE_ERROR, message)
   }
 

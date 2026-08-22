@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.settings.data
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,25 +11,14 @@ import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.PersistableBundle
-import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
-import androidx.work.ForegroundInfo
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.ModelDownloadProgress
-import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchNetworkRequest
 import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.feature.settings.AiModelDownloadProgress
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,11 +31,9 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private const val INPUT_MODEL_ID = "ai_model_download_model_id"
 private const val INPUT_MODEL_SIZE_BYTES = "ai_model_download_model_size_bytes"
-private const val WORK_NAME = "ai-model-download"
 private const val JOB_ID = 0x594f4d4f
 private const val NOTIFICATION_CHANNEL_ID = "ai-model-download"
 private const val NOTIFICATION_ID = 0x41494d44
@@ -144,20 +130,14 @@ internal class AiModelDownloadScheduler(
 
     stateStore.markQueued(modelId, estimatedBytes)
     try {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        scheduleUserInitiatedJob(modelId, estimatedBytes)
-      } else {
-        scheduleForegroundWorker(modelId, estimatedBytes)
-      }
+      scheduleUserInitiatedJob(modelId, estimatedBytes)
     } catch (error: Throwable) {
       stateStore.markFailed(modelId, estimatedBytes)
       throw error
     }
   }
 
-  @SuppressLint("NewApi")
   private fun reconcileStaleUidtState() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
     val current = stateStore.current()?.takeIf { it.phase.isActiveDownloadPhase() } ?: return
     val scheduler = appContext.getSystemService(JobScheduler::class.java)
     if (scheduler.getPendingJob(JOB_ID) == null) {
@@ -165,7 +145,6 @@ internal class AiModelDownloadScheduler(
     }
   }
 
-  @SuppressLint("NewApi")
   private fun scheduleUserInitiatedJob(modelId: String, estimatedBytes: Long) {
     val extras = PersistableBundle().apply {
       putString(INPUT_MODEL_ID, modelId)
@@ -185,26 +164,8 @@ internal class AiModelDownloadScheduler(
       "AIモデルのバックグラウンドダウンロードを開始できませんでした"
     }
   }
-
-  private fun scheduleForegroundWorker(modelId: String, estimatedBytes: Long) {
-    val request = OneTimeWorkRequestBuilder<AiModelDownloadWorker>()
-      .setInputData(
-        workDataOf(
-          INPUT_MODEL_ID to modelId,
-          INPUT_MODEL_SIZE_BYTES to estimatedBytes,
-        ),
-      )
-      .setConstraints(backgroundDataFetchConstraints(appContext))
-      .build()
-    WorkManager.getInstance(appContext).enqueueUniqueWork(
-      WORK_NAME,
-      ExistingWorkPolicy.REPLACE,
-      request,
-    )
-  }
 }
 
-@SuppressLint("NewApi")
 class AiModelDownloadJobService : JobService() {
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private var runningDownload: RunningDownload? = null
@@ -300,69 +261,6 @@ class AiModelDownloadJobService : JobService() {
   )
 }
 
-class AiModelDownloadWorker(
-  appContext: Context,
-  workerParams: WorkerParameters,
-) : CoroutineWorker(appContext, workerParams) {
-  override suspend fun doWork(): Result {
-    val modelId = inputData.getString(INPUT_MODEL_ID)?.takeIf(String::isNotBlank)
-      ?: return Result.failure()
-    val estimatedBytes = inputData.getLong(INPUT_MODEL_SIZE_BYTES, 0)
-    if (!isBackgroundDataFetchAllowed(applicationContext)) {
-      AiModelDownloadStateStore(applicationContext).markQueued(modelId, estimatedBytes)
-      return Result.retry()
-    }
-
-    val manager = LocalModelManager(applicationContext)
-    val stateStore = AiModelDownloadStateStore(applicationContext)
-    val modelName = manager.models.value.firstOrNull { it.id == modelId }?.name ?: "AIモデル"
-    AiModelDownloadNotifications.ensureChannel(applicationContext)
-    setForeground(
-      AiModelDownloadNotifications.foregroundInfo(
-        applicationContext,
-        modelName,
-        stateStore.current() ?: AiModelDownloadProgress(modelId, "queued", 0, estimatedBytes),
-      ),
-    )
-
-    val progressJob = CoroutineScope(coroutineContext).launch {
-      manager.downloadProgress
-        .filterNotNull()
-        .collect { progress ->
-          if (progress.modelId != modelId) return@collect
-          val domainProgress = progress.toDomainProgress()
-          stateStore.update(domainProgress)
-          setForeground(
-            AiModelDownloadNotifications.foregroundInfo(
-              applicationContext,
-              modelName,
-              domainProgress,
-            ),
-          )
-        }
-    }
-
-    return try {
-      withContext(Dispatchers.IO) { manager.downloadModel(modelId) }
-      manager.downloadProgress.value
-        ?.takeIf { it.modelId == modelId }
-        ?.let { stateStore.update(it.toDomainProgress()) }
-      Result.success()
-    } catch (error: Throwable) {
-      if (error.isRetryableNetworkFailure()) {
-        stateStore.markQueued(modelId, estimatedBytes)
-        Result.retry()
-      } else {
-        stateStore.markFailed(modelId, estimatedBytes)
-        Result.failure()
-      }
-    } finally {
-      progressJob.cancelAndJoin()
-      manager.close()
-    }
-  }
-}
-
 private object AiModelDownloadNotifications {
   fun ensureChannel(context: Context) {
     val manager = context.getSystemService(NotificationManager::class.java)
@@ -377,16 +275,6 @@ private object AiModelDownloadNotifications {
       },
     )
   }
-
-  fun foregroundInfo(
-    context: Context,
-    modelName: String,
-    progress: AiModelDownloadProgress,
-  ): ForegroundInfo = ForegroundInfo(
-    NOTIFICATION_ID,
-    progress(context, modelName, progress),
-    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-  )
 
   fun progress(
     context: Context,

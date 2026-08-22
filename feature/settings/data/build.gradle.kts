@@ -7,7 +7,7 @@ android {
   compileSdk = 36
 
   defaultConfig {
-    minSdk = 29
+    minSdk = 34
   }
 
   compileOptions {
@@ -21,6 +21,5 @@ dependencies {
   implementation(project(":feature:summary:data"))
   implementation(project(":core:ai-runtime"))
   implementation(project(":core:background"))
-  implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }

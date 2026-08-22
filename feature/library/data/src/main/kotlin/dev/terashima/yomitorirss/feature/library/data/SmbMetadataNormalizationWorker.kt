@@ -7,7 +7,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -28,13 +27,13 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationBatchStatus
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
+import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.util.concurrent.TimeUnit
 
 class WorkManagerSmbMetadataNormalizationScheduler(
   context: Context,
@@ -260,12 +259,11 @@ class SmbMetadataNormalizationWorker(
         )
       }
       ?.let(builder::setContentIntent)
-    val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-    } else {
-      0
-    }
-    return ForegroundInfo(NOTIFICATION_ID, builder.build(), serviceType)
+    return ForegroundInfo(
+      NOTIFICATION_ID,
+      builder.build(),
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+    )
   }
 
   companion object {
@@ -277,14 +275,10 @@ class SmbMetadataNormalizationWorker(
   }
 }
 
-private suspend fun currentSmbBook(
+private fun currentSmbBook(
   database: DatabaseConnection,
   sourceId: String,
-) = DefaultLibraryRepository(database).snapshot().let { snapshot ->
-  (snapshot.books + snapshot.hiddenBooks).firstOrNull {
-    it.source == LibrarySource.SMB && it.sourceId == sourceId
-  }
-}
+) = findLibraryBook(database, LibrarySource.SMB, sourceId)
 
 private fun localCoverFile(url: String?): File? {
   val uri = url?.let { runCatching { Uri.parse(it) }.getOrNull() } ?: return null

@@ -25,10 +25,20 @@ Single physical SQLite database
 - `:app` は composition root として schema contribution を集約し、単一 database version と contribution order を定義する。
 - Worker / Service が独自の schema composition を持たず、application-level schema composition を利用する。
 - database version は単一 DB 全体の値であり、個別 feature の ownership ではない。
+- owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
+- 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
 現在の互換性 baseline は database version 27 である。version 27 到達のための過去 migration は削除済みで、fresh install は各 feature の `createSchema` を正本とする。今後 schema version を上げる場合は version 27 以降の直前 baseline から必要な migration を owner data module に追加する。
 
 バックアップも現在の application schema と同じ database version の snapshot のみを復元対象とする。schema version が異なる snapshot は復元処理へ進む前に拒否する。今後 database version を上げる際に直前 version のバックアップを維持する場合は、schema migration と restore baseline を同じ変更で更新する。
+
+### Library schema
+
+Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、SMB server・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。
+
+`DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
+
+これにより単体 lookup が全蔵書 snapshot 構築や Kindle title normalization 等の無関係な処理を暗黙に実行することを避ける。
 
 ## Access ownership rule
 
@@ -52,36 +62,38 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 
 ## Machine-readable table ownership
 
-`config/architecture/table-ownership.tsv` は `gradle/table-ownership.gradle.kts` が検査する durable table ownership の機械可読な正本である。
+`config/architecture/table-ownership.tsv` は durable table ownership の機械可読な完全登録簿である。新しい durable table を追加する場合は owner data module の schema と同じ変更で必ず登録する。
 
 主要な ownership は次のとおり。
 
-| Table | Owner module |
+| Table group | Owner module |
 | --- | --- |
 | `articles` | `:feature:article:data` |
-| `feeds` | `:feature:rss:data` |
-| `feed_folders` | `:feature:rss:data` |
-| `bookmarks` | `:feature:bookmark:data` |
-| `tags` | `:feature:bookmark:data` |
-| `article_tags` | `:feature:bookmark:data` |
-| `bookmark_folders` | `:feature:bookmark:data` |
-| `article_folders` | `:feature:bookmark:data` |
-| `article_summaries` | `:feature:summary:data` |
-| `summary_tasks` | `:feature:summary:data` |
-| `summary_article_content` | `:feature:summary:data` |
-| `smb_library_servers` | `:feature:library:data` |
-| `smb_cover_prefetch_queue` | `:feature:library:data` |
-| `smb_metadata_normalization_batches` | `:feature:library:data` |
-| `smb_metadata_normalization_items` | `:feature:library:data` |
-| `smb_metadata_normalization_decisions` | `:feature:library:data` |
+| `feeds`, `feed_folders` | `:feature:rss:data` |
+| `bookmarks`, tags/folders | `:feature:bookmark:data` |
+| `article_summaries`, `summary_*` | `:feature:summary:data` |
+| `mail_*` | `:feature:mail:data` |
+| `library_*`, `hidden_library_items`, `smb_*` | `:feature:library:data` |
+| `knowledge_*` | `:feature:knowledge:data` |
+| `asset_*` | `:feature:asset:data` |
+| `tasks` | `:feature:task:data` |
+| `chat_*` | `:feature:chat:data` |
+| `channels`, `videos` | `:feature:youtube:data` |
+
+`gradle/table-ownership.gradle.kts` は owner data source 内の `CREATE TABLE IF NOT EXISTS` を抽出し、次を失敗させる。
+
+- `table-ownership.tsv` に未登録の durable table
+- table を作成する module と登録 owner の不一致
+- owner 以外の feature data からの direct table access（明示された migration allowlist を除く）
+- 存在しない/stale な allowlist entry
+
+`table-ownership.tsv` は ownership の完全登録簿だが、column/index/constraint まで含む schema DDL の正本ではない。実際の schema definition は各 feature data module の `DatabaseSchemaContribution` / initializer を参照する。
 
 SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は現行 `libraryDatabaseSchema` の一部として定義する。
 
 SMB 表紙画像は app cache に置く再生成可能な派生データで、database snapshot backup には画像本体を含めない。復元後は Backup Context が Library-owned `LibraryBackupRestoreInitializer` を呼び、SMB の `file:` scheme の `thumbnail_url` と復元前の `smb_cover_prefetch_queue` を無効化する。Backup Context 自身は Library table を直接 write しない。SMB credential は backup 対象外なので復元直後には自動実行せず、credential 再設定後の通常の Library 経路で未取得表紙を再キューする。
 
 SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema も現行 `libraryDatabaseSchema` に含める。
-
-この表を手作業の完全な schema catalog として扱わない。正確な検査対象は [`config/architecture/table-ownership.tsv`](../../config/architecture/table-ownership.tsv)、実際の schema definition は各 feature data module の `DatabaseSchemaContribution` を参照する。
 
 ## Cross-context query / command patterns
 
@@ -113,13 +125,14 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 
 1. Domain/Context owner はどこか。
 2. schema contribution と migration は owner data module にあるか。
-3. app-level database version / contribution order の変更が必要か。
-4. 他 Context が table を直接参照していないか。
-5. cross-context read が必要なら owner Query API で十分か。
-6. cross-context write が必要なら owner command port / Application Service を利用しているか。
-7. Projection が必要なら目的、参照 table、read-only 制約、integration test が明示されているか。
-8. `table-ownership.tsv` または allowlist の更新が必要か。
-9. 現在の database / backup compatibility baseline をどこまで維持するか。
+3. fresh DB と lazy initializer が同じ schema definition を利用しているか。
+4. app-level database version / contribution order の変更が必要か。
+5. 他 Context が table を直接参照していないか。
+6. cross-context read が必要なら owner Query API で十分か。
+7. cross-context write が必要なら owner command port / Application Service を利用しているか。
+8. Projection が必要なら目的、参照 table、read-only 制約、integration test が明示されているか。
+9. 新しい durable table を `table-ownership.tsv` に登録したか。
+10. 現在の database / backup compatibility baseline をどこまで維持するか。
 
 ## Sources
 

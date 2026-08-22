@@ -10,9 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
+import dev.terashima.yomitorirss.MailAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.mail.MailRoute
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
 import kotlinx.coroutines.launch
 
 @Composable
@@ -56,7 +56,7 @@ internal fun MailRouteHost(
       runCatching { authorization.requestAccount() }
         .onSuccess { outcome ->
           when (outcome) {
-            is GmailAuthorizationOutcome.Authorized -> {
+            is MailAuthorizationOutcome.Authorized -> {
               val account = outcome.account
               mailViewModel.connectAuthorizedAccount(
                 email = account.email,
@@ -65,7 +65,7 @@ internal fun MailRouteHost(
               )
             }
 
-            is GmailAuthorizationOutcome.RequiresResolution -> {
+            is MailAuthorizationOutcome.RequiresResolution -> {
               authorizationLauncher.launch(
                 IntentSenderRequest.Builder(outcome.pendingIntent.intentSender).build(),
               )

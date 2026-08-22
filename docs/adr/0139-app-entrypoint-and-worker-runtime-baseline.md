@@ -15,6 +15,7 @@ ADR-0101 では feature 固有の background runtime を owning feature の data
 - `:app` に旧 Bookmark / Knowledge Worker FQCN を維持する compatibility shim が残り、architecture verification に個別例外が必要だった。
 - `MainActivity` の feature ViewModel ownership は app unit test だけで検査され、root の `verifyArchitecture` と guardrail が分かれていた。
 - Worker の source rule は `CoroutineWorker` 等を直接継承する記法だけを対象にしており、Kotlin import alias で回避できた。
+- `MailRouteHost` のような app UI composition が concrete Mail data implementation を import し、Mail Worker が application scope の Repository graph と別に database / Repository を再構築できる経路が残っていた。
 
 現在利用するアプリは最新バージョンであり、旧アプリから未実行の WorkManager request を直接引き継ぐことは互換性要件に含めない。DB / backup についても ADR-0138 で現行 schema を互換性基準としている。
 
@@ -51,14 +52,23 @@ server lifecycle に伴って変化する状態は `feature:web:data` の内部 
 
 ### 4. architecture verification に current rule を統合する
 
-`verifyArchitecture` / `verifyArchitectureRuleTests` で次を固定する。
+`verifyArchitecture` / `verifyArchitectureRuleTests` と Architecture job の init script で次を固定する。
 
 - `MainActivity` は `AppViewModel` を除く feature ViewModel を import しない。
 - `MainActivity` は concrete `feature.*.data.*` implementation を import しない。
 - `:app` production source に feature 固有 Worker を置かない。旧 shim path に例外を設けない。
 - `CoroutineWorker` / `Worker` / `ListenableWorker` の import alias を解決して同じ違反として検出する。
+- `Screen` / `Route` だけでなく、`:app` の `ui` composition 配下にある `*Host.kt` 等も concrete feature data、database、WorkManager implementation を import / construct しない。
 
-これに伴い、単独の `MainActivityArchitectureTest` は root architecture fixture へ統合する。
+ファイル名だけを architecture boundary とみなさず、app UI composition という責務の場所に rule を適用する。
+
+### 5. framework entry point は application scope の同一 dependency graph を再利用する
+
+Android / WorkManager が constructor を所有する Worker / Service 等は、owner feature が公開する narrow Provider contract を `Application` から取得してよい。ただし Provider の目的は service locator による任意依存取得ではなく、framework entry point を既存の application scope dependency graph へ接続することに限定する。
+
+Mail では `MailSyncWorker` が `MailRepositoryProvider` を通じて `AppContainer` の `MailRepository` を取得し、UI/Settings と同じ Repository graph を再利用する。Worker 内で `YomitoriDatabase` と `DefaultMailRepository` を独立再構築しない。
+
+Provider lookup は `config/architecture/framework-provider-lookups.tsv` へ登録し、production lookup と manifest の集合を検査する。通常の Route / Screen / ViewModel は Provider lookup を利用せず、composition root から渡された contract を利用する。
 
 ## Consequences
 
@@ -68,20 +78,25 @@ server lifecycle に伴って変化する状態は `feature:web:data` の内部 
 - LAN Web Server の mutable state ownership が domain から data/runtime へ移り、domain API は immutable contract に限定される。
 - `:app` の feature Worker 例外がなくなり、background runtime ownership rule を一律に適用できる。
 - MainActivity と Worker alias の drift を CI の同一 architecture verifier で検出できる。
+- `Host.kt` 等へ concrete data wiring が移動して architecture rule を回避することを防げる。
+- Worker と通常 runtime が同じ application scope Repository graph を利用し、database helper / scheduler / state の二重構築を減らせる。
 - 旧 compatibility bridge / test exception を保守し続ける必要がなくなる。
 
 ### Negative
 
 - 旧版アプリから直接更新し、旧 FQCN を参照する WorkManager request が端末に残っている場合、その request の実行互換性は保証しない。
-- MainActivity の feature data 直接参照が必要な新しい platform integration を追加する場合は、先に narrow contract と composition wiring を用意する必要がある。
+- MainActivity や app UI composition の feature data 直接参照が必要な新しい platform integration を追加する場合は、先に narrow contract と composition wiring を用意する必要がある。
+- framework entry point 用 Provider contract と lookup manifest を明示的に維持する必要がある。
 
 ## Verification
 
 - `verifyArchitectureRuleTests` で MainActivity の feature ViewModel / concrete data import を違反として固定する。
 - import alias を利用した app Worker fixture も違反として固定する。
+- Architecture job の init script で `MailRouteHost.kt` 相当の app `ui` composition concrete data import fixture を固定する。
+- framework Provider lookup は `config/architecture/framework-provider-lookups.tsv` と production source を照合する。
 - LAN Web Server の state transition test は mutable state の owner である `feature:web:data` に置く。
 - Web Server dialog の表示 state test は `feature:web:ui` に維持する。
-- 通常の `verifyArchitecture`、unit test、lint を CI で実行する。
+- Mail repository behavior test と通常の `verifyArchitecture`、unit test、lint を CI で実行する。
 
 ## Public repository safety
 
@@ -92,5 +107,6 @@ server lifecycle に伴って変化する状態は `feature:web:data` の内部 
 - [ADR-0046](0046-automated-architecture-verification.md)
 - [ADR-0101](0101-feature-route-and-background-runtime-ownership.md)
 - [ADR-0116](0116-route-owned-root-viewmodel-wiring.md)
+- [ADR-0120](0120-bookmark-application-service-and-framework-provider-boundary.md)
 - [ADR-0125](0125-application-service-and-capability-segregation.md)
 - [ADR-0138](0138-database-v27-compatibility-baseline.md)

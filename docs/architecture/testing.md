@@ -63,8 +63,11 @@ Data implementation は owner contract と persistence / remote semantics を検
 - external API / parser adapter の edge case
 - transaction が必要な operation の atomicity
 - query port adapter が owner schema の意味を正しく公開すること
+- 明示的 schema initializer を持つ場合、read method の副作用に依存せず必要 table を作成できること
 
 他 Context の実 table schema がなくても成立すべき Repository は boundary test でそれを固定する。例えば Content Repository は RSS/Summary の table schema を直接必要としないことを検証する。
+
+Library catalog の単体 lookup は空の test schema から catalog initializer を通じて必要 table を作成し、全 Library snapshot を構築せず対象書籍を取得できることを固定する。
 
 mutable runtime state の transition は、その mutable state を所有する runtime/data module でテストする。presentation は公開された immutable state から表示を導出する部分だけを UI test で固定する。
 
@@ -101,21 +104,32 @@ Gradle dependency と production source の構造的 guardrail を検査する�
 
 rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture に加え、MainActivity の concrete feature data / feature ViewModel、WorkManager Worker の import alias も違反として固定する。
 
-### Table ownership verification
+### Architecture ownership init script
 
-CI では次のように table ownership init script を併用する。
+CI の Architecture job は `gradle/table-ownership.gradle.kts` を init script として併用する。
 
 ```bash
 ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
 ```
 
-`config/architecture/table-ownership.tsv` の owner 以外から durable table を参照した production source を原則失敗させる。既知の移行負債だけ `foreign-table-access-allowlist.tsv` で明示する。現在の allowlist に例外 entry はない。
+この init script は table ownership に加えて、現在次も検査する。
+
+- owner data source の `CREATE TABLE IF NOT EXISTS` が `table-ownership.tsv` に登録されていること
+- table creator と registered owner が一致すること
+- owner 以外から durable table を参照していないこと
+- `foreign-table-access-allowlist.tsv` の unknown / stale entry がないこと
+- `:app` の `ui` composition 配下（`*Host.kt` 等を含む）が concrete feature data、database、WorkManager implementation を import / construct しないこと
+- 全 Android application/library module が `minSdk = 34` 以上を宣言すること
+
+`MailRouteHost.kt` 相当の concrete data import と API 29 module を fixture として持ち、guardrail 自体が退行しないことも固定する。
 
 ### Framework provider boundary
 
 Provider lookup は framework-owned entry point に限定し、manifest と production lookup の集合を architecture test で一致させる。不要になった manifest entry も stale として削除する。
 
 LAN Web Server の Android Service は framework-owned entry point として `LanWebRepositoryProvider` を利用するが、Activity から Service implementation を直接参照しない。Activity は injected `LanWebServerController` contract を利用する。
+
+Mail Worker は framework-owned entry point として `MailRepositoryProvider` を利用し、application scope の既存 `MailRepository` graph へ接続する。Worker 内に parallel database / Repository graph を作らない。
 
 ### ADR integrity
 
@@ -170,12 +184,14 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | pure Domain rule | unit test |
 | multi-port orchestration | UseCase/Application Service unit test |
 | SQL / migration | Repository/integration + migration-related test |
+| explicit schema initializer | empty/minimal schema integration test + architecture table registration |
 | backup compatibility baseline | current snapshot round-trip + unsupported schema rejection |
 | parser / external adapter | adapter/parser test |
 | cross-context read optimization | Projection integration test |
 | mutable runtime state ownership | owner data/runtime unit test + presentation derivation test where needed |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
 | new table ownership rule | table ownership manifest/fixture + verification |
+| Android platform baseline | architecture fixture + all module `minSdk` verification |
 | framework Provider exception | boundary manifest/test |
 | public repository verifier | verifier unit test + repository scan + semantic review |
 | ADR-only change | ADR integrity; functional test追加は原則不要 |
@@ -187,10 +203,12 @@ PR review では test の「数」ではなく、変更した responsibility と
 
 - [`.github/workflows/build-apk.yml`](../../.github/workflows/build-apk.yml)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
+- [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
 - [ADR-0055](../adr/0055-adr-numbering-policy.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0120](../adr/0120-bookmark-application-service-and-framework-provider-boundary.md)
+- [ADR-0126](../adr/0126-android-platform-baseline.md)
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)

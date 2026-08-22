@@ -8,7 +8,7 @@ android {
   compileSdk = 36
 
   defaultConfig {
-    minSdk = 29
+    minSdk = 34
   }
 
   buildFeatures {
@@ -27,7 +27,6 @@ dependencies {
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:ui"))
   implementation(project(":feature:bookmark:domain"))
-  implementation(project(":feature:summary:domain"))
   implementation(project(":core:designsystem"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))

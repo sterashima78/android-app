@@ -133,23 +133,7 @@ internal class KindleSourceSeriesRepository(
   }
 
   private fun ensureSchema() {
-    database.writable.execSQL(
-      """
-        CREATE TABLE IF NOT EXISTS $TABLE_NAME(
-          source TEXT NOT NULL,
-          source_id TEXT NOT NULL,
-          series_id TEXT NOT NULL,
-          series_name TEXT NOT NULL,
-          series_position INTEGER,
-          updated_at INTEGER NOT NULL,
-          PRIMARY KEY(source, source_id)
-        )
-      """.trimIndent(),
-    )
-    database.writable.execSQL(
-      "CREATE INDEX IF NOT EXISTS library_source_series_name " +
-        "ON $TABLE_NAME(source, series_name COLLATE NOCASE)",
-    )
+    ensureLibraryStructuredSeriesSchema(database.writable)
   }
 
   private companion object {

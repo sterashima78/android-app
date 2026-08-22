@@ -25,8 +25,7 @@ import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSu
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
-import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
+import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
@@ -45,7 +44,7 @@ import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 class AppRouteDependencies internal constructor(
   private val application: Application,
-  container: AppContainer,
+  private val container: AppContainer,
 ) {
   private val backgroundDataFetchPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     BackgroundDataFetchPreferences(application)
@@ -56,7 +55,6 @@ class AppRouteDependencies internal constructor(
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
       backupChangeScheduler = container.backupChangeScheduler,
-      summaryRepository = container.summaryRepository,
       articleSelector = { article -> !article.isRedditArticle() },
     )
   }
@@ -98,8 +96,32 @@ class AppRouteDependencies internal constructor(
     MailViewModel.Factory(container.mailRepository)
   }
 
-  val mailAuthorization: GmailAuthorizationManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    container.gmailAuthorizationManager
+  val mailAuthorization: MailAuthorizationDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val authorizationManager = container.gmailAuthorizationManager
+    MailAuthorizationDependencies(
+      requestAccount = {
+        when (val outcome = authorizationManager.requestAccount()) {
+          is GmailAuthorizationOutcome.Authorized -> MailAuthorizationOutcome.Authorized(
+            MailAuthorizedAccount(
+              email = outcome.account.email,
+              displayName = outcome.account.displayName,
+              accessToken = outcome.account.accessToken,
+            ),
+          )
+          is GmailAuthorizationOutcome.RequiresResolution ->
+            MailAuthorizationOutcome.RequiresResolution(outcome.pendingIntent)
+        }
+      },
+      resultFromIntent = { data ->
+        authorizationManager.resultFromIntent(data).let { account ->
+          MailAuthorizedAccount(
+            email = account.email,
+            displayName = account.displayName,
+            accessToken = account.accessToken,
+          )
+        }
+      },
+    )
   }
 
   val summaryViewModelFactory: SummaryViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -234,7 +256,7 @@ class AppRouteDependencies internal constructor(
 
   fun setBackgroundFetchWifiOnly(wifiOnly: Boolean) {
     backgroundDataFetchPreferences.wifiOnly = wifiOnly
-    MailSyncScheduler(application).refreshPeriodicNetworkPolicy()
+    container.mailRepository.refreshPeriodicSyncPolicy()
   }
 }
 
@@ -242,6 +264,22 @@ data class HealthRouteDependencies internal constructor(
   val viewModelFactory: HealthViewModel.Factory,
   val readPermissions: Set<String>,
 )
+
+data class MailAuthorizationDependencies internal constructor(
+  val requestAccount: suspend () -> MailAuthorizationOutcome,
+  val resultFromIntent: suspend (Intent) -> MailAuthorizedAccount,
+)
+
+data class MailAuthorizedAccount internal constructor(
+  val email: String,
+  val displayName: String?,
+  val accessToken: String,
+)
+
+sealed interface MailAuthorizationOutcome {
+  data class Authorized(val account: MailAuthorizedAccount) : MailAuthorizationOutcome
+  data class RequiresResolution(val pendingIntent: PendingIntent) : MailAuthorizationOutcome
+}
 
 data class LibraryRouteDependencies internal constructor(
   val authorization: LibraryAuthorizationDependencies,

@@ -116,21 +116,7 @@ internal class AudibleSourceSeriesRepository(
   }
 
   private fun ensureSchema() {
-    database.writable.execSQL(
-      """
-        CREATE TABLE IF NOT EXISTS $TABLE_NAME(
-          source_id TEXT PRIMARY KEY NOT NULL,
-          series_id TEXT,
-          series_name TEXT NOT NULL,
-          series_position INTEGER,
-          updated_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
-    database.writable.execSQL(
-      "CREATE INDEX IF NOT EXISTS library_audible_source_series_name " +
-        "ON $TABLE_NAME(series_name COLLATE NOCASE)",
-    )
+    ensureLibraryStructuredSeriesSchema(database.writable)
   }
 
   private companion object {

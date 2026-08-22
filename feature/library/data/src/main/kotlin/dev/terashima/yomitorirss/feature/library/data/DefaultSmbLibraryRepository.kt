@@ -197,18 +197,14 @@ class DefaultSmbLibraryRepository(
     deleteSmbBookCovers(appContext, listOf(book.sourceId))
 
     val coverUrl = runCatching {
-      withShare(server, password) { share ->
-        resolveSmbBookCover(
-          context = appContext,
-          share = share,
-          remotePath = targetPath,
-          sourceId = targetSourceId,
-          size = targetLocation.size,
-          modifiedAt = targetLocation.modifiedAt,
-          format = targetLocation.format,
-          cachedBookFile = cachedBookFile(targetSourceId, targetLocation),
-        )
-      }
+      resolveSmbBookCover(
+        context = appContext,
+        sourceId = targetSourceId,
+        size = targetLocation.size,
+        modifiedAt = targetLocation.modifiedAt,
+        format = targetLocation.format,
+        cachedBookFile = cachedBookFile(targetSourceId, targetLocation),
+      )
     }.getOrNull()
     if (!coverUrl.isNullOrBlank()) {
       database.writable.update(
@@ -329,8 +325,6 @@ class DefaultSmbLibraryRepository(
       val thumbnailUrl = runCatching {
         resolveSmbBookCover(
           context = appContext,
-          share = share,
-          remotePath = childPath,
           sourceId = sourceId,
           size = size,
           modifiedAt = modifiedAt,
@@ -411,24 +405,8 @@ class DefaultSmbLibraryRepository(
     }
   }
 
-  private suspend fun ensureSchema() {
-    // The library repository owns the shared library tables and initializes them lazily.
-    DefaultLibraryRepository(database).snapshot()
-    database.writable.execSQL(
-      """
-        CREATE TABLE IF NOT EXISTS $SERVER_TABLE(
-          id TEXT PRIMARY KEY NOT NULL,
-          name TEXT NOT NULL,
-          host TEXT NOT NULL,
-          port INTEGER NOT NULL,
-          share_name TEXT NOT NULL,
-          root_path TEXT NOT NULL,
-          username TEXT NOT NULL,
-          domain_name TEXT NOT NULL,
-          updated_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
+  private fun ensureSchema() {
+    ensureLibrarySchema(database.writable)
   }
 
   private fun migrateBookIdentity(

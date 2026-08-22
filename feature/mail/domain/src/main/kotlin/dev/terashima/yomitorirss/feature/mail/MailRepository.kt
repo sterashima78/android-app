@@ -1,5 +1,11 @@
 package dev.terashima.yomitorirss.feature.mail
 
+sealed interface MailInitialSyncStep {
+  data class Continue(val nextPageToken: String) : MailInitialSyncStep
+  data object Complete : MailInitialSyncStep
+  data object Stale : MailInitialSyncStep
+}
+
 interface MailRepository {
   suspend fun getAccounts(): List<MailAccount>
 
@@ -23,6 +29,17 @@ interface MailRepository {
 
   suspend fun sync(accountId: String? = null)
 
+  suspend fun syncInitialPage(
+    accountId: String,
+    expectedPageToken: String?,
+  ): MailInitialSyncStep
+
+  fun markInitialSyncWaitingForNetwork(accountId: String, message: String?)
+
+  fun markInitialSyncError(accountId: String, message: String?)
+
+  fun refreshPeriodicSyncPolicy()
+
   suspend fun setThreadRead(accountId: String, threadId: String, read: Boolean)
 
   suspend fun setThreadStarred(accountId: String, threadId: String, starred: Boolean)
@@ -34,4 +51,8 @@ interface MailRepository {
   suspend fun trashThread(accountId: String, threadId: String)
 
   suspend fun applyLabel(accountId: String, threadId: String, labelId: String)
+}
+
+interface MailRepositoryProvider {
+  val mailRepository: MailRepository
 }
