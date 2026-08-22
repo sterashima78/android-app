@@ -51,12 +51,13 @@ private fun hasSegmentEquivalent(
   if (detailed.summary.segments.isEmpty() || standalone.summary.segments.isNotEmpty()) return false
 
   return detailed.summary.segments.any { segment ->
-    hasStrongTemporalOverlap(
-      firstStart = segment.startTime,
-      firstEnd = segment.endTime,
-      secondStart = standalone.summary.startTime,
-      secondEnd = standalone.summary.endTime,
-    )
+    segment.exerciseName == standalone.summary.exerciseName &&
+      hasStrongTemporalOverlap(
+        firstStart = segment.startTime,
+        firstEnd = segment.endTime,
+        secondStart = standalone.summary.startTime,
+        secondEnd = standalone.summary.endTime,
+      )
   }
 }
 
