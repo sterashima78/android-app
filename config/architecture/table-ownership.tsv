@@ -19,6 +19,8 @@ library_sources	:feature:library:data
 hidden_library_items	:feature:library:data
 library_item_series	:feature:library:data
 library_item_series_exclusions	:feature:library:data
+library_source_series	:feature:library:data
+library_audible_source_series	:feature:library:data
 library_organization_tags	:feature:library:data
 library_organization_collections	:feature:library:data
 library_item_organization_tags	:feature:library:data
