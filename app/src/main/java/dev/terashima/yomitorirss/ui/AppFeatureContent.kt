@@ -59,7 +59,7 @@ internal fun AppFeatureContent(
         mailViewModel = mailViewModel,
         youtubeViewModelFactory = routeDependencies.youtubeViewModelFactory,
         onOpenArticle = onOpenArticle,
-        onSummarize = summaryViewModel::summarize,
+        onSummarize = { article -> summaryViewModel.summarize(article) },
         onOpenMail = { thread ->
           mailViewModel.openThread(thread)
           appViewModel.selectTab(MainTab.MAIL)
@@ -68,8 +68,7 @@ internal fun AppFeatureContent(
     }
 
     MainTab.UNREAD,
-    MainTab.READ_LATER,
-    -> {
+    MainTab.READ_LATER -> {
       val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
       val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
@@ -80,15 +79,14 @@ internal fun AppFeatureContent(
         feedViewModel = feedViewModel,
         controller = rssController,
         onOpen = onOpenArticle,
-        onSummarize = summaryViewModel::summarize,
+        onSummarize = { article -> summaryViewModel.summarize(article) },
         onEditTags = bookmarkEditController::editTags,
         onMoveFolder = bookmarkEditController::moveFolder,
       )
     }
 
     MainTab.REDDIT_UNREAD,
-    MainTab.REDDIT_READ_LATER,
-    -> {
+    MainTab.REDDIT_READ_LATER -> {
       val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
       RedditRoute(
@@ -97,7 +95,7 @@ internal fun AppFeatureContent(
         redditViewModel = redditViewModel,
         controller = redditController,
         onOpen = onOpenArticle,
-        onSummarize = summaryViewModel::summarize,
+        onSummarize = { article -> summaryViewModel.summarize(article) },
       )
     }
 
@@ -114,8 +112,7 @@ internal fun AppFeatureContent(
     }
 
     MainTab.SAVED,
-    MainTab.TAGS,
-    -> {
+    MainTab.TAGS -> {
       val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
       BookmarkRoute(
@@ -124,15 +121,14 @@ internal fun AppFeatureContent(
         bookmarkViewModel = bookmarkViewModel,
         editController = bookmarkEditController,
         onOpen = onOpenArticle,
-        onSummarize = summaryViewModel::summarize,
+        onSummarize = { article -> summaryViewModel.summarize(article) },
         onMoveToLibrary = routeDependencies.libraryTransfers.moveBookmarkToLibrary,
         onImportCompleted = { appViewModel.selectTab(MainTab.SAVED) },
       )
     }
 
     MainTab.FOLDERS,
-    MainTab.BOOKMARK_IMPORT,
-    -> {
+    MainTab.BOOKMARK_IMPORT -> {
       val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
       BookmarkRoute(
         modifier = modifier,
