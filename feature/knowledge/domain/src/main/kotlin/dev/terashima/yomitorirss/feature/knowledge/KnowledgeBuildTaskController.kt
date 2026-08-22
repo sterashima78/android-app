@@ -13,6 +13,12 @@ data class KnowledgeBuildTaskSnapshot(
   val error: String? = null,
 )
 
+/** Starts or reschedules a Knowledge build request from an application/UI workflow. */
+fun interface KnowledgeBuildScheduler {
+  fun enqueue()
+}
+
+/** Controls an already requested Knowledge build from the shared background task queue. */
 interface KnowledgeBuildTaskController {
   fun kick()
   suspend fun pauseForGlobalGate()
