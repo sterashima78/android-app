@@ -11,6 +11,8 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepositoryProvider
+import dev.terashima.yomitorirss.feature.mail.MailRepository
+import dev.terashima.yomitorirss.feature.mail.MailRepositoryProvider
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentBackfillProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
@@ -30,6 +32,7 @@ class YomitoriApplication : Application(),
   DatabaseSchemaProvider,
   BackupRepositoryProvider,
   KnowledgeRepositoryProvider,
+  MailRepositoryProvider,
   LanWebRepositoryProvider,
   SummaryRuntimeDependenciesProvider,
   BookmarkAutoEnrichmentBackfillProvider {
@@ -52,6 +55,7 @@ class YomitoriApplication : Application(),
   override val backupRepository: BackupRepository get() = container.backupRepository
   override val knowledgeRepository: KnowledgeRepository get() = container.knowledgeRepository
   override val knowledgeBuilder: KnowledgeBuilder get() = container.knowledgeBuilder
+  override val mailRepository: MailRepository get() = container.mailRepository
   override val summaryRuntimeDependencies: SummaryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SummaryRuntimeDependencies(container.articleRepository, container.bookmarkContentQuery, container.bookmarkEnrichmentRepository)
   }
