@@ -97,7 +97,6 @@ internal class GoogleBooksApiClient(
       thumbnailUrl = thumbnail,
       infoUrl = googleBooksReadingUrl(
         webReaderLink = accessInfo?.stringOrNull("webReaderLink"),
-        infoLink = info.stringOrNull("infoLink"),
         isPurchased = isPurchased,
       ),
     )
@@ -120,10 +119,8 @@ internal class GoogleBooksApiClient(
   }
 }
 
-@Suppress("UNUSED_PARAMETER")
 internal fun googleBooksReadingUrl(
   webReaderLink: String?,
-  infoLink: String?,
   isPurchased: Boolean = false,
 ): String? = webReaderLink?.takeIf(String::isNotBlank)
   ?: GOOGLE_PLAY_BOOKS_HOME_URL.takeIf { isPurchased }
