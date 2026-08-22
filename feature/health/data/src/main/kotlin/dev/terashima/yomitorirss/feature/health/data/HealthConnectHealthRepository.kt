@@ -207,8 +207,27 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       }
       pageToken = response.pageToken
     } while (pageToken != null)
+
     return deduplicateExerciseSessions(sessions)
       .sortedByDescending(HealthExerciseSessionSummary::startTime)
+      .map { session -> enrichExerciseSessionActivity(session) }
+  }
+
+  private suspend fun enrichExerciseSessionActivity(
+    session: HealthExerciseSessionSummary,
+  ): HealthExerciseSessionSummary {
+    if (session.startTime >= session.endTime) return session
+    val aggregation = client.aggregate(
+      AggregateRequest(
+        metrics = EXERCISE_ACTIVITY_METRICS,
+        timeRangeFilter = TimeRangeFilter.between(session.startTime, session.endTime),
+      ),
+    )
+    return session.copy(
+      activeCaloriesKcal = aggregation[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
+      averageHeartRateBpm = aggregation[HeartRateRecord.BPM_AVG],
+      steps = aggregation[StepsRecord.COUNT_TOTAL],
+    )
   }
 
   private suspend fun readBodyFatMeasurements(timeRange: TimeRangeFilter): List<BodyFatMeasurement> {
@@ -310,6 +329,12 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       HeartRateRecord.BPM_AVG,
       SleepSessionRecord.SLEEP_DURATION_TOTAL,
       WeightRecord.WEIGHT_AVG,
+    )
+
+    private val EXERCISE_ACTIVITY_METRICS: Set<AggregateMetric<*>> = setOf(
+      ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
+      HeartRateRecord.BPM_AVG,
+      StepsRecord.COUNT_TOTAL,
     )
   }
 }
