@@ -131,7 +131,7 @@ class AppRouteDependencies internal constructor(
   val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     HealthRouteDependencies(
       viewModelFactory = HealthViewModel.Factory(healthRepository),
-      readPermissions = HealthConnectHealthRepository.REQUEST_PERMISSIONS,
+      readPermissions = healthRepository.requestPermissions(),
     )
   }
 
