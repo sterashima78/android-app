@@ -1,3 +1,4 @@
 <resources>
   <string name="app_name">Mosaic</string>
+  <string name="share_to_library">蔵書へ追加</string>
 </resources>
