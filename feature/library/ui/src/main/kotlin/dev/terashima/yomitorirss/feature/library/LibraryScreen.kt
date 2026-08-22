@@ -84,6 +84,7 @@ fun LibraryScreen(
   onHideBook: (LibraryBook) -> Unit,
   onRestoreBook: (LibraryBook) -> Unit,
   onSetBookSeries: (LibraryBook, String, Int?) -> Unit,
+  onMergeSeries: (List<LibraryBookSeriesUpdate>) -> Unit,
   onClearBookSeries: (LibraryBook) -> Unit,
   onOpenOrganization: () -> Unit,
   onDismissMessage: () -> Unit,
@@ -196,6 +197,7 @@ fun LibraryScreen(
             onSearchQueryChange = { searchQuery = it },
             onHideBook = onHideBook,
             onEditSeries = { seriesEditorBook = it },
+            onMergeSeries = onMergeSeries,
           )
 
           LibraryTab.HIDDEN -> LibraryHiddenTab(
@@ -290,6 +292,7 @@ private fun LibrarySeriesTab(
   onSearchQueryChange: (String) -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
+  onMergeSeries: (List<LibraryBookSeriesUpdate>) -> Unit,
 ) {
   if (books.isEmpty()) {
     LibraryEmptyMessage(
@@ -310,16 +313,23 @@ private fun LibrarySeriesTab(
     )
   }
   val groups = remember(filteredBooks) { groupLibraryBooks(filteredBooks) }
+  val allGroups = remember(books) { groupLibraryBooks(books) }
   val selectedSeries = groups.series.firstOrNull { it.key == selectedSeriesKey }
 
-  selectedSeries?.let { section ->
+  selectedSeries?.let { filteredSection ->
+    val section = allGroups.series.firstOrNull { it.key == filteredSection.key } ?: filteredSection
     LibrarySeriesBooksSheet(
       section = section,
+      mergeTargets = allGroups.series.filter { it.key != section.key },
       onDismiss = { selectedSeriesKey = null },
       onHideBook = onHideBook,
       onEditSeries = { book ->
         selectedSeriesKey = null
         onEditSeries(book)
+      },
+      onMerge = { target ->
+        selectedSeriesKey = null
+        onMergeSeries(mergeLibrarySeries(section, target))
       },
     )
   }
@@ -404,10 +414,14 @@ private fun LibrarySeriesTab(
 @Composable
 private fun LibrarySeriesBooksSheet(
   section: LibrarySeriesSection,
+  mergeTargets: List<LibrarySeriesSection>,
   onDismiss: () -> Unit,
   onHideBook: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
+  onMerge: (LibrarySeriesSection) -> Unit,
 ) {
+  var mergeMenuExpanded by remember(section.key) { mutableStateOf(false) }
+
   ModalBottomSheet(
     onDismissRequest = onDismiss,
   ) {
@@ -432,6 +446,38 @@ private fun LibrarySeriesBooksSheet(
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (mergeTargets.isNotEmpty()) {
+          Box {
+            TextButton(onClick = { mergeMenuExpanded = true }) {
+              Text("別のシリーズにマージ")
+            }
+            DropdownMenu(
+              expanded = mergeMenuExpanded,
+              onDismissRequest = { mergeMenuExpanded = false },
+            ) {
+              mergeTargets.forEach { target ->
+                DropdownMenuItem(
+                  text = {
+                    Column {
+                      Text(target.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                      Text(
+                        target.books.map { it.source.label }.distinct().joinToString(" / "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                      )
+                    }
+                  },
+                  onClick = {
+                    mergeMenuExpanded = false
+                    onMerge(target)
+                  },
+                )
+              }
+            }
+          }
+        }
       }
       LibraryBookGrid(
         books = section.books,

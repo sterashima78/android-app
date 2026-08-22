@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.KINDLE_PERSONAL_DOCUMENT_SOURCE_ID_PREFIX
 import dev.terashima.yomitorirss.feature.library.LibraryBook
+import dev.terashima.yomitorirss.feature.library.LibraryBookSeriesUpdate
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySnapshot
@@ -80,30 +81,41 @@ class DefaultLibraryRepository(
     book: LibraryBook,
     series: LibrarySeries,
   ) {
-    val seriesName = series.name.trim()
-    val seriesPosition = series.position
-    require(seriesName.isNotEmpty()) { "シリーズ名を入力してください" }
-    require(seriesPosition == null || seriesPosition > 0) { "巻数は1以上で入力してください" }
-    ensureSchema()
-    val values = ContentValues().apply {
-      put("source", book.source.name)
-      put("source_id", book.sourceId)
-      put("series_name", seriesName)
-      seriesPosition?.let { put("series_position", it) } ?: putNull("series_position")
-      put("updated_at", System.currentTimeMillis())
+    setBookSeries(listOf(LibraryBookSeriesUpdate(book, series)))
+  }
+
+  override suspend fun setBookSeries(updates: List<LibraryBookSeriesUpdate>) {
+    if (updates.isEmpty()) return
+    val normalizedUpdates = updates.map { update ->
+      val seriesName = update.series.name.trim()
+      val seriesPosition = update.series.position
+      require(seriesName.isNotEmpty()) { "シリーズ名を入力してください" }
+      require(seriesPosition == null || seriesPosition > 0) { "巻数は1以上で入力してください" }
+      update.copy(series = update.series.copy(name = seriesName, id = null))
     }
+    ensureSchema()
+    val updatedAt = System.currentTimeMillis()
     database.transaction {
-      insertWithOnConflict(
-        "library_item_series",
-        null,
-        values,
-        SQLiteDatabase.CONFLICT_REPLACE,
-      )
-      delete(
-        "library_item_series_exclusions",
-        "source = ? AND source_id = ?",
-        arrayOf(book.source.name, book.sourceId),
-      )
+      normalizedUpdates.forEach { update ->
+        val values = ContentValues().apply {
+          put("source", update.book.source.name)
+          put("source_id", update.book.sourceId)
+          put("series_name", update.series.name)
+          update.series.position?.let { put("series_position", it) } ?: putNull("series_position")
+          put("updated_at", updatedAt)
+        }
+        insertWithOnConflict(
+          "library_item_series",
+          null,
+          values,
+          SQLiteDatabase.CONFLICT_REPLACE,
+        )
+        delete(
+          "library_item_series_exclusions",
+          "source = ? AND source_id = ?",
+          arrayOf(update.book.source.name, update.book.sourceId),
+        )
+      }
     }
   }
 

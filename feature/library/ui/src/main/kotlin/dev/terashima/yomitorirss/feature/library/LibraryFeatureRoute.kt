@@ -90,6 +90,7 @@ fun LibraryFeatureRoute(
       onHideBook = viewModel::hideBook,
       onRestoreBook = viewModel::restoreBook,
       onSetBookSeries = viewModel::setBookSeries,
+      onMergeSeries = viewModel::mergeSeries,
       onClearBookSeries = viewModel::clearBookSeries,
       onOpenOrganization = {
         organizationViewModel.refresh()

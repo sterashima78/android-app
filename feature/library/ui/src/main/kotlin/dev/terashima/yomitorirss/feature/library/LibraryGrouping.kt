@@ -79,6 +79,25 @@ internal fun groupLibraryBooks(books: List<LibraryBook>): LibraryBookGroups {
   )
 }
 
+internal fun mergeLibrarySeries(
+  source: LibrarySeriesSection,
+  target: LibrarySeriesSection,
+): List<LibraryBookSeriesUpdate> {
+  require(source.key != target.key) { "同じシリーズにはマージできません" }
+  val targetName = target.name.trim()
+  require(targetName.isNotEmpty()) { "マージ先のシリーズ名がありません" }
+
+  return (target.books + source.books).map { book ->
+    LibraryBookSeriesUpdate(
+      book = book,
+      series = LibrarySeries(
+        name = targetName,
+        position = book.series?.position,
+      ),
+    )
+  }
+}
+
 private fun seriesKey(series: LibrarySeries): String =
   series.id?.trim()?.takeIf(String::isNotEmpty)?.let { "id:${it.uppercase()}" }
     ?: "name:${series.name.trim().lowercase()}"
