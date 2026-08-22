@@ -129,6 +129,59 @@ class ExerciseSessionMappingTest {
   }
 
   @Test
+  fun `詳細セッションの内訳と一致する別提供元の単独セッションは統合する`() {
+    val detailedWorkout = session("2026-08-22T06:32:00Z", "2026-08-22T07:41:00Z").copy(
+      exerciseName = "ウォーキング",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-08-22T06:32:00Z", "2026-08-22T06:48:14Z", "ウォーキング"),
+        segment("2026-08-22T06:57:00Z", "2026-08-22T07:12:13Z", "ウォーキング"),
+        segment("2026-08-22T07:26:00Z", "2026-08-22T07:26:23Z", "ウォーキング"),
+        segment("2026-08-22T07:26:42Z", "2026-08-22T07:41:00Z", "ウォーキング"),
+      ),
+    )
+    val firstStandalone = session("2026-08-22T06:35:00Z", "2026-08-22T06:47:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+    val secondStandalone = session("2026-08-22T07:22:00Z", "2026-08-22T07:42:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, firstStandalone, "example.tracker.a"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, secondStandalone, "example.tracker.b"),
+      ),
+    )
+
+    assertEquals(listOf(detailedWorkout), deduplicated)
+  }
+
+  @Test
+  fun `詳細セッションの内訳と十分に一致しない単独セッションは保持する`() {
+    val detailedWorkout = session("2026-08-22T06:30:00Z", "2026-08-22T07:30:00Z").copy(
+      exerciseName = "ウォーキング",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-08-22T06:30:00Z", "2026-08-22T06:40:00Z", "ウォーキング"),
+      ),
+    )
+    val standalone = session("2026-08-22T06:35:00Z", "2026-08-22T07:00:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, standalone, "example.tracker"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
   fun `同一提供元では同一時刻でもHealth Connect種別が異なるセッションを保持する`() {
     val walking = session("2026-08-20T09:38:00Z", "2026-08-20T09:59:00Z").copy(
       exerciseName = "ウォーキング",
