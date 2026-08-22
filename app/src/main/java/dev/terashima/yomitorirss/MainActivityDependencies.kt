@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss
 
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.SaveSharedBookmarkUseCase
+import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.web.LanWebServerController
 
 interface MainActivityDependenciesProvider {
@@ -18,4 +19,9 @@ class MainActivityDependencies internal constructor(
     title: String,
     sourceTitle: String,
   ): BookmarkSaveResult = saveSharedBookmark(url, title, sourceTitle)
+
+  suspend fun addSharedWebBook(
+    url: String,
+    title: String,
+  ): LibraryBook = routeDependencies.library.webLibraryMutator.addWebBook(url, title)
 }

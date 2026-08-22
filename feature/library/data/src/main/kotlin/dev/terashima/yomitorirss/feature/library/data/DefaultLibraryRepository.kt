@@ -168,6 +168,7 @@ class DefaultLibraryRepository(
       )
       LibrarySource.GOOGLE_PLAY_BOOKS,
       LibrarySource.SMB,
+      LibrarySource.WEB,
       -> error("対応していない蔵書ソースです")
     }
   }

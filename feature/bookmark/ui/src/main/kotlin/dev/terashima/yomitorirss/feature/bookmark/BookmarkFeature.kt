@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
+import dev.terashima.yomitorirss.feature.article.ArticleMenuAction
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 
@@ -38,6 +39,7 @@ fun BookmarkScreen(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onMoveToLibrary: (Article) -> Unit,
   onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
   onCreateFolder: (String) -> Unit,
@@ -60,6 +62,7 @@ fun BookmarkScreen(
       onSummarize = onSummarize,
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
+      onMoveToLibrary = onMoveToLibrary,
       onSetContentType = onSetContentType,
       onUnsave = onUnsave,
     )
@@ -108,6 +111,7 @@ private fun BookmarkSavedScreen(
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onMoveToLibrary: (Article) -> Unit,
   onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
 ) {
@@ -177,6 +181,11 @@ private fun BookmarkSavedScreen(
       onEditTags = onEditTags,
       onMoveFolder = onMoveFolder,
       onSetContentType = onSetContentType,
+      extraMenuActions = { article ->
+        listOf(
+          ArticleMenuAction("蔵書へ移動") { onMoveToLibrary(article) },
+        )
+      },
     )
   }
 }

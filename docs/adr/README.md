@@ -81,6 +81,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0135: SMB 表紙キャッシュをバックアップ復元後に再関連付けする](0135-smb-cover-cache-backup-restore.md)
 - [ADR-0141: SMB 書籍の読書開始を明示的な application callback で接続する](0141-explicit-smb-book-open-routing.md)
+- [ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する](0143-web-library-source-and-bookmark-transfer.md)
 
 ### Background / AI runtime
 

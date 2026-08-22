@@ -165,6 +165,7 @@ class SeriesAwareLibraryRepository private constructor(
       LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.importMetadata(json)
       LibrarySource.GOOGLE_PLAY_BOOKS,
       LibrarySource.SMB,
+      LibrarySource.WEB,
       -> error("対応していない蔵書ソースです")
     }
   }
@@ -175,6 +176,7 @@ class SeriesAwareLibraryRepository private constructor(
       LibrarySource.AUDIBLE -> audibleSourceSeriesRepository.clear()
       LibrarySource.GOOGLE_PLAY_BOOKS,
       LibrarySource.SMB,
+      LibrarySource.WEB,
       -> error("対応していない蔵書ソースです")
     }
   }

@@ -12,9 +12,11 @@ import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
+import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
@@ -50,6 +52,7 @@ internal class AppFeatureRuntimeDependencies(
     val smbRepository = CleaningSmbLibraryRepository(application, database)
     LibraryRuntimeDependencies(
       catalogRepository = SmbMetadataAwareLibraryRepository(database),
+      webLibraryMutator = DefaultWebLibraryMutator(database),
       organizationRepository = DefaultLibraryOrganizationRepository(database),
       organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
       smbRepository = smbRepository,
@@ -61,6 +64,7 @@ internal class AppFeatureRuntimeDependencies(
 
 internal data class LibraryRuntimeDependencies(
   val catalogRepository: LibraryRepository,
+  val webLibraryMutator: WebLibraryMutator,
   val organizationRepository: LibraryOrganizationRepository,
   val organizationBatchScheduler: LibraryOrganizationBatchScheduler,
   val smbRepository: SmbLibraryRepository,
