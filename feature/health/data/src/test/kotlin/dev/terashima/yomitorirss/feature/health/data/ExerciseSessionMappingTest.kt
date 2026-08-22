@@ -181,6 +181,29 @@ class ExerciseSessionMappingTest {
   }
 
   @Test
+  fun `詳細セッションの内訳と運動種別が異なる単独セッションは保持する`() {
+    val detailedWorkout = session("2026-01-16T10:00:00Z", "2026-01-16T11:00:00Z").copy(
+      exerciseName = "その他の運動",
+      title = "ワークアウト",
+      segments = listOf(
+        segment("2026-01-16T10:10:00Z", "2026-01-16T10:25:00Z", "クランチ"),
+      ),
+    )
+    val standaloneWalking = session("2026-01-16T10:10:00Z", "2026-01-16T10:25:00Z").copy(
+      exerciseName = "ウォーキング",
+    )
+
+    val deduplicated = deduplicateExerciseSessions(
+      listOf(
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, detailedWorkout, "example.workout"),
+        candidate(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, standaloneWalking, "example.tracker"),
+      ),
+    )
+
+    assertEquals(2, deduplicated.size)
+  }
+
+  @Test
   fun `同一提供元では同一時刻でもHealth Connect種別が異なるセッションを保持する`() {
     val walking = session("2026-08-20T09:38:00Z", "2026-08-20T09:59:00Z").copy(
       exerciseName = "ウォーキング",
