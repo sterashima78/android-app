@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.bookmark
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -37,12 +39,25 @@ fun BookmarkRoute(
   editController: BookmarkEditController,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
-  onImportCsv: () -> Unit,
-  onImportHtml: () -> Unit,
   onImportCompleted: () -> Unit,
 ) {
   val state by bookmarkViewModel.state.collectAsState()
+  val csvImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importCsv) }
+  val htmlImportLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocument(),
+  ) { uri -> uri?.toString()?.let(bookmarkViewModel::importHtml) }
 
+  LaunchedEffect(bookmarkViewModel) {
+    bookmarkViewModel.refresh()
+  }
+  LaunchedEffect(tab) {
+    if (tab == BookmarkTab.BOOKMARKS) {
+      bookmarkViewModel.selectTag(null)
+      bookmarkViewModel.selectFolder(null)
+    }
+  }
   LaunchedEffect(state.importCompleted) {
     if (state.importCompleted) {
       onImportCompleted()
@@ -76,8 +91,16 @@ fun BookmarkRoute(
     onRenameTag = bookmarkViewModel::renameTag,
     onDeleteTag = bookmarkViewModel::deleteTag,
     onDeleteUnusedTags = bookmarkViewModel::deleteUnusedTags,
-    onImportCsv = onImportCsv,
-    onImportHtml = onImportHtml,
+    onImportCsv = {
+      csvImportLauncher.launch(
+        arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
+      )
+    },
+    onImportHtml = {
+      htmlImportLauncher.launch(
+        arrayOf("text/html", "application/xhtml+xml", "text/plain"),
+      )
+    },
   )
 }
 
