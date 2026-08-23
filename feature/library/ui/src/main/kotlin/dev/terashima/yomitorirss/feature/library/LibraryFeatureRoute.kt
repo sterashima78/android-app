@@ -33,6 +33,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import java.net.URI
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,6 +44,7 @@ fun LibraryFeatureRoute(
   organizationViewModel: LibraryOrganizationViewModel,
   onSyncGooglePlayBooks: () -> Unit,
   onAddWebBook: suspend (String) -> Unit,
+  onRefreshWebBook: suspend (LibraryBook) -> Unit,
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   smbRepository: SmbLibraryRepository,
@@ -54,6 +56,7 @@ fun LibraryFeatureRoute(
   val organizationState by organizationViewModel.state.collectAsState()
   var organizationVisible by rememberSaveable { mutableStateOf(false) }
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
+  var refreshingWebSourceIds by remember { mutableStateOf(emptySet<String>()) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
@@ -98,6 +101,36 @@ fun LibraryFeatureRoute(
         .onFailure(viewModel::reportError)
     }
   }
+  val refreshWebBooks: (List<LibraryBook>) -> Unit = { books ->
+    if (books.isNotEmpty() && refreshingWebSourceIds.isEmpty()) {
+      refreshingWebSourceIds = books.mapTo(linkedSetOf()) { it.sourceId }
+      scope.launch {
+        val failures = mutableListOf<Throwable>()
+        try {
+          books.forEach { book ->
+            try {
+              withContext(Dispatchers.IO) { onRefreshWebBook(book) }
+            } catch (error: CancellationException) {
+              throw error
+            } catch (error: Throwable) {
+              failures += error
+            }
+          }
+          viewModel.refresh()
+          if (failures.isNotEmpty()) {
+            viewModel.reportError(
+              IllegalStateException(
+                "Web蔵書の再取得に失敗しました (${failures.size}/${books.size}件)",
+                failures.first(),
+              ),
+            )
+          }
+        } finally {
+          refreshingWebSourceIds = emptySet()
+        }
+      }
+    }
+  }
 
   Box(modifier = modifier.fillMaxSize()) {
     CompositionLocalProvider(
@@ -136,6 +169,11 @@ fun LibraryFeatureRoute(
             .onFailure(viewModel::reportError)
         }
       },
+      onRefresh = { book -> refreshWebBooks(listOf(book)) },
+      onRefreshAll = {
+        refreshWebBooks(state.books.filter { it.source == LibrarySource.WEB })
+      },
+      refreshingSourceIds = refreshingWebSourceIds,
       onMoveToBookmark = { book ->
         scope.launch {
           runCatching {

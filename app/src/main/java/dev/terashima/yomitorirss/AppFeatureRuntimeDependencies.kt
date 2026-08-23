@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss
 
+import android.app.Activity
 import android.app.Application
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -21,6 +22,7 @@ import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptR
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
@@ -44,6 +46,7 @@ internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   private val modelManagerProvider: () -> LocalModelManager,
+  private val resumedActivityProvider: () -> Activity?,
 ) {
   val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     HealthConnectHealthRepository(application)
@@ -89,7 +92,10 @@ internal class AppFeatureRuntimeDependencies(
         },
       ),
       catalogRepository = SmbMetadataAwareLibraryRepository(database),
-      webLibraryMutator = DefaultWebLibraryMutator(database),
+      webLibraryMutator = DefaultWebLibraryMutator(
+        database = database,
+        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(resumedActivityProvider),
+      ),
       organizationRepository = DefaultLibraryOrganizationRepository(database),
       organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider()),
       organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),

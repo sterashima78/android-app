@@ -117,7 +117,7 @@ Calendar は Task / Workout / device calendar の command owner ではなく、�
 
 現在の主要な実装 module は `:feature:library:{domain,data,ui}`。Library は Google Play Books、Kindle、Audible、SMB、Web を `LibraryBook` catalog の source として扱い、`library_items` と Library 固有の整理 metadata を所有する。
 
-Web source は URL を identity とし、Library data layer が HTTP(S) ページの OGP / HTML metadata を取得する。Web 固有の追加・削除は `WebLibraryMutator` capability として Library が公開し、Bookmark / Curation の永続化には触れない。
+Web source は URL を identity とし、Library data layer がまず HTTP(S) ページの OGP / HTML metadata を取得する。HTTPS ページで metadata が不足する場合は短命な WebView で JavaScript 実行後の DOM metadata を取得して補完する。既存 Web 蔵書は `WebLibraryMutator.refreshWebBook` で明示的に再取得でき、手動再取得では rendered metadata を優先する。複数項目の再取得は WebView を同時起動せず直列に行う。Web 固有の追加・再取得・削除は `WebLibraryMutator` capability として Library が公開し、Bookmark / Curation の永続化には触れない。
 
 Bookmark と Web Library の相互移動は Context 間 command であるため、app composition の `BookmarkLibraryTransferService` が各 owner capability を順に呼び出す。コピー先の保存成功前に元側を削除せず、foreign table を直接 write しない。
 
@@ -194,3 +194,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0132](../adr/0132-health-connect-exercise-session-deduplication.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0143](../adr/0143-web-library-source-and-bookmark-transfer.md)
+- [ADR-0153](../adr/0153-web-library-rendered-metadata-fallback.md)

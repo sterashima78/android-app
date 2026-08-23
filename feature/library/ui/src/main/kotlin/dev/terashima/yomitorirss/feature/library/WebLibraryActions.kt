@@ -14,6 +14,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,11 +32,15 @@ import androidx.compose.ui.unit.dp
 fun WebLibraryActions(
   books: List<LibraryBook>,
   onAdd: (String) -> Unit,
+  onRefresh: (LibraryBook) -> Unit,
+  onRefreshAll: () -> Unit,
+  refreshingSourceIds: Set<String>,
   onMoveToBookmark: (LibraryBook) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var visible by remember { mutableStateOf(false) }
   var url by remember { mutableStateOf("") }
+  val refreshing = refreshingSourceIds.isNotEmpty()
 
   FloatingActionButton(
     modifier = modifier,
@@ -73,14 +78,29 @@ fun WebLibraryActions(
               url = ""
             }
           },
-          enabled = url.isNotBlank(),
+          enabled = url.isNotBlank() && !refreshing,
         ) {
           Text("URLから追加")
         }
 
         if (books.isNotEmpty()) {
-          Text("Webから追加した蔵書")
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text("Webから追加した蔵書", modifier = Modifier.weight(1f))
+            TextButton(
+              onClick = onRefreshAll,
+              enabled = !refreshing,
+            ) {
+              Text("すべて再取得")
+            }
+          }
+          if (refreshing) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+          }
           books.forEach { book ->
+            val bookRefreshing = book.sourceId in refreshingSourceIds
             Row(
               modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
               verticalAlignment = Alignment.CenterVertically,
@@ -91,7 +111,16 @@ fun WebLibraryActions(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
               )
-              TextButton(onClick = { onMoveToBookmark(book) }) {
+              TextButton(
+                onClick = { onRefresh(book) },
+                enabled = !refreshing,
+              ) {
+                Text(if (bookRefreshing) "取得中" else "再取得")
+              }
+              TextButton(
+                onClick = { onMoveToBookmark(book) },
+                enabled = !refreshing,
+              ) {
                 Text("ブックマークへ移動")
               }
             }
