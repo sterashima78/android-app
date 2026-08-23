@@ -101,6 +101,15 @@ fun LibraryFeatureRoute(
         .onFailure(viewModel::reportError)
     }
   }
+  val moveWebBookToBookmark: (LibraryBook) -> Unit = { book ->
+    scope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) { onMoveWebBookToBookmark(book) }
+      }
+        .onSuccess { viewModel.refresh() }
+        .onFailure(viewModel::reportError)
+    }
+  }
   val refreshWebBooks: (List<LibraryBook>) -> Unit = { books ->
     if (books.isNotEmpty() && refreshingWebSourceIds.isEmpty()) {
       refreshingWebSourceIds = books.mapTo(linkedSetOf()) { it.sourceId }
@@ -137,6 +146,7 @@ fun LibraryFeatureRoute(
       LocalUriHandler provides libraryUriHandler,
       LocalWebLibraryImportHandler provides webLibraryImportHandler,
       LocalWebLibraryDeleteHandler provides deleteWebBook,
+      LocalWebLibraryMoveToBookmarkHandler provides moveWebBookToBookmark,
       LocalSmbLibraryUiBinding provides smbBinding,
       LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
     ) {
@@ -174,15 +184,7 @@ fun LibraryFeatureRoute(
         refreshWebBooks(state.books.filter { it.source == LibrarySource.WEB })
       },
       refreshingSourceIds = refreshingWebSourceIds,
-      onMoveToBookmark = { book ->
-        scope.launch {
-          runCatching {
-            withContext(Dispatchers.IO) { onMoveWebBookToBookmark(book) }
-          }
-            .onSuccess { viewModel.refresh() }
-            .onFailure(viewModel::reportError)
-        }
-      },
+      onMoveToBookmark = moveWebBookToBookmark,
       modifier = Modifier
         .align(Alignment.BottomEnd)
         .padding(end = 16.dp, bottom = 88.dp),
