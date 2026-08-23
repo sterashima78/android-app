@@ -5,13 +5,11 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptRepository
-import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 
 /** Application-scope dependencies shared by Library WorkManager entry points. */
 data class LibraryWorkerRuntimeDependencies(
@@ -19,12 +17,12 @@ data class LibraryWorkerRuntimeDependencies(
   val smbRepository: SmbLibraryRepository,
   val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler,
   val smbMetadataNormalizationRepository: DefaultSmbMetadataNormalizationRepository,
-  val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler,
+  val smbMetadataNormalizationScheduler: WorkManagerSmbMetadataNormalizationScheduler,
   val smbMetadataNormalizationPromptRepository: SmbMetadataNormalizationPromptRepository,
   val organizationRepository: DefaultLibraryOrganizationRepository,
   val organizationLibraryRepository: LibraryRepository,
   val organizationSuggester: LibraryOrganizationSuggester,
-  val organizationBatchScheduler: LibraryOrganizationBatchScheduler,
+  val organizationBatchScheduler: WorkManagerLibraryOrganizationBatchScheduler,
 )
 
 /**
@@ -58,7 +56,7 @@ class LibraryWorkerFactory(
       SmbMetadataNormalizationWorker::class.java.name -> SmbMetadataNormalizationWorker(
         appContext = appContext,
         params = workerParameters,
-        database = runtime.database,
+        connection = runtime.database,
         smbRepository = runtime.smbRepository,
         repository = runtime.smbMetadataNormalizationRepository,
         scheduler = runtime.smbMetadataNormalizationScheduler,
