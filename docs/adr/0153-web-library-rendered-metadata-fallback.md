@@ -35,7 +35,7 @@ UI では個別再取得と「すべて再取得」を提供する。一括再�
 
 ### rendered metadata は Library data layer が所有する
 
-Android WebView を使う `AndroidWebViewLibraryMetadataClient` は Library data module に置き、`WebLibraryRenderedMetadataClient` capability として `DefaultWebLibraryMutator` に注入する。app composition は `Application` を渡して production implementation を構成するが、実際の `WebView` は Android の要件に合わせて現在 resume 中の `Activity` context で生成する。Activity は lifecycle callback から弱参照で追跡し、保持による Activity leak を避ける。feature UI や Domain は WebView API を認識しない。
+Android WebView を使う `AndroidWebViewLibraryMetadataClient` は Library data module に置き、`WebLibraryRenderedMetadataClient` capability として `DefaultWebLibraryMutator` に注入する。Android lifecycle の所有は app 側に残し、`YomitoriApplication` が `ActivityLifecycleCallbacks` で現在の Activity を弱参照で追跡する。cold-start の共有追加でも利用できるよう `onActivityPreCreated` から追跡し、pause / stop / destroy で参照を解除する。app composition は `() -> Activity?` provider を `AppContainer` から Library runtime へ注入し、data layer 自体は lifecycle を監視しない。実際の `WebView` は Android の要件に合わせてその Activity context で生成する。feature UI や Domain は WebView API を認識しない。
 
 WebView はページ読み込み後に固定の `evaluateJavascript` script で次の DOM metadata だけを読む。
 
