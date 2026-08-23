@@ -43,7 +43,7 @@ import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNorm
 internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
-  modelManager: LocalModelManager,
+  private val modelManagerProvider: () -> LocalModelManager,
 ) {
   val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     HealthConnectHealthRepository(application)
@@ -91,7 +91,7 @@ internal class AppFeatureRuntimeDependencies(
       catalogRepository = SmbMetadataAwareLibraryRepository(database),
       webLibraryMutator = DefaultWebLibraryMutator(database),
       organizationRepository = DefaultLibraryOrganizationRepository(database),
-      organizationSuggester = LocalLibraryOrganizationSuggester(modelManager),
+      organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider()),
       organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
       smbRepository = smbRepository,
       smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application),
