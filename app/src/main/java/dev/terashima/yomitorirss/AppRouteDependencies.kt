@@ -11,8 +11,6 @@ import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
-import dev.terashima.yomitorirss.feature.bookreader.data.DefaultBookPageSourceFactory
-import dev.terashima.yomitorirss.feature.bookreader.data.SharedPreferencesReadingPositionStore
 import dev.terashima.yomitorirss.feature.calendar.CalendarViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthViewModel
@@ -22,11 +20,6 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
-import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
-import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
-import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
-import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
@@ -43,7 +36,6 @@ import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
-import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 class AppRouteDependencies internal constructor(
@@ -195,52 +187,27 @@ class AppRouteDependencies internal constructor(
 
   val library: LibraryRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val runtime = container.featureRuntimeDependencies.library
-    val authorizationManager = GoogleBooksAuthorizationManager(application)
-    val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
-    val smbMetadataNormalizationPromptRepository =
-      SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     LibraryRouteDependencies(
-      authorization = LibraryAuthorizationDependencies(
-        requestAccount = {
-          when (val outcome = authorizationManager.requestAccount()) {
-            is GoogleBooksAuthorizationOutcome.Authorized -> LibraryAuthorizationOutcome.Authorized(
-              LibraryAuthorizedAccount(
-                accessToken = outcome.account.accessToken,
-                accountLabel = outcome.account.accountLabel,
-              ),
-            )
-            is GoogleBooksAuthorizationOutcome.RequiresResolution ->
-              LibraryAuthorizationOutcome.RequiresResolution(outcome.pendingIntent)
-          }
-        },
-        resultFromIntent = { data ->
-          authorizationManager.resultFromIntent(data).let { account ->
-            LibraryAuthorizedAccount(
-              accessToken = account.accessToken,
-              accountLabel = account.accountLabel,
-            )
-          }
-        },
-      ),
+      authorization = runtime.authorization,
       libraryViewModelFactory = LibraryViewModel.Factory(
         repository = runtime.catalogRepository,
         smbRepository = runtime.smbRepository,
-        smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
+        smbCoverPrefetchScheduler = runtime.smbCoverPrefetchScheduler,
         smbMetadataNormalizationRepository = runtime.smbMetadataNormalizationRepository,
         smbMetadataNormalizationScheduler = runtime.smbMetadataNormalizationScheduler,
-        smbMetadataNormalizationPromptRepository = smbMetadataNormalizationPromptRepository,
+        smbMetadataNormalizationPromptRepository = runtime.smbMetadataNormalizationPromptRepository,
       ),
       organizationViewModelFactory = LibraryOrganizationViewModel.Factory(
         repository = runtime.organizationRepository,
-        suggester = LocalLibraryOrganizationSuggester(container.modelManager),
+        suggester = runtime.organizationSuggester,
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
-      webLibraryMutator = webLibraryMutator,
+      addWebBook = { url, titleHint -> webLibraryMutator.addWebBook(url, titleHint) },
       moveWebBookToBookmark = libraryTransfers.moveWebBookToBookmark,
       bookReader = BookReaderRouteDependencies(
-        pageSourceFactory = DefaultBookPageSourceFactory(),
-        readingPositionStore = SharedPreferencesReadingPositionStore(application),
+        pageSourceFactory = runtime.bookPageSourceFactory,
+        readingPositionStore = runtime.readingPositionStore,
       ),
     )
   }
@@ -264,7 +231,7 @@ class AppRouteDependencies internal constructor(
   }
 
   val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    SharedPreferencesXViewerCssRepository(application)
+    container.xViewerCssRepository
   }
 
   val youtubeViewModelFactory: YouTubeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -314,7 +281,7 @@ data class LibraryRouteDependencies internal constructor(
   val libraryViewModelFactory: LibraryViewModel.Factory,
   val organizationViewModelFactory: LibraryOrganizationViewModel.Factory,
   val smbRepository: SmbLibraryRepository,
-  val webLibraryMutator: WebLibraryMutator,
+  val addWebBook: suspend (String, String?) -> LibraryBook,
   val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val bookReader: BookReaderRouteDependencies,
 )

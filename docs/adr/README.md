@@ -41,6 +41,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0147: app composition は選択中タブに必要な ViewModel だけ起動する](0147-active-tab-viewmodel-activation.md)
 - [ADR-0150: app shell navigation state を app UI ownership へ収束する](0150-app-shell-navigation-ui-ownership.md)
+- [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
 
 ### Domain / Context / persistence
 
@@ -93,6 +94,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0141: SMB 書籍の読書開始を明示的な application callback で接続する](0141-explicit-smb-book-open-routing.md)
 - [ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する](0143-web-library-source-and-bookmark-transfer.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
+- [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
 
 ### Background / AI runtime
 
@@ -148,3 +150,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0136](0136-public-repository-content-verification.md)
 - [ADR-0150](0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0151](0151-retire-current-architecture-compatibility-redirects.md)
+- [ADR-0152](0152-library-route-and-route-runtime-ownership-cleanup.md)

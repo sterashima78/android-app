@@ -21,6 +21,8 @@ import dev.terashima.yomitorirss.feature.web.LanWebServerController
 import dev.terashima.yomitorirss.feature.web.data.AndroidLanWebServerController
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutRepository
+import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
+import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
 
 /** Independent/supporting feature repositories and Android platform adapters. */
 internal class AppSupportingRuntimeDependencies(
@@ -71,5 +73,9 @@ internal class AppSupportingRuntimeDependencies(
 
   val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBackupRepository(application, database, dataChanges)
+  }
+
+  val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    SharedPreferencesXViewerCssRepository(application)
   }
 }

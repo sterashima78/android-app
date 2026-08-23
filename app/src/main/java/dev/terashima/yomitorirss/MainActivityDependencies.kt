@@ -23,5 +23,5 @@ class MainActivityDependencies internal constructor(
   suspend fun addSharedWebBook(
     url: String,
     title: String,
-  ): LibraryBook = routeDependencies.library.webLibraryMutator.addWebBook(url, title)
+  ): LibraryBook = routeDependencies.library.addWebBook(url, title)
 }
