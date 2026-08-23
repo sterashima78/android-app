@@ -333,10 +333,15 @@ private fun SmbMetadataNormalizationReviewCard(
           TextButton(enabled = !busy, onClick = onRetry) { Text("再解析") }
         }
 
+        SmbMetadataNormalizationStatus.APPLIED -> {
+          TextButton(enabled = !busy && item.proposal != null, onClick = onEdit) {
+            Text("書誌情報を編集")
+          }
+        }
+
         SmbMetadataNormalizationStatus.WAITING_FOR_COVER,
         SmbMetadataNormalizationStatus.QUEUED,
         SmbMetadataNormalizationStatus.PROCESSING,
-        SmbMetadataNormalizationStatus.APPLIED,
         -> Unit
       }
     }
@@ -365,7 +370,8 @@ private fun SmbMetadataCandidateEditDialog(
   onApply: (String, SmbBookMetadataProposal) -> Unit,
 ) {
   val source = item.proposal ?: return
-  var fileName by remember(item) { mutableStateOf(item.proposedFileName.orEmpty()) }
+  val editingApplied = item.status == SmbMetadataNormalizationStatus.APPLIED
+  var fileName by remember(item) { mutableStateOf(item.proposedFileName ?: item.originalFileName) }
   var title by remember(item) { mutableStateOf(source.title) }
   var authors by remember(item) { mutableStateOf(source.authors.joinToString("\n")) }
   var publisher by remember(item) { mutableStateOf(source.publisher.orEmpty()) }
@@ -380,17 +386,19 @@ private fun SmbMetadataCandidateEditDialog(
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("候補を編集して反映") },
+    title = { Text(if (editingApplied) "反映済み書誌情報を編集" else "候補を編集して反映") },
     text = {
       LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item {
-          OutlinedTextField(
-            value = fileName,
-            onValueChange = { fileName = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("変更後ファイル名") },
-            singleLine = true,
-          )
+        if (!editingApplied) {
+          item {
+            OutlinedTextField(
+              value = fileName,
+              onValueChange = { fileName = it },
+              modifier = Modifier.fillMaxWidth(),
+              label = { Text("変更後ファイル名") },
+              singleLine = true,
+            )
+          }
         }
         item {
           OutlinedTextField(
@@ -484,7 +492,7 @@ private fun SmbMetadataCandidateEditDialog(
             ),
           )
         },
-      ) { Text("反映") }
+      ) { Text(if (editingApplied) "再反映" else "反映") }
     },
     dismissButton = { TextButton(onClick = onDismiss) { Text("キャンセル") } },
   )
