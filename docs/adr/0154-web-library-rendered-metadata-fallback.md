@@ -11,6 +11,8 @@ ADR-0143 では Web Library の metadata を通常の HTTP response に含まれ
 
 しかし SPA、bot 向け response とブラウザ向け response が異なるサイト、JavaScript 実行後に head metadata を更新するサイトでは、HTTP response だけでは title が host 名 fallback になったり、thumbnail が取得できないことがある。Web Library は URL を直接開く source であり、この欠落は catalog の識別性を大きく下げる。また、既に不完全な metadata で登録済みの Web 蔵書を、後から取得し直す経路も必要である。
 
+さらに、ブラウザでは本文中に表紙相当の画像を表示していても Open Graph や Twitter Card の image metadata 自体を設定しないサイトがある。この場合は WebView を使っても従来の metadata 抽出だけでは thumbnail を補完できない。
+
 一方、任意 URL を WebView で常時読み込むと、追加処理の latency と resource 使用量が増え、WebView の JavaScript 実行面も広がる。既存の静的取得で十分なサイトまで WebView に切り替える必要はない。
 
 ## Decision
@@ -37,15 +39,18 @@ UI では個別再取得と「すべて再取得」を提供する。一括再�
 
 Android WebView を使う `AndroidWebViewLibraryMetadataClient` は Library data module に置き、`WebLibraryRenderedMetadataClient` capability として `DefaultWebLibraryMutator` に注入する。Android lifecycle の所有は app 側に残し、`YomitoriApplication` が `ActivityLifecycleCallbacks` で現在の Activity を弱参照で追跡する。cold-start の共有追加でも利用できるよう `onActivityPreCreated` から追跡し、pause / stop / destroy で参照を解除する。app composition は `() -> Activity?` provider を `AppContainer` から Library runtime へ注入し、data layer 自体は lifecycle を監視しない。実際の `WebView` は Android の要件に合わせてその Activity context で生成する。feature UI や Domain は WebView API を認識しない。
 
-WebView はページ読み込み後に固定の `evaluateJavascript` script で次の DOM metadata だけを読む。
+WebView はページ読み込み後に固定の `evaluateJavascript` script で次の値だけを読む。
 
 - Open Graph title / description / image
 - Twitter Card title / description / image
 - HTML document title
 - author meta
 - 最終 `location.href`
+- OGP / Twitter image がない場合に備えた、document order 上で最初に URL を持つ `<img>` の image URL
 
-ページ本文、DOM 全体、Cookie、storage、script 実行結果のその他の値は Library に保存しない。
+thumbnail の rendered 側優先順位は Open Graph / Twitter Card image を先とし、それらが欠落しているか安全な HTTPS URL として利用できない場合のみ先頭画像 URL を使う。相対 URL は最終ページ URL に対して解決し、保存対象は HTTPS 標準 port の image URL に限定する。
+
+ページ本文、DOM 全体、Cookie、storage、script 実行結果のその他の値は Library に保存しない。本文画像についても保存するのは fallback に採用された単一 URL のみとする。
 
 ### WebView は fallback 用に制限して短命にする
 
@@ -63,25 +68,29 @@ rendered metadata 用 WebView では次を必須とする。
 - main-frame navigation は HTTPS の標準 port に限定する
 - timeout を設け、成功・失敗・cancel のいずれでも WebView を破棄する
 
-`onPageFinished` 直後だけでなく短い settle/retry window を設け、SPA が head metadata を遅延更新する場合を吸収する。ただし background browser として長時間保持はしない。
+`onPageFinished` 直後だけでなく短い settle/retry window を設け、SPA が head metadata や本文画像を遅延更新する場合を吸収する。ただし background browser として長時間保持はしない。
 
 ### 通常追加では静的 metadata を authoritative とする
 
 通常追加で HTTP と WebView の両方から metadata を取得できた場合、既に取得できている静的 metadata を優先する。WebView 結果は欠落している authors、description、thumbnail を補完し、静的 title が host 名 fallback の場合だけ rendered title へ置き換える。
 
+rendered thumbnail は WebView 内で Open Graph / Twitter Card image を優先し、それでも取得できない場合のみページ内先頭画像 URL を使用する。したがって本文画像 fallback は静的 metadata や rendered OGP image を上書きしない。
+
 これにより、通常追加では WebView 側の一時的な DOM 状態で安定した OGP metadata を不要に上書きしない。WebView fallback が失敗しても静的取得結果が存在する場合は、その結果で Web Library 追加を継続する。
 
 ### 公開リポジトリの情報境界を維持する
 
-実装、test、ADR には実ユーザー URL、Cookie、認証情報、取得した実ページ本文を含めない。test URL は予約済みの `example.com` 等だけを使い、WebView の評価結果は合成 metadata で検証する。
+実装、test、ADR には実ユーザー URL、Cookie、認証情報、取得した実ページ本文を含めない。test URL は予約済みの `example.com` 等だけを使い、WebView の評価結果は合成 metadata と合成 image URL で検証する。
 
 ## Consequences
 
 - JavaScript 実行後に title / OGP が設定されるサイトでも Web Library の表示 metadata を取得できる可能性が上がる。
+- OGP / Twitter image を持たないが本文に画像を表示するサイトでも、最初の画像を thumbnail として補完できる。
 - 通常の OGP ページは従来どおり HTTP 取得だけで完了し、WebView の起動コストを負わない。
 - HTTP client が browser 以外を拒否するサイトでも、HTTPS かつ安全な専用 WebView profile を利用できれば WebView fallback から追加できる可能性がある。
 - 不完全な状態で登録済みの Web 蔵書を個別または一括で修復できる。
 - 任意 Web content で JavaScript を実行する surface は増えるため、WebView security setting と短い lifecycle が correctness と同等に重要になる。
+- ページ先頭画像が必ずしも表紙とは限らないため精度は OGP より低いが、thumbnail 未設定のままにするより識別性を優先する fallback と位置付ける。
 - ログインが必要なサイトを自動認証する設計ではない。専用 profile は metadata 取得用であり、認証 UI や native bridge を提供しない。
 - WebView implementation やサイト側の JavaScript timing により metadata 取得を保証はできないため、最後は従来の title hint / host fallback を維持する。
 
@@ -93,5 +102,7 @@ rendered metadata 用 WebView では次を必須とする。
 - HTTP fetch failure から rendered fallback へ移行できることを unit test する。
 - rendered fallback failure 時に取得済み静的 metadata を失わないことを unit test する。
 - rendered metadata の相対 image URL 解決と HTTPS image 制約を unit test する。
+- OGP / Twitter image 欠落時に先頭画像 URL を thumbnail として採用し、rendered metadata image がある場合はそちらを優先する unit test を行う。
+- rendered metadata image が安全でない場合に安全な先頭画像へ fallback し、先頭画像も HTTP の場合は保存しない unit test を行う。
 - notifier decorator が `refreshWebBook` を delegate し、backup change を通知することを unit test する。
 - architecture verification、public repository verification、Library data unit test、app unit test、lint、assemble を CI で実行する。
