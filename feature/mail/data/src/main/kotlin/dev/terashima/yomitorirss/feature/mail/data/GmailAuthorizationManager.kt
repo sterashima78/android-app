@@ -8,6 +8,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
+import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.mail.MailAuthorizationRequiredException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -24,9 +25,12 @@ sealed interface GmailAuthorizationOutcome {
   data class RequiresResolution(val pendingIntent: PendingIntent) : GmailAuthorizationOutcome
 }
 
-class GmailAuthorizationManager(context: Context) {
+class GmailAuthorizationManager(
+  context: Context,
+  httpClient: HttpClient = HttpClient.create(),
+) {
   private val client = Identity.getAuthorizationClient(context.applicationContext)
-  private val profileClient = GmailAccountProfileClient()
+  private val profileClient = GmailAccountProfileClient(httpClient)
 
   suspend fun requestAccount(): GmailAuthorizationOutcome = request(
     email = null,
