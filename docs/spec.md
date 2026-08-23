@@ -198,7 +198,8 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - durableなbackground処理にはWorkManagerを利用する。
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
-- Android / WorkManagerがconstructorを所有するentry pointは、監査済みProvider contractを通してapplication-level dependencyを取得できる。
+- Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
+- WorkManager Worker は Provider lookup の例外に含めず、owning feature の `WorkerFactory` から constructor injection し、`:app` の WorkerFactory composition が application graph へ接続する。
 - frameworkが永続化した旧class nameとの互換が必要な場合だけ、ADRで根拠を持つcompatibility shimを残す。
 
 ## 14. 更新互換性
