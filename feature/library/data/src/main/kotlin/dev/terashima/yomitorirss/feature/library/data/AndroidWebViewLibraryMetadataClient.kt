@@ -219,8 +219,12 @@ internal fun parseRenderedWebLibraryBook(
   val title = metadata.optionalString("title")
     ?: titleHint?.trim()?.takeIf(String::isNotEmpty)
     ?: URI(finalUrl).host.removePrefix("www.")
-  val image = metadata.optionalString("image")
-    ?.let { resolveRenderedImageUrl(finalUrl, it) }
+  val image = sequenceOf("image", "firstImage")
+    .mapNotNull { key ->
+      metadata.optionalString(key)
+        ?.let { resolveRenderedImageUrl(finalUrl, it) }
+    }
+    .firstOrNull()
   val authors = metadata.optionalString("author")
     ?.split(',', '、')
     ?.map(String::trim)
@@ -265,6 +269,13 @@ private const val METADATA_SCRIPT = """
     }
     return null;
   };
+  const firstImage = () => {
+    for (const image of document.images) {
+      const value = (image.currentSrc || image.getAttribute('src') || '').trim();
+      if (value) return value;
+    }
+    return null;
+  };
   return JSON.stringify({
     url: location.href,
     title: meta('meta[property="og:title"]', 'meta[name="twitter:title"]') || document.title?.trim() || null,
@@ -278,6 +289,7 @@ private const val METADATA_SCRIPT = """
       'meta[property="og:image"]',
       'meta[name="twitter:image"]'
     ),
+    firstImage: firstImage(),
     author: meta('meta[name="author"]')
   });
 })()
