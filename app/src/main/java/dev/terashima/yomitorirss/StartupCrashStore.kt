@@ -65,7 +65,7 @@ object StartupCrashStore {
       val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
       val activityManager = application.getSystemService(ActivityManager::class.java)
       val unseen = activityManager
-        .getHistoricalProcessExitReasons(application.packageName, 0, 8)
+        .getHistoricalProcessExitReasons(application.packageName, 0, 0)
         .filter { it.timestamp > lastSeen }
       if (unseen.isEmpty()) return@runCatching
 
@@ -77,6 +77,7 @@ object StartupCrashStore {
         .filter { isMemoryRelatedProcessExit(it.reason, it.description) }
         .maxByOrNull { it.timestamp }
         ?: return@runCatching
+      val processName = memoryExit.processName ?: "unknown"
 
       val report = sanitizeCrashDetails(
         buildString {
@@ -89,6 +90,8 @@ object StartupCrashStore {
           appendLine("release=${Build.VERSION.RELEASE}")
           appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
           appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
+          appendLine("pid=${memoryExit.pid}")
+          appendLine("process=$processName")
           appendLine("reason=${memoryExit.reason}")
           appendLine("status=${memoryExit.status}")
           appendLine("importance=${memoryExit.importance}")
@@ -97,7 +100,12 @@ object StartupCrashStore {
           memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
             appendLine("description=$description")
           }
-          LocalAiMemoryDiagnostics.recentVisionInferenceReport(application)?.let { diagnostics ->
+          LocalAiMemoryDiagnostics.recentVisionInferenceReport(
+            context = application,
+            pid = memoryExit.pid,
+            processName = processName,
+            untilTimestamp = memoryExit.timestamp,
+          )?.let { diagnostics ->
             appendLine()
             appendLine("localAiMemoryDiagnostics:")
             append(diagnostics)
