@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibraryBook
+import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.LibrarySyncResult
 import dev.terashima.yomitorirss.feature.library.PreparedLibraryBook
@@ -176,6 +177,95 @@ class SmbMetadataNormalizationQueueTest {
     assertEquals("正規化タイトル", stored.title)
     assertEquals(listOf("架空著者"), stored.authors)
     assertEquals("架空出版社", stored.publisher)
+  }
+
+  @Test
+  fun `反映済み書誌情報は再解析せず編集して再反映できる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "edit-applied-book", fileName = "scan_edit.cbz")
+    repository.startBatch(listOf(book))
+    val item = repository.claimNext()!!
+    val initial = proposal("初回の架空タイトル")
+    repository.saveGeneratedCandidate(item, "scan_edit.cbz", initial)
+    repository.applyCandidate(book.sourceId, "scan_edit.cbz", initial)
+
+    val edited = initial.copy(
+      title = "修正後の架空タイトル",
+      authors = listOf("架空著者A", "架空著者B"),
+      publisher = "修正後の架空出版社",
+      publishedDate = "2026-02-03",
+      isbn10 = "0000000000",
+      isbn13 = "9780000000000",
+      seriesName = "修正後の架空シリーズ",
+      seriesPosition = 2,
+    )
+    repository.applyCandidate(book.sourceId, "scan_edit.cbz", edited)
+
+    val updated = repository.batchSnapshot()!!.items.single()
+    assertEquals(SmbMetadataNormalizationStatus.APPLIED, updated.status)
+    assertEquals(edited.title, updated.proposal?.title)
+    assertEquals(edited.authors, updated.proposal?.authors)
+    assertEquals(edited.seriesName, updated.proposal?.seriesName)
+    assertEquals(edited.seriesPosition, updated.proposal?.seriesPosition)
+
+    val stored = SmbMetadataAwareLibraryRepository(connection).snapshot().books.single()
+    assertEquals(edited.title, stored.title)
+    assertEquals(edited.authors, stored.authors)
+    assertEquals(edited.publisher, stored.publisher)
+    assertEquals(edited.publishedDate, stored.publishedDate)
+    assertEquals(edited.isbn10, stored.isbn10)
+    assertEquals(edited.isbn13, stored.isbn13)
+    assertEquals("修正後の架空シリーズ", stored.series?.name)
+    assertEquals(2, stored.series?.position)
+  }
+
+  @Test
+  fun `反映済み書誌情報の編集ではファイル名を変更できない`() = runBlocking {
+    val book = insertSmbBook(sourceId = "applied-filename-book", fileName = "scan_name.cbz")
+    repository.startBatch(listOf(book))
+    val item = repository.claimNext()!!
+    val initial = proposal("ファイル名固定の架空本")
+    repository.saveGeneratedCandidate(item, "scan_name.cbz", initial)
+    repository.applyCandidate(book.sourceId, "scan_name.cbz", initial)
+
+    val error = assertThrows(IllegalArgumentException::class.java) {
+      runBlocking {
+        repository.applyCandidate(
+          book.sourceId,
+          "別の架空ファイル名.cbz",
+          initial.copy(title = "修正を試みた架空本"),
+        )
+      }
+    }
+
+    assertTrue(error.message.orEmpty().contains("ファイル名"))
+    val stored = SmbMetadataAwareLibraryRepository(connection).snapshot().books.single()
+    assertEquals("ファイル名固定の架空本", stored.title)
+  }
+
+  @Test
+  fun `反映済み書誌のシリーズ未変更編集は後続の手動シリーズ変更を上書きしない`() = runBlocking {
+    val book = insertSmbBook(sourceId = "manual-series-book", fileName = "scan_series.cbz")
+    repository.startBatch(listOf(book))
+    val item = repository.claimNext()!!
+    val initial = proposal("シリーズ保持の架空本")
+    repository.saveGeneratedCandidate(item, "scan_series.cbz", initial)
+    repository.applyCandidate(book.sourceId, "scan_series.cbz", initial)
+
+    DefaultLibraryRepository(connection).setBookSeries(
+      book,
+      LibrarySeries(name = "手動設定した架空シリーズ", position = 7),
+    )
+
+    repository.applyCandidate(
+      book.sourceId,
+      "scan_series.cbz",
+      initial.copy(title = "タイトルだけ修正した架空本"),
+    )
+
+    val stored = SmbMetadataAwareLibraryRepository(connection).snapshot().books.single()
+    assertEquals("タイトルだけ修正した架空本", stored.title)
+    assertEquals("手動設定した架空シリーズ", stored.series?.name)
+    assertEquals(7, stored.series?.position)
   }
 
   @Test
