@@ -7,7 +7,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.reddit.RedditRouteController
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
