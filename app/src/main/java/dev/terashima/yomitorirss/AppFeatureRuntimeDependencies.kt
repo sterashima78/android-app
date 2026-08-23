@@ -30,6 +30,7 @@ import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormaliz
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
+import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerRuntimeDependencies
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
@@ -41,7 +42,7 @@ import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNorm
 /**
  * Application-scope feature runtimes consumed by more than one composition adapter.
  *
- * AppContainer owns these instances so routes and cross-feature adapters do not construct
+ * AppContainer owns these instances so routes and background entry points do not construct
  * parallel repository/scheduler graphs for the same durable feature state.
  */
 internal class AppFeatureRuntimeDependencies(
@@ -70,7 +71,17 @@ internal class AppFeatureRuntimeDependencies(
 
   val library: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val smbRepository = CleaningSmbLibraryRepository(application, database)
+    val catalogRepository = SmbMetadataAwareLibraryRepository(database)
+    val organizationRepository = DefaultLibraryOrganizationRepository(database)
+    val organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider())
+    val organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application)
+    val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
+    val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
+    val smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application)
+    val smbMetadataNormalizationPromptRepository =
+      SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     val authorizationManager = GoogleBooksAuthorizationManager(application)
+
     LibraryRuntimeDependencies(
       authorization = LibraryAuthorizationDependencies(
         requestAccount = {
@@ -94,23 +105,34 @@ internal class AppFeatureRuntimeDependencies(
           }
         },
       ),
-      catalogRepository = SmbMetadataAwareLibraryRepository(database),
+      catalogRepository = catalogRepository,
       webLibraryMutator = DefaultWebLibraryMutator(
         database = database,
         metadataClient = WebLibraryMetadataClient(httpClient),
         renderedMetadataClient = AndroidWebViewLibraryMetadataClient(resumedActivityProvider),
       ),
-      organizationRepository = DefaultLibraryOrganizationRepository(database),
-      organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider()),
-      organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
+      organizationRepository = organizationRepository,
+      organizationSuggester = organizationSuggester,
+      organizationBatchScheduler = organizationBatchScheduler,
       smbRepository = smbRepository,
-      smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application),
-      smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository),
-      smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application),
-      smbMetadataNormalizationPromptRepository =
-        SharedPreferencesSmbMetadataNormalizationPromptRepository(application),
+      smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
+      smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
+      smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
+      smbMetadataNormalizationPromptRepository = smbMetadataNormalizationPromptRepository,
       bookPageSourceFactory = DefaultBookPageSourceFactory(),
       readingPositionStore = SharedPreferencesReadingPositionStore(application),
+      workerRuntime = LibraryWorkerRuntimeDependencies(
+        database = database,
+        smbRepository = smbRepository,
+        smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
+        smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
+        smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
+        smbMetadataNormalizationPromptRepository = smbMetadataNormalizationPromptRepository,
+        organizationRepository = organizationRepository,
+        organizationLibraryRepository = catalogRepository,
+        organizationSuggester = organizationSuggester,
+        organizationBatchScheduler = organizationBatchScheduler,
+      ),
     )
   }
 }
@@ -129,4 +151,5 @@ internal data class LibraryRuntimeDependencies(
   val smbMetadataNormalizationPromptRepository: SmbMetadataNormalizationPromptRepository,
   val bookPageSourceFactory: BookPageSourceFactory,
   val readingPositionStore: ReadingPositionStore,
+  val workerRuntime: LibraryWorkerRuntimeDependencies,
 )
