@@ -26,7 +26,11 @@ class AppContainer(private val application: Application) {
   internal val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {
-    AppFeatureRuntimeDependencies(application, databaseConnection)
+    AppFeatureRuntimeDependencies(
+      application = application,
+      database = databaseConnection,
+      modelManager = aiCoreRuntime.modelManager,
+    )
   }
 
   private val aiCoreRuntime: AppAiCoreRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -106,6 +110,7 @@ class AppContainer(private val application: Application) {
   val lanWebServerController get() = supportingRuntime.lanWebServerController
   val gmailAuthorizationManager get() = supportingRuntime.gmailAuthorizationManager
   val mailRepository get() = supportingRuntime.mailRepository
+  val xViewerCssRepository get() = supportingRuntime.xViewerCssRepository
   val chatGenerator get() = crossFeatureRuntime.chatGenerator
   val backupRepository get() = supportingRuntime.backupRepository
   val summaryRepository get() = aiCoreRuntime.summaryRepository
