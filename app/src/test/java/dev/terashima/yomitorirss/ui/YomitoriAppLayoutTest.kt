@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.ui
 
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
