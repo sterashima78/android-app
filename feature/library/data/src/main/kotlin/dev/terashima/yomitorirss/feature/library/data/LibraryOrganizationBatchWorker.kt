@@ -14,13 +14,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.await
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
-import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
@@ -28,6 +25,8 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSeriesContext
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSnapshot
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggestion
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
+import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.organizationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -82,9 +81,6 @@ class WorkManagerLibraryOrganizationBatchScheduler(
   }
 
   internal fun kickFromChargingResume() {
-    // Do not cancel RESUME_ON_CHARGING_WORK_NAME here: this method is called by that worker.
-    // The normal worker checks the shared execution gate again before doing any AI work, so a
-    // concurrent user pause remains authoritative even if this enqueue races with it.
     enqueueBatchWork()
   }
 
@@ -107,22 +103,20 @@ class WorkManagerLibraryOrganizationBatchScheduler(
 class LibraryOrganizationResumeOnChargingWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val repository: DefaultLibraryOrganizationRepository,
+  private val scheduler: WorkManagerLibraryOrganizationBatchScheduler,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (!execution.resumeWhenCharging) return@withContext Result.success()
 
-    // This worker is only armed for a globally paused, still-running library batch. An explicitly
-    // paused batch keeps its PAUSED state and is never resumed only because charging started.
     execution.paused = false
 
-    val database = YomitoriDatabase.create(applicationContext)
     try {
-      val repository = DefaultLibraryOrganizationRepository(DatabaseConnection(database))
       when (repository.batchSnapshot()?.status) {
         LibraryOrganizationBatchStatus.RUNNING -> {
           DataChangeNotifier.shared.notifyChanged()
-          WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kickFromChargingResume()
+          scheduler.kickFromChargingResume()
         }
         LibraryOrganizationBatchStatus.PAUSED,
         LibraryOrganizationBatchStatus.COMPLETED,
@@ -133,8 +127,6 @@ class LibraryOrganizationResumeOnChargingWorker(
       throw cancelled
     } catch (_: Throwable) {
       Result.retry()
-    } finally {
-      database.close()
     }
   }
 }
@@ -142,20 +134,20 @@ class LibraryOrganizationResumeOnChargingWorker(
 class LibraryOrganizationBatchWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val organizationRepository: DefaultLibraryOrganizationRepository,
+  private val libraryRepository: LibraryRepository,
+  private val suggester: LibraryOrganizationSuggester,
+  private val scheduler: WorkManagerLibraryOrganizationBatchScheduler,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (execution.paused) {
-      WorkManagerLibraryOrganizationBatchScheduler(applicationContext).kick()
+      scheduler.kick()
       return Result.success()
     }
 
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     return withContext(Dispatchers.IO) {
-      val database = YomitoriDatabase.create(applicationContext)
-      val connection = DatabaseConnection(database)
-      val organizationRepository = DefaultLibraryOrganizationRepository(connection)
-      val libraryRepository = SeriesAwareLibraryRepository(connection)
       var currentItem: ClaimedLibraryOrganizationBatchItem? = null
 
       try {
@@ -201,8 +193,6 @@ class LibraryOrganizationBatchWorker(
               }
 
               setForeground(createForegroundInfo(book.title))
-              val modelManager = LocalModelManager.shared(applicationContext)
-              val suggester = LocalLibraryOrganizationSuggester(modelManager)
               val (existingTags, existingCollections) =
                 organizationRepository.batchTaxonomyContext(item.batchId)
               val seriesContext = seriesOrganizationContextFor(
@@ -242,8 +232,6 @@ class LibraryOrganizationBatchWorker(
         currentItem?.let(organizationRepository::requeueBatchItem)
         DataChangeNotifier.shared.notifyChanged()
         throw cancelled
-      } finally {
-        database.close()
       }
     }
   }
@@ -329,8 +317,6 @@ private suspend fun persistAndAutoApplySuggestion(
     } == true
     if (!manuallyOrganized) throw error
 
-    // A manual edit that raced with AI application wins. The transient generated candidate must not
-    // overwrite it or block the next batch waiting for approval.
     try {
       repository.rejectCandidate(item.key)
     } catch (cancelled: CancellationException) {
