@@ -71,6 +71,10 @@ Android は secondary process の生成時にも `Application` を生成する�
 
 ADR-0145 の「1冊ごとの `vision-after-engine-release`」という解釈は本 ADR で変更し、Engine release は原則として process batch の終了時に発生する。
 
+短寿命 process の正常終了が `ApplicationExitInfo` の履歴へ増えるため、起動時の process-exit 取得は固定8件ではなく Android が保持する履歴全体を対象にする。共有レポートには exit の pid と process name を含め、local AI memory sample は同じ pid・process name かつ exit timestamp 以下の記録だけを添付する。これにより、別 process generation や選択した終了後のサンプルを同一障害へ誤って関連付けない。
+
+通常の専用 process 終了は従来どおり memory-related exit として報告せず、`REASON_LOW_MEMORY` または description に `MemoryLimiter` を含む終了だけを起動時診断へ取り込む。
+
 診断へ書籍タイトル、ファイル名、表紙 path、prompt、AI 出力を追加しない。
 
 ### 6. upstream 修正後に process isolation を再評価する
@@ -86,6 +90,7 @@ LiteRT-LM の Android GPU/OpenCL memory retention 問題が修正された版を
 - 1冊ごとの Engine 初期化から2冊ごとの初期化へ減らし、ADR-0145 より初期化コストを抑えられる。
 - main process は durable queue と DB transaction ownership を維持するため、専用 process が異常終了しても未保存 item を再処理できる。
 - Binder に大きな画像 payload を載せず、transaction size の問題を避けられる。
+- process exit と memory sample を process 単位で相関でき、正常な専用 process recycle とメモリ障害を混同しにくくなる。
 
 ### Negative
 
@@ -93,6 +98,7 @@ LiteRT-LM の Android GPU/OpenCL memory retention 問題が修正された版を
 - 2冊バッチ内では upstream memory retention が発生し得る。バッチサイズは速度よりメモリ安全性を優先した保守的な値である。
 - Service / IPC / secondary-process lifecycle という Android 固有の複雑性が増える。
 - secondary process では `Application` の main-runtime 初期化を抑止する必要があり、今後別の secondary process を追加する場合も process ownership を明示する必要がある。
+- pid は将来再利用され得るため、診断相関は pid・process name・timestamp の組み合わせを使う。より厳密な generation identity が必要になった場合は `processStateSummary` 等を追加検討する。
 
 ## Relationship to existing ADRs
 
@@ -106,3 +112,4 @@ LiteRT-LM の Android GPU/OpenCL memory retention 問題が修正された版を
 - LiteRT-LM issue #2699: Android OpenCL GPU memory is not released across conversations while retaining an Engine
 - Android Developers: Processes and app lifecycle
 - Android Developers: Bound services / Messenger
+- Android Developers: `ActivityManager.getHistoricalProcessExitReasons`
