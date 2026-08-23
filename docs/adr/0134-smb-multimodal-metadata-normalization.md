@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-21
-- Amended: 2026-08-21
+- Amended: 2026-08-23
 - Refines: ADR-0056, ADR-0065, ADR-0066, ADR-0071, ADR-0079, ADR-0104, ADR-0108, ADR-0111, ADR-0133
 
 ## Context
@@ -110,7 +110,9 @@ AI に SMB path や変更後ファイル名を自由生成させない。変更�
 - `FAILED`: AI解析等の失敗
 - `SKIPPED`: 入力変更や対象消失等で対象外
 
-レビュー画面では、現在の表紙、元ファイル名、提案ファイル名、書誌候補、確信度、理由を確認し、「反映」「編集して反映」「保留」「却下」を行える。`PENDING_REVIEW`、`DEFERRED`、`REJECTED`、`FAILED`、`SKIPPED` は明示的な「再解析」操作を提供し、現在の入力 revision から候補を作り直せる。`APPLIED` は SMB rename と確定書誌の反映済み状態なので、この再解析操作の対象外とする。
+レビュー画面では、現在の表紙、元ファイル名、提案ファイル名、書誌候補、確信度、理由を確認し、「反映」「編集して反映」「保留」「却下」を行える。`PENDING_REVIEW`、`DEFERRED`、`REJECTED`、`FAILED`、`SKIPPED` は明示的な「再解析」操作を提供し、現在の入力 revision から候補を作り直せる。`APPLIED` は AI 再解析の対象外だが、「反映済み」一覧から確定済みの書誌情報を編集して再反映できる。
+
+`APPLIED` の再編集は SMB rename を伴わない。反映済みファイル名は読み取り専用とし、ファイル名をさらに変更する場合は通常の SMB rename 操作へ分離する。これにより確定書誌の誤り修正で外部ストレージへ不要な破壊的変更を発生させない。
 
 `APPLIED` と `REJECTED` は通常は確定状態であり、後続の一括解析対象から除外する。ただし `REJECTED` で「再解析」を選んだ場合は、対応する却下 decision を同一 transaction で削除し、古い候補 payload を破棄して最新バッチへ再投入する。
 
@@ -129,6 +131,8 @@ rename 自体は既存の `SmbLibraryRepository.renameBook` を再利用し、SM
 ### 7. 確定書誌は同期キャッシュへ投影する read model とする
 
 `APPLIED` の書誌情報は `smb_metadata_normalization_decisions` に保持する。Library snapshot 読み込み時に SMB 書籍へ overlay するため、次回 SMB 同期が `library_items` の title / authors 等をファイル由来の値へ再構築しても、ユーザーが確定した書誌を表示上失わない。
+
+`APPLIED` の再編集では同じ decision を更新し、AI 再解析や状態遷移を行わない。タイトル、著者、出版社、発売日、ISBN は確定書誌へ直接反映する。シリーズ名・巻数は編集前の正規化候補から変更された場合だけ既存の `library_item_series` projection を更新し、書誌反映後に別操作で行った手動シリーズ編集をタイトル等の再編集で巻き戻さない。シリーズを明示的に空へ変更した場合は、通常のシリーズ解除と同様に exclusion を記録する。
 
 `REJECTED` も同じ decision table で確定判断を保持するが、ユーザーが明示的に再解析した場合はその decision を解除する。再解析失敗中や新しい候補のレビュー中は、再び却下するまで「確定済み」として扱わない。
 
@@ -159,6 +163,7 @@ source、test fixture、ADR、PR説明、log には実在するユーザー蔵�
 - JSON の Markdown fence、前置き文章、末尾説明など、自由テキスト出力由来の schema failure を避けられる。
 - AI誤認が即座にファイルサーバの rename へ波及せず、人が確認してから反映できる。
 - 未確認・保留・却下・失敗の候補を明示操作で再解析でき、prompt やモデル改善後に候補を作り直せる。
+- 反映後に書誌の誤りを見つけても、AI 再解析や SMB rename を行わず確定値を修正できる。
 - 却下後に新しいバッチが作られても、却下候補はレビューから失われない。
 - 却下は通常の一括解析では確定判断として残るため、同じ本を意図せず再解析しない。
 - SMB 同期後も確定済みのタイトル・著者等が保持される。
