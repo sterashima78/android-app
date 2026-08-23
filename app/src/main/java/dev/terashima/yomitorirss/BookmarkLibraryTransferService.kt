@@ -14,6 +14,9 @@ internal class NotifyingWebLibraryMutator(
   override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook =
     delegate.addWebBook(url, titleHint).also { onChanged() }
 
+  override suspend fun refreshWebBook(book: LibraryBook): LibraryBook =
+    delegate.refreshWebBook(book).also { onChanged() }
+
   override suspend fun removeWebBook(book: LibraryBook) {
     delegate.removeWebBook(book)
     onChanged()
