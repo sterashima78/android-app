@@ -2,5 +2,6 @@ package dev.terashima.yomitorirss.feature.library
 
 interface WebLibraryMutator {
   suspend fun addWebBook(url: String, titleHint: String? = null): LibraryBook
+  suspend fun refreshWebBook(book: LibraryBook): LibraryBook = addWebBook(book.infoUrl ?: book.sourceId, null)
   suspend fun removeWebBook(book: LibraryBook)
 }
