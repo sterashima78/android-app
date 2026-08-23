@@ -79,6 +79,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0153: タスクウィジェット起動時はタスクタブを開く](0153-task-widget-open-task-tab.md)
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0157: Mosaic の外部識別子と互換識別子を区別する](0157-mosaic-external-and-compatibility-identifiers.md)
+- [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 
 ### Health
 
@@ -103,6 +104,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
 - [ADR-0154: Web Library metadata は静的 HTTP を優先し WebView を不足時の fallback とする](0154-web-library-rendered-metadata-fallback.md)
 - [ADR-0158: Book Reader の page geometry metadata cache を上限付きにする](0158-bounded-book-page-geometry-cache.md)
+- [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 
 ### Background / AI runtime
 
@@ -121,6 +123,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0148: local model revision marker の互換 migration を終了する](0148-retire-local-model-revision-marker-migration.md)
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
+- [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 
 ### Content / summary / knowledge
 
@@ -164,3 +167,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0156](0156-active-tab-message-capability-policy.md)
 - [ADR-0157](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0158](0158-bounded-book-page-geometry-cache.md)
+- [ADR-0159](0159-isolate-smb-vision-inference-process.md)

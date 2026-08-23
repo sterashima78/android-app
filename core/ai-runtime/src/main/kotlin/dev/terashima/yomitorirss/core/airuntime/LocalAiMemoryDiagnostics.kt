@@ -1,7 +1,9 @@
 package dev.terashima.yomitorirss.core.airuntime
 
+import android.app.Application
 import android.content.Context
 import android.os.Debug
+import android.os.Process
 import android.util.Log
 import java.io.File
 
@@ -46,6 +48,8 @@ object LocalAiMemoryDiagnostics {
       val runtime = Runtime.getRuntime()
       val line = buildVisionMemoryDiagnosticLine(
         timestamp = System.currentTimeMillis(),
+        pid = Process.myPid(),
+        processName = Application.getProcessName(),
         phase = phase,
         pssKb = Debug.getPss().toLong(),
         rssKb = processRssKb(),
@@ -65,11 +69,22 @@ object LocalAiMemoryDiagnostics {
     }
   }
 
-  fun recentVisionInferenceReport(context: Context): String? =
-    context.applicationContext
+  fun recentVisionInferenceReport(
+    context: Context,
+    pid: Int,
+    processName: String,
+    untilTimestamp: Long,
+  ): String? {
+    val report = context.applicationContext
       .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
       .getString(REPORT_KEY, null)
-      ?.takeIf(String::isNotBlank)
+    return filterDiagnosticLines(
+      report = report,
+      pid = pid,
+      processName = processName,
+      untilTimestamp = untilTimestamp,
+    )
+  }
 
   private fun processRssKb(): Long? = runCatching {
     File("/proc/self/status").useLines { lines ->
@@ -85,6 +100,8 @@ object LocalAiMemoryDiagnostics {
 
 internal fun buildVisionMemoryDiagnosticLine(
   timestamp: Long,
+  pid: Int,
+  processName: String,
   phase: LocalAiMemoryDiagnosticPhase,
   pssKb: Long,
   rssKb: Long?,
@@ -95,6 +112,10 @@ internal fun buildVisionMemoryDiagnosticLine(
 ): String = buildString {
   append("timestamp=")
   append(timestamp)
+  append(" pid=")
+  append(pid)
+  append(" process=")
+  append(sanitizeProcessName(processName))
   append(" phase=")
   append(phase.wireName)
   append(" pssKb=")
@@ -130,3 +151,36 @@ internal fun appendDiagnosticLine(
     .toList()
   return (previous + newLine).takeLast(maxLines).joinToString("\n")
 }
+
+internal fun filterDiagnosticLines(
+  report: String?,
+  pid: Int,
+  processName: String,
+  untilTimestamp: Long,
+): String? {
+  val expectedProcessName = sanitizeProcessName(processName)
+  return report
+    .orEmpty()
+    .lineSequence()
+    .filter(String::isNotBlank)
+    .filter { line -> diagnosticField(line, "pid")?.toIntOrNull() == pid }
+    .filter { line -> diagnosticField(line, "process") == expectedProcessName }
+    .filter { line ->
+      diagnosticField(line, "timestamp")
+        ?.toLongOrNull()
+        ?.let { it <= untilTimestamp } == true
+    }
+    .joinToString("\n")
+    .takeIf(String::isNotBlank)
+}
+
+private fun diagnosticField(line: String, name: String): String? =
+  line.split(' ')
+    .firstOrNull { it.startsWith("$name=") }
+    ?.substringAfter('=')
+
+private fun sanitizeProcessName(processName: String): String =
+  processName
+    .filter { it.isLetterOrDigit() || it == '.' || it == '_' || it == '-' || it == ':' }
+    .take(200)
+    .ifBlank { "unknown" }

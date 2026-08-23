@@ -17,9 +17,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.await
-import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnosticPhase
-import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
@@ -33,6 +30,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -126,6 +124,7 @@ class SmbMetadataNormalizationWorker(
       val smbRepository = CleaningSmbLibraryRepository(applicationContext, connection)
       val repository = DefaultSmbMetadataNormalizationRepository(connection, smbRepository)
       val promptTemplate = SharedPreferencesSmbMetadataNormalizationPromptRepository(applicationContext).prompt()
+      val inference = RemoteSmbMetadataNormalizationSuggester(applicationContext)
       var current: ClaimedSmbMetadataNormalizationItem? = null
       try {
         repository.requeueInterrupted()
@@ -184,25 +183,11 @@ class SmbMetadataNormalizationWorker(
 
               setForeground(createForegroundInfo(item.originalFileName))
               currentCoroutineContext().ensureActive()
-              LocalAiMemoryDiagnostics.recordVisionInference(
-                applicationContext,
-                LocalAiMemoryDiagnosticPhase.VISION_BEFORE,
+              val proposal = inference.suggest(
+                currentFileName = item.originalFileName,
+                coverFile = coverFile,
+                promptTemplate = promptTemplate,
               )
-              val modelManager = LocalModelManager.shared(applicationContext)
-              val proposal = try {
-                LocalSmbMetadataNormalizationSuggester(modelManager).suggest(
-                  currentFileName = item.originalFileName,
-                  coverBytes = coverFile.readBytes(),
-                  promptTemplate = promptTemplate,
-                )
-              } finally {
-                // LiteRT-LM 0.14.0 can retain GPU/OpenCL allocations across image conversations
-                // while the Engine stays cached. Keep the process-wide lock/manager, but release
-                // its heavy runtime after every SMB vision item until the upstream issue is fixed.
-                // The runtime records the post-close memory sample and close result itself so that
-                // the measurement is adjacent to Engine.close() and cannot be duplicated here.
-                modelManager.close()
-              }
               currentCoroutineContext().ensureActive()
               repository.saveGeneratedCandidate(
                 item = item,
@@ -236,7 +221,13 @@ class SmbMetadataNormalizationWorker(
       } catch (_: Throwable) {
         Result.retry()
       } finally {
-        database.close()
+        withContext(NonCancellable) {
+          try {
+            inference.close()
+          } finally {
+            database.close()
+          }
+        }
       }
     }
   }

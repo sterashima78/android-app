@@ -32,6 +32,8 @@ class LocalAiMemoryDiagnosticsTest {
   fun `engine close 失敗は例外型だけを診断行へ残す`() {
     val line = buildVisionMemoryDiagnosticLine(
       timestamp = 123L,
+      pid = 42,
+      processName = "dev.example:local_ai_vision",
       phase = LocalAiMemoryDiagnosticPhase.VISION_AFTER_ENGINE_RELEASE,
       pssKb = 10L,
       rssKb = 20L,
@@ -41,6 +43,8 @@ class LocalAiMemoryDiagnosticsTest {
       engineCloseErrorClass = "java.lang.IllegalStateException",
     )
 
+    assertTrue(line.contains("pid=42"))
+    assertTrue(line.contains("process=dev.example:local_ai_vision"))
     assertTrue(line.contains("phase=vision-after-engine-release"))
     assertTrue(line.contains("engineClose=failed"))
     assertTrue(line.contains("engineCloseError=java.lang.IllegalStateException"))
@@ -51,6 +55,8 @@ class LocalAiMemoryDiagnosticsTest {
   fun `engine close 情報がないフェーズには close field を追加しない`() {
     val line = buildVisionMemoryDiagnosticLine(
       timestamp = 123L,
+      pid = 42,
+      processName = "dev.example:local_ai_vision",
       phase = LocalAiMemoryDiagnosticPhase.VISION_AFTER_ENGINE_INIT,
       pssKb = 10L,
       rssKb = null,
@@ -62,5 +68,48 @@ class LocalAiMemoryDiagnosticsTest {
     assertTrue(line.contains("rssKb=unknown"))
     assertFalse(line.contains("engineClose="))
     assertFalse(line.contains("engineCloseError="))
+  }
+
+  @Test
+  fun `process exit report には同じ pid と process の終了以前だけを含める`() {
+    val matchingBefore = buildVisionMemoryDiagnosticLine(
+      timestamp = 100L,
+      pid = 42,
+      processName = "dev.example:local_ai_vision",
+      phase = LocalAiMemoryDiagnosticPhase.VISION_BEFORE,
+      pssKb = 1L,
+      rssKb = 2L,
+      nativeHeapKb = 3L,
+      javaHeapKb = 4L,
+    )
+    val differentPid = buildVisionMemoryDiagnosticLine(
+      timestamp = 110L,
+      pid = 43,
+      processName = "dev.example:local_ai_vision",
+      phase = LocalAiMemoryDiagnosticPhase.VISION_BEFORE,
+      pssKb = 1L,
+      rssKb = 2L,
+      nativeHeapKb = 3L,
+      javaHeapKb = 4L,
+    )
+    val matchingAfter = buildVisionMemoryDiagnosticLine(
+      timestamp = 130L,
+      pid = 42,
+      processName = "dev.example:local_ai_vision",
+      phase = LocalAiMemoryDiagnosticPhase.VISION_AFTER_INFERENCE,
+      pssKb = 1L,
+      rssKb = 2L,
+      nativeHeapKb = 3L,
+      javaHeapKb = 4L,
+    )
+
+    val filtered = filterDiagnosticLines(
+      report = listOf(matchingBefore, differentPid, matchingAfter).joinToString("\n"),
+      pid = 42,
+      processName = "dev.example:local_ai_vision",
+      untilTimestamp = 120L,
+    )
+
+    assertEquals(matchingBefore, filtered)
   }
 }
