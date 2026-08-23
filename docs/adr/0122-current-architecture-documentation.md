@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-19
 - Refines: ADR-0046, ADR-0055, ADR-0106
+- Refined by: [ADR-0151](0151-retire-current-architecture-compatibility-redirects.md)
 
 ## Context
 
@@ -10,7 +11,7 @@ ADR が増え、layer、module ownership、Domain Context、persistence ownershi
 
 ADR は個々の意思決定とその理由、代替案、移行経緯を残す用途には適している。一方、実装やレビューのたびに多数の ADR を時系列に読み、後続 ADR の `Amends` / `Refines` / `Supersedes` 関係を再構成して「現在のルール」を得る方法は、変更量の増加に対して読み取りコストが高い。
 
-ADR-0106 に基づく `docs/domain-context-map.md` は、ADR を根拠としながら現在の Context Map を独立文書として示す先行例になっている。この方式を architecture 全体へ広げる。
+ADR-0106 に基づく Context Map は、ADR を根拠としながら現在の Context Map を独立文書として示す先行例になっている。現在の正本は [`docs/architecture/context-map.md`](../architecture/context-map.md) であり、この方式を architecture 全体へ広げる。
 
 一方で、ADR と current documentation の両方に同じ説明を複製すると整合性が崩れやすい。また、module 一覧や table ownership のように既に `settings.gradle.kts` や `config/architecture/*` に機械可読な正本がある情報まで prose で独立管理すると、別の重複 source of truth を作ることになる。
 
@@ -81,11 +82,11 @@ Architecture Documentation は値を説明・要約してよいが、矛盾し�
 
 Architecture Documentation の文章一致を自動生成・同期することはしない。prose の意味的整合性はレビュー対象とし、機械判定できる制約は既存の architecture verification / manifest に寄せる。
 
-### 6. 既存 Context Map の URL は互換入口として残す
+### 6. Context Map の current path は `docs/architecture/` に集約する
 
-`docs/domain-context-map.md` の本体は `docs/architecture/context-map.md` へ移し、旧 path は新 path への案内だけを残す。
+Context Map の現在の正本は [`docs/architecture/context-map.md`](../architecture/context-map.md) とする。
 
-これにより既存 link を破壊せず、current architecture document の置き場所を一貫させる。
+本 ADR 採択時には旧 top-level path を互換入口として残したが、その後 repository 内参照が移行したため、ADR-0151 で redirect-only entry の終了条件と削除を決定した。現在の参照は canonical path へ直接向ける。
 
 ### 7. Public repository safety を current docs にも適用する
 
@@ -120,7 +121,7 @@ Architecture Documentation、ADR、manifest、test fixture には credential、t
 - `scripts/verify_adr_integrity.py` で ADR-0122 の番号・見出し・参照整合性が成立すること
 - `docs/adr/README.md` だけが non-ADR index として許可され、その他の不正 filename は引き続き失敗すること
 - architecture documents の相対 link と source ADR が存在すること
-- `docs/domain-context-map.md` の旧 path が新 Context Map へ案内すること
+- Context Map の current link が [`docs/architecture/context-map.md`](../architecture/context-map.md) へ直接向くこと
 - public repository に公開してはいけない credential / personal data が追加されていないこと
 
 既存 PR CI の `verifyArchitecture`、unit test、lint は通常どおり実行する。
@@ -131,4 +132,4 @@ ADR-0046 の executable architecture verification は維持する。本 ADR は 
 
 ADR-0055 の ADR numbering / integrity policy は維持しつつ、`docs/adr/README.md` だけを非 ADR index として明示的に除外する。その他の `docs/adr/*.md` の命名・番号・参照 integrity は従来どおり検査する。
 
-ADR-0106 の Domain Context / Aggregate / persistence ownership の決定は変更しない。既存 `docs/domain-context-map.md` を `docs/architecture/context-map.md` 配下へ整理する。
+ADR-0106 の Domain Context / Aggregate / persistence ownership の決定は変更しない。Context Map の current projection は [`docs/architecture/context-map.md`](../architecture/context-map.md) に維持する。
