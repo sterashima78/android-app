@@ -21,6 +21,7 @@ class SmbCoverPrefetchSchedulingTest {
     val constraints = smbCoverPrefetchConstraints()
     val networkRequest = requireNotNull(constraints.requiredNetworkRequest)
 
+    // API 28+ではNetworkRequestが実際の制約になり、NetworkTypeはNOT_REQUIREDになる。
     assertEquals(NetworkType.NOT_REQUIRED, constraints.requiredNetworkType)
     assertTrue(networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
     assertFalse(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
