@@ -29,7 +29,7 @@ class AppContainer(private val application: Application) {
     AppFeatureRuntimeDependencies(
       application = application,
       database = databaseConnection,
-      modelManager = aiCoreRuntime.modelManager,
+      modelManagerProvider = { aiCoreRuntime.modelManager },
     )
   }
 
