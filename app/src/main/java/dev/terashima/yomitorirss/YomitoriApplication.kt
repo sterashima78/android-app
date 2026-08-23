@@ -15,6 +15,8 @@ import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetRefreshObserver
+import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
+import dev.terashima.yomitorirss.feature.widget.WidgetRefreshSchedulerProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 import java.lang.ref.WeakReference
@@ -23,6 +25,7 @@ class YomitoriApplication : Application(),
   Configuration.Provider,
   MainActivityDependenciesProvider,
   WidgetRepositoryProvider,
+  WidgetRefreshSchedulerProvider,
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
   LanWebRepositoryProvider {
@@ -49,6 +52,7 @@ class YomitoriApplication : Application(),
 
   override val databaseSchema: DatabaseSchema get() = appDatabaseSchema
   override val widgetRepository: WidgetRepository get() = container.widgetRepository
+  override val widgetRefreshScheduler: WidgetRefreshScheduler get() = container.widgetRefreshScheduler
   override val taskRepository: TaskRepository get() = container.taskRepository
   override val lanWebArticleRepository: ArticleRepository get() = container.articleRepository
   override val lanWebBookmarkRepository: BookmarkRepository get() = container.bookmarkRepository
