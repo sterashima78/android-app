@@ -73,6 +73,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0153: タスクウィジェット起動時はタスクタブを開く](0153-task-widget-open-task-tab.md)
 
 ### Health
 
@@ -101,7 +102,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0006: durable background sync](0006-durable-background-sync.md)
 - [ADR-0020: local AI runtime options](0020-local-ai-runtime-options.md)
 - [ADR-0056: feature-owned local AI policies](0056-feature-owned-local-ai-policies.md)
-- [ADR-0069: unified AI model settings and task queue](0069-unified-ai-model-settings-and-task-queue.md)
+- [ADR-0069: unified AI model settings and task queue](0069-unified-ai-model-settings-and-ai-task-queue.md)
 - [ADR-0071: prioritized background AI task scheduling](0071-prioritized-background-ai-task-scheduling.md)
 - [ADR-0079: process-wide local AI inference sessions](0079-process-wide-local-ai-inference-sessions.md)
 - [ADR-0104: AI task queue feature ownership](0104-ai-task-queue-feature-ownership.md)
