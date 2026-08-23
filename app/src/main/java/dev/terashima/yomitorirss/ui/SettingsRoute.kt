@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.ModelManagerDialog
