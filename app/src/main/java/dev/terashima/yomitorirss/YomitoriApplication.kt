@@ -26,9 +26,9 @@ class YomitoriApplication : Application(),
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
   LanWebRepositoryProvider {
-  private val resumedActivityTracker = ResumedActivityTracker()
+  private val currentActivityTracker = CurrentActivityTracker()
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AppContainer(this, resumedActivityTracker::current)
+    AppContainer(this, currentActivityTracker::current)
   }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
   override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -56,34 +56,44 @@ class YomitoriApplication : Application(),
 
   override fun onCreate() {
     super.onCreate()
-    registerActivityLifecycleCallbacks(resumedActivityTracker)
+    registerActivityLifecycleCallbacks(currentActivityTracker)
     StartupCrashStore.install(this)
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }
 }
 
-private class ResumedActivityTracker : Application.ActivityLifecycleCallbacks {
-  private var resumedActivity = WeakReference<Activity>(null)
+private class CurrentActivityTracker : Application.ActivityLifecycleCallbacks {
+  private var currentActivity = WeakReference<Activity>(null)
 
-  fun current(): Activity? = resumedActivity.get()
+  fun current(): Activity? = currentActivity.get()
     ?.takeUnless(Activity::isFinishing)
     ?.takeUnless(Activity::isDestroyed)
 
+  override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) {
+    currentActivity = WeakReference(activity)
+  }
+
+  override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+    if (currentActivity.get() == null) currentActivity = WeakReference(activity)
+  }
+
   override fun onActivityResumed(activity: Activity) {
-    resumedActivity = WeakReference(activity)
+    currentActivity = WeakReference(activity)
   }
 
   override fun onActivityPaused(activity: Activity) {
-    if (resumedActivity.get() === activity) resumedActivity.clear()
+    if (currentActivity.get() === activity) currentActivity.clear()
+  }
+
+  override fun onActivityStopped(activity: Activity) {
+    if (currentActivity.get() === activity) currentActivity.clear()
   }
 
   override fun onActivityDestroyed(activity: Activity) {
-    if (resumedActivity.get() === activity) resumedActivity.clear()
+    if (currentActivity.get() === activity) currentActivity.clear()
   }
 
-  override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
   override fun onActivityStarted(activity: Activity) = Unit
-  override fun onActivityStopped(activity: Activity) = Unit
   override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 }
