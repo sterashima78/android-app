@@ -33,6 +33,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import java.net.URI
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -105,20 +106,27 @@ fun LibraryFeatureRoute(
       refreshingWebSourceIds = books.mapTo(linkedSetOf()) { it.sourceId }
       scope.launch {
         val failures = mutableListOf<Throwable>()
-        books.forEach { book ->
-          runCatching {
-            withContext(Dispatchers.IO) { onRefreshWebBook(book) }
-          }.onFailure(failures::add)
-        }
-        refreshingWebSourceIds = emptySet()
-        viewModel.refresh()
-        if (failures.isNotEmpty()) {
-          viewModel.reportError(
-            IllegalStateException(
-              "Web蔵書の再取得に失敗しました (${failures.size}/${books.size}件)",
-              failures.first(),
-            ),
-          )
+        try {
+          books.forEach { book ->
+            try {
+              withContext(Dispatchers.IO) { onRefreshWebBook(book) }
+            } catch (error: CancellationException) {
+              throw error
+            } catch (error: Throwable) {
+              failures += error
+            }
+          }
+          viewModel.refresh()
+          if (failures.isNotEmpty()) {
+            viewModel.reportError(
+              IllegalStateException(
+                "Web蔵書の再取得に失敗しました (${failures.size}/${books.size}件)",
+                failures.first(),
+              ),
+            )
+          }
+        } finally {
+          refreshingWebSourceIds = emptySet()
         }
       }
     }
@@ -383,4 +391,4 @@ private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/
 private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
   "この項目には Google Books API の読書リンクがないため、直接開けません。"
 private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
-  "Google Play Books を開けませんでした."
+  "Google Play Books を開けませんでした。"
