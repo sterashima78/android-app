@@ -109,7 +109,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0006: durable background sync](0006-durable-background-sync.md)
 - [ADR-0020: local AI runtime options](0020-local-ai-runtime-options.md)
 - [ADR-0056: feature-owned local AI policies](0056-feature-owned-local-ai-policies.md)
-- [ADR-0069: unified AI model settings and task queue](0069-unified-ai-model-settings-and-ai-task-queue.md)
+- [ADR-0069: unified AI model settings and task queue](0069-unified-ai-model-settings-and-task-queue.md)
 - [ADR-0071: prioritized background AI task scheduling](0071-prioritized-background-ai-task-scheduling.md)
 - [ADR-0079: process-wide local AI inference sessions](0079-process-wide-local-ai-inference-sessions.md)
 - [ADR-0104: AI task queue feature ownership](0104-ai-task-queue-feature-ownership.md)
