@@ -203,7 +203,7 @@ class AppRouteDependencies internal constructor(
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
-      addWebBook = { url -> webLibraryMutator.addWebBook(url) },
+      addWebBook = { url, titleHint -> webLibraryMutator.addWebBook(url, titleHint) },
       moveWebBookToBookmark = libraryTransfers.moveWebBookToBookmark,
       bookReader = BookReaderRouteDependencies(
         pageSourceFactory = runtime.bookPageSourceFactory,
@@ -281,7 +281,7 @@ data class LibraryRouteDependencies internal constructor(
   val libraryViewModelFactory: LibraryViewModel.Factory,
   val organizationViewModelFactory: LibraryOrganizationViewModel.Factory,
   val smbRepository: SmbLibraryRepository,
-  val addWebBook: suspend (String) -> Unit,
+  val addWebBook: suspend (String, String?) -> LibraryBook,
   val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val bookReader: BookReaderRouteDependencies,
 )
