@@ -32,33 +32,29 @@ class SummaryWorker(
   appContext: Context,
   params: WorkerParameters,
   private val runtime: SummaryRuntimeDependencies,
+  private val database: YomitoriDatabase,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     return withContext(Dispatchers.IO) {
-      val database = YomitoriDatabase.create(applicationContext)
-      try {
-        database.requeueInterruptedSummaryTasks()
-        while (!SummaryQueue.executionState(applicationContext).paused) {
-          currentCoroutineContext().ensureActive()
-          val candidates = database.listInferenceReadySummaryTasks()
-          if (candidates.isEmpty()) break
-          val highPriorityIds = runtime.bookmarkContentQuery.readLaterContentIds(
-            candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
-          )
-          val candidate = selectNextSummaryTask(candidates, highPriorityIds) ?: break
-          LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
-            if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
-            val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
-            processTask(database, task)
-          }
-          SummaryQueue.kickContentFetch(applicationContext)
+      database.requeueInterruptedSummaryTasks()
+      while (!SummaryQueue.executionState(applicationContext).paused) {
+        currentCoroutineContext().ensureActive()
+        val candidates = database.listInferenceReadySummaryTasks()
+        if (candidates.isEmpty()) break
+        val highPriorityIds = runtime.bookmarkContentQuery.readLaterContentIds(
+          candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
+        )
+        val candidate = selectNextSummaryTask(candidates, highPriorityIds) ?: break
+        LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
+          if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
+          val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
+          processTask(database, task)
         }
-        Result.success()
-      } finally {
-        database.close()
+        SummaryQueue.kickContentFetch(applicationContext)
       }
+      Result.success()
     }
   }
 
