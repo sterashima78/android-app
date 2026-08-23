@@ -1,9 +1,5 @@
 package dev.terashima.yomitorirss.feature.game
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,16 +15,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -42,6 +37,11 @@ internal enum class GameScreen {
   SPIDER,
 }
 
+enum class GameOrientationPreference {
+  PORTRAIT,
+  SENSOR_LANDSCAPE,
+}
+
 @Composable
 fun GameRoute(
   modifier: Modifier = Modifier,
@@ -51,11 +51,15 @@ fun GameRoute(
   minesweeperViewModel: MinesweeperViewModel = viewModel(),
   klondikeViewModel: KlondikeViewModel = viewModel(),
   spiderViewModel: SpiderViewModel = viewModel(),
+  onOrientationPreferenceChange: (GameOrientationPreference) -> Unit = {},
 ) {
   var screen by rememberSaveable { mutableStateOf(GameScreen.LIST.name) }
   val gameScreen = GameScreen.valueOf(screen)
+  val currentOnOrientationPreferenceChange by rememberUpdatedState(onOrientationPreferenceChange)
 
-  GameOrientationEffect(gameScreen)
+  LaunchedEffect(gameScreen) {
+    currentOnOrientationPreferenceChange(orientationPreferenceFor(gameScreen))
+  }
 
   when (gameScreen) {
     GameScreen.LIST -> GameListScreen(
@@ -131,35 +135,12 @@ fun GameRoute(
   }
 }
 
-@Composable
-private fun GameOrientationEffect(screen: GameScreen) {
-  val activity = LocalContext.current.findActivity() ?: return
-
-  LaunchedEffect(activity, screen) {
-    activity.requestedOrientation = requestedOrientationFor(screen)
-  }
-
-  DisposableEffect(activity) {
-    onDispose {
-      if (!activity.isChangingConfigurations) {
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-      }
-    }
-  }
-}
-
-internal fun requestedOrientationFor(screen: GameScreen): Int = when (screen) {
+internal fun orientationPreferenceFor(screen: GameScreen): GameOrientationPreference = when (screen) {
   GameScreen.KLONDIKE,
   GameScreen.SPIDER,
-  -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+  -> GameOrientationPreference.SENSOR_LANDSCAPE
 
-  else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-  is Activity -> this
-  is ContextWrapper -> baseContext.findActivity()
-  else -> null
+  else -> GameOrientationPreference.PORTRAIT
 }
 
 @Composable
