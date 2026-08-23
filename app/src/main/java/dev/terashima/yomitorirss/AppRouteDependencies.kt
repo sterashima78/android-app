@@ -204,6 +204,7 @@ class AppRouteDependencies internal constructor(
       ),
       smbRepository = runtime.smbRepository,
       addWebBook = { url, titleHint -> webLibraryMutator.addWebBook(url, titleHint) },
+      refreshWebBook = webLibraryMutator::refreshWebBook,
       removeWebBook = webLibraryMutator::removeWebBook,
       moveWebBookToBookmark = libraryTransfers.moveWebBookToBookmark,
       bookReader = BookReaderRouteDependencies(
@@ -283,6 +284,7 @@ data class LibraryRouteDependencies internal constructor(
   val organizationViewModelFactory: LibraryOrganizationViewModel.Factory,
   val smbRepository: SmbLibraryRepository,
   val addWebBook: suspend (String, String?) -> LibraryBook,
+  val refreshWebBook: suspend (LibraryBook) -> LibraryBook,
   val removeWebBook: suspend (LibraryBook) -> Unit,
   val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val bookReader: BookReaderRouteDependencies,
