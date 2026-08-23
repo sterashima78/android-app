@@ -34,6 +34,8 @@ Summary overlay と Bookmark edit overlay は、対応 action を提供するタ
 
 feature message の snackbar bridge も現在のタブに関連する ViewModel だけを購読する。Summary overlay は summary dialog が実際に表示されるまで AI Settings ViewModel を取得せず、推論進捗表示のためだけに常時起動しない。
 
+RSS の `UNREAD` / `READ_LATER` では `FeedViewModel` が更新処理と完了・失敗 message を所有するため、RSS / Summary と同様に Feed の message もそのタブ上で購読・消費する。active tab で消費しない message を Activity-scoped ViewModel に残し、後から `FEEDS` を開いた時に過去の Snackbar として表示しない。
+
 ### 4. ViewModel identity と lifetime は変更しない
 
 本変更でも `viewModel()` の owner は Activity の `ViewModelStoreOwner` であり、同じ ViewModel class / default key は一度生成された後は既存 host 間で同じ instance を共有する。
@@ -52,6 +54,7 @@ app composition の主要 host では `selectedTab` の dispatch より前に `v
 - feature 追加時に app shell の常時 activation cost が暗黙に増えにくい。
 - TopBar と global host の presentation dependency が明確になる。
 - ADR-0116 の ViewModel sharing semantics は維持できる。
+- RSS 更新結果を発生元タブで表示・消費し、後続タブへ stale message を持ち越さない。
 
 ### Negative
 
@@ -63,6 +66,7 @@ app composition の主要 host では `selectedTab` の dispatch より前に `v
 
 - `AppNavigationSpecTest` で Summary / Bookmark overlay の active-tab policy を固定する。
 - `AppCompositionSourceArchitectureTest` で `AppFeatureContent`、`AppTopBarRoute`、`FeatureMessageEffects` が selected-tab dispatch 前に feature ViewModel を生成しないことを検査する。
+- 同テストで `UNREAD` / `READ_LATER` が `FeedViewModel.message` を active tab 上で購読し、`dismissMessage` まで行うことを固定する。
 - 既存 unit tests、release lint、architecture verification を実行する。
 
 ## Documentation

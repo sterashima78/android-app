@@ -53,10 +53,13 @@ internal fun FeatureMessageEffects(
     MainTab.UNREAD,
     MainTab.READ_LATER -> {
       val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
+      val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
       val rssState by rssViewModel.state.collectAsState()
+      val feedState by feedViewModel.state.collectAsState()
       val summaryState by summaryViewModel.state.collectAsState()
       FeatureMessageEffect(rssState.message, snackbarHostState, rssViewModel::dismissMessage)
+      FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
       FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
     }
 

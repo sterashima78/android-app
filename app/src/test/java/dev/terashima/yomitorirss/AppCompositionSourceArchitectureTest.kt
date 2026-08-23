@@ -73,6 +73,31 @@ class AppCompositionSourceArchitectureTest {
     )
   }
 
+  @Test
+  fun `RSS content tabsはFeedViewModelのmessageを表示して消費する`() {
+    val source = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
+    ).readText()
+    val rssContentBranch = source
+      .substringAfter("MainTab.UNREAD,")
+      .substringAfter("MainTab.READ_LATER -> {")
+      .substringBefore("MainTab.FEEDS -> {")
+
+    assertTrue(
+      "UNREAD/READ_LATER must observe FeedViewModel state for refresh completion/error messages",
+      rssContentBranch.contains(
+        "val feedState by feedViewModel.state.collectAsState()",
+      ),
+    )
+    assertTrue(
+      "UNREAD/READ_LATER must consume FeedViewModel messages on the active RSS tab",
+      rssContentBranch.contains(
+        "FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)",
+      ),
+    )
+  }
+
   private fun assertNoViewModelBeforeTabDispatch(path: String, functionMarker: String) {
     val source = File(repositoryRoot, path).readText()
     val function = source.substringAfter(functionMarker)
