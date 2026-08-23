@@ -43,6 +43,7 @@ fun LibraryFeatureRoute(
   organizationViewModel: LibraryOrganizationViewModel,
   onSyncGooglePlayBooks: () -> Unit,
   onAddWebBook: suspend (String) -> Unit,
+  onRefreshWebBook: suspend (LibraryBook) -> Unit,
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   smbRepository: SmbLibraryRepository,
@@ -54,6 +55,7 @@ fun LibraryFeatureRoute(
   val organizationState by organizationViewModel.state.collectAsState()
   var organizationVisible by rememberSaveable { mutableStateOf(false) }
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
+  var refreshingWebSourceIds by remember { mutableStateOf(emptySet<String>()) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
@@ -98,6 +100,29 @@ fun LibraryFeatureRoute(
         .onFailure(viewModel::reportError)
     }
   }
+  val refreshWebBooks: (List<LibraryBook>) -> Unit = { books ->
+    if (books.isNotEmpty() && refreshingWebSourceIds.isEmpty()) {
+      refreshingWebSourceIds = books.mapTo(linkedSetOf()) { it.sourceId }
+      scope.launch {
+        val failures = mutableListOf<Throwable>()
+        books.forEach { book ->
+          runCatching {
+            withContext(Dispatchers.IO) { onRefreshWebBook(book) }
+          }.onFailure(failures::add)
+        }
+        refreshingWebSourceIds = emptySet()
+        viewModel.refresh()
+        if (failures.isNotEmpty()) {
+          viewModel.reportError(
+            IllegalStateException(
+              "Web蔵書の再取得に失敗しました (${failures.size}/${books.size}件)",
+              failures.first(),
+            ),
+          )
+        }
+      }
+    }
+  }
 
   Box(modifier = modifier.fillMaxSize()) {
     CompositionLocalProvider(
@@ -136,6 +161,11 @@ fun LibraryFeatureRoute(
             .onFailure(viewModel::reportError)
         }
       },
+      onRefresh = { book -> refreshWebBooks(listOf(book)) },
+      onRefreshAll = {
+        refreshWebBooks(state.books.filter { it.source == LibrarySource.WEB })
+      },
+      refreshingSourceIds = refreshingWebSourceIds,
       onMoveToBookmark = { book ->
         scope.launch {
           runCatching {
@@ -353,4 +383,4 @@ private const val PLAY_BOOKS_HTTP_READER_PREFIX = "http://play.google.com/books/
 private const val GOOGLE_BOOKS_NO_READER_MESSAGE =
   "この項目には Google Books API の読書リンクがないため、直接開けません。"
 private const val PLAY_BOOKS_OPEN_FAILED_MESSAGE =
-  "Google Play Books を開けませんでした。"
+  "Google Play Books を開けませんでした."
