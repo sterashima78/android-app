@@ -10,6 +10,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 internal val LocalWebLibraryDeleteHandler =
   staticCompositionLocalOf<((LibraryBook) -> Unit)?> { null }
 
+internal fun LibraryBook.canDeleteFromLibrary(): Boolean = source == LibrarySource.WEB
+
 @Composable
 internal fun WebLibraryDeleteDialog(
   book: LibraryBook,
