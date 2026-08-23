@@ -22,9 +22,11 @@ import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchScheduler
+import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationBatchStatus
+import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -97,12 +99,13 @@ class WorkManagerSmbMetadataNormalizationScheduler(
 class SmbMetadataNormalizationResumeOnChargingWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val scheduler: WorkManagerSmbMetadataNormalizationScheduler,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (!execution.resumeWhenCharging) return@withContext Result.success()
     execution.paused = false
-    WorkManagerSmbMetadataNormalizationScheduler(applicationContext).kickFromChargingResume()
+    scheduler.kickFromChargingResume()
     Result.success()
   }
 }
@@ -110,20 +113,22 @@ class SmbMetadataNormalizationResumeOnChargingWorker(
 class SmbMetadataNormalizationWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val connection: DatabaseConnection,
+  private val smbRepository: SmbLibraryRepository,
+  private val repository: DefaultSmbMetadataNormalizationRepository,
+  private val scheduler: WorkManagerSmbMetadataNormalizationScheduler,
+  private val coverPrefetchScheduler: SmbCoverPrefetchScheduler,
+  private val promptRepository: SmbMetadataNormalizationPromptRepository,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (execution.paused) {
-      WorkManagerSmbMetadataNormalizationScheduler(applicationContext).setResumeOnChargingScheduled(true)
+      scheduler.setResumeOnChargingScheduled(true)
       return Result.success()
     }
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     return withContext(Dispatchers.IO) {
-      val database = YomitoriDatabase.create(applicationContext)
-      val connection = DatabaseConnection(database)
-      val smbRepository = CleaningSmbLibraryRepository(applicationContext, connection)
-      val repository = DefaultSmbMetadataNormalizationRepository(connection, smbRepository)
-      val promptTemplate = SharedPreferencesSmbMetadataNormalizationPromptRepository(applicationContext).prompt()
+      val promptTemplate = promptRepository.prompt()
       val inference = RemoteSmbMetadataNormalizationSuggester(applicationContext)
       var current: ClaimedSmbMetadataNormalizationItem? = null
       try {
@@ -174,7 +179,7 @@ class SmbMetadataNormalizationWorker(
                 )
                 repository.retryCandidate(item.sourceId)
                 if (smbRepository.enqueueMissingCoverPrefetch() > 0) {
-                  WorkManagerSmbCoverPrefetchScheduler(applicationContext).enqueue()
+                  coverPrefetchScheduler.enqueue()
                 }
                 current = null
                 return@withPermit
@@ -222,11 +227,7 @@ class SmbMetadataNormalizationWorker(
         Result.retry()
       } finally {
         withContext(NonCancellable) {
-          try {
-            inference.close()
-          } finally {
-            database.close()
-          }
+          inference.close()
         }
       }
     }
