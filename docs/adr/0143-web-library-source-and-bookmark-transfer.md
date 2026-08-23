@@ -56,6 +56,8 @@ Library → Bookmark は次の順序にする。
 
 Context を跨ぐ単一 DB transaction は作らない。途中失敗時には元側を残すことで、ユーザーデータの消失を避ける。
 
+Library UI では Web 蔵書カードの長押し操作メニューに「ブックマークへ移動」を表示する。この操作の実装を feature 側へ移さず、`LibraryFeatureRoute` が app-owned callback を CompositionLocal 経由でカード UI に供給し、既存の `BookmarkLibraryTransferService` へ委譲する。追加・再取得ダイアログからの既存移動導線も同じ callback を共有する。
+
 ### 公開リポジトリ上の情報境界
 
 実装やテストには実ユーザーの URL、認証情報、cookie、取得ページ本文を含めない。Web ページ本文は metadata 抽出の入力として一時利用し、Library には既存 schema が持つ書誌 metadata と URL だけを保存する。
@@ -64,6 +66,7 @@ Context を跨ぐ単一 DB transaction は作らない。途中失敗時には�
 
 - Web の書籍・作品ページを既存 Library catalog、検索、source filter の対象として扱える。
 - Android 共有シートでは既存 Bookmark target と Library target をユーザーが明示的に選択できる。
+- Web 蔵書はカードの長押し操作メニューから直接 Bookmark へ移動できる。
 - 共有専用 Activity を新たな dependency composition root にせず、framework provider lookup の監査対象を増やさない。
 - Bookmark と Web Library の移動でネットワーク失敗が起きても、コピー先の作成前に元データが消えない。
 - 最新の app Route ownership を維持し、Library feature UI / data と cross-context orchestration の責務が混在しない。
@@ -74,5 +77,6 @@ Context を跨ぐ単一 DB transaction は作らない。途中失敗時には�
 
 - OGP、HTML title fallback、相対表紙 URL、HTTPS 表紙制約を unit test する。
 - Bookmark ↔ Library の更新順序と、Library 追加失敗時に Bookmark を削除しないことを unit test する。
+- Web 蔵書だけが長押し操作メニューの Bookmark 移動対象になることを unit test する。
 - framework provider boundary test で共有専用 Activity が新しい provider lookup を追加していないことを検証する。
 - architecture verification、public repository verification、既存 unit test、lint を CI で実行する。
