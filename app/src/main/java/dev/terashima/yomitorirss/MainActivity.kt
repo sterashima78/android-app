@@ -35,6 +35,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.web.WebServerDialog
+import dev.terashima.yomitorirss.feature.widget.TaskWidgetProvider
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider
 import dev.terashima.yomitorirss.ui.AppViewModel
 import dev.terashima.yomitorirss.ui.MainTab
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
     }
     consumeSharedLibrary(intent)
     consumeSharedBookmark(intent)
+    consumeTaskWidget(intent)
     consumeWidgetArticle(intent)
   }
 
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
     if (showingCrashDiagnostics) return
     consumeSharedLibrary(intent)
     consumeSharedBookmark(intent)
+    consumeTaskWidget(intent)
     consumeWidgetArticle(intent)
   }
 
@@ -183,6 +186,12 @@ class MainActivity : ComponentActivity() {
     }.onFailure {
       Toast.makeText(this, "記事を開けませんでした", Toast.LENGTH_LONG).show()
     }
+  }
+
+  private fun consumeTaskWidget(incoming: Intent) {
+    val tab = widgetLaunchTab(incoming.action) ?: return
+    incoming.action = null
+    appViewModel.selectTab(tab)
   }
 
   private fun consumeWidgetArticle(incoming: Intent) {
@@ -271,3 +280,9 @@ class MainActivity : ComponentActivity() {
     }
   }
 }
+
+internal fun widgetLaunchTab(action: String?): MainTab? =
+  when (action) {
+    TaskWidgetProvider.ACTION_OPEN_TASKS -> MainTab.TASKS
+    else -> null
+  }

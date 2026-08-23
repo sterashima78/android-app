@@ -63,6 +63,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
   }
 
   companion object {
+    const val ACTION_OPEN_TASKS = "dev.terashima.yomitorirss.widget.action.OPEN_TASKS"
     internal const val ACTION_REFRESH = "dev.terashima.yomitorirss.widget.action.REFRESH_TASKS"
     internal const val ACTION_ITEM = "dev.terashima.yomitorirss.widget.action.TASK_ITEM"
     private const val EXTRA_TASK_ID = "task_id"
@@ -229,7 +230,11 @@ private fun openTasks(context: Context) {
 }
 
 private fun taskLaunchIntent(context: Context): Intent? =
-  context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+  context.packageManager.getLaunchIntentForPackage(context.packageName)?.configureTaskWidgetLaunch()
+
+internal fun Intent.configureTaskWidgetLaunch(): Intent =
+  apply {
+    action = TaskWidgetProvider.ACTION_OPEN_TASKS
     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
   }
 
