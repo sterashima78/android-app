@@ -95,6 +95,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する](0143-web-library-source-and-bookmark-transfer.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
+- [ADR-0153: Web Library metadata は静的 HTTP を優先し WebView を不足時の fallback とする](0153-web-library-rendered-metadata-fallback.md)
 
 ### Background / AI runtime
 
