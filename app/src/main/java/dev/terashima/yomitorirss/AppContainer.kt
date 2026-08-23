@@ -5,6 +5,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.core.network.HttpClient
 
 /**
  * Application-scope composition facade.
@@ -18,6 +19,10 @@ class AppContainer(
   private val resumedActivityProvider: () -> Activity? = { null },
 ) {
   private val dataChanges = DataChangeNotifier.shared
+
+  internal val httpClient: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    HttpClient.create()
+  }
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     YomitoriDatabase.create(application)
@@ -33,6 +38,7 @@ class AppContainer(
     AppFeatureRuntimeDependencies(
       application = application,
       database = databaseConnection,
+      httpClient = httpClient,
       modelManagerProvider = { aiCoreRuntime.modelManager },
       resumedActivityProvider = resumedActivityProvider,
     )
@@ -47,6 +53,7 @@ class AppContainer(
       application = application,
       database = databaseConnection,
       dataChanges = dataChanges,
+      httpClient = httpClient,
       summaryRepository = aiCoreRuntime.summaryRepository,
     )
   }
@@ -59,6 +66,7 @@ class AppContainer(
       database = database,
       databaseConnection = databaseConnection,
       dataChanges = dataChanges,
+      httpClient = httpClient,
     )
   }
 
