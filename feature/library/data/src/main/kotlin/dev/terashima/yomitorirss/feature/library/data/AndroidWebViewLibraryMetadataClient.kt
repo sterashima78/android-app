@@ -42,6 +42,9 @@ class AndroidWebViewLibraryMetadataClient(
 
     return withTimeout(timeoutMillis) {
       withContext(Dispatchers.Main.immediate) {
+        require(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
+          "安全な WebView metadata 取得を利用できません。Android System WebView を更新してください"
+        }
         val activity = requireNotNull(activityProvider()) {
           "WebView metadata を取得できる画面がありません"
         }
@@ -61,9 +64,7 @@ class AndroidWebViewLibraryMetadataClient(
   ): LibraryBook = suspendCancellableCoroutine { continuation ->
     val mainHandler = Handler(Looper.getMainLooper())
     val webView = WebView(activity)
-    if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
-      WebViewCompat.setProfile(webView, PROFILE_NAME)
-    }
+    WebViewCompat.setProfile(webView, PROFILE_NAME)
 
     webView.settings.apply {
       javaScriptEnabled = true
