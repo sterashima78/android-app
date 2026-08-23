@@ -2,12 +2,15 @@ package dev.terashima.yomitorirss.feature.library.data
 
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class WebLibraryRenderedMetadataTest {
@@ -150,6 +153,24 @@ class WebLibraryRenderedMetadataTest {
     )
 
     assertEquals(staticBook, result)
+  }
+
+  @Test
+  fun `WebView取得のキャンセルは静的metadataへfallbackしない`() = runBlocking {
+    val staticBook = webBook(title = "静的タイトル", thumbnailUrl = null)
+    val cancellation = CancellationException("cancelled")
+
+    try {
+      resolveWebLibraryBookMetadata(
+        url = "https://example.com/book",
+        titleHint = null,
+        staticFetch = { _, _ -> staticBook },
+        renderedFetch = { _, _ -> throw cancellation },
+      )
+      fail("CancellationException を再送出する必要があります")
+    } catch (caught: CancellationException) {
+      assertSame(cancellation, caught)
+    }
   }
 
   @Test
