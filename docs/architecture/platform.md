@@ -32,6 +32,14 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 
 新しい platform API を導入する際は API 34 以上で利用可能かを確認する。API 35/36 以降の差分を扱う `SDK_INT` / extension feature 判定は、実際に現在の対応範囲内で動作が変わるため維持してよい。
 
+## Process exit and crash diagnostics
+
+- uncaught exception は app entry point で起動時診断用の report として保持し、次回起動時に表示・コピーできる。
+- Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。
+- local AI の画像推論では memory diagnostics を process-exit report に補足できるが、raw user content や画像 payload を診断へ保存しない。
+- ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL は authority/path/query/fragment を伏せて scheme だけを残し、メールアドレス、credential-like value、Bearer token、Android private path 等も伏せる。version、commit、SDK、device、PSS/RSS 等の高レベル診断値は維持する。
+- diagnostic sanitizer は共有を安全にするための defense-in-depth であり、高機密情報を exception message や diagnostic section に意図的に含めてよい根拠にはしない。
+
 ## CI
 
 CI は stable Android API 36 platform を利用し、少なくとも次を検証する。
@@ -50,3 +58,6 @@ Android 17 / API 37 を採用する際は、SDK の提供状態と behavior chan
 
 - [ADR-0126](../adr/0126-android-platform-baseline.md)
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
+- [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0145](../adr/0145-bound-vision-inference-memory-lifetime.md)
+- [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)

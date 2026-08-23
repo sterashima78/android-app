@@ -56,4 +56,35 @@ class AppNavigationSpecTest {
       }
     }
   }
+
+  @Test
+  fun `要約オーバーレイは要約アクションを持つタブだけで有効になる`() {
+    val expected = setOf(
+      MainTab.INTEGRATED,
+      MainTab.UNREAD,
+      MainTab.READ_LATER,
+      MainTab.REDDIT_UNREAD,
+      MainTab.REDDIT_READ_LATER,
+      MainTab.SAVED,
+      MainTab.TAGS,
+    )
+
+    MainTab.entries.forEach { tab ->
+      assertEquals(tab in expected, tab.usesSummaryOverlay())
+    }
+  }
+
+  @Test
+  fun `ブックマーク編集オーバーレイは編集操作を持つタブだけで有効になる`() {
+    val expected = setOf(
+      MainTab.UNREAD,
+      MainTab.READ_LATER,
+      MainTab.SAVED,
+      MainTab.TAGS,
+    )
+
+    MainTab.entries.forEach { tab ->
+      assertEquals(tab in expected, tab.usesBookmarkEditOverlay())
+    }
+  }
 }

@@ -98,6 +98,8 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - `:app` は composition root として feature implementation を組み立てる。
 - application scope で複数の adapter / route / framework entry point から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、同じ instance / graph を再利用する。並行した repository / scheduler graph を route や Worker ごとに再構築しない。
 - Screen、`:app` の Route、`:app` の `ui` composition（`*Host.kt` 等を含む）で concrete Repository、database connection、WorkManager dependency を生成・import しない。
+- app shell は選択中の navigation state を確定してから、その presentation に必要な feature ViewModel だけを取得する。inactive feature の ViewModel を global host の都合で eager activation しない。
+- Activity-scoped ViewModel sharing を利用する場合でも、Summary / Bookmark overlay、TopBar、message bridge 等の共通 host は capability が必要なタブだけ mount / observe する。
 - `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel は `AppViewModel` を除いて所有しない。
 - `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
@@ -116,6 +118,13 @@ Mail Worker は `MailWorkerFactory` から application scope の `MailRepository
 feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state interpretation は owning feature の data/runtime 側に置く。`:app` には feature 固有 background business logic や compatibility Worker を置かず、application worker factory では feature factory と application-scope dependency graph の接続だけを行う。
 
 現在の互換性基準は最新版アプリからの更新であり、過去の app package FQCN を参照する WorkManager request のための shim は維持しない。将来 Worker class を移動し互換性対応が必要になった場合は、対象期間と終了条件を ADR で明示する。依存注入方式だけを変更する場合も enqueue 済み request が参照する Worker FQCN は維持する。
+
+## Compatibility baseline
+
+- 更新互換性の基準は現在配布中の最新版から次版への更新とする。
+- 一度限りの preference / artifact / schema compatibility migration は、現行形式への収束が確認できた後は runtime に恒久保持しない。
+- local AI model artifact は catalog の expected artifact と exact revision marker の一致を現行 validity contract とし、marker のない旧 artifact を file size だけで current revision とみなさない。
+- framework identity、application id、database file 名等、最新版から次版への継続性に必要な契約は別途 ADR で明示して維持する。
 
 ## Android platform baseline
 
@@ -142,6 +151,8 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 
 Architecture job の init script は `:app` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
+App composition の active-tab ViewModel activation は `AppCompositionSourceArchitectureTest` で補完し、selected-tab dispatch より前に feature ViewModel を取得する eager activation の再導入を検出する。
+
 検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化、実ユーザー情報かどうかの意味判定等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
 
 ## Sources
@@ -151,6 +162,8 @@ Architecture job の init script は `:app` の `ui` composition をファイル
 - [ADR-0004](../adr/0004-concept-oriented-modules.md)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
+- [ADR-0059](../adr/0059-current-version-compatibility-baseline.md)
+- [ADR-0060](../adr/0060-converge-to-current-persisted-data-formats.md)
 - [ADR-0101](../adr/0101-feature-route-and-background-runtime-ownership.md)
 - [ADR-0103](../adr/0103-app-route-composition-and-navigation-spec.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
@@ -163,3 +176,5 @@ Architecture job の init script は `:app` の `ui` composition をファイル
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0146](../adr/0146-workmanager-worker-factory-injection.md)
+- [ADR-0147](../adr/0147-active-tab-viewmodel-activation.md)
+- [ADR-0148](../adr/0148-retire-local-model-revision-marker-migration.md)

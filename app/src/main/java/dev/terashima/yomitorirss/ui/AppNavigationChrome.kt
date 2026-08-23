@@ -2,8 +2,6 @@
 
 package dev.terashima.yomitorirss.ui
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -45,20 +43,13 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.navigation.AppSection
 import dev.terashima.yomitorirss.feature.navigation.MainTab
-import dev.terashima.yomitorirss.feature.reddit.RedditRouteController
 import dev.terashima.yomitorirss.feature.reddit.RedditTab
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
-import dev.terashima.yomitorirss.feature.rss.FeedViewModel
-import dev.terashima.yomitorirss.feature.rss.RssRouteController
 import dev.terashima.yomitorirss.feature.rss.RssTab
-import dev.terashima.yomitorirss.feature.rss.RssViewModel
 
 @Composable
 internal fun AppDrawerContent(
@@ -115,22 +106,14 @@ internal fun AppDrawerContent(
 @Composable
 internal fun AppTopBar(
   selectedTab: MainTab,
-  rssViewModel: RssViewModel,
-  redditViewModel: RedditViewModel,
-  feedViewModel: FeedViewModel,
-  rssController: RssRouteController,
-  redditController: RedditRouteController,
+  refreshProgress: String? = null,
+  hasUnread: Boolean = false,
+  onMarkAllRead: (() -> Unit)? = null,
+  onImportOpml: (() -> Unit)? = null,
+  onAddFeed: (() -> Unit)? = null,
   onOpenDrawer: () -> Unit,
 ) {
   if (!selectedTab.usesGlobalTopBar()) return
-
-  val rssState by rssViewModel.state.collectAsState()
-  val redditState by redditViewModel.state.collectAsState()
-  val feedState by feedViewModel.state.collectAsState()
-  val selectedSection = selectedTab.appSection()
-  val feedOpmlImportLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.OpenDocument(),
-  ) { uri -> uri?.toString()?.let(feedViewModel::importOpml) }
 
   TopAppBar(
     navigationIcon = {
@@ -141,11 +124,7 @@ internal fun AppTopBar(
     title = {
       Column {
         Text(selectedTab.screenTitle())
-        when (selectedSection) {
-          AppSection.RSS -> feedState.refreshProgress
-          AppSection.REDDIT -> redditState.refreshProgress
-          else -> null
-        }?.let {
+        refreshProgress?.let {
           Text(
             text = it,
             style = MaterialTheme.typography.labelSmall,
@@ -155,43 +134,21 @@ internal fun AppTopBar(
       }
     },
     actions = {
-      val hasUnread = when (selectedTab) {
-        MainTab.UNREAD -> rssState.unread.isNotEmpty()
-        MainTab.REDDIT_UNREAD -> redditState.unread.isNotEmpty()
-        else -> false
-      }
-      if (hasUnread) {
-        IconButton(
-          onClick = {
-            if (selectedTab == MainTab.REDDIT_UNREAD) {
-              redditController.requestMarkAllRead()
-            } else {
-              rssController.requestMarkAllRead()
-            }
-          },
-        ) {
+      if (hasUnread && onMarkAllRead != null) {
+        IconButton(onClick = onMarkAllRead) {
           Icon(Icons.Default.DoneAll, contentDescription = "すべて既読")
         }
       }
       if (selectedTab == MainTab.FEEDS) {
-        IconButton(
-          onClick = {
-            feedOpmlImportLauncher.launch(
-              arrayOf(
-                "application/xml",
-                "text/xml",
-                "text/x-opml",
-                "application/x-opml",
-                "application/octet-stream",
-                "text/plain",
-              ),
-            )
-          },
-        ) {
-          Icon(Icons.Default.UploadFile, contentDescription = "OPMLからインポート")
+        onImportOpml?.let { importOpml ->
+          IconButton(onClick = importOpml) {
+            Icon(Icons.Default.UploadFile, contentDescription = "OPMLからインポート")
+          }
         }
-        IconButton(onClick = rssController::requestAddFeed) {
-          Icon(Icons.Default.Add, contentDescription = "フィードを追加")
+        onAddFeed?.let { addFeed ->
+          IconButton(onClick = addFeed) {
+            Icon(Icons.Default.Add, contentDescription = "フィードを追加")
+          }
         }
       }
     },

@@ -113,7 +113,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
   val inferenceSettings: StateFlow<LocalInferenceSettings> = _inferenceSettings.asStateFlow()
 
   init {
-    migrateLegacyCurrentModelRevisionMarkers()
     cleanupRetiredModelArtifacts()
     cleanupOutdatedModelArtifacts()
     refreshModels()
@@ -644,16 +643,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
   ).apply { mkdirs() }
   private fun modelTokenizerCacheDirectory(model: ModelDefinition) =
     File(modelCacheDirectory(model), "tokenizer").apply { mkdirs() }
-
-  private fun migrateLegacyCurrentModelRevisionMarkers() {
-    MODEL_CATALOG.forEach { model ->
-      if (preferences.contains(modelRevisionKey(model))) return@forEach
-      val file = modelFile(model)
-      if (isExpectedModelArtifact(file, model)) {
-        preferences.edit().putString(modelRevisionKey(model), model.artifactRevision).apply()
-      }
-    }
-  }
 
   private fun cleanupRetiredModelArtifacts() {
     val selectedId = preferences.getString(SELECTED_MODEL_KEY, null)

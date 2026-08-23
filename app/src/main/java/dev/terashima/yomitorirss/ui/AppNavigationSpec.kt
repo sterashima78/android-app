@@ -8,6 +8,27 @@ import dev.terashima.yomitorirss.feature.rss.RssTab
 
 internal fun MainTab.usesGlobalTopBar(): Boolean = this != MainTab.X
 
+internal fun MainTab.usesSummaryOverlay(): Boolean = when (this) {
+  MainTab.INTEGRATED,
+  MainTab.UNREAD,
+  MainTab.READ_LATER,
+  MainTab.REDDIT_UNREAD,
+  MainTab.REDDIT_READ_LATER,
+  MainTab.SAVED,
+  MainTab.TAGS -> true
+
+  else -> false
+}
+
+internal fun MainTab.usesBookmarkEditOverlay(): Boolean = when (this) {
+  MainTab.UNREAD,
+  MainTab.READ_LATER,
+  MainTab.SAVED,
+  MainTab.TAGS -> true
+
+  else -> false
+}
+
 internal fun MainTab.appSection(): AppSection = when (this) {
   MainTab.INTEGRATED -> AppSection.HOME
   MainTab.UNREAD, MainTab.READ_LATER, MainTab.FEEDS -> AppSection.RSS

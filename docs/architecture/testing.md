@@ -106,7 +106,13 @@ Gradle dependency と production source の構造的 guardrail を検査する�
 
 rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture に加え、MainActivity の concrete feature data / feature ViewModel、WorkManager Worker の import alias も違反として固定する。
 
-app composition の回帰は `AppCompositionSourceArchitectureTest` でも固定する。`AppContainer` へ concrete feature data construction を戻さないこと、Integrated の pure projection が Android/Compose framework dependency を持たないことを検査する。
+app composition の回帰は `AppCompositionSourceArchitectureTest` でも固定する。`AppContainer` へ concrete feature data construction を戻さないこと、Integrated の pure projection が Android/Compose framework dependency を持たないことに加え、`AppFeatureContent`、`AppTopBarRoute`、`FeatureMessageEffects` が selected-tab dispatch より前に feature ViewModel を eager activation しないことを検査する。
+
+Summary / Bookmark の global overlay は `AppNavigationSpecTest` で capability を提供するタブ集合を固定し、無関係なタブ表示だけで feature ViewModel が生成される範囲を増やさない。
+
+current-version compatibility cleanup のように Android-heavy runtime の一度限り migration を削除する変更では、適切な integration fixture がない場合、production source に退役済み migration が戻らないことと current validity contract が残ることを source regression test で固定してよい。local model revision marker は `CurrentCompatibilityBaselineSourceTest` でこれを検査する。
+
+共有可能な診断情報の sanitizer は pure transformation として人工的な URL / credential-like value / path を使う JVM unit test で検証し、実ユーザー情報を fixture に利用しない。
 
 ### Module map consistency
 
@@ -217,6 +223,9 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | cross-context read optimization | Projection integration test |
 | mutable runtime state ownership | owner data/runtime unit test + presentation derivation test where needed |
 | app composition projection split | pure projection unit test + source architecture regression |
+| active-tab ViewModel activation | navigation policy unit test + app composition source regression |
+| retired one-time runtime migration | current validity contract + source regression when integration fixture is impractical |
+| shareable diagnostic sanitizer | pure unit test with synthetic sensitive-looking data |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
 | module map update | module-map verifier unit test + consistency verification |
 | WorkManager dependency injection | WorkerFactory boundary test + startup smoke + affected Worker behavior tests |
@@ -245,3 +254,6 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0146](../adr/0146-workmanager-worker-factory-injection.md)
+- [ADR-0147](../adr/0147-active-tab-viewmodel-activation.md)
+- [ADR-0148](../adr/0148-retire-local-model-revision-marker-migration.md)
+- [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)

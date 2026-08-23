@@ -46,6 +46,7 @@ fun YomitoriApp(
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
 
   FeatureMessageEffects(
+    selectedTab = selectedTab,
     snackbarHostState = snackbarHostState,
     appViewModel = appViewModel,
     routeDependencies = routeDependencies,
@@ -108,9 +109,13 @@ fun YomitoriApp(
     }
   }
 
-  BookmarkEditOverlay(
-    routeDependencies = routeDependencies,
-    controller = bookmarkEditController,
-  )
-  SummaryOverlay(routeDependencies = routeDependencies)
+  if (selectedTab.usesBookmarkEditOverlay()) {
+    BookmarkEditOverlay(
+      routeDependencies = routeDependencies,
+      controller = bookmarkEditController,
+    )
+  }
+  if (selectedTab.usesSummaryOverlay()) {
+    SummaryOverlay(routeDependencies = routeDependencies)
+  }
 }
