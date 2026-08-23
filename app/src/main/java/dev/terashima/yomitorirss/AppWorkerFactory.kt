@@ -41,6 +41,7 @@ internal fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
           ArticleContentClient(container.httpClient)
         },
         databaseProvider = { container.database },
+        modelManagerProvider = { container.modelManager },
         runBookmarkAutoEnrichmentBackfill = {
           container.backfillBookmarkAutoEnrichmentUseCase()
         },
