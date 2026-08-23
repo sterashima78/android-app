@@ -45,7 +45,8 @@ Context Map の canonical document は [`docs/architecture/context-map.md`](../a
 
 ## Verification
 
-- repository search で旧 Context Map path への参照を確認し、canonical path へ移行する。
+- repository search で旧 Context Map entry への参照を確認し、canonical path へ移行する。
+- `ArchitectureDocumentationSourceTest` で旧 compatibility entry の復活と旧 path の Markdown 再参照を防ぐ。
 - `docs/architecture/README.md` が Context Map の canonical entry を直接列挙していることを確認する。
 - ADR integrity で新規 ADR と更新した ADR relationship / local link を検証する。
 - public repository verifier で公開不可情報の追加がないことを確認する。
