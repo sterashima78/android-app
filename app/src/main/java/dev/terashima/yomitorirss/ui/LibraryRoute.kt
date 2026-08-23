@@ -70,7 +70,7 @@ internal fun LibraryRoute(
     viewModel = libraryViewModel,
     organizationViewModel = organizationViewModel,
     onSyncGooglePlayBooks = requestSync,
-    onAddWebBook = dependencies.addWebBook,
+    onAddWebBook = { url -> dependencies.addWebBook(url, null) },
     onMoveWebBookToBookmark = dependencies.moveWebBookToBookmark,
     smbRepository = dependencies.smbRepository,
     pageSourceFactory = dependencies.bookReader.pageSourceFactory,
