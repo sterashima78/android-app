@@ -21,6 +21,7 @@ import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptR
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
@@ -89,7 +90,10 @@ internal class AppFeatureRuntimeDependencies(
         },
       ),
       catalogRepository = SmbMetadataAwareLibraryRepository(database),
-      webLibraryMutator = DefaultWebLibraryMutator(database),
+      webLibraryMutator = DefaultWebLibraryMutator(
+        database = database,
+        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(application),
+      ),
       organizationRepository = DefaultLibraryOrganizationRepository(database),
       organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider()),
       organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application),
