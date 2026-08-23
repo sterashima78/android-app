@@ -164,6 +164,7 @@ dependencies {
   implementation(project(":core:database"))
   implementation(project(":core:designsystem"))
   implementation(project(":core:ai-runtime"))
+  implementation(project(":core:network"))
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:reddit:data"))
   implementation(project(":feature:reddit:ui"))
