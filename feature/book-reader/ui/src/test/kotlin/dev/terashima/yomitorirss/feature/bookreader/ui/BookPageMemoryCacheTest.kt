@@ -56,6 +56,23 @@ class BookPageMemoryCacheTest {
     assertEquals(0.75f, cache.aspectRatio(2), 0.0001f)
   }
 
+  @Test
+  fun `page geometry cache evicts least recently used metadata`() {
+    val cache = BookPageMemoryCache(
+      maxBytes = 1,
+      maxEntries = 1,
+      maxAspectRatioEntries = 2,
+    )
+
+    cache.put(0, image(byteCount = 2, width = 500, height = 1000))
+    cache.put(1, image(byteCount = 2, width = 600, height = 1000))
+    assertEquals(0.5f, cache.aspectRatio(0), 0.0001f)
+    cache.put(2, image(byteCount = 2, width = 800, height = 1000))
+
+    assertEquals(0.5f, cache.aspectRatio(0), 0.0001f)
+    assertEquals(0.8f, cache.aspectRatio(1), 0.0001f)
+  }
+
   private fun image(
     byteCount: Int,
     width: Int,
