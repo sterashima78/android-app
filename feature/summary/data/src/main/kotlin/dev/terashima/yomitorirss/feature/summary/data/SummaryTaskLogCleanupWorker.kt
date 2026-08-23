@@ -13,9 +13,9 @@ import kotlinx.coroutines.withContext
 class SummaryTaskLogCleanupWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val database: YomitoriDatabase,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-    val database = YomitoriDatabase.create(applicationContext)
     try {
       val cutoff = Instant.now()
         .minus(SUMMARY_TASK_LOG_RETENTION_DAYS, ChronoUnit.DAYS)
@@ -26,8 +26,6 @@ class SummaryTaskLogCleanupWorker(
       throw error
     } catch (_: Throwable) {
       Result.retry()
-    } finally {
-      database.close()
     }
   }
 }
