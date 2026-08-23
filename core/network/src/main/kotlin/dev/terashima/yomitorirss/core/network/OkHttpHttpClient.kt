@@ -60,4 +60,4 @@ private fun IOException.toNetworkError(): IOException = when (this) {
   else -> IOException("ネットワーク通信に失敗しました: ${message ?: javaClass.simpleName}", this)
 }
 
-private const val USER_AGENT = "Yomitori-RSS-Reader/0.2 (Android)"
+private const val USER_AGENT = "Mosaic/0.2 (Android)"
