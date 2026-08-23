@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.game
 
-import android.content.pm.ActivityInfo
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -8,12 +7,12 @@ class GameOrientationTest {
   @Test
   fun `クロンダイクとスパイダーは横向きを要求する`() {
     assertEquals(
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-      requestedOrientationFor(GameScreen.KLONDIKE),
+      GameOrientationPreference.SENSOR_LANDSCAPE,
+      orientationPreferenceFor(GameScreen.KLONDIKE),
     )
     assertEquals(
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-      requestedOrientationFor(GameScreen.SPIDER),
+      GameOrientationPreference.SENSOR_LANDSCAPE,
+      orientationPreferenceFor(GameScreen.SPIDER),
     )
   }
 
@@ -24,8 +23,8 @@ class GameOrientationTest {
       .forEach { screen ->
         assertEquals(
           "$screen should stay portrait",
-          ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
-          requestedOrientationFor(screen),
+          GameOrientationPreference.PORTRAIT,
+          orientationPreferenceFor(screen),
         )
       }
   }
