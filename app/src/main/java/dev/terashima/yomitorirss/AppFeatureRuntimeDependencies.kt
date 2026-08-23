@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss
 
+import android.app.Activity
 import android.app.Application
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -45,6 +46,7 @@ internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   private val modelManagerProvider: () -> LocalModelManager,
+  private val resumedActivityProvider: () -> Activity?,
 ) {
   val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     HealthConnectHealthRepository(application)
@@ -92,7 +94,7 @@ internal class AppFeatureRuntimeDependencies(
       catalogRepository = SmbMetadataAwareLibraryRepository(database),
       webLibraryMutator = DefaultWebLibraryMutator(
         database = database,
-        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(application),
+        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(resumedActivityProvider),
       ),
       organizationRepository = DefaultLibraryOrganizationRepository(database),
       organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider()),
