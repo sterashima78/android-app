@@ -34,6 +34,40 @@ class WebLibraryRenderedMetadataTest {
   }
 
   @Test
+  fun `明示再取得では静的metadataが揃っていてもWebView結果を優先する`() = runBlocking {
+    var renderedCalled = false
+    val staticBook = webBook(
+      title = "静的タイトル",
+      thumbnailUrl = "https://example.com/static.jpg",
+      description = "静的説明",
+      authors = listOf("静的著者"),
+    )
+    val renderedBook = webBook(
+      title = "動的タイトル",
+      thumbnailUrl = "https://example.com/dynamic.jpg",
+      description = "動的説明",
+      authors = listOf("動的著者"),
+    )
+
+    val result = resolveWebLibraryBookMetadata(
+      url = "https://example.com/book",
+      titleHint = null,
+      staticFetch = { _, _ -> staticBook },
+      renderedFetch = { _, _ ->
+        renderedCalled = true
+        renderedBook
+      },
+      forceRendered = true,
+    )
+
+    assertTrue(renderedCalled)
+    assertEquals("動的タイトル", result.title)
+    assertEquals("https://example.com/dynamic.jpg", result.thumbnailUrl)
+    assertEquals("動的説明", result.description)
+    assertEquals(listOf("動的著者"), result.authors)
+  }
+
+  @Test
   fun `静的metadataのサムネイル欠落をWebView結果で補完する`() = runBlocking {
     val staticBook = webBook(
       title = "静的タイトル",
