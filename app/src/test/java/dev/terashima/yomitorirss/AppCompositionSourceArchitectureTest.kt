@@ -69,6 +69,63 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
+  fun `AppRouteDependenciesはLibrary BookReader Xのconcrete implementationを構築しない`() {
+    val source = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt",
+    ).readText()
+    val forbiddenImports = Regex(
+      "(?m)^import dev\\.terashima\\.yomitorirss\\.feature\\.(?:library|bookreader|x)\\.data\\.",
+    )
+    val forbiddenConstructors = listOf(
+      "GoogleBooksAuthorizationManager(",
+      "WorkManagerSmbCoverPrefetchScheduler(",
+      "SharedPreferencesSmbMetadataNormalizationPromptRepository(",
+      "LocalLibraryOrganizationSuggester(",
+      "DefaultBookPageSourceFactory(",
+      "SharedPreferencesReadingPositionStore(",
+      "SharedPreferencesXViewerCssRepository(",
+    )
+
+    assertFalse(
+      "route wiring must delegate feature concrete graph construction to App runtime groups",
+      forbiddenImports.containsMatchIn(source),
+    )
+    forbiddenConstructors.forEach { constructor ->
+      assertFalse(
+        "route wiring must not construct $constructor",
+        constructor in source,
+      )
+    }
+  }
+
+  @Test
+  fun `Library app routeはplatform authorization compositionに限定する`() {
+    val appRoute = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/ui/LibraryRoute.kt",
+    ).readText()
+    val featureRoute = File(
+      repositoryRoot,
+      "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryFeatureRoute.kt",
+    ).readText()
+
+    listOf(
+      "WebLibraryActions(",
+      "SmbBookReaderRoute(",
+      "mutableStateOf<LibraryBook?>",
+      "collectAsState()",
+    ).forEach { featureUiMarker ->
+      assertFalse(
+        "app LibraryRoute must not own Library-specific UI state: $featureUiMarker",
+        featureUiMarker in appRoute,
+      )
+    }
+    assertTrue("feature Library route must own Web Library actions", "WebLibraryActions(" in featureRoute)
+    assertTrue("feature Library route must own SMB reader presentation", "SmbBookReaderRoute(" in featureRoute)
+  }
+
+  @Test
   fun `Integrated projectionはComposeとAndroid frameworkに依存しない`() {
     val source = File(
       repositoryRoot,
