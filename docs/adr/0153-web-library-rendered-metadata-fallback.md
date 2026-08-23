@@ -58,7 +58,7 @@ rendered metadata 用 WebView では次を必須とする。
 - geolocation は無効化する
 - JavaScript による window open / multiple windows を許可しない
 - third-party Cookie を受け入れない
-- Android System WebView が multi-profile を提供する場合は専用 profile を使う
+- Android System WebView の multi-profile 対応を必須とし、専用 profile を使う。非対応時は default profile へ fallback しない
 - native JavaScript bridge は追加しない
 - main-frame navigation は HTTPS の標準 port に限定する
 - timeout を設け、成功・失敗・cancel のいずれでも WebView を破棄する
@@ -79,7 +79,7 @@ rendered metadata 用 WebView では次を必須とする。
 
 - JavaScript 実行後に title / OGP が設定されるサイトでも Web Library の表示 metadata を取得できる可能性が上がる。
 - 通常の OGP ページは従来どおり HTTP 取得だけで完了し、WebView の起動コストを負わない。
-- HTTP client が browser 以外を拒否するサイトでも、HTTPS であれば WebView fallback から追加できる可能性がある。
+- HTTP client が browser 以外を拒否するサイトでも、HTTPS かつ安全な専用 WebView profile を利用できれば WebView fallback から追加できる可能性がある。
 - 不完全な状態で登録済みの Web 蔵書を個別または一括で修復できる。
 - 任意 Web content で JavaScript を実行する surface は増えるため、WebView security setting と短い lifecycle が correctness と同等に重要になる。
 - ログインが必要なサイトを自動認証する設計ではない。専用 profile は metadata 取得用であり、認証 UI や native bridge を提供しない。
