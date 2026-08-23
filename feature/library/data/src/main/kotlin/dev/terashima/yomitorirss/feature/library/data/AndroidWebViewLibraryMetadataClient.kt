@@ -1,9 +1,10 @@
 package dev.terashima.yomitorirss.feature.library.data
 
 import android.annotation.SuppressLint
-import android.content.Context
+import android.app.Activity
+import android.app.Application
 import android.graphics.Bitmap
-import android.net.Uri
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
@@ -17,6 +18,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import java.lang.ref.WeakReference
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -32,12 +34,11 @@ interface WebLibraryRenderedMetadataClient {
 }
 
 class AndroidWebViewLibraryMetadataClient(
-  context: Context,
+  application: Application,
   private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
 ) : WebLibraryRenderedMetadataClient {
-  private val applicationContext = context.applicationContext
+  private val activityProvider = ResumedActivityProvider(application)
 
-  @SuppressLint("SetJavaScriptEnabled")
   override suspend fun fetch(url: String, titleHint: String?): LibraryBook {
     val requestedUrl = normalizeWebUrl(url)
     require(isSafeRenderedUrl(requestedUrl)) {
@@ -46,18 +47,22 @@ class AndroidWebViewLibraryMetadataClient(
 
     return withTimeout(timeoutMillis) {
       withContext(Dispatchers.Main.immediate) {
-        fetchOnMainThread(requestedUrl, titleHint)
+        val activity = requireNotNull(activityProvider.current()) {
+          "WebView metadata を取得できる画面がありません"
+        }
+        fetchOnMainThread(activity, requestedUrl, titleHint)
       }
     }
   }
 
   @SuppressLint("SetJavaScriptEnabled")
   private suspend fun fetchOnMainThread(
+    activity: Activity,
     requestedUrl: String,
     titleHint: String?,
   ): LibraryBook = suspendCancellableCoroutine { continuation ->
     val mainHandler = Handler(Looper.getMainLooper())
-    val webView = WebView(applicationContext)
+    val webView = WebView(activity)
     if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
       WebViewCompat.setProfile(webView, PROFILE_NAME)
     }
@@ -72,6 +77,8 @@ class AndroidWebViewLibraryMetadataClient(
       setSupportMultipleWindows(false)
       safeBrowsingEnabled = true
       cacheMode = WebSettings.LOAD_NO_CACHE
+      setGeolocationEnabled(false)
+      mediaPlaybackRequiresUserGesture = true
     }
     CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false)
 
@@ -83,6 +90,7 @@ class AndroidWebViewLibraryMetadataClient(
       webView.stopLoading()
       webView.webViewClient = WebViewClient()
       webView.clearHistory()
+      webView.removeAllViews()
       webView.destroy()
     }
 
@@ -92,7 +100,7 @@ class AndroidWebViewLibraryMetadataClient(
       dispose()
       if (!continuation.isActive) return
       result.fold(
-        onSuccess = continuation::resume,
+        onSuccess = { continuation.resume(it) },
         onFailure = continuation::resumeWithException,
       )
     }
@@ -248,6 +256,37 @@ private fun isSafeRenderedUrl(url: String): Boolean = runCatching {
     !uri.host.isNullOrBlank() &&
     (uri.port == -1 || uri.port == 443)
 }.getOrDefault(false)
+
+private class ResumedActivityProvider(
+  application: Application,
+) : Application.ActivityLifecycleCallbacks {
+  private var resumedActivity = WeakReference<Activity>(null)
+
+  init {
+    application.registerActivityLifecycleCallbacks(this)
+  }
+
+  fun current(): Activity? = resumedActivity.get()
+    ?.takeUnless(Activity::isFinishing)
+    ?.takeUnless(Activity::isDestroyed)
+
+  override fun onActivityResumed(activity: Activity) {
+    resumedActivity = WeakReference(activity)
+  }
+
+  override fun onActivityPaused(activity: Activity) {
+    if (resumedActivity.get() === activity) resumedActivity.clear()
+  }
+
+  override fun onActivityDestroyed(activity: Activity) {
+    if (resumedActivity.get() === activity) resumedActivity.clear()
+  }
+
+  override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+  override fun onActivityStarted(activity: Activity) = Unit
+  override fun onActivityStopped(activity: Activity) = Unit
+  override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+}
 
 private const val METADATA_SCRIPT = """
 (() => {
