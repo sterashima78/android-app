@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import java.net.URI
 import java.nio.charset.Charset
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 
 class DefaultWebLibraryMutator(
@@ -112,7 +113,13 @@ internal suspend fun resolveWebLibraryBookMetadata(
   renderedFetch: (suspend (String, String?) -> LibraryBook)?,
   forceRendered: Boolean = false,
 ): LibraryBook {
-  val staticResult = runCatching { staticFetch(url, titleHint) }
+  val staticResult = try {
+    Result.success(staticFetch(url, titleHint))
+  } catch (error: CancellationException) {
+    throw error
+  } catch (error: Throwable) {
+    Result.failure(error)
+  }
   val staticBook = staticResult.getOrNull()
   val shouldRender = renderedFetch != null &&
     isHttpsWebUrl(url) &&
@@ -122,7 +129,13 @@ internal suspend fun resolveWebLibraryBookMetadata(
     return staticBook ?: throw requireNotNull(staticResult.exceptionOrNull())
   }
 
-  val renderedResult = runCatching { requireNotNull(renderedFetch)(url, titleHint) }
+  val renderedResult = try {
+    Result.success(requireNotNull(renderedFetch)(url, titleHint))
+  } catch (error: CancellationException) {
+    throw error
+  } catch (error: Throwable) {
+    Result.failure(error)
+  }
   val renderedBook = renderedResult.getOrNull()
   return when {
     staticBook != null && renderedBook != null -> mergeWebLibraryMetadata(
