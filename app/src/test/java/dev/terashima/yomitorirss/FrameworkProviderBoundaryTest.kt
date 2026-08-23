@@ -131,7 +131,7 @@ class FrameworkProviderBoundaryTest {
   }
 
   private fun workerFiles(root: File): Sequence<File> = productionKotlinFiles(root)
-    .filter { file -> WORKER_IMPORT.containsMatchIn(file.readText()) }
+    .filter { file -> WORKER_DECLARATION.containsMatchIn(file.readText()) }
 
   private fun productionKotlinFiles(root: File): Sequence<File> = root.walkTopDown()
     .filter(File::isFile)
@@ -153,8 +153,8 @@ private data class ProviderLookup(
 
 private val PROVIDER_CAST = Regex("""\bas\?\s*([A-Za-z_][A-Za-z0-9_]*Provider)\b""")
 private val APPLICATION_CAST = Regex("""\bas\??\s*YomitoriApplication\b""")
-private val WORKER_IMPORT = Regex(
-  """(?m)^import androidx\.work\.(?:CoroutineWorker|Worker|ListenableWorker)\b""",
+private val WORKER_DECLARATION = Regex(
+  """:\s*(?:androidx\.work\.)?(?:CoroutineWorker|Worker|ListenableWorker)\s*\(""",
 )
 private val WORKER_PARALLEL_GRAPH_PATTERN = Regex(
   """(?:YomitoriDatabase\.create\s*\(|DatabaseConnection\s*\(|Default[A-Za-z0-9_]*Repository\s*\(|WorkManager[A-Za-z0-9_]*(?:Scheduler|Controller)\s*\(|require[A-Za-z0-9_]*Repository\s*\()""",
