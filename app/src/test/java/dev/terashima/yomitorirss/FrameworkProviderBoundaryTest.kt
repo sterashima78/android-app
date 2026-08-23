@@ -85,7 +85,7 @@ class FrameworkProviderBoundaryTest {
     }.toList()
 
     assertTrue(
-      "Workers must receive application-scope database/repository/scheduler dependencies from WorkerFactory: $violations",
+      "Workers must receive application-scope database/repository dependencies from WorkerFactory: $violations",
       violations.isEmpty(),
     )
   }
@@ -157,6 +157,6 @@ private val WORKER_DECLARATION = Regex(
   """:\s*(?:androidx\.work\.)?(?:CoroutineWorker|Worker|ListenableWorker)\s*\(""",
 )
 private val WORKER_PARALLEL_GRAPH_PATTERN = Regex(
-  """(?:YomitoriDatabase\.create\s*\(|DatabaseConnection\s*\(|Default[A-Za-z0-9_]*Repository\s*\(|WorkManager[A-Za-z0-9_]*(?:Scheduler|Controller)\s*\(|require[A-Za-z0-9_]*Repository\s*\()""",
+  """(?:YomitoriDatabase\.create\s*\(|DatabaseConnection\s*\(|Default[A-Za-z0-9_]*Repository\s*\(|LocalModelManager\.shared\s*\(|require[A-Za-z0-9_]*Repository\s*\()""",
 )
 private const val PROVIDER_MANIFEST = "config/architecture/framework-provider-lookups.tsv"
