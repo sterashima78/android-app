@@ -41,8 +41,7 @@ class FrameworkProviderBoundaryTest {
   @Test
   fun `WorkManager Worker は Application provider lookupを使わない`() {
     val root = repositoryRoot()
-    val violations = productionKotlinFiles(root)
-      .filter { file -> WORKER_IMPORT.containsMatchIn(file.readText()) }
+    val violations = workerFiles(root)
       .flatMap { file ->
         val relativePath = file.relativeTo(root).path.replace('\\', '/')
         PROVIDER_CAST.findAll(file.readText()).map { match ->
@@ -53,6 +52,40 @@ class FrameworkProviderBoundaryTest {
 
     assertTrue(
       "WorkManager Workers must receive dependencies through WorkerFactory constructor injection: $violations",
+      violations.isEmpty(),
+    )
+  }
+
+  @Test
+  fun `WorkManager Worker は feature data layer が所有する`() {
+    val root = repositoryRoot()
+    val violations = workerFiles(root)
+      .map { file -> file.relativeTo(root).path.replace('\\', '/') }
+      .filter { path ->
+        path.startsWith("feature/") &&
+          ("/ui/src/main/" in path || "/domain/src/main/" in path)
+      }
+      .toList()
+
+    assertTrue(
+      "Feature WorkManager Workers must live in the owning data layer: $violations",
+      violations.isEmpty(),
+    )
+  }
+
+  @Test
+  fun `WorkManager Worker は application scope graph を再構築しない`() {
+    val root = repositoryRoot()
+    val violations = workerFiles(root).flatMap { file ->
+      val relativePath = file.relativeTo(root).path.replace('\\', '/')
+      val source = file.readText()
+      WORKER_PARALLEL_GRAPH_PATTERN.findAll(source).map { match ->
+        "$relativePath:${match.value}"
+      }.toList()
+    }.toList()
+
+    assertTrue(
+      "Workers must receive application-scope database/repository dependencies from WorkerFactory: $violations",
       violations.isEmpty(),
     )
   }
@@ -97,6 +130,9 @@ class FrameworkProviderBoundaryTest {
     )
   }
 
+  private fun workerFiles(root: File): Sequence<File> = productionKotlinFiles(root)
+    .filter { file -> WORKER_DECLARATION.containsMatchIn(file.readText()) }
+
   private fun productionKotlinFiles(root: File): Sequence<File> = root.walkTopDown()
     .filter(File::isFile)
     .filter { file -> file.extension == "kt" }
@@ -117,7 +153,10 @@ private data class ProviderLookup(
 
 private val PROVIDER_CAST = Regex("""\bas\?\s*([A-Za-z_][A-Za-z0-9_]*Provider)\b""")
 private val APPLICATION_CAST = Regex("""\bas\??\s*YomitoriApplication\b""")
-private val WORKER_IMPORT = Regex(
-  """(?m)^import androidx\.work\.(?:CoroutineWorker|Worker|ListenableWorker)\b""",
+private val WORKER_DECLARATION = Regex(
+  """:\s*(?:androidx\.work\.)?(?:CoroutineWorker|Worker|ListenableWorker)\s*\(""",
+)
+private val WORKER_PARALLEL_GRAPH_PATTERN = Regex(
+  """(?:YomitoriDatabase\.create\s*\(|DatabaseConnection\s*\(|Default[A-Za-z0-9_]*Repository\s*\(|LocalModelManager\.shared\s*\(|require[A-Za-z0-9_]*Repository\s*\()""",
 )
 private const val PROVIDER_MANIFEST = "config/architecture/framework-provider-lookups.tsv"

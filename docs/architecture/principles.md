@@ -131,8 +131,8 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 
 - 全 Android application/library module は `minSdk = 34` 以上を宣言する。
 - API 34 未満だけを支える `SDK_INT` fallback は持たない。
-- API 35/36 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
-- `compileSdk` / `targetSdk` は stable API 36 を基準とし、preview SDK 採用は別判断とする。
+- API 35/36/37 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
+- Android 17 / API 37 は現行の実行環境として扱う。現在の build baseline は `compileSdk = 36` / `targetSdk = 36` とし、`targetSdk = 37` は SMB / LAN Web Server の `ACCESS_LOCAL_NETWORK` runtime permission UX と integration test を含む独立した platform migration として行う。
 
 ## Architecture enforcement
 
@@ -148,7 +148,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 
 `verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。MainActivity の feature ViewModel import に app-shell-specific allowlist は設けない。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
 
-`FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
+`FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、feature Worker の data-layer ownership、Worker source での parallel database / Repository graph 再構築禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
 
 Architecture job の init script は `:app` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
@@ -180,3 +180,7 @@ App composition の source ownership と active-tab ViewModel activation は `Ap
 - [ADR-0147](../adr/0147-active-tab-viewmodel-activation.md)
 - [ADR-0148](../adr/0148-retire-local-model-revision-marker-migration.md)
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
+- [ADR-0152](../adr/0152-library-route-and-route-runtime-ownership-cleanup.md)
+- [ADR-0155](../adr/0155-application-scope-http-transport.md)
+- [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
+- [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)

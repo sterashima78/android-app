@@ -29,26 +29,18 @@ class SmbCoverPrefetchSchedulingTest {
   }
 
   @Test
-  fun `Wi-Fi制約移行後の通常要求は既存チェーンへ追加する`() {
+  fun `通常要求は既存チェーンへ追加する`() {
     assertEquals(
       ExistingWorkPolicy.APPEND_OR_REPLACE,
-      smbCoverPrefetchExistingWorkPolicy(migrated = true, forceReschedule = false),
+      smbCoverPrefetchExistingWorkPolicy(forceReschedule = false),
     )
   }
 
   @Test
-  fun `Wi-Fi制約への初回移行は既存workを置き換える`() {
+  fun `明示的な再要求は既存workを置き換える`() {
     assertEquals(
       ExistingWorkPolicy.REPLACE,
-      smbCoverPrefetchExistingWorkPolicy(migrated = false, forceReschedule = false),
-    )
-  }
-
-  @Test
-  fun `明示的な再要求は移行済みでも既存workを置き換える`() {
-    assertEquals(
-      ExistingWorkPolicy.REPLACE,
-      smbCoverPrefetchExistingWorkPolicy(migrated = true, forceReschedule = true),
+      smbCoverPrefetchExistingWorkPolicy(forceReschedule = true),
     )
   }
 

@@ -24,13 +24,13 @@ class UnreadArticlesWidgetProvider : AppWidgetProvider() {
     appWidgetIds: IntArray,
   ) {
     appWidgetIds.forEach { appWidgetId -> updateWidget(context, appWidgetManager, appWidgetId) }
-    if (appWidgetIds.isNotEmpty()) UnreadWidgetRefreshWorker.enqueue(context)
+    if (appWidgetIds.isNotEmpty()) context.widgetRefreshScheduler().enqueue()
   }
 
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
     when (intent.action) {
-      ACTION_REFRESH -> UnreadWidgetRefreshWorker.enqueue(context)
+      ACTION_REFRESH -> context.widgetRefreshScheduler().enqueue()
       ACTION_ITEM -> handleItemAction(context, intent)
     }
   }
@@ -218,6 +218,10 @@ private class UnreadArticlesRemoteViewsFactory(
 private fun Context.widgetRepository(): WidgetRepository =
   (applicationContext as? WidgetRepositoryProvider)?.widgetRepository
     ?: error("Application must implement WidgetRepositoryProvider")
+
+private fun Context.widgetRefreshScheduler(): WidgetRefreshScheduler =
+  (applicationContext as? WidgetRefreshSchedulerProvider)?.widgetRefreshScheduler
+    ?: error("Application must implement WidgetRefreshSchedulerProvider")
 
 private fun WidgetArticle.widgetMeta(): String {
   val published = runCatching {

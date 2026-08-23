@@ -1,8 +1,6 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
-import android.app.PendingIntent
-import android.content.Intent
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.article.Article
@@ -21,7 +19,6 @@ import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
@@ -110,33 +107,8 @@ class AppRouteDependencies internal constructor(
     MailViewModel.Factory(container.mailRepository)
   }
 
-  val mailAuthorization: MailAuthorizationDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val authorizationManager = container.gmailAuthorizationManager
-    MailAuthorizationDependencies(
-      requestAccount = {
-        when (val outcome = authorizationManager.requestAccount()) {
-          is GmailAuthorizationOutcome.Authorized -> MailAuthorizationOutcome.Authorized(
-            MailAuthorizedAccount(
-              email = outcome.account.email,
-              displayName = outcome.account.displayName,
-              accessToken = outcome.account.accessToken,
-            ),
-          )
-          is GmailAuthorizationOutcome.RequiresResolution ->
-            MailAuthorizationOutcome.RequiresResolution(outcome.pendingIntent)
-        }
-      },
-      resultFromIntent = { data ->
-        authorizationManager.resultFromIntent(data).let { account ->
-          MailAuthorizedAccount(
-            email = account.email,
-            displayName = account.displayName,
-            accessToken = account.accessToken,
-          )
-        }
-      },
-    )
-  }
+  val mailAuthorization: MailAuthorizationDependencies
+    get() = container.mailAuthorization
 
   val summaryViewModelFactory: SummaryViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SummaryViewModel.Factory(container.summaryRepository)
@@ -257,22 +229,6 @@ data class HealthRouteDependencies internal constructor(
   val readPermissions: Set<String>,
 )
 
-data class MailAuthorizationDependencies internal constructor(
-  val requestAccount: suspend () -> MailAuthorizationOutcome,
-  val resultFromIntent: suspend (Intent) -> MailAuthorizedAccount,
-)
-
-data class MailAuthorizedAccount internal constructor(
-  val email: String,
-  val displayName: String?,
-  val accessToken: String,
-)
-
-sealed interface MailAuthorizationOutcome {
-  data class Authorized(val account: MailAuthorizedAccount) : MailAuthorizationOutcome
-  data class RequiresResolution(val pendingIntent: PendingIntent) : MailAuthorizationOutcome
-}
-
 data class LibraryTransferDependencies internal constructor(
   val moveBookmarkToLibrary: suspend (Article) -> Unit,
   val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
@@ -289,21 +245,6 @@ data class LibraryRouteDependencies internal constructor(
   val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val bookReader: BookReaderRouteDependencies,
 )
-
-data class LibraryAuthorizationDependencies internal constructor(
-  val requestAccount: suspend () -> LibraryAuthorizationOutcome,
-  val resultFromIntent: (Intent) -> LibraryAuthorizedAccount,
-)
-
-data class LibraryAuthorizedAccount internal constructor(
-  val accessToken: String,
-  val accountLabel: String?,
-)
-
-sealed interface LibraryAuthorizationOutcome {
-  data class Authorized(val account: LibraryAuthorizedAccount) : LibraryAuthorizationOutcome
-  data class RequiresResolution(val pendingIntent: PendingIntent) : LibraryAuthorizationOutcome
-}
 
 data class BookReaderRouteDependencies internal constructor(
   val pageSourceFactory: BookPageSourceFactory,

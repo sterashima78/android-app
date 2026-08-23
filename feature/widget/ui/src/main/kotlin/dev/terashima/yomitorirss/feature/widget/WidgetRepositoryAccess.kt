@@ -3,10 +3,6 @@ package dev.terashima.yomitorirss.feature.widget
 import android.content.Context
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 
-internal fun Context.requireWidgetRepository(): WidgetRepository =
-  (applicationContext as? WidgetRepositoryProvider)?.widgetRepository
-    ?: error("Application must implement WidgetRepositoryProvider")
-
 interface TaskRepositoryProvider {
   val taskRepository: TaskRepository
 }
