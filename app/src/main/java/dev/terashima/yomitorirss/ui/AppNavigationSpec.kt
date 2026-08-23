@@ -4,6 +4,50 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.reddit.RedditTab
 import dev.terashima.yomitorirss.feature.rss.RssTab
 
+internal enum class FeatureMessageSource {
+  RSS,
+  REDDIT,
+  FEED,
+  SUMMARY,
+  BOOKMARK,
+  BACKUP,
+  AI_SETTINGS,
+}
+
+internal fun MainTab.featureMessageSources(): Set<FeatureMessageSource> = when (this) {
+  MainTab.INTEGRATED -> setOf(
+    FeatureMessageSource.RSS,
+    FeatureMessageSource.REDDIT,
+    FeatureMessageSource.FEED,
+    FeatureMessageSource.SUMMARY,
+  )
+  MainTab.UNREAD,
+  MainTab.READ_LATER -> setOf(
+    FeatureMessageSource.RSS,
+    FeatureMessageSource.FEED,
+    FeatureMessageSource.SUMMARY,
+  )
+  MainTab.FEEDS -> setOf(FeatureMessageSource.FEED)
+  MainTab.REDDIT_UNREAD,
+  MainTab.REDDIT_READ_LATER -> setOf(
+    FeatureMessageSource.REDDIT,
+    FeatureMessageSource.SUMMARY,
+  )
+  MainTab.REDDIT_SUBSCRIPTIONS -> setOf(FeatureMessageSource.REDDIT)
+  MainTab.SAVED,
+  MainTab.TAGS -> setOf(
+    FeatureMessageSource.BOOKMARK,
+    FeatureMessageSource.SUMMARY,
+  )
+  MainTab.FOLDERS,
+  MainTab.BOOKMARK_IMPORT -> setOf(FeatureMessageSource.BOOKMARK)
+  MainTab.SETTINGS -> setOf(
+    FeatureMessageSource.BACKUP,
+    FeatureMessageSource.AI_SETTINGS,
+  )
+  else -> emptySet()
+}
+
 internal fun MainTab.usesGlobalTopBar(): Boolean = this != MainTab.X
 
 internal fun MainTab.usesSummaryOverlay(): Boolean = when (this) {
