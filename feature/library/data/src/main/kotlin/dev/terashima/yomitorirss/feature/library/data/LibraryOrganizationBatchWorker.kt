@@ -81,6 +81,9 @@ class WorkManagerLibraryOrganizationBatchScheduler(
   }
 
   internal fun kickFromChargingResume() {
+    // Do not cancel RESUME_ON_CHARGING_WORK_NAME here: this method is called by that worker.
+    // The normal worker checks the shared execution gate again before doing any AI work, so a
+    // concurrent user pause remains authoritative even if this enqueue races with it.
     enqueueBatchWork()
   }
 
@@ -110,6 +113,8 @@ class LibraryOrganizationResumeOnChargingWorker(
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (!execution.resumeWhenCharging) return@withContext Result.success()
 
+    // This worker is only armed for a globally paused, still-running library batch. An explicitly
+    // paused batch keeps its PAUSED state and is never resumed only because charging started.
     execution.paused = false
 
     try {
@@ -317,6 +322,8 @@ private suspend fun persistAndAutoApplySuggestion(
     } == true
     if (!manuallyOrganized) throw error
 
+    // A manual edit that raced with AI application wins. The transient generated candidate must not
+    // overwrite it or block the next batch waiting for approval.
     try {
       repository.rejectCandidate(item.key)
     } catch (cancelled: CancellationException) {
