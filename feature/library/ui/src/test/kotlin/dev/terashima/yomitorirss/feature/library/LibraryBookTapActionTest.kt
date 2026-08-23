@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.library
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryBookTapActionTest {
@@ -38,6 +40,24 @@ class LibraryBookTapActionTest {
     )
 
     assertEquals(LibraryBookTapAction.OpenMenu, book.tapAction())
+  }
+
+  @Test
+  fun `Web 蔵書だけが蔵書から削除できる`() {
+    assertTrue(
+      book(
+        source = LibrarySource.WEB,
+        sourceId = "https://example.com/web-book",
+        infoUrl = "https://example.com/web-book",
+      ).canDeleteFromLibrary(),
+    )
+    assertFalse(
+      book(
+        source = LibrarySource.GOOGLE_PLAY_BOOKS,
+        sourceId = "synthetic-book-id",
+        infoUrl = "https://example.com/book",
+      ).canDeleteFromLibrary(),
+    )
   }
 
   private fun book(
