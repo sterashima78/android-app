@@ -405,6 +405,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
             speculativeDecodingEnabled = speculativeDecodingEnabled,
             visionEnabled = visionEnabled,
           )
+          if (visionEnabled && !cacheHit) {
+            LocalAiMemoryDiagnostics.recordVisionInference(
+              appContext,
+              LocalAiMemoryDiagnosticPhase.VISION_AFTER_ENGINE_INIT,
+            )
+          }
           preparationStartedAt?.let { startedAt ->
             recordStageDuration(PREPARING_MODEL_DURATION_KEY, model.id, SystemClock.elapsedRealtime() - startedAt)
           }
@@ -417,12 +423,21 @@ class LocalModelManager(context: Context) : AutoCloseable {
             estimatedStageDurationMillis(GENERATING_RESPONSE_DURATION_KEY, model.id),
           )
           try {
-            block(inference).also {
-              recordStageDuration(
-                GENERATING_RESPONSE_DURATION_KEY,
-                model.id,
-                SystemClock.elapsedRealtime() - generationStartedAt,
-              )
+            try {
+              block(inference).also {
+                recordStageDuration(
+                  GENERATING_RESPONSE_DURATION_KEY,
+                  model.id,
+                  SystemClock.elapsedRealtime() - generationStartedAt,
+                )
+              }
+            } finally {
+              if (visionEnabled) {
+                LocalAiMemoryDiagnostics.recordVisionInference(
+                  appContext,
+                  LocalAiMemoryDiagnosticPhase.VISION_AFTER_INFERENCE,
+                )
+              }
             }
           } catch (error: Throwable) {
             invalidateRetainedInferenceLocked(inference)
@@ -545,7 +560,19 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private fun releaseCachedInferenceLocked() {
     val cached = cachedInference ?: return
     cachedInference = null
-    runCatching { cached.inference.close() }
+    val closeError = runCatching { cached.inference.close() }.exceptionOrNull()
+    if (cached.key.visionEnabled) {
+      LocalAiMemoryDiagnostics.recordVisionInference(
+        context = appContext,
+        phase = LocalAiMemoryDiagnosticPhase.VISION_AFTER_ENGINE_RELEASE,
+        engineCloseStatus = if (closeError == null) {
+          LocalAiEngineCloseStatus.SUCCESS
+        } else {
+          LocalAiEngineCloseStatus.FAILED
+        },
+        engineCloseErrorClass = closeError?.javaClass?.name,
+      )
+    }
   }
 
   private fun releaseCachedTokenizerLocked() {
