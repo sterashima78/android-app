@@ -10,32 +10,50 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
+import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import java.net.URI
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LibraryFeatureRoute(
   viewModel: LibraryViewModel,
   organizationViewModel: LibraryOrganizationViewModel,
   onSyncGooglePlayBooks: () -> Unit,
-  onOpenSmbBook: (LibraryBook) -> Unit,
+  onAddWebBook: suspend (String) -> Unit,
+  onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
+  smbRepository: SmbLibraryRepository,
+  pageSourceFactory: BookPageSourceFactory,
+  readingPositionStore: ReadingPositionStore,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
   val organizationState by organizationViewModel.state.collectAsState()
   var organizationVisible by rememberSaveable { mutableStateOf(false) }
+  var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
+  val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
   val webLibraryImportHandler = remember(viewModel) {
@@ -66,28 +84,59 @@ fun LibraryFeatureRoute(
       onDelete = viewModel::deleteSmbBook,
     )
   }
+  val closeSmbBook: () -> Unit = {
+    openedSmbBook = null
+    viewModel.refresh()
+  }
 
-  CompositionLocalProvider(
-    LocalUriHandler provides libraryUriHandler,
-    LocalWebLibraryImportHandler provides webLibraryImportHandler,
-    LocalSmbLibraryUiBinding provides smbBinding,
-    LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
-  ) {
-    LibraryScreen(
-      modifier = modifier.fillMaxSize(),
-      state = state,
-      onSyncGooglePlayBooks = onSyncGooglePlayBooks,
-      onOpenSmbBook = onOpenSmbBook,
-      onHideBook = viewModel::hideBook,
-      onRestoreBook = viewModel::restoreBook,
-      onSetBookSeries = viewModel::setBookSeries,
-      onMergeSeries = viewModel::mergeSeries,
-      onClearBookSeries = viewModel::clearBookSeries,
-      onOpenOrganization = {
-        organizationViewModel.refresh()
-        organizationVisible = true
+  Box(modifier = modifier.fillMaxSize()) {
+    CompositionLocalProvider(
+      LocalUriHandler provides libraryUriHandler,
+      LocalWebLibraryImportHandler provides webLibraryImportHandler,
+      LocalSmbLibraryUiBinding provides smbBinding,
+      LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
+    ) {
+      LibraryScreen(
+        modifier = Modifier.fillMaxSize(),
+        state = state,
+        onSyncGooglePlayBooks = onSyncGooglePlayBooks,
+        onOpenSmbBook = { openedSmbBook = it },
+        onHideBook = viewModel::hideBook,
+        onRestoreBook = viewModel::restoreBook,
+        onSetBookSeries = viewModel::setBookSeries,
+        onMergeSeries = viewModel::mergeSeries,
+        onClearBookSeries = viewModel::clearBookSeries,
+        onOpenOrganization = {
+          organizationViewModel.refresh()
+          organizationVisible = true
+        },
+        onDismissMessage = viewModel::dismissMessage,
+      )
+    }
+
+    WebLibraryActions(
+      books = state.books.filter { it.source == LibrarySource.WEB },
+      onAdd = { url ->
+        scope.launch {
+          runCatching {
+            withContext(Dispatchers.IO) { onAddWebBook(url) }
+          }
+            .onSuccess { viewModel.refresh() }
+            .onFailure(viewModel::reportError)
+        }
       },
-      onDismissMessage = viewModel::dismissMessage,
+      onMoveToBookmark = { book ->
+        scope.launch {
+          runCatching {
+            withContext(Dispatchers.IO) { onMoveWebBookToBookmark(book) }
+          }
+            .onSuccess { viewModel.refresh() }
+            .onFailure(viewModel::reportError)
+        }
+      },
+      modifier = Modifier
+        .align(Alignment.BottomEnd)
+        .padding(end = 16.dp, bottom = 88.dp),
     )
   }
 
@@ -104,6 +153,25 @@ fun LibraryFeatureRoute(
       onDismissMessage = organizationViewModel::dismissMessage,
       onDismiss = { organizationVisible = false },
     )
+  }
+
+  openedSmbBook?.let { book ->
+    Dialog(
+      onDismissRequest = closeSmbBook,
+      properties = DialogProperties(
+        usePlatformDefaultWidth = false,
+        decorFitsSystemWindows = false,
+      ),
+    ) {
+      SmbBookReaderRoute(
+        book = book,
+        repository = smbRepository,
+        pageSourceFactory = pageSourceFactory,
+        readingPositionStore = readingPositionStore,
+        onBack = closeSmbBook,
+        modifier = Modifier.fillMaxSize(),
+      )
+    }
   }
 }
 
