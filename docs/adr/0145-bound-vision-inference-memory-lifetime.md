@@ -15,6 +15,8 @@ ADR-0079 では、同一 process 内のローカル AI 推論が `LocalModelMana
 
 Android 17 では Memory Limiter によりメモリ圧迫時にプロセスが終了する場合があり、通常の uncaught exception handler を経由しない。そのため、クラッシュスタックだけでは原因を確認できず、次回起動時の `ApplicationExitInfo` と推論前後の process memory を合わせて確認する必要がある。
 
+初期の実端末診断では `vision-before` と `vision-after-engine-release` の比較だけでも native heap の基準値が複数冊にわたり上昇することを確認できた。ただし、この2点だけでは Engine 初期化、画像推論、Engine 解放のどの区間でメモリが増え、どの区間で回収されていないかを分離できない。また、`Engine.close()` は `runCatching` 内で呼ばれていたため、close 自体が例外を返した場合も診断から判別できなかった。
+
 ## Decision
 
 ### 1. process-wide `LocalModelManager` と推論直列化は維持する
@@ -33,9 +35,16 @@ LiteRT-LM の Android GPU/OpenCL 画像推論に関する upstream 問題が解�
 
 この変更により画像推論の各冊で `PREPARING_MODEL` が発生し、処理時間は増える。ただし数 GB 級 native runtime の累積によるプロセス終了を避けることを優先する。
 
-### 3. 画像推論前後のメモリ指標を個人情報なしでリング保存する
+### 3. 画像推論の4地点でメモリ指標を個人情報なしでリング保存する
 
-`core:ai-runtime` が画像推論の直前と Engine 解放後に次の数値だけを記録する。
+`core:ai-runtime` と SMB Worker は、画像推論について次の固定 phase で process memory を記録する。
+
+- `vision-before`: SMB Worker が画像推論を開始する直前
+- `vision-after-engine-init`: 新しい vision Engine の `initialize()` が完了し、推論開始可能になった直後
+- `vision-after-inference`: 画像を含む LiteRT-LM 推論呼び出しが終了した直後。成功・例外のどちらでも記録する
+- `vision-after-engine-release`: vision Engine に対する `close()` 呼び出しが終了した直後
+
+各 phase では次の数値だけを記録する。
 
 - PSS (KiB)
 - RSS (KiB)
@@ -44,9 +53,20 @@ LiteRT-LM の Android GPU/OpenCL 画像推論に関する upstream 問題が解�
 - timestamp
 - 固定 phase 名
 
-直近24サンプルだけを app-private `SharedPreferences` に保持し、同じ内容を Logcat にも出力する。
+`vision-after-engine-release` では追加で `engineClose=success|failed` を記録する。`Engine.close()` が例外を返した場合も従来どおり処理へ再 throw せず、例外メッセージや stack trace は保存せず、例外クラス名だけを `engineCloseError` として記録する。これにより既存の runtime 挙動を変えずに close 失敗を観測可能にする。
 
-書籍タイトル、ファイル名、SMB path、sourceId、serverId、URL、prompt、AI 出力等は診断データへ含めない。公開リポジトリの fixture / ADR にも実ユーザーデータを追加しない。
+診断は直近64サンプルだけを app-private `SharedPreferences` に保持し、同じ内容を Logcat にも出力する。4地点計測へ増やしても複数冊分の時系列を保持できる件数とする。
+
+書籍タイトル、ファイル名、SMB path、sourceId、serverId、URL、prompt、AI 出力、例外メッセージ等は診断データへ含めない。公開リポジトリの fixture / ADR にも実ユーザーデータを追加しない。
+
+4地点の差分は次の切り分けに利用する。
+
+- `vision-before` → `vision-after-engine-init`: Engine / GPU runtime / weight cache 初期化時の増加
+- `vision-after-engine-init` → `vision-after-inference`: Conversation、画像 tensor、KV cache、推論時 GPU allocation 等による増加
+- `vision-after-inference` → `vision-after-engine-release`: `Engine.close()` によって回収された量
+- 前回の `vision-after-engine-release` → 次回の `vision-before`: allocator / driver 側で遅延回収される量、またはプロセス内に残存する量
+
+この診断拡張では context size、backend、Engine の1冊単位解放、推論順序などの実行条件を変更しない。原因の切り分け前にメモリ使用量そのものを変化させないことを優先する。
 
 ### 4. Android のメモリ関連 process exit を次回起動時に既存クラッシュ診断へ統合する
 
@@ -78,13 +98,16 @@ LiteRT-LM 側で GPU/OpenCL の Conversation/Engine 間メモリ解放問題が�
 
 - Android GPU 画像推論の native memory 累積を1冊単位で打ち切れる。
 - process-wide Manager と既存の推論直列化を維持できる。
+- Engine 初期化、画像推論、Engine 解放の各区間を別々に比較できる。
+- `Engine.close()` の失敗を処理挙動を変えずに診断できる。
 - Android 17 の Memory Limiter による終了を uncaught exception と区別して確認できる。
 - 実端末で修正効果を PSS/RSS の時系列として確認できる。
-- 診断データへ書誌・SMB・prompt の個人情報を含めない。
+- 診断データへ書誌・SMB・prompt・例外メッセージの個人情報を含めない。
 
 ### Negative
 
 - SMB 書誌解析は各冊で画像 Engine の再初期化が必要になり、連続処理の速度が低下する。
+- 1回の画像推論につき通常4サンプルを保存するため、診断記録の頻度と Logcat 出力量は従来より増える。
 - `LocalModelManager.close()` は共有 Manager の cancel state も更新するため、画像推論終了と同時期に別の foreground 推論が既に同じ lock を待っている競合では、その要求がキャンセル扱いになり再試行が必要になる可能性がある。独立 Manager へ分離して直列化を失うよりメモリ安全性を優先する一時的なトレードオフとする。
 - upstream 修正を取り込んだ後に、この一時的な bounded lifecycle を再評価する作業が必要になる。
 
