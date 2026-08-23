@@ -98,17 +98,12 @@ fun LibraryFeatureRoute(
         .onFailure(viewModel::reportError)
     }
   }
-  val hideOrDeleteBook: (LibraryBook) -> Unit = { book ->
-    if (book.source == LibrarySource.WEB) deleteWebBook(book) else viewModel.hideBook(book)
-  }
-  val restoreOrDeleteBook: (LibraryBook) -> Unit = { book ->
-    if (book.source == LibrarySource.WEB) deleteWebBook(book) else viewModel.restoreBook(book)
-  }
 
   Box(modifier = modifier.fillMaxSize()) {
     CompositionLocalProvider(
       LocalUriHandler provides libraryUriHandler,
       LocalWebLibraryImportHandler provides webLibraryImportHandler,
+      LocalWebLibraryDeleteHandler provides deleteWebBook,
       LocalSmbLibraryUiBinding provides smbBinding,
       LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
     ) {
@@ -117,8 +112,8 @@ fun LibraryFeatureRoute(
         state = state,
         onSyncGooglePlayBooks = onSyncGooglePlayBooks,
         onOpenSmbBook = { openedSmbBook = it },
-        onHideBook = hideOrDeleteBook,
-        onRestoreBook = restoreOrDeleteBook,
+        onHideBook = viewModel::hideBook,
+        onRestoreBook = viewModel::restoreBook,
         onSetBookSeries = viewModel::setBookSeries,
         onMergeSeries = viewModel::mergeSeries,
         onClearBookSeries = viewModel::clearBookSeries,
