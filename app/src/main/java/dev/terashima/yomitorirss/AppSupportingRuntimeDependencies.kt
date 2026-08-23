@@ -16,10 +16,13 @@ import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
+import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.task.data.DefaultTaskRepository
 import dev.terashima.yomitorirss.feature.web.LanWebServerController
 import dev.terashima.yomitorirss.feature.web.data.AndroidLanWebServerController
+import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
+import dev.terashima.yomitorirss.feature.widget.data.WorkManagerWidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutRepository
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
@@ -65,12 +68,43 @@ internal class AppSupportingRuntimeDependencies(
     GmailAuthorizationManager(application, httpClient)
   }
 
+  val mailAuthorization: MailAuthorizationDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    MailAuthorizationDependencies(
+      requestAccount = {
+        when (val outcome = gmailAuthorizationManager.requestAccount()) {
+          is GmailAuthorizationOutcome.Authorized -> MailAuthorizationOutcome.Authorized(
+            MailAuthorizedAccount(
+              email = outcome.account.email,
+              displayName = outcome.account.displayName,
+              accessToken = outcome.account.accessToken,
+            ),
+          )
+          is GmailAuthorizationOutcome.RequiresResolution ->
+            MailAuthorizationOutcome.RequiresResolution(outcome.pendingIntent)
+        }
+      },
+      resultFromIntent = { data ->
+        gmailAuthorizationManager.resultFromIntent(data).let { account ->
+          MailAuthorizedAccount(
+            email = account.email,
+            displayName = account.displayName,
+            accessToken = account.accessToken,
+          )
+        }
+      },
+    )
+  }
+
   val mailRepository: MailRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultMailRepository(
       context = application,
       database = databaseConnection,
       authorization = gmailAuthorizationManager,
     )
+  }
+
+  val widgetRefreshScheduler: WidgetRefreshScheduler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkManagerWidgetRefreshScheduler(application)
   }
 
   val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
