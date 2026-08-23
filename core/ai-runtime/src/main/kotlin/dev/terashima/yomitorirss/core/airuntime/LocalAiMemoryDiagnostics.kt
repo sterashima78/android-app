@@ -7,33 +7,41 @@ import java.io.File
 
 enum class LocalAiMemoryDiagnosticPhase(val wireName: String) {
   VISION_BEFORE("vision-before"),
+  VISION_AFTER_ENGINE_INIT("vision-after-engine-init"),
+  VISION_AFTER_INFERENCE("vision-after-inference"),
   VISION_AFTER_ENGINE_RELEASE("vision-after-engine-release"),
+}
+
+enum class LocalAiEngineCloseStatus(val wireName: String) {
+  SUCCESS("success"),
+  FAILED("failed"),
 }
 
 object LocalAiMemoryDiagnostics {
   private const val PREFERENCES_NAME = "local_ai_memory_diagnostics"
   private const val REPORT_KEY = "recent_vision_memory_samples"
-  private const val MAX_SAMPLES = 24
+  private const val MAX_SAMPLES = 64
   private const val TAG = "LocalAiMemory"
   private const val BYTES_PER_KIB = 1024L
 
-  fun recordVisionInference(context: Context, phase: LocalAiMemoryDiagnosticPhase) {
+  fun recordVisionInference(
+    context: Context,
+    phase: LocalAiMemoryDiagnosticPhase,
+    engineCloseStatus: LocalAiEngineCloseStatus? = null,
+    engineCloseErrorClass: String? = null,
+  ) {
     runCatching {
       val runtime = Runtime.getRuntime()
-      val line = buildString {
-        append("timestamp=")
-        append(System.currentTimeMillis())
-        append(" phase=")
-        append(phase.wireName)
-        append(" pssKb=")
-        append(Debug.getPss())
-        append(" rssKb=")
-        append(processRssKb()?.toString() ?: "unknown")
-        append(" nativeHeapKb=")
-        append(Debug.getNativeHeapAllocatedSize() / BYTES_PER_KIB)
-        append(" javaHeapKb=")
-        append((runtime.totalMemory() - runtime.freeMemory()) / BYTES_PER_KIB)
-      }
+      val line = buildVisionMemoryDiagnosticLine(
+        timestamp = System.currentTimeMillis(),
+        phase = phase,
+        pssKb = Debug.getPss().toLong(),
+        rssKb = processRssKb(),
+        nativeHeapKb = Debug.getNativeHeapAllocatedSize() / BYTES_PER_KIB,
+        javaHeapKb = (runtime.totalMemory() - runtime.freeMemory()) / BYTES_PER_KIB,
+        engineCloseStatus = engineCloseStatus,
+        engineCloseErrorClass = engineCloseErrorClass,
+      )
       Log.i(TAG, line)
       val preferences = context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
       val updated = appendDiagnosticLine(
@@ -61,6 +69,40 @@ object LocalAiMemoryDiagnostics {
         ?.toLongOrNull()
     }
   }.getOrNull()
+}
+
+internal fun buildVisionMemoryDiagnosticLine(
+  timestamp: Long,
+  phase: LocalAiMemoryDiagnosticPhase,
+  pssKb: Long,
+  rssKb: Long?,
+  nativeHeapKb: Long,
+  javaHeapKb: Long,
+  engineCloseStatus: LocalAiEngineCloseStatus? = null,
+  engineCloseErrorClass: String? = null,
+): String = buildString {
+  append("timestamp=")
+  append(timestamp)
+  append(" phase=")
+  append(phase.wireName)
+  append(" pssKb=")
+  append(pssKb)
+  append(" rssKb=")
+  append(rssKb?.toString() ?: "unknown")
+  append(" nativeHeapKb=")
+  append(nativeHeapKb)
+  append(" javaHeapKb=")
+  append(javaHeapKb)
+  engineCloseStatus?.let { status ->
+    append(" engineClose=")
+    append(status.wireName)
+  }
+  engineCloseErrorClass
+    ?.takeIf(String::isNotBlank)
+    ?.let { errorClass ->
+      append(" engineCloseError=")
+      append(errorClass.filter { it.isLetterOrDigit() || it == '.' || it == '$' || it == '_' }.take(160))
+    }
 }
 
 internal fun appendDiagnosticLine(
