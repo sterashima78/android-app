@@ -18,7 +18,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchItem
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchRuntimeSnapshot
@@ -38,7 +37,6 @@ class WorkManagerSmbCoverPrefetchScheduler(
   context: Context,
 ) : SmbCoverPrefetchScheduler {
   private val appContext = context.applicationContext
-  private val preferences = appContext.getSharedPreferences(SCHEDULER_PREFERENCES, Context.MODE_PRIVATE)
 
   override fun enqueue() {
     schedule(forceReschedule = false)
@@ -53,30 +51,20 @@ class WorkManagerSmbCoverPrefetchScheduler(
       .setConstraints(smbCoverPrefetchConstraints())
       .addTag(SmbCoverPrefetchWorker.WORK_TAG)
       .build()
-    val migrated = preferences.getBoolean(KEY_WIFI_CONSTRAINT_MIGRATED, false)
     WorkManager.getInstance(appContext).enqueueUniqueWork(
       SmbCoverPrefetchWorker.WORK_NAME,
-      smbCoverPrefetchExistingWorkPolicy(migrated, forceReschedule),
+      smbCoverPrefetchExistingWorkPolicy(forceReschedule),
       request,
     )
-    if (!migrated) {
-      preferences.edit().putBoolean(KEY_WIFI_CONSTRAINT_MIGRATED, true).apply()
-    }
-  }
-
-  private companion object {
-    const val SCHEDULER_PREFERENCES = "smb_cover_prefetch_scheduler"
-    const val KEY_WIFI_CONSTRAINT_MIGRATED = "wifi_constraint_v1"
   }
 }
 
 internal fun smbCoverPrefetchExistingWorkPolicy(
-  migrated: Boolean,
   forceReschedule: Boolean,
-): ExistingWorkPolicy = when {
-  forceReschedule -> ExistingWorkPolicy.REPLACE
-  !migrated -> ExistingWorkPolicy.REPLACE
-  else -> ExistingWorkPolicy.APPEND_OR_REPLACE
+): ExistingWorkPolicy = if (forceReschedule) {
+  ExistingWorkPolicy.REPLACE
+} else {
+  ExistingWorkPolicy.APPEND_OR_REPLACE
 }
 
 internal fun smbCoverPrefetchConstraints(): Constraints = Constraints.Builder()
@@ -152,12 +140,11 @@ internal fun smbCoverPrefetchWorkerState(states: List<WorkInfo.State>): SmbCover
 class SmbCoverPrefetchWorker(
   appContext: Context,
   params: WorkerParameters,
+  private val database: DatabaseConnection,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-    val database = YomitoriDatabase.create(applicationContext)
-    val connection = DatabaseConnection(database)
-    val queue = SmbCoverPrefetchQueueStore(connection)
-    val processor = SmbCoverPrefetchProcessor(applicationContext, connection)
+    val queue = SmbCoverPrefetchQueueStore(database)
+    val processor = SmbCoverPrefetchProcessor(applicationContext, database)
     var current: SmbCoverPrefetchQueueEntry? = null
 
     try {
@@ -203,8 +190,6 @@ class SmbCoverPrefetchWorker(
       throw cancelled
     } catch (_: Throwable) {
       Result.retry()
-    } finally {
-      database.close()
     }
   }
 
