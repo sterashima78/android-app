@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.rss.data
 import android.content.Context
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.rss.Feed
@@ -19,10 +20,11 @@ class DefaultFeedRepository(
   private val contentSourceGateway: ContentSourceGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
   applicationContext: Context? = null,
+  httpClient: HttpClient = HttpClient.create(),
 ) : FeedRepository {
   private val store = FeedStore(database, contentSourceGateway)
-  private val client = FeedClient()
-  private val yanmagaClient = YanmagaFeedClient()
+  private val client = FeedClient(httpClient)
+  private val yanmagaClient = YanmagaFeedClient(httpClient)
   private val mangaOneClient = applicationContext?.let { MangaOneFeedClient(it.applicationContext) }
 
   override val changes: StateFlow<Long> = dataChanges.version
