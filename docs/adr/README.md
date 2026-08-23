@@ -40,6 +40,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0147: app composition は選択中タブに必要な ViewModel だけ起動する](0147-active-tab-viewmodel-activation.md)
+- [ADR-0150: app shell navigation state を app UI ownership へ収束する](0150-app-shell-navigation-ui-ownership.md)
 
 ### Domain / Context / persistence
 
@@ -60,6 +61,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0136: 公開リポジトリの高確度な秘密情報を CI で検査する](0136-public-repository-content-verification.md)
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0151: current architecture の互換 redirect は参照移行後に廃止する](0151-retire-current-architecture-compatibility-redirects.md)
 
 ## Supporting architecture areas
 
@@ -144,3 +146,5 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0055](0055-adr-numbering-policy.md)
 - [ADR-0122](0122-current-architecture-documentation.md)
 - [ADR-0136](0136-public-repository-content-verification.md)
+- [ADR-0150](0150-app-shell-navigation-ui-ownership.md)
+- [ADR-0151](0151-retire-current-architecture-compatibility-redirects.md)

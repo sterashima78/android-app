@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.navigation
+package dev.terashima.yomitorirss.ui
 
 enum class AppSection(val label: String) {
   HOME("統合ビュー"),

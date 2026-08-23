@@ -13,7 +13,7 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
-  fun `app feature namespaceにはapp shell navigation以外のproduction sourceを置かない`() {
+  fun `app feature namespaceにはproduction sourceを置かない`() {
     val featureRoot = File(
       repositoryRoot,
       "app/src/main/java/dev/terashima/yomitorirss/feature",
@@ -22,13 +22,37 @@ class AppCompositionSourceArchitectureTest {
       .walkTopDown()
       .filter { it.isFile && it.extension == "kt" }
       .map { it.relativeTo(featureRoot).invariantSeparatorsPath }
-      .filterNot { it.startsWith("navigation/") }
       .toList()
 
     assertTrue(
-      "feature-owned UI or app composition adapters must not return to app/feature: $unexpected",
+      "feature-owned source and app-shell adapters must not return to app/feature: $unexpected",
       unexpected.isEmpty(),
     )
+  }
+
+  @Test
+  fun `app shell navigationはui ownershipに置く`() {
+    val appSourceRoot = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss",
+    )
+    val legacyReferences = appSourceRoot
+      .walkTopDown()
+      .filter { it.isFile && it.extension == "kt" }
+      .filter { "dev.terashima.yomitorirss.feature.navigation" in it.readText() }
+      .map { it.relativeTo(appSourceRoot).invariantSeparatorsPath }
+      .toList()
+
+    assertTrue(
+      "app-shell navigation must not use the historical feature.navigation package: $legacyReferences",
+      legacyReferences.isEmpty(),
+    )
+    listOf("AppSection.kt", "AppViewModel.kt", "MainTab.kt").forEach { fileName ->
+      assertTrue(
+        "app-shell navigation type must live under app/ui: $fileName",
+        File(appSourceRoot, "ui/$fileName").isFile,
+      )
+    }
   }
 
   @Test

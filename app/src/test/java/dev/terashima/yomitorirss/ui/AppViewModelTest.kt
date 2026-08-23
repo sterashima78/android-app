@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.navigation
+package dev.terashima.yomitorirss.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

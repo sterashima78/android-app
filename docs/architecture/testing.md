@@ -100,13 +100,13 @@ Gradle dependency と production source の構造的 guardrail を検査する�
 - Domain から Android import 禁止
 - root app shell への feature UI ownership drift
 - Screen / `:app` Route での concrete dependency construction / import 禁止
-- `MainActivity` での feature ViewModel ownership（`AppViewModel` を除く）と concrete feature data import 禁止
+- `MainActivity` での feature ViewModel ownership と concrete feature data import 禁止。app shell の `ui.AppViewModel` は feature ViewModel ではないため許可する
 - `:app` production source での feature Worker 禁止。`CoroutineWorker` / `Worker` / `ListenableWorker` の import alias も検出対象
 - feature data から app implementation への依存禁止
 
-rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture に加え、MainActivity の concrete feature data / feature ViewModel、WorkManager Worker の import alias も違反として固定する。
+rule 自体の regression は `verifyArchitectureRuleTests` fixture で検証する。Route fixture に加え、MainActivity の concrete feature data / feature ViewModel、WorkManager Worker の import alias も違反として固定し、`ui.AppViewModel` は app shell state として許可する。
 
-app composition の回帰は `AppCompositionSourceArchitectureTest` でも固定する。`AppContainer` へ concrete feature data construction を戻さないこと、Integrated の pure projection が Android/Compose framework dependency を持たないことに加え、`AppFeatureContent`、`AppTopBarRoute`、`FeatureMessageEffects` が selected-tab dispatch より前に feature ViewModel を eager activation しないことを検査する。
+app composition の回帰は `AppCompositionSourceArchitectureTest` でも固定する。`app/src/main/.../feature` に production Kotlin source を置かないこと、historical `feature.navigation` package を再導入しないこと、`AppContainer` へ concrete feature data construction を戻さないこと、Integrated の pure projection が Android/Compose framework dependency を持たないことに加え、`AppFeatureContent`、`AppTopBarRoute`、`FeatureMessageEffects` が selected-tab dispatch より前に feature ViewModel を eager activation しないことを検査する。
 
 Summary / Bookmark の global overlay は `AppNavigationSpecTest` で capability を提供するタブ集合を固定し、無関係なタブ表示だけで feature ViewModel が生成される範囲を増やさない。
 
@@ -173,6 +173,8 @@ python3 scripts/verify_adr_integrity.py
 
 新しい ADR は現在存在する最大番号より大きい一意な番号を使用し、見出し・ファイル名・参照先を一致させる。
 
+current architecture document の compatibility redirect を削除する場合は、repository 内参照を canonical `docs/architecture/` path へ移したことを意味的レビューで確認し、更新した ADR / current docs の local link は ADR integrity と通常の link review で検証する。
+
 ### Public repository verification
 
 tracked source へ高確度な credential / private artifact を追加していないことを次で検査する。
@@ -224,6 +226,7 @@ CI workflow が変更された場合は、この文書のコマンドを正本�
 | mutable runtime state ownership | owner data/runtime unit test + presentation derivation test where needed |
 | app composition projection split | pure projection unit test + source architecture regression |
 | active-tab ViewModel activation | navigation policy unit test + app composition source regression |
+| app shell navigation package relocation | app navigation unit tests + source ownership regression + `verifyArchitecture` fixture |
 | retired one-time runtime migration | current validity contract + source regression when integration fixture is impractical |
 | shareable diagnostic sanitizer | pure unit test with synthetic sensitive-looking data |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
@@ -257,3 +260,5 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0147](../adr/0147-active-tab-viewmodel-activation.md)
 - [ADR-0148](../adr/0148-retire-local-model-revision-marker-migration.md)
 - [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
+- [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.navigation
+package dev.terashima.yomitorirss.ui
 
 enum class MainTab(val label: String) {
   INTEGRATED("統合ビュー"),

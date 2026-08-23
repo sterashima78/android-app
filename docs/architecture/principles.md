@@ -98,9 +98,10 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - `:app` は composition root として feature implementation を組み立てる。
 - application scope で複数の adapter / route / framework entry point から利用する concrete runtime は `AppContainer` が一度だけ構築して lifetime を所有し、同じ instance / graph を再利用する。並行した repository / scheduler graph を route や Worker ごとに再構築しない。
 - Screen、`:app` の Route、`:app` の `ui` composition（`*Host.kt` 等を含む）で concrete Repository、database connection、WorkManager dependency を生成・import しない。
+- app shell navigation state（`AppSection` / `MainTab` / `AppViewModel`）は `app/.../ui` が所有し、`app/.../feature` に production source を置かない。
 - app shell は選択中の navigation state を確定してから、その presentation に必要な feature ViewModel だけを取得する。inactive feature の ViewModel を global host の都合で eager activation しない。
 - Activity-scoped ViewModel sharing を利用する場合でも、Summary / Bookmark overlay、TopBar、message bridge 等の共通 host は capability が必要なタブだけ mount / observe する。
-- `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel は `AppViewModel` を除いて所有しない。
+- `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel を所有しない。app shell の `ui.AppViewModel` は Activity-scoped state として所有してよい。
 - `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
 - Android が直接生成する Activity、Service、AppWidgetProvider 等で constructor injection を差し込めない entry point に限り、監査済みの narrow Provider contract を利用できる。
@@ -145,13 +146,13 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 - ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
 - public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
 
-`verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
+`verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。MainActivity の feature ViewModel import に app-shell-specific allowlist は設けない。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
 
 `FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
 
 Architecture job の init script は `:app` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
-App composition の active-tab ViewModel activation は `AppCompositionSourceArchitectureTest` で補完し、selected-tab dispatch より前に feature ViewModel を取得する eager activation の再導入を検出する。
+App composition の source ownership と active-tab ViewModel activation は `AppCompositionSourceArchitectureTest` で補完し、`app/.../feature` production source / historical `feature.navigation` package の再導入と、selected-tab dispatch より前の feature ViewModel eager activation を検出する。
 
 検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化、実ユーザー情報かどうかの意味判定等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
 
@@ -178,3 +179,4 @@ App composition の active-tab ViewModel activation は `AppCompositionSourceArc
 - [ADR-0146](../adr/0146-workmanager-worker-factory-injection.md)
 - [ADR-0147](../adr/0147-active-tab-viewmodel-activation.md)
 - [ADR-0148](../adr/0148-retire-local-model-revision-marker-migration.md)
+- [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)

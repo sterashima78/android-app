@@ -34,10 +34,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
-import dev.terashima.yomitorirss.feature.navigation.AppViewModel
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.web.WebServerDialog
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider
+import dev.terashima.yomitorirss.ui.AppViewModel
+import dev.terashima.yomitorirss.ui.MainTab
 import dev.terashima.yomitorirss.ui.YomitoriApp
 import dev.terashima.yomitorirss.ui.YomitoriTheme
 import kotlinx.coroutines.Dispatchers

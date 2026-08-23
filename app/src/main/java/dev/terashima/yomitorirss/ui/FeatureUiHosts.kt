@@ -11,8 +11,6 @@ import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditController
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditHost
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
-import dev.terashima.yomitorirss.feature.navigation.AppViewModel
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel

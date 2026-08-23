@@ -16,8 +16,6 @@ import dev.terashima.yomitorirss.feature.game.GameRoute
 import dev.terashima.yomitorirss.feature.health.HealthRoute
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.navigation.AppViewModel
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.reddit.RedditRoute
 import dev.terashima.yomitorirss.feature.reddit.RedditRouteController
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel

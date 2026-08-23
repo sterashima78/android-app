@@ -1,7 +1,6 @@
-package dev.terashima.yomitorirss.feature.navigation
+package dev.terashima.yomitorirss.ui
 
 import androidx.lifecycle.ViewModel
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
