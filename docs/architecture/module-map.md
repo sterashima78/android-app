@@ -22,9 +22,9 @@
 
 `:app` は Application / Activity entry point、navigation graph、feature wiring、application-level configuration を担当する。feature 固有 business logic、durable persistence implementation、feature 固有 UI state の恒久的な所有場所にはしない。
 
-feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。Android permission / Activity Result、外部 Intent、複数 feature の state/action mapping など application composition が必要な adapter は `app/src/main/.../ui` に置く。
+feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。Android permission / Activity Result、外部 Intent、複数 feature の state/action mapping など application composition が必要な adapter は `app/src/main/.../ui` に置く。`AppSection` / `MainTab` / `AppViewModel` のような app shell navigation state も同じ app UI ownership に置く。
 
-`app/src/main/.../feature` は feature implementation の配置場所として使わない。現在ここに残る `feature/navigation` は Gradle feature module ではなく app shell navigation state の歴史的 package であり、architecture regression test で唯一の明示例外とする。新しい feature Route / Screen / adapter をこの path へ追加しない。
+`app/src/main/.../feature` は feature implementation の配置場所として使わず、production Kotlin source を置かない。新しい feature Route / Screen / adapter や app shell state をこの path へ追加しない。
 
 `AppContainer` は application-scope graph の公開 facade とし、concrete feature graph の構築は責務別の `App*RuntimeDependencies` に分割する。これは repository lifetime を変えるための分割ではなく、composition root 内の可読性と変更局所性を保つための構造である。DI framework や route-level service locator は導入しない。
 
@@ -122,7 +122,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - module の追加・削除・layer 構成変更: `settings.gradle.kts` と本表を同じ PR で更新する。Architecture CI が両者の不一致を検出する。
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
-- app composition adapter の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
+- app composition adapter / app shell navigation の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
 - AppContainer の runtime group 分割を変更する: application scope / caller contract を維持し、必要なら ADR と本 `App` 節を更新する。
 
 ## Sources
@@ -138,3 +138,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0142](../adr/0142-app-route-and-task-widget-ownership-cleanup.md)
 - [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
+- [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
