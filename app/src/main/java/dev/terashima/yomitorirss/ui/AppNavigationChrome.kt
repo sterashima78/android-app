@@ -46,8 +46,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
-import dev.terashima.yomitorirss.feature.navigation.AppSection
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.reddit.RedditTab
 import dev.terashima.yomitorirss.feature.rss.RssTab
 
