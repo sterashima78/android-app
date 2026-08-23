@@ -44,9 +44,10 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 ## Process exit and crash diagnostics
 
 - uncaught exception は app entry point で起動時診断用の report として保持し、次回起動時に表示・コピーできる。
-- Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。
-- local AI の画像推論では memory diagnostics を process-exit report に補足できるが、raw user content や画像 payload を診断へ保存しない。
-- ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL は authority/path/query/fragment を伏せて scheme だけを残し、メールアドレス、credential-like value、Bearer token、Android private path 等も伏せる。version、commit、SDK、device、PSS/RSS 等の高レベル診断値は維持する。
+- Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。短寿命 vision process の正常終了で障害記録が押し出されないよう、固定件数ではなく Android が保持する履歴全体を確認する。
+- process-exit report は対象 exit の pid と process name を記録する。local AI の画像推論 memory diagnostics は同じ pid・process name かつ exit timestamp 以下のサンプルだけを補足し、別 process generation や終了後のサンプルを混在させない。
+- local AI の診断には raw user content、画像 payload、表紙 path、prompt、AI 出力を保存しない。
+- ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL は authority/path/query/fragment を伏せて scheme だけを残し、メールアドレス、credential-like value、Bearer token、Android private path 等も伏せる。version、commit、SDK、device、PSS/RSS、pid、process name 等の高レベル診断値は維持する。
 - diagnostic sanitizer は共有を安全にするための defense-in-depth であり、高機密情報を exception message や diagnostic section に意図的に含めてよい根拠にはしない。
 
 ## CI
