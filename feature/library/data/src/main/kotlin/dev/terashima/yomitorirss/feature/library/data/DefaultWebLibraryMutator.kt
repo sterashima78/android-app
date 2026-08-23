@@ -18,17 +18,59 @@ class DefaultWebLibraryMutator(
   private val metadataClient: WebLibraryMetadataClient = WebLibraryMetadataClient(),
   private val renderedMetadataClient: WebLibraryRenderedMetadataClient? = null,
 ) : WebLibraryMutator {
-  override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook {
+  override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook =
+    fetchAndPersistWebBook(url = url, titleHint = titleHint, forceRendered = false)
+
+  override suspend fun refreshWebBook(book: LibraryBook): LibraryBook {
+    require(book.source == LibrarySource.WEB) { "Web 蔵書以外は再取得できません" }
+    val url = book.infoUrl?.trim()?.takeIf(String::isNotEmpty) ?: book.sourceId
+    val refreshed = fetchWebBook(url = url, titleHint = null, forceRendered = true)
+      .copy(sourceId = book.sourceId)
+    persistWebBook(refreshed)
+    return refreshed
+  }
+
+  override suspend fun removeWebBook(book: LibraryBook) {
+    require(book.source == LibrarySource.WEB) { "Web 蔵書以外は削除できません" }
     ensureLibraryCatalogSchema(database.writable)
+    database.transaction {
+      val args = arrayOf(LibrarySource.WEB.name, book.sourceId)
+      delete("hidden_library_items", "source = ? AND source_id = ?", args)
+      delete("library_item_series", "source = ? AND source_id = ?", args)
+      delete("library_item_series_exclusions", "source = ? AND source_id = ?", args)
+      delete("library_items", "source = ? AND source_id = ?", args)
+    }
+  }
+
+  private suspend fun fetchAndPersistWebBook(
+    url: String,
+    titleHint: String?,
+    forceRendered: Boolean,
+  ): LibraryBook {
+    val book = fetchWebBook(url, titleHint, forceRendered)
+    persistWebBook(book)
+    return book
+  }
+
+  private suspend fun fetchWebBook(
+    url: String,
+    titleHint: String?,
+    forceRendered: Boolean,
+  ): LibraryBook {
     val renderedFetch: (suspend (String, String?) -> LibraryBook)? = renderedMetadataClient?.let { client ->
       { candidateUrl, candidateTitleHint -> client.fetch(candidateUrl, candidateTitleHint) }
     }
-    val book = resolveWebLibraryBookMetadata(
+    return resolveWebLibraryBookMetadata(
       url = url,
       titleHint = titleHint,
       staticFetch = metadataClient::fetch,
       renderedFetch = renderedFetch,
+      forceRendered = forceRendered,
     )
+  }
+
+  private fun persistWebBook(book: LibraryBook) {
+    ensureLibraryCatalogSchema(database.writable)
     val syncedAt = System.currentTimeMillis()
     database.transaction {
       insertWithOnConflict(
@@ -42,19 +84,6 @@ class DefaultWebLibraryMutator(
         "source = ? AND source_id = ?",
         arrayOf(LibrarySource.WEB.name, book.sourceId),
       )
-    }
-    return book
-  }
-
-  override suspend fun removeWebBook(book: LibraryBook) {
-    require(book.source == LibrarySource.WEB) { "Web 蔵書以外は削除できません" }
-    ensureLibraryCatalogSchema(database.writable)
-    database.transaction {
-      val args = arrayOf(LibrarySource.WEB.name, book.sourceId)
-      delete("hidden_library_items", "source = ? AND source_id = ?", args)
-      delete("library_item_series", "source = ? AND source_id = ?", args)
-      delete("library_item_series_exclusions", "source = ? AND source_id = ?", args)
-      delete("library_items", "source = ? AND source_id = ?", args)
     }
   }
 
@@ -81,12 +110,13 @@ internal suspend fun resolveWebLibraryBookMetadata(
   titleHint: String?,
   staticFetch: suspend (String, String?) -> LibraryBook,
   renderedFetch: (suspend (String, String?) -> LibraryBook)?,
+  forceRendered: Boolean = false,
 ): LibraryBook {
   val staticResult = runCatching { staticFetch(url, titleHint) }
   val staticBook = staticResult.getOrNull()
   val shouldRender = renderedFetch != null &&
     isHttpsWebUrl(url) &&
-    (staticBook == null || staticBook.needsRenderedWebMetadata())
+    (forceRendered || staticBook == null || staticBook.needsRenderedWebMetadata())
 
   if (!shouldRender) {
     return staticBook ?: throw requireNotNull(staticResult.exceptionOrNull())
@@ -95,7 +125,11 @@ internal suspend fun resolveWebLibraryBookMetadata(
   val renderedResult = runCatching { requireNotNull(renderedFetch)(url, titleHint) }
   val renderedBook = renderedResult.getOrNull()
   return when {
-    staticBook != null && renderedBook != null -> mergeWebLibraryMetadata(staticBook, renderedBook)
+    staticBook != null && renderedBook != null -> mergeWebLibraryMetadata(
+      staticBook = staticBook,
+      renderedBook = renderedBook,
+      preferRendered = forceRendered,
+    )
     renderedBook != null -> renderedBook
     staticBook != null -> staticBook
     else -> throw requireNotNull(renderedResult.exceptionOrNull() ?: staticResult.exceptionOrNull())
@@ -108,12 +142,29 @@ internal fun LibraryBook.needsRenderedWebMetadata(): Boolean =
 internal fun mergeWebLibraryMetadata(
   staticBook: LibraryBook,
   renderedBook: LibraryBook,
-): LibraryBook = staticBook.copy(
-  title = if (staticBook.isWebHostFallbackTitle()) renderedBook.title else staticBook.title,
-  authors = staticBook.authors.ifEmpty { renderedBook.authors },
-  description = staticBook.description ?: renderedBook.description,
-  thumbnailUrl = staticBook.thumbnailUrl ?: renderedBook.thumbnailUrl,
-)
+  preferRendered: Boolean = false,
+): LibraryBook {
+  val renderedTitleIsUseful = !renderedBook.isWebHostFallbackTitle()
+  val useRenderedTitle = renderedTitleIsUseful && (preferRendered || staticBook.isWebHostFallbackTitle())
+  return staticBook.copy(
+    title = if (useRenderedTitle) renderedBook.title else staticBook.title,
+    authors = if (preferRendered && renderedBook.authors.isNotEmpty()) {
+      renderedBook.authors
+    } else {
+      staticBook.authors.ifEmpty { renderedBook.authors }
+    },
+    description = if (preferRendered) {
+      renderedBook.description ?: staticBook.description
+    } else {
+      staticBook.description ?: renderedBook.description
+    },
+    thumbnailUrl = if (preferRendered) {
+      renderedBook.thumbnailUrl ?: staticBook.thumbnailUrl
+    } else {
+      staticBook.thumbnailUrl ?: renderedBook.thumbnailUrl
+    },
+  )
+}
 
 private fun LibraryBook.isWebHostFallbackTitle(): Boolean {
   val candidateUrl = infoUrl?.takeIf(String::isNotBlank) ?: sourceId
