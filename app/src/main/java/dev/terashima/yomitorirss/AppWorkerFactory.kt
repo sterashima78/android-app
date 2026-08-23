@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss
 
 import androidx.work.DelegatingWorkerFactory
 import androidx.work.WorkerFactory
+import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.backup.data.BackupWorkerFactory
 import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeWorkerFactory
 import dev.terashima.yomitorirss.feature.mail.data.MailWorkerFactory
@@ -25,6 +26,9 @@ internal fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
             bookmarkContentQuery = container.bookmarkContentQuery,
             bookmarkEnrichmentRepository = container.bookmarkEnrichmentRepository,
           )
+        },
+        articleContentClientProvider = {
+          ArticleContentClient(container.httpClient)
         },
         runBookmarkAutoEnrichmentBackfill = {
           container.backfillBookmarkAutoEnrichmentUseCase()
