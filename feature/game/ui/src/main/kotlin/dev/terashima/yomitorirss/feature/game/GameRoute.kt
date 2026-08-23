@@ -15,9 +15,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -25,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-private enum class GameScreen {
+internal enum class GameScreen {
   LIST,
   SUDOKU,
   GAME_2048,
@@ -33,6 +35,11 @@ private enum class GameScreen {
   MINESWEEPER,
   KLONDIKE,
   SPIDER,
+}
+
+enum class GameOrientationPreference {
+  PORTRAIT,
+  SENSOR_LANDSCAPE,
 }
 
 @Composable
@@ -44,10 +51,17 @@ fun GameRoute(
   minesweeperViewModel: MinesweeperViewModel = viewModel(),
   klondikeViewModel: KlondikeViewModel = viewModel(),
   spiderViewModel: SpiderViewModel = viewModel(),
+  onOrientationPreferenceChange: (GameOrientationPreference) -> Unit = {},
 ) {
   var screen by rememberSaveable { mutableStateOf(GameScreen.LIST.name) }
+  val gameScreen = GameScreen.valueOf(screen)
+  val currentOnOrientationPreferenceChange by rememberUpdatedState(onOrientationPreferenceChange)
 
-  when (GameScreen.valueOf(screen)) {
+  LaunchedEffect(gameScreen) {
+    currentOnOrientationPreferenceChange(orientationPreferenceFor(gameScreen))
+  }
+
+  when (gameScreen) {
     GameScreen.LIST -> GameListScreen(
       modifier = modifier,
       onOpenSudoku = { screen = GameScreen.SUDOKU.name },
@@ -119,6 +133,14 @@ fun GameRoute(
       onBack = { screen = GameScreen.LIST.name },
     )
   }
+}
+
+internal fun orientationPreferenceFor(screen: GameScreen): GameOrientationPreference = when (screen) {
+  GameScreen.KLONDIKE,
+  GameScreen.SPIDER,
+  -> GameOrientationPreference.SENSOR_LANDSCAPE
+
+  else -> GameOrientationPreference.PORTRAIT
 }
 
 @Composable
