@@ -96,10 +96,7 @@ fun sourceArchitectureViolations(
     val featureViewModelImport = Regex(
       """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.([A-Za-z0-9_.]+ViewModel)(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*$""",
     )
-    val hasForbiddenFeatureViewModelImport = featureViewModelImport
-      .findAll(sourceText)
-      .any { match -> match.groupValues[1] != "navigation.AppViewModel" }
-    if (hasForbiddenFeatureViewModelImport) {
+    if (featureViewModelImport.containsMatchIn(sourceText)) {
       violations +=
         "MainActivity must not import feature-owned ViewModels: $normalizedPath"
     }
@@ -271,16 +268,10 @@ val verifyArchitectureRuleTests by tasks.registering {
       expectedMessage = "MainActivity must use injected contracts instead of concrete feature data",
     )
     assertClean(
-      name = "MainActivity app navigation ViewModel",
+      name = "MainActivity app shell ViewModel",
       projectPath = ":app",
       repositoryPath = mainActivityPath,
-      sourceText = "import dev.terashima.yomitorirss.feature.navigation.AppViewModel",
-    )
-    assertClean(
-      name = "MainActivity aliased app navigation ViewModel",
-      projectPath = ":app",
-      repositoryPath = mainActivityPath,
-      sourceText = "import dev.terashima.yomitorirss.feature.navigation.AppViewModel as NavigationModel",
+      sourceText = "import dev.terashima.yomitorirss.ui.AppViewModel",
     )
 
     val featureUiAdaptersPath =
