@@ -20,8 +20,6 @@ import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
-import dev.terashima.yomitorirss.feature.navigation.AppViewModel
-import dev.terashima.yomitorirss.feature.navigation.MainTab
 import dev.terashima.yomitorirss.feature.reddit.rememberRedditRouteController
 import dev.terashima.yomitorirss.feature.rss.rememberRssRouteController
 import kotlinx.coroutines.launch
