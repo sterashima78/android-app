@@ -16,10 +16,19 @@ import org.json.JSONArray
 class DefaultWebLibraryMutator(
   private val database: DatabaseConnection,
   private val metadataClient: WebLibraryMetadataClient = WebLibraryMetadataClient(),
+  private val renderedMetadataClient: WebLibraryRenderedMetadataClient? = null,
 ) : WebLibraryMutator {
   override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook {
     ensureLibraryCatalogSchema(database.writable)
-    val book = metadataClient.fetch(url, titleHint)
+    val renderedFetch: (suspend (String, String?) -> LibraryBook)? = renderedMetadataClient?.let { client ->
+      { candidateUrl, candidateTitleHint -> client.fetch(candidateUrl, candidateTitleHint) }
+    }
+    val book = resolveWebLibraryBookMetadata(
+      url = url,
+      titleHint = titleHint,
+      staticFetch = metadataClient::fetch,
+      renderedFetch = renderedFetch,
+    )
     val syncedAt = System.currentTimeMillis()
     database.transaction {
       insertWithOnConflict(
@@ -66,6 +75,55 @@ class DefaultWebLibraryMutator(
     put("synced_at", syncedAt)
   }
 }
+
+internal suspend fun resolveWebLibraryBookMetadata(
+  url: String,
+  titleHint: String?,
+  staticFetch: suspend (String, String?) -> LibraryBook,
+  renderedFetch: (suspend (String, String?) -> LibraryBook)?,
+): LibraryBook {
+  val staticResult = runCatching { staticFetch(url, titleHint) }
+  val staticBook = staticResult.getOrNull()
+  val shouldRender = renderedFetch != null &&
+    isHttpsWebUrl(url) &&
+    (staticBook == null || staticBook.needsRenderedWebMetadata())
+
+  if (!shouldRender) {
+    return staticBook ?: throw requireNotNull(staticResult.exceptionOrNull())
+  }
+
+  val renderedResult = runCatching { requireNotNull(renderedFetch)(url, titleHint) }
+  val renderedBook = renderedResult.getOrNull()
+  return when {
+    staticBook != null && renderedBook != null -> mergeWebLibraryMetadata(staticBook, renderedBook)
+    renderedBook != null -> renderedBook
+    staticBook != null -> staticBook
+    else -> throw requireNotNull(renderedResult.exceptionOrNull() ?: staticResult.exceptionOrNull())
+  }
+}
+
+internal fun LibraryBook.needsRenderedWebMetadata(): Boolean =
+  thumbnailUrl.isNullOrBlank() || isWebHostFallbackTitle()
+
+internal fun mergeWebLibraryMetadata(
+  staticBook: LibraryBook,
+  renderedBook: LibraryBook,
+): LibraryBook = staticBook.copy(
+  title = if (staticBook.isWebHostFallbackTitle()) renderedBook.title else staticBook.title,
+  authors = staticBook.authors.ifEmpty { renderedBook.authors },
+  description = staticBook.description ?: renderedBook.description,
+  thumbnailUrl = staticBook.thumbnailUrl ?: renderedBook.thumbnailUrl,
+)
+
+private fun LibraryBook.isWebHostFallbackTitle(): Boolean {
+  val candidateUrl = infoUrl?.takeIf(String::isNotBlank) ?: sourceId
+  val host = runCatching { URI(candidateUrl).host?.removePrefix("www.") }.getOrNull()
+  return !host.isNullOrBlank() && title.equals(host, ignoreCase = true)
+}
+
+private fun isHttpsWebUrl(url: String): Boolean = runCatching {
+  URI(normalizeWebUrl(url)).scheme.equals("https", ignoreCase = true)
+}.getOrDefault(false)
 
 class WebLibraryMetadataClient(
   private val httpClient: HttpClient = HttpClient.create(),
