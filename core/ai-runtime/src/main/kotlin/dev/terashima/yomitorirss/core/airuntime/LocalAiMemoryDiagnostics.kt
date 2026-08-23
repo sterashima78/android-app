@@ -12,7 +12,7 @@ enum class LocalAiMemoryDiagnosticPhase(val wireName: String) {
   VISION_AFTER_ENGINE_RELEASE("vision-after-engine-release"),
 }
 
-enum class LocalAiEngineCloseStatus(val wireName: String) {
+internal enum class LocalAiEngineCloseStatus(val wireName: String) {
   SUCCESS("success"),
   FAILED("failed"),
 }
@@ -27,8 +27,20 @@ object LocalAiMemoryDiagnostics {
   fun recordVisionInference(
     context: Context,
     phase: LocalAiMemoryDiagnosticPhase,
-    engineCloseStatus: LocalAiEngineCloseStatus? = null,
-    engineCloseErrorClass: String? = null,
+  ) {
+    recordVisionInference(
+      context = context,
+      phase = phase,
+      engineCloseStatus = null,
+      engineCloseErrorClass = null,
+    )
+  }
+
+  internal fun recordVisionInference(
+    context: Context,
+    phase: LocalAiMemoryDiagnosticPhase,
+    engineCloseStatus: LocalAiEngineCloseStatus?,
+    engineCloseErrorClass: String?,
   ) {
     runCatching {
       val runtime = Runtime.getRuntime()
