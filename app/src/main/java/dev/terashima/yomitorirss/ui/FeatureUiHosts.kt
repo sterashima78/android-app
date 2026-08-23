@@ -52,16 +52,16 @@ internal fun FeatureMessageEffects(
     FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
   }
 
-  if (FeatureMessageSource.SUMMARY in messageSources) {
-    val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
-    val summaryState by summaryViewModel.state.collectAsState()
-    FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
-  }
-
   if (FeatureMessageSource.BOOKMARK in messageSources) {
     val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
     val bookmarkState by bookmarkViewModel.state.collectAsState()
     FeatureMessageEffect(bookmarkState.message, snackbarHostState, bookmarkViewModel::dismissMessage)
+  }
+
+  if (FeatureMessageSource.SUMMARY in messageSources) {
+    val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+    val summaryState by summaryViewModel.state.collectAsState()
+    FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.BACKUP in messageSources) {
