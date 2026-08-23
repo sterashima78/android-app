@@ -35,7 +35,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
-- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime ownership の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0142: app Route の presentation ownership と Task widget 更新境界を整理する](0142-app-route-and-task-widget-ownership-cleanup.md)
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
@@ -69,7 +69,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 ### Platform / Android runtime
 
 - [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
-- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime ownership の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
@@ -95,7 +95,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する](0143-web-library-source-and-bookmark-transfer.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
-- [ADR-0153: Web Library metadata は静的 HTTP を優先し WebView を不足時の fallback とする](0153-web-library-rendered-metadata-fallback.md)
+- [ADR-0154: Web Library metadata は静的 HTTP を優先し WebView を不足時の fallback とする](0154-web-library-rendered-metadata-fallback.md)
 
 ### Background / AI runtime
 
@@ -109,7 +109,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
-- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime ownership の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0148: local model revision marker の互換 migration を終了する](0148-retire-local-model-revision-marker-migration.md)
