@@ -53,6 +53,7 @@ Android の起動 Intent は widget UI が生成し、その Intent を app shel
 
 ## Verification
 
+- `TaskWidgetProviderTest` で widget launch Intent に専用 action と既存の Activity flags が設定されることを確認する。
 - `TaskWidgetLaunchRoutingTest` で task widget action が `MainTab.TASKS` に解決され、無関係な action は解決されないことを確認する。
 - app unit tests で既存 navigation state の回帰がないことを確認する。
 - `verifyArchitecture` で feature -> app entry point の逆向き依存が増えていないことを確認する。
