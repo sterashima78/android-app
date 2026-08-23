@@ -85,4 +85,39 @@ class AppNavigationSpecTest {
       assertEquals(tab in expected, tab.usesBookmarkEditOverlay())
     }
   }
+
+  @Test
+  fun `feature message sourceはactive tabのcapabilityだけを宣言する`() {
+    val expected = mapOf(
+      MainTab.INTEGRATED to setOf(
+        FeatureMessageSource.RSS,
+        FeatureMessageSource.REDDIT,
+        FeatureMessageSource.FEED,
+        FeatureMessageSource.SUMMARY,
+      ),
+      MainTab.UNREAD to setOf(
+        FeatureMessageSource.RSS,
+        FeatureMessageSource.FEED,
+        FeatureMessageSource.SUMMARY,
+      ),
+      MainTab.READ_LATER to setOf(
+        FeatureMessageSource.RSS,
+        FeatureMessageSource.FEED,
+        FeatureMessageSource.SUMMARY,
+      ),
+      MainTab.FEEDS to setOf(FeatureMessageSource.FEED),
+      MainTab.REDDIT_UNREAD to setOf(FeatureMessageSource.REDDIT, FeatureMessageSource.SUMMARY),
+      MainTab.REDDIT_READ_LATER to setOf(FeatureMessageSource.REDDIT, FeatureMessageSource.SUMMARY),
+      MainTab.REDDIT_SUBSCRIPTIONS to setOf(FeatureMessageSource.REDDIT),
+      MainTab.SAVED to setOf(FeatureMessageSource.BOOKMARK, FeatureMessageSource.SUMMARY),
+      MainTab.TAGS to setOf(FeatureMessageSource.BOOKMARK, FeatureMessageSource.SUMMARY),
+      MainTab.FOLDERS to setOf(FeatureMessageSource.BOOKMARK),
+      MainTab.BOOKMARK_IMPORT to setOf(FeatureMessageSource.BOOKMARK),
+      MainTab.SETTINGS to setOf(FeatureMessageSource.BACKUP, FeatureMessageSource.AI_SETTINGS),
+    )
+
+    MainTab.entries.forEach { tab ->
+      assertEquals(expected[tab].orEmpty(), tab.featureMessageSources())
+    }
+  }
 }

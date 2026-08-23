@@ -69,6 +69,36 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
+  fun `application graphは単一HTTP transportをruntime groupへ渡す`() {
+    val container = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
+    ).readText()
+    val workerFactory = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt",
+    ).readText()
+    val summaryFetchWorker = File(
+      repositoryRoot,
+      "feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryContentFetchWorker.kt",
+    ).readText()
+
+    assertTrue("AppContainer must own the application HTTP transport", "internal val httpClient: HttpClient" in container)
+    assertTrue(
+      "content, supporting and feature runtime groups must receive the shared transport",
+      Regex("httpClient = httpClient").findAll(container).count() >= 3,
+    )
+    assertTrue(
+      "background article fetch must receive the same application transport through WorkerFactory",
+      "ArticleContentClient(container.httpClient)" in workerFactory,
+    )
+    assertFalse(
+      "SummaryContentFetchWorker must not construct its own article HTTP adapter",
+      "ArticleContentClient()" in summaryFetchWorker,
+    )
+  }
+
+  @Test
   fun `AppRouteDependenciesはLibrary BookReader Xのconcrete implementationを構築しない`() {
     val source = File(
       repositoryRoot,
@@ -140,49 +170,49 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `app compositionはactive tab判定より前にfeature ViewModelを生成しない`() {
-    assertNoViewModelBeforeTabDispatch(
+    assertNoViewModelBeforeDispatch(
       path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppFeatureContent.kt",
       functionMarker = "internal fun AppFeatureContent(",
+      dispatchMarker = "when (selectedTab)",
     )
-    assertNoViewModelBeforeTabDispatch(
+    assertNoViewModelBeforeDispatch(
       path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppTopBarRoute.kt",
       functionMarker = "internal fun AppTopBarRoute(",
+      dispatchMarker = "when (selectedTab)",
     )
-    assertNoViewModelBeforeTabDispatch(
+    assertNoViewModelBeforeDispatch(
       path = "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
       functionMarker = "internal fun FeatureMessageEffects(",
+      dispatchMarker = "val messageSources = selectedTab.featureMessageSources()",
     )
   }
 
   @Test
-  fun `RSS content tabsはFeedViewModelのmessageを表示して消費する`() {
+  fun `feature message effectsはnavigation capability policyを再定義しない`() {
     val source = File(
       repositoryRoot,
       "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
     ).readText()
-    val rssContentBranch = source
-      .substringAfter("MainTab.UNREAD,")
-      .substringAfter("MainTab.READ_LATER -> {")
-      .substringBefore("MainTab.FEEDS -> {")
 
     assertTrue(
-      "UNREAD/READ_LATER must observe FeedViewModel state for refresh completion/error messages",
-      rssContentBranch.contains(
-        "val feedState by feedViewModel.state.collectAsState()",
-      ),
+      "FeatureMessageEffects must consume the centralized navigation capability mapping",
+      "selectedTab.featureMessageSources()" in source,
     )
-    assertTrue(
-      "UNREAD/READ_LATER must consume FeedViewModel messages on the active RSS tab",
-      rssContentBranch.contains(
-        "FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)",
-      ),
+    assertFalse(
+      "FeatureMessageEffects must not maintain a second selected-tab policy",
+      "when (selectedTab)" in source,
     )
   }
 
-  private fun assertNoViewModelBeforeTabDispatch(path: String, functionMarker: String) {
+  private fun assertNoViewModelBeforeDispatch(
+    path: String,
+    functionMarker: String,
+    dispatchMarker: String,
+  ) {
     val source = File(repositoryRoot, path).readText()
     val function = source.substringAfter(functionMarker)
-    val beforeDispatch = function.substringBefore("when (selectedTab)")
+    assertTrue("$path must contain active-tab dispatch marker: $dispatchMarker", dispatchMarker in function)
+    val beforeDispatch = function.substringBefore(dispatchMarker)
     assertFalse(
       "$path must dispatch by selectedTab before resolving feature ViewModels",
       Regex("=\\s*viewModel\\(").containsMatchIn(beforeDispatch),

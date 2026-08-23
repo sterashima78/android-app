@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.CompositeContentRetentionProtectionQuery
 import dev.terashima.yomitorirss.feature.article.ContentRetentionProtectionQuery
@@ -44,6 +45,7 @@ internal class AppContentRuntimeDependencies(
   private val application: Application,
   private val database: DatabaseConnection,
   private val dataChanges: DataChangeNotifier,
+  private val httpClient: HttpClient,
   private val summaryRepository: SummaryRepository,
 ) {
   val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -118,6 +120,7 @@ internal class AppContentRuntimeDependencies(
       contentSourceGateway = contentSourceGateway,
       dataChanges = dataChanges,
       applicationContext = application,
+      httpClient = httpClient,
     )
   }
 
@@ -126,7 +129,7 @@ internal class AppContentRuntimeDependencies(
   }
 
   val youtubeRepository: YouTubeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultYouTubeRepository(database)
+    DefaultYouTubeRepository(database, httpClient)
   }
 
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

@@ -22,7 +22,7 @@
 
 `:app` は Application / Activity entry point、navigation graph、feature wiring、application-level configuration を担当する。feature 固有 business logic、durable persistence implementation、feature 固有 UI state の恒久的な所有場所にはしない。
 
-feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。Android permission / Activity Result、外部 Intent、複数 feature の state/action mapping など application composition が必要な adapter は `app/src/main/.../ui` に置く。`AppSection` / `MainTab` / `AppViewModel` のような app shell navigation state も同じ app UI ownership に置く。
+feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。Android permission / Activity Result、外部 Intent、複数 feature の state/action mapping など application composition が必要な adapter は `app/src/main/.../ui` に置く。`AppSection` / `MainTab` / `AppViewModel` のような app shell navigation state も同じ app UI ownership に置く。active tab ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、各 composition host が独自の `MainTab` policy を重複して持たない。
 
 `app/src/main/.../feature` は feature implementation の配置場所として使わず、production Kotlin source を置かない。新しい feature Route / Screen / adapter や app shell state をこの path へ追加しない。
 
@@ -40,6 +40,8 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 ```
 
 `core` は複数 feature が共有する技術 capability を提供し、アプリ固有 Domain concept や feature-specific use case を所有しない。
+
+`:core:network` の HTTP transport は process-wide に共有し、`:app` の application graph が同じ `HttpClient` instance を runtime group と WorkerFactory へ渡す。feature 側は HTTP adapter の testability のため default constructor を持てるが、production composition で feature ごとの OkHttp connection pool を作らない。
 
 ## Feature modules
 
@@ -124,6 +126,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
 - app composition adapter / app shell navigation の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
 - AppContainer の runtime group 分割を変更する: application scope / caller contract を維持し、必要なら ADR と本 `App` 節を更新する。
+- shared core runtime の lifetime を変更する: application composition と background entry point の両方を確認し、ADR と regression test を更新する。
 
 ## Sources
 
@@ -139,3 +142,5 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0142](../adr/0142-app-route-and-task-widget-ownership-cleanup.md)
 - [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
+- [ADR-0155](../adr/0155-application-scope-http-transport.md)
+- [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)

@@ -4,6 +4,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
 import dev.terashima.yomitorirss.feature.asset.data.DefaultAssetRepository
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
@@ -30,6 +31,7 @@ internal class AppSupportingRuntimeDependencies(
   private val database: YomitoriDatabase,
   private val databaseConnection: DatabaseConnection,
   private val dataChanges: DataChangeNotifier,
+  private val httpClient: HttpClient,
 ) {
   val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAssetRepository(application, databaseConnection)
@@ -60,7 +62,7 @@ internal class AppSupportingRuntimeDependencies(
   }
 
   val gmailAuthorizationManager: GmailAuthorizationManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    GmailAuthorizationManager(application)
+    GmailAuthorizationManager(application, httpClient)
   }
 
   val mailRepository: MailRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

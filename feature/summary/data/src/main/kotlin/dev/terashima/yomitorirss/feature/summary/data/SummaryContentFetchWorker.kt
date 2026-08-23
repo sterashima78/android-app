@@ -17,12 +17,12 @@ class SummaryContentFetchWorker(
   appContext: Context,
   params: WorkerParameters,
   private val runtime: SummaryRuntimeDependencies,
+  private val articleContentClient: ArticleContentClient,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     return withContext(Dispatchers.IO) {
       val database = YomitoriDatabase.create(applicationContext)
-      val articleContentClient = ArticleContentClient()
       val modelManager = LocalModelManager.shared(applicationContext)
       try {
         while (!SummaryQueue.executionState(applicationContext).paused) {

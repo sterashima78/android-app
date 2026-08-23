@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.bookreader.data.DefaultBookPageSourceFactory
@@ -32,6 +33,7 @@ import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOu
 import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
+import dev.terashima.yomitorirss.feature.library.data.WebLibraryMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
@@ -45,6 +47,7 @@ import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNorm
 internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
+  private val httpClient: HttpClient,
   private val modelManagerProvider: () -> LocalModelManager,
   private val resumedActivityProvider: () -> Activity?,
 ) {
@@ -94,6 +97,7 @@ internal class AppFeatureRuntimeDependencies(
       catalogRepository = SmbMetadataAwareLibraryRepository(database),
       webLibraryMutator = DefaultWebLibraryMutator(
         database = database,
+        metadataClient = WebLibraryMetadataClient(httpClient),
         renderedMetadataClient = AndroidWebViewLibraryMetadataClient(resumedActivityProvider),
       ),
       organizationRepository = DefaultLibraryOrganizationRepository(database),

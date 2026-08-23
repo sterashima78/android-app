@@ -32,84 +32,48 @@ internal fun FeatureMessageEffects(
     onConsumed = appViewModel::dismissMessage,
   )
 
-  when (selectedTab) {
-    MainTab.INTEGRATED -> {
-      val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
-      val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
-      val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
-      val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
-      val rssState by rssViewModel.state.collectAsState()
-      val redditState by redditViewModel.state.collectAsState()
-      val feedState by feedViewModel.state.collectAsState()
-      val summaryState by summaryViewModel.state.collectAsState()
-      FeatureMessageEffect(rssState.message, snackbarHostState, rssViewModel::dismissMessage)
-      FeatureMessageEffect(redditState.message, snackbarHostState, redditViewModel::dismissMessage)
-      FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
-      FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
-    }
+  val messageSources = selectedTab.featureMessageSources()
 
-    MainTab.UNREAD,
-    MainTab.READ_LATER -> {
-      val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
-      val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
-      val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
-      val rssState by rssViewModel.state.collectAsState()
-      val feedState by feedViewModel.state.collectAsState()
-      val summaryState by summaryViewModel.state.collectAsState()
-      FeatureMessageEffect(rssState.message, snackbarHostState, rssViewModel::dismissMessage)
-      FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
-      FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
-    }
+  if (FeatureMessageSource.RSS in messageSources) {
+    val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
+    val rssState by rssViewModel.state.collectAsState()
+    FeatureMessageEffect(rssState.message, snackbarHostState, rssViewModel::dismissMessage)
+  }
 
-    MainTab.FEEDS -> {
-      val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
-      val feedState by feedViewModel.state.collectAsState()
-      FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
-    }
+  if (FeatureMessageSource.REDDIT in messageSources) {
+    val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
+    val redditState by redditViewModel.state.collectAsState()
+    FeatureMessageEffect(redditState.message, snackbarHostState, redditViewModel::dismissMessage)
+  }
 
-    MainTab.REDDIT_UNREAD,
-    MainTab.REDDIT_READ_LATER -> {
-      val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
-      val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
-      val redditState by redditViewModel.state.collectAsState()
-      val summaryState by summaryViewModel.state.collectAsState()
-      FeatureMessageEffect(redditState.message, snackbarHostState, redditViewModel::dismissMessage)
-      FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
-    }
+  if (FeatureMessageSource.FEED in messageSources) {
+    val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
+    val feedState by feedViewModel.state.collectAsState()
+    FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
+  }
 
-    MainTab.REDDIT_SUBSCRIPTIONS -> {
-      val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
-      val redditState by redditViewModel.state.collectAsState()
-      FeatureMessageEffect(redditState.message, snackbarHostState, redditViewModel::dismissMessage)
-    }
+  if (FeatureMessageSource.BOOKMARK in messageSources) {
+    val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+    val bookmarkState by bookmarkViewModel.state.collectAsState()
+    FeatureMessageEffect(bookmarkState.message, snackbarHostState, bookmarkViewModel::dismissMessage)
+  }
 
-    MainTab.SAVED,
-    MainTab.TAGS -> {
-      val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
-      val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
-      val bookmarkState by bookmarkViewModel.state.collectAsState()
-      val summaryState by summaryViewModel.state.collectAsState()
-      FeatureMessageEffect(bookmarkState.message, snackbarHostState, bookmarkViewModel::dismissMessage)
-      FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
-    }
+  if (FeatureMessageSource.SUMMARY in messageSources) {
+    val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+    val summaryState by summaryViewModel.state.collectAsState()
+    FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
+  }
 
-    MainTab.FOLDERS,
-    MainTab.BOOKMARK_IMPORT -> {
-      val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
-      val bookmarkState by bookmarkViewModel.state.collectAsState()
-      FeatureMessageEffect(bookmarkState.message, snackbarHostState, bookmarkViewModel::dismissMessage)
-    }
+  if (FeatureMessageSource.BACKUP in messageSources) {
+    val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
+    val backupState by backupViewModel.state.collectAsState()
+    FeatureMessageEffect(backupState.message, snackbarHostState, backupViewModel::dismissMessage)
+  }
 
-    MainTab.SETTINGS -> {
-      val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
-      val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
-      val backupState by backupViewModel.state.collectAsState()
-      val aiState by aiSettingsViewModel.state.collectAsState()
-      FeatureMessageEffect(backupState.message, snackbarHostState, backupViewModel::dismissMessage)
-      FeatureMessageEffect(aiState.message, snackbarHostState, aiSettingsViewModel::dismissMessage)
-    }
-
-    else -> Unit
+  if (FeatureMessageSource.AI_SETTINGS in messageSources) {
+    val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
+    val aiState by aiSettingsViewModel.state.collectAsState()
+    FeatureMessageEffect(aiState.message, snackbarHostState, aiSettingsViewModel::dismissMessage)
   }
 }
 
