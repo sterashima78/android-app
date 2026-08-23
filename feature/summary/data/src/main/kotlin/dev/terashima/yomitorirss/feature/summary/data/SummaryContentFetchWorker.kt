@@ -18,48 +18,44 @@ class SummaryContentFetchWorker(
   params: WorkerParameters,
   private val runtime: SummaryRuntimeDependencies,
   private val articleContentClient: ArticleContentClient,
+  private val database: YomitoriDatabase,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     return withContext(Dispatchers.IO) {
-      val database = YomitoriDatabase.create(applicationContext)
       val modelManager = LocalModelManager.shared(applicationContext)
-      try {
-        while (!SummaryQueue.executionState(applicationContext).paused) {
-          currentCoroutineContext().ensureActive()
-          if (database.countPreparedSummaryArticleContentsForActiveTasks() >= PREFETCH_LIMIT) break
-          val candidates = database.listSummaryContentFetchCandidates()
-          if (candidates.isEmpty()) break
-          val highPriorityIds = runtime.bookmarkContentQuery.readLaterContentIds(
-            candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
-          )
-          val task = selectNextSummaryTask(candidates, highPriorityIds) ?: break
-          val article = runtime.articleRepository.findArticle(task.articleId)
-          if (article == null) {
-            database.failQueuedSummaryTask(task.articleId, "記事が見つかりません")
-            continue
-          }
-          if (modelManager.selectedModel() == null) {
-            database.failQueuedSummaryTask(article.id, MODEL_NOT_SELECTED_MESSAGE)
-            continue
-          }
-          database.updateQueuedSummaryTaskProgress(article.id, SUMMARY_PROGRESS_FETCHING_ARTICLE)
-          try {
-            val articleText = articleContentClient.fetchArticleText(article.url)
-            currentCoroutineContext().ensureActive()
-            if (database.savePreparedSummaryArticleContentIfQueued(article.id, articleText)) {
-              SummaryQueue.kickInference(applicationContext)
-            }
-          } catch (error: CancellationException) {
-            throw error
-          } catch (error: Throwable) {
-            database.failQueuedSummaryTask(article.id, error.userMessage())
-          }
+      while (!SummaryQueue.executionState(applicationContext).paused) {
+        currentCoroutineContext().ensureActive()
+        if (database.countPreparedSummaryArticleContentsForActiveTasks() >= PREFETCH_LIMIT) break
+        val candidates = database.listSummaryContentFetchCandidates()
+        if (candidates.isEmpty()) break
+        val highPriorityIds = runtime.bookmarkContentQuery.readLaterContentIds(
+          candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
+        )
+        val task = selectNextSummaryTask(candidates, highPriorityIds) ?: break
+        val article = runtime.articleRepository.findArticle(task.articleId)
+        if (article == null) {
+          database.failQueuedSummaryTask(task.articleId, "記事が見つかりません")
+          continue
         }
-        Result.success()
-      } finally {
-        database.close()
+        if (modelManager.selectedModel() == null) {
+          database.failQueuedSummaryTask(article.id, MODEL_NOT_SELECTED_MESSAGE)
+          continue
+        }
+        database.updateQueuedSummaryTaskProgress(article.id, SUMMARY_PROGRESS_FETCHING_ARTICLE)
+        try {
+          val articleText = articleContentClient.fetchArticleText(article.url)
+          currentCoroutineContext().ensureActive()
+          if (database.savePreparedSummaryArticleContentIfQueued(article.id, articleText)) {
+            SummaryQueue.kickInference(applicationContext)
+          }
+        } catch (error: CancellationException) {
+          throw error
+        } catch (error: Throwable) {
+          database.failQueuedSummaryTask(article.id, error.userMessage())
+        }
       }
+      Result.success()
     }
   }
 
