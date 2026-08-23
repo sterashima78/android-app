@@ -11,7 +11,7 @@ ADR-0146 では WorkManager Worker の application-scope dependency を owning f
 その後の current main を再レビューすると、Backup / Knowledge / Mail / Summary の一部では WorkerFactory 化が進んでいた一方、次の過去実装が残っていた。
 
 - Library の SMB 表紙先読み、SMB 書誌正規化、蔵書 AI 整理 Worker が `YomitoriDatabase.create()` や concrete Repository / Scheduler を Worker 内で構築していた。
-- Summary の inference / content fetch / task log cleanup Worker が application graph と別の `YomitoriDatabase` を開いていた。
+- Summary の inference / content fetch / task log cleanup Worker が application graph と別の `YomitoriDatabase` を開き、inference / content fetch Worker は process-wide `LocalModelManager` を Worker 内から取得していた。
 - `UnreadWidgetRefreshWorker` が `:feature:widget:ui` に置かれ、helper 経由で Application の `WidgetRepositoryProvider` を参照していた。
 - Worker の provider cast だけを検査する source regression では、helper を経由した provider lookup や Worker 内の parallel graph construction を検出できなかった。
 - SMB 表紙先読みには Wi-Fi 制約導入時の一度限りの `wifi_constraint_v1` migration flag が残っていた。
@@ -28,7 +28,7 @@ ADR-0146 では WorkManager Worker の application-scope dependency を owning f
 Library、Summary、Widget の WorkManager Worker は owning feature の `WorkerFactory` から依存を constructor injection する。
 
 - Library は `LibraryWorkerFactory` を持ち、application-scope `DatabaseConnection`、Library Repository、Scheduler、AI Suggester を再利用する。
-- Summary は `SummaryWorkerFactory` から application-scope `YomitoriDatabase` を inference / content fetch / cleanup Worker へ渡す。
+- Summary は `SummaryWorkerFactory` から application-scope `YomitoriDatabase` と process-wide `LocalModelManager` を inference / content fetch Worker へ渡し、cleanup Worker にも同じ application-scope database を渡す。
 - Widget は data layer が `WidgetWorkerFactory` と `WorkManagerWidgetRefreshScheduler` を所有し、refresh Worker へ `WidgetRepository` を注入する。
 
 Worker 自身は次を行わない。
@@ -36,6 +36,7 @@ Worker 自身は次を行わない。
 - `YomitoriDatabase.create()` による parallel database graph の作成
 - `DatabaseConnection(...)` の再構築
 - application-scope concrete Repository / Scheduler の再構築
+- process-wide AI runtime の service lookup
 - Application Provider からの dependency lookup
 
 既存 WorkRequest が永続化している Worker class name を壊さないため、既存 Worker の FQCN は変更しない。Widget refresh Worker は物理的には `:feature:widget:data` へ移すが package / FQCN は維持する。
@@ -89,7 +90,7 @@ Android 17 / API 37 を preview とする記述は廃止する。Android 17 上�
 
 ### Positive
 
-- UI と background entry point が同じ application-scope database / Repository graph を利用し、lifetime と ownership が一致する。
+- UI と background entry point が同じ application-scope database / Repository / AI runtime graph を利用し、lifetime と ownership が一致する。
 - Worker ごとの database helper 作成・close による競合や、将来の schema composition drift の余地を減らせる。
 - Widget の WorkManager implementation が UI module から除去され、background ownership が data layer へ収束する。
 - 一度限り migration と route/data type coupling を削減できる。
