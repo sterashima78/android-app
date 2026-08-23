@@ -51,8 +51,10 @@ WorkManager Worker はこの例外に含めない。Widget Provider は refresh 
 `FrameworkProviderBoundaryTest` は provider allowlist の一致に加えて、次を固定する。
 
 - feature Worker が `ui` / `domain` layer に置かれないこと
-- Worker が `YomitoriDatabase.create()`、`DatabaseConnection(...)`、concrete Repository / WorkManager Scheduler construction、Repository provider helper を利用しないこと
+- Worker を含む source file が `YomitoriDatabase.create()`、`DatabaseConnection(...)`、concrete Repository、`LocalModelManager.shared(...)`、Repository provider helper により application-scope graph を再構築しないこと
 - Worker の direct provider cast が存在しないこと
+
+Scheduler / Controller implementation は Worker と同じ source file に置かれる場合があるため、source regression ではその constructor 自体を違反扱いせず、WorkerFactory injection と独立レビューで Worker からの application-scope Scheduler 再構築がないことを確認する。
 
 検査は `WorkerFactory` が `ListenableWorker` を import するだけで Worker 本体と誤認しないよう、Worker base class の継承宣言を基準に対象を識別する。
 
