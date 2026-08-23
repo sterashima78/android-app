@@ -56,12 +56,18 @@ class YomitoriApplication : Application(),
 
   override fun onCreate() {
     super.onCreate()
+    if (!shouldInitializeMainProcessRuntime(Application.getProcessName(), packageName)) return
     registerActivityLifecycleCallbacks(currentActivityTracker)
     StartupCrashStore.install(this)
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }
 }
+
+internal fun shouldInitializeMainProcessRuntime(
+  processName: String,
+  packageName: String,
+): Boolean = processName == packageName
 
 private class CurrentActivityTracker : Application.ActivityLifecycleCallbacks {
   private var currentActivity = WeakReference<Activity>(null)
