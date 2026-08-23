@@ -199,11 +199,9 @@ class SmbMetadataNormalizationWorker(
                 // LiteRT-LM 0.14.0 can retain GPU/OpenCL allocations across image conversations
                 // while the Engine stays cached. Keep the process-wide lock/manager, but release
                 // its heavy runtime after every SMB vision item until the upstream issue is fixed.
+                // The runtime records the post-close memory sample and close result itself so that
+                // the measurement is adjacent to Engine.close() and cannot be duplicated here.
                 modelManager.close()
-                LocalAiMemoryDiagnostics.recordVisionInference(
-                  applicationContext,
-                  LocalAiMemoryDiagnosticPhase.VISION_AFTER_ENGINE_RELEASE,
-                )
               }
               currentCoroutineContext().ensureActive()
               repository.saveGeneratedCandidate(
