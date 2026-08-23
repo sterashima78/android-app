@@ -32,6 +32,15 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 
 新しい platform API を導入する際は API 34 以上で利用可能かを確認する。API 35/36 以降の差分を扱う `SDK_INT` / extension feature 判定は、実際に現在の対応範囲内で動作が変わるため維持してよい。
 
+## Process boundaries and local AI
+
+- 通常の UI、WorkManager、DB、widget、startup diagnostics は application の main process が所有する。
+- SMB 書誌正規化の GPU vision inference は `:local_ai_vision` の非公開 bound Service に隔離し、main process は durable queue、foreground execution、DB transaction、local AI task priority を保持する。
+- vision process へは大きな画像 bytes を Binder で渡さず、app-private cache の表紙 path と小さい metadata/prompt だけを渡す。Service 側でも canonical path と入力サイズを再検証する。
+- vision Engine は専用 process 内で最大2冊だけ再利用し、バッチ終了時に Service を破棄して process 自体を終了する。次バッチは前 process の終了を確認してから起動する。
+- secondary process でも `Application` は生成されるため、main-process 専用の Activity tracking、startup diagnostics、widget observer、backfill scheduling は process name が package name と一致する場合だけ開始する。
+- この process isolation は LiteRT-LM の Android GPU/OpenCL memory retention 問題が upstream で解決し、実端末で連続推論時の memory baseline が安定するまでの安全境界とする。
+
 ## Process exit and crash diagnostics
 
 - uncaught exception は app entry point で起動時診断用の report として保持し、次回起動時に表示・コピーできる。
@@ -61,3 +70,4 @@ Android 17 / API 37 を採用する際は、SDK の提供状態と behavior chan
 - [ADR-0139](../adr/0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145](../adr/0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)
+- [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
