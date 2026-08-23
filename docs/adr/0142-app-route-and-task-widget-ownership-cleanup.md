@@ -4,6 +4,7 @@
 - Date: 2026-08-23
 - Amends: [ADR-0024](0024-task-home-screen-widget.md), [ADR-0062](0062-extract-integrated-ui-from-app.md), [ADR-0063](0063-feature-ui-ownership-cleanup.md), [ADR-0116](0116-route-owned-root-viewmodel-wiring.md)
 - Refines: [ADR-0003](0003-multi-module-architecture.md), [ADR-0139](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- Refined by: [ADR-0150](0150-app-shell-navigation-ui-ownership.md)
 
 ## Context
 
@@ -59,7 +60,7 @@ Android permission / Activity Result、cross-feature state mapping、app navigat
 
 これにより `app/src/main/.../feature` を Gradle feature module の実装置き場として誤認しにくくする。
 
-既存の `feature/navigation` package は Gradle feature module ではなく app shell navigation state の歴史的 package であり、今回の変更では名称変更による広範な churn を避けて維持する。architecture regression test ではこの navigation package だけを明示的な例外とし、それ以外の production source が `app/.../feature` に戻ることを禁止する。
+既存の `feature/navigation` package は Gradle feature module ではなく app shell navigation state の歴史的 package であり、本 ADR 時点では名称変更による広範な churn を避けて維持した。ADR-0150 でこの暫定例外を終了し、app shell navigation state を `app/.../ui` へ移した。
 
 ### 4. Task widget 更新は Task mutation 成功に接続する
 
@@ -85,13 +86,13 @@ widget refresh が失敗しても Task command 自体を失敗扱いにしない
 ### Negative
 
 - Library UI から Book Reader Domain/UI への明示的 dependency が増える。
-- app shell navigation の歴史的 package は今回も残るため、`app/.../feature` を完全には空にしない。
+- 本 ADR 時点では app shell navigation の歴史的 package を暫定的に残した。ADR-0150 でこの負債は解消済みである。
 - Task widget は Task state の汎用 reactive stream ではなく現在の command composition による invalidation を利用する。将来別の Task command entry point を追加する場合は同じ notifying repository / change capability へ接続する必要がある。
 
 ## Verification
 
 - `TaskChangeNotifyingRepositoryTest` で read では通知せず、各 mutation の成功後だけ通知し、mutation failure では通知しないことを確認する。
-- `AppCompositionSourceArchitectureTest` で `app/src/main/.../feature` に navigation 以外の production Kotlin source が存在しないことを確認する。
+- `AppCompositionSourceArchitectureTest` で `app/src/main/.../feature` に production Kotlin source が存在しないことを確認する。ADR-0150 以降は navigation 例外を持たない。
 - 既存 `IntegratedRouteAdapterTest` を app composition package へ移動し、物理移動で mapping semantics を変えないことを確認する。
 - `verifyArchitecture` で feature UI -> concrete data dependency、package/source path、app Route の infrastructure dependency が増えていないことを確認する。
 - 全 unit tests と release lint を実行する。
@@ -99,7 +100,7 @@ widget refresh が失敗しても Task command 自体を失敗扱いにしない
 
 ## Documentation
 
-- `docs/architecture/module-map.md` に app composition source の配置方針と navigation 例外を反映する。
+- `docs/architecture/module-map.md` に app composition source の配置方針を反映する。navigation 暫定例外の終了は ADR-0150 を参照する。
 - ADR-0024 の Task widget 機能要件は維持し、更新契機の ownership だけを本 ADR で変更する。
 
 ## Public repository review
