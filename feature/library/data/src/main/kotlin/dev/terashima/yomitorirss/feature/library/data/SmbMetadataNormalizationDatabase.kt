@@ -108,8 +108,22 @@ class DefaultSmbMetadataNormalizationRepository(
       ?: error("反映できる書誌正規化候補がありません")
     require(
       item.status == SmbMetadataNormalizationStatus.PENDING_REVIEW ||
-        item.status == SmbMetadataNormalizationStatus.DEFERRED,
+        item.status == SmbMetadataNormalizationStatus.DEFERRED ||
+        item.status == SmbMetadataNormalizationStatus.APPLIED,
     ) { "反映できる書誌正規化候補がありません" }
+
+    if (item.status == SmbMetadataNormalizationStatus.APPLIED) {
+      val currentBook = findLibraryBook(database, LibrarySource.SMB, sourceId)
+        ?: error("対象のファイルサーバ書籍が見つかりません")
+      val currentFileName = smbNormalizationInput(currentBook)?.fileName
+        ?: error("対象書籍のファイル情報を読み取れません")
+      require(proposedFileName.trim() == currentFileName) {
+        "反映済み書誌情報の編集ではファイル名を変更できません"
+      }
+      persistEditedAppliedMetadata(item, sanitizedProposal)
+      return@withContext
+    }
+
     val normalizedFileName = validateProposedSmbFileName(item.originalFileName, proposedFileName)
 
     val currentBook = findLibraryBook(database, LibrarySource.SMB, sourceId)
@@ -509,6 +523,86 @@ class DefaultSmbMetadataNormalizationRepository(
       }
       touchBatch(item.batchId, now)
       finishBatchIfIdle(this, item.batchId, now)
+    }
+  }
+
+  private fun persistEditedAppliedMetadata(
+    item: SmbMetadataNormalizationItem,
+    proposal: SmbBookMetadataProposal,
+  ) {
+    val previousProposal = item.proposal ?: error("反映済み書誌情報を読み取れません")
+    val previousSeriesName = previousProposal.seriesName?.trim()?.takeIf(String::isNotEmpty)
+    val nextSeriesName = proposal.seriesName?.trim()?.takeIf(String::isNotEmpty)
+    val seriesChanged =
+      previousSeriesName != nextSeriesName || previousProposal.seriesPosition != proposal.seriesPosition
+    val now = System.currentTimeMillis()
+    database.transaction {
+      val decisionChanged = update(
+        DECISION_TABLE,
+        ContentValues().apply {
+          put("title", proposal.title)
+          put("authors_json", JSONArray(proposal.authors).toString())
+          put("publisher", proposal.publisher)
+          put("published_date", proposal.publishedDate)
+          put("isbn10", proposal.isbn10)
+          put("isbn13", proposal.isbn13)
+          put("updated_at", now)
+        },
+        "source_id = ? AND decision_status = ?",
+        arrayOf(item.sourceId, SmbMetadataNormalizationStatus.APPLIED.name),
+      )
+      require(decisionChanged == 1) { "反映済み書誌情報が見つかりません" }
+
+      val itemChanged = update(
+        ITEM_TABLE,
+        ContentValues().apply {
+          put("metadata_json", proposalToJson(proposal))
+          putNull("error")
+          put("updated_at", now)
+        },
+        "batch_id = ? AND source_id = ? AND status = ?",
+        arrayOf(item.batchId, item.sourceId, SmbMetadataNormalizationStatus.APPLIED.name),
+      )
+      require(itemChanged == 1) { "反映済み書誌情報を更新できませんでした" }
+
+      if (seriesChanged) {
+        if (nextSeriesName != null) {
+          insertWithOnConflict(
+            "library_item_series",
+            null,
+            ContentValues().apply {
+              put("source", LibrarySource.SMB.name)
+              put("source_id", item.sourceId)
+              put("series_name", nextSeriesName)
+              proposal.seriesPosition?.let { put("series_position", it) } ?: putNull("series_position")
+              put("updated_at", now)
+            },
+            SQLiteDatabase.CONFLICT_REPLACE,
+          )
+          delete(
+            "library_item_series_exclusions",
+            "source = ? AND source_id = ?",
+            arrayOf(LibrarySource.SMB.name, item.sourceId),
+          )
+        } else {
+          delete(
+            "library_item_series",
+            "source = ? AND source_id = ?",
+            arrayOf(LibrarySource.SMB.name, item.sourceId),
+          )
+          insertWithOnConflict(
+            "library_item_series_exclusions",
+            null,
+            ContentValues().apply {
+              put("source", LibrarySource.SMB.name)
+              put("source_id", item.sourceId)
+              put("updated_at", now)
+            },
+            SQLiteDatabase.CONFLICT_REPLACE,
+          )
+        }
+      }
+      touchBatch(item.batchId, now)
     }
   }
 
