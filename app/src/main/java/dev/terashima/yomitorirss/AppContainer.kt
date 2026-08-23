@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss
 
+import android.app.Activity
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -12,7 +13,10 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
  * preserves the existing application-scope lifetime and caller API without turning route code into
  * a service locator or introducing a DI framework.
  */
-class AppContainer(private val application: Application) {
+class AppContainer(
+  private val application: Application,
+  private val resumedActivityProvider: () -> Activity? = { null },
+) {
   private val dataChanges = DataChangeNotifier.shared
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -30,6 +34,7 @@ class AppContainer(private val application: Application) {
       application = application,
       database = databaseConnection,
       modelManagerProvider = { aiCoreRuntime.modelManager },
+      resumedActivityProvider = resumedActivityProvider,
     )
   }
 
