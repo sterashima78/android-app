@@ -53,7 +53,7 @@ Gradle root project name、class 名、package path 等のうち外部 brand 表
 
 ## Verification
 
-- `docs/spec.md` の更新互換性にこの区分を反映する。
+- 現行 `docs/spec.md` が user-facing 名を Mosaic とし、application id / database file 名を互換識別子として維持する方針と矛盾しないことを確認する。
 - application HTTP User-Agent が Mosaic を使用する。
 - application id と database file 名は本 cleanup では変更しない。
 - PR review で旧名称の残存を用途別に確認する。
