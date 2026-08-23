@@ -44,6 +44,7 @@ fun LibraryFeatureRoute(
   onSyncGooglePlayBooks: () -> Unit,
   onAddWebBook: suspend (String) -> Unit,
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
+  onDeleteWebBook: suspend (LibraryBook) -> Unit,
   smbRepository: SmbLibraryRepository,
   pageSourceFactory: BookPageSourceFactory,
   readingPositionStore: ReadingPositionStore,
@@ -88,11 +89,21 @@ fun LibraryFeatureRoute(
     openedSmbBook = null
     viewModel.refresh()
   }
+  val deleteWebBook: (LibraryBook) -> Unit = { book ->
+    scope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) { onDeleteWebBook(book) }
+      }
+        .onSuccess { viewModel.refresh() }
+        .onFailure(viewModel::reportError)
+    }
+  }
 
   Box(modifier = modifier.fillMaxSize()) {
     CompositionLocalProvider(
       LocalUriHandler provides libraryUriHandler,
       LocalWebLibraryImportHandler provides webLibraryImportHandler,
+      LocalWebLibraryDeleteHandler provides deleteWebBook,
       LocalSmbLibraryUiBinding provides smbBinding,
       LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
     ) {

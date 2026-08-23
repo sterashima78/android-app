@@ -817,9 +817,11 @@ private fun LibraryBookThumbnail(
 ) {
   val uriHandler = LocalUriHandler.current
   val smbFileActions = LocalSmbBookFileActionBinding.current
+  val webDeleteHandler = LocalWebLibraryDeleteHandler.current
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var renameDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var deleteDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
+  var webDeleteDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
   val tapAction = remember(book) { book.tapAction() }
   val canOpen = tapAction != LibraryBookTapAction.OpenMenu
 
@@ -932,6 +934,15 @@ private fun LibraryBookThumbnail(
           },
         )
       }
+      if (book.canDeleteFromLibrary() && webDeleteHandler != null) {
+        DropdownMenuItem(
+          text = { Text("削除") },
+          onClick = {
+            actionMenuExpanded = false
+            webDeleteDialogVisible = true
+          },
+        )
+      }
       DropdownMenuItem(
         text = { Text(actionLabel) },
         onClick = {
@@ -960,6 +971,17 @@ private fun LibraryBookThumbnail(
       onDelete = {
         deleteDialogVisible = false
         smbFileActions.onDelete(book)
+      },
+    )
+  }
+
+  if (webDeleteDialogVisible && webDeleteHandler != null) {
+    WebLibraryDeleteDialog(
+      book = book,
+      onDismiss = { webDeleteDialogVisible = false },
+      onDelete = {
+        webDeleteDialogVisible = false
+        webDeleteHandler(book)
       },
     )
   }
