@@ -131,6 +131,7 @@ private class RemoteInferenceSession(
   private val connected = CompletableDeferred<Messenger>()
   private val processDeath = CompletableDeferred<Unit>()
   private val pendingResponse = AtomicReference<CompletableDeferred<Bundle>?>(null)
+  private val deathRecipient = IBinder.DeathRecipient { onBinderDied() }
   private var binder: IBinder? = null
   private var bound = false
   private val replyMessenger = Messenger(
@@ -150,7 +151,7 @@ private class RemoteInferenceSession(
     try {
       connected.await()
     } catch (error: Throwable) {
-      close()
+      unbindAndDetach()
       throw error
     }
   }
@@ -179,18 +180,32 @@ private class RemoteInferenceSession(
   }
 
   suspend fun closeAndAwaitProcessDeath() {
-    close()
-    withTimeoutOrNull(PROCESS_DEATH_WAIT_MILLIS) { processDeath.await() }
+    failPending(DeadObjectException())
+    unbind()
+    if (binder == null) {
+      processDeath.complete(Unit)
+    } else {
+      withTimeoutOrNull(PROCESS_DEATH_WAIT_MILLIS) { processDeath.await() }
+    }
+    detachDeathRecipient()
   }
 
-  private fun close() {
-    failPending(DeadObjectException())
+  private fun unbind() {
     if (bound) {
       runCatching { context.unbindService(this) }
       bound = false
     }
+  }
+
+  private fun unbindAndDetach() {
+    failPending(DeadObjectException())
+    unbind()
+    detachDeathRecipient()
+  }
+
+  private fun detachDeathRecipient() {
     binder?.let { serviceBinder ->
-      runCatching { serviceBinder.unlinkToDeath(::onBinderDied, 0) }
+      runCatching { serviceBinder.unlinkToDeath(deathRecipient, 0) }
     }
     binder = null
   }
@@ -201,7 +216,7 @@ private class RemoteInferenceSession(
       return
     }
     binder = service
-    runCatching { service.linkToDeath(::onBinderDied, 0) }
+    runCatching { service.linkToDeath(deathRecipient, 0) }
       .onFailure {
         connected.completeExceptionally(DeadObjectException())
         return
