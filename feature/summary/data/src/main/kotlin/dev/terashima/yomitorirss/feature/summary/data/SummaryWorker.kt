@@ -33,6 +33,7 @@ class SummaryWorker(
   params: WorkerParameters,
   private val runtime: SummaryRuntimeDependencies,
   private val database: YomitoriDatabase,
+  private val modelManager: LocalModelManager,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
@@ -64,7 +65,6 @@ class SummaryWorker(
       database.failRunningSummaryTask(task.articleId, "記事が見つかりません")
       return
     }
-    val modelManager = LocalModelManager.shared(applicationContext)
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
       setForeground(createForegroundInfo(article.title))
