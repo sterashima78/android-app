@@ -19,11 +19,11 @@ class SummaryContentFetchWorker(
   private val runtime: SummaryRuntimeDependencies,
   private val articleContentClient: ArticleContentClient,
   private val database: YomitoriDatabase,
+  private val modelManager: LocalModelManager,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     return withContext(Dispatchers.IO) {
-      val modelManager = LocalModelManager.shared(applicationContext)
       while (!SummaryQueue.executionState(applicationContext).paused) {
         currentCoroutineContext().ensureActive()
         if (database.countPreparedSummaryArticleContentsForActiveTasks() >= PREFETCH_LIMIT) break
