@@ -100,7 +100,12 @@ object StartupCrashStore {
           memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
             appendLine("description=$description")
           }
-          LocalAiMemoryDiagnostics.recentVisionInferenceReport(
+          recentMemoryProfilingArtifactNames(application, memoryExit.timestamp)
+            .takeIf(List<String>::isNotEmpty)
+            ?.let { artifacts ->
+              appendLine("profilingArtifacts=${artifacts.joinToString()}")
+            }
+          LocalAiMemoryDiagnostics.recentInferenceReport(
             context = application,
             pid = memoryExit.pid,
             processName = processName,
