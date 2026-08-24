@@ -1,7 +1,9 @@
 package dev.terashima.yomitorirss.feature.reddit
 
 import dev.terashima.yomitorirss.feature.article.Article
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -36,6 +38,15 @@ class RedditSourceBoundaryTest {
 
     assertTrue(RedditSourceBoundary.isRedditFeed(redditFeed))
     assertFalse(RedditSourceBoundary.isNonRedditFeed(redditFeed))
+  }
+
+  @Test
+  fun `Reddit thread identity は owner boundary から取得する`() {
+    assertEquals(
+      "abc123",
+      RedditSourceBoundary.threadId("https://www.reddit.com/r/android/comments/abc123/example/"),
+    )
+    assertNull(RedditSourceBoundary.threadId("https://example.com/article"))
   }
 
   @Test
