@@ -15,8 +15,10 @@ object RedditSourceBoundary {
 
   fun isNonRedditFeed(feedUrl: String): Boolean = !isRedditFeed(feedUrl)
 
+  fun threadId(url: String): String? = redditThreadId(url)
+
   fun isRssSubscriptionInput(input: String): Boolean =
     redditCommunityFeedUrl(input) == null &&
-      redditThreadId(input) == null &&
+      threadId(input) == null &&
       !isRedditFeedUrl(input)
 }
