@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.BackfillBookmarkAutoEnrichmentUseCase
@@ -31,7 +32,8 @@ internal class AppCrossFeatureRuntimeDependencies(
   private val redditRepository: RedditRepository,
   private val summaryRepository: SummaryRepository,
   private val taskRepository: TaskRepository,
-  private val featureRuntimeDependencies: AppFeatureRuntimeDependencies,
+  private val libraryRuntime: LibraryRuntimeDependencies,
+  private val knowledgeBuildTaskController: KnowledgeBuildTaskController,
 ) {
   val chatGenerator: ChatGenerator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     LocalChatGenerator(
@@ -66,15 +68,14 @@ internal class AppCrossFeatureRuntimeDependencies(
   }
 
   val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val library = featureRuntimeDependencies.library
     CompositeAiTaskQueueRepository(
       summaryRepository = summaryTaskQueueRepository,
-      libraryRepository = library.organizationRepository,
-      libraryCatalogRepository = library.catalogRepository,
-      libraryScheduler = library.organizationBatchScheduler,
-      knowledgeController = featureRuntimeDependencies.knowledgeBuildTaskController,
-      smbMetadataNormalizationRepository = library.smbMetadataNormalizationRepository,
-      smbMetadataNormalizationScheduler = library.smbMetadataNormalizationScheduler,
+      libraryRepository = libraryRuntime.organizationRepository,
+      libraryCatalogRepository = libraryRuntime.catalogRepository,
+      libraryScheduler = libraryRuntime.organizationBatchScheduler,
+      knowledgeController = knowledgeBuildTaskController,
+      smbMetadataNormalizationRepository = libraryRuntime.smbMetadataNormalizationRepository,
+      smbMetadataNormalizationScheduler = libraryRuntime.smbMetadataNormalizationScheduler,
     )
   }
 }
