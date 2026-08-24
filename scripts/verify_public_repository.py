@@ -11,7 +11,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 ALLOWED_ENV_FILES = {".env.example", ".env.sample", ".env.template"}
-SENSITIVE_SUFFIXES = {".jks", ".keystore", ".p12", ".pfx", ".key", ".db", ".sqlite", ".sqlite3"}
+SENSITIVE_SUFFIXES = {
+    ".jks",
+    ".keystore",
+    ".p12",
+    ".pfx",
+    ".key",
+    ".db",
+    ".sqlite",
+    ".sqlite3",
+    ".hprof",
+    ".perfetto-trace",
+    ".perfetto-trace-unredacted",
+    ".heapprofile",
+    ".heapdump",
+    ".heapsnapshot",
+}
 
 SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("private key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")),
@@ -39,8 +54,13 @@ def sensitive_path_reason(relative_path: str) -> str | None:
         return "OAuth client secret file"
     if name in {"credentials.json", "service-account.json"}:
         return "credential file"
-    if suffix in SENSITIVE_SUFFIXES:
-        return f"sensitive {suffix} file"
+    if any(name.endswith(sensitive_suffix) for sensitive_suffix in SENSITIVE_SUFFIXES):
+        matched = next(
+            sensitive_suffix
+            for sensitive_suffix in SENSITIVE_SUFFIXES
+            if name.endswith(sensitive_suffix)
+        )
+        return f"sensitive {matched} file"
     if suffix == ".zip" and ("backup" in name or "export" in name):
         return "backup/export archive"
     return None
