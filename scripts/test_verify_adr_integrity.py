@@ -19,9 +19,18 @@ class VerifyAdrIntegrityTest(unittest.TestCase):
     def write_adr(self, filename: str, content: str) -> None:
         (self.root / "docs" / "adr" / filename).write_text(content, encoding="utf-8")
 
+    def write_architecture(self, filename: str, content: str) -> None:
+        directory = self.root / "docs" / "architecture"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / filename).write_text(content, encoding="utf-8")
+
     def test_accepts_unique_consistent_adrs_and_existing_references(self) -> None:
         self.write_adr("0001-first.md", "# ADR-0001: First\n\nSee ADR-0002.\n")
         self.write_adr("0002-second.md", "# ADR-0002: Second\n\nSee [first](0001-first.md).\n")
+        self.write_architecture(
+            "principles.md",
+            "# Principles\n\nSee [ADR-0002](../adr/0002-second.md).\n",
+        )
 
         self.assertEqual([], verify_adr_integrity(self.root))
 
@@ -65,6 +74,29 @@ class VerifyAdrIntegrityTest(unittest.TestCase):
             "docs/adr/0001-first.md: ADR link target does not exist: 9999-missing.md",
             violations,
         )
+
+    def test_rejects_missing_adr_link_from_current_architecture_docs(self) -> None:
+        self.write_adr("0001-first.md", "# ADR-0001: First\n")
+        self.write_architecture(
+            "context-map.md",
+            "# Context map\n\nSee [ADR-0001](../adr/0001-renamed.md).\n",
+        )
+
+        violations = verify_adr_integrity(self.root)
+
+        self.assertIn(
+            "docs/architecture/context-map.md: ADR link target does not exist: 0001-renamed.md",
+            violations,
+        )
+
+    def test_rejects_missing_numeric_reference_from_spec(self) -> None:
+        self.write_adr("0001-first.md", "# ADR-0001: First\n")
+        spec = self.root / "docs" / "spec.md"
+        spec.write_text("# Spec\n\nSee ADR-9999.\n", encoding="utf-8")
+
+        violations = verify_adr_integrity(self.root)
+
+        self.assertIn("docs/spec.md: ADR-9999 does not exist", violations)
 
     def test_rejects_malformed_filename(self) -> None:
         self.write_adr("1-not-padded.md", "# ADR-0001: First\n")
