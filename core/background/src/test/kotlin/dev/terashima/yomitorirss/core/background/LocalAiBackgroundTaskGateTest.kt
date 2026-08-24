@@ -73,7 +73,7 @@ class LocalAiBackgroundTaskGateTest {
     val secondEntered = CompletableDeferred<Unit>()
 
     val first = launch(start = CoroutineStart.UNDISPATCHED) {
-      LocalAiBackgroundTaskGate.withPermit(diagnosticLabel = "summary") {
+      LocalAiBackgroundTaskGate.withPermitForDiagnostics(diagnosticLabel = "summary") {
         assertEquals("summary", LocalAiBackgroundTaskGate.currentDiagnosticLabel())
         firstEntered.complete(Unit)
         releaseFirst.await()
@@ -82,7 +82,7 @@ class LocalAiBackgroundTaskGateTest {
     firstEntered.await()
 
     val second = launch(start = CoroutineStart.UNDISPATCHED) {
-      LocalAiBackgroundTaskGate.withPermit(diagnosticLabel = "knowledge") {
+      LocalAiBackgroundTaskGate.withPermitForDiagnostics(diagnosticLabel = "knowledge") {
         assertEquals("knowledge", LocalAiBackgroundTaskGate.currentDiagnosticLabel())
         secondEntered.complete(Unit)
       }
