@@ -31,6 +31,51 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
+  fun `Redditの低レベル分類APIはowner feature外へ公開利用しない`() {
+    val forbiddenImports = listOf(
+      "import dev.terashima.yomitorirss.feature.reddit.isRedditArticle",
+      "import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl",
+      "import dev.terashima.yomitorirss.feature.reddit.redditCommunityFeedUrl",
+      "import dev.terashima.yomitorirss.feature.reddit.redditThreadId",
+    )
+
+    repositoryRoot.walkTopDown()
+      .filter(File::isFile)
+      .filter { it.extension == "kt" }
+      .filter { "/src/main/" in it.invariantSeparatorsPath }
+      .filterNot { "/feature/reddit/" in it.invariantSeparatorsPath }
+      .forEach { file ->
+        val source = file.readText()
+        forbiddenImports.forEach { forbiddenImport ->
+          assertFalse(
+            "${file.relativeTo(repositoryRoot)} must consume RedditSourceBoundary instead of $forbiddenImport",
+            forbiddenImport in source,
+          )
+        }
+      }
+  }
+
+  @Test
+  fun `Settings dataはSummary promptのdata実装を所有しない`() {
+    val settingsDataBuild = source("feature/settings/data/build.gradle.kts")
+    val settingsData = source(
+      "feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/DefaultAiModelRepository.kt",
+    )
+    val modelContract = source(
+      "feature/settings/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiModelRepository.kt",
+    )
+    val routeComposition = source("app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt")
+
+    assertFalse("Settings data must not depend on Summary data", ":feature:summary:data" in settingsDataBuild)
+    assertFalse("AI model repository must not construct SummaryPromptStore", "SummaryPromptStore" in settingsData)
+    assertFalse("AI model contract must not own Summary prompt state", "summaryPrompt" in modelContract)
+    assertTrue(
+      "Settings route must receive the Summary-owned prompt capability",
+      "summaryPromptSettings = container.summaryPromptSettings" in routeComposition,
+    )
+  }
+
+  @Test
   fun `generic feature runtime graphはRouteとWorkerへ露出しない`() {
     listOf(
       "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt",
@@ -42,6 +87,22 @@ class ArchitectureCleanupSourceTest {
         "featureRuntimeDependencies" in source(path),
       )
     }
+  }
+
+  @Test
+  fun `mainのsigned APK buildはAndroid quality checks成功後だけ実行する`() {
+    val workflow = source(".github/workflows/build-apk.yml")
+    val qualityChecks = workflow.substringAfter("  quality_checks:\n").substringBefore("\n  quality:\n")
+    val build = workflow.substringAfter("  build:\n")
+
+    assertTrue(
+      "Architecture/Test/Lint matrix must run for main",
+      "github.ref == 'refs/heads/main'" in qualityChecks,
+    )
+    assertTrue(
+      "signed APK build must depend on the Android quality matrix",
+      "needs:\n      - quality_checks" in build,
+    )
   }
 
   @Test
