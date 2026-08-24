@@ -87,6 +87,7 @@ Content を入力として generated summary と task lifecycle / priority の S
 - Article metadata は `ArticleRepository` から取得する。
 - Read Later priority / Bookmark retry は `BookmarkContentQuery` を利用する。
 - Curation tag/folder 更新は `BookmarkEnrichmentRepository` を利用する。
+- user-editable summary prompt の default / normalization / persistence は Summary が所有し、Settings UI は `SummaryPromptSettings` capability を利用する。
 - Summary data は Content / Curation table を直接参照しない。
 
 ### Knowledge
@@ -195,3 +196,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0143](../adr/0143-web-library-source-and-bookmark-transfer.md)
 - [ADR-0154](../adr/0154-web-library-rendered-metadata-fallback.md)
+- [ADR-0163](../adr/0163-p1-owner-boundary-and-main-quality-gate.md)
