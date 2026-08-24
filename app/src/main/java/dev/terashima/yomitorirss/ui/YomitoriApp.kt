@@ -47,7 +47,7 @@ fun YomitoriApp(
   val bookmarkEditController = rememberBookmarkEditController()
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
   var gameFullscreen by rememberSaveable { mutableStateOf(false) }
-  val isFullscreenGame = selectedTab == MainTab.GAME && gameFullscreen
+  val hideAppChrome = shouldHideAppChrome(selectedTab, gameFullscreen)
 
   FeatureMessageEffects(
     selectedTab = selectedTab,
@@ -84,7 +84,7 @@ fun YomitoriApp(
         ScaffoldDefaults.contentWindowInsets
       },
       topBar = {
-        if (!isFullscreenGame) {
+        if (!hideAppChrome) {
           AppTopBarRoute(
             selectedTab = selectedTab,
             routeDependencies = routeDependencies,
@@ -129,3 +129,8 @@ fun YomitoriApp(
     SummaryOverlay(routeDependencies = routeDependencies)
   }
 }
+
+internal fun shouldHideAppChrome(
+  selectedTab: MainTab,
+  gameFullscreen: Boolean,
+): Boolean = selectedTab == MainTab.GAME && gameFullscreen
