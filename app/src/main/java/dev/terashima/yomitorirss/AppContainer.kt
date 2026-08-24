@@ -21,7 +21,7 @@ class AppContainer(
   private val dataChanges = DataChangeNotifier.shared
 
   internal val httpClient: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    HttpClient.create()
+    HttpClient.create(userAgent = "Mosaic/${BuildConfig.VERSION_NAME} (Android)")
   }
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -32,7 +32,7 @@ class AppContainer(
     DatabaseConnection(database)
   }
 
-  internal val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
+  private val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {
     AppFeatureRuntimeDependencies(
@@ -96,9 +96,15 @@ class AppContainer(
       redditRepository = contentRuntime.redditRepository,
       summaryRepository = aiCoreRuntime.summaryRepository,
       taskRepository = supportingRuntime.taskRepository,
-      featureRuntimeDependencies = featureRuntimeDependencies,
+      libraryRuntime = libraryRuntime,
+      knowledgeBuildTaskController = featureRuntimeDependencies.knowledgeBuildTaskController,
     )
   }
+
+  internal val healthRepository get() = featureRuntimeDependencies.healthRepository
+  internal val libraryRuntime get() = featureRuntimeDependencies.library
+  internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
+  internal val knowledgeBuildScheduler get() = featureRuntimeDependencies.knowledgeBuildScheduler
 
   val bookmarkContentQuery get() = contentRuntime.bookmarkContentQuery
   val articleRepository get() = contentRuntime.articleRepository
