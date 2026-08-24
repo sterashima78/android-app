@@ -90,10 +90,10 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
-  fun `mainのsigned APK buildはAndroid quality checks成功後だけ実行する`() {
+  fun `mainのsigned APK生成はAndroid quality checks成功後だけ実行する`() {
     val workflow = source(".github/workflows/build-apk.yml")
     val qualityChecks = workflow.substringAfter("  quality_checks:\n").substringBefore("\n  quality:\n")
-    val build = workflow.substringAfter("  build:\n")
+    val buildJob = workflow.substringAfter("  build:\n")
 
     assertTrue(
       "Architecture/Test/Lint matrix must run for main",
@@ -101,7 +101,7 @@ class ArchitectureCleanupSourceTest {
     )
     assertTrue(
       "signed APK build must depend on the Android quality matrix",
-      "needs:\n      - quality_checks" in build,
+      "needs:\n      - quality_checks" in buildJob,
     )
   }
 
