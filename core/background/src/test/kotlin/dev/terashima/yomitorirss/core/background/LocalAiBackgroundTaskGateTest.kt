@@ -9,6 +9,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LocalAiBackgroundTaskGateTest {
@@ -63,5 +64,34 @@ class LocalAiBackgroundTaskGateTest {
     joinAll(first, low, high)
 
     assertEquals(listOf("first", "high", "low"), executionOrder)
+  }
+
+  @Test
+  fun `診断ラベルはpermit保持中だけ公開し次のタスクへ切り替える`() = runBlocking {
+    val firstEntered = CompletableDeferred<Unit>()
+    val releaseFirst = CompletableDeferred<Unit>()
+    val secondEntered = CompletableDeferred<Unit>()
+
+    val first = launch(start = CoroutineStart.UNDISPATCHED) {
+      LocalAiBackgroundTaskGate.withPermit(diagnosticLabel = "summary") {
+        assertEquals("summary", LocalAiBackgroundTaskGate.currentDiagnosticLabel())
+        firstEntered.complete(Unit)
+        releaseFirst.await()
+      }
+    }
+    firstEntered.await()
+
+    val second = launch(start = CoroutineStart.UNDISPATCHED) {
+      LocalAiBackgroundTaskGate.withPermit(diagnosticLabel = "knowledge") {
+        assertEquals("knowledge", LocalAiBackgroundTaskGate.currentDiagnosticLabel())
+        secondEntered.complete(Unit)
+      }
+    }
+
+    assertEquals("summary", LocalAiBackgroundTaskGate.currentDiagnosticLabel())
+    releaseFirst.complete(Unit)
+    secondEntered.await()
+    joinAll(first, second)
+    assertNull(LocalAiBackgroundTaskGate.currentDiagnosticLabel())
   }
 }
