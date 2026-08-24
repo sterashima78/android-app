@@ -13,7 +13,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 internal class OkHttpHttpClient(
-  private val client: OkHttpClient = defaultOkHttpClient(),
+  private val client: OkHttpClient,
+  private val userAgent: String,
 ) : HttpClient {
   override suspend fun execute(request: HttpRequest): HttpResponse = withContext(Dispatchers.IO) {
     val requestBody = when (request.method) {
@@ -22,7 +23,7 @@ internal class OkHttpHttpClient(
     }
     val okhttpRequest = Request.Builder()
       .url(request.url)
-      .header("User-Agent", USER_AGENT)
+      .header("User-Agent", userAgent)
       .apply {
         request.headers.forEach { (name, value) -> header(name, value) }
       }
@@ -45,6 +46,21 @@ internal class OkHttpHttpClient(
   }
 }
 
+internal object OkHttpHttpClientFactory {
+  private val transport: OkHttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    defaultOkHttpClient()
+  }
+  private val clients = mutableMapOf<String, HttpClient>()
+
+  @Synchronized
+  fun create(userAgent: String): HttpClient = clients.getOrPut(userAgent) {
+    OkHttpHttpClient(
+      client = transport,
+      userAgent = userAgent,
+    )
+  }
+}
+
 private fun defaultOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
   .connectTimeout(20, TimeUnit.SECONDS)
   .readTimeout(30, TimeUnit.SECONDS)
@@ -59,5 +75,3 @@ private fun IOException.toNetworkError(): IOException = when (this) {
   is ConnectException -> IOException("サーバーに接続できませんでした", this)
   else -> IOException("ネットワーク通信に失敗しました: ${message ?: javaClass.simpleName}", this)
 }
-
-private const val USER_AGENT = "Mosaic/0.2 (Android)"
