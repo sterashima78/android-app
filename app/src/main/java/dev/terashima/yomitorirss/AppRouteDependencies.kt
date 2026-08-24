@@ -19,11 +19,8 @@ import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
+import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
-import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
-import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
-import dev.terashima.yomitorirss.feature.reddit.redditCommunityFeedUrl
-import dev.terashima.yomitorirss.feature.reddit.redditThreadId
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
@@ -44,7 +41,7 @@ class AppRouteDependencies internal constructor(
   }
   private val webLibraryMutator: WebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     NotifyingWebLibraryMutator(
-      delegate = container.featureRuntimeDependencies.library.webLibraryMutator,
+      delegate = container.libraryRuntime.webLibraryMutator,
       onChanged = container.backupChangeScheduler::scheduleAfterChange,
     )
   }
@@ -66,7 +63,7 @@ class AppRouteDependencies internal constructor(
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
       backupChangeScheduler = container.backupChangeScheduler,
-      articleSelector = { article -> !article.isRedditArticle() },
+      articleSelector = RedditSourceBoundary::isNonRedditArticle,
     )
   }
 
@@ -85,12 +82,8 @@ class AppRouteDependencies internal constructor(
       refreshFeeds = container.refreshFeedsUseCase,
       imports = container.feedImportRepository,
       backupChangeScheduler = container.backupChangeScheduler,
-      feedSelector = { feed -> !isRedditFeedUrl(feed.feedUrl) },
-      canAddInput = { input ->
-        redditCommunityFeedUrl(input) == null &&
-          redditThreadId(input) == null &&
-          !isRedditFeedUrl(input)
-      },
+      feedSelector = { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) },
+      canAddInput = RedditSourceBoundary::isRssSubscriptionInput,
     )
   }
 
@@ -138,7 +131,7 @@ class AppRouteDependencies internal constructor(
   }
 
   val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val repository = container.featureRuntimeDependencies.healthRepository
+    val repository = container.healthRepository
     HealthRouteDependencies(
       viewModelFactory = HealthViewModel.Factory(repository),
       readPermissions = repository.requestPermissions(),
@@ -146,7 +139,7 @@ class AppRouteDependencies internal constructor(
   }
 
   val knowledgeViewModelFactory: KnowledgeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val buildScheduler = container.featureRuntimeDependencies.knowledgeBuildScheduler
+    val buildScheduler = container.knowledgeBuildScheduler
     KnowledgeViewModel.Factory(
       repository = container.knowledgeRepository,
       builder = container.knowledgeBuilder,
@@ -158,7 +151,7 @@ class AppRouteDependencies internal constructor(
   }
 
   val library: LibraryRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val runtime = container.featureRuntimeDependencies.library
+    val runtime = container.libraryRuntime
     LibraryRouteDependencies(
       authorization = runtime.authorization,
       libraryViewModelFactory = LibraryViewModel.Factory(
@@ -200,7 +193,7 @@ class AppRouteDependencies internal constructor(
   val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     WorkoutViewModel.Factory(
       repository = container.workoutRepository,
-      historyExporter = WorkoutHealthConnectExporter(container.featureRuntimeDependencies.healthRepository),
+      historyExporter = WorkoutHealthConnectExporter(container.healthRepository),
     )
   }
 
