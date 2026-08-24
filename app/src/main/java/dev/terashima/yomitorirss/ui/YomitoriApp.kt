@@ -14,8 +14,11 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
@@ -42,6 +45,8 @@ fun YomitoriApp(
   val redditController = rememberRedditRouteController()
   val bookmarkEditController = rememberBookmarkEditController()
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
+  var gameFullscreen by rememberSaveable { mutableStateOf(false) }
+  val hideAppChrome = shouldHideAppChrome(selectedTab, gameFullscreen)
 
   FeatureMessageEffects(
     selectedTab = selectedTab,
@@ -78,13 +83,15 @@ fun YomitoriApp(
         ScaffoldDefaults.contentWindowInsets
       },
       topBar = {
-        AppTopBarRoute(
-          selectedTab = selectedTab,
-          routeDependencies = routeDependencies,
-          rssController = rssController,
-          redditController = redditController,
-          onOpenDrawer = openDrawer,
-        )
+        if (!hideAppChrome) {
+          AppTopBarRoute(
+            selectedTab = selectedTab,
+            routeDependencies = routeDependencies,
+            rssController = rssController,
+            redditController = redditController,
+            onOpenDrawer = openDrawer,
+          )
+        }
       },
       bottomBar = {
         AppBottomBar(
@@ -103,6 +110,7 @@ fun YomitoriApp(
         bookmarkEditController = bookmarkEditController,
         onOpenArticle = onOpenArticle,
         onOpenWebServer = onOpenWebServer,
+        onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
       )
     }
   }
@@ -117,3 +125,8 @@ fun YomitoriApp(
     SummaryOverlay(routeDependencies = routeDependencies)
   }
 }
+
+internal fun shouldHideAppChrome(
+  selectedTab: MainTab,
+  gameFullscreen: Boolean,
+): Boolean = selectedTab == MainTab.GAME && gameFullscreen

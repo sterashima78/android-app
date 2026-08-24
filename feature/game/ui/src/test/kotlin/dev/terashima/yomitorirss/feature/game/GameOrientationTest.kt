@@ -5,19 +5,21 @@ import org.junit.Test
 
 class GameOrientationTest {
   @Test
-  fun `クロンダイクとスパイダーは横向きを要求する`() {
-    assertEquals(
-      GameOrientationPreference.SENSOR_LANDSCAPE,
-      orientationPreferenceFor(GameScreen.KLONDIKE),
-    )
-    assertEquals(
-      GameOrientationPreference.SENSOR_LANDSCAPE,
-      orientationPreferenceFor(GameScreen.SPIDER),
-    )
+  fun `クロンダイクとスパイダーは横向きかつ全画面を要求する`() {
+    listOf(GameScreen.KLONDIKE, GameScreen.SPIDER).forEach { screen ->
+      assertEquals(
+        GameOrientationPreference.SENSOR_LANDSCAPE,
+        orientationPreferenceFor(screen),
+      )
+      assertEquals(
+        GameChromePreference.FULLSCREEN,
+        chromePreferenceFor(screen),
+      )
+    }
   }
 
   @Test
-  fun `その他のゲーム画面は縦向きを要求する`() {
+  fun `その他のゲーム画面は縦向きかつ標準表示を要求する`() {
     GameScreen.entries
       .filterNot { it == GameScreen.KLONDIKE || it == GameScreen.SPIDER }
       .forEach { screen ->
@@ -25,6 +27,11 @@ class GameOrientationTest {
           "$screen should stay portrait",
           GameOrientationPreference.PORTRAIT,
           orientationPreferenceFor(screen),
+        )
+        assertEquals(
+          "$screen should keep app chrome",
+          GameChromePreference.STANDARD,
+          chromePreferenceFor(screen),
         )
       }
   }
