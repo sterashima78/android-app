@@ -23,11 +23,17 @@ object LocalAiBackgroundTaskGate {
   private var active = false
   private var nextSequence = 0L
 
+  @Volatile
+  private var activeDiagnosticLabel: String? = null
+
   suspend fun <T> withPermit(
     priority: LocalAiBackgroundTaskPriority = LocalAiBackgroundTaskPriority.NORMAL,
+    diagnosticLabel: String? = null,
     block: suspend () -> T,
   ): T {
-    acquire(priority)
+    val resolvedDiagnosticLabel = diagnosticLabel?.takeIf(String::isNotBlank)
+      ?: inferDiagnosticLabel()
+    acquire(priority, resolvedDiagnosticLabel)
     return try {
       block()
     } finally {
@@ -35,16 +41,27 @@ object LocalAiBackgroundTaskGate {
     }
   }
 
-  private suspend fun acquire(priority: LocalAiBackgroundTaskPriority) {
+  /**
+   * Returns a sanitized implementation-level label for the background local-AI task currently
+   * holding the permit. This is diagnostics-only state; business behavior must not depend on it.
+   */
+  fun currentDiagnosticLabel(): String? = activeDiagnosticLabel
+
+  private suspend fun acquire(
+    priority: LocalAiBackgroundTaskPriority,
+    diagnosticLabel: String,
+  ) {
     val waiter = synchronized(lock) {
       if (!active) {
         active = true
+        activeDiagnosticLabel = diagnosticLabel
         null
       } else {
         Waiter(
           priority = priority,
           sequence = nextSequence++,
           signal = CompletableDeferred(),
+          diagnosticLabel = diagnosticLabel,
         ).also(waiters::add)
       }
     } ?: return
@@ -83,20 +100,39 @@ object LocalAiBackgroundTaskGate {
 
       if (candidate == null) {
         active = false
+        activeDiagnosticLabel = null
         null
       } else {
         waiters.remove(candidate)
         candidate.state = WaiterState.GRANTED
+        activeDiagnosticLabel = candidate.diagnosticLabel
         candidate
       }
     }
     next?.signal?.complete(Unit)
   }
 
+  private fun inferDiagnosticLabel(): String =
+    Throwable().stackTrace
+      .asSequence()
+      .map(StackTraceElement::getClassName)
+      .map { className -> className.substringBefore('$') }
+      .firstOrNull { className ->
+        !className.startsWith("dev.terashima.yomitorirss.core.background.") &&
+          !className.startsWith("kotlin.") &&
+          !className.startsWith("kotlinx.coroutines.") &&
+          !className.startsWith("java.")
+      }
+      ?.filter { character -> character.isLetterOrDigit() || character in ".:_-" }
+      ?.take(MAX_DIAGNOSTIC_LABEL_CHARS)
+      ?.takeIf(String::isNotBlank)
+      ?: "unknown"
+
   private data class Waiter(
     val priority: LocalAiBackgroundTaskPriority,
     val sequence: Long,
     val signal: CompletableDeferred<Unit>,
+    val diagnosticLabel: String,
     var state: WaiterState = WaiterState.WAITING,
   )
 
@@ -105,4 +141,6 @@ object LocalAiBackgroundTaskGate {
     GRANTED,
     CANCELLED,
   }
+
+  private const val MAX_DIAGNOSTIC_LABEL_CHARS = 160
 }
