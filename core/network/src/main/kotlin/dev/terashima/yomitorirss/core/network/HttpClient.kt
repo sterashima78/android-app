@@ -4,17 +4,15 @@ interface HttpClient {
   suspend fun execute(request: HttpRequest): HttpResponse
 
   companion object {
-    private val shared: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-      OkHttpHttpClient()
-    }
-
     /**
-     * Returns the process-wide HTTP transport.
+     * Returns a wrapper around the process-wide HTTP transport.
      *
-     * Application composition should pass this instance to feature runtimes explicitly. The
-     * factory remains available to isolated adapters and tests without creating parallel OkHttp
-     * connection pools.
+     * Application composition should pass the versioned external User-Agent explicitly. Isolated
+     * adapters and tests may use the generic default without creating another OkHttp connection pool.
      */
-    fun create(): HttpClient = shared
+    fun create(userAgent: String = DEFAULT_USER_AGENT): HttpClient =
+      OkHttpHttpClientFactory.create(userAgent)
   }
 }
+
+private const val DEFAULT_USER_AGENT = "Mosaic (Android)"
