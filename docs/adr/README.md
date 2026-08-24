@@ -45,6 +45,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0156: active tab の message capability policy を navigation spec に集約する](0156-active-tab-message-capability-policy.md)
 - [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 
 ### Domain / Context / persistence
 
@@ -82,6 +83,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0157: Mosaic の外部識別子と互換識別子を区別する](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 
 ### Health
 
@@ -128,6 +130,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 
 ### Content / summary / knowledge
 
@@ -173,3 +176,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0158](0158-bounded-book-page-geometry-cache.md)
 - [ADR-0159](0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0161](0161-android17-main-process-memory-diagnostics.md)
