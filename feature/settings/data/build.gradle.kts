@@ -18,7 +18,6 @@ android {
 
 dependencies {
   implementation(project(":feature:settings:domain"))
-  implementation(project(":feature:summary:data"))
   implementation(project(":core:ai-runtime"))
   implementation(project(":core:background"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
