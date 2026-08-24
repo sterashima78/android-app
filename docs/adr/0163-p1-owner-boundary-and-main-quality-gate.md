@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-24
-- Refines: [ADR-0056](0056-feature-owned-local-ai-policies.md), [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0162](0162-current-architecture-cleanup-guardrails.md)
+- Refines: [ADR-0056](0056-feature-owned-local-ai-policies.md), [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0162](0162-current-architecture-cleanup-guardrails.md)
 - Related: [ADR-0136](0136-public-repository-content-verification.md)
 
 ## Context
@@ -10,7 +10,7 @@
 ADR-0162 で current architecture cleanup の主要な guardrail を追加した後も、次の P1 残差が確認された。
 
 - Chat skill と LAN Web Server が Reddit owner の低レベル `isRedditArticle` / `isRedditFeedUrl` を直接 import し、consumer 側で source classification を行っていた。
-- `feature:settings:data` が `feature:summary:data` に依存し、`DefaultAiModelRepository` が `SummaryPromptStore` を直接構築していた。さらに `AiModelRepository` が user-editable summary prompt の read/write API まで所有していた。
+- ADR-0069 は要約プロンプトのような feature 固有設定を共通化しないと決めていたが、`feature:settings:data` が `feature:summary:data` に依存し、`DefaultAiModelRepository` が `SummaryPromptStore` を直接構築していた。さらに `AiModelRepository` が user-editable summary prompt の read/write API まで所有していた。
 - pull request では Architecture / Test / Lint を実行する一方、`main` push の signed APK build は unit test / lint を再実行しなかった。`main` branch protection だけを前提にすると、repository setting の変更や直接 push により未検証 commit から signed APK を生成できる余地がある。
 
 いずれも既存の ownership / quality 方針を変更するものではなく、既存判断を repository 全体へ適用して抜け道を閉じる cleanup である。
@@ -31,7 +31,7 @@ source regression test は特定の app Route だけではなく、Reddit featur
 
 `:feature:summary:domain` は `SummaryPromptSettings` という narrow contract を公開し、`:feature:summary:data` の `SummaryPromptStore` が実装する。
 
-Settings は prompt の編集 UI を提供してよいが、prompt persistence の owner にはならない。
+Settings は prompt の編集 UI を提供してよいが、prompt persistence の owner にはならない。これは ADR-0069 の「AIセクションに表示しても feature 固有設定は共通化しない」という判断を実装境界にも反映するものである。
 
 - `feature:settings:data` から `feature:summary:data` dependency を削除する。
 - `AiModelRepository` から summary prompt の read/update/reset API を削除する。
