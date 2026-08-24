@@ -58,13 +58,17 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 - vision Engine は専用 process 内で最大2冊だけ再利用し、バッチ終了時に Service を破棄して process 自体を終了する。次バッチは前 process の終了を確認してから起動する。
 - secondary process でも `Application` は生成されるため、main-process 専用の Activity tracking、startup diagnostics、widget observer、backfill scheduling は process name が package name と一致する場合だけ開始する。
 - この process isolation は LiteRT-LM の Android GPU/OpenCL memory retention 問題が upstream で解決し、実端末で連続推論時の memory baseline が安定するまでの安全境界とする。
+- main process の background local-AI task は global task gate の permit owner を diagnostics-only class label として公開する。priority、queue state、feature behavior はこの label に依存しない。
+- main process は background local-AI permit 保持中と permit 解放後5分に限り、10秒間隔で PSS、RSS、native heap、Java heap を採取する。終了後の retained sample は直前 task label と関連付け、engine/native memory が task 終了後も残るケースを判別できるようにする。
 
 ## Process exit and crash diagnostics
 
 - uncaught exception は app entry point で起動時診断用の report として保持し、次回起動時に表示・コピーできる。
 - Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。短寿命 vision process の正常終了で障害記録が押し出されないよう、固定件数ではなく Android が保持する履歴全体を確認する。
 - Android 17 の app memory limits は targetSdk に関係なく実行環境の制約として扱い、`MemoryLimiter` を含む終了はこの診断経路で追跡する。
-- process-exit report は対象 exit の pid と process name を記録する。local AI の画像推論 memory diagnostics は同じ pid・process name かつ exit timestamp 以下のサンプルだけを補足し、別 process generation や終了後のサンプルを混在させない。
+- Android 17 / API 37 では `ProfilingManager` の anomaly trigger を登録し、memory limit 到達時に system profiling artifact を app-private storage へ残せるようにする。現行 compileSdk 36 / targetSdk 36 は変更せず、API 37 runtime guard 内だけで anomaly trigger を有効にする。
+- process-exit report は対象 exit の pid と process name を記録する。local AI memory diagnostics は同じ pid・process name かつ exit timestamp 以下のサンプルだけを補足し、別 process generation や終了後のサンプルを混在させない。
+- MemoryLimiter exit 前10分以内に system profiling artifact が生成されている場合、共有 report には安全な artifact file name を最大3件だけ記録する。heap dump 本体、app-private path、heap 内容は report へコピーしない。
 - local AI の診断には raw user content、画像 payload、表紙 path、prompt、AI 出力を保存しない。
 - ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL は authority/path/query/fragment を伏せて scheme だけを残し、メールアドレス、credential-like value、Bearer token、Android private path 等も伏せる。version、commit、SDK、device、PSS/RSS、pid、process name 等の高レベル診断値は維持する。
 - diagnostic sanitizer は共有を安全にするための defense-in-depth であり、高機密情報を exception message や diagnostic section に意図的に含めてよい根拠にはしない。
@@ -93,3 +97,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)
 - [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0161](../adr/0161-android17-main-process-memory-diagnostics.md)

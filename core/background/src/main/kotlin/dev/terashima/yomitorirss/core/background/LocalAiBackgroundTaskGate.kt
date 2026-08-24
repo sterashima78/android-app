@@ -23,11 +23,30 @@ object LocalAiBackgroundTaskGate {
   private var active = false
   private var nextSequence = 0L
 
+  @Volatile
+  private var activeDiagnosticLabel: String? = null
+
   suspend fun <T> withPermit(
     priority: LocalAiBackgroundTaskPriority = LocalAiBackgroundTaskPriority.NORMAL,
     block: suspend () -> T,
+  ): T = withPermitForDiagnostics(
+    priority = priority,
+    diagnosticLabel = inferDiagnosticLabel(),
+    block = block,
+  )
+
+  /**
+   * Returns a sanitized implementation-level label for the background local-AI task currently
+   * holding the permit. This is diagnostics-only state; business behavior must not depend on it.
+   */
+  fun currentDiagnosticLabel(): String? = activeDiagnosticLabel
+
+  internal suspend fun <T> withPermitForDiagnostics(
+    priority: LocalAiBackgroundTaskPriority = LocalAiBackgroundTaskPriority.NORMAL,
+    diagnosticLabel: String,
+    block: suspend () -> T,
   ): T {
-    acquire(priority)
+    acquire(priority, diagnosticLabel)
     return try {
       block()
     } finally {
@@ -35,16 +54,21 @@ object LocalAiBackgroundTaskGate {
     }
   }
 
-  private suspend fun acquire(priority: LocalAiBackgroundTaskPriority) {
+  private suspend fun acquire(
+    priority: LocalAiBackgroundTaskPriority,
+    diagnosticLabel: String,
+  ) {
     val waiter = synchronized(lock) {
       if (!active) {
         active = true
+        activeDiagnosticLabel = diagnosticLabel
         null
       } else {
         Waiter(
           priority = priority,
           sequence = nextSequence++,
           signal = CompletableDeferred(),
+          diagnosticLabel = diagnosticLabel,
         ).also(waiters::add)
       }
     } ?: return
@@ -83,20 +107,37 @@ object LocalAiBackgroundTaskGate {
 
       if (candidate == null) {
         active = false
+        activeDiagnosticLabel = null
         null
       } else {
         waiters.remove(candidate)
         candidate.state = WaiterState.GRANTED
+        activeDiagnosticLabel = candidate.diagnosticLabel
         candidate
       }
     }
     next?.signal?.complete(Unit)
   }
 
+  private fun inferDiagnosticLabel(): String =
+    Throwable().stackTrace
+      .asSequence()
+      .map(StackTraceElement::getClassName)
+      .map { className -> className.substringBefore('$') }
+      .firstOrNull { className ->
+        className.startsWith(APP_PACKAGE_PREFIX) &&
+          !className.startsWith("${APP_PACKAGE_PREFIX}core.background.")
+      }
+      ?.filter { character -> character.isLetterOrDigit() || character in ".:_-" }
+      ?.take(MAX_DIAGNOSTIC_LABEL_CHARS)
+      ?.takeIf(String::isNotBlank)
+      ?: "unknown"
+
   private data class Waiter(
     val priority: LocalAiBackgroundTaskPriority,
     val sequence: Long,
     val signal: CompletableDeferred<Unit>,
+    val diagnosticLabel: String,
     var state: WaiterState = WaiterState.WAITING,
   )
 
@@ -105,4 +146,7 @@ object LocalAiBackgroundTaskGate {
     GRANTED,
     CANCELLED,
   }
+
+  private const val APP_PACKAGE_PREFIX = "dev.terashima.yomitorirss."
+  private const val MAX_DIAGNOSTIC_LABEL_CHARS = 160
 }

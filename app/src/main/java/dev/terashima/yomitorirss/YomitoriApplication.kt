@@ -62,7 +62,9 @@ class YomitoriApplication : Application(),
     super.onCreate()
     if (!shouldInitializeMainProcessRuntime(Application.getProcessName(), packageName)) return
     registerActivityLifecycleCallbacks(currentActivityTracker)
+    Android17MemoryAnomalyProfiler.install(this)
     StartupCrashStore.install(this)
+    AppLocalAiMemoryMonitor.install(this)
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }

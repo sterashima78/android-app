@@ -71,6 +71,26 @@ class LocalAiMemoryDiagnosticsTest {
   }
 
   @Test
+  fun `main process 診断はAIタスク名を安全な文字だけで記録する`() {
+    val line = buildProcessMemoryDiagnosticLine(
+      timestamp = 123L,
+      pid = 42,
+      processName = "dev.example",
+      phase = LocalAiProcessMemoryPhase.ACTIVE_BACKGROUND_AI,
+      diagnosticLabel = "Summary Worker / secret?",
+      pssKb = 10L,
+      rssKb = 20L,
+      nativeHeapKb = 30L,
+      javaHeapKb = 40L,
+    )
+
+    assertTrue(line.contains("phase=main-active-background-ai"))
+    assertTrue(line.contains("task=SummaryWorkersecret"))
+    assertFalse(line.contains("/"))
+    assertFalse(line.contains("?"))
+  }
+
+  @Test
   fun `process exit report には同じ pid と process の終了以前だけを含める`() {
     val matchingBefore = buildVisionMemoryDiagnosticLine(
       timestamp = 100L,
@@ -111,5 +131,40 @@ class LocalAiMemoryDiagnosticsTest {
     )
 
     assertEquals(matchingBefore, filtered)
+  }
+
+  @Test
+  fun `process exit report は複数由来の診断行を時系列に並べる`() {
+    val later = buildProcessMemoryDiagnosticLine(
+      timestamp = 200L,
+      pid = 42,
+      processName = "dev.example",
+      phase = LocalAiProcessMemoryPhase.RETAINED_AFTER_BACKGROUND_AI,
+      diagnosticLabel = "summary",
+      pssKb = 5L,
+      rssKb = 6L,
+      nativeHeapKb = 7L,
+      javaHeapKb = 8L,
+    )
+    val earlier = buildProcessMemoryDiagnosticLine(
+      timestamp = 100L,
+      pid = 42,
+      processName = "dev.example",
+      phase = LocalAiProcessMemoryPhase.ACTIVE_BACKGROUND_AI,
+      diagnosticLabel = "summary",
+      pssKb = 1L,
+      rssKb = 2L,
+      nativeHeapKb = 3L,
+      javaHeapKb = 4L,
+    )
+
+    val filtered = filterDiagnosticLines(
+      report = "$later\n$earlier",
+      pid = 42,
+      processName = "dev.example",
+      untilTimestamp = 250L,
+    )
+
+    assertEquals("$earlier\n$later", filtered)
   }
 }
