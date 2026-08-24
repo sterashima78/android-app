@@ -4,12 +4,16 @@ on:
   pull_request:
     paths:
       - "docs/adr/**"
+      - "docs/architecture/**"
+      - "docs/spec.md"
       - "scripts/verify_adr_integrity.py"
       - "scripts/test_verify_adr_integrity.py"
       - ".github/workflows/adr-integrity.yml"
   push:
     paths:
       - "docs/adr/**"
+      - "docs/architecture/**"
+      - "docs/spec.md"
       - "scripts/verify_adr_integrity.py"
       - "scripts/test_verify_adr_integrity.py"
       - ".github/workflows/adr-integrity.yml"
