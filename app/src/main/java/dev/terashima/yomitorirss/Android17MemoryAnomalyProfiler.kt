@@ -48,8 +48,18 @@ internal fun recentMemoryProfilingArtifactNames(
   application: Application,
   exitTimestampMillis: Long,
   lookbackMillis: Long = 10L * 60L * 1000L,
+): List<String> = recentMemoryProfilingArtifactNames(
+  profilingDirectory = File(application.filesDir, "profiling"),
+  exitTimestampMillis = exitTimestampMillis,
+  lookbackMillis = lookbackMillis,
+)
+
+internal fun recentMemoryProfilingArtifactNames(
+  profilingDirectory: File,
+  exitTimestampMillis: Long,
+  lookbackMillis: Long,
 ): List<String> {
-  val profilingDirectory = File(application.filesDir, "profiling")
+  require(lookbackMillis >= 0L) { "lookbackMillis must not be negative" }
   val earliest = exitTimestampMillis - lookbackMillis
   return profilingDirectory
     .listFiles()
