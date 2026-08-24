@@ -40,6 +40,7 @@ internal fun AppFeatureContent(
   bookmarkEditController: BookmarkEditController,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
+  onGameFullscreenChange: (Boolean) -> Unit,
 ) {
   when (selectedTab) {
     MainTab.INTEGRATED -> {
@@ -171,7 +172,10 @@ internal fun AppFeatureContent(
       viewModelFactory = routeDependencies.calendarViewModelFactory,
       modifier = modifier,
     )
-    MainTab.GAME -> GameRouteHost(modifier = modifier)
+    MainTab.GAME -> GameRouteHost(
+      modifier = modifier,
+      onFullscreenChange = onGameFullscreenChange,
+    )
     MainTab.HEALTH -> HealthRoute(
       viewModelFactory = routeDependencies.health.viewModelFactory,
       readPermissions = routeDependencies.health.readPermissions,
