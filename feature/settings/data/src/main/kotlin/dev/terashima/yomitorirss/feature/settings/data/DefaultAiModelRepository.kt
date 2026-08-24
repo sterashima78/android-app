@@ -23,7 +23,6 @@ import dev.terashima.yomitorirss.feature.settings.AiModelBenchmarkSample
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSummaryProgress
-import dev.terashima.yomitorirss.feature.summary.data.SummaryPromptStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -35,7 +34,6 @@ class DefaultAiModelRepository(
 ) : AiModelRepository {
   private val downloadStateStore = AiModelDownloadStateStore(context)
   private val downloadScheduler = AiModelDownloadScheduler(context, downloadStateStore)
-  private val summaryPromptStore = SummaryPromptStore(context)
   private val benchmarkRunner = LocalModelBenchmarkRunner(context, manager)
   private val contextBenchmarkRunner = LocalContextBenchmarkRunner(context, manager)
 
@@ -78,7 +76,6 @@ class DefaultAiModelRepository(
     }
   }
 
-  override val summaryPrompt = summaryPromptStore.prompt
   override val inferenceSettings = manager.inferenceSettings.map { settings ->
     AiInferenceSettings(
       backend = settings.backend.toDomain(),
@@ -89,8 +86,6 @@ class DefaultAiModelRepository(
   }
 
   override fun isSupported(): Boolean = manager.isSupported()
-  override fun updateSummaryPrompt(prompt: String) = summaryPromptStore.update(prompt)
-  override fun resetSummaryPrompt() = summaryPromptStore.reset()
   override fun setInferenceBackend(backend: AiInferenceBackend) = manager.setInferenceBackend(
     when (backend) {
       AiInferenceBackend.CPU -> LocalInferenceBackend.CPU
