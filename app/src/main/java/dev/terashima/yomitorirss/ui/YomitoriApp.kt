@@ -12,10 +12,14 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
@@ -42,6 +46,8 @@ fun YomitoriApp(
   val redditController = rememberRedditRouteController()
   val bookmarkEditController = rememberBookmarkEditController()
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
+  var gameFullscreen by rememberSaveable { mutableStateOf(false) }
+  val isFullscreenGame = selectedTab == MainTab.GAME && gameFullscreen
 
   FeatureMessageEffects(
     selectedTab = selectedTab,
@@ -78,13 +84,15 @@ fun YomitoriApp(
         ScaffoldDefaults.contentWindowInsets
       },
       topBar = {
-        AppTopBarRoute(
-          selectedTab = selectedTab,
-          routeDependencies = routeDependencies,
-          rssController = rssController,
-          redditController = redditController,
-          onOpenDrawer = openDrawer,
-        )
+        if (!isFullscreenGame) {
+          AppTopBarRoute(
+            selectedTab = selectedTab,
+            routeDependencies = routeDependencies,
+            rssController = rssController,
+            redditController = redditController,
+            onOpenDrawer = openDrawer,
+          )
+        }
       },
       bottomBar = {
         AppBottomBar(
@@ -93,17 +101,21 @@ fun YomitoriApp(
         )
       },
     ) { padding ->
-      AppFeatureContent(
-        selectedTab = selectedTab,
-        modifier = Modifier.fillMaxSize().padding(padding),
-        appViewModel = appViewModel,
-        routeDependencies = routeDependencies,
-        rssController = rssController,
-        redditController = redditController,
-        bookmarkEditController = bookmarkEditController,
-        onOpenArticle = onOpenArticle,
-        onOpenWebServer = onOpenWebServer,
-      )
+      CompositionLocalProvider(
+        LocalGameFullscreenChange provides { fullscreen -> gameFullscreen = fullscreen },
+      ) {
+        AppFeatureContent(
+          selectedTab = selectedTab,
+          modifier = Modifier.fillMaxSize().padding(padding),
+          appViewModel = appViewModel,
+          routeDependencies = routeDependencies,
+          rssController = rssController,
+          redditController = redditController,
+          bookmarkEditController = bookmarkEditController,
+          onOpenArticle = onOpenArticle,
+          onOpenWebServer = onOpenWebServer,
+        )
+      }
     }
   }
 
