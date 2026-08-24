@@ -20,7 +20,7 @@ Android 17 は `ProfilingManager` の `TRIGGER_TYPE_ANOMALY` により memory li
 
 `LocalAiBackgroundTaskGate` は permit を保持している task の diagnostics-only label を公開する。
 
-- caller が明示 label を渡さない既存 task は、permit 取得時の stack trace から最初の app package 内の feature/app caller class を抽出する。
+- 公開 `withPermit` の引数には diagnostic label を追加せず、permit 取得時の stack trace から最初の app package 内の feature/app caller class を抽出する。
 - `$` 以下の coroutine / lambda suffix を除外し、英数字と `._:-` だけに制限する。
 - article title、URL、prompt、model output、file name 等の user data は label に含めない。
 - priority、durable queue state、business behavior は label を参照しない。
