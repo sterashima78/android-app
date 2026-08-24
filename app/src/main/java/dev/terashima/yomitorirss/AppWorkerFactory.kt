@@ -21,7 +21,7 @@ internal fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
     addFactory(BackupWorkerFactory { container.backupRepository })
     addFactory(KnowledgeWorkerFactory { container.knowledgeBuilder })
     addFactory(MailWorkerFactory { container.mailRepository })
-    addFactory(LibraryWorkerFactory { container.featureRuntimeDependencies.library.workerRuntime })
+    addFactory(LibraryWorkerFactory { container.libraryWorkerRuntime })
     addFactory(
       WidgetWorkerFactory(
         repositoryProvider = { container.widgetRepository },
