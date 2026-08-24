@@ -8,7 +8,7 @@
 
 Android 17 / API 37 では app ごとの memory limit が導入され、制限で終了された process は `ApplicationExitInfo` の reason が `REASON_OTHER`、description が `MemoryLimiter:AnonSwap` として観測される。
 
-SMB の vision inference は ADR-0159 により `:local_ai_vision` process へ隔離し、vision engine の初期化・推論・close 前後を pid/process 単位で採取している。一方、2026-08-23 の Pixel 11 実機では main process `dev.terashima.yomitorirss` が foreground service 実行中に RSS 約 3.4 GiB まで増加して `MemoryLimiter:AnonSwap` で終了した。終了対象は `:local_ai_vision` ではないため、vision process の短寿命化だけでは説明できない。
+SMB の vision inference は ADR-0159 により `:local_ai_vision` process へ隔離し、vision engine の初期化・推論・close 前後を pid/process 単位で採取している。一方、Android 17 実機では main process `dev.terashima.yomitorirss` が foreground service 実行中に RSS 約 3.4 GiB まで増加して `MemoryLimiter:AnonSwap` で終了した。終了対象は `:local_ai_vision` ではないため、vision process の短寿命化だけでは説明できない。
 
 main process では Summary、Knowledge、Library organization 等の background local-AI task が process-wide `LocalModelManager` を共有する。終了時の `importance=125` だけではどの Worker が permit を保持していたか、推論終了後も native / anonymous memory が残留していたかを判別できない。
 
@@ -20,7 +20,7 @@ Android 17 は `ProfilingManager` の `TRIGGER_TYPE_ANOMALY` により memory li
 
 `LocalAiBackgroundTaskGate` は permit を保持している task の diagnostics-only label を公開する。
 
-- caller が明示 label を渡さない既存 task は、permit 取得時の stack trace から最初の feature/app caller class を抽出する。
+- caller が明示 label を渡さない既存 task は、permit 取得時の stack trace から最初の app package 内の feature/app caller class を抽出する。
 - `$` 以下の coroutine / lambda suffix を除外し、英数字と `._:-` だけに制限する。
 - article title、URL、prompt、model output、file name 等の user data は label に含めない。
 - priority、durable queue state、business behavior は label を参照しない。
@@ -47,7 +47,7 @@ AI permit 保持中は `main-active-background-ai`、permit 解放後は直前 t
 
 API 37 runtime でのみ `ProfilingManager` の anomaly trigger を登録する。
 
-現行 compileSdk 36 には `ProfilingTrigger` / `addProfilingTriggers` は存在するが `TRIGGER_TYPE_ANOMALY` constant は API 37 追加であるため、API 37 の documented constant value `8` を SDK 37 guard の内側だけで使用する。これにより compileSdk / targetSdk を変更せず、実機 Android 17 の診断能力だけを利用する。
+現行 compileSdk 36 には `ProfilingTrigger` / `addProfilingTriggers` は存在するが `TRIGGER_TYPE_ANOMALY` constant は API 37 追加であるため、API 37 の documented constant value `8` を SDK 37 guard の内側だけで使用する。API 37 framework 型を参照する実装も別 object に隔離し、API 34-36 runtime ではロードしない。これにより compileSdk / targetSdk を変更せず、実機 Android 17 の診断能力だけを利用する。
 
 system-generated profiling result は app private `files/profiling` 以下に残し、自動 upload や repository への保存は行わない。MemoryLimiter exit report には終了前10分以内の artifact file name を最大3件だけ記録し、heap dump 内容や private path は共有テキストへ含めない。
 
