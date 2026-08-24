@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.terashima.yomitorirss.feature.summary.SummaryPromptSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,7 @@ private data class ContextBenchmarkKey(
 
 class AiSettingsViewModel(
   private val repository: AiModelRepository,
+  private val summaryPromptSettings: SummaryPromptSettings,
 ) : ViewModel() {
   private val _state = MutableStateFlow(AiSettingsUiState(supported = repository.isSupported()))
   val state: StateFlow<AiSettingsUiState> = _state.asStateFlow()
@@ -59,7 +61,7 @@ class AiSettingsViewModel(
       repository.summaryProgress.collect { progress -> _state.update { it.copy(summaryProgress = progress) } }
     }
     viewModelScope.launch {
-      repository.summaryPrompt.collect { prompt -> _state.update { it.copy(summaryPrompt = prompt) } }
+      summaryPromptSettings.prompt.collect { prompt -> _state.update { it.copy(summaryPrompt = prompt) } }
     }
     viewModelScope.launch {
       repository.inferenceSettings.collect { settings ->
@@ -81,13 +83,13 @@ class AiSettingsViewModel(
   }
 
   fun updateSummaryPrompt(prompt: String) {
-    runCatching { repository.updateSummaryPrompt(prompt) }
+    runCatching { summaryPromptSettings.update(prompt) }
       .onSuccess { _state.update { it.copy(message = "要約プロンプトを保存しました") } }
       .onFailure(::showError)
   }
 
   fun resetSummaryPrompt() {
-    runCatching { repository.resetSummaryPrompt() }
+    runCatching { summaryPromptSettings.reset() }
       .onSuccess { _state.update { it.copy(message = "要約プロンプトを既定に戻しました") } }
       .onFailure(::showError)
   }
@@ -229,11 +231,12 @@ class AiSettingsViewModel(
 
   class Factory(
     private val repository: AiModelRepository,
+    private val summaryPromptSettings: SummaryPromptSettings,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(AiSettingsViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return AiSettingsViewModel(repository) as T
+      return AiSettingsViewModel(repository, summaryPromptSettings) as T
     }
   }
 }
