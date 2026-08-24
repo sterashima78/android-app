@@ -194,4 +194,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0132](../adr/0132-health-connect-exercise-session-deduplication.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0143](../adr/0143-web-library-source-and-bookmark-transfer.md)
-- [ADR-0153](../adr/0153-web-library-rendered-metadata-fallback.md)
+- [ADR-0154](../adr/0154-web-library-rendered-metadata-fallback.md)

@@ -14,6 +14,20 @@ class PublicRepositoryVerifierTest(unittest.TestCase):
         self.assertIsNone(sensitive_path_reason(".env.example"))
         self.assertIsNone(sensitive_path_reason("fixtures/library.json"))
 
+    def test_rejects_profiling_and_heap_artifacts(self) -> None:
+        self.assertIsNotNone(
+            sensitive_path_reason(
+                "debug/profiling/profile_trigger-type-8_2026-08-24.perfetto-trace"
+            )
+        )
+        self.assertIsNotNone(
+            sensitive_path_reason(
+                "debug/profiling/profile_trigger-type-8_2026-08-24.perfetto-trace-unredacted"
+            )
+        )
+        self.assertIsNotNone(sensitive_path_reason("debug/memory-leak.hprof"))
+        self.assertIsNotNone(sensitive_path_reason("debug/session.heapprofile"))
+
     def test_detects_high_confidence_credentials(self) -> None:
         google_key = "AIza" + "A" * 35
         github_token = "ghp_" + "A" * 36

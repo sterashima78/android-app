@@ -127,13 +127,24 @@ jobs:
       - name: Verify APK signature
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
-      - name: Name APK
-        run: mv app/build/outputs/apk/release/app-release.apk mosaic-0.2.0-arm64-v8a.apk
+      - name: Name APK from build version
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          metadata = json.loads(Path("app/build/outputs/apk/release/output-metadata.json").read_text())
+          print(metadata["elements"][0]["versionName"])
+          PY
+          )"
+          test -n "$VERSION_NAME"
+          mv app/build/outputs/apk/release/app-release.apk "mosaic-${VERSION_NAME}-arm64-v8a.apk"
       - name: Upload APK
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: mosaic-android-apk
-          path: mosaic-0.2.0-arm64-v8a.apk
+          path: mosaic-*-arm64-v8a.apk
           if-no-files-found: error
           retention-days: 1
       - name: Publish APK build run

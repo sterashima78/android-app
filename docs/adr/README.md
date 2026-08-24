@@ -46,6 +46,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0156: active tab の message capability policy を navigation spec に集約する](0156-active-tab-message-capability-policy.md)
 - [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
+- [ADR-0162: current architecture cleanup の残存境界を guardrail 化する](0162-current-architecture-cleanup-guardrails.md)
 
 ### Domain / Context / persistence
 
@@ -68,6 +69,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
 - [ADR-0151: current architecture の互換 redirect は参照移行後に廃止する](0151-retire-current-architecture-compatibility-redirects.md)
 - [ADR-0157: Mosaic の外部識別子と互換識別子を区別する](0157-mosaic-external-and-compatibility-identifiers.md)
+- [ADR-0162: current architecture cleanup の残存境界を guardrail 化する](0162-current-architecture-cleanup-guardrails.md)
 
 ## Supporting architecture areas
 
@@ -154,13 +156,13 @@ python3 -m unittest scripts.test_verify_adr_integrity
 python3 scripts/verify_adr_integrity.py
 ```
 
-検査は filename/header の番号一致、番号重複、存在しない ADR 参照、壊れた ADR link 等を検出する。意味的に正しい ADR を参照しているかはレビューで確認する。
+検査は filename/header の番号一致、番号重複、存在しない ADR 参照、壊れた ADR link に加え、`docs/architecture/*.md` と `docs/spec.md` からの ADR reference / link target も検出する。意味的に正しい ADR を参照しているかはレビューで確認する。
 
 ## Public repository rule
 
 ADR には設計判断に必要な情報だけを記録し、credential、token、OAuth secret、実ユーザー URL、メールアドレス、個人データ、公開を意図しない endpoint 等を含めない。
 
-高確度な credential / private artifact は `scripts/verify_public_repository.py` でも検査するが、意味的な個人情報レビューは引き続き必須とする。
+高確度な credential / private artifact は `scripts/verify_public_repository.py` でも検査するが、意味的な個人情報レビューは引き続き必須とする。ProfilingManager trace や heap dump 等の診断 artifact も repository へ追加しない。
 
 ## Sources
 
@@ -177,3 +179,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0159](0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161](0161-android17-main-process-memory-diagnostics.md)
+- [ADR-0162](0162-current-architecture-cleanup-guardrails.md)

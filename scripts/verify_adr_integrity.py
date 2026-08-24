@@ -12,8 +12,48 @@ ADR_HEADING = re.compile(r"^# ADR-(?P<number>\d{4}):\s+\S.*$")
 ADR_REFERENCE = re.compile(r"\bADR-(?P<number>\d{4})\b")
 ADR_PATH_REFERENCE = re.compile(r"docs/adr/(?P<filename>\d{4}-[a-z0-9][a-z0-9-]*\.md)")
 MARKDOWN_LOCAL_ADR_LINK = re.compile(
-    r"\]\((?:\./)?(?P<filename>\d{4}-[a-z0-9][a-z0-9-]*\.md)(?:#[^)]+)?\)"
+    r"\]\((?:(?:\./)?|\.\./adr/)(?P<filename>\d{4}-[a-z0-9][a-z0-9-]*\.md)(?:#[^)]+)?\)"
 )
+
+
+def _current_architecture_documents(root: Path) -> list[Path]:
+    documents: list[Path] = []
+    adr_index = root / "docs" / "adr" / ADR_INDEX_FILENAME
+    if adr_index.is_file():
+        documents.append(adr_index)
+    architecture_dir = root / "docs" / "architecture"
+    if architecture_dir.is_dir():
+        documents.extend(sorted(architecture_dir.glob("*.md")))
+    spec = root / "docs" / "spec.md"
+    if spec.is_file():
+        documents.append(spec)
+    return documents
+
+
+def _verify_references(
+    root: Path,
+    path: Path,
+    text: str,
+    known_numbers: set[str],
+    known_filenames: set[str],
+) -> list[str]:
+    violations: list[str] = []
+    rel = path.relative_to(root)
+    for match in ADR_REFERENCE.finditer(text):
+        referenced = match.group("number")
+        if referenced not in known_numbers:
+            violations.append(f"{rel}: ADR-{referenced} does not exist")
+
+    explicit_paths = {
+        match.group("filename") for match in ADR_PATH_REFERENCE.finditer(text)
+    }
+    explicit_paths.update(
+        match.group("filename") for match in MARKDOWN_LOCAL_ADR_LINK.finditer(text)
+    )
+    for filename in sorted(explicit_paths):
+        if filename not in known_filenames:
+            violations.append(f"{rel}: ADR link target does not exist: {filename}")
+    return violations
 
 
 def verify_adr_integrity(root: Path) -> list[str]:
@@ -62,21 +102,15 @@ def verify_adr_integrity(root: Path) -> list[str]:
     known_filenames = {path.name for path, _, _ in parsed}
 
     for path, _, text in parsed:
-        rel = path.relative_to(root)
-        for match in ADR_REFERENCE.finditer(text):
-            referenced = match.group("number")
-            if referenced not in known_numbers:
-                violations.append(f"{rel}: ADR-{referenced} does not exist")
-
-        explicit_paths = {
-            match.group("filename") for match in ADR_PATH_REFERENCE.finditer(text)
-        }
-        explicit_paths.update(
-            match.group("filename") for match in MARKDOWN_LOCAL_ADR_LINK.finditer(text)
+        violations.extend(
+            _verify_references(root, path, text, known_numbers, known_filenames)
         )
-        for filename in sorted(explicit_paths):
-            if filename not in known_filenames:
-                violations.append(f"{rel}: ADR link target does not exist: {filename}")
+
+    for path in _current_architecture_documents(root):
+        text = path.read_text(encoding="utf-8")
+        violations.extend(
+            _verify_references(root, path, text, known_numbers, known_filenames)
+        )
 
     return sorted(set(violations))
 
@@ -97,7 +131,7 @@ def main() -> int:
             if path.name != ADR_INDEX_FILENAME
         ]
     )
-    print(f"ADR integrity verification passed ({count} ADR files).")
+    print(f"ADR integrity verification passed ({count} ADR files + current architecture docs).")
     return 0
 
 
