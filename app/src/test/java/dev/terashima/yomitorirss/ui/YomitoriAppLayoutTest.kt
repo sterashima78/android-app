@@ -16,4 +16,11 @@ class YomitoriAppLayoutTest {
       .filterNot { it == MainTab.X }
       .forEach { assertTrue(it.usesGlobalTopBar()) }
   }
+
+  @Test
+  fun `ゲームの全画面要求中だけapp chromeを隠す`() {
+    assertTrue(shouldHideAppChrome(MainTab.GAME, gameFullscreen = true))
+    assertFalse(shouldHideAppChrome(MainTab.GAME, gameFullscreen = false))
+    assertFalse(shouldHideAppChrome(MainTab.HEALTH, gameFullscreen = true))
+  }
 }
