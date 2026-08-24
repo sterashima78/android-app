@@ -36,9 +36,9 @@ internal fun GameRouteHost(modifier: Modifier) {
 
   DisposableEffect(activity) {
     onDispose {
-      currentOnFullscreenChange(false)
-      if (activity != null && !activity.isChangingConfigurations) {
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+      if (activity?.isChangingConfigurations != true) {
+        currentOnFullscreenChange(false)
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
       }
     }
   }
