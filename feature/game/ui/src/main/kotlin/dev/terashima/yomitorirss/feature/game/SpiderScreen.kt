@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +26,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,6 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
+private val spiderBoardMaxWidth = 720.dp
+private val spiderStockWidth = 38.dp
 
 @Composable
 internal fun SpiderRoute(
@@ -70,60 +72,30 @@ private fun SpiderScreen(
   val validTargets = state.validTableauTargets()
 
   Box(modifier = modifier.fillMaxSize()) {
-    Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(horizontal = 6.dp, vertical = 6.dp),
-      verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      SpiderHeader(
-        state = state,
-        onBack = onBack,
-        onNewGame = onNewGame,
-      )
-
-      GameTableSurface(
+    GameTableSurface(modifier = Modifier.fillMaxSize()) {
+      Column(
         modifier = Modifier
-          .fillMaxWidth()
-          .weight(1f),
+          .fillMaxSize()
+          .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
       ) {
-        Column(
+        SpiderTopRow(
+          state = state,
+          validTargets = validTargets,
+          onBack = onBack,
+          onNewGame = onNewGame,
+          onDealStock = onDealStock,
+        )
+
+        SpiderTableauBoard(
+          state = state,
+          validTargets = validTargets,
+          onSelectTableau = onSelectTableau,
+          onMoveSelectedToTableau = onMoveSelectedToTableau,
           modifier = Modifier
-            .fillMaxSize()
-            .padding(7.dp),
-          verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.Top,
-          ) {
-            SpiderCompletedRuns(
-              completedRuns = state.completedRuns,
-              modifier = Modifier.weight(1f),
-            )
-            SpiderStockControl(
-              state = state,
-              onDealStock = onDealStock,
-              modifier = Modifier.width(52.dp),
-            )
-          }
-
-          SpiderSelectionStatus(
-            state = state,
-            validTargets = validTargets,
-          )
-
-          SpiderTableauBoard(
-            state = state,
-            validTargets = validTargets,
-            onSelectTableau = onSelectTableau,
-            onMoveSelectedToTableau = onMoveSelectedToTableau,
-            modifier = Modifier
-              .fillMaxWidth()
-              .weight(1f),
-          )
-        }
+            .fillMaxWidth()
+            .weight(1f),
+        )
       }
     }
 
@@ -154,60 +126,96 @@ private fun SpiderScreen(
 }
 
 @Composable
-private fun SpiderHeader(
+private fun SpiderTopRow(
   state: SpiderGameState,
+  validTargets: Set<Int>,
   onBack: () -> Unit,
+  onNewGame: (SpiderDifficulty) -> Unit,
+  onDealStock: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    SpiderActionChip(
+      text = "‹",
+      onClick = onBack,
+      modifier = Modifier.width(34.dp),
+    )
+
+    Text(
+      text = "スパイダー · ${state.moves}手 · ${state.completedRuns.size}/8",
+      style = MaterialTheme.typography.labelSmall,
+      color = Color.White.copy(alpha = 0.86f),
+      maxLines = 1,
+    )
+
+    SpiderCompletedRuns(
+      completedRuns = state.completedRuns,
+      modifier = Modifier
+        .weight(1f)
+        .widthIn(max = 230.dp),
+    )
+
+    val message = spiderStatusMessage(state, validTargets)
+    if (message == null) {
+      Spacer(Modifier.weight(1f))
+    } else {
+      Text(
+        text = message,
+        style = MaterialTheme.typography.labelSmall,
+        color = Color.White.copy(alpha = 0.72f),
+        maxLines = 1,
+        modifier = Modifier.weight(1f),
+      )
+    }
+
+    SpiderDifficultyControl(
+      state = state,
+      onNewGame = onNewGame,
+    )
+
+    SpiderActionChip(
+      text = "新規",
+      onClick = { onNewGame(state.difficulty) },
+      modifier = Modifier.width(48.dp),
+    )
+
+    SpiderStockControl(
+      state = state,
+      onDealStock = onDealStock,
+      modifier = Modifier.width(spiderStockWidth),
+    )
+  }
+}
+
+@Composable
+private fun SpiderDifficultyControl(
+  state: SpiderGameState,
   onNewGame: (SpiderDifficulty) -> Unit,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
 
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(3.dp),
-  ) {
-    TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 5.dp)) {
-      Text("‹ ゲーム")
-    }
-    Column(modifier = Modifier.weight(1f)) {
-      Text(
-        "スパイダー",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-      )
-      Text(
-        "手数 ${state.moves} · 完成 ${state.completedRuns.size}/8",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    }
-    Box {
-      TextButton(
-        onClick = { menuOpen = true },
-        contentPadding = PaddingValues(horizontal = 6.dp),
-      ) {
-        Text("${state.difficulty.label()} ▾")
-      }
-      DropdownMenu(
-        expanded = menuOpen,
-        onDismissRequest = { menuOpen = false },
-      ) {
-        SpiderDifficulty.entries.forEach { difficulty ->
-          DropdownMenuItem(
-            text = { Text(difficulty.label()) },
-            onClick = {
-              menuOpen = false
-              if (difficulty != state.difficulty) onNewGame(difficulty)
-            },
-          )
-        }
-      }
-    }
-    TextButton(
-      onClick = { onNewGame(state.difficulty) },
-      contentPadding = PaddingValues(horizontal = 5.dp),
+  Box {
+    SpiderActionChip(
+      text = "${state.difficulty.label()} ▾",
+      onClick = { menuOpen = true },
+      modifier = Modifier.width(76.dp),
+    )
+    DropdownMenu(
+      expanded = menuOpen,
+      onDismissRequest = { menuOpen = false },
     ) {
-      Text("新規")
+      SpiderDifficulty.entries.forEach { difficulty ->
+        DropdownMenuItem(
+          text = { Text(difficulty.label()) },
+          onClick = {
+            menuOpen = false
+            if (difficulty != state.difficulty) onNewGame(difficulty)
+          },
+        )
+      }
     }
   }
 }
@@ -219,21 +227,21 @@ private fun SpiderCompletedRuns(
 ) {
   Row(
     modifier = modifier,
-    horizontalArrangement = Arrangement.spacedBy(3.dp),
+    horizontalArrangement = Arrangement.spacedBy(2.dp),
   ) {
     repeat(8) { index ->
       val suit = completedRuns.getOrNull(index)
       Box(
         modifier = Modifier
           .weight(1f)
-          .background(Color.Black.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
-          .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(5.dp))
-          .padding(vertical = 5.dp),
+          .background(Color.Black.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+          .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(4.dp))
+          .padding(vertical = 3.dp),
         contentAlignment = Alignment.Center,
       ) {
         Text(
           text = suit?.symbol() ?: "·",
-          style = MaterialTheme.typography.labelMedium,
+          style = MaterialTheme.typography.labelSmall,
           color = when {
             suit == null -> Color.White.copy(alpha = 0.35f)
             suit.isRed -> Color(0xFFFF8A80)
@@ -262,9 +270,9 @@ private fun SpiderStockControl(
       Box(
         modifier = Modifier
           .align(Alignment.BottomCenter)
-          .padding(2.dp)
+          .padding(1.dp)
           .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(999.dp))
-          .padding(horizontal = 4.dp, vertical = 1.dp),
+          .padding(horizontal = 3.dp),
       ) {
         Text(
           text = "×${state.stock.size / 10}",
@@ -283,28 +291,17 @@ private fun SpiderStockControl(
   }
 }
 
-@Composable
-private fun SpiderSelectionStatus(
+private fun spiderStatusMessage(
   state: SpiderGameState,
   validTargets: Set<Int>,
-) {
-  val message = when {
-    state.selection != null && validTargets.isNotEmpty() ->
-      "${state.selectedCardCount()}枚選択 · 光っている列へ移動"
-    state.selection != null ->
-      "${state.selectedCardCount()}枚選択 · 現在は移動先がありません"
-    state.stock.isNotEmpty() && !state.canDealStock && state.tableau.any { it.isEmpty() } ->
-      "空列を埋めると右上の山札を配れます"
-    else ->
-      "同一スートの連続列を選ぶと移動可能先が光ります"
-  }
-
-  Text(
-    text = message,
-    style = MaterialTheme.typography.labelSmall,
-    color = Color.White.copy(alpha = 0.78f),
-    modifier = Modifier.fillMaxWidth(),
-  )
+): String? = when {
+  state.selection != null && validTargets.isNotEmpty() ->
+    "${state.selectedCardCount()}枚 · 強調列へ"
+  state.selection != null ->
+    "${state.selectedCardCount()}枚 · 移動先なし"
+  state.stock.isNotEmpty() && !state.canDealStock && state.tableau.any { it.isEmpty() } ->
+    "空列を埋めると配札できます"
+  else -> null
 }
 
 @Composable
@@ -315,22 +312,30 @@ private fun SpiderTableauBoard(
   onMoveSelectedToTableau: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Row(
+  Box(
     modifier = modifier,
-    horizontalArrangement = Arrangement.spacedBy(2.dp),
+    contentAlignment = Alignment.TopCenter,
   ) {
-    state.tableau.forEachIndexed { pileIndex, pile ->
-      SpiderTableauPile(
-        pile = pile,
-        pileIndex = pileIndex,
-        selection = state.selection,
-        isDestination = pileIndex in validTargets,
-        onSelectTableau = onSelectTableau,
-        onMoveSelectedToTableau = onMoveSelectedToTableau,
-        modifier = Modifier
-          .weight(1f)
-          .fillMaxHeight(),
-      )
+    Row(
+      modifier = Modifier
+        .widthIn(max = spiderBoardMaxWidth)
+        .fillMaxWidth()
+        .fillMaxHeight(),
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      state.tableau.forEachIndexed { pileIndex, pile ->
+        SpiderTableauPile(
+          pile = pile,
+          pileIndex = pileIndex,
+          selection = state.selection,
+          isDestination = pileIndex in validTargets,
+          onSelectTableau = onSelectTableau,
+          onMoveSelectedToTableau = onMoveSelectedToTableau,
+          modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+        )
+      }
     }
   }
 }
@@ -376,7 +381,7 @@ private fun SpiderTableauPile(
     } else {
       ((maxHeight.value - cardHeight).coerceAtLeast(0f) / (pile.size - 1))
         .dp
-        .coerceIn(10.dp, 24.dp)
+        .coerceIn(6.dp, 20.dp)
     }
 
     pile.forEachIndexed { cardIndex, tableauCard ->
@@ -408,6 +413,29 @@ private fun SpiderTableauPile(
         )
       }
     }
+  }
+}
+
+@Composable
+private fun SpiderActionChip(
+  text: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    modifier = modifier
+      .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(999.dp))
+      .clickable(onClick = onClick)
+      .padding(horizontal = 6.dp, vertical = 5.dp),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(
+      text = text,
+      style = MaterialTheme.typography.labelMedium,
+      color = Color.White,
+      fontWeight = FontWeight.SemiBold,
+      maxLines = 1,
+    )
   }
 }
 
