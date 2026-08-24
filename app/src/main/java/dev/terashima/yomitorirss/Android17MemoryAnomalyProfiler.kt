@@ -12,34 +12,39 @@ import java.util.function.Consumer
 
 /**
  * Registers Android 17's anomaly profiling trigger without raising the project's compile/target SDK
- * baseline. compileSdk 36 contains ProfilingTrigger itself, while TRIGGER_TYPE_ANOMALY is added by
- * API 37, so the API-37 constant value is used only behind an SDK 37 runtime guard.
+ * baseline. API-37 types and constants stay behind a runtime guard and a separately loaded object.
  */
 internal object Android17MemoryAnomalyProfiler {
-  private const val TAG = "MemoryAnomalyProfiler"
-  private const val TRIGGER_TYPE_ANOMALY_API_37 = 8
-  private val directExecutor = Executor(Runnable::run)
-  private val listener = Consumer<android.os.ProfilingResult> { result ->
-    val fileName = result.resultFilePath?.let(::File)?.name ?: "none"
-    Log.i(
-      TAG,
-      "trigger=${result.triggerType} error=${result.errorCode} artifact=$fileName",
-    )
-  }
-
-  @SuppressLint("NewApi", "WrongConstant")
   fun install(application: Application) {
     if (Build.VERSION.SDK_INT < 37) return
-    runCatching {
-      val manager = application.getSystemService(ProfilingManager::class.java) ?: return
-      manager.registerForAllProfilingResults(directExecutor, listener)
-      manager.addProfilingTriggers(
-        listOf(
-          ProfilingTrigger.Builder(TRIGGER_TYPE_ANOMALY_API_37).build(),
-        ),
+    Api37.install(application)
+  }
+
+  private object Api37 {
+    private const val TAG = "MemoryAnomalyProfiler"
+    private const val TRIGGER_TYPE_ANOMALY_API_37 = 8
+    private val directExecutor = Executor(Runnable::run)
+    private val listener = Consumer<android.os.ProfilingResult> { result ->
+      val fileName = result.resultFilePath?.let(::File)?.name ?: "none"
+      Log.i(
+        TAG,
+        "trigger=${result.triggerType} error=${result.errorCode} artifact=$fileName",
       )
-    }.onFailure { error ->
-      Log.w(TAG, "Unable to register Android 17 memory anomaly profiling", error)
+    }
+
+    @SuppressLint("NewApi", "WrongConstant")
+    fun install(application: Application) {
+      runCatching {
+        val manager = application.getSystemService(ProfilingManager::class.java) ?: return
+        manager.registerForAllProfilingResults(directExecutor, listener)
+        manager.addProfilingTriggers(
+          listOf(
+            ProfilingTrigger.Builder(TRIGGER_TYPE_ANOMALY_API_37).build(),
+          ),
+        )
+      }.onFailure { error ->
+        Log.w(TAG, "Unable to register Android 17 memory anomaly profiling", error)
+      }
     }
   }
 }
