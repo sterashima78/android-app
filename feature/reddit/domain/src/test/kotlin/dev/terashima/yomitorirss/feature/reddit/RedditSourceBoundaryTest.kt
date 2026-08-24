@@ -25,15 +25,15 @@ class RedditSourceBoundaryTest {
     val rss = "https://example.com/feed.xml"
 
     assertTrue(RedditSourceBoundary.isRssSubscriptionInput(rss))
+    assertFalse(RedditSourceBoundary.isRedditFeed(rss))
     assertTrue(RedditSourceBoundary.isNonRedditFeed(rss))
   }
 
   @Test
-  fun `Reddit feed は generic RSS presentation から除外する`() {
-    assertFalse(
-      RedditSourceBoundary.isNonRedditFeed(
-        "https://www.reddit.com/r/android/new/.rss",
-      ),
-    )
+  fun `Reddit feed は owner boundary で Reddit と判定する`() {
+    val redditFeed = "https://www.reddit.com/r/android/new/.rss"
+
+    assertTrue(RedditSourceBoundary.isRedditFeed(redditFeed))
+    assertFalse(RedditSourceBoundary.isNonRedditFeed(redditFeed))
   }
 }
