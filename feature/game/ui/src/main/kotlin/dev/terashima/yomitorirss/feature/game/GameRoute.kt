@@ -42,6 +42,11 @@ enum class GameOrientationPreference {
   SENSOR_LANDSCAPE,
 }
 
+enum class GameChromePreference {
+  STANDARD,
+  FULLSCREEN,
+}
+
 @Composable
 fun GameRoute(
   modifier: Modifier = Modifier,
@@ -52,13 +57,16 @@ fun GameRoute(
   klondikeViewModel: KlondikeViewModel = viewModel(),
   spiderViewModel: SpiderViewModel = viewModel(),
   onOrientationPreferenceChange: (GameOrientationPreference) -> Unit = {},
+  onChromePreferenceChange: (GameChromePreference) -> Unit = {},
 ) {
   var screen by rememberSaveable { mutableStateOf(GameScreen.LIST.name) }
   val gameScreen = GameScreen.valueOf(screen)
   val currentOnOrientationPreferenceChange by rememberUpdatedState(onOrientationPreferenceChange)
+  val currentOnChromePreferenceChange by rememberUpdatedState(onChromePreferenceChange)
 
   LaunchedEffect(gameScreen) {
     currentOnOrientationPreferenceChange(orientationPreferenceFor(gameScreen))
+    currentOnChromePreferenceChange(chromePreferenceFor(gameScreen))
   }
 
   when (gameScreen) {
@@ -141,6 +149,14 @@ internal fun orientationPreferenceFor(screen: GameScreen): GameOrientationPrefer
   -> GameOrientationPreference.SENSOR_LANDSCAPE
 
   else -> GameOrientationPreference.PORTRAIT
+}
+
+internal fun chromePreferenceFor(screen: GameScreen): GameChromePreference = when (screen) {
+  GameScreen.KLONDIKE,
+  GameScreen.SPIDER,
+  -> GameChromePreference.FULLSCREEN
+
+  else -> GameChromePreference.STANDARD
 }
 
 @Composable
