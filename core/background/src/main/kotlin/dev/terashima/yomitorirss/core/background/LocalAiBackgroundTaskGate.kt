@@ -118,10 +118,8 @@ object LocalAiBackgroundTaskGate {
       .map(StackTraceElement::getClassName)
       .map { className -> className.substringBefore('$') }
       .firstOrNull { className ->
-        !className.startsWith("dev.terashima.yomitorirss.core.background.") &&
-          !className.startsWith("kotlin.") &&
-          !className.startsWith("kotlinx.coroutines.") &&
-          !className.startsWith("java.")
+        className.startsWith(APP_PACKAGE_PREFIX) &&
+          !className.startsWith("${APP_PACKAGE_PREFIX}core.background.")
       }
       ?.filter { character -> character.isLetterOrDigit() || character in ".:_-" }
       ?.take(MAX_DIAGNOSTIC_LABEL_CHARS)
@@ -142,5 +140,6 @@ object LocalAiBackgroundTaskGate {
     CANCELLED,
   }
 
+  private const val APP_PACKAGE_PREFIX = "dev.terashima.yomitorirss."
   private const val MAX_DIAGNOSTIC_LABEL_CHARS = 160
 }
