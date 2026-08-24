@@ -24,8 +24,8 @@ import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkEnrichment
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkRepository
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
+import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.reddit.data.DefaultRedditRepository
-import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
 import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
@@ -162,7 +162,7 @@ internal class AppContentRuntimeDependencies(
       feedRepository = feedRepository,
       bookmarkRepository = bookmarkRepository,
       backupChangeScheduler = backupChangeScheduler,
-      sourceSelector = { feedUrl -> !isRedditFeedUrl(feedUrl) },
+      sourceSelector = RedditSourceBoundary::isNonRedditFeed,
     )
   }
 }
