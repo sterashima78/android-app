@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.ProfilingManager
 import android.os.ProfilingTrigger
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.io.File
 import java.util.concurrent.Executor
 import java.util.function.Consumer
@@ -20,6 +21,7 @@ internal object Android17MemoryAnomalyProfiler {
     Api37.install(application)
   }
 
+  @RequiresApi(37)
   private object Api37 {
     private const val TAG = "MemoryAnomalyProfiler"
     private const val TRIGGER_TYPE_ANOMALY_API_37 = 8
@@ -32,7 +34,7 @@ internal object Android17MemoryAnomalyProfiler {
       )
     }
 
-    @SuppressLint("NewApi", "WrongConstant")
+    @SuppressLint("WrongConstant")
     fun install(application: Application) {
       runCatching {
         val manager = application.getSystemService(ProfilingManager::class.java) ?: return
