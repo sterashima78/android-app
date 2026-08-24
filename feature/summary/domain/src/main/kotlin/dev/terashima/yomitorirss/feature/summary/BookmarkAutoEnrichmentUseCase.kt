@@ -4,7 +4,7 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.allowsAutomaticAiEnrichment
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
-import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
+import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.youtube.isYouTubeVideoUrl
 
 class BookmarkAutoEnrichmentUseCase(
@@ -54,5 +54,5 @@ fun shouldRequestBookmarkEnrichment(
 ): Boolean =
   contentType.allowsAutomaticAiEnrichment() &&
     !isYouTubeVideoUrl(url) &&
-    !isRedditFeedUrl(sourceFeedUrl) &&
-    !isRedditFeedUrl(url)
+    RedditSourceBoundary.isNonRedditFeed(sourceFeedUrl) &&
+    RedditSourceBoundary.isNonRedditFeed(url)
