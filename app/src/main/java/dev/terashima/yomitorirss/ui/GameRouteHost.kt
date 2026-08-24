@@ -10,16 +10,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import dev.terashima.yomitorirss.feature.game.GameChromePreference
 import dev.terashima.yomitorirss.feature.game.GameOrientationPreference
 import dev.terashima.yomitorirss.feature.game.GameRoute
 
 @Composable
-internal fun GameRouteHost(modifier: Modifier) {
+internal fun GameRouteHost(
+  modifier: Modifier,
+  onFullscreenChange: (Boolean) -> Unit,
+) {
   val activity = LocalContext.current.findActivity()
   var orientationPreference by remember { mutableStateOf<GameOrientationPreference?>(null) }
+  val currentOnFullscreenChange by rememberUpdatedState(onFullscreenChange)
 
   orientationPreference?.let { preference ->
     LaunchedEffect(activity, preference) {
@@ -29,6 +35,7 @@ internal fun GameRouteHost(modifier: Modifier) {
 
   DisposableEffect(activity) {
     onDispose {
+      currentOnFullscreenChange(false)
       if (activity != null && !activity.isChangingConfigurations) {
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
       }
@@ -38,6 +45,9 @@ internal fun GameRouteHost(modifier: Modifier) {
   GameRoute(
     modifier = modifier,
     onOrientationPreferenceChange = { orientationPreference = it },
+    onChromePreferenceChange = { preference ->
+      currentOnFullscreenChange(preference == GameChromePreference.FULLSCREEN)
+    },
   )
 }
 
