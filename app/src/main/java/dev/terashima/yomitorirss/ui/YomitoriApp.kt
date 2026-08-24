@@ -12,7 +12,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,21 +100,18 @@ fun YomitoriApp(
         )
       },
     ) { padding ->
-      CompositionLocalProvider(
-        LocalGameFullscreenChange provides { fullscreen -> gameFullscreen = fullscreen },
-      ) {
-        AppFeatureContent(
-          selectedTab = selectedTab,
-          modifier = Modifier.fillMaxSize().padding(padding),
-          appViewModel = appViewModel,
-          routeDependencies = routeDependencies,
-          rssController = rssController,
-          redditController = redditController,
-          bookmarkEditController = bookmarkEditController,
-          onOpenArticle = onOpenArticle,
-          onOpenWebServer = onOpenWebServer,
-        )
-      }
+      AppFeatureContent(
+        selectedTab = selectedTab,
+        modifier = Modifier.fillMaxSize().padding(padding),
+        appViewModel = appViewModel,
+        routeDependencies = routeDependencies,
+        rssController = rssController,
+        redditController = redditController,
+        bookmarkEditController = bookmarkEditController,
+        onOpenArticle = onOpenArticle,
+        onOpenWebServer = onOpenWebServer,
+        onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
+      )
     }
   }
 
