@@ -101,7 +101,7 @@ object StartupCrashStore {
             appendLine("description=$description")
           }
           recentMemoryProfilingArtifactNames(application, memoryExit.timestamp)
-            .takeIf(List<String>::isNotEmpty)
+            .takeIf { it.isNotEmpty() }
             ?.let { artifacts ->
               appendLine("profilingArtifacts=${artifacts.joinToString()}")
             }
