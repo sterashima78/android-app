@@ -28,24 +28,31 @@ object LocalAiBackgroundTaskGate {
 
   suspend fun <T> withPermit(
     priority: LocalAiBackgroundTaskPriority = LocalAiBackgroundTaskPriority.NORMAL,
-    diagnosticLabel: String? = null,
     block: suspend () -> T,
-  ): T {
-    val resolvedDiagnosticLabel = diagnosticLabel?.takeIf(String::isNotBlank)
-      ?: inferDiagnosticLabel()
-    acquire(priority, resolvedDiagnosticLabel)
-    return try {
-      block()
-    } finally {
-      release()
-    }
-  }
+  ): T = withPermitForDiagnostics(
+    priority = priority,
+    diagnosticLabel = inferDiagnosticLabel(),
+    block = block,
+  )
 
   /**
    * Returns a sanitized implementation-level label for the background local-AI task currently
    * holding the permit. This is diagnostics-only state; business behavior must not depend on it.
    */
   fun currentDiagnosticLabel(): String? = activeDiagnosticLabel
+
+  internal suspend fun <T> withPermitForDiagnostics(
+    priority: LocalAiBackgroundTaskPriority = LocalAiBackgroundTaskPriority.NORMAL,
+    diagnosticLabel: String,
+    block: suspend () -> T,
+  ): T {
+    acquire(priority, diagnosticLabel)
+    return try {
+      block()
+    } finally {
+      release()
+    }
+  }
 
   private suspend fun acquire(
     priority: LocalAiBackgroundTaskPriority,
