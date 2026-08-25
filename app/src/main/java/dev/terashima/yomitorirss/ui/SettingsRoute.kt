@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
+import dev.terashima.yomitorirss.feature.settings.AiExecutionSettingsScreen
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.ChatGptDebugDialog
@@ -35,6 +36,7 @@ internal fun SettingsRoute(
   val aiState by aiSettingsViewModel.state.collectAsState()
   var showModels by remember { mutableStateOf(false) }
   var showChatGptDebug by remember { mutableStateOf(false) }
+  var showAiExecutionSettings by remember { mutableStateOf(false) }
   var showSummaryPrompt by remember { mutableStateOf(false) }
   var showBackup by remember { mutableStateOf(false) }
 
@@ -67,6 +69,10 @@ internal fun SettingsRoute(
     onOpenChatGptDebug = {
       aiSettingsViewModel.prepareChatGptDebug()
       showChatGptDebug = true
+    },
+    onOpenAiExecutionSettings = {
+      aiSettingsViewModel.prepareChatGptDebug()
+      showAiExecutionSettings = true
     },
     onOpenSummaryPrompt = { showSummaryPrompt = true },
     onOpenDriveBackup = {
@@ -118,9 +124,15 @@ internal fun SettingsRoute(
       onLogout = aiSettingsViewModel::logoutChatGpt,
       onRefreshModels = aiSettingsViewModel::refreshChatGptModels,
       onSelectModel = aiSettingsViewModel::selectChatGptModel,
-      onSummaryProviderChange = aiSettingsViewModel::setSummaryExecutionProvider,
       onPromptChange = aiSettingsViewModel::setChatGptPrompt,
       onRunInference = aiSettingsViewModel::runChatGptDebugInference,
+    )
+  }
+  if (showAiExecutionSettings) {
+    AiExecutionSettingsScreen(
+      state = aiState,
+      onDismiss = { showAiExecutionSettings = false },
+      onSummaryProviderChange = aiSettingsViewModel::setSummaryExecutionProvider,
     )
   }
   if (showSummaryPrompt) {

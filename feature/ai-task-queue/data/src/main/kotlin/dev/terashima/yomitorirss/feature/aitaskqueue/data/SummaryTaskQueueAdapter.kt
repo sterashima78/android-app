@@ -21,9 +21,11 @@ internal class SummaryTaskQueueAdapter(
 
   suspend fun kick() = repository.kick()
 
-  suspend fun setPaused(paused: Boolean) = repository.setPaused(paused)
+  suspend fun setLocalPaused(paused: Boolean) = repository.setLocalPaused(paused)
 
-  suspend fun setResumeWhenCharging(enabled: Boolean) = repository.setResumeWhenCharging(enabled)
+  suspend fun setCloudPaused(paused: Boolean) = repository.setCloudPaused(paused)
+
+  suspend fun setResumeLocalWhenCharging(enabled: Boolean) = repository.setResumeLocalWhenCharging(enabled)
 
   suspend fun stop(taskId: String): Boolean? =
     taskId.takeIf(::handles)?.let { repository.stop(it.removePrefix(PREFIX)) }
@@ -79,6 +81,8 @@ internal class SummaryTaskQueueAdapter(
     SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK -> AiTaskQueueProgressStage.PROCESSING_CHUNK
     SummaryQueueTaskProgressStage.REDUCING_SUMMARY -> AiTaskQueueProgressStage.REDUCING
     SummaryQueueTaskProgressStage.FINALIZING_SUMMARY -> AiTaskQueueProgressStage.FINALIZING
+    SummaryQueueTaskProgressStage.CLOUD_GENERATING_SUMMARY -> AiTaskQueueProgressStage.CLOUD_GENERATING
+    SummaryQueueTaskProgressStage.CLOUD_GENERATING_METADATA -> AiTaskQueueProgressStage.CLOUD_ENRICHING
     SummaryQueueTaskProgressStage.UNKNOWN -> AiTaskQueueProgressStage.UNKNOWN
   }
 

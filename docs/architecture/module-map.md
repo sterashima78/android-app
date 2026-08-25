@@ -51,6 +51,8 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離し、feature は provider protocol を直接扱わない。Summary は provider 選択、要約 prompt、metadata policy を所有し、cloud adapter はそれらの task semantics を持たない。
 
+`:core:background` は background execution の共有技術 policy を所有する。端末内推論を使う task の global pause / charging resume は `LocalAiBackgroundExecutionPreferences`、cloud provider を使う task の global pause は `CloudAiBackgroundExecutionPreferences` に分離する。Cloud pause に charging resume semantics は持たせない。
+
 `:core:network` の HTTP transport は process-wide に共有し、`:app` の application graph が同じ `HttpClient` instance を runtime group と WorkerFactory へ渡す。feature 側は HTTP adapter の testability のため default constructor を持てるが、production composition で feature ごとの OkHttp connection pool を作らない。
 
 ## Feature modules
@@ -88,7 +90,11 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 全 feature に3 layer を強制しない。独立した責務・依存・ビルド境界として価値がある layer だけを module 化する。
 
-Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Settings はこれらの feature setting と provider model catalog を表示・変更する presentation surface であり、routing decision 自体を所有しない。
+Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
+
+`:feature:settings` は provider connection/model setting と task routing setting を別 presentation surface として表示する。`ChatGPT / Codex` は login・model catalog・model選択・接続テストを扱い、`AI実行設定` は各 owning feature の provider routing setting を操作する。Settings 自身は routing decision を所有しない。
+
+`:feature:ai-task-queue` は複数 feature の task read model と runtime execution control を集約する。Local AI pause と Cloud AI pause は独立して表示・変更し、充電時自動再開は Local AI にだけ適用する。task 固有の stop / cancel / retry state は引き続き owning feature が所有する。
 
 ## Layer relationship
 
@@ -163,3 +169,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0167](../adr/0167-gradle-version-catalog-baseline.md)
 - [ADR-0168](../adr/0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171](../adr/0171-summary-local-chatgpt-routing-and-web-fetch.md)
+- [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)

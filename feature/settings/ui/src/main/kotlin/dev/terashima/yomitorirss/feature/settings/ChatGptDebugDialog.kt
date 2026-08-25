@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -38,7 +37,6 @@ fun ChatGptDebugDialog(
   onLogout: () -> Unit,
   onRefreshModels: () -> Unit,
   onSelectModel: (String) -> Unit,
-  onSummaryProviderChange: (SummaryExecutionProvider) -> Unit,
   onPromptChange: (String) -> Unit,
   onRunInference: () -> Unit,
 ) {
@@ -87,7 +85,7 @@ fun ChatGptDebugDialog(
           HorizontalDivider()
           Text("クラウドモデル", style = MaterialTheme.typography.titleSmall)
           Text(
-            "ChatGPTアカウントで利用可能なモデル一覧から、Web検索対応モデルを選択します。",
+            "ChatGPTアカウントで利用可能なモデル一覧から、Web検索対応モデルを選択します。タスクごとの実行先はAI実行設定で指定します。",
             style = MaterialTheme.typography.bodySmall,
           )
           OutlinedButton(
@@ -125,27 +123,6 @@ fun ChatGptDebugDialog(
           }
 
           HorizontalDivider()
-          Text("記事要約の実行先", style = MaterialTheme.typography.titleSmall)
-          ProviderChoice(
-            title = "ローカル",
-            supporting = "端末上の選択済みモデルで本文取得・要約・タグ付けを実行",
-            selected = state.summaryExecutionProvider == SummaryExecutionProvider.LOCAL,
-            enabled = true,
-            onClick = { onSummaryProviderChange(SummaryExecutionProvider.LOCAL) },
-          )
-          ProviderChoice(
-            title = "ChatGPT / Codex",
-            supporting = "記事URLをCodexへ渡し、Web検索で本文を開いて要約・タグ付けを実行",
-            selected = state.summaryExecutionProvider == SummaryExecutionProvider.CHATGPT,
-            enabled = state.chatGptSelectedModelId != null,
-            onClick = { onSummaryProviderChange(SummaryExecutionProvider.CHATGPT) },
-          )
-          Text(
-            "クラウド実行では記事URL、要約指示、生成済み要約、既存タグ・フォルダ候補など要約処理に必要な情報をChatGPTへ送信します。",
-            style = MaterialTheme.typography.bodySmall,
-          )
-
-          HorizontalDivider()
           Text("接続テスト", style = MaterialTheme.typography.titleSmall)
           Text(
             state.chatGptSelectedModelId?.let { "選択モデル: $it" } ?: "先にクラウドモデルを選択してください。",
@@ -181,22 +158,6 @@ fun ChatGptDebugDialog(
         TextButton(onClick = onDismiss) { Text("閉じる") }
       }
     },
-  )
-}
-
-@Composable
-private fun ProviderChoice(
-  title: String,
-  supporting: String,
-  selected: Boolean,
-  enabled: Boolean,
-  onClick: () -> Unit,
-) {
-  ListItem(
-    modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
-    headlineContent = { Text(title) },
-    supportingContent = { Text(supporting) },
-    leadingContent = { RadioButton(selected = selected, onClick = null, enabled = enabled) },
   )
 }
 

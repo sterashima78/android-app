@@ -8,8 +8,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object SummaryQueue {
   private const val INFERENCE_QUEUE_NAME = "article-summary-queue"
@@ -18,6 +25,8 @@ object SummaryQueue {
   private const val CONTENT_FETCH_TAG = "article-summary-content-fetch"
   private const val CLEANUP_WORK_NAME = "article-summary-task-log-cleanup"
   private const val RESUME_ON_CHARGING_WORK_NAME = "article-summary-resume-on-charging"
+  private val providerTransitionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private val providerTransitionMutex = Mutex()
 
   fun enqueue(context: Context, articleId: String, forceRefresh: Boolean): Boolean {
     val appContext = context.applicationContext
@@ -81,33 +90,57 @@ object SummaryQueue {
     schedulePipelineWorkers(appContext)
   }
 
+  fun onProviderChanged(context: Context) {
+    val appContext = context.applicationContext
+    providerTransitionScope.launch {
+      providerTransitionMutex.withLock {
+        runCatching {
+          val workManager = WorkManager.getInstance(appContext)
+          restartSummaryProviderPipeline(
+            cancelInference = { workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get() },
+            cancelContentFetch = { workManager.cancelUniqueWork(CONTENT_FETCH_QUEUE_NAME).result.get() },
+            requeueInterrupted = { requeueInterruptedTasks(appContext) },
+            scheduleSelectedProvider = {
+              ensureCleanupScheduled(appContext)
+              schedulePipelineWorkers(appContext)
+            },
+          )
+        }
+      }
+    }
+  }
+
   internal fun kickInference(context: Context) {
     val appContext = context.applicationContext
-    if (SummaryQueueExecutionPreferences(appContext).paused) return
+    val provider = currentProvider(appContext)
+    val preferences = SummaryQueueExecutionPreferences(appContext)
+    if (isSummaryProviderPaused(provider, preferences.localPaused, preferences.cloudPaused)) return
     scheduleInferenceWorker(appContext)
   }
 
   internal fun kickContentFetch(context: Context) {
     val appContext = context.applicationContext
-    if (SummaryQueueExecutionPreferences(appContext).paused) return
+    if (currentProvider(appContext) != SummaryExecutionProvider.LOCAL) return
+    if (SummaryQueueExecutionPreferences(appContext).localPaused) return
     scheduleContentFetchWorker(appContext)
   }
 
   fun executionState(context: Context): SummaryQueueExecutionState {
     val preferences = SummaryQueueExecutionPreferences(context)
     return SummaryQueueExecutionState(
-      paused = preferences.paused,
-      resumeWhenCharging = preferences.resumeWhenCharging,
+      localPaused = preferences.localPaused,
+      cloudPaused = preferences.cloudPaused,
+      resumeLocalWhenCharging = preferences.resumeLocalWhenCharging,
     )
   }
 
-  fun setPaused(context: Context, paused: Boolean) {
+  fun setLocalPaused(context: Context, paused: Boolean) {
     val appContext = context.applicationContext
     val preferences = SummaryQueueExecutionPreferences(appContext)
-    if (preferences.paused == paused) {
+    if (preferences.localPaused == paused) {
       if (paused) {
         ensureResumeOnChargingScheduled(appContext)
-      } else {
+      } else if (currentProvider(appContext) == SummaryExecutionProvider.LOCAL) {
         ensureCleanupScheduled(appContext)
         schedulePipelineWorkers(appContext)
       }
@@ -115,37 +148,75 @@ object SummaryQueue {
     }
 
     if (paused) {
-      preferences.paused = true
+      preferences.localPaused = true
       try {
         val workManager = WorkManager.getInstance(appContext)
-        workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
         workManager.cancelUniqueWork(CONTENT_FETCH_QUEUE_NAME).result.get()
-        requeueInterruptedTasks(appContext)
+        if (currentProvider(appContext) == SummaryExecutionProvider.LOCAL) {
+          workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
+          requeueInterruptedTasks(appContext)
+        }
         ensureResumeOnChargingScheduled(appContext)
       } catch (error: Throwable) {
-        preferences.paused = false
+        preferences.localPaused = false
         runCatching { schedulePipelineWorkers(appContext) }
         throw error
       }
     } else {
       WorkManager.getInstance(appContext).cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
-      preferences.paused = false
+      preferences.localPaused = false
       try {
         ensureCleanupScheduled(appContext)
         schedulePipelineWorkers(appContext)
       } catch (error: Throwable) {
-        preferences.paused = true
+        preferences.localPaused = true
         ensureResumeOnChargingScheduled(appContext)
         throw error
       }
     }
   }
 
-  fun setResumeWhenCharging(context: Context, enabled: Boolean) {
+  fun setCloudPaused(context: Context, paused: Boolean) {
     val appContext = context.applicationContext
     val preferences = SummaryQueueExecutionPreferences(appContext)
-    preferences.resumeWhenCharging = enabled
-    if (!preferences.paused) return
+    if (preferences.cloudPaused == paused) {
+      if (!paused && currentProvider(appContext) == SummaryExecutionProvider.CHATGPT) {
+        scheduleInferenceWorker(appContext)
+      }
+      return
+    }
+
+    if (paused) {
+      preferences.cloudPaused = true
+      if (currentProvider(appContext) == SummaryExecutionProvider.CHATGPT) {
+        try {
+          WorkManager.getInstance(appContext).cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
+          requeueInterruptedTasks(appContext)
+        } catch (error: Throwable) {
+          preferences.cloudPaused = false
+          runCatching { scheduleInferenceWorker(appContext) }
+          throw error
+        }
+      }
+    } else {
+      preferences.cloudPaused = false
+      try {
+        if (currentProvider(appContext) == SummaryExecutionProvider.CHATGPT) {
+          ensureCleanupScheduled(appContext)
+          scheduleInferenceWorker(appContext)
+        }
+      } catch (error: Throwable) {
+        preferences.cloudPaused = true
+        throw error
+      }
+    }
+  }
+
+  fun setResumeLocalWhenCharging(context: Context, enabled: Boolean) {
+    val appContext = context.applicationContext
+    val preferences = SummaryQueueExecutionPreferences(appContext)
+    preferences.resumeLocalWhenCharging = enabled
+    if (!preferences.localPaused) return
 
     if (enabled) {
       ensureResumeOnChargingScheduled(appContext)
@@ -157,16 +228,16 @@ object SummaryQueue {
   internal fun resumeAutomaticallyWhenCharging(context: Context) {
     val appContext = context.applicationContext
     val preferences = SummaryQueueExecutionPreferences(appContext)
-    if (!preferences.resumeWhenCharging) return
+    if (!preferences.resumeLocalWhenCharging) return
 
-    // Library organization shares this execution gate and has its own charging worker. Either
+    // Library organization shares the local execution gate and has its own charging worker. Either
     // worker may clear the gate first, so scheduling the summary queue must remain idempotent.
-    preferences.paused = false
+    preferences.localPaused = false
     try {
       ensureCleanupScheduled(appContext)
       schedulePipelineWorkers(appContext)
     } catch (error: Throwable) {
-      preferences.paused = true
+      preferences.localPaused = true
       throw error
     }
   }
@@ -214,16 +285,23 @@ object SummaryQueue {
   private fun restartInferenceWorker(context: Context) {
     val workManager = WorkManager.getInstance(context)
     workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
-    scheduleInferenceWorker(context)
+    kickInference(context)
   }
 
   private fun schedulePipelineWorkers(context: Context) {
-    if (SummaryQueueExecutionPreferences(context).paused) {
-      ensureResumeOnChargingScheduled(context)
+    val provider = currentProvider(context)
+    val preferences = SummaryQueueExecutionPreferences(context)
+    if (isSummaryProviderPaused(provider, preferences.localPaused, preferences.cloudPaused)) {
+      if (provider == SummaryExecutionProvider.LOCAL) ensureResumeOnChargingScheduled(context)
       return
     }
-    scheduleContentFetchWorker(context)
-    scheduleInferenceWorker(context)
+    when (provider) {
+      SummaryExecutionProvider.LOCAL -> {
+        scheduleContentFetchWorker(context)
+        scheduleInferenceWorker(context)
+      }
+      SummaryExecutionProvider.CHATGPT -> scheduleInferenceWorker(context)
+    }
   }
 
   private fun scheduleInferenceWorker(context: Context) {
@@ -250,7 +328,7 @@ object SummaryQueue {
 
   private fun ensureResumeOnChargingScheduled(context: Context) {
     val preferences = SummaryQueueExecutionPreferences(context)
-    if (!preferences.paused || !preferences.resumeWhenCharging) return
+    if (!preferences.localPaused || !preferences.resumeLocalWhenCharging) return
 
     runCatching {
       val request = OneTimeWorkRequestBuilder<SummaryResumeOnChargingWorker>()
@@ -267,6 +345,9 @@ object SummaryQueue {
       )
     }
   }
+
+  private fun currentProvider(context: Context): SummaryExecutionProvider =
+    SummaryExecutionPreferences(context).currentProvider()
 
   private fun requeueInterruptedTasks(context: Context) {
     val database = YomitoriDatabase.create(context)
@@ -290,4 +371,25 @@ object SummaryQueue {
       request,
     )
   }
+}
+
+internal fun restartSummaryProviderPipeline(
+  cancelInference: () -> Unit,
+  cancelContentFetch: () -> Unit,
+  requeueInterrupted: () -> Unit,
+  scheduleSelectedProvider: () -> Unit,
+) {
+  cancelInference()
+  cancelContentFetch()
+  requeueInterrupted()
+  scheduleSelectedProvider()
+}
+
+internal fun isSummaryProviderPaused(
+  provider: SummaryExecutionProvider,
+  localPaused: Boolean,
+  cloudPaused: Boolean,
+): Boolean = when (provider) {
+  SummaryExecutionProvider.LOCAL -> localPaused
+  SummaryExecutionProvider.CHATGPT -> cloudPaused
 }

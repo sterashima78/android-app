@@ -23,6 +23,8 @@ enum class SummaryQueueTaskProgressStage {
   SUMMARIZING_CHUNK,
   REDUCING_SUMMARY,
   FINALIZING_SUMMARY,
+  CLOUD_GENERATING_SUMMARY,
+  CLOUD_GENERATING_METADATA,
   UNKNOWN,
 }
 
@@ -48,8 +50,9 @@ data class SummaryQueueTaskCounts(
 )
 
 data class SummaryQueueExecutionState(
-  val paused: Boolean,
-  val resumeWhenCharging: Boolean,
+  val localPaused: Boolean,
+  val cloudPaused: Boolean,
+  val resumeLocalWhenCharging: Boolean,
 )
 
 interface SummaryTaskQueueRepository {
@@ -66,8 +69,9 @@ interface SummaryTaskQueueRepository {
 
   suspend fun executionState(): SummaryQueueExecutionState
   suspend fun kick()
-  suspend fun setPaused(paused: Boolean)
-  suspend fun setResumeWhenCharging(enabled: Boolean)
+  suspend fun setLocalPaused(paused: Boolean)
+  suspend fun setCloudPaused(paused: Boolean)
+  suspend fun setResumeLocalWhenCharging(enabled: Boolean)
   suspend fun stop(articleId: String): Boolean
   suspend fun cancel(articleId: String): Boolean
   suspend fun resume(articleId: String): Boolean

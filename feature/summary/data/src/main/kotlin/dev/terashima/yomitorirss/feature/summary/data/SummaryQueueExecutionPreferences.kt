@@ -1,24 +1,33 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
+import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 
 internal class SummaryQueueExecutionPreferences(context: Context) {
-  private val delegate = LocalAiBackgroundExecutionPreferences(context)
+  private val localDelegate = LocalAiBackgroundExecutionPreferences(context)
+  private val cloudDelegate = CloudAiBackgroundExecutionPreferences(context)
 
-  var paused: Boolean
-    get() = delegate.paused
+  var localPaused: Boolean
+    get() = localDelegate.paused
     set(value) {
-      delegate.paused = value
+      localDelegate.paused = value
     }
 
-  var resumeWhenCharging: Boolean
-    get() = delegate.resumeWhenCharging
+  var cloudPaused: Boolean
+    get() = cloudDelegate.paused
     set(value) {
-      delegate.resumeWhenCharging = value
+      cloudDelegate.paused = value
+    }
+
+  var resumeLocalWhenCharging: Boolean
+    get() = localDelegate.resumeWhenCharging
+    set(value) {
+      localDelegate.resumeWhenCharging = value
     }
 
   companion object {
-    internal const val PREFERENCES_NAME = LocalAiBackgroundExecutionPreferences.PREFERENCES_NAME
+    internal const val LOCAL_PREFERENCES_NAME = LocalAiBackgroundExecutionPreferences.PREFERENCES_NAME
+    internal const val CLOUD_PREFERENCES_NAME = CloudAiBackgroundExecutionPreferences.PREFERENCES_NAME
   }
 }
