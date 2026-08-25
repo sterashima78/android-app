@@ -29,30 +29,36 @@ class ChatGptCloudArchitectureTest {
   }
 
   @Test
-  fun `Summary feature depends on its cloud inference boundary instead of OpenAI protocol`() {
-    val summaryRoot = File(repositoryRoot, "feature/summary")
-    summaryRoot.walkTopDown()
-      .filter(File::isFile)
-      .filter { it.extension == "kt" }
-      .filter { "/src/main/" in it.invariantSeparatorsPath }
-      .forEach { file ->
-        val source = file.readText()
-        assertFalse(
-          "${file.relativeTo(repositoryRoot)} must not depend on core ai-cloud-openai",
-          "dev.terashima.yomitorirss.core.aicloudopenai" in source,
-        )
-        assertFalse(
-          "${file.relativeTo(repositoryRoot)} must not depend on ChatGptOpenAiClient",
-          "ChatGptOpenAiClient" in source,
-        )
-      }
+  fun `Cloud enabled features depend on inference boundaries instead of OpenAI protocol`() {
+    listOf("feature/summary", "feature/knowledge").forEach { relativeRoot ->
+      val featureRoot = File(repositoryRoot, relativeRoot)
+      featureRoot.walkTopDown()
+        .filter(File::isFile)
+        .filter { it.extension == "kt" }
+        .filter { "/src/main/" in it.invariantSeparatorsPath }
+        .forEach { file ->
+          val source = file.readText()
+          assertFalse(
+            "${file.relativeTo(repositoryRoot)} must not depend on core ai-cloud-openai",
+            "dev.terashima.yomitorirss.core.aicloudopenai" in source,
+          )
+          assertFalse(
+            "${file.relativeTo(repositoryRoot)} must not depend on ChatGptOpenAiClient",
+            "ChatGptOpenAiClient" in source,
+          )
+        }
+    }
   }
 
   @Test
-  fun `ChatGPT Summary adapter is composed in app layer`() {
-    val adapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptSummaryCloudInference.kt")
-    assertTrue("app adapter must implement SummaryCloudInference", "SummaryCloudInference" in adapter)
-    assertTrue("app adapter must own ChatGPT client dependency", "ChatGptOpenAiClient" in adapter)
+  fun `ChatGPT feature adapters are composed in app layer`() {
+    val summaryAdapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptSummaryCloudInference.kt")
+    assertTrue("app adapter must implement SummaryCloudInference", "SummaryCloudInference" in summaryAdapter)
+    assertTrue("app adapter must own ChatGPT client dependency", "ChatGptOpenAiClient" in summaryAdapter)
+
+    val knowledgeAdapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptKnowledgeTextInference.kt")
+    assertTrue("app adapter must implement AiTextInference", "AiTextInference" in knowledgeAdapter)
+    assertTrue("app adapter must own ChatGPT client dependency", "ChatGptOpenAiClient" in knowledgeAdapter)
   }
 
   @Test
