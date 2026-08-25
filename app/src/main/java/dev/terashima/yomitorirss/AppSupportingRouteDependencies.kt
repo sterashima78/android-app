@@ -33,6 +33,7 @@ internal class AppSupportingRouteDependencies(
       chatGptDebugRepository = container.chatGptDebugRepository,
       chatGptProviderRepository = container.chatGptProviderRepository,
       summaryExecutionSettings = container.summaryExecutionSettings,
+      knowledgeExecutionSettings = container.knowledgeExecutionSettings,
     )
   }
 
