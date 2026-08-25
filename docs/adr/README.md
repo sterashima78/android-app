@@ -86,6 +86,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
+- [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 
 ### Health
 
@@ -112,6 +113,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0158: Book Reader の page geometry metadata cache を上限付きにする](0158-bounded-book-page-geometry-cache.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 
 ### Background / AI runtime
 
@@ -180,3 +182,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0162](0162-current-architecture-cleanup-guardrails.md)
+- [ADR-0163](0163-webview-renderer-exit-recovery.md)

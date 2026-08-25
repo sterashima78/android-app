@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -193,6 +194,12 @@ internal fun normalizeMangaOneChapterUrl(url: String, mangaId: String): String? 
   "https://manga-one.com/manga/$mangaId/chapter/${segments[3]}"
 }.getOrNull()
 
+internal fun mangaOneRenderProcessGoneMessage(didCrash: Boolean): String = if (didCrash) {
+  "マンガワンの Web 表示処理が異常終了しました。再試行してください"
+} else {
+  "マンガワンの Web 表示処理がメモリ不足で終了しました。再試行してください"
+}
+
 private class WebViewMangaOnePageRenderer(
   private val context: Context,
 ) : MangaOnePageRenderer {
@@ -221,6 +228,18 @@ private class WebViewMangaOnePageRenderer(
           finished = true
           cleanup()
           if (continuation.isActive) continuation.resumeWithException(error)
+        }
+
+        fun failAfterRendererExit(detail: RenderProcessGoneDetail) {
+          if (finished) return
+          finished = true
+          handler.removeCallbacksAndMessages(null)
+          webView.destroy()
+          if (continuation.isActive) {
+            continuation.resumeWithException(
+              IllegalStateException(mangaOneRenderProcessGoneMessage(detail.didCrash())),
+            )
+          }
         }
 
         fun succeed(page: MangaOneRenderedPage) {
@@ -294,6 +313,11 @@ private class WebViewMangaOnePageRenderer(
             if (request.isForMainFrame && errorResponse.statusCode >= 400) {
               fail(IllegalStateException("マンガワンの読み込みに失敗しました: HTTP ${errorResponse.statusCode}"))
             }
+          }
+
+          override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            failAfterRendererExit(detail)
+            return true
           }
         }
 

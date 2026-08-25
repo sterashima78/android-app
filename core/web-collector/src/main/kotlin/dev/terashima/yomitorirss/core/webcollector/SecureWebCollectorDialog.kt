@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.core.webcollector
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -28,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -128,8 +130,45 @@ private fun CollectorContent(
   var status by remember { mutableStateOf("ページを開いています") }
   var canGoBack by remember { mutableStateOf(false) }
   var continuationKey by remember(config) { mutableStateOf<String?>(null) }
+  var rendererGeneration by remember(config) { mutableIntStateOf(0) }
+  var rendererCrashed by remember(config) { mutableStateOf(false) }
 
-  val webView = remember(config) {
+  if (rendererCrashed) {
+    Column(
+      modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),
+      verticalArrangement = Arrangement.Center,
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      Text("Web 表示処理が異常終了しました", style = MaterialTheme.typography.titleLarge)
+      Spacer(Modifier.height(12.dp))
+      Text("同じページを自動で開き直さず、開始ページから再試行します。")
+      Spacer(Modifier.height(20.dp))
+      Button(
+        onClick = {
+          currentUrl = config.startUrl
+          loading = true
+          collecting = false
+          canGoBack = false
+          continuationKey = null
+          chunks.reset()
+          status = "ページを開いています"
+          rendererCrashed = false
+        },
+      ) {
+        Text("再読み込み")
+      }
+      TextButton(onClick = onDismiss) { Text("閉じる") }
+    }
+    return
+  }
+
+  val rendererLifecycle = remember(config, rendererGeneration) {
+    WebCollectorRendererLifecycle()
+  }
+  val initialUrl = currentUrl.takeIf {
+    isAllowedNavigation(it, config.allowedNavigationHosts)
+  } ?: config.startUrl
+  val webView = remember(config, rendererGeneration, rendererLifecycle) {
     WebView(context).also { WebViewCompat.setProfile(it, config.profileName) }.apply {
       settings.javaScriptEnabled = true
       settings.domStorageEnabled = true
@@ -236,9 +275,27 @@ private fun CollectorContent(
             }
           }
         }
+
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+          rendererLifecycle.gone = true
+          collecting = false
+          continuationKey = null
+          chunks.reset()
+          canGoBack = false
+          if (detail.didCrash()) {
+            loading = false
+            status = "Web 表示処理が異常終了しました"
+            rendererCrashed = true
+          } else {
+            loading = true
+            status = "Web 表示プロセスがメモリ不足で終了したため再読み込みしています"
+            rendererGeneration += 1
+          }
+          return true
+        }
       }
 
-      loadUrl(config.startUrl)
+      loadUrl(initialUrl)
     }
   }
 
@@ -247,8 +304,10 @@ private fun CollectorContent(
       collecting = false
       continuationKey = null
       chunks.reset()
-      webView.stopLoading()
-      webView.webViewClient = WebViewClient()
+      if (!rendererLifecycle.gone) {
+        webView.stopLoading()
+        webView.webViewClient = WebViewClient()
+      }
       webView.destroy()
     }
   }
@@ -298,6 +357,10 @@ private fun CollectorContent(
       )
     }
   }
+}
+
+private class WebCollectorRendererLifecycle {
+  var gone: Boolean = false
 }
 
 internal fun isCollectableUrl(url: String, prefixes: Set<String>): Boolean = prefixes.any(url::startsWith)
