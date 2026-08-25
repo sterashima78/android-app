@@ -30,6 +30,7 @@ internal class AppSupportingRouteDependencies(
     AiSettingsViewModel.Factory(
       repository = container.aiModelRepository,
       summaryPromptSettings = container.summaryPromptSettings,
+      chatGptDebugRepository = container.chatGptDebugRepository,
     )
   }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
@@ -31,6 +32,7 @@ fun SettingsContent(
   backgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
+  onOpenChatGptDebug: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
   onOpenDriveBackup: () -> Unit,
@@ -65,6 +67,14 @@ fun SettingsContent(
     }
     item {
       SettingsRow(
+        icon = Icons.Default.Cloud,
+        title = "ChatGPT / Codex デバッグ",
+        supporting = "ChatGPTログインとクラウド推論接続を確認",
+        onClick = onOpenChatGptDebug,
+      )
+    }
+    item {
+      SettingsRow(
         icon = Icons.Default.List,
         title = "AIタスクキュー",
         supporting = "要約・タグ付け・蔵書整理タスクの状態確認・一時停止・再開",
@@ -82,27 +92,9 @@ fun SettingsContent(
     item { SettingsDivider() }
 
     item { SettingsHeader("バックアップ") }
-    item {
-      SettingsRow(
-        icon = Icons.Default.CloudUpload,
-        title = "Google Driveバックアップ",
-        onClick = onOpenDriveBackup,
-      )
-    }
-    item {
-      SettingsRow(
-        icon = Icons.Default.Download,
-        title = "ファイルへバックアップ",
-        onClick = onExportBackup,
-      )
-    }
-    item {
-      SettingsRow(
-        icon = Icons.Default.Restore,
-        title = "バックアップから復元",
-        onClick = onImportBackup,
-      )
-    }
+    item { SettingsRow(Icons.Default.CloudUpload, "Google Driveバックアップ", onClick = onOpenDriveBackup) }
+    item { SettingsRow(Icons.Default.Download, "ファイルへバックアップ", onClick = onExportBackup) }
+    item { SettingsRow(Icons.Default.Restore, "バックアップから復元", onClick = onImportBackup) }
     item { SettingsDivider() }
 
     item { SettingsHeader("共有") }
@@ -156,16 +148,9 @@ private fun SettingsSwitchRow(
     headlineContent = { Text(title) },
     supportingContent = { Text(supporting) },
     leadingContent = { Icon(icon, contentDescription = null) },
-    trailingContent = {
-      Switch(
-        checked = checked,
-        onCheckedChange = null,
-      )
-    },
+    trailingContent = { Switch(checked = checked, onCheckedChange = null) },
   )
 }
 
 @Composable
-private fun SettingsDivider() {
-  HorizontalDivider()
-}
+private fun SettingsDivider() { HorizontalDivider() }

@@ -13,6 +13,7 @@ fun SettingsFeatureScreen(
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
+  onOpenChatGptDebug: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
   onOpenDriveBackup: () -> Unit,
@@ -32,6 +33,7 @@ fun SettingsFeatureScreen(
       onBackgroundFetchWifiOnlyChange(wifiOnly)
     },
     onOpenModels = onOpenModels,
+    onOpenChatGptDebug = onOpenChatGptDebug,
     onOpenSummaryPrompt = onOpenSummaryPrompt,
     onOpenAiTaskQueue = onOpenAiTaskQueue,
     onOpenDriveBackup = onOpenDriveBackup,

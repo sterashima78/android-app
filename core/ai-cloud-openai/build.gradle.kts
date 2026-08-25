@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-  namespace = "dev.terashima.yomitorirss.feature.settings.data"
+  namespace = "dev.terashima.yomitorirss.core.aicloudopenai"
   compileSdk = 36
 
   defaultConfig {
@@ -17,9 +17,9 @@ android {
 }
 
 dependencies {
-  implementation(project(":feature:settings:domain"))
-  implementation(project(":core:ai-runtime"))
-  implementation(project(":core:ai-cloud-openai"))
-  implementation(project(":core:background"))
+  implementation(project(":core:network"))
   implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.serialization.json)
+
+  testImplementation(libs.junit4)
 }

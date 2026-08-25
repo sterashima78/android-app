@@ -10,12 +10,7 @@ val signingKeystorePath = providers.environmentVariable("ANDROID_SIGNING_KEYSTOR
 val signingStorePassword = providers.environmentVariable("ANDROID_SIGNING_STORE_PASSWORD").orNull
 val signingKeyAlias = providers.environmentVariable("ANDROID_SIGNING_KEY_ALIAS").orNull
 val signingKeyPassword = providers.environmentVariable("ANDROID_SIGNING_KEY_PASSWORD").orNull
-val releaseSigningValues = listOf(
-  signingKeystorePath,
-  signingStorePassword,
-  signingKeyAlias,
-  signingKeyPassword,
-)
+val releaseSigningValues = listOf(signingKeystorePath, signingStorePassword, signingKeyAlias, signingKeyPassword)
 val hasAnyReleaseSigningValue = releaseSigningValues.any { !it.isNullOrBlank() }
 val hasCompleteReleaseSigning = releaseSigningValues.all { !it.isNullOrBlank() }
 val gitCommitSha = providers.environmentVariable("GITHUB_SHA").orNull
@@ -37,10 +32,7 @@ android {
     versionCode = 2
     versionName = "0.2.0"
     buildConfigField("String", "GIT_COMMIT_SHA", "\"$gitCommitSha\"")
-
-    ndk {
-      abiFilters += "arm64-v8a"
-    }
+    ndk { abiFilters += "arm64-v8a" }
   }
 
   buildFeatures {
@@ -104,11 +96,7 @@ android {
 // Keep release analysis (for example lintRelease) usable without secrets, but fail closed
 // before any APK/AAB packaging task can produce an unsigned release artifact.
 tasks.configureEach {
-  val releasePackagingTask = name.lowercase() in setOf(
-    "packagerelease",
-    "assemblerelease",
-    "bundlerelease",
-  )
+  val releasePackagingTask = name.lowercase() in setOf("packagerelease", "assemblerelease", "bundlerelease")
   if (releasePackagingTask) {
     doFirst {
       if (!hasCompleteReleaseSigning) {
@@ -164,6 +152,7 @@ dependencies {
   implementation(project(":core:database"))
   implementation(project(":core:designsystem"))
   implementation(project(":core:ai-inference"))
+  implementation(project(":core:ai-cloud-openai"))
   implementation(project(":core:ai-runtime"))
   implementation(project(":core:network"))
   implementation(project(":feature:reddit:domain"))
