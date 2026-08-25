@@ -141,7 +141,8 @@ class AppCompositionSourceArchitectureTest {
     ).readText()
 
     listOf(
-      "WebLibraryActions(",
+      "WebLibraryAddAction(",
+      "WebLibrarySettingsUiBinding(",
       "SmbBookReaderRoute(",
       "mutableStateOf<LibraryBook?>",
       "collectAsState()",
@@ -151,7 +152,11 @@ class AppCompositionSourceArchitectureTest {
         featureUiMarker in appRoute,
       )
     }
-    assertTrue("feature Library route must own Web Library actions", "WebLibraryActions(" in featureRoute)
+    assertTrue("feature Library route must own Web Library add action", "WebLibraryAddAction(" in featureRoute)
+    assertTrue(
+      "feature Library route must own Web Library settings state",
+      "WebLibrarySettingsUiBinding(" in featureRoute,
+    )
     assertTrue("feature Library route must own SMB reader presentation", "SmbBookReaderRoute(" in featureRoute)
   }
 

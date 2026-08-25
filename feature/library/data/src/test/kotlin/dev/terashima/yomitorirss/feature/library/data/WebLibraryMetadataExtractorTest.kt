@@ -3,6 +3,8 @@ package dev.terashima.yomitorirss.feature.library.data
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorExecution
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorStatus
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -115,13 +117,14 @@ class WebLibraryMetadataExtractorTest {
   }
 
   @Test
-  fun `Promise完了状態からmetadataを取得する`() {
+  fun `Promise完了状態からmetadataと適用結果を取得する`() {
     val payload = JSONObject()
       .put("title", "非同期タイトル")
       .put("thumbnailUrl", "/covers/async.jpg")
       .toString()
     val pollPayload = JSONObject()
       .put("pending", false)
+      .put("status", "applied")
       .put("value", payload)
       .toString()
 
@@ -131,8 +134,48 @@ class WebLibraryMetadataExtractorTest {
     )
 
     assertFalse(poll?.pending ?: true)
+    assertEquals(WebLibraryMetadataExtractorStatus.APPLIED, poll?.status)
     assertEquals("非同期タイトル", poll?.metadata?.title)
     assertEquals("https://example.com/covers/async.jpg", poll?.metadata?.thumbnailUrl)
+  }
+
+  @Test
+  fun `Promise rejectの理由を診断結果として保持する`() {
+    val pollPayload = JSONObject()
+      .put("pending", false)
+      .put("status", "rejected")
+      .put("value", JSONObject.NULL)
+      .put("message", "selector failed")
+      .toString()
+
+    val poll = parseCustomMetadataPromisePoll(
+      finalUrl = "https://example.com/books/1",
+      rawResult = JSONObject.quote(pollPayload),
+    )
+
+    assertEquals(WebLibraryMetadataExtractorStatus.REJECTED, poll?.status)
+    assertEquals("selector failed", poll?.message)
+    assertNull(poll?.metadata)
+  }
+
+  @Test
+  fun `適用済みでも有効なmetadataがなければ戻り値不正として扱う`() {
+    val payload = JSONObject()
+      .put("thumbnailUrl", "http://cdn.example.com/cover.jpg")
+      .toString()
+    val pollPayload = JSONObject()
+      .put("pending", false)
+      .put("status", "applied")
+      .put("value", payload)
+      .toString()
+
+    val poll = parseCustomMetadataPromisePoll(
+      finalUrl = "https://example.com/books/1",
+      rawResult = JSONObject.quote(pollPayload),
+    )
+
+    assertEquals(WebLibraryMetadataExtractorStatus.INVALID_RESULT, poll?.status)
+    assertNull(poll?.metadata)
   }
 
   @Test
@@ -222,18 +265,80 @@ class WebLibraryMetadataExtractorTest {
   }
 
   @Test
-  fun `関数コードはPromiseを要求して非同期完了をポーリングするスクリプトへ埋め込む`() {
-    val script = customMetadataStartScript(
-      "async ({ url }) => ({ title: url, thumbnailUrl: null });",
-      "test-state",
+  fun `取得ルールの診断結果をmetadata解決結果へ伝播する`() = runBlocking {
+    val staticBook = webBook(
+      title = "静的タイトル",
+      thumbnailUrl = "https://example.com/static.jpg",
+      description = "静的説明",
+      authors = listOf("静的著者"),
     )
+    val renderedBook = webBook(
+      title = "動的タイトル",
+      thumbnailUrl = "https://example.com/rendered.jpg",
+      description = "動的説明",
+      authors = listOf("動的著者"),
+    )
+    val execution = WebLibraryMetadataExtractorExecution(
+      ruleId = "rule-1",
+      urlPattern = "https://example.com/books/*",
+      status = WebLibraryMetadataExtractorStatus.REJECTED,
+      message = "selector failed",
+    )
+
+    val result = resolveWebLibraryBookMetadataWithReport(
+      url = "https://example.com/books/1",
+      titleHint = null,
+      staticFetch = { _, _ -> staticBook },
+      renderedFetch = { _, _ ->
+        WebLibraryRenderedMetadataFetchResult(
+          book = renderedBook,
+          extractorExecution = execution,
+        )
+      },
+      forceRendered = true,
+    )
+
+    assertEquals(execution, result.extractorExecution)
+    assertEquals("動的タイトル", result.book.title)
+  }
+
+  @Test
+  fun `WebView取得失敗時は静的metadataへフォールバックして理由を保持する`() = runBlocking {
+    val staticBook = webBook(
+      title = "静的タイトル",
+      thumbnailUrl = "https://example.com/static.jpg",
+      description = "静的説明",
+      authors = listOf("静的著者"),
+    )
+
+    val result = resolveWebLibraryBookMetadataWithReport(
+      url = "https://example.com/books/1",
+      titleHint = null,
+      staticFetch = { _, _ -> staticBook },
+      renderedFetch = { _, _ -> throw IllegalStateException("renderer unavailable") },
+      forceRendered = true,
+    )
+
+    assertEquals(staticBook, result.book)
+    assertEquals("renderer unavailable", result.fallbackReason)
+  }
+
+  @Test
+  fun `関数コードはevalで構文エラーを診断しPromise失敗理由を保持するscriptへ埋め込む`() {
+    val functionCode = "async ({ url }) => ({ title: url, thumbnailUrl: null });"
+    val script = customMetadataStartScript(functionCode, "test-state")
     val pollScript = customMetadataPollScript("test-state")
 
-    assertTrue(script.contains("const extractor = (async ({ url }) => ({ title: url, thumbnailUrl: null }))"))
+    assertTrue(script.contains("const source = ${JSONObject.quote(functionCode.removeSuffix(";"))}"))
+    assertTrue(script.contains("extractor = eval('(' + source + ')')"))
+    assertTrue(script.contains("finish('invalid_function'"))
     assertTrue(script.contains("const promise = extractor({ url: location.href })"))
     assertTrue(script.contains("typeof promise.then !== 'function'"))
-    assertTrue(script.contains("Promise.resolve(promise)"))
+    assertTrue(script.contains("finish('non_promise_result'"))
+    assertTrue(script.contains("finish('rejected'"))
+    assertTrue(script.contains("finish('threw'"))
     assertTrue(pollScript.contains("if (state.pending)"))
+    assertTrue(pollScript.contains("status"))
     assertTrue(pollScript.contains("delete window[stateKey]"))
   }
 

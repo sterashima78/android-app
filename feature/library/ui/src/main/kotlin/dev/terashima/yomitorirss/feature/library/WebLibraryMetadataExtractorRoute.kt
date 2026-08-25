@@ -23,7 +23,7 @@ fun LibraryFeatureRoute(
   organizationViewModel: LibraryOrganizationViewModel,
   onSyncGooglePlayBooks: () -> Unit,
   onAddWebBook: suspend (String) -> Unit,
-  onRefreshWebBook: suspend (LibraryBook) -> Unit,
+  onRefreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   onListWebMetadataExtractors: () -> List<WebLibraryMetadataExtractor>,

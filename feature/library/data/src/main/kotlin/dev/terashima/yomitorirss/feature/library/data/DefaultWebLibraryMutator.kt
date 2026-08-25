@@ -7,7 +7,10 @@ import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorExecution
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataRefreshResult
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.changedWebLibraryMetadataFields
 import java.net.URI
 import java.nio.charset.Charset
 import java.util.Locale
@@ -22,13 +25,21 @@ class DefaultWebLibraryMutator(
   override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook =
     fetchAndPersistWebBook(url = url, titleHint = titleHint, forceRendered = false)
 
-  override suspend fun refreshWebBook(book: LibraryBook): LibraryBook {
+  override suspend fun refreshWebBook(book: LibraryBook): LibraryBook =
+    refreshWebBookWithReport(book).book
+
+  override suspend fun refreshWebBookWithReport(book: LibraryBook): WebLibraryMetadataRefreshResult {
     require(book.source == LibrarySource.WEB) { "Web 蔵書以外は再取得できません" }
     val url = book.infoUrl?.trim()?.takeIf(String::isNotEmpty) ?: book.sourceId
-    val refreshed = fetchWebBook(url = url, titleHint = null, forceRendered = true)
-      .copy(sourceId = book.sourceId)
+    val resolved = fetchWebBookWithReport(url = url, titleHint = null, forceRendered = true)
+    val refreshed = resolved.book.copy(sourceId = book.sourceId)
     persistWebBook(refreshed)
-    return refreshed
+    return WebLibraryMetadataRefreshResult(
+      book = refreshed,
+      changedFields = changedWebLibraryMetadataFields(book, refreshed),
+      extractorExecution = resolved.extractorExecution,
+      fallbackReason = resolved.fallbackReason,
+    )
   }
 
   override suspend fun removeWebBook(book: LibraryBook) {
@@ -57,12 +68,19 @@ class DefaultWebLibraryMutator(
     url: String,
     titleHint: String?,
     forceRendered: Boolean,
-  ): LibraryBook {
-    val renderedFetch: (suspend (String, String?) -> LibraryBook)? = renderedMetadataClient?.let { client ->
-      { candidateUrl, candidateTitleHint -> client.fetch(candidateUrl, candidateTitleHint) }
-    }
+  ): LibraryBook = fetchWebBookWithReport(url, titleHint, forceRendered).book
+
+  private suspend fun fetchWebBookWithReport(
+    url: String,
+    titleHint: String?,
+    forceRendered: Boolean,
+  ): WebLibraryResolvedMetadata {
+    val renderedFetch: (suspend (String, String?) -> WebLibraryRenderedMetadataFetchResult)? =
+      renderedMetadataClient?.let { client ->
+        { candidateUrl, candidateTitleHint -> client.fetchWithReport(candidateUrl, candidateTitleHint) }
+      }
     val preferRenderedTitleAndThumbnail = renderedMetadataClient?.hasCustomExtractor(url) == true
-    return resolveWebLibraryBookMetadata(
+    return resolveWebLibraryBookMetadataWithReport(
       url = url,
       titleHint = titleHint,
       staticFetch = metadataClient::fetch,
@@ -108,14 +126,20 @@ class DefaultWebLibraryMutator(
   }
 }
 
-internal suspend fun resolveWebLibraryBookMetadata(
+internal data class WebLibraryResolvedMetadata(
+  val book: LibraryBook,
+  val extractorExecution: WebLibraryMetadataExtractorExecution? = null,
+  val fallbackReason: String? = null,
+)
+
+internal suspend fun resolveWebLibraryBookMetadataWithReport(
   url: String,
   titleHint: String?,
   staticFetch: suspend (String, String?) -> LibraryBook,
-  renderedFetch: (suspend (String, String?) -> LibraryBook)?,
+  renderedFetch: (suspend (String, String?) -> WebLibraryRenderedMetadataFetchResult)?,
   forceRendered: Boolean = false,
   preferRenderedTitleAndThumbnail: Boolean = false,
-): LibraryBook {
+): WebLibraryResolvedMetadata {
   val staticResult = try {
     Result.success(staticFetch(url, titleHint))
   } catch (error: CancellationException) {
@@ -134,7 +158,9 @@ internal suspend fun resolveWebLibraryBookMetadata(
       )
 
   if (!shouldRender) {
-    return staticBook ?: throw requireNotNull(staticResult.exceptionOrNull())
+    return WebLibraryResolvedMetadata(
+      book = staticBook ?: throw requireNotNull(staticResult.exceptionOrNull()),
+    )
   }
 
   val renderedResult = try {
@@ -144,19 +170,52 @@ internal suspend fun resolveWebLibraryBookMetadata(
   } catch (error: Throwable) {
     Result.failure(error)
   }
-  val renderedBook = renderedResult.getOrNull()
+  val rendered = renderedResult.getOrNull()
   return when {
-    staticBook != null && renderedBook != null -> mergeWebLibraryMetadata(
-      staticBook = staticBook,
-      renderedBook = renderedBook,
-      preferRendered = forceRendered,
-      preferRenderedTitleAndThumbnail = preferRenderedTitleAndThumbnail,
+    staticBook != null && rendered != null -> WebLibraryResolvedMetadata(
+      book = mergeWebLibraryMetadata(
+        staticBook = staticBook,
+        renderedBook = rendered.book,
+        preferRendered = forceRendered,
+        preferRenderedTitleAndThumbnail = preferRenderedTitleAndThumbnail,
+      ),
+      extractorExecution = rendered.extractorExecution,
     )
-    renderedBook != null -> renderedBook
-    staticBook != null -> staticBook
+    rendered != null -> WebLibraryResolvedMetadata(
+      book = rendered.book,
+      extractorExecution = rendered.extractorExecution,
+    )
+    staticBook != null -> WebLibraryResolvedMetadata(
+      book = staticBook,
+      fallbackReason = renderedResult.exceptionOrNull()?.let(::metadataFailureMessage),
+    )
     else -> throw requireNotNull(renderedResult.exceptionOrNull() ?: staticResult.exceptionOrNull())
   }
 }
+
+internal suspend fun resolveWebLibraryBookMetadata(
+  url: String,
+  titleHint: String?,
+  staticFetch: suspend (String, String?) -> LibraryBook,
+  renderedFetch: (suspend (String, String?) -> LibraryBook)?,
+  forceRendered: Boolean = false,
+  preferRenderedTitleAndThumbnail: Boolean = false,
+): LibraryBook = resolveWebLibraryBookMetadataWithReport(
+  url = url,
+  titleHint = titleHint,
+  staticFetch = staticFetch,
+  renderedFetch = renderedFetch?.let { fetch ->
+    { candidateUrl, candidateTitleHint ->
+      WebLibraryRenderedMetadataFetchResult(fetch(candidateUrl, candidateTitleHint))
+    }
+  },
+  forceRendered = forceRendered,
+  preferRenderedTitleAndThumbnail = preferRenderedTitleAndThumbnail,
+).book
+
+private fun metadataFailureMessage(error: Throwable): String =
+  error.message?.trim()?.takeIf(String::isNotEmpty)?.take(MAX_DIAGNOSTIC_MESSAGE_LENGTH)
+    ?: error::class.simpleName.orEmpty().ifBlank { "WebView metadata 取得に失敗しました" }
 
 internal fun LibraryBook.needsRenderedWebMetadata(): Boolean =
   thumbnailUrl.isNullOrBlank() || isWebHostFallbackTitle()
@@ -365,4 +424,5 @@ private val ATTRIBUTE = Regex("""([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=
 private val TITLE = Regex("<title\\b[^>]*>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
 private val NUMERIC_ENTITY = Regex("&#(x[0-9a-fA-F]+|[0-9]+);")
 private const val MAX_HTML_BYTES = 4 * 1024 * 1024
+private const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 200
 private const val USER_AGENT = "Yomitori/1.0 WebLibraryMetadata"

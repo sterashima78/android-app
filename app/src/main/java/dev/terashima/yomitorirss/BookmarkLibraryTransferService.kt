@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkMutator
 import dev.terashima.yomitorirss.feature.bookmark.SaveSharedBookmarkUseCase
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataRefreshResult
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 
 internal class NotifyingWebLibraryMutator(
@@ -16,6 +17,9 @@ internal class NotifyingWebLibraryMutator(
 
   override suspend fun refreshWebBook(book: LibraryBook): LibraryBook =
     delegate.refreshWebBook(book).also { onChanged() }
+
+  override suspend fun refreshWebBookWithReport(book: LibraryBook): WebLibraryMetadataRefreshResult =
+    delegate.refreshWebBookWithReport(book).also { onChanged() }
 
   override suspend fun removeWebBook(book: LibraryBook) {
     delegate.removeWebBook(book)
