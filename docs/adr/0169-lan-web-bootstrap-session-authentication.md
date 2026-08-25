@@ -21,7 +21,7 @@ LAN Web の認証を次の contract に変更する。
 - bootstrap token は照合に成功した1回の request で消費し、その同じ同期処理で新しい session token を生成して認証結果として返す。
 - server は session token を `HttpOnly; SameSite=Strict` Cookie に設定し、token query を除去した同一 path へ `303 See Other` で redirect する。
 - query に token が残る request は bootstrap 専用とし、消費済み token や Cookie との併用による再利用を拒否する。
-- LAN IPv4 address が変化した場合は新しい bootstrap token を生成して server と表示 URL を同時に更新する。旧 address 用 bootstrap token は失効する。
+- LAN IPv4 address が変化した場合は新しい bootstrap token を生成して server と表示 URL を同時に更新し、旧 bootstrap token と既存 session token を失効する。
 - server 停止時は bootstrap token と session token の双方を失効する。再起動後に旧 token を受け入れない。
 - HTTP 自体は暗号化しないため、UI では信頼できる LAN に限定することと初回 URL を共有しないことを明示する。
 
@@ -34,12 +34,12 @@ ADR-0166 の transport / read model / renderer の責務分割と read-only cont
 - 長寿命の永続 access token を SharedPreferences と URL から排除できる。
 - 初回 URL が履歴に残っても bootstrap token は成功後に再利用できない。
 - 認証後の通常 URL から query token を除去できる。
-- LAN address 変更後も新しい origin 用 bootstrap URL から再認証できる。
+- LAN address 変更後も新しい origin 用 bootstrap URL から再認証でき、旧 origin の session も失効する。
 - bootstrap 成功結果が session token を値として保持するため、server 停止との競合で `sessionToken` 参照が失敗しない。
 
 ### Negative
 
-- server 起動中でも LAN address が変わると再認証が必要になる。
+- server 起動中でも LAN address が変わると既存 session が失効し、再認証が必要になる。
 - HTTP は平文のままであり、同一 LAN 上の盗聴耐性は提供しない。
 - session Cookie は address origin ごとに分離されるため、address change ごとに新しい bootstrap が必要になる。
 
@@ -47,7 +47,7 @@ ADR-0166 の transport / read model / renderer の責務分割と read-only cont
 
 - bootstrap token は一度だけ成功すること。
 - bootstrap 成功結果が生成済み session token を保持し、直後に invalidate されても成功 response を構築できること。
-- bootstrap token の差し替え後は旧 token を拒否し、新 token を受け入れること。
+- bootstrap token の差し替え後は旧 bootstrap / session token を拒否し、新 token を受け入れること。
 - stop / restart 後は旧 bootstrap / session token を拒否すること。
 - redirect URL から token query だけを除去すること。
 - PR CI の unit test、architecture verification、lint、public repository verification を継続する。
