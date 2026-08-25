@@ -43,7 +43,7 @@ class CompositeAiTaskQueueRepositoryTest {
           startedAt = "2026-08-16T00:00:01Z",
           finishedAt = null,
           error = null,
-          progressStage = SummaryQueueTaskProgressStage.GENERATING_SUMMARY,
+          progressStage = SummaryQueueTaskProgressStage.CLOUD_GENERATING_SUMMARY,
         ),
       ),
     )
@@ -67,11 +67,11 @@ class CompositeAiTaskQueueRepositoryTest {
     assertEquals(AiTaskQueueItemState.QUEUED, tasks[1].state)
     assertEquals(AiTaskQueueItemKind.SUMMARY, tasks[2].kind)
     assertEquals(AiTaskQueueItemState.RUNNING, tasks[2].state)
-    assertEquals(AiTaskQueueProgressStage.GENERATING, tasks[2].progressStage)
+    assertEquals(AiTaskQueueProgressStage.CLOUD_GENERATING, tasks[2].progressStage)
   }
 
   @Test
-  fun `全体停止は実行待ちの蔵書整理タスクを一時停止表示し再開時に再度キックする`() = runBlocking {
+  fun `ローカル停止は実行待ちの蔵書整理タスクを一時停止表示し再開時に再度キックする`() = runBlocking {
     val summary = FakeSummaryRepository()
     val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.RUNNING))
     val scheduler = FakeScheduler()
@@ -82,24 +82,45 @@ class CompositeAiTaskQueueRepositoryTest {
       scheduler,
     )
 
-    repository.setPaused(true)
+    repository.setLocalPaused(true)
 
-    assertTrue(summary.execution.paused)
+    assertTrue(summary.execution.localPaused)
+    assertFalse(summary.execution.cloudPaused)
     assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.cancelCount)
     assertTrue(scheduler.chargingResumeArmed)
     assertEquals(AiTaskQueueItemState.PAUSED, repository.listTasks()[1].state)
 
-    repository.setPaused(false)
+    repository.setLocalPaused(false)
 
-    assertFalse(summary.execution.paused)
+    assertFalse(summary.execution.localPaused)
     assertEquals(LibraryOrganizationBatchStatus.RUNNING, library.batch!!.status)
     assertEquals(1, scheduler.kickCount)
     assertFalse(scheduler.chargingResumeArmed)
   }
 
   @Test
-  fun `個別に一時停止した蔵書整理は全体停止の解除や充電再開対象にしない`() = runBlocking {
+  fun `クラウド停止はローカル蔵書整理を停止しない`() = runBlocking {
+    val summary = FakeSummaryRepository()
+    val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.RUNNING))
+    val scheduler = FakeScheduler()
+    val repository = CompositeAiTaskQueueRepository(
+      summary,
+      library,
+      FakeLibraryCatalogRepository(testBooks()),
+      scheduler,
+    )
+
+    repository.setCloudPaused(true)
+
+    assertTrue(summary.execution.cloudPaused)
+    assertFalse(summary.execution.localPaused)
+    assertEquals(0, scheduler.cancelCount)
+    assertEquals(AiTaskQueueItemState.QUEUED, repository.listTasks()[1].state)
+  }
+
+  @Test
+  fun `個別に一時停止した蔵書整理はローカル停止の解除や充電再開対象にしない`() = runBlocking {
     val summary = FakeSummaryRepository()
     val library = FakeLibraryOrganizationRepository(batch = testBatch(LibraryOrganizationBatchStatus.PAUSED))
     val scheduler = FakeScheduler()
@@ -110,8 +131,8 @@ class CompositeAiTaskQueueRepositoryTest {
       scheduler,
     )
 
-    repository.setPaused(true)
-    repository.setPaused(false)
+    repository.setLocalPaused(true)
+    repository.setLocalPaused(false)
 
     assertEquals(LibraryOrganizationBatchStatus.PAUSED, library.batch!!.status)
     assertEquals(0, scheduler.kickCount)
@@ -148,16 +169,23 @@ class CompositeAiTaskQueueRepositoryTest {
 private class FakeSummaryRepository(
   private val tasks: List<SummaryQueueTask> = emptyList(),
 ) : SummaryTaskQueueRepository {
-  var execution = SummaryQueueExecutionState(paused = false, resumeWhenCharging = true)
+  var execution = SummaryQueueExecutionState(
+    localPaused = false,
+    cloudPaused = false,
+    resumeLocalWhenCharging = true,
+  )
 
   override suspend fun listTasks(): List<SummaryQueueTask> = tasks
   override suspend fun executionState(): SummaryQueueExecutionState = execution
   override suspend fun kick() = Unit
-  override suspend fun setPaused(paused: Boolean) {
-    execution = execution.copy(paused = paused)
+  override suspend fun setLocalPaused(paused: Boolean) {
+    execution = execution.copy(localPaused = paused)
   }
-  override suspend fun setResumeWhenCharging(enabled: Boolean) {
-    execution = execution.copy(resumeWhenCharging = enabled)
+  override suspend fun setCloudPaused(paused: Boolean) {
+    execution = execution.copy(cloudPaused = paused)
+  }
+  override suspend fun setResumeLocalWhenCharging(enabled: Boolean) {
+    execution = execution.copy(resumeLocalWhenCharging = enabled)
   }
   override suspend fun stop(articleId: String): Boolean = false
   override suspend fun cancel(articleId: String): Boolean = false
