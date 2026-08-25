@@ -187,6 +187,8 @@ internal suspend fun resolveWebLibraryBookMetadataWithReport(
     )
     staticBook != null -> WebLibraryResolvedMetadata(
       book = staticBook,
+      extractorExecution = (renderedResult.exceptionOrNull() as? WebLibraryRenderedMetadataException)
+        ?.extractorExecution,
       fallbackReason = renderedResult.exceptionOrNull()?.let(::metadataFailureMessage),
     )
     else -> throw requireNotNull(renderedResult.exceptionOrNull() ?: staticResult.exceptionOrNull())
