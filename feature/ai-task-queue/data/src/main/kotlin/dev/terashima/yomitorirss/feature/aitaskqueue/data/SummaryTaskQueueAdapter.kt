@@ -1,10 +1,12 @@
 package dev.terashima.yomitorirss.feature.aitaskqueue.data
 
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskExecutionProvider
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItem
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemPriority
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueProgressStage
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskPriority
@@ -56,6 +58,7 @@ internal class SummaryTaskQueueAdapter(
       task.state == SummaryQueueTaskState.RUNNING ||
       task.state == SummaryQueueTaskState.STOPPED,
     canResume = task.state == SummaryQueueTaskState.STOPPED || task.state == SummaryQueueTaskState.FAILED,
+    executionProvider = task.executionProvider.toAiTaskExecutionProvider(),
   )
 
   private fun SummaryQueueTaskPriority.toAiTaskPriority(): AiTaskQueueItemPriority = when (this) {
@@ -84,6 +87,11 @@ internal class SummaryTaskQueueAdapter(
     SummaryQueueTaskProgressStage.CLOUD_GENERATING_SUMMARY -> AiTaskQueueProgressStage.CLOUD_GENERATING
     SummaryQueueTaskProgressStage.CLOUD_GENERATING_METADATA -> AiTaskQueueProgressStage.CLOUD_ENRICHING
     SummaryQueueTaskProgressStage.UNKNOWN -> AiTaskQueueProgressStage.UNKNOWN
+  }
+
+  private fun SummaryExecutionProvider.toAiTaskExecutionProvider(): AiTaskExecutionProvider = when (this) {
+    SummaryExecutionProvider.LOCAL -> AiTaskExecutionProvider.LOCAL
+    SummaryExecutionProvider.CHATGPT -> AiTaskExecutionProvider.CHATGPT
   }
 
   private companion object {
