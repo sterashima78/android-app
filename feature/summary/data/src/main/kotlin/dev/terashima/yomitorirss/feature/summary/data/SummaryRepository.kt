@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRequestResult
@@ -9,7 +9,7 @@ import dev.terashima.yomitorirss.feature.summary.SummaryRequestResult
 class DefaultSummaryRepository(
   context: Context,
   private val database: YomitoriDatabase,
-  private val modelManager: LocalModelManager,
+  private val textInference: AiTextInference,
 ) : SummaryRepository {
   private val appContext = context.applicationContext
 
@@ -29,7 +29,7 @@ class DefaultSummaryRepository(
       }
     }
 
-    modelManager.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
+    textInference.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
     return SummaryRequestResult.Enqueued(
       accepted = SummaryQueue.enqueue(
         context = appContext,
@@ -51,7 +51,7 @@ class DefaultSummaryRepository(
     )
 
   override suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int {
-    if (articleIds.isEmpty() || modelManager.selectedModel() == null) return 0
+    if (articleIds.isEmpty() || textInference.selectedModel() == null) return 0
     return SummaryQueue.enqueueMissingBookmarkEnrichment(appContext, articleIds)
   }
 
