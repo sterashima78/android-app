@@ -7,6 +7,7 @@
   <include domain="sharedpref" path="summary_preferences.xml" />
   <include domain="sharedpref" path="workout.xml" />
   <include domain="sharedpref" path="x_viewer_preferences.xml" />
+  <include domain="file" path="local-summary-models/" />
   <exclude domain="sharedpref" path="google_drive_backup.xml" />
   <exclude domain="sharedpref" path="smb_library_credentials.xml" />
   <exclude domain="sharedpref" path="chatgpt_oauth_secure.xml" />
