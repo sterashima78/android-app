@@ -282,12 +282,6 @@ internal fun aiTaskFailureReason(item: AiTaskQueueItem): String? {
     ?: "詳細な失敗理由は記録されていません"
 }
 
-internal fun taskExecutionProviderLabel(provider: AiTaskExecutionProvider?): String? = when (provider) {
-  AiTaskExecutionProvider.LOCAL -> "Local"
-  AiTaskExecutionProvider.CHATGPT -> "ChatGPT"
-  null -> null
-}
-
 private fun taskTitle(item: AiTaskQueueItem): String = item.title
 
 private fun taskSource(item: AiTaskQueueItem): String {
@@ -297,7 +291,7 @@ private fun taskSource(item: AiTaskQueueItem): String {
     AiTaskQueueItemKind.SMB_METADATA_NORMALIZATION -> "書誌正規化 ・ ${item.source}"
     AiTaskQueueItemKind.KNOWLEDGE_WIKI -> "LLM Wiki ・ ${item.source}"
   }
-  return taskExecutionProviderLabel(item.executionProvider)?.let { "$source ・ $it" } ?: source
+  return item.executionProviderLabel?.takeIf(String::isNotBlank)?.let { "$source ・ $it" } ?: source
 }
 
 private fun priorityLabel(priority: AiTaskQueueItemPriority): String = when (priority) {
