@@ -3,7 +3,7 @@ package dev.terashima.yomitorirss.feature.summary.data
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
@@ -19,7 +19,7 @@ class SummaryContentFetchWorker(
   private val runtime: SummaryRuntimeDependencies,
   private val articleContentClient: ArticleContentClient,
   private val database: YomitoriDatabase,
-  private val modelManager: LocalModelManager,
+  private val textInference: AiTextInference,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
@@ -38,7 +38,7 @@ class SummaryContentFetchWorker(
           database.failQueuedSummaryTask(task.articleId, "記事が見つかりません")
           continue
         }
-        if (modelManager.selectedModel() == null) {
+        if (textInference.selectedModel() == null) {
           database.failQueuedSummaryTask(article.id, MODEL_NOT_SELECTED_MESSAGE)
           continue
         }
