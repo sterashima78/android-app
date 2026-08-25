@@ -24,6 +24,8 @@ data class WebLibraryMetadataExtractorExecution(
   val urlPattern: String,
   val status: WebLibraryMetadataExtractorStatus,
   val message: String? = null,
+  val extractedTitle: String? = null,
+  val extractedThumbnailUrl: String? = null,
 )
 
 data class WebLibraryMetadataRefreshResult(
