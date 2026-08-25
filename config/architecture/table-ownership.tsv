@@ -16,6 +16,7 @@ mail_threads	:feature:mail:data
 mail_messages	:feature:mail:data
 library_items	:feature:library:data
 library_sources	:feature:library:data
+web_library_metadata_extractors	:feature:library:data
 hidden_library_items	:feature:library:data
 library_item_series	:feature:library:data
 library_item_series_exclusions	:feature:library:data

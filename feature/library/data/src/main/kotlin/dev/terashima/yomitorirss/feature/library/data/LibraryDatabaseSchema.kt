@@ -11,6 +11,7 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
 internal fun ensureLibrarySchema(db: SQLiteDatabase) {
   ensureLibraryCatalogSchema(db)
   ensureLibraryStructuredSeriesSchema(db)
+  ensureWebLibraryMetadataExtractorSchema(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS smb_library_servers(

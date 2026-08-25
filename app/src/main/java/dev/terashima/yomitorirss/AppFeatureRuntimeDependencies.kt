@@ -22,12 +22,14 @@ import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMetadataExtractorRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
@@ -80,6 +82,7 @@ internal class AppFeatureRuntimeDependencies(
     val smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application)
     val smbMetadataNormalizationPromptRepository =
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
+    val webMetadataExtractorRepository = DefaultWebLibraryMetadataExtractorRepository(database)
     val authorizationManager = GoogleBooksAuthorizationManager(application)
 
     LibraryRuntimeDependencies(
@@ -109,8 +112,12 @@ internal class AppFeatureRuntimeDependencies(
       webLibraryMutator = DefaultWebLibraryMutator(
         database = database,
         metadataClient = WebLibraryMetadataClient(httpClient),
-        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(resumedActivityProvider),
+        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
+          activityProvider = resumedActivityProvider,
+          extractorRepository = webMetadataExtractorRepository,
+        ),
       ),
+      webMetadataExtractorRepository = webMetadataExtractorRepository,
       organizationRepository = organizationRepository,
       organizationSuggester = organizationSuggester,
       organizationBatchScheduler = organizationBatchScheduler,
@@ -141,6 +148,7 @@ internal data class LibraryRuntimeDependencies(
   val authorization: LibraryAuthorizationDependencies,
   val catalogRepository: LibraryRepository,
   val webLibraryMutator: WebLibraryMutator,
+  val webMetadataExtractorRepository: WebLibraryMetadataExtractorRepository,
   val organizationRepository: LibraryOrganizationRepository,
   val organizationSuggester: LibraryOrganizationSuggester,
   val organizationBatchScheduler: LibraryOrganizationBatchScheduler,
