@@ -80,7 +80,7 @@ class ArchitectureCleanupSourceTest {
     val summaryBuild = source("feature/summary/data/build.gradle.kts")
     val knowledgeBuild = source("feature/knowledge/data/build.gradle.kts")
     val libraryOrganization = source(
-      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/LocalLibraryOrganizationSuggester.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryOrganizationSuggester.kt",
     )
     val aiCore = source("app/src/main/java/dev/terashima/yomitorirss/AppAiCoreRuntimeDependencies.kt")
     val featureRuntime = source("app/src/main/java/dev/terashima/yomitorirss/AppFeatureRuntimeDependencies.kt")
