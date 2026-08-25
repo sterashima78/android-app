@@ -95,6 +95,7 @@ class AndroidWebViewLibraryMetadataClient(
     var completed = false
     var pageGeneration = 0
     var extractionAttempts = 0
+    lateinit var extractMetadata: (String, Int) -> Unit
 
     fun dispose() {
       webView.stopLoading()
@@ -155,20 +156,21 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
-    fun extractMetadata(finalUrl: String, generation: Int) {
-      if (completed || generation != pageGeneration) return
-      extractionAttempts += 1
-      val extractor = findMatchingWebLibraryMetadataExtractor(extractors, finalUrl)
-        ?: findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
-      if (extractor == null) {
-        evaluateStandardMetadata(finalUrl, generation, null)
-        return
-      }
-
-      webView.evaluateJavascript(customMetadataScript(extractor.functionCode)) { rawResult ->
-        if (completed || generation != pageGeneration) return@evaluateJavascript
-        val customMetadata = parseCustomRenderedWebLibraryMetadata(finalUrl, rawResult)
-        evaluateStandardMetadata(finalUrl, generation, customMetadata)
+    extractMetadata = { finalUrl, generation ->
+      if (!completed && generation == pageGeneration) {
+        extractionAttempts += 1
+        val extractor = findMatchingWebLibraryMetadataExtractor(extractors, finalUrl)
+          ?: findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
+        if (extractor == null) {
+          evaluateStandardMetadata(finalUrl, generation, null)
+        } else {
+          webView.evaluateJavascript(customMetadataScript(extractor.functionCode)) { rawResult ->
+            if (!completed && generation == pageGeneration) {
+              val customMetadata = parseCustomRenderedWebLibraryMetadata(finalUrl, rawResult)
+              evaluateStandardMetadata(finalUrl, generation, customMetadata)
+            }
+          }
+        }
       }
     }
 
@@ -253,16 +255,20 @@ internal fun customMetadataScript(functionCode: String): String {
   val expression = functionCode.trim().removeSuffix(";")
   return """
     (() => {
-      const extractor = ($expression);
-      if (typeof extractor !== 'function') return null;
-      const value = extractor({ url: location.href });
-      if (!value || typeof value !== 'object') return null;
-      const title = typeof value.title === 'string' ? value.title.trim() : null;
-      const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
-      return JSON.stringify({
-        title: title || null,
-        thumbnailUrl: thumbnailUrl || null
-      });
+      try {
+        const extractor = ($expression);
+        if (typeof extractor !== 'function') return null;
+        const value = extractor({ url: location.href });
+        if (!value || typeof value !== 'object') return null;
+        const title = typeof value.title === 'string' ? value.title.trim() : null;
+        const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
+        return JSON.stringify({
+          title: title || null,
+          thumbnailUrl: thumbnailUrl || null
+        });
+      } catch (_) {
+        return null;
+      }
     })()
   """.trimIndent()
 }
