@@ -63,12 +63,12 @@ class WebLibraryMetadataExtractorTest {
 
   @Test
   fun `同じ具体度なら更新日時が新しいURLパターンを優先する`() {
-    val old = extractor(id = "old", pattern = "https://example.com/book/*", updatedAt = 10L)
-    val new = extractor(id = "new", pattern = "https://example.com/item/*", updatedAt = 20L)
+    val old = extractor(id = "old", pattern = "https://example.com/*1", updatedAt = 10L)
+    val new = extractor(id = "new", pattern = "https://example.com/a*", updatedAt = 20L)
 
     val result = findMatchingWebLibraryMetadataExtractor(
       listOf(old, new),
-      "https://example.com/item/1",
+      "https://example.com/a1",
     )
 
     assertEquals("new", result?.id)
@@ -166,6 +166,7 @@ class WebLibraryMetadataExtractorTest {
 
     assertTrue(script.contains("const extractor = (({ url }) => ({ title: url, thumbnailUrl: null }))"))
     assertTrue(script.contains("extractor({ url: location.href })"))
+    assertTrue(script.contains("try {"))
   }
 
   private fun extractor(
