@@ -4,6 +4,7 @@ import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 
@@ -36,6 +37,16 @@ class AndroidBackupRulesArchitectureTest {
   }
 
   @Test
+  fun `local model artifactはdevice transferで維持する`() {
+    val legacyFileIncludes = includes("app/src/main/res/xml/backup_rules.xml", "file")
+    val extractionFileIncludes = extractionIncludes("file")
+
+    assertTrue(LOCAL_MODEL_DIRECTORY in legacyFileIncludes)
+    assertFalse(LOCAL_MODEL_DIRECTORY in extractionFileIncludes.getValue("cloud-backup"))
+    assertTrue(LOCAL_MODEL_DIRECTORY in extractionFileIncludes.getValue("device-transfer"))
+  }
+
+  @Test
   fun `platform backupの許可リストはBackupPreferencesと意図した差だけを持つ`() {
     val source = File(
       repositoryRoot,
@@ -50,17 +61,21 @@ class AndroidBackupRulesArchitectureTest {
     assertEquals(KEY_FILTERED_ARCHIVE_ONLY_PREFERENCES, archiveRules - SAFE_PREFERENCES)
   }
 
-  private fun sharedPreferenceIncludes(path: String): Set<String> =
+  private fun sharedPreferenceIncludes(path: String): Set<String> = includes(path, "sharedpref")
+
+  private fun includes(path: String, domain: String): Set<String> =
     parse(path).documentElement.childElements("include")
-      .filter { it.getAttribute("domain") == "sharedpref" }
+      .filter { it.getAttribute("domain") == domain }
       .mapTo(linkedSetOf()) { it.getAttribute("path") }
 
-  private fun extractionSharedPreferenceIncludes(): Map<String, Set<String>> =
+  private fun extractionSharedPreferenceIncludes(): Map<String, Set<String>> = extractionIncludes("sharedpref")
+
+  private fun extractionIncludes(domain: String): Map<String, Set<String>> =
     parse("app/src/main/res/xml/data_extraction_rules.xml").documentElement
       .childElements()
       .associate { section ->
         section.tagName to section.childElements("include")
-          .filter { it.getAttribute("domain") == "sharedpref" }
+          .filter { it.getAttribute("domain") == domain }
           .mapTo(linkedSetOf()) { it.getAttribute("path") }
       }
 
@@ -74,6 +89,7 @@ class AndroidBackupRulesArchitectureTest {
       .filter { tagName == null || it.tagName == tagName }
 
   private companion object {
+    const val LOCAL_MODEL_DIRECTORY = "local-summary-models/"
     val SAFE_PREFERENCES = setOf(
       "background_data_fetch.xml",
       "book_reader_position.xml",
