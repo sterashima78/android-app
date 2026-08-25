@@ -42,6 +42,12 @@ internal class ChatGptKnowledgeTextInference(
     throw classifyKnowledgeTransportFailure()
   } catch (error: IllegalStateException) {
     throw classifyKnowledgeProviderFailure(error)
+  } catch (_: Throwable) {
+    throw KnowledgeCloudInferenceException(
+      kind = KnowledgeCloudFailureKind.UNKNOWN,
+      retryable = false,
+      message = "ChatGPT / Codex のWiki生成に失敗しました",
+    )
   }
 }
 
