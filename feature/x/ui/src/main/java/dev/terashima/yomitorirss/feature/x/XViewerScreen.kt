@@ -7,11 +7,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -31,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,8 +67,45 @@ fun XViewerScreen(
   val snackbarHostState = remember { SnackbarHostState() }
   val scope = rememberCoroutineScope()
   var pickerActive by remember { mutableStateOf(false) }
+  var currentUrl by remember { mutableStateOf(X_HOME_URL) }
+  var rendererGeneration by remember { mutableIntStateOf(0) }
+  var rendererCrashed by remember { mutableStateOf(false) }
 
-  val webView = remember(context, defaultCss, repository) {
+  if (rendererCrashed) {
+    Box(modifier = modifier.fillMaxSize()) {
+      Surface(
+        modifier = Modifier
+          .align(Alignment.Center)
+          .padding(24.dp)
+          .widthIn(max = 520.dp),
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 6.dp,
+      ) {
+        Column(
+          modifier = Modifier.padding(20.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Text("X の Web 表示処理が異常終了しました", style = MaterialTheme.typography.titleMedium)
+          Text("同じページを自動で再読込せず、X のホームから再試行します。")
+          TextButton(
+            onClick = {
+              currentUrl = X_HOME_URL
+              rendererCrashed = false
+            },
+          ) {
+            Text("X を再読み込み")
+          }
+        }
+      }
+    }
+    return
+  }
+
+  val rendererLifecycle = remember(context, defaultCss, repository, rendererGeneration) {
+    XWebViewRendererLifecycle()
+  }
+  val initialUrl = currentUrl.takeIf { it.isXUrl() } ?: X_HOME_URL
+  val webView = remember(context, defaultCss, repository, rendererGeneration, rendererLifecycle) {
     WebView(context).apply {
       settings.javaScriptEnabled = true
       settings.domStorageEnabled = true
@@ -114,11 +154,27 @@ fun XViewerScreen(
         override fun onPageFinished(view: WebView, url: String) {
           super.onPageFinished(view, url)
           if (url.isXUrl()) {
+            currentUrl = url
             val css = repository.load().cssForInjection()
             view.injectCss(css)
           } else {
             pickerActive = false
           }
+        }
+
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+          rendererLifecycle.gone = true
+          pickerActive = false
+          if (detail.didCrash()) {
+            currentUrl = X_HOME_URL
+            rendererCrashed = true
+          } else {
+            rendererGeneration += 1
+            scope.launch {
+              snackbarHostState.showSnackbar("Web 表示プロセスがメモリ不足で終了したため再読み込みしました")
+            }
+          }
+          return true
         }
       }
     }.also { view ->
@@ -142,7 +198,7 @@ fun XViewerScreen(
           if (right <= left || bottom <= top) return
           changedView.removeOnLayoutChangeListener(this)
           if (view.url == null) {
-            view.loadUrl(X_HOME_URL)
+            view.loadUrl(initialUrl)
           }
         }
       })
@@ -151,8 +207,10 @@ fun XViewerScreen(
 
   DisposableEffect(webView) {
     onDispose {
-      webView.stopLoading()
-      webView.webViewClient = WebViewClient()
+      if (!rendererLifecycle.gone) {
+        webView.stopLoading()
+        webView.webViewClient = WebViewClient()
+      }
       webView.destroy()
     }
   }
@@ -269,6 +327,10 @@ fun XViewerScreen(
         .padding(horizontal = 12.dp, vertical = 8.dp),
     )
   }
+}
+
+private class XWebViewRendererLifecycle {
+  var gone: Boolean = false
 }
 
 internal fun String.toBrowserCompatibleUserAgent(): String =

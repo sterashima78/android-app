@@ -61,11 +61,21 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 - main process の background local-AI task は global task gate の permit owner を diagnostics-only class label として公開する。priority、queue state、feature behavior はこの label に依存しない。
 - main process は background local-AI permit 保持中と permit 解放後5分に限り、10秒間隔で PSS、RSS、native heap、Java heap を採取する。終了後の retained sample は直前 task label と関連付け、engine/native memory が task 終了後も残るケースを判別できるようにする。
 
+## WebView renderer lifecycle
+
+- WebView renderer は Mosaic main process とは別の sandbox process で動作する。system が memory pressure により renderer を終了したこと自体を Mosaic main process の memory failure とみなさない。
+- custom `WebViewClient` を持つ production WebView は `onRenderProcessGone` を実装し、終了済み renderer に結び付いた `WebView` を再利用しない。
+- `RenderProcessGoneDetail.didCrash() == false` の system low-memory kill では、画面型 WebView は新しい instance へ切り替えて継続する。headless WebView adapter は現在の取得単位を retryable failure として終了する。
+- `didCrash() == true` の renderer crash では、同じ remote page を無条件に即時再読込しない。X viewer / Web collector は安全な開始 URL からの明示 retry に戻し、headless adapter は失敗として呼び出し側へ返す。
+- Mail HTML は network load を禁止した local document rendering なので、system kill では同じ document を新 instance で再描画し、renderer crash では表示失敗を示して画面再表示時の再生成に委ねる。
+- renderer termination 後は通常 dispose 用の navigation / loading 操作を続行せず、参照を切り替えて `destroy` する。
+
 ## Process exit and crash diagnostics
 
 - uncaught exception は app entry point で起動時診断用の report として保持し、次回起動時に表示・コピーできる。
 - Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。短寿命 vision process の正常終了で障害記録が押し出されないよう、固定件数ではなく Android が保持する履歴全体を確認する。
-- Android 17 の app memory limits は targetSdk に関係なく実行環境の制約として扱い、`MemoryLimiter` を含む終了はこの診断経路で追跡する。
+- process-exit report の障害候補は application package name と一致する main process、または `applicationPackageName:` で始まる Mosaic 所有 subprocess に限定する。WebView sandbox renderer 等の別 package process の low-memory exit は Mosaic の process-exit report として表示しない。
+- Android 17 の app memory limits は targetSdk に関係なく実行環境の制約として扱い、app-owned process の `MemoryLimiter` を含む終了はこの診断経路で追跡する。
 - Android 17 / API 37 では `ProfilingManager` の anomaly trigger を登録し、memory limit 到達時に system profiling artifact を app-private storage へ残せるようにする。現行 compileSdk 36 / targetSdk 36 は変更せず、API 37 runtime guard 内だけで anomaly trigger を有効にする。
 - process-exit report は対象 exit の pid と process name を記録する。local AI memory diagnostics は同じ pid・process name かつ exit timestamp 以下のサンプルだけを補足し、別 process generation や終了後のサンプルを混在させない。
 - MemoryLimiter exit 前10分以内に system profiling artifact が生成されている場合、共有 report には安全な artifact file name を最大3件だけ記録する。heap dump 本体、app-private path、heap 内容は report へコピーしない。
@@ -98,3 +108,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161](../adr/0161-android17-main-process-memory-diagnostics.md)
+- [ADR-0163](../adr/0163-webview-renderer-exit-recovery.md)

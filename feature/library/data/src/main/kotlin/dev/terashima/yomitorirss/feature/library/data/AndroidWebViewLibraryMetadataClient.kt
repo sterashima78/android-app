@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -104,6 +105,17 @@ class AndroidWebViewLibraryMetadataClient(
       )
     }
 
+    fun failAfterRendererExit(detail: RenderProcessGoneDetail) {
+      if (completed) return
+      completed = true
+      webView.destroy()
+      if (continuation.isActive) {
+        continuation.resumeWithException(
+          IllegalStateException(renderProcessGoneMessage(detail.didCrash())),
+        )
+      }
+    }
+
     fun extractMetadata(finalUrl: String, generation: Int) {
       if (completed || generation != pageGeneration) return
       extractionAttempts += 1
@@ -183,6 +195,11 @@ class AndroidWebViewLibraryMetadataClient(
           )
         }
       }
+
+      override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        failAfterRendererExit(detail)
+        return true
+      }
     }
 
     continuation.invokeOnCancellation {
@@ -259,6 +276,12 @@ private fun isSafeRenderedUrl(url: String): Boolean = runCatching {
     !uri.host.isNullOrBlank() &&
     (uri.port == -1 || uri.port == 443)
 }.getOrDefault(false)
+
+internal fun renderProcessGoneMessage(didCrash: Boolean): String = if (didCrash) {
+  "WebView の表示プロセスが異常終了しました。再試行してください"
+} else {
+  "WebView の表示プロセスがメモリ不足で終了しました。再試行してください"
+}
 
 private const val METADATA_SCRIPT = """
 (() => {

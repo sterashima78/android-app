@@ -74,6 +74,7 @@ object StartupCrashStore {
         .commit()
 
       val memoryExit = unseen
+        .filter { isAppOwnedProcessName(application.packageName, it.processName) }
         .filter { isMemoryRelatedProcessExit(it.reason, it.description) }
         .maxByOrNull { it.timestamp }
         ?: return@runCatching
@@ -124,6 +125,9 @@ object StartupCrashStore {
   private fun preferences(context: Context) =
     context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 }
+
+internal fun isAppOwnedProcessName(packageName: String, processName: String?): Boolean =
+  processName == packageName || processName?.startsWith("$packageName:") == true
 
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||

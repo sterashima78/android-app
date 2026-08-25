@@ -60,6 +60,46 @@ class StartupCrashStoreTest {
   }
 
   @Test
+  fun `main processをアプリ所有として扱う`() {
+    assertTrue(
+      isAppOwnedProcessName(
+        packageName = "dev.terashima.yomitorirss",
+        processName = "dev.terashima.yomitorirss",
+      ),
+    )
+  }
+
+  @Test
+  fun `アプリの明示的なsubprocessをアプリ所有として扱う`() {
+    assertTrue(
+      isAppOwnedProcessName(
+        packageName = "dev.terashima.yomitorirss",
+        processName = "dev.terashima.yomitorirss:local_ai_vision",
+      ),
+    )
+  }
+
+  @Test
+  fun `WebView sandbox processをアプリ所有として扱わない`() {
+    assertFalse(
+      isAppOwnedProcessName(
+        packageName = "dev.terashima.yomitorirss",
+        processName = "com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0",
+      ),
+    )
+  }
+
+  @Test
+  fun `process名がない終了をアプリ所有として扱わない`() {
+    assertFalse(
+      isAppOwnedProcessName(
+        packageName = "dev.terashima.yomitorirss",
+        processName = null,
+      ),
+    )
+  }
+
+  @Test
   fun `MemoryLimiter による終了をメモリ関連として扱う`() {
     assertTrue(
       isMemoryRelatedProcessExit(

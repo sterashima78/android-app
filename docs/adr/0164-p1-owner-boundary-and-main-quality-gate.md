@@ -1,4 +1,4 @@
-# ADR-0163: owner boundary と main quality gate の残存 P1 を収束する
+# ADR-0164: owner boundary と main quality gate の残存 P1 を収束する
 
 - Status: Accepted
 - Date: 2026-08-24

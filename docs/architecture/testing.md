@@ -114,8 +114,6 @@ current-version compatibility cleanup のように Android-heavy runtime の一�
 
 共有可能な診断情報の sanitizer は pure transformation として人工的な URL / credential-like value / path を使う JVM unit test で検証し、実ユーザー情報を fixture に利用しない。
 
-current architecture cleanup の repository-wide residue は `ArchitectureCleanupSourceTest` で補完する。Reddit feature 外からの低レベル source classification import、Settings Data から Summary Data への prompt ownership drift、generic feature runtime graph の Route / Worker 再露出、外部 version identifier の重複、main signed APK build の quality gate 迂回を source regression として固定する。
-
 ### Module map consistency
 
 `settings.gradle.kts` を Gradle module 一覧の正本とし、`docs/architecture/module-map.md` の feature/layer 表は機械検証する。
@@ -192,7 +190,7 @@ verifier は private key、代表的 credential literal、keystore / OAuth secre
 
 ## CI baseline
 
-`.github/workflows/build-apk.yml` の Android quality checks は、pull request と `main` の双方で Architecture / Test / Lint の3検証を matrix の独立 runner で並列実行する。pull request では public repository verification も独立 job で並列実行する。
+`.github/workflows/build-apk.yml` の pull request quality checks は、Android の3検証を matrix の独立 runner で並列実行し、public repository verification も独立 job で並列実行する。
 
 ```bash
 python3 -m unittest scripts.test_verify_module_map
@@ -204,9 +202,9 @@ python3 scripts/test_verify_public_repository.py
 python3 scripts/verify_public_repository.py
 ```
 
-matrix は `fail-fast: false` とし、1つのAndroid検証が失敗しても他の検証結果を取得する。pull request では全検証の完了後に互換性維持用の `quality` 集約 job が Android matrix と `Public repository` job の両方を判定する。
+matrix は `fail-fast: false` とし、1つのAndroid検証が失敗しても他の検証結果を取得する。全検証の完了後は互換性維持用の `quality` 集約 job が Android matrix と `Public repository` job の両方を判定する。
 
-`main` push / main 上の workflow dispatch でも同じ Android quality matrix を実行し、signed release APK の `build` job は `quality_checks` の成功を `needs` で必須とする。これにより branch protection の有無にかかわらず、Architecture / Test / Lint に失敗する commit から signed APK を生成しない。build job の public repository scan は release keystore を runner へ復元する前に実行する。
+`main` push では public repository verification、module map consistency、architecture verification の後に signed release APK を build / signature verify する。PR で unit test / lint を完了する運用とし、main の APK build 前には unit test / lint を重複実行しない。repository scan は release keystore を runner へ復元する前に実行する。
 
 ADR 関連変更は `.github/workflows/adr-integrity.yml` でも ADR integrity checker を実行する。
 
@@ -264,4 +262,3 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
-- [ADR-0163](../adr/0163-p1-owner-boundary-and-main-quality-gate.md)
