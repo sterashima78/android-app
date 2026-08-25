@@ -1,15 +1,16 @@
 package dev.terashima.yomitorirss.feature.library
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WebLibraryActionsTest {
   @Test
-  fun `取得ルール適用成功時は適用後のタイトルとサムネイルを表示する`() {
+  fun `取得ルール適用成功時はルールが実際に返したタイトルとサムネイルを表示する`() {
     val book = webBook(
-      title = "カスタムタイトル",
-      thumbnailUrl = "https://cdn.example.com/covers/1.jpg",
+      title = "最終タイトル",
+      thumbnailUrl = "https://cdn.example.com/covers/final.jpg",
     )
     val result = WebLibraryMetadataRefreshResult(
       book = book,
@@ -18,6 +19,8 @@ class WebLibraryActionsTest {
         ruleId = "rule-1",
         urlPattern = "https://example.com/books/*",
         status = WebLibraryMetadataExtractorStatus.APPLIED,
+        extractedTitle = "カスタムタイトル",
+        extractedThumbnailUrl = "https://cdn.example.com/covers/custom.jpg",
       ),
     )
 
@@ -29,15 +32,16 @@ class WebLibraryActionsTest {
 
     assertEquals(WebLibraryRefreshItemStatus.UNCHANGED, state.status)
     assertTrue(state.detail.orEmpty().contains("カスタム値取得成功"))
-    assertTrue(state.detail.orEmpty().contains("適用後タイトル「カスタムタイトル」"))
-    assertTrue(state.detail.orEmpty().contains("適用後サムネイル https://cdn.example.com/covers/1.jpg"))
+    assertTrue(state.detail.orEmpty().contains("タイトル「カスタムタイトル」"))
+    assertTrue(state.detail.orEmpty().contains("サムネイル https://cdn.example.com/covers/custom.jpg"))
+    assertFalse(state.detail.orEmpty().contains("covers/final.jpg"))
   }
 
   @Test
-  fun `取得ルール適用成功時はサムネイルがないことも表示する`() {
+  fun `取得ルールがサムネイルを返していない場合は取得なしと表示する`() {
     val book = webBook(
-      title = "タイトルのみ",
-      thumbnailUrl = null,
+      title = "最終タイトル",
+      thumbnailUrl = "https://cdn.example.com/covers/standard.jpg",
     )
     val result = WebLibraryMetadataRefreshResult(
       book = book,
@@ -46,6 +50,8 @@ class WebLibraryActionsTest {
         ruleId = "rule-1",
         urlPattern = "https://example.com/books/*",
         status = WebLibraryMetadataExtractorStatus.APPLIED,
+        extractedTitle = "タイトルのみ",
+        extractedThumbnailUrl = null,
       ),
     )
 
@@ -56,7 +62,8 @@ class WebLibraryActionsTest {
     )
 
     assertEquals(WebLibraryRefreshItemStatus.UPDATED, state.status)
-    assertTrue(state.detail.orEmpty().contains("適用後サムネイル なし"))
+    assertTrue(state.detail.orEmpty().contains("タイトル「タイトルのみ」・サムネイルなし"))
+    assertFalse(state.detail.orEmpty().contains("covers/standard.jpg"))
   }
 
   private fun webBook(
