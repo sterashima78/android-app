@@ -26,6 +26,7 @@ class LanWebServerService : Service() {
   private val executor: ExecutorService = Executors.newSingleThreadExecutor()
   private lateinit var connectivityManager: ConnectivityManager
   private var bootstrapToken: String? = null
+  private var publishedAddress: String? = null
   private var server: LanWebServer? = null
   private var networkCallbackRegistered = false
   private var terminalError: String? = null
@@ -69,6 +70,7 @@ class LanWebServerService : Service() {
     server = null
     // サーバ停止後に、表示済みの初回URLを再利用できないよう参照も破棄する。
     bootstrapToken = null
+    publishedAddress = null
     executor.shutdownNow()
     LanWebServerStateStore.stopped(terminalError)
     super.onDestroy()
@@ -120,6 +122,14 @@ class LanWebServerService : Service() {
         ?.filterIsInstance<Inet4Address>()
         ?.firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
         ?.hostAddress
+
+      if (address != null && address != publishedAddress) {
+        val newBootstrapToken = generateToken()
+        bootstrapToken = newBootstrapToken
+        server?.replaceBootstrapToken(newBootstrapToken)
+      }
+      publishedAddress = address
+
       val accessUrl = address?.let { host ->
         bootstrapToken?.let { token -> "http://$host:${LanWebServer.PORT}/?token=$token" }
       }
