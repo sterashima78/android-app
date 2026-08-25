@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.settings
 
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -16,5 +18,17 @@ class AiSettingsUiStateTest {
     assertNull(state.summaryProgress)
     assertTrue(state.summaryPrompt.isEmpty())
     assertNull(state.message)
+  }
+
+  @Test
+  fun `ChatGPT logout returns summary execution to local`() {
+    assertEquals(
+      SummaryExecutionProvider.LOCAL,
+      summaryExecutionProviderAfterChatGptLogout(SummaryExecutionProvider.CHATGPT),
+    )
+    assertEquals(
+      SummaryExecutionProvider.LOCAL,
+      summaryExecutionProviderAfterChatGptLogout(SummaryExecutionProvider.LOCAL),
+    )
   }
 }
