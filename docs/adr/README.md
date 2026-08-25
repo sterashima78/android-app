@@ -44,10 +44,9 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0156: active tab の message capability policy を navigation spec に集約する](0156-active-tab-message-capability-policy.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0162: current architecture cleanup の残存境界を guardrail 化する](0162-current-architecture-cleanup-guardrails.md)
-- [ADR-0164: 単発テキスト推論を provider 非依存 capability として分離する](0164-provider-neutral-text-inference-contract.md)
 
 ### Domain / Context / persistence
 
@@ -85,7 +84,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0157: Mosaic の外部識別子と互換識別子を区別する](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 
@@ -106,14 +105,14 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0135: SMB 表紙キャッシュをバックアップ復元後に再関連付けする](0135-smb-cover-cache-backup-restore.md)
-- [ADR-0141: SMB 蔵書の読書開始を明示的な application callback で接続する](0141-explicit-smb-book-open-routing.md)
+- [ADR-0141: SMB 書籍の読書開始を明示的な application callback で接続する](0141-explicit-smb-book-open-routing.md)
 - [ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する](0143-web-library-source-and-bookmark-transfer.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
 - [ADR-0154: Web Library metadata は静的 HTTP を優先し WebView を不足時の fallback とする](0154-web-library-rendered-metadata-fallback.md)
 - [ADR-0158: Book Reader の page geometry metadata cache を上限付きにする](0158-bounded-book-page-geometry-cache.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 
 ### Background / AI runtime
@@ -128,15 +127,14 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
-- [ADR-0139: app entry point と Worker runtime ownership を現行実装へ収束させる](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0148: local model revision marker の互換 migration を終了する](0148-retire-local-model-revision-marker-migration.md)
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
-- [ADR-0164: 単発テキスト推論を provider 非依存 capability として分離する](0164-provider-neutral-text-inference-contract.md)
 
 ### Content / summary / knowledge
 
@@ -181,8 +179,7 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0157](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0158](0158-bounded-book-page-geometry-cache.md)
 - [ADR-0159](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160](0160-worker-runtime-and-android17-baseline-cleanup.md)
+- [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0162](0162-current-architecture-cleanup-guardrails.md)
 - [ADR-0163](0163-webview-renderer-exit-recovery.md)
-- [ADR-0164](0164-provider-neutral-text-inference-contract.md)
