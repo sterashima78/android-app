@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.aitaskqueue.data
 
-import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskExecutionProvider
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItem
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemPriority
@@ -58,7 +57,7 @@ internal class SummaryTaskQueueAdapter(
       task.state == SummaryQueueTaskState.RUNNING ||
       task.state == SummaryQueueTaskState.STOPPED,
     canResume = task.state == SummaryQueueTaskState.STOPPED || task.state == SummaryQueueTaskState.FAILED,
-    executionProvider = task.executionProvider.toAiTaskExecutionProvider(),
+    executionProviderLabel = task.executionProvider.displayLabel(),
   )
 
   private fun SummaryQueueTaskPriority.toAiTaskPriority(): AiTaskQueueItemPriority = when (this) {
@@ -89,9 +88,9 @@ internal class SummaryTaskQueueAdapter(
     SummaryQueueTaskProgressStage.UNKNOWN -> AiTaskQueueProgressStage.UNKNOWN
   }
 
-  private fun SummaryExecutionProvider.toAiTaskExecutionProvider(): AiTaskExecutionProvider = when (this) {
-    SummaryExecutionProvider.LOCAL -> AiTaskExecutionProvider.LOCAL
-    SummaryExecutionProvider.CHATGPT -> AiTaskExecutionProvider.CHATGPT
+  private fun SummaryExecutionProvider.displayLabel(): String = when (this) {
+    SummaryExecutionProvider.LOCAL -> "Local"
+    SummaryExecutionProvider.CHATGPT -> "ChatGPT"
   }
 
   private companion object {
