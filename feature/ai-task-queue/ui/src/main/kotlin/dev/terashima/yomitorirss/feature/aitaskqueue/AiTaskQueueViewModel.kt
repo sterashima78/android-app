@@ -17,8 +17,9 @@ data class AiTaskQueueUiState(
   val tasks: List<AiTaskQueueItem> = emptyList(),
   val taskCounts: AiTaskQueueCounts = AiTaskQueueCounts(),
   val loading: Boolean = true,
-  val queuePaused: Boolean = false,
-  val resumeWhenCharging: Boolean = true,
+  val localPaused: Boolean = false,
+  val cloudPaused: Boolean = false,
+  val resumeLocalWhenCharging: Boolean = true,
   val actionError: String? = null,
 )
 
@@ -46,14 +47,19 @@ class AiTaskQueueViewModel(
     pollingJob = null
   }
 
-  fun setPaused(paused: Boolean) {
-    _state.update { it.copy(queuePaused = paused, actionError = null) }
-    runExecutionAction { repository.setPaused(paused) }
+  fun setLocalPaused(paused: Boolean) {
+    _state.update { it.copy(localPaused = paused, actionError = null) }
+    runExecutionAction { repository.setLocalPaused(paused) }
   }
 
-  fun setResumeWhenCharging(enabled: Boolean) {
-    _state.update { it.copy(resumeWhenCharging = enabled, actionError = null) }
-    runExecutionAction { repository.setResumeWhenCharging(enabled) }
+  fun setCloudPaused(paused: Boolean) {
+    _state.update { it.copy(cloudPaused = paused, actionError = null) }
+    runExecutionAction { repository.setCloudPaused(paused) }
+  }
+
+  fun setResumeLocalWhenCharging(enabled: Boolean) {
+    _state.update { it.copy(resumeLocalWhenCharging = enabled, actionError = null) }
+    runExecutionAction { repository.setResumeLocalWhenCharging(enabled) }
   }
 
   fun stop(taskId: String) = runTaskAction { repository.stop(taskId) }
@@ -108,8 +114,9 @@ class AiTaskQueueViewModel(
             tasks = prepareVisibleAiTasks(snapshot.tasks),
             taskCounts = snapshot.taskCounts,
             loading = false,
-            queuePaused = snapshot.executionState.paused,
-            resumeWhenCharging = snapshot.executionState.resumeWhenCharging,
+            localPaused = snapshot.executionState.localPaused,
+            cloudPaused = snapshot.executionState.cloudPaused,
+            resumeLocalWhenCharging = snapshot.executionState.resumeLocalWhenCharging,
           )
         }
       }
