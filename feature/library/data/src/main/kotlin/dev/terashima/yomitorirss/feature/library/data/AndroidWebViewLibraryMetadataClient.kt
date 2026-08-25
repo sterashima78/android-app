@@ -38,6 +38,12 @@ data class WebLibraryRenderedMetadataFetchResult(
   val extractorExecution: WebLibraryMetadataExtractorExecution? = null,
 )
 
+internal class WebLibraryRenderedMetadataException(
+  message: String,
+  val extractorExecution: WebLibraryMetadataExtractorExecution? = null,
+  cause: Throwable? = null,
+) : IllegalStateException(message, cause)
+
 interface WebLibraryRenderedMetadataClient {
   suspend fun fetch(url: String, titleHint: String? = null): LibraryBook
 
@@ -69,6 +75,7 @@ class AndroidWebViewLibraryMetadataClient(
       "WebView での metadata 取得は HTTPS ページのみ対応しています"
     }
     val extractors = extractorRepository?.list().orEmpty()
+    var latestExtractorExecution: WebLibraryMetadataExtractorExecution? = null
 
     return try {
       withTimeout(timeoutMillis) {
@@ -82,13 +89,20 @@ class AndroidWebViewLibraryMetadataClient(
           require(!activity.isFinishing && !activity.isDestroyed) {
             "WebView metadata を取得できる画面がありません"
           }
-          fetchOnMainThread(activity, requestedUrl, titleHint, extractors)
+          fetchOnMainThread(
+            activity = activity,
+            requestedUrl = requestedUrl,
+            titleHint = titleHint,
+            extractors = extractors,
+            onExtractorExecution = { latestExtractorExecution = it },
+          )
         }
       }
     } catch (error: TimeoutCancellationException) {
-      throw IllegalStateException(
-        "WebView metadata 取得が ${timeoutMillis / 1_000} 秒以内に完了しませんでした",
-        error,
+      throw WebLibraryRenderedMetadataException(
+        message = "WebView metadata 取得が ${timeoutMillis / 1_000} 秒以内に完了しませんでした",
+        extractorExecution = latestExtractorExecution,
+        cause = error,
       )
     }
   }
@@ -99,6 +113,7 @@ class AndroidWebViewLibraryMetadataClient(
     requestedUrl: String,
     titleHint: String?,
     extractors: List<WebLibraryMetadataExtractor>,
+    onExtractorExecution: (WebLibraryMetadataExtractorExecution?) -> Unit,
   ): WebLibraryRenderedMetadataFetchResult = suspendCancellableCoroutine { continuation ->
     val mainHandler = Handler(Looper.getMainLooper())
     val webView = WebView(activity)
@@ -162,14 +177,13 @@ class AndroidWebViewLibraryMetadataClient(
       message: String? = null,
       metadata: WebLibraryCustomMetadata? = null,
     ) {
-      extractorExecution = WebLibraryMetadataExtractorExecution(
-        ruleId = extractor.id,
-        urlPattern = extractor.urlPattern,
+      extractorExecution = createWebLibraryMetadataExtractorExecution(
+        extractor = extractor,
         status = status,
-        message = message?.take(MAX_DIAGNOSTIC_MESSAGE_LENGTH),
-        extractedTitle = metadata?.title,
-        extractedThumbnailUrl = metadata?.thumbnailUrl,
+        message = message,
+        metadata = metadata,
       )
+      onExtractorExecution(extractorExecution)
     }
 
     fun evaluateStandardMetadata(
@@ -309,6 +323,7 @@ class AndroidWebViewLibraryMetadataClient(
         pageGeneration += 1
         standardExtractionAttempts = 0
         extractorExecution = null
+        onExtractorExecution(null)
       }
 
       override fun onPageFinished(view: WebView, url: String) {
@@ -375,6 +390,20 @@ class AndroidWebViewLibraryMetadataClient(
 internal data class WebLibraryCustomMetadata(
   val title: String?,
   val thumbnailUrl: String?,
+)
+
+internal fun createWebLibraryMetadataExtractorExecution(
+  extractor: WebLibraryMetadataExtractor,
+  status: WebLibraryMetadataExtractorStatus,
+  message: String? = null,
+  metadata: WebLibraryCustomMetadata? = null,
+): WebLibraryMetadataExtractorExecution = WebLibraryMetadataExtractorExecution(
+  ruleId = extractor.id,
+  urlPattern = extractor.urlPattern,
+  status = status,
+  message = message?.take(MAX_DIAGNOSTIC_MESSAGE_LENGTH),
+  extractedTitle = metadata?.title,
+  extractedThumbnailUrl = metadata?.thumbnailUrl,
 )
 
 internal data class WebLibraryCustomMetadataPromisePoll(
