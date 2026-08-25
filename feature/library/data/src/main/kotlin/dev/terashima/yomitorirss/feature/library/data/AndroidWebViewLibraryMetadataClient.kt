@@ -19,7 +19,9 @@ import androidx.webkit.WebViewFeature
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorExecution
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorRepository
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorStatus
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -30,8 +32,18 @@ import org.json.JSONTokener
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+internal data class WebLibraryRenderedMetadataFetchResult(
+  val book: LibraryBook,
+  val extractorExecution: WebLibraryMetadataExtractorExecution? = null,
+)
+
 interface WebLibraryRenderedMetadataClient {
   suspend fun fetch(url: String, titleHint: String? = null): LibraryBook
+
+  suspend fun fetchWithReport(
+    url: String,
+    titleHint: String? = null,
+  ): WebLibraryRenderedMetadataFetchResult = WebLibraryRenderedMetadataFetchResult(fetch(url, titleHint))
 
   fun hasCustomExtractor(url: String): Boolean = false
 }
@@ -44,7 +56,13 @@ class AndroidWebViewLibraryMetadataClient(
   override fun hasCustomExtractor(url: String): Boolean =
     findMatchingWebLibraryMetadataExtractor(extractorRepository?.list().orEmpty(), url) != null
 
-  override suspend fun fetch(url: String, titleHint: String?): LibraryBook {
+  override suspend fun fetch(url: String, titleHint: String?): LibraryBook =
+    fetchWithReport(url, titleHint).book
+
+  override suspend fun fetchWithReport(
+    url: String,
+    titleHint: String?,
+  ): WebLibraryRenderedMetadataFetchResult {
     val requestedUrl = normalizeWebUrl(url)
     require(isSafeRenderedUrl(requestedUrl)) {
       "WebView での metadata 取得は HTTPS ページのみ対応しています"
@@ -73,7 +91,7 @@ class AndroidWebViewLibraryMetadataClient(
     requestedUrl: String,
     titleHint: String?,
     extractors: List<WebLibraryMetadataExtractor>,
-  ): LibraryBook = suspendCancellableCoroutine { continuation ->
+  ): WebLibraryRenderedMetadataFetchResult = suspendCancellableCoroutine { continuation ->
     val mainHandler = Handler(Looper.getMainLooper())
     val webView = WebView(activity)
     WebViewCompat.setProfile(webView, PROFILE_NAME)
@@ -96,8 +114,9 @@ class AndroidWebViewLibraryMetadataClient(
     var completed = false
     var pageGeneration = 0
     var standardExtractionAttempts = 0
+    var extractorExecution: WebLibraryMetadataExtractorExecution? = null
     lateinit var extractMetadata: (String, Int) -> Unit
-    lateinit var pollCustomMetadata: (String, String, Int, Long) -> Unit
+    lateinit var pollCustomMetadata: (String, WebLibraryMetadataExtractor, String, Int, Long) -> Unit
 
     fun dispose() {
       webView.stopLoading()
@@ -107,7 +126,7 @@ class AndroidWebViewLibraryMetadataClient(
       webView.destroy()
     }
 
-    fun finish(result: Result<LibraryBook>) {
+    fun finish(result: Result<WebLibraryRenderedMetadataFetchResult>) {
       if (completed) return
       completed = true
       dispose()
@@ -127,6 +146,19 @@ class AndroidWebViewLibraryMetadataClient(
           IllegalStateException(renderProcessGoneMessage(detail.didCrash())),
         )
       }
+    }
+
+    fun recordExtractorExecution(
+      extractor: WebLibraryMetadataExtractor,
+      status: WebLibraryMetadataExtractorStatus,
+      message: String? = null,
+    ) {
+      extractorExecution = WebLibraryMetadataExtractorExecution(
+        ruleId = extractor.id,
+        urlPattern = extractor.urlPattern,
+        status = status,
+        message = message?.take(MAX_DIAGNOSTIC_MESSAGE_LENGTH),
+      )
     }
 
     fun evaluateStandardMetadata(
@@ -152,7 +184,14 @@ class AndroidWebViewLibraryMetadataClient(
               !book.needsRenderedWebMetadata() ||
               standardExtractionAttempts >= MAX_EXTRACTION_ATTEMPTS
             ) {
-              finish(Result.success(book))
+              finish(
+                Result.success(
+                  WebLibraryRenderedMetadataFetchResult(
+                    book = book,
+                    extractorExecution = extractorExecution,
+                  ),
+                ),
+              )
             } else {
               webView.postDelayed(
                 {
@@ -172,24 +211,47 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
-    pollCustomMetadata = { finalUrl, stateKey, generation, deadlineMillis ->
+    pollCustomMetadata = { finalUrl, extractor, stateKey, generation, deadlineMillis ->
       if (!completed && generation == pageGeneration) {
         if (SystemClock.uptimeMillis() >= deadlineMillis) {
           webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
+          recordExtractorExecution(
+            extractor,
+            WebLibraryMetadataExtractorStatus.TIMED_OUT,
+            "Promise が ${CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS / 1_000} 秒以内に完了しませんでした",
+          )
           evaluateStandardMetadata(finalUrl, generation, null)
         } else {
           webView.evaluateJavascript(customMetadataPollScript(stateKey)) { rawResult ->
             if (!completed && generation == pageGeneration) {
               val poll = parseCustomMetadataPromisePoll(finalUrl, rawResult)
               when {
-                poll == null -> evaluateStandardMetadata(finalUrl, generation, null)
+                poll == null -> {
+                  recordExtractorExecution(
+                    extractor,
+                    WebLibraryMetadataExtractorStatus.INVALID_STATE,
+                    "取得ルールの実行状態を読み取れませんでした",
+                  )
+                  evaluateStandardMetadata(finalUrl, generation, null)
+                }
                 poll.pending -> webView.postDelayed(
                   {
-                    pollCustomMetadata(finalUrl, stateKey, generation, deadlineMillis)
+                    pollCustomMetadata(finalUrl, extractor, stateKey, generation, deadlineMillis)
                   },
                   CUSTOM_METADATA_POLL_DELAY_MILLIS,
                 )
-                else -> evaluateStandardMetadata(finalUrl, generation, poll.metadata)
+                else -> {
+                  recordExtractorExecution(
+                    extractor,
+                    poll.status ?: WebLibraryMetadataExtractorStatus.INVALID_STATE,
+                    poll.message,
+                  )
+                  evaluateStandardMetadata(
+                    finalUrl,
+                    generation,
+                    poll.metadata.takeIf { poll.status == WebLibraryMetadataExtractorStatus.APPLIED },
+                  )
+                }
               }
             }
           }
@@ -211,6 +273,7 @@ class AndroidWebViewLibraryMetadataClient(
             if (!completed && generation == pageGeneration) {
               pollCustomMetadata(
                 finalUrl,
+                extractor,
                 stateKey,
                 generation,
                 SystemClock.uptimeMillis() + CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS,
@@ -230,6 +293,7 @@ class AndroidWebViewLibraryMetadataClient(
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         pageGeneration += 1
         standardExtractionAttempts = 0
+        extractorExecution = null
       }
 
       override fun onPageFinished(view: WebView, url: String) {
@@ -301,6 +365,8 @@ internal data class WebLibraryCustomMetadata(
 internal data class WebLibraryCustomMetadataPromisePoll(
   val pending: Boolean,
   val metadata: WebLibraryCustomMetadata?,
+  val status: WebLibraryMetadataExtractorStatus? = null,
+  val message: String? = null,
 )
 
 internal fun customMetadataStartScript(functionCode: String, stateKey: String): String {
@@ -309,39 +375,52 @@ internal fun customMetadataStartScript(functionCode: String, stateKey: String): 
   return """
     (() => {
       const stateKey = $quotedStateKey;
-      window[stateKey] = { pending: true, value: null };
+      const finish = (status, value = null, message = null) => {
+        window[stateKey] = { pending: false, status, value, message };
+      };
+      const errorMessage = (error) => {
+        const value = error && typeof error.message === 'string'
+          ? error.message
+          : String(error ?? '');
+        return value.trim().slice(0, $MAX_DIAGNOSTIC_MESSAGE_LENGTH) || null;
+      };
+      window[stateKey] = { pending: true, status: null, value: null, message: null };
       try {
         const extractor = ($expression);
         if (typeof extractor !== 'function') {
-          window[stateKey] = { pending: false, value: null };
+          finish('invalid_function', null, '関数式として評価できませんでした');
           return null;
         }
         const promise = extractor({ url: location.href });
         if (!promise || typeof promise.then !== 'function') {
-          window[stateKey] = { pending: false, value: null };
+          finish('non_promise_result', null, 'Promise を返していません');
           return null;
         }
         Promise.resolve(promise)
           .then((value) => {
             if (!value || typeof value !== 'object') {
-              window[stateKey] = { pending: false, value: null };
+              finish('invalid_result', null, '戻り値が object ではありません');
               return;
             }
             const title = typeof value.title === 'string' ? value.title.trim() : null;
             const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
-            window[stateKey] = {
-              pending: false,
-              value: JSON.stringify({
+            if (!title && !thumbnailUrl) {
+              finish('empty_result', null, 'title と thumbnailUrl がどちらも空でした');
+              return;
+            }
+            finish(
+              'applied',
+              JSON.stringify({
                 title: title || null,
                 thumbnailUrl: thumbnailUrl || null
               })
-            };
+            );
           })
-          .catch(() => {
-            window[stateKey] = { pending: false, value: null };
+          .catch((error) => {
+            finish('rejected', null, errorMessage(error));
           });
-      } catch (_) {
-        window[stateKey] = { pending: false, value: null };
+      } catch (error) {
+        finish('threw', null, errorMessage(error));
       }
       return null;
     })()
@@ -354,11 +433,22 @@ internal fun customMetadataPollScript(stateKey: String): String {
     (() => {
       const stateKey = $quotedStateKey;
       const state = window[stateKey];
-      if (!state) return JSON.stringify({ pending: false, value: null });
-      if (state.pending) return JSON.stringify({ pending: true, value: null });
+      if (!state) {
+        return JSON.stringify({
+          pending: false,
+          status: 'invalid_state',
+          value: null,
+          message: '取得ルールの実行状態が見つかりません'
+        });
+      }
+      if (state.pending) {
+        return JSON.stringify({ pending: true, status: null, value: null, message: null });
+      }
       const value = typeof state.value === 'string' ? state.value : null;
+      const status = typeof state.status === 'string' ? state.status : 'invalid_state';
+      const message = typeof state.message === 'string' ? state.message : null;
       delete window[stateKey];
-      return JSON.stringify({ pending: false, value });
+      return JSON.stringify({ pending: false, status, value, message });
     })()
   """.trimIndent()
 }
@@ -383,12 +473,46 @@ internal fun parseCustomMetadataPromisePoll(
   if (pending) {
     WebLibraryCustomMetadataPromisePoll(pending = true, metadata = null)
   } else {
-    val metadata = poll.optionalString("value")?.let { payload ->
+    val parsedStatus = parseExtractorStatus(poll.optionalString("status"))
+      ?: WebLibraryMetadataExtractorStatus.INVALID_STATE
+    val rawValue = poll.optionalString("value")
+    val parsedMetadata = rawValue?.let { payload ->
       parseCustomRenderedWebLibraryMetadata(finalUrl, JSONObject.quote(payload))
     }
-    WebLibraryCustomMetadataPromisePoll(pending = false, metadata = metadata)
+    val status = if (
+      parsedStatus == WebLibraryMetadataExtractorStatus.APPLIED &&
+      parsedMetadata == null
+    ) {
+      WebLibraryMetadataExtractorStatus.INVALID_RESULT
+    } else {
+      parsedStatus
+    }
+    val message = when {
+      status == WebLibraryMetadataExtractorStatus.INVALID_RESULT &&
+        parsedStatus == WebLibraryMetadataExtractorStatus.APPLIED ->
+        "title または HTTPS の thumbnailUrl を取得できませんでした"
+      else -> poll.optionalString("message")
+    }
+    WebLibraryCustomMetadataPromisePoll(
+      pending = false,
+      metadata = parsedMetadata,
+      status = status,
+      message = message,
+    )
   }
 }.getOrNull()
+
+private fun parseExtractorStatus(value: String?): WebLibraryMetadataExtractorStatus? = when (value) {
+  "applied" -> WebLibraryMetadataExtractorStatus.APPLIED
+  "empty_result" -> WebLibraryMetadataExtractorStatus.EMPTY_RESULT
+  "invalid_function" -> WebLibraryMetadataExtractorStatus.INVALID_FUNCTION
+  "non_promise_result" -> WebLibraryMetadataExtractorStatus.NON_PROMISE_RESULT
+  "rejected" -> WebLibraryMetadataExtractorStatus.REJECTED
+  "threw" -> WebLibraryMetadataExtractorStatus.THREW
+  "invalid_state" -> WebLibraryMetadataExtractorStatus.INVALID_STATE
+  "invalid_result" -> WebLibraryMetadataExtractorStatus.INVALID_RESULT
+  else -> null
+}
 
 internal fun parseCustomRenderedWebLibraryMetadata(
   finalUrl: String,
@@ -528,3 +652,4 @@ private const val EXTRACTION_RETRY_DELAY_MILLIS = 500L
 private const val CUSTOM_METADATA_POLL_DELAY_MILLIS = 100L
 private const val CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS = 10_000L
 private const val MAX_EXTRACTION_ATTEMPTS = 4
+private const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 200
