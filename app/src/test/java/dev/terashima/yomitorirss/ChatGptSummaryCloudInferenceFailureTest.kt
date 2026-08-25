@@ -25,6 +25,10 @@ class ChatGptSummaryCloudInferenceFailureTest {
     assertTrue(unavailable.retryable)
     assertFalse(unavailable.message.orEmpty().contains("secret-token"))
     assertNull(unavailable.cause)
+
+    val refreshRateLimit = classifyProviderFailure(IllegalStateException("ChatGPT OAuth token refresh failed (429)"))
+    assertEquals(SummaryCloudFailureKind.RATE_LIMITED, refreshRateLimit.kind)
+    assertTrue(refreshRateLimit.retryable)
   }
 
   @Test
