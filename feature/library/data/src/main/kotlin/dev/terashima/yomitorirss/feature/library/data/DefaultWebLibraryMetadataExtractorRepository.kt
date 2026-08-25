@@ -15,7 +15,7 @@ class DefaultWebLibraryMetadataExtractorRepository(
     return database.readable.rawQuery(
       "SELECT id, url_pattern, function_code, updated_at " +
         "FROM web_library_metadata_extractors ORDER BY updated_at DESC, id",
-      emptyArray(),
+      emptyArray<String>(),
     ).use { cursor ->
       buildList {
         while (cursor.moveToNext()) add(cursor.webLibraryMetadataExtractor())
@@ -32,7 +32,8 @@ class DefaultWebLibraryMetadataExtractorRepository(
     val normalizedPattern = urlPattern.trim()
     val normalizedFunction = functionCode.trim()
     validateWebLibraryMetadataExtractor(normalizedPattern, normalizedFunction)
-    val extractorId = id?.trim()?.takeIf(String::isNotEmpty) ?: UUID.randomUUID().toString()
+    val normalizedId = id?.trim()?.takeIf(String::isNotEmpty)
+    val extractorId = normalizedId ?: UUID.randomUUID().toString()
     val updatedAt = System.currentTimeMillis()
 
     database.transaction {
@@ -49,7 +50,7 @@ class DefaultWebLibraryMetadataExtractorRepository(
         put("function_code", normalizedFunction)
         put("updated_at", updatedAt)
       }
-      if (id == null) {
+      if (normalizedId == null) {
         insertOrThrow("web_library_metadata_extractors", null, values)
       } else {
         val changed = update(
