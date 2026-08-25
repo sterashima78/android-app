@@ -19,12 +19,17 @@ class DefaultChatGptProviderRepository(
   override suspend fun listModels(): List<ChatGptProviderModel> {
     val models = selectChatGptProviderModels(client.listModels())
     val selectedModelId = modelPreferences.selectedModelId()
-    if (selectedModelId != null && models.none { it.id == selectedModelId }) {
+    if (shouldClearSelectedChatGptModel(selectedModelId, models)) {
       modelPreferences.clearSelection()
     }
     return models
   }
 }
+
+internal fun shouldClearSelectedChatGptModel(
+  selectedModelId: String?,
+  models: List<ChatGptProviderModel>,
+): Boolean = selectedModelId != null && models.none { it.id == selectedModelId }
 
 internal fun selectChatGptProviderModels(models: List<ChatGptModelInfo>): List<ChatGptProviderModel> = models
   .asSequence()
