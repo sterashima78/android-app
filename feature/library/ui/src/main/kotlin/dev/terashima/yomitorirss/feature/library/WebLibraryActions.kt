@@ -397,7 +397,7 @@ internal fun webLibraryRefreshSuccessUiState(
       if (execution.status == WebLibraryMetadataExtractorStatus.APPLIED) {
         add(
           "取得ルール「${execution.urlPattern}」を適用（カスタム値取得成功: " +
-            webLibraryAppliedMetadataDetail(result.book) +
+            webLibraryExtractorValueDetail(execution) +
             "）",
         )
       } else {
@@ -427,13 +427,18 @@ internal fun webLibraryRefreshSuccessUiState(
   )
 }
 
-private fun webLibraryAppliedMetadataDetail(book: LibraryBook): String {
-  val title = webLibraryDiagnosticValue(book.title)
-  val thumbnail = book.thumbnailUrl
+private fun webLibraryExtractorValueDetail(execution: WebLibraryMetadataExtractorExecution): String {
+  val title = execution.extractedTitle
     ?.takeIf(String::isNotBlank)
     ?.let(::webLibraryDiagnosticValue)
-    ?: "なし"
-  return "適用後タイトル「$title」・適用後サムネイル $thumbnail"
+    ?.let { "タイトル「$it」" }
+    ?: "タイトルなし"
+  val thumbnail = execution.extractedThumbnailUrl
+    ?.takeIf(String::isNotBlank)
+    ?.let(::webLibraryDiagnosticValue)
+    ?.let { "サムネイル $it" }
+    ?: "サムネイルなし"
+  return "$title・$thumbnail"
 }
 
 private fun webLibraryDiagnosticValue(value: String): String {
