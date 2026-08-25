@@ -229,6 +229,7 @@ internal class LanWebAuthentication(
   @Synchronized
   fun replaceBootstrapToken(newBootstrapToken: String) {
     bootstrapToken = newBootstrapToken
+    sessionToken = null
   }
 
   @Synchronized
