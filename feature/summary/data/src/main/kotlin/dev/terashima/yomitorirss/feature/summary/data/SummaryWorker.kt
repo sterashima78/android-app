@@ -42,13 +42,14 @@ class SummaryWorker(
   private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
+    if (isProviderPaused(executionSettings.currentProvider())) return Result.success()
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     return withContext(Dispatchers.IO) {
       database.requeueInterruptedSummaryTasks()
-      while (!SummaryQueue.executionState(applicationContext).paused) {
+      while (true) {
         currentCoroutineContext().ensureActive()
         val provider = executionSettings.currentProvider()
+        if (isProviderPaused(provider)) break
         val candidates = when (provider) {
           SummaryExecutionProvider.LOCAL -> database.listInferenceReadySummaryTasks()
           SummaryExecutionProvider.CHATGPT -> database.listCloudReadySummaryTasks()
@@ -61,13 +62,13 @@ class SummaryWorker(
         when (provider) {
           SummaryExecutionProvider.LOCAL -> {
             LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
-              if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
+              if (isProviderPaused(provider)) return@withPermit
               val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
               processTask(database, task, provider)
             }
           }
           SummaryExecutionProvider.CHATGPT -> {
-            if (SummaryQueue.executionState(applicationContext).paused) break
+            if (isProviderPaused(provider)) break
             val task = database.claimSummaryTask(candidate.articleId, requireInferenceReady = false)
               ?: continue
             processTask(database, task, provider)
@@ -120,7 +121,7 @@ class SummaryWorker(
           SummaryExecutionProvider.CHATGPT -> {
             val modelId = cloudInference.selectedModelId()
               ?: error("ChatGPT / Codex の利用モデルを選択してください")
-            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
+            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_CLOUD_GENERATING_SUMMARY)
             val result = cloudInference.generateFromUrl(
               url = article.url,
               prompt = buildCloudSummaryPrompt(article.url, prompt),
@@ -156,7 +157,7 @@ class SummaryWorker(
             )
           }
           SummaryExecutionProvider.CHATGPT -> {
-            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_GENERATING_SUMMARY)
+            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_CLOUD_GENERATING_METADATA)
             cloudInference.generate(
               renderSummaryPrompt(buildBookmarkMetadataPrompt(), summaryForMetadata) + promptSuffix,
             ).text
@@ -177,6 +178,14 @@ class SummaryWorker(
       throw error
     } catch (error: Throwable) {
       database.failRunningSummaryTask(task.articleId, error.userMessage())
+    }
+  }
+
+  private fun isProviderPaused(provider: SummaryExecutionProvider): Boolean {
+    val state = SummaryQueue.executionState(applicationContext)
+    return when (provider) {
+      SummaryExecutionProvider.LOCAL -> state.localPaused
+      SummaryExecutionProvider.CHATGPT -> state.cloudPaused
     }
   }
 
