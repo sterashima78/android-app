@@ -13,10 +13,12 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
-  fun `AppRouteDependenciesはRedditの低レベル分類規則を再実装しない`() {
-    val source = source("app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt")
+  fun `App route compositionはRedditの低レベル分類規則を再実装しない`() {
+    val routeComposition = source(
+      "app/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
+    )
 
-    assertTrue("route composition must consume the Reddit-owned boundary", "RedditSourceBoundary" in source)
+    assertTrue("route composition must consume the Reddit-owned boundary", "RedditSourceBoundary" in routeComposition)
     listOf(
       "isRedditArticle",
       "isRedditFeedUrl",
@@ -25,7 +27,7 @@ class ArchitectureCleanupSourceTest {
     ).forEach { lowLevelRule ->
       assertFalse(
         "route composition must not depend on Reddit low-level rule: $lowLevelRule",
-        "feature.reddit.$lowLevelRule" in source,
+        "feature.reddit.$lowLevelRule" in routeComposition,
       )
     }
   }
@@ -45,11 +47,11 @@ class ArchitectureCleanupSourceTest {
       .filter { "/src/main/" in it.invariantSeparatorsPath }
       .filterNot { "/feature/reddit/" in it.invariantSeparatorsPath }
       .forEach { file ->
-        val source = file.readText()
+        val fileSource = file.readText()
         forbiddenImports.forEach { forbiddenImport ->
           assertFalse(
             "${file.relativeTo(repositoryRoot)} must consume RedditSourceBoundary instead of $forbiddenImport",
-            forbiddenImport in source,
+            forbiddenImport in fileSource,
           )
         }
       }
@@ -64,7 +66,9 @@ class ArchitectureCleanupSourceTest {
     val modelContract = source(
       "feature/settings/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiModelRepository.kt",
     )
-    val routeComposition = source("app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt")
+    val routeComposition = source(
+      "app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
+    )
 
     assertFalse("Settings data must not depend on Summary data", ":feature:summary:data" in settingsDataBuild)
     assertFalse("AI model repository must not construct SummaryPromptStore", "SummaryPromptStore" in settingsData)
@@ -100,9 +104,62 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
+  fun `LAN Web serverはtransport read model rendererを分離する`() {
+    val server = source(
+      "feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServer.kt",
+    )
+    val readModel = source(
+      "feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebReadModel.kt",
+    )
+    val renderer = source(
+      "feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebRenderer.kt",
+    )
+
+    assertTrue("transport must delegate repository reads", "LanWebReadModel" in server)
+    assertTrue("transport must delegate HTML rendering", "LanWebRenderer" in server)
+    assertFalse("transport must not query article repositories", "listUnreadArticles(" in server)
+    assertFalse("transport must not own page markup", "<!doctype html>" in server)
+    assertTrue("read model must own repository reads", "listUnreadArticles(" in readModel)
+    assertTrue("renderer must own page markup", "<!doctype html>" in renderer)
+  }
+
+  @Test
+  fun `Web data test sourceはpackageと物理パスを一致させる`() {
+    val sourceRoot = File(repositoryRoot, "feature/web/data/src/test/kotlin")
+    sourceRoot.walkTopDown()
+      .filter(File::isFile)
+      .filter { it.extension == "kt" }
+      .forEach { file ->
+        val packageName = Regex("(?m)^package\\s+([A-Za-z0-9_.]+)\\s*$")
+          .find(file.readText())
+          ?.groupValues
+          ?.get(1)
+          ?: error("test source package not found: ${file.relativeTo(repositoryRoot)}")
+        val expected = packageName.replace('.', '/') + "/${file.name}"
+        val actual = file.relativeTo(sourceRoot).invariantSeparatorsPath
+        assertTrue(
+          "${file.relativeTo(repositoryRoot)} must live under its declared package path: expected=$expected actual=$actual",
+          actual == expected,
+        )
+      }
+  }
+
+  @Test
+  fun `AppRouteDependenciesはcontentとsupporting compositionの薄いfaçadeにする`() {
+    val facade = source("app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt")
+
+    assertTrue("route facade must delegate content composition", "AppContentRouteDependencies" in facade)
+    assertTrue("route facade must delegate supporting composition", "AppSupportingRouteDependencies" in facade)
+    assertFalse("route facade must not construct feature factories", ".Factory(" in facade)
+    assertFalse("route facade must not construct repositories", "Repository(" in facade)
+  }
+
+  @Test
   fun `generic feature runtime graphはRouteとWorkerへ露出しない`() {
     listOf(
       "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt",
+      "app/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
+      "app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
       "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt",
       "app/src/main/java/dev/terashima/yomitorirss/AppCrossFeatureRuntimeDependencies.kt",
     ).forEach { path ->
@@ -110,6 +167,22 @@ class ArchitectureCleanupSourceTest {
         "$path must use narrow AppContainer capabilities instead of the generic feature runtime graph",
         "featureRuntimeDependencies" in source(path),
       )
+    }
+  }
+
+  @Test
+  fun `診断artifactはgit管理対象外にする`() {
+    val gitignore = source(".gitignore")
+    listOf(
+      "*.hprof",
+      "*.trace",
+      "*.perfetto-trace",
+      "*.perfetto-trace-unredacted",
+      "*.heapprofile",
+      "*.heapdump",
+      "*.heapsnapshot",
+    ).forEach { pattern ->
+      assertTrue(".gitignore must exclude diagnostic artifact: $pattern", pattern in gitignore)
     }
   }
 

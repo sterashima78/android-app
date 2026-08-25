@@ -28,6 +28,8 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 
 `AppContainer` は application-scope graph の公開 facade とし、concrete feature graph の構築は責務別の `App*RuntimeDependencies` に分割する。これは repository lifetime を変えるための分割ではなく、composition root 内の可読性と変更局所性を保つための構造である。DI framework や route-level service locator は導入しない。
 
+Route composition も同じ原則で分割する。`AppRouteDependencies` は既存 caller contract を維持する薄い façade とし、content-facing な factory/capability construction は `AppContentRouteDependencies`、supporting/device-facing な construction は `AppSupportingRouteDependencies` が担当する。この grouping は Bounded Context を新設するものではなく、application composition 内部の責務分割である。
+
 ## Core capabilities
 
 ```text
@@ -128,7 +130,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
 - app composition adapter / app shell navigation の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
-- AppContainer の runtime group 分割を変更する: application scope / caller contract を維持し、必要なら ADR と本 `App` 節を更新する。
+- AppContainer の runtime group または AppRouteDependencies の composition group 分割を変更する: application scope / caller contract を維持し、必要なら ADR と本 `App` 節を更新する。
 - shared core runtime の lifetime を変更する: application composition と background entry point の両方を確認し、ADR と regression test を更新する。
 
 ## Sources
@@ -148,3 +150,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)
 - [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
+- [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)

@@ -1,4 +1,5 @@
 package dev.terashima.yomitorirss.feature.web.data
+
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
