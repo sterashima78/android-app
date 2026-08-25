@@ -51,13 +51,15 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 
 ## LAN Web Server boundary
 
-LAN Web Server は `:feature:web:data` が所有し、read-only HTTP contract と認証方式を維持する。単一 class に transport、Repository read、HTML rendering を集約せず、次の責務へ分ける。
+LAN Web Server は `:feature:web:data` が所有し、read-only HTTP contract を維持する。単一 class に transport、Repository read、HTML rendering を集約せず、次の責務へ分ける。
 
 - `LanWebServer`: socket transport、HTTP request parsing、LAN/client validation、token/cookie authentication、route dispatch、security response headers
 - `LanWebReadModel`: owner Repository contract からの read-only page model 構築と RSS/Reddit presentation classification
 - `LanWebRenderer`: typed page model からの HTML rendering と escaping
 
-この分割は LAN Web の外部 URL、port、認証 contract、read-only 性を変更しない。別 Context の database implementation を server へ直接注入せず、Domain Repository contract を利用する。
+認証は service 起動単位の bootstrap / session token とする。bootstrap token は永続化せず、初回 URL の query parameter で一度だけ使用する。認証成功時は同じ同期処理で session token を生成して `HttpOnly; SameSite=Strict` Cookie に設定し、token を除去した URL へ redirect する。LAN IPv4 address が変化した場合は bootstrap token をローテーションし、新しい origin から再認証できるようにする。server 停止時は bootstrap / session token の双方を失効する。
+
+HTTP は暗号化されないため、LAN Web は信頼できる LAN でのみ利用する。別 Context の database implementation を server へ直接注入せず、Domain Repository contract を利用する。
 
 ## Process boundaries and local AI
 
@@ -120,3 +122,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0161](../adr/0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0163](../adr/0163-webview-renderer-exit-recovery.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
+- [ADR-0169](../adr/0169-lan-web-bootstrap-session-authentication.md)
