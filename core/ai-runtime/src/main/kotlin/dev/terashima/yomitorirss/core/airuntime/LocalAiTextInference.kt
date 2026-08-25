@@ -19,7 +19,7 @@ class LocalAiTextInference(
   override fun selectedModel(): AiTextInferenceModel? {
     val model = manager.selectedModel() ?: return null
     return model.toAiTextInferenceModel(
-      cacheIdentity = "local:${model.id}:${manager.inferenceCacheVariant(model.id)}",
+      cacheVariant = manager.inferenceCacheVariant(model.id),
     )
   }
 
@@ -30,14 +30,14 @@ class LocalAiTextInference(
   }
 }
 
-internal fun LocalModelStatus.toAiTextInferenceModel(cacheIdentity: String): AiTextInferenceModel =
+internal fun LocalModelStatus.toAiTextInferenceModel(cacheVariant: String): AiTextInferenceModel =
   AiTextInferenceModel(
     id = id,
     name = name,
     contextTokens = contextTokens,
     maxInputChars = maxInputChars,
     promptBudgetChars = promptBudgetChars,
-    cacheIdentity = cacheIdentity,
+    cacheVariant = cacheVariant,
   )
 
 internal fun LocalInferenceProgress.toAiTextInferenceProgress(): AiTextInferenceProgress =
