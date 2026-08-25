@@ -95,7 +95,7 @@ class AndroidWebViewLibraryMetadataClient(
 
     var completed = false
     var pageGeneration = 0
-    var extractionAttempts = 0
+    var standardExtractionAttempts = 0
     lateinit var extractMetadata: (String, Int) -> Unit
     lateinit var pollCustomMetadata: (String, String, Int, Long) -> Unit
 
@@ -135,6 +135,8 @@ class AndroidWebViewLibraryMetadataClient(
       customMetadata: WebLibraryCustomMetadata?,
       allowRetry: Boolean = true,
     ) {
+      if (completed || generation != pageGeneration) return
+      standardExtractionAttempts += 1
       webView.evaluateJavascript(METADATA_SCRIPT) { rawResult ->
         if (completed || generation != pageGeneration) return@evaluateJavascript
         runCatching {
@@ -148,12 +150,19 @@ class AndroidWebViewLibraryMetadataClient(
             if (
               !allowRetry ||
               !book.needsRenderedWebMetadata() ||
-              extractionAttempts >= MAX_EXTRACTION_ATTEMPTS
+              standardExtractionAttempts >= MAX_EXTRACTION_ATTEMPTS
             ) {
               finish(Result.success(book))
             } else {
               webView.postDelayed(
-                { extractMetadata(finalUrl, generation) },
+                {
+                  evaluateStandardMetadata(
+                    finalUrl = finalUrl,
+                    generation = generation,
+                    customMetadata = customMetadata,
+                    allowRetry = allowRetry,
+                  )
+                },
                 EXTRACTION_RETRY_DELAY_MILLIS,
               )
             }
@@ -167,13 +176,13 @@ class AndroidWebViewLibraryMetadataClient(
       if (!completed && generation == pageGeneration) {
         if (SystemClock.uptimeMillis() >= deadlineMillis) {
           webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
-          evaluateStandardMetadata(finalUrl, generation, null, allowRetry = false)
+          evaluateStandardMetadata(finalUrl, generation, null)
         } else {
           webView.evaluateJavascript(customMetadataPollScript(stateKey)) { rawResult ->
             if (!completed && generation == pageGeneration) {
               val poll = parseCustomMetadataPromisePoll(finalUrl, rawResult)
               when {
-                poll == null -> evaluateStandardMetadata(finalUrl, generation, null, allowRetry = false)
+                poll == null -> evaluateStandardMetadata(finalUrl, generation, null)
                 poll.pending -> webView.postDelayed(
                   {
                     pollCustomMetadata(finalUrl, stateKey, generation, deadlineMillis)
@@ -190,13 +199,12 @@ class AndroidWebViewLibraryMetadataClient(
 
     extractMetadata = { finalUrl, generation ->
       if (!completed && generation == pageGeneration) {
-        extractionAttempts += 1
         val extractor = findMatchingWebLibraryMetadataExtractor(extractors, finalUrl)
           ?: findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
         if (extractor == null) {
           evaluateStandardMetadata(finalUrl, generation, null)
         } else {
-          val stateKey = "$CUSTOM_METADATA_STATE_PREFIX-$generation-$extractionAttempts"
+          val stateKey = "$CUSTOM_METADATA_STATE_PREFIX-$generation-${SystemClock.uptimeMillis()}"
           webView.evaluateJavascript(
             customMetadataStartScript(extractor.functionCode, stateKey),
           ) {
@@ -221,7 +229,7 @@ class AndroidWebViewLibraryMetadataClient(
 
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         pageGeneration += 1
-        extractionAttempts = 0
+        standardExtractionAttempts = 0
       }
 
       override fun onPageFinished(view: WebView, url: String) {
