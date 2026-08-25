@@ -71,10 +71,7 @@ internal fun LibraryRoute(
     organizationViewModel = organizationViewModel,
     onSyncGooglePlayBooks = requestSync,
     onAddWebBook = { url -> dependencies.addWebBook(url, null) },
-    onRefreshWebBook = { book ->
-      dependencies.refreshWebBook(book)
-      Unit
-    },
+    onRefreshWebBook = dependencies.refreshWebBook,
     onMoveWebBookToBookmark = dependencies.moveWebBookToBookmark,
     onDeleteWebBook = dependencies.removeWebBook,
     onListWebMetadataExtractors = dependencies.listWebMetadataExtractors,
