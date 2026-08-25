@@ -82,6 +82,16 @@ object SummaryQueue {
     schedulePipelineWorkers(appContext)
   }
 
+  fun onProviderChanged(context: Context) {
+    val appContext = context.applicationContext
+    val workManager = WorkManager.getInstance(appContext)
+    workManager.cancelUniqueWork(INFERENCE_QUEUE_NAME).result.get()
+    workManager.cancelUniqueWork(CONTENT_FETCH_QUEUE_NAME).result.get()
+    requeueInterruptedTasks(appContext)
+    ensureCleanupScheduled(appContext)
+    schedulePipelineWorkers(appContext)
+  }
+
   internal fun kickInference(context: Context) {
     val appContext = context.applicationContext
     val provider = currentProvider(appContext)
