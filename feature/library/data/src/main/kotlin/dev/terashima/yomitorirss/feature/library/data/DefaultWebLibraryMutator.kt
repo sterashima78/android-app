@@ -201,6 +201,7 @@ class WebLibraryMetadataClient(
           "Accept" to "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
           "User-Agent" to USER_AGENT,
         ),
+        maxResponseBytes = MAX_HTML_BYTES.toLong(),
       ),
     )
     require(response.isSuccessful) {

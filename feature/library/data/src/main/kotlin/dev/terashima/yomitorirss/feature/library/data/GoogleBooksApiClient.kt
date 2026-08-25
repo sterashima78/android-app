@@ -33,6 +33,7 @@ internal class GoogleBooksApiClient(
             "Authorization" to "Bearer $accessToken",
             "Accept" to "application/json",
           ),
+          maxResponseBytes = 8L * 1024 * 1024,
         ),
       )
       if (!response.isSuccessful) {

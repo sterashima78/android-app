@@ -95,6 +95,7 @@ class ChatGptOpenAiClient internal constructor(
         body = buildJsonObject { put("client_id", JsonPrimitive(config.clientId)) }
           .toString().toByteArray(StandardCharsets.UTF_8),
         contentType = "application/json",
+        maxResponseBytes = MAX_ERROR_BODY_BYTES.toLong(),
       ),
     )
     if (response.statusCode == 404) {
@@ -127,6 +128,7 @@ class ChatGptOpenAiClient internal constructor(
           put("user_code", JsonPrimitive(login.userCode))
         }.toString().toByteArray(StandardCharsets.UTF_8),
         contentType = "application/json",
+        maxResponseBytes = MAX_ERROR_BODY_BYTES.toLong(),
       ),
     )
     if (response.statusCode == 403 || response.statusCode == 404) return ChatGptDeviceLoginPollResult.PENDING
@@ -153,7 +155,6 @@ class ChatGptOpenAiClient internal constructor(
       response = executeGeneration(credentials, modelId, prompt)
     }
     if (!response.isSuccessful) throw IllegalStateException(providerFailureMessage(response))
-    if (response.body.size > MAX_SUCCESS_BODY_BYTES) error("ChatGPT/Codex response exceeded the allowed debug response size")
     return ChatGptGenerationResult(modelId, parseResponseText(response.body.toString(StandardCharsets.UTF_8)))
   }
 
@@ -197,6 +198,7 @@ class ChatGptOpenAiClient internal constructor(
       method = HttpMethod.POST,
       body = formEncode(fields).toByteArray(StandardCharsets.UTF_8),
       contentType = "application/x-www-form-urlencoded",
+      maxResponseBytes = MAX_ERROR_BODY_BYTES.toLong(),
     ),
   )
 
@@ -249,6 +251,8 @@ class ChatGptOpenAiClient internal constructor(
         method = HttpMethod.POST,
         body = requestBody.toString().toByteArray(StandardCharsets.UTF_8),
         contentType = "application/json",
+        maxResponseBytes = MAX_SUCCESS_BODY_BYTES.toLong(),
+        maxErrorResponseBytes = MAX_ERROR_BODY_BYTES.toLong(),
       ),
     )
   }
@@ -309,7 +313,6 @@ class ChatGptOpenAiClient internal constructor(
   }
 
   private fun parseObject(bytes: ByteArray): JsonObject {
-    if (bytes.size > MAX_ERROR_BODY_BYTES) error("ChatGPT OAuth response was unexpectedly large")
     return json.parseToJsonElement(bytes.toString(StandardCharsets.UTF_8)).jsonObject
   }
 
