@@ -52,6 +52,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167: 共通 dependency version を Gradle version catalog へ集約する](0167-gradle-version-catalog-baseline.md)
 - [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 
 ### Domain / Context / persistence
 
@@ -79,6 +80,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167: 共通 dependency version を Gradle version catalog へ集約する](0167-gradle-version-catalog-baseline.md)
 - [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 
 ## Supporting architecture areas
 
@@ -148,6 +150,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
 - [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 
 ### Content / summary / knowledge
 
@@ -159,6 +162,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0125: Application Service と capability interface を責務境界として使う](0125-application-service-and-capability-segregation.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
+- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 
 この索引は「現在の architecture source set」を優先した案内であり、全 ADR の機能別目録ではない。特定 feature の設計履歴は `docs/adr/` の番号順ファイルまたは repository search から辿る。
 
@@ -203,3 +207,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0166](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167](0167-gradle-version-catalog-baseline.md)
 - [ADR-0168](0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171](0171-summary-local-chatgpt-routing-and-web-fetch.md)

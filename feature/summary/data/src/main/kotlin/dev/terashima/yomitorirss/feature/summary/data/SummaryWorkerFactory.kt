@@ -7,6 +7,8 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
+import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
 
 class SummaryWorkerFactory(
@@ -14,6 +16,8 @@ class SummaryWorkerFactory(
   private val articleContentClientProvider: () -> ArticleContentClient,
   private val databaseProvider: () -> YomitoriDatabase,
   private val textInferenceProvider: () -> AiTextInference,
+  private val cloudInferenceProvider: () -> SummaryCloudInference,
+  private val executionSettingsProvider: () -> SummaryExecutionSettings,
   private val runBookmarkAutoEnrichmentBackfill: suspend () -> Unit,
 ) : WorkerFactory() {
   private val runtime: SummaryRuntimeDependencies by lazy(
@@ -32,6 +36,14 @@ class SummaryWorkerFactory(
     LazyThreadSafetyMode.SYNCHRONIZED,
     textInferenceProvider,
   )
+  private val cloudInference: SummaryCloudInference by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+    cloudInferenceProvider,
+  )
+  private val executionSettings: SummaryExecutionSettings by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+    executionSettingsProvider,
+  )
 
   override fun createWorker(
     appContext: Context,
@@ -39,7 +51,15 @@ class SummaryWorkerFactory(
     workerParameters: WorkerParameters,
   ): ListenableWorker? = when (workerClassName) {
     SummaryWorker::class.java.name ->
-      SummaryWorker(appContext, workerParameters, runtime, database, textInference)
+      SummaryWorker(
+        appContext,
+        workerParameters,
+        runtime,
+        database,
+        textInference,
+        cloudInference,
+        executionSettings,
+      )
     SummaryContentFetchWorker::class.java.name ->
       SummaryContentFetchWorker(
         appContext,
@@ -48,6 +68,7 @@ class SummaryWorkerFactory(
         articleContentClient,
         database,
         textInference,
+        executionSettings,
       )
     SummaryTaskLogCleanupWorker::class.java.name ->
       SummaryTaskLogCleanupWorker(appContext, workerParameters, database)

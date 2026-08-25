@@ -61,15 +61,15 @@ fun SettingsContent(
       SettingsRow(
         icon = Icons.Default.SmartToy,
         title = "AIモデル",
-        supporting = "要約・ブックマーク整理・蔵書整理・チャットなどで共通利用",
+        supporting = "ローカル要約・蔵書整理・チャットなどで利用する端末内モデル",
         onClick = onOpenModels,
       )
     }
     item {
       SettingsRow(
         icon = Icons.Default.Cloud,
-        title = "ChatGPT / Codex デバッグ",
-        supporting = "ChatGPTログインとクラウド推論接続を確認",
+        title = "ChatGPT / Codex",
+        supporting = "ChatGPTログイン、クラウドモデル選択、記事要約の実行先を設定",
         onClick = onOpenChatGptDebug,
       )
     }

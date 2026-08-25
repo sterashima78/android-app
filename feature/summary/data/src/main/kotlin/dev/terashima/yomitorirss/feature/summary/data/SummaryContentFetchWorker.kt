@@ -6,6 +6,8 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -20,12 +22,21 @@ class SummaryContentFetchWorker(
   private val articleContentClient: ArticleContentClient,
   private val database: YomitoriDatabase,
   private val textInference: AiTextInference,
+  private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
+    if (executionSettings.currentProvider() == SummaryExecutionProvider.CHATGPT) {
+      SummaryQueue.kickInference(applicationContext)
+      return Result.success()
+    }
     return withContext(Dispatchers.IO) {
       while (!SummaryQueue.executionState(applicationContext).paused) {
         currentCoroutineContext().ensureActive()
+        if (executionSettings.currentProvider() != SummaryExecutionProvider.LOCAL) {
+          SummaryQueue.kickInference(applicationContext)
+          break
+        }
         if (database.countPreparedSummaryArticleContentsForActiveTasks() >= PREFETCH_LIMIT) break
         val candidates = database.listSummaryContentFetchCandidates()
         if (candidates.isEmpty()) break
@@ -66,4 +77,5 @@ class SummaryContentFetchWorker(
 }
 
 private fun Throwable.userMessage(): String =
-  generateSequence(this) { it.cause }.mapNotNull(Throwable::message).firstOrNull(String::isNotBlank) ?: javaClass.simpleName
+  generateSequence(this) { it.cause }.mapNotNull(Throwable::message).firstOrNull(String::isNotBlank)
+    ?: javaClass.simpleName

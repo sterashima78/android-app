@@ -42,6 +42,8 @@ internal fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
         },
         databaseProvider = { container.database },
         textInferenceProvider = { container.textInference },
+        cloudInferenceProvider = { container.summaryCloudInference },
+        executionSettingsProvider = { container.summaryExecutionSettings },
         runBookmarkAutoEnrichmentBackfill = {
           container.backfillBookmarkAutoEnrichmentUseCase()
         },

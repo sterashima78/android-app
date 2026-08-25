@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss
 
 import java.io.File
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatGptCloudArchitectureTest {
@@ -25,6 +26,33 @@ class ChatGptCloudArchitectureTest {
           endpointMarker in file.readText(),
         )
       }
+  }
+
+  @Test
+  fun `Summary feature depends on its cloud inference boundary instead of OpenAI protocol`() {
+    val summaryRoot = File(repositoryRoot, "feature/summary")
+    summaryRoot.walkTopDown()
+      .filter(File::isFile)
+      .filter { it.extension == "kt" }
+      .filter { "/src/main/" in it.invariantSeparatorsPath }
+      .forEach { file ->
+        val source = file.readText()
+        assertFalse(
+          "${file.relativeTo(repositoryRoot)} must not depend on core ai-cloud-openai",
+          "dev.terashima.yomitorirss.core.aicloudopenai" in source,
+        )
+        assertFalse(
+          "${file.relativeTo(repositoryRoot)} must not depend on ChatGptOpenAiClient",
+          "ChatGptOpenAiClient" in source,
+        )
+      }
+  }
+
+  @Test
+  fun `ChatGPT Summary adapter is composed in app layer`() {
+    val adapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptSummaryCloudInference.kt")
+    assertTrue("app adapter must implement SummaryCloudInference", "SummaryCloudInference" in adapter)
+    assertTrue("app adapter must own ChatGPT client dependency", "ChatGptOpenAiClient" in adapter)
   }
 
   @Test

@@ -116,7 +116,9 @@ internal fun SettingsRoute(
       onStartLogin = aiSettingsViewModel::startChatGptLogin,
       onPollLogin = aiSettingsViewModel::pollChatGptLogin,
       onLogout = aiSettingsViewModel::logoutChatGpt,
-      onModelIdChange = aiSettingsViewModel::setChatGptModelId,
+      onRefreshModels = aiSettingsViewModel::refreshChatGptModels,
+      onSelectModel = aiSettingsViewModel::selectChatGptModel,
+      onSummaryProviderChange = aiSettingsViewModel::setSummaryExecutionProvider,
       onPromptChange = aiSettingsViewModel::setChatGptPrompt,
       onRunInference = aiSettingsViewModel::runChatGptDebugInference,
     )

@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,15 +13,18 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -32,20 +36,24 @@ fun ChatGptDebugDialog(
   onStartLogin: () -> Unit,
   onPollLogin: () -> Unit,
   onLogout: () -> Unit,
-  onModelIdChange: (String) -> Unit,
+  onRefreshModels: () -> Unit,
+  onSelectModel: (String) -> Unit,
+  onSummaryProviderChange: (SummaryExecutionProvider) -> Unit,
   onPromptChange: (String) -> Unit,
   onRunInference: () -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("ChatGPT / Codex デバッグ") },
+    title = { Text("ChatGPT / Codex") },
     text = {
       Column(
         modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        if (state.chatGptBusy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        if (state.chatGptBusy || state.chatGptModelsLoading) {
+          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
         Text(
           if (state.chatGptConnected) {
             "接続済み${state.chatGptAccountLabel?.let { " ($it)" }.orEmpty()}"
@@ -75,14 +83,73 @@ fun ChatGptDebugDialog(
           }
         } else {
           OutlinedButton(onClick = onLogout, enabled = !state.chatGptBusy) { Text("ログアウト") }
+
           HorizontalDivider()
-          OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = state.chatGptModelId,
-            onValueChange = onModelIdChange,
-            label = { Text("モデルID") },
-            singleLine = true,
-            enabled = !state.chatGptBusy,
+          Text("クラウドモデル", style = MaterialTheme.typography.titleSmall)
+          Text(
+            "ChatGPTアカウントで利用可能なモデル一覧から、Web検索対応モデルを選択します。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+          OutlinedButton(
+            onClick = onRefreshModels,
+            enabled = !state.chatGptBusy && !state.chatGptModelsLoading,
+          ) { Text("モデル一覧を更新") }
+          if (state.chatGptModels.isEmpty() && !state.chatGptModelsLoading) {
+            Text("利用可能なモデル一覧を取得してください。", style = MaterialTheme.typography.bodySmall)
+          }
+          state.chatGptModels.forEach { model ->
+            ListItem(
+              modifier = Modifier.clickable(enabled = !state.chatGptBusy) { onSelectModel(model.id) },
+              headlineContent = { Text(model.name) },
+              supportingContent = {
+                Column {
+                  Text(model.id)
+                  model.description?.takeIf(String::isNotBlank)?.let { Text(it) }
+                  Text("Web検索対応", style = MaterialTheme.typography.labelSmall)
+                }
+              },
+              leadingContent = {
+                RadioButton(
+                  selected = state.chatGptSelectedModelId == model.id,
+                  onClick = null,
+                )
+              },
+            )
+          }
+          state.chatGptSelectedModelId?.takeIf { selected -> state.chatGptModels.none { it.id == selected } }?.let {
+            Text(
+              "前回選択したモデル $it は現在の利用可能モデル一覧にありません。別のモデルを選択してください。",
+              color = MaterialTheme.colorScheme.error,
+              style = MaterialTheme.typography.bodySmall,
+            )
+          }
+
+          HorizontalDivider()
+          Text("記事要約の実行先", style = MaterialTheme.typography.titleSmall)
+          ProviderChoice(
+            title = "ローカル",
+            supporting = "端末上の選択済みモデルで本文取得・要約・タグ付けを実行",
+            selected = state.summaryExecutionProvider == SummaryExecutionProvider.LOCAL,
+            enabled = true,
+            onClick = { onSummaryProviderChange(SummaryExecutionProvider.LOCAL) },
+          )
+          ProviderChoice(
+            title = "ChatGPT / Codex",
+            supporting = "記事URLをCodexへ渡し、Web検索で本文を開いて要約・タグ付けを実行",
+            selected = state.summaryExecutionProvider == SummaryExecutionProvider.CHATGPT,
+            enabled = state.chatGptSelectedModelId != null,
+            onClick = { onSummaryProviderChange(SummaryExecutionProvider.CHATGPT) },
+          )
+          Text(
+            "クラウド実行では記事URL、要約指示、生成済み要約、既存タグ・フォルダ候補など要約処理に必要な情報をChatGPTへ送信します。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+
+          HorizontalDivider()
+          Text("接続テスト", style = MaterialTheme.typography.titleSmall)
+          Text(
+            state.chatGptSelectedModelId?.let { "選択モデル: $it" } ?: "先にクラウドモデルを選択してください。",
+            style = MaterialTheme.typography.bodySmall,
           )
           OutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -94,7 +161,9 @@ fun ChatGptDebugDialog(
           )
           Button(
             onClick = onRunInference,
-            enabled = !state.chatGptBusy && state.chatGptModelId.isNotBlank() && state.chatGptPrompt.isNotBlank(),
+            enabled = !state.chatGptBusy &&
+              state.chatGptSelectedModelId != null &&
+              state.chatGptPrompt.isNotBlank(),
           ) { Text("テスト推論") }
           state.chatGptResponse?.let { response ->
             HorizontalDivider()
@@ -107,7 +176,27 @@ fun ChatGptDebugDialog(
         }
       }
     },
-    confirmButton = { Row(modifier = Modifier.padding(start = 8.dp)) { TextButton(onClick = onDismiss) { Text("閉じる") } } },
+    confirmButton = {
+      Row(modifier = Modifier.padding(start = 8.dp)) {
+        TextButton(onClick = onDismiss) { Text("閉じる") }
+      }
+    },
+  )
+}
+
+@Composable
+private fun ProviderChoice(
+  title: String,
+  supporting: String,
+  selected: Boolean,
+  enabled: Boolean,
+  onClick: () -> Unit,
+) {
+  ListItem(
+    modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
+    headlineContent = { Text(title) },
+    supportingContent = { Text(supporting) },
+    leadingContent = { RadioButton(selected = selected, onClick = null, enabled = enabled) },
   )
 }
 

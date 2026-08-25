@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpMethod
 import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -24,9 +25,11 @@ const val DEFAULT_CHATGPT_CODEX_MODEL_ID = "gpt-5.6-sol"
 private const val CHATGPT_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 private const val DEFAULT_AUTH_BASE_URL = "https://auth.openai.com"
 private const val DEFAULT_CODEX_BASE_URL = "https://chatgpt.com/backend-api"
+private const val CODEX_COMPAT_CLIENT_VERSION = "0.149.0"
 private const val DEVICE_LOGIN_LIFETIME_MILLIS = 15 * 60 * 1000L
 private const val REFRESH_EARLY_MILLIS = 2 * 60 * 1000L
 private const val MAX_SUCCESS_BODY_BYTES = 16 * 1024 * 1024
+private const val MAX_MODELS_BODY_BYTES = 4 * 1024 * 1024
 private const val MAX_ERROR_BODY_BYTES = 16 * 1024
 
 internal data class ChatGptProtocolConfig(
@@ -68,6 +71,24 @@ data class ChatGptDeviceLogin(
 enum class ChatGptDeviceLoginPollResult { PENDING, SLOW_DOWN, AUTHORIZED }
 
 data class ChatGptGenerationResult(val modelId: String, val text: String)
+
+data class ChatGptWebGenerationResult(
+  val modelId: String,
+  val text: String,
+  val openedUrls: List<String>,
+)
+
+data class ChatGptModelInfo(
+  val id: String,
+  val displayName: String,
+  val description: String?,
+  val contextWindowTokens: Int?,
+  val maxContextWindowTokens: Int?,
+  val supportsWebSearch: Boolean,
+  val supportedInApi: Boolean,
+  val visibleInPicker: Boolean,
+  val priority: Int,
+)
 
 class ChatGptOpenAiClient internal constructor(
   private val httpClient: HttpClient,
@@ -145,17 +166,70 @@ class ChatGptOpenAiClient internal constructor(
 
   fun logout() = credentialStore.clear()
 
+  suspend fun listModels(): List<ChatGptModelInfo> {
+    var credentials = ensureFreshCredentials(false)
+    var response = executeListModels(credentials)
+    if (response.statusCode == 401) {
+      credentials = ensureFreshCredentials(true)
+      response = executeListModels(credentials)
+    }
+    if (!response.isSuccessful) throw IllegalStateException(providerFailureMessage(response))
+    if (response.body.size > MAX_MODELS_BODY_BYTES) error("ChatGPT/Codex model catalog response was unexpectedly large")
+    val root = json.parseToJsonElement(response.body.toString(StandardCharsets.UTF_8)).jsonObject
+    val models = root["models"] as? JsonArray ?: error("ChatGPT/Codex model catalog did not contain models")
+    return models.mapNotNull { element ->
+      val model = element as? JsonObject ?: return@mapNotNull null
+      val id = model.string("slug") ?: return@mapNotNull null
+      ChatGptModelInfo(
+        id = id,
+        displayName = model.string("display_name") ?: id,
+        description = model.string("description"),
+        contextWindowTokens = model.int("context_window"),
+        maxContextWindowTokens = model.int("max_context_window"),
+        supportsWebSearch = model.string("web_search_tool_type")
+          ?.let { it == "text" || it == "text_and_image" }
+          ?: (model.bool("supports_search_tool") ?: false),
+        supportedInApi = model.bool("supported_in_api") ?: false,
+        visibleInPicker = model.string("visibility") == "list",
+        priority = model.int("priority") ?: Int.MAX_VALUE,
+      )
+    }.sortedWith(compareBy(ChatGptModelInfo::priority, ChatGptModelInfo::displayName))
+  }
+
   suspend fun generate(modelId: String, prompt: String): ChatGptGenerationResult {
     require(modelId.isNotBlank()) { "ChatGPT model id must not be blank" }
     require(prompt.isNotBlank()) { "ChatGPT prompt must not be blank" }
     var credentials = ensureFreshCredentials(false)
-    var response = executeGeneration(credentials, modelId, prompt)
+    var response = executeGeneration(credentials, modelId, prompt, webTarget = null)
     if (response.statusCode == 401) {
       credentials = ensureFreshCredentials(true)
-      response = executeGeneration(credentials, modelId, prompt)
+      response = executeGeneration(credentials, modelId, prompt, webTarget = null)
     }
     if (!response.isSuccessful) throw IllegalStateException(providerFailureMessage(response))
-    return ChatGptGenerationResult(modelId, parseResponseText(response.body.toString(StandardCharsets.UTF_8)))
+    val parsed = parseGenerationResponse(response)
+    return ChatGptGenerationResult(modelId, parsed.text)
+  }
+
+  suspend fun generateWithWebSearch(
+    modelId: String,
+    prompt: String,
+    targetUrl: String,
+  ): ChatGptWebGenerationResult {
+    require(modelId.isNotBlank()) { "ChatGPT model id must not be blank" }
+    require(prompt.isNotBlank()) { "ChatGPT prompt must not be blank" }
+    val target = validatePublicWebTarget(targetUrl)
+    var credentials = ensureFreshCredentials(false)
+    var response = executeGeneration(credentials, modelId, prompt, target)
+    if (response.statusCode == 401) {
+      credentials = ensureFreshCredentials(true)
+      response = executeGeneration(credentials, modelId, prompt, target)
+    }
+    if (!response.isSuccessful) throw IllegalStateException(providerFailureMessage(response))
+    val parsed = parseGenerationResponse(response)
+    check(parsed.openedUrls.any { sameTargetPage(target, runCatching { URI(it) }.getOrNull()) }) {
+      "ChatGPT/Codex did not open the specified article URL"
+    }
+    return ChatGptWebGenerationResult(modelId, parsed.text, parsed.openedUrls)
   }
 
   private suspend fun ensureFreshCredentials(forceRefresh: Boolean): ChatGptCredentials = refreshMutex.withLock {
@@ -214,16 +288,26 @@ class ChatGptOpenAiClient internal constructor(
     return ChatGptCredentials(accessToken, refreshToken, clockMillis() + expiresInSeconds * 1000L, accountId)
   }
 
+  private suspend fun executeListModels(credentials: ChatGptCredentials): HttpResponse = httpClient.execute(
+    HttpRequest(
+      url = resolveCodexModelsUrl(config.codexBaseUrl),
+      headers = authenticatedHeaders(credentials) + mapOf("Accept" to "application/json"),
+      maxResponseBytes = MAX_MODELS_BODY_BYTES.toLong(),
+      maxErrorResponseBytes = MAX_ERROR_BODY_BYTES.toLong(),
+    ),
+  )
+
   private suspend fun executeGeneration(
     credentials: ChatGptCredentials,
     modelId: String,
     prompt: String,
+    webTarget: URI?,
   ): HttpResponse {
     val requestBody = buildJsonObject {
       put("model", JsonPrimitive(modelId))
       put("store", JsonPrimitive(false))
       put("stream", JsonPrimitive(true))
-      put("instructions", JsonPrimitive("You are a helpful assistant."))
+      put("instructions", JsonPrimitive("You are a helpful assistant. Follow the user request exactly."))
       put("input", buildJsonArray {
         add(buildJsonObject {
           put("role", JsonPrimitive("user"))
@@ -235,19 +319,26 @@ class ChatGptOpenAiClient internal constructor(
           })
         })
       })
+      if (webTarget != null) {
+        put("tools", buildJsonArray {
+          add(buildJsonObject {
+            put("type", JsonPrimitive("web_search"))
+            put("external_web_access", JsonPrimitive(true))
+            put("filters", buildJsonObject {
+              put("allowed_domains", buildJsonArray { add(JsonPrimitive(webTarget.host)) })
+            })
+          })
+        })
+        put("tool_choice", JsonPrimitive("required"))
+        put("parallel_tool_calls", JsonPrimitive(false))
+      }
       put("text", buildJsonObject { put("verbosity", JsonPrimitive("low")) })
       put("include", buildJsonArray { add(JsonPrimitive("reasoning.encrypted_content")) })
     }
     return httpClient.execute(
       HttpRequest(
         url = resolveCodexResponsesUrl(config.codexBaseUrl),
-        headers = mapOf(
-          "Authorization" to "Bearer ${credentials.accessToken}",
-          "chatgpt-account-id" to credentials.accountId,
-          "originator" to config.originator,
-          "OpenAI-Beta" to "responses=experimental",
-          "Accept" to "text/event-stream",
-        ),
+        headers = authenticatedHeaders(credentials) + mapOf("Accept" to "text/event-stream"),
         method = HttpMethod.POST,
         body = requestBody.toString().toByteArray(StandardCharsets.UTF_8),
         contentType = "application/json",
@@ -257,8 +348,18 @@ class ChatGptOpenAiClient internal constructor(
     )
   }
 
-  private fun parseResponseText(raw: String): String {
+  private fun authenticatedHeaders(credentials: ChatGptCredentials): Map<String, String> = mapOf(
+    "Authorization" to "Bearer ${credentials.accessToken}",
+    "chatgpt-account-id" to credentials.accountId,
+    "originator" to config.originator,
+    "OpenAI-Beta" to "responses=experimental",
+  )
+
+  private fun parseGenerationResponse(response: HttpResponse): ParsedGeneration {
+    if (response.body.size > MAX_SUCCESS_BODY_BYTES) error("ChatGPT/Codex response exceeded the allowed response size")
+    val raw = response.body.toString(StandardCharsets.UTF_8)
     val output = StringBuilder()
+    val openedUrls = linkedSetOf<String>()
     var completedResponse: JsonObject? = null
     raw.split(Regex("(?:\\r\\n|\\n|\\r){2}")).forEach { block ->
       val data = block.lineSequence()
@@ -270,16 +371,26 @@ class ChatGptOpenAiClient internal constructor(
         .getOrElse { error("ChatGPT/Codex returned malformed streaming data") }
       when (event.string("type")) {
         "response.output_text.delta" -> event.string("delta")?.let(output::append)
+        "response.output_item.done" -> collectOpenedUrls(event["item"] as? JsonObject, openedUrls)
         "response.completed", "response.done" -> completedResponse = event["response"] as? JsonObject
         "response.failed" -> error((event["response"] as? JsonObject)?.let(::extractResponseError) ?: "ChatGPT/Codex response failed")
         "error" -> error(event.string("message") ?: "ChatGPT/Codex returned an error")
       }
     }
-    val streamed = output.toString().trim()
-    if (streamed.isNotEmpty()) return streamed
-    val completed = completedResponse?.let(::extractCompletedText)?.trim().orEmpty()
-    if (completed.isNotEmpty()) return completed
-    error("ChatGPT/Codex response did not contain text")
+    completedResponse?.let { responseObject ->
+      (responseObject["output"] as? JsonArray)?.forEach { collectOpenedUrls(it as? JsonObject, openedUrls) }
+    }
+    val text = output.toString().trim().ifEmpty {
+      completedResponse?.let(::extractCompletedText)?.trim().orEmpty()
+    }
+    check(text.isNotBlank()) { "ChatGPT/Codex response did not contain text" }
+    return ParsedGeneration(text, openedUrls.toList())
+  }
+
+  private fun collectOpenedUrls(item: JsonObject?, destination: MutableSet<String>) {
+    if (item?.string("type") != "web_search_call") return
+    val action = item["action"] as? JsonObject ?: return
+    if (action.string("type") == "open_page") action.string("url")?.let(destination::add)
   }
 
   private fun extractCompletedText(response: JsonObject): String {
@@ -313,6 +424,7 @@ class ChatGptOpenAiClient internal constructor(
   }
 
   private fun parseObject(bytes: ByteArray): JsonObject {
+    if (bytes.size > MAX_ERROR_BODY_BYTES) error("ChatGPT OAuth response was unexpectedly large")
     return json.parseToJsonElement(bytes.toString(StandardCharsets.UTF_8)).jsonObject
   }
 
@@ -335,10 +447,17 @@ class ChatGptOpenAiClient internal constructor(
   }
 }
 
+private data class ParsedGeneration(val text: String, val openedUrls: List<String>)
+
 private fun JsonObject.string(key: String): String? =
   (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank)
 
 private fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+
+private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+
+private fun JsonObject.bool(key: String): Boolean? =
+  (this[key] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull()
 
 private fun formEncode(fields: Map<String, String>): String = fields.entries.joinToString("&") { (key, value) ->
   "${URLEncoder.encode(key, StandardCharsets.UTF_8.toString())}=${URLEncoder.encode(value, StandardCharsets.UTF_8.toString())}"
@@ -351,4 +470,47 @@ private fun resolveCodexResponsesUrl(baseUrl: String): String {
     normalized.endsWith("/codex") -> "$normalized/responses"
     else -> "$normalized/codex/responses"
   }
+}
+
+private fun resolveCodexModelsUrl(baseUrl: String): String {
+  val normalized = baseUrl.trimEnd('/')
+  val endpoint = when {
+    normalized.endsWith("/codex/models") -> normalized
+    normalized.endsWith("/codex") -> "$normalized/models"
+    else -> "$normalized/codex/models"
+  }
+  return "$endpoint?client_version=${URLEncoder.encode(CODEX_COMPAT_CLIENT_VERSION, StandardCharsets.UTF_8.toString())}"
+}
+
+private fun validatePublicWebTarget(value: String): URI {
+  val uri = runCatching { URI(value.trim()) }.getOrElse { error("記事URLが正しくありません") }
+  require(uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()) {
+    "クラウド要約は公開HTTPS URLだけを対象にできます"
+  }
+  require(uri.userInfo == null) { "ユーザー情報を含むURLはクラウド要約できません" }
+  val host = uri.host.lowercase()
+  require(host != "localhost" && !host.endsWith(".localhost") && !host.endsWith(".local")) {
+    "ローカルURLはクラウド要約できません"
+  }
+  require(!isPrivateIpLiteral(host)) { "プライベートIPのURLはクラウド要約できません" }
+  return uri
+}
+
+private fun isPrivateIpLiteral(host: String): Boolean {
+  val parts = host.split('.')
+  if (parts.size != 4) return host == "::1" || host.startsWith("fc", true) || host.startsWith("fd", true) || host.startsWith("fe80:", true)
+  val octets = parts.map { it.toIntOrNull() ?: return false }
+  return octets[0] == 10 ||
+    octets[0] == 127 ||
+    (octets[0] == 169 && octets[1] == 254) ||
+    (octets[0] == 172 && octets[1] in 16..31) ||
+    (octets[0] == 192 && octets[1] == 168)
+}
+
+private fun sameTargetPage(expected: URI, actual: URI?): Boolean {
+  actual ?: return false
+  if (!expected.host.equals(actual.host, ignoreCase = true)) return false
+  val expectedPath = expected.path.orEmpty().trimEnd('/').ifEmpty { "/" }
+  val actualPath = actual.path.orEmpty().trimEnd('/').ifEmpty { "/" }
+  return expectedPath == actualPath
 }
