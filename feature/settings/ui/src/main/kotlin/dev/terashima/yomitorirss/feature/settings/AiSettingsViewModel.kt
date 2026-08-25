@@ -3,6 +3,8 @@ package dev.terashima.yomitorirss.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryPromptSettings
@@ -37,6 +39,7 @@ data class AiSettingsUiState(
   val chatGptSelectedModelId: String? = null,
   val chatGptModelsLoading: Boolean = false,
   val summaryExecutionProvider: SummaryExecutionProvider = SummaryExecutionProvider.LOCAL,
+  val knowledgeExecutionProvider: KnowledgeExecutionProvider = KnowledgeExecutionProvider.LOCAL,
   val chatGptModelId: String = "",
   val chatGptPrompt: String = "接続確認とだけ返してください。",
   val chatGptResponse: String? = null,
@@ -59,6 +62,7 @@ class AiSettingsViewModel(
   private val chatGptDebugRepository: ChatGptDebugRepository,
   private val chatGptProviderRepository: ChatGptProviderRepository,
   private val summaryExecutionSettings: SummaryExecutionSettings,
+  private val knowledgeExecutionSettings: KnowledgeExecutionSettings,
 ) : ViewModel() {
   private val initialChatGptModelId = chatGptProviderRepository.selectedModelId()
     ?: chatGptDebugRepository.defaultModelId
@@ -68,6 +72,7 @@ class AiSettingsViewModel(
       chatGptSelectedModelId = chatGptProviderRepository.selectedModelId(),
       chatGptModelId = initialChatGptModelId,
       summaryExecutionProvider = summaryExecutionSettings.currentProvider(),
+      knowledgeExecutionProvider = knowledgeExecutionSettings.currentProvider(),
     ),
   )
   val state: StateFlow<AiSettingsUiState> = _state.asStateFlow()
@@ -95,6 +100,11 @@ class AiSettingsViewModel(
     viewModelScope.launch {
       summaryExecutionSettings.provider.collect { provider ->
         _state.update { it.copy(summaryExecutionProvider = provider) }
+      }
+    }
+    viewModelScope.launch {
+      knowledgeExecutionSettings.provider.collect { provider ->
+        _state.update { it.copy(knowledgeExecutionProvider = provider) }
       }
     }
     viewModelScope.launch {
@@ -189,6 +199,9 @@ class AiSettingsViewModel(
       summaryExecutionSettings.setProvider(
         summaryExecutionProviderAfterChatGptLogout(summaryExecutionSettings.currentProvider()),
       )
+      knowledgeExecutionSettings.setProvider(
+        knowledgeExecutionProviderAfterChatGptLogout(knowledgeExecutionSettings.currentProvider()),
+      )
     }.onSuccess {
       _state.update {
         it.copy(
@@ -199,6 +212,7 @@ class AiSettingsViewModel(
           chatGptModels = emptyList(),
           chatGptModelsLoading = false,
           summaryExecutionProvider = SummaryExecutionProvider.LOCAL,
+          knowledgeExecutionProvider = KnowledgeExecutionProvider.LOCAL,
           chatGptResponse = null,
           chatGptElapsedMillis = null,
           chatGptStatusMessage = "ChatGPTからログアウトしました。",
@@ -222,7 +236,7 @@ class AiSettingsViewModel(
             chatGptSelectedModelId = selected,
             chatGptModelId = selected ?: it.chatGptModelId,
             chatGptStatusMessage = if (models.isEmpty()) {
-              "記事要約に利用できるWeb検索対応モデルが見つかりませんでした。"
+              "クラウドAIタスクに利用できるWeb検索対応モデルが見つかりませんでした。"
             } else {
               it.chatGptStatusMessage
             },
@@ -262,19 +276,28 @@ class AiSettingsViewModel(
   }
 
   fun setSummaryExecutionProvider(provider: SummaryExecutionProvider) {
-    if (provider == SummaryExecutionProvider.CHATGPT) {
-      val current = _state.value
-      if (!current.chatGptConnected) {
-        _state.update { it.copy(chatGptError = "ChatGPTへログインしてください。") }
-        return
-      }
-      if (current.chatGptSelectedModelId == null) {
-        _state.update { it.copy(chatGptError = "ChatGPT / Codex の利用モデルを選択してください。") }
-        return
-      }
-    }
+    if (provider == SummaryExecutionProvider.CHATGPT && !validateCloudSelection()) return
     runCatching { summaryExecutionSettings.setProvider(provider) }
       .onFailure(::showChatGptError)
+  }
+
+  fun setKnowledgeExecutionProvider(provider: KnowledgeExecutionProvider) {
+    if (provider == KnowledgeExecutionProvider.CHATGPT && !validateCloudSelection()) return
+    runCatching { knowledgeExecutionSettings.setProvider(provider) }
+      .onFailure(::showChatGptError)
+  }
+
+  private fun validateCloudSelection(): Boolean {
+    val current = _state.value
+    if (!current.chatGptConnected) {
+      _state.update { it.copy(chatGptError = "ChatGPTへログインしてください。") }
+      return false
+    }
+    if (current.chatGptSelectedModelId == null) {
+      _state.update { it.copy(chatGptError = "ChatGPT / Codex の利用モデルを選択してください。") }
+      return false
+    }
+    return true
   }
 
   fun setChatGptModelId(modelId: String) {
@@ -493,6 +516,7 @@ class AiSettingsViewModel(
     private val chatGptDebugRepository: ChatGptDebugRepository,
     private val chatGptProviderRepository: ChatGptProviderRepository,
     private val summaryExecutionSettings: SummaryExecutionSettings,
+    private val knowledgeExecutionSettings: KnowledgeExecutionSettings,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(AiSettingsViewModel::class.java))
@@ -503,6 +527,7 @@ class AiSettingsViewModel(
         chatGptDebugRepository,
         chatGptProviderRepository,
         summaryExecutionSettings,
+        knowledgeExecutionSettings,
       ) as T
     }
   }
@@ -513,6 +538,13 @@ internal fun summaryExecutionProviderAfterChatGptLogout(
 ): SummaryExecutionProvider = when (provider) {
   SummaryExecutionProvider.LOCAL -> SummaryExecutionProvider.LOCAL
   SummaryExecutionProvider.CHATGPT -> SummaryExecutionProvider.LOCAL
+}
+
+internal fun knowledgeExecutionProviderAfterChatGptLogout(
+  provider: KnowledgeExecutionProvider,
+): KnowledgeExecutionProvider = when (provider) {
+  KnowledgeExecutionProvider.LOCAL -> KnowledgeExecutionProvider.LOCAL
+  KnowledgeExecutionProvider.CHATGPT -> KnowledgeExecutionProvider.LOCAL
 }
 
 private fun Throwable.userMessage(): String =
