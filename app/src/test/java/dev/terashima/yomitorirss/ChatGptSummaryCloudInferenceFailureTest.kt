@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss
 
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudFailureKind
-import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -29,12 +28,11 @@ class ChatGptSummaryCloudInferenceFailureTest {
   }
 
   @Test
-  fun `transport failure is retryable without exposing transport details`() {
-    val transport = classifyTransportFailure(IOException("request failed for sensitive-url"))
+  fun `transport failure is retryable without carrying transport details`() {
+    val transport = classifyTransportFailure()
 
     assertEquals(SummaryCloudFailureKind.TRANSIENT, transport.kind)
     assertTrue(transport.retryable)
-    assertFalse(transport.message.orEmpty().contains("sensitive-url"))
     assertNull(transport.cause)
   }
 
