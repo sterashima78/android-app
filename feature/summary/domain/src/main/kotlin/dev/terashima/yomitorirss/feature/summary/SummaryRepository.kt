@@ -8,11 +8,7 @@ sealed interface SummaryRequestResult {
 }
 
 interface SummaryRequester {
-  suspend fun request(
-    articleId: String,
-    forceRefresh: Boolean,
-    replaceBookmarkTags: Boolean = false,
-  ): SummaryRequestResult
+  suspend fun request(articleId: String, forceRefresh: Boolean): SummaryRequestResult
 }
 
 interface BookmarkEnrichmentRequester {
@@ -21,6 +17,14 @@ interface BookmarkEnrichmentRequester {
    * 既存要約がある場合は再生成せず、その要約をタグ生成へ再利用する。
    */
   suspend fun requestBookmarkEnrichment(articleId: String): SummaryRequestResult
+}
+
+interface BookmarkEnrichmentRefreshRequester {
+  /**
+   * 1件のブックマークについて要約とAIタグを明示的に再生成する。
+   * メタデータ生成成功後に既存タグを生成タグへ置き換える。
+   */
+  suspend fun requestBookmarkEnrichmentRefresh(articleId: String): SummaryRequestResult
 }
 
 interface BookmarkEnrichmentBatchRequester {
@@ -45,5 +49,6 @@ interface SummaryReader {
 interface SummaryRepository :
   SummaryRequester,
   BookmarkEnrichmentRequester,
+  BookmarkEnrichmentRefreshRequester,
   BookmarkEnrichmentBatchRequester,
   SummaryReader
