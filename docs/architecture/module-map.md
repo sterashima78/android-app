@@ -147,4 +147,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)
-- [ADR-0164](../adr/0164-provider-neutral-text-inference-contract.md)
+- [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
