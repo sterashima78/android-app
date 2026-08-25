@@ -184,24 +184,28 @@ class AiSettingsViewModel(
   }
 
   fun logoutChatGpt() {
-    runCatching { chatGptDebugRepository.logout() }
-      .onSuccess {
-        _state.update {
-          it.copy(
-            chatGptConnected = false,
-            chatGptAccountLabel = null,
-            chatGptExpiresAtEpochMillis = null,
-            chatGptLogin = null,
-            chatGptModels = emptyList(),
-            chatGptModelsLoading = false,
-            chatGptResponse = null,
-            chatGptElapsedMillis = null,
-            chatGptStatusMessage = "ChatGPTからログアウトしました。",
-            chatGptError = null,
-          )
-        }
+    runCatching {
+      chatGptDebugRepository.logout()
+      summaryExecutionSettings.setProvider(
+        summaryExecutionProviderAfterChatGptLogout(summaryExecutionSettings.currentProvider()),
+      )
+    }.onSuccess {
+      _state.update {
+        it.copy(
+          chatGptConnected = false,
+          chatGptAccountLabel = null,
+          chatGptExpiresAtEpochMillis = null,
+          chatGptLogin = null,
+          chatGptModels = emptyList(),
+          chatGptModelsLoading = false,
+          summaryExecutionProvider = SummaryExecutionProvider.LOCAL,
+          chatGptResponse = null,
+          chatGptElapsedMillis = null,
+          chatGptStatusMessage = "ChatGPTからログアウトしました。",
+          chatGptError = null,
+        )
       }
-      .onFailure(::showChatGptError)
+    }.onFailure(::showChatGptError)
   }
 
   fun refreshChatGptModels() {
@@ -502,6 +506,13 @@ class AiSettingsViewModel(
       ) as T
     }
   }
+}
+
+internal fun summaryExecutionProviderAfterChatGptLogout(
+  provider: SummaryExecutionProvider,
+): SummaryExecutionProvider = when (provider) {
+  SummaryExecutionProvider.LOCAL -> SummaryExecutionProvider.LOCAL
+  SummaryExecutionProvider.CHATGPT -> SummaryExecutionProvider.LOCAL
 }
 
 private fun Throwable.userMessage(): String =
