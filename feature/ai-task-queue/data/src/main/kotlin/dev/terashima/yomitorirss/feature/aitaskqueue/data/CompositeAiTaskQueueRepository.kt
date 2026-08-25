@@ -4,6 +4,7 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueExecutionState
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItem
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
@@ -17,6 +18,7 @@ class CompositeAiTaskQueueRepository(
   libraryCatalogRepository: LibraryRepository,
   libraryScheduler: LibraryOrganizationBatchScheduler,
   knowledgeController: KnowledgeBuildTaskController? = null,
+  knowledgeExecutionSettings: KnowledgeExecutionSettings? = null,
   smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
   smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
 ) : AiTaskQueueRepository {
@@ -36,7 +38,11 @@ class CompositeAiTaskQueueRepository(
   } else {
     null
   }
-  private val knowledge = knowledgeController?.let(::KnowledgeTaskQueueAdapter)
+  private val knowledge = if (knowledgeController != null && knowledgeExecutionSettings != null) {
+    KnowledgeTaskQueueAdapter(knowledgeController, knowledgeExecutionSettings)
+  } else {
+    null
+  }
 
   override suspend fun listTasks(): List<AiTaskQueueItem> {
     val localPaused = summary.executionState().localPaused
@@ -64,20 +70,25 @@ class CompositeAiTaskQueueRepository(
 
   override suspend fun setLocalPaused(paused: Boolean) {
     val libraryStatus = library.batchStatus()
+    val pauseKnowledge = knowledge?.usesLocalProvider() == true
     if (paused) {
       summary.setLocalPaused(true)
       try {
         library.pauseForGlobalGate(libraryStatus)
         smbMetadata?.pauseForGlobalGate()
-        knowledge?.pauseForGlobalGate()
-        knowledge?.setResumeOnChargingScheduled(true)
+        if (pauseKnowledge) {
+          knowledge?.pauseForGlobalGate()
+          knowledge?.setResumeOnChargingScheduled(true)
+        }
       } catch (error: Throwable) {
         runCatching { summary.setLocalPaused(false) }
         runCatching { library.restoreAfterPauseFailure(libraryStatus) }
         runCatching { smbMetadata?.resumeFromGlobalGate() }
-        runCatching {
-          knowledge?.setResumeOnChargingScheduled(false)
-          knowledge?.kick()
+        if (pauseKnowledge) {
+          runCatching {
+            knowledge?.setResumeOnChargingScheduled(false)
+            knowledge?.kick()
+          }
         }
         throw error
       }
@@ -88,22 +99,46 @@ class CompositeAiTaskQueueRepository(
     try {
       library.resumeFromGlobalGate(libraryStatus)
       smbMetadata?.resumeFromGlobalGate()
-      knowledge?.setResumeOnChargingScheduled(false)
-      knowledge?.kick()
+      if (pauseKnowledge) {
+        knowledge?.setResumeOnChargingScheduled(false)
+        knowledge?.kick()
+      }
     } catch (error: Throwable) {
       runCatching { summary.setLocalPaused(true) }
       runCatching { library.restorePauseAfterResumeFailure(libraryStatus) }
       runCatching { smbMetadata?.pauseForGlobalGate() }
-      runCatching {
-        knowledge?.pauseForGlobalGate()
-        knowledge?.setResumeOnChargingScheduled(true)
+      if (pauseKnowledge) {
+        runCatching {
+          knowledge?.pauseForGlobalGate()
+          knowledge?.setResumeOnChargingScheduled(true)
+        }
       }
       throw error
     }
   }
 
   override suspend fun setCloudPaused(paused: Boolean) {
-    summary.setCloudPaused(paused)
+    val pauseKnowledge = knowledge?.usesCloudProvider() == true
+    if (paused) {
+      summary.setCloudPaused(true)
+      try {
+        if (pauseKnowledge) knowledge?.pauseForGlobalGate()
+      } catch (error: Throwable) {
+        runCatching { summary.setCloudPaused(false) }
+        if (pauseKnowledge) runCatching { knowledge?.kick() }
+        throw error
+      }
+      return
+    }
+
+    summary.setCloudPaused(false)
+    try {
+      if (pauseKnowledge) knowledge?.kick()
+    } catch (error: Throwable) {
+      runCatching { summary.setCloudPaused(true) }
+      if (pauseKnowledge) runCatching { knowledge?.pauseForGlobalGate() }
+      throw error
+    }
   }
 
   override suspend fun setResumeLocalWhenCharging(enabled: Boolean) {
@@ -113,14 +148,18 @@ class CompositeAiTaskQueueRepository(
       val localPaused = summary.executionState().localPaused
       library.setResumeOnChargingScheduled(enabled, localPaused)
       smbMetadata?.setResumeOnChargingScheduled(enabled, localPaused)
-      knowledge?.setResumeOnChargingScheduled(enabled && localPaused)
+      if (knowledge?.usesLocalProvider() == true) {
+        knowledge.setResumeOnChargingScheduled(enabled && localPaused)
+      }
     } catch (error: Throwable) {
       runCatching { summary.setResumeLocalWhenCharging(previous) }
       runCatching {
         val localPaused = summary.executionState().localPaused
         library.setResumeOnChargingScheduled(previous, localPaused)
         smbMetadata?.setResumeOnChargingScheduled(previous, localPaused)
-        knowledge?.setResumeOnChargingScheduled(previous && localPaused)
+        if (knowledge?.usesLocalProvider() == true) {
+          knowledge.setResumeOnChargingScheduled(previous && localPaused)
+        }
       }
       throw error
     }
