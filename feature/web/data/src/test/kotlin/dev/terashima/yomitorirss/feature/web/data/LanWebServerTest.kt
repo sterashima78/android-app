@@ -36,12 +36,14 @@ class LanWebServerTest {
   }
 
   @Test
-  fun `LANアドレス変更時はbootstrap tokenを差し替える`() {
+  fun `LANアドレス変更時はbootstrapとsession tokenを差し替える`() {
     val authentication = LanWebAuthentication("first") { "session" }
+    authentication.authenticate("first", null)
 
     authentication.replaceBootstrapToken("second")
 
     assertEquals(AuthenticationResult.Rejected, authentication.authenticate("first", null))
+    assertEquals(AuthenticationResult.Rejected, authentication.authenticate(null, "session"))
     assertEquals(AuthenticationResult.Bootstrapped("session"), authentication.authenticate("second", null))
   }
 
