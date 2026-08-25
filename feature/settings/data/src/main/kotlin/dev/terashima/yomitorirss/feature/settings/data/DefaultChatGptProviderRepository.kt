@@ -16,8 +16,14 @@ class DefaultChatGptProviderRepository(
     modelPreferences.selectModel(modelId)
   }
 
-  override suspend fun listModels(): List<ChatGptProviderModel> =
-    selectChatGptProviderModels(client.listModels())
+  override suspend fun listModels(): List<ChatGptProviderModel> {
+    val models = selectChatGptProviderModels(client.listModels())
+    val selectedModelId = modelPreferences.selectedModelId()
+    if (selectedModelId != null && models.none { it.id == selectedModelId }) {
+      modelPreferences.clearSelection()
+    }
+    return models
+  }
 }
 
 internal fun selectChatGptProviderModels(models: List<ChatGptModelInfo>): List<ChatGptProviderModel> = models
