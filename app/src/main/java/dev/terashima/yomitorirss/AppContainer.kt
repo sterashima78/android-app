@@ -106,6 +106,8 @@ class AppContainer(
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
   internal val knowledgeBuildScheduler get() = featureRuntimeDependencies.knowledgeBuildScheduler
   internal val textInference get() = aiCoreRuntime.textInference
+  internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
+  internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings
 
   val bookmarkContentQuery get() = contentRuntime.bookmarkContentQuery
   val articleRepository get() = contentRuntime.articleRepository
@@ -125,6 +127,7 @@ class AppContainer(
   val modelManager get() = aiCoreRuntime.modelManager
   val aiModelRepository get() = aiCoreRuntime.aiModelRepository
   val chatGptDebugRepository get() = aiCoreRuntime.chatGptDebugRepository
+  val chatGptProviderRepository get() = aiCoreRuntime.chatGptProviderRepository
   val summaryPromptSettings get() = aiCoreRuntime.summaryPromptSettings
   val chatRepository get() = supportingRuntime.chatRepository
   val taskRepository get() = supportingRuntime.taskRepository

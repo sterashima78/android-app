@@ -31,6 +31,8 @@ internal class AppSupportingRouteDependencies(
       repository = container.aiModelRepository,
       summaryPromptSettings = container.summaryPromptSettings,
       chatGptDebugRepository = container.chatGptDebugRepository,
+      chatGptProviderRepository = container.chatGptProviderRepository,
+      summaryExecutionSettings = container.summaryExecutionSettings,
     )
   }
 

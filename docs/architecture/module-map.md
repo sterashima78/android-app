@@ -49,7 +49,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:core:ai-inference` は provider 非依存の単発テキスト推論 contract とモデル能力・進捗を所有する。`:core:ai-runtime` は Gemma / LiteRT-LM、tokenizer、Engine lifecycle、benchmark、Vision / Conversation などローカル実装固有の capability を所有し、`LocalAiTextInference` から共通 contract へ投影する。Summary / Knowledge / Library 等の prompt や生成ポリシーは owning feature に残す。
 
-`:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex Responses transport など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、stream event type はこの module に隔離し、feature は provider protocol を直接扱わない。B1 では Settings の debug surface だけが利用し、production AI task routing は変更しない。
+`:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離し、feature は provider protocol を直接扱わない。Summary は provider 選択、要約 prompt、metadata policy を所有し、cloud adapter はそれらの task semantics を持たない。
 
 `:core:network` の HTTP transport は process-wide に共有し、`:app` の application graph が同じ `HttpClient` instance を runtime group と WorkerFactory へ渡す。feature 側は HTTP adapter の testability のため default constructor を持てるが、production composition で feature ごとの OkHttp connection pool を作らない。
 
@@ -87,6 +87,8 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 <!-- feature-modules:end -->
 
 全 feature に3 layer を強制しない。独立した責務・依存・ビルド境界として価値がある layer だけを module 化する。
+
+Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Settings はこれらの feature setting と provider model catalog を表示・変更する presentation surface であり、routing decision 自体を所有しない。
 
 ## Layer relationship
 
@@ -160,3 +162,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167](../adr/0167-gradle-version-catalog-baseline.md)
 - [ADR-0168](../adr/0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171](../adr/0171-summary-local-chatgpt-routing-and-web-fetch.md)

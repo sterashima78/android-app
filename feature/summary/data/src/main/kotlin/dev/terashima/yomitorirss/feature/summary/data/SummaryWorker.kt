@@ -13,7 +13,11 @@ import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
+import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import dev.terashima.yomitorirss.feature.summary.summaryCacheKey
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
@@ -34,6 +38,8 @@ class SummaryWorker(
   private val runtime: SummaryRuntimeDependencies,
   private val database: YomitoriDatabase,
   private val textInference: AiTextInference,
+  private val cloudInference: SummaryCloudInference,
+  private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
@@ -42,16 +48,30 @@ class SummaryWorker(
       database.requeueInterruptedSummaryTasks()
       while (!SummaryQueue.executionState(applicationContext).paused) {
         currentCoroutineContext().ensureActive()
-        val candidates = database.listInferenceReadySummaryTasks()
+        val provider = executionSettings.currentProvider()
+        val candidates = when (provider) {
+          SummaryExecutionProvider.LOCAL -> database.listInferenceReadySummaryTasks()
+          SummaryExecutionProvider.CHATGPT -> database.listCloudReadySummaryTasks()
+        }
         if (candidates.isEmpty()) break
         val highPriorityIds = runtime.bookmarkContentQuery.readLaterContentIds(
           candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
         )
         val candidate = selectNextSummaryTask(candidates, highPriorityIds) ?: break
-        LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
-          if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
-          val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
-          processTask(database, task)
+        when (provider) {
+          SummaryExecutionProvider.LOCAL -> {
+            LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
+              if (SummaryQueue.executionState(applicationContext).paused) return@withPermit
+              val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
+              processTask(database, task, provider)
+            }
+          }
+          SummaryExecutionProvider.CHATGPT -> {
+            if (SummaryQueue.executionState(applicationContext).paused) break
+            val task = database.claimSummaryTask(candidate.articleId, requireInferenceReady = false)
+              ?: continue
+            processTask(database, task, provider)
+          }
         }
         SummaryQueue.kickContentFetch(applicationContext)
       }
@@ -59,7 +79,11 @@ class SummaryWorker(
     }
   }
 
-  private suspend fun processTask(database: YomitoriDatabase, task: SummaryTaskRecord) {
+  private suspend fun processTask(
+    database: YomitoriDatabase,
+    task: SummaryTaskRecord,
+    provider: SummaryExecutionProvider,
+  ) {
     val article = runtime.articleRepository.findArticle(task.articleId)
     if (article == null) {
       database.failRunningSummaryTask(task.articleId, "記事が見つかりません")
@@ -68,44 +92,100 @@ class SummaryWorker(
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
       setForeground(createForegroundInfo(article.title))
+      requireProviderAvailable(provider)
       val enrichmentContext = runtime.bookmarkEnrichmentRepository.context(task.articleId)
       val cached = if (task.forceRefresh) null else database.findSummary(task.articleId)
       val summaryForMetadata = if (cached != null) {
         cached.summary
       } else {
-        val selectedModel = textInference.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
         val prompt = summaryPromptStore.prompt.value
-        val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, selectedModel.cacheVariant)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
-        val preparedContent = database.findPreparedSummaryArticleContent(task.articleId)
-          ?: error("記事本文の準備が完了していません")
-        val generated = summarizeWithProgress(database, textInference, task.articleId, preparedContent.content, prompt)
-        currentCoroutineContext().ensureActive()
-        database.saveSummary(task.articleId, generated, cacheKey)
-        generated
+        when (provider) {
+          SummaryExecutionProvider.LOCAL -> {
+            val selectedModel = textInference.selectedModel()
+              ?: error("要約モデルをダウンロードして選択してください")
+            val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, selectedModel.cacheVariant)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
+            val preparedContent = database.findPreparedSummaryArticleContent(task.articleId)
+              ?: error("記事本文の準備が完了していません")
+            val generated = summarizeWithProgress(
+              database,
+              textInference,
+              task.articleId,
+              preparedContent.content,
+              prompt,
+            )
+            currentCoroutineContext().ensureActive()
+            database.saveSummary(task.articleId, generated, cacheKey)
+            generated
+          }
+          SummaryExecutionProvider.CHATGPT -> {
+            val modelId = cloudInference.selectedModelId()
+              ?: error("ChatGPT / Codex の利用モデルを選択してください")
+            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_FETCHING_ARTICLE)
+            val result = cloudInference.generateFromUrl(
+              url = article.url,
+              prompt = buildCloudSummaryPrompt(article.url, prompt),
+            )
+            val generated = cleanCloudText(result.text)
+            val cacheKey = summaryCacheKey(
+              modelId = "chatgpt:$modelId",
+              template = prompt,
+              variant = CLOUD_WEB_SUMMARY_CACHE_VARIANT,
+            )
+            currentCoroutineContext().ensureActive()
+            database.saveSummary(task.articleId, generated, cacheKey)
+            generated
+          }
+        }
       }
 
       if (enrichmentContext != null) {
         currentCoroutineContext().ensureActive()
-        textInference.selectedModel() ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
-        val generatedMetadata = parseBookmarkMetadataEnrichment(
-          raw = textInference.summarizeText(
-            text = summaryForMetadata,
-            prompt = buildBookmarkMetadataPrompt(),
-            promptSuffix = buildBookmarkMetadataCandidateSuffix(
-              articleTitle = article.title,
-              existingTagNames = enrichmentContext.existingTagNames,
-              existingFolderNames = enrichmentContext.existingFolderNames,
-            ),
-          ),
+        val promptSuffix = buildBookmarkMetadataCandidateSuffix(
+          articleTitle = article.title,
+          existingTagNames = enrichmentContext.existingTagNames,
           existingFolderNames = enrichmentContext.existingFolderNames,
         )
-        runtime.bookmarkEnrichmentRepository.applyGeneratedMetadata(task.articleId, generatedMetadata.tags, generatedMetadata.folder)
+        val raw = when (provider) {
+          SummaryExecutionProvider.LOCAL -> {
+            textInference.selectedModel()
+              ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
+            textInference.summarizeText(
+              text = summaryForMetadata,
+              prompt = buildBookmarkMetadataPrompt(),
+              promptSuffix = promptSuffix,
+            )
+          }
+          SummaryExecutionProvider.CHATGPT -> {
+            database.updateRunningSummaryTaskProgress(task.articleId, SUMMARY_PROGRESS_GENERATING_SUMMARY)
+            cloudInference.generate(
+              renderSummaryPrompt(buildBookmarkMetadataPrompt(), summaryForMetadata) + promptSuffix,
+            ).text
+          }
+        }
+        val generatedMetadata = parseBookmarkMetadataEnrichment(
+          raw = raw,
+          existingFolderNames = enrichmentContext.existingFolderNames,
+        )
+        runtime.bookmarkEnrichmentRepository.applyGeneratedMetadata(
+          task.articleId,
+          generatedMetadata.tags,
+          generatedMetadata.folder,
+        )
       }
       database.completeRunningSummaryTask(task.articleId)
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
       database.failRunningSummaryTask(task.articleId, error.userMessage())
+    }
+  }
+
+  private fun requireProviderAvailable(provider: SummaryExecutionProvider) {
+    when (provider) {
+      SummaryExecutionProvider.LOCAL ->
+        textInference.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
+      SummaryExecutionProvider.CHATGPT ->
+        check(cloudInference.isAvailable()) { "ChatGPTへ接続し、利用モデルを選択してください" }
     }
   }
 
@@ -120,7 +200,8 @@ class SummaryWorker(
     val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
       textInference.progress.filterNotNull().collect { progress ->
         when (progress.stage) {
-          AiTextInferenceStage.PREPARING_MODEL -> database.updateRunningSummaryTaskProgress(articleId, SUMMARY_PROGRESS_PREPARING_MODEL)
+          AiTextInferenceStage.PREPARING_MODEL ->
+            database.updateRunningSummaryTaskProgress(articleId, SUMMARY_PROGRESS_PREPARING_MODEL)
           AiTextInferenceStage.GENERATING_RESPONSE -> {
             val stored = hierarchyProgress.get().toStoredProgress()
             database.updateRunningSummaryTaskProgress(articleId, stored.stage, stored.current, stored.total)
@@ -143,7 +224,7 @@ class SummaryWorker(
     val notificationManager = applicationContext.getSystemService(NotificationManager::class.java)
     notificationManager.createNotificationChannel(
       NotificationChannel(CHANNEL_ID, "記事の要約とタグ付け", NotificationManager.IMPORTANCE_LOW).apply {
-        description = "ローカルAIで記事をバックグラウンド要約・タグ付けしている間に表示します"
+        description = "AIで記事をバックグラウンド要約・タグ付けしている間に表示します"
         setShowBadge(false)
       },
     )
@@ -157,7 +238,12 @@ class SummaryWorker(
       .setCategory(NotificationCompat.CATEGORY_PROGRESS)
       .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
     applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.let { launchIntent ->
-      PendingIntent.getActivity(applicationContext, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+      PendingIntent.getActivity(
+        applicationContext,
+        0,
+        launchIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+      )
     }?.let(notificationBuilder::setContentIntent)
     return ForegroundInfo(
       NOTIFICATION_ID,
@@ -169,17 +255,49 @@ class SummaryWorker(
   companion object {
     private const val CHANNEL_ID = "article_summary"
     private const val NOTIFICATION_ID = 8766
+    private const val CLOUD_WEB_SUMMARY_CACHE_VARIANT = "chatgpt-web-v1"
   }
 }
 
 private data class StoredSummaryProgress(val stage: String, val current: Int? = null, val total: Int? = null)
 
 private fun HierarchicalSummaryProgress?.toStoredProgress(): StoredSummaryProgress = when (this?.stage) {
-  HierarchicalSummaryProgressStage.CHUNK -> StoredSummaryProgress(SUMMARY_PROGRESS_SUMMARIZING_CHUNK, this?.current, this?.total)
-  HierarchicalSummaryProgressStage.REDUCTION -> StoredSummaryProgress(SUMMARY_PROGRESS_REDUCING_SUMMARY, this?.current, this?.total)
+  HierarchicalSummaryProgressStage.CHUNK ->
+    StoredSummaryProgress(SUMMARY_PROGRESS_SUMMARIZING_CHUNK, this?.current, this?.total)
+  HierarchicalSummaryProgressStage.REDUCTION ->
+    StoredSummaryProgress(SUMMARY_PROGRESS_REDUCING_SUMMARY, this?.current, this?.total)
   HierarchicalSummaryProgressStage.FINAL -> StoredSummaryProgress(SUMMARY_PROGRESS_FINALIZING_SUMMARY)
-  HierarchicalSummaryProgressStage.DIRECT, null -> StoredSummaryProgress(SUMMARY_PROGRESS_GENERATING_SUMMARY)
+  HierarchicalSummaryProgressStage.DIRECT,
+  null -> StoredSummaryProgress(SUMMARY_PROGRESS_GENERATING_SUMMARY)
+}
+
+internal fun buildCloudSummaryPrompt(url: String, prompt: String): String {
+  val renderedInstruction = prompt.replace(
+    "{{article}}",
+    "web_search ツールで開いた次のURLの記事本文: $url",
+  )
+  return """
+    web_search ツールを使って、次のURLを直接 open_page して記事本文を読んでください。
+    URL: $url
+
+    指定URLを開けない場合は、検索結果の断片・別ページ・事前知識から推測して要約しないでください。
+    指定URLを開けた場合だけ、以下の要約指示に従ってください。
+
+    $renderedInstruction
+  """.trimIndent()
+}
+
+private fun cleanCloudText(value: String): String {
+  val result = value
+    .substringBefore("<|im_end|>")
+    .substringBefore("<end_of_turn>")
+    .replace(Regex("<think>.*?</think>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "")
+    .replace(Regex("^要約[:：]?\\s*", RegexOption.IGNORE_CASE), "")
+    .trim()
+  check(result.isNotBlank()) { "要約結果が空です" }
+  return result
 }
 
 private fun Throwable.userMessage(): String =
-  generateSequence(this) { it.cause }.mapNotNull(Throwable::message).firstOrNull(String::isNotBlank) ?: javaClass.simpleName
+  generateSequence(this) { it.cause }.mapNotNull(Throwable::message).firstOrNull(String::isNotBlank)
+    ?: javaClass.simpleName
