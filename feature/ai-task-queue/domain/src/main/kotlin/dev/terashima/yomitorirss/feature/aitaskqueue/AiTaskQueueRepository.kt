@@ -24,6 +24,11 @@ enum class AiTaskQueueItemState {
   UNKNOWN,
 }
 
+enum class AiTaskExecutionProvider {
+  LOCAL,
+  CHATGPT,
+}
+
 enum class AiTaskQueueProgressStage {
   FETCHING_CONTENT,
   PREPARING_MODEL,
@@ -51,6 +56,7 @@ data class AiTaskQueueItem(
   val canStop: Boolean = false,
   val canCancel: Boolean = false,
   val canResume: Boolean = false,
+  val executionProvider: AiTaskExecutionProvider? = null,
 )
 
 data class AiTaskQueueCounts(
