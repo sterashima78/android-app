@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss
 
 import android.app.Activity
 import android.app.Application
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
@@ -49,7 +49,7 @@ internal class AppFeatureRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   private val httpClient: HttpClient,
-  private val modelManagerProvider: () -> LocalModelManager,
+  private val textInferenceProvider: () -> AiTextInference,
   private val resumedActivityProvider: () -> Activity?,
 ) {
   val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -73,7 +73,7 @@ internal class AppFeatureRuntimeDependencies(
     val smbRepository = CleaningSmbLibraryRepository(application, database)
     val catalogRepository = SmbMetadataAwareLibraryRepository(database)
     val organizationRepository = DefaultLibraryOrganizationRepository(database)
-    val organizationSuggester = LocalLibraryOrganizationSuggester(modelManagerProvider())
+    val organizationSuggester = LocalLibraryOrganizationSuggester(textInferenceProvider())
     val organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application)
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
     val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
