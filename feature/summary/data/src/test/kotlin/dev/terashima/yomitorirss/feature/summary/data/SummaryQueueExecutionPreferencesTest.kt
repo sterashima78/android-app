@@ -15,32 +15,42 @@ class SummaryQueueExecutionPreferencesTest {
 
   @Before
   fun clearPreferences() {
-    context.getSharedPreferences(
-      SummaryQueueExecutionPreferences.PREFERENCES_NAME,
-      Context.MODE_PRIVATE,
-    )
-      .edit()
-      .clear()
-      .commit()
+    listOf(
+      SummaryQueueExecutionPreferences.LOCAL_PREFERENCES_NAME,
+      SummaryQueueExecutionPreferences.CLOUD_PREFERENCES_NAME,
+    ).forEach { name ->
+      context.getSharedPreferences(name, Context.MODE_PRIVATE)
+        .edit()
+        .clear()
+        .commit()
+    }
   }
 
   @Test
-  fun `初期状態では自動実行中で充電時の自動再開が有効`() {
+  fun `初期状態ではローカルとクラウドが実行可能でローカル充電再開が有効`() {
     val preferences = SummaryQueueExecutionPreferences(context)
 
-    assertFalse(preferences.paused)
-    assertTrue(preferences.resumeWhenCharging)
+    assertFalse(preferences.localPaused)
+    assertFalse(preferences.cloudPaused)
+    assertTrue(preferences.resumeLocalWhenCharging)
   }
 
   @Test
-  fun `一時停止と充電時自動再開の設定を保存できる`() {
+  fun `ローカルとクラウドの一時停止を独立して保存できる`() {
     SummaryQueueExecutionPreferences(context).apply {
-      paused = true
-      resumeWhenCharging = false
+      localPaused = true
+      cloudPaused = false
+      resumeLocalWhenCharging = false
     }
 
     val reloaded = SummaryQueueExecutionPreferences(context)
-    assertTrue(reloaded.paused)
-    assertFalse(reloaded.resumeWhenCharging)
+    assertTrue(reloaded.localPaused)
+    assertFalse(reloaded.cloudPaused)
+    assertFalse(reloaded.resumeLocalWhenCharging)
+
+    reloaded.cloudPaused = true
+    val again = SummaryQueueExecutionPreferences(context)
+    assertTrue(again.localPaused)
+    assertTrue(again.cloudPaused)
   }
 }
