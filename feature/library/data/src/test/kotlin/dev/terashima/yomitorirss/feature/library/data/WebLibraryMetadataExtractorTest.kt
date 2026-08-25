@@ -45,7 +45,7 @@ class WebLibraryMetadataExtractorTest {
     val error = runCatching {
       validateWebLibraryMetadataExtractor(
         urlPattern = "http://example.com/books/*",
-        functionCode = "() => ({ title: null, thumbnailUrl: null })",
+        functionCode = "async () => ({ title: null, thumbnailUrl: null })",
       )
     }.exceptionOrNull()
 
@@ -112,6 +112,43 @@ class WebLibraryMetadataExtractorTest {
 
     assertEquals("カスタムタイトル", metadata?.title)
     assertEquals("https://example.com/covers/1.jpg", metadata?.thumbnailUrl)
+  }
+
+  @Test
+  fun `Promise完了状態からmetadataを取得する`() {
+    val payload = JSONObject()
+      .put("title", "非同期タイトル")
+      .put("thumbnailUrl", "/covers/async.jpg")
+      .toString()
+    val pollPayload = JSONObject()
+      .put("pending", false)
+      .put("value", payload)
+      .toString()
+
+    val poll = parseCustomMetadataPromisePoll(
+      finalUrl = "https://example.com/books/1",
+      rawResult = JSONObject.quote(pollPayload),
+    )
+
+    assertFalse(poll?.pending ?: true)
+    assertEquals("非同期タイトル", poll?.metadata?.title)
+    assertEquals("https://example.com/covers/async.jpg", poll?.metadata?.thumbnailUrl)
+  }
+
+  @Test
+  fun `Promise待機状態はmetadata未確定として扱う`() {
+    val pollPayload = JSONObject()
+      .put("pending", true)
+      .put("value", JSONObject.NULL)
+      .toString()
+
+    val poll = parseCustomMetadataPromisePoll(
+      finalUrl = "https://example.com/books/1",
+      rawResult = JSONObject.quote(pollPayload),
+    )
+
+    assertTrue(poll?.pending == true)
+    assertNull(poll?.metadata)
   }
 
   @Test
@@ -185,12 +222,19 @@ class WebLibraryMetadataExtractorTest {
   }
 
   @Test
-  fun `関数コードは同期関数としてURL引数を受け取るスクリプトへ埋め込む`() {
-    val script = customMetadataScript("({ url }) => ({ title: url, thumbnailUrl: null });")
+  fun `関数コードはPromiseを要求して非同期完了をポーリングするスクリプトへ埋め込む`() {
+    val script = customMetadataStartScript(
+      "async ({ url }) => ({ title: url, thumbnailUrl: null });",
+      "test-state",
+    )
+    val pollScript = customMetadataPollScript("test-state")
 
-    assertTrue(script.contains("const extractor = (({ url }) => ({ title: url, thumbnailUrl: null }))"))
-    assertTrue(script.contains("extractor({ url: location.href })"))
-    assertTrue(script.contains("try {"))
+    assertTrue(script.contains("const extractor = (async ({ url }) => ({ title: url, thumbnailUrl: null }))"))
+    assertTrue(script.contains("const promise = extractor({ url: location.href })"))
+    assertTrue(script.contains("typeof promise.then !== 'function'"))
+    assertTrue(script.contains("Promise.resolve(promise)"))
+    assertTrue(pollScript.contains("if (state.pending)"))
+    assertTrue(pollScript.contains("delete window[stateKey]"))
   }
 
   private fun extractor(
@@ -200,7 +244,7 @@ class WebLibraryMetadataExtractorTest {
   ) = WebLibraryMetadataExtractor(
     id = id,
     urlPattern = pattern,
-    functionCode = "() => ({ title: null, thumbnailUrl: null })",
+    functionCode = "async () => ({ title: null, thumbnailUrl: null })",
     updatedAt = updatedAt,
   )
 
