@@ -160,12 +160,15 @@ class AndroidWebViewLibraryMetadataClient(
       extractor: WebLibraryMetadataExtractor,
       status: WebLibraryMetadataExtractorStatus,
       message: String? = null,
+      metadata: WebLibraryCustomMetadata? = null,
     ) {
       extractorExecution = WebLibraryMetadataExtractorExecution(
         ruleId = extractor.id,
         urlPattern = extractor.urlPattern,
         status = status,
         message = message?.take(MAX_DIAGNOSTIC_MESSAGE_LENGTH),
+        extractedTitle = metadata?.title,
+        extractedThumbnailUrl = metadata?.thumbnailUrl,
       )
     }
 
@@ -249,15 +252,19 @@ class AndroidWebViewLibraryMetadataClient(
                   CUSTOM_METADATA_POLL_DELAY_MILLIS,
                 )
                 else -> {
+                  val appliedMetadata = poll.metadata.takeIf {
+                    poll.status == WebLibraryMetadataExtractorStatus.APPLIED
+                  }
                   recordExtractorExecution(
                     extractor,
                     poll.status ?: WebLibraryMetadataExtractorStatus.INVALID_STATE,
                     poll.message,
+                    appliedMetadata,
                   )
                   evaluateStandardMetadata(
                     finalUrl,
                     generation,
-                    poll.metadata.takeIf { poll.status == WebLibraryMetadataExtractorStatus.APPLIED },
+                    appliedMetadata,
                   )
                 }
               }
