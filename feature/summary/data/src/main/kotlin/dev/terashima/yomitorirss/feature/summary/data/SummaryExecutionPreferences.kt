@@ -20,7 +20,7 @@ class SummaryExecutionPreferences(context: Context) : SummaryExecutionSettings {
     if (_provider.value == provider) return
     preferences.edit().putString(KEY_PROVIDER, provider.name).apply()
     _provider.value = provider
-    SummaryQueue.kick(appContext)
+    SummaryQueue.onProviderChanged(appContext)
   }
 
   private fun readProvider(): SummaryExecutionProvider = preferences.getString(KEY_PROVIDER, null)
