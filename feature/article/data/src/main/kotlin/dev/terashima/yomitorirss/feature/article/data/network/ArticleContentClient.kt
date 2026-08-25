@@ -24,6 +24,7 @@ class ArticleContentClient(
   private fun request(url: String): HttpRequest = HttpRequest(
     url = url,
     headers = mapOf("Accept" to "text/html, application/xhtml+xml;q=0.9, */*;q=0.5"),
+    maxResponseBytes = 8L * 1024 * 1024,
   )
 
   private fun HttpResponse.requireSuccess() {

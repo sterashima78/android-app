@@ -75,7 +75,7 @@ class DefaultYouTubeRepository(
   }
 
   private suspend fun fetchFeed(channelId: String): ParsedYouTubeFeed {
-    val response = httpClient.execute(HttpRequest(url = YouTubeChannelUrl.feed(channelId)))
+    val response = httpClient.execute(HttpRequest(url = YouTubeChannelUrl.feed(channelId), maxResponseBytes = 4L * 1024 * 1024))
     if (!response.isSuccessful) {
       throw IOException("YouTubeの取得に失敗しました: HTTP ${response.statusCode}")
     }

@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.core.network
 
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -32,12 +33,36 @@ internal class OkHttpHttpClient(
 
     try {
       client.newCall(okhttpRequest).execute().use { response ->
+        val maxResponseBytes = if (response.isSuccessful) {
+          request.maxResponseBytes
+        } else {
+          request.maxErrorResponseBytes
+        }
+        val responseBody = response.body
+        val contentLength = responseBody.contentLength()
+        if (contentLength > maxResponseBytes) {
+          throw ResponseTooLargeException(maxResponseBytes, contentLength)
+        }
         HttpResponse(
           statusCode = response.code,
           reasonPhrase = response.message,
           finalUrl = response.request.url.toString(),
           headers = response.headers.toMultimap(),
-          body = response.body.bytes(),
+          body = responseBody.byteStream().use { input ->
+            val output = ByteArrayOutputStream(minOf(contentLength.coerceAtLeast(0L), maxResponseBytes).toInt())
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var totalBytes = 0L
+            while (true) {
+              val readBytes = input.read(buffer)
+              if (readBytes == -1) break
+              totalBytes += readBytes
+              if (totalBytes > maxResponseBytes) {
+                throw ResponseTooLargeException(maxResponseBytes, contentLength.takeIf { it >= 0L })
+              }
+              output.write(buffer, 0, readBytes)
+            }
+            output.toByteArray()
+          },
         )
       }
     } catch (error: IOException) {
@@ -70,8 +95,20 @@ private fun defaultOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
   .build()
 
 private fun IOException.toNetworkError(): IOException = when (this) {
+  is ResponseTooLargeException -> this
   is SocketTimeoutException -> IOException("ネットワーク通信がタイムアウトしました", this)
   is UnknownHostException -> IOException("ホスト名を解決できませんでした", this)
   is ConnectException -> IOException("サーバーに接続できませんでした", this)
   else -> IOException("ネットワーク通信に失敗しました: ${message ?: javaClass.simpleName}", this)
 }
+
+class ResponseTooLargeException(
+  val maxResponseBytes: Long,
+  val declaredContentLength: Long?,
+) : IOException(
+  if (declaredContentLength == null) {
+    "レスポンスが上限（$maxResponseBytes バイト）を超えました"
+  } else {
+    "レスポンスのContent-Length（$declaredContentLength バイト）が上限（$maxResponseBytes バイト）を超えています"
+  },
+)

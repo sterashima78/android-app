@@ -125,6 +125,7 @@ internal class YanmagaFeedClient(
     headers = mapOf(
       "Accept" to "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
     ) + additionalHeaders,
+    maxResponseBytes = 8L * 1024 * 1024,
   )
 
   private fun HttpResponse.requireSuccess() {

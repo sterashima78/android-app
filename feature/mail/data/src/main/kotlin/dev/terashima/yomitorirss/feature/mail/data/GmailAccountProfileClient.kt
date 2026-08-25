@@ -15,6 +15,7 @@ internal class GmailAccountProfileClient(
           "Authorization" to "Bearer $accessToken",
           "Accept" to "application/json",
         ),
+        maxResponseBytes = 256L * 1024,
       ),
     )
     if (!response.isSuccessful) {

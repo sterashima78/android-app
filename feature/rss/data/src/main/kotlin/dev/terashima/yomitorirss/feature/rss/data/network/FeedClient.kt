@@ -130,6 +130,7 @@ internal class FeedClient(
     headers = mapOf(
       "Accept" to "application/atom+xml, application/rss+xml, application/rdf+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5",
     ) + additionalHeaders,
+    maxResponseBytes = 4L * 1024 * 1024,
   )
 
   private fun HttpResponse.requireSuccess() {

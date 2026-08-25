@@ -198,6 +198,7 @@ internal class GmailApiClient(
         method = method,
         body = body?.toString()?.toByteArray(Charsets.UTF_8),
         contentType = body?.let { "application/json; charset=utf-8" },
+        maxResponseBytes = 16L * 1024 * 1024,
       ),
     )
     response.requireSuccess()
