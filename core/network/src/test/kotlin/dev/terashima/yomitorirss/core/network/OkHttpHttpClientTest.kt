@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -23,6 +24,11 @@ class OkHttpHttpClientTest {
     }
     assertEquals(10L, error.maxResponseBytes)
     assertEquals(11L, error.declaredContentLength)
+  }
+
+  @Test
+  fun `過大応答は一時的なIOExceptionとして分類しない`() {
+    assertFalse(IOException::class.java.isAssignableFrom(ResponseTooLargeException::class.java))
   }
 
   @Test
