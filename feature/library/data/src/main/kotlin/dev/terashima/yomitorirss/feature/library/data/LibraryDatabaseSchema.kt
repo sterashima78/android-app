@@ -151,6 +151,6 @@ internal fun ensureLibraryStructuredSeriesSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS library_audible_source_series_name " +
-      "ON library_audible_source_series(source, series_name COLLATE NOCASE)",
+      "ON library_audible_source_series(series_name COLLATE NOCASE)",
   )
 }
