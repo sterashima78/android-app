@@ -27,7 +27,7 @@
   - model id / name
   - context token 数
   - feature が入力を組み立てるための文字数 budget
-  - キャッシュ同一性を表す `cacheIdentity`
+  - 同じ model id 内で生成条件を区別する `cacheVariant`
 - `AiTextInferenceProgress`
   - model preparation
   - response generation
@@ -47,7 +47,7 @@
 
 `LocalAiTextInference` を `:core:ai-runtime` に追加し、`LocalModelManager` の単発テキスト capability を `AiTextInference` へ投影する。
 
-`cacheIdentity` は local model id と runtime cache variant を含め、backend/context 等の生成条件が変わった場合に feature cache が同一生成条件と誤認しないようにする。
+`AiTextInferenceModel.id` と `cacheVariant` を組み合わせて生成キャッシュの同一性を判定する。ローカル adapter の `cacheVariant` は既存 `LocalModelManager.inferenceCacheVariant(modelId)` をそのまま返し、後続の feature migration でも既存の `modelId + prompt digest + runtime variant` という Summary cache key を変更しない。backend/context 等の生成条件が変わった場合だけ既存どおり variant が変化する。
 
 ### 3. feature 固有生成ロジックは移動しない
 
@@ -72,7 +72,7 @@ SMB metadata normalization の Vision 推論は画像入力、Tool Call、専用
 
 最初の変更では `:core:ai-inference` と `LocalAiTextInference` を追加するだけとし、既存 feature の実行先、queue、優先度、Local AI gate、model selection は変更しない。
 
-後続変更で Summary、Knowledge、Library organization の順に concrete `LocalModelManager` 依存を `AiTextInference` へ置き換える。移行完了時も実装は `LocalAiTextInference` のみを composition し、生成結果・実行順・ローカル排他制御を維持する。
+後続変更で Summary、Knowledge、Library organization の順に concrete `LocalModelManager` 依存を `AiTextInference` へ置き換える。移行完了時も実装は `LocalAiTextInference` のみを composition し、生成結果・既存 Summary cache key・実行順・ローカル排他制御を維持する。
 
 cloud provider、provider routing、OAuth、外部送信可否はさらに後続の独立した設計判断とする。
 
@@ -84,6 +84,7 @@ cloud provider、provider routing、OAuth、外部送信可否はさらに後続
 - 後続 provider を追加しても Summary / Knowledge / Library が transport や認証を直接知る必要がない。
 - local runtime の Engine lifecycle、benchmark、Vision、Chat capability を無理に共通化しない。
 - feature migration と cloud 実行追加を別 PR として検証できる。
+- abstraction migration だけで既存 Summary cache を失効させない。
 
 ### Negative
 
@@ -95,6 +96,7 @@ cloud provider、provider routing、OAuth、外部送信可否はさらに後続
 
 - `:core:ai-inference` の model invariant unit test
 - `LocalModelStatus` / `LocalInferenceProgress` から provider-neutral model / progress への mapping test
+- local `cacheVariant` が既存 runtime variant を保持することの mapping test
 - `verifyArchitecture`
 - module map verification
 - ADR integrity verification
