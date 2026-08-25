@@ -19,7 +19,7 @@ data class AiTextInferenceModel(
   val contextTokens: Int,
   val maxInputChars: Int,
   val promptBudgetChars: Int,
-  val cacheIdentity: String,
+  val cacheVariant: String,
 ) {
   init {
     require(id.isNotBlank()) { "AI model id must not be blank" }
@@ -27,7 +27,7 @@ data class AiTextInferenceModel(
     require(contextTokens > 0) { "AI model contextTokens must be positive" }
     require(maxInputChars > 0) { "AI model maxInputChars must be positive" }
     require(promptBudgetChars > 0) { "AI model promptBudgetChars must be positive" }
-    require(cacheIdentity.isNotBlank()) { "AI model cacheIdentity must not be blank" }
+    require(cacheVariant.isNotBlank()) { "AI model cacheVariant must not be blank" }
   }
 }
 
