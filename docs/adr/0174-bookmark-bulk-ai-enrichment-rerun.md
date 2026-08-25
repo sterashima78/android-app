@@ -57,7 +57,7 @@ Bookmark UI は Summary repository やAI runtimeへ直接依存しない。`:app
 
 対象判定と複数Repositoryをまたぐorchestrationは Summary domain の `ReprocessBookmarkAutoEnrichmentUseCase` が所有する。Summary dataはbatch queueingとrefresh modeを所有し、Bookmark dataはタグ関連の置換を所有する。
 
-単記事再生成では既存の `SummaryRequester` 経路に明示的な `replaceBookmarkTags` optionを追加し、UIからdurable taskまで意図を保持する。
+汎用の `SummaryRequester` は既存契約を維持する。単記事の要約・タグ再生成はBookmark固有の `BookmarkEnrichmentRefreshRequester` capabilityへ分離し、UIからその明示的な経路を選んだ場合だけdurable taskへタグ置換意図を渡す。
 
 `AppContainer` はこれらの実装を組み立てて公開するだけとし、source判定やqueue policyを持たない。
 
