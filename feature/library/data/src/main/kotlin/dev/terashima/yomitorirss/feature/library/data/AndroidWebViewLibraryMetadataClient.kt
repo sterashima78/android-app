@@ -5,6 +5,7 @@ import android.app.Activity
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
@@ -96,6 +97,7 @@ class AndroidWebViewLibraryMetadataClient(
     var pageGeneration = 0
     var extractionAttempts = 0
     lateinit var extractMetadata: (String, Int) -> Unit
+    lateinit var pollCustomMetadata: (String, String, Int, Long) -> Unit
 
     fun dispose() {
       webView.stopLoading()
@@ -131,6 +133,7 @@ class AndroidWebViewLibraryMetadataClient(
       finalUrl: String,
       generation: Int,
       customMetadata: WebLibraryCustomMetadata?,
+      allowRetry: Boolean = true,
     ) {
       webView.evaluateJavascript(METADATA_SCRIPT) { rawResult ->
         if (completed || generation != pageGeneration) return@evaluateJavascript
@@ -142,7 +145,11 @@ class AndroidWebViewLibraryMetadataClient(
           ).applyCustomMetadata(customMetadata)
         }.fold(
           onSuccess = { book ->
-            if (!book.needsRenderedWebMetadata() || extractionAttempts >= MAX_EXTRACTION_ATTEMPTS) {
+            if (
+              !allowRetry ||
+              !book.needsRenderedWebMetadata() ||
+              extractionAttempts >= MAX_EXTRACTION_ATTEMPTS
+            ) {
               finish(Result.success(book))
             } else {
               webView.postDelayed(
@@ -156,6 +163,31 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
+    pollCustomMetadata = { finalUrl, stateKey, generation, deadlineMillis ->
+      if (!completed && generation == pageGeneration) {
+        if (SystemClock.uptimeMillis() >= deadlineMillis) {
+          webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
+          evaluateStandardMetadata(finalUrl, generation, null, allowRetry = false)
+        } else {
+          webView.evaluateJavascript(customMetadataPollScript(stateKey)) { rawResult ->
+            if (!completed && generation == pageGeneration) {
+              val poll = parseCustomMetadataPromisePoll(finalUrl, rawResult)
+              when {
+                poll == null -> evaluateStandardMetadata(finalUrl, generation, null, allowRetry = false)
+                poll.pending -> webView.postDelayed(
+                  {
+                    pollCustomMetadata(finalUrl, stateKey, generation, deadlineMillis)
+                  },
+                  CUSTOM_METADATA_POLL_DELAY_MILLIS,
+                )
+                else -> evaluateStandardMetadata(finalUrl, generation, poll.metadata)
+              }
+            }
+          }
+        }
+      }
+    }
+
     extractMetadata = { finalUrl, generation ->
       if (!completed && generation == pageGeneration) {
         extractionAttempts += 1
@@ -164,10 +196,17 @@ class AndroidWebViewLibraryMetadataClient(
         if (extractor == null) {
           evaluateStandardMetadata(finalUrl, generation, null)
         } else {
-          webView.evaluateJavascript(customMetadataScript(extractor.functionCode)) { rawResult ->
+          val stateKey = "$CUSTOM_METADATA_STATE_PREFIX-$generation-$extractionAttempts"
+          webView.evaluateJavascript(
+            customMetadataStartScript(extractor.functionCode, stateKey),
+          ) {
             if (!completed && generation == pageGeneration) {
-              val customMetadata = parseCustomRenderedWebLibraryMetadata(finalUrl, rawResult)
-              evaluateStandardMetadata(finalUrl, generation, customMetadata)
+              pollCustomMetadata(
+                finalUrl,
+                stateKey,
+                generation,
+                SystemClock.uptimeMillis() + CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS,
+              )
             }
           }
         }
@@ -251,27 +290,97 @@ internal data class WebLibraryCustomMetadata(
   val thumbnailUrl: String?,
 )
 
-internal fun customMetadataScript(functionCode: String): String {
+internal data class WebLibraryCustomMetadataPromisePoll(
+  val pending: Boolean,
+  val metadata: WebLibraryCustomMetadata?,
+)
+
+internal fun customMetadataStartScript(functionCode: String, stateKey: String): String {
   val expression = functionCode.trim().removeSuffix(";")
+  val quotedStateKey = JSONObject.quote(stateKey)
   return """
     (() => {
+      const stateKey = $quotedStateKey;
+      window[stateKey] = { pending: true, value: null };
       try {
         const extractor = ($expression);
-        if (typeof extractor !== 'function') return null;
-        const value = extractor({ url: location.href });
-        if (!value || typeof value !== 'object') return null;
-        const title = typeof value.title === 'string' ? value.title.trim() : null;
-        const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
-        return JSON.stringify({
-          title: title || null,
-          thumbnailUrl: thumbnailUrl || null
-        });
+        if (typeof extractor !== 'function') {
+          window[stateKey] = { pending: false, value: null };
+          return null;
+        }
+        const promise = extractor({ url: location.href });
+        if (!promise || typeof promise.then !== 'function') {
+          window[stateKey] = { pending: false, value: null };
+          return null;
+        }
+        Promise.resolve(promise)
+          .then((value) => {
+            if (!value || typeof value !== 'object') {
+              window[stateKey] = { pending: false, value: null };
+              return;
+            }
+            const title = typeof value.title === 'string' ? value.title.trim() : null;
+            const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
+            window[stateKey] = {
+              pending: false,
+              value: JSON.stringify({
+                title: title || null,
+                thumbnailUrl: thumbnailUrl || null
+              })
+            };
+          })
+          .catch(() => {
+            window[stateKey] = { pending: false, value: null };
+          });
       } catch (_) {
-        return null;
+        window[stateKey] = { pending: false, value: null };
       }
+      return null;
     })()
   """.trimIndent()
 }
+
+internal fun customMetadataPollScript(stateKey: String): String {
+  val quotedStateKey = JSONObject.quote(stateKey)
+  return """
+    (() => {
+      const stateKey = $quotedStateKey;
+      const state = window[stateKey];
+      if (!state) return JSON.stringify({ pending: false, value: null });
+      if (state.pending) return JSON.stringify({ pending: true, value: null });
+      const value = typeof state.value === 'string' ? state.value : null;
+      delete window[stateKey];
+      return JSON.stringify({ pending: false, value });
+    })()
+  """.trimIndent()
+}
+
+internal fun customMetadataCleanupScript(stateKey: String): String {
+  val quotedStateKey = JSONObject.quote(stateKey)
+  return "delete window[$quotedStateKey]; null;"
+}
+
+internal fun parseCustomMetadataPromisePoll(
+  finalUrl: String,
+  rawResult: String?,
+): WebLibraryCustomMetadataPromisePoll? = runCatching {
+  val evaluationResult = rawResult ?: return null
+  val decoded = JSONTokener(evaluationResult).nextValue()
+  val poll = when (decoded) {
+    is JSONObject -> decoded
+    is String -> JSONObject(decoded)
+    else -> return null
+  }
+  val pending = poll.optBoolean("pending", false)
+  if (pending) {
+    WebLibraryCustomMetadataPromisePoll(pending = true, metadata = null)
+  } else {
+    val metadata = poll.optionalString("value")?.let { payload ->
+      parseCustomRenderedWebLibraryMetadata(finalUrl, JSONObject.quote(payload))
+    }
+    WebLibraryCustomMetadataPromisePoll(pending = false, metadata = metadata)
+  }
+}.getOrNull()
 
 internal fun parseCustomRenderedWebLibraryMetadata(
   finalUrl: String,
@@ -404,7 +513,10 @@ private const val METADATA_SCRIPT = """
 """
 
 private const val PROFILE_NAME = "mosaic-web-library-metadata"
+private const val CUSTOM_METADATA_STATE_PREFIX = "__mosaic_web_library_metadata"
 private const val DEFAULT_TIMEOUT_MILLIS = 15_000L
 private const val INITIAL_DOM_SETTLE_MILLIS = 500L
 private const val EXTRACTION_RETRY_DELAY_MILLIS = 500L
+private const val CUSTOM_METADATA_POLL_DELAY_MILLIS = 100L
+private const val CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS = 10_000L
 private const val MAX_EXTRACTION_ATTEMPTS = 4
