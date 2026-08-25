@@ -103,10 +103,10 @@ internal fun buildLibraryOrganizationPrompt(
   """.trimIndent()
 }
 
-internal fun generateValidatedLibraryOrganizationSuggestion(
+internal suspend fun generateValidatedLibraryOrganizationSuggestion(
   initialPrompt: String,
   promptBudgetChars: Int,
-  generate: (String) -> String,
+  generate: suspend (String) -> String,
 ): LibraryOrganizationSuggestion {
   require(promptBudgetChars > 0) { "AIモデルの入力上限が不正です" }
   var prompt = initialPrompt.take(promptBudgetChars)
