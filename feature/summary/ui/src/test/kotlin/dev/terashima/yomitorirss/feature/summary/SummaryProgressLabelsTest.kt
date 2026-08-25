@@ -21,6 +21,18 @@ class SummaryProgressLabelsTest {
   }
 
   @Test
+  fun `クラウド要約中はローカル本文取得と誤認しないラベルを表示する`() {
+    assertEquals(
+      "クラウドで記事を要約しています",
+      summaryProgressLabel(stage = "cloud_generating_summary", modelName = null),
+    )
+    assertEquals(
+      "クラウドでタグ・フォルダ候補を生成しています",
+      summaryProgressLabel(stage = "cloud_generating_metadata", modelName = null),
+    )
+  }
+
+  @Test
   fun `未知の段階は元の値を保持する`() {
     assertEquals(
       "custom_stage: Gemma",
