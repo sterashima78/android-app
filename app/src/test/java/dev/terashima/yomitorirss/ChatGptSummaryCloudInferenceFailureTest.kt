@@ -1,8 +1,10 @@
 package dev.terashima.yomitorirss
 
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudFailureKind
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,6 +17,7 @@ class ChatGptSummaryCloudInferenceFailureTest {
     assertEquals(SummaryCloudFailureKind.RATE_LIMITED, rateLimit.kind)
     assertTrue(rateLimit.retryable)
     assertFalse(rateLimit.message.orEmpty().contains("private-article-content"))
+    assertNull(rateLimit.cause)
 
     val unavailable = classifyProviderFailure(
       IllegalStateException("ChatGPT/Codex request failed (503): upstream echoed secret-token"),
@@ -22,6 +25,17 @@ class ChatGptSummaryCloudInferenceFailureTest {
     assertEquals(SummaryCloudFailureKind.TRANSIENT, unavailable.kind)
     assertTrue(unavailable.retryable)
     assertFalse(unavailable.message.orEmpty().contains("secret-token"))
+    assertNull(unavailable.cause)
+  }
+
+  @Test
+  fun `transport failure is retryable without exposing transport details`() {
+    val transport = classifyTransportFailure(IOException("request failed for sensitive-url"))
+
+    assertEquals(SummaryCloudFailureKind.TRANSIENT, transport.kind)
+    assertTrue(transport.retryable)
+    assertFalse(transport.message.orEmpty().contains("sensitive-url"))
+    assertNull(transport.cause)
   }
 
   @Test
@@ -30,6 +44,10 @@ class ChatGptSummaryCloudInferenceFailureTest {
     assertEquals(SummaryCloudFailureKind.AUTHENTICATION, authentication.kind)
     assertFalse(authentication.retryable)
     assertFalse(authentication.message.orEmpty().contains("token invalid"))
+
+    val refreshRejected = classifyProviderFailure(IllegalStateException("ChatGPT OAuth token refresh failed (400)"))
+    assertEquals(SummaryCloudFailureKind.AUTHENTICATION, refreshRejected.kind)
+    assertFalse(refreshRejected.retryable)
 
     val badRequest = classifyProviderFailure(IllegalStateException("ChatGPT/Codex request failed (400): private prompt"))
     assertEquals(SummaryCloudFailureKind.REQUEST_REJECTED, badRequest.kind)
