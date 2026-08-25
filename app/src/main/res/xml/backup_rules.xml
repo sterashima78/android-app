@@ -8,10 +8,4 @@
   <include domain="sharedpref" path="workout.xml" />
   <include domain="sharedpref" path="x_viewer_preferences.xml" />
   <include domain="file" path="local-summary-models/" />
-  <exclude domain="sharedpref" path="google_drive_backup.xml" />
-  <exclude domain="sharedpref" path="smb_library_credentials.xml" />
-  <exclude domain="sharedpref" path="chatgpt_oauth_secure.xml" />
-  <exclude domain="sharedpref" path="lan_web_server.xml" />
-  <exclude domain="sharedpref" path="local_context_benchmarks.xml" />
-  <exclude domain="sharedpref" path="local_summary_models.xml" />
 </full-backup-content>
