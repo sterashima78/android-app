@@ -11,6 +11,7 @@ val libraryDatabaseSchema = DatabaseSchemaContribution(
 internal fun ensureLibrarySchema(db: SQLiteDatabase) {
   ensureLibraryCatalogSchema(db)
   ensureLibraryStructuredSeriesSchema(db)
+  ensureWebLibraryMetadataExtractorSchema(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS smb_library_servers(
@@ -150,6 +151,6 @@ internal fun ensureLibraryStructuredSeriesSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS library_audible_source_series_name " +
-      "ON library_audible_source_series(series_name COLLATE NOCASE)",
+      "ON library_audible_source_series(source, series_name COLLATE NOCASE)",
   )
 }
