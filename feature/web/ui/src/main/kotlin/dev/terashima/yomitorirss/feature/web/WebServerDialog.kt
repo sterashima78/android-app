@@ -35,7 +35,17 @@ fun WebServerDialog(
             SelectionContainer {
               Text(accessUrl, style = MaterialTheme.typography.bodyMedium)
             }
+            Text(
+              "この初回URLはブラウザ履歴に残る場合がありますが、認証時に一度だけ使用され、以後はトークンを含まないURLへ移動します。共有しないでください。",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
           }
+          Text(
+            "通信は暗号化されないHTTPです。盗聴のおそれがあるため、自宅など信頼できるLANでのみ使用してください。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+          )
           Text(
             "アプリを閉じてもサーバは動作します。通知の本体または停止ボタンをタップすると停止します。",
             style = MaterialTheme.typography.bodySmall,
@@ -43,6 +53,11 @@ fun WebServerDialog(
           )
         } else {
           Text("未読記事、ブックマーク、あとで読む記事、フィード一覧を同一LAN内から閲覧できます。")
+          Text(
+            "起動すると個人データを暗号化されていないHTTPで公開します。信頼できるLANに接続している場合に限り開始してください。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+          )
         }
         state.error?.let {
           Text(it, color = MaterialTheme.colorScheme.error)
@@ -54,7 +69,7 @@ fun WebServerDialog(
         if (state.running) {
           Button(onClick = onStop) { Text("停止") }
         } else {
-          Button(onClick = onStart) { Text("開始") }
+          Button(onClick = onStart) { Text("理解して開始") }
         }
       }
     },

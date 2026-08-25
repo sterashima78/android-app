@@ -11,6 +11,9 @@ import java.net.SocketException
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.Base64
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -20,13 +23,14 @@ class LanWebServer(
   articleRepository: ArticleRepository,
   bookmarkRepository: BookmarkRepository,
   feedRepository: FeedRepository,
-  private val accessToken: String,
+  bootstrapToken: String,
 ) : AutoCloseable {
   private val readModel = LanWebReadModel(articleRepository, bookmarkRepository, feedRepository)
   private val running = AtomicBoolean(false)
   private val acceptExecutor: ExecutorService = Executors.newSingleThreadExecutor()
   private val requestExecutor: ExecutorService = Executors.newFixedThreadPool(MAX_CONNECTIONS)
   private var serverSocket: ServerSocket? = null
+  private val authentication = LanWebAuthentication(bootstrapToken)
 
   fun start() {
     if (!running.compareAndSet(false, true)) return
@@ -46,7 +50,12 @@ class LanWebServer(
     }
   }
 
+  fun replaceBootstrapToken(bootstrapToken: String) {
+    authentication.replaceBootstrapToken(bootstrapToken)
+  }
+
   override fun close() {
+    authentication.invalidate()
     if (!running.compareAndSet(true, false)) return
     runCatching { serverSocket?.close() }
     acceptExecutor.shutdownNow()
@@ -78,24 +87,34 @@ class LanWebServer(
       }
 
       val query = parseQuery(target.rawQuery)
-      val tokenFromQuery = query["token"]
+      val tokenFromQuery = query[BOOTSTRAP_PARAMETER]
       val tokenFromCookie = parseCookie(headers["cookie"], COOKIE_NAME)
-      val authenticated = tokenFromQuery == accessToken || tokenFromCookie == accessToken
-      if (!authenticated) {
-        writeResponse(
-          client,
-          403,
-          "Forbidden",
-          "text/html; charset=utf-8",
-          LanWebRenderer.renderError("アクセスできません", "アプリに表示されたアクセスURLを使用してください。"),
-        )
-        return
-      }
-
-      val extraHeaders = if (tokenFromQuery == accessToken) {
-        mapOf("Set-Cookie" to "$COOKIE_NAME=$accessToken; Path=/; HttpOnly; SameSite=Strict")
-      } else {
-        emptyMap()
+      when (val authenticationResult = authentication.authenticate(tokenFromQuery, tokenFromCookie)) {
+        is AuthenticationResult.Bootstrapped -> {
+          writeResponse(
+            client,
+            303,
+            "See Other",
+            "text/plain; charset=utf-8",
+            "認証しました。",
+            mapOf(
+              "Location" to target.withoutBootstrapToken(),
+              "Set-Cookie" to "$COOKIE_NAME=${authenticationResult.sessionToken}; Path=/; HttpOnly; SameSite=Strict",
+            ),
+          )
+          return
+        }
+        AuthenticationResult.Rejected -> {
+          writeResponse(
+            client,
+            403,
+            "Forbidden",
+            "text/html; charset=utf-8",
+            LanWebRenderer.renderError("アクセスできません", "アプリに表示されたアクセスURLを使用してください。"),
+          )
+          return
+        }
+        AuthenticationResult.Authenticated -> Unit
       }
 
       when (target.path.ifBlank { "/" }) {
@@ -107,7 +126,6 @@ class LanWebServer(
             "OK",
             "text/html; charset=utf-8",
             LanWebRenderer.renderHome(page),
-            extraHeaders,
           )
         }
         "/robots.txt" -> writeResponse(
@@ -116,7 +134,6 @@ class LanWebServer(
           "OK",
           "text/plain; charset=utf-8",
           "User-agent: *\nDisallow: /\n",
-          extraHeaders,
         )
         else -> writeResponse(
           client,
@@ -124,7 +141,6 @@ class LanWebServer(
           "Not Found",
           "text/html; charset=utf-8",
           LanWebRenderer.renderError("ページがありません", "指定されたページは見つかりませんでした。"),
-          extraHeaders,
         )
       }
     }
@@ -173,6 +189,78 @@ class LanWebServer(
     private const val MAX_CONNECTIONS = 8
     private const val REQUEST_TIMEOUT_MS = 10_000
     private const val COOKIE_NAME = "yomitori_lan_token"
+    private const val BOOTSTRAP_PARAMETER = "token"
+  }
+}
+
+internal sealed interface AuthenticationResult {
+  data class Bootstrapped(val sessionToken: String) : AuthenticationResult
+
+  data object Authenticated : AuthenticationResult
+
+  data object Rejected : AuthenticationResult
+}
+
+internal class LanWebAuthentication(
+  bootstrapToken: String,
+  private val tokenGenerator: () -> String = ::newSecureToken,
+) {
+  private var bootstrapToken: String? = bootstrapToken
+  private var sessionToken: String? = null
+
+  @Synchronized
+  fun authenticate(queryToken: String?, cookieToken: String?): AuthenticationResult {
+    val expectedBootstrap = bootstrapToken
+    if (expectedBootstrap != null && queryToken.securelyEquals(expectedBootstrap)) {
+      // 初回トークンは照合に成功した要求だけが一度消費できる。
+      val newSessionToken = tokenGenerator()
+      bootstrapToken = null
+      sessionToken = newSessionToken
+      return AuthenticationResult.Bootstrapped(newSessionToken)
+    }
+    // token付きURLはbootstrap専用とし、Cookieがあっても再利用や差し替えを許可しない。
+    if (queryToken != null) return AuthenticationResult.Rejected
+    sessionToken?.takeIf { cookieToken.securelyEquals(it) }?.let {
+      return AuthenticationResult.Authenticated
+    }
+    return AuthenticationResult.Rejected
+  }
+
+  @Synchronized
+  fun replaceBootstrapToken(newBootstrapToken: String) {
+    bootstrapToken = newBootstrapToken
+    sessionToken = null
+  }
+
+  @Synchronized
+  fun invalidate() {
+    bootstrapToken = null
+    sessionToken = null
+  }
+}
+
+private fun newSecureToken(): String {
+  val bytes = ByteArray(32).also(SecureRandom()::nextBytes)
+  return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+}
+
+private fun String?.securelyEquals(expected: String): Boolean = this != null && MessageDigest.isEqual(
+  toByteArray(StandardCharsets.UTF_8),
+  expected.toByteArray(StandardCharsets.UTF_8),
+)
+
+internal fun URI.withoutBootstrapToken(): String {
+  val remainingQuery = rawQuery
+    ?.split('&')
+    ?.filterNot { part ->
+      val rawName = part.substringBefore('=')
+      runCatching { URLDecoder.decode(rawName, StandardCharsets.UTF_8.name()) }.getOrNull() == "token"
+    }
+    ?.takeIf { it.isNotEmpty() }
+    ?.joinToString("&")
+  return buildString {
+    append(rawPath?.ifBlank { "/" } ?: "/")
+    remainingQuery?.let { append('?').append(it) }
   }
 }
 
