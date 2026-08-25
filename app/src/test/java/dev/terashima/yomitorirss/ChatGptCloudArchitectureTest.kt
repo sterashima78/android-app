@@ -2,7 +2,6 @@ package dev.terashima.yomitorirss
 
 import java.io.File
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatGptCloudArchitectureTest {
@@ -32,8 +31,13 @@ class ChatGptCloudArchitectureTest {
   fun `ChatGPT OAuth credentials are excluded from Android backup surfaces`() {
     val backupRules = source("app/src/main/res/xml/backup_rules.xml")
     val extractionRules = source("app/src/main/res/xml/data_extraction_rules.xml")
-    assertTrue("full backup must exclude ChatGPT OAuth storage", "chatgpt_oauth_secure.xml" in backupRules)
-    assertTrue("data extraction must exclude ChatGPT OAuth storage", "chatgpt_oauth_secure.xml" in extractionRules)
+    val oauthInclude = "<include domain=\"sharedpref\" path=\"chatgpt_oauth_secure.xml\""
+    val sharedPreferencesWildcard = "<include domain=\"sharedpref\" path=\".\""
+
+    assertFalse("full backup must not include ChatGPT OAuth storage", oauthInclude in backupRules)
+    assertFalse("data extraction must not include ChatGPT OAuth storage", oauthInclude in extractionRules)
+    assertFalse("full backup must not include all SharedPreferences", sharedPreferencesWildcard in backupRules)
+    assertFalse("data extraction must not include all SharedPreferences", sharedPreferencesWildcard in extractionRules)
   }
 
   @Test
