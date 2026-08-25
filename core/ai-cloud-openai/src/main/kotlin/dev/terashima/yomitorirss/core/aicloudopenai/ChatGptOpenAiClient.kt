@@ -497,8 +497,14 @@ private fun validatePublicWebTarget(value: String): URI {
 }
 
 private fun isPrivateIpLiteral(host: String): Boolean {
-  val parts = host.split('.')
-  if (parts.size != 4) return host == "::1" || host.startsWith("fc", true) || host.startsWith("fd", true) || host.startsWith("fe80:", true)
+  val normalizedHost = host.removePrefix("[").removeSuffix("]")
+  val parts = normalizedHost.split('.')
+  if (parts.size != 4) {
+    return normalizedHost == "::1" ||
+      normalizedHost.startsWith("fc", ignoreCase = true) ||
+      normalizedHost.startsWith("fd", ignoreCase = true) ||
+      normalizedHost.startsWith("fe80:", ignoreCase = true)
+  }
   val octets = parts.map { it.toIntOrNull() ?: return false }
   return octets[0] == 10 ||
     octets[0] == 127 ||
