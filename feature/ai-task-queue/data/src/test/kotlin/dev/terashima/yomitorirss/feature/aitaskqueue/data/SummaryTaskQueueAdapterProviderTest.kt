@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.aitaskqueue.data
 
-import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
@@ -12,7 +11,7 @@ import org.junit.Test
 
 class SummaryTaskQueueAdapterProviderTest {
   @Test
-  fun `summaryの実行先を統合AIタスクへ引き継ぐ`() = runBlocking {
+  fun `summaryの実行先を統合AIタスクの表示metadataへ引き継ぐ`() = runBlocking {
     val repository = FakeSummaryQueueRepository(
       SummaryQueueTask(
         articleId = "article-1",
@@ -29,7 +28,7 @@ class SummaryTaskQueueAdapterProviderTest {
 
     val item = SummaryTaskQueueAdapter(repository).tasks().single()
 
-    assertEquals(AiTaskExecutionProvider.CHATGPT, item.executionProvider)
+    assertEquals("ChatGPT", item.executionProviderLabel)
   }
 }
 
