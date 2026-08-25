@@ -24,6 +24,7 @@ android {
 dependencies {
   implementation(project(":feature:settings:domain"))
   implementation(project(":feature:summary:domain"))
+  implementation(project(":feature:knowledge:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
   implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
