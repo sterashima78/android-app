@@ -2,21 +2,32 @@
 <data-extraction-rules>
   <cloud-backup>
     <include domain="database" path="yomitori-rss.db" />
-    <include domain="sharedpref" path="." />
+    <include domain="sharedpref" path="background_data_fetch.xml" />
+    <include domain="sharedpref" path="book_reader_position.xml" />
+    <include domain="sharedpref" path="local_ai_background_execution.xml" />
+    <include domain="sharedpref" path="summary_preferences.xml" />
+    <include domain="sharedpref" path="workout.xml" />
+    <include domain="sharedpref" path="x_viewer_preferences.xml" />
     <exclude domain="sharedpref" path="google_drive_backup.xml" />
     <exclude domain="sharedpref" path="smb_library_credentials.xml" />
     <exclude domain="sharedpref" path="chatgpt_oauth_secure.xml" />
+    <exclude domain="sharedpref" path="lan_web_server.xml" />
     <exclude domain="sharedpref" path="local_context_benchmarks.xml" />
     <exclude domain="sharedpref" path="local_summary_models.xml" />
   </cloud-backup>
   <device-transfer>
     <include domain="database" path="yomitori-rss.db" />
-    <include domain="sharedpref" path="." />
+    <include domain="sharedpref" path="background_data_fetch.xml" />
+    <include domain="sharedpref" path="book_reader_position.xml" />
+    <include domain="sharedpref" path="local_ai_background_execution.xml" />
+    <include domain="sharedpref" path="summary_preferences.xml" />
+    <include domain="sharedpref" path="workout.xml" />
+    <include domain="sharedpref" path="x_viewer_preferences.xml" />
     <exclude domain="sharedpref" path="google_drive_backup.xml" />
     <exclude domain="sharedpref" path="smb_library_credentials.xml" />
     <exclude domain="sharedpref" path="chatgpt_oauth_secure.xml" />
+    <exclude domain="sharedpref" path="lan_web_server.xml" />
     <exclude domain="sharedpref" path="local_context_benchmarks.xml" />
     <exclude domain="sharedpref" path="local_summary_models.xml" />
-    <include domain="file" path="local-summary-models/" />
   </device-transfer>
 </data-extraction-rules>
