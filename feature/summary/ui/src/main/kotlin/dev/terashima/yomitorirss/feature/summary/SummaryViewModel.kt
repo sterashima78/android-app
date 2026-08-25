@@ -29,13 +29,16 @@ class SummaryViewModel(
     forceRefresh: Boolean = false,
     replaceBookmarkTags: Boolean = false,
   ) {
+    require(!replaceBookmarkTags || forceRefresh) {
+      "Bookmark tag replacement requires a force-refresh summary request"
+    }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
-        repository.request(
-          articleId = article.id,
-          forceRefresh = forceRefresh,
-          replaceBookmarkTags = replaceBookmarkTags,
-        )
+        if (replaceBookmarkTags) {
+          repository.requestBookmarkEnrichmentRefresh(article.id)
+        } else {
+          repository.request(article.id, forceRefresh)
+        }
       }
         .onSuccess { result ->
           when (result) {
