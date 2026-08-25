@@ -37,14 +37,14 @@ internal class ChatGptSummaryCloudInference(
     block()
   } catch (error: CancellationException) {
     throw error
-  } catch (error: IOException) {
-    throw classifyTransportFailure(error)
+  } catch (_: IOException) {
+    throw classifyTransportFailure()
   } catch (error: IllegalStateException) {
     throw classifyProviderFailure(error)
   }
 }
 
-internal fun classifyTransportFailure(error: IOException): SummaryCloudInferenceException =
+internal fun classifyTransportFailure(): SummaryCloudInferenceException =
   SummaryCloudInferenceException(
     kind = SummaryCloudFailureKind.TRANSIENT,
     retryable = true,
