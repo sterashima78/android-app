@@ -12,6 +12,8 @@ import dev.terashima.yomitorirss.feature.bookreader.data.SharedPreferencesReadin
 import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildScheduler
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
+import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeExecutionPreferences
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
@@ -58,10 +60,14 @@ internal class AppFeatureRuntimeDependencies(
     HealthConnectHealthRepository(application)
   }
 
+  val knowledgeExecutionSettings: KnowledgeExecutionSettings by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    KnowledgeExecutionPreferences(application) { knowledgeBuildRuntime.onProviderChanged() }
+  }
+
   private val knowledgeBuildRuntime: WorkManagerKnowledgeBuildTaskController by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {
-    WorkManagerKnowledgeBuildTaskController(application)
+    WorkManagerKnowledgeBuildTaskController(application, knowledgeExecutionSettings)
   }
 
   val knowledgeBuildTaskController: KnowledgeBuildTaskController

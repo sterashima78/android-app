@@ -92,9 +92,11 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
 
-`:feature:settings` は provider connection/model setting と task routing setting を別 presentation surface として表示する。`ChatGPT / Codex` は login・model catalog・model選択・接続テストを扱い、`AI実行設定` は各 owning feature の provider routing setting を操作する。Settings 自身は routing decision を所有しない。
+Knowledge の Local / ChatGPT provider 選択は `:feature:knowledge` が所有する。自動Wiki再構築、新規ページ生成、LLM編集はいずれもユーザーが明示選択したproviderを利用し、入力内容によるcloud eligibilityや自動routingは行わない。Local background buildだけ `LocalAiBackgroundTaskGate` とLocal pause / charging resumeを利用し、ChatGPT background buildはCloud pauseとnetwork constraintを利用する。enqueue済みbuildはprovider snapshotをWorkManager inputへ保持し、provider変更時は新providerのworkへ置き換える。
 
-`:feature:ai-task-queue` は複数 feature の task read model と runtime execution control を集約する。Local AI pause と Cloud AI pause は独立して表示・変更し、充電時自動再開は Local AI にだけ適用する。task 固有の stop / cancel / retry state は引き続き owning feature が所有する。
+`:feature:settings` は provider connection/model setting と task routing setting を別 presentation surface として表示する。`ChatGPT / Codex` は login・model catalog・model選択・接続テストを扱い、`AI実行設定` は各 owning feature の provider routing settingを操作する。Settings 自身は routing decision を所有しない。
+
+`:feature:ai-task-queue` は複数 feature の task read model と runtime execution control を集約する。Local AI pause と Cloud AI pause は独立して表示・変更し、充電時自動再開は Local AI にだけ適用する。SummaryとKnowledgeのprovider labelを表示するが、task固有の stop / cancel / retry state は引き続き owning feature が所有する。
 
 ## Layer relationship
 
@@ -164,9 +166,13 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)
+- [ADR-0157](../adr/0157-mosaic-external-and-compatibility-identifiers.md)
+- [ADR-0158](../adr/0158-bounded-book-page-geometry-cache.md)
+- [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
 - [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167](../adr/0167-gradle-version-catalog-baseline.md)
 - [ADR-0168](../adr/0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171](../adr/0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)
+- [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)

@@ -54,6 +54,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
+- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 
 ### Domain / Context / persistence
 
@@ -83,6 +84,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
+- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 
 ## Supporting architecture areas
 
@@ -154,6 +156,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
+- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 
 ### Content / summary / knowledge
 
@@ -167,6 +170,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
+- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 
 この索引は「現在の architecture source set」を優先した案内であり、全 ADR の機能別目録ではない。特定 feature の設計履歴は `docs/adr/` の番号順ファイルまたは repository search から辿る。
 
@@ -213,3 +217,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0168](0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md)
+- [ADR-0175](0175-knowledge-local-chatgpt-routing.md)

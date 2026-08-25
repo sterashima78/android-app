@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.settings
 
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,11 +18,12 @@ class AiSettingsUiStateTest {
     assertNull(state.downloadProgress)
     assertNull(state.summaryProgress)
     assertTrue(state.summaryPrompt.isEmpty())
+    assertEquals(KnowledgeExecutionProvider.LOCAL, state.knowledgeExecutionProvider)
     assertNull(state.message)
   }
 
   @Test
-  fun `ChatGPT logout returns summary execution to local`() {
+  fun `ChatGPT logout returns cloud execution settings to local`() {
     assertEquals(
       SummaryExecutionProvider.LOCAL,
       summaryExecutionProviderAfterChatGptLogout(SummaryExecutionProvider.CHATGPT),
@@ -29,6 +31,14 @@ class AiSettingsUiStateTest {
     assertEquals(
       SummaryExecutionProvider.LOCAL,
       summaryExecutionProviderAfterChatGptLogout(SummaryExecutionProvider.LOCAL),
+    )
+    assertEquals(
+      KnowledgeExecutionProvider.LOCAL,
+      knowledgeExecutionProviderAfterChatGptLogout(KnowledgeExecutionProvider.CHATGPT),
+    )
+    assertEquals(
+      KnowledgeExecutionProvider.LOCAL,
+      knowledgeExecutionProviderAfterChatGptLogout(KnowledgeExecutionProvider.LOCAL),
     )
   }
 }

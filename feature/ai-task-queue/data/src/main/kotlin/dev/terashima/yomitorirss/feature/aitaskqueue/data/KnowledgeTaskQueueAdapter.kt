@@ -6,9 +6,12 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskSnapshot
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskState
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 
 internal class KnowledgeTaskQueueAdapter(
   private val controller: KnowledgeBuildTaskController,
+  private val executionSettings: KnowledgeExecutionSettings,
 ) {
   suspend fun tasks(): List<AiTaskQueueItem> = listOfNotNull(controller.snapshot()?.let(::toAiTaskQueueItem))
 
@@ -17,6 +20,10 @@ internal class KnowledgeTaskQueueAdapter(
   suspend fun pauseForGlobalGate() = controller.pauseForGlobalGate()
 
   fun setResumeOnChargingScheduled(enabled: Boolean) = controller.setResumeOnChargingScheduled(enabled)
+
+  fun usesLocalProvider(): Boolean = executionSettings.currentProvider() == KnowledgeExecutionProvider.LOCAL
+
+  fun usesCloudProvider(): Boolean = executionSettings.currentProvider() == KnowledgeExecutionProvider.CHATGPT
 
   suspend fun stop(taskId: String): Boolean? =
     if (taskId == TASK_ID) controller.stop() else null
@@ -43,6 +50,7 @@ internal class KnowledgeTaskQueueAdapter(
         state == AiTaskQueueItemState.STOPPED ||
         state == AiTaskQueueItemState.FAILED,
       canResume = state == AiTaskQueueItemState.STOPPED || state == AiTaskQueueItemState.FAILED,
+      executionProviderLabel = executionSettings.currentProvider().displayLabel(),
     )
   }
 
@@ -52,6 +60,11 @@ internal class KnowledgeTaskQueueAdapter(
     KnowledgeBuildTaskState.PAUSED -> AiTaskQueueItemState.PAUSED
     KnowledgeBuildTaskState.STOPPED -> AiTaskQueueItemState.STOPPED
     KnowledgeBuildTaskState.FAILED -> AiTaskQueueItemState.FAILED
+  }
+
+  private fun KnowledgeExecutionProvider.displayLabel(): String = when (this) {
+    KnowledgeExecutionProvider.LOCAL -> "Local"
+    KnowledgeExecutionProvider.CHATGPT -> "ChatGPT"
   }
 
   private companion object {

@@ -44,6 +44,10 @@ internal class AppAiCoreRuntimeDependencies(
     ChatGptModelPreferences(application)
   }
 
+  val knowledgeCloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    ChatGptKnowledgeTextInference(chatGptClient, chatGptModelPreferences)
+  }
+
   val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAiModelRepository(application, modelManager)
   }

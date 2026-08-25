@@ -78,7 +78,9 @@ class AppContainer(
       dataChanges = dataChanges,
       bookmarks = contentRuntime.bookmarkRepository,
       summaries = aiCoreRuntime.summaryRepository,
-      textInference = aiCoreRuntime.textInference,
+      localTextInference = aiCoreRuntime.textInference,
+      cloudTextInference = aiCoreRuntime.knowledgeCloudTextInference,
+      executionSettings = featureRuntimeDependencies.knowledgeExecutionSettings,
     )
   }
 
@@ -98,6 +100,7 @@ class AppContainer(
       taskRepository = supportingRuntime.taskRepository,
       libraryRuntime = libraryRuntime,
       knowledgeBuildTaskController = featureRuntimeDependencies.knowledgeBuildTaskController,
+      knowledgeExecutionSettings = featureRuntimeDependencies.knowledgeExecutionSettings,
     )
   }
 
@@ -105,6 +108,8 @@ class AppContainer(
   internal val libraryRuntime get() = featureRuntimeDependencies.library
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
   internal val knowledgeBuildScheduler get() = featureRuntimeDependencies.knowledgeBuildScheduler
+  internal val knowledgeBuildRunner get() = knowledgeRuntime.knowledgeBuildRunner
+  internal val knowledgeExecutionSettings get() = featureRuntimeDependencies.knowledgeExecutionSettings
   internal val textInference get() = aiCoreRuntime.textInference
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
   internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings

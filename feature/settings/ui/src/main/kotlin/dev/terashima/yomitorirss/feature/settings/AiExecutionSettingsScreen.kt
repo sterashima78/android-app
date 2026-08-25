@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 
 @Composable
@@ -30,6 +31,7 @@ fun AiExecutionSettingsScreen(
   state: AiSettingsUiState,
   onDismiss: () -> Unit,
   onSummaryProviderChange: (SummaryExecutionProvider) -> Unit,
+  onKnowledgeProviderChange: (KnowledgeExecutionProvider) -> Unit,
 ) {
   Dialog(
     onDismissRequest = onDismiss,
@@ -54,6 +56,7 @@ fun AiExecutionSettingsScreen(
         )
         HorizontalDivider()
 
+        val cloudAvailable = state.chatGptConnected && state.chatGptSelectedModelId != null
         Text(
           text = "記事要約・タグ付け",
           style = MaterialTheme.typography.titleMedium,
@@ -66,7 +69,6 @@ fun AiExecutionSettingsScreen(
           enabled = true,
           onClick = { onSummaryProviderChange(SummaryExecutionProvider.LOCAL) },
         )
-        val cloudAvailable = state.chatGptConnected && state.chatGptSelectedModelId != null
         ProviderChoice(
           title = "ChatGPT / Codex",
           supporting = if (cloudAvailable) {
@@ -80,6 +82,37 @@ fun AiExecutionSettingsScreen(
         )
         Text(
           text = "クラウド実行では記事URL、要約指示、生成済み要約、既存タグ・フォルダ候補など処理に必要な情報をChatGPTへ送信します。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+        Text(
+          text = "Wiki生成・編集",
+          style = MaterialTheme.typography.titleMedium,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+        ProviderChoice(
+          title = "ローカル",
+          supporting = "端末内の選択済みモデルで保存済み要約からWikiを生成・編集",
+          selected = state.knowledgeExecutionProvider == KnowledgeExecutionProvider.LOCAL,
+          enabled = true,
+          onClick = { onKnowledgeProviderChange(KnowledgeExecutionProvider.LOCAL) },
+        )
+        ProviderChoice(
+          title = "ChatGPT / Codex",
+          supporting = if (cloudAvailable) {
+            "${state.chatGptSelectedModelId} を使い、保存済み要約からクラウドでWikiを生成・編集"
+          } else {
+            "ChatGPT / Codex設定でログインし、利用モデルを選択してください"
+          },
+          selected = state.knowledgeExecutionProvider == KnowledgeExecutionProvider.CHATGPT,
+          enabled = cloudAvailable,
+          onClick = { onKnowledgeProviderChange(KnowledgeExecutionProvider.CHATGPT) },
+        )
+        Text(
+          text = "クラウド実行では、保存済み記事要約、記事タイトル・URL、既存Wiki本文、作成・編集指示などWiki生成に必要な情報をChatGPTへ送信します。入力内容による自動的な実行先判定は行いません。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

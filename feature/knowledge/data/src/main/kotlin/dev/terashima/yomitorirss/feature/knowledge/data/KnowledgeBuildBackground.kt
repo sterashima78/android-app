@@ -6,29 +6,38 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.ListenableWorker
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.await
+import androidx.work.workDataOf
+import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildRunner
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskSnapshot
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskState
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeCloudInferenceException
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class WorkManagerKnowledgeBuildTaskController(
   context: Context,
+  private val executionSettings: KnowledgeExecutionSettings,
 ) : KnowledgeBuildTaskController {
   private val appContext = context.applicationContext
   private val state = KnowledgeBuildQueueStateStore(appContext)
@@ -43,15 +52,27 @@ class WorkManagerKnowledgeBuildTaskController(
     kick(forceReschedule = false)
   }
 
-  private fun kick(forceReschedule: Boolean) {
+  fun onProviderChanged() {
     if (!state.requested || state.stopped || state.failed) return
-    val execution = LocalAiBackgroundExecutionPreferences(appContext)
-    if (execution.paused) {
-      setResumeOnChargingScheduled(true)
+    val provider = executionSettings.currentProvider()
+    if (isKnowledgeProviderPaused(appContext, provider)) {
+      workManager.cancelUniqueWork(WORK_NAME)
+      setResumeOnChargingScheduled(provider == KnowledgeExecutionProvider.LOCAL)
       return
     }
     setResumeOnChargingScheduled(false)
-    enqueueBuildWork(knowledgeBuildExistingWorkPolicy(forceReschedule))
+    enqueueBuildWork(ExistingWorkPolicy.REPLACE, provider)
+  }
+
+  private fun kick(forceReschedule: Boolean) {
+    if (!state.requested || state.stopped || state.failed) return
+    val provider = executionSettings.currentProvider()
+    if (isKnowledgeProviderPaused(appContext, provider)) {
+      setResumeOnChargingScheduled(provider == KnowledgeExecutionProvider.LOCAL)
+      return
+    }
+    setResumeOnChargingScheduled(false)
+    enqueueBuildWork(knowledgeBuildExistingWorkPolicy(forceReschedule), provider)
   }
 
   override suspend fun pauseForGlobalGate() {
@@ -83,7 +104,7 @@ class WorkManagerKnowledgeBuildTaskController(
 
   override suspend fun snapshot(): KnowledgeBuildTaskSnapshot? {
     if (!state.requested) return null
-    if (LocalAiBackgroundExecutionPreferences(appContext).paused) {
+    if (isKnowledgeProviderPaused(appContext, executionSettings.currentProvider())) {
       return KnowledgeBuildTaskSnapshot(KnowledgeBuildTaskState.PAUSED)
     }
     if (state.stopped) return KnowledgeBuildTaskSnapshot(KnowledgeBuildTaskState.STOPPED)
@@ -113,7 +134,14 @@ class WorkManagerKnowledgeBuildTaskController(
     }
 
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
-    if (!state.requested || !execution.paused || !execution.resumeWhenCharging) return
+    if (
+      !state.requested ||
+      executionSettings.currentProvider() != KnowledgeExecutionProvider.LOCAL ||
+      !execution.paused ||
+      !execution.resumeWhenCharging
+    ) {
+      return
+    }
     val request = OneTimeWorkRequestBuilder<KnowledgeBuildResumeOnChargingWorker>()
       .setConstraints(
         Constraints.Builder()
@@ -130,17 +158,30 @@ class WorkManagerKnowledgeBuildTaskController(
 
   internal fun kickFromChargingResume() {
     if (!state.requested || state.stopped || state.failed) return
-    enqueueBuildWork(ExistingWorkPolicy.KEEP)
+    if (executionSettings.currentProvider() != KnowledgeExecutionProvider.LOCAL) return
+    enqueueBuildWork(ExistingWorkPolicy.KEEP, KnowledgeExecutionProvider.LOCAL)
   }
 
-  private fun enqueueBuildWork(policy: ExistingWorkPolicy) {
-    val request = OneTimeWorkRequestBuilder<KnowledgeBuildWorker>()
+  private fun enqueueBuildWork(
+    policy: ExistingWorkPolicy,
+    provider: KnowledgeExecutionProvider,
+  ) {
+    val builder = OneTimeWorkRequestBuilder<KnowledgeBuildWorker>()
       .addTag(WORK_TAG)
-      .build()
+      .setInputData(workDataOf(KNOWLEDGE_EXECUTION_PROVIDER_KEY to provider.name))
+    if (provider == KnowledgeExecutionProvider.CHATGPT) {
+      builder
+        .setConstraints(
+          Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build(),
+        )
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+    }
     workManager.enqueueUniqueWork(
       WORK_NAME,
       policy,
-      request,
+      builder.build(),
     )
   }
 
@@ -154,6 +195,14 @@ class WorkManagerKnowledgeBuildTaskController(
 internal fun knowledgeBuildExistingWorkPolicy(forceReschedule: Boolean): ExistingWorkPolicy =
   if (forceReschedule) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
 
+internal fun isKnowledgeProviderPaused(
+  context: Context,
+  provider: KnowledgeExecutionProvider,
+): Boolean = when (provider) {
+  KnowledgeExecutionProvider.LOCAL -> LocalAiBackgroundExecutionPreferences(context).paused
+  KnowledgeExecutionProvider.CHATGPT -> CloudAiBackgroundExecutionPreferences(context).paused
+}
+
 internal class KnowledgeBuildResumeOnChargingWorker(
   appContext: Context,
   params: WorkerParameters,
@@ -163,7 +212,10 @@ internal class KnowledgeBuildResumeOnChargingWorker(
     if (!execution.resumeWhenCharging) return@withContext Result.success()
 
     execution.paused = false
-    WorkManagerKnowledgeBuildTaskController(applicationContext).kickFromChargingResume()
+    WorkManagerKnowledgeBuildTaskController(
+      applicationContext,
+      KnowledgeExecutionPreferences(applicationContext),
+    ).kickFromChargingResume()
     Result.success()
   }
 }
@@ -171,31 +223,52 @@ internal class KnowledgeBuildResumeOnChargingWorker(
 internal class KnowledgeBuildWorker(
   appContext: Context,
   params: WorkerParameters,
-  private val knowledgeBuilder: KnowledgeBuilder,
+  private val knowledgeBuilder: KnowledgeBuildRunner,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     val state = KnowledgeBuildQueueStateStore(applicationContext)
     if (!state.requested || state.stopped) return Result.success()
-    if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return Result.success()
+    val provider = inputData.getString(KNOWLEDGE_EXECUTION_PROVIDER_KEY)
+      ?.let { saved -> KnowledgeExecutionProvider.entries.firstOrNull { it.name == saved } }
+      ?: KnowledgeExecutionProvider.LOCAL
+    if (isKnowledgeProviderPaused(applicationContext, provider)) return Result.success()
 
     return try {
       setForeground(createForegroundInfo())
-      LocalAiBackgroundTaskGate.withPermit {
-        if (!state.requested || state.stopped) return@withPermit Result.success()
-        if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
-          return@withPermit Result.success()
+      when (provider) {
+        KnowledgeExecutionProvider.LOCAL -> LocalAiBackgroundTaskGate.withPermit {
+          if (!state.requested || state.stopped) return@withPermit Result.success()
+          if (isKnowledgeProviderPaused(applicationContext, provider)) return@withPermit Result.success()
+          completeBuild(state, provider)
         }
-
-        knowledgeBuilder.rebuild()
-        state.complete()
-        Result.success()
+        KnowledgeExecutionProvider.CHATGPT -> {
+          if (!state.requested || state.stopped) return Result.success()
+          if (isKnowledgeProviderPaused(applicationContext, provider)) return Result.success()
+          completeBuild(state, provider)
+        }
       }
     } catch (cancelled: CancellationException) {
       throw cancelled
+    } catch (error: KnowledgeCloudInferenceException) {
+      if (provider == KnowledgeExecutionProvider.CHATGPT && error.retryable) {
+        Result.retry()
+      } else {
+        state.markFailed(error.userMessage())
+        Result.failure()
+      }
     } catch (error: Throwable) {
       state.markFailed(error.userMessage())
       Result.failure()
     }
+  }
+
+  private suspend fun completeBuild(
+    state: KnowledgeBuildQueueStateStore,
+    provider: KnowledgeExecutionProvider,
+  ): Result {
+    knowledgeBuilder.rebuild(provider)
+    state.complete()
+    return Result.success()
   }
 
   private fun createForegroundInfo(): ForegroundInfo {
@@ -206,7 +279,7 @@ internal class KnowledgeBuildWorker(
         "LLM Wiki生成",
         NotificationManager.IMPORTANCE_LOW,
       ).apply {
-        description = "ローカルAIでLLM Wikiをバックグラウンド生成している間に表示します"
+        description = "AIでLLM Wikiをバックグラウンド生成している間に表示します"
         setShowBadge(false)
       },
     )
@@ -246,7 +319,7 @@ internal class KnowledgeBuildWorker(
 }
 
 class KnowledgeWorkerFactory(
-  private val knowledgeBuilderProvider: () -> KnowledgeBuilder,
+  private val knowledgeBuilderProvider: () -> KnowledgeBuildRunner,
 ) : WorkerFactory() {
   override fun createWorker(
     appContext: Context,
@@ -265,3 +338,5 @@ private fun Throwable.userMessage(): String =
     .mapNotNull(Throwable::message)
     .firstOrNull(String::isNotBlank)
     ?: javaClass.simpleName
+
+private const val KNOWLEDGE_EXECUTION_PROVIDER_KEY = "knowledge_execution_provider"
