@@ -64,32 +64,50 @@ fun AiTaskQueueScreen(
         )
 
         ListItem(
-          headlineContent = { Text("AIタスクを一時停止") },
+          headlineContent = { Text("ローカルAIを一時停止") },
           supportingContent = {
             Text(
-              if (state.queuePaused) {
-                "新しいAIタスクも待機させ、バックグラウンドのローカルAI処理を開始しません"
+              if (state.localPaused) {
+                "端末内モデルを使うAIタスクを待機させます。クラウドAIタスクは継続できます"
               } else {
-                "要約・タグ付け・蔵書整理・書誌正規化・LLM Wiki生成などのAIタスクをバックグラウンドで順次実行します"
+                "端末内モデルを使う要約・タグ付け・蔵書整理・書誌正規化・LLM Wiki生成を実行します"
               },
             )
           },
           trailingContent = {
             Switch(
-              checked = state.queuePaused,
-              onCheckedChange = taskQueueViewModel::setPaused,
+              checked = state.localPaused,
+              onCheckedChange = taskQueueViewModel::setLocalPaused,
             )
           },
         )
         ListItem(
-          headlineContent = { Text("充電時に自動再開") },
+          headlineContent = { Text("クラウドAIを一時停止") },
           supportingContent = {
-            Text("一時停止中に端末が充電状態になると、AIタスクの自動実行を再開します")
+            Text(
+              if (state.cloudPaused) {
+                "ChatGPT / Codexなどクラウドプロバイダを使うAIタスクを待機させます"
+              } else {
+                "クラウド実行に設定したAIタスクをローカルAIとは独立して実行します"
+              },
+            )
           },
           trailingContent = {
             Switch(
-              checked = state.resumeWhenCharging,
-              onCheckedChange = taskQueueViewModel::setResumeWhenCharging,
+              checked = state.cloudPaused,
+              onCheckedChange = taskQueueViewModel::setCloudPaused,
+            )
+          },
+        )
+        ListItem(
+          headlineContent = { Text("充電時にローカルAIを自動再開") },
+          supportingContent = {
+            Text("ローカルAIの一時停止中に端末が充電状態になると、端末内AIタスクを自動再開します")
+          },
+          trailingContent = {
+            Switch(
+              checked = state.resumeLocalWhenCharging,
+              onCheckedChange = taskQueueViewModel::setResumeLocalWhenCharging,
             )
           },
         )
@@ -109,9 +127,10 @@ fun AiTaskQueueScreen(
         val runningCount = state.taskCounts.running
         val queuedCount = state.taskCounts.queued
         val pausedCount = state.taskCounts.pausedOrStopped
-        val executionLabel = if (state.queuePaused) "自動実行 一時停止中" else "自動実行中"
+        val localLabel = if (state.localPaused) "ローカル停止" else "ローカル実行"
+        val cloudLabel = if (state.cloudPaused) "クラウド停止" else "クラウド実行"
         Text(
-          text = "$executionLabel ・ 実行中 ${runningCount}件 ・ 待機中 ${queuedCount}件 ・ 停止中 ${pausedCount}件",
+          text = "$localLabel ・ $cloudLabel ・ 実行中 ${runningCount}件 ・ 待機中 ${queuedCount}件 ・ 停止中 ${pausedCount}件",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -244,6 +263,8 @@ internal fun aiTaskProgressPresentation(item: AiTaskQueueItem): AiTaskProgressPr
     AiTaskQueueProgressStage.PROCESSING_CHUNK -> "長文を分割要約中$numberedProgress"
     AiTaskQueueProgressStage.REDUCING -> "中間要約を統合中$numberedProgress"
     AiTaskQueueProgressStage.FINALIZING -> "最終要約を生成中"
+    AiTaskQueueProgressStage.CLOUD_GENERATING -> "クラウドで記事を要約中"
+    AiTaskQueueProgressStage.CLOUD_ENRICHING -> "クラウドでタグ・フォルダ候補を生成中"
     AiTaskQueueProgressStage.UNKNOWN,
     null -> if (determinate) "進捗$current/$total" else "AI処理中"
   }
