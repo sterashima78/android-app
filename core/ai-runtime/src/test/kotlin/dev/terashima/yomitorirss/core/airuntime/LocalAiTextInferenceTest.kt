@@ -28,14 +28,14 @@ class LocalAiTextInferenceTest {
       promptFormat = LocalPromptFormat.PLAIN,
     )
 
-    val mapped = model.toAiTextInferenceModel("local:local-a:context-8192")
+    val mapped = model.toAiTextInferenceModel("context-8192")
 
     assertEquals("local-a", mapped.id)
     assertEquals("Local A", mapped.name)
     assertEquals(8_192, mapped.contextTokens)
     assertEquals(24_000, mapped.maxInputChars)
     assertEquals(20_000, mapped.promptBudgetChars)
-    assertEquals("local:local-a:context-8192", mapped.cacheIdentity)
+    assertEquals("context-8192", mapped.cacheVariant)
   }
 
   @Test
