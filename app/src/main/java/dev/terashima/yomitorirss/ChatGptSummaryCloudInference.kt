@@ -54,11 +54,6 @@ internal fun classifyTransportFailure(): SummaryCloudInferenceException =
 internal fun classifyProviderFailure(error: IllegalStateException): SummaryCloudInferenceException {
   val status = HTTP_STATUS_PATTERN.find(error.message.orEmpty())?.groupValues?.getOrNull(1)?.toIntOrNull()
   return when {
-    status == 401 || status == 403 || isRefreshCredentialRejection(error, status) -> SummaryCloudInferenceException(
-      kind = SummaryCloudFailureKind.AUTHENTICATION,
-      retryable = false,
-      message = "ChatGPT の認証が無効です。設定から再ログインしてください",
-    )
     status == 408 || status == 429 || status != null && status in 500..599 -> SummaryCloudInferenceException(
       kind = if (status == 429) SummaryCloudFailureKind.RATE_LIMITED else SummaryCloudFailureKind.TRANSIENT,
       retryable = true,
@@ -67,6 +62,11 @@ internal fun classifyProviderFailure(error: IllegalStateException): SummaryCloud
       } else {
         "ChatGPT / Codex が一時的に利用できません。自動的に再試行します"
       },
+    )
+    status == 401 || status == 403 || isRefreshCredentialRejection(error, status) -> SummaryCloudInferenceException(
+      kind = SummaryCloudFailureKind.AUTHENTICATION,
+      retryable = false,
+      message = "ChatGPT の認証が無効です。設定から再ログインしてください",
     )
     status != null && status in 400..499 -> SummaryCloudInferenceException(
       kind = SummaryCloudFailureKind.REQUEST_REJECTED,
