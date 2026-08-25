@@ -41,6 +41,30 @@ class WebLibraryMetadataExtractorTest {
   }
 
   @Test
+  fun `URLパターンはHTTPSのみ登録できる`() {
+    val error = runCatching {
+      validateWebLibraryMetadataExtractor(
+        urlPattern = "http://example.com/books/*",
+        functionCode = "() => ({ title: null, thumbnailUrl: null })",
+      )
+    }.exceptionOrNull()
+
+    assertTrue(error is IllegalArgumentException)
+  }
+
+  @Test
+  fun `空の関数コードは登録できない`() {
+    val error = runCatching {
+      validateWebLibraryMetadataExtractor(
+        urlPattern = "https://example.com/books/*",
+        functionCode = "   ",
+      )
+    }.exceptionOrNull()
+
+    assertTrue(error is IllegalArgumentException)
+  }
+
+  @Test
   fun `複数ルールが一致する場合はより具体的なURLパターンを優先する`() {
     val generic = extractor(
       id = "generic",
