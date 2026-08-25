@@ -133,6 +133,7 @@ internal fun SettingsRoute(
       state = aiState,
       onDismiss = { showAiExecutionSettings = false },
       onSummaryProviderChange = aiSettingsViewModel::setSummaryExecutionProvider,
+      onKnowledgeProviderChange = aiSettingsViewModel::setKnowledgeExecutionProvider,
     )
   }
   if (showSummaryPrompt) {
