@@ -25,6 +25,7 @@ class DefaultSummaryTaskQueueRepository(
     val articleIds = tasks.mapTo(linkedSetOf(), SummaryTaskRecord::articleId)
     val articles = articleRepository.findArticles(articleIds).associateBy { it.id }
     val highPriorityArticleIds = bookmarkContentQuery.readLaterContentIds(articleIds)
+    val executionProvider = SummaryExecutionPreferences(appContext).currentProvider()
     return tasks.map { task ->
       val article = articles[task.articleId]
       SummaryQueueTask(
@@ -40,6 +41,7 @@ class DefaultSummaryTaskQueueRepository(
         progressStage = task.progressStage.toSummaryQueueTaskProgressStage(),
         progressCurrent = task.progressCurrent,
         progressTotal = task.progressTotal,
+        executionProvider = executionProvider,
       )
     }
   }
