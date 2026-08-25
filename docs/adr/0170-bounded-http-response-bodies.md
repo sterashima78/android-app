@@ -48,7 +48,7 @@ ADR-0155 により HTTP transport は application scope で共有するように
 - `Content-Length` が上限を超える response を body 読み込み前に拒否する。
 - `Content-Length` のない chunked response も累積 byte 数で拒否する。
 - 上限ちょうどの response は成功する。
--途中切断は `IOException` として扱う。
+- 途中切断は `IOException` として扱う。
 - `ResponseTooLargeException` が `IOException` を継承しないことを固定する。
 - PR CI の unit test、architecture verification、lint、public repository verification を継続する。
 
