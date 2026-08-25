@@ -30,6 +30,7 @@ data class WebLibraryMetadataRefreshResult(
   val book: LibraryBook,
   val changedFields: Set<WebLibraryMetadataField>,
   val extractorExecution: WebLibraryMetadataExtractorExecution? = null,
+  val fallbackReason: String? = null,
 )
 
 fun changedWebLibraryMetadataFields(
