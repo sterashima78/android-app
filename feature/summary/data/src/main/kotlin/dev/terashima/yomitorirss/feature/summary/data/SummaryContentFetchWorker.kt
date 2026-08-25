@@ -25,13 +25,13 @@ class SummaryContentFetchWorker(
   private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
     if (executionSettings.currentProvider() == SummaryExecutionProvider.CHATGPT) {
       SummaryQueue.kickInference(applicationContext)
       return Result.success()
     }
+    if (SummaryQueue.executionState(applicationContext).localPaused) return Result.success()
     return withContext(Dispatchers.IO) {
-      while (!SummaryQueue.executionState(applicationContext).paused) {
+      while (!SummaryQueue.executionState(applicationContext).localPaused) {
         currentCoroutineContext().ensureActive()
         if (executionSettings.currentProvider() != SummaryExecutionProvider.LOCAL) {
           SummaryQueue.kickInference(applicationContext)
