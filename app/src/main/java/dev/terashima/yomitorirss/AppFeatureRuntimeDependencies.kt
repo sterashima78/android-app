@@ -26,12 +26,12 @@ import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
+import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerRuntimeDependencies
-import dev.terashima.yomitorirss.feature.library.data.LocalLibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WebLibraryMetadataClient
@@ -73,7 +73,7 @@ internal class AppFeatureRuntimeDependencies(
     val smbRepository = CleaningSmbLibraryRepository(application, database)
     val catalogRepository = SmbMetadataAwareLibraryRepository(database)
     val organizationRepository = DefaultLibraryOrganizationRepository(database)
-    val organizationSuggester = LocalLibraryOrganizationSuggester(textInferenceProvider())
+    val organizationSuggester = DefaultLibraryOrganizationSuggester(textInferenceProvider())
     val organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application)
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
     val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
