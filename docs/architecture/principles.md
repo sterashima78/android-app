@@ -145,6 +145,9 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 - Android 直生成 entry point の framework provider exception: `config/architecture/framework-provider-lookups.tsv`
 - ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
 - public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
+- Android backup の SharedPreferences allowlist、機密設定の除外、cloud-backup / device-transfer の同一性: `AndroidBackupRulesArchitectureTest`
+
+Android platform backup は `BackupPreferences.BACKUP_RULES` のうち、ファイル全体を許可する規則だけを対象とする。キー単位で許可する `library_ai_preferences.xml` と `local_summary_models.xml` は Android の XML 規則では安全に絞り込めないため、アプリ内 archive backup だけで扱い、platform backup には含めない。cloud-backup と device-transfer の SharedPreferences 方針には意図的な差を設けない。
 
 `verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。MainActivity の feature ViewModel import に app-shell-specific allowlist は設けない。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
 
