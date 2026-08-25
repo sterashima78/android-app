@@ -61,12 +61,14 @@ class DefaultWebLibraryMutator(
     val renderedFetch: (suspend (String, String?) -> LibraryBook)? = renderedMetadataClient?.let { client ->
       { candidateUrl, candidateTitleHint -> client.fetch(candidateUrl, candidateTitleHint) }
     }
+    val preferRenderedTitleAndThumbnail = renderedMetadataClient?.hasCustomExtractor(url) == true
     return resolveWebLibraryBookMetadata(
       url = url,
       titleHint = titleHint,
       staticFetch = metadataClient::fetch,
       renderedFetch = renderedFetch,
       forceRendered = forceRendered,
+      preferRenderedTitleAndThumbnail = preferRenderedTitleAndThumbnail,
     )
   }
 
@@ -112,6 +114,7 @@ internal suspend fun resolveWebLibraryBookMetadata(
   staticFetch: suspend (String, String?) -> LibraryBook,
   renderedFetch: (suspend (String, String?) -> LibraryBook)?,
   forceRendered: Boolean = false,
+  preferRenderedTitleAndThumbnail: Boolean = false,
 ): LibraryBook {
   val staticResult = try {
     Result.success(staticFetch(url, titleHint))
@@ -123,7 +126,12 @@ internal suspend fun resolveWebLibraryBookMetadata(
   val staticBook = staticResult.getOrNull()
   val shouldRender = renderedFetch != null &&
     isHttpsWebUrl(url) &&
-    (forceRendered || staticBook == null || staticBook.needsRenderedWebMetadata())
+    (
+      forceRendered ||
+        preferRenderedTitleAndThumbnail ||
+        staticBook == null ||
+        staticBook.needsRenderedWebMetadata()
+      )
 
   if (!shouldRender) {
     return staticBook ?: throw requireNotNull(staticResult.exceptionOrNull())
@@ -142,6 +150,7 @@ internal suspend fun resolveWebLibraryBookMetadata(
       staticBook = staticBook,
       renderedBook = renderedBook,
       preferRendered = forceRendered,
+      preferRenderedTitleAndThumbnail = preferRenderedTitleAndThumbnail,
     )
     renderedBook != null -> renderedBook
     staticBook != null -> staticBook
@@ -156,9 +165,12 @@ internal fun mergeWebLibraryMetadata(
   staticBook: LibraryBook,
   renderedBook: LibraryBook,
   preferRendered: Boolean = false,
+  preferRenderedTitleAndThumbnail: Boolean = false,
 ): LibraryBook {
   val renderedTitleIsUseful = !renderedBook.isWebHostFallbackTitle()
-  val useRenderedTitle = renderedTitleIsUseful && (preferRendered || staticBook.isWebHostFallbackTitle())
+  val useRenderedTitle = renderedTitleIsUseful &&
+    (preferRendered || preferRenderedTitleAndThumbnail || staticBook.isWebHostFallbackTitle())
+  val preferRenderedThumbnail = preferRendered || preferRenderedTitleAndThumbnail
   return staticBook.copy(
     title = if (useRenderedTitle) renderedBook.title else staticBook.title,
     authors = if (preferRendered && renderedBook.authors.isNotEmpty()) {
@@ -171,7 +183,7 @@ internal fun mergeWebLibraryMetadata(
     } else {
       staticBook.description ?: renderedBook.description
     },
-    thumbnailUrl = if (preferRendered) {
+    thumbnailUrl = if (preferRenderedThumbnail) {
       renderedBook.thumbnailUrl ?: staticBook.thumbnailUrl
     } else {
       staticBook.thumbnailUrl ?: renderedBook.thumbnailUrl
