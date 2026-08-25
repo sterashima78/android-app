@@ -25,7 +25,7 @@ import java.util.concurrent.Executors
 class LanWebServerService : Service() {
   private val executor: ExecutorService = Executors.newSingleThreadExecutor()
   private lateinit var connectivityManager: ConnectivityManager
-  private lateinit var accessToken: String
+  private var bootstrapToken: String? = null
   private var server: LanWebServer? = null
   private var networkCallbackRegistered = false
   private var terminalError: String? = null
@@ -39,7 +39,7 @@ class LanWebServerService : Service() {
   override fun onCreate() {
     super.onCreate()
     createNotificationChannel()
-    accessToken = loadOrCreateToken()
+    bootstrapToken = generateToken()
     connectivityManager = getSystemService(ConnectivityManager::class.java)
     LanWebServerStateStore.starting()
     ServiceCompat.startForeground(
@@ -67,6 +67,8 @@ class LanWebServerService : Service() {
     networkCallbackRegistered = false
     runCatching { server?.close() }
     server = null
+    // サーバ停止後に、表示済みの初回URLを再利用できないよう参照も破棄する。
+    bootstrapToken = null
     executor.shutdownNow()
     LanWebServerStateStore.stopped(terminalError)
     super.onDestroy()
@@ -80,7 +82,7 @@ class LanWebServerService : Service() {
         articleRepository = repositories.lanWebArticleRepository,
         bookmarkRepository = repositories.lanWebBookmarkRepository,
         feedRepository = repositories.lanWebFeedRepository,
-        accessToken = accessToken,
+        bootstrapToken = checkNotNull(bootstrapToken),
       ).also {
         it.start()
         server = it
@@ -118,7 +120,9 @@ class LanWebServerService : Service() {
         ?.filterIsInstance<Inet4Address>()
         ?.firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
         ?.hostAddress
-      val accessUrl = address?.let { "http://$it:${LanWebServer.PORT}/?token=$accessToken" }
+      val accessUrl = address?.let { host ->
+        bootstrapToken?.let { token -> "http://$host:${LanWebServer.PORT}/?token=$token" }
+      }
       LanWebServerStateStore.running(address, accessUrl)
       getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(address))
     }
@@ -162,21 +166,15 @@ class LanWebServerService : Service() {
     getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
   }
 
-  private fun loadOrCreateToken(): String {
-    val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
-    preferences.getString(KEY_ACCESS_TOKEN, null)?.takeIf(String::isNotBlank)?.let { return it }
+  private fun generateToken(): String {
     val bytes = ByteArray(24).also(SecureRandom()::nextBytes)
-    val token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-    preferences.edit().putString(KEY_ACCESS_TOKEN, token).apply()
-    return token
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
   }
 
   companion object {
     private const val CHANNEL_ID = "lan_web_server"
     private const val NOTIFICATION_ID = 8765
     private const val ACTION_STOP = "dev.terashima.yomitorirss.web.STOP"
-    private const val PREFERENCES_NAME = "lan_web_server"
-    private const val KEY_ACCESS_TOKEN = "access_token"
 
     fun start(context: Context) {
       ContextCompat.startForegroundService(
