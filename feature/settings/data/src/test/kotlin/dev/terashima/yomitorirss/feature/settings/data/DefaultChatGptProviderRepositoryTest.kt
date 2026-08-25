@@ -1,7 +1,10 @@
 package dev.terashima.yomitorirss.feature.settings.data
 
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelInfo
+import dev.terashima.yomitorirss.feature.settings.ChatGptProviderModel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DefaultChatGptProviderRepositoryTest {
@@ -19,6 +22,15 @@ class DefaultChatGptProviderRepositoryTest {
     assertEquals(listOf("eligible"), selected.map { it.id })
   }
 
+  @Test
+  fun `catalog reconciliation clears only unavailable saved model`() {
+    val available = listOf(providerModel("eligible"))
+
+    assertTrue(shouldClearSelectedChatGptModel("removed", available))
+    assertFalse(shouldClearSelectedChatGptModel("eligible", available))
+    assertFalse(shouldClearSelectedChatGptModel(null, available))
+  }
+
   private fun model(
     id: String,
     visible: Boolean,
@@ -34,5 +46,12 @@ class DefaultChatGptProviderRepositoryTest {
     supportedInApi = api,
     visibleInPicker = visible,
     priority = 0,
+  )
+
+  private fun providerModel(id: String) = ChatGptProviderModel(
+    id = id,
+    name = id,
+    description = null,
+    supportsWebSearch = true,
   )
 }
