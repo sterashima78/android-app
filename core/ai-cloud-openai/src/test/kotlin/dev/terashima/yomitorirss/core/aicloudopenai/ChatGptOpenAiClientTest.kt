@@ -153,20 +153,22 @@ data: {"type":"response.completed","response":{"status":"completed"}}
   }
 
   @Test(expected = IllegalStateException::class)
-  fun `web generation fails when codex did not open requested page`() = runBlocking {
-    val store = connectedStore()
-    val http = RecordingHttpClient(
-      response(200, """data: {"type":"response.output_item.done","item":{"type":"web_search_call","status":"completed","action":{"type":"open_page","url":"https://example.com/other"}}}
+  fun `web generation fails when codex did not open requested page`() {
+    runBlocking {
+      val store = connectedStore()
+      val http = RecordingHttpClient(
+        response(200, """data: {"type":"response.output_item.done","item":{"type":"web_search_call","status":"completed","action":{"type":"open_page","url":"https://example.com/other"}}}
 
 data: {"type":"response.output_text.delta","delta":"推測要約"}
 
 """),
-    )
-    client(http, store).generateWithWebSearch(
-      modelId = "gpt-test",
-      prompt = "要約",
-      targetUrl = "https://example.com/articles/1",
-    )
+      )
+      client(http, store).generateWithWebSearch(
+        modelId = "gpt-test",
+        prompt = "要約",
+        targetUrl = "https://example.com/articles/1",
+      )
+    }
   }
 
   @Test
