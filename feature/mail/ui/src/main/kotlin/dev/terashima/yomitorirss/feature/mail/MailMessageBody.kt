@@ -128,7 +128,7 @@ private fun HtmlMailBody(
       onContentHeightChanged = { height ->
         if (height != contentHeightPx) contentHeightPx = height
       },
-      onRenderProcessGone = { didCrash ->
+      onRendererGone = { didCrash ->
         contentHeightPx = 0
         if (didCrash) {
           rendererCrashed = true
@@ -210,7 +210,7 @@ private fun createMailWebView(
   context: Context,
   rendererLifecycle: MailWebViewRendererLifecycle,
   onContentHeightChanged: (Int) -> Unit,
-  onRenderProcessGone: (Boolean) -> Unit,
+  onRendererGone: (Boolean) -> Unit,
 ): MailWebView = MailWebView(context, onContentHeightChanged).apply {
   settings.javaScriptEnabled = false
   settings.domStorageEnabled = false
@@ -254,7 +254,7 @@ private fun createMailWebView(
 
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
       rendererLifecycle.gone = true
-      onRenderProcessGone(detail.didCrash())
+      onRendererGone(detail.didCrash())
       return true
     }
   }
