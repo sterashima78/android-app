@@ -172,6 +172,30 @@ data: {"type":"response.output_text.delta","delta":"推測要約"}
   }
 
   @Test
+  fun `web generation rejects bracketed private ipv6 targets before network access`() = runBlocking {
+    val http = RecordingHttpClient()
+    val client = client(http, connectedStore())
+
+    listOf(
+      "https://[::1]/",
+      "https://[fc00::1]/",
+      "https://[fd00::1]/",
+      "https://[fe80::1]/",
+    ).forEach { targetUrl ->
+      val error = runCatching {
+        client.generateWithWebSearch(
+          modelId = "gpt-test",
+          prompt = "要約",
+          targetUrl = targetUrl,
+        )
+      }.exceptionOrNull()
+      assertTrue("$targetUrl should be rejected", error is IllegalArgumentException)
+    }
+
+    assertTrue(http.requests.isEmpty())
+  }
+
+  @Test
   fun `refresh keeps previous refresh token when provider omits rotation`() = runBlocking {
     val store = InMemoryCredentialStore().apply {
       write(ChatGptCredentials(jwt("acct-old"), "refresh-old", 999L, "acct-old"))
