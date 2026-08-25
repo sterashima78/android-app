@@ -36,7 +36,7 @@ Single physical SQLite database
 
 Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、Web source の URL pattern 別 metadata extractor (`web_library_metadata_extractors`)、SMB server・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。
 
-`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、同期 JavaScript function code、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。現行 version 27 baseline では Library の idempotent schema initializer から作成し、この table 追加だけを理由とした database version bump は行わない。
+`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。現行 version 27 baseline では Library の idempotent schema initializer から作成し、この table 追加だけを理由とした database version bump は行わない。
 
 `DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
 
@@ -150,4 +150,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0134](../adr/0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0135](../adr/0135-smb-cover-cache-backup-restore.md)
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
-- [ADR-0172](../adr/0172-web-library-custom-metadata-extractors.md)
+- [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
