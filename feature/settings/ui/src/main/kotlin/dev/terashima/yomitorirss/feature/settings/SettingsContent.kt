@@ -33,6 +33,7 @@ fun SettingsContent(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
   onOpenChatGptDebug: () -> Unit,
+  onOpenAiExecutionSettings: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
   onOpenDriveBackup: () -> Unit,
@@ -69,15 +70,23 @@ fun SettingsContent(
       SettingsRow(
         icon = Icons.Default.Cloud,
         title = "ChatGPT / Codex",
-        supporting = "ChatGPTログイン、クラウドモデル選択、記事要約の実行先を設定",
+        supporting = "ChatGPTログイン、クラウドモデル選択、接続テスト",
         onClick = onOpenChatGptDebug,
+      )
+    }
+    item {
+      SettingsRow(
+        icon = Icons.Default.SmartToy,
+        title = "AI実行設定",
+        supporting = "記事要約などAIタスクごとにローカル／クラウドの実行先を選択",
+        onClick = onOpenAiExecutionSettings,
       )
     }
     item {
       SettingsRow(
         icon = Icons.Default.List,
         title = "AIタスクキュー",
-        supporting = "要約・タグ付け・蔵書整理タスクの状態確認・一時停止・再開",
+        supporting = "タスク状態の確認とローカル／クラウド実行の個別一時停止・再開",
         onClick = onOpenAiTaskQueue,
       )
     }
