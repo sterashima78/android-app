@@ -31,6 +31,8 @@ enum class AiTaskQueueProgressStage {
   PROCESSING_CHUNK,
   REDUCING,
   FINALIZING,
+  CLOUD_GENERATING,
+  CLOUD_ENRICHING,
   UNKNOWN,
 }
 
@@ -58,8 +60,9 @@ data class AiTaskQueueCounts(
 )
 
 data class AiTaskQueueExecutionState(
-  val paused: Boolean,
-  val resumeWhenCharging: Boolean,
+  val localPaused: Boolean,
+  val cloudPaused: Boolean,
+  val resumeLocalWhenCharging: Boolean,
 )
 
 interface AiTaskQueueRepository {
@@ -78,8 +81,9 @@ interface AiTaskQueueRepository {
 
   suspend fun executionState(): AiTaskQueueExecutionState
   suspend fun kick()
-  suspend fun setPaused(paused: Boolean)
-  suspend fun setResumeWhenCharging(enabled: Boolean)
+  suspend fun setLocalPaused(paused: Boolean)
+  suspend fun setCloudPaused(paused: Boolean)
+  suspend fun setResumeLocalWhenCharging(enabled: Boolean)
   suspend fun stop(taskId: String): Boolean
   suspend fun cancel(taskId: String): Boolean
   suspend fun resume(taskId: String): Boolean
