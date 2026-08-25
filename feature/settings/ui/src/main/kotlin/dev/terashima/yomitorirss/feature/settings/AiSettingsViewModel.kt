@@ -27,6 +27,17 @@ data class AiSettingsUiState(
   val benchmarkError: String? = null,
   val contextBenchmarkResult: AiContextBenchmarkReport? = null,
   val contextBenchmarkError: String? = null,
+  val chatGptConnected: Boolean = false,
+  val chatGptAccountLabel: String? = null,
+  val chatGptExpiresAtEpochMillis: Long? = null,
+  val chatGptLogin: ChatGptDebugLoginSession? = null,
+  val chatGptModelId: String = "",
+  val chatGptPrompt: String = "接続確認とだけ返してください。",
+  val chatGptResponse: String? = null,
+  val chatGptElapsedMillis: Long? = null,
+  val chatGptBusy: Boolean = false,
+  val chatGptStatusMessage: String? = null,
+  val chatGptError: String? = null,
   val message: String? = null,
 )
 
@@ -39,8 +50,14 @@ private data class ContextBenchmarkKey(
 class AiSettingsViewModel(
   private val repository: AiModelRepository,
   private val summaryPromptSettings: SummaryPromptSettings,
+  private val chatGptDebugRepository: ChatGptDebugRepository,
 ) : ViewModel() {
-  private val _state = MutableStateFlow(AiSettingsUiState(supported = repository.isSupported()))
+  private val _state = MutableStateFlow(
+    AiSettingsUiState(
+      supported = repository.isSupported(),
+      chatGptModelId = chatGptDebugRepository.defaultModelId,
+    ),
+  )
   val state: StateFlow<AiSettingsUiState> = _state.asStateFlow()
 
   private var lastContextBenchmarkKey: ContextBenchmarkKey? = null
@@ -80,6 +97,131 @@ class AiSettingsViewModel(
 
   fun prepareModelManager() {
     if (!_state.value.benchmarkRunning) clearBenchmark()
+  }
+
+  fun prepareChatGptDebug() {
+    refreshChatGptStatus(clearTransientState = true)
+  }
+
+  fun startChatGptLogin() {
+    if (_state.value.chatGptBusy) return
+    _state.update {
+      it.copy(
+        chatGptBusy = true,
+        chatGptLogin = null,
+        chatGptStatusMessage = null,
+        chatGptError = null,
+        chatGptResponse = null,
+        chatGptElapsedMillis = null,
+      )
+    }
+    viewModelScope.launch {
+      try {
+        val login = chatGptDebugRepository.startLogin()
+        _state.update {
+          it.copy(
+            chatGptLogin = login,
+            chatGptStatusMessage = "ブラウザで認証後、認証完了を確認してください。",
+          )
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        showChatGptError(error)
+      } finally {
+        _state.update { it.copy(chatGptBusy = false) }
+      }
+    }
+  }
+
+  fun pollChatGptLogin() {
+    if (_state.value.chatGptBusy) return
+    val login = _state.value.chatGptLogin ?: return
+    _state.update { it.copy(chatGptBusy = true, chatGptStatusMessage = null, chatGptError = null) }
+    viewModelScope.launch {
+      try {
+        when (chatGptDebugRepository.pollLogin(login.id)) {
+          ChatGptDebugLoginPollResult.PENDING -> {
+            _state.update { it.copy(chatGptStatusMessage = "まだ認証待ちです。") }
+          }
+          ChatGptDebugLoginPollResult.SLOW_DOWN -> {
+            _state.update {
+              it.copy(chatGptStatusMessage = "確認間隔が短すぎます。数秒待ってから再確認してください。")
+            }
+          }
+          ChatGptDebugLoginPollResult.AUTHORIZED -> {
+            refreshChatGptStatus(clearTransientState = true)
+            _state.update { it.copy(chatGptStatusMessage = "ChatGPTに接続しました。") }
+          }
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        showChatGptError(error)
+      } finally {
+        _state.update { it.copy(chatGptBusy = false) }
+      }
+    }
+  }
+
+  fun logoutChatGpt() {
+    runCatching { chatGptDebugRepository.logout() }
+      .onSuccess {
+        _state.update {
+          it.copy(
+            chatGptConnected = false,
+            chatGptAccountLabel = null,
+            chatGptExpiresAtEpochMillis = null,
+            chatGptLogin = null,
+            chatGptResponse = null,
+            chatGptElapsedMillis = null,
+            chatGptStatusMessage = "ChatGPTからログアウトしました。",
+            chatGptError = null,
+          )
+        }
+      }
+      .onFailure(::showChatGptError)
+  }
+
+  fun setChatGptModelId(modelId: String) {
+    _state.update { it.copy(chatGptModelId = modelId, chatGptResponse = null, chatGptElapsedMillis = null) }
+  }
+
+  fun setChatGptPrompt(prompt: String) {
+    _state.update { it.copy(chatGptPrompt = prompt, chatGptResponse = null, chatGptElapsedMillis = null) }
+  }
+
+  fun runChatGptDebugInference() {
+    val current = _state.value
+    if (current.chatGptBusy || current.chatGptModelId.isBlank() || current.chatGptPrompt.isBlank()) return
+    _state.update {
+      it.copy(
+        chatGptBusy = true,
+        chatGptResponse = null,
+        chatGptElapsedMillis = null,
+        chatGptStatusMessage = null,
+        chatGptError = null,
+      )
+    }
+    viewModelScope.launch {
+      try {
+        val result = chatGptDebugRepository.runInference(current.chatGptModelId, current.chatGptPrompt)
+        _state.update {
+          it.copy(
+            chatGptResponse = result.text,
+            chatGptElapsedMillis = result.elapsedMillis,
+            chatGptStatusMessage = "${result.modelId} への推論リクエストが成功しました。",
+          )
+        }
+        refreshChatGptStatus(clearTransientState = false)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        showChatGptError(error)
+      } finally {
+        _state.update { it.copy(chatGptBusy = false) }
+      }
+    }
   }
 
   fun updateSummaryPrompt(prompt: String) {
@@ -163,9 +305,7 @@ class AiSettingsViewModel(
 
   fun downloadModel(modelId: String) {
     runCatching { repository.downloadModel(modelId) }
-      .onSuccess {
-        _state.update { it.copy(message = "モデルのバックグラウンドダウンロードを開始しました") }
-      }
+      .onSuccess { _state.update { it.copy(message = "モデルのバックグラウンドダウンロードを開始しました") } }
       .onFailure(::showError)
   }
 
@@ -187,6 +327,26 @@ class AiSettingsViewModel(
     _state.update { it.copy(message = null) }
   }
 
+  private fun refreshChatGptStatus(clearTransientState: Boolean) {
+    val status = runCatching { chatGptDebugRepository.status() }
+      .getOrElse {
+        showChatGptError(it)
+        return
+      }
+    _state.update {
+      it.copy(
+        chatGptConnected = status.connected,
+        chatGptAccountLabel = status.accountLabel,
+        chatGptExpiresAtEpochMillis = status.expiresAtEpochMillis,
+        chatGptLogin = if (clearTransientState) null else it.chatGptLogin,
+        chatGptResponse = if (clearTransientState) null else it.chatGptResponse,
+        chatGptElapsedMillis = if (clearTransientState) null else it.chatGptElapsedMillis,
+        chatGptStatusMessage = if (clearTransientState) null else it.chatGptStatusMessage,
+        chatGptError = null,
+      )
+    }
+  }
+
   private fun refreshContextBenchmarkIfNeeded() {
     val current = _state.value
     val key = ContextBenchmarkKey(
@@ -201,15 +361,11 @@ class AiSettingsViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         val report = repository.lastContextBenchmark()
-        if (lastContextBenchmarkKey == key) {
-          _state.update { it.copy(contextBenchmarkResult = report) }
-        }
+        if (lastContextBenchmarkKey == key) _state.update { it.copy(contextBenchmarkResult = report) }
       } catch (error: CancellationException) {
         throw error
       } catch (error: Throwable) {
-        if (lastContextBenchmarkKey == key) {
-          _state.update { it.copy(contextBenchmarkError = error.userMessage()) }
-        }
+        if (lastContextBenchmarkKey == key) _state.update { it.copy(contextBenchmarkError = error.userMessage()) }
       }
     }
   }
@@ -229,14 +385,19 @@ class AiSettingsViewModel(
     _state.update { it.copy(message = error.userMessage()) }
   }
 
+  private fun showChatGptError(error: Throwable) {
+    _state.update { it.copy(chatGptError = error.userMessage(), chatGptStatusMessage = null) }
+  }
+
   class Factory(
     private val repository: AiModelRepository,
     private val summaryPromptSettings: SummaryPromptSettings,
+    private val chatGptDebugRepository: ChatGptDebugRepository,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(AiSettingsViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return AiSettingsViewModel(repository, summaryPromptSettings) as T
+      return AiSettingsViewModel(repository, summaryPromptSettings, chatGptDebugRepository) as T
     }
   }
 }

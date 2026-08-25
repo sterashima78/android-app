@@ -35,7 +35,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0127: Health Connect を読み取り専用 Health Context の外部データソースとする](0127-health-connect-read-only.md)
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
-- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime ownership](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0142: app Route の presentation ownership と Task widget 更新境界を整理する](0142-app-route-and-task-widget-ownership-cleanup.md)
 - [ADR-0144: composition runtime group と module map 機械検証を導入する](0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
@@ -51,6 +51,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167: 共通 dependency version を Gradle version catalog へ集約する](0167-gradle-version-catalog-baseline.md)
+- [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
 
 ### Domain / Context / persistence
 
@@ -77,13 +78,14 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167: 共通 dependency version を Gradle version catalog へ集約する](0167-gradle-version-catalog-baseline.md)
+- [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
 
 ## Supporting architecture areas
 
 ### Platform / Android runtime
 
 - [ADR-0126: Android 14 を最小プラットフォーム基準とする](0126-android-platform-baseline.md)
-- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime ownership](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0149: 共有可能なクラッシュ診断を保存前にサニタイズする](0149-sanitize-shareable-crash-diagnostics.md)
@@ -135,7 +137,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0133: SMB 蔵書の表紙取得を永続バックグラウンドキューへ分離する](0133-smb-cover-prefetch-queue.md)
 - [ADR-0134: SMB 書籍の書誌・ファイル名正規化をマルチモーダル候補レビューとして扱う](0134-smb-multimodal-metadata-normalization.md)
 - [ADR-0137: 旧 Summary 実行設定の一度限り migration を終了する](0137-retire-summary-execution-preference-migration.md)
-- [ADR-0139: app entry point と Worker runtime の現行互換性基準を明確化する](0139-app-entrypoint-and-worker-runtime-baseline.md)
+- [ADR-0139: app entry point と Worker runtime ownership](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - [ADR-0145: Android 画像推論の Engine 寿命をメモリ安全性のため制限する](0145-bound-vision-inference-memory-lifetime.md)
 - [ADR-0146: WorkManager Worker の依存解決を WorkerFactory constructor injection へ移す](0146-workmanager-worker-factory-injection.md)
 - [ADR-0148: local model revision marker の互換 migration を終了する](0148-retire-local-model-revision-marker-migration.md)
@@ -145,6 +147,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
+- [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
 
 ### Content / summary / knowledge
 
@@ -199,3 +202,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0165](0165-provider-neutral-text-inference-contract.md)
 - [ADR-0166](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167](0167-gradle-version-catalog-baseline.md)
+- [ADR-0168](0168-chatgpt-codex-cloud-debug-adapter.md)

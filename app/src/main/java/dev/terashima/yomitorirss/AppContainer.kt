@@ -45,7 +45,7 @@ class AppContainer(
   }
 
   private val aiCoreRuntime: AppAiCoreRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AppAiCoreRuntimeDependencies(application, database)
+    AppAiCoreRuntimeDependencies(application, database, httpClient)
   }
 
   private val contentRuntime: AppContentRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -124,6 +124,7 @@ class AppContainer(
   val widgetRefreshScheduler get() = supportingRuntime.widgetRefreshScheduler
   val modelManager get() = aiCoreRuntime.modelManager
   val aiModelRepository get() = aiCoreRuntime.aiModelRepository
+  val chatGptDebugRepository get() = aiCoreRuntime.chatGptDebugRepository
   val summaryPromptSettings get() = aiCoreRuntime.summaryPromptSettings
   val chatRepository get() = supportingRuntime.chatRepository
   val taskRepository get() = supportingRuntime.taskRepository

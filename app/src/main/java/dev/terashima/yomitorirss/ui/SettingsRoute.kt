@@ -16,6 +16,7 @@ import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
 import dev.terashima.yomitorirss.feature.settings.AiModelStatus
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
+import dev.terashima.yomitorirss.feature.settings.ChatGptDebugDialog
 import dev.terashima.yomitorirss.feature.settings.ModelManagerDialog
 import java.time.LocalDate
 
@@ -33,6 +34,7 @@ internal fun SettingsRoute(
   val backupState by backupViewModel.state.collectAsState()
   val aiState by aiSettingsViewModel.state.collectAsState()
   var showModels by remember { mutableStateOf(false) }
+  var showChatGptDebug by remember { mutableStateOf(false) }
   var showSummaryPrompt by remember { mutableStateOf(false) }
   var showBackup by remember { mutableStateOf(false) }
 
@@ -61,6 +63,10 @@ internal fun SettingsRoute(
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
       showModels = true
+    },
+    onOpenChatGptDebug = {
+      aiSettingsViewModel.prepareChatGptDebug()
+      showChatGptDebug = true
     },
     onOpenSummaryPrompt = { showSummaryPrompt = true },
     onOpenDriveBackup = {
@@ -101,6 +107,18 @@ internal fun SettingsRoute(
       onDownload = aiSettingsViewModel::downloadModel,
       onSelect = aiSettingsViewModel::selectModel,
       onDelete = aiSettingsViewModel::deleteModel,
+    )
+  }
+  if (showChatGptDebug) {
+    ChatGptDebugDialog(
+      state = aiState,
+      onDismiss = { showChatGptDebug = false },
+      onStartLogin = aiSettingsViewModel::startChatGptLogin,
+      onPollLogin = aiSettingsViewModel::pollChatGptLogin,
+      onLogout = aiSettingsViewModel::logoutChatGpt,
+      onModelIdChange = aiSettingsViewModel::setChatGptModelId,
+      onPromptChange = aiSettingsViewModel::setChatGptPrompt,
+      onRunInference = aiSettingsViewModel::runChatGptDebugInference,
     )
   }
   if (showSummaryPrompt) {
