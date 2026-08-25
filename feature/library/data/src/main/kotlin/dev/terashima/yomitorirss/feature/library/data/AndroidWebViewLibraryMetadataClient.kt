@@ -17,6 +17,8 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorRepository
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -29,17 +31,24 @@ import kotlin.coroutines.resumeWithException
 
 interface WebLibraryRenderedMetadataClient {
   suspend fun fetch(url: String, titleHint: String? = null): LibraryBook
+
+  fun hasCustomExtractor(url: String): Boolean = false
 }
 
 class AndroidWebViewLibraryMetadataClient(
   private val activityProvider: () -> Activity?,
+  private val extractorRepository: WebLibraryMetadataExtractorRepository? = null,
   private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
 ) : WebLibraryRenderedMetadataClient {
+  override fun hasCustomExtractor(url: String): Boolean =
+    findMatchingWebLibraryMetadataExtractor(extractorRepository?.list().orEmpty(), url) != null
+
   override suspend fun fetch(url: String, titleHint: String?): LibraryBook {
     val requestedUrl = normalizeWebUrl(url)
     require(isSafeRenderedUrl(requestedUrl)) {
       "WebView での metadata 取得は HTTPS ページのみ対応しています"
     }
+    val extractors = extractorRepository?.list().orEmpty()
 
     return withTimeout(timeoutMillis) {
       withContext(Dispatchers.Main.immediate) {
@@ -52,7 +61,7 @@ class AndroidWebViewLibraryMetadataClient(
         require(!activity.isFinishing && !activity.isDestroyed) {
           "WebView metadata を取得できる画面がありません"
         }
-        fetchOnMainThread(activity, requestedUrl, titleHint)
+        fetchOnMainThread(activity, requestedUrl, titleHint, extractors)
       }
     }
   }
@@ -62,6 +71,7 @@ class AndroidWebViewLibraryMetadataClient(
     activity: Activity,
     requestedUrl: String,
     titleHint: String?,
+    extractors: List<WebLibraryMetadataExtractor>,
   ): LibraryBook = suspendCancellableCoroutine { continuation ->
     val mainHandler = Handler(Looper.getMainLooper())
     val webView = WebView(activity)
@@ -116,9 +126,11 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
-    fun extractMetadata(finalUrl: String, generation: Int) {
-      if (completed || generation != pageGeneration) return
-      extractionAttempts += 1
+    fun evaluateStandardMetadata(
+      finalUrl: String,
+      generation: Int,
+      customMetadata: WebLibraryCustomMetadata?,
+    ) {
       webView.evaluateJavascript(METADATA_SCRIPT) { rawResult ->
         if (completed || generation != pageGeneration) return@evaluateJavascript
         runCatching {
@@ -126,7 +138,7 @@ class AndroidWebViewLibraryMetadataClient(
             requestedUrl = finalUrl,
             rawResult = rawResult,
             titleHint = titleHint,
-          )
+          ).applyCustomMetadata(customMetadata)
         }.fold(
           onSuccess = { book ->
             if (!book.needsRenderedWebMetadata() || extractionAttempts >= MAX_EXTRACTION_ATTEMPTS) {
@@ -140,6 +152,23 @@ class AndroidWebViewLibraryMetadataClient(
           },
           onFailure = { error -> finish(Result.failure(error)) },
         )
+      }
+    }
+
+    fun extractMetadata(finalUrl: String, generation: Int) {
+      if (completed || generation != pageGeneration) return
+      extractionAttempts += 1
+      val extractor = findMatchingWebLibraryMetadataExtractor(extractors, finalUrl)
+        ?: findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
+      if (extractor == null) {
+        evaluateStandardMetadata(finalUrl, generation, null)
+        return
+      }
+
+      webView.evaluateJavascript(customMetadataScript(extractor.functionCode)) { rawResult ->
+        if (completed || generation != pageGeneration) return@evaluateJavascript
+        val customMetadata = parseCustomRenderedWebLibraryMetadata(finalUrl, rawResult)
+        evaluateStandardMetadata(finalUrl, generation, customMetadata)
       }
     }
 
@@ -213,6 +242,56 @@ class AndroidWebViewLibraryMetadataClient(
 
     webView.loadUrl(requestedUrl)
   }
+}
+
+internal data class WebLibraryCustomMetadata(
+  val title: String?,
+  val thumbnailUrl: String?,
+)
+
+internal fun customMetadataScript(functionCode: String): String {
+  val expression = functionCode.trim().removeSuffix(";")
+  return """
+    (() => {
+      const extractor = ($expression);
+      if (typeof extractor !== 'function') return null;
+      const value = extractor({ url: location.href });
+      if (!value || typeof value !== 'object') return null;
+      const title = typeof value.title === 'string' ? value.title.trim() : null;
+      const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
+      return JSON.stringify({
+        title: title || null,
+        thumbnailUrl: thumbnailUrl || null
+      });
+    })()
+  """.trimIndent()
+}
+
+internal fun parseCustomRenderedWebLibraryMetadata(
+  finalUrl: String,
+  rawResult: String?,
+): WebLibraryCustomMetadata? = runCatching {
+  val evaluationResult = rawResult ?: return null
+  val decoded = JSONTokener(evaluationResult).nextValue()
+  if (decoded == JSONObject.NULL) return null
+  val metadata = when (decoded) {
+    is JSONObject -> decoded
+    is String -> JSONObject(decoded)
+    else -> return null
+  }
+  val title = metadata.optionalString("title")
+  val thumbnailUrl = metadata.optionalString("thumbnailUrl")
+    ?.let { resolveRenderedImageUrl(finalUrl, it) }
+  if (title == null && thumbnailUrl == null) return null
+  WebLibraryCustomMetadata(title = title, thumbnailUrl = thumbnailUrl)
+}.getOrNull()
+
+internal fun LibraryBook.applyCustomMetadata(customMetadata: WebLibraryCustomMetadata?): LibraryBook {
+  if (customMetadata == null) return this
+  return copy(
+    title = customMetadata.title ?: title,
+    thumbnailUrl = customMetadata.thumbnailUrl ?: thumbnailUrl,
+  )
 }
 
 internal fun parseRenderedWebLibraryBook(
