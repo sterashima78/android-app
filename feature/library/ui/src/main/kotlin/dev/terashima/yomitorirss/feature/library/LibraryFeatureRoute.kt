@@ -44,7 +44,7 @@ fun LibraryFeatureRoute(
   organizationViewModel: LibraryOrganizationViewModel,
   onSyncGooglePlayBooks: () -> Unit,
   onAddWebBook: suspend (String) -> Unit,
-  onRefreshWebBook: suspend (LibraryBook) -> Unit,
+  onRefreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   smbRepository: SmbLibraryRepository,
@@ -56,7 +56,7 @@ fun LibraryFeatureRoute(
   val organizationState by organizationViewModel.state.collectAsState()
   var organizationVisible by rememberSaveable { mutableStateOf(false) }
   var openedSmbBook by remember { mutableStateOf<LibraryBook?>(null) }
-  var refreshingWebSourceIds by remember { mutableStateOf(emptySet<String>()) }
+  var webRefreshState by remember { mutableStateOf(WebLibraryRefreshUiState()) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
@@ -110,36 +110,77 @@ fun LibraryFeatureRoute(
         .onFailure(viewModel::reportError)
     }
   }
+
+  fun replaceRefreshItem(item: WebLibraryRefreshItemUiState) {
+    webRefreshState = webRefreshState.copy(
+      items = webRefreshState.items.map { current ->
+        if (current.sourceId == item.sourceId) item else current
+      },
+    )
+  }
+
   val refreshWebBooks: (List<LibraryBook>) -> Unit = { books ->
-    if (books.isNotEmpty() && refreshingWebSourceIds.isEmpty()) {
-      refreshingWebSourceIds = books.mapTo(linkedSetOf()) { it.sourceId }
+    if (books.isNotEmpty() && !webRefreshState.running) {
+      webRefreshState = WebLibraryRefreshUiState(
+        running = true,
+        total = books.size,
+        completed = 0,
+        items = books.map { book ->
+          WebLibraryRefreshItemUiState(
+            sourceId = book.sourceId,
+            title = book.title,
+            status = WebLibraryRefreshItemStatus.PENDING,
+          )
+        },
+      )
       scope.launch {
-        val failures = mutableListOf<Throwable>()
+        var completed = 0
         try {
           books.forEach { book ->
-            try {
-              withContext(Dispatchers.IO) { onRefreshWebBook(book) }
+            replaceRefreshItem(
+              WebLibraryRefreshItemUiState(
+                sourceId = book.sourceId,
+                title = book.title,
+                status = WebLibraryRefreshItemStatus.RUNNING,
+              ),
+            )
+            val item = try {
+              val result = withContext(Dispatchers.IO) { onRefreshWebBook(book) }
+              webLibraryRefreshSuccessUiState(
+                sourceId = book.sourceId,
+                title = result.book.title,
+                result = result,
+              )
             } catch (error: CancellationException) {
               throw error
             } catch (error: Throwable) {
-              failures += error
+              WebLibraryRefreshItemUiState(
+                sourceId = book.sourceId,
+                title = book.title,
+                status = WebLibraryRefreshItemStatus.FAILED,
+                detail = error.message?.trim()?.takeIf(String::isNotEmpty)
+                  ?: "metadata の再取得に失敗しました",
+              )
             }
+            completed += 1
+            replaceRefreshItem(item)
+            webRefreshState = webRefreshState.copy(completed = completed)
           }
           viewModel.refresh()
-          if (failures.isNotEmpty()) {
-            viewModel.reportError(
-              IllegalStateException(
-                "Web蔵書の再取得に失敗しました (${failures.size}/${books.size}件)",
-                failures.first(),
-              ),
-            )
-          }
         } finally {
-          refreshingWebSourceIds = emptySet()
+          webRefreshState = webRefreshState.copy(running = false)
         }
       }
     }
   }
+  val webBooks = state.books.filter { it.source == LibrarySource.WEB }
+  val webSettingsBinding = WebLibrarySettingsUiBinding(
+    books = webBooks,
+    refreshState = webRefreshState,
+    onRefresh = { book -> refreshWebBooks(listOf(book)) },
+    onRefreshAll = { refreshWebBooks(webBooks) },
+    onMoveToBookmark = moveWebBookToBookmark,
+  )
 
   Box(modifier = modifier.fillMaxSize()) {
     CompositionLocalProvider(
@@ -147,6 +188,7 @@ fun LibraryFeatureRoute(
       LocalWebLibraryImportHandler provides webLibraryImportHandler,
       LocalWebLibraryDeleteHandler provides deleteWebBook,
       LocalWebLibraryMoveToBookmarkHandler provides moveWebBookToBookmark,
+      LocalWebLibrarySettingsUiBinding provides webSettingsBinding,
       LocalSmbLibraryUiBinding provides smbBinding,
       LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
     ) {
@@ -168,8 +210,7 @@ fun LibraryFeatureRoute(
       )
     }
 
-    WebLibraryActions(
-      books = state.books.filter { it.source == LibrarySource.WEB },
+    WebLibraryAddAction(
       onAdd = { url ->
         scope.launch {
           runCatching {
@@ -179,12 +220,6 @@ fun LibraryFeatureRoute(
             .onFailure(viewModel::reportError)
         }
       },
-      onRefresh = { book -> refreshWebBooks(listOf(book)) },
-      onRefreshAll = {
-        refreshWebBooks(state.books.filter { it.source == LibrarySource.WEB })
-      },
-      refreshingSourceIds = refreshingWebSourceIds,
-      onMoveToBookmark = moveWebBookToBookmark,
       modifier = Modifier
         .align(Alignment.BottomEnd)
         .padding(end = 16.dp, bottom = 88.dp),
