@@ -235,22 +235,24 @@ fun WebLibraryActions(
         editingExtractor = null
       },
       onSave = { id, urlPattern, functionCode ->
-        val binding = extractorBinding ?: return@WebLibraryMetadataExtractorEditor
-        scope.launch {
-          extractorBusy = true
-          runCatching {
-            withContext(Dispatchers.IO) {
-              binding.save(id, urlPattern, functionCode)
-              binding.list()
+        val binding = extractorBinding
+        if (binding != null) {
+          scope.launch {
+            extractorBusy = true
+            runCatching {
+              withContext(Dispatchers.IO) {
+                binding.save(id, urlPattern, functionCode)
+                binding.list()
+              }
             }
+              .onSuccess { updated ->
+                extractorRules = updated
+                creatingExtractor = false
+                editingExtractor = null
+              }
+              .onFailure(binding.onError)
+            extractorBusy = false
           }
-            .onSuccess { updated ->
-              extractorRules = updated
-              creatingExtractor = false
-              editingExtractor = null
-            }
-            .onFailure(binding.onError)
-          extractorBusy = false
         }
       },
     )
