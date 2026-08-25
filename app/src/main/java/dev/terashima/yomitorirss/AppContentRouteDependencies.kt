@@ -143,7 +143,7 @@ internal class AppContentRouteDependencies(
       },
       bookReader = BookReaderRouteDependencies(
         pageSourceFactory = runtime.bookPageSourceFactory,
-        readingPositionStore = runtime.bookReader.readingPositionStore,
+        readingPositionStore = runtime.readingPositionStore,
       ),
     )
   }
