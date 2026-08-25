@@ -38,25 +38,26 @@ internal class ChatGptSummaryCloudInference(
   } catch (error: CancellationException) {
     throw error
   } catch (error: IOException) {
-    throw SummaryCloudInferenceException(
-      kind = SummaryCloudFailureKind.TRANSIENT,
-      retryable = true,
-      message = "ChatGPT / Codex との通信に失敗しました。自動的に再試行します",
-      cause = error,
-    )
+    throw classifyTransportFailure(error)
   } catch (error: IllegalStateException) {
     throw classifyProviderFailure(error)
   }
 }
 
+internal fun classifyTransportFailure(error: IOException): SummaryCloudInferenceException =
+  SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.TRANSIENT,
+    retryable = true,
+    message = "ChatGPT / Codex との通信に失敗しました。自動的に再試行します",
+  )
+
 internal fun classifyProviderFailure(error: IllegalStateException): SummaryCloudInferenceException {
   val status = HTTP_STATUS_PATTERN.find(error.message.orEmpty())?.groupValues?.getOrNull(1)?.toIntOrNull()
   return when {
-    status == 401 || status == 403 -> SummaryCloudInferenceException(
+    status == 401 || status == 403 || isRefreshCredentialRejection(error, status) -> SummaryCloudInferenceException(
       kind = SummaryCloudFailureKind.AUTHENTICATION,
       retryable = false,
       message = "ChatGPT の認証が無効です。設定から再ログインしてください",
-      cause = error,
     )
     status == 408 || status == 429 || status != null && status in 500..599 -> SummaryCloudInferenceException(
       kind = if (status == 429) SummaryCloudFailureKind.RATE_LIMITED else SummaryCloudFailureKind.TRANSIENT,
@@ -66,22 +67,22 @@ internal fun classifyProviderFailure(error: IllegalStateException): SummaryCloud
       } else {
         "ChatGPT / Codex が一時的に利用できません。自動的に再試行します"
       },
-      cause = error,
     )
     status != null && status in 400..499 -> SummaryCloudInferenceException(
       kind = SummaryCloudFailureKind.REQUEST_REJECTED,
       retryable = false,
       message = "ChatGPT / Codex にリクエストを受け付けてもらえませんでした (HTTP $status)",
-      cause = error,
     )
     else -> SummaryCloudInferenceException(
       kind = SummaryCloudFailureKind.UNKNOWN,
       retryable = false,
       message = sanitizeUnknownProviderMessage(error.message),
-      cause = error,
     )
   }
 }
+
+private fun isRefreshCredentialRejection(error: IllegalStateException, status: Int?): Boolean =
+  status != null && status in 400..499 && error.message.orEmpty().contains("OAuth token refresh", ignoreCase = true)
 
 private fun sanitizeUnknownProviderMessage(message: String?): String {
   val value = message.orEmpty()
