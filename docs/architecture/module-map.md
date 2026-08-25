@@ -11,8 +11,10 @@
 ├── core/       cross-cutting technical capabilities
 ├── config/     machine-readable architecture configuration
 ├── docs/       specification / architecture / ADR
-└── gradle/     build and architecture verification support
+└── gradle/     build configuration and architecture verification support
 ```
+
+共通 external dependency version は、移行済み dependency について [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml) を正本とする。module-local `build.gradle.kts` は generated `libs` accessor を利用する。Android platform baseline は別契約であり、各 Android module の `minSdk = 34` 明示と architecture verification を維持する。
 
 ## App
 
@@ -128,6 +130,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 
 - module の追加・削除・layer 構成変更: `settings.gradle.kts` と本表を同じ PR で更新する。Architecture CI が両者の不一致を検出する。
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
+- shared dependency version を catalog へ追加・変更する: `gradle/libs.versions.toml` を正本とし、対象 module の alias 利用と regression test を同じ変更で更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
 - app composition adapter / app shell navigation の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
 - AppContainer の runtime group または AppRouteDependencies の composition group 分割を変更する: application scope / caller contract を維持し、必要なら ADR と本 `App` 節を更新する。
@@ -136,6 +139,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 ## Sources
 
 - [`settings.gradle.kts`](../../settings.gradle.kts)
+- [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml)
 - [`scripts/verify_module_map.py`](../../scripts/verify_module_map.py)
 - [ADR-0001](../adr/0001-layered-architecture.md)
 - [ADR-0003](../adr/0003-multi-module-architecture.md)
@@ -151,3 +155,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)
 - [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
+- [ADR-0167](../adr/0167-gradle-version-catalog-baseline.md)
