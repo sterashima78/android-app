@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.chat.ChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.BackfillBookmarkAutoEnrichmentUseCase
@@ -35,6 +36,7 @@ internal class AppCrossFeatureRuntimeDependencies(
   private val taskRepository: TaskRepository,
   private val libraryRuntime: LibraryRuntimeDependencies,
   private val knowledgeBuildTaskController: KnowledgeBuildTaskController,
+  private val knowledgeExecutionSettings: KnowledgeExecutionSettings,
 ) {
   val chatGenerator: ChatGenerator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     LocalChatGenerator(
@@ -84,6 +86,7 @@ internal class AppCrossFeatureRuntimeDependencies(
       libraryCatalogRepository = libraryRuntime.catalogRepository,
       libraryScheduler = libraryRuntime.organizationBatchScheduler,
       knowledgeController = knowledgeBuildTaskController,
+      knowledgeExecutionSettings = knowledgeExecutionSettings,
       smbMetadataNormalizationRepository = libraryRuntime.smbMetadataNormalizationRepository,
       smbMetadataNormalizationScheduler = libraryRuntime.smbMetadataNormalizationScheduler,
     )
