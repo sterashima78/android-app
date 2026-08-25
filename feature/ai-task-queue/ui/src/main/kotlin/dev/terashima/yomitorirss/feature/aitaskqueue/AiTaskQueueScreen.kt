@@ -282,13 +282,22 @@ internal fun aiTaskFailureReason(item: AiTaskQueueItem): String? {
     ?: "詳細な失敗理由は記録されていません"
 }
 
+internal fun taskExecutionProviderLabel(provider: AiTaskExecutionProvider?): String? = when (provider) {
+  AiTaskExecutionProvider.LOCAL -> "Local"
+  AiTaskExecutionProvider.CHATGPT -> "ChatGPT"
+  null -> null
+}
+
 private fun taskTitle(item: AiTaskQueueItem): String = item.title
 
-private fun taskSource(item: AiTaskQueueItem): String = when (item.kind) {
-  AiTaskQueueItemKind.SUMMARY -> "要約 ・ ${item.source}"
-  AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書整理 ・ ${item.source}"
-  AiTaskQueueItemKind.SMB_METADATA_NORMALIZATION -> "書誌正規化 ・ ${item.source}"
-  AiTaskQueueItemKind.KNOWLEDGE_WIKI -> "LLM Wiki ・ ${item.source}"
+private fun taskSource(item: AiTaskQueueItem): String {
+  val source = when (item.kind) {
+    AiTaskQueueItemKind.SUMMARY -> "要約 ・ ${item.source}"
+    AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書整理 ・ ${item.source}"
+    AiTaskQueueItemKind.SMB_METADATA_NORMALIZATION -> "書誌正規化 ・ ${item.source}"
+    AiTaskQueueItemKind.KNOWLEDGE_WIKI -> "LLM Wiki ・ ${item.source}"
+  }
+  return taskExecutionProviderLabel(item.executionProvider)?.let { "$source ・ $it" } ?: source
 }
 
 private fun priorityLabel(priority: AiTaskQueueItemPriority): String = when (priority) {
