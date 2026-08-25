@@ -11,9 +11,21 @@ internal fun YomitoriDatabase.findSummaryTask(id: String): SummaryTaskRecord? = 
   arrayOf(id),
 ).use { cursor -> if (!cursor.moveToFirst()) null else cursor.summaryTaskRecord() }
 
-internal fun YomitoriDatabase.enqueueSummaryTask(id: String, forceRefresh: Boolean): Boolean = transaction {
+internal fun YomitoriDatabase.enqueueSummaryTask(
+  id: String,
+  forceRefresh: Boolean,
+  replaceBookmarkTags: Boolean = false,
+): Boolean = transaction {
+  require(!replaceBookmarkTags || forceRefresh) {
+    "Bookmark tag replacement requires a force-refresh summary task"
+  }
   rawQuery("SELECT state FROM summary_tasks WHERE article_id=?", arrayOf(id)).use { cursor ->
     if (cursor.moveToFirst() && cursor.getString(0) in setOf(SUMMARY_QUEUED, SUMMARY_RUNNING)) return@transaction false
+  }
+  val refreshMode = when {
+    replaceBookmarkTags -> SUMMARY_REFRESH_AND_REPLACE_TAGS
+    forceRefresh -> SUMMARY_REFRESH_SUMMARY
+    else -> SUMMARY_REFRESH_NONE
   }
   insertWithOnConflict(
     "summary_tasks",
@@ -21,7 +33,7 @@ internal fun YomitoriDatabase.enqueueSummaryTask(id: String, forceRefresh: Boole
     values(
       "article_id" to id,
       "state" to SUMMARY_QUEUED,
-      "force_refresh" to if (forceRefresh) "1" else "0",
+      "force_refresh" to refreshMode.toString(),
       "queued_at" to nowIso(),
       "started_at" to null,
       "finished_at" to null,
@@ -221,18 +233,22 @@ private inline fun <T> YomitoriDatabase.transaction(block: SQLiteDatabase.() -> 
   }
 }
 
-internal fun Cursor.summaryTaskRecord(): SummaryTaskRecord = SummaryTaskRecord(
-  articleId = text("article_id"),
-  state = text("state"),
-  forceRefresh = getInt(getColumnIndexOrThrow("force_refresh")) == 1,
-  queuedAt = text("queued_at"),
-  startedAt = nullableText("started_at"),
-  finishedAt = nullableText("finished_at"),
-  error = nullableText("error"),
-  progressStage = nullableText("progress_stage"),
-  progressCurrent = nullableInt("progress_current"),
-  progressTotal = nullableInt("progress_total"),
-)
+internal fun Cursor.summaryTaskRecord(): SummaryTaskRecord {
+  val refreshMode = getInt(getColumnIndexOrThrow("force_refresh"))
+  return SummaryTaskRecord(
+    articleId = text("article_id"),
+    state = text("state"),
+    forceRefresh = refreshMode != SUMMARY_REFRESH_NONE,
+    replaceBookmarkTags = refreshMode == SUMMARY_REFRESH_AND_REPLACE_TAGS,
+    queuedAt = text("queued_at"),
+    startedAt = nullableText("started_at"),
+    finishedAt = nullableText("finished_at"),
+    error = nullableText("error"),
+    progressStage = nullableText("progress_stage"),
+    progressCurrent = nullableInt("progress_current"),
+    progressTotal = nullableInt("progress_total"),
+  )
+}
 
 private fun Cursor.text(name: String): String = getString(getColumnIndexOrThrow(name))
 private fun Cursor.nullableText(name: String): String? = getColumnIndexOrThrow(name).let { if (isNull(it)) null else getString(it) }
@@ -241,3 +257,7 @@ private fun nowIso(): String = Instant.now().toString()
 private fun values(vararg entries: Pair<String, String?>): ContentValues = ContentValues().apply {
   entries.forEach { (key, value) -> if (value == null) putNull(key) else put(key, value) }
 }
+
+private const val SUMMARY_REFRESH_NONE = 0
+private const val SUMMARY_REFRESH_SUMMARY = 1
+private const val SUMMARY_REFRESH_AND_REPLACE_TAGS = 2

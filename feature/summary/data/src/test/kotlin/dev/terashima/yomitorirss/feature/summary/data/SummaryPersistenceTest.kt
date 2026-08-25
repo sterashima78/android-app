@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.articleDatabaseSchema
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -139,6 +140,35 @@ class SummaryPersistenceTest {
     database.enqueueSummaryTask("refresh", forceRefresh = true)
 
     assertEquals("refresh", database.listSummaryContentFetchCandidates().single().articleId)
+    assertNull(database.claimNextInferenceReadySummaryTask())
+  }
+
+  @Test
+  fun `通常の強制再要約ではBookmarkタグ置換を要求しない`() {
+    insertArticle("refresh-summary")
+
+    database.enqueueSummaryTask("refresh-summary", forceRefresh = true)
+
+    val task = checkNotNull(database.findSummaryTask("refresh-summary"))
+    assertTrue(task.forceRefresh)
+    assertFalse(task.replaceBookmarkTags)
+  }
+
+  @Test
+  fun `タグ再生成付き強制再要約では既存要約があっても本文を取得し直してタグ置換を要求する`() {
+    insertArticle("refresh-tags")
+    database.saveSummary("refresh-tags", "old summary", "old-cache-key")
+
+    database.enqueueSummaryTask(
+      id = "refresh-tags",
+      forceRefresh = true,
+      replaceBookmarkTags = true,
+    )
+
+    val task = checkNotNull(database.findSummaryTask("refresh-tags"))
+    assertTrue(task.forceRefresh)
+    assertTrue(task.replaceBookmarkTags)
+    assertEquals("refresh-tags", database.listSummaryContentFetchCandidates().single().articleId)
     assertNull(database.claimNextInferenceReadySummaryTask())
   }
 

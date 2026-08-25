@@ -121,6 +121,7 @@ internal fun AppFeatureContent(
         onOpen = onOpenArticle,
         onSummarize = { article -> summaryViewModel.summarize(article) },
         onMoveToLibrary = routeDependencies.libraryTransfers.moveBookmarkToLibrary,
+        onReprocessEnrichment = routeDependencies.reprocessBookmarkEnrichment,
         onImportCompleted = { appViewModel.selectTab(MainTab.SAVED) },
       )
     }
@@ -136,6 +137,7 @@ internal fun AppFeatureContent(
         onOpen = onOpenArticle,
         onSummarize = {},
         onMoveToLibrary = routeDependencies.libraryTransfers.moveBookmarkToLibrary,
+        onReprocessEnrichment = routeDependencies.reprocessBookmarkEnrichment,
         onImportCompleted = { appViewModel.selectTab(MainTab.SAVED) },
       )
     }

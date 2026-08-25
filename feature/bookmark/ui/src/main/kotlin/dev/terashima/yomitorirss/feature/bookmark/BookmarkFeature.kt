@@ -3,15 +3,26 @@ package dev.terashima.yomitorirss.feature.bookmark
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -49,6 +60,8 @@ fun BookmarkScreen(
   onRenameTag: (Tag, String) -> Unit,
   onDeleteTag: (Tag) -> Unit,
   onDeleteUnusedTags: () -> Unit,
+  onReprocessEnrichment: () -> Unit,
+  isReprocessingEnrichment: Boolean,
   onImportCsv: () -> Unit,
   onImportHtml: () -> Unit,
 ) {
@@ -65,6 +78,8 @@ fun BookmarkScreen(
       onMoveToLibrary = onMoveToLibrary,
       onSetContentType = onSetContentType,
       onUnsave = onUnsave,
+      onReprocessEnrichment = onReprocessEnrichment,
+      isReprocessingEnrichment = isReprocessingEnrichment,
     )
 
     BookmarkTab.FOLDERS -> FolderManagerScreen(
@@ -114,8 +129,25 @@ private fun BookmarkSavedScreen(
   onMoveToLibrary: (Article) -> Unit,
   onSetContentType: (Article, ContentType?) -> Unit,
   onUnsave: (Article) -> Unit,
+  onReprocessEnrichment: () -> Unit,
+  isReprocessingEnrichment: Boolean,
 ) {
+  var confirmingReprocess by remember { mutableStateOf(false) }
+
   Column(modifier.fillMaxSize()) {
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+      horizontalArrangement = Arrangement.End,
+    ) {
+      TextButton(
+        onClick = { confirmingReprocess = true },
+        enabled = state.bookmarkDetails.isNotEmpty() && !isReprocessingEnrichment,
+      ) {
+        Icon(Icons.Default.Refresh, contentDescription = null)
+        Text(if (isReprocessingEnrichment) "再実行を予約中…" else "要約・タグを一括再実行")
+      }
+    }
+
     LazyRow(
       modifier = Modifier.fillMaxWidth().height(54.dp),
       contentPadding = PaddingValues(horizontal = 12.dp),
@@ -185,6 +217,34 @@ private fun BookmarkSavedScreen(
         listOf(
           ArticleMenuAction("蔵書へ移動") { onMoveToLibrary(article) },
         )
+      },
+    )
+  }
+
+  if (confirmingReprocess) {
+    AlertDialog(
+      onDismissRequest = { confirmingReprocess = false },
+      title = { Text("要約とタグ付けを一括再実行") },
+      text = {
+        Text(
+          "自動AI処理の対象となるブックマークの要約を再生成し、その要約を使ってタグ付けも再実行します。" +
+            "再生成に成功した記事の既存タグは生成されたタグで置き換えます。処理中の記事は重複してキューへ追加しません。",
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            confirmingReprocess = false
+            onReprocessEnrichment()
+          },
+        ) {
+          Text("再実行")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { confirmingReprocess = false }) {
+          Text("キャンセル")
+        }
       },
     )
   }

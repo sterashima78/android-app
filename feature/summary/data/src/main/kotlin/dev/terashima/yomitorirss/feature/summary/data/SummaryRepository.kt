@@ -57,9 +57,28 @@ class DefaultSummaryRepository(
     )
   }
 
+  override suspend fun requestBookmarkEnrichmentRefresh(articleId: String): SummaryRequestResult {
+    requireExecutionProviderAvailable()
+    return SummaryRequestResult.Enqueued(
+      accepted = SummaryQueue.enqueue(
+        context = appContext,
+        articleId = articleId,
+        forceRefresh = true,
+        replaceBookmarkTags = true,
+      ),
+      forceRefresh = true,
+    )
+  }
+
   override suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int {
     if (articleIds.isEmpty() || !executionProviderAvailable()) return 0
     return SummaryQueue.enqueueMissingBookmarkEnrichment(appContext, articleIds)
+  }
+
+  override suspend fun enqueueBookmarkEnrichmentRefresh(articleIds: List<String>): Int {
+    if (articleIds.isEmpty()) return 0
+    requireExecutionProviderAvailable()
+    return SummaryQueue.enqueueBookmarkEnrichmentRefresh(appContext, articleIds)
   }
 
   override suspend fun findSummary(articleId: String): String? =

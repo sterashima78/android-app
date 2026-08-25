@@ -15,6 +15,7 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.BackfillBookmarkAutoEnrichmentUseCase
+import dev.terashima.yomitorirss.feature.summary.ReprocessBookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryTaskQueueRepository
@@ -54,7 +55,16 @@ internal class AppCrossFeatureRuntimeDependencies(
   ) {
     BackfillBookmarkAutoEnrichmentUseCase(
       bookmarks = bookmarkRepository,
-      enrichmentRequester = summaryRepository,
+      batchRequester = summaryRepository,
+    )
+  }
+
+  val reprocessBookmarkAutoEnrichmentUseCase: ReprocessBookmarkAutoEnrichmentUseCase by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    ReprocessBookmarkAutoEnrichmentUseCase(
+      bookmarks = bookmarkRepository,
+      batchRequester = summaryRepository,
     )
   }
 

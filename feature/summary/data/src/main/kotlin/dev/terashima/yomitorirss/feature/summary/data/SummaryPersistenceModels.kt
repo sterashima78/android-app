@@ -11,6 +11,7 @@ internal data class SummaryTaskRecord(
   val articleId: String,
   val state: String,
   val forceRefresh: Boolean,
+  val replaceBookmarkTags: Boolean = false,
   val queuedAt: String,
   val startedAt: String?,
   val finishedAt: String?,

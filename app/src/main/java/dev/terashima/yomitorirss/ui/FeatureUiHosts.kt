@@ -115,7 +115,13 @@ internal fun SummaryOverlay(routeDependencies: AppRouteDependencies) {
       loading = summaryState.loading,
       progress = aiState.summaryProgress?.let(::summaryProgressLabel),
       onDismiss = summaryViewModel::dismissSummary,
-      onRetry = { summaryViewModel.summarize(article, forceRefresh = true) },
+      onRetry = { replaceBookmarkTags ->
+        summaryViewModel.summarize(
+          article = article,
+          forceRefresh = true,
+          replaceBookmarkTags = replaceBookmarkTags,
+        )
+      },
     )
   }
 }

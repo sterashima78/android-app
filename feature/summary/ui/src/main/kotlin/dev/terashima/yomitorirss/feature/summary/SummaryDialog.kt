@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -18,6 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,9 +38,10 @@ fun SummaryDialog(
   loading: Boolean,
   progress: String?,
   onDismiss: () -> Unit,
-  onRetry: () -> Unit,
+  onRetry: (replaceBookmarkTags: Boolean) -> Unit,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  var replaceBookmarkTags by remember(article.id) { mutableStateOf(false) }
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
@@ -66,6 +72,24 @@ fun SummaryDialog(
           }
         }
       }
+      if (!loading && text != null) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Checkbox(
+            checked = replaceBookmarkTags,
+            onCheckedChange = { replaceBookmarkTags = it },
+          )
+          Column(modifier = Modifier.weight(1f)) {
+            Text("ブックマークのタグも再生成")
+            Text(
+              "ONにすると既存タグを生成されたタグで置き換えます",
+              style = MaterialTheme.typography.bodySmall,
+            )
+          }
+        }
+      }
       Spacer(Modifier.height(8.dp))
       Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -73,7 +97,7 @@ fun SummaryDialog(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         if (!loading && text != null) {
-          TextButton(onClick = onRetry) { Text("再生成") }
+          TextButton(onClick = { onRetry(replaceBookmarkTags) }) { Text("再生成") }
         }
         TextButton(onClick = onDismiss) { Text("閉じる") }
       }

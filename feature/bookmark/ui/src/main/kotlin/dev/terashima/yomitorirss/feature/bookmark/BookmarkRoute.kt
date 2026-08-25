@@ -17,7 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.feature.article.Article
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BookmarkEditController internal constructor() {
   internal var editTagsFor by mutableStateOf<Article?>(null)
@@ -44,11 +46,13 @@ fun BookmarkRoute(
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onMoveToLibrary: suspend (Article) -> Unit,
+  onReprocessEnrichment: suspend () -> Int,
   onImportCompleted: () -> Unit,
 ) {
   val state by bookmarkViewModel.state.collectAsState()
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
+  var isReprocessingEnrichment by remember { mutableStateOf(false) }
   val csvImportLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.OpenDocument(),
   ) { uri -> uri?.toString()?.let(bookmarkViewModel::importCsv) }
@@ -111,6 +115,34 @@ fun BookmarkRoute(
     onRenameTag = bookmarkViewModel::renameTag,
     onDeleteTag = bookmarkViewModel::deleteTag,
     onDeleteUnusedTags = bookmarkViewModel::deleteUnusedTags,
+    onReprocessEnrichment = {
+      if (!isReprocessingEnrichment) {
+        isReprocessingEnrichment = true
+        scope.launch {
+          val result = withContext(Dispatchers.IO) {
+            runCatching { onReprocessEnrichment() }
+          }
+          result
+            .onSuccess { count ->
+              val message = if (count > 0) {
+                "要約とタグ付けの再実行を${count}件予約しました"
+              } else {
+                "再実行できるブックマークはありません"
+              }
+              Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+            .onFailure { error ->
+              Toast.makeText(
+                context,
+                error.message ?: "要約とタグ付けの一括再実行を開始できませんでした",
+                Toast.LENGTH_LONG,
+              ).show()
+            }
+          isReprocessingEnrichment = false
+        }
+      }
+    },
+    isReprocessingEnrichment = isReprocessingEnrichment,
     onImportCsv = {
       csvImportLauncher.launch(
         arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
