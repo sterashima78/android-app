@@ -6,24 +6,24 @@ import org.junit.Test
 
 class AiTextInferenceTest {
   @Test
-  fun `推論モデルは実行に必要な能力とキャッシュ識別子を保持する`() {
+  fun `推論モデルは実行に必要な能力とキャッシュvariantを保持する`() {
     val model = AiTextInferenceModel(
       id = "model-a",
       name = "Model A",
       contextTokens = 8_192,
       maxInputChars = 24_000,
       promptBudgetChars = 20_000,
-      cacheIdentity = "runtime:model-a:variant-1",
+      cacheVariant = "variant-1",
     )
 
     assertEquals("model-a", model.id)
     assertEquals(8_192, model.contextTokens)
     assertEquals(20_000, model.promptBudgetChars)
-    assertEquals("runtime:model-a:variant-1", model.cacheIdentity)
+    assertEquals("variant-1", model.cacheVariant)
   }
 
   @Test
-  fun `推論モデルは空のキャッシュ識別子を拒否する`() {
+  fun `推論モデルは空のキャッシュvariantを拒否する`() {
     assertThrows(IllegalArgumentException::class.java) {
       AiTextInferenceModel(
         id = "model-a",
@@ -31,7 +31,7 @@ class AiTextInferenceTest {
         contextTokens = 8_192,
         maxInputChars = 24_000,
         promptBudgetChars = 20_000,
-        cacheIdentity = "",
+        cacheVariant = "",
       )
     }
   }
