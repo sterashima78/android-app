@@ -1,9 +1,9 @@
 package dev.terashima.yomitorirss.feature.web.data
 
+import java.net.URI
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
-import java.net.URI
 
 class LanWebServerTest {
   @Test
@@ -18,10 +18,31 @@ class LanWebServerTest {
   fun `bootstrap tokenは一度だけ使用でき認証後はsession tokenを使う`() {
     val authentication = LanWebAuthentication("bootstrap") { "session" }
 
-    assertEquals(AuthenticationResult.Bootstrapped, authentication.authenticate("bootstrap", null))
+    assertEquals(AuthenticationResult.Bootstrapped("session"), authentication.authenticate("bootstrap", null))
     assertEquals(AuthenticationResult.Rejected, authentication.authenticate("bootstrap", null))
     assertEquals(AuthenticationResult.Rejected, authentication.authenticate("bootstrap", "session"))
     assertEquals(AuthenticationResult.Authenticated, authentication.authenticate(null, "session"))
+  }
+
+  @Test
+  fun `bootstrap認証結果は停止競合の影響を受けずsession tokenを保持する`() {
+    val authentication = LanWebAuthentication("bootstrap") { "session" }
+
+    val result = authentication.authenticate("bootstrap", null)
+    authentication.invalidate()
+
+    assertEquals(AuthenticationResult.Bootstrapped("session"), result)
+    assertEquals(AuthenticationResult.Rejected, authentication.authenticate(null, "session"))
+  }
+
+  @Test
+  fun `LANアドレス変更時はbootstrap tokenを差し替える`() {
+    val authentication = LanWebAuthentication("first") { "session" }
+
+    authentication.replaceBootstrapToken("second")
+
+    assertEquals(AuthenticationResult.Rejected, authentication.authenticate("first", null))
+    assertEquals(AuthenticationResult.Bootstrapped("session"), authentication.authenticate("second", null))
   }
 
   @Test
@@ -43,7 +64,8 @@ class LanWebServerTest {
 
     assertEquals(AuthenticationResult.Rejected, restarted.authenticate("first", null))
     assertEquals(AuthenticationResult.Rejected, restarted.authenticate(null, "first-session"))
-    assertNotEquals("first-session", restarted.apply { authenticate("second", null) }.sessionToken())
+    val result = restarted.authenticate("second", null) as AuthenticationResult.Bootstrapped
+    assertNotEquals("first-session", result.sessionToken)
   }
 
   @Test
