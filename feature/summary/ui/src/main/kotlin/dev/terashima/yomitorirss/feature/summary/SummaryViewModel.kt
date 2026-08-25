@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.summary.SummaryRepository
-import dev.terashima.yomitorirss.feature.summary.SummaryRequestResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,9 +24,19 @@ class SummaryViewModel(
   private val _state = MutableStateFlow(SummaryUiState())
   val state: StateFlow<SummaryUiState> = _state.asStateFlow()
 
-  fun summarize(article: Article, forceRefresh: Boolean = false) {
+  fun summarize(
+    article: Article,
+    forceRefresh: Boolean = false,
+    replaceBookmarkTags: Boolean = false,
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching { repository.request(article.id, forceRefresh) }
+      runCatching {
+        repository.request(
+          articleId = article.id,
+          forceRefresh = forceRefresh,
+          replaceBookmarkTags = replaceBookmarkTags,
+        )
+      }
         .onSuccess { result ->
           when (result) {
             is SummaryRequestResult.Cached -> {
@@ -60,7 +68,11 @@ class SummaryViewModel(
                 it.copy(
                   loading = false,
                   message = if (result.accepted) {
-                    if (result.forceRefresh) "要約の再生成をキューに追加しました" else "要約をキューに追加しました"
+                    when {
+                      replaceBookmarkTags -> "要約とタグの再生成をキューに追加しました"
+                      result.forceRefresh -> "要約の再生成をキューに追加しました"
+                      else -> "要約をキューに追加しました"
+                    }
                   } else {
                     "要約はすでにキューに入っているか処理中です"
                   },

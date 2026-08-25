@@ -172,9 +172,10 @@ class SummaryWorker(
           existingFolderNames = enrichmentContext.existingFolderNames,
         )
         runtime.bookmarkEnrichmentRepository.applyGeneratedMetadata(
-          task.articleId,
-          generatedMetadata.tags,
-          generatedMetadata.folder,
+          articleId = task.articleId,
+          tagNames = generatedMetadata.tags,
+          folderName = generatedMetadata.folder,
+          replaceExistingTags = task.replaceBookmarkTags,
         )
       }
       database.completeRunningSummaryTask(task.articleId)

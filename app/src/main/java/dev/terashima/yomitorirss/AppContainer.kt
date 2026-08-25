@@ -141,6 +141,7 @@ class AppContainer(
   val backupRepository get() = supportingRuntime.backupRepository
   val summaryRepository get() = aiCoreRuntime.summaryRepository
   val backfillBookmarkAutoEnrichmentUseCase get() = crossFeatureRuntime.backfillBookmarkAutoEnrichmentUseCase
+  val reprocessBookmarkAutoEnrichmentUseCase get() = crossFeatureRuntime.reprocessBookmarkAutoEnrichmentUseCase
   val summaryTaskQueueRepository get() = crossFeatureRuntime.summaryTaskQueueRepository
   val knowledgeRepository get() = knowledgeRuntime.knowledgeRepository
   val knowledgeBuilder get() = knowledgeRuntime.knowledgeBuilder

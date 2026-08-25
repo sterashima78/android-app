@@ -27,24 +27,19 @@ class BookmarkAutoEnrichmentUseCase(
 
 class BackfillBookmarkAutoEnrichmentUseCase(
   private val bookmarks: BookmarkReader,
-  private val enrichmentRequester: BookmarkEnrichmentRequester,
+  private val batchRequester: BookmarkEnrichmentBatchRequester,
 ) {
   suspend operator fun invoke() {
-    val articleIds = bookmarks.listAllSavedArticles()
-      .asSequence()
-      .map { it.article }
-      .filter { article ->
-        shouldRequestBookmarkEnrichment(
-          url = article.url,
-          sourceFeedUrl = article.sourceFeedUrl,
-          contentType = article.effectiveContentType,
-        )
-      }
-      .map { it.id }
-      .toList()
-
-    enrichmentRequester.enqueueMissingBookmarkEnrichment(articleIds)
+    batchRequester.enqueueMissingBookmarkEnrichment(bookmarks.listAutomaticEnrichmentArticleIds())
   }
+}
+
+class ReprocessBookmarkAutoEnrichmentUseCase(
+  private val bookmarks: BookmarkReader,
+  private val batchRequester: BookmarkEnrichmentBatchRequester,
+) {
+  suspend operator fun invoke(): Int =
+    batchRequester.enqueueBookmarkEnrichmentRefresh(bookmarks.listAutomaticEnrichmentArticleIds())
 }
 
 fun shouldRequestBookmarkEnrichment(
@@ -56,3 +51,17 @@ fun shouldRequestBookmarkEnrichment(
     !isYouTubeVideoUrl(url) &&
     RedditSourceBoundary.isNonRedditFeed(sourceFeedUrl) &&
     RedditSourceBoundary.isNonRedditFeed(url)
+
+private suspend fun BookmarkReader.listAutomaticEnrichmentArticleIds(): List<String> =
+  listAllSavedArticles()
+    .asSequence()
+    .map { it.article }
+    .filter { article ->
+      shouldRequestBookmarkEnrichment(
+        url = article.url,
+        sourceFeedUrl = article.sourceFeedUrl,
+        contentType = article.effectiveContentType,
+      )
+    }
+    .map { it.id }
+    .toList()

@@ -31,11 +31,20 @@ object SummaryQueue {
   private val providerTransitionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val providerTransitionMutex = Mutex()
 
-  fun enqueue(context: Context, articleId: String, forceRefresh: Boolean): Boolean {
+  fun enqueue(
+    context: Context,
+    articleId: String,
+    forceRefresh: Boolean,
+    replaceBookmarkTags: Boolean = false,
+  ): Boolean {
     val appContext = context.applicationContext
     val database = YomitoriDatabase.create(appContext)
     val accepted = try {
-      database.enqueueSummaryTask(articleId, forceRefresh)
+      database.enqueueSummaryTask(
+        id = articleId,
+        forceRefresh = forceRefresh,
+        replaceBookmarkTags = replaceBookmarkTags,
+      )
     } finally {
       database.close()
     }
@@ -56,36 +65,23 @@ object SummaryQueue {
     }
   }
 
-  fun enqueueMissingBookmarkEnrichment(context: Context, articleIds: List<String>): Int {
-    val appContext = context.applicationContext
-    val acceptedIds = mutableListOf<String>()
-    val database = YomitoriDatabase.create(appContext)
-    try {
-      articleIds.asSequence().distinct().forEach { articleId ->
-        if (database.findSummary(articleId) != null) return@forEach
-        if (database.findSummaryTask(articleId) != null) return@forEach
-        if (database.enqueueSummaryTask(articleId, forceRefresh = false)) acceptedIds += articleId
-      }
-    } finally {
-      database.close()
-    }
-    if (acceptedIds.isEmpty()) return 0
+  fun enqueueMissingBookmarkEnrichment(context: Context, articleIds: List<String>): Int =
+    enqueueBookmarkEnrichmentBatch(
+      context = context,
+      articleIds = articleIds,
+      forceRefresh = false,
+      replaceBookmarkTags = false,
+      skipExistingSummaryOrTask = true,
+    )
 
-    ensureCleanupScheduled(appContext)
-    runCatching { schedulePipelineWorkers(appContext) }
-      .onFailure { error ->
-        val retryDatabase = YomitoriDatabase.create(appContext)
-        try {
-          acceptedIds.forEach { articleId ->
-            retryDatabase.markSummaryTaskFailed(articleId, error.message ?: error.javaClass.simpleName)
-          }
-        } finally {
-          retryDatabase.close()
-        }
-      }
-      .getOrThrow()
-    return acceptedIds.size
-  }
+  fun enqueueBookmarkEnrichmentRefresh(context: Context, articleIds: List<String>): Int =
+    enqueueBookmarkEnrichmentBatch(
+      context = context,
+      articleIds = articleIds,
+      forceRefresh = true,
+      replaceBookmarkTags = true,
+      skipExistingSummaryOrTask = false,
+    )
 
   fun kick(context: Context) {
     val appContext = context.applicationContext
@@ -281,6 +277,49 @@ object SummaryQueue {
     ensureCleanupScheduled(appContext)
     schedulePipelineWorkers(appContext)
     return true
+  }
+
+  private fun enqueueBookmarkEnrichmentBatch(
+    context: Context,
+    articleIds: List<String>,
+    forceRefresh: Boolean,
+    replaceBookmarkTags: Boolean,
+    skipExistingSummaryOrTask: Boolean,
+  ): Int {
+    val appContext = context.applicationContext
+    val acceptedIds = mutableListOf<String>()
+    val database = YomitoriDatabase.create(appContext)
+    try {
+      articleIds.asSequence().distinct().forEach { articleId ->
+        if (skipExistingSummaryOrTask && database.findSummary(articleId) != null) return@forEach
+        if (skipExistingSummaryOrTask && database.findSummaryTask(articleId) != null) return@forEach
+        if (
+          database.enqueueSummaryTask(
+            id = articleId,
+            forceRefresh = forceRefresh,
+            replaceBookmarkTags = replaceBookmarkTags,
+          )
+        ) acceptedIds += articleId
+      }
+    } finally {
+      database.close()
+    }
+    if (acceptedIds.isEmpty()) return 0
+
+    ensureCleanupScheduled(appContext)
+    runCatching { schedulePipelineWorkers(appContext) }
+      .onFailure { error ->
+        val retryDatabase = YomitoriDatabase.create(appContext)
+        try {
+          acceptedIds.forEach { articleId ->
+            retryDatabase.markSummaryTaskFailed(articleId, error.message ?: error.javaClass.simpleName)
+          }
+        } finally {
+          retryDatabase.close()
+        }
+      }
+      .getOrThrow()
+    return acceptedIds.size
   }
 
   private fun restartInferenceWorker(context: Context) {

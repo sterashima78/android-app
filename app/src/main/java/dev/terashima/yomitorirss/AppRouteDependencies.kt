@@ -14,6 +14,7 @@ class AppRouteDependencies internal constructor(
   val redditViewModelFactory get() = content.redditViewModelFactory
   val feedViewModelFactory get() = content.feedViewModelFactory
   val bookmarkViewModelFactory get() = content.bookmarkViewModelFactory
+  val reprocessBookmarkEnrichment get() = content.reprocessBookmarkEnrichment
   val mailViewModelFactory get() = content.mailViewModelFactory
   val mailAuthorization get() = content.mailAuthorization
   val summaryViewModelFactory get() = content.summaryViewModelFactory

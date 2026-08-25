@@ -36,5 +36,6 @@ interface BookmarkEnrichmentRepository {
     articleId: String,
     tagNames: List<String>,
     folderName: String?,
+    replaceExistingTags: Boolean = false,
   ): Boolean
 }

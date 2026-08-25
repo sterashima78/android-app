@@ -18,7 +18,14 @@ class DefaultSummaryRepository(
 ) : SummaryRepository {
   private val appContext = context.applicationContext
 
-  override suspend fun request(articleId: String, forceRefresh: Boolean): SummaryRequestResult {
+  override suspend fun request(
+    articleId: String,
+    forceRefresh: Boolean,
+    replaceBookmarkTags: Boolean,
+  ): SummaryRequestResult {
+    require(!replaceBookmarkTags || forceRefresh) {
+      "Bookmark tag replacement requires a force-refresh summary request"
+    }
     if (!forceRefresh) {
       database.findSummary(articleId)?.let { saved ->
         return SummaryRequestResult.Cached(saved.summary)
@@ -40,6 +47,7 @@ class DefaultSummaryRepository(
         context = appContext,
         articleId = articleId,
         forceRefresh = forceRefresh,
+        replaceBookmarkTags = replaceBookmarkTags,
       ),
       forceRefresh = forceRefresh,
     )
@@ -60,6 +68,12 @@ class DefaultSummaryRepository(
   override suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int {
     if (articleIds.isEmpty() || !executionProviderAvailable()) return 0
     return SummaryQueue.enqueueMissingBookmarkEnrichment(appContext, articleIds)
+  }
+
+  override suspend fun enqueueBookmarkEnrichmentRefresh(articleIds: List<String>): Int {
+    if (articleIds.isEmpty()) return 0
+    requireExecutionProviderAvailable()
+    return SummaryQueue.enqueueBookmarkEnrichmentRefresh(appContext, articleIds)
   }
 
   override suspend fun findSummary(articleId: String): String? =

@@ -84,4 +84,54 @@ class BookmarkEnrichmentRepositoryTest {
     }
     assertFalse(repository.context("a1")?.existingFolderNames.orEmpty().isNotEmpty())
   }
+
+  @Test
+  fun `通常enrichmentは既存tagを保持して生成tagを追加する`() = runBlocking {
+    val db = helper.writableDatabase
+    db.execSQL("INSERT INTO bookmarks(article_id,saved_at) VALUES('a1','2026-08-19T00:00:00Z')")
+    db.execSQL("INSERT INTO tags(id,name,normalized_name,created_at) VALUES('old','旧タグ','旧タグ','now')")
+    db.execSQL("INSERT INTO article_tags(article_id,tag_id) VALUES('a1','old')")
+
+    val changed = repository.applyGeneratedMetadata(
+      articleId = "a1",
+      tagNames = listOf("新タグ"),
+      folderName = null,
+    )
+
+    assertTrue(changed)
+    db.rawQuery(
+      "SELECT t.name FROM article_tags x JOIN tags t ON t.id=x.tag_id WHERE x.article_id='a1' ORDER BY t.name",
+      null,
+    ).use { cursor ->
+      val names = buildList {
+        while (cursor.moveToNext()) add(cursor.getString(0))
+      }
+      assertEquals(listOf("新タグ", "旧タグ"), names)
+    }
+  }
+
+  @Test
+  fun `refresh enrichmentは生成成功後に既存tagを置き換える`() = runBlocking {
+    val db = helper.writableDatabase
+    db.execSQL("INSERT INTO bookmarks(article_id,saved_at) VALUES('a1','2026-08-19T00:00:00Z')")
+    db.execSQL("INSERT INTO tags(id,name,normalized_name,created_at) VALUES('old','旧タグ','旧タグ','now')")
+    db.execSQL("INSERT INTO article_tags(article_id,tag_id) VALUES('a1','old')")
+
+    val changed = repository.applyGeneratedMetadata(
+      articleId = "a1",
+      tagNames = listOf("新タグ"),
+      folderName = null,
+      replaceExistingTags = true,
+    )
+
+    assertTrue(changed)
+    db.rawQuery(
+      "SELECT t.name FROM article_tags x JOIN tags t ON t.id=x.tag_id WHERE x.article_id='a1'",
+      null,
+    ).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals("新タグ", cursor.getString(0))
+      assertFalse(cursor.moveToNext())
+    }
+  }
 }

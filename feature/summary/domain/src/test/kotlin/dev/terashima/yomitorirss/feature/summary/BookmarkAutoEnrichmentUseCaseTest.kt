@@ -3,6 +3,8 @@ package dev.terashima.yomitorirss.feature.summary
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.ContentType
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
@@ -36,6 +38,36 @@ class BookmarkAutoEnrichmentUseCaseTest {
     useCase("article-1")
 
     assertTrue(requester.requestedIds.isEmpty())
+  }
+
+  @Test
+  fun `一括再実行は自動AI処理対象だけをrefreshへ渡す`() = runBlocking {
+    val batchRequester = RecordingBatchRequester()
+    val useCase = ReprocessBookmarkAutoEnrichmentUseCase(
+      bookmarks = FakeBookmarkReader(
+        listOf(
+          BookmarkedArticle(article(id = "article-1"), savedAt = "now"),
+          BookmarkedArticle(
+            article(
+              id = "reddit-1",
+              url = "https://www.reddit.com/r/android/comments/abc123/example/",
+              sourceFeedUrl = "https://www.reddit.com/r/android/new/.rss",
+            ),
+            savedAt = "now",
+          ),
+          BookmarkedArticle(
+            article(id = "comic-1", contentType = ContentType.COMIC),
+            savedAt = "now",
+          ),
+        ),
+      ),
+      batchRequester = batchRequester,
+    )
+
+    val count = useCase()
+
+    assertEquals(1, count)
+    assertEquals(listOf("article-1"), batchRequester.refreshedIds)
   }
 
   @Test
@@ -76,18 +108,23 @@ class BookmarkAutoEnrichmentUseCaseTest {
     )
   }
 
-  private fun article(contentType: ContentType = ContentType.ARTICLE) = Article(
-    id = "article-1",
+  private fun article(
+    id: String = "article-1",
+    url: String = "https://example.com/articles/1",
+    sourceFeedUrl: String = "https://example.com/feed.xml",
+    contentType: ContentType = ContentType.ARTICLE,
+  ) = Article(
+    id = id,
     feedId = "feed-1",
     externalId = null,
-    identityKey = "identity-1",
-    url = "https://example.com/articles/1",
+    identityKey = "identity-$id",
+    url = url,
     title = "Article",
     publishedAt = "2026-08-19T00:00:00Z",
     fetchedAt = "2026-08-19T00:00:00Z",
     readAt = null,
     sourceTitle = "Example",
-    sourceFeedUrl = "https://example.com/feed.xml",
+    sourceFeedUrl = sourceFeedUrl,
     effectiveContentType = contentType,
   )
 
@@ -107,6 +144,16 @@ class BookmarkAutoEnrichmentUseCaseTest {
     override suspend fun setArticleContentType(articleId: String, contentType: ContentType?) = Unit
   }
 
+  private class FakeBookmarkReader(
+    private val bookmarks: List<BookmarkedArticle>,
+  ) : BookmarkReader {
+    override val changes: StateFlow<Long> = MutableStateFlow(0L)
+    override suspend fun listSavedArticles(tagId: String?, folderId: String?): List<BookmarkedArticle> = bookmarks
+    override suspend fun listAllSavedArticles(): List<BookmarkedArticle> = bookmarks
+    override suspend fun listReadLaterArticles(): List<BookmarkedArticle> = emptyList()
+    override suspend fun isBookmarked(articleId: String): Boolean = bookmarks.any { it.article.id == articleId }
+  }
+
   private class RecordingEnrichmentRequester : BookmarkEnrichmentRequester {
     val requestedIds = mutableListOf<String>()
 
@@ -114,7 +161,16 @@ class BookmarkAutoEnrichmentUseCaseTest {
       requestedIds += articleId
       return SummaryRequestResult.Enqueued(accepted = true, forceRefresh = false)
     }
+  }
+
+  private class RecordingBatchRequester : BookmarkEnrichmentBatchRequester {
+    var refreshedIds: List<String> = emptyList()
 
     override suspend fun enqueueMissingBookmarkEnrichment(articleIds: List<String>): Int = articleIds.size
+
+    override suspend fun enqueueBookmarkEnrichmentRefresh(articleIds: List<String>): Int {
+      refreshedIds = articleIds
+      return articleIds.size
+    }
   }
 }

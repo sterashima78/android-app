@@ -82,6 +82,10 @@ internal class AppContentRouteDependencies(
     )
   }
 
+  val reprocessBookmarkEnrichment: suspend () -> Int = {
+    container.reprocessBookmarkAutoEnrichmentUseCase()
+  }
+
   val mailViewModelFactory: MailViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     MailViewModel.Factory(container.mailRepository)
   }

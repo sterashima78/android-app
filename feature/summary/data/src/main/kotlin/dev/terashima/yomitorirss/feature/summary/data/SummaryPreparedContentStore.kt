@@ -24,7 +24,7 @@ internal fun YomitoriDatabase.listSummaryContentFetchCandidates(): List<SummaryT
       SELECT q.*
       FROM summary_tasks q
       WHERE q.state=?
-        AND (q.force_refresh=1 OR NOT EXISTS(
+        AND (q.force_refresh<>0 OR NOT EXISTS(
           SELECT 1 FROM article_summaries s WHERE s.article_id=q.article_id
         ))
         AND NOT EXISTS(

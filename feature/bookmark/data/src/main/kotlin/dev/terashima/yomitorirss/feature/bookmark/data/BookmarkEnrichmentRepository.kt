@@ -30,11 +30,16 @@ class DefaultBookmarkEnrichmentRepository(
     articleId: String,
     tagNames: List<String>,
     folderName: String?,
+    replaceExistingTags: Boolean,
   ): Boolean {
     if (tagNames.isEmpty() && folderName == null) return false
     val changed = database.transaction {
       if (!isBookmarked(articleId)) return@transaction false
-      var changed = addGeneratedTags(articleId, tagNames)
+      var changed = false
+      if (replaceExistingTags) {
+        if (deleteArticleTags(articleId) > 0) changed = true
+      }
+      if (addGeneratedTags(articleId, tagNames)) changed = true
       if (folderName != null && isUncategorizedBookmark(articleId)) {
         if (assignExistingFolder(articleId, folderName)) changed = true
       }
@@ -77,6 +82,9 @@ private fun SQLiteDatabase.isUncategorizedBookmark(articleId: String): Boolean =
   """.trimIndent(),
   arrayOf(articleId),
 ).use { cursor -> cursor.moveToFirst() }
+
+private fun SQLiteDatabase.deleteArticleTags(articleId: String): Int =
+  delete("article_tags", "article_id=?", arrayOf(articleId))
 
 private fun SQLiteDatabase.addGeneratedTags(articleId: String, tagNames: List<String>): Boolean {
   var changed = false
