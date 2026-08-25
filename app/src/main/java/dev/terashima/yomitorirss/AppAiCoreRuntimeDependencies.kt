@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.airuntime.LocalAiTextInference
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
@@ -19,6 +21,10 @@ internal class AppAiCoreRuntimeDependencies(
     LocalModelManager.shared(application)
   }
 
+  val textInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    LocalAiTextInference(modelManager)
+  }
+
   val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAiModelRepository(application, modelManager)
   }
@@ -28,6 +34,6 @@ internal class AppAiCoreRuntimeDependencies(
   }
 
   val summaryRepository: SummaryRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultSummaryRepository(application, database, modelManager)
+    DefaultSummaryRepository(application, database, textInference)
   }
 }
