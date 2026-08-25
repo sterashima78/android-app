@@ -67,13 +67,13 @@ data: {"type":"response.completed","response":{"status":"completed"}}
   }
 
   @Test
-  fun `expired access token refreshes once before generation`() = runBlocking {
+  fun `refresh keeps previous refresh token when provider omits rotation`() = runBlocking {
     val store = InMemoryCredentialStore().apply {
       write(ChatGptCredentials(jwt("acct-old"), "refresh-old", 999L, "acct-old"))
     }
     val refreshedAccess = jwt("acct-new")
     val http = RecordingHttpClient(
-      response(200, """{"access_token":"$refreshedAccess","refresh_token":"refresh-new","expires_in":3600}"""),
+      response(200, """{"access_token":"$refreshedAccess","expires_in":3600}"""),
       response(200, """data: {"type":"response.output_text.delta","delta":"OK"}
 
 """),
@@ -83,7 +83,7 @@ data: {"type":"response.completed","response":{"status":"completed"}}
     assertEquals("OK", client.generate("gpt-test", "ping").text)
     assertEquals(2, http.requests.size)
     assertTrue(http.requests.first().url.endsWith("/oauth/token"))
-    assertEquals("refresh-new", store.read()!!.refreshToken)
+    assertEquals("refresh-old", store.read()!!.refreshToken)
     assertEquals("acct-new", store.read()!!.accountId)
   }
 
