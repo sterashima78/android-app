@@ -35,11 +35,14 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 :core:database
 :core:network
 :core:web-collector
+:core:ai-inference
 :core:ai-runtime
 :core:designsystem
 ```
 
 `core` は複数 feature が共有する技術 capability を提供し、アプリ固有 Domain concept や feature-specific use case を所有しない。
+
+`:core:ai-inference` は provider 非依存の単発テキスト推論 contract とモデル能力・進捗を所有する。`:core:ai-runtime` は Gemma / LiteRT-LM、tokenizer、Engine lifecycle、benchmark、Vision / Conversation などローカル実装固有の capability を所有し、`LocalAiTextInference` から共通 contract へ投影する。Summary / Knowledge / Library 等の prompt や生成ポリシーは owning feature に残す。
 
 `:core:network` の HTTP transport は process-wide に共有し、`:app` の application graph が同じ `HttpClient` instance を runtime group と WorkerFactory へ渡す。feature 側は HTTP adapter の testability のため default constructor を持てるが、production composition で feature ごとの OkHttp connection pool を作らない。
 
@@ -144,3 +147,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)
+- [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
