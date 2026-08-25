@@ -324,14 +324,14 @@ class WebLibraryMetadataExtractorTest {
   }
 
   @Test
-  fun `関数コードはPromiseを要求して失敗理由を保持するスクリプトへ埋め込む`() {
-    val script = customMetadataStartScript(
-      "async ({ url }) => ({ title: url, thumbnailUrl: null });",
-      "test-state",
-    )
+  fun `関数コードはevalで構文エラーを診断しPromise失敗理由を保持するscriptへ埋め込む`() {
+    val functionCode = "async ({ url }) => ({ title: url, thumbnailUrl: null });"
+    val script = customMetadataStartScript(functionCode, "test-state")
     val pollScript = customMetadataPollScript("test-state")
 
-    assertTrue(script.contains("const extractor = (async ({ url }) => ({ title: url, thumbnailUrl: null }))"))
+    assertTrue(script.contains("const source = ${JSONObject.quote(functionCode.removeSuffix(";"))}"))
+    assertTrue(script.contains("extractor = eval('(' + source + ')')"))
+    assertTrue(script.contains("finish('invalid_function'"))
     assertTrue(script.contains("const promise = extractor({ url: location.href })"))
     assertTrue(script.contains("typeof promise.then !== 'function'"))
     assertTrue(script.contains("finish('non_promise_result'"))
