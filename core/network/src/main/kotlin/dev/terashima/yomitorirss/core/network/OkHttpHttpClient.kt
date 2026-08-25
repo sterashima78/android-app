@@ -95,7 +95,6 @@ private fun defaultOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
   .build()
 
 private fun IOException.toNetworkError(): IOException = when (this) {
-  is ResponseTooLargeException -> this
   is SocketTimeoutException -> IOException("ネットワーク通信がタイムアウトしました", this)
   is UnknownHostException -> IOException("ホスト名を解決できませんでした", this)
   is ConnectException -> IOException("サーバーに接続できませんでした", this)
@@ -105,7 +104,7 @@ private fun IOException.toNetworkError(): IOException = when (this) {
 class ResponseTooLargeException(
   val maxResponseBytes: Long,
   val declaredContentLength: Long?,
-) : IOException(
+) : IllegalStateException(
   if (declaredContentLength == null) {
     "レスポンスが上限（$maxResponseBytes バイト）を超えました"
   } else {
