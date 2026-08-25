@@ -73,6 +73,27 @@ class AiTaskQueueViewModelTest {
   }
 
   @Test
+  fun `クラウド要約とメタデータ生成はクラウド実行と分かるラベルを表示する`() {
+    val summary = aiTaskProgressPresentation(
+      task(
+        id = "cloud-summary",
+        state = AiTaskQueueItemState.RUNNING,
+        progressStage = AiTaskQueueProgressStage.CLOUD_GENERATING,
+      ),
+    )
+    val enrichment = aiTaskProgressPresentation(
+      task(
+        id = "cloud-enrichment",
+        state = AiTaskQueueItemState.RUNNING,
+        progressStage = AiTaskQueueProgressStage.CLOUD_ENRICHING,
+      ),
+    )
+
+    assertEquals("クラウドで記事を要約中", summary?.label)
+    assertEquals("クラウドでタグ・フォルダ候補を生成中", enrichment?.label)
+  }
+
+  @Test
   fun `長文分割は件数と確定進捗を表示する`() {
     val presentation = aiTaskProgressPresentation(
       task(
