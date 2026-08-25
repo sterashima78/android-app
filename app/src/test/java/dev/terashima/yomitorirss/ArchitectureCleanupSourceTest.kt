@@ -163,6 +163,26 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
+  fun `共有dependency versionはcatalogを正本にする`() {
+    val catalog = source("gradle/libs.versions.toml")
+    val settingsData = source("feature/settings/data/build.gradle.kts")
+    val chatData = source("feature/chat/data/build.gradle.kts")
+
+    assertTrue("catalog must own the coroutines version", "kotlinx-coroutines = \"1.11.0\"" in catalog)
+    assertTrue("catalog must own the serialization version", "kotlinx-serialization = \"1.11.0\"" in catalog)
+    assertTrue("catalog must own the JUnit4 version", "junit4 = \"4.13.2\"" in catalog)
+
+    assertTrue("Settings data must use the coroutines catalog alias", "libs.kotlinx.coroutines.android" in settingsData)
+    assertFalse("Settings data must not hardcode the coroutines version", "kotlinx-coroutines-android:1.11.0" in settingsData)
+
+    assertTrue("Chat data must use the coroutines catalog alias", "libs.kotlinx.coroutines.android" in chatData)
+    assertTrue("Chat data must use the serialization catalog alias", "libs.kotlinx.serialization.json" in chatData)
+    assertTrue("Chat data must use the JUnit catalog alias", "libs.junit4" in chatData)
+    assertFalse("Chat data must not hardcode migrated dependency versions", ":1.11.0\"" in chatData)
+    assertFalse("Chat data must not hardcode JUnit4 version", "junit:junit:4.13.2" in chatData)
+  }
+
+  @Test
   fun `mainのsigned APK生成はAndroid quality checks成功後だけ実行する`() {
     val workflow = source(".github/workflows/build-apk.yml")
     val qualityChecks = workflow.substringAfter("  quality_checks:\n").substringBefore("\n  quality:\n")
