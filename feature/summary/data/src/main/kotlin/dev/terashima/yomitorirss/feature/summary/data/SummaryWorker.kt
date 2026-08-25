@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
+import dev.terashima.yomitorirss.feature.summary.SummaryCloudInferenceException
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
@@ -59,13 +60,15 @@ class SummaryWorker(
           candidates.mapTo(linkedSetOf(), SummaryTaskRecord::articleId),
         )
         val candidate = selectNextSummaryTask(candidates, highPriorityIds) ?: break
-        when (provider) {
+        val outcome = when (provider) {
           SummaryExecutionProvider.LOCAL -> {
+            var result = SummaryTaskProcessOutcome.CONTINUE
             LocalAiBackgroundTaskGate.withPermit(summaryTaskPriority(candidate, highPriorityIds)) {
               if (isProviderPaused(provider)) return@withPermit
               val task = database.claimSummaryTask(candidate.articleId) ?: return@withPermit
-              processTask(database, task, provider)
+              result = processTask(database, task, provider)
             }
+            result
           }
           SummaryExecutionProvider.CHATGPT -> {
             if (isProviderPaused(provider)) break
@@ -74,6 +77,7 @@ class SummaryWorker(
             processTask(database, task, provider)
           }
         }
+        if (outcome == SummaryTaskProcessOutcome.RETRY_WORK) return@withContext Result.retry()
         SummaryQueue.kickContentFetch(applicationContext)
       }
       Result.success()
@@ -84,11 +88,11 @@ class SummaryWorker(
     database: YomitoriDatabase,
     task: SummaryTaskRecord,
     provider: SummaryExecutionProvider,
-  ) {
+  ): SummaryTaskProcessOutcome {
     val article = runtime.articleRepository.findArticle(task.articleId)
     if (article == null) {
       database.failRunningSummaryTask(task.articleId, "記事が見つかりません")
-      return
+      return SummaryTaskProcessOutcome.CONTINUE
     }
     val summaryPromptStore = SummaryPromptStore(applicationContext)
     try {
@@ -174,10 +178,20 @@ class SummaryWorker(
         )
       }
       database.completeRunningSummaryTask(task.articleId)
+      return SummaryTaskProcessOutcome.CONTINUE
     } catch (error: CancellationException) {
       throw error
+    } catch (error: SummaryCloudInferenceException) {
+      if (provider == SummaryExecutionProvider.CHATGPT && error.retryable) {
+        val message = error.message ?: "クラウドAIが一時的に利用できません。自動的に再試行します"
+        database.requeueRunningSummaryTaskForRetry(task.articleId, message)
+        return SummaryTaskProcessOutcome.RETRY_WORK
+      }
+      database.failRunningSummaryTask(task.articleId, error.userMessage())
+      return SummaryTaskProcessOutcome.CONTINUE
     } catch (error: Throwable) {
       database.failRunningSummaryTask(task.articleId, error.userMessage())
+      return SummaryTaskProcessOutcome.CONTINUE
     }
   }
 
@@ -267,6 +281,8 @@ class SummaryWorker(
     private const val CLOUD_WEB_SUMMARY_CACHE_VARIANT = "chatgpt-web-v1"
   }
 }
+
+private enum class SummaryTaskProcessOutcome { CONTINUE, RETRY_WORK }
 
 private data class StoredSummaryProgress(val stage: String, val current: Int? = null, val total: Int? = null)
 
