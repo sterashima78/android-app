@@ -50,6 +50,10 @@ class LanWebServer(
     }
   }
 
+  fun replaceBootstrapToken(bootstrapToken: String) {
+    authentication.replaceBootstrapToken(bootstrapToken)
+  }
+
   override fun close() {
     authentication.invalidate()
     if (!running.compareAndSet(true, false)) return
@@ -85,8 +89,8 @@ class LanWebServer(
       val query = parseQuery(target.rawQuery)
       val tokenFromQuery = query[BOOTSTRAP_PARAMETER]
       val tokenFromCookie = parseCookie(headers["cookie"], COOKIE_NAME)
-      when (authentication.authenticate(tokenFromQuery, tokenFromCookie)) {
-        AuthenticationResult.Bootstrapped -> {
+      when (val authenticationResult = authentication.authenticate(tokenFromQuery, tokenFromCookie)) {
+        is AuthenticationResult.Bootstrapped -> {
           writeResponse(
             client,
             303,
@@ -95,7 +99,7 @@ class LanWebServer(
             "認証しました。",
             mapOf(
               "Location" to target.withoutBootstrapToken(),
-              "Set-Cookie" to "$COOKIE_NAME=${authentication.sessionToken()}; Path=/; HttpOnly; SameSite=Strict",
+              "Set-Cookie" to "$COOKIE_NAME=${authenticationResult.sessionToken}; Path=/; HttpOnly; SameSite=Strict",
             ),
           )
           return
@@ -189,7 +193,13 @@ class LanWebServer(
   }
 }
 
-internal enum class AuthenticationResult { Bootstrapped, Authenticated, Rejected }
+internal sealed interface AuthenticationResult {
+  data class Bootstrapped(val sessionToken: String) : AuthenticationResult
+
+  data object Authenticated : AuthenticationResult
+
+  data object Rejected : AuthenticationResult
+}
 
 internal class LanWebAuthentication(
   bootstrapToken: String,
@@ -203,9 +213,10 @@ internal class LanWebAuthentication(
     val expectedBootstrap = bootstrapToken
     if (expectedBootstrap != null && queryToken.securelyEquals(expectedBootstrap)) {
       // 初回トークンは照合に成功した要求だけが一度消費できる。
+      val newSessionToken = tokenGenerator()
       bootstrapToken = null
-      sessionToken = tokenGenerator()
-      return AuthenticationResult.Bootstrapped
+      sessionToken = newSessionToken
+      return AuthenticationResult.Bootstrapped(newSessionToken)
     }
     // token付きURLはbootstrap専用とし、Cookieがあっても再利用や差し替えを許可しない。
     if (queryToken != null) return AuthenticationResult.Rejected
@@ -216,7 +227,9 @@ internal class LanWebAuthentication(
   }
 
   @Synchronized
-  fun sessionToken(): String = checkNotNull(sessionToken)
+  fun replaceBootstrapToken(newBootstrapToken: String) {
+    bootstrapToken = newBootstrapToken
+  }
 
   @Synchronized
   fun invalidate() {
