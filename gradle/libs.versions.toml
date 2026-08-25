@@ -1,0 +1,9 @@
+[versions]
+kotlinx-coroutines = "1.11.0"
+kotlinx-serialization = "1.11.0"
+junit4 = "4.13.2"
+
+[libraries]
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }

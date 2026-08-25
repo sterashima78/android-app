@@ -26,8 +26,8 @@ dependencies {
   implementation(project(":feature:summary:domain"))
   implementation(project(":feature:task:domain"))
   implementation(project(":core:ai-runtime"))
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+  implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.serialization.json)
 
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
 }
