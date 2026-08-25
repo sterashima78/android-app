@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
@@ -13,7 +13,7 @@ class SummaryWorkerFactory(
   private val runtimeProvider: () -> SummaryRuntimeDependencies,
   private val articleContentClientProvider: () -> ArticleContentClient,
   private val databaseProvider: () -> YomitoriDatabase,
-  private val modelManagerProvider: () -> LocalModelManager,
+  private val textInferenceProvider: () -> AiTextInference,
   private val runBookmarkAutoEnrichmentBackfill: suspend () -> Unit,
 ) : WorkerFactory() {
   private val runtime: SummaryRuntimeDependencies by lazy(
@@ -28,9 +28,9 @@ class SummaryWorkerFactory(
     LazyThreadSafetyMode.SYNCHRONIZED,
     databaseProvider,
   )
-  private val modelManager: LocalModelManager by lazy(
+  private val textInference: AiTextInference by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
-    modelManagerProvider,
+    textInferenceProvider,
   )
 
   override fun createWorker(
@@ -39,7 +39,7 @@ class SummaryWorkerFactory(
     workerParameters: WorkerParameters,
   ): ListenableWorker? = when (workerClassName) {
     SummaryWorker::class.java.name ->
-      SummaryWorker(appContext, workerParameters, runtime, database, modelManager)
+      SummaryWorker(appContext, workerParameters, runtime, database, textInference)
     SummaryContentFetchWorker::class.java.name ->
       SummaryContentFetchWorker(
         appContext,
@@ -47,7 +47,7 @@ class SummaryWorkerFactory(
         runtime,
         articleContentClient,
         database,
-        modelManager,
+        textInference,
       )
     SummaryTaskLogCleanupWorker::class.java.name ->
       SummaryTaskLogCleanupWorker(appContext, workerParameters, database)

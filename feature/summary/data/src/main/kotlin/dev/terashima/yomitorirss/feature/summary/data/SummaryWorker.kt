@@ -9,8 +9,8 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
@@ -33,7 +33,7 @@ class SummaryWorker(
   params: WorkerParameters,
   private val runtime: SummaryRuntimeDependencies,
   private val database: YomitoriDatabase,
-  private val modelManager: LocalModelManager,
+  private val textInference: AiTextInference,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (SummaryQueue.executionState(applicationContext).paused) return Result.success()
@@ -73,12 +73,12 @@ class SummaryWorker(
       val summaryForMetadata = if (cached != null) {
         cached.summary
       } else {
-        val selectedModel = modelManager.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
+        val selectedModel = textInference.selectedModel() ?: error("要約モデルをダウンロードして選択してください")
         val prompt = summaryPromptStore.prompt.value
-        val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, modelManager.inferenceCacheVariant(selectedModel.id))}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
+        val cacheKey = "${summaryCacheKey(selectedModel.id, prompt, selectedModel.cacheVariant)}:$HIERARCHICAL_SUMMARY_CACHE_VARIANT"
         val preparedContent = database.findPreparedSummaryArticleContent(task.articleId)
           ?: error("記事本文の準備が完了していません")
-        val generated = summarizeWithProgress(database, modelManager, task.articleId, preparedContent.content, prompt)
+        val generated = summarizeWithProgress(database, textInference, task.articleId, preparedContent.content, prompt)
         currentCoroutineContext().ensureActive()
         database.saveSummary(task.articleId, generated, cacheKey)
         generated
@@ -86,9 +86,9 @@ class SummaryWorker(
 
       if (enrichmentContext != null) {
         currentCoroutineContext().ensureActive()
-        modelManager.selectedModel() ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
+        textInference.selectedModel() ?: error("AIメタデータ生成用のモデルをダウンロードして選択してください")
         val generatedMetadata = parseBookmarkMetadataEnrichment(
-          raw = modelManager.summarizeText(
+          raw = textInference.summarizeText(
             text = summaryForMetadata,
             prompt = buildBookmarkMetadataPrompt(),
             promptSuffix = buildBookmarkMetadataCandidateSuffix(
@@ -111,17 +111,17 @@ class SummaryWorker(
 
   private suspend fun summarizeWithProgress(
     database: YomitoriDatabase,
-    modelManager: LocalModelManager,
+    textInference: AiTextInference,
     articleId: String,
     articleText: String,
     prompt: String,
   ): String = coroutineScope {
     val hierarchyProgress = AtomicReference<HierarchicalSummaryProgress?>(null)
     val progressCollector = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
-      modelManager.inferenceProgress.filterNotNull().collect { progress ->
+      textInference.progress.filterNotNull().collect { progress ->
         when (progress.stage) {
-          LocalInferenceStage.PREPARING_MODEL -> database.updateRunningSummaryTaskProgress(articleId, SUMMARY_PROGRESS_PREPARING_MODEL)
-          LocalInferenceStage.GENERATING_RESPONSE -> {
+          AiTextInferenceStage.PREPARING_MODEL -> database.updateRunningSummaryTaskProgress(articleId, SUMMARY_PROGRESS_PREPARING_MODEL)
+          AiTextInferenceStage.GENERATING_RESPONSE -> {
             val stored = hierarchyProgress.get().toStoredProgress()
             database.updateRunningSummaryTaskProgress(articleId, stored.stage, stored.current, stored.total)
           }
@@ -129,7 +129,7 @@ class SummaryWorker(
       }
     }
     try {
-      modelManager.summarizeHierarchically(text = articleText, prompt = prompt) { progress ->
+      textInference.summarizeHierarchically(text = articleText, prompt = prompt) { progress ->
         hierarchyProgress.set(progress)
         val stored = progress.toStoredProgress()
         database.updateRunningSummaryTaskProgress(articleId, stored.stage, stored.current, stored.total)

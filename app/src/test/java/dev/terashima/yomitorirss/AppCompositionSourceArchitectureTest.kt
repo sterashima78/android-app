@@ -111,7 +111,7 @@ class AppCompositionSourceArchitectureTest {
       "GoogleBooksAuthorizationManager(",
       "WorkManagerSmbCoverPrefetchScheduler(",
       "SharedPreferencesSmbMetadataNormalizationPromptRepository(",
-      "LocalLibraryOrganizationSuggester(",
+      "DefaultLibraryOrganizationSuggester(",
       "DefaultBookPageSourceFactory(",
       "SharedPreferencesReadingPositionStore(",
       "SharedPreferencesXViewerCssRepository(",

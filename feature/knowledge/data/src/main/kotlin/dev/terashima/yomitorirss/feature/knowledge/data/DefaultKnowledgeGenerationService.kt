@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.knowledge.data
 
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildResult
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
@@ -18,7 +18,7 @@ class DefaultKnowledgeGenerationService(
   private val store: SqlKnowledgePageStore,
   private val bookmarks: BookmarkReader,
   private val summaries: SummaryReader,
-  private val modelManager: LocalModelManager,
+  private val textInference: AiTextInference,
 ) : KnowledgeBuilder, KnowledgePageCreator, KnowledgePageEditor {
   override suspend fun rebuild(): KnowledgeBuildResult = withContext(Dispatchers.IO) {
     val snapshot = loadSourceSnapshot()
@@ -47,7 +47,7 @@ class DefaultKnowledgeGenerationService(
         ?.let { buildKnowledgeRefreshPrompt(it, topic, inputBudget) }
         ?: buildKnowledgePagePrompt(topic, inputBudget)
       val generatedDocument = parseGeneratedKnowledgeDocument(
-        raw = modelManager.generate(prompt),
+        raw = textInference.generate(prompt),
         fallbackTitle = topic.title,
       )
       store.persistPage(
@@ -93,7 +93,7 @@ class DefaultKnowledgeGenerationService(
     check(sources.isNotEmpty()) { "記事作成に使える要約済みブックマークがありません" }
 
     val fallbackTitle = fallbackKnowledgeTitle(normalizedRequest)
-    val generated = modelManager.generate(
+    val generated = textInference.generate(
       buildKnowledgeCreationPrompt(
         request = normalizedRequest,
         sources = sources,
@@ -136,7 +136,7 @@ class DefaultKnowledgeGenerationService(
     )
     check(sources.isNotEmpty()) { "記事編集に使える要約済みブックマークがありません" }
 
-    val generated = modelManager.generate(
+    val generated = textInference.generate(
       buildKnowledgeEditPrompt(
         page = page,
         instruction = normalizedInstruction,
@@ -184,7 +184,7 @@ class DefaultKnowledgeGenerationService(
   }
 
   private fun promptBudgetChars(): Int =
-    modelManager.selectedModel()?.promptBudgetChars ?: DEFAULT_PROMPT_BUDGET_CHARS
+    textInference.selectedModel()?.promptBudgetChars ?: DEFAULT_PROMPT_BUDGET_CHARS
 
   private data class SourceSnapshot(
     val sources: List<KnowledgeGenerationSource>,

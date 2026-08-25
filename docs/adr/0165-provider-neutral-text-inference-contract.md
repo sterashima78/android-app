@@ -47,7 +47,7 @@
 
 `LocalAiTextInference` を `:core:ai-runtime` に追加し、`LocalModelManager` の単発テキスト capability を `AiTextInference` へ投影する。
 
-`AiTextInferenceModel.id` と `cacheVariant` を組み合わせて生成キャッシュの同一性を判定する。ローカル adapter の `cacheVariant` は既存 `LocalModelManager.inferenceCacheVariant(modelId)` をそのまま返し、後続の feature migration でも既存の `modelId + prompt digest + runtime variant` という Summary cache key を変更しない。backend/context 等の生成条件が変わった場合だけ既存どおり variant が変化する。
+`AiTextInferenceModel.id` と `cacheVariant` を組み合わせて生成キャッシュの同一性を判定する。ローカル adapter の `cacheVariant` は既存 `LocalModelManager.inferenceCacheVariant(modelId)` をそのまま返し、feature migration 後も既存の `modelId + prompt digest + runtime variant` という Summary cache key を変更しない。backend/context 等の生成条件が変わった場合だけ既存どおり variant が変化する。
 
 ### 3. feature 固有生成ロジックは移動しない
 
@@ -68,11 +68,18 @@ SMB metadata normalization の Vision 推論は画像入力、Tool Call、専用
 
 将来これらに複数 provider が必要になった場合は、それぞれの要求に合う capability を別途設計する。
 
-### 5. 導入を挙動変更と feature migration に分離する
+### 5. contract 導入と feature migration を別変更で行う
 
-最初の変更では `:core:ai-inference` と `LocalAiTextInference` を追加するだけとし、既存 feature の実行先、queue、優先度、Local AI gate、model selection は変更しない。
+最初の変更では `:core:ai-inference` と `LocalAiTextInference` を追加するだけとし、既存 feature の実行先、queue、優先度、Local AI gate、model selection を変更しなかった。
 
-後続変更で Summary、Knowledge、Library organization の順に concrete `LocalModelManager` 依存を `AiTextInference` へ置き換える。移行完了時も実装は `LocalAiTextInference` のみを composition し、生成結果・既存 Summary cache key・実行順・ローカル排他制御を維持する。
+後続変更で Summary、Knowledge、Library organization の concrete `LocalModelManager` 依存を `AiTextInference` へ置き換える。
+
+- Summary の階層要約、metadata生成、Worker、Repository、content fetch model availability check は `AiTextInference` を利用する。
+- Knowledge の生成 service は model prompt budget と生成を `AiTextInference` から取得する。
+- Library organization は prompt / JSON schema / repair を feature 内に維持しつつ、model prompt budget と生成を `AiTextInference` から取得する。repair helper は provider-neutral な suspend generation を受け取る。
+- application scope では `AppAiCoreRuntimeDependencies` が `LocalModelManager` から `LocalAiTextInference` を1 instance compositionし、Summary Worker、Knowledge、Library organizationへ同じ capabilityを渡す。
+
+移行後も実装 provider は `LocalAiTextInference` のみであり、生成結果、既存 Summary cache key、実行順、`LocalAiBackgroundTaskGate` によるローカル排他制御を維持する。
 
 cloud provider、provider routing、OAuth、外部送信可否はさらに後続の独立した設計判断とする。
 
@@ -81,22 +88,25 @@ cloud provider、provider routing、OAuth、外部送信可否はさらに後続
 ### Positive
 
 - feature 固有生成ポリシーを維持したまま、単発テキスト生成と LiteRT-LM concrete runtime を分離できる。
-- 後続 provider を追加しても Summary / Knowledge / Library が transport や認証を直接知る必要がない。
+- Summary / Knowledge / Library organization は `LocalModelManager` を直接認識せず、後続 provider を追加しても transport や認証を feature へ漏らさずに済む。
 - local runtime の Engine lifecycle、benchmark、Vision、Chat capability を無理に共通化しない。
-- feature migration と cloud 実行追加を別 PR として検証できる。
-- abstraction migration だけで既存 Summary cache を失効させない。
+- provider abstraction の導入だけで既存 Summary cache を失効させない。
+- application composition が provider adapter の選択点として明示される。
 
 ### Negative
 
-- 移行期間中は `AiTextInference` と `LocalModelManager` の直接利用が併存する。
+- Chat / Vision は要件が異なるため引き続き `LocalModelManager` 等のローカル固有 capability を利用し、AI利用全体が1つの抽象には統一されない。
 - token count を共通 contract に含めるため、将来 provider は同等の計数または安全側の実装を提供する必要がある。
-- Chat / Vision にはこの抽象を再利用できない。
+- Library data module は Vision / SMB normalization のため `:core:ai-runtime` dependency 自体は残るが、Library organization の単発テキスト生成は `AiTextInference` に限定する。
 
 ## Verification
 
 - `:core:ai-inference` の model invariant unit test
 - `LocalModelStatus` / `LocalInferenceProgress` から provider-neutral model / progress への mapping test
 - local `cacheVariant` が既存 runtime variant を保持することの mapping test
+- Summary / Knowledge data が `:core:ai-inference` に依存し、`:core:ai-runtime` を直接参照しない source regression
+- Library organization が fake `AiTextInference` で model budget と生成を利用できる unit test
+- application composition が `LocalAiTextInference` を1か所で構築し、Summary / Knowledge / Libraryへ contract として注入する source regression
 - `verifyArchitecture`
 - module map verification
 - ADR integrity verification
@@ -104,7 +114,7 @@ cloud provider、provider routing、OAuth、外部送信可否はさらに後続
 
 ## Public repository review
 
-本変更は型、adapter、テスト、Gradle module、architecture documentation のみを追加する。credential、token、OAuth client secret、外部 account id、実ユーザー prompt、実記事、実蔵書、SMB path、診断 artifact を repository に追加しない。
+本変更は型、adapter、テスト、Gradle dependency、application composition、architecture documentation のみを変更する。credential、token、OAuth client secret、外部 account id、実ユーザー prompt、実記事、実蔵書、SMB path、診断 artifact を repository に追加しない。
 
 ## References
 

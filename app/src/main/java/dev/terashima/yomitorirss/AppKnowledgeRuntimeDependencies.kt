@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss
 
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
@@ -20,7 +20,7 @@ internal class AppKnowledgeRuntimeDependencies(
   dataChanges: DataChangeNotifier,
   bookmarks: BookmarkRepository,
   summaries: SummaryRepository,
-  modelManager: LocalModelManager,
+  textInference: AiTextInference,
 ) {
   private val knowledgePageStore: SqlKnowledgePageStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SqlKnowledgePageStore(database, dataChanges)
@@ -43,7 +43,7 @@ internal class AppKnowledgeRuntimeDependencies(
       store = knowledgePageStore,
       bookmarks = bookmarks,
       summaries = summaries,
-      modelManager = modelManager,
+      textInference = textInference,
     )
   }
 
