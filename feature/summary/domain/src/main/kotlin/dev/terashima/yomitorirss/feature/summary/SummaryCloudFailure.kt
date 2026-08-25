@@ -12,5 +12,4 @@ class SummaryCloudInferenceException(
   val kind: SummaryCloudFailureKind,
   val retryable: Boolean,
   message: String,
-  cause: Throwable? = null,
-) : RuntimeException(message, cause)
+) : RuntimeException(message)
