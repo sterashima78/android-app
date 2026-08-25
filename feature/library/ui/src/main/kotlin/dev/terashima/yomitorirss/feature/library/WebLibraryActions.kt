@@ -116,7 +116,7 @@ fun WebLibraryActions(
               ) {
                 Column(modifier = Modifier.weight(1f)) {
                   Text("タイトル・サムネイル取得ルール")
-                  Text("URL パターンに一致したページでは、WebView 内で登録した関数を実行します。")
+                  Text("URL パターンに一致したページでは、WebView 内で登録した非同期関数を実行します。")
                 }
                 TextButton(
                   onClick = { creatingExtractor = true },
@@ -289,7 +289,7 @@ private fun WebLibraryMetadataExtractorEditor(
           placeholder = { Text("https://example.com/books/*") },
           singleLine = true,
         )
-        Text("関数は WebView 内で同期実行されます。document を参照でき、{ title, thumbnailUrl } を返してください。値がない項目は null にできます。")
+        Text("関数は WebView 内で実行され、Promise<{ title, thumbnailUrl }> を返してください。async/await や fetch などの非同期処理も利用できます。値がない項目は null にできます。")
         OutlinedTextField(
           value = functionCode,
           onValueChange = { functionCode = it },
@@ -297,13 +297,13 @@ private fun WebLibraryMetadataExtractorEditor(
           label = { Text("関数コード") },
           placeholder = {
             Text(
-              "() => ({ title: document.querySelector('h1')?.textContent?.trim() ?? null, " +
+              "async () => ({ title: document.querySelector('h1')?.textContent?.trim() ?? null, " +
                 "thumbnailUrl: document.querySelector('img.cover')?.currentSrc ?? null })",
             )
           },
           minLines = 7,
         )
-        Text("このコードは専用 WebView profile のページコンテキストで動作します。DOM の読み取りだけを行う関数を推奨します。")
+        Text("このコードは専用 WebView profile のページコンテキストで動作します。必要な非同期処理だけを行い、不要な DOM 変更などの副作用は避けることを推奨します。")
       }
     },
     confirmButton = {
