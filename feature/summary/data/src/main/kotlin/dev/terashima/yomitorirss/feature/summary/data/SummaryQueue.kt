@@ -1,9 +1,11 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -25,6 +27,7 @@ object SummaryQueue {
   private const val CONTENT_FETCH_TAG = "article-summary-content-fetch"
   private const val CLEANUP_WORK_NAME = "article-summary-task-log-cleanup"
   private const val RESUME_ON_CHARGING_WORK_NAME = "article-summary-resume-on-charging"
+  private const val CLOUD_RETRY_BACKOFF_SECONDS = 30L
   private val providerTransitionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val providerTransitionMutex = Mutex()
 
@@ -230,8 +233,6 @@ object SummaryQueue {
     val preferences = SummaryQueueExecutionPreferences(appContext)
     if (!preferences.resumeLocalWhenCharging) return
 
-    // Library organization shares the local execution gate and has its own charging worker. Either
-    // worker may clear the gate first, so scheduling the summary queue must remain idempotent.
     preferences.localPaused = false
     try {
       ensureCleanupScheduled(appContext)
@@ -305,13 +306,20 @@ object SummaryQueue {
   }
 
   private fun scheduleInferenceWorker(context: Context) {
-    val request = OneTimeWorkRequestBuilder<SummaryWorker>()
+    val requestBuilder = OneTimeWorkRequestBuilder<SummaryWorker>()
       .addTag(INFERENCE_TAG)
-      .build()
+      .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, CLOUD_RETRY_BACKOFF_SECONDS, TimeUnit.SECONDS)
+    if (currentProvider(context) == SummaryExecutionProvider.CHATGPT) {
+      requestBuilder.setConstraints(
+        Constraints.Builder()
+          .setRequiredNetworkType(NetworkType.CONNECTED)
+          .build(),
+      )
+    }
     WorkManager.getInstance(context).enqueueUniqueWork(
       INFERENCE_QUEUE_NAME,
       ExistingWorkPolicy.APPEND_OR_REPLACE,
-      request,
+      requestBuilder.build(),
     )
   }
 

@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemPriority
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueProgressStage
+import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueExecutionState
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTask
 import dev.terashima.yomitorirss.feature.summary.SummaryQueueTaskPriority
@@ -56,6 +57,7 @@ internal class SummaryTaskQueueAdapter(
       task.state == SummaryQueueTaskState.RUNNING ||
       task.state == SummaryQueueTaskState.STOPPED,
     canResume = task.state == SummaryQueueTaskState.STOPPED || task.state == SummaryQueueTaskState.FAILED,
+    executionProviderLabel = task.executionProvider.displayLabel(),
   )
 
   private fun SummaryQueueTaskPriority.toAiTaskPriority(): AiTaskQueueItemPriority = when (this) {
@@ -84,6 +86,11 @@ internal class SummaryTaskQueueAdapter(
     SummaryQueueTaskProgressStage.CLOUD_GENERATING_SUMMARY -> AiTaskQueueProgressStage.CLOUD_GENERATING
     SummaryQueueTaskProgressStage.CLOUD_GENERATING_METADATA -> AiTaskQueueProgressStage.CLOUD_ENRICHING
     SummaryQueueTaskProgressStage.UNKNOWN -> AiTaskQueueProgressStage.UNKNOWN
+  }
+
+  private fun SummaryExecutionProvider.displayLabel(): String = when (this) {
+    SummaryExecutionProvider.LOCAL -> "Local"
+    SummaryExecutionProvider.CHATGPT -> "ChatGPT"
   }
 
   private companion object {

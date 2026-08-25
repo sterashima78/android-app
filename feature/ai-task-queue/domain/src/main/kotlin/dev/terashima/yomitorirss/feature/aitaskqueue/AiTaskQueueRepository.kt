@@ -51,6 +51,7 @@ data class AiTaskQueueItem(
   val canStop: Boolean = false,
   val canCancel: Boolean = false,
   val canResume: Boolean = false,
+  val executionProviderLabel: String? = null,
 )
 
 data class AiTaskQueueCounts(

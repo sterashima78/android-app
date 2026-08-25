@@ -41,6 +41,7 @@ data class SummaryQueueTask(
   val progressStage: SummaryQueueTaskProgressStage? = null,
   val progressCurrent: Int? = null,
   val progressTotal: Int? = null,
+  val executionProvider: SummaryExecutionProvider = SummaryExecutionProvider.LOCAL,
 )
 
 data class SummaryQueueTaskCounts(

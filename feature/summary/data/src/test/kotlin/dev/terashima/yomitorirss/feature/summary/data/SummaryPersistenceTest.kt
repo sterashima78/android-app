@@ -82,6 +82,28 @@ class SummaryPersistenceTest {
   }
 
   @Test
+  fun `一時的なクラウド失敗は失敗扱いにせず待機へ戻す`() {
+    insertArticle("cloud-retry")
+    database.enqueueSummaryTask("cloud-retry", forceRefresh = false)
+    checkNotNull(database.claimNextSummaryTask())
+    database.updateRunningSummaryTaskProgress("cloud-retry", SUMMARY_PROGRESS_CLOUD_GENERATING_SUMMARY)
+
+    assertTrue(
+      database.requeueRunningSummaryTaskForRetry(
+        "cloud-retry",
+        "ChatGPT / Codex が一時的に利用できません。自動的に再試行します",
+      ),
+    )
+
+    val retried = checkNotNull(database.findSummaryTask("cloud-retry"))
+    assertEquals(SUMMARY_QUEUED, retried.state)
+    assertNull(retried.startedAt)
+    assertNull(retried.finishedAt)
+    assertNull(retried.progressStage)
+    assertEquals("ChatGPT / Codex が一時的に利用できません。自動的に再試行します", retried.error)
+  }
+
+  @Test
   fun `記事本文を準備してから推論タスクをclaimする`() {
     insertArticle("article")
     database.enqueueSummaryTask("article", forceRefresh = false)

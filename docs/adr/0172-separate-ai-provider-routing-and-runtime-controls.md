@@ -61,6 +61,21 @@ Local / Cloud pause は execution policy であり、durable task 自体を canc
 
 個別 task の stop / cancel / retry semantics は既存 feature ownership を維持する。
 
+### 6. Cloud provider の一時障害は durable task failure と分離する
+
+Cloud transport / provider の状態は application task の失敗とは別に扱う。
+
+- `401` は provider adapter が credential refresh を1回だけ試し、同じ request を1回だけ再送する。
+- network I/O failure、`408`、`429`、`5xx` は retryable cloud failure として分類する。
+- retryable failure では running Summary task を `queued` へ戻し、WorkManager の `Result.retry()` と exponential backoff に委譲する。
+- ChatGPT Summary worker は network connectivity constraint を持ち、offline 中に cloud request を開始しない。
+- refresh 後も失敗する `401` / `403` とその他の非一時的 `4xx` は自動再試行せず、ユーザー操作が必要な durable failure とする。
+- `CancellationException` は failure に変換せず、そのまま worker cancellation として伝播させる。
+
+OpenAI / ChatGPT 固有の status code や transport exception は Summary domain へ直接公開せず、cloud adapter が retryability と安全な user-facing message へ正規化する。provider response body、prompt、URL、token、account id を task error や log へコピーしない。
+
+AI task queue の Summary 行には現在選択されている実行先を `Local` / `ChatGPT` として表示し、pause state と progress に加えて「どこで実行されるタスクか」を確認できるようにする。これは routing の観測表示であり、provider credential details は表示しない。
+
 ## Consequences
 
 ### Positive
@@ -70,12 +85,15 @@ Local / Cloud pause は execution policy であり、durable task 自体を canc
 - Local AI を止めたまま cloud Summary を処理でき、逆も可能になる。
 - 充電時再開が cloud request を意図せず開始することがなくなる。
 - cloud Summary の進捗表示が実際の pipeline と一致する。
+- rate limit、provider outage、通信断でSummary taskが直ちに「失敗」へ落ちず、WorkManagerのbackoffで自動回復できる。
+- provider response bodyをdurable task errorへ保存しないため、クラウド側が入力断片をerrorへ含めても端末ログ/UIへ再露出しにくい。
 
 ### Negative
 
 - execution state が1つから Local / Cloud の2つになるため、queue repository と UI state が少し複雑になる。
 - 現時点では cloud pause の対象が Summary だけなので、汎用 control の利用者は少ない。
-- provider-specific concurrency / retry / rate-limit policy はこの判断では扱わない。
+- Summary queue の実行先表示は現在の routing setting を表し、provider 切替前に失敗した履歴の「実際に失敗したprovider」を永続化する監査ログではない。
+- provider-specific concurrency や Retry-After を使った厳密な待機時間制御はこの判断では扱わず、WorkManager exponential backoff を利用する。
 
 ## Verification
 
@@ -84,6 +102,11 @@ Local / Cloud pause は execution policy であり、durable task 自体を canc
 - Local / Cloud pause preference が独立して永続化されることを test する。
 - charging resume が Local preference だけへ作用することを test する。
 - Cloud Summary が `cloud_generating_summary` / `cloud_generating_metadata` を記録し、UI が provider-aware label へ変換することを test する。
+- `401` が credential refresh 後に1回だけ再送されることを transport test で固定する。
+- `429` / `5xx` を retryable、認証失効や非一時的 `4xx` を non-retryable として分類することを test する。
+- retryable cloud failure で running task が `failed` ではなく `queued` へ戻ることを persistence test する。
+- provider error body の synthetic secret / prompt 断片が user-facing failure message に残らないことを test する。
+- AI task queue が Summary の `Local` / `ChatGPT` 実行先ラベルを表示できることを test する。
 - ChatGPT / Codex UI が task routing control を持たず、AI実行設定が Summary routing を表示することを source/architecture review で確認する。
 - Architecture / Test / Lint / public repository verification を実行する。
 
@@ -91,6 +114,7 @@ Local / Cloud pause は execution policy であり、durable task 自体を canc
 
 - ADR index に ADR-0172 を追加する。
 - module map の Summary / Settings / AI task queue ownership を更新する。
+- cloud retry / failure classification / queue observability の判断は ADR-0172 の refinement として本ADRへ追記する。
 
 ## References
 
