@@ -80,6 +80,30 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
+  fun `単発テキスト生成featureはprovider neutral contractを利用する`() {
+    val summaryBuild = source("feature/summary/data/build.gradle.kts")
+    val knowledgeBuild = source("feature/knowledge/data/build.gradle.kts")
+    val libraryOrganization = source(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryOrganizationSuggester.kt",
+    )
+    val aiCore = source("app/src/main/java/dev/terashima/yomitorirss/AppAiCoreRuntimeDependencies.kt")
+    val featureRuntime = source("app/src/main/java/dev/terashima/yomitorirss/AppFeatureRuntimeDependencies.kt")
+    val knowledgeRuntime = source("app/src/main/java/dev/terashima/yomitorirss/AppKnowledgeRuntimeDependencies.kt")
+    val workerFactory = source("app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt")
+
+    assertTrue("Summary data must depend on ai-inference", ":core:ai-inference" in summaryBuild)
+    assertFalse("Summary data must not depend on local ai-runtime", ":core:ai-runtime" in summaryBuild)
+    assertTrue("Knowledge data must depend on ai-inference", ":core:ai-inference" in knowledgeBuild)
+    assertFalse("Knowledge data must not depend on local ai-runtime", ":core:ai-runtime" in knowledgeBuild)
+    assertTrue("Library organization must consume AiTextInference", "AiTextInference" in libraryOrganization)
+    assertFalse("Library organization must not consume LocalModelManager", "LocalModelManager" in libraryOrganization)
+    assertTrue("app AI core must compose the local adapter once", "LocalAiTextInference(modelManager)" in aiCore)
+    assertTrue("library composition must inject text inference", "textInferenceProvider" in featureRuntime)
+    assertTrue("knowledge composition must inject text inference", "textInference" in knowledgeRuntime)
+    assertTrue("summary workers must receive text inference", "textInferenceProvider" in workerFactory)
+  }
+
+  @Test
   fun `LAN Web serverはtransport read model rendererを分離する`() {
     val server = source(
       "feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServer.kt",

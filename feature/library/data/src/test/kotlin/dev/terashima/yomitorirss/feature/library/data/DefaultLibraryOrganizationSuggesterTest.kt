@@ -1,15 +1,21 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
+import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSeriesContext
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class LocalLibraryOrganizationSuggesterTest {
+class DefaultLibraryOrganizationSuggesterTest {
   @Test
   fun `AI suggestion parser validates strict JSON and deduplicates labels`() {
     val suggestion = parseLibraryOrganizationSuggestion(
@@ -44,7 +50,7 @@ class LocalLibraryOrganizationSuggesterTest {
   }
 
   @Test
-  fun `invalid AI output is regenerated once with schema error feedback`() {
+  fun `invalid AI output is regenerated once with schema error feedback`() = runBlocking {
     val outputs = ArrayDeque(
       listOf(
         """{"tags":"Android","collections":[],"reason":"invalid"}""",
@@ -69,6 +75,26 @@ class LocalLibraryOrganizationSuggesterTest {
   }
 
   @Test
+  fun `suggester uses provider neutral model budget and generation`() = runBlocking {
+    val inference = FakeTextInference(
+      response = """{"tags":["Android"],"collections":["技術"],"reason":"valid"}""",
+      promptBudgetChars = 8_000,
+    )
+
+    val suggestion = DefaultLibraryOrganizationSuggester(inference).suggest(
+      book = testBook(),
+      existingTags = listOf("Android"),
+      existingCollections = listOf("技術"),
+      seriesContext = null,
+    )
+
+    assertEquals(listOf("Android"), suggestion.tagNames)
+    assertEquals(listOf("技術"), suggestion.collectionNames)
+    assertEquals(1, inference.generatedPrompts.size)
+    assertTrue(inference.generatedPrompts.single().length <= 8_000)
+  }
+
+  @Test
   fun `prompt exposes same series classifications separately from global taxonomy`() {
     val prompt = buildLibraryOrganizationPrompt(
       book = testBook(),
@@ -84,6 +110,32 @@ class LocalLibraryOrganizationSuggesterTest {
     assertTrue(prompt.contains("シリーズ共通タグ"))
     assertTrue(prompt.contains("シリーズ棚"))
     assertTrue(prompt.contains("additionalProperties"))
+  }
+}
+
+private class FakeTextInference(
+  private val response: String,
+  promptBudgetChars: Int,
+) : AiTextInference {
+  override val progress: Flow<AiTextInferenceProgress?> = flowOf(null)
+  val generatedPrompts = mutableListOf<String>()
+
+  private val model = AiTextInferenceModel(
+    id = "test-model",
+    name = "Test model",
+    contextTokens = 8_192,
+    maxInputChars = 16_000,
+    promptBudgetChars = promptBudgetChars,
+    cacheVariant = "test-variant",
+  )
+
+  override fun selectedModel(): AiTextInferenceModel = model
+
+  override fun countTokens(text: String): Int = text.length
+
+  override suspend fun generate(prompt: String): String {
+    generatedPrompts += prompt
+    return response
   }
 }
 

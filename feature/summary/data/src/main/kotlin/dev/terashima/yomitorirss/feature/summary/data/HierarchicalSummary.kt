@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -20,7 +20,7 @@ data class HierarchicalSummaryProgress(
   val total: Int? = null,
 )
 
-suspend fun LocalModelManager.summarizeHierarchically(
+suspend fun AiTextInference.summarizeHierarchically(
   text: String,
   prompt: String,
   promptSuffix: String = "",
@@ -112,7 +112,7 @@ suspend fun LocalModelManager.summarizeHierarchically(
   return summarizeText(finalContext, prompt, promptSuffix)
 }
 
-fun LocalModelManager.summarizeText(
+suspend fun AiTextInference.summarizeText(
   text: String,
   prompt: String,
   promptSuffix: String = "",

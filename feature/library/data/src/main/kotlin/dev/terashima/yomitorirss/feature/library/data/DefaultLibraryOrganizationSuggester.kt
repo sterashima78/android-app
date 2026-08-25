@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.library.data
 
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSeriesContext
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
@@ -14,8 +14,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.json.JSONArray
 import org.json.JSONObject
 
-class LocalLibraryOrganizationSuggester(
-  private val modelManager: LocalModelManager,
+class DefaultLibraryOrganizationSuggester(
+  private val textInference: AiTextInference,
 ) : LibraryOrganizationSuggester {
   override suspend fun suggest(
     book: LibraryBook,
@@ -23,7 +23,7 @@ class LocalLibraryOrganizationSuggester(
     existingCollections: List<String>,
     seriesContext: LibraryOrganizationSeriesContext?,
   ): LibraryOrganizationSuggestion = withContext(Dispatchers.IO) {
-    val model = modelManager.selectedModel() ?: error("AIモデルが選択されていません。設定からモデルを準備してください。")
+    val model = textInference.selectedModel() ?: error("AIモデルが選択されていません。設定からモデルを準備してください。")
     val prompt = buildLibraryOrganizationPrompt(
       book = book,
       existingTags = existingTags,
@@ -33,7 +33,7 @@ class LocalLibraryOrganizationSuggester(
     generateValidatedLibraryOrganizationSuggestion(
       initialPrompt = prompt,
       promptBudgetChars = model.promptBudgetChars,
-      generate = { request -> modelManager.generate(request) },
+      generate = { request -> textInference.generate(request) },
     )
   }
 }
@@ -103,10 +103,10 @@ internal fun buildLibraryOrganizationPrompt(
   """.trimIndent()
 }
 
-internal fun generateValidatedLibraryOrganizationSuggestion(
+internal suspend fun generateValidatedLibraryOrganizationSuggestion(
   initialPrompt: String,
   promptBudgetChars: Int,
-  generate: (String) -> String,
+  generate: suspend (String) -> String,
 ): LibraryOrganizationSuggestion {
   require(promptBudgetChars > 0) { "AIモデルの入力上限が不正です" }
   var prompt = initialPrompt.take(promptBudgetChars)

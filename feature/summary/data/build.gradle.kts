@@ -23,7 +23,7 @@ dependencies {
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":core:background"))
   implementation(project(":core:database"))
-  implementation(project(":core:ai-runtime"))
+  implementation(project(":core:ai-inference"))
 
   implementation("androidx.core:core-ktx:1.17.0")
   implementation("androidx.work:work-runtime-ktx:2.11.2")

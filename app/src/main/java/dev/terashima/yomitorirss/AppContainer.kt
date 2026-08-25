@@ -39,7 +39,7 @@ class AppContainer(
       application = application,
       database = databaseConnection,
       httpClient = httpClient,
-      modelManagerProvider = { aiCoreRuntime.modelManager },
+      textInferenceProvider = { aiCoreRuntime.textInference },
       resumedActivityProvider = resumedActivityProvider,
     )
   }
@@ -78,7 +78,7 @@ class AppContainer(
       dataChanges = dataChanges,
       bookmarks = contentRuntime.bookmarkRepository,
       summaries = aiCoreRuntime.summaryRepository,
-      modelManager = aiCoreRuntime.modelManager,
+      textInference = aiCoreRuntime.textInference,
     )
   }
 
@@ -105,6 +105,7 @@ class AppContainer(
   internal val libraryRuntime get() = featureRuntimeDependencies.library
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
   internal val knowledgeBuildScheduler get() = featureRuntimeDependencies.knowledgeBuildScheduler
+  internal val textInference get() = aiCoreRuntime.textInference
 
   val bookmarkContentQuery get() = contentRuntime.bookmarkContentQuery
   val articleRepository get() = contentRuntime.articleRepository
