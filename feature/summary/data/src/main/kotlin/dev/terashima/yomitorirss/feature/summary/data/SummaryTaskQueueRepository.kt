@@ -47,8 +47,10 @@ class DefaultSummaryTaskQueueRepository(
   override suspend fun taskCounts(): SummaryQueueTaskCounts = database.countSummaryQueueTasks()
   override suspend fun executionState(): SummaryQueueExecutionState = SummaryQueue.executionState(appContext)
   override suspend fun kick() = SummaryQueue.kick(appContext)
-  override suspend fun setPaused(paused: Boolean) = SummaryQueue.setPaused(appContext, paused)
-  override suspend fun setResumeWhenCharging(enabled: Boolean) = SummaryQueue.setResumeWhenCharging(appContext, enabled)
+  override suspend fun setLocalPaused(paused: Boolean) = SummaryQueue.setLocalPaused(appContext, paused)
+  override suspend fun setCloudPaused(paused: Boolean) = SummaryQueue.setCloudPaused(appContext, paused)
+  override suspend fun setResumeLocalWhenCharging(enabled: Boolean) =
+    SummaryQueue.setResumeLocalWhenCharging(appContext, enabled)
   override suspend fun stop(articleId: String): Boolean = SummaryQueue.stop(appContext, articleId)
   override suspend fun cancel(articleId: String): Boolean = SummaryQueue.cancel(appContext, articleId)
   override suspend fun resume(articleId: String): Boolean = SummaryQueue.resume(appContext, articleId)
@@ -80,5 +82,7 @@ private fun String?.toSummaryQueueTaskProgressStage(): SummaryQueueTaskProgressS
   SUMMARY_PROGRESS_SUMMARIZING_CHUNK -> SummaryQueueTaskProgressStage.SUMMARIZING_CHUNK
   SUMMARY_PROGRESS_REDUCING_SUMMARY -> SummaryQueueTaskProgressStage.REDUCING_SUMMARY
   SUMMARY_PROGRESS_FINALIZING_SUMMARY -> SummaryQueueTaskProgressStage.FINALIZING_SUMMARY
+  SUMMARY_PROGRESS_CLOUD_GENERATING_SUMMARY -> SummaryQueueTaskProgressStage.CLOUD_GENERATING_SUMMARY
+  SUMMARY_PROGRESS_CLOUD_GENERATING_METADATA -> SummaryQueueTaskProgressStage.CLOUD_GENERATING_METADATA
   else -> SummaryQueueTaskProgressStage.UNKNOWN
 }
