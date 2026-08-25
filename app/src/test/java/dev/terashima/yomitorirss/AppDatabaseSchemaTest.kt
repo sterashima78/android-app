@@ -69,6 +69,7 @@ class AppDatabaseSchemaTest {
         "library_item_series_exclusions",
         "library_source_series",
         "library_audible_source_series",
+        "web_library_metadata_extractors",
         "smb_library_servers",
         "smb_cover_prefetch_queue",
         "smb_metadata_normalization_batches",
