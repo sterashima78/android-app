@@ -9,8 +9,7 @@ import dev.terashima.yomitorirss.feature.chat.AgentTool
 import dev.terashima.yomitorirss.feature.chat.AgentToolArgument
 import dev.terashima.yomitorirss.feature.chat.AgentToolDefinition
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
-import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
-import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
+import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.task.TaskItem
@@ -49,7 +48,7 @@ private fun rssSkill(
     ) { arguments ->
       val query = arguments.query()
       val feeds = feedRepository.listFeeds()
-        .filterNot { feed -> isRedditFeedUrl(feed.feedUrl) }
+        .filter { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) }
         .filter { feed -> query.isBlank() || listOf(feed.title, feed.feedUrl, feed.siteUrl.orEmpty()).any { it.contains(query, true) } }
       formatCollection(feeds, DEFAULT_TOOL_ITEMS) { feed ->
         "- id=${feed.id} | title=${feed.title} | feed_url=${feed.feedUrl} | site_url=${feed.siteUrl.orEmpty()} | last_fetched_at=${feed.lastFetchedAt.orEmpty()} | last_error=${feed.lastError.orEmpty()}"
@@ -63,7 +62,7 @@ private fun rssSkill(
       ),
     ) { arguments ->
       formatArticles(
-        articleRepository.listUnreadArticles().filterNot(Article::isRedditArticle),
+        articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isNonRedditArticle),
         arguments.query(),
         DEFAULT_TOOL_ITEMS,
       )
@@ -104,7 +103,7 @@ private fun redditSkill(
       ),
     ) { arguments ->
       formatArticles(
-        articleRepository.listUnreadArticles().filter(Article::isRedditArticle),
+        articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isRedditArticle),
         arguments.query(),
         DEFAULT_TOOL_ITEMS,
       )

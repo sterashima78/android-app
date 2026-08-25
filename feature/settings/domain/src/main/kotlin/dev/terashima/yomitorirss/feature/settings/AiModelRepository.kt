@@ -121,12 +121,9 @@ interface AiModelRepository {
   val models: Flow<List<AiModelStatus>>
   val downloadProgress: Flow<AiModelDownloadProgress?>
   val summaryProgress: Flow<AiSummaryProgress?>
-  val summaryPrompt: Flow<String>
   val inferenceSettings: Flow<AiInferenceSettings>
 
   fun isSupported(): Boolean
-  fun updateSummaryPrompt(prompt: String)
-  fun resetSummaryPrompt()
   fun setInferenceBackend(backend: AiInferenceBackend)
   fun setThinkingEnabled(enabled: Boolean)
   fun setSpeculativeDecodingEnabled(enabled: Boolean)

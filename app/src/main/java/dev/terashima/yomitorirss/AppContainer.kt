@@ -123,6 +123,7 @@ class AppContainer(
   val widgetRefreshScheduler get() = supportingRuntime.widgetRefreshScheduler
   val modelManager get() = aiCoreRuntime.modelManager
   val aiModelRepository get() = aiCoreRuntime.aiModelRepository
+  val summaryPromptSettings get() = aiCoreRuntime.summaryPromptSettings
   val chatRepository get() = supportingRuntime.chatRepository
   val taskRepository get() = supportingRuntime.taskRepository
   val workoutRepository get() = supportingRuntime.workoutRepository

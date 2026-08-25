@@ -3,9 +3,9 @@ package dev.terashima.yomitorirss.ui
 import android.net.Uri
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedItemAction
+import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
-import dev.terashima.yomitorirss.feature.reddit.redditThreadId
 
 internal fun integratedItemActions(
   target: IntegratedTarget,
@@ -32,11 +32,11 @@ internal fun integratedItemActions(
         onSummarize(target.article)
       },
     )
-    val threadId = redditThreadId(target.article.url)
+    val threadId = RedditSourceBoundary.threadId(target.article.url)
     if (threadId != null) {
       val subscribed = redditState.subscriptions.any { subscription ->
         subscription.kind == RedditSubscriptionKind.THREAD &&
-          redditThreadId(subscription.feedUrl) == threadId
+          RedditSourceBoundary.threadId(subscription.feedUrl) == threadId
       }
       add(
         if (subscribed) {

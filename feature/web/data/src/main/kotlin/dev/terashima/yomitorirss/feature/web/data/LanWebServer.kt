@@ -4,8 +4,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
-import dev.terashima.yomitorirss.feature.reddit.isRedditArticle
-import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
+import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import java.io.BufferedReader
@@ -139,7 +138,7 @@ class LanWebServer(
       VIEW_REDDIT -> {
         title = "Reddit"
         body = renderArticles(
-          articleRepository.listUnreadArticles().filter(Article::isRedditArticle),
+          articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isRedditArticle),
           "Redditの未読はありません。",
         )
       }
@@ -153,12 +152,12 @@ class LanWebServer(
       }
       VIEW_FEEDS -> {
         title = "RSSフィード"
-        body = renderFeeds(feedRepository.listFeeds().filterNot { isRedditFeedUrl(it.feedUrl) })
+        body = renderFeeds(feedRepository.listFeeds().filter { RedditSourceBoundary.isNonRedditFeed(it.feedUrl) })
       }
       else -> {
         title = "RSS未読"
         body = renderArticles(
-          articleRepository.listUnreadArticles().filterNot(Article::isRedditArticle),
+          articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isNonRedditArticle),
           "RSSの未読記事はありません。",
         )
       }

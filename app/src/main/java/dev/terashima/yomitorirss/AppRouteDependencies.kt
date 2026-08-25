@@ -112,7 +112,10 @@ class AppRouteDependencies internal constructor(
   }
 
   val aiSettingsViewModelFactory: AiSettingsViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AiSettingsViewModel.Factory(container.aiModelRepository)
+    AiSettingsViewModel.Factory(
+      repository = container.aiModelRepository,
+      summaryPromptSettings = container.summaryPromptSettings,
+    )
   }
 
   val aiTaskQueueRepository: AiTaskQueueRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
