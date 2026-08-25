@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.settings.data
 
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelInfo
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptOpenAiClient
 import dev.terashima.yomitorirss.feature.settings.ChatGptProviderModel
@@ -15,16 +16,19 @@ class DefaultChatGptProviderRepository(
     modelPreferences.selectModel(modelId)
   }
 
-  override suspend fun listModels(): List<ChatGptProviderModel> = client.listModels()
-    .asSequence()
-    .filter { it.visibleInPicker && it.supportedInApi }
-    .map { model ->
-      ChatGptProviderModel(
-        id = model.id,
-        name = model.displayName,
-        description = model.description,
-        supportsWebSearch = true,
-      )
-    }
-    .toList()
+  override suspend fun listModels(): List<ChatGptProviderModel> =
+    selectChatGptProviderModels(client.listModels())
 }
+
+internal fun selectChatGptProviderModels(models: List<ChatGptModelInfo>): List<ChatGptProviderModel> = models
+  .asSequence()
+  .filter { it.visibleInPicker && it.supportedInApi && it.supportsWebSearch }
+  .map { model ->
+    ChatGptProviderModel(
+      id = model.id,
+      name = model.displayName,
+      description = model.description,
+      supportsWebSearch = model.supportsWebSearch,
+    )
+  }
+  .toList()
