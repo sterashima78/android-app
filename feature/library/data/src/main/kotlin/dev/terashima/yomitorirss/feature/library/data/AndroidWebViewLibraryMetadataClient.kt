@@ -24,6 +24,7 @@ import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorRepo
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorStatus
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -69,19 +70,26 @@ class AndroidWebViewLibraryMetadataClient(
     }
     val extractors = extractorRepository?.list().orEmpty()
 
-    return withTimeout(timeoutMillis) {
-      withContext(Dispatchers.Main.immediate) {
-        require(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
-          "安全な WebView metadata 取得を利用できません。Android System WebView を更新してください"
+    return try {
+      withTimeout(timeoutMillis) {
+        withContext(Dispatchers.Main.immediate) {
+          require(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
+            "安全な WebView metadata 取得を利用できません。Android System WebView を更新してください"
+          }
+          val activity = requireNotNull(activityProvider()) {
+            "WebView metadata を取得できる画面がありません"
+          }
+          require(!activity.isFinishing && !activity.isDestroyed) {
+            "WebView metadata を取得できる画面がありません"
+          }
+          fetchOnMainThread(activity, requestedUrl, titleHint, extractors)
         }
-        val activity = requireNotNull(activityProvider()) {
-          "WebView metadata を取得できる画面がありません"
-        }
-        require(!activity.isFinishing && !activity.isDestroyed) {
-          "WebView metadata を取得できる画面がありません"
-        }
-        fetchOnMainThread(activity, requestedUrl, titleHint, extractors)
       }
+    } catch (error: TimeoutCancellationException) {
+      throw IllegalStateException(
+        "WebView metadata 取得が ${timeoutMillis / 1_000} 秒以内に完了しませんでした",
+        error,
+      )
     }
   }
 
@@ -371,10 +379,12 @@ internal data class WebLibraryCustomMetadataPromisePoll(
 
 internal fun customMetadataStartScript(functionCode: String, stateKey: String): String {
   val expression = functionCode.trim().removeSuffix(";")
+  val quotedExpression = JSONObject.quote(expression)
   val quotedStateKey = JSONObject.quote(stateKey)
   return """
     (() => {
       const stateKey = $quotedStateKey;
+      const source = $quotedExpression;
       const finish = (status, value = null, message = null) => {
         window[stateKey] = { pending: false, status, value, message };
       };
@@ -385,12 +395,18 @@ internal fun customMetadataStartScript(functionCode: String, stateKey: String): 
         return value.trim().slice(0, $MAX_DIAGNOSTIC_MESSAGE_LENGTH) || null;
       };
       window[stateKey] = { pending: true, status: null, value: null, message: null };
+      let extractor;
       try {
-        const extractor = ($expression);
-        if (typeof extractor !== 'function') {
-          finish('invalid_function', null, '関数式として評価できませんでした');
-          return null;
-        }
+        extractor = eval('(' + source + ')');
+      } catch (error) {
+        finish('invalid_function', null, errorMessage(error));
+        return null;
+      }
+      if (typeof extractor !== 'function') {
+        finish('invalid_function', null, '関数式として評価できませんでした');
+        return null;
+      }
+      try {
         const promise = extractor({ url: location.href });
         if (!promise || typeof promise.then !== 'function') {
           finish('non_promise_result', null, 'Promise を返していません');
