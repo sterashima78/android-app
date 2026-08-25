@@ -17,3 +17,12 @@ __pycache__/
 keystore.properties
 *.apk
 *.aab
+
+# Local diagnostics and profiling artifacts
+*.hprof
+*.trace
+*.perfetto-trace
+*.perfetto-trace-unredacted
+*.heapprofile
+*.heapdump
+*.heapsnapshot

@@ -49,6 +49,16 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 
 新しい platform API を導入する際は API 34 以上で利用可能かを確認する。API 35/36/37 以降の差分を扱う `SDK_INT` / extension feature 判定は、実際に現在の対応範囲内で動作が変わるため維持してよい。
 
+## LAN Web Server boundary
+
+LAN Web Server は `:feature:web:data` が所有し、read-only HTTP contract と認証方式を維持する。単一 class に transport、Repository read、HTML rendering を集約せず、次の責務へ分ける。
+
+- `LanWebServer`: socket transport、HTTP request parsing、LAN/client validation、token/cookie authentication、route dispatch、security response headers
+- `LanWebReadModel`: owner Repository contract からの read-only page model 構築と RSS/Reddit presentation classification
+- `LanWebRenderer`: typed page model からの HTML rendering と escaping
+
+この分割は LAN Web の外部 URL、port、認証 contract、read-only 性を変更しない。別 Context の database implementation を server へ直接注入せず、Domain Repository contract を利用する。
+
 ## Process boundaries and local AI
 
 - 通常の UI、WorkManager、DB、widget、startup diagnostics は application の main process が所有する。
@@ -109,3 +119,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)
 - [ADR-0161](../adr/0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0163](../adr/0163-webview-renderer-exit-recovery.md)
+- [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
