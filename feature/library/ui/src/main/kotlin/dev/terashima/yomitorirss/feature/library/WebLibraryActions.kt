@@ -395,7 +395,11 @@ internal fun webLibraryRefreshSuccessUiState(
   val details = buildList {
     extractor?.let { execution ->
       if (execution.status == WebLibraryMetadataExtractorStatus.APPLIED) {
-        add("取得ルール「${execution.urlPattern}」を適用")
+        add(
+          "取得ルール「${execution.urlPattern}」を適用（カスタム値取得成功: " +
+            webLibraryAppliedMetadataDetail(result.book) +
+            "）",
+        )
       } else {
         val reason = webLibraryExtractorStatusLabel(execution.status)
         val message = execution.message?.takeIf(String::isNotBlank)?.let { ": $it" }.orEmpty()
@@ -421,6 +425,27 @@ internal fun webLibraryRefreshSuccessUiState(
     status = status,
     detail = details.joinToString(" / "),
   )
+}
+
+private fun webLibraryAppliedMetadataDetail(book: LibraryBook): String {
+  val title = webLibraryDiagnosticValue(book.title)
+  val thumbnail = book.thumbnailUrl
+    ?.takeIf(String::isNotBlank)
+    ?.let(::webLibraryDiagnosticValue)
+    ?: "なし"
+  return "適用後タイトル「$title」・適用後サムネイル $thumbnail"
+}
+
+private fun webLibraryDiagnosticValue(value: String): String {
+  val normalized = value
+    .replace('\n', ' ')
+    .replace('\r', ' ')
+    .trim()
+  return if (normalized.length <= WEB_LIBRARY_DIAGNOSTIC_VALUE_MAX_LENGTH) {
+    normalized
+  } else {
+    normalized.take(WEB_LIBRARY_DIAGNOSTIC_VALUE_MAX_LENGTH - 3) + "..."
+  }
 }
 
 private fun webLibraryMetadataFieldLabel(field: WebLibraryMetadataField): String = when (field) {
@@ -504,3 +529,5 @@ private fun WebLibraryMetadataExtractorEditor(
     },
   )
 }
+
+private const val WEB_LIBRARY_DIAGNOSTIC_VALUE_MAX_LENGTH = 160
