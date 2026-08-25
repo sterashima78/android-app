@@ -32,7 +32,7 @@ import org.json.JSONTokener
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal data class WebLibraryRenderedMetadataFetchResult(
+data class WebLibraryRenderedMetadataFetchResult(
   val book: LibraryBook,
   val extractorExecution: WebLibraryMetadataExtractorExecution? = null,
 )
