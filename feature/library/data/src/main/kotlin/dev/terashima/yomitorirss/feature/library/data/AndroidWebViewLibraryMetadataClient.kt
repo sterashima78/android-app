@@ -146,7 +146,7 @@ class AndroidWebViewLibraryMetadataClient(
     var extractorExecution: WebLibraryMetadataExtractorExecution? = null
     lateinit var extractMetadata: (String, Int) -> Unit
     lateinit var pollCustomMetadata: (String, WebLibraryMetadataExtractor, String, Int, Long) -> Unit
-    lateinit var startCustomMetadataWhenDomReady: (String, Int, Int) -> Unit
+    lateinit var startCustomMetadataWhenDomReady: (String, Int) -> Unit
 
     fun dispose() {
       webView.stopLoading()
@@ -329,15 +329,14 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
-    startCustomMetadataWhenDomReady = { finalUrl, generation, attempt ->
+    startCustomMetadataWhenDomReady = { finalUrl, generation ->
       if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
         webView.evaluateJavascript("document.readyState") { rawState ->
           if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
-            val loading = rawState == "\"loading\""
-            if (loading && attempt < MAX_DOM_READY_ATTEMPTS) {
+            if (rawState == "\"loading\"") {
               webView.postDelayed(
                 {
-                  startCustomMetadataWhenDomReady(finalUrl, generation, attempt + 1)
+                  startCustomMetadataWhenDomReady(finalUrl, generation)
                 },
                 DOM_READY_POLL_DELAY_MILLIS,
               )
@@ -383,7 +382,7 @@ class AndroidWebViewLibraryMetadataClient(
         if (!isSafeRenderedUrl(finalUrl)) return
         val generation = pageGeneration
         if (matchingExtractor(finalUrl) != null) {
-          startCustomMetadataWhenDomReady(finalUrl, generation, 0)
+          startCustomMetadataWhenDomReady(finalUrl, generation)
         }
       }
 
@@ -396,7 +395,7 @@ class AndroidWebViewLibraryMetadataClient(
         }
         val generation = pageGeneration
         if (matchingExtractor(finalUrl) != null) {
-          startCustomMetadataWhenDomReady(finalUrl, generation, 0)
+          extractMetadata(finalUrl, generation)
         } else {
           view.postDelayed(
             {
@@ -779,6 +778,5 @@ private const val DOM_READY_POLL_DELAY_MILLIS = 100L
 private const val EXTRACTION_RETRY_DELAY_MILLIS = 500L
 private const val CUSTOM_METADATA_POLL_DELAY_MILLIS = 100L
 private const val CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS = 10_000L
-private const val MAX_DOM_READY_ATTEMPTS = 20
 private const val MAX_EXTRACTION_ATTEMPTS = 4
 private const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 200
