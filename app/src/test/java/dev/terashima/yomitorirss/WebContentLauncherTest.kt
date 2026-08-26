@@ -36,6 +36,13 @@ class WebContentLauncherTest {
   }
 
   @Test
+  fun `Custom Tab 起動がない stop は通常どおりロックする`() {
+    val tracker = AppLockExternalTransitionTracker { 1_000L }
+
+    assertTrue(tracker.shouldLockOnStop())
+  }
+
+  @Test
   fun `Custom Tab 起動直後の stop は一度だけロック対象外にする`() {
     var elapsedRealtimeMillis = 1_000L
     val tracker = AppLockExternalTransitionTracker { elapsedRealtimeMillis }
