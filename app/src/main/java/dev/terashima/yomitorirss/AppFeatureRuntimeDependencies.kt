@@ -33,6 +33,7 @@ import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganization
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMetadataExtractorRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.data.ForegroundWebLibraryRenderedMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerRuntimeDependencies
@@ -90,6 +91,10 @@ internal class AppFeatureRuntimeDependencies(
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     val webMetadataExtractorRepository = DefaultWebLibraryMetadataExtractorRepository(database)
     val authorizationManager = GoogleBooksAuthorizationManager(application)
+    val renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
+      activityProvider = resumedActivityProvider,
+      extractorRepository = webMetadataExtractorRepository,
+    )
 
     LibraryRuntimeDependencies(
       authorization = LibraryAuthorizationDependencies(
@@ -118,9 +123,9 @@ internal class AppFeatureRuntimeDependencies(
       webLibraryMutator = DefaultWebLibraryMutator(
         database = database,
         metadataClient = WebLibraryMetadataClient(httpClient),
-        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
+        renderedMetadataClient = ForegroundWebLibraryRenderedMetadataClient(
+          delegate = renderedMetadataClient,
           activityProvider = resumedActivityProvider,
-          extractorRepository = webMetadataExtractorRepository,
         ),
       ),
       webMetadataExtractorRepository = webMetadataExtractorRepository,

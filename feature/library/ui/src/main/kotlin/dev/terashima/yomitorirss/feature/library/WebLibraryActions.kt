@@ -252,6 +252,11 @@ internal fun WebLibrarySettingsFromBinding() {
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Text(
+          "アプリが前面にない間は WebView 取得を待機し、前面へ戻ると続きから再開します。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
       Button(
         onClick = settings.onRefreshAll,
@@ -283,6 +288,7 @@ internal fun WebLibrarySettingsFromBinding() {
               overflow = TextOverflow.Ellipsis,
               style = MaterialTheme.typography.bodyMedium,
             )
+            WebLibraryThumbnailPreview(book = book)
             Row(
               modifier = Modifier.fillMaxWidth(),
               horizontalArrangement = Arrangement.End,
