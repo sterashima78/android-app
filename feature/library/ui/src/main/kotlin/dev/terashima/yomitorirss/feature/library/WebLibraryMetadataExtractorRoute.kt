@@ -50,7 +50,6 @@ fun LibraryFeatureRoute(
       onSyncGooglePlayBooks = onSyncGooglePlayBooks,
       onAddWebBook = onAddWebBook,
       onRefreshWebBook = onRefreshWebBook,
-      onMoveWebBookToBookmark = {},
       onDeleteWebBook = onDeleteWebBook,
       onOpenWebUrl = onOpenWebUrl,
       smbRepository = smbRepository,
