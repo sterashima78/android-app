@@ -10,7 +10,7 @@ custom metadata extractor から `thumbnailUrl` を取得して保存できて�
 
 また Web の画像配信元には、通常のブラウザと同様に参照元を要求するものがある。設定画面に preview を追加する場合、thumbnail URL だけを直接取得すると、metadata として URL が正しく取得・保存されていても画像ロードだけが失敗し得る。
 
-一方、一括 metadata 再取得は foreground Activity を必要とする専用 WebView を逐次利用する。Application の Activity provider は resumed Activity だけを返すため、ユーザーが処理中に一時的にアプリを background へ移すと、次の項目が `WebView metadata を取得できる画面がありません` として即時 fallback し、多数の warning が発生することがあった。これはページ固有の metadata 取得失敗ではない。
+一方、一括 metadata 再取得は foreground Activity を必要とする専用 WebView を逐次利用する。Application の Activity provider は resumed Activity だけを返すため、ユーザーが処理中に一時的にアプリを background へ移すと、次の rendered metadata 取得が `WebView metadata を取得できる画面がありません` として即時 fallback し、多数の warning が発生することがあった。これはページ固有の metadata 取得失敗ではない。
 
 ## Decision
 
@@ -28,17 +28,15 @@ privacy のため Referer に page path、query、fragment、userinfo は含め�
 
 この判断では既存の通常蔵書グリッドや非 Web source の画像ロードは変更しない。native bridge、Cookie 共有、WebView profile の外部公開も行わない。設定画面の preview で確認した結果を踏まえ、通常蔵書グリッドにも同じ request policy が必要なら別途適用範囲を広げる。
 
-### foreground Activity がない場合は Web Library mutation を失敗させず待機する
+### foreground Activity がない場合は rendered metadata 取得を失敗させず待機する
 
-app composition で利用する Web Library mutator を Library Data 所有の foreground gate で包む。
+app composition では `AndroidWebViewLibraryMetadataClient` を Library Data 所有の foreground gate client で包む。静的 HTTP metadata 取得は従来どおり foreground Activity を必要としない。
 
-`addWebBook`、`refreshWebBook`、`refreshWebBookWithReport` の開始時に resumed Activity が利用可能か確認し、利用できない間は coroutine を短い間隔で suspend する。Activity が戻れば同じ呼び出しを続行する。
+rendered metadata client の `fetch` / `fetchWithReport` が実際に呼ばれた時点で resumed Activity が利用可能か確認し、利用できない間は coroutine を短い間隔で suspend する。Activity が戻れば delegate の WebView 取得を開始する。`hasCustomExtractor` は待機せず delegate へそのまま委譲する。
 
-これにより一括再取得中にアプリが background へ移っても、その後の各 item を `WebView metadata を取得できる画面がありません` として静的 metadata fallback に進めず、foreground 復帰後に続きから処理できる。
+これにより一括再取得中にアプリが background へ移っても、その後の各 rendered item を `WebView metadata を取得できる画面がありません` として静的 metadata fallback に進めず、foreground 復帰後に続きから処理できる。同時に、WebView が不要な静的 HTTP 取得まで background 中に止めることは避ける。
 
-この待機時間は ADR-0177 の rule 別 WebView timeout に含めない。rule timeout は Activity が利用可能になり、実際の page navigation / DOM / metadata pipeline を開始してからの上限として扱う。
-
-remove operation は WebView を必要としないため foreground gate の対象外とする。
+この待機時間は ADR-0177 の rule 別 WebView timeout に含めない。rule timeout は Activity が利用可能になり、delegate の実際の page navigation / DOM / metadata pipeline を開始してからの上限として扱う。
 
 ### durable background job には変更しない
 
@@ -52,7 +50,7 @@ remove operation は WebView を必要としないため foreground gate の対�
 - hotlink protection 等で page origin を要求する画像配信元でも、設定画面 preview を通常ブラウザに近い条件で取得できる。
 - Referer は origin のみに制限されるため、Web Library の具体的な page path/query を画像配信元へ追加送信しない。
 - background へ移ったことだけを理由に大量の WebView fallback warning を生成しなくなる。
-- background 中は一括再取得の進捗が止まり、foreground 復帰後に再開する。
+- background 中でも静的 HTTP 取得は可能で、WebView が必要になった地点だけ待機する。
 - WebView security boundary、custom function contract、rule 別 timeout、Promise 10 秒上限は変更しない。
 
 ## Verification
@@ -60,5 +58,6 @@ remove operation は WebView を必要としないため foreground gate の対�
 - page URL から生成する Referer が origin のみで path/query/fragment を除去する unit test を追加する。
 - 非標準 port を必要に応じて Referer に保持し、HTTP(S) 以外を拒否する unit test を追加する。
 - foreground availability が false の間は待機し、true になった時点で処理を続行する unit test を追加する。
+- foreground gate client の `hasCustomExtractor` が delegate へ委譲されることを unit test する。
 - metadata 再取得設定画面で保存済み thumbnail preview と画像ロード失敗表示を code review / CI で確認する。
 - PR 前に public repository、architecture、test scope、documentation の独立レビューを行う。
