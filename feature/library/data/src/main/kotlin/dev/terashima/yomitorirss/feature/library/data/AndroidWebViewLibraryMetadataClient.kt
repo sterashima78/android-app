@@ -144,11 +144,20 @@ class AndroidWebViewLibraryMetadataClient(
     var extractionStartedGeneration = -1
     var standardExtractionAttempts = 0
     var extractorExecution: WebLibraryMetadataExtractorExecution? = null
+    var activeCustomStateKey: String? = null
+    var activeCustomWatchdog: Runnable? = null
     lateinit var extractMetadata: (String, Int) -> Unit
     lateinit var pollCustomMetadata: (String, WebLibraryMetadataExtractor, String, Int, Long) -> Unit
     lateinit var startCustomMetadataWhenDomReady: (String, Int) -> Unit
 
+    fun clearCustomExecution() {
+      activeCustomStateKey = null
+      activeCustomWatchdog?.let(mainHandler::removeCallbacks)
+      activeCustomWatchdog = null
+    }
+
     fun dispose() {
+      clearCustomExecution()
       webView.stopLoading()
       webView.webViewClient = WebViewClient()
       webView.clearHistory()
@@ -170,6 +179,7 @@ class AndroidWebViewLibraryMetadataClient(
     fun failAfterRendererExit(detail: RenderProcessGoneDetail) {
       if (completed) return
       completed = true
+      clearCustomExecution()
       webView.destroy()
       if (continuation.isActive) {
         continuation.resumeWithException(
@@ -229,7 +239,7 @@ class AndroidWebViewLibraryMetadataClient(
                 ),
               )
             } else {
-              webView.postDelayed(
+              mainHandler.postDelayed(
                 {
                   evaluateStandardMetadata(
                     finalUrl = finalUrl,
@@ -248,8 +258,13 @@ class AndroidWebViewLibraryMetadataClient(
     }
 
     pollCustomMetadata = { finalUrl, extractor, stateKey, generation, deadlineMillis ->
-      if (!completed && generation == pageGeneration) {
+      if (
+        !completed &&
+        generation == pageGeneration &&
+        activeCustomStateKey == stateKey
+      ) {
         if (SystemClock.uptimeMillis() >= deadlineMillis) {
+          clearCustomExecution()
           webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
           recordExtractorExecution(
             extractor,
@@ -259,10 +274,15 @@ class AndroidWebViewLibraryMetadataClient(
           evaluateStandardMetadata(finalUrl, generation, null)
         } else {
           webView.evaluateJavascript(customMetadataPollScript(stateKey)) { rawResult ->
-            if (!completed && generation == pageGeneration) {
+            if (
+              !completed &&
+              generation == pageGeneration &&
+              activeCustomStateKey == stateKey
+            ) {
               val poll = parseCustomMetadataPromisePoll(finalUrl, rawResult)
               when {
                 poll == null -> {
+                  clearCustomExecution()
                   recordExtractorExecution(
                     extractor,
                     WebLibraryMetadataExtractorStatus.INVALID_STATE,
@@ -270,13 +290,14 @@ class AndroidWebViewLibraryMetadataClient(
                   )
                   evaluateStandardMetadata(finalUrl, generation, null)
                 }
-                poll.pending -> webView.postDelayed(
+                poll.pending -> mainHandler.postDelayed(
                   {
                     pollCustomMetadata(finalUrl, extractor, stateKey, generation, deadlineMillis)
                   },
                   CUSTOM_METADATA_POLL_DELAY_MILLIS,
                 )
                 else -> {
+                  clearCustomExecution()
                   val appliedMetadata = poll.metadata.takeIf {
                     poll.status == WebLibraryMetadataExtractorStatus.APPLIED
                   }
@@ -309,19 +330,56 @@ class AndroidWebViewLibraryMetadataClient(
           recordExtractorExecution(
             extractor,
             WebLibraryMetadataExtractorStatus.RUNNING,
-            "カスタムスクリプトの完了を待機中",
+            "カスタムスクリプトを WebView へ送信し、開始応答を待機中",
           )
           val stateKey = "$CUSTOM_METADATA_STATE_PREFIX-$generation-${SystemClock.uptimeMillis()}"
+          val deadlineMillis = SystemClock.uptimeMillis() + CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS
+          activeCustomStateKey = stateKey
+          val watchdog = Runnable {
+            if (
+              !completed &&
+              generation == pageGeneration &&
+              activeCustomStateKey == stateKey
+            ) {
+              activeCustomWatchdog = null
+              activeCustomStateKey = null
+              webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
+              recordExtractorExecution(
+                extractor,
+                WebLibraryMetadataExtractorStatus.TIMED_OUT,
+                "Promise 監視中に WebView JavaScript の応答が停止しました",
+              )
+              finish(
+                Result.failure(
+                  WebLibraryRenderedMetadataException(
+                    message = "カスタム metadata 取得の JavaScript 応答が ${customMetadataNativeWatchdogDelayMillis() / 1_000} 秒以内に戻りませんでした",
+                    extractorExecution = extractorExecution,
+                  ),
+                ),
+              )
+            }
+          }
+          activeCustomWatchdog = watchdog
+          mainHandler.postDelayed(watchdog, customMetadataNativeWatchdogDelayMillis())
           webView.evaluateJavascript(
             customMetadataStartScript(extractor.functionCode, stateKey),
           ) {
-            if (!completed && generation == pageGeneration) {
+            if (
+              !completed &&
+              generation == pageGeneration &&
+              activeCustomStateKey == stateKey
+            ) {
+              recordExtractorExecution(
+                extractor,
+                WebLibraryMetadataExtractorStatus.RUNNING,
+                "カスタムスクリプト開始応答を確認。Promise の完了を監視中",
+              )
               pollCustomMetadata(
                 finalUrl,
                 extractor,
                 stateKey,
                 generation,
-                SystemClock.uptimeMillis() + CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS,
+                deadlineMillis,
               )
             }
           }
@@ -334,14 +392,14 @@ class AndroidWebViewLibraryMetadataClient(
         webView.evaluateJavascript("document.readyState") { rawState ->
           if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
             if (rawState == "\"loading\"") {
-              webView.postDelayed(
+              mainHandler.postDelayed(
                 {
                   startCustomMetadataWhenDomReady(finalUrl, generation)
                 },
                 DOM_READY_POLL_DELAY_MILLIS,
               )
             } else {
-              webView.postDelayed(
+              mainHandler.postDelayed(
                 {
                   extractMetadata(finalUrl, generation)
                 },
@@ -362,6 +420,7 @@ class AndroidWebViewLibraryMetadataClient(
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         pageGeneration += 1
         extractionStartedGeneration = -1
+        clearCustomExecution()
         standardExtractionAttempts = 0
         val extractor = matchingExtractor(url)
         if (extractor == null) {
@@ -397,7 +456,7 @@ class AndroidWebViewLibraryMetadataClient(
         if (matchingExtractor(finalUrl) != null) {
           extractMetadata(finalUrl, generation)
         } else {
-          view.postDelayed(
+          mainHandler.postDelayed(
             {
               if (!completed && generation == pageGeneration) {
                 extractMetadata(finalUrl, generation)
@@ -486,6 +545,9 @@ internal data class WebLibraryCustomMetadataPromisePoll(
   val message: String? = null,
 )
 
+internal fun customMetadataNativeWatchdogDelayMillis(): Long =
+  CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS + CUSTOM_METADATA_NATIVE_WATCHDOG_GRACE_MILLIS
+
 internal fun customMetadataStartScript(functionCode: String, stateKey: String): String {
   val expression = functionCode.trim().removeSuffix(";")
   val quotedExpression = JSONObject.quote(expression)
@@ -504,49 +566,51 @@ internal fun customMetadataStartScript(functionCode: String, stateKey: String): 
         return value.trim().slice(0, $MAX_DIAGNOSTIC_MESSAGE_LENGTH) || null;
       };
       window[stateKey] = { pending: true, status: null, value: null, message: null };
-      let extractor;
-      try {
-        extractor = eval('(' + source + ')');
-      } catch (error) {
-        finish('invalid_function', null, errorMessage(error));
-        return null;
-      }
-      if (typeof extractor !== 'function') {
-        finish('invalid_function', null, '関数式として評価できませんでした');
-        return null;
-      }
-      try {
-        const promise = extractor({ url: location.href });
-        if (!promise || typeof promise.then !== 'function') {
-          finish('non_promise_result', null, 'Promise を返していません');
-          return null;
+      setTimeout(() => {
+        let extractor;
+        try {
+          extractor = eval('(' + source + ')');
+        } catch (error) {
+          finish('invalid_function', null, errorMessage(error));
+          return;
         }
-        Promise.resolve(promise)
-          .then((value) => {
-            if (!value || typeof value !== 'object') {
-              finish('invalid_result', null, '戻り値が object ではありません');
-              return;
-            }
-            const title = typeof value.title === 'string' ? value.title.trim() : null;
-            const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
-            if (!title && !thumbnailUrl) {
-              finish('empty_result', null, 'title と thumbnailUrl がどちらも空でした');
-              return;
-            }
-            finish(
-              'applied',
-              JSON.stringify({
-                title: title || null,
-                thumbnailUrl: thumbnailUrl || null
-              })
-            );
-          })
-          .catch((error) => {
-            finish('rejected', null, errorMessage(error));
-          });
-      } catch (error) {
-        finish('threw', null, errorMessage(error));
-      }
+        if (typeof extractor !== 'function') {
+          finish('invalid_function', null, '関数式として評価できませんでした');
+          return;
+        }
+        try {
+          const promise = extractor({ url: location.href });
+          if (!promise || typeof promise.then !== 'function') {
+            finish('non_promise_result', null, 'Promise を返していません');
+            return;
+          }
+          Promise.resolve(promise)
+            .then((value) => {
+              if (!value || typeof value !== 'object') {
+                finish('invalid_result', null, '戻り値が object ではありません');
+                return;
+              }
+              const title = typeof value.title === 'string' ? value.title.trim() : null;
+              const thumbnailUrl = typeof value.thumbnailUrl === 'string' ? value.thumbnailUrl.trim() : null;
+              if (!title && !thumbnailUrl) {
+                finish('empty_result', null, 'title と thumbnailUrl がどちらも空でした');
+                return;
+              }
+              finish(
+                'applied',
+                JSON.stringify({
+                  title: title || null,
+                  thumbnailUrl: thumbnailUrl || null
+                })
+              );
+            })
+            .catch((error) => {
+              finish('rejected', null, errorMessage(error));
+            });
+        } catch (error) {
+          finish('threw', null, errorMessage(error));
+        }
+      }, 0);
       return null;
     })()
   """.trimIndent()
@@ -778,5 +842,6 @@ private const val DOM_READY_POLL_DELAY_MILLIS = 100L
 private const val EXTRACTION_RETRY_DELAY_MILLIS = 500L
 private const val CUSTOM_METADATA_POLL_DELAY_MILLIS = 100L
 private const val CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS = 10_000L
+private const val CUSTOM_METADATA_NATIVE_WATCHDOG_GRACE_MILLIS = 1_000L
 private const val MAX_EXTRACTION_ATTEMPTS = 4
 private const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 200

@@ -324,22 +324,30 @@ class WebLibraryMetadataExtractorTest {
   }
 
   @Test
-  fun `関数コードはevalで構文エラーを診断しPromise失敗理由を保持するscriptへ埋め込む`() {
+  fun `カスタム関数はevaluateJavascript本体の完了を塞がない非同期タスクとして開始する`() {
     val functionCode = "async ({ url }) => ({ title: url, thumbnailUrl: null });"
     val script = customMetadataStartScript(functionCode, "test-state")
     val pollScript = customMetadataPollScript("test-state")
 
     assertTrue(script.contains("const source = ${JSONObject.quote(functionCode.removeSuffix(";"))}"))
+    assertTrue(script.contains("setTimeout(() => {"))
     assertTrue(script.contains("extractor = eval('(' + source + ')')"))
     assertTrue(script.contains("finish('invalid_function'"))
     assertTrue(script.contains("const promise = extractor({ url: location.href })"))
+    assertTrue(script.indexOf("setTimeout(() => {") < script.indexOf("const promise = extractor"))
     assertTrue(script.contains("typeof promise.then !== 'function'"))
     assertTrue(script.contains("finish('non_promise_result'"))
     assertTrue(script.contains("finish('rejected'"))
     assertTrue(script.contains("finish('threw'"))
+    assertTrue(script.contains("}, 0);"))
     assertTrue(pollScript.contains("if (state.pending)"))
     assertTrue(pollScript.contains("status"))
     assertTrue(pollScript.contains("delete window[stateKey]"))
+  }
+
+  @Test
+  fun `カスタムPromiseのネイティブwatchdogは10秒上限に1秒の猶予を加える`() {
+    assertEquals(11_000L, customMetadataNativeWatchdogDelayMillis())
   }
 
   private fun extractor(

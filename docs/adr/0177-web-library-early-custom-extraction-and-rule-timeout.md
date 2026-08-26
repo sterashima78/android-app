@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-26
 - Refines: [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0176](0176-web-library-extractor-result-diagnostics.md)
+- Refined by: [ADR-0178](0178-web-library-custom-extractor-native-watchdog.md)
 
 ## Context
 
@@ -34,7 +35,7 @@ custom rule がないページの固定 rendered metadata extraction は従来�
 
 requested URL に一致する rule がある場合、その `timeoutSeconds` をページ読み込み開始から rendered metadata 取得完了までの WebView 全体 timeout として利用する。rule がない場合は従来の 15 秒 default を利用する。
 
-この設定は WebView 全体の上限であり、custom function が返す Promise 自体の 10 秒上限は ADR-0173 のまま維持する。したがって timeout を長く設定しても、停止しない user-authored Promise を長時間保持し続けない。
+この設定は WebView 全体の上限であり、custom function が返す Promise 自体の 10 秒上限は ADR-0173 のまま維持する。したがって timeout を長く設定しても、停止しない user-authored Promise を長時間保持し続けない。Promise 監視自体が WebView JavaScript 応答待ちで停止する場合の扱いは ADR-0178 で補強する。
 
 設定画面では各 rule に現在の WebView timeout を表示し、追加・編集時に秒単位で変更できるようにする。
 
