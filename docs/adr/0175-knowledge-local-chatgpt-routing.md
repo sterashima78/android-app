@@ -57,6 +57,8 @@ ChatGPTからログアウトした場合は、Summaryと同様にKnowledgeの実
 
 `CHATGPT` の自動Wiki buildはLocal gateを取得せず、Cloud AI pauseを適用する。WorkManagerにはnetwork connectivity constraintを設定し、一時的なnetwork I/O failure、`408`、`429`、`5xx` はretryable cloud failureとしてexponential backoffへ委譲する。
 
+retryable failureでは、provider adapterが正規化した安全なuser-facing messageをKnowledge queue stateへ直前エラーとして保持する。WorkManagerが再試行待ちになっている間、AI task queueはそのmessageを「直前の失敗・自動再試行待ち」として表示する。新規生成要求、手動再開、完了では直前エラーを消去する。
+
 refresh後も解消しない認証エラーや非一時的な`4xx`は自動再試行せず、Knowledge taskを失敗状態としてユーザー操作を要求する。provider response body、prompt、token、account idはdurable task errorへ保存しない。
 
 AI task queueのKnowledge行には現在の実行先を `Local` / `ChatGPT` として表示する。Local AI pauseはChatGPT Wikiを停止せず、Cloud AI pauseはLocal Wikiを停止しない。
@@ -77,6 +79,7 @@ Knowledgeの既存prompt builderは `AiTextInferenceModel.promptBudgetChars` を
 - Knowledge固有prompt・引用・source selectionはfeatureに残り、OpenAI protocolはcore adapterへ隔離される。
 - Local / Cloud pauseの分離というADR-0172のruntime policyをKnowledgeにも拡張できる。
 - provider変更中のbackground workでもgate、network constraint、実際の推論先が一致する。
+- retryable cloud failureでWorkManagerの待機状態へ戻った後も、直前の失敗理由をAI task queueから確認できる。
 
 ### Negative
 
@@ -84,6 +87,7 @@ Knowledgeの既存prompt builderは `AiTextInferenceModel.promptBudgetChars` を
 - 入力内容による自動保護は行わないため、実行先選択の責任はユーザー設定にある。
 - Cloud Wikiは初期実装で保守的な16,000文字budgetを使うため、モデルの実contextより少ない入力しか利用しない場合がある。
 - Local / Cloud provider対応によりKnowledge background controllerとAI task queueの状態管理が増える。
+- 再試行待ちに保持する診断情報は安全化済みの直前messageだけで、provider response bodyなどの詳細監査情報は保持しない。
 
 ## Verification
 
@@ -92,6 +96,7 @@ Knowledgeの既存prompt builderは `AiTextInferenceModel.promptBudgetChars` を
 - ChatGPT logoutでKnowledge routingがLocalへ戻ることをunit testする。
 - Knowledge feature sourceが `core:ai-cloud-openai` / `ChatGptOpenAiClient` に直接依存しないことをarchitecture testで固定する。
 - `429` / `5xx` / transport failureをretryable、認証失効・非一時的`4xx`をnon-retryableとして分類し、provider bodyをuser-facing errorへ残さないことをtestする。
+- retryable cloud failureでKnowledge queue stateへ安全化済みmessageを保持し、AI task queueのqueued行へ「直前の失敗・自動再試行待ち」として表示することを確認する。
 - Local WikiだけがLocal AI global pause / charging resumeの対象であり、ChatGPT WikiはCloud AI pauseの対象になることを確認する。
 - AI task queueにKnowledgeのLocal / ChatGPT labelが表示されることを確認する。
 - Architecture / Test / Lint / public repository verificationを実行する。
