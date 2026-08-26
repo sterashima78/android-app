@@ -60,12 +60,7 @@ fun LibraryFeatureRoute(
   var webRefreshState by remember { mutableStateOf(WebLibraryRefreshUiState()) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
-  val webBookUrls = remember(state.books) {
-    state.books.asSequence()
-      .filter { it.source == LibrarySource.WEB }
-      .mapNotNull { it.openUrl()?.trim()?.takeIf(String::isNotEmpty) }
-      .toSet()
-  }
+  val webBookUrls = remember(state.books) { webLibraryOpenUrls(state.books) }
   val libraryUriHandler = remember(context, onOpenWebUrl, webBookUrls) {
     LibraryUriHandler(context, onOpenWebUrl, webBookUrls)
   }
