@@ -121,7 +121,12 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onStop() {
-    if (appLockEnabled && !isChangingConfigurations && !appLockPromptShowing) {
+    if (
+      appLockEnabled &&
+      !isChangingConfigurations &&
+      !appLockPromptShowing &&
+      appLockExternalTransitionTracker.shouldLockOnStop()
+    ) {
       appLockSession.lock()
       appUnlocked = false
     }

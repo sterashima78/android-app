@@ -56,9 +56,10 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 - 通常の解除では `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` を許可し、生体認証が利用できない場合も端末 PIN / パターン / パスワードで回復可能にする。
 - ロック設定の表示は `:feature:settings:ui` が所有し、認証 lifecycle と app shell の gate は `:app` が所有する。
 - ロック中は feature content と startup crash diagnostics を描画せず、共有・widget Intent の処理も認証成功後まで遅延する。
-- Activity がバックグラウンドへ移動した後は次回表示時に再認証を要求する。configuration change と認証 prompt 自身による lifecycle 遷移では不要な再ロックを行わない。
-- ロック有効時に Activity が非表示になる際は `FLAG_SECURE` を適用し、最近使ったアプリの preview 等へ直前の内容を残さない。
-- 永続化するのはロック有効フラグだけとし、生体情報や認証済み状態は保存しない。
+- Activity が通常のバックグラウンドへ移動した後は次回表示時に再認証を要求する。configuration change と認証 prompt 自身による lifecycle 遷移では不要な再ロックを行わない。
+- アプリ自身が `openWebContentInCustomTab` で Custom Tabs を起動した直後の `onStop` は、一時的な外部コンテンツ表示として一度だけ再ロック対象外にする。marker は process 内のみ、起動開始から 10 秒以内の one-shot とし、起動失敗・古い marker・消費後の stop は通常どおり再ロックする。
+- Custom Tabs 遷移を含め、ロック有効時に Activity が非表示になる際は `FLAG_SECURE` を適用し、最近使ったアプリの preview 等へ直前の内容を残さない。
+- 永続化するのはロック有効フラグだけとし、生体情報、認証済み状態、Custom Tabs の遷移 marker は保存しない。
 
 ## LAN Web Server boundary
 
