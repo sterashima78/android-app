@@ -43,6 +43,7 @@ class AppDatabaseSchemaTest {
     assertTrue("custom_title" in columnNames(db, "feeds"))
     assertTrue("content_type" in columnNames(db, "articles"))
     assertFalse("saved_at" in columnNames(db, "articles"))
+    assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
     assertEquals(
       setOf(
         "feed_folders",
