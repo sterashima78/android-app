@@ -4,9 +4,11 @@ package dev.terashima.yomitorirss.feature.rss
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -16,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -40,16 +41,94 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun RssWebScrapingRulesUi(
+  modifier: Modifier = Modifier,
   rules: List<RssWebScrapingRule>,
   testState: WebScrapingRuleTestUiState,
   onSave: (String?, String, String, Int) -> Unit,
   onDelete: (RssWebScrapingRule) -> Unit,
   onTest: (String, String, Int, String) -> Unit,
   onClearTest: () -> Unit,
-  onDismiss: () -> Unit,
 ) {
   var editingRule by remember { mutableStateOf<RssWebScrapingRule?>(null) }
   var creatingRule by remember { mutableStateOf(false) }
+
+  LazyColumn(
+    modifier = modifier.fillMaxSize(),
+    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Web 取得ルール", style = MaterialTheme.typography.titleLarge)
+        Text(
+          "URL パターンに一致する Web ページを専用 WebView で開き、登録したスクリプトからフィードを生成します。" +
+            "既存の漫画向け専用取得は残し、カスタムルールが一致する場合だけこちらを優先します。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+        ) {
+          TextButton(
+            onClick = {
+              onClearTest()
+              creatingRule = true
+            },
+          ) {
+            Text("ルールを追加")
+          }
+        }
+      }
+    }
+
+    if (rules.isEmpty()) {
+      item {
+        Text(
+          "登録済みの Web 取得ルールはありません。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    } else {
+      items(rules, key = RssWebScrapingRule::id) { rule ->
+        Card(modifier = Modifier.fillMaxWidth()) {
+          Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+          ) {
+            Text(
+              rule.urlPattern,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+              style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+              "WebView タイムアウト ${rule.timeoutSeconds} 秒",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.End,
+            ) {
+              TextButton(
+                onClick = {
+                  onClearTest()
+                  editingRule = rule
+                },
+              ) {
+                Text("編集")
+              }
+              TextButton(onClick = { onDelete(rule) }) {
+                Text("削除")
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   if (creatingRule || editingRule != null) {
     RssWebScrapingRuleEditorSheet(
@@ -68,89 +147,7 @@ internal fun RssWebScrapingRulesUi(
         editingRule = null
       },
     )
-    return
   }
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Web 取得ルール") },
-    text = {
-      Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-      ) {
-        Text(
-          "URL パターンに一致する Web ページを専用 WebView で開き、登録したスクリプトからフィードを生成します。" +
-            "既存の漫画向け専用取得は残し、カスタムルールが一致する場合だけこちらを優先します。",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        TextButton(
-          onClick = {
-            onClearTest()
-            creatingRule = true
-          },
-          modifier = Modifier.align(Alignment.End),
-        ) {
-          Text("ルールを追加")
-        }
-        if (rules.isEmpty()) {
-          Text(
-            "登録済みの Web 取得ルールはありません。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        } else {
-          LazyColumn(
-            modifier = Modifier
-              .fillMaxWidth()
-              .heightIn(max = 420.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            items(rules, key = RssWebScrapingRule::id) { rule ->
-              Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                  modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                  verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                  Text(
-                    rule.urlPattern,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                  )
-                  Text(
-                    "WebView タイムアウト ${rule.timeoutSeconds} 秒",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  )
-                  Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                  ) {
-                    TextButton(
-                      onClick = {
-                        onClearTest()
-                        editingRule = rule
-                      },
-                    ) {
-                      Text("編集")
-                    }
-                    TextButton(onClick = { onDelete(rule) }) {
-                      Text("削除")
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    confirmButton = {
-      TextButton(onClick = onDismiss) { Text("閉じる") }
-    },
-  )
 }
 
 @Composable
