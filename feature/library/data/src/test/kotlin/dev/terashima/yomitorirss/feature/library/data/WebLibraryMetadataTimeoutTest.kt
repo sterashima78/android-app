@@ -123,8 +123,8 @@ class WebLibraryMetadataTimeoutTest {
         cursor.getInt(0)
       }
 
-      assertTrue("timeout_seconds" in columns)
-      assertEquals(DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS, timeout)
+        assertTrue("timeout_seconds" in columns)
+        assertEquals(DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS, timeout)
     } finally {
       db.close()
     }
