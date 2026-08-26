@@ -13,6 +13,8 @@ ADR-0173 では Web Library の custom metadata extractor について、URL pat
 
 また、custom function の Promise が完了した後に固定 rendered metadata の抽出や再試行が続き、WebView 全体の timeout に到達する場合がある。この場合、custom function が値を取得済みでも従来は rendered path 全体の例外だけが残り、rule の実行結果が失われる。
 
+さらに、WebView 全体 timeout が custom function の完了前に発生した場合、従来の診断では「rule が URL に一致していなかった」のか、「一致したがページ読み込み完了前だった」のか、「custom script を開始済みで結果待ちだった」のかを区別できない。
+
 ## Decision
 
 ### custom function が実際に返した採用可能値を execution 診断へ保持する
@@ -32,19 +34,31 @@ ADR-0173 では Web Library の custom metadata extractor について、URL pat
 
 表示が過度に長くならないよう、各 diagnostic value は UI 表示時だけ上限を設けて短縮する。保存されている metadata 自体はこの表示上限の影響を受けない。
 
-### WebView 全体 timeout 時も取得済み execution snapshot を失わない
+### WebView 全体 timeout 時も execution snapshot を失わない
 
-metadata 用 WebView は custom extractor の execution が確定するたびに最新 snapshot を呼び出し側へ伝える。ページ generation が変わった場合は旧 snapshot を破棄する。
+metadata 用 WebView は custom extractor の execution 状態が変わるたびに最新 snapshot を呼び出し側へ伝える。ページ generation が変わった場合は旧 snapshot を破棄し、新しいページについて再判定する。
 
-WebView 全体が timeout した時点で custom extractor の execution がすでに確定している場合、timeout exception はその snapshot を内部診断情報として保持する。静的 metadata が利用可能で fallback する場合、Library Data は fallback reason とともにその execution を `WebLibraryMetadataRefreshResult` へ伝播する。
+custom extractor の途中状態として次を追加する。
 
-これにより、例えば custom function が title / thumbnailUrl を取得済みだが、その後の固定 rendered metadata 処理中に15秒の全体 timeoutへ達した場合でも、UIでは custom result と WebView fallback の両方を確認できる。
+- `MATCHED`: 現在のページ URL または元の requested URL が取得ルールに一致し、ページ読み込み完了を待っている状態
+- `RUNNING`: custom script の `evaluateJavascript` を開始し、custom Promise の結果確定を待っている状態
 
-custom Promise 自体が未完了のまま全体 timeout に達した場合は、存在しない取得値を推測せず、従来どおり WebView failure のみを表示する。
+`onPageStarted` では URL pattern に一致する rule があれば `MATCHED` を記録する。ページ読み込み完了後、custom script を実行する直前に `RUNNING` へ遷移する。Promise の結果が確定した後は従来の `APPLIED`、`TIMED_OUT`、`REJECTED` 等の最終 status へ更新する。
+
+WebView 全体が timeout した時点の最新 snapshot を timeout exception の内部診断情報として保持する。静的 metadata が利用可能で fallback する場合、Library Data は fallback reason とともにその execution を `WebLibraryMetadataRefreshResult` へ伝播する。
+
+これにより、次を再取得 UI から区別できる。
+
+- execution がない: timeout 時点までに一致する取得ルールを確認できていない
+- `MATCHED`: 取得ルールには一致したが、custom script 開始前に WebView 全体 timeout
+- `RUNNING`: custom script は開始したが、結果確定前に WebView 全体 timeout
+- `APPLIED`: custom function の値取得は完了し、その後の rendered metadata 処理中に WebView 全体 timeout
+
+`MATCHED` / `RUNNING` では custom function の結果は未確定なので、`extractedTitle` / `extractedThumbnailUrl` を推測して設定してはならない。
 
 ### diagnostic value は新たに永続化・記録しない
 
-`extractedTitle` / `extractedThumbnailUrl` は再取得操作中の transient result とする。次の保存先を追加しない。
+`extractedTitle` / `extractedThumbnailUrl` と途中 status は再取得操作中の transient result とする。次の保存先を追加しない。
 
 - application database
 - backup schema
@@ -59,13 +73,16 @@ custom Promise 自体が未完了のまま全体 timeout に達した場合は�
 - custom script が期待した DOM 値を取得できているかを再取得画面だけで確認できる。
 - static / standard rendered fallback の値を custom result と誤認しにくくなる。
 - custom extraction 完了後に WebView 全体 timeout が発生しても、取得済み値を診断できる。
-- `WebLibraryMetadataExtractorExecution` の責務は実行 status だけでなく、再取得時の transient custom result snapshot まで含む。
+- custom extraction 完了前の timeout でも、rule 不一致、script 開始前、script 実行中を区別できる。
+- `WebLibraryMetadataExtractorExecution` の責務は実行 status だけでなく、再取得時の transient custom result / phase snapshot まで含む。
 - 永続データ形式、backup schema、custom function contract、WebView security boundary は変更しない。
 
 ## Verification
 
 - custom metadata から `WebLibraryMetadataExtractorExecution` に title / thumbnailUrl が保持される unit test を追加する。
 - WebView failure が取得済み execution を伴う場合、静的 fallback result に execution と fallback reason の両方が伝播する unit test を追加する。
+- `RUNNING` の途中 execution も WebView 全体 failure 後の静的 fallback result へ伝播する unit test を追加する。
 - UI が final `LibraryBook` の値ではなく execution の extracted value を表示する unit test を追加する。
 - custom function が返していない field を「なし」と表示する unit test を追加する。
+- `MATCHED` と `RUNNING` の timeout 診断がそれぞれ「開始前」「結果確定前」と区別して表示される unit test を追加する。
 - test / docs に実サイト URL、credential、token、ユーザー固有情報が含まれないことを public repository verification で確認する。

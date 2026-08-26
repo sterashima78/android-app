@@ -66,6 +66,50 @@ class WebLibraryActionsTest {
     assertFalse(state.detail.orEmpty().contains("covers/standard.jpg"))
   }
 
+  @Test
+  fun `WebView全体timeoutがルール一致後ならスクリプト開始前と表示する`() {
+    val book = webBook(title = "静的タイトル", thumbnailUrl = null)
+    val result = WebLibraryMetadataRefreshResult(
+      book = book,
+      changedFields = emptySet(),
+      extractorExecution = WebLibraryMetadataExtractorExecution(
+        ruleId = "rule-1",
+        urlPattern = "https://example.com/books/*",
+        status = WebLibraryMetadataExtractorStatus.MATCHED,
+      ),
+      fallbackReason = "WebView metadata 取得が 15 秒以内に完了しませんでした",
+    )
+
+    val state = webLibraryRefreshSuccessUiState(book.sourceId, book.title, result)
+
+    assertEquals(WebLibraryRefreshItemStatus.WARNING, state.status)
+    assertTrue(state.detail.orEmpty().contains("取得ルール「https://example.com/books/*」に一致"))
+    assertTrue(state.detail.orEmpty().contains("カスタムスクリプト開始前"))
+    assertTrue(state.detail.orEmpty().contains("静的 metadata を使用"))
+  }
+
+  @Test
+  fun `WebView全体timeoutがスクリプト開始後なら結果確定前と表示する`() {
+    val book = webBook(title = "静的タイトル", thumbnailUrl = null)
+    val result = WebLibraryMetadataRefreshResult(
+      book = book,
+      changedFields = emptySet(),
+      extractorExecution = WebLibraryMetadataExtractorExecution(
+        ruleId = "rule-1",
+        urlPattern = "https://example.com/books/*",
+        status = WebLibraryMetadataExtractorStatus.RUNNING,
+      ),
+      fallbackReason = "WebView metadata 取得が 15 秒以内に完了しませんでした",
+    )
+
+    val state = webLibraryRefreshSuccessUiState(book.sourceId, book.title, result)
+
+    assertEquals(WebLibraryRefreshItemStatus.WARNING, state.status)
+    assertTrue(state.detail.orEmpty().contains("カスタムスクリプトを開始"))
+    assertTrue(state.detail.orEmpty().contains("結果確定前"))
+    assertTrue(state.detail.orEmpty().contains("静的 metadata を使用"))
+  }
+
   private fun webBook(
     title: String,
     thumbnailUrl: String?,

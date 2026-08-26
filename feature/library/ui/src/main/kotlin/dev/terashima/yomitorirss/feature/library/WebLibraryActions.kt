@@ -394,16 +394,23 @@ internal fun webLibraryRefreshSuccessUiState(
   }
   val details = buildList {
     extractor?.let { execution ->
-      if (execution.status == WebLibraryMetadataExtractorStatus.APPLIED) {
-        add(
+      when (execution.status) {
+        WebLibraryMetadataExtractorStatus.MATCHED -> add(
+          "取得ルール「${execution.urlPattern}」に一致。カスタムスクリプト開始前に WebView 処理が終了",
+        )
+        WebLibraryMetadataExtractorStatus.RUNNING -> add(
+          "取得ルール「${execution.urlPattern}」のカスタムスクリプトを開始。結果確定前に WebView 処理が終了",
+        )
+        WebLibraryMetadataExtractorStatus.APPLIED -> add(
           "取得ルール「${execution.urlPattern}」を適用（カスタム値取得成功: " +
             webLibraryExtractorValueDetail(execution) +
             "）",
         )
-      } else {
-        val reason = webLibraryExtractorStatusLabel(execution.status)
-        val message = execution.message?.takeIf(String::isNotBlank)?.let { ": $it" }.orEmpty()
-        add("取得ルール「${execution.urlPattern}」を適用できませんでした ($reason$message)。標準取得を使用")
+        else -> {
+          val reason = webLibraryExtractorStatusLabel(execution.status)
+          val message = execution.message?.takeIf(String::isNotBlank)?.let { ": $it" }.orEmpty()
+          add("取得ルール「${execution.urlPattern}」を適用できませんでした ($reason$message)。標準取得を使用")
+        }
       }
     } ?: if (result.fallbackReason == null) {
       add("登録ルールは適用されず、標準取得を使用")
@@ -461,6 +468,8 @@ private fun webLibraryMetadataFieldLabel(field: WebLibraryMetadataField): String
 }
 
 private fun webLibraryExtractorStatusLabel(status: WebLibraryMetadataExtractorStatus): String = when (status) {
+  WebLibraryMetadataExtractorStatus.MATCHED -> "ルール一致"
+  WebLibraryMetadataExtractorStatus.RUNNING -> "実行中"
   WebLibraryMetadataExtractorStatus.APPLIED -> "適用"
   WebLibraryMetadataExtractorStatus.EMPTY_RESULT -> "空の結果"
   WebLibraryMetadataExtractorStatus.INVALID_FUNCTION -> "関数形式が不正"

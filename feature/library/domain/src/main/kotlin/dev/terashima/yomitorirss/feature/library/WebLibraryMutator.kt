@@ -8,6 +8,8 @@ enum class WebLibraryMetadataField {
 }
 
 enum class WebLibraryMetadataExtractorStatus {
+  MATCHED,
+  RUNNING,
   APPLIED,
   EMPTY_RESULT,
   INVALID_FUNCTION,
