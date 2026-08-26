@@ -1,7 +1,10 @@
 package dev.terashima.yomitorirss.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
@@ -13,6 +16,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.chat.ChatRoute
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.health.HealthRoute
+import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedRoute
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.reddit.RedditRoute
@@ -47,6 +51,7 @@ internal fun AppFeatureContent(
 ) {
   when (selectedTab) {
     MainTab.INTEGRATED -> {
+      val context = LocalContext.current
       val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
       val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
       val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
@@ -61,9 +66,11 @@ internal fun AppFeatureContent(
         youtubeViewModelFactory = routeDependencies.youtubeViewModelFactory,
         onOpenArticle = onOpenArticle,
         onSummarize = { article -> summaryViewModel.summarize(article) },
-        onOpenMail = { thread ->
-          mailViewModel.openThread(thread)
-          appViewModel.selectTab(MainTab.MAIL)
+        onNavigateToMail = { appViewModel.selectTab(MainTab.MAIL) },
+        onOpenExternalUrl = { url ->
+          runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+          }
         },
       )
     }

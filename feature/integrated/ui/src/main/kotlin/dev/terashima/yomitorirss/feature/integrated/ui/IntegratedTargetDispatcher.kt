@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.integrated.ui
 
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailThread

@@ -161,15 +161,35 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
-  fun `Integrated projectionはComposeとAndroid frameworkに依存しない`() {
-    val source = File(
+  fun `Integrated presentation ownershipはfeature moduleに置く`() {
+    val appUiRoot = File(
       repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui/IntegratedProjection.kt",
-    ).readText()
+      "app/src/main/java/dev/terashima/yomitorirss/ui",
+    )
+    val featureRoot = File(
+      repositoryRoot,
+      "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui",
+    )
+    listOf(
+      "IntegratedRoute.kt",
+      "IntegratedProjection.kt",
+      "IntegratedTargetDispatcher.kt",
+      "IntegratedItemActions.kt",
+    ).forEach { fileName ->
+      assertFalse(
+        "Integrated feature implementation must not live in app/ui: $fileName",
+        File(appUiRoot, fileName).isFile,
+      )
+      assertTrue(
+        "Integrated feature must own $fileName",
+        File(featureRoot, fileName).isFile,
+      )
+    }
 
+    val projection = File(featureRoot, "IntegratedProjection.kt").readText()
     assertFalse(
       "Integrated projection should remain a pure cross-feature mapper",
-      Regex("(?m)^import (?:android\\.|androidx\\.compose\\.)").containsMatchIn(source),
+      Regex("(?m)^import (?:android\\.|androidx\\.compose\\.)").containsMatchIn(projection),
     )
   }
 

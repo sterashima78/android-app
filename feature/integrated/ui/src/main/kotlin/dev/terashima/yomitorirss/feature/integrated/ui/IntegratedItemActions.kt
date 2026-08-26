@@ -1,8 +1,7 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.integrated.ui
 
 import android.net.Uri
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedItemAction
 import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
