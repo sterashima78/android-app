@@ -1,8 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,13 +27,11 @@ internal fun WebLibraryThumbnailPreview(
   val thumbnailUrl = book.thumbnailUrl?.trim()?.takeIf(String::isNotEmpty) ?: return
   var loadFailed by remember(thumbnailUrl) { mutableStateOf(false) }
 
-  Column(modifier = modifier.fillMaxWidth()) {
+  Column(modifier = modifier) {
     AsyncImage(
       model = rememberLibraryThumbnailModel(book, thumbnailUrl),
       contentDescription = "${book.title} の表紙",
-      modifier = Modifier
-        .fillMaxWidth()
-        .height(180.dp),
+      modifier = Modifier.size(width = 96.dp, height = 144.dp),
       contentScale = ContentScale.Fit,
       onSuccess = { loadFailed = false },
       onError = { loadFailed = true },
