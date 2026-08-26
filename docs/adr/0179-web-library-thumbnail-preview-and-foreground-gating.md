@@ -1,4 +1,4 @@
-# ADR-0179: Web Library の表紙表示に origin Referer を使い foreground 不在時は取得を待機する
+# ADR-0179: Web Library の表紙 preview に origin Referer を使い foreground 不在時は取得を待機する
 
 - Status: Accepted
 - Date: 2026-08-26
@@ -8,7 +8,7 @@
 
 custom metadata extractor から `thumbnailUrl` を取得して保存できても、Library 設定の metadata 再取得結果は URL を診断文字列として表示するだけで、取得した表紙そのものを確認できなかった。
 
-また Web の画像配信元には、通常のブラウザと同様に参照元を要求するものがある。Library の既存 `AsyncImage` は thumbnail URL だけを直接取得するため、metadata として URL が正しく取得・保存されていても画像ロードだけが失敗し得る。
+また Web の画像配信元には、通常のブラウザと同様に参照元を要求するものがある。設定画面に preview を追加する場合、thumbnail URL だけを直接取得すると、metadata として URL が正しく取得・保存されていても画像ロードだけが失敗し得る。
 
 一方、一括 metadata 再取得は foreground Activity を必要とする専用 WebView を逐次利用する。Application の Activity provider は resumed Activity だけを返すため、ユーザーが処理中に一時的にアプリを background へ移すと、次の項目が `WebView metadata を取得できる画面がありません` として即時 fallback し、多数の warning が発生することがあった。これはページ固有の metadata 取得失敗ではない。
 
@@ -16,17 +16,17 @@ custom metadata extractor から `thumbnailUrl` を取得して保存できて�
 
 ### 設定画面で保存済み thumbnail を preview する
 
-Web Library の設定画面にある各蔵書カードでは、保存済み `thumbnailUrl` がある場合に表紙 preview を表示する。
+Web Library の設定画面にある各蔵書カードでは、保存済み `thumbnailUrl` がある場合に小さい表紙 preview を表示する。大量の Web 蔵書を一覧表示しても decoded image memory が過剰になりにくいよう、診断用途の固定サイズに抑える。
 
 画像ロードに失敗した場合は URL が存在することと画像取得が失敗したことを区別できるよう、preview の近くに `表紙画像を読み込めませんでした` と表示する。metadata extractor の診断文字列は従来どおり保持する。
 
-### Web Library の画像だけ page origin を Referer として送る
+### 設定画面の Web Library preview は page origin を Referer として送る
 
-Web Library の thumbnail を Coil で取得する際は、book の `infoUrl`、なければ `sourceId` から HTTP(S) origin を生成し、`Referer` request header として付与できる image request を使用する。
+設定画面で Web Library の thumbnail を Coil で取得する際は、book の `infoUrl`、なければ `sourceId` から HTTP(S) origin を生成し、`Referer` request header として付与できる image request を使用する。
 
 privacy のため Referer に page path、query、fragment、userinfo は含めない。例えば repository/test/docs では `https://example.com/books/1?token=value` に対して `https://example.com/` だけを送る例を用いる。
 
-非 Web source の画像ロードは変更しない。native bridge、Cookie 共有、WebView profile の外部公開は行わない。
+この判断では既存の通常蔵書グリッドや非 Web source の画像ロードは変更しない。native bridge、Cookie 共有、WebView profile の外部公開も行わない。設定画面の preview で確認した結果を踏まえ、通常蔵書グリッドにも同じ request policy が必要なら別途適用範囲を広げる。
 
 ### foreground Activity がない場合は Web Library mutation を失敗させず待機する
 
@@ -49,7 +49,7 @@ remove operation は WebView を必要としないため foreground gate の対�
 ## Consequences
 
 - custom extractor で取得した thumbnail が実際に表示可能か設定画面から確認できる。
-- hotlink protection 等で page origin を要求する画像配信元でも、通常ブラウザに近い条件で thumbnail を取得できる。
+- hotlink protection 等で page origin を要求する画像配信元でも、設定画面 preview を通常ブラウザに近い条件で取得できる。
 - Referer は origin のみに制限されるため、Web Library の具体的な page path/query を画像配信元へ追加送信しない。
 - background へ移ったことだけを理由に大量の WebView fallback warning を生成しなくなる。
 - background 中は一括再取得の進捗が止まり、foreground 復帰後に再開する。
