@@ -12,10 +12,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class WebScrapingRuleTestUiState(
+  val running: Boolean = false,
+  val result: RssWebScrapingPreview? = null,
+  val error: String? = null,
+)
+
 data class FeedUiState(
   val initialized: Boolean = false,
   val feeds: List<Feed> = emptyList(),
   val folders: List<FeedFolder> = emptyList(),
+  val webScrapingRules: List<RssWebScrapingRule> = emptyList(),
+  val webScrapingRuleTest: WebScrapingRuleTestUiState = WebScrapingRuleTestUiState(),
   val refreshing: Boolean = false,
   val refreshStatus: String? = null,
   val addFeedProgress: String? = null,
@@ -254,6 +262,68 @@ class FeedViewModel(
     }
   }
 
+  fun saveWebScrapingRule(
+    id: String?,
+    urlPattern: String,
+    functionCode: String,
+    timeoutSeconds: Int,
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        repository.saveWebScrapingRule(id, urlPattern, functionCode, timeoutSeconds)
+      }.onSuccess {
+        backupChangeScheduler.scheduleAfterChange()
+        reload()
+        _state.update { it.copy(message = "Web 取得ルールを保存しました") }
+      }.onFailure(::showError)
+    }
+  }
+
+  fun deleteWebScrapingRule(rule: RssWebScrapingRule) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.deleteWebScrapingRule(rule.id) }
+        .onSuccess {
+          backupChangeScheduler.scheduleAfterChange()
+          reload()
+          _state.update { it.copy(message = "Web 取得ルールを削除しました") }
+        }
+        .onFailure(::showError)
+    }
+  }
+
+  fun testWebScrapingRule(
+    urlPattern: String,
+    functionCode: String,
+    timeoutSeconds: Int,
+    url: String,
+  ) {
+    if (_state.value.webScrapingRuleTest.running) return
+    _state.update {
+      it.copy(webScrapingRuleTest = WebScrapingRuleTestUiState(running = true))
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        repository.testWebScrapingRule(urlPattern, functionCode, timeoutSeconds, url)
+      }.onSuccess { preview ->
+        _state.update {
+          it.copy(
+            webScrapingRuleTest = WebScrapingRuleTestUiState(result = preview),
+          )
+        }
+      }.onFailure { error ->
+        _state.update {
+          it.copy(
+            webScrapingRuleTest = WebScrapingRuleTestUiState(error = error.userMessage()),
+          )
+        }
+      }
+    }
+  }
+
+  fun clearWebScrapingRuleTest() {
+    _state.update { it.copy(webScrapingRuleTest = WebScrapingRuleTestUiState()) }
+  }
+
   fun importOpml(documentUri: String) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { imports.importFeedOpml(documentUri) }
@@ -285,9 +355,20 @@ class FeedViewModel(
 
   private suspend fun reload() {
     runCatching {
-      repository.listFeeds().filter(feedSelector) to repository.listFolders()
-    }.onSuccess { (feeds, folders) ->
-      _state.update { it.copy(initialized = true, feeds = feeds, folders = folders) }
+      Triple(
+        repository.listFeeds().filter(feedSelector),
+        repository.listFolders(),
+        repository.listWebScrapingRules(),
+      )
+    }.onSuccess { (feeds, folders, rules) ->
+      _state.update {
+        it.copy(
+          initialized = true,
+          feeds = feeds,
+          folders = folders,
+          webScrapingRules = rules,
+        )
+      }
     }.onFailure { error ->
       _state.update {
         it.copy(

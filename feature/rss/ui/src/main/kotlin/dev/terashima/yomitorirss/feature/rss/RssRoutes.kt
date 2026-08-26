@@ -2,8 +2,13 @@ package dev.terashima.yomitorirss.feature.rss
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -15,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.feature.article.Article
 
@@ -107,6 +113,7 @@ fun FeedRoute(
   onFeedReady: () -> Unit,
 ) {
   val state by feedViewModel.state.collectAsState()
+  var showWebScrapingRules by remember { mutableStateOf(false) }
 
   LaunchedEffect(state.importCompleted) {
     if (state.importCompleted) {
@@ -124,24 +131,34 @@ fun FeedRoute(
   if (!state.initialized) {
     LoadingFeature(modifier)
   } else {
-    PullToRefreshContainer(
-      modifier = modifier,
-      isRefreshing = state.refreshing,
-      onRefresh = feedViewModel::refresh,
-    ) {
-      FeedScreen(
+    Box(modifier = modifier) {
+      PullToRefreshContainer(
         modifier = Modifier.fillMaxSize(),
-        feeds = state.feeds,
-        folders = state.folders,
-        onAdd = controller::requestAddFeed,
-        onRenameFeed = feedViewModel::renameFeed,
-        onDelete = feedViewModel::deleteFeed,
-        onCreateFolder = feedViewModel::createFolder,
-        onRenameFolder = feedViewModel::renameFolder,
-        onDeleteFolder = feedViewModel::deleteFolder,
-        onMoveFeed = feedViewModel::moveFeedToFolder,
-        onSetFeedContentType = feedViewModel::setFeedContentType,
-        onSetFolderContentType = feedViewModel::setFolderContentType,
+        isRefreshing = state.refreshing,
+        onRefresh = feedViewModel::refresh,
+      ) {
+        FeedScreen(
+          modifier = Modifier.fillMaxSize(),
+          feeds = state.feeds,
+          folders = state.folders,
+          onAdd = controller::requestAddFeed,
+          onRenameFeed = feedViewModel::renameFeed,
+          onDelete = feedViewModel::deleteFeed,
+          onCreateFolder = feedViewModel::createFolder,
+          onRenameFolder = feedViewModel::renameFolder,
+          onDeleteFolder = feedViewModel::deleteFolder,
+          onMoveFeed = feedViewModel::moveFeedToFolder,
+          onSetFeedContentType = feedViewModel::setFeedContentType,
+          onSetFolderContentType = feedViewModel::setFolderContentType,
+        )
+      }
+      ExtendedFloatingActionButton(
+        onClick = { showWebScrapingRules = true },
+        icon = { Icon(Icons.Default.Tune, contentDescription = null) },
+        text = { Text("Web取得ルール") },
+        modifier = Modifier
+          .align(Alignment.BottomEnd)
+          .padding(16.dp),
       )
     }
   }
@@ -160,6 +177,20 @@ fun FeedRoute(
       candidates = state.feedCandidates,
       onDismiss = feedViewModel::dismissFeedCandidates,
       onSelect = feedViewModel::addFeedCandidate,
+    )
+  }
+  if (showWebScrapingRules) {
+    RssWebScrapingRulesUi(
+      rules = state.webScrapingRules,
+      testState = state.webScrapingRuleTest,
+      onSave = feedViewModel::saveWebScrapingRule,
+      onDelete = feedViewModel::deleteWebScrapingRule,
+      onTest = feedViewModel::testWebScrapingRule,
+      onClearTest = feedViewModel::clearWebScrapingRuleTest,
+      onDismiss = {
+        feedViewModel.clearWebScrapingRuleTest()
+        showWebScrapingRules = false
+      },
     )
   }
 }

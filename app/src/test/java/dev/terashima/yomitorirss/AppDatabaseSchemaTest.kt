@@ -41,6 +41,7 @@ class AppDatabaseSchemaTest {
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
+    assertTrue("timeout_seconds" in columnNames(db, "rss_web_scraping_rules"))
     assertTrue("content_type" in columnNames(db, "articles"))
     assertFalse("saved_at" in columnNames(db, "articles"))
     assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
@@ -48,6 +49,7 @@ class AppDatabaseSchemaTest {
       setOf(
         "feed_folders",
         "feeds",
+        "rss_web_scraping_rules",
         "articles",
         "bookmarks",
         "tags",
