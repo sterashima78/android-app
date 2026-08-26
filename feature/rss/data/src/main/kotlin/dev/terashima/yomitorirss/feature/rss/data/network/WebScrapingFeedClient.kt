@@ -466,13 +466,16 @@ internal fun webScrapingCleanupScript(stateKey: String): String =
 internal fun parseWebScrapingPoll(
   finalUrl: String,
   rawResult: String?,
-): WebScrapingPromisePoll? = runCatching {
-  val decoded = rawResult?.let { JSONTokener(it).nextValue() } ?: return null
-  val poll = when (decoded) {
-    is JSONObject -> decoded
-    is String -> JSONObject(decoded)
-    else -> return null
-  }
+): WebScrapingPromisePoll? {
+  val poll = runCatching {
+    val decoded = rawResult?.let { JSONTokener(it).nextValue() } ?: return null
+    when (decoded) {
+      is JSONObject -> decoded
+      is String -> JSONObject(decoded)
+      else -> return null
+    }
+  }.getOrNull() ?: return null
+
   if (poll.optBoolean("pending", false)) return WebScrapingPromisePoll(pending = true)
   val status = poll.optString("status").trim()
   if (status != "applied") {
@@ -484,11 +487,22 @@ internal fun parseWebScrapingPoll(
   }
   val value = poll.optString("value").trim()
   if (value.isBlank()) return WebScrapingPromisePoll(false, message = "取得結果が空です")
-  WebScrapingPromisePoll(
-    pending = false,
-    preview = parseWebScrapingPreview(finalUrl, value),
-  )
-}.getOrNull()
+  return runCatching { parseWebScrapingPreview(finalUrl, value) }
+    .fold(
+      onSuccess = { preview ->
+        WebScrapingPromisePoll(
+          pending = false,
+          preview = preview,
+        )
+      },
+      onFailure = { error ->
+        WebScrapingPromisePoll(
+          pending = false,
+          message = error.message?.takeIf(String::isNotBlank) ?: "取得結果が不正です",
+        )
+      },
+    )
+}
 
 internal fun parseWebScrapingPreview(
   finalUrl: String,
