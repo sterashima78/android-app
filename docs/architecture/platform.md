@@ -134,4 +134,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0163](../adr/0163-webview-renderer-exit-recovery.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0169](../adr/0169-lan-web-bootstrap-session-authentication.md)
-- [ADR-0186](../adr/0186-biometric-app-lock.md)
+- [ADR-0187](../adr/0187-biometric-app-lock.md)
