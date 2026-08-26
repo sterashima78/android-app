@@ -41,13 +41,13 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun RssWebScrapingRulesUi(
-  modifier: Modifier = Modifier,
   rules: List<RssWebScrapingRule>,
   testState: WebScrapingRuleTestUiState,
   onSave: (String?, String, String, Int) -> Unit,
   onDelete: (RssWebScrapingRule) -> Unit,
   onTest: (String, String, Int, String) -> Unit,
   onClearTest: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   var editingRule by remember { mutableStateOf<RssWebScrapingRule?>(null) }
   var creatingRule by remember { mutableStateOf(false) }
