@@ -45,7 +45,6 @@ internal data class WebLibrarySettingsUiBinding(
   val refreshState: WebLibraryRefreshUiState,
   val onRefresh: (LibraryBook) -> Unit,
   val onRefreshAll: () -> Unit,
-  val onMoveToBookmark: (LibraryBook) -> Unit,
 )
 
 internal val LocalWebLibrarySettingsUiBinding =
