@@ -11,6 +11,7 @@ internal data class WebLibraryMetadataExtractorUiBinding(
   val list: () -> List<WebLibraryMetadataExtractor>,
   val save: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   val delete: (String) -> Unit,
+  val test: suspend (String, String, String, Int) -> WebLibraryMetadataExtractorTestResult,
   val onError: (Throwable) -> Unit,
 )
 
@@ -29,6 +30,7 @@ fun LibraryFeatureRoute(
   onListWebMetadataExtractors: () -> List<WebLibraryMetadataExtractor>,
   onSaveWebMetadataExtractor: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   onDeleteWebMetadataExtractor: (String) -> Unit,
+  onTestWebMetadataExtractor: suspend (String, String, String, Int) -> WebLibraryMetadataExtractorTestResult,
   smbRepository: SmbLibraryRepository,
   pageSourceFactory: BookPageSourceFactory,
   readingPositionStore: ReadingPositionStore,
@@ -38,6 +40,7 @@ fun LibraryFeatureRoute(
     list = onListWebMetadataExtractors,
     save = onSaveWebMetadataExtractor,
     delete = onDeleteWebMetadataExtractor,
+    test = onTestWebMetadataExtractor,
     onError = viewModel::reportError,
   )
   CompositionLocalProvider(LocalWebLibraryMetadataExtractorUiBinding provides binding) {

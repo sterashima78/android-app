@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorTestResult
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataRefreshResult
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
@@ -150,6 +151,7 @@ internal class AppContentRouteDependencies(
         runtime.webMetadataExtractorRepository.delete(id)
         container.backupChangeScheduler.scheduleAfterChange()
       },
+      testWebMetadataExtractor = runtime.webMetadataExtractorTester::test,
       bookReader = BookReaderRouteDependencies(
         pageSourceFactory = runtime.bookPageSourceFactory,
         readingPositionStore = runtime.readingPositionStore,
@@ -183,6 +185,7 @@ data class LibraryRouteDependencies internal constructor(
   val listWebMetadataExtractors: () -> List<WebLibraryMetadataExtractor>,
   val saveWebMetadataExtractor: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   val deleteWebMetadataExtractor: (String) -> Unit,
+  val testWebMetadataExtractor: suspend (String, String, String, Int) -> WebLibraryMetadataExtractorTestResult,
   val bookReader: BookReaderRouteDependencies,
 )
 

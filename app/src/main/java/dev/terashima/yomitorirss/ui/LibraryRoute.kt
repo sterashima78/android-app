@@ -77,6 +77,7 @@ internal fun LibraryRoute(
     onListWebMetadataExtractors = dependencies.listWebMetadataExtractors,
     onSaveWebMetadataExtractor = dependencies.saveWebMetadataExtractor,
     onDeleteWebMetadataExtractor = dependencies.deleteWebMetadataExtractor,
+    onTestWebMetadataExtractor = dependencies.testWebMetadataExtractor,
     smbRepository = dependencies.smbRepository,
     pageSourceFactory = dependencies.bookReader.pageSourceFactory,
     readingPositionStore = dependencies.bookReader.readingPositionStore,
