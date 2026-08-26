@@ -49,6 +49,17 @@ API 34 以上で常に成立する framework 契約は直接表現する。代�
 
 新しい platform API を導入する際は API 34 以上で利用可能かを確認する。API 35/36/37 以降の差分を扱う `SDK_INT` / extension feature 判定は、実際に現在の対応範囲内で動作が変わるため維持してよい。
 
+## App-wide authentication boundary
+
+- アプリ全体のロックは既定で無効とし、設定画面から明示的に有効化する。
+- ロック有効化時は `BIOMETRIC_STRONG` が登録済みであることを確認し、framework `BiometricPrompt` による認証成功後に設定を保存する。
+- 通常の解除では `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` を許可し、生体認証が利用できない場合も端末 PIN / パターン / パスワードで回復可能にする。
+- ロック設定の表示は `:feature:settings:ui` が所有し、認証 lifecycle と app shell の gate は `:app` が所有する。
+- ロック中は feature content と startup crash diagnostics を描画せず、共有・widget Intent の処理も認証成功後まで遅延する。
+- Activity がバックグラウンドへ移動した後は次回表示時に再認証を要求する。configuration change と認証 prompt 自身による lifecycle 遷移では不要な再ロックを行わない。
+- ロック有効時に Activity が非表示になる際は `FLAG_SECURE` を適用し、最近使ったアプリの preview 等へ直前の内容を残さない。
+- 永続化するのはロック有効フラグだけとし、生体情報や認証済み状態は保存しない。
+
 ## LAN Web Server boundary
 
 LAN Web Server は `:feature:web:data` が所有し、read-only HTTP contract を維持する。単一 class に transport、Repository read、HTML rendering を集約せず、次の責務へ分ける。
@@ -123,3 +134,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0163](../adr/0163-webview-renderer-exit-recovery.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0169](../adr/0169-lan-web-bootstrap-session-authentication.md)
+- [ADR-0186](../adr/0186-biometric-app-lock.md)
