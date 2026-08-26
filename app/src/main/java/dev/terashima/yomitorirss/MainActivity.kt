@@ -5,7 +5,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,77 +60,161 @@ class MainActivity : ComponentActivity() {
       ?: error("Application must implement MainActivityDependenciesProvider")
     provider.mainActivityDependencies
   }
+  private val appLockPreferences by lazy(LazyThreadSafetyMode.NONE) {
+    AppLockPreferences(this)
+  }
 
   private var showingCrashDiagnostics = false
+  private var appLockEnabled by mutableStateOf(false)
+  private var appUnlocked by mutableStateOf(true)
+  private var appLockPromptShowing = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
 
-    StartupCrashStore.peek(this)?.let { report ->
-      showingCrashDiagnostics = true
-      showCrashDiagnostics(report)
-      return
-    }
+    appLockEnabled = appLockPreferences.enabled
+    appUnlocked = !appLockEnabled
+    val crashReport = StartupCrashStore.peek(this)
+    showingCrashDiagnostics = crashReport != null
 
     setContent {
       YomitoriTheme {
-        var showWebServer by remember { mutableStateOf(false) }
-        var webServerPermissionError by remember { mutableStateOf<String?>(null) }
-        val lanServerState by dependencies.lanWebServerController.state.collectAsState()
-        val notificationPermissionLauncher = rememberLauncherForActivityResult(
-          ActivityResultContracts.RequestPermission(),
-        ) { granted ->
-          if (granted) {
-            webServerPermissionError = null
-            dependencies.lanWebServerController.start()
-          } else {
-            webServerPermissionError = "通知を許可しないとWebサーバを起動できません。"
-          }
-        }
-
-        YomitoriApp(
-          appViewModel = appViewModel,
-          routeDependencies = dependencies.routeDependencies,
-          onOpenArticle = ::openArticle,
-          onOpenWebServer = {
-            webServerPermissionError = null
-            showWebServer = true
-          },
-          onExitApp = ::finish,
-        )
-
-        if (showWebServer) {
-          WebServerDialog(
-            state = lanServerState.copy(
-              error = webServerPermissionError ?: lanServerState.error,
-            ),
-            onDismiss = { showWebServer = false },
-            onStart = {
-              webServerPermissionError = null
-              if (
-                ContextCompat.checkSelfPermission(
-                  this,
-                  Manifest.permission.POST_NOTIFICATIONS,
-                ) != PackageManager.PERMISSION_GRANTED
-              ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-              } else {
-                dependencies.lanWebServerController.start()
-              }
-            },
-            onStop = {
-              webServerPermissionError = null
-              dependencies.lanWebServerController.stop()
-            },
-          )
+        when {
+          appLockEnabled && !appUnlocked -> AppLockContent(onUnlock = ::requestAppUnlock)
+          crashReport != null -> CrashDiagnosticsContent(crashReport)
+          else -> MainContent()
         }
       }
     }
-    consumeSharedLibrary(intent)
-    consumeSharedBookmark(intent)
-    consumeTaskWidget(intent)
-    consumeWidgetArticle(intent)
+
+    if (crashReport == null) {
+      consumeSharedLibrary(intent)
+      consumeSharedBookmark(intent)
+      consumeTaskWidget(intent)
+      consumeWidgetArticle(intent)
+    }
+  }
+
+  override fun onStart() {
+    super.onStart()
+    if (appLockEnabled && !appUnlocked && !showingCrashDiagnostics) {
+      requestAppUnlock()
+    } else if (appLockEnabled && !appUnlocked && showingCrashDiagnostics) {
+      requestAppUnlock()
+    }
+  }
+
+  override fun onStop() {
+    if (appLockEnabled && !isChangingConfigurations && !appLockPromptShowing) {
+      appUnlocked = false
+    }
+    super.onStop()
+  }
+
+  @Composable
+  private fun MainContent() {
+    var showWebServer by remember { mutableStateOf(false) }
+    var webServerPermissionError by remember { mutableStateOf<String?>(null) }
+    val lanServerState by dependencies.lanWebServerController.state.collectAsState()
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+      ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+      if (granted) {
+        webServerPermissionError = null
+        dependencies.lanWebServerController.start()
+      } else {
+        webServerPermissionError = "通知を許可しないとWebサーバを起動できません。"
+      }
+    }
+
+    YomitoriApp(
+      appViewModel = appViewModel,
+      routeDependencies = dependencies.routeDependencies,
+      biometricLockEnabled = appLockEnabled,
+      onBiometricLockEnabledChange = ::setBiometricLockEnabled,
+      onOpenArticle = ::openArticle,
+      onOpenWebServer = {
+        webServerPermissionError = null
+        showWebServer = true
+      },
+      onExitApp = ::finish,
+    )
+
+    if (showWebServer) {
+      WebServerDialog(
+        state = lanServerState.copy(
+          error = webServerPermissionError ?: lanServerState.error,
+        ),
+        onDismiss = { showWebServer = false },
+        onStart = {
+          webServerPermissionError = null
+          if (
+            ContextCompat.checkSelfPermission(
+              this,
+              Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+          ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+          } else {
+            dependencies.lanWebServerController.start()
+          }
+        },
+        onStop = {
+          webServerPermissionError = null
+          dependencies.lanWebServerController.stop()
+        },
+      )
+    }
+  }
+
+  @Composable
+  private fun AppLockContent(onUnlock: () -> Unit) {
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(24.dp),
+    ) {
+      Text("アプリはロックされています", style = MaterialTheme.typography.headlineSmall)
+      Text(
+        "生体認証または端末の画面ロックで認証してください。",
+        modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
+      )
+      Button(onClick = onUnlock) {
+        Text("ロックを解除")
+      }
+    }
+  }
+
+  @Composable
+  private fun CrashDiagnosticsContent(report: String) {
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState())
+        .padding(24.dp),
+    ) {
+      Text("起動エラーを検出しました", style = MaterialTheme.typography.headlineSmall)
+      Text(
+        "クラッシュを繰り返さないため通常の初期化を停止しています。下の情報を共有すると原因を特定できます。",
+        modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
+      )
+      Button(onClick = { copyCrashReport(report) }) {
+        Text("クラッシュ情報をコピー")
+      }
+      Button(
+        onClick = {
+          StartupCrashStore.clear(this@MainActivity)
+          recreate()
+        },
+        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+      ) {
+        Text("通常起動を再試行")
+      }
+      SelectionContainer {
+        Text(report, style = MaterialTheme.typography.bodySmall)
+      }
+    }
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -139,38 +227,65 @@ class MainActivity : ComponentActivity() {
     consumeWidgetArticle(intent)
   }
 
-  private fun showCrashDiagnostics(report: String) {
-    setContent {
-      YomitoriTheme {
-        Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        ) {
-          Text("起動エラーを検出しました", style = MaterialTheme.typography.headlineSmall)
-          Text(
-            "クラッシュを繰り返さないため通常の初期化を停止しています。下の情報を共有すると原因を特定できます。",
-            modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
-          )
-          Button(onClick = { copyCrashReport(report) }) {
-            Text("クラッシュ情報をコピー")
-          }
-          Button(
-            onClick = {
-              StartupCrashStore.clear(this@MainActivity)
-              recreate()
-            },
-            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
-          ) {
-            Text("通常起動を再試行")
-          }
-          SelectionContainer {
-            Text(report, style = MaterialTheme.typography.bodySmall)
+  private fun setBiometricLockEnabled(enabled: Boolean) {
+    if (!enabled) {
+      appLockPreferences.enabled = false
+      appLockEnabled = false
+      appUnlocked = true
+      return
+    }
+
+    val biometricManager = getSystemService(BiometricManager::class.java)
+    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) !=
+      BiometricManager.BIOMETRIC_SUCCESS
+    ) {
+      Toast.makeText(this, "端末に生体認証を登録してから有効にしてください", Toast.LENGTH_LONG).show()
+      return
+    }
+    requestAuthentication(enableAfterSuccess = true)
+  }
+
+  private fun requestAppUnlock() {
+    if (!appLockEnabled || appUnlocked) return
+    requestAuthentication(enableAfterSuccess = false)
+  }
+
+  private fun requestAuthentication(enableAfterSuccess: Boolean) {
+    if (appLockPromptShowing) return
+    appLockPromptShowing = true
+
+    val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+      BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    val prompt = BiometricPrompt.Builder(this)
+      .setTitle(if (enableAfterSuccess) "生体認証ロックを有効にする" else "アプリのロックを解除")
+      .setSubtitle("生体認証または端末の画面ロックで認証")
+      .setAllowedAuthenticators(authenticators)
+      .build()
+
+    prompt.authenticate(
+      CancellationSignal(),
+      mainExecutor,
+      object : BiometricPrompt.AuthenticationCallback() {
+        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+          appLockPromptShowing = false
+          if (enableAfterSuccess) {
+            appLockPreferences.enabled = true
+            appLockEnabled = true
+            appUnlocked = true
+            Toast.makeText(this@MainActivity, "生体認証ロックを有効にしました", Toast.LENGTH_SHORT).show()
+          } else {
+            appUnlocked = true
           }
         }
-      }
-    }
+
+        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+          appLockPromptShowing = false
+          if (enableAfterSuccess && errorCode != BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED) {
+            Toast.makeText(this@MainActivity, errString, Toast.LENGTH_LONG).show()
+          }
+        }
+      },
+    )
   }
 
   private fun copyCrashReport(report: String) {
