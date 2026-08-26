@@ -33,6 +33,7 @@ import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganization
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMetadataExtractorRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.data.ForegroundWebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerRuntimeDependencies
@@ -90,6 +91,14 @@ internal class AppFeatureRuntimeDependencies(
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     val webMetadataExtractorRepository = DefaultWebLibraryMetadataExtractorRepository(database)
     val authorizationManager = GoogleBooksAuthorizationManager(application)
+    val webLibraryMutator = DefaultWebLibraryMutator(
+      database = database,
+      metadataClient = WebLibraryMetadataClient(httpClient),
+      renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
+        activityProvider = resumedActivityProvider,
+        extractorRepository = webMetadataExtractorRepository,
+      ),
+    )
 
     LibraryRuntimeDependencies(
       authorization = LibraryAuthorizationDependencies(
@@ -115,13 +124,9 @@ internal class AppFeatureRuntimeDependencies(
         },
       ),
       catalogRepository = catalogRepository,
-      webLibraryMutator = DefaultWebLibraryMutator(
-        database = database,
-        metadataClient = WebLibraryMetadataClient(httpClient),
-        renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
-          activityProvider = resumedActivityProvider,
-          extractorRepository = webMetadataExtractorRepository,
-        ),
+      webLibraryMutator = ForegroundWebLibraryMutator(
+        delegate = webLibraryMutator,
+        activityProvider = resumedActivityProvider,
       ),
       webMetadataExtractorRepository = webMetadataExtractorRepository,
       organizationRepository = organizationRepository,
