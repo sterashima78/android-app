@@ -75,10 +75,15 @@ class AndroidWebViewLibraryMetadataClient(
       "WebView での metadata 取得は HTTPS ページのみ対応しています"
     }
     val extractors = extractorRepository?.list().orEmpty()
+    val effectiveTimeoutMillis = webLibraryMetadataTimeoutMillis(
+      extractors = extractors,
+      requestedUrl = requestedUrl,
+      fallbackTimeoutMillis = timeoutMillis,
+    )
     var latestExtractorExecution: WebLibraryMetadataExtractorExecution? = null
 
     return try {
-      withTimeout(timeoutMillis) {
+      withTimeout(effectiveTimeoutMillis) {
         withContext(Dispatchers.Main.immediate) {
           require(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
             "安全な WebView metadata 取得を利用できません。Android System WebView を更新してください"
@@ -100,7 +105,7 @@ class AndroidWebViewLibraryMetadataClient(
       }
     } catch (error: TimeoutCancellationException) {
       throw WebLibraryRenderedMetadataException(
-        message = "WebView metadata 取得が ${timeoutMillis / 1_000} 秒以内に完了しませんでした",
+        message = "WebView metadata 取得が ${effectiveTimeoutMillis / 1_000} 秒以内に完了しませんでした",
         extractorExecution = latestExtractorExecution,
         cause = error,
       )
@@ -136,10 +141,12 @@ class AndroidWebViewLibraryMetadataClient(
 
     var completed = false
     var pageGeneration = 0
+    var extractionStartedGeneration = -1
     var standardExtractionAttempts = 0
     var extractorExecution: WebLibraryMetadataExtractorExecution? = null
     lateinit var extractMetadata: (String, Int) -> Unit
     lateinit var pollCustomMetadata: (String, WebLibraryMetadataExtractor, String, Int, Long) -> Unit
+    lateinit var startCustomMetadataWhenDomReady: (String, Int, Int) -> Unit
 
     fun dispose() {
       webView.stopLoading()
@@ -293,7 +300,8 @@ class AndroidWebViewLibraryMetadataClient(
     }
 
     extractMetadata = { finalUrl, generation ->
-      if (!completed && generation == pageGeneration) {
+      if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
+        extractionStartedGeneration = generation
         val extractor = matchingExtractor(finalUrl)
         if (extractor == null) {
           evaluateStandardMetadata(finalUrl, generation, null)
@@ -321,6 +329,31 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
+    startCustomMetadataWhenDomReady = { finalUrl, generation, attempt ->
+      if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
+        webView.evaluateJavascript("document.readyState") { rawState ->
+          if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
+            val loading = rawState == "\"loading\""
+            if (loading && attempt < MAX_DOM_READY_ATTEMPTS) {
+              webView.postDelayed(
+                {
+                  startCustomMetadataWhenDomReady(finalUrl, generation, attempt + 1)
+                },
+                DOM_READY_POLL_DELAY_MILLIS,
+              )
+            } else {
+              webView.postDelayed(
+                {
+                  extractMetadata(finalUrl, generation)
+                },
+                CUSTOM_DOM_SETTLE_MILLIS,
+              )
+            }
+          }
+        }
+      }
+    }
+
     webView.webViewClient = object : WebViewClient() {
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         if (!request.isForMainFrame) return false
@@ -329,6 +362,7 @@ class AndroidWebViewLibraryMetadataClient(
 
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         pageGeneration += 1
+        extractionStartedGeneration = -1
         standardExtractionAttempts = 0
         val extractor = matchingExtractor(url)
         if (extractor == null) {
@@ -338,8 +372,18 @@ class AndroidWebViewLibraryMetadataClient(
           recordExtractorExecution(
             extractor,
             WebLibraryMetadataExtractorStatus.MATCHED,
-            "URL パターンに一致。ページ読み込み完了を待機中",
+            "URL パターンに一致。DOM が利用可能になるのを待機中",
           )
+        }
+      }
+
+      override fun onPageCommitVisible(view: WebView, url: String) {
+        if (completed) return
+        val finalUrl = view.url?.takeIf(String::isNotBlank) ?: url
+        if (!isSafeRenderedUrl(finalUrl)) return
+        val generation = pageGeneration
+        if (matchingExtractor(finalUrl) != null) {
+          startCustomMetadataWhenDomReady(finalUrl, generation, 0)
         }
       }
 
@@ -351,14 +395,18 @@ class AndroidWebViewLibraryMetadataClient(
           return
         }
         val generation = pageGeneration
-        view.postDelayed(
-          {
-            if (!completed && generation == pageGeneration) {
-              extractMetadata(finalUrl, generation)
-            }
-          },
-          INITIAL_DOM_SETTLE_MILLIS,
-        )
+        if (matchingExtractor(finalUrl) != null) {
+          startCustomMetadataWhenDomReady(finalUrl, generation, 0)
+        } else {
+          view.postDelayed(
+            {
+              if (!completed && generation == pageGeneration) {
+                extractMetadata(finalUrl, generation)
+              }
+            },
+            INITIAL_DOM_SETTLE_MILLIS,
+          )
+        }
       }
 
       override fun onReceivedError(
@@ -403,6 +451,15 @@ class AndroidWebViewLibraryMetadataClient(
     webView.loadUrl(requestedUrl)
   }
 }
+
+internal fun webLibraryMetadataTimeoutMillis(
+  extractors: List<WebLibraryMetadataExtractor>,
+  requestedUrl: String,
+  fallbackTimeoutMillis: Long,
+): Long = findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
+  ?.timeoutSeconds
+  ?.times(1_000L)
+  ?: fallbackTimeoutMillis
 
 internal data class WebLibraryCustomMetadata(
   val title: String?,
@@ -717,8 +774,11 @@ private const val PROFILE_NAME = "mosaic-web-library-metadata"
 private const val CUSTOM_METADATA_STATE_PREFIX = "__mosaic_web_library_metadata"
 private const val DEFAULT_TIMEOUT_MILLIS = 15_000L
 private const val INITIAL_DOM_SETTLE_MILLIS = 500L
+private const val CUSTOM_DOM_SETTLE_MILLIS = 200L
+private const val DOM_READY_POLL_DELAY_MILLIS = 100L
 private const val EXTRACTION_RETRY_DELAY_MILLIS = 500L
 private const val CUSTOM_METADATA_POLL_DELAY_MILLIS = 100L
 private const val CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS = 10_000L
+private const val MAX_DOM_READY_ATTEMPTS = 20
 private const val MAX_EXTRACTION_ATTEMPTS = 4
 private const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 200
