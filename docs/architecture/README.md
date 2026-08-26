@@ -12,6 +12,8 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [persistence.md](persistence.md): schema・table access・migration ownership
 - [testing.md](testing.md): テスト責務と architecture verification
 - [platform.md](platform.md): Android runtime / SDK の現在の基準
+- [ai-runtime.md](ai-runtime.md): Local / Cloud AI の provider・execution・failure boundary
+- [web-content.md](web-content.md): ユーザー閲覧、RSS scraping、Library Web metadata の現在の境界
 - [glossary.md](glossary.md): ubiquitous language とアーキテクチャ用語
 - [../adr/README.md](../adr/README.md): Decision Log の読み方と主要 ADR の索引
 - [../spec.md](../spec.md): ユーザーから見たアプリ仕様

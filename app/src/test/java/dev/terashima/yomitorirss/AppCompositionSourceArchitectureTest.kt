@@ -209,6 +209,40 @@ class AppCompositionSourceArchitectureTest {
     )
   }
 
+  @Test
+  fun `runtime dependency group型はRouteとframework boundaryへ露出しない`() {
+    val forbiddenTypes = listOf(
+      "AppAiCoreRuntimeDependencies",
+      "AppContentRuntimeDependencies",
+      "AppCrossFeatureRuntimeDependencies",
+      "AppFeatureRuntimeDependencies",
+      "AppKnowledgeRuntimeDependencies",
+      "AppSupportingRuntimeDependencies",
+    )
+    val boundaryFiles = buildList {
+      addAll(
+        File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui")
+          .walkTopDown()
+          .filter { it.isFile && it.extension == "kt" }
+          .toList(),
+      )
+      add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt"))
+      add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/MainActivityDependencies.kt"))
+    }
+
+    val unexpected = boundaryFiles.flatMap { file ->
+      val source = file.readText()
+      forbiddenTypes
+        .filter { it in source }
+        .map { type -> "${file.relativeTo(repositoryRoot).invariantSeparatorsPath}:$type" }
+    }
+
+    assertTrue(
+      "route/framework boundaries must consume narrow capabilities instead of runtime dependency groups: $unexpected",
+      unexpected.isEmpty(),
+    )
+  }
+
   private fun assertNoViewModelBeforeDispatch(
     path: String,
     functionMarker: String,

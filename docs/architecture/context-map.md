@@ -82,7 +82,7 @@ RSS から Content への ingestion は Content-owned `ContentSourceGateway` を
 
 RSS は通常の RSS / Atom discovery に加え、RSS を公開していない Web ページから synthetic feed を生成する取得方法も所有する。user-defined Web scraping rule は `rss_web_scraping_rules` に URL glob pattern、Promise ベースの JavaScript function、timeout を保存し、RSS-owned `FeedRepository` 経由で管理・実行する。Library の custom metadata extractor と execution pattern は似ているが、RSS から Library Context の repository/client へ依存せず、それぞれの source semantics と durable state を各 Context 内に閉じる。
 
-既存の site-specific synthetic feed client は移行期間中 RSS Context 内に残し、custom rule が一致する場合だけ user-defined rule を優先する。汎用 rule の実運用確認後に site-specific client を廃止する場合は、その時点で対応 ADR を更新する。
+組み込みの site-specific synthetic feed client は ADR-0184 で廃止済みであり、feed 取得は一致する user-defined rule を優先し、該当 rule がなければ通常の RSS / Atom discovery / fetch へ進む。特定 host を根拠に新規 feed を暗黙に `COMIC` へ分類する処理も持たず、必要な分類は feed / folder の設定で明示する。
 
 ### Summary
 
@@ -203,3 +203,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0154](../adr/0154-web-library-rendered-metadata-fallback.md)
 - [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
 - [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
+- [ADR-0184](../adr/0184-remove-site-specific-manga-rss-clients.md)

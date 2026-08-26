@@ -1,16 +1,17 @@
 package dev.terashima.yomitorirss
 
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
-import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptOpenAiClient
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderException
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderFailureKind
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudFailureKind
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudGenerationResult
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudInferenceException
-import java.io.IOException
 import kotlinx.coroutines.CancellationException
 
 internal class ChatGptSummaryCloudInference(
-  private val client: ChatGptOpenAiClient,
+  private val client: ChatGptInferenceClient,
   private val modelPreferences: ChatGptModelPreferences,
 ) : SummaryCloudInference {
   override fun isAvailable(): Boolean =
@@ -37,62 +38,58 @@ internal class ChatGptSummaryCloudInference(
     block()
   } catch (error: CancellationException) {
     throw error
-  } catch (_: IOException) {
-    throw classifyTransportFailure()
-  } catch (error: IllegalStateException) {
+  } catch (error: ChatGptProviderException) {
     throw classifyProviderFailure(error)
-  }
-}
-
-internal fun classifyTransportFailure(): SummaryCloudInferenceException =
-  SummaryCloudInferenceException(
-    kind = SummaryCloudFailureKind.TRANSIENT,
-    retryable = true,
-    message = "ChatGPT / Codex との通信に失敗しました。自動的に再試行します",
-  )
-
-internal fun classifyProviderFailure(error: IllegalStateException): SummaryCloudInferenceException {
-  val status = HTTP_STATUS_PATTERN.find(error.message.orEmpty())?.groupValues?.getOrNull(1)?.toIntOrNull()
-  return when {
-    status == 408 || status == 429 || status != null && status in 500..599 -> SummaryCloudInferenceException(
-      kind = if (status == 429) SummaryCloudFailureKind.RATE_LIMITED else SummaryCloudFailureKind.TRANSIENT,
-      retryable = true,
-      message = if (status == 429) {
-        "ChatGPT / Codex の利用上限またはレート制限に達しました。自動的に再試行します"
-      } else {
-        "ChatGPT / Codex が一時的に利用できません。自動的に再試行します"
-      },
-    )
-    status == 401 || status == 403 || isRefreshCredentialRejection(error, status) -> SummaryCloudInferenceException(
-      kind = SummaryCloudFailureKind.AUTHENTICATION,
-      retryable = false,
-      message = "ChatGPT の認証が無効です。設定から再ログインしてください",
-    )
-    status != null && status in 400..499 -> SummaryCloudInferenceException(
-      kind = SummaryCloudFailureKind.REQUEST_REJECTED,
-      retryable = false,
-      message = "ChatGPT / Codex にリクエストを受け付けてもらえませんでした (HTTP $status)",
-    )
-    else -> SummaryCloudInferenceException(
+  } catch (error: IllegalStateException) {
+    throw SummaryCloudInferenceException(
       kind = SummaryCloudFailureKind.UNKNOWN,
       retryable = false,
-      message = sanitizeUnknownProviderMessage(error.message),
+      message = sanitizeUnknownAdapterMessage(error.message),
     )
   }
 }
 
-private fun isRefreshCredentialRejection(error: IllegalStateException, status: Int?): Boolean =
-  status != null && status in 400..499 && error.message.orEmpty().contains("OAuth token refresh", ignoreCase = true)
-
-private fun sanitizeUnknownProviderMessage(message: String?): String {
-  val value = message.orEmpty()
-  return when {
-    value.contains("not connected", ignoreCase = true) -> "ChatGPT へ接続してください"
-    value.contains("利用モデルを選択", ignoreCase = true) -> "ChatGPT / Codex の利用モデルを選択してください"
-    value.contains("did not open the specified article URL", ignoreCase = true) ->
-      "ChatGPT / Codex が指定した記事URLを開けませんでした"
-    else -> "ChatGPT / Codex のクラウド推論に失敗しました"
-  }
+internal fun classifyProviderFailure(error: ChatGptProviderException): SummaryCloudInferenceException = when (error.kind) {
+  ChatGptProviderFailureKind.TRANSIENT -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.TRANSIENT,
+    retryable = error.retryable,
+    message = "ChatGPT / Codex が一時的に利用できません。自動的に再試行します",
+  )
+  ChatGptProviderFailureKind.RATE_LIMITED -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.RATE_LIMITED,
+    retryable = error.retryable,
+    message = "ChatGPT / Codex の利用上限またはレート制限に達しました。自動的に再試行します",
+  )
+  ChatGptProviderFailureKind.AUTHENTICATION -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.AUTHENTICATION,
+    retryable = false,
+    message = "ChatGPT の認証が無効です。設定から再ログインしてください",
+  )
+  ChatGptProviderFailureKind.REQUEST_REJECTED -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.REQUEST_REJECTED,
+    retryable = false,
+    message = error.statusCode?.let { "ChatGPT / Codex にリクエストを受け付けてもらえませんでした (HTTP $it)" }
+      ?: "ChatGPT / Codex にリクエストを受け付けてもらえませんでした",
+  )
+  ChatGptProviderFailureKind.NOT_CONNECTED -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.UNKNOWN,
+    retryable = false,
+    message = "ChatGPT へ接続してください",
+  )
+  ChatGptProviderFailureKind.WEB_TARGET_NOT_OPENED -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.UNKNOWN,
+    retryable = false,
+    message = "ChatGPT / Codex が指定した記事URLを開けませんでした",
+  )
+  ChatGptProviderFailureKind.UNKNOWN -> SummaryCloudInferenceException(
+    kind = SummaryCloudFailureKind.UNKNOWN,
+    retryable = false,
+    message = "ChatGPT / Codex のクラウド推論に失敗しました",
+  )
 }
 
-private val HTTP_STATUS_PATTERN = Regex("\\((\\d{3})\\)")
+private fun sanitizeUnknownAdapterMessage(message: String?): String = when {
+  message.orEmpty().contains("利用モデルを選択", ignoreCase = true) ->
+    "ChatGPT / Codex の利用モデルを選択してください"
+  else -> "ChatGPT / Codex のクラウド推論に失敗しました"
+}

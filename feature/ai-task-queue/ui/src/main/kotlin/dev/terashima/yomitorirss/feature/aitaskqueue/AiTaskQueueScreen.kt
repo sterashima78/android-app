@@ -298,8 +298,6 @@ internal fun aiTaskFailurePresentation(item: AiTaskQueueItem): AiTaskFailurePres
   }
 }
 
-internal fun aiTaskFailureReason(item: AiTaskQueueItem): String? = aiTaskFailurePresentation(item)?.reason
-
 private fun taskTitle(item: AiTaskQueueItem): String = item.title
 
 private fun taskSource(item: AiTaskQueueItem): String {

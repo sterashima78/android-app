@@ -90,6 +90,19 @@ internal fun IntegratedRoute(
     tab = selectedTab,
   )
   val targetsByKey = entries.associate { it.item.key to it.target }
+  val dispatcher = integratedTargetDispatcher(
+    rssViewModel = rssViewModel,
+    redditViewModel = redditViewModel,
+    youtubeViewModel = youtubeViewModel,
+    mailViewModel = mailViewModel,
+    onOpenArticle = onOpenArticle,
+    onOpenMail = onOpenMail,
+    onOpenYouTube = { video ->
+      runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(video.url)))
+      }
+    },
+  )
 
   Box(modifier = modifier.fillMaxSize()) {
     if (!initialized) {
@@ -110,77 +123,15 @@ internal fun IntegratedRoute(
           youtubeViewModel.refresh()
           mailViewModel.refresh()
         },
-        onMarkProcessed = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> rssViewModel.markRead(target.article)
-            is IntegratedTarget.Reddit -> redditViewModel.markRead(target.article)
-            is IntegratedTarget.YouTube -> youtubeViewModel.markRead(target.video)
-            is IntegratedTarget.Mail -> mailViewModel.toggleRead(target.thread)
-            null -> Unit
-          }
-        },
-        onMarkUnread = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> rssViewModel.markUnread(target.article)
-            is IntegratedTarget.Reddit -> redditViewModel.markUnread(target.article)
-            is IntegratedTarget.YouTube -> youtubeViewModel.markUnread(target.video)
-            is IntegratedTarget.Mail -> mailViewModel.toggleRead(target.thread)
-            null -> Unit
-          }
-        },
-        onSave = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> rssViewModel.saveAndRead(target.article)
-            is IntegratedTarget.Reddit -> redditViewModel.saveAndRead(target.article)
-            is IntegratedTarget.YouTube -> youtubeViewModel.saveAndRead(target.video)
-            is IntegratedTarget.Mail,
-            null -> Unit
-          }
-        },
-        onDefer = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> rssViewModel.readLater(target.article)
-            is IntegratedTarget.Reddit -> redditViewModel.readLater(target.article)
-            is IntegratedTarget.YouTube -> youtubeViewModel.toggleWatchLater(target.video)
-            is IntegratedTarget.Mail -> mailViewModel.toggleReadLater(target.thread)
-            null -> Unit
-          }
-        },
-        onUnsave = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> rssViewModel.unsave(target.article)
-            is IntegratedTarget.Reddit -> redditViewModel.unsave(target.article)
-            is IntegratedTarget.YouTube,
-            is IntegratedTarget.Mail,
-            null -> Unit
-          }
-        },
-        onRemoveDeferred = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> rssViewModel.removeReadLater(target.article)
-            is IntegratedTarget.Reddit -> redditViewModel.removeReadLater(target.article)
-            is IntegratedTarget.YouTube -> youtubeViewModel.toggleWatchLater(target.video)
-            is IntegratedTarget.Mail -> mailViewModel.toggleReadLater(target.thread)
-            null -> Unit
-          }
-        },
-        onToggleMailStarred = { item ->
-          (targetsByKey[item.key] as? IntegratedTarget.Mail)?.let { mailViewModel.toggleStarred(it.thread) }
-        },
-        onArchive = { item ->
-          (targetsByKey[item.key] as? IntegratedTarget.Mail)?.let { mailViewModel.archive(it.thread) }
-        },
-        onOpen = { item ->
-          when (val target = targetsByKey[item.key]) {
-            is IntegratedTarget.Rss -> onOpenArticle(target.article)
-            is IntegratedTarget.Reddit -> onOpenArticle(target.article)
-            is IntegratedTarget.Mail -> onOpenMail(target.thread)
-            is IntegratedTarget.YouTube -> runCatching {
-              context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target.video.url)))
-            }
-            null -> Unit
-          }
-        },
+        onMarkProcessed = { item -> dispatcher.markProcessed(targetsByKey[item.key]) },
+        onMarkUnread = { item -> dispatcher.markUnread(targetsByKey[item.key]) },
+        onSave = { item -> dispatcher.save(targetsByKey[item.key]) },
+        onDefer = { item -> dispatcher.defer(targetsByKey[item.key]) },
+        onUnsave = { item -> dispatcher.unsave(targetsByKey[item.key]) },
+        onRemoveDeferred = { item -> dispatcher.removeDeferred(targetsByKey[item.key]) },
+        onToggleMailStarred = { item -> dispatcher.toggleMailStarred(targetsByKey[item.key]) },
+        onArchive = { item -> dispatcher.archive(targetsByKey[item.key]) },
+        onOpen = { item -> dispatcher.open(targetsByKey[item.key]) },
         actionsForItem = { item ->
           targetsByKey[item.key]?.let { target ->
             integratedItemActions(
