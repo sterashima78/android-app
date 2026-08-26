@@ -26,7 +26,7 @@
 
 feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。複数 feature を利用する presentation でも、独立した変更理由と名前を持つ feature responsibility であれば owning feature が state/action mapping を所有する。`:app` に残す adapter は Android permission / Activity Result、外部 Intent、app-shell navigation、特定 feature に属さない dependency wiring など application-only composition に限定する。`AppSection` / `MainTab` / `AppViewModel` のような app shell navigation state も同じ app UI ownership に置く。active tab ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、各 composition host が独自の `MainTab` policy を重複して持たない。
 
-`Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app` は source ViewModel の wiring、Mail tab への遷移、Android 外部 URL 起動などの callback だけを接続する。詳細は ADR-0187 を参照する。
+`Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app` は source ViewModel の wiring、Mail tab への遷移、Android 外部 URL 起動などの callback だけを接続する。詳細は ADR-0188 を参照する。
 
 `app/src/main/.../feature` は feature implementation の配置場所として使わず、production Kotlin source を置かない。新しい feature Route / Screen / adapter や app shell state をこの path へ追加しない。
 
@@ -178,4 +178,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0171](../adr/0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
-- [ADR-0187](../adr/0187-integrated-feature-owns-cross-feature-presentation.md)
+- [ADR-0188](../adr/0188-integrated-feature-owns-cross-feature-presentation.md)
