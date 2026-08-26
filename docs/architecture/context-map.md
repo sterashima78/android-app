@@ -80,6 +80,10 @@ Content の上流 Source Context として扱う。各 Source 固有の subscrip
 
 RSS から Content への ingestion は Content-owned `ContentSourceGateway` を利用し、RSS data は Content table を直接更新しない。
 
+RSS は通常の RSS / Atom discovery に加え、RSS を公開していない Web ページから synthetic feed を生成する取得方法も所有する。user-defined Web scraping rule は `rss_web_scraping_rules` に URL glob pattern、Promise ベースの JavaScript function、timeout を保存し、RSS-owned `FeedRepository` 経由で管理・実行する。Library の custom metadata extractor と execution pattern は似ているが、RSS から Library Context の repository/client へ依存せず、それぞれの source semantics と durable state を各 Context 内に閉じる。
+
+既存の site-specific synthetic feed client は移行期間中 RSS Context 内に残し、custom rule が一致する場合だけ user-defined rule を優先する。汎用 rule の実運用確認後に site-specific client を廃止する場合は、その時点で対応 ADR を更新する。
+
 ### Summary
 
 Content を入力として generated summary と task lifecycle / priority の Summary 側規則を所有する。
@@ -111,7 +115,7 @@ Health と Workout は別 Context とする。Workout はアプリ内でユー�
 - Domain からは全 source を共通 `CalendarEvent` として扱い、`source` / `kind` / external source metadata で表示上の意味を保持する。
 - Task / Workout の table や private storage は直接参照しない。
 
-Calendar は Task / Workout / device calendar の command owner ではなく、初期実装は読み取り専用とする。
+Calendar は Task / Workout の command owner ではなく、初期実装は読み取り専用とする。
 
 ### Library
 
@@ -140,7 +144,7 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 - Bookmark import: `ImportBookmarksUseCase`
 - Curation -> Content: `BookmarkArticleGateway`
 - RSS -> Content: `ContentSourceGateway`
-- Workout -> Health Connect: app composition adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続する一方向 export
+- Workout -> Health Connect: app composition adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続して行う一方向 export
 - Bookmark ↔ Web Library: app composition の `BookmarkLibraryTransferService` が `BookmarkMutator` / `SaveSharedBookmarkUseCase` と `WebLibraryMutator` を調停する
 
 ### Domain Service
@@ -198,3 +202,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0143](../adr/0143-web-library-source-and-bookmark-transfer.md)
 - [ADR-0154](../adr/0154-web-library-rendered-metadata-fallback.md)
 - [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
+- [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
