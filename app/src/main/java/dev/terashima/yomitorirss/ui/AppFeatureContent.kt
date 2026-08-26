@@ -39,6 +39,8 @@ internal fun AppFeatureContent(
   rssController: RssRouteController,
   redditController: RedditRouteController,
   bookmarkEditController: BookmarkEditController,
+  biometricLockEnabled: Boolean,
+  onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
   onGameFullscreenChange: (Boolean) -> Unit,
@@ -218,6 +220,8 @@ internal fun AppFeatureContent(
         aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
         initialBackgroundFetchWifiOnly = routeDependencies.backgroundFetchWifiOnly(),
         onBackgroundFetchWifiOnlyChange = routeDependencies::setBackgroundFetchWifiOnly,
+        biometricLockEnabled = biometricLockEnabled,
+        onBiometricLockEnabledChange = onBiometricLockEnabledChange,
         onOpenWebServer = onOpenWebServer,
         onNavigate = appViewModel::selectTab,
       )
