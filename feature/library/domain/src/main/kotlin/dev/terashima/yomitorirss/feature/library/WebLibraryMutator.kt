@@ -47,9 +47,11 @@ fun changedWebLibraryMetadataFields(
   if (before.authors != after.authors) add(WebLibraryMetadataField.AUTHORS)
 }
 
-interface WebLibraryMutator {
+interface WebLibraryAdder {
   suspend fun addWebBook(url: String, titleHint: String? = null): LibraryBook
+}
 
+interface WebLibraryMutator : WebLibraryAdder {
   suspend fun refreshWebBook(book: LibraryBook): LibraryBook = addWebBook(book.infoUrl ?: book.sourceId, null)
 
   suspend fun refreshWebBookWithReport(book: LibraryBook): WebLibraryMetadataRefreshResult {
