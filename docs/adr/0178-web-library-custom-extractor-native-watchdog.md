@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-26
 - Refines: [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0177](0177-web-library-early-custom-extraction-and-rule-timeout.md)
+- Refined by: [ADR-0179](0179-web-library-thumbnail-preview-and-foreground-gating.md)
 
 ## Context
 
