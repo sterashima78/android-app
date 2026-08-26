@@ -174,11 +174,12 @@ fun LibraryFeatureRoute(
     }
   }
   val webBooks = state.books.filter { it.source == LibrarySource.WEB }
+  val webBooksNeedingMetadataRepair = webBooks.filter { it.needsWebMetadataRepair() }
   val webSettingsBinding = WebLibrarySettingsUiBinding(
-    books = webBooks,
+    books = webBooksNeedingMetadataRepair,
     refreshState = webRefreshState,
     onRefresh = { book -> refreshWebBooks(listOf(book)) },
-    onRefreshAll = { refreshWebBooks(webBooks) },
+    onRefreshAll = { refreshWebBooks(webBooksNeedingMetadataRepair) },
     onMoveToBookmark = moveWebBookToBookmark,
   )
 
