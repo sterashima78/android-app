@@ -54,11 +54,15 @@ class ChatGptCloudArchitectureTest {
   fun `ChatGPT feature adapters are composed in app layer`() {
     val summaryAdapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptSummaryCloudInference.kt")
     assertTrue("app adapter must implement SummaryCloudInference", "SummaryCloudInference" in summaryAdapter)
-    assertTrue("app adapter must own ChatGPT client dependency", "ChatGptOpenAiClient" in summaryAdapter)
+    assertTrue("app adapter must consume normalized inference client", "ChatGptInferenceClient" in summaryAdapter)
+    assertFalse("Summary adapter must not parse provider HTTP status", "HTTP_STATUS_PATTERN" in summaryAdapter)
+    assertFalse("Summary adapter must not inspect OAuth refresh protocol text", "OAuth token refresh" in summaryAdapter)
 
     val knowledgeAdapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptKnowledgeTextInference.kt")
     assertTrue("app adapter must implement AiTextInference", "AiTextInference" in knowledgeAdapter)
-    assertTrue("app adapter must own ChatGPT client dependency", "ChatGptOpenAiClient" in knowledgeAdapter)
+    assertTrue("app adapter must consume normalized inference client", "ChatGptInferenceClient" in knowledgeAdapter)
+    assertFalse("Knowledge adapter must not parse provider HTTP status", "HTTP_STATUS_PATTERN" in knowledgeAdapter)
+    assertFalse("Knowledge adapter must not inspect OAuth refresh protocol text", "OAuth token refresh" in knowledgeAdapter)
   }
 
   @Test
