@@ -9,7 +9,6 @@ class AppRouteDependencies internal constructor(
   private val content = AppContentRouteDependencies(container)
   private val supporting = AppSupportingRouteDependencies(application, container)
 
-  val libraryTransfers get() = content.libraryTransfers
   val rssViewModelFactory get() = content.rssViewModelFactory
   val redditViewModelFactory get() = content.redditViewModelFactory
   val feedViewModelFactory get() = content.feedViewModelFactory
