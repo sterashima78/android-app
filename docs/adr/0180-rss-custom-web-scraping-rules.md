@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-26
-- Refines: [ADR-0090](0090-yanmaga-html-derived-feed.md), [ADR-0091](0091-mangaone-webview-derived-feed.md), [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0177](0177-web-library-early-custom-extraction-and-rule-timeout.md), [ADR-0178](0178-web-library-custom-extractor-native-watchdog.md)
+- Refines: [ADR-0090](0090-yanmaga-web-html-derived-rss.md), [ADR-0091](0091-mangaone-webview-derived-rss.md), [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0177](0177-web-library-early-custom-extraction-and-rule-timeout.md), [ADR-0178](0178-web-library-custom-extractor-native-watchdog.md)
 
 ## Context
 
