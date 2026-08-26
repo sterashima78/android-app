@@ -10,8 +10,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class WebLibraryMetadataTimeoutTest {
   @Test
   fun `一致する取得ルールのタイムアウトをWebView全体へ適用する`() {
@@ -123,8 +125,8 @@ class WebLibraryMetadataTimeoutTest {
         cursor.getInt(0)
       }
 
-        assertTrue("timeout_seconds" in columns)
-        assertEquals(DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS, timeout)
+      assertTrue("timeout_seconds" in columns)
+      assertEquals(DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS, timeout)
     } finally {
       db.close()
     }
