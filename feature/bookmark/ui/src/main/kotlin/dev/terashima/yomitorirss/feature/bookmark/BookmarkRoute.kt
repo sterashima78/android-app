@@ -71,6 +71,11 @@ fun BookmarkRoute(
       bookmarkViewModel.consumeImportCompleted()
     }
   }
+  LaunchedEffect(state.message) {
+    val message = state.message ?: return@LaunchedEffect
+    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    bookmarkViewModel.dismissMessage()
+  }
 
   if (!state.initialized) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
