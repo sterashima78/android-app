@@ -33,7 +33,7 @@ import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganization
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMetadataExtractorRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
-import dev.terashima.yomitorirss.feature.library.data.ForegroundWebLibraryMutator
+import dev.terashima.yomitorirss.feature.library.data.ForegroundWebLibraryRenderedMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationManager
 import dev.terashima.yomitorirss.feature.library.data.GoogleBooksAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerRuntimeDependencies
@@ -91,13 +91,9 @@ internal class AppFeatureRuntimeDependencies(
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     val webMetadataExtractorRepository = DefaultWebLibraryMetadataExtractorRepository(database)
     val authorizationManager = GoogleBooksAuthorizationManager(application)
-    val webLibraryMutator = DefaultWebLibraryMutator(
-      database = database,
-      metadataClient = WebLibraryMetadataClient(httpClient),
-      renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
-        activityProvider = resumedActivityProvider,
-        extractorRepository = webMetadataExtractorRepository,
-      ),
+    val renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
+      activityProvider = resumedActivityProvider,
+      extractorRepository = webMetadataExtractorRepository,
     )
 
     LibraryRuntimeDependencies(
@@ -124,9 +120,13 @@ internal class AppFeatureRuntimeDependencies(
         },
       ),
       catalogRepository = catalogRepository,
-      webLibraryMutator = ForegroundWebLibraryMutator(
-        delegate = webLibraryMutator,
-        activityProvider = resumedActivityProvider,
+      webLibraryMutator = DefaultWebLibraryMutator(
+        database = database,
+        metadataClient = WebLibraryMetadataClient(httpClient),
+        renderedMetadataClient = ForegroundWebLibraryRenderedMetadataClient(
+          delegate = renderedMetadataClient,
+          activityProvider = resumedActivityProvider,
+        ),
       ),
       webMetadataExtractorRepository = webMetadataExtractorRepository,
       organizationRepository = organizationRepository,
