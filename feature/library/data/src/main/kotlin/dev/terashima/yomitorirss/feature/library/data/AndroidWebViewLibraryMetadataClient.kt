@@ -145,11 +145,19 @@ class AndroidWebViewLibraryMetadataClient(
     var standardExtractionAttempts = 0
     var extractorExecution: WebLibraryMetadataExtractorExecution? = null
     var activeCustomStateKey: String? = null
+    var activeCustomWatchdog: Runnable? = null
     lateinit var extractMetadata: (String, Int) -> Unit
     lateinit var pollCustomMetadata: (String, WebLibraryMetadataExtractor, String, Int, Long) -> Unit
     lateinit var startCustomMetadataWhenDomReady: (String, Int) -> Unit
 
+    fun clearCustomExecution() {
+      activeCustomStateKey = null
+      activeCustomWatchdog?.let(mainHandler::removeCallbacks)
+      activeCustomWatchdog = null
+    }
+
     fun dispose() {
+      clearCustomExecution()
       webView.stopLoading()
       webView.webViewClient = WebViewClient()
       webView.clearHistory()
@@ -160,7 +168,6 @@ class AndroidWebViewLibraryMetadataClient(
     fun finish(result: Result<WebLibraryRenderedMetadataFetchResult>) {
       if (completed) return
       completed = true
-      activeCustomStateKey = null
       dispose()
       if (!continuation.isActive) return
       result.fold(
@@ -172,7 +179,7 @@ class AndroidWebViewLibraryMetadataClient(
     fun failAfterRendererExit(detail: RenderProcessGoneDetail) {
       if (completed) return
       completed = true
-      activeCustomStateKey = null
+      clearCustomExecution()
       webView.destroy()
       if (continuation.isActive) {
         continuation.resumeWithException(
@@ -232,7 +239,7 @@ class AndroidWebViewLibraryMetadataClient(
                 ),
               )
             } else {
-              webView.postDelayed(
+              mainHandler.postDelayed(
                 {
                   evaluateStandardMetadata(
                     finalUrl = finalUrl,
@@ -257,7 +264,7 @@ class AndroidWebViewLibraryMetadataClient(
         activeCustomStateKey == stateKey
       ) {
         if (SystemClock.uptimeMillis() >= deadlineMillis) {
-          activeCustomStateKey = null
+          clearCustomExecution()
           webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
           recordExtractorExecution(
             extractor,
@@ -275,7 +282,7 @@ class AndroidWebViewLibraryMetadataClient(
               val poll = parseCustomMetadataPromisePoll(finalUrl, rawResult)
               when {
                 poll == null -> {
-                  activeCustomStateKey = null
+                  clearCustomExecution()
                   recordExtractorExecution(
                     extractor,
                     WebLibraryMetadataExtractorStatus.INVALID_STATE,
@@ -283,14 +290,14 @@ class AndroidWebViewLibraryMetadataClient(
                   )
                   evaluateStandardMetadata(finalUrl, generation, null)
                 }
-                poll.pending -> webView.postDelayed(
+                poll.pending -> mainHandler.postDelayed(
                   {
                     pollCustomMetadata(finalUrl, extractor, stateKey, generation, deadlineMillis)
                   },
                   CUSTOM_METADATA_POLL_DELAY_MILLIS,
                 )
                 else -> {
-                  activeCustomStateKey = null
+                  clearCustomExecution()
                   val appliedMetadata = poll.metadata.takeIf {
                     poll.status == WebLibraryMetadataExtractorStatus.APPLIED
                   }
@@ -328,32 +335,32 @@ class AndroidWebViewLibraryMetadataClient(
           val stateKey = "$CUSTOM_METADATA_STATE_PREFIX-$generation-${SystemClock.uptimeMillis()}"
           val deadlineMillis = SystemClock.uptimeMillis() + CUSTOM_METADATA_PROMISE_TIMEOUT_MILLIS
           activeCustomStateKey = stateKey
-          webView.postDelayed(
-            {
-              if (
-                !completed &&
-                generation == pageGeneration &&
-                activeCustomStateKey == stateKey
-              ) {
-                activeCustomStateKey = null
-                webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
-                recordExtractorExecution(
-                  extractor,
-                  WebLibraryMetadataExtractorStatus.TIMED_OUT,
-                  "Promise 監視中に WebView JavaScript の応答が停止しました",
-                )
-                finish(
-                  Result.failure(
-                    WebLibraryRenderedMetadataException(
-                      message = "カスタム metadata 取得の JavaScript 応答が ${customMetadataNativeWatchdogDelayMillis() / 1_000.0} 秒以内に戻りませんでした",
-                      extractorExecution = extractorExecution,
-                    ),
+          val watchdog = Runnable {
+            if (
+              !completed &&
+              generation == pageGeneration &&
+              activeCustomStateKey == stateKey
+            ) {
+              activeCustomWatchdog = null
+              activeCustomStateKey = null
+              webView.evaluateJavascript(customMetadataCleanupScript(stateKey), null)
+              recordExtractorExecution(
+                extractor,
+                WebLibraryMetadataExtractorStatus.TIMED_OUT,
+                "Promise 監視中に WebView JavaScript の応答が停止しました",
+              )
+              finish(
+                Result.failure(
+                  WebLibraryRenderedMetadataException(
+                    message = "カスタム metadata 取得の JavaScript 応答が ${customMetadataNativeWatchdogDelayMillis() / 1_000} 秒以内に戻りませんでした",
+                    extractorExecution = extractorExecution,
                   ),
-                )
-              }
-            },
-            customMetadataNativeWatchdogDelayMillis(),
-          )
+                ),
+              )
+            }
+          }
+          activeCustomWatchdog = watchdog
+          mainHandler.postDelayed(watchdog, customMetadataNativeWatchdogDelayMillis())
           webView.evaluateJavascript(
             customMetadataStartScript(extractor.functionCode, stateKey),
           ) {
@@ -385,14 +392,14 @@ class AndroidWebViewLibraryMetadataClient(
         webView.evaluateJavascript("document.readyState") { rawState ->
           if (!completed && generation == pageGeneration && extractionStartedGeneration != generation) {
             if (rawState == "\"loading\"") {
-              webView.postDelayed(
+              mainHandler.postDelayed(
                 {
                   startCustomMetadataWhenDomReady(finalUrl, generation)
                 },
                 DOM_READY_POLL_DELAY_MILLIS,
               )
             } else {
-              webView.postDelayed(
+              mainHandler.postDelayed(
                 {
                   extractMetadata(finalUrl, generation)
                 },
@@ -413,7 +420,7 @@ class AndroidWebViewLibraryMetadataClient(
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         pageGeneration += 1
         extractionStartedGeneration = -1
-        activeCustomStateKey = null
+        clearCustomExecution()
         standardExtractionAttempts = 0
         val extractor = matchingExtractor(url)
         if (extractor == null) {
@@ -449,7 +456,7 @@ class AndroidWebViewLibraryMetadataClient(
         if (matchingExtractor(finalUrl) != null) {
           extractMetadata(finalUrl, generation)
         } else {
-          view.postDelayed(
+          mainHandler.postDelayed(
             {
               if (!completed && generation == pageGeneration) {
                 extractMetadata(finalUrl, generation)
@@ -494,7 +501,6 @@ class AndroidWebViewLibraryMetadataClient(
       mainHandler.post {
         if (!completed) {
           completed = true
-          activeCustomStateKey = null
           dispose()
         }
       }
