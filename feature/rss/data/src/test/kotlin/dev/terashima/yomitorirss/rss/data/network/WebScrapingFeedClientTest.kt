@@ -114,6 +114,35 @@ class WebScrapingFeedClientTest {
   }
 
   @Test
+  fun `取得結果の検証失敗理由をテスト結果へ返す`() {
+    val value = JSONObject()
+      .put("title", "サンプル")
+      .put(
+        "items",
+        JSONArray().put(
+          JSONObject()
+            .put("title", "第1話")
+            .put("url", "http://example.com/series/sample/1"),
+        ),
+      )
+      .toString()
+    val pollPayload = JSONObject()
+      .put("pending", false)
+      .put("status", "applied")
+      .put("value", value)
+      .toString()
+
+    val poll = parseWebScrapingPoll(
+      finalUrl = "https://example.com/series/sample",
+      rawResult = JSONObject.quote(pollPayload),
+    )
+
+    assertFalse(poll?.pending ?: true)
+    assertNull(poll?.preview)
+    assertEquals("取得結果の URL は HTTPS の標準ポートである必要があります", poll?.message)
+  }
+
+  @Test
   fun `取得スクリプトはPromiseとして非同期実行される`() {
     val functionCode = "async ({ url }) => ({ title: url, items: [] });"
     val script = webScrapingStartScript(functionCode, "test-state")
