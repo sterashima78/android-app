@@ -45,7 +45,6 @@ fun LibraryFeatureRoute(
   onSyncGooglePlayBooks: () -> Unit,
   onAddWebBook: suspend (String) -> Unit,
   onRefreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
-  onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   onOpenWebUrl: (String) -> Unit,
   smbRepository: SmbLibraryRepository,
@@ -100,15 +99,6 @@ fun LibraryFeatureRoute(
     scope.launch {
       runCatching {
         withContext(Dispatchers.IO) { onDeleteWebBook(book) }
-      }
-        .onSuccess { viewModel.refresh() }
-        .onFailure(viewModel::reportError)
-    }
-  }
-  val moveWebBookToBookmark: (LibraryBook) -> Unit = { book ->
-    scope.launch {
-      runCatching {
-        withContext(Dispatchers.IO) { onMoveWebBookToBookmark(book) }
       }
         .onSuccess { viewModel.refresh() }
         .onFailure(viewModel::reportError)
@@ -184,7 +174,6 @@ fun LibraryFeatureRoute(
     refreshState = webRefreshState,
     onRefresh = { book -> refreshWebBooks(listOf(book)) },
     onRefreshAll = { refreshWebBooks(webBooksNeedingMetadataRepair) },
-    onMoveToBookmark = moveWebBookToBookmark,
   )
 
   Box(modifier = modifier.fillMaxSize()) {
@@ -192,7 +181,6 @@ fun LibraryFeatureRoute(
       LocalUriHandler provides libraryUriHandler,
       LocalWebLibraryImportHandler provides webLibraryImportHandler,
       LocalWebLibraryDeleteHandler provides deleteWebBook,
-      LocalWebLibraryMoveToBookmarkHandler provides moveWebBookToBookmark,
       LocalWebLibrarySettingsUiBinding provides webSettingsBinding,
       LocalSmbLibraryUiBinding provides smbBinding,
       LocalSmbBookFileActionBinding provides smbBookFileActionBinding,
