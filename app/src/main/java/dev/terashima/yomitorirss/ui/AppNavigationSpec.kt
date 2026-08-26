@@ -27,7 +27,8 @@ internal fun MainTab.featureMessageSources(): Set<FeatureMessageSource> = when (
     FeatureMessageSource.FEED,
     FeatureMessageSource.SUMMARY,
   )
-  MainTab.FEEDS -> setOf(FeatureMessageSource.FEED)
+  MainTab.FEEDS,
+  MainTab.RSS_SETTINGS -> setOf(FeatureMessageSource.FEED)
   MainTab.REDDIT_UNREAD,
   MainTab.REDDIT_READ_LATER -> setOf(
     FeatureMessageSource.REDDIT,
@@ -73,7 +74,7 @@ internal fun MainTab.usesBookmarkEditOverlay(): Boolean = when (this) {
 
 internal fun MainTab.appSection(): AppSection = when (this) {
   MainTab.INTEGRATED -> AppSection.HOME
-  MainTab.UNREAD, MainTab.READ_LATER, MainTab.FEEDS -> AppSection.RSS
+  MainTab.UNREAD, MainTab.READ_LATER, MainTab.FEEDS, MainTab.RSS_SETTINGS -> AppSection.RSS
   MainTab.REDDIT_UNREAD, MainTab.REDDIT_READ_LATER, MainTab.REDDIT_SUBSCRIPTIONS -> AppSection.REDDIT
   MainTab.SAVED, MainTab.FOLDERS, MainTab.TAGS, MainTab.BOOKMARK_IMPORT -> AppSection.BOOKMARKS
   MainTab.LIBRARY -> AppSection.LIBRARY
@@ -95,6 +96,7 @@ internal fun MainTab.rssTab(): RssTab? = when (this) {
   MainTab.UNREAD -> RssTab.UNREAD
   MainTab.READ_LATER -> RssTab.READ_LATER
   MainTab.FEEDS -> RssTab.FEEDS
+  MainTab.RSS_SETTINGS -> RssTab.SETTINGS
   else -> null
 }
 
@@ -137,6 +139,7 @@ internal fun MainTab.screenTitle(): String = when (this) {
   MainTab.WORKOUT -> "ワークアウト"
   MainTab.AI_CHAT -> "AIチャット"
   MainTab.FEEDS -> "RSS・フィード管理"
+  MainTab.RSS_SETTINGS -> "RSS・設定"
   MainTab.SETTINGS -> "設定"
 }
 
@@ -164,6 +167,7 @@ internal fun RssTab.mainTab(): MainTab = when (this) {
   RssTab.UNREAD -> MainTab.UNREAD
   RssTab.READ_LATER -> MainTab.READ_LATER
   RssTab.FEEDS -> MainTab.FEEDS
+  RssTab.SETTINGS -> MainTab.RSS_SETTINGS
 }
 
 internal fun RedditTab.mainTab(): MainTab = when (this) {
