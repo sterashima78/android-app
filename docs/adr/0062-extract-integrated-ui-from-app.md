@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-15
+- Amended by: [ADR-0187](0187-integrated-feature-owns-cross-feature-presentation.md)
 
 ## Context
 
@@ -35,6 +36,8 @@ ADR-0004 では `:app` を navigation、DI、feature 間の composition を担�
 
 併せて、パッケージ宣言と物理 source path が過去の構成からずれていた `MainTab` と bookmark data 実装を、内容を変えず現在の package に一致する位置へ移動する。
 
+> Current architecture: ADR-0187 により、`IntegratedRoute`、projection、dispatch、item action を含む横断 presentation 全体は `:feature:integrated:ui` が所有する。`:app` に残すのは dependency wiring、app-shell navigation、Android platform callback のみとする。
+
 ## Consequences
 
 ### Positive
@@ -58,3 +61,4 @@ ADR-0004 では `:app` を navigation、DI、feature 間の composition を担�
 - ADR-0004 の app を薄い composition layer とする方針を具体化する
 - ADR-0025 の feature 所有権を維持した統合ビュー方針を補足する
 - ADR-0060 の「現行構成へ収束し、不要な過去構成を steady-state に残さない」という整理方針に沿う
+- ADR-0187 が Integrated の current presentation ownership を更新する
