@@ -14,31 +14,54 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `app feature namespaceにはproduction sourceを置かない`() {
-    val featureRoot = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/feature")
-    val unexpected = featureRoot.walkTopDown()
+    val featureRoot = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/feature",
+    )
+    val unexpected = featureRoot
+      .walkTopDown()
       .filter { it.isFile && it.extension == "kt" }
       .map { it.relativeTo(featureRoot).invariantSeparatorsPath }
       .toList()
-    assertTrue("feature-owned source and app-shell adapters must not return to app/feature: $unexpected", unexpected.isEmpty())
+
+    assertTrue(
+      "feature-owned source and app-shell adapters must not return to app/feature: $unexpected",
+      unexpected.isEmpty(),
+    )
   }
 
   @Test
   fun `app shell navigationはui ownershipに置く`() {
-    val appSourceRoot = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss")
-    val legacyReferences = appSourceRoot.walkTopDown()
+    val appSourceRoot = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss",
+    )
+    val legacyReferences = appSourceRoot
+      .walkTopDown()
       .filter { it.isFile && it.extension == "kt" }
       .filter { "dev.terashima.yomitorirss.feature.navigation" in it.readText() }
       .map { it.relativeTo(appSourceRoot).invariantSeparatorsPath }
       .toList()
-    assertTrue("app-shell navigation must not use the historical feature.navigation package: $legacyReferences", legacyReferences.isEmpty())
+
+    assertTrue(
+      "app-shell navigation must not use the historical feature.navigation package: $legacyReferences",
+      legacyReferences.isEmpty(),
+    )
     listOf("AppSection.kt", "AppViewModel.kt", "MainTab.kt").forEach { fileName ->
-      assertTrue("app-shell navigation type must live under app/ui: $fileName", File(appSourceRoot, "ui/$fileName").isFile)
+      assertTrue(
+        "app-shell navigation type must live under app/ui: $fileName",
+        File(appSourceRoot, "ui/$fileName").isFile,
+      )
     }
   }
 
   @Test
   fun `AppContainerはfeature data implementationの直接構築を持たない`() {
-    val source = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt").readText()
+    val source = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
+    ).readText()
+
     assertFalse(
       "AppContainer should delegate feature data construction to runtime dependency groups",
       Regex("(?m)^import dev\\.terashima\\.yomitorirss\\.feature\\..+\\.data\\.").containsMatchIn(source),
@@ -47,22 +70,43 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `application graphは単一HTTP transportをruntime groupへ渡す`() {
-    val container = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt").readText()
-    val workerFactory = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt").readText()
+    val container = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
+    ).readText()
+    val workerFactory = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt",
+    ).readText()
     val summaryFetchWorker = File(
       repositoryRoot,
       "feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryContentFetchWorker.kt",
     ).readText()
+
     assertTrue("AppContainer must own the application HTTP transport", "internal val httpClient: HttpClient" in container)
-    assertTrue("content, supporting and feature runtime groups must receive the shared transport", Regex("httpClient = httpClient").findAll(container).count() >= 3)
-    assertTrue("background article fetch must receive the same application transport through WorkerFactory", "ArticleContentClient(container.httpClient)" in workerFactory)
-    assertFalse("SummaryContentFetchWorker must not construct its own article HTTP adapter", "ArticleContentClient()" in summaryFetchWorker)
+    assertTrue(
+      "content, supporting and feature runtime groups must receive the shared transport",
+      Regex("httpClient = httpClient").findAll(container).count() >= 3,
+    )
+    assertTrue(
+      "background article fetch must receive the same application transport through WorkerFactory",
+      "ArticleContentClient(container.httpClient)" in workerFactory,
+    )
+    assertFalse(
+      "SummaryContentFetchWorker must not construct its own article HTTP adapter",
+      "ArticleContentClient()" in summaryFetchWorker,
+    )
   }
 
   @Test
   fun `AppRouteDependenciesはLibrary BookReader Xのconcrete implementationを構築しない`() {
-    val source = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt").readText()
-    val forbiddenImports = Regex("(?m)^import dev\\.terashima\\.yomitorirss\\.feature\\.(?:library|bookreader|x)\\.data\\.")
+    val source = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt",
+    ).readText()
+    val forbiddenImports = Regex(
+      "(?m)^import dev\\.terashima\\.yomitorirss\\.feature\\.(?:library|bookreader|x)\\.data\\.",
+    )
     val forbiddenConstructors = listOf(
       "GoogleBooksAuthorizationManager(",
       "WorkManagerSmbCoverPrefetchScheduler(",
@@ -72,45 +116,77 @@ class AppCompositionSourceArchitectureTest {
       "SharedPreferencesReadingPositionStore(",
       "SharedPreferencesXViewerCssRepository(",
     )
-    assertFalse("route wiring must delegate feature concrete graph construction to App runtime groups", forbiddenImports.containsMatchIn(source))
+
+    assertFalse(
+      "route wiring must delegate feature concrete graph construction to App runtime groups",
+      forbiddenImports.containsMatchIn(source),
+    )
     forbiddenConstructors.forEach { constructor ->
-      assertFalse("route wiring must not construct $constructor", constructor in source)
+      assertFalse(
+        "route wiring must not construct $constructor",
+        constructor in source,
+      )
     }
   }
 
   @Test
   fun `Library app routeはplatform authorization compositionに限定する`() {
-    val appRoute = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui/LibraryRoute.kt").readText()
+    val appRoute = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/ui/LibraryRoute.kt",
+    ).readText()
     val featureRoute = File(
       repositoryRoot,
       "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryFeatureRoute.kt",
     ).readText()
-    listOf("WebLibraryAddAction(", "WebLibrarySettingsUiBinding(", "SmbBookReaderRoute(", "mutableStateOf<LibraryBook?>", "collectAsState()").forEach { featureUiMarker ->
-      assertFalse("app LibraryRoute must not own Library-specific UI state: $featureUiMarker", featureUiMarker in appRoute)
+
+    listOf(
+      "WebLibraryAddAction(",
+      "WebLibrarySettingsUiBinding(",
+      "SmbBookReaderRoute(",
+      "mutableStateOf<LibraryBook?>",
+      "collectAsState()",
+    ).forEach { featureUiMarker ->
+      assertFalse(
+        "app LibraryRoute must not own Library-specific UI state: $featureUiMarker",
+        featureUiMarker in appRoute,
+      )
     }
     assertTrue("feature Library route must own Web Library add action", "WebLibraryAddAction(" in featureRoute)
-    assertTrue("feature Library route must own Web Library settings state", "WebLibrarySettingsUiBinding(" in featureRoute)
+    assertTrue(
+      "feature Library route must own Web Library settings state",
+      "WebLibrarySettingsUiBinding(" in featureRoute,
+    )
     assertTrue("feature Library route must own SMB reader presentation", "SmbBookReaderRoute(" in featureRoute)
   }
 
   @Test
   fun `Integrated presentation ownershipはfeature moduleに置く`() {
-    val appUiRoot = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui")
-    val integratedFeatureRoot = File(
+    val appUiRoot = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/ui",
+    )
+    val featureRoot = File(
       repositoryRoot,
       "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui",
     )
-    val ownedFiles = listOf(
+    listOf(
       "IntegratedRoute.kt",
       "IntegratedProjection.kt",
       "IntegratedTargetDispatcher.kt",
       "IntegratedItemActions.kt",
-    )
-    ownedFiles.forEach { fileName ->
-      assertFalse("Integrated feature implementation must not live in app/ui: $fileName", File(appUiRoot, fileName).isFile)
-      assertTrue("Integrated feature must own $fileName", File(integratedFeatureRoot, fileName).isFile)
+    ).forEach { fileName ->
+      assertFalse(
+        "Integrated feature implementation must not live in app/ui: $fileName",
+        File(appUiRoot, fileName).isFile,
+      )
+      assertTrue(
+        "Integrated feature must own $fileName",
+        File(featureRoot, fileName).isFile,
+      )
     }
-    val projection = File(integratedFeatureRoot, "IntegratedProjection.kt").readText()
+
+    val projection = File(featureRoot, "IntegratedProjection.kt").readText()
     assertFalse(
       "Integrated projection should remain a pure cross-feature mapper",
       Regex("(?m)^import (?:android\\.|androidx\\.compose\\.)").containsMatchIn(projection),
@@ -138,9 +214,19 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `feature message effectsはnavigation capability policyを再定義しない`() {
-    val source = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt").readText()
-    assertTrue("FeatureMessageEffects must consume the centralized navigation capability mapping", "selectedTab.featureMessageSources()" in source)
-    assertFalse("FeatureMessageEffects must not maintain a second selected-tab policy", "when (selectedTab)" in source)
+    val source = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
+    ).readText()
+
+    assertTrue(
+      "FeatureMessageEffects must consume the centralized navigation capability mapping",
+      "selectedTab.featureMessageSources()" in source,
+    )
+    assertFalse(
+      "FeatureMessageEffects must not maintain a second selected-tab policy",
+      "when (selectedTab)" in source,
+    )
   }
 
   @Test
@@ -163,12 +249,18 @@ class AppCompositionSourceArchitectureTest {
       add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt"))
       add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/MainActivityDependencies.kt"))
     }
+
     val unexpected = boundaryFiles.flatMap { file ->
       val source = file.readText()
-      forbiddenTypes.filter { it in source }
+      forbiddenTypes
+        .filter { it in source }
         .map { type -> "${file.relativeTo(repositoryRoot).invariantSeparatorsPath}:$type" }
     }
-    assertTrue("route/framework boundaries must consume narrow capabilities instead of runtime dependency groups: $unexpected", unexpected.isEmpty())
+
+    assertTrue(
+      "route/framework boundaries must consume narrow capabilities instead of runtime dependency groups: $unexpected",
+      unexpected.isEmpty(),
+    )
   }
 
   private fun assertNoViewModelBeforeDispatch(
