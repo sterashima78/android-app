@@ -133,22 +133,14 @@ internal class WebScrapingFeedClient(
     }
 
     pollResult = { finalUrl, stateKey, generation, deadlineMillis ->
-      if (
-        !completed &&
-        generation == pageGeneration &&
-        activeStateKey == stateKey
-      ) {
+      if (!completed && generation == pageGeneration && activeStateKey == stateKey) {
         if (SystemClock.uptimeMillis() >= deadlineMillis) {
           clearExecution()
           webView.evaluateJavascript(webScrapingCleanupScript(stateKey), null)
           finish(Result.failure(IllegalStateException("取得スクリプトの Promise が 10 秒以内に完了しませんでした")))
         } else {
           webView.evaluateJavascript(webScrapingPollScript(stateKey)) { rawResult ->
-            if (
-              !completed &&
-              generation == pageGeneration &&
-              activeStateKey == stateKey
-            ) {
+            if (!completed && generation == pageGeneration && activeStateKey == stateKey) {
               val poll = parseWebScrapingPoll(finalUrl, rawResult)
               when {
                 poll == null -> finish(
@@ -184,11 +176,7 @@ internal class WebScrapingFeedClient(
         activeStateKey = stateKey
         val deadlineMillis = SystemClock.uptimeMillis() + PROMISE_TIMEOUT_MILLIS
         val timeoutWatchdog = Runnable {
-          if (
-            !completed &&
-            generation == pageGeneration &&
-            activeStateKey == stateKey
-          ) {
+          if (!completed && generation == pageGeneration && activeStateKey == stateKey) {
             activeStateKey = null
             watchdog = null
             finish(
@@ -201,11 +189,7 @@ internal class WebScrapingFeedClient(
         watchdog = timeoutWatchdog
         handler.postDelayed(timeoutWatchdog, PROMISE_TIMEOUT_MILLIS + WATCHDOG_GRACE_MILLIS)
         webView.evaluateJavascript(webScrapingStartScript(functionCode, stateKey)) {
-          if (
-            !completed &&
-            generation == pageGeneration &&
-            activeStateKey == stateKey
-          ) {
+          if (!completed && generation == pageGeneration && activeStateKey == stateKey) {
             pollResult(finalUrl, stateKey, generation, deadlineMillis)
           }
         }
@@ -413,13 +397,13 @@ internal fun webScrapingStartScript(functionCode: String, stateKey: String): Str
               for (let index = 0; index < value.items.length; index += 1) {
                 const item = value.items[index];
                 if (!item || typeof item !== 'object') {
-                  finish('invalid_result', null, `items[${index}] が object ではありません`);
+                  finish('invalid_result', null, 'items[' + index + '] が object ではありません');
                   return;
                 }
                 const itemTitle = typeof item.title === 'string' ? item.title.trim() : '';
                 const itemUrl = typeof item.url === 'string' ? item.url.trim() : '';
                 if (!itemTitle || !itemUrl) {
-                  finish('invalid_result', null, `items[${index}] の title または url が空です`);
+                  finish('invalid_result', null, 'items[' + index + '] の title または url が空です');
                   return;
                 }
                 items.push({
@@ -483,7 +467,7 @@ internal fun parseWebScrapingPoll(
   finalUrl: String,
   rawResult: String?,
 ): WebScrapingPromisePoll? = runCatching {
-  val decoded = rawResult?.let(JSONTokener::nextValue) ?: return null
+  val decoded = rawResult?.let { JSONTokener(it).nextValue() } ?: return null
   val poll = when (decoded) {
     is JSONObject -> decoded
     is String -> JSONObject(decoded)
@@ -513,9 +497,7 @@ internal fun parseWebScrapingPreview(
   val root = JSONObject(payload)
   val title = root.optString("title").trim()
   require(title.isNotBlank()) { "title が空です" }
-  val siteUrl = root.optString("siteUrl").trim().takeIf(String::isNotEmpty)?.let { value ->
-    resolveSafeUrl(finalUrl, value)
-  }
+  val siteUrl = root.optNullableString("siteUrl")?.let { value -> resolveSafeUrl(finalUrl, value) }
   val itemsJson = root.optJSONArray("items") ?: JSONArray()
   val items = buildList {
     for (index in 0 until itemsJson.length()) {
