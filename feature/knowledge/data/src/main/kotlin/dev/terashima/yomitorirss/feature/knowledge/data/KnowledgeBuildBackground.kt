@@ -124,7 +124,10 @@ class WorkManagerKnowledgeBuildTaskController(
         KnowledgeBuildTaskState.QUEUED
       else -> KnowledgeBuildTaskState.QUEUED
     }
-    return KnowledgeBuildTaskSnapshot(workState)
+    return KnowledgeBuildTaskSnapshot(
+      state = workState,
+      error = state.error,
+    )
   }
 
   override fun setResumeOnChargingScheduled(enabled: Boolean) {
@@ -251,6 +254,7 @@ internal class KnowledgeBuildWorker(
       throw cancelled
     } catch (error: KnowledgeCloudInferenceException) {
       if (provider == KnowledgeExecutionProvider.CHATGPT && error.retryable) {
+        state.markRetrying(error.userMessage())
         Result.retry()
       } else {
         state.markFailed(error.userMessage())
