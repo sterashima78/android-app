@@ -41,7 +41,7 @@ class DefaultFeedRepository(
     val normalized = client.normalizeInputUrl(input)
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
     return when {
-      customRule != null -> requireWebScrapingClient().inspect(normalized, customRule)
+      customRule != null -> FeedInspection(directFeedUrl = normalized)
       yanmagaClient.supports(normalized) -> yanmagaClient.inspect(normalized)
       MangaOneFeedClient.companionSupports(normalized) -> requireMangaOneClient().inspect(normalized)
       else -> client.inspect(normalized)
