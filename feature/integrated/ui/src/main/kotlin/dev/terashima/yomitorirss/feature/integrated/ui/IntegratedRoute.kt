@@ -1,7 +1,5 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.integrated.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -17,11 +15,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedScreen
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedTab
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.Mailbox
@@ -31,7 +26,7 @@ import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 
 @Composable
-internal fun IntegratedRoute(
+fun IntegratedRoute(
   rssViewModel: RssViewModel,
   redditViewModel: RedditViewModel,
   feedViewModel: FeedViewModel,
@@ -39,10 +34,10 @@ internal fun IntegratedRoute(
   youtubeViewModelFactory: YouTubeViewModel.Factory,
   onOpenArticle: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
-  onOpenMail: (MailThread) -> Unit,
+  onNavigateToMail: () -> Unit,
+  onOpenExternalUrl: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val context = LocalContext.current
   val youtubeViewModel: YouTubeViewModel = viewModel(factory = youtubeViewModelFactory)
   val rssState by rssViewModel.state.collectAsState()
   val redditState by redditViewModel.state.collectAsState()
@@ -96,12 +91,11 @@ internal fun IntegratedRoute(
     youtubeViewModel = youtubeViewModel,
     mailViewModel = mailViewModel,
     onOpenArticle = onOpenArticle,
-    onOpenMail = onOpenMail,
-    onOpenYouTube = { video ->
-      runCatching {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(video.url)))
-      }
+    onOpenMail = { thread ->
+      mailViewModel.openThread(thread)
+      onNavigateToMail()
     },
+    onOpenYouTube = { video -> onOpenExternalUrl(video.url) },
   )
 
   Box(modifier = modifier.fillMaxSize()) {

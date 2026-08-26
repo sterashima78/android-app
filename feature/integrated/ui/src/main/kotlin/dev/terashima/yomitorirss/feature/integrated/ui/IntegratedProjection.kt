@@ -1,9 +1,6 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.integrated.ui
 
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedItem
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedSource
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedTab
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState

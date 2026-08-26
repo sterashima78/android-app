@@ -1,10 +1,7 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitorirss.feature.integrated.ui
 
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedItemAction
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedSource
-import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedTab
 import dev.terashima.yomitorirss.feature.mail.MailAccount
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
