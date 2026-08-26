@@ -33,6 +33,8 @@ Library → Bookmark の移動はサポートしない。Library UI から「ブ
 
 Library 追加に失敗した場合は Bookmark を解除しない。Context を跨ぐ単一 DB transaction は作らない。
 
+Bookmark UI は app-owned callback を受け取らず、`BookmarkViewModel.moveToLibrary` を呼ぶ。`BookmarkViewModel` は `MoveBookmarkToLibraryUseCase` を dependency として受け取り、成功・失敗の UI state を Bookmark feature 内で扱う。
+
 ### Library は追加 capability を narrow に公開する
 
 Web Library の追加だけを必要とする consumer のために `WebLibraryAdder` を公開する。既存の `WebLibraryMutator` は `WebLibraryAdder` を拡張し、Library 自身の追加・metadata 再取得・削除用途は従来どおり `WebLibraryMutator` を利用できる。
@@ -43,13 +45,14 @@ Bookmark は Library の削除・再取得 capability に依存しない。
 
 `:app` の `BookmarkLibraryTransferService` は削除する。
 
-app composition は `MoveBookmarkToLibraryUseCase` に `WebLibraryAdder`、`BookmarkMutator`、変更通知 callback を接続し、Bookmark UI に操作 callback を渡すだけとする。移動順序や失敗時の保持ルールを `:app` に実装しない。
+app composition は `BookmarkViewModel.Factory` を構築するときに `MoveBookmarkToLibraryUseCase` へ `WebLibraryAdder`、`BookmarkMutator`、変更通知 callback を接続するだけとする。移動操作の callback を app route API として公開せず、移動順序や失敗時の保持ルールを `:app` に実装しない。
 
 ## Consequences
 
 - cross-feature dependency は `Bookmark -> Library domain` の一方向になる。
 - Library は Bookmark の保存 capability や Bookmark implementation を必要としない。
 - 双方向 transfer を抽象化する app-level service が不要になる。
+- Bookmark UI / ViewModel から見ても「蔵書へ移動」は Bookmark feature 自身の操作になる。
 - Bookmark → Library の安全な更新順序は Bookmark domain の unit test で固定できる。
 - Library → Bookmark を利用していた操作導線はなくなる。必要になった場合は、再び対称な transfer abstraction を戻すのではなく、その時点の利用要件と ownership を再評価する。
 
@@ -58,5 +61,6 @@ app composition は `MoveBookmarkToLibraryUseCase` に `WebLibraryAdder`、`Book
 - `MoveBookmarkToLibraryUseCaseTest` で Library 追加後に Bookmark を解除する順序を検証する。
 - Library 追加失敗時に Bookmark を解除しないことを検証する。
 - Library route dependency から逆方向 callback がなくなっていることを確認する。
+- app route API に Bookmark ↔ Library transfer callback が残っていないことを確認する。
 - `BookmarkLibraryTransferService` が production source に残っていないことを確認する。
 - architecture verification、unit test、lint、public repository verification を CI で実行する。
