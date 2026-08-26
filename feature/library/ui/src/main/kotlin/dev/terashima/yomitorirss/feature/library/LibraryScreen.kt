@@ -819,6 +819,7 @@ private fun LibraryBookThumbnail(
   val smbFileActions = LocalSmbBookFileActionBinding.current
   val webDeleteHandler = LocalWebLibraryDeleteHandler.current
   val webMoveToBookmarkHandler = LocalWebLibraryMoveToBookmarkHandler.current
+  val webSettingsBinding = LocalWebLibrarySettingsUiBinding.current
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var renameDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var deleteDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
@@ -932,6 +933,16 @@ private fun LibraryBookThumbnail(
           onClick = {
             actionMenuExpanded = false
             deleteDialogVisible = true
+          },
+        )
+      }
+      if (book.source == LibrarySource.WEB && webSettingsBinding != null) {
+        DropdownMenuItem(
+          text = { Text("metadataを再取得") },
+          enabled = !webSettingsBinding.refreshState.running,
+          onClick = {
+            actionMenuExpanded = false
+            webSettingsBinding.onRefresh(book)
           },
         )
       }
