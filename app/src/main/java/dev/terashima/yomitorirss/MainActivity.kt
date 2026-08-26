@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -181,9 +180,7 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun openArticle(article: Article) {
-    runCatching {
-      startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(article.url)))
-    }.onFailure {
+    if (!openWebContentInCustomTab(article.url)) {
       Toast.makeText(this, "記事を開けませんでした", Toast.LENGTH_LONG).show()
     }
   }
@@ -203,9 +200,7 @@ class MainActivity : ComponentActivity() {
     incoming.removeExtra(UnreadArticlesWidgetProvider.EXTRA_ARTICLE_URL)
     if (url.isBlank()) return
 
-    runCatching {
-      startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    }.onFailure {
+    if (!openWebContentInCustomTab(url)) {
       Toast.makeText(this, "記事を開けませんでした", Toast.LENGTH_LONG).show()
     }
   }
