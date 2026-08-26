@@ -9,6 +9,7 @@ import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
 import android.os.CancellationSignal
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -75,6 +76,10 @@ class MainActivity : ComponentActivity() {
 
     appLockEnabled = appLockPreferences.enabled
     appUnlocked = !appLockEnabled
+    if (appLockEnabled) {
+      protectWindowContent()
+    }
+
     val crashReport = StartupCrashStore.peek(this)
     showingCrashDiagnostics = crashReport != null
 
@@ -88,21 +93,30 @@ class MainActivity : ComponentActivity() {
       }
     }
 
-    if (crashReport == null) {
-      consumeSharedLibrary(intent)
-      consumeSharedBookmark(intent)
-      consumeTaskWidget(intent)
-      consumeWidgetArticle(intent)
+    if (crashReport == null && appUnlocked) {
+      consumeIncomingIntent(intent)
     }
   }
 
   override fun onStart() {
     super.onStart()
-    if (appLockEnabled && !appUnlocked && !showingCrashDiagnostics) {
-      requestAppUnlock()
-    } else if (appLockEnabled && !appUnlocked && showingCrashDiagnostics) {
+    if (appLockEnabled && !appUnlocked) {
       requestAppUnlock()
     }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    if (!appLockEnabled || appUnlocked) {
+      exposeWindowContent()
+    }
+  }
+
+  override fun onPause() {
+    if (appLockEnabled && !isChangingConfigurations && !appLockPromptShowing) {
+      protectWindowContent()
+    }
+    super.onPause()
   }
 
   override fun onStop() {
@@ -220,11 +234,8 @@ class MainActivity : ComponentActivity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    if (showingCrashDiagnostics) return
-    consumeSharedLibrary(intent)
-    consumeSharedBookmark(intent)
-    consumeTaskWidget(intent)
-    consumeWidgetArticle(intent)
+    if (showingCrashDiagnostics || (appLockEnabled && !appUnlocked)) return
+    consumeIncomingIntent(intent)
   }
 
   private fun setBiometricLockEnabled(enabled: Boolean) {
@@ -232,6 +243,7 @@ class MainActivity : ComponentActivity() {
       appLockPreferences.enabled = false
       appLockEnabled = false
       appUnlocked = true
+      exposeWindowContent()
       return
     }
 
@@ -272,9 +284,12 @@ class MainActivity : ComponentActivity() {
             appLockPreferences.enabled = true
             appLockEnabled = true
             appUnlocked = true
+            exposeWindowContent()
             Toast.makeText(this@MainActivity, "生体認証ロックを有効にしました", Toast.LENGTH_SHORT).show()
           } else {
             appUnlocked = true
+            exposeWindowContent()
+            consumeIncomingIntent(intent)
           }
         }
 
@@ -286,6 +301,22 @@ class MainActivity : ComponentActivity() {
         }
       },
     )
+  }
+
+  private fun protectWindowContent() {
+    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+  }
+
+  private fun exposeWindowContent() {
+    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+  }
+
+  private fun consumeIncomingIntent(incoming: Intent) {
+    if (showingCrashDiagnostics) return
+    consumeSharedLibrary(incoming)
+    consumeSharedBookmark(incoming)
+    consumeTaskWidget(incoming)
+    consumeWidgetArticle(incoming)
   }
 
   private fun copyCrashReport(report: String) {
