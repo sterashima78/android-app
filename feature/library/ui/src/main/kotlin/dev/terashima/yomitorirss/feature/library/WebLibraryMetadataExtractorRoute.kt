@@ -9,7 +9,7 @@ import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 
 internal data class WebLibraryMetadataExtractorUiBinding(
   val list: () -> List<WebLibraryMetadataExtractor>,
-  val save: (String?, String, String) -> WebLibraryMetadataExtractor,
+  val save: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   val delete: (String) -> Unit,
   val onError: (Throwable) -> Unit,
 )
@@ -27,7 +27,7 @@ fun LibraryFeatureRoute(
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   onListWebMetadataExtractors: () -> List<WebLibraryMetadataExtractor>,
-  onSaveWebMetadataExtractor: (String?, String, String) -> WebLibraryMetadataExtractor,
+  onSaveWebMetadataExtractor: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   onDeleteWebMetadataExtractor: (String) -> Unit,
   smbRepository: SmbLibraryRepository,
   pageSourceFactory: BookPageSourceFactory,

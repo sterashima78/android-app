@@ -4,6 +4,7 @@
 - Date: 2026-08-26
 - Refines: [ADR-0173](0173-web-library-custom-metadata-extractors.md)
 - Refines: [ADR-0163](0163-webview-renderer-exit-recovery.md)
+- Refined by: [ADR-0177](0177-web-library-early-custom-extraction-and-rule-timeout.md)
 
 ## Context
 
@@ -13,7 +14,7 @@ ADR-0173 では Web Library の custom metadata extractor について、URL pat
 
 また、custom function の Promise が完了した後に固定 rendered metadata の抽出や再試行が続き、WebView 全体の timeout に到達する場合がある。この場合、custom function が値を取得済みでも従来は rendered path 全体の例外だけが残り、rule の実行結果が失われる。
 
-さらに、WebView 全体 timeout が custom function の完了前に発生した場合、従来の診断では「rule が URL に一致していなかった」のか、「一致したがページ読み込み完了前だった」のか、「custom script を開始済みで結果待ちだった」のかを区別できない。
+さらに、WebView 全体 timeout が custom function の完了前に発生した場合、従来の診断では「rule が URL に一致していなかった」のか、「一致したが custom script 開始前だった」のか、「custom script を開始済みで結果待ちだった」のかを区別できない。
 
 ## Decision
 
@@ -40,10 +41,10 @@ metadata 用 WebView は custom extractor の execution 状態が変わるたび
 
 custom extractor の途中状態として次を追加する。
 
-- `MATCHED`: 現在のページ URL または元の requested URL が取得ルールに一致し、ページ読み込み完了を待っている状態
+- `MATCHED`: 現在のページ URL または元の requested URL が取得ルールに一致し、custom script の開始条件を待っている状態
 - `RUNNING`: custom script の `evaluateJavascript` を開始し、custom Promise の結果確定を待っている状態
 
-`onPageStarted` では URL pattern に一致する rule があれば `MATCHED` を記録する。ページ読み込み完了後、custom script を実行する直前に `RUNNING` へ遷移する。Promise の結果が確定した後は従来の `APPLIED`、`TIMED_OUT`、`REJECTED` 等の最終 status へ更新する。
+`onPageStarted` では URL pattern に一致する rule があれば `MATCHED` を記録する。ADR-0177 以降はページ全体の読み込み完了を待たず、page commit 後に DOM が利用可能になった時点で custom script を開始する直前に `RUNNING` へ遷移する。`onPageFinished` は未開始時の fallback trigger とする。Promise の結果が確定した後は従来の `APPLIED`、`TIMED_OUT`、`REJECTED` 等の最終 status へ更新する。
 
 WebView 全体が timeout した時点の最新 snapshot を timeout exception の内部診断情報として保持する。静的 metadata が利用可能で fallback する場合、Library Data は fallback reason とともにその execution を `WebLibraryMetadataRefreshResult` へ伝播する。
 
@@ -75,7 +76,7 @@ WebView 全体が timeout した時点の最新 snapshot を timeout exception �
 - custom extraction 完了後に WebView 全体 timeout が発生しても、取得済み値を診断できる。
 - custom extraction 完了前の timeout でも、rule 不一致、script 開始前、script 実行中を区別できる。
 - `WebLibraryMetadataExtractorExecution` の責務は実行 status だけでなく、再取得時の transient custom result / phase snapshot まで含む。
-- 永続データ形式、backup schema、custom function contract、WebView security boundary は変更しない。
+- この ADR が追加する diagnostic value 自体は永続化せず、backup schema や WebView security boundary を変更しない。rule 自体の timeout 永続化は ADR-0177 で別途追加する。
 
 ## Verification
 

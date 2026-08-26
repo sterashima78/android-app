@@ -3,6 +3,9 @@ package dev.terashima.yomitorirss.feature.library.data
 import android.content.ContentValues
 import android.database.Cursor
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.library.DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
+import dev.terashima.yomitorirss.feature.library.MAX_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
+import dev.terashima.yomitorirss.feature.library.MIN_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorRepository
 import java.util.UUID
@@ -13,7 +16,7 @@ class DefaultWebLibraryMetadataExtractorRepository(
   override fun list(): List<WebLibraryMetadataExtractor> {
     ensureWebLibraryMetadataExtractorSchema(database.writable)
     return database.readable.rawQuery(
-      "SELECT id, url_pattern, function_code, updated_at " +
+      "SELECT id, url_pattern, function_code, timeout_seconds, updated_at " +
         "FROM web_library_metadata_extractors ORDER BY updated_at DESC, id",
       emptyArray<String>(),
     ).use { cursor ->
@@ -27,11 +30,12 @@ class DefaultWebLibraryMetadataExtractorRepository(
     id: String?,
     urlPattern: String,
     functionCode: String,
+    timeoutSeconds: Int,
   ): WebLibraryMetadataExtractor {
     ensureWebLibraryMetadataExtractorSchema(database.writable)
     val normalizedPattern = urlPattern.trim()
     val normalizedFunction = functionCode.trim()
-    validateWebLibraryMetadataExtractor(normalizedPattern, normalizedFunction)
+    validateWebLibraryMetadataExtractor(normalizedPattern, normalizedFunction, timeoutSeconds)
     val normalizedId = id?.trim()?.takeIf(String::isNotEmpty)
     val extractorId = normalizedId ?: UUID.randomUUID().toString()
     val updatedAt = System.currentTimeMillis()
@@ -48,6 +52,7 @@ class DefaultWebLibraryMetadataExtractorRepository(
         put("id", extractorId)
         put("url_pattern", normalizedPattern)
         put("function_code", normalizedFunction)
+        put("timeout_seconds", timeoutSeconds)
         put("updated_at", updatedAt)
       }
       if (normalizedId == null) {
@@ -67,6 +72,7 @@ class DefaultWebLibraryMetadataExtractorRepository(
       id = extractorId,
       urlPattern = normalizedPattern,
       functionCode = normalizedFunction,
+      timeoutSeconds = timeoutSeconds,
       updatedAt = updatedAt,
     )
   }
@@ -88,15 +94,37 @@ internal fun ensureWebLibraryMetadataExtractorSchema(db: android.database.sqlite
         id TEXT PRIMARY KEY NOT NULL,
         url_pattern TEXT NOT NULL UNIQUE,
         function_code TEXT NOT NULL,
+        timeout_seconds INTEGER NOT NULL DEFAULT $DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS,
         updated_at INTEGER NOT NULL
       )
     """.trimIndent(),
   )
+  val hasTimeoutColumn = db.rawQuery(
+    "PRAGMA table_info(web_library_metadata_extractors)",
+    null,
+  ).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    var found = false
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == "timeout_seconds") {
+        found = true
+        break
+      }
+    }
+    found
+  }
+  if (!hasTimeoutColumn) {
+    db.execSQL(
+      "ALTER TABLE web_library_metadata_extractors " +
+        "ADD COLUMN timeout_seconds INTEGER NOT NULL DEFAULT $DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS",
+    )
+  }
 }
 
 internal fun validateWebLibraryMetadataExtractor(
   urlPattern: String,
   functionCode: String,
+  timeoutSeconds: Int = DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS,
 ) {
   require(urlPattern.isNotBlank()) { "URL パターンを入力してください" }
   require(urlPattern.length <= MAX_URL_PATTERN_LENGTH) { "URL パターンが長すぎます" }
@@ -105,6 +133,9 @@ internal fun validateWebLibraryMetadataExtractor(
   }
   require(functionCode.isNotBlank()) { "関数コードを入力してください" }
   require(functionCode.length <= MAX_FUNCTION_CODE_LENGTH) { "関数コードが長すぎます" }
+  require(timeoutSeconds in MIN_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS..MAX_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS) {
+    "タイムアウトは $MIN_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS〜$MAX_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS 秒で指定してください"
+  }
 }
 
 internal fun webLibraryUrlPatternMatches(pattern: String, url: String): Boolean {
@@ -145,6 +176,7 @@ private fun Cursor.webLibraryMetadataExtractor(): WebLibraryMetadataExtractor = 
   id = getString(getColumnIndexOrThrow("id")),
   urlPattern = getString(getColumnIndexOrThrow("url_pattern")),
   functionCode = getString(getColumnIndexOrThrow("function_code")),
+  timeoutSeconds = getInt(getColumnIndexOrThrow("timeout_seconds")),
   updatedAt = getLong(getColumnIndexOrThrow("updated_at")),
 )
 

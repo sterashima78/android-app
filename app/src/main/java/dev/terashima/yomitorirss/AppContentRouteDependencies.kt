@@ -136,8 +136,13 @@ internal class AppContentRouteDependencies(
       removeWebBook = webLibraryMutator::removeWebBook,
       moveWebBookToBookmark = libraryTransfers.moveWebBookToBookmark,
       listWebMetadataExtractors = runtime.webMetadataExtractorRepository::list,
-      saveWebMetadataExtractor = { id, urlPattern, functionCode ->
-        runtime.webMetadataExtractorRepository.save(id, urlPattern, functionCode).also {
+      saveWebMetadataExtractor = { id, urlPattern, functionCode, timeoutSeconds ->
+        runtime.webMetadataExtractorRepository.save(
+          id = id,
+          urlPattern = urlPattern,
+          functionCode = functionCode,
+          timeoutSeconds = timeoutSeconds,
+        ).also {
           container.backupChangeScheduler.scheduleAfterChange()
         }
       },
@@ -176,7 +181,7 @@ data class LibraryRouteDependencies internal constructor(
   val removeWebBook: suspend (LibraryBook) -> Unit,
   val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val listWebMetadataExtractors: () -> List<WebLibraryMetadataExtractor>,
-  val saveWebMetadataExtractor: (String?, String, String) -> WebLibraryMetadataExtractor,
+  val saveWebMetadataExtractor: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   val deleteWebMetadataExtractor: (String) -> Unit,
   val bookReader: BookReaderRouteDependencies,
 )

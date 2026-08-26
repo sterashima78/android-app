@@ -189,13 +189,19 @@ internal fun WebLibrarySettingsFromBinding() {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            Text(
-              text = extractor.urlPattern,
-              modifier = Modifier.weight(1f),
-              maxLines = 2,
-              overflow = TextOverflow.Ellipsis,
-              style = MaterialTheme.typography.bodySmall,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = extractor.urlPattern,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall,
+              )
+              Text(
+                text = "WebView タイムアウト ${extractor.timeoutSeconds} 秒",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
             TextButton(
               onClick = { editingExtractor = extractor },
               enabled = !extractorBusy && !settings.refreshState.running,
@@ -310,14 +316,14 @@ internal fun WebLibrarySettingsFromBinding() {
         creatingExtractor = false
         editingExtractor = null
       },
-      onSave = { id, urlPattern, functionCode ->
+      onSave = { id, urlPattern, functionCode, timeoutSeconds ->
         val binding = extractorBinding
         if (binding != null) {
           scope.launch {
             extractorBusy = true
             runCatching {
               withContext(Dispatchers.IO) {
-                binding.save(id, urlPattern, functionCode)
+                binding.save(id, urlPattern, functionCode, timeoutSeconds)
                 binding.list()
               }
             }
@@ -396,7 +402,7 @@ internal fun webLibraryRefreshSuccessUiState(
     extractor?.let { execution ->
       when (execution.status) {
         WebLibraryMetadataExtractorStatus.MATCHED -> add(
-          "取得ルール「${execution.urlPattern}」に一致。カスタムスクリプト開始前に WebView 処理が終了",
+          "取得ルール「${execution.urlPattern}」に一致。カスタムスクリプト開始前（DOM 利用可能待ち）に WebView 処理が終了",
         )
         WebLibraryMetadataExtractorStatus.RUNNING -> add(
           "取得ルール「${execution.urlPattern}」のカスタムスクリプトを開始。結果確定前に WebView 処理が終了",
@@ -486,10 +492,16 @@ private fun WebLibraryMetadataExtractorEditor(
   extractor: WebLibraryMetadataExtractor?,
   busy: Boolean,
   onDismiss: () -> Unit,
-  onSave: (String?, String, String) -> Unit,
+  onSave: (String?, String, String, Int) -> Unit,
 ) {
   var urlPattern by remember(extractor?.id) { mutableStateOf(extractor?.urlPattern.orEmpty()) }
   var functionCode by remember(extractor?.id) { mutableStateOf(extractor?.functionCode.orEmpty()) }
+  var timeoutText by remember(extractor?.id) {
+    mutableStateOf((extractor?.timeoutSeconds ?: DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS).toString())
+  }
+  val timeoutSeconds = timeoutText.toIntOrNull()
+  val timeoutValid = timeoutSeconds != null &&
+    timeoutSeconds in MIN_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS..MAX_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
 
   AlertDialog(
     onDismissRequest = { if (!busy) onDismiss() },
@@ -511,6 +523,20 @@ private fun WebLibraryMetadataExtractorEditor(
           placeholder = { Text("https://example.com/books/*") },
           singleLine = true,
         )
+        OutlinedTextField(
+          value = timeoutText,
+          onValueChange = { timeoutText = it.filter(Char::isDigit) },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("WebView タイムアウト（秒）") },
+          supportingText = {
+            Text(
+              "$MIN_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS〜$MAX_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS 秒。" +
+                "ページ読み込みから metadata 取得完了までの上限です。",
+            )
+          },
+          isError = timeoutText.isNotBlank() && !timeoutValid,
+          singleLine = true,
+        )
         Text("関数は WebView 内で実行され、Promise<{ title, thumbnailUrl }> を返してください。async/await や fetch などの非同期処理も利用できます。値がない項目は null にできます。")
         OutlinedTextField(
           value = functionCode,
@@ -525,13 +551,20 @@ private fun WebLibraryMetadataExtractorEditor(
           },
           minLines = 7,
         )
-        Text("このコードは専用 WebView profile のページコンテキストで動作します。必要な非同期処理だけを行い、不要な DOM 変更などの副作用は避けることを推奨します。")
+        Text(
+          "カスタムスクリプトはページ全体の読み込み完了を待たず、DOM が利用可能になった時点から開始します。" +
+            "このコードは専用 WebView profile のページコンテキストで動作します。必要な非同期処理だけを行い、" +
+            "不要な DOM 変更などの副作用は避けることを推奨します。",
+        )
       }
     },
     confirmButton = {
       TextButton(
-        onClick = { onSave(extractor?.id, urlPattern, functionCode) },
-        enabled = !busy && urlPattern.isNotBlank() && functionCode.isNotBlank(),
+        onClick = {
+          val timeout = timeoutSeconds ?: return@TextButton
+          onSave(extractor?.id, urlPattern, functionCode, timeout)
+        },
+        enabled = !busy && urlPattern.isNotBlank() && functionCode.isNotBlank() && timeoutValid,
       ) {
         Text(if (busy) "保存中" else "保存")
       }
