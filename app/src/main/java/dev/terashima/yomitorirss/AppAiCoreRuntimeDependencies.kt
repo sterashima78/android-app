@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptOpenAiClient
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
@@ -40,12 +41,16 @@ internal class AppAiCoreRuntimeDependencies(
     ChatGptOpenAiClient.create(application, httpClient)
   }
 
+  private val chatGptInferenceClient: ChatGptInferenceClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    ChatGptInferenceClient(chatGptClient)
+  }
+
   private val chatGptModelPreferences: ChatGptModelPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptModelPreferences(application)
   }
 
   val knowledgeCloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    ChatGptKnowledgeTextInference(chatGptClient, chatGptModelPreferences)
+    ChatGptKnowledgeTextInference(chatGptInferenceClient, chatGptModelPreferences)
   }
 
   val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -65,7 +70,7 @@ internal class AppAiCoreRuntimeDependencies(
   }
 
   val summaryCloudInference: SummaryCloudInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    ChatGptSummaryCloudInference(chatGptClient, chatGptModelPreferences)
+    ChatGptSummaryCloudInference(chatGptInferenceClient, chatGptModelPreferences)
   }
 
   val summaryPromptSettings: SummaryPromptSettings by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
