@@ -1,9 +1,8 @@
 package dev.terashima.yomitorirss
 
-import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.bookmark.MoveBookmarkToLibraryUseCase
-import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
+import dev.terashima.yomitoririss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
@@ -30,17 +29,6 @@ internal class AppContentRouteDependencies(
     NotifyingWebLibraryMutator(
       delegate = container.libraryRuntime.webLibraryMutator,
       onChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-  }
-
-  val libraryTransfers: LibraryTransferDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val moveBookmarkToLibrary = MoveBookmarkToLibraryUseCase(
-      webLibrary = webLibraryMutator,
-      bookmarkMutator = container.bookmarkRepository,
-      onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-    LibraryTransferDependencies(
-      moveBookmarkToLibrary = moveBookmarkToLibrary::invoke,
     )
   }
 
@@ -79,6 +67,11 @@ internal class AppContentRouteDependencies(
       bookmarkRepository = container.bookmarkRepository,
       imports = container.bookmarkImportRepository,
       backupChangeScheduler = container.backupChangeScheduler,
+      moveBookmarkToLibrary = MoveBookmarkToLibraryUseCase(
+        webLibrary = webLibraryMutator,
+        bookmarkMutator = container.bookmarkRepository,
+        onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
+      ),
     )
   }
 
@@ -165,10 +158,6 @@ internal class AppContentRouteDependencies(
     )
   }
 }
-
-data class LibraryTransferDependencies internal constructor(
-  val moveBookmarkToLibrary: suspend (Article) -> Unit,
-)
 
 data class LibraryRouteDependencies internal constructor(
   val authorization: LibraryAuthorizationDependencies,
