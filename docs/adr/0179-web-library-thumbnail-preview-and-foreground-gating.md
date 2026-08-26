@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-26
+- Amended: 2026-08-27
 - Refines: [ADR-0154](0154-web-library-rendered-metadata-fallback.md), [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0177](0177-web-library-early-custom-extraction-and-rule-timeout.md), [ADR-0178](0178-web-library-custom-extractor-native-watchdog.md)
 
 ## Context
