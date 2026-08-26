@@ -13,9 +13,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingPreview
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
-import dev.terashima.yomitorirss.feature.rss.data.network.MangaOneFeedClient
 import dev.terashima.yomitorirss.feature.rss.data.network.WebScrapingFeedClient
-import dev.terashima.yomitorirss.feature.rss.data.network.YanmagaFeedClient
 import kotlinx.coroutines.flow.StateFlow
 
 class DefaultFeedRepository(
@@ -28,8 +26,6 @@ class DefaultFeedRepository(
   private val store = FeedStore(database, contentSourceGateway)
   private val webScrapingRules = RssWebScrapingRuleStore(database)
   private val client = FeedClient(httpClient)
-  private val yanmagaClient = YanmagaFeedClient(httpClient)
-  private val mangaOneClient = applicationContext?.let { MangaOneFeedClient(it.applicationContext) }
   private val webScrapingClient = applicationContext?.let { WebScrapingFeedClient(it.applicationContext) }
 
   override val changes: StateFlow<Long> = dataChanges.version
@@ -40,31 +36,26 @@ class DefaultFeedRepository(
   override suspend fun inspect(input: String): FeedInspection {
     val normalized = client.normalizeInputUrl(input)
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
-    return when {
-      customRule != null -> FeedInspection(directFeedUrl = normalized)
-      yanmagaClient.supports(normalized) -> yanmagaClient.inspect(normalized)
-      MangaOneFeedClient.companionSupports(normalized) -> requireMangaOneClient().inspect(normalized)
-      else -> client.inspect(normalized)
+    return if (customRule != null) {
+      FeedInspection(directFeedUrl = normalized)
+    } else {
+      client.inspect(normalized)
     }
   }
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
     val normalized = client.normalizeInputUrl(url)
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
-    val isYanmaga = yanmagaClient.supports(normalized)
-    val isMangaOne = MangaOneFeedClient.companionSupports(normalized)
-    val result = when {
-      customRule != null -> requireWebScrapingClient().fetchFeed(normalized, customRule)
-      isYanmaga -> yanmagaClient.fetchFeed(normalized)
-      isMangaOne -> requireMangaOneClient().fetchFeed(normalized)
-      else -> client.fetchFeed(normalized)
+    val result = if (customRule != null) {
+      requireWebScrapingClient().fetchFeed(normalized, customRule)
+    } else {
+      client.fetchFeed(normalized)
     }
     store.addFeed(
       parsed = requireNotNull(result.feed),
       etag = result.etag,
       modified = result.lastModified,
       markExistingArticlesRead = markExistingArticlesRead,
-      contentTypeOverride = ContentType.COMIC.takeIf { isYanmaga || isMangaOne },
     )
     dataChanges.notifyChanged()
   }
@@ -112,11 +103,10 @@ class DefaultFeedRepository(
   override suspend fun refreshFeed(feed: Feed) {
     try {
       val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), feed.feedUrl)
-      val result = when {
-        customRule != null -> requireWebScrapingClient().fetchFeed(feed.feedUrl, customRule)
-        yanmagaClient.supports(feed.feedUrl) -> yanmagaClient.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
-        MangaOneFeedClient.companionSupports(feed.feedUrl) -> requireMangaOneClient().fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
-        else -> client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+      val result = if (customRule != null) {
+        requireWebScrapingClient().fetchFeed(feed.feedUrl, customRule)
+      } else {
+        client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
       }
       if (result.notModified) {
         store.updateFeedNotModified(feed.id)
@@ -166,10 +156,6 @@ class DefaultFeedRepository(
       updatedAt = System.currentTimeMillis(),
     )
     return requireWebScrapingClient().test(normalizedUrl, draftRule)
-  }
-
-  private fun requireMangaOneClient(): MangaOneFeedClient = requireNotNull(mangaOneClient) {
-    "マンガワンのフィード取得にはAndroidコンテキストが必要です"
   }
 
   private fun requireWebScrapingClient(): WebScrapingFeedClient = requireNotNull(webScrapingClient) {
