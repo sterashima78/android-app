@@ -25,8 +25,10 @@ import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptR
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorRepository
+import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorTester
 import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetadataClient
+import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetadataExtractorTester
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationSuggester
@@ -90,6 +92,7 @@ internal class AppFeatureRuntimeDependencies(
     val smbMetadataNormalizationPromptRepository =
       SharedPreferencesSmbMetadataNormalizationPromptRepository(application)
     val webMetadataExtractorRepository = DefaultWebLibraryMetadataExtractorRepository(database)
+    val webMetadataExtractorTester = AndroidWebViewLibraryMetadataExtractorTester(resumedActivityProvider)
     val authorizationManager = GoogleBooksAuthorizationManager(application)
     val renderedMetadataClient = AndroidWebViewLibraryMetadataClient(
       activityProvider = resumedActivityProvider,
@@ -129,6 +132,7 @@ internal class AppFeatureRuntimeDependencies(
         ),
       ),
       webMetadataExtractorRepository = webMetadataExtractorRepository,
+      webMetadataExtractorTester = webMetadataExtractorTester,
       organizationRepository = organizationRepository,
       organizationSuggester = organizationSuggester,
       organizationBatchScheduler = organizationBatchScheduler,
@@ -160,6 +164,7 @@ internal data class LibraryRuntimeDependencies(
   val catalogRepository: LibraryRepository,
   val webLibraryMutator: WebLibraryMutator,
   val webMetadataExtractorRepository: WebLibraryMetadataExtractorRepository,
+  val webMetadataExtractorTester: WebLibraryMetadataExtractorTester,
   val organizationRepository: LibraryOrganizationRepository,
   val organizationSuggester: LibraryOrganizationSuggester,
   val organizationBatchScheduler: LibraryOrganizationBatchScheduler,
