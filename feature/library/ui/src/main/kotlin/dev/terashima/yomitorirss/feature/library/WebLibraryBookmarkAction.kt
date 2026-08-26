@@ -5,4 +5,4 @@ import androidx.compose.runtime.staticCompositionLocalOf
 internal val LocalWebLibraryMoveToBookmarkHandler =
   staticCompositionLocalOf<((LibraryBook) -> Unit)?> { null }
 
-internal fun LibraryBook.canMoveToBookmark(): Boolean = source == LibrarySource.WEB
+internal fun LibraryBook.canMoveToBookmark(): Boolean = false
