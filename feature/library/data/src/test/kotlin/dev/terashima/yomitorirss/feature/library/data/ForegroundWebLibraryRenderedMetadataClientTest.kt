@@ -5,27 +5,23 @@ import dev.terashima.yomitorirss.feature.library.LibrarySource
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ForegroundWebLibraryRenderedMetadataClientTest {
   @Test
-  fun `前面Activityが利用可能になるまでWebView取得を開始しない`() = runBlocking {
+  fun `前面Activityが利用可能になるまで待機する`() = runBlocking {
     var availabilityChecks = 0
-    var delegateCalled = false
-    val delegate = object : WebLibraryRenderedMetadataClient {
-      override suspend fun fetch(url: String, titleHint: String?): LibraryBook {
-        delegateCalled = true
-        return book(url)
-      }
-    }
+    var operationStarted = false
 
     awaitWebLibraryForegroundAvailability(retryDelayMillis = 1L) {
-      assertFalse(delegateCalled)
+      assertFalse(operationStarted)
       availabilityChecks += 1
       availabilityChecks >= 3
     }
+    operationStarted = true
 
-    delegate.fetch("https://example.com/books/1")
+    assertTrue(operationStarted)
     assertEquals(3, availabilityChecks)
   }
 
@@ -35,9 +31,13 @@ class ForegroundWebLibraryRenderedMetadataClientTest {
       override suspend fun fetch(url: String, titleHint: String?): LibraryBook = book(url)
       override fun hasCustomExtractor(url: String): Boolean = url.endsWith("/custom")
     }
+    val client = ForegroundWebLibraryRenderedMetadataClient(
+      delegate = delegate,
+      activityProvider = { null },
+    )
 
-    assertEquals(true, delegate.hasCustomExtractor("https://example.com/custom"))
-    assertEquals(false, delegate.hasCustomExtractor("https://example.com/normal"))
+    assertTrue(client.hasCustomExtractor("https://example.com/custom"))
+    assertFalse(client.hasCustomExtractor("https://example.com/normal"))
   }
 
   private fun book(url: String) = LibraryBook(
