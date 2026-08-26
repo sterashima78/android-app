@@ -171,6 +171,10 @@ class AndroidWebViewLibraryMetadataClient(
       }
     }
 
+    fun matchingExtractor(url: String): WebLibraryMetadataExtractor? =
+      findMatchingWebLibraryMetadataExtractor(extractors, url)
+        ?: findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
+
     fun recordExtractorExecution(
       extractor: WebLibraryMetadataExtractor,
       status: WebLibraryMetadataExtractorStatus,
@@ -290,11 +294,15 @@ class AndroidWebViewLibraryMetadataClient(
 
     extractMetadata = { finalUrl, generation ->
       if (!completed && generation == pageGeneration) {
-        val extractor = findMatchingWebLibraryMetadataExtractor(extractors, finalUrl)
-          ?: findMatchingWebLibraryMetadataExtractor(extractors, requestedUrl)
+        val extractor = matchingExtractor(finalUrl)
         if (extractor == null) {
           evaluateStandardMetadata(finalUrl, generation, null)
         } else {
+          recordExtractorExecution(
+            extractor,
+            WebLibraryMetadataExtractorStatus.RUNNING,
+            "カスタムスクリプトの完了を待機中",
+          )
           val stateKey = "$CUSTOM_METADATA_STATE_PREFIX-$generation-${SystemClock.uptimeMillis()}"
           webView.evaluateJavascript(
             customMetadataStartScript(extractor.functionCode, stateKey),
@@ -322,8 +330,17 @@ class AndroidWebViewLibraryMetadataClient(
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         pageGeneration += 1
         standardExtractionAttempts = 0
-        extractorExecution = null
-        onExtractorExecution(null)
+        val extractor = matchingExtractor(url)
+        if (extractor == null) {
+          extractorExecution = null
+          onExtractorExecution(null)
+        } else {
+          recordExtractorExecution(
+            extractor,
+            WebLibraryMetadataExtractorStatus.MATCHED,
+            "URL パターンに一致。ページ読み込み完了を待機中",
+          )
+        }
       }
 
       override fun onPageFinished(view: WebView, url: String) {
