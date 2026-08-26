@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
   }
 
   private val appViewModel: AppViewModel by viewModels()
+  private val appLockSession: AppLockSessionViewModel by viewModels()
   private val dependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.NONE) {
     val provider = application as? MainActivityDependenciesProvider
       ?: error("Application must implement MainActivityDependenciesProvider")
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
 
     appLockEnabled = appLockPreferences.enabled
-    appUnlocked = !appLockEnabled
+    appUnlocked = !appLockEnabled || appLockSession.unlocked
     if (appLockEnabled) {
       protectWindowContent()
     }
@@ -121,6 +122,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onStop() {
     if (appLockEnabled && !isChangingConfigurations && !appLockPromptShowing) {
+      appLockSession.lock()
       appUnlocked = false
     }
     super.onStop()
@@ -241,6 +243,7 @@ class MainActivity : ComponentActivity() {
   private fun setBiometricLockEnabled(enabled: Boolean) {
     if (!enabled) {
       appLockPreferences.enabled = false
+      appLockSession.lock()
       appLockEnabled = false
       appUnlocked = true
       exposeWindowContent()
@@ -280,6 +283,7 @@ class MainActivity : ComponentActivity() {
       object : BiometricPrompt.AuthenticationCallback() {
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
           appLockPromptShowing = false
+          appLockSession.unlock()
           if (enableAfterSuccess) {
             appLockPreferences.enabled = true
             appLockEnabled = true
