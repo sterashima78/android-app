@@ -82,7 +82,7 @@ async ({ url }) => ({
 
 ### editor から保存前 script を実行テストする
 
-Web 取得 rule 一覧の現在の配置は [ADR-0182](0182-rss-settings-tab.md) に従い、RSS の設定タブとする。rule の追加・編集は下から開く bottom sheet で行う。
+Web 取得 rule 一覧の現在の配置は [ADR-0183](0183-rss-settings-tab.md) に従い、RSS の設定タブとする。rule の追加・編集は下から開く bottom sheet で行う。
 
 editor は URL pattern、timeout、function code に加え、test URL を入力できる。`実行テスト` は DB に保存済みの rule ではなく、画面上の現在の pattern / function / timeout を draft rule として実行する。test URL が pattern に一致しない場合は実行しない。
 
