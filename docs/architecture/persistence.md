@@ -32,6 +32,12 @@ Single physical SQLite database
 
 バックアップも現在の application schema と同じ database version の snapshot のみを復元対象とする。schema version が異なる snapshot は復元処理へ進む前に拒否する。今後 database version を上げる際に直前 version のバックアップを維持する場合は、schema migration と restore baseline を同じ変更で更新する。
 
+### RSS schema
+
+RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`feeds` / `feed_folders` に加えて Web ページから synthetic feed を生成する user-defined rule を `rss_web_scraping_rules` に保存する。
+
+`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時を保持する RSS-owned durable user data である。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 version 27 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
+
 ### Library schema
 
 Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、Web source の URL pattern 別 metadata extractor (`web_library_metadata_extractors`)、SMB server・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。
@@ -71,7 +77,7 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | Table group | Owner module |
 | --- | --- |
 | `articles` | `:feature:article:data` |
-| `feeds`, `feed_folders` | `:feature:rss:data` |
+| `feeds`, `feed_folders`, `rss_web_scraping_rules` | `:feature:rss:data` |
 | `bookmarks`, tags/folders | `:feature:bookmark:data` |
 | `article_summaries`, `summary_*` | `:feature:summary:data` |
 | `mail_*` | `:feature:mail:data` |
@@ -152,3 +158,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
 - [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
 - [ADR-0177](../adr/0177-web-library-early-custom-extraction-and-rule-timeout.md)
+- [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
