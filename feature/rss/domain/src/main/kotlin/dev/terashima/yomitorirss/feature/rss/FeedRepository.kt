@@ -18,4 +18,22 @@ interface FeedRepository {
   suspend fun setFeedContentType(feedId: String, contentType: ContentType?)
   suspend fun setFolderContentType(folderId: String, contentType: ContentType?)
   suspend fun refreshFeed(feed: Feed)
+
+  fun listWebScrapingRules(): List<RssWebScrapingRule>
+
+  fun saveWebScrapingRule(
+    id: String? = null,
+    urlPattern: String,
+    functionCode: String,
+    timeoutSeconds: Int = DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
+  ): RssWebScrapingRule
+
+  fun deleteWebScrapingRule(id: String)
+
+  suspend fun testWebScrapingRule(
+    urlPattern: String,
+    functionCode: String,
+    timeoutSeconds: Int = DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
+    url: String,
+  ): RssWebScrapingPreview
 }
