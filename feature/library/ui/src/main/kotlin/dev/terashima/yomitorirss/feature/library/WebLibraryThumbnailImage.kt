@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.library
 
+import android.webkit.WebSettings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -54,22 +55,37 @@ internal fun rememberLibraryThumbnailModel(
   if (book.source != LibrarySource.WEB) return thumbnailUrl
 
   val context = LocalContext.current
-  val referer = remember(book.infoUrl, book.sourceId) {
-    webLibraryImageReferer(book.infoUrl?.takeIf(String::isNotBlank) ?: book.sourceId)
+  val pageUrl = book.infoUrl?.takeIf(String::isNotBlank) ?: book.sourceId
+  val browserUserAgent = remember(context) {
+    runCatching { WebSettings.getDefaultUserAgent(context) }.getOrNull()
   }
-  return remember(context, thumbnailUrl, referer) {
-    if (referer == null) {
+  val headers = remember(pageUrl, browserUserAgent) {
+    webLibraryImageRequestHeaders(pageUrl, browserUserAgent)
+  }
+  return remember(context, thumbnailUrl, headers) {
+    if (headers.isEmpty()) {
       thumbnailUrl
     } else {
+      val networkHeaders = NetworkHeaders.Builder().apply {
+        headers.forEach { (name, value) -> set(name, value) }
+      }.build()
       ImageRequest.Builder(context)
         .data(thumbnailUrl)
-        .httpHeaders(
-          NetworkHeaders.Builder()
-            .set("Referer", referer)
-            .build(),
-        )
+        .httpHeaders(networkHeaders)
         .build()
     }
+  }
+}
+
+internal fun webLibraryImageRequestHeaders(
+  pageUrl: String,
+  browserUserAgent: String?,
+): Map<String, String> = buildMap {
+  webLibraryImageReferer(pageUrl)?.let { referer ->
+    put("Referer", referer)
+  }
+  browserUserAgent?.trim()?.takeIf(String::isNotEmpty)?.let { userAgent ->
+    put("User-Agent", userAgent)
   }
 }
 
