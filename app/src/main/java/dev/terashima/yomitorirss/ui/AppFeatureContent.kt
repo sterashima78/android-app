@@ -22,6 +22,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedRoute
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssRoute
 import dev.terashima.yomitorirss.feature.rss.RssRouteController
+import dev.terashima.yomitorirss.feature.rss.RssSettingsRoute
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
@@ -198,6 +199,13 @@ internal fun AppFeatureContent(
         feedViewModel = feedViewModel,
         controller = rssController,
         onFeedReady = { appViewModel.selectTab(MainTab.FEEDS) },
+      )
+    }
+    MainTab.RSS_SETTINGS -> {
+      val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
+      RssSettingsRoute(
+        modifier = modifier,
+        feedViewModel = feedViewModel,
       )
     }
     MainTab.SETTINGS -> {
