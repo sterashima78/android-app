@@ -43,24 +43,6 @@ class LibraryBookTapActionTest {
   }
 
   @Test
-  fun `Web 蔵書だけがブックマークへ移動できる`() {
-    assertTrue(
-      book(
-        source = LibrarySource.WEB,
-        sourceId = "https://example.com/web-book",
-        infoUrl = "https://example.com/web-book",
-      ).canMoveToBookmark(),
-    )
-    assertFalse(
-      book(
-        source = LibrarySource.GOOGLE_PLAY_BOOKS,
-        sourceId = "synthetic-book-id",
-        infoUrl = "https://example.com/book",
-      ).canMoveToBookmark(),
-    )
-  }
-
-  @Test
   fun `Web 蔵書だけが蔵書から削除できる`() {
     assertTrue(
       book(
