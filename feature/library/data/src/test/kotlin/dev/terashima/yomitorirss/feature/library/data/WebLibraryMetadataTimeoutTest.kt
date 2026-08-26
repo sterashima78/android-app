@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.feature.library.DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
 import dev.terashima.yomitorirss.feature.library.MAX_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
 import dev.terashima.yomitorirss.feature.library.MIN_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS
@@ -7,7 +8,10 @@ import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class WebLibraryMetadataTimeoutTest {
   @Test
   fun `一致する取得ルールのタイムアウトをWebView全体へ適用する`() {
@@ -82,5 +86,47 @@ class WebLibraryMetadataTimeoutTest {
     )
 
     assertEquals(DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS, extractor.timeoutSeconds)
+  }
+
+  @Test
+  fun `既存の取得ルールテーブルへタイムアウト列を既定値付きで追加する`() {
+    val db = SQLiteDatabase.create(null)
+    try {
+      db.execSQL(
+        """
+          CREATE TABLE web_library_metadata_extractors(
+            id TEXT PRIMARY KEY NOT NULL,
+            url_pattern TEXT NOT NULL UNIQUE,
+            function_code TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+          )
+        """.trimIndent(),
+      )
+      db.execSQL(
+        "INSERT INTO web_library_metadata_extractors(id, url_pattern, function_code, updated_at) " +
+          "VALUES('rule-1', 'https://example.com/*', 'async () => ({})', 1)",
+      )
+
+      ensureWebLibraryMetadataExtractorSchema(db)
+
+      val columns = db.rawQuery("PRAGMA table_info(web_library_metadata_extractors)", null).use { cursor ->
+        val nameIndex = cursor.getColumnIndexOrThrow("name")
+        buildSet {
+          while (cursor.moveToNext()) add(cursor.getString(nameIndex))
+        }
+      }
+      val timeout = db.rawQuery(
+        "SELECT timeout_seconds FROM web_library_metadata_extractors WHERE id = 'rule-1'",
+        null,
+      ).use { cursor ->
+        check(cursor.moveToFirst())
+        cursor.getInt(0)
+      }
+
+      assertTrue("timeout_seconds" in columns)
+      assertEquals(DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS, timeout)
+    } finally {
+      db.close()
+    }
   }
 }
