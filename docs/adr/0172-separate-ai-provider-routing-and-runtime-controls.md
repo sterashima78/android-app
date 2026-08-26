@@ -68,6 +68,7 @@ Cloud transport / provider の状態は application task の失敗とは別に�
 - `401` は provider adapter が credential refresh を1回だけ試し、同じ request を1回だけ再送する。
 - network I/O failure、`408`、`429`、`5xx` は retryable cloud failure として分類する。
 - retryable failure では running Summary task を `queued` へ戻し、WorkManager の `Result.retry()` と exponential backoff に委譲する。
+- retryable failure で `queued` へ戻す際は、provider adapter が正規化した安全な user-facing message を既存 task `error` に保存する。AI task queue は `queued + error` を「直前の失敗・自動再試行待ち」として表示し、通常の待機と区別する。次回 claim、新規 enqueue、手動再実行では `error` を消去する。
 - ChatGPT Summary worker は network connectivity constraint を持ち、offline 中に cloud request を開始しない。
 - refresh 後も失敗する `401` / `403` とその他の非一時的 `4xx` は自動再試行せず、ユーザー操作が必要な durable failure とする。
 - `CancellationException` は failure に変換せず、そのまま worker cancellation として伝播させる。
@@ -86,6 +87,7 @@ AI task queue の Summary 行には現在選択されている実行先を `Loca
 - 充電時再開が cloud request を意図せず開始することがなくなる。
 - cloud Summary の進捗表示が実際の pipeline と一致する。
 - rate limit、provider outage、通信断でSummary taskが直ちに「失敗」へ落ちず、WorkManagerのbackoffで自動回復できる。
+- retryable failure でキューに残っている場合も、直前に何が失敗したかをAI task queueから確認できる。
 - provider response bodyをdurable task errorへ保存しないため、クラウド側が入力断片をerrorへ含めても端末ログ/UIへ再露出しにくい。
 
 ### Negative
@@ -93,6 +95,7 @@ AI task queue の Summary 行には現在選択されている実行先を `Loca
 - execution state が1つから Local / Cloud の2つになるため、queue repository と UI state が少し複雑になる。
 - 現時点では cloud pause の対象が Summary だけなので、汎用 control の利用者は少ない。
 - Summary queue の実行先表示は現在の routing setting を表し、provider 切替前に失敗した履歴の「実際に失敗したprovider」を永続化する監査ログではない。
+- retryable failure の表示は直前の正規化済み message のみで、provider response body や認証情報などの詳細診断情報は保持しない。
 - provider-specific concurrency や Retry-After を使った厳密な待機時間制御はこの判断では扱わず、WorkManager exponential backoff を利用する。
 
 ## Verification
@@ -105,6 +108,7 @@ AI task queue の Summary 行には現在選択されている実行先を `Loca
 - `401` が credential refresh 後に1回だけ再送されることを transport test で固定する。
 - `429` / `5xx` を retryable、認証失効や非一時的 `4xx` を non-retryable として分類することを test する。
 - retryable cloud failure で running task が `failed` ではなく `queued` へ戻ることを persistence test する。
+- `queued + error` の task が「直前の失敗・自動再試行待ち」と安全な失敗理由を表示し、通常の queued task は失敗表示を持たないことを test する。
 - provider error body の synthetic secret / prompt 断片が user-facing failure message に残らないことを test する。
 - AI task queue が Summary の `Local` / `ChatGPT` 実行先ラベルを表示できることを test する。
 - ChatGPT / Codex UI が task routing control を持たず、AI実行設定が Summary routing を表示することを source/architecture review で確認する。

@@ -45,12 +45,21 @@ class KnowledgeBuildQueueStateStore(context: Context) {
       .apply()
   }
 
+  fun markRetrying(message: String) {
+    preferences.edit()
+      .putBoolean(KEY_REQUESTED, true)
+      .putBoolean(KEY_STOPPED, false)
+      .putBoolean(KEY_FAILED, false)
+      .putString(KEY_ERROR, message.take(MAX_ERROR_LENGTH))
+      .apply()
+  }
+
   fun markFailed(message: String) {
     preferences.edit()
       .putBoolean(KEY_REQUESTED, true)
       .putBoolean(KEY_STOPPED, false)
       .putBoolean(KEY_FAILED, true)
-      .putString(KEY_ERROR, message)
+      .putString(KEY_ERROR, message.take(MAX_ERROR_LENGTH))
       .apply()
   }
 
@@ -68,5 +77,6 @@ class KnowledgeBuildQueueStateStore(context: Context) {
     const val KEY_STOPPED = "stopped"
     const val KEY_FAILED = "failed"
     const val KEY_ERROR = "error"
+    const val MAX_ERROR_LENGTH = 500
   }
 }

@@ -207,15 +207,15 @@ private fun AiTaskRow(
               modifier = Modifier.padding(top = 4.dp),
             )
           }
-          aiTaskFailureReason(item)?.let { reason ->
+          aiTaskFailurePresentation(item)?.let { failure ->
             Text(
-              text = "失敗理由",
+              text = failure.label,
               color = MaterialTheme.colorScheme.error,
               style = MaterialTheme.typography.labelSmall,
               modifier = Modifier.padding(top = 6.dp),
             )
             Text(
-              text = reason,
+              text = failure.reason,
               color = MaterialTheme.colorScheme.error,
               style = MaterialTheme.typography.bodySmall,
             )
@@ -276,11 +276,29 @@ internal fun aiTaskProgressPresentation(item: AiTaskQueueItem): AiTaskProgressPr
   return AiTaskProgressPresentation(label = label, fraction = fraction)
 }
 
-internal fun aiTaskFailureReason(item: AiTaskQueueItem): String? {
-  if (item.state != AiTaskQueueItemState.FAILED) return null
-  return item.error?.trim()?.takeIf(String::isNotEmpty)
-    ?: "詳細な失敗理由は記録されていません"
+internal data class AiTaskFailurePresentation(
+  val label: String,
+  val reason: String,
+)
+
+internal fun aiTaskFailurePresentation(item: AiTaskQueueItem): AiTaskFailurePresentation? {
+  val error = item.error?.trim()?.takeIf(String::isNotEmpty)
+  return when (item.state) {
+    AiTaskQueueItemState.FAILED -> AiTaskFailurePresentation(
+      label = "失敗理由",
+      reason = error ?: "詳細な失敗理由は記録されていません",
+    )
+    AiTaskQueueItemState.QUEUED -> error?.let {
+      AiTaskFailurePresentation(
+        label = "直前の失敗・自動再試行待ち",
+        reason = it,
+      )
+    }
+    else -> null
+  }
 }
+
+internal fun aiTaskFailureReason(item: AiTaskQueueItem): String? = aiTaskFailurePresentation(item)?.reason
 
 private fun taskTitle(item: AiTaskQueueItem): String = item.title
 
