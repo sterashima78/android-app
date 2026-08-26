@@ -19,21 +19,23 @@ interface FeedRepository {
   suspend fun setFolderContentType(folderId: String, contentType: ContentType?)
   suspend fun refreshFeed(feed: Feed)
 
-  fun listWebScrapingRules(): List<RssWebScrapingRule>
+  fun listWebScrapingRules(): List<RssWebScrapingRule> = emptyList()
 
   fun saveWebScrapingRule(
     id: String? = null,
     urlPattern: String,
     functionCode: String,
     timeoutSeconds: Int = DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
-  ): RssWebScrapingRule
+  ): RssWebScrapingRule = error("Web スクレイピング取得ルールはこのリポジトリでは利用できません")
 
-  fun deleteWebScrapingRule(id: String)
+  fun deleteWebScrapingRule(id: String) {
+    error("Web スクレイピング取得ルールはこのリポジトリでは利用できません")
+  }
 
   suspend fun testWebScrapingRule(
     urlPattern: String,
     functionCode: String,
     timeoutSeconds: Int = DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
     url: String,
-  ): RssWebScrapingPreview
+  ): RssWebScrapingPreview = error("Web スクレイピング取得ルールはこのリポジトリでは利用できません")
 }
