@@ -2,12 +2,12 @@
 
 - Status: Accepted
 - Date: 2026-08-27
-- Amends: [ADR-0062](0062-extract-integrated-ui-from-app.md), [ADR-0142](0142-app-route-and-task-widget-ownership-cleanup.md)
+- Amends: [ADR-0025](0025-integrated-triage-home.md), [ADR-0062](0062-extract-integrated-ui-from-app.md), [ADR-0118](0118-integrated-history-tab.md), [ADR-0142](0142-app-route-and-task-widget-ownership-cleanup.md)
 - Refines: [ADR-0003](0003-multi-module-architecture.md)
 
 ## Context
 
-ADR-0062 では `:feature:integrated:ui` に再利用可能な表示だけを置き、RSS、Reddit、YouTube、Mail の state/action mapping と `IntegratedRoute` は `:app` の composition adapter が所有すると決めた。ADR-0142 も Integrated Route を app composition adapter の一つとして整理した。
+ADR-0025 / ADR-0062 / ADR-0118 では、Integrated の表示責務と各 source feature の所有権を分離しながら、RSS、Reddit、YouTube、Mail の state/action mapping と `IntegratedRoute` は app-level composition が所有する前提を採用していた。ADR-0142 も Integrated Route を app composition adapter の一つとして整理した。
 
 その後の architecture cleanup で projection、target dispatch、item action が独立した型へ分離され、Integrated の変更理由がより明確になった。現在 app に残る Integrated 実装は、単なる dependency wiring ではなく、複数 source feature の状態を一つの画面へ射影し、Integrated tab の意味に応じて操作を各 source feature へ dispatch する presentation policy を所有している。
 
@@ -66,7 +66,7 @@ Mail item を開く際の `mailViewModel.openThread` は Integrated feature の 
 ## Documentation
 
 - `docs/architecture/module-map.md` の app composition 説明を、named feature responsibility と application-only composition の区別に合わせて更新する。
-- ADR-0062 / ADR-0142 の Integrated app adapter 判断は本 ADR により amend される。
+- ADR-0025 / ADR-0062 / ADR-0118 / ADR-0142 にある Integrated の app-level composition ownership は本 ADR により amend される。各 ADR が定めたユーザー操作、source state ownership、永続化境界は変更しない。
 
 ## Public repository review
 
