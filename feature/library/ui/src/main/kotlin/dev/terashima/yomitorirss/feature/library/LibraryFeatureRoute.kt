@@ -47,6 +47,7 @@ fun LibraryFeatureRoute(
   onRefreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
   onMoveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
+  onOpenWebUrl: (String) -> Unit,
   smbRepository: SmbLibraryRepository,
   pageSourceFactory: BookPageSourceFactory,
   readingPositionStore: ReadingPositionStore,
@@ -59,7 +60,10 @@ fun LibraryFeatureRoute(
   var webRefreshState by remember { mutableStateOf(WebLibraryRefreshUiState()) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
-  val libraryUriHandler = remember(context) { LibraryUriHandler(context) }
+  val webBookUrls = remember(state.books) { webLibraryOpenUrls(state.books) }
+  val libraryUriHandler = remember(context, onOpenWebUrl, webBookUrls) {
+    LibraryUriHandler(context, onOpenWebUrl, webBookUrls)
+  }
   val webLibraryImportHandler = remember(viewModel) {
     { source: LibrarySource, json: String -> viewModel.importAmazonLibraryJson(source, json) }
   }
@@ -264,11 +268,17 @@ fun LibraryFeatureRoute(
 
 private class LibraryUriHandler(
   private val context: Context,
+  private val openWebUrl: (String) -> Unit,
+  private val webBookUrls: Set<String>,
 ) : UriHandler {
   override fun openUri(uri: String) {
     val parsedUri = Uri.parse(uri)
     if (isKindlePersonalDocumentOpenUri(parsedUri)) {
       openKindlePersonalDocument(parsedUri)
+      return
+    }
+    if (parsedUri.toString() in webBookUrls) {
+      openWebUrl(parsedUri.toString())
       return
     }
 
