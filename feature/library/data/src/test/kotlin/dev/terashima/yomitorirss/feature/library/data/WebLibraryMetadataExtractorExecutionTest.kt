@@ -64,6 +64,34 @@ class WebLibraryMetadataExtractorExecutionTest {
     assertEquals("WebView metadata 取得が 15 秒以内に完了しませんでした", result.fallbackReason)
   }
 
+  @Test
+  fun `WebView全体失敗時も実行中の取得ルール状態を静的fallback結果へ伝播する`() = runBlocking {
+    val staticBook = webBook(title = "静的タイトル", thumbnailUrl = null)
+    val execution = WebLibraryMetadataExtractorExecution(
+      ruleId = "rule-1",
+      urlPattern = "https://example.com/books/*",
+      status = WebLibraryMetadataExtractorStatus.RUNNING,
+      message = "カスタムスクリプトの完了を待機中",
+    )
+
+    val result = resolveWebLibraryBookMetadataWithReport(
+      url = staticBook.sourceId,
+      titleHint = null,
+      staticFetch = { _, _ -> staticBook },
+      renderedFetch = { _, _ ->
+        throw WebLibraryRenderedMetadataException(
+          message = "WebView metadata 取得が 15 秒以内に完了しませんでした",
+          extractorExecution = execution,
+        )
+      },
+      forceRendered = true,
+    )
+
+    assertEquals(staticBook, result.book)
+    assertEquals(WebLibraryMetadataExtractorStatus.RUNNING, result.extractorExecution?.status)
+    assertEquals("WebView metadata 取得が 15 秒以内に完了しませんでした", result.fallbackReason)
+  }
+
   private fun webBook(
     title: String,
     thumbnailUrl: String?,
