@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss
 
-import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
+import dev.terashima.yomitorirss.feature.bookmark.MoveBookmarkToLibraryUseCase
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
@@ -29,19 +29,6 @@ internal class AppContentRouteDependencies(
     NotifyingWebLibraryMutator(
       delegate = container.libraryRuntime.webLibraryMutator,
       onChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-  }
-
-  val libraryTransfers: LibraryTransferDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    val service = BookmarkLibraryTransferService(
-      webLibrary = webLibraryMutator,
-      bookmarkMutator = container.bookmarkRepository,
-      saveSharedBookmark = container.saveSharedBookmarkUseCase,
-      onChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-    LibraryTransferDependencies(
-      moveBookmarkToLibrary = service::moveBookmarkToLibrary,
-      moveWebBookToBookmark = service::moveWebBookToBookmark,
     )
   }
 
@@ -80,6 +67,11 @@ internal class AppContentRouteDependencies(
       bookmarkRepository = container.bookmarkRepository,
       imports = container.bookmarkImportRepository,
       backupChangeScheduler = container.backupChangeScheduler,
+      moveBookmarkToLibrary = MoveBookmarkToLibraryUseCase(
+        webLibrary = webLibraryMutator,
+        bookmarkMutator = container.bookmarkRepository,
+        onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
+      ),
     )
   }
 
@@ -135,7 +127,6 @@ internal class AppContentRouteDependencies(
       addWebBook = { url, titleHint -> webLibraryMutator.addWebBook(url, titleHint) },
       refreshWebBook = webLibraryMutator::refreshWebBookWithReport,
       removeWebBook = webLibraryMutator::removeWebBook,
-      moveWebBookToBookmark = libraryTransfers.moveWebBookToBookmark,
       listWebMetadataExtractors = runtime.webMetadataExtractorRepository::list,
       saveWebMetadataExtractor = { id, urlPattern, functionCode, timeoutSeconds ->
         runtime.webMetadataExtractorRepository.save(
@@ -168,11 +159,6 @@ internal class AppContentRouteDependencies(
   }
 }
 
-data class LibraryTransferDependencies internal constructor(
-  val moveBookmarkToLibrary: suspend (Article) -> Unit,
-  val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
-)
-
 data class LibraryRouteDependencies internal constructor(
   val authorization: LibraryAuthorizationDependencies,
   val libraryViewModelFactory: LibraryViewModel.Factory,
@@ -181,7 +167,6 @@ data class LibraryRouteDependencies internal constructor(
   val addWebBook: suspend (String, String?) -> LibraryBook,
   val refreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
   val removeWebBook: suspend (LibraryBook) -> Unit,
-  val moveWebBookToBookmark: suspend (LibraryBook) -> Unit,
   val listWebMetadataExtractors: () -> List<WebLibraryMetadataExtractor>,
   val saveWebMetadataExtractor: (String?, String, String, Int) -> WebLibraryMetadataExtractor,
   val deleteWebMetadataExtractor: (String) -> Unit,

@@ -1,6 +1,6 @@
 # ADR-0143: Web URL を Library source として扱い Bookmark と安全に移動する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0186](0186-bookmark-to-library-one-way-ownership.md)
 - Date: 2026-08-23
 - Refines: [ADR-0013](0013-library-sources-and-google-books-sync.md), [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md), [ADR-0117](0117-cross-context-persistence-boundary-phase1.md), [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0142](0142-app-route-and-task-widget-ownership-cleanup.md)
 

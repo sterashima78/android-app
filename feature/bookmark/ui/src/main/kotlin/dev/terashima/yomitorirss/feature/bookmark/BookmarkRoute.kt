@@ -45,7 +45,6 @@ fun BookmarkRoute(
   editController: BookmarkEditController,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
-  onMoveToLibrary: suspend (Article) -> Unit,
   onReprocessEnrichment: suspend () -> Int,
   onImportCompleted: () -> Unit,
 ) {
@@ -72,6 +71,11 @@ fun BookmarkRoute(
       bookmarkViewModel.consumeImportCompleted()
     }
   }
+  LaunchedEffect(state.message) {
+    val message = state.message ?: return@LaunchedEffect
+    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    bookmarkViewModel.dismissMessage()
+  }
 
   if (!state.initialized) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -90,22 +94,7 @@ fun BookmarkRoute(
     onSummarize = onSummarize,
     onEditTags = editController::editTags,
     onMoveFolder = editController::moveFolder,
-    onMoveToLibrary = { article ->
-      scope.launch {
-        runCatching { onMoveToLibrary(article) }
-          .onSuccess {
-            bookmarkViewModel.refresh()
-            Toast.makeText(context, "「${article.title}」を蔵書へ移動しました", Toast.LENGTH_LONG).show()
-          }
-          .onFailure { error ->
-            Toast.makeText(
-              context,
-              error.message ?: "蔵書への移動に失敗しました",
-              Toast.LENGTH_LONG,
-            ).show()
-          }
-      }
-    },
+    onMoveToLibrary = bookmarkViewModel::moveToLibrary,
     onSetContentType = bookmarkViewModel::setArticleContentType,
     onUnsave = bookmarkViewModel::unsave,
     onCreateFolder = bookmarkViewModel::createFolder,

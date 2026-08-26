@@ -822,7 +822,6 @@ private fun LibraryBookThumbnail(
   val uriHandler = LocalUriHandler.current
   val smbFileActions = LocalSmbBookFileActionBinding.current
   val webDeleteHandler = LocalWebLibraryDeleteHandler.current
-  val webMoveToBookmarkHandler = LocalWebLibraryMoveToBookmarkHandler.current
   val webSettingsBinding = LocalWebLibrarySettingsUiBinding.current
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var renameDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
@@ -947,15 +946,6 @@ private fun LibraryBookThumbnail(
           onClick = {
             actionMenuExpanded = false
             webSettingsBinding.onRefresh(book)
-          },
-        )
-      }
-      if (book.canMoveToBookmark() && webMoveToBookmarkHandler != null) {
-        DropdownMenuItem(
-          text = { Text("ブックマークへ移動") },
-          onClick = {
-            actionMenuExpanded = false
-            webMoveToBookmarkHandler(book)
           },
         )
       }

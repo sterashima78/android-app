@@ -34,6 +34,7 @@ class BookmarkViewModel(
   private val bookmarkRepository: BookmarkRepository,
   private val imports: BookmarkImportRepository,
   private val backupChangeScheduler: BackupChangeScheduler,
+  private val moveBookmarkToLibrary: MoveBookmarkToLibraryUseCase,
 ) : ViewModel() {
   private val _state = MutableStateFlow(BookmarkUiState())
   val state: StateFlow<BookmarkUiState> = _state.asStateFlow()
@@ -68,6 +69,30 @@ class BookmarkViewModel(
 
   fun unsave(article: Article) = performArticleAction(article) {
     bookmarkRepository.unsaveArticle(article.id)
+  }
+
+  fun moveToLibrary(article: Article) {
+    _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { moveBookmarkToLibrary(article) }
+        .onSuccess {
+          reload()
+          _state.update {
+            it.copy(
+              hiddenArticleIds = it.hiddenArticleIds - article.id,
+              message = "「${article.title}」を蔵書へ移動しました",
+            )
+          }
+        }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              hiddenArticleIds = it.hiddenArticleIds - article.id,
+              message = "蔵書への移動に失敗しました: ${error.userMessage()}",
+            )
+          }
+        }
+    }
   }
 
   fun setArticleContentType(article: Article, contentType: ContentType?) {
@@ -252,13 +277,20 @@ class BookmarkViewModel(
     private val bookmarkRepository: BookmarkRepository,
     private val imports: BookmarkImportRepository,
     private val backupChangeScheduler: BackupChangeScheduler,
+    private val moveBookmarkToLibrary: MoveBookmarkToLibraryUseCase,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(BookmarkViewModel::class.java)) {
         "Unknown ViewModel class: ${modelClass.name}"
       }
       @Suppress("UNCHECKED_CAST")
-      return BookmarkViewModel(articleRepository, bookmarkRepository, imports, backupChangeScheduler) as T
+      return BookmarkViewModel(
+        articleRepository,
+        bookmarkRepository,
+        imports,
+        backupChangeScheduler,
+        moveBookmarkToLibrary,
+      ) as T
     }
   }
 }

@@ -74,6 +74,8 @@ Bookmark の保存状態は所有しない。`Article` -> `ContentItem` の rena
 
 Bookmark は ContentItemId を参照する。`savedAt` の正規 persistence は Curation-owned `bookmarks` table である。legacy `articles.saved_at` は現行 schema に存在せず、runtime state としても利用しない。
 
+Bookmark から Web Library への移動は Curation-owned `MoveBookmarkToLibraryUseCase` が所有する。Bookmark domain は Library domain の narrow `WebLibraryAdder` capability だけに一方向依存し、移動先の作成成功後に Bookmark を解除する。Library から Bookmark への逆方向移動は提供しない。
+
 ### Source contexts: RSS / Reddit / YouTube
 
 Content の上流 Source Context として扱う。各 Source 固有の subscription、synchronization / fetch state、authentication、external API / site semantics、source-specific metadata は各 Context が所有する。
@@ -123,9 +125,9 @@ Calendar は Task / Workout の command owner ではなく、初期実装は読�
 
 Web source は URL を identity とし、Library data layer がまず HTTP(S) ページの OGP / HTML metadata を取得する。通常は HTTPS ページで metadata が不足する場合だけ短命な WebView で JavaScript 実行後の DOM metadata を補完するが、Library-owned `WebLibraryMetadataExtractor` が requested URL に一致する場合は静的 metadata が揃っていても WebView を実行し、登録された Promise ベースの非同期関数の `title` / `thumbnailUrl` をサイト固有の override として利用する。custom extractor は専用 WebView profile の既存 security boundary 内でのみ動作し、native JavaScript bridge は公開しない。URL pattern と function code は `web_library_metadata_extractors` に保存する Library-owned durable user data である。
 
-既存 Web 蔵書は `WebLibraryMutator.refreshWebBook` で明示的に再取得でき、手動再取得では rendered metadata を優先する。複数項目の再取得は WebView を同時起動せず直列に行う。Web 固有の追加・再取得・削除は `WebLibraryMutator` capability として Library が公開し、extractor rule の管理は `WebLibraryMetadataExtractorRepository` capability として公開する。いずれも Bookmark / Curation の永続化には触れない。
+既存 Web 蔵書は `WebLibraryMutator.refreshWebBook` で明示的に再取得でき、手動再取得では rendered metadata を優先する。複数項目の再取得は WebView を同時起動せず直列に行う。Web 固有の追加だけを必要とする consumer には `WebLibraryAdder` を公開し、追加・再取得・削除が必要な Library 自身の consumer には `WebLibraryMutator` capability を公開する。extractor rule の管理は `WebLibraryMetadataExtractorRepository` capability として公開する。いずれも Bookmark / Curation の永続化には触れない。
 
-Bookmark と Web Library の相互移動は Context 間 command であるため、app composition の `BookmarkLibraryTransferService` が各 owner capability を順に呼び出す。コピー先の保存成功前に元側を削除せず、foreign table を直接 write しない。
+Library は Bookmark への逆方向移動を所有せず、Bookmark の保存 capability に依存しない。Bookmark から Library への移動時も Library は `WebLibraryAdder` として移動先の作成だけを担当する。
 
 ### Other application contexts
 
@@ -137,7 +139,7 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 
 ### Application Service / command port
 
-複数 Aggregate / Context の command を1つの操作として orchestration する場合、各 owner の公開 Domain API / command port を利用し、foreign table を直接 write しない。
+複数 Aggregate / Context の command を1つの操作として orchestration する場合、各 owner の公開 Domain API / command port を利用し、foreign table を直接 write しない。依存方向と操作 owner が一意に定まる場合は、必ずしも `:app` の対称な Application Service に持ち上げず、owning feature が他 Context の narrow capability を利用してよい。
 
 現在の例:
 
@@ -145,7 +147,7 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 - Curation -> Content: `BookmarkArticleGateway`
 - RSS -> Content: `ContentSourceGateway`
 - Workout -> Health Connect: app composition adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続して行う一方向 export
-- Bookmark ↔ Web Library: app composition の `BookmarkLibraryTransferService` が `BookmarkMutator` / `SaveSharedBookmarkUseCase` と `WebLibraryMutator` を調停する
+- Bookmark -> Web Library: Bookmark-owned `MoveBookmarkToLibraryUseCase` が `WebLibraryAdder` と `BookmarkMutator` を順に呼ぶ
 
 ### Domain Service
 
@@ -204,3 +206,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
 - [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
 - [ADR-0184](../adr/0184-remove-site-specific-manga-rss-clients.md)
+- [ADR-0186](../adr/0186-bookmark-to-library-one-way-ownership.md)

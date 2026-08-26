@@ -26,6 +26,7 @@ dependencies {
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:ui"))
+  implementation(project(":feature:library:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
   implementation("androidx.activity:activity-compose:1.11.0")
