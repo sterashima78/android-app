@@ -33,7 +33,9 @@ HTTP URL では rendered fallback を実行しない。JavaScript を有効化�
 
 再取得によって redirect 先が変化しても既存 `sourceId` は維持し、Library item identity と series 等の関連付けを壊さない。表示・open 用 `infoUrl` は新しい取得結果を利用できる。
 
-UI では個別再取得と「すべて再取得」を提供する。一括再取得は WebView を複数同時起動せず 1 件ずつ直列に処理し、メモリ使用量を抑える。途中の失敗は残りの再取得を停止させない。
+設定画面の再取得一覧は、thumbnail が未取得、または title が host 名 fallback のままの Web 蔵書だけを表示する。一括再取得も同じ不足項目だけを対象にし、title と thumbnail の両方が取得済みの項目は除外する。不足項目は設定画面から個別再取得もできる。
+
+metadata が揃っている項目を含む任意の表示中 Web 蔵書に対する明示再取得とブックマークへの移動は、蔵書一覧の操作メニューから提供する。非表示項目の再取得は、再取得時の catalog 保存が非表示状態を解除し得るため、この導線からは提供しない。一括再取得は WebView を複数同時起動せず 1 件ずつ直列に処理し、メモリ使用量を抑える。途中の失敗は残りの再取得を停止させない。
 
 ### rendered metadata は Library data layer が所有する
 
@@ -89,6 +91,7 @@ rendered thumbnail は WebView 内で Open Graph / Twitter Card image を優先�
 - 通常の OGP ページは従来どおり HTTP 取得だけで完了し、WebView の起動コストを負わない。
 - HTTP client が browser 以外を拒否するサイトでも、HTTPS かつ安全な専用 WebView profile を利用できれば WebView fallback から追加できる可能性がある。
 - 不完全な状態で登録済みの Web 蔵書を個別または一括で修復できる。
+- metadata が揃っている Web 蔵書を不要な一括再取得から除外しつつ、必要な明示再取得とブックマーク移動は蔵書一覧から実行できる。
 - 任意 Web content で JavaScript を実行する surface は増えるため、WebView security setting と短い lifecycle が correctness と同等に重要になる。
 - ページ先頭画像が必ずしも表紙とは限らないため精度は OGP より低いが、thumbnail 未設定のままにするより識別性を優先する fallback と位置付ける。
 - ログインが必要なサイトを自動認証する設計ではない。専用 profile は metadata 取得用であり、認証 UI や native bridge を提供しない。
@@ -104,5 +107,6 @@ rendered thumbnail は WebView 内で Open Graph / Twitter Card image を優先�
 - rendered metadata の相対 image URL 解決と HTTPS image 制約を unit test する。
 - OGP / Twitter image 欠落時に先頭画像 URL を thumbnail として採用し、rendered metadata image がある場合はそちらを優先する unit test を行う。
 - rendered metadata image が安全でない場合に安全な先頭画像へ fallback し、先頭画像も HTTP の場合は保存しない unit test を行う。
+- Web 蔵書の再取得対象判定が thumbnail 欠落または host title fallback を対象にし、title と thumbnail が揃った項目を除外することを unit test する。
 - notifier decorator が `refreshWebBook` を delegate し、backup change を通知することを unit test する。
 - architecture verification、public repository verification、Library data unit test、app unit test、lint、assemble を CI で実行する。

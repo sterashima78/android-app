@@ -155,7 +155,7 @@ internal fun WebLibrarySettingsFromBinding() {
   ) {
     Text("Web 蔵書", style = MaterialTheme.typography.titleMedium)
     Text(
-      "Web 蔵書の metadata 再取得と、サイト別のタイトル・サムネイル取得ルールを管理します。",
+      "Web 蔵書の不足 metadata 再取得と、サイト別のタイトル・サムネイル取得ルールを管理します。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -248,7 +248,7 @@ internal fun WebLibrarySettingsFromBinding() {
       Column(modifier = Modifier.weight(1f)) {
         Text("metadata 再取得")
         Text(
-          "${settings.books.size} 冊の Web 蔵書が対象です。直近の実行結果は各蔵書の下に表示します。",
+          "タイトルまたは表紙が未取得の ${settings.books.size} 冊が対象です。直近の実行結果は各蔵書の下に表示します。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -262,7 +262,7 @@ internal fun WebLibrarySettingsFromBinding() {
         onClick = settings.onRefreshAll,
         enabled = settings.books.isNotEmpty() && !settings.refreshState.running && !extractorBusy,
       ) {
-        Text("すべて再取得")
+        Text("一括再取得")
       }
     }
 
@@ -270,7 +270,7 @@ internal fun WebLibrarySettingsFromBinding() {
 
     if (settings.books.isEmpty()) {
       Text(
-        "Web から追加した蔵書はありません。",
+        "タイトルと表紙が取得済みです。再取得が必要な Web 蔵書はありません。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -288,6 +288,11 @@ internal fun WebLibrarySettingsFromBinding() {
               overflow = TextOverflow.Ellipsis,
               style = MaterialTheme.typography.bodyMedium,
             )
+            Text(
+              text = "未取得: ${book.missingWebMetadataLabels().joinToString("・")}",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.error,
+            )
             WebLibraryThumbnailPreview(book = book)
             Row(
               modifier = Modifier.fillMaxWidth(),
@@ -298,12 +303,6 @@ internal fun WebLibrarySettingsFromBinding() {
                 enabled = !settings.refreshState.running && !extractorBusy,
               ) {
                 Text("再取得")
-              }
-              TextButton(
-                onClick = { settings.onMoveToBookmark(book) },
-                enabled = !settings.refreshState.running && !extractorBusy,
-              ) {
-                Text("ブックマークへ移動")
               }
             }
             result?.let { WebLibraryRefreshResultText(it) }

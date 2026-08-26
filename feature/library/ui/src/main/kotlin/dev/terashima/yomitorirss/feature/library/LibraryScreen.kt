@@ -609,6 +609,7 @@ private fun LibraryHiddenTab(
         onOpenSmbBook = onOpenSmbBook,
         onAction = onRestoreBook,
         onEditSeries = onEditSeries,
+        allowWebMetadataRefresh = false,
         modifier = Modifier.weight(1f),
       )
     }
@@ -652,6 +653,7 @@ private fun LibraryBookGrid(
   onAction: (LibraryBook) -> Unit,
   onEditSeries: (LibraryBook) -> Unit,
   modifier: Modifier = Modifier,
+  allowWebMetadataRefresh: Boolean = true,
 ) {
   LazyVerticalGrid(
     columns = GridCells.Adaptive(minSize = 112.dp),
@@ -670,6 +672,7 @@ private fun LibraryBookGrid(
         onOpenSmbBook = { onOpenSmbBook(book) },
         onAction = { onAction(book) },
         onEditSeries = { onEditSeries(book) },
+        allowWebMetadataRefresh = allowWebMetadataRefresh,
       )
     }
   }
@@ -814,11 +817,13 @@ private fun LibraryBookThumbnail(
   onOpenSmbBook: () -> Unit,
   onAction: () -> Unit,
   onEditSeries: () -> Unit,
+  allowWebMetadataRefresh: Boolean = true,
 ) {
   val uriHandler = LocalUriHandler.current
   val smbFileActions = LocalSmbBookFileActionBinding.current
   val webDeleteHandler = LocalWebLibraryDeleteHandler.current
   val webMoveToBookmarkHandler = LocalWebLibraryMoveToBookmarkHandler.current
+  val webSettingsBinding = LocalWebLibrarySettingsUiBinding.current
   var actionMenuExpanded by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var renameDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
   var deleteDialogVisible by remember(book.source, book.sourceId) { mutableStateOf(false) }
@@ -932,6 +937,16 @@ private fun LibraryBookThumbnail(
           onClick = {
             actionMenuExpanded = false
             deleteDialogVisible = true
+          },
+        )
+      }
+      if (allowWebMetadataRefresh && book.source == LibrarySource.WEB && webSettingsBinding != null) {
+        DropdownMenuItem(
+          text = { Text("metadataを再取得") },
+          enabled = !webSettingsBinding.refreshState.running,
+          onClick = {
+            actionMenuExpanded = false
+            webSettingsBinding.onRefresh(book)
           },
         )
       }
