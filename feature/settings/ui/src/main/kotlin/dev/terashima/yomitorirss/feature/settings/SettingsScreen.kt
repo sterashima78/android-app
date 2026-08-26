@@ -12,6 +12,8 @@ fun SettingsFeatureScreen(
   modifier: Modifier,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  biometricLockEnabled: Boolean,
+  onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
   onOpenChatGptDebug: () -> Unit,
   onOpenAiExecutionSettings: () -> Unit,
@@ -33,6 +35,8 @@ fun SettingsFeatureScreen(
       backgroundFetchWifiOnly = wifiOnly
       onBackgroundFetchWifiOnlyChange(wifiOnly)
     },
+    biometricLockEnabled = biometricLockEnabled,
+    onBiometricLockEnabledChange = onBiometricLockEnabledChange,
     onOpenModels = onOpenModels,
     onOpenChatGptDebug = onOpenChatGptDebug,
     onOpenAiExecutionSettings = onOpenAiExecutionSettings,

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.HorizontalDivider
@@ -31,6 +32,8 @@ fun SettingsContent(
   modifier: Modifier,
   backgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  biometricLockEnabled: Boolean,
+  onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
   onOpenChatGptDebug: () -> Unit,
   onOpenAiExecutionSettings: () -> Unit,
@@ -45,6 +48,18 @@ fun SettingsContent(
     modifier = modifier.fillMaxSize(),
     contentPadding = PaddingValues(bottom = 24.dp),
   ) {
+    item { SettingsHeader("セキュリティ") }
+    item {
+      SettingsSwitchRow(
+        icon = Icons.Default.Lock,
+        title = "生体認証ロック",
+        supporting = "アプリ起動時とバックグラウンドから戻ったときに認証を要求",
+        checked = biometricLockEnabled,
+        onCheckedChange = onBiometricLockEnabledChange,
+      )
+    }
+    item { SettingsDivider() }
+
     item { SettingsHeader("バックグラウンド取得") }
     item {
       SettingsSwitchRow(

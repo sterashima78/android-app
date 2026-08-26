@@ -29,6 +29,8 @@ internal fun SettingsRoute(
   aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  biometricLockEnabled: Boolean,
+  onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenWebServer: () -> Unit,
   onNavigate: (MainTab) -> Unit,
 ) {
@@ -62,6 +64,8 @@ internal fun SettingsRoute(
     aiTaskQueueRepository = aiTaskQueueRepository,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
+    biometricLockEnabled = biometricLockEnabled,
+    onBiometricLockEnabledChange = onBiometricLockEnabledChange,
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
       showModels = true

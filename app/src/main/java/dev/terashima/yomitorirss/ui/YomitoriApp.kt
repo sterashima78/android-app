@@ -31,6 +31,8 @@ import kotlinx.coroutines.launch
 fun YomitoriApp(
   appViewModel: AppViewModel,
   routeDependencies: AppRouteDependencies,
+  biometricLockEnabled: Boolean,
+  onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
   onExitApp: () -> Unit,
@@ -108,6 +110,8 @@ fun YomitoriApp(
         rssController = rssController,
         redditController = redditController,
         bookmarkEditController = bookmarkEditController,
+        biometricLockEnabled = biometricLockEnabled,
+        onBiometricLockEnabledChange = onBiometricLockEnabledChange,
         onOpenArticle = onOpenArticle,
         onOpenWebServer = onOpenWebServer,
         onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
