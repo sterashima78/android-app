@@ -31,6 +31,12 @@ class AppNavigationSpecTest {
   }
 
   @Test
+  fun `RSS設定タブはRSSセクションに属する`() {
+    assertEquals(AppSection.RSS, MainTab.RSS_SETTINGS.appSection())
+    assertEquals("RSS・設定", MainTab.RSS_SETTINGS.screenTitle())
+  }
+
+  @Test
   fun `Redditタブの変換は往復できる`() {
     RedditTab.entries.forEach { tab ->
       assertEquals(tab, tab.mainTab().redditTab())
@@ -106,6 +112,7 @@ class AppNavigationSpecTest {
         FeatureMessageSource.SUMMARY,
       ),
       MainTab.FEEDS to setOf(FeatureMessageSource.FEED),
+      MainTab.RSS_SETTINGS to setOf(FeatureMessageSource.FEED),
       MainTab.REDDIT_UNREAD to setOf(FeatureMessageSource.REDDIT, FeatureMessageSource.SUMMARY),
       MainTab.REDDIT_READ_LATER to setOf(FeatureMessageSource.REDDIT, FeatureMessageSource.SUMMARY),
       MainTab.REDDIT_SUBSCRIPTIONS to setOf(FeatureMessageSource.REDDIT),

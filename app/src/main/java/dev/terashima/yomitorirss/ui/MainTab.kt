@@ -9,6 +9,7 @@ enum class MainTab(val label: String) {
   REDDIT_SUBSCRIPTIONS("購読管理"),
   SAVED("ブックマーク"),
   FEEDS("フィード管理"),
+  RSS_SETTINGS("設定"),
   FOLDERS("フォルダ"),
   TAGS("タグ"),
   BOOKMARK_IMPORT("インポート"),
