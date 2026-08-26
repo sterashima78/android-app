@@ -91,5 +91,9 @@ class SettingsCompositionSourceArchitectureTest {
       "SettingsFeatureHost state must explicitly represent cross-feature overlays",
       "SettingsCrossFeatureOverlay" in source,
     )
+    assertFalse(
+      "SettingsFeatureHost must not own Android activity-result wiring",
+      "rememberLauncherForActivityResult(" in source,
+    )
   }
 }
