@@ -170,6 +170,7 @@ internal fun AppBottomBar(
                 RssTab.UNREAD -> Icons.Default.RssFeed
                 RssTab.READ_LATER -> Icons.Default.AccessTime
                 RssTab.FEEDS -> Icons.Default.Folder
+                RssTab.SETTINGS -> Icons.Default.Settings
               },
               contentDescription = tab.label,
             )
