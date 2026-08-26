@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.Mailbox
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
