@@ -63,6 +63,16 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Run ${{ matrix.name }}
         run: ${{ matrix.command }}
+      - name: Upload unit test reports
+        if: failure() && matrix.name == 'Test'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: unit-test-results
+          path: |
+            **/build/test-results/test*/TEST-*.xml
+            **/build/reports/tests/test*/
+          if-no-files-found: warn
+          retention-days: 1
 
   quality:
     if: always() && github.event_name == 'pull_request'
