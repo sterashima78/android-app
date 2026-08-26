@@ -5,7 +5,7 @@
 - Amends: [ADR-0024](0024-task-home-screen-widget.md), [ADR-0062](0062-extract-integrated-ui-from-app.md), [ADR-0063](0063-feature-ui-ownership-cleanup.md), [ADR-0116](0116-route-owned-root-viewmodel-wiring.md)
 - Refines: [ADR-0003](0003-multi-module-architecture.md), [ADR-0139](0139-app-entrypoint-and-worker-runtime-baseline.md)
 - Refined by: [ADR-0150](0150-app-shell-navigation-ui-ownership.md)
-- Amended by: [ADR-0187](0187-integrated-feature-owns-cross-feature-presentation.md)
+- Amended by: [ADR-0188](0188-integrated-feature-owns-cross-feature-presentation.md)
 
 ## Context
 
@@ -63,7 +63,7 @@ Android permission / Activity Result、cross-feature state mapping、app navigat
 
 既存の `feature/navigation` package は Gradle feature module ではなく app shell navigation state の歴史的 package であり、本 ADR 時点では名称変更による広範な churn を避けて維持した。ADR-0150 でこの暫定例外を終了し、app shell navigation state を `app/.../ui` へ移した。
 
-ADR-0187 により、この一覧のうち Integrated Route は app adapter ではなく `:feature:integrated:ui` の ownership へ移した。Integrated 固有の cross-feature state/action mapping は named feature responsibility として feature 側が所有し、`:app` は navigation / platform callback / dependency wiring のみを接続する。
+ADR-0188 により、この一覧のうち Integrated Route は app adapter ではなく `:feature:integrated:ui` の ownership へ移した。Integrated 固有の cross-feature state/action mapping は named feature responsibility として feature 側が所有し、`:app` は navigation / platform callback / dependency wiring のみを接続する。
 
 ### 4. Task widget 更新は Task mutation 成功に接続する
 
