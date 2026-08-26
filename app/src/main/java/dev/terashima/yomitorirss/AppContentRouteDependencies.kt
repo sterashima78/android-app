@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss
 
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.bookmark.MoveBookmarkToLibraryUseCase
-import dev.terashima.yomitoririss.feature.bookreader.BookPageSourceFactory
+import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
