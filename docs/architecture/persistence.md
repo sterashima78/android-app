@@ -32,6 +32,35 @@ Single physical SQLite database
 
 バックアップも現在の application schema と同じ database version の snapshot のみを復元対象とする。schema version が異なる snapshot は復元処理へ進む前に拒否する。今後 database version を上げる際に直前 version のバックアップを維持する場合は、schema migration と restore baseline を同じ変更で更新する。
 
+## Durable change notification and backup scheduling
+
+通常 runtime の durable database mutation は `DatabaseConnection.write` / `DatabaseConnection.transaction` を共通境界とする。成功した mutation が commit された後、`:core:database` の `PersistenceChangeNotifier` が durable change を通知する。失敗・rollback した mutation は通知しない。
+
+`PersistenceChangeNotifier` は backup scheduling のための persistence-level signal であり、画面や read model の再読込に使う既存 `DataChangeNotifier` とは分離する。`DataChangeNotifier` を backup trigger として流用すると、Task / Chat 等の変更が RSS 等の無関係な UI refresh に波及するため、両者の意味を混在させない。
+
+`:app` composition root が `PersistenceChangeNotifier` を1か所で購読して `BackupChangeScheduler` に接続する。通常 feature の ViewModel / Repository / mutator はバックアップ予約を直接呼ばず、Backup Context への依存を持たない。
+
+```text
+feature / worker / import
+        |
+        v
+repository / store
+        |
+        v
+DatabaseConnection.write / transaction
+        |
+        v
+PersistenceChangeNotifier
+        |
+        v
+:app composition root
+        |
+        v
+BackupChangeScheduler
+```
+
+新しい durable write はこの mutation boundary を経由する。移行中に共通 mutation API を通らない legacy write が残る場合だけ互換 bridge を限定利用し、write path を移行したら caller-specific backup scheduling を削除する。詳細は ADR-0195 を参照する。
+
 ### RSS schema
 
 RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`feeds` / `feed_folders` に加えて Web ページから synthetic feed を生成する user-defined rule を `rss_web_scraping_rules` に保存する。
@@ -141,6 +170,7 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 8. Projection が必要なら目的、参照 table、read-only 制約、integration test が明示されているか。
 9. 新しい durable table を `table-ownership.tsv` に登録したか。
 10. 現在の database / backup compatibility baseline をどこまで維持するか。
+11. durable write が `DatabaseConnection.write` / `transaction` の persistence change notification を迂回していないか。
 
 ## Sources
 
@@ -148,6 +178,7 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [`config/architecture/foreign-table-access-allowlist.tsv`](../../config/architecture/foreign-table-access-allowlist.tsv)
 - [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
 - [ADR-0098](../adr/0098-unified-user-database.md)
+- [ADR-0099](../adr/0099-database-snapshot-backup.md)
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0117](../adr/0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
@@ -159,3 +190,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
 - [ADR-0177](../adr/0177-web-library-early-custom-extraction-and-rule-timeout.md)
 - [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
+- [ADR-0195](../adr/0195-trigger-backup-from-persistence-commit-boundary.md)
