@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
+import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import java.time.Instant
 
@@ -18,15 +19,17 @@ internal fun YomitoriDatabase.findSummary(id: String): SummaryRecord? = readable
 }
 
 internal fun YomitoriDatabase.saveSummary(id: String, text: String, model: String) {
-  writableDatabase.insertWithOnConflict(
-    "article_summaries",
-    null,
-    ContentValues().apply {
-      put("article_id", id)
-      put("summary", text)
-      put("model_id", model)
-      put("created_at", Instant.now().toString())
-    },
-    SQLiteDatabase.CONFLICT_REPLACE,
-  )
+  DatabaseConnection(this).write {
+    insertWithOnConflict(
+      "article_summaries",
+      null,
+      ContentValues().apply {
+        put("article_id", id)
+        put("summary", text)
+        put("model_id", model)
+        put("created_at", Instant.now().toString())
+      },
+      SQLiteDatabase.CONFLICT_REPLACE,
+    )
+  }
 }
