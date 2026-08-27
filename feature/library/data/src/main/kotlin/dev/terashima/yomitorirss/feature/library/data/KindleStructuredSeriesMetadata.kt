@@ -51,11 +51,13 @@ internal class KindleSourceSeriesRepository(
 
   fun clear() {
     ensureSchema()
-    database.writable.delete(
-      TABLE_NAME,
-      "source = ?",
-      arrayOf(LibrarySource.KINDLE.name),
-    )
+    database.write {
+      delete(
+        TABLE_NAME,
+        "source = ?",
+        arrayOf(LibrarySource.KINDLE.name),
+      )
+    }
   }
 
   fun enrich(snapshot: LibrarySnapshot): LibrarySnapshot {
