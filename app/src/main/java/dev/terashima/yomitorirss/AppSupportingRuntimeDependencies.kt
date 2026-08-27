@@ -29,6 +29,9 @@ import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
+import dev.terashima.yomitorirss.platform.authorization.MailAuthorizationDependencies
+import dev.terashima.yomitorirss.platform.authorization.MailAuthorizationOutcome
+import dev.terashima.yomitorirss.platform.authorization.MailAuthorizedAccount
 
 /** Independent/supporting feature repositories and Android platform adapters. */
 internal class AppSupportingRuntimeDependencies(
