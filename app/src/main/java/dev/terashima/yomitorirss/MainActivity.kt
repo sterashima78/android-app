@@ -22,13 +22,15 @@ import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import dev.terashima.yomitorirss.security.AppLockContent
 import dev.terashima.yomitorirss.security.AppLockCoordinator
 import dev.terashima.yomitorirss.security.AppLockSessionViewModel
-import dev.terashima.yomitorirss.ui.AppViewModel
 import dev.terashima.yomitorirss.ui.YomitoriApp
 import dev.terashima.yomitorirss.ui.YomitoriTheme
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 class MainActivity : ComponentActivity() {
-  private val appViewModel: AppViewModel by viewModels()
   private val appLockSession: AppLockSessionViewModel by viewModels()
+  private val navigationRequests = Channel<String>(Channel.BUFFERED)
+  private val navigationRequestFlow = navigationRequests.receiveAsFlow()
   private val dependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.NONE) {
     val provider = application as? MainActivityDependenciesProvider
       ?: error("Application must implement MainActivityDependenciesProvider")
@@ -37,7 +39,7 @@ class MainActivity : ComponentActivity() {
   private val incomingIntentHandler by lazy(LazyThreadSafetyMode.NONE) {
     IncomingIntentHandler(
       activity = this,
-      appViewModel = appViewModel,
+      onNavigate = { route -> navigationRequests.trySend(route) },
       dependencies = dependencies,
     )
   }
@@ -108,8 +110,8 @@ class MainActivity : ComponentActivity() {
     var showWebServer by remember { mutableStateOf(false) }
 
     YomitoriApp(
-      appViewModel = appViewModel,
       routeDependencies = dependencies.routeDependencies,
+      navigationRequests = navigationRequestFlow,
       biometricLockEnabled = appLockCoordinator.enabled,
       onBiometricLockEnabledChange = appLockCoordinator::updateEnabled,
       onOpenArticle = ::openArticle,
