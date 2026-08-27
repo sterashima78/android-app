@@ -15,6 +15,7 @@ class BackupSchedulingArchitectureTest {
       "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkViewModel.kt",
       "feature/youtube/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/YouTubeViewModel.kt",
       "feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeViewModel.kt",
+      "feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt",
     )
 
     paths.forEach { path ->
@@ -26,13 +27,44 @@ class BackupSchedulingArchitectureTest {
 
   @Test
   fun `app route wiringはfeature mutation後のbackupをorchestrateしない`() {
-    val source = repositoryFile(
+    val paths = listOf(
       "app/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
-    ).readText()
+      "app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
+    )
 
-    assertFalse(source.contains("NotifyingWebLibraryMutator"))
-    assertFalse(source.contains("backupChangeScheduler"))
-    assertFalse(source.contains("scheduleAfterChange"))
+    paths.forEach { path ->
+      val source = repositoryFile(path).readText()
+      assertFalse("$path must not wrap feature mutations for backup", source.contains("NotifyingWebLibraryMutator"))
+      assertFalse("$path must not depend on app backup scheduler", source.contains("backupChangeScheduler"))
+      assertFalse("$path must not schedule backup explicitly", source.contains("scheduleAfterChange"))
+    }
+  }
+
+  @Test
+  fun `主要なuser owned persistence pathはraw writable mutationを使わない`() {
+    val paths = listOf(
+      "feature/rss/data/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/data/FeedStore.kt",
+      "feature/rss/data/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/data/RssWebScrapingRuleStore.kt",
+      "feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt",
+      "feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/BookmarkArticleGateway.kt",
+      "feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ContentSourceGateway.kt",
+      "feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkStateStore.kt",
+      "feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkTagStore.kt",
+      "feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkFolderStore.kt",
+      "feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkAssociationStore.kt",
+      "feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/KindleStructuredSeriesMetadata.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/AudibleStructuredSeriesMetadata.kt",
+    )
+    val rawMutation = Regex(
+      """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*)\s*\(""",
+    )
+
+    paths.forEach { path ->
+      val source = repositoryFile(path).readText()
+      assertFalse("$path must use DatabaseConnection.write/transaction for user-owned mutations", rawMutation.containsMatchIn(source))
+    }
   }
 
   @Test
