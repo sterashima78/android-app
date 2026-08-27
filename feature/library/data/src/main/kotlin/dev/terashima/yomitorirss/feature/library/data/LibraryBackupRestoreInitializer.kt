@@ -8,7 +8,7 @@ class LibraryBackupRestoreInitializer(
   private val database: DatabaseConnection,
 ) {
   fun initialize() {
-    database.transaction {
+    database.localTransaction {
       update(
         "library_items",
         ContentValues().apply { putNull("thumbnail_url") },
