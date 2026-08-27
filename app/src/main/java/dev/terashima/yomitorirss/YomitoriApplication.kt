@@ -7,6 +7,7 @@ import androidx.work.Configuration
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
+import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.data.DatabaseBackupChangeObserver
@@ -19,7 +20,7 @@ import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetRefreshObserver
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshSchedulerProvider
-import dev.terashima.yomitorirss.feature.widget.WidgetRepository
+import dev.terashima.yomitoririss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 import java.lang.ref.WeakReference
 
@@ -51,7 +52,7 @@ class YomitoriApplication : Application(),
   }
   private val databaseBackupChangeObserver: DatabaseBackupChangeObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseBackupChangeObserver(
-      dataChanges = DataChangeNotifier.shared.version,
+      dataChanges = PersistenceChangeNotifier.shared.version,
       scheduler = AndroidBackupChangeScheduler(this),
     )
   }
