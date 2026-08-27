@@ -12,6 +12,8 @@ class AppCompositionSourceArchitectureTest {
       ?: error("repository root not found")
   }
 
+  private val compositionSourceRoot = "app/composition/src/main/java/dev/terashima/yomitorirss"
+
   @Test
   fun `app feature namespaceにはproduction sourceを置かない`() {
     val featureRoot = File(
@@ -56,11 +58,56 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
+  fun `app moduleはfeature dataへ直接依存しない`() {
+    val appBuild = File(repositoryRoot, "app/build.gradle.kts").readText()
+    val directDataDependencies = Regex(
+      "implementation\\(project\\(\":feature:[^\"]+:data\"\\)\\)",
+    ).findAll(appBuild).map { it.value }.toList()
+
+    assertTrue(
+      ":app must not have direct feature data dependencies: $directDataDependencies",
+      directDataDependencies.isEmpty(),
+    )
+    assertTrue(
+      ":app must depend on the dedicated composition boundary",
+      "implementation(project(\":app:composition\"))" in appBuild,
+    )
+  }
+
+  @Test
+  fun `app production sourceはfeature data implementationをimportしない`() {
+    val appSourceRoot = File(repositoryRoot, "app/src/main/java")
+    val unexpected = appSourceRoot
+      .walkTopDown()
+      .filter { it.isFile && it.extension == "kt" }
+      .filter {
+        Regex("(?m)^import dev\\.terashima\\.yomitorirss\\.feature\\..+\\.data(?:\\.|$)")
+          .containsMatchIn(it.readText())
+      }
+      .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
+      .toList()
+
+    assertTrue(
+      ":app source must not compile against feature data implementations: $unexpected",
+      unexpected.isEmpty(),
+    )
+  }
+
+  @Test
+  fun `composition moduleがfeature data dependencyを所有する`() {
+    val settings = File(repositoryRoot, "settings.gradle.kts").readText()
+    val compositionBuild = File(repositoryRoot, "app/composition/build.gradle.kts").readText()
+
+    assertTrue(":app:composition must be a Gradle module", "include(\":app:composition\")" in settings)
+    assertTrue(
+      "composition boundary must own concrete feature data dependencies",
+      Regex("implementation\\(project\\(\":feature:[^\"]+:data\"\\)\\)").containsMatchIn(compositionBuild),
+    )
+  }
+
+  @Test
   fun `AppContainerはfeature data implementationの直接構築を持たない`() {
-    val source = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
-    ).readText()
+    val source = File(repositoryRoot, "$compositionSourceRoot/AppContainer.kt").readText()
 
     assertFalse(
       "AppContainer should delegate feature data construction to runtime dependency groups",
@@ -70,14 +117,8 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `application graphは単一HTTP transportをruntime groupへ渡す`() {
-    val container = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
-    ).readText()
-    val workerFactory = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt",
-    ).readText()
+    val container = File(repositoryRoot, "$compositionSourceRoot/AppContainer.kt").readText()
+    val workerFactory = File(repositoryRoot, "$compositionSourceRoot/AppWorkerFactory.kt").readText()
     val summaryFetchWorker = File(
       repositoryRoot,
       "feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryContentFetchWorker.kt",
@@ -100,10 +141,7 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `AppRouteDependenciesはLibrary BookReader Xのconcrete implementationを構築しない`() {
-    val source = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt",
-    ).readText()
+    val source = File(repositoryRoot, "$compositionSourceRoot/AppRouteDependencies.kt").readText()
     val forbiddenImports = Regex(
       "(?m)^import dev\\.terashima\\.yomitorirss\\.feature\\.(?:library|bookreader|x)\\.data\\.",
     )
@@ -122,10 +160,7 @@ class AppCompositionSourceArchitectureTest {
       forbiddenImports.containsMatchIn(source),
     )
     forbiddenConstructors.forEach { constructor ->
-      assertFalse(
-        "route wiring must not construct $constructor",
-        constructor in source,
-      )
+      assertFalse("route wiring must not construct $constructor", constructor in source)
     }
   }
 
@@ -153,19 +188,13 @@ class AppCompositionSourceArchitectureTest {
       )
     }
     assertTrue("feature Library route must own Web Library add action", "WebLibraryAddAction(" in featureRoute)
-    assertTrue(
-      "feature Library route must own Web Library settings state",
-      "WebLibrarySettingsUiBinding(" in featureRoute,
-    )
+    assertTrue("feature Library route must own Web Library settings state", "WebLibrarySettingsUiBinding(" in featureRoute)
     assertTrue("feature Library route must own SMB reader presentation", "SmbBookReaderRoute(" in featureRoute)
   }
 
   @Test
   fun `Integrated presentation ownershipはfeature moduleに置く`() {
-    val appUiRoot = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui",
-    )
+    val appUiRoot = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui")
     val featureRoot = File(
       repositoryRoot,
       "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui",
@@ -176,14 +205,8 @@ class AppCompositionSourceArchitectureTest {
       "IntegratedTargetDispatcher.kt",
       "IntegratedItemActions.kt",
     ).forEach { fileName ->
-      assertFalse(
-        "Integrated feature implementation must not live in app/ui: $fileName",
-        File(appUiRoot, fileName).isFile,
-      )
-      assertTrue(
-        "Integrated feature must own $fileName",
-        File(featureRoot, fileName).isFile,
-      )
+      assertFalse("Integrated feature implementation must not live in app/ui: $fileName", File(appUiRoot, fileName).isFile)
+      assertTrue("Integrated feature must own $fileName", File(featureRoot, fileName).isFile)
     }
 
     val projection = File(featureRoot, "IntegratedProjection.kt").readText()
@@ -214,10 +237,7 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `feature message effectsはnavigation capability policyを再定義しない`() {
-    val source = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
-    ).readText()
+    val source = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt").readText()
 
     assertTrue(
       "FeatureMessageEffects must consume the centralized navigation capability mapping",
@@ -246,7 +266,7 @@ class AppCompositionSourceArchitectureTest {
           .filter { it.isFile && it.extension == "kt" }
           .toList(),
       )
-      add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt"))
+      add(File(repositoryRoot, "$compositionSourceRoot/AppWorkerFactory.kt"))
       add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/MainActivityDependencies.kt"))
     }
 

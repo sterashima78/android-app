@@ -109,16 +109,6 @@
       android:permission="android.permission.BIND_REMOTEVIEWS" />
 
     <service
-      android:name="dev.terashima.yomitorirss.feature.web.data.LanWebServerService"
-      android:exported="false"
-      android:foregroundServiceType="specialUse"
-      android:stopWithTask="false">
-      <property
-        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-        android:value="同一LAN内のブラウザへRSS記事とブックマークを提供するWebサーバ" />
-    </service>
-
-    <service
       android:name="androidx.work.impl.foreground.SystemForegroundService"
       android:foregroundServiceType="specialUse|dataSync"
       tools:node="merge">

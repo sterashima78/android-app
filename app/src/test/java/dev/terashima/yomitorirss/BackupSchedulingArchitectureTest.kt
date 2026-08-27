@@ -29,8 +29,8 @@ class BackupSchedulingArchitectureTest {
   @Test
   fun `app route wiringはfeature mutation後のbackupをorchestrateしない`() {
     val paths = listOf(
-      "app/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
-      "app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
+      "app/composition/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
+      "app/composition/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
     )
 
     paths.forEach { path ->
@@ -131,17 +131,22 @@ class BackupSchedulingArchitectureTest {
   }
 
   @Test
-  fun `applicationはbackup対象の永続化変更をschedulerへbridgeする`() {
-    val source = repositoryFile(
+  fun `application compositionはbackup対象の永続化変更をschedulerへbridgeする`() {
+    val backgroundRuntime = repositoryFile(
+      "app/composition/src/main/java/dev/terashima/yomitorirss/AppBackgroundRuntime.kt",
+    ).readText()
+    val application = repositoryFile(
       "app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt",
     ).readText()
 
-    assertTrue(source.contains("PersistenceChangeNotifier.shared.version.filter { it > 0L }"))
-    assertFalse(source.contains("PersistenceChangeNotifier.shared.version.drop(1)"))
-    assertTrue(source.contains("PersistenceBackupChangeObserver"))
-    assertTrue(source.contains("BackupPreferenceChangeObserver"))
-    assertTrue(source.contains("backupPreferenceChangeObserver.start()"))
-    assertTrue(source.contains("AndroidBackupChangeScheduler"))
+    assertTrue(backgroundRuntime.contains("PersistenceChangeNotifier.shared.version.filter { it > 0L }"))
+    assertFalse(backgroundRuntime.contains("PersistenceChangeNotifier.shared.version.drop(1)"))
+    assertTrue(backgroundRuntime.contains("PersistenceBackupChangeObserver"))
+    assertTrue(backgroundRuntime.contains("BackupPreferenceChangeObserver"))
+    assertTrue(backgroundRuntime.contains("backupPreferenceChangeObserver.start()"))
+    assertTrue(backgroundRuntime.contains("AndroidBackupChangeScheduler"))
+    assertTrue(application.contains("container.startBackgroundRuntime()"))
+    assertFalse(application.contains("feature.backup.data"))
   }
 
   @Test
