@@ -57,7 +57,9 @@ class DefaultMailRepository(
 
   override suspend fun removeAccount(accountId: String) {
     syncScheduler.cancelAccount(accountId)
-    database.writable.delete("mail_accounts", "id = ?", arrayOf(accountId))
+    database.write {
+      delete("mail_accounts", "id = ?", arrayOf(accountId))
+    }
     if (getAccounts().isEmpty()) syncScheduler.cancelPeriodic()
   }
 
@@ -246,12 +248,14 @@ class DefaultMailRepository(
   }
 
   override suspend fun setThreadReadLater(accountId: String, threadId: String, readLater: Boolean) {
-    database.writable.update(
-      "mail_threads",
-      ContentValues().apply { put("read_later_locally", readLater.asInt()) },
-      "account_id = ? AND id = ?",
-      arrayOf(accountId, threadId),
-    )
+    database.write {
+      update(
+        "mail_threads",
+        ContentValues().apply { put("read_later_locally", readLater.asInt()) },
+        "account_id = ? AND id = ?",
+        arrayOf(accountId, threadId),
+      )
+    }
   }
 
   override suspend fun archiveThread(accountId: String, threadId: String) {
@@ -298,15 +302,17 @@ class DefaultMailRepository(
       addLabelIds = if (archived) emptyList() else listOf("INBOX"),
       removeLabelIds = if (archived) listOf("INBOX") else emptyList(),
     )
-    database.writable.update(
-      "mail_threads",
-      ContentValues().apply {
-        put("in_inbox", (!archived).asInt())
-        put("archived_locally", archived.asInt())
-      },
-      "account_id = ? AND id = ?",
-      arrayOf(accountId, threadId),
-    )
+    database.write {
+      update(
+        "mail_threads",
+        ContentValues().apply {
+          put("in_inbox", (!archived).asInt())
+          put("archived_locally", archived.asInt())
+        },
+        "account_id = ? AND id = ?",
+        arrayOf(accountId, threadId),
+      )
+    }
   }
 
   private suspend fun remoteSearch(
@@ -358,20 +364,22 @@ class DefaultMailRepository(
   }
 
   private fun prepareFreshInitialSync(accountId: String) {
-    database.writable.update(
-      "mail_accounts",
-      ContentValues().apply {
-        putNull("last_history_id")
-        put(SYNC_STATE_COLUMN, SYNC_STATE_SYNCING)
-        put(SYNC_PROCESSED_COLUMN, 0)
-        putNull(SYNC_ERROR_COLUMN)
-        putNull(SYNC_PAGE_TOKEN_COLUMN)
-        putNull(SYNC_START_HISTORY_COLUMN)
-        put(SYNC_GENERATION_COLUMN, UUID.randomUUID().toString())
-      },
-      "id = ?",
-      arrayOf(accountId),
-    )
+    database.write {
+      update(
+        "mail_accounts",
+        ContentValues().apply {
+          putNull("last_history_id")
+          put(SYNC_STATE_COLUMN, SYNC_STATE_SYNCING)
+          put(SYNC_PROCESSED_COLUMN, 0)
+          putNull(SYNC_ERROR_COLUMN)
+          putNull(SYNC_PAGE_TOKEN_COLUMN)
+          putNull(SYNC_START_HISTORY_COLUMN)
+          put(SYNC_GENERATION_COLUMN, UUID.randomUUID().toString())
+        },
+        "id = ?",
+        arrayOf(accountId),
+      )
+    }
   }
 
   private fun markInitialSyncRunning(accountId: String) {
@@ -379,15 +387,17 @@ class DefaultMailRepository(
   }
 
   private fun updateInitialSyncStatus(accountId: String, state: String, error: String?) {
-    database.writable.update(
-      "mail_accounts",
-      ContentValues().apply {
-        put(SYNC_STATE_COLUMN, state)
-        if (error == null) putNull(SYNC_ERROR_COLUMN) else put(SYNC_ERROR_COLUMN, error.take(500))
-      },
-      "id = ?",
-      arrayOf(accountId),
-    )
+    database.write {
+      update(
+        "mail_accounts",
+        ContentValues().apply {
+          put(SYNC_STATE_COLUMN, state)
+          if (error == null) putNull(SYNC_ERROR_COLUMN) else put(SYNC_ERROR_COLUMN, error.take(500))
+        },
+        "id = ?",
+        arrayOf(accountId),
+      )
+    }
   }
 
   private fun updateInitialSyncCheckpoint(
@@ -397,43 +407,49 @@ class DefaultMailRepository(
     pageToken: String? = null,
     updatePageToken: Boolean = false,
   ) {
-    database.writable.update(
-      "mail_accounts",
-      ContentValues().apply {
-        startHistoryId?.let { put(SYNC_START_HISTORY_COLUMN, it) }
-        generation?.let { put(SYNC_GENERATION_COLUMN, it) }
-        if (updatePageToken) {
-          if (pageToken == null) putNull(SYNC_PAGE_TOKEN_COLUMN) else put(SYNC_PAGE_TOKEN_COLUMN, pageToken)
-        }
-      },
-      "id = ?",
-      arrayOf(accountId),
-    )
+    database.write {
+      update(
+        "mail_accounts",
+        ContentValues().apply {
+          startHistoryId?.let { put(SYNC_START_HISTORY_COLUMN, it) }
+          generation?.let { put(SYNC_GENERATION_COLUMN, it) }
+          if (updatePageToken) {
+            if (pageToken == null) putNull(SYNC_PAGE_TOKEN_COLUMN) else put(SYNC_PAGE_TOKEN_COLUMN, pageToken)
+          }
+        },
+        "id = ?",
+        arrayOf(accountId),
+      )
+    }
   }
 
   private fun incrementInitialSyncProgress(accountId: String, count: Int) {
     if (count <= 0) return
-    database.writable.execSQL(
-      "UPDATE mail_accounts SET $SYNC_PROCESSED_COLUMN = $SYNC_PROCESSED_COLUMN + ? WHERE id = ?",
-      arrayOf<Any>(count, accountId),
-    )
+    database.write {
+      execSQL(
+        "UPDATE mail_accounts SET $SYNC_PROCESSED_COLUMN = $SYNC_PROCESSED_COLUMN + ? WHERE id = ?",
+        arrayOf<Any>(count, accountId),
+      )
+    }
   }
 
   private fun completeInitialSync(accountId: String, historyId: String, syncedAt: Long) {
-    database.writable.update(
-      "mail_accounts",
-      ContentValues().apply {
-        put("last_history_id", historyId)
-        put("last_synced_at", syncedAt)
-        put(SYNC_STATE_COLUMN, SYNC_STATE_IDLE)
-        putNull(SYNC_ERROR_COLUMN)
-        putNull(SYNC_PAGE_TOKEN_COLUMN)
-        putNull(SYNC_START_HISTORY_COLUMN)
-        putNull(SYNC_GENERATION_COLUMN)
-      },
-      "id = ?",
-      arrayOf(accountId),
-    )
+    database.write {
+      update(
+        "mail_accounts",
+        ContentValues().apply {
+          put("last_history_id", historyId)
+          put("last_synced_at", syncedAt)
+          put(SYNC_STATE_COLUMN, SYNC_STATE_IDLE)
+          putNull(SYNC_ERROR_COLUMN)
+          putNull(SYNC_PAGE_TOKEN_COLUMN)
+          putNull(SYNC_START_HISTORY_COLUMN)
+          putNull(SYNC_GENERATION_COLUMN)
+        },
+        "id = ?",
+        arrayOf(accountId),
+      )
+    }
   }
 
   private data class InitialSyncState(
@@ -477,39 +493,43 @@ class DefaultMailRepository(
   ).use { cursor -> if (cursor.moveToFirst()) cursor.stringOrNull(0) else null }
 
   private fun upsertAccount(account: MailAccount) {
-    database.writable.insertWithOnConflict(
-      "mail_accounts",
-      null,
-      ContentValues().apply {
-        put("id", account.id)
-        put("email", account.email)
-        put("display_name", account.displayName)
-      },
-      SQLiteDatabase.CONFLICT_IGNORE,
-    )
-    database.writable.update(
-      "mail_accounts",
-      ContentValues().apply {
-        put("email", account.email)
-        put("display_name", account.displayName)
-      },
-      "id = ?",
-      arrayOf(account.id),
-    )
+    database.transaction {
+      insertWithOnConflict(
+        "mail_accounts",
+        null,
+        ContentValues().apply {
+          put("id", account.id)
+          put("email", account.email)
+          put("display_name", account.displayName)
+        },
+        SQLiteDatabase.CONFLICT_IGNORE,
+      )
+      update(
+        "mail_accounts",
+        ContentValues().apply {
+          put("email", account.email)
+          put("display_name", account.displayName)
+        },
+        "id = ?",
+        arrayOf(account.id),
+      )
+    }
   }
 
   private fun updateSyncState(accountId: String, historyId: String, syncedAt: Long) {
-    database.writable.update(
-      "mail_accounts",
-      ContentValues().apply {
-        put("last_history_id", historyId)
-        put("last_synced_at", syncedAt)
-        put(SYNC_STATE_COLUMN, SYNC_STATE_IDLE)
-        putNull(SYNC_ERROR_COLUMN)
-      },
-      "id = ?",
-      arrayOf(accountId),
-    )
+    database.write {
+      update(
+        "mail_accounts",
+        ContentValues().apply {
+          put("last_history_id", historyId)
+          put("last_synced_at", syncedAt)
+          put(SYNC_STATE_COLUMN, SYNC_STATE_IDLE)
+          putNull(SYNC_ERROR_COLUMN)
+        },
+        "id = ?",
+        arrayOf(accountId),
+      )
+    }
   }
 
   private fun replaceLabels(accountId: String, labels: List<MailLabel>) {
