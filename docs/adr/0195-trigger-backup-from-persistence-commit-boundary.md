@@ -12,7 +12,9 @@ ADR-0099 によりアプリ独自バックアップの正本は統合 SQLite dat
 
 既存の `DataChangeNotifier` は RSS 等の画面更新を目的とした通知でもあるため、これを自動バックアップの汎用変更通知として再利用すると、Task / Chat 等の変更まで UI refresh に波及する。表示更新通知と durable persistence change は別の意味を持つ。
 
-バックアップの正本が database snapshot である以上、バックアップ予約の変更検知も「どの feature が操作したか」ではなく「durable database mutation が正常に commit されたか」に合わせる必要がある。
+さらに統合DBには、backup archiveへ含まれていても復元先で正本として扱わない transient queue / download state や、ADR-0135 の SMB `file://` 表紙参照のような端末local cache metadataも存在する。SQLiteへの全writeを機械的にバックアップ契機にすると、queue progressやcache再生成だけで15分後のbackupを繰り返し再予約してしまう。
+
+したがって境界は単なる「SQLite write」ではなく、「backup対象の durable user data が正常にcommitされたか」で定義する必要がある。
 
 ## Decision
 
@@ -26,15 +28,25 @@ mutation が正常に完了し、database への変更が commit された場合
 
 feature / Repository / Worker / import 処理は、通常の durable write をこの mutation API 経由に揃える。バックアップのためだけに各 caller が追加処理を呼ばない。
 
-### 2. `PersistenceChangeNotifier` と UI 用 `DataChangeNotifier` を分離する
+### 2. backup対象外のlocal / cache / transient stateは明示的な非通知境界を使う
 
-`PersistenceChangeNotifier` は durable database change の発生だけを表す persistence-level signal とする。
+ADR-0099 がbackup対象外として扱う transient queue、download state、device/cache-only state等には `DatabaseConnection.localWrite` / `DatabaseConnection.localTransaction` を使用できる。
+
+これらは通常のtransactionと同様にatomicにcommit / rollbackするが、local stateだけが変更された場合は `PersistenceChangeNotifier` を発火させない。
+
+ただし `localTransaction` の内部から durable `write` / `transaction` を呼んだ場合は、外側transactionを persistence changeへ昇格させる。これにより呼び出し階層の都合でdurable mutationを非通知transactionの中へ組み込んでも、バックアップ通知を隠せない。
+
+`DatabaseConnection.writable` の直接利用はschema初期化・migration等のmaintenance writeに限定する。既存の明示的なbackup対象外runtime stateは段階的に `localWrite` / `localTransaction` へ寄せる。
+
+### 3. `PersistenceChangeNotifier` と UI 用 `DataChangeNotifier` を分離する
+
+`PersistenceChangeNotifier` は backup対象の durable database change の発生だけを表す persistence-level signal とする。
 
 既存の `DataChangeNotifier` は画面や read model の再読込等、表示更新に必要な domain/application signal として維持する。バックアップ予約のために `DataChangeNotifier` を発火させたり、`DataChangeNotifier` の全イベントを永続化変更として扱ったりしない。
 
 これにより Task / Chat / Library 等の永続化が RSS 画面の不要な再読込を誘発しない。
 
-### 3. Backup scheduling の ownership は app composition root に置く
+### 4. Backup scheduling の ownership は app composition root に置く
 
 `:app` が `PersistenceChangeNotifier` を1か所で購読し、変更を `BackupChangeScheduler` に接続する。
 
@@ -44,10 +56,17 @@ feature / worker / import
         v
 repository / store
         |
-        v
-DatabaseConnection.write / transaction
+        +--> durable user data
+        |      DatabaseConnection.write / transaction
+        |                 |
+        |                 v
+        |      PersistenceChangeNotifier
         |
-        v
+        +--> backup-excluded local state
+               DatabaseConnection.localWrite / localTransaction
+                         |
+                         +-- no persistence notification
+
 PersistenceChangeNotifier
         |
         v
@@ -62,63 +81,69 @@ scheduled Google Drive backup
 
 通常 feature の ViewModel / Repository / mutator は `BackupChangeScheduler` に依存しない。Backup Context の scheduling API を通常 mutation の公開契約にしない。
 
-既存のバックアップ側 debounce / delay policy は Backup Context が引き続き所有し、persistence layer は「変更が commit された」という事実だけを通知する。
+既存のバックアップ側 debounce / delay policy は Backup Context が引き続き所有し、persistence layer は「backup対象変更がcommitされた」という事実だけを通知する。
 
-SQLite snapshot restore は row-level mutation API を通らず database file 自体を置換する特殊な durable mutation である。restore と restore 後の schema 初期化が成功した時点で Backup Context の persistence adapter が `PersistenceChangeNotifier` を明示的に通知する。restore caller から `BackupChangeScheduler` を直接呼ばない。
+SQLite snapshot restore は row-level mutation API を通らず database file 自体を置換する特殊な durable mutationである。restore後のLibrary cache / queue cleanupは `localTransaction` とし、restoreと全initializerが成功した時点で Backup Context の persistence adapter が `PersistenceChangeNotifier` を1回明示的に通知する。restore callerから `BackupChangeScheduler` を直接呼ばない。
 
-### 4. raw writable は maintenance / backup 対象外 state に限定する
+### 5. Mail / SMB / Summary の既知legacy pathを整理する
 
-本 ADR 導入時に残っていた Mail Context の account / sync checkpoint / local mail state と、Library Context の SMB server設定 / derived cover metadata は、後続の persistence 整理で `DatabaseConnection.write` / `transaction` へ移行した。通常 runtime の durable user-data mutation に既知の legacy raw writable path は残さない。
+本 ADR 導入時に残っていた Mail Context の account / sync checkpoint / local mail state と、Library Context の SMB server設定は `DatabaseConnection.write` / `transaction` へ移行する。
 
-`DatabaseConnection.writable` の直接利用を許可するのは、schema 初期化・migration 等の maintenance write、または ADR-0099 が明示的に backup 対象外とした state に限る。
+SMB表紙については ADR-0135 に従い、`library_items.thumbnail_url` に保存する `file://` URLは再生成可能な端末local cache参照として扱う。表紙生成、cache eviction、`smb_cover_prefetch_queue` の状態・progress、restore後のcache cleanupは `localWrite` / `localTransaction` または既存の非通知legacy pathを利用し、バックアップ契機にしない。SMB credentialも引き続きbackup対象外とする。
 
-具体的に SMB credential、transient queue state、download state、device/cache-only state は、バックアップ通知のためだけに共通 mutation API へ移行しない。これらの変更は `PersistenceChangeNotifier` を発火させない。
+Summary Context では `article_summaries` の要約結果は ADR-0099 が明示するdurable user dataなので `DatabaseConnection.write` を通す。一方 `summary_tasks`、prepared content、retry / progress等のqueue実行状態はtransient processing stateとしてバックアップ契機にしない。
 
 新しい durable user-data write に caller-specific backup bridge や未通知の raw writable mutation を追加してはならない。
 
-### 5. Architecture verification で feature への逆流を防ぐ
+### 6. Architecture verification で境界の逆流を防ぐ
 
 architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller-driven backup scheduling API を所有・参照しないことを検証する。
 
-また直接 database mutation を追加する場合は、persistence commit notification を迂回しないことを review / test で確認する。共通境界へ移行済みの主要pathはsource architecture testでraw writable mutationの再導入を防ぐ。
+また共通境界へ移行済みの主要durable pathはraw writable mutationへ戻らないことを検証する。backup対象外stateについては、SMB cover queue / cache / restore cleanupがdurable `transaction` を使用しないことを固定する。
+
+`article_summaries` の保存についても `YomitoriDatabase.writableDatabase` への直接mutationへ戻らないことを検証する。
 
 ## Consequences
 
 ### Positive
 
-- 新しい table や write path の追加時に feature ごとのバックアップ予約実装が不要になる。
-- foreground UI、Worker、import 等、caller の種類に依存せず database change を同じ境界で扱える。
-- rollback した transaction をバックアップ対象変更として誤通知しにくくなる。
+- 新しい durable table や write path の追加時に feature ごとのバックアップ予約実装が不要になる。
+- foreground UI、Worker、import 等、caller の種類に依存せず durable database change を同じ境界で扱える。
+- rollback したtransactionをバックアップ対象変更として誤通知しにくくなる。
+- transient queue progressやdevice-local cache更新による不要なバックアップ再予約を避けられる。
 - RSS / Bookmark / Reddit / YouTube 等の feature から Backup Context への直接依存を削除できる。
 - UI refresh の `DataChangeNotifier` と backup trigger の意味を分離できる。
-- ADR-0099 の database snapshot を正本とする方針と、変更検知の境界が一致する。
-- Mail のローカル状態や SMB server設定を含む durable user data が、feature-specific scheduling hook なしで同じ自動バックアップ契機を持つ。
+- ADR-0099 の database snapshotを正本とする方針と、変更検知の意味が一致する。
+- Mailのローカル状態、SMB server設定、article summary等のdurable user dataがfeature-specific scheduling hookなしで同じ自動バックアップ契機を持つ。
 
 ### Negative
 
-- 通常 runtime の write path は `DatabaseConnection.write` / `transaction` を経由する規律が必要になる。
-- persistence layer に durable change signal という cross-cutting mechanism が追加される。
-- SQLite 外の SharedPreferences 等のユーザー所有データは database commit だけでは変更検知できないため、それらの自動バックアップ契機は各 persistence mechanism の境界で別途扱う必要がある。
-- raw writable は完全には禁止できないため、maintenance / backup対象外 state と durable user data を review で区別する必要がある。
+- runtime write pathはdurable / localの意味を判断して適切なmutation APIを選ぶ必要がある。
+- persistence layerにdurable change signalとlocal transactionというcross-cutting mechanismが追加される。
+- SQLite外のSharedPreferences等のユーザー所有データはdatabase commitだけでは変更検知できないため、それらの自動バックアップ契機は各persistence mechanismの境界で別途扱う必要がある。
+- DB snapshot自体にはtransient tableやlocal cache参照columnも含まれ得るため、restore initializerやscope ADRを維持する必要がある。
 
 ## Verification
 
-- `DatabaseConnection.write` の成功 mutation 後に persistence change が通知されることを unit test する。
-- `DatabaseConnection.write` が失敗した場合は rollback され、通知されないことを unit test する。
-- `DatabaseConnection.transaction` の成功 commit 後に通知され、失敗 / rollback 時には通知されないことを unit test する。
+- `DatabaseConnection.write` の成功mutation後にpersistence changeが通知されることをunit testする。
+- `DatabaseConnection.write` が失敗した場合はrollbackされ、通知されないことをunit testする。
+- `DatabaseConnection.transaction` の成功commit後に通知され、失敗 / rollback時には通知されないことをunit testする。
+- `localWrite` / `localTransaction` はlocal stateだけのcommitでは通知しないことをunit testする。
+- `localTransaction` 内にdurable `write` がnestedした場合は外側commit後に1回通知することをunit testする。
 - WAL利用時も変更件数の前後値をtransaction内の同一SQLite connectionで評価する。
-- `PersistenceChangeNotifier` の通知が app composition で `BackupChangeScheduler` に接続されることを test する。
-- SQLite snapshot restore成功後も `PersistenceChangeNotifier` が通知されることを確認する。
-- `DataChangeNotifier` を backup trigger として利用しないことを確認する。
-- 通常 feature/UI が `BackupChangeScheduler` または caller-driven scheduling API に依存しないことを architecture test する。
-- RSS / Article / Bookmark / Asset / Library / Mail / Task / YouTube の移行済み direct database write が raw writable mutation へ戻らないことを architecture test する。
-- SMB credential や schema maintenance の raw writable / non-database state は backup対象外として維持する。
-- Architecture / Test / Lint / public repository verification を実行する。
+- `PersistenceChangeNotifier` の通知がapp compositionで `BackupChangeScheduler` に接続されることをtestする。
+- SQLite snapshot restore成功後も `PersistenceChangeNotifier` が通知され、restore cache cleanup単体では通知しないことを確認する。
+- `DataChangeNotifier` をbackup triggerとして利用しないことを確認する。
+- 通常 feature/UI が `BackupChangeScheduler` または caller-driven scheduling API に依存しないことをarchitecture testする。
+- RSS / Article / Bookmark / Asset / Library / Mail / Summary / Task / YouTube の移行済みdurable database writeがraw writable mutationへ戻らないことをarchitecture testする。
+- SMB credential、cover cache、cover prefetch queue、schema maintenance等はbackup対象外として維持する。
+- Architecture / Test / Lint / public repository verificationを実行する。
 
 ## References
 
 - [ADR-0098](0098-unified-user-database.md)
 - [ADR-0099](0099-database-snapshot-backup.md)
 - [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md)
+- [ADR-0135](0135-smb-cover-cache-backup-restore.md)
 - [ADR-0136](0136-public-repository-content-verification.md)
 - [Issue #329](https://github.com/sterashima78/android-app/issues/329)
