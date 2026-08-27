@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import dev.terashima.yomitorirss.diagnostics.CrashDiagnosticsContent
 import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.diagnostics.copyCrashReport
@@ -63,6 +65,9 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       YomitoriTheme {
+        // Keep the navigation owner above the app-lock branch. The lock screen can replace
+        // MainContent temporarily without discarding the current back stack or destination VMs.
+        val navController = rememberNavController()
         when {
           appLockCoordinator.enabled && !appLockCoordinator.unlocked ->
             AppLockContent(onUnlock = appLockCoordinator::requestUnlock)
@@ -75,7 +80,7 @@ class MainActivity : ComponentActivity() {
                 recreate()
               },
             )
-          else -> MainContent()
+          else -> MainContent(navController)
         }
       }
     }
@@ -106,10 +111,11 @@ class MainActivity : ComponentActivity() {
   }
 
   @Composable
-  private fun MainContent() {
+  private fun MainContent(navController: NavHostController) {
     var showWebServer by remember { mutableStateOf(false) }
 
     YomitoriApp(
+      navController = navController,
       routeDependencies = dependencies.routeDependencies,
       navigationRequests = navigationRequestFlow,
       biometricLockEnabled = appLockCoordinator.enabled,
