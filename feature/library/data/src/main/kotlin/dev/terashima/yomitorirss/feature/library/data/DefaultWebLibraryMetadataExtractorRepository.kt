@@ -79,11 +79,13 @@ class DefaultWebLibraryMetadataExtractorRepository(
 
   override fun delete(id: String) {
     ensureWebLibraryMetadataExtractorSchema(database.writable)
-    database.writable.delete(
-      "web_library_metadata_extractors",
-      "id = ?",
-      arrayOf(id),
-    )
+    database.write {
+      delete(
+        "web_library_metadata_extractors",
+        "id = ?",
+        arrayOf(id),
+      )
+    }
   }
 }
 
