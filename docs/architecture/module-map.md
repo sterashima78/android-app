@@ -31,6 +31,8 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 
 root navigation の source of truth は `NavController` / Navigation Compose back stack とする。destination identity は owning `:feature:<name>:ui` の `NavigationDestination.kt` が route contract として公開し、`:app` は route string を再定義しない。`:app` の `AppNavHost` は root `NavHost` と graph composition を所有し、実際の `composable(route)` 登録は Home / RSS / Reddit / Bookmark / その他単一 destination feature の app-owned registration へ分割する。feature module 自身は app-level `NavController` や他 feature の graph を所有しない。
 
+root `NavController` は `MainActivity.setContent` の Compose root で app-lock の conditional UI より上に保持し、`YomitoriApp` へ明示的に渡す。これにより生体認証ロック表示のため `MainContent` が一時的に composition から外れても、現在 route、back stack、destination-scoped ViewModelStore を維持する。Activity property に navigation state holder を戻すものではない。
+
 `AppSection` は drawer の presentation grouping として `:app` に残すが、旧 `MainTab` / `AppViewModel.selectedTab` / `AppFeatureContent` による manual routing は使わない。active destination ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、message / overlay / top bar host が route policy を重複して持たない。root destination の ViewModel は destination 内で取得し、active `NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
 `Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app` は source ViewModel の wiring、Mail route への遷移、Android 外部 URL 起動などの callback だけを接続する。詳細は ADR-0188 と ADR-0202 を参照する。
