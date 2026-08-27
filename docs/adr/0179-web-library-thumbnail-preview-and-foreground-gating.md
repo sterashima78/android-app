@@ -15,19 +15,23 @@ Web ページの referrer policy によっては cross-origin image request で�
 
 さらに画像配信元によっては、request 自体を HTTP error にせず、極小の代替画像などを成功 response として返す場合がある。この場合 Coil の `onSuccess` だけでは実際に表紙として表示可能か判定できない。また同じ thumbnail URL に対して header だけを変えて retry すると、header 差を cache key が表現しない場合、最初の response が再利用されて retry が実質的に行われない可能性がある。
 
+設定画面 preview でこの request policy により正常な表紙を表示できても、通常の蔵書一覧が保存済み `thumbnailUrl` を素の Coil request として取得すると、同じ Web 蔵書が設定画面では表示でき一覧では表示できない不整合が生じる。表紙表示の request policy は診断 preview 専用ではなく、Web Library の保存済み表紙を表示する共通境界として扱う必要がある。
+
 一方、一括 metadata 再取得は foreground Activity を必要とする専用 WebView を逐次利用する。Application の Activity provider は resumed Activity だけを返すため、ユーザーが処理中に一時的にアプリを background へ移すと、次の rendered metadata 取得が `WebView metadata を取得できる画面がありません` として即時 fallback し、多数の warning が発生することがあった。これはページ固有の metadata 取得失敗ではない。
 
 ## Decision
 
-### 設定画面で保存済み thumbnail を preview する
+### 保存済み Web thumbnail は共通 loader で表示する
 
 Web Library の設定画面にある各蔵書カードでは、保存済み `thumbnailUrl` がある場合に小さい表紙 preview を表示する。大量の Web 蔵書を一覧表示しても decoded image memory が過剰になりにくいよう、診断用途の固定サイズに抑える。
 
-画像ロードに失敗した場合は URL が存在することと画像取得が失敗したことを区別できるよう、preview の近くに `表紙画像を読み込めませんでした` と表示する。HTTP/decoder 上は成功しても画像の幅または高さが 1px 以下で表紙として利用できない場合は、通常の成功とは扱わず次の request candidate へ進む。最終候補でも同様なら、取得自体は成功したが表示可能な画像ではないことと寸法を表示する。metadata extractor の診断文字列は従来どおり保持する。
+通常の蔵書一覧、シリーズ一覧、シリーズ内一覧でも、Web source の保存済み thumbnail は設定画面 preview と同じ共通 loader を使う。非 Web source は従来どおり通常の Coil image request を使う。これにより metadata の保存先や `LibraryBook` model に site-specific な表示情報を追加せず、表示境界だけで Web page context を考慮する。
 
-### 設定画面の Web Library preview は段階的なブラウザ互換ヘッダーを使う
+画像ロードに失敗した場合は URL が存在することと画像取得が失敗したことを区別できるよう、診断 preview の近くに `表紙画像を読み込めませんでした` と表示する。HTTP/decoder 上は成功しても画像の幅または高さが 1px 以下で表紙として利用できない場合は、通常の成功とは扱わず次の request candidate へ進む。最終候補でも同様なら、取得自体は成功したが表示可能な画像ではないことと寸法を診断 preview に表示する。通常一覧では既存の `表紙なし` placeholder を残し、診断文字列は設定画面に限定する。
 
-設定画面で Web Library の thumbnail を Coil で取得する際は、一般的な browser image request と同様の画像向け `Accept` を付与する。Android WebView が提供する標準 User-Agent を取得できる場合は `User-Agent` request header として付与する。
+### Web Library thumbnail は段階的なブラウザ互換ヘッダーを使う
+
+Web Library の thumbnail を Coil で取得する際は、一般的な browser image request と同様の画像向け `Accept` を付与する。Android WebView が提供する標準 User-Agent を取得できる場合は `User-Agent` request header として付与する。
 
 Referer は最初の request では book の `infoUrl`、なければ `sourceId` から HTTP(S) origin だけを生成して送る。これで取得できなかった場合、または取得結果が表紙として利用できない退化画像だった場合だけ、同じ page URL から scheme、host、非標準 port、path を保持した Referer へ一度だけ広げて再試行する。
 
@@ -37,7 +41,7 @@ header candidate ごとに Coil の memory/disk cache key を分離する。同�
 
 User-Agent は特定サイトや特定ブラウザバージョンを source code に固定せず、端末の `WebSettings.getDefaultUserAgent` から取得する。画像配信元の host による分岐、サイト固有の request header、Cookie 共有、個別サイト向け fallback は追加しない。
 
-この判断では既存の通常蔵書グリッドや非 Web source の画像ロードは変更しない。native bridge や WebView profile の外部公開も行わない。設定画面の preview で確認した結果を踏まえ、通常蔵書グリッドにも同じ request policy が必要なら別途適用範囲を広げる。
+native bridge や WebView profile の外部公開は行わない。通常一覧は metadata extractor 自体を実行せず、既に保存されている `thumbnailUrl` と page URL context を用いて画像だけを取得する。
 
 ### foreground Activity がない場合は rendered metadata 取得を失敗させず待機する
 
@@ -58,6 +62,7 @@ rendered metadata client の `fetch` / `fetchWithReport` が実際に呼ばれ�
 ## Consequences
 
 - custom extractor で取得した thumbnail が実際に表示可能か設定画面から確認できる。
+- 設定画面で表示できる保存済み Web thumbnail は、通常の蔵書一覧やシリーズ表示でも同じ request policy で読み込まれる。
 - origin Referer と標準 browser headers で十分な画像配信元では、page path を追加送信しない。
 - origin Referer では正常な表紙を得られない画像配信元に対してだけ、失敗または退化画像を契機に一度の retry で互換性を高められる。
 - HTTP 200 等の成功 response で極小代替画像が返っても、それを最終的な表示成功として扱わない。
@@ -81,4 +86,5 @@ rendered metadata client の `fetch` / `fetchWithReport` が実際に呼ばれ�
 - foreground availability が false の間は待機し、true になった時点で処理を続行する unit test を継続する。
 - foreground gate client の `hasCustomExtractor` が delegate へ委譲されることを unit test する。
 - metadata 再取得設定画面で保存済み thumbnail preview、退化画像診断、画像ロード失敗表示を code review / CI で確認する。
+- 通常蔵書グリッドとシリーズ表紙が `LibraryThumbnailImage` を経由し、Web source だけ共通 browser-compatible request policy を利用することを code review / CI で確認する。
 - PR 前に public repository、architecture、test scope、documentation の独立レビューを行う。
