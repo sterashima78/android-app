@@ -38,7 +38,11 @@ Single physical SQLite database
 
 同じ SQLite database に存在していても、ADR-0099 が backup 対象外とする transient queue、download state、device/cache-only state は durable user data と同じ意味を持たない。これらは `DatabaseConnection.localWrite` / `DatabaseConnection.localTransaction` を使用し、atomic な commit / rollback を維持したまま `PersistenceChangeNotifier` を発火させない。`localTransaction` 内に durable `write` / `transaction` が nested した場合は外側 transaction を durable change に昇格させ、通知の取りこぼしを防ぐ。
 
+SQLite transaction は `DatabaseConnection` instance ではなく thread / SQLite connection 側の状態なので、同じ physical database を複数の `DatabaseConnection` wrapper が利用しても active transaction scope を共有する。別 wrapper からの durable write も local transaction の外側 commit を昇格させる。
+
 `DatabaseConnection.writable` の直接利用は schema 初期化・migration 等の maintenance write に限定する。runtime mutation で raw writable を「通知しない抜け道」として使わない。
+
+ADR-0099 が backup archive に含める SharedPreferences は `BackupPreferences.BACKUP_RULES` を単一 allowlist とする。Backup Context の `BackupPreferenceChangeObserver` が同じ rule を変更検知にも利用し、対象 file / key の変更を `PersistenceChangeNotifier` へ合流させる。allowlist 外の credential、device state、model revision 等は通知しない。restore 中は preference listener を抑制し、restore 全体が成功した後の明示的な persistence change だけを利用する。
 
 `PersistenceChangeNotifier` は backup scheduling のための persistence-level signal であり、画面や read model の再読込に使う既存 `DataChangeNotifier` とは分離する。`DataChangeNotifier` を backup trigger として流用すると、Task / Chat 等の変更が RSS 等の無関係な UI refresh に波及するため、両者の意味を混在させない。
 
@@ -50,16 +54,22 @@ feature / worker / import
         v
 repository / store
         |
-        +--> backup対象 durable user data
+        +--> backup対象 durable DB data
         |      DatabaseConnection.write / transaction
         |                 |
         |                 v
         |      PersistenceChangeNotifier
         |
         +--> backup対象外 local/cache/transient state
-               DatabaseConnection.localWrite / localTransaction
+        |      DatabaseConnection.localWrite / localTransaction
+        |                 |
+        |                 +-- no persistence notification
+        |
+        +--> ADR-0099 backed-up SharedPreferences
+               BackupPreferenceChangeObserver
                          |
-                         +-- no persistence notification
+                         v
+              PersistenceChangeNotifier
 
 PersistenceChangeNotifier
         |
@@ -67,10 +77,13 @@ PersistenceChangeNotifier
 :app composition root
         |
         v
+PersistenceBackupChangeObserver
+        |
+        v
 BackupChangeScheduler
 ```
 
-新しい durable write は `write` / `transaction` を経由し、backup 対象外 state はその根拠を ADR / architecture rule で確認したうえで `localWrite` / `localTransaction` を使用する。詳細は ADR-0195 を参照する。
+新しい durable DB write は `write` / `transaction` を経由し、backup 対象外 state はその根拠を ADR / architecture rule で確認したうえで `localWrite` / `localTransaction` を使用する。新しい SharedPreferences を backup 対象へ追加する場合は `BackupPreferences.BACKUP_RULES` を更新し、archive scope と変更検知 scope を同時に変更する。詳細は ADR-0195 を参照する。
 
 ### RSS schema
 
@@ -184,6 +197,7 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 11. durable write が `DatabaseConnection.write` / `transaction` の persistence change notification を迂回していないか。
 12. backup 対象外 state を `localWrite` / `localTransaction` にする場合、その除外根拠が ADR-0099 等で明示されているか。
 13. runtime mutation が `DatabaseConnection.writable` を通知回避のために直接使用していないか。
+14. SharedPreferences を backup 対象へ追加する場合、`BackupPreferences.BACKUP_RULES` に追加してarchive scopeと変更検知scopeを一致させたか。
 
 ## Sources
 
