@@ -66,18 +66,15 @@ scheduled Google Drive backup
 
 SQLite snapshot restore は row-level mutation API を通らず database file 自体を置換する特殊な durable mutation である。restore と restore 後の schema 初期化が成功した時点で Backup Context の persistence adapter が `PersistenceChangeNotifier` を明示的に通知する。restore caller から `BackupChangeScheduler` を直接呼ばない。
 
-### 4. 移行中の legacy write path は明示的に縮退させる
+### 4. raw writable は maintenance / backup 対象外 state に限定する
 
-共通 mutation API を通らない既存 write path が残る期間は、取りこぼし防止の互換 bridge を限定的に利用できる。ただし恒久的な二重通知モデルにはせず、対象 write を `DatabaseConnection.write` / `transaction` へ移した時点で caller-specific backup scheduling を削除する。
+本 ADR 導入時に残っていた Mail Context の account / sync checkpoint / local mail state と、Library Context の SMB server設定 / derived cover metadata は、後続の persistence 整理で `DatabaseConnection.write` / `transaction` へ移行した。通常 runtime の durable user-data mutation に既知の legacy raw writable path は残さない。
 
-本ADR導入時点で、主要なRSS / Article / Bookmark / Asset / Library / Task / YouTubeの対象writeは共通mutation APIへ移行する。一方、次の既存pathには未移行のraw writable mutationが残るため、後続のpersistence整理対象とする。
+`DatabaseConnection.writable` の直接利用を許可するのは、schema 初期化・migration 等の maintenance write、または ADR-0099 が明示的に backup 対象外とした state に限る。
 
-- Mail Context: account / sync checkpoint と `read_later_locally` / `archived_locally` 等のメールローカル状態。
-- Library Context の SMB adapter: SMB server設定と一部のderived cover metadata。
+具体的に SMB credential、transient queue state、download state、device/cache-only state は、バックアップ通知のためだけに共通 mutation API へ移行しない。これらの変更は `PersistenceChangeNotifier` を発火させない。
 
-ADR-0099でbackup対象外としたSMB credential、transient queue state、download state等は、バックアップ通知のためだけに共通mutation APIへ移行する対象とはしない。schema初期化・migration等のmaintenance writeもraw writableを利用できる。
-
-新しい durable write に legacy bridge や未通知のraw writable mutationを追加してはならない。
+新しい durable user-data write に caller-specific backup bridge や未通知の raw writable mutation を追加してはならない。
 
 ### 5. Architecture verification で feature への逆流を防ぐ
 
@@ -95,13 +92,14 @@ architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller
 - RSS / Bookmark / Reddit / YouTube 等の feature から Backup Context への直接依存を削除できる。
 - UI refresh の `DataChangeNotifier` と backup trigger の意味を分離できる。
 - ADR-0099 の database snapshot を正本とする方針と、変更検知の境界が一致する。
+- Mail のローカル状態や SMB server設定を含む durable user data が、feature-specific scheduling hook なしで同じ自動バックアップ契機を持つ。
 
 ### Negative
 
 - 通常 runtime の write path は `DatabaseConnection.write` / `transaction` を経由する規律が必要になる。
 - persistence layer に durable change signal という cross-cutting mechanism が追加される。
 - SQLite 外の SharedPreferences 等のユーザー所有データは database commit だけでは変更検知できないため、それらの自動バックアップ契機は各 persistence mechanism の境界で別途扱う必要がある。
-- 移行期間中は legacy write path が残り得るため、既知の未移行箇所を明示して段階的に縮退させる必要がある。
+- raw writable は完全には禁止できないため、maintenance / backup対象外 state と durable user data を review で区別する必要がある。
 
 ## Verification
 
@@ -113,7 +111,8 @@ architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller
 - SQLite snapshot restore成功後も `PersistenceChangeNotifier` が通知されることを確認する。
 - `DataChangeNotifier` を backup trigger として利用しないことを確認する。
 - 通常 feature/UI が `BackupChangeScheduler` または caller-driven scheduling API に依存しないことを architecture test する。
-- 共通境界へ移行した主要な direct database write がraw writable mutationへ戻らないことをarchitecture testする。
+- RSS / Article / Bookmark / Asset / Library / Mail / Task / YouTube の移行済み direct database write が raw writable mutation へ戻らないことを architecture test する。
+- SMB credential や schema maintenance の raw writable / non-database state は backup対象外として維持する。
 - Architecture / Test / Lint / public repository verification を実行する。
 
 ## References
@@ -122,3 +121,4 @@ architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller
 - [ADR-0099](0099-database-snapshot-backup.md)
 - [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0136](0136-public-repository-content-verification.md)
+- [Issue #329](https://github.com/sterashima78/android-app/issues/329)
