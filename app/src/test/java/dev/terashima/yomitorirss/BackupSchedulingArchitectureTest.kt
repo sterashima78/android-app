@@ -70,7 +70,7 @@ class BackupSchedulingArchitectureTest {
 
     paths.forEach { path ->
       val source = repositoryFile(path).readText()
-      assertFalse("$path must use DatabaseConnection.write/transaction for user-owned mutations", rawMutation.containsMatchIn(source))
+      assertFalse("$path must use an explicit DatabaseConnection mutation boundary", rawMutation.containsMatchIn(source))
     }
   }
 
@@ -91,16 +91,43 @@ class BackupSchedulingArchitectureTest {
 
     assertEquals(1, Regex("""database\.writable""").findAll(source).count())
     assertTrue(source.contains("ensureLibrarySchema(database.writable)"))
+    assertTrue(source.contains("database.localWrite"))
   }
 
   @Test
-  fun `SMB cover metadataはraw writableを使わない`() {
+  fun `SMB cover metadataはlocal persistenceとして扱う`() {
     val source = repositoryFile(
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchProcessor.kt",
     ).readText()
 
     assertFalse(source.contains("database.writable"))
-    assertTrue(source.contains("database.write"))
+    assertFalse(source.contains("database.write"))
+    assertTrue(source.contains("database.localWrite"))
+  }
+
+  @Test
+  fun `SMB cover queueとrestore cleanupはbackup変更を通知しない`() {
+    val queueSource = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchWorker.kt",
+    ).readText()
+    val restoreSource = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/LibraryBackupRestoreInitializer.kt",
+    ).readText()
+
+    assertFalse(queueSource.contains("database.transaction"))
+    assertTrue(queueSource.contains("database.localTransaction"))
+    assertFalse(restoreSource.contains("database.transaction"))
+    assertTrue(restoreSource.contains("database.localTransaction"))
+  }
+
+  @Test
+  fun `article summaryのdurable保存はpersistence boundaryを通る`() {
+    val source = repositoryFile(
+      "feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryStore.kt",
+    ).readText()
+
+    assertTrue(source.contains("DatabaseConnection(this).write"))
+    assertFalse(source.contains("writableDatabase.insert"))
   }
 
   @Test
