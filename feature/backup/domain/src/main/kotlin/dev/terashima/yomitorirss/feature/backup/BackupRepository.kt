@@ -8,7 +8,6 @@ sealed interface ConfigureGoogleDriveResult {
 interface BackupRepository {
   fun status(): GoogleDriveBackupStatus
   fun ensureScheduled()
-  fun scheduleAfterChange()
   suspend fun exportTo(documentUri: String)
   suspend fun restoreFrom(documentUri: String)
   suspend fun configureGoogleDrive(folderUri: String): ConfigureGoogleDriveResult

@@ -95,11 +95,13 @@ internal class BookmarkAssociationStore(
   }
 
   fun removeReadLater(articleId: String) {
-    database.writable.delete(
-      "article_folders",
-      "article_id=? AND folder_id=?",
-      arrayOf(articleId, READ_LATER_FOLDER_ID),
-    )
+    database.write {
+      delete(
+        "article_folders",
+        "article_id=? AND folder_id=?",
+        arrayOf(articleId, READ_LATER_FOLDER_ID),
+      )
+    }
   }
 
   fun addImportedTags(articleId: String, tagNames: List<String>) {

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.ContentType
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +29,6 @@ data class RssUiState(
 class RssViewModel(
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
-  private val backupChangeScheduler: BackupChangeScheduler,
   private val articleSelector: (Article) -> Boolean = { true },
 ) : ViewModel() {
   private val _state = MutableStateFlow(RssUiState())
@@ -58,49 +56,40 @@ class RssViewModel(
     viewModelScope.launch(Dispatchers.IO) { reload() }
   }
 
-  fun markRead(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
-  ) {
+  fun markRead(article: Article) = performArticleAction(article) {
     articleRepository.markArticleRead(article.id)
   }
 
-  fun markUnread(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
-  ) {
+  fun markUnread(article: Article) = performArticleAction(article) {
     articleRepository.markArticleUnread(article.id)
   }
 
-  fun saveAndRead(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
+  fun saveAndRead(article: Article) = performArticleAction(article) {
     bookmarkRepository.saveAndReadArticle(article.id)
   }
 
-  fun readLater(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
+  fun readLater(article: Article) = performArticleAction(article) {
     bookmarkRepository.markReadLater(article.id)
   }
 
-  fun unsave(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
+  fun unsave(article: Article) = performArticleAction(article) {
     bookmarkRepository.unsaveArticle(article.id)
   }
 
-  fun removeReadLater(article: Article) = performArticleAction(article, shouldScheduleBackup = { true }) {
+  fun removeReadLater(article: Article) = performArticleAction(article) {
     bookmarkRepository.removeReadLater(article.id)
   }
 
   fun setArticleContentType(article: Article, contentType: ContentType?) {
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching {
-        val shouldScheduleBackup = bookmarkRepository.isBookmarked(article.id)
-        articleRepository.setArticleContentType(article.id, contentType)
-        shouldScheduleBackup
-      }.onSuccess { shouldScheduleBackup ->
-        reload()
-        if (shouldScheduleBackup) backupChangeScheduler.scheduleAfterChange()
-        _state.update { it.copy(message = "コンテンツ種別を変更しました") }
-      }.onFailure { error ->
-        _state.update { it.copy(message = "コンテンツ種別を変更できませんでした: ${error.userMessage()}") }
-      }
+      runCatching { articleRepository.setArticleContentType(article.id, contentType) }
+        .onSuccess {
+          reload()
+          _state.update { it.copy(message = "コンテンツ種別を変更しました") }
+        }
+        .onFailure { error ->
+          _state.update { it.copy(message = "コンテンツ種別を変更できませんでした: ${error.userMessage()}") }
+        }
     }
   }
 
@@ -110,15 +99,9 @@ class RssViewModel(
     _state.update { it.copy(unread = emptyList()) }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
-        var scheduleBackup = false
-        visible.forEach { article ->
-          if (!scheduleBackup && bookmarkRepository.isBookmarked(article.id)) scheduleBackup = true
-          articleRepository.markArticleRead(article.id)
-        }
-        scheduleBackup
-      }.onSuccess { scheduleBackup ->
+        visible.forEach { article -> articleRepository.markArticleRead(article.id) }
+      }.onSuccess {
         reload()
-        if (scheduleBackup) backupChangeScheduler.scheduleAfterChange()
         _state.update { it.copy(message = "${visible.size}件を既読にしました") }
       }.onFailure { error ->
         reload()
@@ -129,27 +112,23 @@ class RssViewModel(
 
   private fun performArticleAction(
     article: Article,
-    shouldScheduleBackup: suspend () -> Boolean,
     action: suspend () -> Unit,
   ) {
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching {
-        val scheduleBackup = shouldScheduleBackup()
-        action()
-        scheduleBackup
-      }.onSuccess { scheduleBackup ->
-        reload()
-        if (scheduleBackup) backupChangeScheduler.scheduleAfterChange()
-        _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
-      }.onFailure { error ->
-        _state.update {
-          it.copy(
-            hiddenArticleIds = it.hiddenArticleIds - article.id,
-            message = "操作を反映できなかったため元に戻しました: ${error.userMessage()}",
-          )
+      runCatching { action() }
+        .onSuccess {
+          reload()
+          _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
         }
-      }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              hiddenArticleIds = it.hiddenArticleIds - article.id,
+              message = "操作を反映できなかったため元に戻しました: ${error.userMessage()}",
+            )
+          }
+        }
     }
   }
 
@@ -179,7 +158,6 @@ class RssViewModel(
   class Factory(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
-    private val backupChangeScheduler: BackupChangeScheduler,
     private val articleSelector: (Article) -> Boolean = { true },
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -187,7 +165,7 @@ class RssViewModel(
         "Unknown ViewModel class: ${modelClass.name}"
       }
       @Suppress("UNCHECKED_CAST")
-      return RssViewModel(articleRepository, bookmarkRepository, backupChangeScheduler, articleSelector) as T
+      return RssViewModel(articleRepository, bookmarkRepository, articleSelector) as T
     }
   }
 }

@@ -63,12 +63,14 @@ class DefaultContentSourceGateway(
   }
 
   override fun renameSourceContent(sourceId: String, sourceTitle: String) {
-    database.writable.update(
-      "articles",
-      values("source_title" to sourceTitle),
-      "feed_id=?",
-      arrayOf(sourceId),
-    )
+    database.write {
+      update(
+        "articles",
+        values("source_title" to sourceTitle),
+        "feed_id=?",
+        arrayOf(sourceId),
+      )
+    }
   }
 
   override fun detachSourceContent(sourceId: String, inheritedContentType: ContentType?) {

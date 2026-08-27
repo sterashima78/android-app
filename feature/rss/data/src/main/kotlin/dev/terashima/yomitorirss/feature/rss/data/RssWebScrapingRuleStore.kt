@@ -75,7 +75,7 @@ internal class RssWebScrapingRuleStore(
 
   fun delete(id: String) {
     ensureRssWebScrapingRuleSchema(database.writable)
-    database.writable.delete("rss_web_scraping_rules", "id = ?", arrayOf(id))
+    database.write { delete("rss_web_scraping_rules", "id = ?", arrayOf(id)) }
   }
 }
 

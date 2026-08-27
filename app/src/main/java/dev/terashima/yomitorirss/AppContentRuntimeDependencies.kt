@@ -11,8 +11,6 @@ import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultContentSourceGateway
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
-import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkContentQuery
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
@@ -145,15 +143,8 @@ internal class AppContentRuntimeDependencies(
     RefreshFeedsUseCase(feedRepository)
   }
 
-  val backupChangeScheduler: BackupChangeScheduler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AndroidBackupChangeScheduler(application)
-  }
-
   val saveSharedBookmarkUseCase: SaveSharedBookmarkUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    SaveSharedBookmarkUseCase(
-      saver = bookmarkRepository,
-      onBookmarkChanged = backupChangeScheduler::scheduleAfterChange,
-    )
+    SaveSharedBookmarkUseCase(saver = bookmarkRepository)
   }
 
   val widgetRepository: WidgetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -161,7 +152,6 @@ internal class AppContentRuntimeDependencies(
       articleRepository = articleRepository,
       feedRepository = feedRepository,
       bookmarkRepository = bookmarkRepository,
-      backupChangeScheduler = backupChangeScheduler,
       sourceSelector = RedditSourceBoundary::isNonRedditFeed,
     )
   }

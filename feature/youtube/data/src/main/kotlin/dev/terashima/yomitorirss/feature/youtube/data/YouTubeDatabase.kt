@@ -123,7 +123,7 @@ internal class YouTubeDatabase(
   }
 
   fun deleteChannel(channelId: String) {
-    database.writable.delete("channels", "channel_id = ?", arrayOf(channelId))
+    database.write { delete("channels", "channel_id = ?", arrayOf(channelId)) }
   }
 
   fun markRead(videoId: String) {
@@ -131,7 +131,7 @@ internal class YouTubeDatabase(
       put("is_read", 1)
       put("is_watch_later", 0)
     }
-    database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
+    database.write { update("videos", values, "video_id = ?", arrayOf(videoId)) }
   }
 
   fun markUnread(videoId: String) {
@@ -139,7 +139,7 @@ internal class YouTubeDatabase(
       put("is_read", 0)
       put("is_watch_later", 0)
     }
-    database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
+    database.write { update("videos", values, "video_id = ?", arrayOf(videoId)) }
   }
 
   fun setWatchLater(videoId: String, watchLater: Boolean) {
@@ -147,11 +147,11 @@ internal class YouTubeDatabase(
       put("is_watch_later", if (watchLater) 1 else 0)
       if (watchLater) put("is_read", 0)
     }
-    database.writable.update("videos", values, "video_id = ?", arrayOf(videoId))
+    database.write { update("videos", values, "video_id = ?", arrayOf(videoId)) }
   }
 
   fun markAllRead() {
     val values = ContentValues().apply { put("is_read", 1) }
-    database.writable.update("videos", values, "is_read = 0 AND is_watch_later = 0", null)
+    database.write { update("videos", values, "is_read = 0 AND is_watch_later = 0", null) }
   }
 }

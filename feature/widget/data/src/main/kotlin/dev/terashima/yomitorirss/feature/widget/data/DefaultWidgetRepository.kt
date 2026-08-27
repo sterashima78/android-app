@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.feature.widget.data
 
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetArticle
@@ -12,7 +11,6 @@ class DefaultWidgetRepository(
   private val articleRepository: ArticleRepository,
   private val feedRepository: FeedRepository,
   private val bookmarkRepository: BookmarkRepository,
-  private val backupChangeScheduler: BackupChangeScheduler,
   private val sourceSelector: (String) -> Boolean = { true },
 ) : WidgetRepository {
   override fun listUnreadArticles(): List<WidgetArticle> = runBlocking {
@@ -31,14 +29,11 @@ class DefaultWidgetRepository(
     .toList()
 
   override suspend fun markRead(articleId: String) {
-    val saved = bookmarkRepository.isBookmarked(articleId)
     articleRepository.markArticleRead(articleId)
-    if (saved) backupChangeScheduler.scheduleAfterChange()
   }
 
   override suspend fun markReadLater(articleId: String) {
     bookmarkRepository.markReadLater(articleId)
-    backupChangeScheduler.scheduleAfterChange()
   }
 
   override suspend fun refreshFeeds() {

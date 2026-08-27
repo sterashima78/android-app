@@ -76,7 +76,7 @@ class DefaultArticleRepository(
   }
 
   override suspend fun markAllUnreadAsRead(): Int {
-    val count = database.writable.update("articles", values("read_at" to nowIso()), "read_at IS NULL", null)
+    val count = database.write { update("articles", values("read_at" to nowIso()), "read_at IS NULL", null) }
     if (count > 0) dataChanges.notifyChanged()
     return count
   }
@@ -87,7 +87,7 @@ class DefaultArticleRepository(
   }
 
   private fun updateArticle(id: String, column: String, value: String?) {
-    database.writable.update("articles", values(column to value), "id=?", arrayOf(id))
+    database.write { update("articles", values(column to value), "id=?", arrayOf(id)) }
   }
 
   private suspend fun articles(sql: String, args: Array<String> = emptyArray()): List<Article> {

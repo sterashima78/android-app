@@ -125,12 +125,14 @@ class DefaultAssetRepository(
   override suspend fun addCategory(category: String) {
     val value = category.trim()
     require(value.isNotBlank()) { "カテゴリ名を入力してください" }
-    val inserted = database.writable.insertWithOnConflict(
-      "asset_category_definitions",
-      null,
-      ContentValues().apply { put("category", value) },
-      SQLiteDatabase.CONFLICT_IGNORE,
-    )
+    val inserted = database.write {
+      insertWithOnConflict(
+        "asset_category_definitions",
+        null,
+        ContentValues().apply { put("category", value) },
+        SQLiteDatabase.CONFLICT_IGNORE,
+      )
+    }
     require(inserted != -1L) { "同じカテゴリが既に登録されています" }
   }
 

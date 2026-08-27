@@ -22,7 +22,6 @@ android {
 }
 
 dependencies {
-  implementation(project(":feature:backup:domain"))
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:ui"))

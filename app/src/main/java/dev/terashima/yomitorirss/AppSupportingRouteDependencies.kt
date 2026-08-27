@@ -49,10 +49,7 @@ internal class AppSupportingRouteDependencies(
   }
 
   val assetViewModelFactory: AssetViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    AssetViewModel.Factory(
-      repository = container.assetRepository,
-      onChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
+    AssetViewModel.Factory(container.assetRepository)
   }
 
   val health: HealthRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

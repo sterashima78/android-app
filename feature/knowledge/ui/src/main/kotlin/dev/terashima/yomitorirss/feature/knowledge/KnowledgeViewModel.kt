@@ -34,7 +34,6 @@ class KnowledgeViewModel(
   private val builder: KnowledgeBuilder,
   private val creator: KnowledgePageCreator,
   private val editor: KnowledgePageEditor,
-  private val scheduleBackupAfterChange: () -> Unit = {},
   private val scheduleRebuild: (() -> Unit)? = null,
 ) : ViewModel() {
   private val _state = MutableStateFlow(KnowledgeUiState())
@@ -128,7 +127,6 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { creator.createPage(request, current.composerSourcePageId) }
         .onSuccess { page ->
-          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -168,7 +166,6 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { editor.editPage(page.id, instruction) }
         .onSuccess { updatedPage ->
-          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -205,7 +202,6 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { repository.deletePage(page.id) }
         .onSuccess {
-          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -246,7 +242,6 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { repository.splitPage(page.id, heading) }
         .onSuccess { updatedPage ->
-          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -301,7 +296,6 @@ class KnowledgeViewModel(
     viewModelScope.launch {
       runCatching { repository.mergePages(primary.id, secondaryId) }
         .onSuccess { mergedPage ->
-          runCatching(scheduleBackupAfterChange)
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
@@ -410,7 +404,6 @@ class KnowledgeViewModel(
     private val builder: KnowledgeBuilder,
     private val creator: KnowledgePageCreator,
     private val editor: KnowledgePageEditor,
-    private val scheduleBackupAfterChange: () -> Unit = {},
     private val scheduleRebuild: (() -> Unit)? = null,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -421,7 +414,6 @@ class KnowledgeViewModel(
         builder = builder,
         creator = creator,
         editor = editor,
-        scheduleBackupAfterChange = scheduleBackupAfterChange,
         scheduleRebuild = scheduleRebuild,
       ) as T
     }

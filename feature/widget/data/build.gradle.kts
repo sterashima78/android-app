@@ -22,7 +22,6 @@ dependencies {
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:rss:domain"))
   implementation(project(":feature:bookmark:domain"))
-  implementation(project(":feature:backup:domain"))
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 }

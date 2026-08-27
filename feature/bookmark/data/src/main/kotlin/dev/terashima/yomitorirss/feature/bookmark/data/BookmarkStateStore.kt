@@ -23,16 +23,19 @@ internal class BookmarkStateStore(
     }
 
   fun save(articleId: String, savedAt: String = Instant.now().toString()): Boolean =
-    database.writable.insertWithOnConflict(
-      "bookmarks",
-      null,
-      ContentValues().apply {
-        put("article_id", articleId)
-        put("saved_at", savedAt)
-      },
-      SQLiteDatabase.CONFLICT_IGNORE,
-    ) != -1L
+    database.write {
+      insertWithOnConflict(
+        "bookmarks",
+        null,
+        ContentValues().apply {
+          put("article_id", articleId)
+          put("saved_at", savedAt)
+        },
+        SQLiteDatabase.CONFLICT_IGNORE,
+      ) != -1L
+    }
 
-  fun unsave(articleId: String): Boolean =
-    database.writable.delete("bookmarks", "article_id=?", arrayOf(articleId)) > 0
+  fun unsave(articleId: String): Boolean = database.write {
+    delete("bookmarks", "article_id=?", arrayOf(articleId)) > 0
+  }
 }
