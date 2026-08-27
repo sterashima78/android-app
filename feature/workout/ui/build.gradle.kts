@@ -22,6 +22,7 @@ android {
 }
 
 dependencies {
+  implementation(project(":core:designsystem"))
   implementation(project(":feature:workout:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))

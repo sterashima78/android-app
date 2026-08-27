@@ -15,6 +15,7 @@ enum class WorkoutAiRequestType {
 data class WorkoutAiSettings(
   val provider: WorkoutAiProvider = WorkoutAiProvider.LOCAL,
   val workoutPolicy: String = "",
+  // Legacy persisted value. Menu candidates are now derived from WorkoutSnapshot.exercises.
   val menuCandidates: String = "",
 )
 
@@ -44,7 +45,12 @@ object WorkoutAiPromptBuilder {
     val recentHistory = snapshot.history
       .filter { history -> history.date.toLocalDateOrNull()?.let { !it.isBefore(since) && !it.isAfter(today) } == true }
       .sortedBy { it.date }
-    val todaySets = snapshot.today.takeIf { it.date == today.toString() }?.sets.orEmpty()
+    val todayDate = today.toString()
+    val pastHistory = recentHistory.filterNot { it.date == todayDate }
+    val todaySets = buildList {
+      recentHistory.filter { it.date == todayDate }.forEach { addAll(it.sets) }
+      if (snapshot.today.date == todayDate) addAll(snapshot.today.sets)
+    }.distinctBy { it.id }
 
     return buildString {
       appendLine("あなたは筋力トレーニングの記録を読み、実行可能な提案を返すアシスタントです。")
@@ -54,20 +60,26 @@ object WorkoutAiPromptBuilder {
       appendLine("## ワークアウト方針")
       appendLine(settings.workoutPolicy.ifBlank { "未設定" })
       appendLine()
-      appendLine("## メニュー候補")
-      appendLine(settings.menuCandidates.ifBlank { snapshot.exercises.joinToString("\n") { "- ${it.name}: 目標 ${it.targetSets}セット" } })
+      appendLine("## 設定済みトレーニングメニュー")
+      if (snapshot.exercises.isEmpty()) {
+        appendLine("未設定")
+      } else {
+        snapshot.exercises.forEach { exercise ->
+          appendLine("- ${exercise.name}: 目標 ${exercise.targetSets}セット / 単位 ${exercise.unit.label}")
+        }
+      }
       appendLine()
-      appendLine("## 直近14日間の記録")
-      if (recentHistory.isEmpty()) {
+      appendLine("## 直近14日間の過去記録")
+      if (pastHistory.isEmpty()) {
         appendLine("履歴なし")
       } else {
-        recentHistory.forEach { history ->
+        pastHistory.forEach { history ->
           appendHistory(history, memos[history.date])
         }
       }
       appendLine()
-      appendLine("## 今日 ${today}")
-      appendLine("ワークアウトメモ: ${memos[today.toString()].orEmpty().ifBlank { "なし" }}")
+      appendLine("## 今日 $today")
+      appendLine("ワークアウトメモ: ${memos[todayDate].orEmpty().ifBlank { "なし" }}")
       if (todaySets.isEmpty()) {
         appendLine("記録済みセット: なし")
       } else {
@@ -79,7 +91,7 @@ object WorkoutAiPromptBuilder {
         WorkoutAiRequestType.MENU_SUGGESTION -> {
           appendLine("## 依頼")
           appendLine("今日行うメニューを提案してください。種目ごとにセット数と1セットあたりの回数または秒数を明示してください。")
-          appendLine("直近14日間の実績、今日のメモ、ワークアウト方針、メニュー候補を優先して調整してください。")
+          appendLine("直近14日間の実績、今日のメモ、ワークアウト方針、設定済みトレーニングメニューを優先して調整してください。")
           appendLine("最後に提案理由を短く記載してください。")
         }
         WorkoutAiRequestType.POST_WORKOUT_REVIEW -> {
