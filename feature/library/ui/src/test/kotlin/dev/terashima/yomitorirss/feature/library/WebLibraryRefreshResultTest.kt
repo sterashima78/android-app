@@ -91,6 +91,16 @@ class WebLibraryRefreshResultTest {
   }
 
   @Test
+  fun `一覧用の再取得statusは簡潔なラベルへ変換する`() {
+    assertEquals("待機中", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.PENDING))
+    assertEquals("取得中", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.RUNNING))
+    assertEquals("更新あり", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.UPDATED))
+    assertEquals("変更なし", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.UNCHANGED))
+    assertEquals("要確認", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.WARNING))
+    assertEquals("失敗", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.FAILED))
+  }
+
+  @Test
   fun `直近結果は折りたたみ時に先頭10件を表示する`() {
     val items = refreshItems(12)
 
