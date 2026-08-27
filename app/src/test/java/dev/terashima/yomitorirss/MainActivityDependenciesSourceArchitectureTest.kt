@@ -29,11 +29,11 @@ class MainActivityDependenciesSourceArchitectureTest {
     )
     assertTrue(
       "MainActivityDependencies must receive a narrow shared-library capability",
-      "private val addSharedWebBook: suspend" in dependencies,
+      "private val addSharedWebBookCapability: suspend" in dependencies,
     )
     assertTrue(
       "Application composition must wire the shared-library capability directly",
-      "addSharedWebBook = sharedWebLibraryMutator::addWebBook" in application,
+      "addSharedWebBookCapability = sharedWebLibraryMutator::addWebBook" in application,
     )
     assertTrue(
       "shared Library mutation must preserve backup scheduling",
