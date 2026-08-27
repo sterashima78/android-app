@@ -69,4 +69,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0127](../adr/0127-health-connect-read-only.md)
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
-- [ADR-0192](../adr/0192-within-module-responsibility-and-app-package-structure.md)
+- [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)

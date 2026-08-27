@@ -40,7 +40,6 @@ Local / Remote / Android platform
 - `:core:data`、`:core:domain`、`:common`、`:util` のような責務の曖昧な集約先を作らない。
 - module の公開 API は小さく保ち、Data source、DB entity、HTTP DTO 等は必要がない限り `internal` とする。
 - 小さな責務を分けるだけのために Gradle module を増やさず、package / `internal` で十分なら同一 module に残す。
-- 同一 module 内でも単一 file / class に独立した変更理由が増えた場合は、固定行数ではなく責務・lifecycle・依存・テスト境界を基準に cohesive な file / package へ分割する。
 
 禁止または原則回避する依存は次とする。
 
@@ -188,4 +187,3 @@ App composition の source ownership と active-tab ViewModel activation は `Ap
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)
-- [ADR-0192](../adr/0192-within-module-responsibility-and-app-package-structure.md)

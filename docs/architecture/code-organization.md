@@ -65,4 +65,4 @@ feature / core / app のいずれでも、変更時に既存 file の責務が�
 - [ADR-0101](../adr/0101-feature-route-and-background-runtime-ownership.md)
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
-- [ADR-0192](../adr/0192-within-module-responsibility-and-app-package-structure.md)
+- [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)

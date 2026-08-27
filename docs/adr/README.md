@@ -55,7 +55,6 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
-- [ADR-0192: module 内の責務肥大化を file / package 分割で抑制する](0192-within-module-responsibility-and-app-package-structure.md)
 
 ### Domain / Context / persistence
 
@@ -86,7 +85,6 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
-- [ADR-0192: module 内の責務肥大化を file / package 分割で抑制する](0192-within-module-responsibility-and-app-package-structure.md)
 
 ## Supporting architecture areas
 
@@ -220,4 +218,3 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0171](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175](0175-knowledge-local-chatgpt-routing.md)
-- [ADR-0192](0192-within-module-responsibility-and-app-package-structure.md)
