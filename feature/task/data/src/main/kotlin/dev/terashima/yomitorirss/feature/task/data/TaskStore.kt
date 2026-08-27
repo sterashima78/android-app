@@ -37,16 +37,18 @@ internal class TaskStore(
   fun updateTask(id: String, title: String, description: String, dueDate: LocalDate?) {
     val normalizedTitle = title.trim()
     require(normalizedTitle.isNotEmpty()) { "タスク名を入力してください" }
-    database.writable.update(
-      "tasks",
-      ContentValues().apply {
-        put("title", normalizedTitle)
-        put("description", description.trim())
-        if (dueDate == null) putNull("due_date") else put("due_date", dueDate.toString())
-      },
-      "id=?",
-      arrayOf(id),
-    )
+    database.write {
+      update(
+        "tasks",
+        ContentValues().apply {
+          put("title", normalizedTitle)
+          put("description", description.trim())
+          if (dueDate == null) putNull("due_date") else put("due_date", dueDate.toString())
+        },
+        "id=?",
+        arrayOf(id),
+      )
+    }
   }
 
   fun deleteTask(id: String) = transaction { db ->
