@@ -20,6 +20,8 @@ import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
+import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationDependencies
+import dev.terashima.yomitorirss.platform.authorization.MailAuthorizationDependencies
 
 internal class AppContentRouteDependencies(
   private val container: AppContainer,
