@@ -29,7 +29,7 @@ class AppContainer(
   }
 
   internal val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DatabaseConnection(database)
+    DatabaseConnection(database, dataChanges)
   }
 
   private val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
@@ -125,7 +125,6 @@ class AppContainer(
   val youtubeRepository get() = contentRuntime.youtubeRepository
   val feedImportRepository get() = contentRuntime.feedImportRepository
   val refreshFeedsUseCase get() = contentRuntime.refreshFeedsUseCase
-  val backupChangeScheduler get() = contentRuntime.backupChangeScheduler
   val saveSharedBookmarkUseCase get() = contentRuntime.saveSharedBookmarkUseCase
   val widgetRepository get() = contentRuntime.widgetRepository
   val widgetRefreshScheduler get() = supportingRuntime.widgetRefreshScheduler
