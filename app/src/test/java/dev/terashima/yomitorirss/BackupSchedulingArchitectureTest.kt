@@ -131,14 +131,16 @@ class BackupSchedulingArchitectureTest {
   }
 
   @Test
-  fun `applicationは永続化変更をbackup schedulerへbridgeする`() {
+  fun `applicationはbackup対象の永続化変更をschedulerへbridgeする`() {
     val source = repositoryFile(
       "app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt",
     ).readText()
 
     assertTrue(source.contains("PersistenceChangeNotifier.shared.version.filter { it > 0L }"))
     assertFalse(source.contains("PersistenceChangeNotifier.shared.version.drop(1)"))
-    assertTrue(source.contains("DatabaseBackupChangeObserver"))
+    assertTrue(source.contains("PersistenceBackupChangeObserver"))
+    assertTrue(source.contains("BackupPreferenceChangeObserver"))
+    assertTrue(source.contains("backupPreferenceChangeObserver.start()"))
     assertTrue(source.contains("AndroidBackupChangeScheduler"))
   }
 
