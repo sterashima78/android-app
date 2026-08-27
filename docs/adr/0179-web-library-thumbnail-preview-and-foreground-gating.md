@@ -13,6 +13,8 @@ custom metadata extractor から `thumbnailUrl` を取得して保存できて�
 
 Web ページの referrer policy によっては cross-origin image request でも page path を含む Referer が送られる。一方、常に page URL 全体を送ると path や query を画像配信元へ不要に開示する可能性があるため、互換性と privacy の間で段階的な request policy が必要になる。
 
+さらに画像配信元によっては、request 自体を HTTP error にせず、極小の代替画像などを成功 response として返す場合がある。この場合 Coil の `onSuccess` だけでは実際に表紙として表示可能か判定できない。また同じ thumbnail URL に対して header だけを変えて retry すると、header 差を cache key が表現しない場合、最初の response が再利用されて retry が実質的に行われない可能性がある。
+
 一方、一括 metadata 再取得は foreground Activity を必要とする専用 WebView を逐次利用する。Application の Activity provider は resumed Activity だけを返すため、ユーザーが処理中に一時的にアプリを background へ移すと、次の rendered metadata 取得が `WebView metadata を取得できる画面がありません` として即時 fallback し、多数の warning が発生することがあった。これはページ固有の metadata 取得失敗ではない。
 
 ## Decision
@@ -21,15 +23,17 @@ Web ページの referrer policy によっては cross-origin image request で�
 
 Web Library の設定画面にある各蔵書カードでは、保存済み `thumbnailUrl` がある場合に小さい表紙 preview を表示する。大量の Web 蔵書を一覧表示しても decoded image memory が過剰になりにくいよう、診断用途の固定サイズに抑える。
 
-画像ロードに失敗した場合は URL が存在することと画像取得が失敗したことを区別できるよう、preview の近くに `表紙画像を読み込めませんでした` と表示する。metadata extractor の診断文字列は従来どおり保持する。
+画像ロードに失敗した場合は URL が存在することと画像取得が失敗したことを区別できるよう、preview の近くに `表紙画像を読み込めませんでした` と表示する。HTTP/decoder 上は成功しても画像の幅または高さが 1px 以下で表紙として利用できない場合は、通常の成功とは扱わず次の request candidate へ進む。最終候補でも同様なら、取得自体は成功したが表示可能な画像ではないことと寸法を表示する。metadata extractor の診断文字列は従来どおり保持する。
 
 ### 設定画面の Web Library preview は段階的なブラウザ互換ヘッダーを使う
 
 設定画面で Web Library の thumbnail を Coil で取得する際は、一般的な browser image request と同様の画像向け `Accept` を付与する。Android WebView が提供する標準 User-Agent を取得できる場合は `User-Agent` request header として付与する。
 
-Referer は最初の request では book の `infoUrl`、なければ `sourceId` から HTTP(S) origin だけを生成して送る。これで取得できなかった場合だけ、同じ page URL から scheme、host、非標準 port、path を保持した Referer へ一度だけ広げて再試行する。
+Referer は最初の request では book の `infoUrl`、なければ `sourceId` から HTTP(S) origin だけを生成して送る。これで取得できなかった場合、または取得結果が表紙として利用できない退化画像だった場合だけ、同じ page URL から scheme、host、非標準 port、path を保持した Referer へ一度だけ広げて再試行する。
 
 fallback Referer でも query、fragment、userinfo は送信しない。例えば repository/test/docs では `https://example.com/books/1?token=value#section` に対して、最初は `https://example.com/`、失敗時だけ `https://example.com/books/1` を使用する。
+
+header candidate ごとに Coil の memory/disk cache key を分離する。同一 thumbnail URL でも request header が異なる candidate は同じ cache entry を再利用しない。cache key は thumbnail URL と header 内容から SHA-256 で生成し、URL、Referer、User-Agent の生値を cache key 文字列へ残さない。
 
 User-Agent は特定サイトや特定ブラウザバージョンを source code に固定せず、端末の `WebSettings.getDefaultUserAgent` から取得する。画像配信元の host による分岐、サイト固有の request header、Cookie 共有、個別サイト向け fallback は追加しない。
 
@@ -55,7 +59,9 @@ rendered metadata client の `fetch` / `fetchWithReport` が実際に呼ばれ�
 
 - custom extractor で取得した thumbnail が実際に表示可能か設定画面から確認できる。
 - origin Referer と標準 browser headers で十分な画像配信元では、page path を追加送信しない。
-- origin Referer では取得できず page path を要求する画像配信元に対してだけ、失敗後の一度の retry で互換性を高められる。
+- origin Referer では正常な表紙を得られない画像配信元に対してだけ、失敗または退化画像を契機に一度の retry で互換性を高められる。
+- HTTP 200 等の成功 response で極小代替画像が返っても、それを最終的な表示成功として扱わない。
+- header candidate ごとに cache key が異なるため、最初の candidate の response が fallback candidate に混入しない。
 - fallback でも query、fragment、userinfo は送信しないため、page URL 全体を無条件に共有しない。
 - User-Agent は端末の WebView から取得し、画像向け Accept も汎用値を使うため、サイト固有条件や固定ブラウザバージョンの保守をアプリ本体へ持ち込まない。
 - background へ移ったことだけを理由に大量の WebView fallback warning を生成しなくなる。
@@ -67,10 +73,12 @@ rendered metadata client の `fetch` / `fetchWithReport` が実際に呼ばれ�
 - page URL から生成する最初の Referer が origin のみであることを unit test する。
 - fallback Referer が page path を保持し、query、fragment、userinfo を除去することを unit test する。
 - 非標準 port を必要に応じて Referer に保持し、HTTP(S) 以外を拒否する unit test を継続する。
-- 汎用 request header 候補が画像向け Accept、browser User-Agent、origin Referer、page-path Referer の順序を `example.com` と架空 User-Agent だけで表現する unit test を追加する。
+- 汎用 request header 候補が画像向け Accept、browser User-Agent、origin Referer、page-path Referer の順序を `example.com` と架空 User-Agent だけで表現する unit test を継続する。
 - root page では origin と page-path Referer を重複 retry しないことを unit test する。
+- 幅または高さが 1px 以下の decoded image を表示可能な表紙として扱わないことを unit test する。
+- header candidate が異なれば cache key も異なり、cache key 文字列に URL 等の生値を残さないことを unit test する。
 - Referer を生成できない場合も画像向け Accept と browser User-Agent を使用し、空の User-Agent は送信しないことを unit test する。
 - foreground availability が false の間は待機し、true になった時点で処理を続行する unit test を継続する。
 - foreground gate client の `hasCustomExtractor` が delegate へ委譲されることを unit test する。
-- metadata 再取得設定画面で保存済み thumbnail preview と画像ロード失敗表示を code review / CI で確認する。
+- metadata 再取得設定画面で保存済み thumbnail preview、退化画像診断、画像ロード失敗表示を code review / CI で確認する。
 - PR 前に public repository、architecture、test scope、documentation の独立レビューを行う。
