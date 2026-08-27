@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -70,6 +71,25 @@ class BackupSchedulingArchitectureTest {
       val source = repositoryFile(path).readText()
       assertFalse("$path must use DatabaseConnection.write/transaction for user-owned mutations", rawMutation.containsMatchIn(source))
     }
+  }
+
+  @Test
+  fun `mail repositoryはraw writableを使わない`() {
+    val source = repositoryFile(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
+    ).readText()
+
+    assertFalse(source.contains("database.writable"))
+  }
+
+  @Test
+  fun `SMB repositoryのraw writableはschema maintenanceだけに限定する`() {
+    val source = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultSmbLibraryRepository.kt",
+    ).readText()
+
+    assertEquals(1, Regex("""database\.writable""").findAll(source).count())
+    assertTrue(source.contains("ensureLibrarySchema(database.writable)"))
   }
 
   @Test
