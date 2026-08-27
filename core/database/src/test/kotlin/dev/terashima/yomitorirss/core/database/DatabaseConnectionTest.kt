@@ -53,6 +53,25 @@ class DatabaseConnectionTest {
   }
 
   @Test
+  fun `writeが失敗した場合はrollbackして通知しない`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    assertThrows(IllegalStateException::class.java) {
+      database.write {
+        insertOrThrow("items", null, values("rolled-back"))
+        error("rollback")
+      }
+    }
+
+    assertEquals(0L, notifier.version.value)
+    assertEquals(0, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
   fun `transactionは複数変更をcommit単位で一度だけ通知する`() {
     val notifier = PersistenceChangeNotifier()
     val database = DatabaseConnection(helper, notifier)
