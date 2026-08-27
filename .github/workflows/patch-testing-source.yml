@@ -1,0 +1,33 @@
+name: Patch testing source
+
+on:
+  push:
+    branches:
+      - ci/split-check-and-build
+    paths:
+      - .github/workflows/patch-testing-source.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ci/split-check-and-build
+      - name: Patch testing sources
+        run: |
+          python3 -c 'from pathlib import Path; p=Path("docs/architecture/testing.md"); s=p.read_text(); old="- [`.github/workflows/build-apk.yml`](../../.github/workflows/build-apk.yml)"; new="- [`.github/workflows/check.yml`](../../.github/workflows/check.yml)\n- [`.github/workflows/build.yml`](../../.github/workflows/build.yml)"; assert old in s; p.write_text(s.replace(old,new,1))'
+      - name: Commit documentation update
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/architecture/testing.md
+          git diff --cached --check
+          git commit -m "docs: update CI workflow source links"
+          git push origin HEAD:ci/split-check-and-build
