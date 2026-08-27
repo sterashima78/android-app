@@ -20,8 +20,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun YomitoriApp(
+  navController: NavHostController,
   routeDependencies: AppRouteDependencies,
   navigationRequests: Flow<String>,
   biometricLockEnabled: Boolean,
@@ -43,7 +44,6 @@ fun YomitoriApp(
   onOpenWebServer: () -> Unit,
   onExitApp: () -> Unit,
 ) {
-  val navController = rememberNavController()
   val currentBackStackEntry by navController.currentBackStackEntryAsState()
   val selectedRoute = currentBackStackEntry?.destination?.route ?: INTEGRATED_ROUTE
   val selectedSection = selectedRoute.appSection()
