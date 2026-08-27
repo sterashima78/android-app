@@ -32,10 +32,6 @@ class DefaultBackupRepository(
     GoogleDriveBackupScheduler.ensureScheduled(appContext)
   }
 
-  override fun scheduleAfterChange() {
-    GoogleDriveBackupScheduler.scheduleAfterChange(appContext)
-  }
-
   override suspend fun exportTo(documentUri: String) {
     val uri = Uri.parse(documentUri)
     appContext.contentResolver.openOutputStream(uri, "w")
