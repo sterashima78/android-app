@@ -239,7 +239,7 @@ class ArchitectureCleanupSourceTest {
     )
     assertTrue(
       "application User-Agent must derive the version from the injected app version",
-      "Mosaic/$appVersionName (Android)" in container,
+      "Mosaic/${'$'}appVersionName (Android)" in container,
     )
     assertFalse("composition module must not depend on app BuildConfig", "BuildConfig.VERSION_NAME" in container)
     assertFalse("core network must not hardcode the app version", "Mosaic/0.2" in network)
