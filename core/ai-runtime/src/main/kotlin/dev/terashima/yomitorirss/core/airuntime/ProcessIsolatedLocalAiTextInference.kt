@@ -108,9 +108,10 @@ class ProcessIsolatedLocalAiTextInference(
   override suspend fun generate(prompt: String): String {
     require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
     require(prompt.length <= TEXT_INFERENCE_IPC_MAX_CHARS) { "推論プロンプトが長すぎます" }
-    val snapshot = captureTextInferenceExecutionSnapshot(appContext, manager)
     return try {
-      remote.generate(prompt, snapshot)
+      remote.generate(prompt) {
+        captureTextInferenceExecutionSnapshot(appContext, manager)
+      }
     } finally {
       _progress.value = null
     }
@@ -193,8 +194,9 @@ private class RemoteLocalTextInferenceClient(
 
   suspend fun generate(
     prompt: String,
-    snapshot: TextInferenceExecutionSnapshot,
+    snapshotProvider: () -> TextInferenceExecutionSnapshot,
   ): String = requestMutex.withLock {
+    val snapshot = snapshotProvider()
     idleRetireJob?.cancel()
     idleRetireJob = null
     var lastRemoteError: RemoteException? = null
@@ -452,7 +454,7 @@ class LocalTextInferenceService : Service() {
     }
 
     val retire = batchPolicy.requestFinished()
-    val durations = snapshot?.let(::readChildStageDurations)
+    val durations = snapshot?.let(::readChildStageDurations) ?: (null to null)
     return if (result is String) {
       successResponse(result, retire, durations)
     } else {
