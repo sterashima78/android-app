@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-27
-- Refines: [ADR-0165](0165-provider-neutral-text-inference-contract.md), [ADR-0185](0185-normalize-chatgpt-provider-failures-in-core.md), [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md), [ADR-0194](0194-workout-ai-advisor.md), [ADR-0195](0195-persistence-commit-backup-trigger.md)
+- Refines: [ADR-0165](0165-provider-neutral-text-inference-contract.md), [ADR-0185](0185-normalize-chatgpt-provider-failures-in-core.md), [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md), [ADR-0194](0194-workout-ai-advisor.md), [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
 
 ## Context
 
@@ -89,4 +89,4 @@ ADR-0195 に従い、automatic backup scheduling は durable persistence commit 
 - [ADR-0185](0185-normalize-chatgpt-provider-failures-in-core.md)
 - [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md)
 - [ADR-0194](0194-workout-ai-advisor.md)
-- [ADR-0195](0195-persistence-commit-backup-trigger.md)
+- [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
