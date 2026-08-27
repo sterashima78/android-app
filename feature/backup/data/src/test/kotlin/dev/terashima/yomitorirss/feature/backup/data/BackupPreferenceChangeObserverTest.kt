@@ -1,13 +1,17 @@
 package dev.terashima.yomitorirss.feature.backup.data
 
 import android.content.Context
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
+import java.util.concurrent.CountDownLatch
+import kotlin.concurrent.thread
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -21,6 +25,7 @@ class BackupPreferenceChangeObserverTest {
     BackupPreferences.BACKED_UP_PREFERENCES.forEach { name ->
       context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
     }
+    shadowOf(Looper.getMainLooper()).idle()
   }
 
   @Test
@@ -54,7 +59,7 @@ class BackupPreferenceChangeObserverTest {
   }
 
   @Test
-  fun `backup restore中のpreferences変更は個別通知しない`() {
+  fun `backup restore中のbackground preferences変更は遅延callbackも個別通知しない`() {
     val store = BackupPreferences(context)
     val preferences = context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
     preferences.edit().putString("summary_prompt", "backup-value").commit()
@@ -64,7 +69,18 @@ class BackupPreferenceChangeObserverTest {
     val notifier = PersistenceChangeNotifier()
     val observer = BackupPreferenceChangeObserver(context, notifier)
     observer.start()
-    store.restore(backup)
+    val completed = CountDownLatch(1)
+    thread(name = "backup-restore-test") {
+      try {
+        store.restore(backup)
+      } finally {
+        completed.countDown()
+      }
+    }
+    completed.await()
+
+    // Background SharedPreferences commits enqueue listener callbacks onto the main looper.
+    shadowOf(Looper.getMainLooper()).idle()
 
     assertEquals(0L, notifier.version.value)
     assertEquals("backup-value", preferences.getString("summary_prompt", null))
