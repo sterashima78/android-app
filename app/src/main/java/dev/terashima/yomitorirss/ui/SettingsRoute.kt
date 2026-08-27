@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
+import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.SettingsFeatureScreen
 import java.time.LocalDate
@@ -25,7 +26,7 @@ internal fun SettingsRoute(
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenWebServer: () -> Unit,
-  onNavigate: (MainTab) -> Unit,
+  onNavigate: (String) -> Unit,
 ) {
   val backupState by backupViewModel.state.collectAsState()
 
@@ -41,7 +42,7 @@ internal fun SettingsRoute(
 
   LaunchedEffect(backupState.restoreCompleted) {
     if (backupState.restoreCompleted) {
-      onNavigate(MainTab.INTEGRATED)
+      onNavigate(INTEGRATED_ROUTE)
       backupViewModel.consumeRestoreCompleted()
     }
   }
