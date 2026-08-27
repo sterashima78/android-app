@@ -1,4 +1,4 @@
-# ADR-0192: PR quality checks と main APK build を分離する
+# ADR-0197: PR quality checks と main APK build を分離する
 
 - Status: Accepted
 - Date: 2026-08-27
