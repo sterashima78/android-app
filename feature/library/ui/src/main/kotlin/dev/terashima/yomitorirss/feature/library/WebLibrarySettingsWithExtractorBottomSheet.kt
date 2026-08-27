@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,7 +49,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
 
   Column(
     modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(androidx.compose.ui.unit.dp(12f)),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Text("Web 蔵書", style = MaterialTheme.typography.titleMedium)
     Text(
@@ -58,7 +59,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
     )
 
     extractorBinding?.let { binding ->
-      Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.ui.unit.dp(8f))) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
           modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
