@@ -50,7 +50,7 @@ internal class FeedStore(
       folderId = folderId,
       contentTypeOverride = contentTypeOverride,
     )
-    database.writable.insertOrThrow("feeds", null, feed.values())
+    database.write { insertOrThrow("feeds", null, feed.values()) }
     contentSourceGateway.upsertSourceContent(
       source = feed.contentSourceSnapshot(),
       items = parsed.contentItems(),
@@ -63,7 +63,9 @@ internal class FeedStore(
   fun renameFeed(id: String, name: String) {
     val display = displayName(name)
     require(display.isNotBlank()) { "フィード名を入力してください" }
-    val updated = database.writable.update("feeds", contentValues("custom_title" to display), "id=?", arrayOf(id))
+    val updated = database.write {
+      update("feeds", contentValues("custom_title" to display), "id=?", arrayOf(id))
+    }
     require(updated > 0) { "フィードが見つかりません" }
     contentSourceGateway.renameSourceContent(id, display)
   }
@@ -78,7 +80,7 @@ internal class FeedStore(
       normalizedName = normalizeName(display),
       createdAt = nowIso(),
     )
-    database.writable.insertOrThrow("feed_folders", null, folder.values())
+    database.write { insertOrThrow("feed_folders", null, folder.values()) }
     return folder
   }
 
@@ -97,12 +99,14 @@ internal class FeedStore(
     require(display.isNotBlank()) { "フォルダ名を入力してください" }
     val normalized = normalizeName(display)
     require(!folderNameExists(normalized, excludingId = id)) { "同じ名前のフォルダがあります" }
-    val updated = database.writable.update(
-      "feed_folders",
-      contentValues("name" to display, "normalized_name" to normalized),
-      "id=?",
-      arrayOf(id),
-    )
+    val updated = database.write {
+      update(
+        "feed_folders",
+        contentValues("name" to display, "normalized_name" to normalized),
+        "id=?",
+        arrayOf(id),
+      )
+    }
     require(updated > 0) { "フォルダが見つかりません" }
   }
 
@@ -125,46 +129,54 @@ internal class FeedStore(
         require(cursor.moveToFirst()) { "フォルダが見つかりません" }
       }
     }
-    val updated = database.writable.update("feeds", contentValues("folder_id" to folderId), "id=?", arrayOf(feedId))
+    val updated = database.write {
+      update("feeds", contentValues("folder_id" to folderId), "id=?", arrayOf(feedId))
+    }
     require(updated > 0) { "フィードが見つかりません" }
   }
 
   fun setFeedContentType(feedId: String, contentType: ContentType?) {
-    val updated = database.writable.update(
-      "feeds",
-      contentValues("content_type" to contentType?.name),
-      "id=?",
-      arrayOf(feedId),
-    )
+    val updated = database.write {
+      update(
+        "feeds",
+        contentValues("content_type" to contentType?.name),
+        "id=?",
+        arrayOf(feedId),
+      )
+    }
     require(updated > 0) { "フィードが見つかりません" }
   }
 
   fun setFolderContentType(folderId: String, contentType: ContentType?) {
-    val updated = database.writable.update(
-      "feed_folders",
-      contentValues("content_type" to contentType?.name),
-      "id=?",
-      arrayOf(folderId),
-    )
+    val updated = database.write {
+      update(
+        "feed_folders",
+        contentValues("content_type" to contentType?.name),
+        "id=?",
+        arrayOf(folderId),
+      )
+    }
     require(updated > 0) { "フォルダが見つかりません" }
   }
 
   fun updateFeedSuccess(feed: Feed, parsed: ParsedFeed, etag: String?, modified: String?) {
     val now = nowIso()
-    database.writable.update(
-      "feeds",
-      contentValues(
-        "title" to parsed.title,
-        "feed_url" to parsed.feedUrl,
-        "site_url" to parsed.siteUrl,
-        "etag" to etag,
-        "last_modified" to modified,
-        "last_fetched_at" to now,
-        "last_error" to null,
-      ),
-      "id=?",
-      arrayOf(feed.id),
-    )
+    database.write {
+      update(
+        "feeds",
+        contentValues(
+          "title" to parsed.title,
+          "feed_url" to parsed.feedUrl,
+          "site_url" to parsed.siteUrl,
+          "etag" to etag,
+          "last_modified" to modified,
+          "last_fetched_at" to now,
+          "last_error" to null,
+        ),
+        "id=?",
+        arrayOf(feed.id),
+      )
+    }
     val displayTitle = database.readable.rawQuery(
       "SELECT COALESCE(custom_title,title) FROM feeds WHERE id=? LIMIT 1",
       arrayOf(feed.id),
@@ -177,11 +189,15 @@ internal class FeedStore(
   }
 
   fun updateFeedNotModified(id: String) {
-    database.writable.update("feeds", contentValues("last_fetched_at" to nowIso(), "last_error" to null), "id=?", arrayOf(id))
+    database.write {
+      update("feeds", contentValues("last_fetched_at" to nowIso(), "last_error" to null), "id=?", arrayOf(id))
+    }
   }
 
   fun updateFeedError(id: String, error: String) {
-    database.writable.update("feeds", contentValues("last_error" to error.take(500)), "id=?", arrayOf(id))
+    database.write {
+      update("feeds", contentValues("last_error" to error.take(500)), "id=?", arrayOf(id))
+    }
   }
 
   fun deleteFeed(id: String) {
@@ -198,7 +214,7 @@ internal class FeedStore(
       if (cursor.isNull(0)) null else cursor.getString(0).toContentTypeOrNull()
     }
     contentSourceGateway.detachSourceContent(id, inheritedType)
-    database.writable.delete("feeds", "id=?", arrayOf(id))
+    database.write { delete("feeds", "id=?", arrayOf(id)) }
   }
 
   private fun folderNameExists(normalizedName: String, excludingId: String? = null): Boolean {
