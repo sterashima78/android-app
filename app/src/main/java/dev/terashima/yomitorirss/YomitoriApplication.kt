@@ -7,6 +7,9 @@ import androidx.work.Configuration
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
+import dev.terashima.yomitorirss.diagnostics.Android17MemoryAnomalyProfiler
+import dev.terashima.yomitorirss.diagnostics.AppLocalAiMemoryMonitor
+import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository

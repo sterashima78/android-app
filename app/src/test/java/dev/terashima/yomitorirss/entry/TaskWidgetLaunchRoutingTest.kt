@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.entry
 
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetProvider
 import dev.terashima.yomitorirss.ui.MainTab

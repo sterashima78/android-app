@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.entry
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

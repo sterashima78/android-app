@@ -1,8 +1,8 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.entry
 
 import java.net.URI
 
-data class SharedBookmark(
+internal data class SharedBookmark(
   val url: String,
   val title: String,
   val sourceTitle: String,

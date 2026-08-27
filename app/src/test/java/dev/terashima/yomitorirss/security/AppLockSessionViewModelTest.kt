@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.security
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

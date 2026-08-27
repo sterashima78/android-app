@@ -15,7 +15,7 @@ import dev.terashima.yomitorirss.LibraryRouteDependencies
 import dev.terashima.yomitorirss.feature.library.LibraryFeatureRoute
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
-import dev.terashima.yomitorirss.openWebContentInCustomTab
+import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import kotlinx.coroutines.launch
 
 @Composable
