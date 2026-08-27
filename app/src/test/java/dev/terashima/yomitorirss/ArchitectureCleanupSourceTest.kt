@@ -97,7 +97,10 @@ class ArchitectureCleanupSourceTest {
     assertFalse("Knowledge data must not depend on local ai-runtime", ":core:ai-runtime" in knowledgeBuild)
     assertTrue("Library organization must consume AiTextInference", "AiTextInference" in libraryOrganization)
     assertFalse("Library organization must not consume LocalModelManager", "LocalModelManager" in libraryOrganization)
-    assertTrue("app AI core must compose the local adapter once", "LocalAiTextInference(modelManager)" in aiCore)
+    assertTrue(
+      "app AI core must compose the process-isolated local adapter once",
+      "ProcessIsolatedLocalAiTextInference(application, modelManager)" in aiCore,
+    )
     assertTrue("library composition must inject text inference", "textInferenceProvider" in featureRuntime)
     assertTrue("knowledge composition must inject text inference", "textInference" in knowledgeRuntime)
     assertTrue("summary workers must receive text inference", "textInferenceProvider" in workerFactory)

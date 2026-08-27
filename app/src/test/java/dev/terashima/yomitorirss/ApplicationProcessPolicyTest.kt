@@ -24,4 +24,14 @@ class ApplicationProcessPolicyTest {
       ),
     )
   }
+
+  @Test
+  fun `local ai text process では application runtime を初期化しない`() {
+    assertFalse(
+      shouldInitializeMainProcessRuntime(
+        processName = "dev.terashima.yomitorirss:local_ai_text",
+        packageName = "dev.terashima.yomitorirss",
+      ),
+    )
+  }
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <service
+      android:name="dev.terashima.yomitorirss.core.airuntime.LocalTextInferenceService"
+      android:exported="false"
+      android:process=":local_ai_text" />
+  </application>
+</manifest>
