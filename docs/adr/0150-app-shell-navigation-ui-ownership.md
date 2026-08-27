@@ -1,8 +1,9 @@
 # ADR-0150: app shell navigation state を app UI ownership へ収束する
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-23
 - Refines: [ADR-0116](0116-route-owned-root-viewmodel-wiring.md), [ADR-0142](0142-app-route-and-task-widget-ownership-cleanup.md), [ADR-0144](0144-composition-runtime-groups-and-module-map-verification.md)
+- Superseded by: [ADR-0202](0202-navigation-compose-root-routing.md)
 
 ## Context
 
@@ -64,3 +65,7 @@ package / physical ownership の整理だけを行い、`AppViewModel` の Activ
 ## Public repository review
 
 変更対象は app shell の型、架空の test fixture、architecture documentation のみである。credential、token、OAuth secret、実ユーザー URL・メールアドレス・個人データ、database / backup / private artifact は追加しない。
+
+## Supersession note
+
+ADR-0202 により Decision 1、3、4 の `MainTab` / `AppViewModel` selected-tab state と Activity-scoped navigation lifetime は廃止した。Decision 2 の `app/.../feature` production source を禁止する ownership rule は引き続き有効である。

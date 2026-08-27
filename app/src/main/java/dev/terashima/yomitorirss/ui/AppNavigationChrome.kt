@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.reddit.RedditTab
+import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RssTab
 
 @Composable
@@ -103,7 +104,7 @@ internal fun AppDrawerContent(
 
 @Composable
 internal fun AppTopBar(
-  selectedTab: MainTab,
+  selectedRoute: String,
   refreshProgress: String? = null,
   hasUnread: Boolean = false,
   onMarkAllRead: (() -> Unit)? = null,
@@ -111,7 +112,7 @@ internal fun AppTopBar(
   onAddFeed: (() -> Unit)? = null,
   onOpenDrawer: () -> Unit,
 ) {
-  if (!selectedTab.usesGlobalTopBar()) return
+  if (!selectedRoute.usesGlobalTopBar()) return
 
   TopAppBar(
     navigationIcon = {
@@ -121,7 +122,7 @@ internal fun AppTopBar(
     },
     title = {
       Column {
-        Text(selectedTab.screenTitle())
+        Text(selectedRoute.screenTitle())
         refreshProgress?.let {
           Text(
             text = it,
@@ -137,7 +138,7 @@ internal fun AppTopBar(
           Icon(Icons.Default.DoneAll, contentDescription = "すべて既読")
         }
       }
-      if (selectedTab == MainTab.FEEDS) {
+      if (selectedRoute == RSS_FEEDS_ROUTE) {
         onImportOpml?.let { importOpml ->
           IconButton(onClick = importOpml) {
             Icon(Icons.Default.UploadFile, contentDescription = "OPMLからインポート")
@@ -155,15 +156,15 @@ internal fun AppTopBar(
 
 @Composable
 internal fun AppBottomBar(
-  selectedTab: MainTab,
-  onSelectTab: (MainTab) -> Unit,
+  selectedRoute: String,
+  onSelectRoute: (String) -> Unit,
 ) {
-  when (selectedTab.appSection()) {
+  when (selectedRoute.appSection()) {
     AppSection.RSS -> NavigationBar {
       RssTab.entries.forEach { tab ->
         NavigationBarItem(
-          selected = selectedTab.rssTab() == tab,
-          onClick = { onSelectTab(tab.mainTab()) },
+          selected = selectedRoute.rssTab() == tab,
+          onClick = { onSelectRoute(tab.appRoute()) },
           icon = {
             Icon(
               imageVector = when (tab) {
@@ -183,8 +184,8 @@ internal fun AppBottomBar(
     AppSection.REDDIT -> NavigationBar {
       RedditTab.entries.forEach { tab ->
         NavigationBarItem(
-          selected = selectedTab.redditTab() == tab,
-          onClick = { onSelectTab(tab.mainTab()) },
+          selected = selectedRoute.redditTab() == tab,
+          onClick = { onSelectRoute(tab.appRoute()) },
           icon = {
             Icon(
               imageVector = when (tab) {
@@ -203,8 +204,8 @@ internal fun AppBottomBar(
     AppSection.BOOKMARKS -> NavigationBar {
       BookmarkTab.entries.forEach { tab ->
         NavigationBarItem(
-          selected = selectedTab.bookmarkTab() == tab,
-          onClick = { onSelectTab(tab.mainTab()) },
+          selected = selectedRoute.bookmarkTab() == tab,
+          onClick = { onSelectRoute(tab.appRoute()) },
           icon = {
             Icon(
               imageVector = when (tab) {

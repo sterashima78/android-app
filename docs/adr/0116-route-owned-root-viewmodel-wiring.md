@@ -4,7 +4,9 @@
 - Date: 2026-08-19
 - Amends: ADR-0001, ADR-0003, ADR-0103
 - Amended by: ADR-0139
-- Refined by: [ADR-0147](0147-active-tab-viewmodel-activation.md)
+- Refined by: [ADR-0147](0147-active-tab-viewmodel-activation.md), [ADR-0202](0202-navigation-compose-root-routing.md)
+
+> Current state: ADR-0202 により `AppViewModel` を含む selected-tab navigation state は廃止され、root feature ViewModel の owner は Activity ではなく active `NavBackStackEntry` になった。本 ADR の「Activity が feature ViewModel を所有しない」「Route composition が factory から取得する」「Activity Result は利用 feature の route host が所有する」という ownership 原則は継続する。
 
 ## Context
 

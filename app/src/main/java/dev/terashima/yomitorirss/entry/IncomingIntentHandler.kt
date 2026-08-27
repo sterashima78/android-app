@@ -5,19 +5,20 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import dev.terashima.yomitorirss.MainActivityDependencies
+import dev.terashima.yomitorirss.feature.bookmark.BOOKMARKS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
+import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
+import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetProvider
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
-import dev.terashima.yomitorirss.ui.AppViewModel
-import dev.terashima.yomitorirss.ui.MainTab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class IncomingIntentHandler(
   private val activity: ComponentActivity,
-  private val appViewModel: AppViewModel,
+  private val onNavigate: (String) -> Unit,
   private val dependencies: MainActivityDependencies,
 ) {
   fun consume(incoming: Intent) {
@@ -28,9 +29,9 @@ internal class IncomingIntentHandler(
   }
 
   private fun consumeTaskWidget(incoming: Intent) {
-    val tab = widgetLaunchTab(incoming.action) ?: return
+    val route = widgetLaunchRoute(incoming.action) ?: return
     incoming.action = null
-    appViewModel.selectTab(tab)
+    onNavigate(route)
   }
 
   private fun consumeWidgetArticle(incoming: Intent) {
@@ -67,7 +68,7 @@ internal class IncomingIntentHandler(
           dependencies.addSharedWebBook(shared.url, shared.title)
         }
       }.onSuccess { book ->
-        appViewModel.selectTab(MainTab.LIBRARY)
+        onNavigate(LIBRARY_ROUTE)
         Toast.makeText(
           activity,
           "「${book.title}」を蔵書へ追加しました",
@@ -100,7 +101,7 @@ internal class IncomingIntentHandler(
           dependencies.saveSharedArticle(bookmark.url, bookmark.title, bookmark.sourceTitle)
         }
       }.onSuccess { result ->
-        appViewModel.selectTab(MainTab.SAVED)
+        onNavigate(BOOKMARKS_ROUTE)
         val message = when (result) {
           BookmarkSaveResult.ADDED -> "ブックマークに追加しました"
           BookmarkSaveResult.ALREADY_BOOKMARKED -> "すでにブックマークされています"
@@ -125,8 +126,8 @@ internal class IncomingIntentHandler(
   }
 }
 
-internal fun widgetLaunchTab(action: String?): MainTab? =
+internal fun widgetLaunchRoute(action: String?): String? =
   when (action) {
-    TaskWidgetProvider.ACTION_OPEN_TASKS -> MainTab.TASKS
+    TaskWidgetProvider.ACTION_OPEN_TASKS -> TASKS_ROUTE
     else -> null
   }

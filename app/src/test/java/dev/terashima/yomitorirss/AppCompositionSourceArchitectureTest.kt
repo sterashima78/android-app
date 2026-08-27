@@ -33,7 +33,7 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
-  fun `app shell navigationはui ownershipに置く`() {
+  fun `app shell navigationはNavigation Composeとui ownershipに置く`() {
     val appSourceRoot = File(
       repositoryRoot,
       "app/src/main/java/dev/terashima/yomitorirss",
@@ -49,11 +49,55 @@ class AppCompositionSourceArchitectureTest {
       "app-shell navigation must not use the historical feature.navigation package: $legacyReferences",
       legacyReferences.isEmpty(),
     )
-    listOf("AppSection.kt", "AppViewModel.kt", "MainTab.kt").forEach { fileName ->
+    listOf("AppSection.kt", "AppNavigationSpec.kt", "AppNavHost.kt").forEach { fileName ->
       assertTrue(
-        "app-shell navigation type must live under app/ui: $fileName",
+        "app-shell navigation implementation must live under app/ui: $fileName",
         File(appSourceRoot, "ui/$fileName").isFile,
       )
+    }
+    listOf("AppViewModel.kt", "MainTab.kt", "AppFeatureContent.kt").forEach { obsoleteFile ->
+      assertFalse(
+        "manual selected-tab navigation must not return: $obsoleteFile",
+        File(appSourceRoot, "ui/$obsoleteFile").isFile,
+      )
+    }
+
+    val mainActivity = File(appSourceRoot, "MainActivity.kt").readText()
+    val yomitoriApp = File(appSourceRoot, "ui/YomitoriApp.kt").readText()
+    val navHost = File(appSourceRoot, "ui/AppNavHost.kt").readText()
+    val navOwnerIndex = mainActivity.indexOf("val navController = rememberNavController()")
+    val lockDispatchIndex = mainActivity.indexOf("when {")
+    assertTrue(
+      "MainActivity root composition must keep the NavController above app-lock dispatch",
+      navOwnerIndex >= 0 && lockDispatchIndex >= 0 && navOwnerIndex < lockDispatchIndex,
+    )
+    assertTrue(
+      "MainActivity must pass the retained NavController into MainContent",
+      "MainContent(navController)" in mainActivity,
+    )
+    assertFalse(
+      "YomitoriApp must consume the retained NavController instead of recreating it",
+      "rememberNavController()" in yomitoriApp,
+    )
+    assertTrue("AppNavHost must own the root Navigation Compose graph", "NavHost(" in navHost)
+    assertFalse("YomitoriApp must not restore selected-tab state", "selectedTab" in yomitoriApp)
+  }
+
+  @Test
+  fun `feature UI moduleがdestination route contractを所有する`() {
+    val destinationFiles = listOf(
+      "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/NavigationDestination.kt",
+      "feature/rss/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/NavigationDestination.kt",
+      "feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/NavigationDestination.kt",
+      "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/NavigationDestination.kt",
+      "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/NavigationDestination.kt",
+      "feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/NavigationDestination.kt",
+      "feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/NavigationDestination.kt",
+      "feature/settings/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/NavigationDestination.kt",
+    )
+
+    destinationFiles.forEach { path ->
+      assertTrue("feature must own navigation destination contract: $path", File(repositoryRoot, path).isFile)
     }
   }
 
@@ -217,21 +261,21 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
-  fun `app compositionはactive tab判定より前にfeature ViewModelを生成しない`() {
+  fun `app compositionはnavigation destination判定より前にfeature ViewModelを生成しない`() {
     assertNoViewModelBeforeDispatch(
-      path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppFeatureContent.kt",
-      functionMarker = "internal fun AppFeatureContent(",
-      dispatchMarker = "when (selectedTab)",
+      path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppNavHost.kt",
+      functionMarker = "internal fun AppNavHost(",
+      dispatchMarker = "NavHost(",
     )
     assertNoViewModelBeforeDispatch(
       path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppTopBarRoute.kt",
       functionMarker = "internal fun AppTopBarRoute(",
-      dispatchMarker = "when (selectedTab)",
+      dispatchMarker = "when (selectedRoute)",
     )
     assertNoViewModelBeforeDispatch(
       path = "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
       functionMarker = "internal fun FeatureMessageEffects(",
-      dispatchMarker = "val messageSources = selectedTab.featureMessageSources()",
+      dispatchMarker = "val messageSources = selectedRoute.featureMessageSources()",
     )
   }
 
@@ -241,11 +285,11 @@ class AppCompositionSourceArchitectureTest {
 
     assertTrue(
       "FeatureMessageEffects must consume the centralized navigation capability mapping",
-      "selectedTab.featureMessageSources()" in source,
+      "selectedRoute.featureMessageSources()" in source,
     )
     assertFalse(
-      "FeatureMessageEffects must not maintain a second selected-tab policy",
-      "when (selectedTab)" in source,
+      "FeatureMessageEffects must not maintain a second selected-route policy",
+      "when (selectedRoute)" in source,
     )
   }
 
@@ -290,10 +334,10 @@ class AppCompositionSourceArchitectureTest {
   ) {
     val source = File(repositoryRoot, path).readText()
     val function = source.substringAfter(functionMarker)
-    assertTrue("$path must contain active-tab dispatch marker: $dispatchMarker", dispatchMarker in function)
+    assertTrue("$path must contain navigation dispatch marker: $dispatchMarker", dispatchMarker in function)
     val beforeDispatch = function.substringBefore(dispatchMarker)
     assertFalse(
-      "$path must dispatch by selectedTab before resolving feature ViewModels",
+      "$path must dispatch by active navigation destination before resolving feature ViewModels",
       Regex("=\\s*viewModel\\(").containsMatchIn(beforeDispatch),
     )
   }
