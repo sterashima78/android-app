@@ -96,6 +96,7 @@ class AndroidBackupRulesArchitectureTest {
       "local_ai_background_execution.xml",
       "summary_preferences.xml",
       "workout.xml",
+      "workout_ai.xml",
       "x_viewer_preferences.xml",
     )
     val KEY_FILTERED_ARCHIVE_ONLY_PREFERENCES = setOf(

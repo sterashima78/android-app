@@ -169,6 +169,7 @@ internal class BackupPreferences(context: Context) {
       ),
       PreferenceBackupRule("summary_preferences"),
       PreferenceBackupRule("workout"),
+      PreferenceBackupRule("workout_ai"),
       PreferenceBackupRule("x_viewer_preferences"),
     )
 
