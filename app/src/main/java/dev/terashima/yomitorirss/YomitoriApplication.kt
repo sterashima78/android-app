@@ -8,6 +8,9 @@ import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
+import dev.terashima.yomitorirss.diagnostics.Android17MemoryAnomalyProfiler
+import dev.terashima.yomitorirss.diagnostics.AppLocalAiMemoryMonitor
+import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.data.DatabaseBackupChangeObserver

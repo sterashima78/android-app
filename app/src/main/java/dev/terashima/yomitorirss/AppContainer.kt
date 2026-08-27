@@ -113,6 +113,7 @@ class AppContainer(
   internal val knowledgeBuildRunner get() = knowledgeRuntime.knowledgeBuildRunner
   internal val knowledgeExecutionSettings get() = featureRuntimeDependencies.knowledgeExecutionSettings
   internal val textInference get() = aiCoreRuntime.textInference
+  internal val cloudTextInference get() = aiCoreRuntime.cloudTextInference
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
   internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings
 
