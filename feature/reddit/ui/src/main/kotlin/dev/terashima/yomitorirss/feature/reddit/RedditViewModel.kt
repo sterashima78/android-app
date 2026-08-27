@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +32,6 @@ class RedditViewModel(
   private val redditRepository: RedditRepository,
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
-  private val backupChangeScheduler: BackupChangeScheduler,
 ) : ViewModel() {
   private val _state = MutableStateFlow(RedditUiState())
   val state: StateFlow<RedditUiState> = _state.asStateFlow()
@@ -106,7 +104,6 @@ class RedditViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { redditRepository.addCommunity(input) }
         .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
           reload()
           _state.update { it.copy(message = "Redditコミュニティを購読しました") }
         }
@@ -118,7 +115,6 @@ class RedditViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { redditRepository.deleteSubscription(subscription.id) }
         .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
           reload()
           _state.update { it.copy(message = "${subscription.title}の購読を解除しました") }
         }
@@ -130,7 +126,6 @@ class RedditViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { redditRepository.subscribeThread(article.url) }
         .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
           reload()
           _state.update {
             it.copy(message = "スレッドを購読しました。今後の新着コメントを未読として表示します")
@@ -144,7 +139,6 @@ class RedditViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { redditRepository.unsubscribeThread(article.url) }
         .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
           reload()
           _state.update { it.copy(message = "スレッドの購読を解除しました") }
         }
@@ -152,45 +146,27 @@ class RedditViewModel(
     }
   }
 
-  fun markRead(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
-  ) {
+  fun markRead(article: Article) = performArticleAction(article) {
     articleRepository.markArticleRead(article.id)
   }
 
-  fun markUnread(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { bookmarkRepository.isBookmarked(article.id) },
-  ) {
+  fun markUnread(article: Article) = performArticleAction(article) {
     articleRepository.markArticleUnread(article.id)
   }
 
-  fun saveAndRead(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { true },
-  ) {
+  fun saveAndRead(article: Article) = performArticleAction(article) {
     bookmarkRepository.saveAndReadArticle(article.id)
   }
 
-  fun readLater(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { true },
-  ) {
+  fun readLater(article: Article) = performArticleAction(article) {
     bookmarkRepository.markReadLater(article.id)
   }
 
-  fun unsave(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { true },
-  ) {
+  fun unsave(article: Article) = performArticleAction(article) {
     bookmarkRepository.unsaveArticle(article.id)
   }
 
-  fun removeReadLater(article: Article) = performArticleAction(
-    article = article,
-    shouldScheduleBackup = { true },
-  ) {
+  fun removeReadLater(article: Article) = performArticleAction(article) {
     bookmarkRepository.removeReadLater(article.id)
   }
 
@@ -200,16 +176,8 @@ class RedditViewModel(
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + visible.map(Article::id)) }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
-        var scheduleBackup = false
-        visible.forEach { article ->
-          if (!scheduleBackup && bookmarkRepository.isBookmarked(article.id)) {
-            scheduleBackup = true
-          }
-          articleRepository.markArticleRead(article.id)
-        }
-        scheduleBackup
-      }.onSuccess { scheduleBackup ->
-        if (scheduleBackup) backupChangeScheduler.scheduleAfterChange()
+        visible.forEach { article -> articleRepository.markArticleRead(article.id) }
+      }.onSuccess {
         reload()
         _state.update {
           it.copy(
@@ -231,27 +199,23 @@ class RedditViewModel(
 
   private fun performArticleAction(
     article: Article,
-    shouldScheduleBackup: suspend () -> Boolean,
     action: suspend () -> Unit,
   ) {
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching {
-        val scheduleBackup = shouldScheduleBackup()
-        action()
-        scheduleBackup
-      }.onSuccess { scheduleBackup ->
-        if (scheduleBackup) backupChangeScheduler.scheduleAfterChange()
-        reload()
-        _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
-      }.onFailure { error ->
-        _state.update {
-          it.copy(
-            hiddenArticleIds = it.hiddenArticleIds - article.id,
-            message = "操作を反映できませんでした: ${error.userMessage()}",
-          )
+      runCatching { action() }
+        .onSuccess {
+          reload()
+          _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
         }
-      }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              hiddenArticleIds = it.hiddenArticleIds - article.id,
+              message = "操作を反映できませんでした: ${error.userMessage()}",
+            )
+          }
+        }
     }
   }
 
@@ -290,7 +254,6 @@ class RedditViewModel(
     private val redditRepository: RedditRepository,
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
-    private val backupChangeScheduler: BackupChangeScheduler,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(RedditViewModel::class.java))
@@ -299,7 +262,6 @@ class RedditViewModel(
         redditRepository,
         articleRepository,
         bookmarkRepository,
-        backupChangeScheduler,
       ) as T
     }
   }
