@@ -22,6 +22,22 @@ Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択す�
 - provider が変わった場合、background task の gate、network constraint、実際の inference 先が同じ設定を参照する。
 - AI task queue は provider-specific domain type へ依存せず、表示用 execution provider label と provider-neutral progress / failure state を扱う。
 
+## Local one-shot text inference process boundary
+
+Summary、Knowledge、Library organization が利用する Local `AiTextInference.generate()` は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
+
+- main process は WorkManager、durable queue、DB、feature policy、`LocalAiBackgroundTaskGate` を所有し続ける。
+- child process は prompt を受け取り単発 text generation を返すだけで、Repository や Worker graph を構築しない。
+- process 内の `LocalModelManager` は最大2 generation だけ再利用し、その後は unbind と process exit で native resource を回収する。
+- 1 generation だけで後続 request がない場合も30秒 idle で process を終了する。
+- process death / Binder failure は新しい process で1回だけ再試行し、durable task 全体の retry policy は owning feature に残す。
+- `PREPARING_MODEL` / `GENERATING_RESPONSE` の provider-neutral progress は child process から main process へ転送する。
+- prompt と output は diagnostics や log へ保存せず、IPC payload は128 Ki characters以下の text に制限する。
+- `selectedModel()` と `countTokens()` は main process の application-scope `LocalModelManager` を利用する。重い generation Engine の lifecycle だけを subprocess へ分離する。
+- Chat の streaming / tool-capable conversation は `LocalModelManager` の conversation API を使う別経路であり、本境界では main process のままとする。
+
+この境界は Android 17 の main-process memory diagnostics で、Library organization 実行中に Java heap が小さいまま native heap / PSS が継続増加し `MemoryLimiter:AnonSwap` に至った実測を根拠とする。backend は診断 report から確定できないため、GPU/OpenCL 固有の不具合とは断定せず、process lifetime に残留する native allocation 全般に対する safety boundary として扱う。
+
 ## ChatGPT inference failure boundary
 
 ChatGPT / Codex の inference 経路では、provider の raw failure を feature へ直接渡さない。
@@ -48,11 +64,15 @@ Local model manager、ChatGPT client、inference adapter、feature repository �
 
 runtime group は construction detail であり、Route、Screen、Worker へ group 型そのものを渡さない。consumer には ViewModel factory、Repository contract、scheduler、inference capability 等の narrow dependency へ投影してから渡す。Worker は owning feature の WorkerFactory を通じて application-scope graph へ接続し、parallel graph を再構築しない。
 
+application-scope で再利用するのは adapter / manager ownership であり、重い Local text generation Engine を main process に常駐させることを意味しない。`ProcessIsolatedLocalAiTextInference` は application-scope capability として共有しつつ、実 Engine は短寿命 `:local_ai_text` process generation ごとに構築・破棄する。
+
 ## Sources
 
+- [ADR-0161](../adr/0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
 - [ADR-0168](../adr/0168-chatgpt-codex-cloud-debug-adapter.md)
 - [ADR-0171](../adr/0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0185](../adr/0185-normalize-chatgpt-provider-failures-in-core.md)
+- [ADR-0189](../adr/0189-isolate-local-text-inference-process.md)
