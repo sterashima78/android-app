@@ -2,6 +2,8 @@ package dev.terashima.yomitorirss.feature.backup.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -45,6 +47,7 @@ class BackupPreferenceChangeObserver(
 
 internal object BackupPreferenceChangeSuppression {
   private val depth = AtomicInteger(0)
+  private val mainHandler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Handler(Looper.getMainLooper()) }
 
   val isActive: Boolean
     get() = depth.get() > 0
@@ -54,7 +57,18 @@ internal object BackupPreferenceChangeSuppression {
     return try {
       block()
     } finally {
+      releaseAfterPendingPreferenceCallbacks()
+    }
+  }
+
+  private fun releaseAfterPendingPreferenceCallbacks() {
+    if (Looper.myLooper() == Looper.getMainLooper()) {
       depth.decrementAndGet()
+    } else {
+      // SharedPreferencesImpl dispatches listeners from a background commit by posting them to the
+      // main Handler. Posting the release after all commits keeps suppression active until those
+      // already-enqueued callbacks have run.
+      mainHandler.post { depth.decrementAndGet() }
     }
   }
 }
