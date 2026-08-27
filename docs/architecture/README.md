@@ -6,6 +6,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 
 ## Documents
 
+- [current-architecture-guide.html](current-architecture-guide.html): current docs・ADR・機械可読な構成・現行実装を横断し、責任を持って変更するための判断手順まで学ぶ単一 HTML ガイド
 - [principles.md](principles.md): 実装時に守るアーキテクチャ原則と禁止事項
 - [module-map.md](module-map.md): Gradle module と物理 ownership の現在形
 - [context-map.md](context-map.md): Domain Context と Context 間関係
