@@ -7,8 +7,6 @@ class DatabaseConnection(
   private val helper: SQLiteOpenHelper,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
-  private val transactionScope = ThreadLocal<TransactionScope?>()
-
   val readable: SQLiteDatabase
     get() = helper.readableDatabase
 
@@ -47,14 +45,20 @@ class DatabaseConnection(
     block: SQLiteDatabase.() -> T,
   ): T {
     val database = writable
+    val existingScopes = transactionScopes.get()
     if (database.inTransaction()) {
-      if (notifyPersistenceChange) transactionScope.get()?.publishPersistenceChange = true
+      if (notifyPersistenceChange) {
+        val scope = existingScopes?.get(database)
+          ?: error("Durable DatabaseConnection mutation cannot join an unmanaged SQLite transaction")
+        scope.publishPersistenceChange = true
+      }
       return database.block()
     }
 
     database.beginTransaction()
+    val scopes = existingScopes ?: mutableMapOf<SQLiteDatabase, TransactionScope>().also(transactionScopes::set)
     val scope = TransactionScope(publishPersistenceChange = notifyPersistenceChange)
-    transactionScope.set(scope)
+    check(scopes.put(database, scope) == null) { "SQLite transaction scope is already registered" }
     var changed = false
     val value = try {
       // WAL may use multiple SQLite connections. Measuring both values while this transaction is
@@ -68,7 +72,8 @@ class DatabaseConnection(
       try {
         database.endTransaction()
       } finally {
-        transactionScope.remove()
+        scopes.remove(database)
+        if (scopes.isEmpty()) transactionScopes.remove()
       }
     }
     if (changed && scope.publishPersistenceChange) persistenceChanges.notifyChanged()
@@ -78,6 +83,15 @@ class DatabaseConnection(
   private data class TransactionScope(
     var publishPersistenceChange: Boolean,
   )
+
+  private companion object {
+    /**
+     * SQLite transaction ownership is thread-scoped, not DatabaseConnection-instance-scoped.
+     * Multiple wrappers around the same helper must therefore share the active scope so a nested
+     * durable write cannot disappear inside a local transaction owned by another wrapper.
+     */
+    val transactionScopes = ThreadLocal<MutableMap<SQLiteDatabase, TransactionScope>?>()
+  }
 }
 
 private fun SQLiteDatabase.totalChanges(): Long =
