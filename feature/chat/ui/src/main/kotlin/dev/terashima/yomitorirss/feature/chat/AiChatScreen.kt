@@ -1,19 +1,16 @@
 package dev.terashima.yomitorirss.feature.chat
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -38,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.core.designsystem.ChatMessageBubble
 
 @Composable
 fun AiChatScreen(
@@ -73,7 +71,6 @@ fun AiChatScreen(
   ) {
     Surface(
       modifier = Modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(12.dp),
       color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
       Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -139,11 +136,14 @@ fun AiChatScreen(
         }
       }
       items(state.messages, key = { it.id }) { message ->
-        MessageBubble(message)
+        ChatMessageBubble(
+          isUser = message.role == ChatRole.USER,
+          content = message.content,
+        )
       }
       if (state.sending && state.responseStarted && state.streamingReply.isNotBlank()) {
         item(key = "streaming-reply") {
-          MessageBubble(isUser = false, content = state.streamingReply)
+          ChatMessageBubble(isUser = false, content = state.streamingReply)
         }
       }
       if (state.sending) {
@@ -191,44 +191,6 @@ fun AiChatScreen(
         enabled = input.isNotBlank() && !state.sending && state.selectedModel != null,
       ) {
         Icon(Icons.Default.Send, contentDescription = "送信")
-      }
-    }
-  }
-}
-
-@Composable
-private fun MessageBubble(message: StoredChatMessage) {
-  MessageBubble(
-    isUser = message.role == ChatRole.USER,
-    content = message.content,
-  )
-}
-
-@Composable
-private fun MessageBubble(isUser: Boolean, content: String) {
-  Box(modifier = Modifier.fillMaxWidth()) {
-    Surface(
-      modifier = Modifier
-        .align(if (isUser) Alignment.CenterEnd else Alignment.CenterStart)
-        .widthIn(max = 360.dp),
-      shape = RoundedCornerShape(14.dp),
-      color = if (isUser) {
-        MaterialTheme.colorScheme.primaryContainer
-      } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-      },
-    ) {
-      Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-        Text(
-          text = if (isUser) "あなた" else "AI",
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (isUser) {
-          Text(content, style = MaterialTheme.typography.bodyMedium)
-        } else {
-          MarkdownMessage(content)
-        }
       }
     }
   }
