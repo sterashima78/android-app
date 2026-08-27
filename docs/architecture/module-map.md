@@ -187,4 +187,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0188](../adr/0188-integrated-feature-owns-cross-feature-presentation.md)
 - [ADR-0192](../adr/0192-settings-feature-owns-cross-feature-presentation.md)
-- [ADR-0198](../adr/0198-app-composition-module-boundary.md)
+- [ADR-0200](../adr/0200-app-composition-module-boundary.md)
