@@ -36,6 +36,62 @@ class AssetStackedHistoryChartTest {
   }
 
   @Test
+  fun `金額Y軸は読みやすい間隔へ切り上げる`() {
+    val axis = buildAssetYAxis(
+      AssetAreaChartData(emptyList(), minValue = 0f, maxValue = 12_000_000f),
+      normalized = false,
+    )
+
+    assertEquals(0f, axis.minValue, DELTA)
+    assertEquals(15_000_000f, axis.maxValue, DELTA)
+    assertEquals(listOf(0f, 5_000_000f, 10_000_000f, 15_000_000f), axis.ticks)
+    assertEquals("¥500万", formatAssetYAxisValue(5_000_000f, normalized = false))
+    assertEquals("¥1.5億", formatAssetYAxisValue(150_000_000f, normalized = false))
+  }
+
+  @Test
+  fun `構成比Y軸は割合を25パーセント刻みで表示する`() {
+    val axis = buildAssetYAxis(
+      AssetAreaChartData(emptyList(), minValue = 0f, maxValue = 1f),
+      normalized = true,
+    )
+
+    assertEquals(listOf(0f, 0.25f, 0.5f, 0.75f, 1f), axis.ticks)
+    assertEquals("50%", formatAssetYAxisValue(0.5f, normalized = true))
+  }
+
+  @Test
+  fun `X軸は開始日から半年ごとの目盛りを作る`() {
+    val points = listOf(
+      point("2025-08-15", mapOf("資産" to 100L)),
+      point("2026-08-20", mapOf("資産" to 120L)),
+    )
+
+    val ticks = buildAssetXAxisTicks(points)
+
+    assertEquals(
+      listOf(LocalDate.parse("2025-08-15"), LocalDate.parse("2026-02-15"), LocalDate.parse("2026-08-15")),
+      ticks.map { it.date },
+    )
+    assertEquals(listOf("2025/8", "2026/2", "2026/8"), ticks.map { formatAssetXAxisValue(it.date) })
+    assertEquals(0f, ticks.first().fraction, DELTA)
+  }
+
+  @Test
+  fun `半年未満のX軸でも開始月と終了月を表示する`() {
+    val points = listOf(
+      point("2026-01-01", mapOf("資産" to 100L)),
+      point("2026-04-01", mapOf("資産" to 120L)),
+    )
+
+    val ticks = buildAssetXAxisTicks(points)
+
+    assertEquals(listOf("2026/1", "2026/4"), ticks.map { formatAssetXAxisValue(it.date) })
+    assertEquals(0f, ticks.first().fraction, DELTA)
+    assertEquals(1f, ticks.last().fraction, DELTA)
+  }
+
+  @Test
   fun `負数は正の積み上げと分離する`() {
     val points = listOf(
       point("2026-08-01", mapOf("資産" to 80L, "調整" to -20L)),
@@ -60,7 +116,7 @@ class AssetStackedHistoryChartTest {
     assertEquals(-1f, chart.minValue, DELTA)
     assertEquals(1f, chart.maxValue, DELTA)
     assertBand(chart, "資産A", listOf(0f), listOf(0.8f))
-    assertBand(chart, "資産B", listOf(0.8f), listOf(1f))
+    assertBand(chart, "資産B", listOf(0.8f), listOf(1f,))
     assertBand(chart, "調整A", listOf(0f), listOf(-0.75f))
     assertBand(chart, "調整B", listOf(-0.75f), listOf(-1f))
   }
