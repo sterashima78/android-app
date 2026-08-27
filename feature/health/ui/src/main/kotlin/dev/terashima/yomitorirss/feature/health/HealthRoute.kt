@@ -85,7 +85,7 @@ private fun HealthScreen(
     }
     HealthUiState.PermissionRequired -> CenteredMessage(modifier) {
       Text("Health Connect のアクセス権限が必要です", style = MaterialTheme.typography.titleMedium)
-      Text("歩数・活動消費カロリー・運動・心拍・睡眠・体重・体脂肪率・栄養を読み取り、このアプリで終了したワークアウトのみ運動データとして書き込みます。")
+      Text("歩数・活動消費カロリー・運動・心拍・睡眠・体重・体脂肪率・栄養を読み取ります。ワークアウトの書き込み権限はワークアウト画面で個別に管理します。")
       Button(onClick = onRequestPermissions) { Text("アクセスを許可") }
     }
     HealthUiState.HistoryPermissionRequired -> CenteredMessage(modifier) {
@@ -236,7 +236,7 @@ private fun HealthContent(
         onClick = onRequestPermissions,
         modifier = Modifier.fillMaxWidth(),
       ) {
-        Text("Health Connect 権限を確認")
+        Text("Health Connect の読み取り権限を確認")
       }
     }
     if (state.period != HealthPeriod.MONTH) {

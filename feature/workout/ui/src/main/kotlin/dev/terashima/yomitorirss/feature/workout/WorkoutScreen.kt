@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun WorkoutScreen(
   viewModel: WorkoutViewModel,
+  onRequestExportPermission: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
@@ -103,7 +104,12 @@ fun WorkoutScreen(
   ) { padding ->
     val contentModifier = Modifier.fillMaxSize().padding(padding)
     when (state.selectedTab) {
-      WorkoutTab.WORKOUT -> WorkoutLogScreen(state, viewModel, contentModifier)
+      WorkoutTab.WORKOUT -> WorkoutLogScreen(
+        state = state,
+        viewModel = viewModel,
+        onRequestExportPermission = onRequestExportPermission,
+        modifier = contentModifier,
+      )
       WorkoutTab.TIMER -> WorkoutTimerScreen(state, viewModel, contentModifier)
       WorkoutTab.HISTORY -> WorkoutHistoryScreen(state, contentModifier)
       WorkoutTab.SETTINGS -> WorkoutSettingsScreen(state, viewModel, contentModifier)
@@ -112,7 +118,12 @@ fun WorkoutScreen(
 }
 
 @Composable
-private fun WorkoutLogScreen(state: WorkoutUiState, viewModel: WorkoutViewModel, modifier: Modifier) {
+private fun WorkoutLogScreen(
+  state: WorkoutUiState,
+  viewModel: WorkoutViewModel,
+  onRequestExportPermission: () -> Unit,
+  modifier: Modifier,
+) {
   val active = state.activeExercise
   LazyColumn(
     modifier = modifier,
@@ -136,6 +147,11 @@ private fun WorkoutLogScreen(state: WorkoutUiState, viewModel: WorkoutViewModel,
           }
           state.exportMessage?.let { message ->
             Text(message, style = MaterialTheme.typography.bodySmall)
+          }
+          if (state.exportPermissionRequired) {
+            TextButton(onClick = onRequestExportPermission) {
+              Text("Health Connect の書き込みを許可")
+            }
           }
         }
       }

@@ -25,6 +25,7 @@ import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.widget.data.WorkManagerWidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutRepository
+import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
 
@@ -50,6 +51,10 @@ internal class AppSupportingRuntimeDependencies(
 
   val workoutRepository: WorkoutRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultWorkoutRepository(application)
+  }
+
+  val workoutHistoryExporter: HealthConnectWorkoutHistoryExporter by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    HealthConnectWorkoutHistoryExporter(application)
   }
 
   val calendarRepository: CalendarRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

@@ -18,4 +18,8 @@ android {
 
 dependencies {
   implementation(project(":feature:workout:domain"))
+  implementation("androidx.health.connect:connect-client:1.1.0")
+
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }

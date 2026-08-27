@@ -29,7 +29,7 @@ class AppRouteDependencies internal constructor(
   val health get() = supporting.health
   val taskViewModelFactory get() = supporting.taskViewModelFactory
   val calendarViewModelFactory get() = supporting.calendarViewModelFactory
-  val workoutViewModelFactory get() = supporting.workoutViewModelFactory
+  val workout get() = supporting.workout
   val xViewerCssRepository get() = supporting.xViewerCssRepository
 
   fun backgroundFetchWifiOnly(): Boolean = supporting.backgroundFetchWifiOnly()

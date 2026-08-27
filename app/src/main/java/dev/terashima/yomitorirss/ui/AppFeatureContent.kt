@@ -192,7 +192,8 @@ internal fun AppFeatureContent(
       modifier = modifier,
     )
     MainTab.WORKOUT -> WorkoutRoute(
-      viewModelFactory = routeDependencies.workoutViewModelFactory,
+      viewModelFactory = routeDependencies.workout.viewModelFactory,
+      writePermissions = routeDependencies.workout.writePermissions,
       modifier = modifier,
     )
     MainTab.AI_CHAT -> {

@@ -14,7 +14,6 @@ import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
-import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -24,14 +23,10 @@ import dev.terashima.yomitorirss.feature.health.DailyHealthSummary
 import dev.terashima.yomitorirss.feature.health.DailyNutritionIntake
 import dev.terashima.yomitorirss.feature.health.HealthAvailability
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentSummary
-import dev.terashima.yomitorirss.feature.health.HealthExerciseSegmentType
 import dev.terashima.yomitorirss.feature.health.HealthExerciseSessionSummary
 import dev.terashima.yomitorirss.feature.health.HealthHistoryAccess
 import dev.terashima.yomitorirss.feature.health.HealthOverview
 import dev.terashima.yomitorirss.feature.health.HealthRepository
-import dev.terashima.yomitorirss.feature.health.HealthWorkoutSession
-import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriteResult
-import dev.terashima.yomitorirss.feature.health.HealthWorkoutWriter
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -40,7 +35,7 @@ import java.time.Period
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-class HealthConnectHealthRepository(context: Context) : HealthRepository, HealthWorkoutWriter {
+class HealthConnectHealthRepository(context: Context) : HealthRepository {
   private val applicationContext = context.applicationContext
 
   private val client: HealthConnectClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -70,8 +65,7 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
   }
 
   fun requestPermissions(): Set<String> =
-    READ_PERMISSIONS + WRITE_PERMISSIONS +
-      if (historyFeatureAvailable()) setOf(HISTORY_PERMISSION) else emptySet()
+    READ_PERMISSIONS + if (historyFeatureAvailable()) setOf(HISTORY_PERMISSION) else emptySet()
 
   override suspend fun readOverview(startTime: Instant, endTime: Instant): HealthOverview {
     require(startTime < endTime) { "startTime must be before endTime" }
@@ -99,43 +93,6 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       exerciseSessions = exerciseSessions,
       dailySummaries = readDailySummaries(startTime, endTime),
     )
-  }
-
-  override suspend fun writeWorkout(session: HealthWorkoutSession): HealthWorkoutWriteResult {
-    if (availability() != HealthAvailability.AVAILABLE) return HealthWorkoutWriteResult.UNAVAILABLE
-    val grantedPermissions = client.permissionController.getGrantedPermissions()
-    if (!grantedPermissions.containsAll(WRITE_PERMISSIONS)) {
-      return HealthWorkoutWriteResult.PERMISSION_REQUIRED
-    }
-
-    require(session.startTime < session.endTime) { "Workout startTime must be before endTime" }
-    require(session.segments.all { it.startTime >= session.startTime && it.endTime <= session.endTime }) {
-      "Workout segments must be contained in the session"
-    }
-    require(session.segments.zipWithNext().all { (current, next) -> current.endTime <= next.startTime }) {
-      "Workout segments must not overlap"
-    }
-
-    val record = ExerciseSessionRecord(
-      startTime = session.startTime,
-      startZoneOffset = zoneOffsetAt(session.startTime),
-      endTime = session.endTime,
-      endZoneOffset = zoneOffsetAt(session.endTime),
-      metadata = Metadata.manualEntry(clientRecordId = session.clientRecordId),
-      exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
-      title = session.title,
-      notes = session.notes,
-      segments = session.segments.map { segment ->
-        ExerciseSegment(
-          startTime = segment.startTime,
-          endTime = segment.endTime,
-          segmentType = segmentType(segment.type),
-          repetitions = segment.repetitions.coerceAtLeast(0),
-        )
-      },
-    )
-    client.insertRecords(listOf(record))
-    return HealthWorkoutWriteResult.WRITTEN
   }
 
   private suspend fun readDailySummaries(startTime: Instant, endTime: Instant): List<DailyHealthSummary> {
@@ -305,14 +262,6 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       client.features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY) ==
       HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
 
-  private fun segmentType(type: HealthExerciseSegmentType): Int = when (type) {
-    HealthExerciseSegmentType.CRUNCH -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_CRUNCH
-    HealthExerciseSegmentType.LUNGE -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_LUNGE
-    HealthExerciseSegmentType.PLANK -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_PLANK
-    HealthExerciseSegmentType.STAIR_CLIMBING -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_STAIR_CLIMBING
-    HealthExerciseSegmentType.OTHER -> ExerciseSegment.EXERCISE_SEGMENT_TYPE_OTHER_WORKOUT
-  }
-
   private fun zoneOffsetAt(instant: Instant): ZoneOffset = ZoneId.systemDefault().rules.getOffset(instant)
 
   companion object {
@@ -325,10 +274,6 @@ class HealthConnectHealthRepository(context: Context) : HealthRepository, Health
       HealthPermission.getReadPermission(WeightRecord::class),
       HealthPermission.getReadPermission(BodyFatRecord::class),
       HealthPermission.getReadPermission(NutritionRecord::class),
-    )
-
-    val WRITE_PERMISSIONS: Set<String> = setOf(
-      HealthPermission.getWritePermission(ExerciseSessionRecord::class),
     )
 
     const val HISTORY_PERMISSION: String = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
