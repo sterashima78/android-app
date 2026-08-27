@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiViewModel
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
+import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiAdvisor
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
@@ -80,7 +81,7 @@ internal class AppSupportingRouteDependencies(
       aiViewModelFactory = WorkoutAiViewModel.Factory(
         workoutReader = container.workoutRepository,
         settingsRepository = workoutAiSettingsRepository,
-        advisor = AppWorkoutAiAdvisor(
+        advisor = DefaultWorkoutAiAdvisor(
           localInference = container.textInference,
           cloudInference = container.cloudTextInference,
         ),
