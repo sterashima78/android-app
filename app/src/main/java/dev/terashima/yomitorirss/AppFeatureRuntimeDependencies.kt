@@ -45,6 +45,9 @@ import dev.terashima.yomitorirss.feature.library.data.WebLibraryMetadataClient
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
+import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationDependencies
+import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationOutcome
+import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizedAccount
 
 /**
  * Application-scope feature runtimes consumed by more than one composition adapter.
