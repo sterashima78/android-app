@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.feature.library.LibraryBook
 
 /**
  * Application-scope composition facade.
@@ -17,13 +18,14 @@ import dev.terashima.yomitorirss.core.network.HttpClient
  */
 class AppContainer(
   private val application: Application,
+  private val appVersionName: String,
   private val resumedActivityProvider: () -> Activity? = { null },
 ) {
   private val dataChanges = DataChangeNotifier.shared
   private val persistenceChanges = PersistenceChangeNotifier.shared
 
   internal val httpClient: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    HttpClient.create(userAgent = "Mosaic/${BuildConfig.VERSION_NAME} (Android)")
+    HttpClient.create(userAgent = "Mosaic/$appVersionName (Android)")
   }
 
   val database: YomitoriDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -107,6 +109,10 @@ class AppContainer(
     )
   }
 
+  private val backgroundRuntime: AppBackgroundRuntime by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AppBackgroundRuntime(application)
+  }
+
   internal val healthRepository get() = featureRuntimeDependencies.healthRepository
   internal val libraryRuntime get() = featureRuntimeDependencies.library
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
@@ -157,4 +163,11 @@ class AppContainer(
   val knowledgePageCreator get() = knowledgeRuntime.knowledgePageCreator
   val knowledgePageEditor get() = knowledgeRuntime.knowledgePageEditor
   val aiTaskQueueRepository get() = crossFeatureRuntime.aiTaskQueueRepository
+
+  suspend fun addSharedWebBook(url: String, title: String?): LibraryBook =
+    libraryRuntime.webLibraryMutator.addWebBook(url, title)
+
+  fun startBackgroundRuntime() {
+    backgroundRuntime.start()
+  }
 }

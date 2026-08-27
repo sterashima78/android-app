@@ -13,7 +13,7 @@ import dev.terashima.yomitorirss.feature.summary.data.summaryDatabaseSchema
 import dev.terashima.yomitorirss.feature.task.data.taskDatabaseSchema
 import dev.terashima.yomitorirss.feature.youtube.data.youtubeDatabaseSchema
 
-internal val appDatabaseSchema = DatabaseSchema(
+val appDatabaseSchema = DatabaseSchema(
   version = 27,
   contributions = listOf(
     rssDatabaseSchema,

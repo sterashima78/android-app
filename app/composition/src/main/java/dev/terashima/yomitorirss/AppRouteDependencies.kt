@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss
 
 import android.app.Application
 
-class AppRouteDependencies internal constructor(
+class AppRouteDependencies(
   application: Application,
   container: AppContainer,
 ) {

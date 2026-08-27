@@ -16,7 +16,7 @@ import dev.terashima.yomitorirss.feature.widget.data.WidgetWorkerFactory
  * Connects WorkManager-owned entry points to the application-scope dependency graph without
  * requiring Workers to look dependencies up from Application or construct parallel repository graphs.
  */
-internal fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
+fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
   DelegatingWorkerFactory().apply {
     addFactory(BackupWorkerFactory { container.backupRepository })
     addFactory(KnowledgeWorkerFactory { container.knowledgeBuildRunner })

@@ -12,11 +12,11 @@ class ArchitectureCleanupSourceTest {
       ?: error("repository root not found")
   }
 
+  private val compositionSourceRoot = "app/composition/src/main/java/dev/terashima/yomitorirss"
+
   @Test
   fun `App route compositionはRedditの低レベル分類規則を再実装しない`() {
-    val routeComposition = source(
-      "app/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
-    )
+    val routeComposition = source("$compositionSourceRoot/AppContentRouteDependencies.kt")
 
     assertTrue("route composition must consume the Reddit-owned boundary", "RedditSourceBoundary" in routeComposition)
     listOf(
@@ -66,9 +66,7 @@ class ArchitectureCleanupSourceTest {
     val modelContract = source(
       "feature/settings/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiModelRepository.kt",
     )
-    val routeComposition = source(
-      "app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
-    )
+    val routeComposition = source("$compositionSourceRoot/AppSupportingRouteDependencies.kt")
 
     assertFalse("Settings data must not depend on Summary data", ":feature:summary:data" in settingsDataBuild)
     assertFalse("AI model repository must not construct SummaryPromptStore", "SummaryPromptStore" in settingsData)
@@ -86,10 +84,10 @@ class ArchitectureCleanupSourceTest {
     val libraryOrganization = source(
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryOrganizationSuggester.kt",
     )
-    val aiCore = source("app/src/main/java/dev/terashima/yomitorirss/AppAiCoreRuntimeDependencies.kt")
-    val featureRuntime = source("app/src/main/java/dev/terashima/yomitorirss/AppFeatureRuntimeDependencies.kt")
-    val knowledgeRuntime = source("app/src/main/java/dev/terashima/yomitorirss/AppKnowledgeRuntimeDependencies.kt")
-    val workerFactory = source("app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt")
+    val aiCore = source("$compositionSourceRoot/AppAiCoreRuntimeDependencies.kt")
+    val featureRuntime = source("$compositionSourceRoot/AppFeatureRuntimeDependencies.kt")
+    val knowledgeRuntime = source("$compositionSourceRoot/AppKnowledgeRuntimeDependencies.kt")
+    val workerFactory = source("$compositionSourceRoot/AppWorkerFactory.kt")
 
     assertTrue("Summary data must depend on ai-inference", ":core:ai-inference" in summaryBuild)
     assertFalse("Summary data must not depend on local ai-runtime", ":core:ai-runtime" in summaryBuild)
@@ -149,7 +147,7 @@ class ArchitectureCleanupSourceTest {
 
   @Test
   fun `AppRouteDependenciesはcontentとsupporting compositionの薄いfaçadeにする`() {
-    val facade = source("app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt")
+    val facade = source("$compositionSourceRoot/AppRouteDependencies.kt")
 
     assertTrue("route facade must delegate content composition", "AppContentRouteDependencies" in facade)
     assertTrue("route facade must delegate supporting composition", "AppSupportingRouteDependencies" in facade)
@@ -160,11 +158,11 @@ class ArchitectureCleanupSourceTest {
   @Test
   fun `generic feature runtime graphはRouteとWorkerへ露出しない`() {
     listOf(
-      "app/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt",
-      "app/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
-      "app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
-      "app/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt",
-      "app/src/main/java/dev/terashima/yomitorirss/AppCrossFeatureRuntimeDependencies.kt",
+      "$compositionSourceRoot/AppRouteDependencies.kt",
+      "$compositionSourceRoot/AppContentRouteDependencies.kt",
+      "$compositionSourceRoot/AppSupportingRouteDependencies.kt",
+      "$compositionSourceRoot/AppWorkerFactory.kt",
+      "$compositionSourceRoot/AppCrossFeatureRuntimeDependencies.kt",
     ).forEach { path ->
       assertFalse(
         "$path must use narrow AppContainer capabilities instead of the generic feature runtime graph",
@@ -228,16 +226,22 @@ class ArchitectureCleanupSourceTest {
 
   @Test
   fun `external version identifiersはBuildConfig versionを正本にする`() {
-    val container = source("app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt")
+    val application = source("app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt")
+    val container = source("$compositionSourceRoot/AppContainer.kt")
     val network = source(
       "core/network/src/main/kotlin/dev/terashima/yomitorirss/core/network/OkHttpHttpClient.kt",
     )
     val workflow = source(".github/workflows/build.yml")
 
     assertTrue(
-      "application User-Agent must derive the version from BuildConfig",
-      "Mosaic/${'$'}{BuildConfig.VERSION_NAME} (Android)" in container,
+      "application must pass BuildConfig version across the composition boundary",
+      "appVersionName = BuildConfig.VERSION_NAME" in application,
     )
+    assertTrue(
+      "application User-Agent must derive the version from the injected app version",
+      "Mosaic/$appVersionName (Android)" in container,
+    )
+    assertFalse("composition module must not depend on app BuildConfig", "BuildConfig.VERSION_NAME" in container)
     assertFalse("core network must not hardcode the app version", "Mosaic/0.2" in network)
     assertFalse("APK workflow must not hardcode the app version", "mosaic-0.2.0-arm64-v8a.apk" in workflow)
     assertTrue("APK workflow must read output metadata versionName", "[\"versionName\"]" in workflow)

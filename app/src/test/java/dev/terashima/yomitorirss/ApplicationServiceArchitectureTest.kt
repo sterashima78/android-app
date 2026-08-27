@@ -8,7 +8,7 @@ class ApplicationServiceArchitectureTest {
   @Test
   fun `AppContainerはBookmark enrichment policyを実行しない`() {
     val source = repositoryFile(
-      "app/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
+      "app/composition/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
     ).readText()
 
     assertFalse(source.contains("shouldRequestBookmarkEnrichment("))
