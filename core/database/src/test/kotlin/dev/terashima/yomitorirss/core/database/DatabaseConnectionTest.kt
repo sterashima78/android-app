@@ -164,6 +164,27 @@ class DatabaseConnectionTest {
   }
 
   @Test
+  fun `別wrapperのdurable writeもlocalTransactionの外側commit後に通知する`() {
+    val notifier = PersistenceChangeNotifier()
+    val outer = DatabaseConnection(helper, notifier)
+    val inner = DatabaseConnection(helper, notifier)
+
+    outer.localTransaction {
+      insertOrThrow("items", null, values("local"))
+      inner.write {
+        insertOrThrow("items", null, values("durable"))
+      }
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(1L, notifier.version.value)
+    assertEquals(2, outer.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
   fun `localTransaction内のdurable writeがrollbackされた場合は通知しない`() {
     val notifier = PersistenceChangeNotifier()
     val database = DatabaseConnection(helper, notifier)
