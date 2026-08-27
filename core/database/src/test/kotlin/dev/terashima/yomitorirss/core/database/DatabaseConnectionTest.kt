@@ -89,6 +89,26 @@ class DatabaseConnectionTest {
   }
 
   @Test
+  fun `外側transaction内のwriteは外側commitで一度だけ通知する`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.transaction {
+      insertOrThrow("items", null, values("first"))
+      database.write {
+        update("items", values("updated"), "id = ?", arrayOf("1"))
+      }
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(1L, notifier.version.value)
+    assertEquals("updated", database.readable.rawQuery("SELECT value FROM items WHERE id = 1", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getString(0)
+    })
+  }
+
+  @Test
   fun `transactionがrollbackされた場合は通知しない`() {
     val notifier = PersistenceChangeNotifier()
     val database = DatabaseConnection(helper, notifier)
