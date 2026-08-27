@@ -13,7 +13,7 @@ class MainActivityDependencies internal constructor(
   val routeDependencies: AppRouteDependencies,
   val lanWebServerController: LanWebServerController,
   private val saveSharedBookmark: SaveSharedBookmarkUseCase,
-  private val addSharedWebBook: suspend (String, String?) -> LibraryBook,
+  private val addSharedWebBookCapability: suspend (String, String?) -> LibraryBook,
 ) {
   suspend fun saveSharedArticle(
     url: String,
@@ -24,5 +24,5 @@ class MainActivityDependencies internal constructor(
   suspend fun addSharedWebBook(
     url: String,
     title: String,
-  ): LibraryBook = addSharedWebBook(url, title)
+  ): LibraryBook = addSharedWebBookCapability(url, title)
 }
