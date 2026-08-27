@@ -5,5 +5,9 @@
       android:name="dev.terashima.yomitorirss.core.airuntime.LocalTextInferenceService"
       android:exported="false"
       android:process=":local_ai_text" />
+    <service
+      android:name="dev.terashima.yomitorirss.core.airuntime.LocalStructuredTextInferenceService"
+      android:exported="false"
+      android:process=":local_ai_text" />
   </application>
 </manifest>
