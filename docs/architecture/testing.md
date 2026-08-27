@@ -210,13 +210,13 @@ python3 scripts/verify_adr_integrity.py
 ./gradlew --no-daemon :app:lintRelease
 ```
 
-`main` push と手動実行の signed release APK は `.github/workflows/build.yml` が所有する。PR gate を通過した commit を ruleset により `main` へ取り込む前提とし、main build では Architecture / Test / Lint を重複実行しない。repository scan は release keystore を runner へ復元する前に再実行し、その後 APK build / signature verification / artifact upload / `apk/main` commit status publication を行う。
+`main` push と手動実行の signed release APK は `.github/workflows/build.yml` が所有する。PR gate を通過した commit を ruleset により `main` へ取り込む前提とし、main build では Architecture / Test / Lint を重複実行しない。repository scan は release keystore を runner へ復元する前に再実行し、その後 APK build / signature verification / artifact upload を行う。commit status publication は ADR-0201 で廃止した。
 
 ruleset 移行中は workflow 分離が先行し、direct push の技術的な防止が一時的に弱くなることを ADR-0197 で明示的に受け入れている。最終状態では `main` への Pull Request、4 required checks、force push / deletion / bypass の禁止を repository ruleset で enforcement する。
 
 CI workflow が変更された場合は、この文書のコマンドを正本とせず workflow を優先して本記述を更新する。
 
-Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../adr/0093-main-apk-build-run-status.md), [ADR-0136](../adr/0136-public-repository-content-verification.md), [ADR-0197](../adr/0197-split-pr-checks-and-main-apk-build.md).
+Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../adr/0093-main-apk-build-run-status.md), [ADR-0136](../adr/0136-public-repository-content-verification.md), [ADR-0197](../adr/0197-split-pr-checks-and-main-apk-build.md), [ADR-0201](../adr/0201-remove-main-apk-commit-status.md).
 
 ## Choosing tests for a change
 
@@ -271,3 +271,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0149](../adr/0149-sanitize-shareable-crash-diagnostics.md)
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
+- [ADR-0201](../adr/0201-remove-main-apk-commit-status.md)

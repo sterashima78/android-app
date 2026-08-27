@@ -4,6 +4,7 @@
 - Date: 2026-08-27
 - Supersedes in part: [ADR-0164](0164-p1-owner-boundary-and-main-quality-gate.md) Decision 3
 - Refines: [ADR-0093](0093-main-apk-build-run-status.md)
+- Superseded in part by: [ADR-0201](0201-remove-main-apk-commit-status.md) Decision 5
 
 ## Context
 
@@ -30,7 +31,7 @@ ADR integrity は path filter 付きの独立 workflow だった。GitHub の re
 
 4. `main` build は release keystore を復元する前に `scripts/verify_public_repository.py` を実行する。公開リポジトリ安全性を signing secret の利用前に再確認する defense-in-depth は維持する。
 
-5. ADR-0093 で定めた signed release APK、APK signature verification、artifact upload、`apk/main` commit status は維持する。
+5. ADR-0093 で定めた signed release APK、APK signature verification、artifact upload は維持する。`apk/main` commit status は ADR-0201 により廃止する。
 
 6. 最終状態の `main` ruleset は Pull Request 経由の変更を必須とし、`Public repository` / `Architecture` / `Test` / `Lint` を required status checks とする。force push、branch deletion、bypass を許可しない。
 
@@ -55,3 +56,5 @@ ADR integrity は path filter 付きの独立 workflow だった。GitHub の re
 ## Relationship to previous decisions
 
 ADR-0164 の Decision 1 と Decision 2（owner boundary に関する判断）は引き続き有効とする。Decision 3 と、それに対応する main quality gate の consequence / verification だけを本 ADR で置き換える。
+
+ADR-0201 により Decision 5 の `apk/main` commit status publication のみを廃止する。signed release APK の生成、署名検証、artifact upload は引き続き有効とする。
