@@ -1,0 +1,59 @@
+name: Android Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  public_repository:
+    name: Public repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test repository verifier
+        run: python3 scripts/test_verify_public_repository.py
+      - name: Verify tracked public content
+        run: python3 scripts/verify_public_repository.py
+
+  checks:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Architecture
+            command: python3 -m unittest scripts.test_verify_module_map scripts.test_verify_adr_integrity && python3 scripts/verify_module_map.py && python3 scripts/verify_adr_integrity.py && ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
+          - name: Test
+            command: ./gradlew --no-daemon test
+          - name: Lint
+            command: ./gradlew --no-daemon :app:lintRelease
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          packages: platform-tools
+      - name: Install Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
