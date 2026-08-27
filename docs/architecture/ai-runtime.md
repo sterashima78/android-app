@@ -28,10 +28,11 @@ Summary、Knowledge、Library organization が利用する Local `AiTextInferenc
 
 - main process は WorkManager、durable queue、DB、feature policy、`LocalAiBackgroundTaskGate` を所有し続ける。
 - child process は prompt と immutable execution snapshot を受け取り単発 text generation を返すだけで、Repository や Worker graph を構築しない。
-- generation 開始時に main process が selected model id/revision、backend、speculative decoding、effective context token count、stage-duration estimate を snapshot として確定する。
-- user が generation 中に設定を変更しても実行中 generation は開始時 snapshot を使い、次 generation から新設定を取得する。
+- generation request が直列化順序を取得した直後に main process が selected model id、全既知 model revision、backend、speculative decoding、effective context token count、stage-duration estimate を snapshot として確定する。
+- user が generation 中に設定を変更しても実行中 generation は開始時 snapshot を使い、待機中の次 generation は request 順序を取得した後に新設定を snapshot 化する。
 - child process の `LocalModelManager` は main の `local_summary_models` / `local_context_benchmarks` を直接読まず、process-local `ContextWrapper` により child 専用 preference を利用する。
 - `AUTO` context は main process で effective token count まで解決し、child では対応する固定 context mode として再現する。
+- child には保存済み model artifact の全既知 revision metadata を渡し、起動時 cleanup が revision 不明の別 model を誤って削除しないようにする。
 - child が学習した stage-duration 値だけを response metadata で main に戻し、main process 自身が main preference へ保存する。child から main の preference editor は利用しない。
 - process 内の `LocalModelManager` は最大2 generation だけ再利用し、その後は unbind と process exit で native resource を回収する。
 - 1 generation だけで後続 request がない場合も30秒 idle で process を終了する。
@@ -82,4 +83,4 @@ application-scope で再利用するのは adapter / manager ownership であり
 - [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0185](../adr/0185-normalize-chatgpt-provider-failures-in-core.md)
-- [ADR-0189](../adr/0189-isolate-local-text-inference-process.md)
+- [ADR-0190](../adr/0190-isolate-local-text-inference-process.md)
