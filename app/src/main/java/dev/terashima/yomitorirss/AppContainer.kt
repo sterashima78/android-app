@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
 
@@ -19,6 +20,7 @@ class AppContainer(
   private val resumedActivityProvider: () -> Activity? = { null },
 ) {
   private val dataChanges = DataChangeNotifier.shared
+  private val persistenceChanges = PersistenceChangeNotifier.shared
 
   internal val httpClient: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     HttpClient.create(userAgent = "Mosaic/${BuildConfig.VERSION_NAME} (Android)")
@@ -29,7 +31,7 @@ class AppContainer(
   }
 
   internal val databaseConnection: DatabaseConnection by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DatabaseConnection(database, dataChanges)
+    DatabaseConnection(database, persistenceChanges)
   }
 
   private val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
