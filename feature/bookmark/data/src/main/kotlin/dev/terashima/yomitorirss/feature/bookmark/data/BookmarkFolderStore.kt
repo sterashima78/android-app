@@ -32,12 +32,14 @@ internal class BookmarkFolderStore(
       createdAt = nowIso(),
     )
     check(
-      database.writable.insertWithOnConflict(
-        "bookmark_folders",
-        null,
-        folder.values(),
-        SQLiteDatabase.CONFLICT_ABORT,
-      ) != -1L,
+      database.write {
+        insertWithOnConflict(
+          "bookmark_folders",
+          null,
+          folder.values(),
+          SQLiteDatabase.CONFLICT_ABORT,
+        )
+      } != -1L,
     ) { "同じ名前のフォルダがあります" }
     return folder
   }
@@ -46,17 +48,19 @@ internal class BookmarkFolderStore(
     val display = displayName(name)
     require(display.isNotBlank()) { "フォルダ名を入力してください" }
     requireFolderCanBeEdited(id)
-    database.writable.update(
-      "bookmark_folders",
-      values("name" to display, "normalized_name" to normalizeName(display)),
-      "id=?",
-      arrayOf(id),
-    )
+    database.write {
+      update(
+        "bookmark_folders",
+        values("name" to display, "normalized_name" to normalizeName(display)),
+        "id=?",
+        arrayOf(id),
+      )
+    }
   }
 
   fun deleteFolder(id: String) {
     requireFolderCanBeEdited(id)
-    database.writable.delete("bookmark_folders", "id=?", arrayOf(id))
+    database.write { delete("bookmark_folders", "id=?", arrayOf(id)) }
   }
 
   fun ensureYouTubeFolder() {
