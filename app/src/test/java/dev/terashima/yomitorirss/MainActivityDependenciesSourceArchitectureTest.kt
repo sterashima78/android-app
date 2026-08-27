@@ -33,7 +33,7 @@ class MainActivityDependenciesSourceArchitectureTest {
     )
     assertTrue(
       "Application composition must wire the shared-library capability directly",
-      "addSharedWebBookCapability = container.libraryRuntime.webLibraryMutator::addWebBook" in application,
+      "addSharedWebBookCapability = container::addSharedWebBook" in application,
     )
     assertFalse(
       "shared Library mutation must not reintroduce caller-driven backup scheduling",
