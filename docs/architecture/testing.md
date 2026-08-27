@@ -251,7 +251,8 @@ PR review では test の「数」ではなく、変更した responsibility と
 
 ## Sources
 
-- [`.github/workflows/build-apk.yml`](../../.github/workflows/build-apk.yml)
+- [`.github/workflows/check.yml`](../../.github/workflows/check.yml)
+- [`.github/workflows/build.yml`](../../.github/workflows/build.yml)
 - [`scripts/verify_module_map.py`](../../scripts/verify_module_map.py)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
