@@ -37,15 +37,25 @@ ADR-0116 では将来 NavHost / destination-scoped ViewModelStore を導入す�
 
 ただし root graph の composition、drawer / bottom bar、cross-feature callback wiring は executable shell の責務なので `:app` に残す。feature module が `NavController` や他 feature の graph を所有する構造にはしない。
 
-### 3. root graph composition は `AppNavHost` に集約する
+### 3. root graph composition は薄い `AppNavHost` と責務別 registration に分割する
 
-従来 `AppFeatureContent` が持っていた root destination dispatch を `AppNavHost` の `composable(route)` registration へ移す。
+`AppNavHost` は `NavHost` の生成、start destination、責務別 graph registration の composition だけを所有する。
+
+実際の `composable(route)` 登録は `:app` 内の app-owned registration へ分割する。
+
+- Home / Integrated
+- RSS
+- Reddit
+- Bookmark
+- 単一 root destination を持つその他 feature
+
+これは feature module に app graph ownership を移す分割ではない。各 registration は feature-owned route contract と `AppRouteDependencies` を利用し、app-level callback を接続する executable shell adapter である。
 
 ViewModel Factory や platform callback は引き続き `AppRouteDependencies` と app route adapter から渡し、Navigation Compose を concrete dependency composition の代替にはしない。
 
 ### 4. feature ViewModel は destination-scoped lifetime を基本とする
 
-`AppNavHost` の destination 内で `viewModel(factory = ...)` を取得し、`NavBackStackEntry` を `ViewModelStoreOwner` とする。
+root graph registration の destination 内で `viewModel(factory = ...)` を取得し、`NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
 TopBar、Summary overlay、Bookmark edit overlay、feature message effect は NavHost の外側にあるため、active `NavBackStackEntry` を明示的な `ViewModelStoreOwner` として受け取る。これにより本文と cross-feature host が同じ destination-scoped ViewModel instance を共有する。
 
@@ -90,6 +100,7 @@ compileSdk 37 / Navigation 2.10 への更新は platform baseline の別変更�
 - feature ViewModel lifetime を destination back stack に合わせられる。
 - destination identity が owning feature UI module に置かれ、app shell の enum へ全 feature を再列挙する必要がなくなる。
 - widget / share / feature callback の遷移が同じ navigation path に合流する。
+- `AppNavHost` 自体を destination 一覧の巨大な集中点にしない。
 
 ### Negative
 
@@ -97,27 +108,28 @@ compileSdk 37 / Navigation 2.10 への更新は platform baseline の別変更�
 - app shell の TopBar / overlay が active `NavBackStackEntry` owner を明示的に受け渡す必要がある。
 - top-level navigation に back stack が生まれるため、以前の selected-tab replacement と Back semantics が変わる。
 - feature UI module に route contract file が増える。
+- app-owned graph registration file が増える。
 - Navigation 2.10 の採用は compileSdk 37 migration まで保留する。
 
 ## Verification
 
 - `MainTab.kt`、`AppViewModel.kt`、`AppFeatureContent.kt` が production source に存在しないこと。
 - `YomitoriApp` が `rememberNavController()` を source of truth とし、selected-tab state を持たないこと。
-- `AppNavHost` が root `NavHost` を所有すること。
+- `AppNavHost` が root `NavHost` と graph composition だけを所有し、直接 `composable(route)` を列挙しないこと。
+- app-owned destination registration が責務別ファイルへ分割され、destination dispatch 前に feature ViewModel を eager resolve しないこと。
 - destination route contract が owning feature UI module に存在すること。
 - section / RSS / Reddit / Bookmark route mapping、message capability、overlay capability を unit test すること。
 - Back action を navigation history / root drawer / drawer-open の3状態で unit test すること。
 - task widget launch が task route へ解決されることを unit test すること。
-- destination dispatch より前に feature ViewModel を eager resolve しないことを source architecture test で検査すること。
 - active route の TopBar / overlay / message host が active `NavBackStackEntry` を ViewModel owner として使うこと。
 - `verifyArchitecture`、unit tests、release lint、public repository verifier を通すこと。
 
 ## Documentation
 
-- `docs/architecture/module-map.md` の app navigation ownership を `NavController` / `AppNavHost` / feature destination contract に更新する。
+- `docs/architecture/module-map.md` の app navigation ownership を `NavController` / `AppNavHost` / app-owned graph registration / feature destination contract に更新する。
 - ADR-0150 の selected-tab state decision を supersede する。
-- ADR-0156 の message capability key を `MainTab` から active route へ更新する。
-- ADR-0116 の Activity-scoped ViewModelStore を本 ADR で置き換え、destination-scoped lifetime を現行決定とする。
+- ADR-0156 の selected-tab message capability decision を supersede し、active route capability へ接続する。
+- ADR-0116 に destination-scoped ViewModelStore が現行決定であることを追記する。
 
 ## Public repository review
 
