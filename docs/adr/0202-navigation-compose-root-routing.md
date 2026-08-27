@@ -29,6 +29,8 @@ ADR-0116 では将来 NavHost / destination-scoped ViewModelStore を導入す�
 
 `AppSection` は drawer の presentation grouping として残し、各 section の既定 route だけを `AppNavigationSpec` が定義する。
 
+`NavController` は `MainActivity.setContent` の app root composition で `rememberNavController()` により生成し、app-lock の conditional dispatch より上に保持する。これは Activity property として navigation state を戻すものではなく、Compose の app-shell owner を一段上へ置くためである。生体認証ロックにより `MainContent` / `YomitoriApp` が一時的に composition から外れても同じ controller を再利用し、現在 route、back stack、destination-scoped ViewModelStore を失わない。
+
 ### 2. destination identity は owning feature UI module が公開する
 
 各 `:feature:<name>:ui` は `NavigationDestination.kt` で route contract を公開する。RSS / Reddit / Bookmark のように複数 root destination を持つ feature は、それぞれの route を同じ UI module が所有する。
@@ -58,6 +60,8 @@ ViewModel Factory や platform callback は引き続き `AppRouteDependencies` �
 root graph registration の destination 内で `viewModel(factory = ...)` を取得し、`NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
 TopBar、Summary overlay、Bookmark edit overlay、feature message effect は NavHost の外側にあるため、active `NavBackStackEntry` を明示的な `ViewModelStoreOwner` として受け取る。これにより本文と cross-feature host が同じ destination-scoped ViewModel instance を共有する。
+
+app-lock 表示時も root `NavController` 自体は composition に保持するため、temporary lock UI swap を destination 終了として扱わない。実際の navigation pop / replacement または Activity 終了まで destination-scoped state を保持する。
 
 Activity property へ feature ViewModel を戻さない。
 
@@ -101,11 +105,13 @@ compileSdk 37 / Navigation 2.10 への更新は platform baseline の別変更�
 - destination identity が owning feature UI module に置かれ、app shell の enum へ全 feature を再列挙する必要がなくなる。
 - widget / share / feature callback の遷移が同じ navigation path に合流する。
 - `AppNavHost` 自体を destination 一覧の巨大な集中点にしない。
+- 生体認証ロックの一時表示で navigation state や destination-scoped ViewModel を失わない。
 
 ### Negative
 
 - `:app` に Navigation Compose dependency が増える。
 - app shell の TopBar / overlay が active `NavBackStackEntry` owner を明示的に受け渡す必要がある。
+- root Compose composition が app-lock UI より長寿命の `NavController` を保持する必要がある。
 - top-level navigation に back stack が生まれるため、以前の selected-tab replacement と Back semantics が変わる。
 - feature UI module に route contract file が増える。
 - app-owned graph registration file が増える。
@@ -114,7 +120,8 @@ compileSdk 37 / Navigation 2.10 への更新は platform baseline の別変更�
 ## Verification
 
 - `MainTab.kt`、`AppViewModel.kt`、`AppFeatureContent.kt` が production source に存在しないこと。
-- `YomitoriApp` が `rememberNavController()` を source of truth とし、selected-tab state を持たないこと。
+- `MainActivity` の root composition が `rememberNavController()` を app-lock dispatch より前に生成し、同じ controller を `MainContent` / `YomitoriApp` へ渡すこと。
+- `YomitoriApp` が `NavHostController` を受け取り、独自に `rememberNavController()` を再生成せず selected-tab state も持たないこと。
 - `AppNavHost` が root `NavHost` と graph composition だけを所有し、直接 `composable(route)` を列挙しないこと。
 - app-owned destination registration が責務別ファイルへ分割され、destination dispatch 前に feature ViewModel を eager resolve しないこと。
 - destination route contract が owning feature UI module に存在すること。
@@ -130,6 +137,7 @@ compileSdk 37 / Navigation 2.10 への更新は platform baseline の別変更�
 - ADR-0150 の selected-tab state decision を supersede する。
 - ADR-0156 の selected-tab message capability decision を supersede し、active route capability へ接続する。
 - ADR-0116 に destination-scoped ViewModelStore が現行決定であることを追記する。
+- app-lock UI より長寿命の root navigation owner を current architecture doc に明記する。
 
 ## Public repository review
 
