@@ -34,11 +34,18 @@ class YomitoriApplication : Application(),
     AppContainer(this, currentActivityTracker::current)
   }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
+  private val sharedWebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    NotifyingWebLibraryMutator(
+      delegate = container.libraryRuntime.webLibraryMutator,
+      onChanged = container.backupChangeScheduler::scheduleAfterChange,
+    )
+  }
   override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     MainActivityDependencies(
       routeDependencies = routeDependencies,
       lanWebServerController = container.lanWebServerController,
       saveSharedBookmark = container.saveSharedBookmarkUseCase,
+      addSharedWebBook = sharedWebLibraryMutator::addWebBook,
     )
   }
   override val workManagerConfiguration: Configuration by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
