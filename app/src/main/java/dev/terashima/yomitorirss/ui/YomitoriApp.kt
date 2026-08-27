@@ -120,7 +120,7 @@ fun YomitoriApp(
       bottomBar = {
         AppBottomBar(
           selectedRoute = selectedRoute,
-          onSelectRoute = navController::navigateTopLevel,
+          onSelectRoute = { route -> navController.navigateTopLevel(route) },
         )
       },
     ) { padding ->
