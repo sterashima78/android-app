@@ -31,39 +31,14 @@ internal fun WebLibraryThumbnailPreview(
 ) {
   val thumbnailUrl = book.thumbnailUrl?.trim()?.takeIf(String::isNotEmpty) ?: return
   val pageUrl = book.infoUrl?.takeIf(String::isNotBlank) ?: book.sourceId
-  val requestModels = rememberLibraryThumbnailModels(book, thumbnailUrl)
-  var requestIndex by remember(thumbnailUrl, pageUrl) { mutableStateOf(0) }
   var failureMessage by remember(thumbnailUrl, pageUrl) { mutableStateOf<String?>(null) }
-  val requestModel = requestModels.getOrElse(requestIndex) { requestModels.lastOrNull() ?: thumbnailUrl }
 
   Column(modifier = modifier) {
-    AsyncImage(
-      model = requestModel,
-      contentDescription = "${book.title} の表紙",
+    LibraryThumbnailImage(
+      book = book,
       modifier = Modifier.size(width = 96.dp, height = 144.dp),
       contentScale = ContentScale.Fit,
-      onSuccess = { state ->
-        val image = state.result.image
-        if (!isUsableWebLibraryThumbnail(image.width, image.height)) {
-          if (requestIndex + 1 < requestModels.size) {
-            requestIndex += 1
-            failureMessage = null
-          } else {
-            failureMessage =
-              "表紙画像は取得できましたが表示可能な画像ではありません (${image.width}×${image.height}px)"
-          }
-        } else {
-          failureMessage = null
-        }
-      },
-      onError = {
-        if (requestIndex + 1 < requestModels.size) {
-          requestIndex += 1
-          failureMessage = null
-        } else {
-          failureMessage = "表紙画像を読み込めませんでした"
-        }
-      },
+      onFailureMessageChanged = { failureMessage = it },
     )
     failureMessage?.let { message ->
       Text(
@@ -73,6 +48,62 @@ internal fun WebLibraryThumbnailPreview(
       )
     }
   }
+}
+
+@Composable
+internal fun LibraryThumbnailImage(
+  book: LibraryBook,
+  modifier: Modifier = Modifier,
+  contentScale: ContentScale = ContentScale.Fit,
+  onFailureMessageChanged: (String?) -> Unit = {},
+) {
+  val thumbnailUrl = book.thumbnailUrl?.trim()?.takeIf(String::isNotEmpty) ?: return
+  if (book.source != LibrarySource.WEB) {
+    AsyncImage(
+      model = thumbnailUrl,
+      contentDescription = "${book.title} の表紙",
+      modifier = modifier,
+      contentScale = contentScale,
+      onSuccess = { onFailureMessageChanged(null) },
+      onError = { onFailureMessageChanged("表紙画像を読み込めませんでした") },
+    )
+    return
+  }
+
+  val pageUrl = book.infoUrl?.takeIf(String::isNotBlank) ?: book.sourceId
+  val requestModels = rememberLibraryThumbnailModels(book, thumbnailUrl)
+  var requestIndex by remember(thumbnailUrl, pageUrl) { mutableStateOf(0) }
+  val requestModel = requestModels.getOrElse(requestIndex) { requestModels.lastOrNull() ?: thumbnailUrl }
+
+  AsyncImage(
+    model = requestModel,
+    contentDescription = "${book.title} の表紙",
+    modifier = modifier,
+    contentScale = contentScale,
+    onSuccess = { state ->
+      val image = state.result.image
+      if (!isUsableWebLibraryThumbnail(image.width, image.height)) {
+        if (requestIndex + 1 < requestModels.size) {
+          requestIndex += 1
+          onFailureMessageChanged(null)
+        } else {
+          onFailureMessageChanged(
+            "表紙画像は取得できましたが表示可能な画像ではありません (${image.width}×${image.height}px)",
+          )
+        }
+      } else {
+        onFailureMessageChanged(null)
+      }
+    },
+    onError = {
+      if (requestIndex + 1 < requestModels.size) {
+        requestIndex += 1
+        onFailureMessageChanged(null)
+      } else {
+        onFailureMessageChanged("表紙画像を読み込めませんでした")
+      }
+    },
+  )
 }
 
 @Composable
