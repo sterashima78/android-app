@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.ContentType
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,7 +39,6 @@ class FeedViewModel(
   private val repository: FeedRepository,
   private val refreshFeeds: RefreshFeedsUseCase,
   private val imports: FeedImportRepository,
-  private val backupChangeScheduler: BackupChangeScheduler,
   private val feedSelector: (Feed) -> Boolean = { true },
   private val canAddInput: (String) -> Boolean = { true },
 ) : ViewModel() {
@@ -155,7 +153,6 @@ class FeedViewModel(
     _state.update { it.copy(addFeedProgress = "フィードを追加中…") }
     runCatching { repository.addFeed(url, markExistingArticlesRead) }
       .onSuccess {
-        backupChangeScheduler.scheduleAfterChange()
         _state.update {
           it.copy(
             addFeedProgress = null,
@@ -177,10 +174,7 @@ class FeedViewModel(
   fun renameFeed(feed: Feed, name: String) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.renameFeed(feed.id, name) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "フィード名を変更しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "フィード名を変更しました") } }
         .onFailure(::showError)
     }
   }
@@ -188,10 +182,7 @@ class FeedViewModel(
   fun deleteFeed(feed: Feed) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.deleteFeed(feed.id) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "${feed.title}を削除しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "${feed.title}を削除しました") } }
         .onFailure(::showError)
     }
   }
@@ -199,10 +190,7 @@ class FeedViewModel(
   fun createFolder(name: String) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.createFolder(name) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "フォルダを作成しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "フォルダを作成しました") } }
         .onFailure(::showError)
     }
   }
@@ -210,10 +198,7 @@ class FeedViewModel(
   fun renameFolder(folder: FeedFolder, name: String) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.renameFolder(folder.id, name) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "フォルダ名を変更しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "フォルダ名を変更しました") } }
         .onFailure(::showError)
     }
   }
@@ -221,10 +206,7 @@ class FeedViewModel(
   fun deleteFolder(folder: FeedFolder) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.deleteFolder(folder.id) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "${folder.name}を削除しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "${folder.name}を削除しました") } }
         .onFailure(::showError)
     }
   }
@@ -232,10 +214,7 @@ class FeedViewModel(
   fun moveFeedToFolder(feed: Feed, folderId: String?) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.moveFeedToFolder(feed.id, folderId) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "${feed.title}を移動しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "${feed.title}を移動しました") } }
         .onFailure(::showError)
     }
   }
@@ -243,10 +222,7 @@ class FeedViewModel(
   fun setFeedContentType(feed: Feed, contentType: ContentType?) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.setFeedContentType(feed.id, contentType) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "${feed.title}のコンテンツ種別を変更しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "${feed.title}のコンテンツ種別を変更しました") } }
         .onFailure(::showError)
     }
   }
@@ -254,10 +230,7 @@ class FeedViewModel(
   fun setFolderContentType(folder: FeedFolder, contentType: ContentType?) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.setFolderContentType(folder.id, contentType) }
-        .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
-          _state.update { it.copy(message = "${folder.name}のコンテンツ種別を変更しました") }
-        }
+        .onSuccess { _state.update { it.copy(message = "${folder.name}のコンテンツ種別を変更しました") } }
         .onFailure(::showError)
     }
   }
@@ -272,7 +245,6 @@ class FeedViewModel(
       runCatching {
         repository.saveWebScrapingRule(id, urlPattern, functionCode, timeoutSeconds)
       }.onSuccess {
-        backupChangeScheduler.scheduleAfterChange()
         reload()
         _state.update { it.copy(message = "Web 取得ルールを保存しました") }
       }.onFailure(::showError)
@@ -283,7 +255,6 @@ class FeedViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.deleteWebScrapingRule(rule.id) }
         .onSuccess {
-          backupChangeScheduler.scheduleAfterChange()
           reload()
           _state.update { it.copy(message = "Web 取得ルールを削除しました") }
         }
@@ -328,10 +299,7 @@ class FeedViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { imports.importFeedOpml(documentUri) }
         .onSuccess { result ->
-          if (result.added > 0) {
-            backupChangeScheduler.scheduleAfterChange()
-            refreshInternal(showCompletionMessage = false)
-          }
+          if (result.added > 0) refreshInternal(showCompletionMessage = false)
           _state.update {
             it.copy(
               message = "${result.added}件のフィードをインポートしました（重複 ${result.duplicates}件、スキップ ${result.skipped}件）",
@@ -387,7 +355,6 @@ class FeedViewModel(
     private val repository: FeedRepository,
     private val refreshFeeds: RefreshFeedsUseCase,
     private val imports: FeedImportRepository,
-    private val backupChangeScheduler: BackupChangeScheduler,
     private val feedSelector: (Feed) -> Boolean = { true },
     private val canAddInput: (String) -> Boolean = { true },
   ) : ViewModelProvider.Factory {
@@ -398,7 +365,6 @@ class FeedViewModel(
         repository,
         refreshFeeds,
         imports,
-        backupChangeScheduler,
         feedSelector,
         canAddInput,
       ) as T
