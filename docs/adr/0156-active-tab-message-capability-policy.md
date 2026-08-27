@@ -1,8 +1,11 @@
 # ADR-0156: active tab の message capability policy を navigation spec に集約する
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-23
 - Refines: [ADR-0147](0147-active-tab-viewmodel-activation.md), [ADR-0150](0150-app-shell-navigation-ui-ownership.md)
+- Superseded by: [ADR-0202](0202-navigation-compose-root-routing.md)
+
+> Current state: message capability policy を `AppNavigationSpec` に集約する原則は継続するが、selected `MainTab` は廃止された。ADR-0202 以降は active route に対する `String.featureMessageSources()` を source of truth とし、`FeatureMessageEffects` は active `NavBackStackEntry` と route capability を利用する。
 
 ## Context
 
