@@ -16,8 +16,8 @@ data class WorkoutAiUiState(
   val date: String = LocalDate.now().toString(),
   val memo: String = "",
   val settings: WorkoutAiSettings = WorkoutAiSettings(),
-  val settingsExpanded: Boolean = false,
   val loading: Boolean = false,
+  val lastRequestType: WorkoutAiRequestType? = null,
   val response: String? = null,
   val errorMessage: String? = null,
 )
@@ -50,23 +50,17 @@ class WorkoutAiViewModel(
     viewModelScope.launch { settingsRepository.saveMemo(_state.value.date, memo) }
   }
 
-  fun toggleSettings() = _state.update { it.copy(settingsExpanded = !it.settingsExpanded) }
-
   fun setProvider(provider: WorkoutAiProvider) = updateSettings { it.copy(provider = provider) }
 
   fun updateWorkoutPolicy(value: String) = updateSettings {
     it.copy(workoutPolicy = value.take(MAX_POLICY_CHARS))
   }
 
-  fun updateMenuCandidates(value: String) = updateSettings {
-    it.copy(menuCandidates = value.take(MAX_MENU_CANDIDATES_CHARS))
-  }
-
   fun requestMenuSuggestion() = request(WorkoutAiRequestType.MENU_SUGGESTION)
 
   fun requestPostWorkoutReview() = request(WorkoutAiRequestType.POST_WORKOUT_REVIEW)
 
-  fun clearResponse() = _state.update { it.copy(response = null, errorMessage = null) }
+  fun clearResponse() = _state.update { it.copy(lastRequestType = null, response = null, errorMessage = null) }
 
   private fun updateSettings(transform: (WorkoutAiSettings) -> WorkoutAiSettings) {
     val settings = transform(_state.value.settings)
@@ -76,7 +70,14 @@ class WorkoutAiViewModel(
 
   private fun request(type: WorkoutAiRequestType) {
     if (_state.value.loading) return
-    _state.update { it.copy(loading = true, response = null, errorMessage = null) }
+    _state.update {
+      it.copy(
+        loading = true,
+        lastRequestType = type,
+        response = null,
+        errorMessage = null,
+      )
+    }
     viewModelScope.launch {
       try {
         val snapshot = workoutReader.load()
@@ -139,6 +140,5 @@ class WorkoutAiViewModel(
   private companion object {
     const val MAX_MEMO_CHARS = 2_000
     const val MAX_POLICY_CHARS = 4_000
-    const val MAX_MENU_CANDIDATES_CHARS = 4_000
   }
 }
