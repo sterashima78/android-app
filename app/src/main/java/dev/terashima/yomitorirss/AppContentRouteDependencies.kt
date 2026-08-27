@@ -13,7 +13,6 @@ import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorTestResult
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataRefreshResult
-import dev.terashima.yomitorirss.feature.library.WebLibraryMutator
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
@@ -25,18 +24,10 @@ import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 internal class AppContentRouteDependencies(
   private val container: AppContainer,
 ) {
-  private val webLibraryMutator: WebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    NotifyingWebLibraryMutator(
-      delegate = container.libraryRuntime.webLibraryMutator,
-      onChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-  }
-
   val rssViewModelFactory: RssViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     RssViewModel.Factory(
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
-      backupChangeScheduler = container.backupChangeScheduler,
       articleSelector = RedditSourceBoundary::isNonRedditArticle,
     )
   }
@@ -46,7 +37,6 @@ internal class AppContentRouteDependencies(
       redditRepository = container.redditRepository,
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
-      backupChangeScheduler = container.backupChangeScheduler,
     )
   }
 
@@ -55,7 +45,6 @@ internal class AppContentRouteDependencies(
       repository = container.feedRepository,
       refreshFeeds = container.refreshFeedsUseCase,
       imports = container.feedImportRepository,
-      backupChangeScheduler = container.backupChangeScheduler,
       feedSelector = { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) },
       canAddInput = RedditSourceBoundary::isRssSubscriptionInput,
     )
@@ -66,11 +55,9 @@ internal class AppContentRouteDependencies(
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
       imports = container.bookmarkImportRepository,
-      backupChangeScheduler = container.backupChangeScheduler,
       moveBookmarkToLibrary = MoveBookmarkToLibraryUseCase(
-        webLibrary = webLibraryMutator,
+        webLibrary = container.libraryRuntime.webLibraryMutator,
         bookmarkMutator = container.bookmarkRepository,
-        onBookmarkChanged = container.backupChangeScheduler::scheduleAfterChange,
       ),
     )
   }
@@ -101,13 +88,13 @@ internal class AppContentRouteDependencies(
       builder = container.knowledgeBuilder,
       creator = container.knowledgePageCreator,
       editor = container.knowledgePageEditor,
-      scheduleBackupAfterChange = container.backupChangeScheduler::scheduleAfterChange,
       scheduleRebuild = buildScheduler::enqueue,
     )
   }
 
   val library: LibraryRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val runtime = container.libraryRuntime
+    val webLibraryMutator = runtime.webLibraryMutator
     LibraryRouteDependencies(
       authorization = runtime.authorization,
       libraryViewModelFactory = LibraryViewModel.Factory(
@@ -124,24 +111,12 @@ internal class AppContentRouteDependencies(
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
-      addWebBook = { url, titleHint -> webLibraryMutator.addWebBook(url, titleHint) },
+      addWebBook = webLibraryMutator::addWebBook,
       refreshWebBook = webLibraryMutator::refreshWebBookWithReport,
       removeWebBook = webLibraryMutator::removeWebBook,
       listWebMetadataExtractors = runtime.webMetadataExtractorRepository::list,
-      saveWebMetadataExtractor = { id, urlPattern, functionCode, timeoutSeconds ->
-        runtime.webMetadataExtractorRepository.save(
-          id = id,
-          urlPattern = urlPattern,
-          functionCode = functionCode,
-          timeoutSeconds = timeoutSeconds,
-        ).also {
-          container.backupChangeScheduler.scheduleAfterChange()
-        }
-      },
-      deleteWebMetadataExtractor = { id ->
-        runtime.webMetadataExtractorRepository.delete(id)
-        container.backupChangeScheduler.scheduleAfterChange()
-      },
+      saveWebMetadataExtractor = runtime.webMetadataExtractorRepository::save,
+      deleteWebMetadataExtractor = runtime.webMetadataExtractorRepository::delete,
       testWebMetadataExtractor = runtime.webMetadataExtractorTester::test,
       bookReader = BookReaderRouteDependencies(
         pageSourceFactory = runtime.bookPageSourceFactory,
@@ -154,7 +129,6 @@ internal class AppContentRouteDependencies(
     YouTubeViewModel.Factory(
       repository = container.youtubeRepository,
       bookmarkRepository = container.bookmarkRepository,
-      backupChangeScheduler = container.backupChangeScheduler,
     )
   }
 }
