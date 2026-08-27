@@ -48,6 +48,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0162: current architecture cleanup の残存境界を guardrail 化する](0162-current-architecture-cleanup-guardrails.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
+- [ADR-0192: PR quality checks と main APK build を分離する](0192-split-pr-checks-and-main-apk-build.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0167: 共通 dependency version を Gradle version catalog へ集約する](0167-gradle-version-catalog-baseline.md)

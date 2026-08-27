@@ -2,6 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-08-24
+
+> Update (2026-08-27): Decision 3 と、それに対応する main quality gate の consequence / verification は [ADR-0192](0192-split-pr-checks-and-main-apk-build.md) で supersede された。Decision 1 と Decision 2 は引き続き有効。
 - Refines: [ADR-0056](0056-feature-owned-local-ai-policies.md), [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0162](0162-current-architecture-cleanup-guardrails.md)
 - Related: [ADR-0136](0136-public-repository-content-verification.md)
 
