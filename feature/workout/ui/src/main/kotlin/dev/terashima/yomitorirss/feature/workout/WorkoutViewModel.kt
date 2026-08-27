@@ -21,6 +21,7 @@ enum class WorkoutTab(val label: String) {
   WORKOUT("記録"),
   TIMER("タイマー"),
   HISTORY("履歴"),
+  CHAT("チャット"),
   SETTINGS("設定"),
 }
 
