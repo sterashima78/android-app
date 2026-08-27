@@ -12,7 +12,7 @@ import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiStructured
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
-import dev.terashima.yomitorirss.feature.knowledge.cloudopenai.ChatGptKnowledgeTextInference
+import dev.terashima.yomitorirss.feature.knowledge.data.ChatGptKnowledgeTextInference
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.ChatGptDebugRepository
 import dev.terashima.yomitorirss.feature.settings.ChatGptProviderRepository
@@ -23,23 +23,18 @@ import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryPromptSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
-import dev.terashima.yomitorirss.feature.summary.cloudopenai.ChatGptSummaryCloudInference
+import dev.terashima.yomitorirss.feature.summary.data.ChatGptSummaryCloudInference
 import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryRepository
 import dev.terashima.yomitorirss.feature.summary.data.SummaryExecutionPreferences
 import dev.terashima.yomitorirss.feature.summary.data.SummaryPromptStore
 
-/** Application-scope AI primitives that do not depend on other feature repositories. */
-internal class AppAiCoreRuntimeDependencies(
-  private val application: Application,
-  private val database: YomitoriDatabase,
-  private val httpClient: HttpClient,
-) {
+internal class AppAiCoreRuntimeDependencies(private val application: Application, private val database: YomitoriDatabase, private val httpClient: HttpClient) {
   val modelManager: LocalModelManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { LocalModelManager.shared(application) }
   val textInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ProcessIsolatedLocalAiTextInference(application, modelManager) }
   val structuredTextInference: AiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ProcessIsolatedLocalAiStructuredTextInference(application, modelManager) }
-  private val chatGptClient: ChatGptOpenAiClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptOpenAiClient.create(application, httpClient) }
-  private val chatGptInferenceClient: ChatGptInferenceClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptInferenceClient(chatGptClient) }
-  private val chatGptModelPreferences: ChatGptModelPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptModelPreferences(application) }
+  private val chatGptClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptOpenAiClient.create(application, httpClient) }
+  private val chatGptInferenceClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptInferenceClient(chatGptClient) }
+  private val chatGptModelPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptModelPreferences(application) }
   val cloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptTextInference(chatGptInferenceClient, chatGptModelPreferences) }
   val knowledgeCloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptKnowledgeTextInference(chatGptInferenceClient, chatGptModelPreferences) }
   val aiModelRepository: AiModelRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { DefaultAiModelRepository(application, modelManager) }
@@ -48,7 +43,5 @@ internal class AppAiCoreRuntimeDependencies(
   val summaryExecutionSettings: SummaryExecutionSettings by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SummaryExecutionPreferences(application) }
   val summaryCloudInference: SummaryCloudInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ChatGptSummaryCloudInference(chatGptInferenceClient, chatGptModelPreferences) }
   val summaryPromptSettings: SummaryPromptSettings by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SummaryPromptStore(application) }
-  val summaryRepository: SummaryRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultSummaryRepository(application, database, textInference, summaryExecutionSettings, summaryCloudInference)
-  }
+  val summaryRepository: SummaryRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { DefaultSummaryRepository(application, database, textInference, summaryExecutionSettings, summaryCloudInference) }
 }
