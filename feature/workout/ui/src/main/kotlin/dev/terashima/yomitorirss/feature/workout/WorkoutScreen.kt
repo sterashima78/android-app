@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -57,6 +58,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun WorkoutScreen(
   viewModel: WorkoutViewModel,
+  aiViewModel: WorkoutAiViewModel,
   onRequestExportPermission: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -91,6 +93,7 @@ fun WorkoutScreen(
                   WorkoutTab.WORKOUT -> Icons.Default.FitnessCenter
                   WorkoutTab.TIMER -> Icons.Default.AccessTime
                   WorkoutTab.HISTORY -> Icons.Default.History
+                  WorkoutTab.CHAT -> Icons.Default.Chat
                   WorkoutTab.SETTINGS -> Icons.Default.Settings
                 },
                 contentDescription = tab.label,
@@ -112,7 +115,8 @@ fun WorkoutScreen(
       )
       WorkoutTab.TIMER -> WorkoutTimerScreen(state, viewModel, contentModifier)
       WorkoutTab.HISTORY -> WorkoutHistoryScreen(state, contentModifier)
-      WorkoutTab.SETTINGS -> WorkoutSettingsScreen(state, viewModel, contentModifier)
+      WorkoutTab.CHAT -> WorkoutAiChatScreen(aiViewModel, contentModifier)
+      WorkoutTab.SETTINGS -> WorkoutSettingsScreen(state, viewModel, aiViewModel, contentModifier)
     }
   }
 }
@@ -378,7 +382,12 @@ private fun WorkoutHistoryScreen(state: WorkoutUiState, modifier: Modifier) {
 }
 
 @Composable
-private fun WorkoutSettingsScreen(state: WorkoutUiState, viewModel: WorkoutViewModel, modifier: Modifier) {
+private fun WorkoutSettingsScreen(
+  state: WorkoutUiState,
+  viewModel: WorkoutViewModel,
+  aiViewModel: WorkoutAiViewModel,
+  modifier: Modifier,
+) {
   var name by remember { mutableStateOf("") }
   var targetSets by remember { mutableStateOf("3") }
   var unit by remember { mutableStateOf(WorkoutUnit.REPS) }
@@ -387,6 +396,7 @@ private fun WorkoutSettingsScreen(state: WorkoutUiState, viewModel: WorkoutViewM
     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    item { WorkoutAiSettingsSection(aiViewModel) }
     item {
       Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
