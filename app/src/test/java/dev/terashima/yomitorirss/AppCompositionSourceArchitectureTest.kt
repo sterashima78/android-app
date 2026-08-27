@@ -62,9 +62,23 @@ class AppCompositionSourceArchitectureTest {
       )
     }
 
+    val mainActivity = File(appSourceRoot, "MainActivity.kt").readText()
     val yomitoriApp = File(appSourceRoot, "ui/YomitoriApp.kt").readText()
     val navHost = File(appSourceRoot, "ui/AppNavHost.kt").readText()
-    assertTrue("YomitoriApp must own the app NavController", "rememberNavController()" in yomitoriApp)
+    val navOwnerIndex = mainActivity.indexOf("val navController = rememberNavController()")
+    val lockDispatchIndex = mainActivity.indexOf("when {")
+    assertTrue(
+      "MainActivity root composition must keep the NavController above app-lock dispatch",
+      navOwnerIndex >= 0 && lockDispatchIndex >= 0 && navOwnerIndex < lockDispatchIndex,
+    )
+    assertTrue(
+      "MainActivity must pass the retained NavController into MainContent",
+      "MainContent(navController)" in mainActivity,
+    )
+    assertFalse(
+      "YomitoriApp must consume the retained NavController instead of recreating it",
+      "rememberNavController()" in yomitoriApp,
+    )
     assertTrue("AppNavHost must own the root Navigation Compose graph", "NavHost(" in navHost)
     assertFalse("YomitoriApp must not restore selected-tab state", "selectedTab" in yomitoriApp)
   }
