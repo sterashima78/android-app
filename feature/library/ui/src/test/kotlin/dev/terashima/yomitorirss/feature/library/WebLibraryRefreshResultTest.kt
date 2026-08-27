@@ -90,6 +90,45 @@ class WebLibraryRefreshResultTest {
     assertTrue(ui.detail.orEmpty().contains("metadata の変更なし"))
   }
 
+  @Test
+  fun `一覧用の再取得statusは簡潔なラベルへ変換する`() {
+    assertEquals("待機中", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.PENDING))
+    assertEquals("取得中", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.RUNNING))
+    assertEquals("更新あり", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.UPDATED))
+    assertEquals("変更なし", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.UNCHANGED))
+    assertEquals("要確認", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.WARNING))
+    assertEquals("失敗", webLibraryRefreshItemStatusLabel(WebLibraryRefreshItemStatus.FAILED))
+  }
+
+  @Test
+  fun `直近結果は折りたたみ時に先頭10件を表示する`() {
+    val items = refreshItems(12)
+
+    assertEquals(
+      items.take(10),
+      webLibraryVisibleRefreshResults(items, expanded = false),
+    )
+  }
+
+  @Test
+  fun `直近結果を展開すると実行対象をすべて表示する`() {
+    val items = refreshItems(12)
+
+    assertEquals(
+      items,
+      webLibraryVisibleRefreshResults(items, expanded = true),
+    )
+  }
+
+  private fun refreshItems(count: Int): List<WebLibraryRefreshItemUiState> = (1..count).map { index ->
+    WebLibraryRefreshItemUiState(
+      sourceId = "https://example.com/books/$index",
+      title = "タイトル $index",
+      status = WebLibraryRefreshItemStatus.UPDATED,
+      detail = "更新: サムネイル",
+    )
+  }
+
   private fun webBook(
     title: String = "タイトル",
     thumbnailUrl: String? = "https://example.com/cover.jpg",

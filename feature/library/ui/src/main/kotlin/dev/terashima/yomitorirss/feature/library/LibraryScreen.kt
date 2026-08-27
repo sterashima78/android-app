@@ -64,7 +64,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -1089,10 +1088,9 @@ private fun LibraryBookCover(
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    book.thumbnailUrl?.takeIf(String::isNotBlank)?.let { thumbnailUrl ->
-      AsyncImage(
-        model = thumbnailUrl,
-        contentDescription = "${book.title} の表紙",
+    book.thumbnailUrl?.takeIf(String::isNotBlank)?.let {
+      LibraryThumbnailImage(
+        book = book,
         modifier = Modifier.fillMaxSize(),
         contentScale = ContentScale.Fit,
       )

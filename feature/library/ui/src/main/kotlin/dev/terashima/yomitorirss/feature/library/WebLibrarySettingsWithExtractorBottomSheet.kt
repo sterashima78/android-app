@@ -27,6 +27,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val COLLAPSED_REFRESH_RESULT_COUNT = 10
+
 @Composable
 internal fun WebLibrarySettingsWithExtractorBottomSheet() {
   val settings = LocalWebLibrarySettingsUiBinding.current ?: return
@@ -151,7 +153,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
       Column(modifier = Modifier.weight(1f)) {
         Text("metadata 再取得")
         Text(
-          "タイトルまたは表紙が未取得の ${settings.books.size} 冊が対象です。直近の実行結果は各蔵書の下に表示します。",
+          "タイトルまたは表紙が未取得の ${settings.books.size} 冊が対象です。直近の実行結果は対象一覧から独立して下に表示します。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -170,6 +172,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
     }
 
     WebLibrarySettingsRefreshProgress(settings.refreshState)
+    WebLibrarySettingsRefreshResults(settings.refreshState)
 
     if (settings.books.isEmpty()) {
       Text(
@@ -179,7 +182,6 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
       )
     } else {
       settings.books.forEach { book ->
-        val result = settings.refreshState.items.firstOrNull { it.sourceId == book.sourceId }
         Card(modifier = Modifier.fillMaxWidth()) {
           Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -208,7 +210,6 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
                 Text("再取得")
               }
             }
-            result?.let { WebLibrarySettingsRefreshResultText(it) }
           }
         }
       }
@@ -274,6 +275,53 @@ private fun WebLibrarySettingsRefreshProgress(state: WebLibraryRefreshUiState) {
       )
     }
   }
+}
+
+@Composable
+private fun WebLibrarySettingsRefreshResults(state: WebLibraryRefreshUiState) {
+  if (state.items.isEmpty()) return
+  var expanded by remember(state.total, state.items.firstOrNull()?.sourceId) { mutableStateOf(false) }
+  val visibleItems = webLibraryVisibleRefreshResults(state.items, expanded)
+
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    HorizontalDivider()
+    Text("直近の再取得結果", style = MaterialTheme.typography.titleSmall)
+    Text(
+      "再取得で metadata が埋まり対象一覧から消えた蔵書も、この実行結果には残ります。",
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    visibleItems.forEach { result ->
+      Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+          Text(
+            text = result.title,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+          )
+          WebLibrarySettingsRefreshResultText(result)
+        }
+      }
+    }
+    if (state.items.size > COLLAPSED_REFRESH_RESULT_COUNT) {
+      TextButton(onClick = { expanded = !expanded }) {
+        Text(if (expanded) "結果を折りたたむ" else "すべての結果を表示 (${state.items.size} 件)")
+      }
+    }
+  }
+}
+
+internal fun webLibraryVisibleRefreshResults(
+  items: List<WebLibraryRefreshItemUiState>,
+  expanded: Boolean,
+): List<WebLibraryRefreshItemUiState> = if (expanded || items.size <= COLLAPSED_REFRESH_RESULT_COUNT) {
+  items
+} else {
+  items.take(COLLAPSED_REFRESH_RESULT_COUNT)
 }
 
 @Composable
