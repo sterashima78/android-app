@@ -43,7 +43,7 @@ internal class AudibleSourceSeriesRepository(
 
   fun clear() {
     ensureSchema()
-    database.writable.delete(TABLE_NAME, null, null)
+    database.write { delete(TABLE_NAME, null, null) }
   }
 
   fun enrich(snapshot: LibrarySnapshot): LibrarySnapshot {
