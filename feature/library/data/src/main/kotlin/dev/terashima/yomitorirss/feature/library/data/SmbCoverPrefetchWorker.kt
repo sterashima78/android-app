@@ -285,7 +285,7 @@ internal class SmbCoverPrefetchQueueStore(
 
     var enqueued = 0
     val now = System.currentTimeMillis()
-    database.transaction {
+    database.localTransaction {
       candidates.forEach { (sourceId, title) ->
         val existingStatus = rawQuery(
           "SELECT status FROM $TABLE WHERE source_id = ? LIMIT 1",
@@ -356,7 +356,7 @@ internal class SmbCoverPrefetchQueueStore(
   fun claimNext(): SmbCoverPrefetchQueueEntry? {
     ensureSchema()
     var claimed: SmbCoverPrefetchQueueEntry? = null
-    database.transaction {
+    database.localTransaction {
       val next = rawQuery(
         """
           SELECT source_id, title
@@ -368,7 +368,7 @@ internal class SmbCoverPrefetchQueueStore(
         arrayOf(SmbCoverPrefetchStatus.PENDING.name),
       ).use { cursor ->
         if (!cursor.moveToFirst()) null else SmbCoverPrefetchQueueEntry(cursor.getString(0), cursor.getString(1))
-      } ?: return@transaction
+      } ?: return@localTransaction
 
       val updated = update(
         TABLE,
