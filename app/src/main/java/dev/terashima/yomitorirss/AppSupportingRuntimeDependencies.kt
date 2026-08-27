@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.asset.AssetRepository
@@ -35,6 +36,7 @@ internal class AppSupportingRuntimeDependencies(
   private val database: YomitoriDatabase,
   private val databaseConnection: DatabaseConnection,
   private val dataChanges: DataChangeNotifier,
+  private val persistenceChanges: PersistenceChangeNotifier,
   private val httpClient: HttpClient,
 ) {
   val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -113,7 +115,7 @@ internal class AppSupportingRuntimeDependencies(
   }
 
   val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBackupRepository(application, database, dataChanges)
+    DefaultBackupRepository(application, database, dataChanges, persistenceChanges)
   }
 
   val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
