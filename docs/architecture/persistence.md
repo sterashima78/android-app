@@ -34,7 +34,15 @@ Single physical SQLite database
 
 ## Durable change notification and backup scheduling
 
-通常 runtime の durable database mutation は `DatabaseConnection.write` / `DatabaseConnection.transaction` を共通境界とする。成功した mutation が commit された後、`:core:database` の `PersistenceChangeNotifier` が durable change を通知する。失敗・rollback した mutation は通知しない。
+通常 runtime の backup 対象 durable database mutation は `DatabaseConnection.write` / `DatabaseConnection.transaction` を共通境界とする。成功した mutation が commit された後、`:core:database` の `PersistenceChangeNotifier` が durable change を通知する。失敗・rollback した mutation は通知しない。
+
+同じ SQLite database に存在していても、ADR-0099 が backup 対象外とする transient queue、download state、device/cache-only state は durable user data と同じ意味を持たない。これらは `DatabaseConnection.localWrite` / `DatabaseConnection.localTransaction` を使用し、atomic な commit / rollback を維持したまま `PersistenceChangeNotifier` を発火させない。`localTransaction` 内に durable `write` / `transaction` が nested した場合は外側 transaction を durable change に昇格させ、通知の取りこぼしを防ぐ。
+
+SQLite transaction は `DatabaseConnection` instance ではなく thread / SQLite connection 側の状態なので、同じ physical database を複数の `DatabaseConnection` wrapper が利用しても active transaction scope を共有する。別 wrapper からの durable write も local transaction の外側 commit を昇格させる。
+
+`DatabaseConnection.writable` の直接利用は schema 初期化・migration 等の maintenance write に限定する。runtime mutation で raw writable を「通知しない抜け道」として使わない。
+
+ADR-0099 が backup archive に含める SharedPreferences は `BackupPreferences.BACKUP_RULES` を単一 allowlist とする。Backup Context の `BackupPreferenceChangeObserver` が同じ rule を変更検知にも利用し、対象 file / key の変更を `PersistenceChangeNotifier` へ合流させる。allowlist 外の credential、device state、model revision 等は通知しない。restore 中は preference listener を抑制し、restore 全体が成功した後の明示的な persistence change だけを利用する。
 
 `PersistenceChangeNotifier` は backup scheduling のための persistence-level signal であり、画面や read model の再読込に使う既存 `DataChangeNotifier` とは分離する。`DataChangeNotifier` を backup trigger として流用すると、Task / Chat 等の変更が RSS 等の無関係な UI refresh に波及するため、両者の意味を混在させない。
 
@@ -46,20 +54,36 @@ feature / worker / import
         v
 repository / store
         |
-        v
-DatabaseConnection.write / transaction
+        +--> backup対象 durable DB data
+        |      DatabaseConnection.write / transaction
+        |                 |
+        |                 v
+        |      PersistenceChangeNotifier
         |
-        v
+        +--> backup対象外 local/cache/transient state
+        |      DatabaseConnection.localWrite / localTransaction
+        |                 |
+        |                 +-- no persistence notification
+        |
+        +--> ADR-0099 backed-up SharedPreferences
+               BackupPreferenceChangeObserver
+                         |
+                         v
+              PersistenceChangeNotifier
+
 PersistenceChangeNotifier
         |
         v
 :app composition root
         |
         v
+PersistenceBackupChangeObserver
+        |
+        v
 BackupChangeScheduler
 ```
 
-新しい durable write はこの mutation boundary を経由する。移行中に共通 mutation API を通らない legacy write が残る場合だけ互換 bridge を限定利用し、write path を移行したら caller-specific backup scheduling を削除する。詳細は ADR-0195 を参照する。
+新しい durable DB write は `write` / `transaction` を経由し、backup 対象外 state はその根拠を ADR / architecture rule で確認したうえで `localWrite` / `localTransaction` を使用する。新しい SharedPreferences を backup 対象へ追加する場合は `BackupPreferences.BACKUP_RULES` を更新し、archive scope と変更検知 scope を同時に変更する。詳細は ADR-0195 を参照する。
 
 ### RSS schema
 
@@ -126,9 +150,9 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 
 `table-ownership.tsv` は ownership の完全登録簿だが、column/index/constraint まで含む schema DDL の正本ではない。実際の schema definition は各 feature data module の `DatabaseSchemaContribution` / initializer を参照する。
 
-SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は現行 `libraryDatabaseSchema` の一部として定義する。
+SMB 表紙先読みキューは Library Context が所有する派生処理状態であり、WorkManager 自身の状態だけに依存せず `smb_cover_prefetch_queue` に待機・実行・失敗・完了・対象外と転送進捗を保持する。schema は現行 `libraryDatabaseSchema` の一部として定義する。queue の状態・progress は backup 対象外の transient processing state なので、runtime の atomic mutation は `localWrite` / `localTransaction` を使用する。
 
-SMB 表紙画像は app cache に置く再生成可能な派生データで、database snapshot backup には画像本体を含めない。復元後は Backup Context が Library-owned `LibraryBackupRestoreInitializer` を呼び、SMB の `file:` scheme の `thumbnail_url` と復元前の `smb_cover_prefetch_queue` を無効化する。Backup Context 自身は Library table を直接 write しない。SMB credential は backup 対象外なので復元直後には自動実行せず、credential 再設定後の通常の Library 経路で未取得表紙を再キューする。
+SMB 表紙画像は app cache に置く再生成可能な派生データで、database snapshot backup には画像本体を含めない。`library_items.thumbnail_url` に保存する `file:` scheme の参照も端末 local cache metadata として `localWrite` で更新する。復元後は Backup Context が Library-owned `LibraryBackupRestoreInitializer` を呼び、`localTransaction` で SMB の `file:` scheme の `thumbnail_url` と復元前の `smb_cover_prefetch_queue` を無効化する。Backup Context 自身は Library table を直接 write しない。SMB credential は backup 対象外なので復元直後には自動実行せず、credential 再設定後の通常の Library 経路で未取得表紙を再キューする。
 
 SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema も現行 `libraryDatabaseSchema` に含める。
 
@@ -171,6 +195,9 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 9. 新しい durable table を `table-ownership.tsv` に登録したか。
 10. 現在の database / backup compatibility baseline をどこまで維持するか。
 11. durable write が `DatabaseConnection.write` / `transaction` の persistence change notification を迂回していないか。
+12. backup 対象外 state を `localWrite` / `localTransaction` にする場合、その除外根拠が ADR-0099 等で明示されているか。
+13. runtime mutation が `DatabaseConnection.writable` を通知回避のために直接使用していないか。
+14. SharedPreferences を backup 対象へ追加する場合、`BackupPreferences.BACKUP_RULES` に追加してarchive scopeと変更検知scopeを一致させたか。
 
 ## Sources
 

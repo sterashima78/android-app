@@ -285,7 +285,7 @@ internal class SmbCoverPrefetchQueueStore(
 
     var enqueued = 0
     val now = System.currentTimeMillis()
-    database.transaction {
+    database.localTransaction {
       candidates.forEach { (sourceId, title) ->
         val existingStatus = rawQuery(
           "SELECT status FROM $TABLE WHERE source_id = ? LIMIT 1",
@@ -325,38 +325,41 @@ internal class SmbCoverPrefetchQueueStore(
   fun retryFailed(): Int {
     ensureSchema()
     val now = System.currentTimeMillis()
-    val updated = database.writable.update(
-      TABLE,
-      ContentValues().apply {
-        put("status", SmbCoverPrefetchStatus.PENDING.name)
-        put("downloaded_bytes", 0L)
-        put("total_bytes", 0L)
-        putNull("message")
-        put("updated_at", now)
-      },
-      "status = ?",
-      arrayOf(SmbCoverPrefetchStatus.FAILED.name),
-    )
-    return updated
+    return database.localWrite {
+      update(
+        TABLE,
+        ContentValues().apply {
+          put("status", SmbCoverPrefetchStatus.PENDING.name)
+          put("downloaded_bytes", 0L)
+          put("total_bytes", 0L)
+          putNull("message")
+          put("updated_at", now)
+        },
+        "status = ?",
+        arrayOf(SmbCoverPrefetchStatus.FAILED.name),
+      )
+    }
   }
 
   fun requeueInterrupted() {
     ensureSchema()
-    database.writable.update(
-      TABLE,
-      ContentValues().apply {
-        put("status", SmbCoverPrefetchStatus.PENDING.name)
-        put("updated_at", System.currentTimeMillis())
-      },
-      "status = ?",
-      arrayOf(SmbCoverPrefetchStatus.RUNNING.name),
-    )
+    database.localWrite {
+      update(
+        TABLE,
+        ContentValues().apply {
+          put("status", SmbCoverPrefetchStatus.PENDING.name)
+          put("updated_at", System.currentTimeMillis())
+        },
+        "status = ?",
+        arrayOf(SmbCoverPrefetchStatus.RUNNING.name),
+      )
+    }
   }
 
   fun claimNext(): SmbCoverPrefetchQueueEntry? {
     ensureSchema()
     var claimed: SmbCoverPrefetchQueueEntry? = null
-    database.transaction {
+    database.localTransaction {
       val next = rawQuery(
         """
           SELECT source_id, title
@@ -368,7 +371,7 @@ internal class SmbCoverPrefetchQueueStore(
         arrayOf(SmbCoverPrefetchStatus.PENDING.name),
       ).use { cursor ->
         if (!cursor.moveToFirst()) null else SmbCoverPrefetchQueueEntry(cursor.getString(0), cursor.getString(1))
-      } ?: return@transaction
+      } ?: return@localTransaction
 
       val updated = update(
         TABLE,
@@ -389,16 +392,18 @@ internal class SmbCoverPrefetchQueueStore(
 
   fun updateProgress(sourceId: String, downloadedBytes: Long, totalBytes: Long) {
     ensureSchema()
-    database.writable.update(
-      TABLE,
-      ContentValues().apply {
-        put("downloaded_bytes", downloadedBytes.coerceAtLeast(0L))
-        put("total_bytes", totalBytes.coerceAtLeast(0L))
-        put("updated_at", System.currentTimeMillis())
-      },
-      "source_id = ? AND status = ?",
-      arrayOf(sourceId, SmbCoverPrefetchStatus.RUNNING.name),
-    )
+    database.localWrite {
+      update(
+        TABLE,
+        ContentValues().apply {
+          put("downloaded_bytes", downloadedBytes.coerceAtLeast(0L))
+          put("total_bytes", totalBytes.coerceAtLeast(0L))
+          put("updated_at", System.currentTimeMillis())
+        },
+        "source_id = ? AND status = ?",
+        arrayOf(sourceId, SmbCoverPrefetchStatus.RUNNING.name),
+      )
+    }
   }
 
   fun complete(sourceId: String) = finish(sourceId, SmbCoverPrefetchStatus.COMPLETED, null)
@@ -411,67 +416,75 @@ internal class SmbCoverPrefetchQueueStore(
 
   fun markSkipped(sourceId: String, title: String, reason: String) {
     ensureSchema()
-    database.writable.insertWithOnConflict(
-      TABLE,
-      null,
-      ContentValues().apply {
-        put("source_id", sourceId)
-        put("title", title)
-        put("status", SmbCoverPrefetchStatus.SKIPPED.name)
-        put("downloaded_bytes", 0L)
-        put("total_bytes", 0L)
-        put("message", reason)
-        put("updated_at", System.currentTimeMillis())
-      },
-      android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
-    )
+    database.localWrite {
+      insertWithOnConflict(
+        TABLE,
+        null,
+        ContentValues().apply {
+          put("source_id", sourceId)
+          put("title", title)
+          put("status", SmbCoverPrefetchStatus.SKIPPED.name)
+          put("downloaded_bytes", 0L)
+          put("total_bytes", 0L)
+          put("message", reason)
+          put("updated_at", System.currentTimeMillis())
+        },
+        android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+      )
+    }
     trimHistory()
   }
 
   private fun finish(sourceId: String, status: SmbCoverPrefetchStatus, message: String?) {
     ensureSchema()
-    database.writable.update(
-      TABLE,
-      ContentValues().apply {
-        put("status", status.name)
-        if (message == null) putNull("message") else put("message", message)
-        put("updated_at", System.currentTimeMillis())
-      },
-      "source_id = ?",
-      arrayOf(sourceId),
-    )
+    database.localWrite {
+      update(
+        TABLE,
+        ContentValues().apply {
+          put("status", status.name)
+          if (message == null) putNull("message") else put("message", message)
+          put("updated_at", System.currentTimeMillis())
+        },
+        "source_id = ?",
+        arrayOf(sourceId),
+      )
+    }
     if (status == SmbCoverPrefetchStatus.COMPLETED || status == SmbCoverPrefetchStatus.SKIPPED) {
       trimHistory()
     }
   }
 
   private fun pruneMissingBooks() {
-    database.writable.execSQL(
-      """
-        DELETE FROM $TABLE
-        WHERE source_id NOT IN (
-          SELECT source_id FROM library_items WHERE source = ?
-        )
-      """.trimIndent(),
-      arrayOf(LibrarySource.SMB.name),
-    )
+    database.localWrite {
+      execSQL(
+        """
+          DELETE FROM $TABLE
+          WHERE source_id NOT IN (
+            SELECT source_id FROM library_items WHERE source = ?
+          )
+        """.trimIndent(),
+        arrayOf(LibrarySource.SMB.name),
+      )
+    }
   }
 
   private fun trimHistory() {
     ensureSchema()
-    database.writable.execSQL(
-      """
-        DELETE FROM $TABLE
-        WHERE status IN ('COMPLETED', 'SKIPPED')
-          AND source_id NOT IN (
-            SELECT source_id
-            FROM $TABLE
-            WHERE status IN ('COMPLETED', 'SKIPPED')
-            ORDER BY updated_at DESC
-            LIMIT $HISTORY_LIMIT
-          )
-      """.trimIndent(),
-    )
+    database.localWrite {
+      execSQL(
+        """
+          DELETE FROM $TABLE
+          WHERE status IN ('COMPLETED', 'SKIPPED')
+            AND source_id NOT IN (
+              SELECT source_id
+              FROM $TABLE
+              WHERE status IN ('COMPLETED', 'SKIPPED')
+              ORDER BY updated_at DESC
+              LIMIT $HISTORY_LIMIT
+            )
+        """.trimIndent(),
+      )
+    }
   }
 
   private fun ensureSchema() {

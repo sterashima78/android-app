@@ -8,13 +8,13 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class DatabaseBackupChangeObserverTest {
+class PersistenceBackupChangeObserverTest {
   @Test
   fun `永続データ変更ごとにバックアップをスケジュールする`() {
     val changes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     var scheduled = 0
-    val observer = DatabaseBackupChangeObserver(
+    val observer = PersistenceBackupChangeObserver(
       dataChanges = changes,
       scheduler = BackupChangeScheduler { scheduled += 1 },
       scope = scope,

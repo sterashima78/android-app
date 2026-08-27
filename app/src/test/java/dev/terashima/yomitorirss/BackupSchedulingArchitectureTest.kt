@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,30 +56,91 @@ class BackupSchedulingArchitectureTest {
       "feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultWebLibraryMetadataExtractorRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultSmbLibraryRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchProcessor.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/KindleStructuredSeriesMetadata.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/AudibleStructuredSeriesMetadata.kt",
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
       "feature/task/data/src/main/kotlin/dev/terashima/yomitorirss/feature/task/data/TaskStore.kt",
       "feature/youtube/data/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/data/YouTubeDatabase.kt",
     )
     val rawMutation = Regex(
-      """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*)\s*\(""",
+      """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*|execSQL)\s*\(""",
     )
 
     paths.forEach { path ->
       val source = repositoryFile(path).readText()
-      assertFalse("$path must use DatabaseConnection.write/transaction for user-owned mutations", rawMutation.containsMatchIn(source))
+      assertFalse("$path must use an explicit DatabaseConnection mutation boundary", rawMutation.containsMatchIn(source))
     }
   }
 
   @Test
-  fun `applicationは永続化変更をbackup schedulerへbridgeする`() {
+  fun `mail repositoryはraw writableを使わない`() {
+    val source = repositoryFile(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
+    ).readText()
+
+    assertFalse(source.contains("database.writable"))
+  }
+
+  @Test
+  fun `SMB repositoryのraw writableはschema maintenanceだけに限定する`() {
+    val source = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultSmbLibraryRepository.kt",
+    ).readText()
+
+    assertEquals(1, Regex("""database\.writable""").findAll(source).count())
+    assertTrue(source.contains("ensureLibrarySchema(database.writable)"))
+    assertTrue(source.contains("database.localWrite"))
+  }
+
+  @Test
+  fun `SMB cover metadataはlocal persistenceとして扱う`() {
+    val source = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchProcessor.kt",
+    ).readText()
+
+    assertFalse(source.contains("database.writable"))
+    assertFalse(source.contains("database.write"))
+    assertTrue(source.contains("database.localWrite"))
+  }
+
+  @Test
+  fun `SMB cover queueとrestore cleanupはbackup変更を通知しない`() {
+    val queueSource = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchWorker.kt",
+    ).readText()
+    val restoreSource = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/LibraryBackupRestoreInitializer.kt",
+    ).readText()
+
+    assertFalse(queueSource.contains("database.transaction"))
+    assertTrue(queueSource.contains("database.localTransaction"))
+    assertFalse(restoreSource.contains("database.transaction"))
+    assertTrue(restoreSource.contains("database.localTransaction"))
+  }
+
+  @Test
+  fun `article summaryのdurable保存はpersistence boundaryを通る`() {
+    val source = repositoryFile(
+      "feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryStore.kt",
+    ).readText()
+
+    assertTrue(source.contains("DatabaseConnection(this).write"))
+    assertFalse(source.contains("writableDatabase.insert"))
+  }
+
+  @Test
+  fun `applicationはbackup対象の永続化変更をschedulerへbridgeする`() {
     val source = repositoryFile(
       "app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt",
     ).readText()
 
     assertTrue(source.contains("PersistenceChangeNotifier.shared.version.filter { it > 0L }"))
     assertFalse(source.contains("PersistenceChangeNotifier.shared.version.drop(1)"))
-    assertTrue(source.contains("DatabaseBackupChangeObserver"))
+    assertTrue(source.contains("PersistenceBackupChangeObserver"))
+    assertTrue(source.contains("BackupPreferenceChangeObserver"))
+    assertTrue(source.contains("backupPreferenceChangeObserver.start()"))
     assertTrue(source.contains("AndroidBackupChangeScheduler"))
   }
 

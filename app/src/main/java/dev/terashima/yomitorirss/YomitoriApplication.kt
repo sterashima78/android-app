@@ -13,7 +13,8 @@ import dev.terashima.yomitorirss.diagnostics.AppLocalAiMemoryMonitor
 import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
-import dev.terashima.yomitorirss.feature.backup.data.DatabaseBackupChangeObserver
+import dev.terashima.yomitorirss.feature.backup.data.BackupPreferenceChangeObserver
+import dev.terashima.yomitorirss.feature.backup.data.PersistenceBackupChangeObserver
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.data.BookmarkAutoEnrichmentBackfillScheduler
@@ -54,11 +55,14 @@ class YomitoriApplication : Application(),
       .setWorkerFactory(createAppWorkerFactory(container))
       .build()
   }
-  private val databaseBackupChangeObserver: DatabaseBackupChangeObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DatabaseBackupChangeObserver(
+  private val persistenceBackupChangeObserver: PersistenceBackupChangeObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    PersistenceBackupChangeObserver(
       dataChanges = PersistenceChangeNotifier.shared.version.filter { it > 0L },
       scheduler = AndroidBackupChangeScheduler(this),
     )
+  }
+  private val backupPreferenceChangeObserver: BackupPreferenceChangeObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    BackupPreferenceChangeObserver(this, PersistenceChangeNotifier.shared)
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     UnreadArticlesWidgetRefreshObserver(this, DataChangeNotifier.shared.version)
@@ -79,7 +83,8 @@ class YomitoriApplication : Application(),
     Android17MemoryAnomalyProfiler.install(this)
     StartupCrashStore.install(this)
     AppLocalAiMemoryMonitor.install(this)
-    databaseBackupChangeObserver.start()
+    persistenceBackupChangeObserver.start()
+    backupPreferenceChangeObserver.start()
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }

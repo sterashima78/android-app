@@ -72,18 +72,22 @@ class DefaultSmbLibraryRepository(
       put("domain_name", normalized.domain)
       put("updated_at", System.currentTimeMillis())
     }
-    database.writable.insertWithOnConflict(
-      SERVER_TABLE,
-      null,
-      values,
-      SQLiteDatabase.CONFLICT_REPLACE,
-    )
+    database.write {
+      insertWithOnConflict(
+        SERVER_TABLE,
+        null,
+        values,
+        SQLiteDatabase.CONFLICT_REPLACE,
+      )
+    }
     return normalized.copy(credentialConfigured = true)
   }
 
   override suspend fun deleteServer(serverId: String) {
     ensureSchema()
-    database.writable.delete(SERVER_TABLE, "id = ?", arrayOf(serverId))
+    database.write {
+      delete(SERVER_TABLE, "id = ?", arrayOf(serverId))
+    }
     credentialStore.delete(serverId)
   }
 
@@ -207,12 +211,14 @@ class DefaultSmbLibraryRepository(
       )
     }.getOrNull()
     if (!coverUrl.isNullOrBlank()) {
-      database.writable.update(
-        "library_items",
-        ContentValues().apply { put("thumbnail_url", coverUrl) },
-        "source = ? AND source_id = ?",
-        arrayOf(LibrarySource.SMB.name, targetSourceId),
-      )
+      database.localWrite {
+        update(
+          "library_items",
+          ContentValues().apply { put("thumbnail_url", coverUrl) },
+          "source = ? AND source_id = ?",
+          arrayOf(LibrarySource.SMB.name, targetSourceId),
+        )
+      }
       renamedBook = renamedBook.copy(thumbnailUrl = coverUrl)
     }
     return renamedBook
@@ -495,12 +501,14 @@ class DefaultSmbLibraryRepository(
         localBookFile = cacheFile,
       )
     }.getOrNull() ?: return
-    database.writable.update(
-      "library_items",
-      ContentValues().apply { put("thumbnail_url", coverUrl) },
-      "source = ? AND source_id = ?",
-      arrayOf(LibrarySource.SMB.name, book.sourceId),
-    )
+    database.localWrite {
+      update(
+        "library_items",
+        ContentValues().apply { put("thumbnail_url", coverUrl) },
+        "source = ? AND source_id = ?",
+        arrayOf(LibrarySource.SMB.name, book.sourceId),
+      )
+    }
   }
 
   private fun cleanupCache() {

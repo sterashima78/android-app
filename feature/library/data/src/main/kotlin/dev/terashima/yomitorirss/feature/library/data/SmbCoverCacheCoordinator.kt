@@ -36,7 +36,7 @@ internal class SmbCoverCacheCoordinator(
     if (books.isEmpty()) return
 
     val now = System.currentTimeMillis()
-    database.transaction {
+    database.localTransaction {
       books.forEach { (sourceId, title) ->
         update(
           "library_items",

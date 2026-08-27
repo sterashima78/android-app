@@ -127,6 +127,85 @@ class DatabaseConnectionTest {
     })
   }
 
+  @Test
+  fun `localWriteはcommitしても永続化変更を通知しない`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.localWrite {
+      insertOrThrow("items", null, values("local"))
+    }
+
+    assertEquals(0L, notifier.version.value)
+    assertEquals(1, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
+  fun `localTransaction内のdurable writeは外側commit後に通知する`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.localTransaction {
+      insertOrThrow("items", null, values("local"))
+      database.write {
+        insertOrThrow("items", null, values("durable"))
+      }
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(1L, notifier.version.value)
+    assertEquals(2, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
+  fun `別wrapperのdurable writeもlocalTransactionの外側commit後に通知する`() {
+    val notifier = PersistenceChangeNotifier()
+    val outer = DatabaseConnection(helper, notifier)
+    val inner = DatabaseConnection(helper, notifier)
+
+    outer.localTransaction {
+      insertOrThrow("items", null, values("local"))
+      inner.write {
+        insertOrThrow("items", null, values("durable"))
+      }
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(1L, notifier.version.value)
+    assertEquals(2, outer.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
+  fun `localTransaction内のdurable writeがrollbackされた場合は通知しない`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    assertThrows(IllegalStateException::class.java) {
+      database.localTransaction {
+        insertOrThrow("items", null, values("local"))
+        database.write {
+          insertOrThrow("items", null, values("durable"))
+        }
+        error("rollback")
+      }
+    }
+
+    assertEquals(0L, notifier.version.value)
+    assertEquals(0, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
   private fun values(value: String): ContentValues = ContentValues().apply {
     put("value", value)
   }

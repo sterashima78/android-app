@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
-/** Schedules a debounced backup whenever durable application data changes. */
-class DatabaseBackupChangeObserver(
+/** Schedules a debounced backup whenever backup-relevant persistent application data changes. */
+class PersistenceBackupChangeObserver(
   private val dataChanges: Flow<*>,
   private val scheduler: BackupChangeScheduler,
   private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
