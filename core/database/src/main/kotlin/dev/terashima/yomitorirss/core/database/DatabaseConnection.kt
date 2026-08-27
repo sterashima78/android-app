@@ -24,6 +24,10 @@ class DatabaseConnection(
 
   fun <T> transaction(block: SQLiteDatabase.() -> T): T {
     val database = writable
+    // A caller may compose a store method that uses write() inside a larger transaction. The outer
+    // boundary owns commit/rollback and must be the only place that publishes a persistence change.
+    if (database.inTransaction()) return database.block()
+
     database.beginTransaction()
     var changed = false
     val value = try {
