@@ -19,6 +19,8 @@ ADR-0173 では Web Library の custom metadata extractor について、URL pat
 
 再取得対象一覧は「タイトルまたは表紙が未取得の Web 蔵書」から構成されるため、再取得で不足 metadata が埋まるとその蔵書は対象一覧から消える。実行結果を対象カードの内部だけに表示すると、成功した項目ほど診断結果も同時に見えなくなり、再取得が何を更新したか確認できない。
 
+通常の蔵書一覧からも個別の metadata 再取得を開始できるため、設定画面へ移動しない限り処理が待機中なのか実行中なのか、完了後に更新されたのかを把握できない状態も避ける必要がある。
+
 ## Decision
 
 ### custom function が実際に返した採用可能値を execution 診断へ保持する
@@ -45,6 +47,8 @@ ADR-0173 では Web Library の custom metadata extractor について、URL pat
 設定画面ではこの `items` を「現在も不足 metadata が残っている蔵書一覧」と join して表示するだけにせず、独立した「直近の再取得結果」セクションとして表示する。これにより再取得成功後に蔵書が repair 対象一覧から消えても、同じ実行の status と detail は確認できる。
 
 大量実行時に設定画面を過度に長くしないため、結果一覧は初期状態では先頭 10 件までを表示し、必要に応じて同一実行の全件を展開できるようにする。実行結果は route/composition 内の transient state のままとし、database、backup、telemetry、永続ログには保存しない。
+
+通常の蔵書一覧では、Web 蔵書の表紙上に同じ `refreshState.items` から得た簡潔な status を表示する。表示は `待機中` / `取得中` / `更新あり` / `変更なし` / `要確認` / `失敗` に限定し、custom extractor の URL pattern や取得値などの詳細診断は設定画面の直近結果欄だけに表示する。設定画面の診断 preview 自体には一覧用 status overlay を重ねない。
 
 新しい再取得を開始した場合は従来どおり `WebLibraryRefreshUiState` 全体を新しい実行対象で置き換える。履歴機能や durable job history はこの判断には含めない。
 
@@ -89,6 +93,7 @@ WebView 全体が timeout した時点の最新 snapshot を timeout exception �
 - custom extraction 完了後に WebView 全体 timeout が発生しても、取得済み値を診断できる。
 - custom extraction 完了前の timeout でも、rule 不一致、script 開始前、script 実行中を区別できる。
 - 再取得成功によって対象一覧から蔵書が消えても、その実行の結果は独立した結果欄で確認できる。
+- 一覧から個別再取得を開始した場合も、対象の表紙上で進行状態と簡潔な完了状態を確認できる。
 - `WebLibraryMetadataExtractorExecution` の責務は実行 status だけでなく、再取得時の transient custom result / phase snapshot まで含む。
 - この ADR が追加する diagnostic value と実行結果一覧自体は永続化せず、backup schema や WebView security boundary を変更しない。rule 自体の timeout 永続化は ADR-0177 で別途追加する。
 
@@ -100,6 +105,7 @@ WebView 全体が timeout した時点の最新 snapshot を timeout exception �
 - UI が final `LibraryBook` の値ではなく execution の extracted value を表示する unit test を追加する。
 - custom function が返していない field を「なし」と表示する unit test を追加する。
 - `MATCHED` と `RUNNING` の timeout 診断がそれぞれ「開始前」「結果確定前」と区別して表示される unit test を追加する。
+- 一覧用の各 refresh status が簡潔な表示ラベルへ変換されることを unit test する。
 - 直近結果の折りたたみ表示が先頭 10 件を返し、展開時は同一実行の全件を返す unit test を追加する。
-- 再取得対象カードと独立した結果セクションが `refreshState.items` を表示することを code review / CI で確認する。
+- 再取得対象カードと独立した結果セクションが `refreshState.items` を表示すること、および通常一覧の Web 表紙が同じ state の簡潔な status を表示することを code review / CI で確認する。
 - test / docs に実サイト URL、credential、token、ユーザー固有情報が含まれないことを public repository verification で確認する。
