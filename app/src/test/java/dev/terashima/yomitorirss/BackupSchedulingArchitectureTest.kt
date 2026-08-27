@@ -57,6 +57,7 @@ class BackupSchedulingArchitectureTest {
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultWebLibraryMetadataExtractorRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultSmbLibraryRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchProcessor.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/KindleStructuredSeriesMetadata.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/AudibleStructuredSeriesMetadata.kt",
       "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
@@ -90,6 +91,16 @@ class BackupSchedulingArchitectureTest {
 
     assertEquals(1, Regex("""database\.writable""").findAll(source).count())
     assertTrue(source.contains("ensureLibrarySchema(database.writable)"))
+  }
+
+  @Test
+  fun `SMB cover metadataはraw writableを使わない`() {
+    val source = repositoryFile(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/SmbCoverPrefetchProcessor.kt",
+    ).readText()
+
+    assertFalse(source.contains("database.writable"))
+    assertTrue(source.contains("database.write"))
   }
 
   @Test
