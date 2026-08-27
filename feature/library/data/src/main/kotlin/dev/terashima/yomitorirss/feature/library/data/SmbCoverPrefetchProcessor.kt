@@ -225,12 +225,14 @@ internal class SmbCoverPrefetchProcessor(
   }
 
   private fun updateThumbnail(sourceId: String, coverUrl: String) {
-    database.writable.update(
-      "library_items",
-      ContentValues().apply { put("thumbnail_url", coverUrl) },
-      "source = ? AND source_id = ?",
-      arrayOf(LibrarySource.SMB.name, sourceId),
-    )
+    database.write {
+      update(
+        "library_items",
+        ContentValues().apply { put("thumbnail_url", coverUrl) },
+        "source = ? AND source_id = ?",
+        arrayOf(LibrarySource.SMB.name, sourceId),
+      )
+    }
     coverCacheCoordinator.trim(protectedUrl = coverUrl)
   }
 
