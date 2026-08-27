@@ -40,6 +40,14 @@ P1 の owner boundary 整理後も、module ownership 自体には反しない�
 
 `AppRouteDependencies` は両 group を保持し、既存 property/function を forward するだけの façade とする。この grouping は Bounded Context を新設せず、application composition 内部の変更局所性のためだけに使う。
 
+#### 2026-08-27 refinement: entrypoint capability を Route graph から取得しない
+
+`MainActivity` の外部 Intent 処理のような app entrypoint 固有処理は、同じ feature capability が Route graph に存在していても `AppRouteDependencies` の内部構造を経由して取得しない。画面 composition 用 Route graph と entrypoint capability の変更理由を分離する。
+
+共有 URL を Library へ追加する処理では、`MainActivityDependencies` が `addSharedWebBook` capability を直接受け取る。`YomitoriApplication` は `libraryRuntime.webLibraryMutator` と `backupChangeScheduler` から `NotifyingWebLibraryMutator` を composition し、その narrow capability を渡す。`YomitoriApp` の画面描画については従来どおり `routeDependencies` を利用する。
+
+これにより外部 Intent 処理が `routeDependencies.library.addWebBook` へ到達せず、Route graph の内部 grouping や Library Route contract の変更から entrypoint 処理を独立させる。Library mutation 後の backup scheduling semantics は維持する。
+
 ### 4. local diagnostic artifact を git 管理対象外にする
 
 public repository verifier が拒否する profiling/heap artifact とローカル trace を `.gitignore` でも除外する。
@@ -65,12 +73,15 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - diagnostic artifact ignore rule が維持される。
 - P1 の Reddit owner boundary と Summary prompt ownership の検査先を新しい composition group に合わせる。
 
+`MainActivityDependenciesSourceArchitectureTest` では、共有 Library 追加が `routeDependencies.library` を経由せず narrow capability として直接 composition され、backup scheduling 付き mutator が維持されることを検査する。
+
 ## Consequences
 
 ### Positive
 
 - network/auth、read-model、HTML の変更が分離され、LAN Web のレビュー範囲が小さくなる。
 - Route composition が application runtime graph と同様に責務別 group へ分かれる。
+- app entrypoint 固有の共有処理が Route graph の内部構造から独立する。
 - test source layout の過去残存を自動検出できる。
 - profiling/heap artifact の accidental commit を二重に防止できる。
 
@@ -78,6 +89,7 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 
 - application composition と Web data の class 数は増える。
 - Route composition group は Domain Context と1対1ではないため、Domain ownership の根拠には使えない。
+- entrypoint と Route が同じ mutation capability を利用する場合でも、application composition 側で別の narrow wiring が必要になる。
 - LAN Web は引き続き server-side HTML string rendering を使用する。
 
 ## Verification
@@ -85,6 +97,7 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - `LanWebServerBoundaryTest`: server constructor が Domain Repository contract を受け取り database implementation を受け取らないこと。
 - `LanWebServerTest` / `LanWebServerRepositoryTest`: HTML escaping contract。
 - `ArchitectureCleanupSourceTest`: LAN Web responsibility、Web test package/path、Route façade、diagnostic ignore、P1 boundary regression。
+- `MainActivityDependenciesSourceArchitectureTest`: entrypoint の共有 Library 追加が Route graph を経由せず、backup scheduling 付き capability を直接利用すること。
 - existing `verifyArchitecture`、全 unit test、release lint、public repository verifier。
 
 ## Documentation
@@ -92,7 +105,10 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - `docs/architecture/module-map.md` の Route composition を同期する。
 - `docs/architecture/platform.md` に LAN Web responsibility boundary を記録する。
 - ADR index を ADR-0164〜0166 の現状へ同期する。
+- 2026-08-27 refinement は module ownership や Route composition group 自体を変更しないため、module map の構造記述は変更しない。
 
 ## Public repository review
 
 本変更は source responsibility、test layout、ignore rule、architecture documentation の整理である。credential、token、OAuth secret、実ユーザー URL / メール、SMB 接続情報、実蔵書・健康データ、database、backup、heap dump / trace 本体を追加しない。
+
+2026-08-27 refinement も application composition と source architecture test の変更だけであり、credential、実ユーザーデータ、接続先情報、診断 artifact を追加しない。

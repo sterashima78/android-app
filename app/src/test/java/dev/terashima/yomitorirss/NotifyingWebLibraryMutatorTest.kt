@@ -9,6 +9,27 @@ import org.junit.Test
 
 class NotifyingWebLibraryMutatorTest {
   @Test
+  fun `Web蔵書追加はdelegateのaddを呼びバックアップ変更を通知する`() = runBlocking {
+    val events = mutableListOf<String>()
+    val delegate = object : WebLibraryMutator {
+      override suspend fun addWebBook(url: String, titleHint: String?): LibraryBook {
+        events += "library:add"
+        return webBook()
+      }
+
+      override suspend fun refreshWebBook(book: LibraryBook): LibraryBook = book
+
+      override suspend fun removeWebBook(book: LibraryBook) = Unit
+    }
+    val notifying = NotifyingWebLibraryMutator(delegate) { events += "changed" }
+
+    val added = notifying.addWebBook("https://example.com/book", "Book")
+
+    assertEquals("Book", added.title)
+    assertEquals(listOf("library:add", "changed"), events)
+  }
+
+  @Test
   fun `Web蔵書再取得はdelegateのrefreshを呼びバックアップ変更を通知する`() = runBlocking {
     val events = mutableListOf<String>()
     val delegate = object : WebLibraryMutator {
