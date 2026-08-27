@@ -29,16 +29,18 @@ internal class BackupPreferences(context: Context) {
 
   fun restore(bytes: ByteArray) {
     val decoded = decode(bytes)
-    BACKUP_RULES.forEach { rule ->
-      val values = decoded[rule.name].orEmpty()
-      val editor = appContext.getSharedPreferences(rule.name, Context.MODE_PRIVATE).edit()
-      if (rule.allowedKeys == null) {
-        editor.clear()
-      } else {
-        rule.allowedKeys.forEach { key -> editor.remove(key) }
+    BackupPreferenceChangeSuppression.suppress {
+      BACKUP_RULES.forEach { rule ->
+        val values = decoded[rule.name].orEmpty()
+        val editor = appContext.getSharedPreferences(rule.name, Context.MODE_PRIVATE).edit()
+        if (rule.allowedKeys == null) {
+          editor.clear()
+        } else {
+          rule.allowedKeys.forEach { key -> editor.remove(key) }
+        }
+        values.forEach { (key, value) -> editor.putValue(key, value) }
+        check(editor.commit()) { "設定を復元できませんでした: ${rule.name}" }
       }
-      values.forEach { (key, value) -> editor.putValue(key, value) }
-      check(editor.commit()) { "設定を復元できませんでした: ${rule.name}" }
     }
   }
 
