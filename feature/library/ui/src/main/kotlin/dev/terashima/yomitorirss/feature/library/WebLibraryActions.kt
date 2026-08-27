@@ -50,6 +50,15 @@ internal data class WebLibrarySettingsUiBinding(
 internal val LocalWebLibrarySettingsUiBinding =
   staticCompositionLocalOf<WebLibrarySettingsUiBinding?> { null }
 
+internal fun webLibraryRefreshItemStatusLabel(status: WebLibraryRefreshItemStatus): String = when (status) {
+  WebLibraryRefreshItemStatus.PENDING -> "待機中"
+  WebLibraryRefreshItemStatus.RUNNING -> "取得中"
+  WebLibraryRefreshItemStatus.UPDATED -> "更新あり"
+  WebLibraryRefreshItemStatus.UNCHANGED -> "変更なし"
+  WebLibraryRefreshItemStatus.WARNING -> "要確認"
+  WebLibraryRefreshItemStatus.FAILED -> "失敗"
+}
+
 @Composable
 fun WebLibraryAddAction(
   onAdd: (String) -> Unit,
