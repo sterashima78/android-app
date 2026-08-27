@@ -12,7 +12,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,26 +20,33 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
+import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
+import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.rememberRedditRouteController
 import dev.terashima.yomitorirss.feature.rss.rememberRssRouteController
+import dev.terashima.yomitorirss.feature.x.X_ROUTE
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 @Composable
 fun YomitoriApp(
-  appViewModel: AppViewModel,
   routeDependencies: AppRouteDependencies,
+  navigationRequests: Flow<String>,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenArticle: (Article) -> Unit,
   onOpenWebServer: () -> Unit,
   onExitApp: () -> Unit,
 ) {
-  val appState by appViewModel.state.collectAsState()
-  val selectedTab = appState.selectedTab
-  val selectedSection = selectedTab.appSection()
+  val navController = rememberNavController()
+  val currentBackStackEntry by navController.currentBackStackEntryAsState()
+  val selectedRoute = currentBackStackEntry?.destination?.route ?: INTEGRATED_ROUTE
+  val selectedSection = selectedRoute.appSection()
   val snackbarHostState = remember { SnackbarHostState() }
   val drawerState = rememberDrawerState(DrawerValue.Closed)
   val scope = rememberCoroutineScope()
@@ -48,14 +55,20 @@ fun YomitoriApp(
   val bookmarkEditController = rememberBookmarkEditController()
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
   var gameFullscreen by rememberSaveable { mutableStateOf(false) }
-  val hideAppChrome = shouldHideAppChrome(selectedTab, gameFullscreen)
+  val hideAppChrome = shouldHideAppChrome(selectedRoute, gameFullscreen)
 
-  FeatureMessageEffects(
-    selectedTab = selectedTab,
-    snackbarHostState = snackbarHostState,
-    appViewModel = appViewModel,
-    routeDependencies = routeDependencies,
-  )
+  LaunchedEffect(navController, navigationRequests) {
+    navigationRequests.collect { route -> navController.navigateTopLevel(route) }
+  }
+
+  currentBackStackEntry?.let { owner ->
+    FeatureMessageEffects(
+      selectedRoute = selectedRoute,
+      viewModelStoreOwner = owner,
+      snackbarHostState = snackbarHostState,
+      routeDependencies = routeDependencies,
+    )
+  }
 
   ModalNavigationDrawer(
     drawerState = drawerState,
@@ -64,14 +77,20 @@ fun YomitoriApp(
       AppDrawerContent(
         selectedSection = selectedSection,
         onSelectSection = { section ->
-          appViewModel.selectTab(section.defaultTab())
+          navController.navigateTopLevel(section.defaultRoute())
           scope.launch { drawerState.close() }
         },
       )
     },
   ) {
     BackHandler {
-      when (rootBackAction(drawerState.isOpen)) {
+      when (
+        rootBackAction(
+          isDrawerOpen = drawerState.isOpen,
+          canNavigateBack = navController.previousBackStackEntry != null,
+        )
+      ) {
+        RootBackAction.POP_NAVIGATION -> navController.popBackStack()
         RootBackAction.OPEN_DRAWER -> openDrawer()
         RootBackAction.EXIT_APP -> onExitApp()
       }
@@ -79,33 +98,35 @@ fun YomitoriApp(
 
     Scaffold(
       snackbarHost = { SnackbarHost(snackbarHostState) },
-      contentWindowInsets = if (selectedTab == MainTab.X) {
+      contentWindowInsets = if (selectedRoute == X_ROUTE) {
         WindowInsets(0, 0, 0, 0)
       } else {
         ScaffoldDefaults.contentWindowInsets
       },
       topBar = {
         if (!hideAppChrome) {
-          AppTopBarRoute(
-            selectedTab = selectedTab,
-            routeDependencies = routeDependencies,
-            rssController = rssController,
-            redditController = redditController,
-            onOpenDrawer = openDrawer,
-          )
+          currentBackStackEntry?.let { owner ->
+            AppTopBarRoute(
+              selectedRoute = selectedRoute,
+              viewModelStoreOwner = owner,
+              routeDependencies = routeDependencies,
+              rssController = rssController,
+              redditController = redditController,
+              onOpenDrawer = openDrawer,
+            )
+          }
         }
       },
       bottomBar = {
         AppBottomBar(
-          selectedTab = selectedTab,
-          onSelectTab = appViewModel::selectTab,
+          selectedRoute = selectedRoute,
+          onSelectRoute = navController::navigateTopLevel,
         )
       },
     ) { padding ->
-      AppFeatureContent(
-        selectedTab = selectedTab,
+      AppNavHost(
+        navController = navController,
         modifier = Modifier.fillMaxSize().padding(padding),
-        appViewModel = appViewModel,
         routeDependencies = routeDependencies,
         rssController = rssController,
         redditController = redditController,
@@ -119,18 +140,24 @@ fun YomitoriApp(
     }
   }
 
-  if (selectedTab.usesBookmarkEditOverlay()) {
-    BookmarkEditOverlay(
-      routeDependencies = routeDependencies,
-      controller = bookmarkEditController,
-    )
-  }
-  if (selectedTab.usesSummaryOverlay()) {
-    SummaryOverlay(routeDependencies = routeDependencies)
+  currentBackStackEntry?.let { owner ->
+    if (selectedRoute.usesBookmarkEditOverlay()) {
+      BookmarkEditOverlay(
+        routeDependencies = routeDependencies,
+        controller = bookmarkEditController,
+        viewModelStoreOwner = owner,
+      )
+    }
+    if (selectedRoute.usesSummaryOverlay()) {
+      SummaryOverlay(
+        routeDependencies = routeDependencies,
+        viewModelStoreOwner = owner,
+      )
+    }
   }
 }
 
 internal fun shouldHideAppChrome(
-  selectedTab: MainTab,
+  selectedRoute: String,
   gameFullscreen: Boolean,
-): Boolean = selectedTab == MainTab.GAME && gameFullscreen
+): Boolean = selectedRoute == GAME_ROUTE && gameFullscreen
