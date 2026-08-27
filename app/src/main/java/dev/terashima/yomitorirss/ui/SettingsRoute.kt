@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitoririss.ui
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
+import dev.terashima.yomitorirss.feature.settings.SettingsFeatureScreen
 import java.time.LocalDate
 
 @Composable
@@ -45,7 +46,7 @@ internal fun SettingsRoute(
     }
   }
 
-  SettingsFeatureHost(
+  SettingsFeatureScreen(
     modifier = modifier,
     backupViewModel = backupViewModel,
     aiSettingsViewModel = aiSettingsViewModel,

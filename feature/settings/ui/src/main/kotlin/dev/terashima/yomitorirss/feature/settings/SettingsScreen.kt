@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.feature.settings
+package dev.terashima.yomitoririss.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -7,30 +7,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
+import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
+import dev.terashima.yomitorirss.feature.backup.BackupViewModel
+import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
+import dev.terashima.yomitorirss.feature.summary.SummaryPromptDialog
 
-private enum class SettingsLocalOverlay {
+private enum class SettingsOverlay {
   MODELS,
   CHAT_GPT_DEBUG,
   AI_EXECUTION_SETTINGS,
+  SUMMARY_PROMPT,
+  AI_TASK_QUEUE,
+  DRIVE_BACKUP,
 }
 
 @Composable
 fun SettingsFeatureScreen(
   modifier: Modifier,
+  backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
+  aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
-  onOpenSummaryPrompt: () -> Unit,
-  onOpenAiTaskQueue: () -> Unit,
-  onOpenDriveBackup: () -> Unit,
+  onSelectBackupFolder: (String?) -> Unit,
   onExportBackup: () -> Unit,
   onImportBackup: () -> Unit,
   onOpenWebServer: () -> Unit,
 ) {
+  val backupState by backupViewModel.state.collectAsState()
   val aiState by aiSettingsViewModel.state.collectAsState()
-  var localOverlay by remember { mutableStateOf<SettingsLocalOverlay?>(null) }
+  var overlay by remember { mutableStateOf<SettingsOverlay?>(null) }
   var backgroundFetchWifiOnly by remember(initialBackgroundFetchWifiOnly) {
     mutableStateOf(initialBackgroundFetchWifiOnly)
   }
@@ -46,26 +55,29 @@ fun SettingsFeatureScreen(
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
-      localOverlay = SettingsLocalOverlay.MODELS
+      overlay = SettingsOverlay.MODELS
     },
     onOpenChatGptDebug = {
       aiSettingsViewModel.prepareChatGptDebug()
-      localOverlay = SettingsLocalOverlay.CHAT_GPT_DEBUG
+      overlay = SettingsOverlay.CHAT_GPT_DEBUG
     },
     onOpenAiExecutionSettings = {
       aiSettingsViewModel.prepareChatGptDebug()
-      localOverlay = SettingsLocalOverlay.AI_EXECUTION_SETTINGS
+      overlay = SettingsOverlay.AI_EXECUTION_SETTINGS
     },
-    onOpenSummaryPrompt = onOpenSummaryPrompt,
-    onOpenAiTaskQueue = onOpenAiTaskQueue,
-    onOpenDriveBackup = onOpenDriveBackup,
+    onOpenSummaryPrompt = { overlay = SettingsOverlay.SUMMARY_PROMPT },
+    onOpenAiTaskQueue = { overlay = SettingsOverlay.AI_TASK_QUEUE },
+    onOpenDriveBackup = {
+      backupViewModel.refreshStatus()
+      overlay = SettingsOverlay.DRIVE_BACKUP
+    },
     onExportBackup = onExportBackup,
     onImportBackup = onImportBackup,
     onOpenWebServer = onOpenWebServer,
   )
 
-  when (localOverlay) {
-    SettingsLocalOverlay.MODELS -> ModelManagerDialog(
+  when (overlay) {
+    SettingsOverlay.MODELS -> ModelManagerDialog(
       supported = aiState.supported,
       models = aiState.models,
       inferenceBackend = aiState.inferenceBackend,
@@ -83,7 +95,7 @@ fun SettingsFeatureScreen(
         val percent = if (it.totalBytes > 0) it.downloadedBytes * 100 / it.totalBytes else 0
         "${it.phase} $percent%"
       },
-      onDismiss = { localOverlay = null },
+      onDismiss = { overlay = null },
       onBackendChange = aiSettingsViewModel::setInferenceBackend,
       onThinkingChange = aiSettingsViewModel::setThinkingEnabled,
       onSpeculativeDecodingChange = aiSettingsViewModel::setSpeculativeDecodingEnabled,
@@ -95,9 +107,9 @@ fun SettingsFeatureScreen(
       onDelete = aiSettingsViewModel::deleteModel,
     )
 
-    SettingsLocalOverlay.CHAT_GPT_DEBUG -> ChatGptDebugDialog(
+    SettingsOverlay.CHAT_GPT_DEBUG -> ChatGptDebugDialog(
       state = aiState,
-      onDismiss = { localOverlay = null },
+      onDismiss = { overlay = null },
       onStartLogin = aiSettingsViewModel::startChatGptLogin,
       onPollLogin = aiSettingsViewModel::pollChatGptLogin,
       onLogout = aiSettingsViewModel::logoutChatGpt,
@@ -107,11 +119,37 @@ fun SettingsFeatureScreen(
       onRunInference = aiSettingsViewModel::runChatGptDebugInference,
     )
 
-    SettingsLocalOverlay.AI_EXECUTION_SETTINGS -> AiExecutionSettingsScreen(
+    SettingsOverlay.AI_EXECUTION_SETTINGS -> AiExecutionSettingsScreen(
       state = aiState,
-      onDismiss = { localOverlay = null },
+      onDismiss = { overlay = null },
       onSummaryProviderChange = aiSettingsViewModel::setSummaryExecutionProvider,
       onKnowledgeProviderChange = aiSettingsViewModel::setKnowledgeExecutionProvider,
+    )
+
+    SettingsOverlay.SUMMARY_PROMPT -> SummaryPromptDialog(
+      prompt = aiState.summaryPrompt,
+      onDismiss = { overlay = null },
+      onSave = {
+        overlay = null
+        aiSettingsViewModel.updateSummaryPrompt(it)
+      },
+      onReset = {
+        overlay = null
+        aiSettingsViewModel.resetSummaryPrompt()
+      },
+    )
+
+    SettingsOverlay.AI_TASK_QUEUE -> AiTaskQueueRoute(
+      repository = aiTaskQueueRepository,
+      onDismiss = { overlay = null },
+    )
+
+    SettingsOverlay.DRIVE_BACKUP -> GoogleDriveBackupDialog(
+      state = backupState,
+      onDismiss = { overlay = null },
+      onSelectFolder = { onSelectBackupFolder(backupState.folderUri) },
+      onBackupNow = backupViewModel::backupToGoogleDriveNow,
+      onDisable = backupViewModel::disableGoogleDrive,
     )
 
     null -> Unit

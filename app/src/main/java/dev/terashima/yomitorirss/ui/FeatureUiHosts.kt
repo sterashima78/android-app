@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.ui
+package dev.terashima.yomitoririss.ui
 
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -17,6 +17,7 @@ import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryDialog
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
+import dev.terashima.yomitorirss.feature.summary.summaryProgressLabel
 
 @Composable
 internal fun FeatureMessageEffects(
@@ -113,7 +114,12 @@ internal fun SummaryOverlay(routeDependencies: AppRouteDependencies) {
       article = article,
       text = summaryState.text,
       loading = summaryState.loading,
-      progress = aiState.summaryProgress?.let(::summaryProgressLabel),
+      progress = aiState.summaryProgress?.let { progress ->
+        summaryProgressLabel(
+          stage = progress.stage,
+          modelName = progress.modelName,
+        )
+      },
       onDismiss = summaryViewModel::dismissSummary,
       onRetry = { replaceBookmarkTags ->
         summaryViewModel.summarize(

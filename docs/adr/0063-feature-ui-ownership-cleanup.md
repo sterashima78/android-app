@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-15
+- Amended by: [ADR-0192](0192-settings-feature-owns-cross-feature-presentation.md)
 
 ## Context
 
@@ -55,3 +56,7 @@ AI モデル管理ダイアログを `:feature:settings:ui` へ移し、要約�
 - ADR-0003 の app を composition root とする方針に従う
 - ADR-0062 の統合ビュー UI 分離と同じ ownership 原則を残存 UI に適用する
 - ADR-0046 の自動検証では意味上の ownership を完全には判定できないため、本 ADR の境界はレビューでも確認する
+
+## Amendment note
+
+ADR-0192 により、上記 Decision のうち `:app` に feature UI forwarding adapter を残す判断と Settings の cross-feature presentation を app composition が所有する前提は廃止された。Summary の表示文言生成自体を `:feature:summary:ui` が所有する判断は維持する。

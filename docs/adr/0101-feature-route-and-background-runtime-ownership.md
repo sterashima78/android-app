@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-19
-- Amended by: ADR-0139
+- Amended by: ADR-0139, [ADR-0192](0192-settings-feature-owns-cross-feature-presentation.md)
 - Clarified: 2026-08-27 Settings overlay ownership
 
 ## Context
@@ -36,7 +36,7 @@ RSS、Reddit、Bookmark、Mail、Chat の画面 state は各 `:feature:*:ui` の
 
 Settings は Backup、Bookmark、AI Settings と Android Activity Result を束ねる必要があるため、`:app` に薄い `SettingsRoute` composition adapter を置く。ここには business rule や concrete data source を置かない。
 
-Settings 内でも ownership を同じ基準で分ける。Models、ChatGPT Debug、AI Execution Settings のように `:feature:settings:ui` が所有する presentation とその表示 state は Settings feature に置く。一方、Summary Prompt、AI Task Queue、Drive Backup はそれぞれ別 feature が所有する presentation なので、Settings から起動する場合も `:app` の `SettingsFeatureHost` が cross-feature overlay として合成する。`SettingsRoute` 自体は Android Activity Result、backup restore 後の app-level navigation、host への依存配線に限定する。
+Settings 内でも ownership を同じ基準で分ける。Models、ChatGPT Debug、AI Execution Settings に加え、Summary Prompt、AI Task Queue、Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 overlay の再利用可能 UI と task semantics はそれぞれ Summary、AI Task Queue、Backup feature が所有し続ける。`:app` の `SettingsRoute` は Android Activity Result、backup restore 後の app-level navigation、feature ViewModel / Repository の依存配線に限定する。
 
 全 feature からの Snackbar と Summary overlay は app-level cross-feature presentation であるため、薄い host として `:app` に残す。
 
@@ -65,17 +65,16 @@ WorkManager は enqueue 済み work に Worker の完全修飾クラス名を永
 
 - `YomitoriApp` の変更理由が navigation と app shell に限定される
 - feature 固有の state / dialog / loading presentation が所有 feature に戻る
-- Settings の app adapter が platform wiring と cross-feature composition に限定される
+- Settings の app adapter が platform wiring と dependency wiring に限定される
 - Compose から concrete Repository / WorkManager dependency を生成しなくなる
 - Knowledge background 実装を feature 内で変更できる
 - Worker の module 移動でも既存の enqueue 済み work を壊さない
-- ADR-0001 の state ownership と dependency direction を実装へ再適用できる
 
 ### Negative
 
-- app-level navigation と feature-owned dialog を接続するため、小さな controller が増える
+- app-level navigation と feature-owned dialog を接続するため、小さな controller が増える場合がある
 - cross-feature Snackbar / Summary / Settings platform wiring は app adapter として残る
-- Settings から別 feature の画面を起動する箇所は `SettingsFeatureHost` に composition state が残る
+- `:feature:settings:ui` から Summary / AI Task Queue / Backup UI への sibling feature dependency が増える
 - 旧 Knowledge Worker FQCN の compatibility shim は、既存インストールとの互換性のため当面維持する必要がある
 
 ## Relationship to existing ADRs
@@ -85,3 +84,4 @@ WorkManager は enqueue 済み work に Worker の完全修飾クラス名を永
 - ADR-0069 の AI task queue composition 方針を concrete dependency の生成場所まで明確化する
 - ADR-0075 `background-knowledge-wiki-build-queue` の runtime ownership を `:feature:knowledge:data` に確定する
 - ADR-0046 の自動アーキテクチャ検証では意味上の UI ownership を完全には検出できないため、route ownership はレビューでも確認する
+- ADR-0192 により Settings の cross-feature overlay selection / presentation ownership を `:feature:settings:ui` に確定する

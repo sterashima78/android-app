@@ -28,6 +28,8 @@ feature 内で ViewModel / Screen 接続まで完結できる root Route は own
 
 `Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app` は source ViewModel の wiring、Mail tab への遷移、Android 外部 URL 起動などの callback だけを接続する。詳細は ADR-0188 を参照する。
 
+`Settings` も同じ ownership 原則を適用する。Models / ChatGPT Debug / AI Execution Settings に加え、Summary Prompt / AI Task Queue / Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 sibling feature は再利用可能 UI と task semantics を所有し続け、`:app` の `SettingsRoute` は Android Activity Result、backup restore 後の app-shell navigation、feature dependency wiring、platform callback の接続だけを担当する。詳細は ADR-0192 を参照する。
+
 `app/src/main/.../feature` は feature implementation の配置場所として使わず、production Kotlin source を置かない。新しい feature Route / Screen / adapter や app shell state をこの path へ追加しない。
 
 `AppContainer` は application-scope graph の公開 facade とし、concrete feature graph の構築は責務別の `App*RuntimeDependencies` に分割する。これは repository lifetime を変えるための分割ではなく、composition root 内の可読性と変更局所性を保つための構造である。DI framework や route-level service locator は導入しない。
@@ -96,7 +98,7 @@ Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否�
 
 Knowledge の Local / ChatGPT provider 選択は `:feature:knowledge` が所有する。自動Wiki再構築、新規ページ生成、LLM編集はいずれもユーザーが明示選択したproviderを利用し、入力内容によるcloud eligibilityや自動routingは行わない。Local background buildだけ `LocalAiBackgroundTaskGate` とLocal pause / charging resumeを利用し、ChatGPT background buildはCloud pauseとnetwork constraintを利用する。enqueue済みbuildはprovider snapshotをWorkManager inputへ保持し、provider変更時は新providerのworkへ置き換える。
 
-`:feature:settings` は provider connection/model setting と task routing setting を別 presentation surface として表示する。`ChatGPT / Codex` は login・model catalog・model選択・接続テストを扱い、`AI実行設定` は各 owning feature の provider routing settingを操作する。Settings 自身は routing decision を所有しない。
+`:feature:settings` は provider connection/model setting と task routing setting を別 presentation surface として表示する。`ChatGPT / Codex` は login・model catalog・model選択・接続テストを扱い、`AI実行設定` は各 owning feature の provider routing settingを操作する。Settings 自身は routing decision を所有しない。Settings から起動する Summary Prompt / AI Task Queue / Drive Backup については、各 feature の public UI contract を利用しつつ、どの overlay を表示するかという Settings 固有の presentation state を `:feature:settings:ui` が所有する。
 
 `:feature:ai-task-queue` は複数 feature の task read model と runtime execution control を集約する。Local AI pause と Cloud AI pause は独立して表示・変更し、充電時自動再開は Local AI にだけ適用する。SummaryとKnowledgeのprovider labelを表示するが、task固有の stop / cancel / retry state は引き続き owning feature が所有する。
 
@@ -179,3 +181,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0188](../adr/0188-integrated-feature-owns-cross-feature-presentation.md)
+- [ADR-0192](../adr/0192-settings-feature-owns-cross-feature-presentation.md)
