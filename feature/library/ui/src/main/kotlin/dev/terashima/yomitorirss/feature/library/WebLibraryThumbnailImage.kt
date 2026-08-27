@@ -20,22 +20,36 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import java.net.URI
 
+private const val WEB_LIBRARY_IMAGE_ACCEPT =
+  "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+
 @Composable
 internal fun WebLibraryThumbnailPreview(
   book: LibraryBook,
   modifier: Modifier = Modifier,
 ) {
   val thumbnailUrl = book.thumbnailUrl?.trim()?.takeIf(String::isNotEmpty) ?: return
-  var loadFailed by remember(thumbnailUrl) { mutableStateOf(false) }
+  val pageUrl = book.infoUrl?.takeIf(String::isNotBlank) ?: book.sourceId
+  val requestModels = rememberLibraryThumbnailModels(book, thumbnailUrl)
+  var requestIndex by remember(thumbnailUrl, pageUrl) { mutableStateOf(0) }
+  var loadFailed by remember(thumbnailUrl, pageUrl) { mutableStateOf(false) }
+  val requestModel = requestModels.getOrElse(requestIndex) { requestModels.lastOrNull() ?: thumbnailUrl }
 
   Column(modifier = modifier) {
     AsyncImage(
-      model = rememberLibraryThumbnailModel(book, thumbnailUrl),
+      model = requestModel,
       contentDescription = "${book.title} の表紙",
       modifier = Modifier.size(width = 96.dp, height = 144.dp),
       contentScale = ContentScale.Fit,
       onSuccess = { loadFailed = false },
-      onError = { loadFailed = true },
+      onError = {
+        if (requestIndex + 1 < requestModels.size) {
+          requestIndex += 1
+          loadFailed = false
+        } else {
+          loadFailed = true
+        }
+      },
     )
     if (loadFailed) {
       Text(
@@ -48,24 +62,22 @@ internal fun WebLibraryThumbnailPreview(
 }
 
 @Composable
-internal fun rememberLibraryThumbnailModel(
+internal fun rememberLibraryThumbnailModels(
   book: LibraryBook,
   thumbnailUrl: String,
-): Any {
-  if (book.source != LibrarySource.WEB) return thumbnailUrl
+): List<Any> {
+  if (book.source != LibrarySource.WEB) return remember(thumbnailUrl) { listOf(thumbnailUrl) }
 
   val context = LocalContext.current
   val pageUrl = book.infoUrl?.takeIf(String::isNotBlank) ?: book.sourceId
   val browserUserAgent = remember(context) {
     runCatching { WebSettings.getDefaultUserAgent(context) }.getOrNull()
   }
-  val headers = remember(pageUrl, browserUserAgent) {
-    webLibraryImageRequestHeaders(pageUrl, browserUserAgent)
+  val headerCandidates = remember(pageUrl, browserUserAgent) {
+    webLibraryImageRequestHeaderCandidates(pageUrl, browserUserAgent)
   }
-  return remember(context, thumbnailUrl, headers) {
-    if (headers.isEmpty()) {
-      thumbnailUrl
-    } else {
+  return remember(context, thumbnailUrl, headerCandidates) {
+    headerCandidates.map { headers ->
       val networkHeaders = NetworkHeaders.Builder().apply {
         headers.forEach { (name, value) -> set(name, value) }
       }.build()
@@ -73,21 +85,35 @@ internal fun rememberLibraryThumbnailModel(
         .data(thumbnailUrl)
         .httpHeaders(networkHeaders)
         .build()
+    }.ifEmpty { listOf(thumbnailUrl) }
+  }
+}
+
+internal fun webLibraryImageRequestHeaderCandidates(
+  pageUrl: String,
+  browserUserAgent: String?,
+): List<Map<String, String>> {
+  val commonHeaders = buildMap {
+    put("Accept", WEB_LIBRARY_IMAGE_ACCEPT)
+    browserUserAgent?.trim()?.takeIf(String::isNotEmpty)?.let { userAgent ->
+      put("User-Agent", userAgent)
     }
+  }
+  val referers = listOfNotNull(
+    webLibraryImageReferer(pageUrl),
+    webLibraryImagePageReferer(pageUrl),
+  ).distinct()
+  return if (referers.isEmpty()) {
+    listOf(commonHeaders)
+  } else {
+    referers.map { referer -> commonHeaders + ("Referer" to referer) }
   }
 }
 
 internal fun webLibraryImageRequestHeaders(
   pageUrl: String,
   browserUserAgent: String?,
-): Map<String, String> = buildMap {
-  webLibraryImageReferer(pageUrl)?.let { referer ->
-    put("Referer", referer)
-  }
-  browserUserAgent?.trim()?.takeIf(String::isNotEmpty)?.let { userAgent ->
-    put("User-Agent", userAgent)
-  }
-}
+): Map<String, String> = webLibraryImageRequestHeaderCandidates(pageUrl, browserUserAgent).first()
 
 internal fun webLibraryImageReferer(pageUrl: String): String? = runCatching {
   val uri = URI(pageUrl)
@@ -104,5 +130,24 @@ internal fun webLibraryImageReferer(pageUrl: String): String? = runCatching {
     append(host)
     if (port != null) append(":$port")
     append('/')
+  }
+}.getOrNull()
+
+internal fun webLibraryImagePageReferer(pageUrl: String): String? = runCatching {
+  val uri = URI(pageUrl)
+  val scheme = uri.scheme?.lowercase()?.takeIf { it == "http" || it == "https" } ?: return null
+  val host = uri.host?.takeIf(String::isNotBlank) ?: return null
+  val port = uri.port.takeIf { port ->
+    port != -1 &&
+      !(scheme == "http" && port == 80) &&
+      !(scheme == "https" && port == 443)
+  }
+  val path = uri.rawPath?.takeIf(String::isNotEmpty) ?: "/"
+  buildString {
+    append(scheme)
+    append("://")
+    append(host)
+    if (port != null) append(":$port")
+    append(path)
   }
 }.getOrNull()
