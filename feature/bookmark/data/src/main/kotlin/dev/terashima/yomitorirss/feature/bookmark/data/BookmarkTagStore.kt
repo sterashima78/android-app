@@ -21,7 +21,9 @@ internal class BookmarkTagStore(
     require(display.isNotBlank()) { "タグ名を入力してください" }
     val tag = Tag(UUID.randomUUID().toString(), display, normalizeName(display), nowIso())
     check(
-      database.writable.insertWithOnConflict("tags", null, tag.values(), SQLiteDatabase.CONFLICT_ABORT) != -1L,
+      database.write {
+        insertWithOnConflict("tags", null, tag.values(), SQLiteDatabase.CONFLICT_ABORT)
+      } != -1L,
     ) { "同じ名前のタグがあります" }
     return tag
   }
@@ -29,20 +31,25 @@ internal class BookmarkTagStore(
   fun renameTag(id: String, name: String) {
     val display = displayName(name)
     require(display.isNotBlank()) { "タグ名を入力してください" }
-    database.writable.update(
-      "tags",
-      values("name" to display, "normalized_name" to normalizeName(display)),
-      "id=?",
-      arrayOf(id),
-    )
+    database.write {
+      update(
+        "tags",
+        values("name" to display, "normalized_name" to normalizeName(display)),
+        "id=?",
+        arrayOf(id),
+      )
+    }
   }
 
   fun deleteTag(id: String) {
-    database.writable.delete("tags", "id=?", arrayOf(id))
+    database.write { delete("tags", "id=?", arrayOf(id)) }
   }
 
-  fun deleteTags(ids: Set<String>): Int = ids.sumOf { id ->
-    database.writable.delete("tags", "id=?", arrayOf(id))
+  fun deleteTags(ids: Set<String>): Int {
+    if (ids.isEmpty()) return 0
+    return database.transaction {
+      ids.sumOf { id -> delete("tags", "id=?", arrayOf(id)) }
+    }
   }
 }
 
