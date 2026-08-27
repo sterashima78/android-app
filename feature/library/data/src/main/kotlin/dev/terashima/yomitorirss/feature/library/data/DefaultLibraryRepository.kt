@@ -60,21 +60,25 @@ class DefaultLibraryRepository(
       put("source_id", book.sourceId)
       put("hidden_at", System.currentTimeMillis())
     }
-    database.writable.insertWithOnConflict(
-      "hidden_library_items",
-      null,
-      values,
-      SQLiteDatabase.CONFLICT_IGNORE,
-    )
+    database.write {
+      insertWithOnConflict(
+        "hidden_library_items",
+        null,
+        values,
+        SQLiteDatabase.CONFLICT_IGNORE,
+      )
+    }
   }
 
   override suspend fun restoreBook(book: LibraryBook) {
     ensureSchema()
-    database.writable.delete(
-      "hidden_library_items",
-      "source = ? AND source_id = ?",
-      arrayOf(book.source.name, book.sourceId),
-    )
+    database.write {
+      delete(
+        "hidden_library_items",
+        "source = ? AND source_id = ?",
+        arrayOf(book.source.name, book.sourceId),
+      )
+    }
   }
 
   override suspend fun setBookSeries(
