@@ -1,7 +1,10 @@
 package dev.terashima.yomitorirss.feature.library
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WebLibraryThumbnailImageTest {
@@ -103,5 +106,32 @@ class WebLibraryThumbnailImageTest {
         browserUserAgent = "  ",
       ),
     )
+  }
+
+  @Test
+  fun `1px以下の退化画像は表示可能な表紙として扱わない`() {
+    assertFalse(isUsableWebLibraryThumbnail(width = 1, height = 120))
+    assertFalse(isUsableWebLibraryThumbnail(width = 120, height = 1))
+    assertTrue(isUsableWebLibraryThumbnail(width = 2, height = 2))
+  }
+
+  @Test
+  fun `header候補ごとに異なるcache keyを生成しURLやRefererを露出しない`() {
+    val thumbnailUrl = "https://images.example.com/cover.webp"
+    val originHeaders = mapOf(
+      "Accept" to imageAccept,
+      "User-Agent" to "ExampleBrowser/1.0",
+      "Referer" to "https://example.com/",
+    )
+    val pageHeaders = originHeaders + ("Referer" to "https://example.com/books/1")
+
+    val originKey = webLibraryImageCacheKey(thumbnailUrl, originHeaders)
+    val pageKey = webLibraryImageCacheKey(thumbnailUrl, pageHeaders)
+
+    assertNotEquals(originKey, pageKey)
+    assertTrue(originKey.startsWith("web-library-thumbnail-"))
+    assertTrue(pageKey.startsWith("web-library-thumbnail-"))
+    assertFalse(originKey.contains("example.com"))
+    assertFalse(pageKey.contains("example.com"))
   }
 }
