@@ -4,6 +4,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptOpenAiClient
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiTextInference
