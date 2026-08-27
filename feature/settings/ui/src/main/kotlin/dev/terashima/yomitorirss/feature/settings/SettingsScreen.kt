@@ -1,4 +1,4 @@
-package dev.terashima.yomitoririss.feature.settings
+package dev.terashima.yomitorirss.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
