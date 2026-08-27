@@ -14,7 +14,9 @@ ADR-0099 によりアプリ独自バックアップの正本は統合 SQLite dat
 
 さらに統合DBには、backup archiveへ含まれていても復元先で正本として扱わない transient queue / download state や、ADR-0135 の SMB `file://` 表紙参照のような端末local cache metadataも存在する。SQLiteへの全writeを機械的にバックアップ契機にすると、queue progressやcache再生成だけで15分後のbackupを繰り返し再予約してしまう。
 
-したがって境界は単なる「SQLite write」ではなく、「backup対象の durable user data が正常にcommitされたか」で定義する必要がある。
+ADR-0099 の archive は SQLite snapshot だけでなく明示的に allowlist した SharedPreferences も含む。したがって database commit だけを監視しても、要約prompt、reader position、workout設定等のバックアップ対象設定だけを変更した場合は自動バックアップ契機を失う。
+
+したがって境界は単なる「SQLite write」ではなく、「backup対象の durable user data が正常に永続化されたか」で定義する必要がある。
 
 ## Decision
 
@@ -40,7 +42,7 @@ ADR-0099 がbackup対象外として扱う transient queue、download state、de
 
 ### 3. `PersistenceChangeNotifier` と UI 用 `DataChangeNotifier` を分離する
 
-`PersistenceChangeNotifier` は backup対象の durable database change の発生だけを表す persistence-level signal とする。
+`PersistenceChangeNotifier` は backup対象の durable persistence change の発生を表す persistence-level signal とする。SQLite の durable commitだけでなく、ADR-0099のallowlist対象SharedPreferences変更も同じsignalへ合流できる。
 
 既存の `DataChangeNotifier` は画面や read model の再読込等、表示更新に必要な domain/application signal として維持する。バックアップ予約のために `DataChangeNotifier` を発火させたり、`DataChangeNotifier` の全イベントを永続化変更として扱ったりしない。
 
@@ -56,21 +58,30 @@ feature / worker / import
         v
 repository / store
         |
-        +--> durable user data
+        +--> durable DB user data
         |      DatabaseConnection.write / transaction
         |                 |
         |                 v
         |      PersistenceChangeNotifier
         |
         +--> backup-excluded local state
-               DatabaseConnection.localWrite / localTransaction
+        |      DatabaseConnection.localWrite / localTransaction
+        |                 |
+        |                 +-- no persistence notification
+        |
+        +--> backed-up SharedPreferences
+               BackupPreferenceChangeObserver
                          |
-                         +-- no persistence notification
+                         v
+              PersistenceChangeNotifier
 
 PersistenceChangeNotifier
         |
         v
 :app composition root
+        |
+        v
+PersistenceBackupChangeObserver
         |
         v
 BackupChangeScheduler
@@ -81,27 +92,39 @@ scheduled Google Drive backup
 
 通常 feature の ViewModel / Repository / mutator は `BackupChangeScheduler` に依存しない。Backup Context の scheduling API を通常 mutation の公開契約にしない。
 
-既存のバックアップ側 debounce / delay policy は Backup Context が引き続き所有し、persistence layer は「backup対象変更がcommitされた」という事実だけを通知する。
+既存のバックアップ側 debounce / delay policy は Backup Context が引き続き所有し、persistence layer は「backup対象変更が永続化された」という事実だけを通知する。
 
 SQLite snapshot restore は row-level mutation API を通らず database file 自体を置換する特殊な durable mutationである。restore後のLibrary cache / queue cleanupは `localTransaction` とし、restoreと全initializerが成功した時点で Backup Context の persistence adapter が `PersistenceChangeNotifier` を1回明示的に通知する。restore callerから `BackupChangeScheduler` を直接呼ばない。
 
-### 5. Mail / SMB / Summary の既知legacy pathを整理する
+### 5. ADR-0099のSharedPreferences allowlist変更も同じsignalへ合流させる
+
+Backup Context は `BackupPreferences.BACKUP_RULES` を backup archive と変更検知の単一allowlistとして所有する。
+
+`BackupPreferenceChangeObserver` はこのallowlistに含まれるSharedPreferencesだけへ listener を登録する。ruleがkey allowlistを持つ場合は対象keyだけを `PersistenceChangeNotifier` へ通知し、model revision、device benchmark、credential等の除外key/fileは通知しない。
+
+backup restoreは複数SharedPreferencesを連続更新するため、restore処理中は `BackupPreferenceChangeSuppression` でlistener通知を抑制する。database snapshot、allowlist preferences、restore initializerの全処理が成功した後に `BackupRepository` が既存の `PersistenceChangeNotifier` を1回通知する。これによりrestore途中の状態を複数回backup予約せず、restore完了状態だけをdirtyとして扱う。
+
+新しいSharedPreferencesをbackup対象へ追加する場合は `BACKUP_RULES` へ追加することでarchive内容と自動変更検知を同時に更新する。通常featureへ `BackupChangeScheduler` を注入しない。
+
+### 6. Mail / SMB / Summary の既知legacy pathを整理する
 
 本 ADR 導入時に残っていた Mail Context の account / sync checkpoint / local mail state と、Library Context の SMB server設定は `DatabaseConnection.write` / `transaction` へ移行する。
 
-SMB表紙については ADR-0135 に従い、`library_items.thumbnail_url` に保存する `file://` URLは再生成可能な端末local cache参照として扱う。表紙生成、cache eviction、`smb_cover_prefetch_queue` の状態・progress、restore後のcache cleanupは `localWrite` / `localTransaction` または既存の非通知legacy pathを利用し、バックアップ契機にしない。SMB credentialも引き続きbackup対象外とする。
+SMB表紙については ADR-0135 に従い、`library_items.thumbnail_url` に保存する `file://` URLは再生成可能な端末local cache参照として扱う。表紙生成、cache eviction、`smb_cover_prefetch_queue` の状態・progress、restore後のcache cleanupは `localWrite` / `localTransaction` を利用し、バックアップ契機にしない。SMB credentialも引き続きbackup対象外とする。
 
 Summary Context では `article_summaries` の要約結果は ADR-0099 が明示するdurable user dataなので `DatabaseConnection.write` を通す。一方 `summary_tasks`、prepared content、retry / progress等のqueue実行状態はtransient processing stateとしてバックアップ契機にしない。
 
 新しい durable user-data write に caller-specific backup bridge や未通知の raw writable mutation を追加してはならない。
 
-### 6. Architecture verification で境界の逆流を防ぐ
+### 7. Architecture verification で境界の逆流を防ぐ
 
 architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller-driven backup scheduling API を所有・参照しないことを検証する。
 
 また共通境界へ移行済みの主要durable pathはraw writable mutationへ戻らないことを検証する。backup対象外stateについては、SMB cover queue / cache / restore cleanupがdurable `transaction` を使用しないことを固定する。
 
 `article_summaries` の保存についても `YomitoriDatabase.writableDatabase` への直接mutationへ戻らないことを検証する。
+
+app compositionでは `PersistenceBackupChangeObserver` と `BackupPreferenceChangeObserver` の両方が起動し、DBとallowlist preferencesの変更が同じ `PersistenceChangeNotifier` を経由することを検証する。
 
 ## Consequences
 
@@ -113,14 +136,14 @@ architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller
 - transient queue progressやdevice-local cache更新による不要なバックアップ再予約を避けられる。
 - RSS / Bookmark / Reddit / YouTube 等の feature から Backup Context への直接依存を削除できる。
 - UI refresh の `DataChangeNotifier` と backup trigger の意味を分離できる。
-- ADR-0099 の database snapshotを正本とする方針と、変更検知の意味が一致する。
-- Mailのローカル状態、SMB server設定、article summary等のdurable user dataがfeature-specific scheduling hookなしで同じ自動バックアップ契機を持つ。
+- ADR-0099 の database snapshotとSharedPreferences allowlistの双方で、archive scopeと変更検知scopeが一致する。
+- Mailのローカル状態、SMB server設定、article summary、バックアップ対象settingsがfeature-specific scheduling hookなしで同じ自動バックアップ契機を持つ。
 
 ### Negative
 
 - runtime write pathはdurable / localの意味を判断して適切なmutation APIを選ぶ必要がある。
 - persistence layerにdurable change signalとlocal transactionというcross-cutting mechanismが追加される。
-- SQLite外のSharedPreferences等のユーザー所有データはdatabase commitだけでは変更検知できないため、それらの自動バックアップ契機は各persistence mechanismの境界で別途扱う必要がある。
+- Backup ContextはSharedPreferences allowlist listenerとrestore中の通知抑制を維持する必要がある。
 - DB snapshot自体にはtransient tableやlocal cache参照columnも含まれ得るため、restore initializerやscope ADRを維持する必要がある。
 
 ## Verification
@@ -131,6 +154,9 @@ architecture test で、通常 feature/UI が `BackupChangeScheduler` や caller
 - `localWrite` / `localTransaction` はlocal stateだけのcommitでは通知しないことをunit testする。
 - `localTransaction` 内にdurable `write` がnestedした場合は外側commit後に1回通知することをunit testする。
 - WAL利用時も変更件数の前後値をtransaction内の同一SQLite connectionで評価する。
+- allowlist対象SharedPreferencesの変更が `PersistenceChangeNotifier` を発火することをunit testする。
+- key allowlist外のSharedPreferences変更は通知しないことをunit testする。
+- backup restore中のSharedPreferences変更は個別通知せず、restore成功後の明示通知だけを利用することをtestする。
 - `PersistenceChangeNotifier` の通知がapp compositionで `BackupChangeScheduler` に接続されることをtestする。
 - SQLite snapshot restore成功後も `PersistenceChangeNotifier` が通知され、restore cache cleanup単体では通知しないことを確認する。
 - `DataChangeNotifier` をbackup triggerとして利用しないことを確認する。
