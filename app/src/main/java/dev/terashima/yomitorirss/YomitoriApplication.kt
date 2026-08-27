@@ -8,6 +8,8 @@ import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
+import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
+import dev.terashima.yomitorirss.feature.backup.data.DatabaseBackupChangeObserver
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.data.BookmarkAutoEnrichmentBackfillScheduler
@@ -34,24 +36,24 @@ class YomitoriApplication : Application(),
     AppContainer(this, currentActivityTracker::current)
   }
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppRouteDependencies(this, container) }
-  private val sharedWebLibraryMutator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    NotifyingWebLibraryMutator(
-      delegate = container.libraryRuntime.webLibraryMutator,
-      onChanged = container.backupChangeScheduler::scheduleAfterChange,
-    )
-  }
   override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     MainActivityDependencies(
       routeDependencies = routeDependencies,
       lanWebServerController = container.lanWebServerController,
       saveSharedBookmark = container.saveSharedBookmarkUseCase,
-      addSharedWebBookCapability = sharedWebLibraryMutator::addWebBook,
+      addSharedWebBookCapability = container.libraryRuntime.webLibraryMutator::addWebBook,
     )
   }
   override val workManagerConfiguration: Configuration by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     Configuration.Builder()
       .setWorkerFactory(createAppWorkerFactory(container))
       .build()
+  }
+  private val databaseBackupChangeObserver: DatabaseBackupChangeObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DatabaseBackupChangeObserver(
+      dataChanges = DataChangeNotifier.shared.version,
+      scheduler = AndroidBackupChangeScheduler(this),
+    )
   }
   private val unreadArticlesWidgetRefreshObserver: UnreadArticlesWidgetRefreshObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     UnreadArticlesWidgetRefreshObserver(this, DataChangeNotifier.shared.version)
@@ -72,6 +74,7 @@ class YomitoriApplication : Application(),
     Android17MemoryAnomalyProfiler.install(this)
     StartupCrashStore.install(this)
     AppLocalAiMemoryMonitor.install(this)
+    databaseBackupChangeObserver.start()
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(this) }
   }
