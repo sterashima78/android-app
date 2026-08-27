@@ -127,6 +127,42 @@ class DatabaseConnectionTest {
     })
   }
 
+  @Test
+  fun `localWriteはcommitしても永続化変更を通知しない`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.localWrite {
+      insertOrThrow("items", null, values("local"))
+    }
+
+    assertEquals(0L, notifier.version.value)
+    assertEquals(1, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
+  fun `localTransaction内のdurable writeは外側commit後に通知する`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.localTransaction {
+      insertOrThrow("items", null, values("local"))
+      database.write {
+        insertOrThrow("items", null, values("durable"))
+      }
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(1L, notifier.version.value)
+    assertEquals(2, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
   private fun values(value: String): ContentValues = ContentValues().apply {
     put("value", value)
   }
