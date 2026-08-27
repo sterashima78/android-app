@@ -58,7 +58,6 @@ class DefaultBackupRepository(
     LibraryBackupRestoreInitializer(connection).initialize()
     BookmarkDatabaseInitializer.initialize(connection)
     dataChanges.notifyChanged()
-    scheduleAfterChange()
   }
 
   override suspend fun configureGoogleDrive(folderUri: String): ConfigureGoogleDriveResult {
