@@ -210,19 +210,20 @@ class ArchitectureCleanupSourceTest {
   }
 
   @Test
-  fun `mainのsigned APK生成はAndroid quality checks成功後だけ実行する`() {
-    val workflow = source(".github/workflows/build-apk.yml")
-    val qualityChecks = workflow.substringAfter("  quality_checks:\n").substringBefore("\n  quality:\n")
-    val buildJob = workflow.substringAfter("  build:\n")
+  fun `PR quality checksとmain signed APK buildはworkflowを分離する`() {
+    val checkWorkflow = source(".github/workflows/check.yml")
+    val buildWorkflow = source(".github/workflows/build.yml")
 
+    listOf("Public repository", "Architecture", "Test", "Lint").forEach { checkName ->
+      assertTrue("PR workflow must expose the required check: $checkName", "name: $checkName" in checkWorkflow)
+    }
     assertTrue(
-      "Architecture/Test/Lint matrix must run for main",
-      "github.ref == 'refs/heads/main'" in qualityChecks,
+      "Architecture check must include ADR integrity verification",
+      "python3 scripts/verify_adr_integrity.py" in checkWorkflow,
     )
-    assertTrue(
-      "signed APK build must depend on the Android quality matrix",
-      "needs:\n      - quality_checks" in buildJob,
-    )
+    assertFalse("PR check workflow must not assemble the release APK", ":app:assembleRelease" in checkWorkflow)
+    assertTrue("main build workflow must assemble the signed release APK", ":app:assembleRelease" in buildWorkflow)
+    assertFalse("main build workflow must not rerun the PR quality matrix", "matrix:" in buildWorkflow)
   }
 
   @Test
@@ -231,7 +232,7 @@ class ArchitectureCleanupSourceTest {
     val network = source(
       "core/network/src/main/kotlin/dev/terashima/yomitorirss/core/network/OkHttpHttpClient.kt",
     )
-    val workflow = source(".github/workflows/build-apk.yml")
+    val workflow = source(".github/workflows/build.yml")
 
     assertTrue(
       "application User-Agent must derive the version from BuildConfig",
