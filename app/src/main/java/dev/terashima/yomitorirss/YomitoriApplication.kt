@@ -26,7 +26,7 @@ import dev.terashima.yomitorirss.feature.widget.WidgetRefreshSchedulerProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepositoryProvider
 import java.lang.ref.WeakReference
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 
 class YomitoriApplication : Application(),
   Configuration.Provider,
@@ -56,7 +56,7 @@ class YomitoriApplication : Application(),
   }
   private val databaseBackupChangeObserver: DatabaseBackupChangeObserver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DatabaseBackupChangeObserver(
-      dataChanges = PersistenceChangeNotifier.shared.version.drop(1),
+      dataChanges = PersistenceChangeNotifier.shared.version.filter { it > 0L },
       scheduler = AndroidBackupChangeScheduler(this),
     )
   }
