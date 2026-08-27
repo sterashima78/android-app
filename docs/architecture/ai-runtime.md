@@ -6,11 +6,14 @@
 
 Summary、Knowledge、Library organization 等の feature は provider protocol を直接扱わず、用途に応じた inference capability を利用する。
 
-- 単発テキスト生成の共通 contract は `:core:ai-inference` に置く。
+- 単発の自由形式テキスト生成は `:core:ai-inference` の `AiTextInference` を利用する。
+- tool call を構造化出力として要求する単発生成は、同 module の sibling capability `AiStructuredTextInference` を利用する。自由形式生成しか必要としない consumer に tool calling を強制しない。
 - Local 実装は `:core:ai-runtime` の local model runtime へ接続する。
 - ChatGPT / Codex の HTTP、OAuth、Responses protocol と provider-neutral `ChatGptTextInference` implementation は `:core:ai-cloud-openai` に閉じる。
 - Summary / Knowledge feature module は `ChatGptOpenAiClient` や OpenAI endpoint を直接参照しない。
 - app composition は provider adapter instance と feature contract を接続するが、provider technical adapter や feature 固有 prompt、task lifecycle、retry policy を再実装しない。
+
+Library organization は `AiTextInference.selectedModel()` から model / prompt budget を取得し、実際の分類結果は `AiStructuredTextInference` の `submit_library_organization` tool call で受け取る。分類 prompt、tool schema、引数 validation、bounded repair は Library feature が所有する。
 
 ## Execution routing
 
@@ -24,7 +27,7 @@ Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択す�
 
 ## Local one-shot text inference process boundary
 
-Summary、Knowledge、Library organization が利用する Local `AiTextInference.generate()` は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
+Summary、Knowledge 等が利用する Local `AiTextInference.generate()` は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
 
 - main process は WorkManager、durable queue、DB、feature policy、`LocalAiBackgroundTaskGate` を所有し続ける。
 - child process は prompt と immutable execution snapshot を受け取り単発 text generation を返すだけで、Repository や Worker graph を構築しない。
@@ -45,6 +48,20 @@ Summary、Knowledge、Library organization が利用する Local `AiTextInferenc
 この境界は Android 17 の main-process memory diagnostics で、Library organization 実行中に Java heap が小さいまま native heap / PSS が継続増加し `MemoryLimiter:AnonSwap` に至った実測を根拠とする。backend は診断 report から確定できないため、GPU/OpenCL 固有の不具合とは断定せず、process lifetime に残留する native allocation 全般に対する safety boundary として扱う。
 
 Android の `SharedPreferences` は複数 process 間の整合性保証を持たないため、process isolation を導入する際は設定の正本も main process に固定する。child process は Binder snapshot を execution input とし、main process の model/backend/context preference を直接同期ストアとして扱わない。
+
+## Local structured text inference boundary
+
+Library organization の構造化結果は通常テキストの JSON として生成せず、`AiStructuredTextInference` を通じて tool call arguments として受け取る。
+
+- Local adapter は `ProcessIsolatedLocalAiStructuredTextInference` とし、非公開 `LocalStructuredTextInferenceService` を同じ `:local_ai_text` process で起動する。
+- main process で selected model、backend、speculative decoding、effective context token count、model revision を snapshot 化し、child 専用 preference へ適用する。main process の preference を child の同期ストアにはしない。
+- provider-neutral `AiStructuredTool` を runtime 内で LiteRT-LM の `LocalInferenceTool` / OpenAPI tool definition へ変換する。feature は LiteRT-LM API を直接参照しない。
+- Library organization では `submit_library_organization(tags, collections, reason)` の tool arguments だけを分類結果として利用し、通常の model text は採用しない。
+- tool schema で型を限定した後も Library feature が件数、長さ、空値、重複等を再検証する。検証失敗時の repair は1回だけとする。
+- structured request は1 bound-service lifetime で完結させ、終了時に child process を recycle して native resource を回収する。
+- service は `android:exported="false"` とし、prompt、書誌データ、tool arguments、model output を log / diagnostics / SharedPreferences へ保存しない。
+
+この capability は Chat の対話的 tool calling とは別である。Chat は会話履歴、streaming、複数 tool execution を扱うため、引き続き Chat 用 runtime boundary を利用する。
 
 ## ChatGPT inference failure boundary
 
@@ -76,7 +93,7 @@ runtime group は construction detail であり、Route、Screen、Worker へ gr
 
 application composition は Local / ChatGPT adapter の concrete instance を選択・共有するが、adapter implementation の source ownership は各 technical core / owning feature に置く。Workout の provider routing と prompt budget 処理は `:feature:workout:data` の `DefaultWorkoutAiAdvisor` が所有する。
 
-application-scope で再利用するのは adapter / manager ownership であり、重い Local text generation Engine を main process に常駐させることを意味しない。`ProcessIsolatedLocalAiTextInference` は application-scope capability として共有しつつ、実 Engine は短寿命 `:local_ai_text` process generation ごとに構築・破棄する。
+application-scope で再利用するのは adapter / manager ownership であり、重い Local text generation Engine を main process に常駐させることを意味しない。`ProcessIsolatedLocalAiTextInference` と `ProcessIsolatedLocalAiStructuredTextInference` は application-scope capability として共有しつつ、実 Engine は短寿命 `:local_ai_text` process 内で構築・破棄する。
 
 ## Sources
 
@@ -89,3 +106,4 @@ application-scope で再利用するのは adapter / manager ownership であり
 - [ADR-0185](../adr/0185-normalize-chatgpt-provider-failures-in-core.md)
 - [ADR-0190](../adr/0190-isolate-local-text-inference-process.md)
 - [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
+- [ADR-0199](../adr/0199-library-organization-structured-tool-output.md)

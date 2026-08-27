@@ -1,5 +1,9 @@
 package dev.terashima.yomitorirss.feature.library.data
 
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
@@ -11,15 +15,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DefaultLibraryOrganizationSuggesterTest {
   @Test
-  fun `AI suggestion parser validates strict JSON and deduplicates labels`() {
+  fun `AI suggestion parser validates tool arguments and deduplicates labels`() {
     val suggestion = parseLibraryOrganizationSuggestion(
-      """{"tags":["Android"," android ","設計"],"collections":["技術","技術"],"reason":"書誌情報から判断"}""",
+      mapOf(
+        "tags" to """["Android"," android ","設計"]""",
+        "collections" to """["技術","技術"]""",
+        "reason" to "書誌情報から判断",
+      ),
     )
 
     assertEquals(listOf("Android", "設計"), suggestion.tagNames)
@@ -31,7 +40,11 @@ class DefaultLibraryOrganizationSuggesterTest {
   fun `AI suggestion parser rejects non array tags`() {
     val error = assertThrows(IllegalArgumentException::class.java) {
       parseLibraryOrganizationSuggestion(
-        """{"tags":"「Android」「設計」","collections":["技術"],"reason":"test"}""",
+        mapOf(
+          "tags" to "「Android」「設計」",
+          "collections" to """["技術"]""",
+          "reason" to "test",
+        ),
       )
     }
 
@@ -42,7 +55,11 @@ class DefaultLibraryOrganizationSuggesterTest {
   fun `AI suggestion parser rejects values beyond schema limits`() {
     val error = assertThrows(IllegalArgumentException::class.java) {
       parseLibraryOrganizationSuggestion(
-        """{"tags":["1","2","3","4","5","6"],"collections":["A"],"reason":"test"}""",
+        mapOf(
+          "tags" to """["1","2","3","4","5","6"]""",
+          "collections" to """["A"]""",
+          "reason" to "test",
+        ),
       )
     }
 
@@ -50,11 +67,25 @@ class DefaultLibraryOrganizationSuggesterTest {
   }
 
   @Test
-  fun `invalid AI output is regenerated once with schema error feedback`() = runBlocking {
+  fun `invalid tool arguments are regenerated once with validation feedback`() = runBlocking {
     val outputs = ArrayDeque(
       listOf(
-        """{"tags":"Android","collections":[],"reason":"invalid"}""",
-        """{"tags":["Android"],"collections":["技術"],"reason":"valid"}""",
+        AiStructuredToolCall(
+          name = "submit_library_organization",
+          arguments = mapOf(
+            "tags" to "Android",
+            "collections" to "[]",
+            "reason" to "invalid",
+          ),
+        ),
+        AiStructuredToolCall(
+          name = "submit_library_organization",
+          arguments = mapOf(
+            "tags" to """["Android"]""",
+            "collections" to """["技術"]""",
+            "reason" to "valid",
+          ),
+        ),
       ),
     )
     val prompts = mutableListOf<String>()
@@ -70,18 +101,28 @@ class DefaultLibraryOrganizationSuggesterTest {
     assertEquals(listOf("Android"), suggestion.tagNames)
     assertEquals(listOf("技術"), suggestion.collectionNames)
     assertEquals(2, prompts.size)
-    assertTrue(prompts[1].contains("JSON Schema検証に失敗"))
+    assertTrue(prompts[1].contains("submit_library_organization 呼び出しは検証に失敗"))
     assertTrue(prompts[1].contains("tags は文字列配列"))
   }
 
   @Test
-  fun `suggester uses provider neutral model budget and generation`() = runBlocking {
-    val inference = FakeTextInference(
-      response = """{"tags":["Android"],"collections":["技術"],"reason":"valid"}""",
-      promptBudgetChars = 8_000,
+  fun `suggester uses provider neutral model budget and structured tool call`() = runBlocking {
+    val textInference = FakeTextInference(promptBudgetChars = 8_000)
+    val structuredInference = FakeStructuredTextInference(
+      response = AiStructuredToolCall(
+        name = "submit_library_organization",
+        arguments = mapOf(
+          "tags" to """["Android"]""",
+          "collections" to """["技術"]""",
+          "reason" to "valid",
+        ),
+      ),
     )
 
-    val suggestion = DefaultLibraryOrganizationSuggester(inference).suggest(
+    val suggestion = DefaultLibraryOrganizationSuggester(
+      textInference = textInference,
+      structuredInference = structuredInference,
+    ).suggest(
       book = testBook(),
       existingTags = listOf("Android"),
       existingCollections = listOf("技術"),
@@ -90,12 +131,21 @@ class DefaultLibraryOrganizationSuggesterTest {
 
     assertEquals(listOf("Android"), suggestion.tagNames)
     assertEquals(listOf("技術"), suggestion.collectionNames)
-    assertEquals(1, inference.generatedPrompts.size)
-    assertTrue(inference.generatedPrompts.single().length <= 8_000)
+    assertEquals(0, textInference.generateCalls)
+    assertEquals(1, structuredInference.requests.size)
+    val request = structuredInference.requests.single()
+    assertTrue(request.userMessage.length <= 8_000)
+    assertEquals("submit_library_organization", request.tool.name)
+    assertFalse(request.tool.allowAdditionalArguments)
+    assertEquals(
+      AiStructuredToolArgumentType.STRING_ARRAY,
+      request.tool.arguments.single { it.name == "tags" }.type,
+    )
+    assertTrue(request.systemInstruction.contains("通常テキストとしてJSONや説明文を返してはいけません"))
   }
 
   @Test
-  fun `prompt exposes same series classifications separately from global taxonomy`() {
+  fun `prompt exposes same series classifications and requires tool output`() {
     val prompt = buildLibraryOrganizationPrompt(
       book = testBook(),
       existingTags = listOf("一般タグ"),
@@ -109,16 +159,16 @@ class DefaultLibraryOrganizationSuggesterTest {
     assertTrue(prompt.contains("同一シリーズの確定済み分類"))
     assertTrue(prompt.contains("シリーズ共通タグ"))
     assertTrue(prompt.contains("シリーズ棚"))
-    assertTrue(prompt.contains("additionalProperties"))
+    assertTrue(prompt.contains("submit_library_organization"))
+    assertFalse(prompt.contains("JSON Schema:"))
   }
 }
 
 private class FakeTextInference(
-  private val response: String,
   promptBudgetChars: Int,
 ) : AiTextInference {
   override val progress: Flow<AiTextInferenceProgress?> = flowOf(null)
-  val generatedPrompts = mutableListOf<String>()
+  var generateCalls = 0
 
   private val model = AiTextInferenceModel(
     id = "test-model",
@@ -134,7 +184,28 @@ private class FakeTextInference(
   override fun countTokens(text: String): Int = text.length
 
   override suspend fun generate(prompt: String): String {
-    generatedPrompts += prompt
+    generateCalls += 1
+    error("free-form generation must not be used for library organization")
+  }
+}
+
+private class FakeStructuredTextInference(
+  private val response: AiStructuredToolCall?,
+) : AiStructuredTextInference {
+  data class Request(
+    val systemInstruction: String,
+    val userMessage: String,
+    val tool: AiStructuredTool,
+  )
+
+  val requests = mutableListOf<Request>()
+
+  override suspend fun generateToolCall(
+    systemInstruction: String,
+    userMessage: String,
+    tool: AiStructuredTool,
+  ): AiStructuredToolCall? {
+    requests += Request(systemInstruction, userMessage, tool)
     return response
   }
 }
