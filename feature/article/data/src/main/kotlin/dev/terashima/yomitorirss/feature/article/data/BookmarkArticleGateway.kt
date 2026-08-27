@@ -10,12 +10,14 @@ class DefaultBookmarkArticleGateway(
   private val database: DatabaseConnection,
 ) : BookmarkArticleGateway {
   override suspend fun markRead(articleId: String) {
-    val updated = database.writable.update(
-      "articles",
-      values("read_at" to Instant.now().toString()),
-      "id=?",
-      arrayOf(articleId),
-    )
+    val updated = database.write {
+      update(
+        "articles",
+        values("read_at" to Instant.now().toString()),
+        "id=?",
+        arrayOf(articleId),
+      )
+    }
     require(updated > 0) { "記事が見つかりません" }
   }
 
