@@ -191,4 +191,4 @@ App composition の source ownership と active-tab ViewModel activation は `Ap
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)
-- [ADR-0198](../adr/0198-app-composition-module-boundary.md)
+- [ADR-0200](../adr/0200-app-composition-module-boundary.md)
