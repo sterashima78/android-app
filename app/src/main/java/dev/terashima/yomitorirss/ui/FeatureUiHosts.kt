@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
@@ -21,58 +22,72 @@ import dev.terashima.yomitorirss.feature.summary.summaryProgressLabel
 
 @Composable
 internal fun FeatureMessageEffects(
-  selectedTab: MainTab,
+  selectedRoute: String,
+  viewModelStoreOwner: ViewModelStoreOwner,
   snackbarHostState: SnackbarHostState,
-  appViewModel: AppViewModel,
   routeDependencies: AppRouteDependencies,
 ) {
-  val appState by appViewModel.state.collectAsState()
-  FeatureMessageEffect(
-    message = appState.message,
-    snackbarHostState = snackbarHostState,
-    onConsumed = appViewModel::dismissMessage,
-  )
-
-  val messageSources = selectedTab.featureMessageSources()
+  val messageSources = selectedRoute.featureMessageSources()
 
   if (FeatureMessageSource.RSS in messageSources) {
-    val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
+    val rssViewModel: RssViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.rssViewModelFactory,
+    )
     val rssState by rssViewModel.state.collectAsState()
     FeatureMessageEffect(rssState.message, snackbarHostState, rssViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.REDDIT in messageSources) {
-    val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
+    val redditViewModel: RedditViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.redditViewModelFactory,
+    )
     val redditState by redditViewModel.state.collectAsState()
     FeatureMessageEffect(redditState.message, snackbarHostState, redditViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.FEED in messageSources) {
-    val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
+    val feedViewModel: FeedViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.feedViewModelFactory,
+    )
     val feedState by feedViewModel.state.collectAsState()
     FeatureMessageEffect(feedState.message, snackbarHostState, feedViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.BOOKMARK in messageSources) {
-    val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+    val bookmarkViewModel: BookmarkViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.bookmarkViewModelFactory,
+    )
     val bookmarkState by bookmarkViewModel.state.collectAsState()
     FeatureMessageEffect(bookmarkState.message, snackbarHostState, bookmarkViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.SUMMARY in messageSources) {
-    val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+    val summaryViewModel: SummaryViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.summaryViewModelFactory,
+    )
     val summaryState by summaryViewModel.state.collectAsState()
     FeatureMessageEffect(summaryState.message, snackbarHostState, summaryViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.BACKUP in messageSources) {
-    val backupViewModel: BackupViewModel = viewModel(factory = routeDependencies.backupViewModelFactory)
+    val backupViewModel: BackupViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.backupViewModelFactory,
+    )
     val backupState by backupViewModel.state.collectAsState()
     FeatureMessageEffect(backupState.message, snackbarHostState, backupViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.AI_SETTINGS in messageSources) {
-    val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
+    val aiSettingsViewModel: AiSettingsViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.aiSettingsViewModelFactory,
+    )
     val aiState by aiSettingsViewModel.state.collectAsState()
     FeatureMessageEffect(aiState.message, snackbarHostState, aiSettingsViewModel::dismissMessage)
   }
@@ -95,8 +110,12 @@ private fun FeatureMessageEffect(
 internal fun BookmarkEditOverlay(
   routeDependencies: AppRouteDependencies,
   controller: BookmarkEditController,
+  viewModelStoreOwner: ViewModelStoreOwner,
 ) {
-  val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
+  val bookmarkViewModel: BookmarkViewModel = viewModel(
+    viewModelStoreOwner = viewModelStoreOwner,
+    factory = routeDependencies.bookmarkViewModelFactory,
+  )
   BookmarkEditHost(
     bookmarkViewModel = bookmarkViewModel,
     controller = controller,
@@ -104,11 +123,20 @@ internal fun BookmarkEditOverlay(
 }
 
 @Composable
-internal fun SummaryOverlay(routeDependencies: AppRouteDependencies) {
-  val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+internal fun SummaryOverlay(
+  routeDependencies: AppRouteDependencies,
+  viewModelStoreOwner: ViewModelStoreOwner,
+) {
+  val summaryViewModel: SummaryViewModel = viewModel(
+    viewModelStoreOwner = viewModelStoreOwner,
+    factory = routeDependencies.summaryViewModelFactory,
+  )
   val summaryState by summaryViewModel.state.collectAsState()
   summaryState.article?.let { article ->
-    val aiSettingsViewModel: AiSettingsViewModel = viewModel(factory = routeDependencies.aiSettingsViewModelFactory)
+    val aiSettingsViewModel: AiSettingsViewModel = viewModel(
+      viewModelStoreOwner = viewModelStoreOwner,
+      factory = routeDependencies.aiSettingsViewModelFactory,
+    )
     val aiState by aiSettingsViewModel.state.collectAsState()
     SummaryDialog(
       article = article,
