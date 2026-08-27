@@ -7,28 +7,54 @@ class DatabaseConnection(
   private val helper: SQLiteOpenHelper,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
+  private val transactionScope = ThreadLocal<TransactionScope?>()
+
   val readable: SQLiteDatabase
     get() = helper.readableDatabase
 
   /**
-   * Raw writable connection for schema initialization and maintenance operations.
+   * Raw writable connection for schema initialization and migration operations.
    *
-   * Durable user-data mutations should use [write] or [transaction] so persistence observers are
-   * notified after a successful operation that actually changed rows.
+   * Runtime mutations should use [write]/[transaction] for durable user data, or
+   * [localWrite]/[localTransaction] for explicitly backup-excluded cache/transient state.
    */
   val writable: SQLiteDatabase
     get() = helper.writableDatabase
 
   /** Runs one durable mutation atomically and notifies observers after a successful commit. */
-  fun <T> write(block: SQLiteDatabase.() -> T): T = transaction(block)
+  fun <T> write(block: SQLiteDatabase.() -> T): T = transact(notifyPersistenceChange = true, block)
 
-  fun <T> transaction(block: SQLiteDatabase.() -> T): T {
+  /** Runs multiple durable mutations atomically and notifies observers once after commit. */
+  fun <T> transaction(block: SQLiteDatabase.() -> T): T = transact(notifyPersistenceChange = true, block)
+
+  /**
+   * Runs one mutation of backup-excluded local/cache/transient state atomically without publishing
+   * a persistence change.
+   */
+  fun <T> localWrite(block: SQLiteDatabase.() -> T): T =
+    transact(notifyPersistenceChange = false, block)
+
+  /**
+   * Runs backup-excluded local/cache/transient mutations atomically without publishing a
+   * persistence change. If a durable [write] or [transaction] is nested inside this transaction,
+   * the outer commit is promoted to a persistence change so a durable mutation cannot be hidden.
+   */
+  fun <T> localTransaction(block: SQLiteDatabase.() -> T): T =
+    transact(notifyPersistenceChange = false, block)
+
+  private fun <T> transact(
+    notifyPersistenceChange: Boolean,
+    block: SQLiteDatabase.() -> T,
+  ): T {
     val database = writable
-    // A caller may compose a store method that uses write() inside a larger transaction. The outer
-    // boundary owns commit/rollback and must be the only place that publishes a persistence change.
-    if (database.inTransaction()) return database.block()
+    if (database.inTransaction()) {
+      if (notifyPersistenceChange) transactionScope.get()?.publishPersistenceChange = true
+      return database.block()
+    }
 
     database.beginTransaction()
+    val scope = TransactionScope(publishPersistenceChange = notifyPersistenceChange)
+    transactionScope.set(scope)
     var changed = false
     val value = try {
       // WAL may use multiple SQLite connections. Measuring both values while this transaction is
@@ -39,11 +65,19 @@ class DatabaseConnection(
       database.setTransactionSuccessful()
       result
     } finally {
-      database.endTransaction()
+      try {
+        database.endTransaction()
+      } finally {
+        transactionScope.remove()
+      }
     }
-    if (changed) persistenceChanges.notifyChanged()
+    if (changed && scope.publishPersistenceChange) persistenceChanges.notifyChanged()
     return value
   }
+
+  private data class TransactionScope(
+    var publishPersistenceChange: Boolean,
+  )
 }
 
 private fun SQLiteDatabase.totalChanges(): Long =
