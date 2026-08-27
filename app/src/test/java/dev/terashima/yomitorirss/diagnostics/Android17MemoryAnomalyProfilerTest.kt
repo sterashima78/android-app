@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.diagnostics
 
 import java.io.File
 import java.nio.file.Files
