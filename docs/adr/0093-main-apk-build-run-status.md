@@ -2,7 +2,7 @@
 
 - Status: Superseded
 - Date: 2026-08-18
-- Superseded by: [ADR-0200](0200-remove-main-apk-commit-status.md)
+- Superseded by: [ADR-0201](0201-remove-main-apk-commit-status.md)
 
 ## Context
 
@@ -43,4 +43,4 @@ artifact の保存期間、署名方法、APK ファイル名、main のみで b
 
 - ADR-0038: Android のテスト層とCI検証方針を維持する。本ADRは main build artifact の観測性だけを追加する。
 - ADR-0055: 新規ADRとして現在の最大番号より大きい 0093 を使用する。
-- ADR-0200: `apk/main` commit status を不要と判断し、本 ADR の決定を廃止する。
+- ADR-0201: `apk/main` commit status を不要と判断し、本 ADR の決定を廃止する。
