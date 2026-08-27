@@ -54,8 +54,11 @@ class BackupSchedulingArchitectureTest {
       "feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkAssociationStore.kt",
       "feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultWebLibraryMetadataExtractorRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/KindleStructuredSeriesMetadata.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/AudibleStructuredSeriesMetadata.kt",
+      "feature/task/data/src/main/kotlin/dev/terashima/yomitorirss/feature/task/data/TaskStore.kt",
+      "feature/youtube/data/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/data/YouTubeDatabase.kt",
     )
     val rawMutation = Regex(
       """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*)\s*\(""",
@@ -76,6 +79,17 @@ class BackupSchedulingArchitectureTest {
     assertTrue(source.contains("PersistenceChangeNotifier.shared.version.drop(1)"))
     assertTrue(source.contains("DatabaseBackupChangeObserver"))
     assertTrue(source.contains("AndroidBackupChangeScheduler"))
+  }
+
+  @Test
+  fun `database snapshot restoreも永続化変更として通知する`() {
+    val source = repositoryFile(
+      "feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/BackupRepository.kt",
+    ).readText()
+
+    assertTrue(source.contains("private val persistenceChanges: PersistenceChangeNotifier"))
+    assertTrue(source.contains("persistenceChanges.notifyChanged()"))
+    assertFalse(source.contains("scheduleAfterChange()"))
   }
 
   private fun repositoryFile(path: String): File {
