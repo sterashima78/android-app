@@ -6,6 +6,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 
 ## Documents
 
+- [repository-overview.md](repository-overview.md): Archify diagram と一次経路からリポジトリ全体の構造を読む入口
 - [principles.md](principles.md): 実装時に守るアーキテクチャ原則と禁止事項
 - [module-map.md](module-map.md): Gradle module と物理 ownership の現在形
 - [code-organization.md](code-organization.md): module 内の file / package 分割と `:app` package layout
