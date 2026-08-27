@@ -23,7 +23,6 @@ android {
 
 dependencies {
   implementation(project(":feature:reddit:domain"))
-  implementation(project(":feature:backup:domain"))
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:ui"))
   implementation(project(":feature:bookmark:domain"))
