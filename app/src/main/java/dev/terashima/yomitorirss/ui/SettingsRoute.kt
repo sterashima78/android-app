@@ -1,4 +1,4 @@
-package dev.terashima.yomitoririss.ui
+package dev.terashima.yomitorirss.ui
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
