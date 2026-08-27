@@ -11,7 +11,9 @@ import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.task.TaskChangeNotifyingRepository
 import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiViewModel
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
+import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 
@@ -21,6 +23,10 @@ internal class AppSupportingRouteDependencies(
 ) {
   private val backgroundDataFetchPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     BackgroundDataFetchPreferences(application)
+  }
+
+  private val workoutAiSettingsRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultWorkoutAiSettingsRepository(application)
   }
 
   val backupViewModelFactory: BackupViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -74,6 +80,14 @@ internal class AppSupportingRouteDependencies(
         repository = container.workoutRepository,
         historyExporter = container.workoutHistoryExporter,
       ),
+      aiViewModelFactory = WorkoutAiViewModel.Factory(
+        workoutReader = container.workoutRepository,
+        settingsRepository = workoutAiSettingsRepository,
+        advisor = AppWorkoutAiAdvisor(
+          localInference = container.textInference,
+          cloudInference = container.cloudTextInference,
+        ),
+      ),
       writePermissions = HealthConnectWorkoutHistoryExporter.WRITE_PERMISSIONS,
     )
   }
@@ -97,5 +111,6 @@ data class HealthRouteDependencies internal constructor(
 
 data class WorkoutRouteDependencies internal constructor(
   val viewModelFactory: WorkoutViewModel.Factory,
+  val aiViewModelFactory: WorkoutAiViewModel.Factory,
   val writePermissions: Set<String>,
 )

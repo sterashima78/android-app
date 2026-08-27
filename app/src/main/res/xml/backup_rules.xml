@@ -6,6 +6,7 @@
   <include domain="sharedpref" path="local_ai_background_execution.xml" />
   <include domain="sharedpref" path="summary_preferences.xml" />
   <include domain="sharedpref" path="workout.xml" />
+  <include domain="sharedpref" path="workout_ai.xml" />
   <include domain="sharedpref" path="x_viewer_preferences.xml" />
   <include domain="file" path="local-summary-models/" />
 </full-backup-content>
