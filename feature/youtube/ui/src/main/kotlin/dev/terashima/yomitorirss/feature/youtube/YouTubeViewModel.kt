@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.feature.youtube
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_KIND
 import java.time.Instant
@@ -36,7 +35,6 @@ data class YouTubeUiState(
 class YouTubeViewModel(
   private val repository: YouTubeRepository,
   private val bookmarkRepository: BookmarkRepository,
-  private val backupChangeScheduler: BackupChangeScheduler,
 ) : ViewModel() {
   private val _state = MutableStateFlow(YouTubeUiState())
   val state: StateFlow<YouTubeUiState> = _state.asStateFlow()
@@ -89,9 +87,7 @@ class YouTubeViewModel(
             )
           }
         }
-        .onFailure { error ->
-          _state.update { it.copy(message = error.userMessage()) }
-        }
+        .onFailure { error -> _state.update { it.copy(message = error.userMessage()) } }
     }
   }
 
@@ -102,9 +98,7 @@ class YouTubeViewModel(
           reload()
           _state.update { it.copy(message = "${channel.title}の購読を解除しました") }
         }
-        .onFailure { error ->
-          _state.update { it.copy(message = error.userMessage()) }
-        }
+        .onFailure { error -> _state.update { it.copy(message = error.userMessage()) } }
     }
   }
 
@@ -153,28 +147,23 @@ class YouTubeViewModel(
           sourceTitle = video.channelTitle,
           folderId = youtubeFolderId,
         )
-        backupChangeScheduler.scheduleAfterChange()
         repository.markRead(video.id)
-      }.onSuccess {
-        reload()
-      }.onFailure { error ->
-        reload()
-        _state.update { it.copy(message = "動画を保存できませんでした: ${error.userMessage()}") }
-      }
+      }.onSuccess { reload() }
+        .onFailure { error ->
+          reload()
+          _state.update { it.copy(message = "動画を保存できませんでした: ${error.userMessage()}") }
+        }
     }
   }
 
   fun unsave(video: YouTubeVideo) {
-    _state.update { state ->
-      state.copy(saved = state.saved.filterNot { it.url == video.url })
-    }
+    _state.update { state -> state.copy(saved = state.saved.filterNot { it.url == video.url }) }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
         val bookmarked = bookmarkRepository.listSavedArticles(tagId = null, folderId = null)
           .firstOrNull { it.article.url == video.url }
           ?: error("保存済み動画が見つかりません")
         bookmarkRepository.unsaveArticle(bookmarked.article.id)
-        backupChangeScheduler.scheduleAfterChange()
       }.onSuccess {
         _state.update { it.copy(message = "${video.title}の保存を解除しました") }
       }.onFailure { error ->
@@ -300,12 +289,11 @@ class YouTubeViewModel(
   class Factory(
     private val repository: YouTubeRepository,
     private val bookmarkRepository: BookmarkRepository,
-    private val backupChangeScheduler: BackupChangeScheduler,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(YouTubeViewModel::class.java))
       @Suppress("UNCHECKED_CAST")
-      return YouTubeViewModel(repository, bookmarkRepository, backupChangeScheduler) as T
+      return YouTubeViewModel(repository, bookmarkRepository) as T
     }
   }
 }
