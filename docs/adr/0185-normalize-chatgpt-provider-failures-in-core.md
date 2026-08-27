@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-26
 - Refines: [ADR-0165](0165-provider-neutral-text-inference-contract.md), [ADR-0168](0168-chatgpt-codex-cloud-debug-adapter.md), [ADR-0171](0171-summary-local-chatgpt-routing-and-web-fetch.md), [ADR-0175](0175-knowledge-local-chatgpt-routing.md)
+- Refined by: [ADR-0203](0203-feature-owned-provider-policy-adapters.md)
 
 ## Context
 
@@ -23,7 +24,7 @@ Summary と Knowledge はどちらも ChatGPT / Codex を利用するが、provi
 - typed failure には kind、retryable、HTTP status のみを保持し、provider response body、prompt、token、account id、対象 URL 等の raw detail を保持しない。
 - `CancellationException` は failure へ変換せずそのまま伝播する。
 
-Summary / Knowledge の app adapter は typed failure を各 feature の `SummaryCloudFailureKind` / `KnowledgeCloudFailureKind` と安全な user-facing message へ写像する。feature 固有の retry / durable queue policy は従来どおり owning feature が所有する。
+Summary / Knowledge adapter は typed failure を各 feature の `SummaryCloudFailureKind` / `KnowledgeCloudFailureKind` と安全な user-facing message へ写像する。feature 固有の retry / durable queue policy は owning feature が所有する。adapter の物理配置は ADR-0203 に従い owning feature の Data layer とする。
 
 Settings の login / model catalog / debug 用経路は既存 `ChatGptOpenAiClient` を利用し続ける。今回の境界は background inference で provider failure を feature へ渡す経路に限定する。
 
@@ -32,7 +33,7 @@ Settings の login / model catalog / debug 用経路は既存 `ChatGptOpenAiClie
 ### Positive
 
 - provider HTTP / OAuth の分類規則が Summary と Knowledge で重複しない。
-- provider protocol の exception message format を app feature adapter が解析しなくなる。
+- provider protocol の exception message format を feature adapter が解析しなくなる。
 - provider response body や入力断片が feature failure へ漏れる可能性を core boundary で抑えられる。
 - 新しい cloud inference consumer も同じ typed taxonomy を再利用できる。
 
@@ -43,10 +44,10 @@ Settings の login / model catalog / debug 用経路は既存 `ChatGptOpenAiClie
 
 ## Verification
 
-- core unit test で `429` / `5xx` / authentication / non-retryable `4xx` / transport / not-connected / Web target failure の分類を固定する。
+- core unit test で provider failure 分類を固定する。
 - synthetic provider error に private prompt や URL を含めても `ChatGptProviderException.message` へ残らないことを test する。
 - Summary / Knowledge adapter が `ChatGptInferenceClient` を利用し、HTTP status regex や OAuth refresh message を解析しないことを architecture test で固定する。
-- Summary / Knowledge feature module が `core:ai-cloud-openai` へ直接依存しない既存制約を維持する。
+- Summary / Knowledge の Domain / UI module は `core:ai-cloud-openai` へ直接依存しない。Data layer の provider adapter dependency は ADR-0203 に従う。
 - Architecture / unit tests / lint / public repository verification を CI で実行する。
 
 ## Public repository review
