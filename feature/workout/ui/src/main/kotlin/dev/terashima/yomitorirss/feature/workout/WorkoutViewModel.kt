@@ -41,6 +41,7 @@ data class WorkoutUiState(
   val stepUpSeconds: Int = 0,
   val stepUpRunning: Boolean = false,
   val exportMessage: String? = null,
+  val exportPermissionRequired: Boolean = false,
 ) {
   val activeExercise: WorkoutExercise?
     get() = snapshot.exercises.firstOrNull { it.id == selectedExerciseId } ?: snapshot.exercises.firstOrNull()
@@ -129,14 +130,44 @@ class WorkoutViewModel(
       today = WorkoutDay(date = LocalDate.now().toString()),
       history = (listOf(history) + current.history).take(50),
     )
-    _state.update { it.copy(snapshot = nextSnapshot, exportMessage = null) }
+    _state.update {
+      it.copy(
+        snapshot = nextSnapshot,
+        exportMessage = null,
+        exportPermissionRequired = false,
+      )
+    }
     resetTimers()
     viewModelScope.launch {
       val result = runCatching {
         repository.save(nextSnapshot)
         historyExporter.export(history)
       }.getOrDefault(WorkoutExportResult.FAILED)
-      _state.update { it.copy(exportMessage = exportMessage(result)) }
+      updateExportResult(result)
+    }
+  }
+
+  fun onExportPermissionResult(granted: Boolean) {
+    if (!granted) {
+      _state.update {
+        it.copy(
+          exportMessage = "端末内に保存しました。Health Connect への書き込み権限が必要です。",
+          exportPermissionRequired = true,
+        )
+      }
+      return
+    }
+    val history = _state.value.snapshot.history.firstOrNull() ?: return
+    _state.update {
+      it.copy(
+        exportMessage = "Health Connect への書き込みを再試行しています…",
+        exportPermissionRequired = false,
+      )
+    }
+    viewModelScope.launch {
+      val result = runCatching { historyExporter.export(history) }
+        .getOrDefault(WorkoutExportResult.FAILED)
+      updateExportResult(result)
     }
   }
 
@@ -399,9 +430,18 @@ class WorkoutViewModel(
     return OffsetDateTime.parse(recordedAt).minusSeconds(durationSeconds.toLong()).toString()
   }
 
+  private fun updateExportResult(result: WorkoutExportResult) {
+    _state.update {
+      it.copy(
+        exportMessage = exportMessage(result),
+        exportPermissionRequired = result == WorkoutExportResult.PERMISSION_REQUIRED,
+      )
+    }
+  }
+
   private fun exportMessage(result: WorkoutExportResult): String = when (result) {
     WorkoutExportResult.EXPORTED -> "Health Connect にワークアウトを書き込みました"
-    WorkoutExportResult.PERMISSION_REQUIRED -> "端末内に保存しました。Health Connect への書き込みは「ヘルス」画面で権限を許可すると有効になります。"
+    WorkoutExportResult.PERMISSION_REQUIRED -> "端末内に保存しました。Health Connect への書き込み権限が必要です。"
     WorkoutExportResult.UNAVAILABLE -> "端末内に保存しました。Health Connect は現在利用できません。"
     WorkoutExportResult.FAILED -> "端末内に保存しました。Health Connect への書き込みに失敗しました。"
   }

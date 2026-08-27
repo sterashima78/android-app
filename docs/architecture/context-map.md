@@ -101,11 +101,11 @@ Content / Curation を資料として参照し、Knowledge page、source relatio
 
 ### Health
 
-現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview と、体脂肪率の read-only 測定履歴を提供する。また Workout Context が所有する完了済みワークアウトに限り、Health Connect へ一方向 export する write capability を提供する。
+現在の主要な実装 module は `:feature:health:{domain,data,ui}`。Health Connect を外部データソースとして、歩数・運動・心拍・睡眠・体重の read-only overview と、体脂肪率・栄養情報の read-only 履歴を提供する。
 
-Health Connect の Record 型と permission API は Data/UI の platform boundary に閉じ、Domain は `HealthOverview`、`BodyFatMeasurement`、availability に加え、Health Connect 非依存の `HealthWorkoutWriter` と export 用モデルのみを扱う。運動履歴の raw `ExerciseSessionRecord` は、Data 層で完全一致を除去したうえで、提供元が異なり時間帯と長さが強く重なる record を同一の実運動候補として近似重複除去する。詳細付き session に `ExerciseSegment` がある場合は、別提供元の segment なし standalone session が各 segment と強く一致するケースも同一候補として統合する。合計運動時間は raw 一覧の単純加算ではなく `ExerciseSessionRecord.EXERCISE_DURATION_TOTAL` の Aggregate API を利用し、Health Connect の activity data 優先度・重複除去を尊重する。exercise type と data origin は判定のため Data 層内だけで利用し、Domain/UI へ公開しない。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
+Health Connect の Record 型と permission API は Health Data/UI の platform boundary に閉じ、Health Domain は `HealthOverview`、`BodyFatMeasurement`、availability など read model のみを扱う。運動履歴の raw `ExerciseSessionRecord` は、Data 層で完全一致を除去したうえで、提供元が異なり時間帯と長さが強く重なる record を同一の実運動候補として近似重複除去する。詳細付き session に `ExerciseSegment` がある場合は、別提供元の segment なし standalone session が各 segment と強く一致するケースも同一候補として統合する。合計運動時間は raw 一覧の単純加算ではなく `ExerciseSessionRecord.EXERCISE_DURATION_TOTAL` の Aggregate API を利用し、Health Connect の activity data 優先度・重複除去を尊重する。exercise type と data origin は判定のため Data 層内だけで利用し、Domain/UI へ公開しない。durable table は所有せず、Health Connect 由来データを Backup、AI task、外部 API へ流さない。
 
-Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態の source of truth であり、Health Connect への export は app composition 層の adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続して行う。Health Connect -> Workout の import / 同期や、Health Connect から読み取った運動の書き戻しは行わない。書き込み失敗や権限未付与でも Workout のローカル記録は維持する。
+Health と Workout は別 Context とする。Workout はアプリ内でユーザーが記録する状態の source of truth であり、Health Connect への一方向 export は Workout-owned outbound adapter `HealthConnectWorkoutHistoryExporter` が担当する。Health Connect は Context ではなく複数 Context が目的別に利用できる external platform と捉える。Health Connect -> Workout の import / 同期や、Health Connect から読み取った運動の書き戻しは行わない。書き込み失敗や権限未付与でも Workout のローカル記録は維持する。
 
 ### Calendar
 
@@ -133,6 +133,8 @@ Library は Bookmark への逆方向移動を所有せず、Bookmark の保存 c
 
 Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
 
+Workout の完了済み記録を Health Connect へ公開する処理は Workout Context 自身の outbound adapter とし、`WorkoutHistoryExporter` を domain port、`:feature:workout:data` の Health Connect implementation を adapter とする。Workout write permission は Workout UI から要求し、Health Context の read permission と混在させない。
+
 AI Task Queue、Backup、Settings は主に supporting/application capability として扱い、他 Domain table の共同 owner にはしない。
 
 ## Cross-context operation classification
@@ -146,8 +148,9 @@ AI Task Queue、Backup、Settings は主に supporting/application capability �
 - Bookmark import: `ImportBookmarksUseCase`
 - Curation -> Content: `BookmarkArticleGateway`
 - RSS -> Content: `ContentSourceGateway`
-- Workout -> Health Connect: app composition adapter が `WorkoutHistoryExporter` と `HealthWorkoutWriter` を接続して行う一方向 export
 - Bookmark -> Web Library: Bookmark-owned `MoveBookmarkToLibraryUseCase` が `WebLibraryAdder` と `BookmarkMutator` を順に呼ぶ
+
+Workout -> Health Connect は別 Context の command orchestration ではなく、Workout-owned data を external platform へ publish する outbound adapter として ADR-0189 で再分類した。
 
 ### Domain Service
 
@@ -207,3 +210,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
 - [ADR-0184](../adr/0184-remove-site-specific-manga-rss-clients.md)
 - [ADR-0186](../adr/0186-bookmark-to-library-one-way-ownership.md)
+- [ADR-0189](../adr/0189-workout-owned-health-connect-export-adapter.md)

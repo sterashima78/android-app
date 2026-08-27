@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.task.TaskChangeNotifyingRepository
 import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
+import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 
 internal class AppSupportingRouteDependencies(
@@ -67,10 +68,13 @@ internal class AppSupportingRouteDependencies(
     CalendarViewModel.Factory(container.calendarRepository)
   }
 
-  val workoutViewModelFactory: WorkoutViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    WorkoutViewModel.Factory(
-      repository = container.workoutRepository,
-      historyExporter = WorkoutHealthConnectExporter(container.healthRepository),
+  val workout: WorkoutRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkoutRouteDependencies(
+      viewModelFactory = WorkoutViewModel.Factory(
+        repository = container.workoutRepository,
+        historyExporter = container.workoutHistoryExporter,
+      ),
+      writePermissions = HealthConnectWorkoutHistoryExporter.WRITE_PERMISSIONS,
     )
   }
 
@@ -89,4 +93,9 @@ internal class AppSupportingRouteDependencies(
 data class HealthRouteDependencies internal constructor(
   val viewModelFactory: HealthViewModel.Factory,
   val readPermissions: Set<String>,
+)
+
+data class WorkoutRouteDependencies internal constructor(
+  val viewModelFactory: WorkoutViewModel.Factory,
+  val writePermissions: Set<String>,
 )

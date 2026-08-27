@@ -1,9 +1,11 @@
 # ADR-0131: Workout を source of truth として Health Connect へ一方向 export する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0189](0189-workout-owned-health-connect-export-adapter.md)
 - Date: 2026-08-20
 - Amended: 2026-08-20
 - Refines: [ADR-0127](0127-health-connect-read-only.md), [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md)
+
+> ADR-0189 は一方向 export、Workout を source of truth とする方針、最小権限・最小書き込み対象を維持したまま、export adapter の ownership を app/Health から Workout Context へ変更する。本 ADR の以下の内容は当時の判断記録として残す。
 
 ## Context
 

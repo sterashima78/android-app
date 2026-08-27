@@ -37,12 +37,4 @@ class HealthConnectPermissionsTest {
       HealthConnectHealthRepository.HISTORY_PERMISSION,
     )
   }
-
-  @Test
-  fun `ワークアウト書出し権限は運動セッションだけに限定する`() {
-    assertEquals(
-      setOf(HealthPermission.getWritePermission(ExerciseSessionRecord::class)),
-      HealthConnectHealthRepository.WRITE_PERMISSIONS,
-    )
-  }
 }

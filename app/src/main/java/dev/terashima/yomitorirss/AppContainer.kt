@@ -137,6 +137,7 @@ class AppContainer(
   val chatRepository get() = supportingRuntime.chatRepository
   val taskRepository get() = supportingRuntime.taskRepository
   val workoutRepository get() = supportingRuntime.workoutRepository
+  val workoutHistoryExporter get() = supportingRuntime.workoutHistoryExporter
   val calendarRepository get() = supportingRuntime.calendarRepository
   val lanWebServerController get() = supportingRuntime.lanWebServerController
   val mailAuthorization get() = supportingRuntime.mailAuthorization
