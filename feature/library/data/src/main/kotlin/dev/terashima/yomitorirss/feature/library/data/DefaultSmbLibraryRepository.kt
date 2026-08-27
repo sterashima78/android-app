@@ -211,12 +211,14 @@ class DefaultSmbLibraryRepository(
       )
     }.getOrNull()
     if (!coverUrl.isNullOrBlank()) {
-      database.writable.update(
-        "library_items",
-        ContentValues().apply { put("thumbnail_url", coverUrl) },
-        "source = ? AND source_id = ?",
-        arrayOf(LibrarySource.SMB.name, targetSourceId),
-      )
+      database.localWrite {
+        update(
+          "library_items",
+          ContentValues().apply { put("thumbnail_url", coverUrl) },
+          "source = ? AND source_id = ?",
+          arrayOf(LibrarySource.SMB.name, targetSourceId),
+        )
+      }
       renamedBook = renamedBook.copy(thumbnailUrl = coverUrl)
     }
     return renamedBook
@@ -499,12 +501,14 @@ class DefaultSmbLibraryRepository(
         localBookFile = cacheFile,
       )
     }.getOrNull() ?: return
-    database.writable.update(
-      "library_items",
-      ContentValues().apply { put("thumbnail_url", coverUrl) },
-      "source = ? AND source_id = ?",
-      arrayOf(LibrarySource.SMB.name, book.sourceId),
-    )
+    database.localWrite {
+      update(
+        "library_items",
+        ContentValues().apply { put("thumbnail_url", coverUrl) },
+        "source = ? AND source_id = ?",
+        arrayOf(LibrarySource.SMB.name, book.sourceId),
+      )
+    }
   }
 
   private fun cleanupCache() {
