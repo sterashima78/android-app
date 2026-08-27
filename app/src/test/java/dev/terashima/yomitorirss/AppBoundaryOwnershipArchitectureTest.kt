@@ -12,12 +12,14 @@ class AppBoundaryOwnershipArchitectureTest {
       ?: error("repository root not found")
   }
 
+  private val compositionSourceRoot = "app/composition/src/main/java/dev/terashima/yomitorirss"
+
   @Test
   fun `Workout AI advisorはWorkout dataが所有する`() {
     val advisorPath = "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutAiAdvisor.kt"
     val advisor = source(advisorPath)
     val workoutBuild = source("feature/workout/data/build.gradle.kts")
-    val routeComposition = source("app/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt")
+    val routeComposition = source("$compositionSourceRoot/AppSupportingRouteDependencies.kt")
 
     assertTrue("Workout data must own the AI advisor", File(repositoryRoot, advisorPath).isFile)
     assertFalse(
@@ -26,7 +28,7 @@ class AppBoundaryOwnershipArchitectureTest {
     )
     assertTrue("Workout data must depend on provider-neutral inference", ":core:ai-inference" in workoutBuild)
     assertTrue("Workout advisor must implement the feature contract", "WorkoutAiAdvisor" in advisor)
-    assertTrue("app must only compose the Workout-owned advisor", "DefaultWorkoutAiAdvisor(" in routeComposition)
+    assertTrue("app composition must only compose the Workout-owned advisor", "DefaultWorkoutAiAdvisor(" in routeComposition)
   }
 
   @Test
@@ -34,7 +36,7 @@ class AppBoundaryOwnershipArchitectureTest {
     val adapterPath = "core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptTextInference.kt"
     val adapter = source(adapterPath)
     val cloudBuild = source("core/ai-cloud-openai/build.gradle.kts")
-    val aiComposition = source("app/src/main/java/dev/terashima/yomitorirss/AppAiCoreRuntimeDependencies.kt")
+    val aiComposition = source("$compositionSourceRoot/AppAiCoreRuntimeDependencies.kt")
 
     assertTrue("OpenAI core must own ChatGptTextInference", File(repositoryRoot, adapterPath).isFile)
     assertFalse(
@@ -51,8 +53,7 @@ class AppBoundaryOwnershipArchitectureTest {
 
   @Test
   fun `Activity result authorization bridgeはplatform packageが所有する`() {
-    val authorizationPath =
-      "app/src/main/java/dev/terashima/yomitorirss/platform/authorization/AuthorizationDependencies.kt"
+    val authorizationPath = "$compositionSourceRoot/platform/authorization/AuthorizationDependencies.kt"
     val authorization = source(authorizationPath)
     val mailHost = source("app/src/main/java/dev/terashima/yomitorirss/ui/MailRouteHost.kt")
     val libraryHost = source("app/src/main/java/dev/terashima/yomitorirss/ui/LibraryRoute.kt")
@@ -71,6 +72,16 @@ class AppBoundaryOwnershipArchitectureTest {
       "Library host must import the platform authorization boundary",
       "dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationOutcome" in libraryHost,
     )
+  }
+
+  @Test
+  fun `LAN Web server service manifestはWeb dataが所有する`() {
+    val appManifest = source("app/src/main/AndroidManifest.xml")
+    val webDataManifest = source("feature/web/data/src/main/AndroidManifest.xml")
+    val serviceName = "dev.terashima.yomitorirss.feature.web.data.LanWebServerService"
+
+    assertFalse("app manifest must not own the LAN Web Server service", serviceName in appManifest)
+    assertTrue("Web data manifest must own the LAN Web Server service", serviceName in webDataManifest)
   }
 
   private fun source(path: String): String = File(repositoryRoot, path).readText()
