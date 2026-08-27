@@ -44,6 +44,7 @@ class AppContainer(
       database = databaseConnection,
       httpClient = httpClient,
       textInferenceProvider = { aiCoreRuntime.textInference },
+      structuredTextInferenceProvider = { aiCoreRuntime.structuredTextInference },
       resumedActivityProvider = resumedActivityProvider,
     )
   }

@@ -1,4 +1,4 @@
-# ADR-0198: application composition を専用 Gradle module へ分離する
+# ADR-0200: application composition を専用 Gradle module へ分離する
 
 - Status: Accepted
 - Date: 2026-08-27
