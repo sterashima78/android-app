@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
 import dev.terashima.yomitorirss.feature.backup.ConfigureGoogleDriveResult
@@ -20,6 +21,7 @@ class DefaultBackupRepository(
   context: Context,
   private val database: YomitoriDatabase,
   private val dataChanges: DataChangeNotifier,
+  private val persistenceChanges: PersistenceChangeNotifier,
 ) : BackupRepository {
   private val appContext = context.applicationContext
   private val preferences = GoogleDriveBackupPreferences(appContext)
@@ -50,9 +52,10 @@ class DefaultBackupRepository(
 
       FileInputStream(imported).use { input -> archive.restore(input) }
     }
-    val connection = DatabaseConnection(database)
+    val connection = DatabaseConnection(database, persistenceChanges)
     LibraryBackupRestoreInitializer(connection).initialize()
     BookmarkDatabaseInitializer.initialize(connection)
+    persistenceChanges.notifyChanged()
     dataChanges.notifyChanged()
   }
 
