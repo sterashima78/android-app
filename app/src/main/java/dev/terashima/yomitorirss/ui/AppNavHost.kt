@@ -2,9 +2,9 @@ package dev.terashima.yomitorirss.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.fillMaxSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -339,7 +339,7 @@ internal fun AppNavHost(
         biometricLockEnabled = biometricLockEnabled,
         onBiometricLockEnabledChange = onBiometricLockEnabledChange,
         onOpenWebServer = onOpenWebServer,
-        onNavigate = navController::navigateTopLevel,
+        onNavigate = { route -> navController.navigateTopLevel(route) },
       )
     }
   }
