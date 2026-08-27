@@ -55,13 +55,15 @@ class BackupSchedulingArchitectureTest {
       "feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultWebLibraryMetadataExtractorRepository.kt",
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultSmbLibraryRepository.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/KindleStructuredSeriesMetadata.kt",
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/AudibleStructuredSeriesMetadata.kt",
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
       "feature/task/data/src/main/kotlin/dev/terashima/yomitorirss/feature/task/data/TaskStore.kt",
       "feature/youtube/data/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/data/YouTubeDatabase.kt",
     )
     val rawMutation = Regex(
-      """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*)\s*\(""",
+      """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*|execSQL)\s*\(""",
     )
 
     paths.forEach { path ->
