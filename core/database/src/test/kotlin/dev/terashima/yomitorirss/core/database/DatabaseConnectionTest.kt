@@ -163,6 +163,28 @@ class DatabaseConnectionTest {
     })
   }
 
+  @Test
+  fun `localTransaction内のdurable writeがrollbackされた場合は通知しない`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    assertThrows(IllegalStateException::class.java) {
+      database.localTransaction {
+        insertOrThrow("items", null, values("local"))
+        database.write {
+          insertOrThrow("items", null, values("durable"))
+        }
+        error("rollback")
+      }
+    }
+
+    assertEquals(0L, notifier.version.value)
+    assertEquals(0, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
   private fun values(value: String): ContentValues = ContentValues().apply {
     put("value", value)
   }
