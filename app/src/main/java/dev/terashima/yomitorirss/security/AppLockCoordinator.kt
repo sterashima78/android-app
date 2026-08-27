@@ -54,7 +54,7 @@ internal class AppLockCoordinator(
     }
   }
 
-  fun setEnabled(value: Boolean) {
+  fun updateEnabled(value: Boolean) {
     if (!value) {
       preferences.enabled = false
       session.lock()
