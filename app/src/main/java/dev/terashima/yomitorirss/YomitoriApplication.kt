@@ -45,7 +45,7 @@ class YomitoriApplication : Application(),
       routeDependencies = routeDependencies,
       lanWebServerController = container.lanWebServerController,
       saveSharedBookmark = container.saveSharedBookmarkUseCase,
-      addSharedWebBook = sharedWebLibraryMutator::addWebBook,
+      addSharedWebBookCapability = sharedWebLibraryMutator::addWebBook,
     )
   }
   override val workManagerConfiguration: Configuration by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
