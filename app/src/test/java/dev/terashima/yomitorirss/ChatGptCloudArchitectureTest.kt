@@ -12,6 +12,8 @@ class ChatGptCloudArchitectureTest {
       ?: error("repository root not found")
   }
 
+  private val compositionSourceRoot = "app/composition/src/main/java/dev/terashima/yomitorirss"
+
   @Test
   fun `ChatGPT protocol details stay inside the OpenAI cloud adapter`() {
     val endpointMarker = "chatgpt.com/backend-api"
@@ -51,16 +53,16 @@ class ChatGptCloudArchitectureTest {
   }
 
   @Test
-  fun `ChatGPT feature adapters are composed in app layer`() {
-    val summaryAdapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptSummaryCloudInference.kt")
-    assertTrue("app adapter must implement SummaryCloudInference", "SummaryCloudInference" in summaryAdapter)
-    assertTrue("app adapter must consume normalized inference client", "ChatGptInferenceClient" in summaryAdapter)
+  fun `ChatGPT feature adapters are composed in application composition layer`() {
+    val summaryAdapter = source("$compositionSourceRoot/ChatGptSummaryCloudInference.kt")
+    assertTrue("composition adapter must implement SummaryCloudInference", "SummaryCloudInference" in summaryAdapter)
+    assertTrue("composition adapter must consume normalized inference client", "ChatGptInferenceClient" in summaryAdapter)
     assertFalse("Summary adapter must not parse provider HTTP status", "HTTP_STATUS_PATTERN" in summaryAdapter)
     assertFalse("Summary adapter must not inspect OAuth refresh protocol text", "OAuth token refresh" in summaryAdapter)
 
-    val knowledgeAdapter = source("app/src/main/java/dev/terashima/yomitorirss/ChatGptKnowledgeTextInference.kt")
-    assertTrue("app adapter must implement AiTextInference", "AiTextInference" in knowledgeAdapter)
-    assertTrue("app adapter must consume normalized inference client", "ChatGptInferenceClient" in knowledgeAdapter)
+    val knowledgeAdapter = source("$compositionSourceRoot/ChatGptKnowledgeTextInference.kt")
+    assertTrue("composition adapter must implement AiTextInference", "AiTextInference" in knowledgeAdapter)
+    assertTrue("composition adapter must consume normalized inference client", "ChatGptInferenceClient" in knowledgeAdapter)
     assertFalse("Knowledge adapter must not parse provider HTTP status", "HTTP_STATUS_PATTERN" in knowledgeAdapter)
     assertFalse("Knowledge adapter must not inspect OAuth refresh protocol text", "OAuth token refresh" in knowledgeAdapter)
   }
