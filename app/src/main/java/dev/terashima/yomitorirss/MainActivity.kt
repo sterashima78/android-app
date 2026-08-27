@@ -111,7 +111,7 @@ class MainActivity : ComponentActivity() {
       appViewModel = appViewModel,
       routeDependencies = dependencies.routeDependencies,
       biometricLockEnabled = appLockCoordinator.enabled,
-      onBiometricLockEnabledChange = appLockCoordinator::setEnabled,
+      onBiometricLockEnabledChange = appLockCoordinator::updateEnabled,
       onOpenArticle = ::openArticle,
       onOpenWebServer = { showWebServer = true },
       onExitApp = ::finish,
