@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -71,6 +72,7 @@ fun AiChatScreen(
   ) {
     Surface(
       modifier = Modifier.fillMaxWidth(),
+      shape = RoundedCornerShape(12.dp),
       color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
       Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
