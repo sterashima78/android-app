@@ -73,7 +73,8 @@ private const val KEY_MODEL_ID = "model_id"
 private const val KEY_BACKEND = "backend"
 private const val KEY_SPECULATIVE_DECODING = "speculative_decoding"
 private const val KEY_CONTEXT_TOKENS = "context_tokens"
-private const val KEY_MODEL_REVISION = "model_revision"
+private const val KEY_MODEL_REVISION_IDS = "model_revision_ids"
+private const val KEY_MODEL_REVISION_VALUES = "model_revision_values"
 private const val KEY_PREPARING_DURATION_MILLIS = "preparing_duration_millis"
 private const val KEY_GENERATING_DURATION_MILLIS = "generating_duration_millis"
 
@@ -121,7 +122,7 @@ internal data class TextInferenceExecutionSnapshot(
   val backend: LocalInferenceBackend,
   val speculativeDecodingEnabled: Boolean,
   val contextTokens: Int,
-  val modelRevision: String,
+  val modelRevisions: Map<String, String>,
   val preparingDurationMillis: Long?,
   val generatingDurationMillis: Long?,
 )
@@ -141,15 +142,19 @@ private fun captureTextInferenceExecutionSnapshot(
   val model = manager.selectedModel() ?: error("AIモデルをダウンロードして選択してください")
   val settings = manager.inferenceSettings.value
   val preferences = context.getSharedPreferences(MAIN_MODEL_PREFERENCES_NAME, Context.MODE_PRIVATE)
-  val revision = requireNotNull(
-    preferences.getString("$MODEL_REVISION_KEY_PREFIX.${model.id}", null),
-  ) { "選択したAIモデルの revision がありません" }
+  val revisions = preferences.all.mapNotNull { (key, value) ->
+    if (!key.startsWith("$MODEL_REVISION_KEY_PREFIX.")) return@mapNotNull null
+    val modelId = key.removePrefix("$MODEL_REVISION_KEY_PREFIX.")
+    val revision = value as? String ?: return@mapNotNull null
+    modelId to revision
+  }.toMap()
+  check(model.id in revisions) { "選択したAIモデルの revision がありません" }
   return TextInferenceExecutionSnapshot(
     modelId = model.id,
     backend = settings.backend,
     speculativeDecodingEnabled = settings.speculativeDecodingEnabled,
     contextTokens = model.contextTokens,
-    modelRevision = revision,
+    modelRevisions = revisions,
     preparingDurationMillis = preferences.getLong(
       stageDurationKey(PREPARING_MODEL_DURATION_KEY, model.id),
       0,
@@ -494,7 +499,9 @@ private class TextInferenceSnapshotContext(base: Context) : ContextWrapper(base)
       .putString(INFERENCE_BACKEND_KEY, snapshot.backend.name)
       .putBoolean(SPECULATIVE_DECODING_ENABLED_KEY, snapshot.speculativeDecodingEnabled)
       .putString(CONTEXT_SIZE_MODE_KEY, contextMode.name)
-      .putString("$MODEL_REVISION_KEY_PREFIX.${snapshot.modelId}", snapshot.modelRevision)
+    snapshot.modelRevisions.forEach { (modelId, revision) ->
+      editor.putString("$MODEL_REVISION_KEY_PREFIX.$modelId", revision)
+    }
     snapshot.preparingDurationMillis?.let {
       editor.putLong(stageDurationKey(PREPARING_MODEL_DURATION_KEY, snapshot.modelId), it)
     }
@@ -519,7 +526,9 @@ private fun encodeRequest(
   putString(KEY_BACKEND, snapshot.backend.name)
   putBoolean(KEY_SPECULATIVE_DECODING, snapshot.speculativeDecodingEnabled)
   putInt(KEY_CONTEXT_TOKENS, snapshot.contextTokens)
-  putString(KEY_MODEL_REVISION, snapshot.modelRevision)
+  val revisionEntries = snapshot.modelRevisions.entries.sortedBy(Map.Entry<String, String>::key)
+  putStringArrayList(KEY_MODEL_REVISION_IDS, ArrayList(revisionEntries.map(Map.Entry<String, String>::key)))
+  putStringArrayList(KEY_MODEL_REVISION_VALUES, ArrayList(revisionEntries.map(Map.Entry<String, String>::value)))
   snapshot.preparingDurationMillis?.let { putLong(KEY_PREPARING_DURATION_MILLIS, it) }
   snapshot.generatingDurationMillis?.let { putLong(KEY_GENERATING_DURATION_MILLIS, it) }
 }
@@ -534,7 +543,15 @@ private fun decodeRequest(bundle: Bundle): DecodedTextInferenceRequest {
     .getOrElse { throw IllegalArgumentException("AI backend が不正です") }
   val contextTokens = bundle.getInt(KEY_CONTEXT_TOKENS)
   isolatedContextSizeMode(contextTokens)
-  val modelRevision = requireNotNull(bundle.getString(KEY_MODEL_REVISION)) { "AIモデル revision がありません" }
+  val revisionIds = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_IDS)) {
+    "AIモデル revision id がありません"
+  }
+  val revisionValues = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_VALUES)) {
+    "AIモデル revision value がありません"
+  }
+  require(revisionIds.size == revisionValues.size) { "AIモデル revision snapshot が不正です" }
+  val modelRevisions = revisionIds.zip(revisionValues).toMap()
+  require(modelId in modelRevisions) { "選択したAIモデルの revision がありません" }
   return DecodedTextInferenceRequest(
     prompt = prompt,
     snapshot = TextInferenceExecutionSnapshot(
@@ -542,7 +559,7 @@ private fun decodeRequest(bundle: Bundle): DecodedTextInferenceRequest {
       backend = backend,
       speculativeDecodingEnabled = bundle.getBoolean(KEY_SPECULATIVE_DECODING),
       contextTokens = contextTokens,
-      modelRevision = modelRevision,
+      modelRevisions = modelRevisions,
       preparingDurationMillis = bundle.getLong(KEY_PREPARING_DURATION_MILLIS)
         .takeIf { bundle.containsKey(KEY_PREPARING_DURATION_MILLIS) && it > 0 },
       generatingDurationMillis = bundle.getLong(KEY_GENERATING_DURATION_MILLIS)
