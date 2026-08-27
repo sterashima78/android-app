@@ -4,10 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,16 +18,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val COLLAPSED_REFRESH_RESULT_COUNT = 10
-
 @Composable
 internal fun WebLibrarySettingsWithExtractorBottomSheet() {
-  val settings = LocalWebLibrarySettingsUiBinding.current ?: return
   val extractorBinding = LocalWebLibraryMetadataExtractorUiBinding.current
   var extractorRules by remember { mutableStateOf(emptyList<WebLibraryMetadataExtractor>()) }
   var editingExtractor by remember { mutableStateOf<WebLibraryMetadataExtractor?>(null) }
@@ -56,17 +48,17 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
 
   Column(
     modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+    verticalArrangement = Arrangement.spacedBy(androidx.compose.ui.unit.dp(12f)),
   ) {
     Text("Web 蔵書", style = MaterialTheme.typography.titleMedium)
     Text(
-      "Web 蔵書の不足 metadata 再取得と、サイト別のタイトル・サムネイル取得ルールを管理します。",
+      "Web 蔵書のサイト別のタイトル・サムネイル取得ルールを管理します。metadata の再取得は蔵書一覧から行えます。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
     extractorBinding?.let { binding ->
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.ui.unit.dp(8f))) {
         Row(
           modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
@@ -81,7 +73,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
           }
           TextButton(
             onClick = { creatingExtractor = true },
-            enabled = !extractorBusy && !settings.refreshState.running,
+            enabled = !extractorBusy,
           ) {
             Text("追加")
           }
@@ -109,7 +101,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
             }
             TextButton(
               onClick = { editingExtractor = extractor },
-              enabled = !extractorBusy && !settings.refreshState.running,
+              enabled = !extractorBusy,
             ) {
               Text("編集")
             }
@@ -128,7 +120,7 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
                   extractorBusy = false
                 }
               },
-              enabled = !extractorBusy && !settings.refreshState.running,
+              enabled = !extractorBusy,
             ) {
               Text("削除")
             }
@@ -140,77 +132,6 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
-        }
-      }
-    }
-
-    HorizontalDivider()
-
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column(modifier = Modifier.weight(1f)) {
-        Text("metadata 再取得")
-        Text(
-          "タイトルまたは表紙が未取得の ${settings.books.size} 冊が対象です。直近の実行結果は対象一覧から独立して下に表示します。",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-          "アプリが前面にない間は WebView 取得を待機し、前面へ戻ると続きから再開します。",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      Button(
-        onClick = settings.onRefreshAll,
-        enabled = settings.books.isNotEmpty() && !settings.refreshState.running && !extractorBusy,
-      ) {
-        Text("一括再取得")
-      }
-    }
-
-    WebLibrarySettingsRefreshProgress(settings.refreshState)
-    WebLibrarySettingsRefreshResults(settings.refreshState)
-
-    if (settings.books.isEmpty()) {
-      Text(
-        "タイトルと表紙が取得済みです。再取得が必要な Web 蔵書はありません。",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    } else {
-      settings.books.forEach { book ->
-        Card(modifier = Modifier.fillMaxWidth()) {
-          Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            Text(
-              text = book.title,
-              maxLines = 2,
-              overflow = TextOverflow.Ellipsis,
-              style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-              text = "未取得: ${book.missingWebMetadataLabels().joinToString("・")}",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.error,
-            )
-            WebLibraryThumbnailPreview(book = book)
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.End,
-            ) {
-              TextButton(
-                onClick = { settings.onRefresh(book) },
-                enabled = !settings.refreshState.running && !extractorBusy,
-              ) {
-                Text("再取得")
-              }
-            }
-          }
         }
       }
     }
@@ -248,95 +169,4 @@ internal fun WebLibrarySettingsWithExtractorBottomSheet() {
       onError = binding.onError,
     )
   }
-}
-
-@Composable
-private fun WebLibrarySettingsRefreshProgress(state: WebLibraryRefreshUiState) {
-  if (state.total <= 0) return
-  val succeeded = state.items.count {
-    it.status == WebLibraryRefreshItemStatus.UPDATED ||
-      it.status == WebLibraryRefreshItemStatus.UNCHANGED ||
-      it.status == WebLibraryRefreshItemStatus.WARNING
-  }
-  val warnings = state.items.count { it.status == WebLibraryRefreshItemStatus.WARNING }
-  val failures = state.items.count { it.status == WebLibraryRefreshItemStatus.FAILED }
-
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    if (state.running) {
-      LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-      Text(
-        "再取得中 ${state.completed} / ${state.total}",
-        style = MaterialTheme.typography.bodySmall,
-      )
-    } else {
-      Text(
-        "完了 ${state.completed} / ${state.total} ・ 成功 $succeeded ・ 注意 $warnings ・ 失敗 $failures",
-        style = MaterialTheme.typography.bodySmall,
-      )
-    }
-  }
-}
-
-@Composable
-private fun WebLibrarySettingsRefreshResults(state: WebLibraryRefreshUiState) {
-  if (state.items.isEmpty()) return
-  var expanded by remember(state.total, state.items.firstOrNull()?.sourceId) { mutableStateOf(false) }
-  val visibleItems = webLibraryVisibleRefreshResults(state.items, expanded)
-
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    HorizontalDivider()
-    Text("直近の再取得結果", style = MaterialTheme.typography.titleSmall)
-    Text(
-      "再取得で metadata が埋まり対象一覧から消えた蔵書も、この実行結果には残ります。",
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    visibleItems.forEach { result ->
-      Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-          modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-          verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-          Text(
-            text = result.title,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-          )
-          WebLibrarySettingsRefreshResultText(result)
-        }
-      }
-    }
-    if (state.items.size > COLLAPSED_REFRESH_RESULT_COUNT) {
-      TextButton(onClick = { expanded = !expanded }) {
-        Text(if (expanded) "結果を折りたたむ" else "すべての結果を表示 (${state.items.size} 件)")
-      }
-    }
-  }
-}
-
-internal fun webLibraryVisibleRefreshResults(
-  items: List<WebLibraryRefreshItemUiState>,
-  expanded: Boolean,
-): List<WebLibraryRefreshItemUiState> = if (expanded || items.size <= COLLAPSED_REFRESH_RESULT_COUNT) {
-  items
-} else {
-  items.take(COLLAPSED_REFRESH_RESULT_COUNT)
-}
-
-@Composable
-private fun WebLibrarySettingsRefreshResultText(result: WebLibraryRefreshItemUiState) {
-  val label = when (result.status) {
-    WebLibraryRefreshItemStatus.PENDING -> "待機中"
-    WebLibraryRefreshItemStatus.RUNNING -> "取得中"
-    WebLibraryRefreshItemStatus.UPDATED -> "成功・更新あり"
-    WebLibraryRefreshItemStatus.UNCHANGED -> "成功・変更なし"
-    WebLibraryRefreshItemStatus.WARNING -> "成功・要確認"
-    WebLibraryRefreshItemStatus.FAILED -> "失敗"
-  }
-  Text(
-    text = result.detail?.let { "$label: $it" } ?: label,
-    style = MaterialTheme.typography.bodySmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-  )
 }
