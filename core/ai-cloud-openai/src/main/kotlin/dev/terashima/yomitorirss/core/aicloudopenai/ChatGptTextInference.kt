@@ -1,9 +1,5 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.core.aicloudopenai
 
-import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
-import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
-import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderException
-import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderFailureKind
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
@@ -11,7 +7,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-internal class ChatGptTextInference(
+/** Provider-neutral one-shot text inference backed by the ChatGPT / Codex adapter. */
+class ChatGptTextInference(
   private val client: ChatGptInferenceClient,
   private val modelPreferences: ChatGptModelPreferences,
 ) : AiTextInference {

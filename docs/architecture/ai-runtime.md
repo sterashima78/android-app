@@ -8,9 +8,9 @@ Summary、Knowledge、Library organization 等の feature は provider protocol 
 
 - 単発テキスト生成の共通 contract は `:core:ai-inference` に置く。
 - Local 実装は `:core:ai-runtime` の local model runtime へ接続する。
-- ChatGPT / Codex の HTTP、OAuth、Responses protocol は `:core:ai-cloud-openai` に閉じる。
+- ChatGPT / Codex の HTTP、OAuth、Responses protocol と provider-neutral `ChatGptTextInference` implementation は `:core:ai-cloud-openai` に閉じる。
 - Summary / Knowledge feature module は `ChatGptOpenAiClient` や OpenAI endpoint を直接参照しない。
-- app composition は provider adapter と feature contract を接続するが、feature 固有 prompt、task lifecycle、retry policy を再実装しない。
+- app composition は provider adapter instance と feature contract を接続するが、provider technical adapter や feature 固有 prompt、task lifecycle、retry policy を再実装しない。
 
 ## Execution routing
 
@@ -62,6 +62,8 @@ ChatGPT / Codex の inference 経路では、provider の raw failure を featur
 
 HTTP status の解釈、OAuth refresh failure の判定、provider exception message format の解析は `:core:ai-cloud-openai` 内だけで行う。typed failure には kind、retryable、必要な場合の HTTP status だけを残し、provider response body、prompt、token、account id、対象 URL 等の raw detail を保持しない。
 
+`ChatGptTextInference` も同じ `:core:ai-cloud-openai` が所有し、normalized client と model preferences を provider-neutral `AiTextInference` へ投影する。これは technical adapter であり Workout 等の feature-specific provider routing や prompt budget policy は持たない。
+
 Summary / Knowledge の app adapter は typed failure を各 feature の failure kind と user-facing message へ写像する。WorkManager retry、durable queue state、再試行待ち表示等の application policy は owning feature が引き続き所有する。
 
 Settings の login / model catalog / debug 操作は inference failure contract とは用途が異なるため、既存の provider client を利用する。
@@ -71,6 +73,8 @@ Settings の login / model catalog / debug 操作は inference failure contract 
 Local model manager、ChatGPT client、inference adapter、feature repository 等の application-scope instance は `AppContainer` 配下の runtime dependency group が一度だけ構築し再利用する。
 
 runtime group は construction detail であり、Route、Screen、Worker へ group 型そのものを渡さない。consumer には ViewModel factory、Repository contract、scheduler、inference capability 等の narrow dependency へ投影してから渡す。Worker は owning feature の WorkerFactory を通じて application-scope graph へ接続し、parallel graph を再構築しない。
+
+application composition は Local / ChatGPT adapter の concrete instance を選択・共有するが、adapter implementation の source ownership は各 technical core / owning feature に置く。Workout の provider routing と prompt budget 処理は `:feature:workout:data` の `DefaultWorkoutAiAdvisor` が所有する。
 
 application-scope で再利用するのは adapter / manager ownership であり、重い Local text generation Engine を main process に常駐させることを意味しない。`ProcessIsolatedLocalAiTextInference` は application-scope capability として共有しつつ、実 Engine は短寿命 `:local_ai_text` process generation ごとに構築・破棄する。
 
@@ -84,3 +88,4 @@ application-scope で再利用するのは adapter / manager ownership であり
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0185](../adr/0185-normalize-chatgpt-provider-failures-in-core.md)
 - [ADR-0190](../adr/0190-isolate-local-text-inference-process.md)
+- [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)

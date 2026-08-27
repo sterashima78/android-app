@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.platform.authorization
 
 import android.app.PendingIntent
 import android.content.Intent

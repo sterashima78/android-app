@@ -10,9 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
-import dev.terashima.yomitorirss.MailAuthorizationOutcome
 import dev.terashima.yomitorirss.feature.mail.MailRoute
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
+import dev.terashima.yomitorirss.platform.authorization.MailAuthorizationOutcome
 import kotlinx.coroutines.launch
 
 @Composable

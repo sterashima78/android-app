@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.feature.workout.data
 
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
@@ -11,12 +11,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class AppWorkoutAiAdvisorTest {
+class DefaultWorkoutAiAdvisorTest {
   @Test
   fun `選択したproviderだけを実行する`() = runBlocking {
     val local = RecordingInference()
     val cloud = RecordingInference()
-    val advisor = AppWorkoutAiAdvisor(local, cloud)
+    val advisor = DefaultWorkoutAiAdvisor(local, cloud)
 
     assertEquals("response", advisor.generate(WorkoutAiProvider.CHATGPT, "prompt"))
 
@@ -28,7 +28,7 @@ class AppWorkoutAiAdvisorTest {
   fun `prompt budget超過時は冒頭と末尾を残して中間を省略する`() = runBlocking {
     val local = RecordingInference(promptBudgetChars = 120)
     val cloud = RecordingInference()
-    val advisor = AppWorkoutAiAdvisor(local, cloud)
+    val advisor = DefaultWorkoutAiAdvisor(local, cloud)
     val prompt = "SAFETY:" + "x".repeat(180) + ":CURRENT_REQUEST"
 
     advisor.generate(WorkoutAiProvider.LOCAL, prompt)

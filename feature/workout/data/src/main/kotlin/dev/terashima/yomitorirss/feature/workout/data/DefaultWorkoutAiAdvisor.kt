@@ -1,10 +1,10 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.feature.workout.data
 
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiAdvisor
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiProvider
 
-internal class AppWorkoutAiAdvisor(
+class DefaultWorkoutAiAdvisor(
   private val localInference: AiTextInference,
   private val cloudInference: AiTextInference,
 ) : WorkoutAiAdvisor {

@@ -29,10 +29,13 @@ dev.terashima.yomitorirss
 ├── security/     app lock、認証 session、secure-window transition
 ├── diagnostics/  startup crash、memory diagnostics、diagnostic presentation
 ├── platform/     Custom Tab、OS permission、platform dialog host
+│   └── authorization/  Gmail / Google Books の Activity Result boundary
 └── ui/           app-shell navigation / presentation
 ```
 
 この一覧は closed set ではない。新しい package は独立した責務名を持つ場合に追加する。
+
+feature policy や provider technical implementation は app root package の整理対象にせず、owning feature / core module へ配置する。たとえば Workout の provider routing / prompt budget policy は `:feature:workout:data`、provider-neutral `ChatGptTextInference` は `:core:ai-cloud-openai` が所有し、`:app` は instance wiring だけを担当する。
 
 ## MainActivity
 
@@ -66,3 +69,4 @@ feature / core / app のいずれでも、変更時に既存 file の責務が�
 - [ADR-0122](../adr/0122-current-architecture-documentation.md)
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
+- [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)

@@ -17,6 +17,7 @@ android {
 }
 
 dependencies {
+  implementation(project(":core:ai-inference"))
   implementation(project(":feature:workout:domain"))
   implementation("androidx.health.connect:connect-client:1.1.0")
 
