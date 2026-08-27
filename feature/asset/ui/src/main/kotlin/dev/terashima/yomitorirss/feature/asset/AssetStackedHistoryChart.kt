@@ -1,11 +1,14 @@
 package dev.terashima.yomitorirss.feature.asset
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,7 +19,19 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import java.text.NumberFormat
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 internal data class AssetAreaBand(
   val category: String,
@@ -28,6 +43,17 @@ internal data class AssetAreaChartData(
   val bands: List<AssetAreaBand>,
   val minValue: Float,
   val maxValue: Float,
+)
+
+internal data class AssetYAxis(
+  val minValue: Float,
+  val maxValue: Float,
+  val ticks: List<Float>,
+)
+
+internal data class AssetXAxisTick(
+  val date: LocalDate,
+  val fraction: Float,
 )
 
 internal data class AssetPieSlice(
@@ -152,6 +178,116 @@ internal fun buildAssetAreaChartData(
   )
 }
 
+internal fun buildAssetYAxis(
+  chartData: AssetAreaChartData,
+  normalized: Boolean,
+): AssetYAxis {
+  if (normalized) {
+    return if (chartData.minValue < 0f) {
+      AssetYAxis(
+        minValue = -1f,
+        maxValue = 1f,
+        ticks = listOf(-1f, -0.5f, 0f, 0.5f, 1f),
+      )
+    } else {
+      AssetYAxis(
+        minValue = 0f,
+        maxValue = 1f,
+        ticks = listOf(0f, 0.25f, 0.5f, 0.75f, 1f),
+      )
+    }
+  }
+
+  val min = chartData.minValue.toDouble()
+  val max = chartData.maxValue.toDouble()
+  val rawStep = (max - min) / 4.0
+  val step = maxOf(1.0, niceAssetAxisStep(rawStep))
+  val axisMin = floor(min / step) * step
+  var axisMax = ceil(max / step) * step
+  if (axisMin == axisMax) axisMax += step
+  val intervalCount = ((axisMax - axisMin) / step).roundToInt().coerceAtLeast(1)
+  return AssetYAxis(
+    minValue = axisMin.toFloat(),
+    maxValue = axisMax.toFloat(),
+    ticks = (0..intervalCount).map { index -> (axisMin + step * index).toFloat() },
+  )
+}
+
+internal fun buildAssetXAxisTicks(points: List<AssetHistoryPoint>): List<AssetXAxisTick> {
+  if (points.isEmpty()) return emptyList()
+  val startDate = points.first().date
+  val endDate = points.last().date
+  if (!endDate.isAfter(startDate)) return listOf(AssetXAxisTick(startDate, 0f))
+
+  val dates = buildList {
+    var date = startDate
+    while (!date.isAfter(endDate)) {
+      add(date)
+      date = date.plusMonths(6)
+    }
+    val lastTick = last()
+    val remainingDays = ChronoUnit.DAYS.between(lastTick, endDate)
+    if (size == 1 || remainingDays >= 90) add(endDate)
+  }.distinctBy { it.year to it.monthValue }
+
+  return dates.map { date ->
+    AssetXAxisTick(
+      date = date,
+      fraction = assetDateFraction(date, startDate, endDate),
+    )
+  }
+}
+
+internal fun assetDateFraction(
+  date: LocalDate,
+  startDate: LocalDate,
+  endDate: LocalDate,
+): Float {
+  val totalDays = ChronoUnit.DAYS.between(startDate, endDate)
+  if (totalDays <= 0L) return 0f
+  val elapsedDays = ChronoUnit.DAYS.between(startDate, date)
+  return (elapsedDays.toDouble() / totalDays.toDouble()).toFloat().coerceIn(0f, 1f)
+}
+
+internal fun formatAssetYAxisValue(value: Float, normalized: Boolean): String {
+  if (normalized) return "${(value * 100f).roundToInt()}%"
+
+  val normalizedValue = if (abs(value) < 0.0001f) 0.0 else value.toDouble()
+  val sign = if (normalizedValue < 0.0) "-" else ""
+  val absoluteValue = abs(normalizedValue)
+  return when {
+    absoluteValue >= 100_000_000.0 -> "$sign¥${formatAssetAxisUnit(absoluteValue / 100_000_000.0)}億"
+    absoluteValue >= 10_000.0 -> "$sign¥${formatAssetAxisUnit(absoluteValue / 10_000.0)}万"
+    else -> "$sign¥${NumberFormat.getIntegerInstance(Locale.JAPAN).format(absoluteValue.roundToLong())}"
+  }
+}
+
+internal fun formatAssetXAxisValue(date: LocalDate): String = "${date.year}/${date.monthValue}"
+
+private fun niceAssetAxisStep(rawStep: Double): Double {
+  if (!rawStep.isFinite() || rawStep <= 0.0) return 1.0
+  val exponent = floor(log10(rawStep))
+  val magnitude = 10.0.pow(exponent)
+  val fraction = rawStep / magnitude
+  val niceFraction = when {
+    fraction <= 1.0 -> 1.0
+    fraction <= 2.0 -> 2.0
+    fraction <= 2.5 -> 2.5
+    fraction <= 5.0 -> 5.0
+    else -> 10.0
+  }
+  return niceFraction * magnitude
+}
+
+private fun formatAssetAxisUnit(value: Double): String {
+  val tenths = (value * 10.0).roundToLong()
+  return if (tenths % 10L == 0L) {
+    (tenths / 10L).toString()
+  } else {
+    "${tenths / 10L}.${tenths % 10L}"
+  }
+}
+
 @Composable
 internal fun AssetStackedHistoryChart(
   points: List<AssetHistoryPoint>,
@@ -159,54 +295,117 @@ internal fun AssetStackedHistoryChart(
   categoryColors: Map<String, Color>,
 ) {
   val chartData = remember(points, normalized) { buildAssetAreaChartData(points, normalized) }
+  val yAxis = remember(chartData, normalized) { buildAssetYAxis(chartData, normalized) }
+  val xTicks = remember(points) { buildAssetXAxisTicks(points) }
   val latestPieSlices = remember(points) { buildAssetPieSlices(points.last().byCategory) }
-  val mutedColor = MaterialTheme.colorScheme.outlineVariant
+  val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
+  val axisColor = MaterialTheme.colorScheme.outline
 
   Column {
-    Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-      val range = chartData.maxValue - chartData.minValue
-      fun y(value: Float): Float =
-        size.height - ((value - chartData.minValue) / range) * size.height
-
-      val zeroY = y(0f).coerceIn(0f, size.height)
-      drawLine(mutedColor, Offset(0f, zeroY), Offset(size.width, zeroY))
-
-      chartData.bands.forEachIndexed { index, band ->
-        val color = categoryColors[band.category] ?: ASSET_CHART_PALETTE[index % ASSET_CHART_PALETTE.size]
-        if (points.size == 1) {
-          val startY = y(band.starts.single())
-          val endY = y(band.ends.single())
-          val top = minOf(startY, endY)
-          val height = kotlin.math.abs(startY - endY)
-          if (height > 0f) {
-            drawRect(
-              color = color.copy(alpha = 0.68f),
-              topLeft = Offset(0f, top),
-              size = Size(size.width, height),
-            )
-            drawLine(color, Offset(0f, endY), Offset(size.width, endY), strokeWidth = 1.5f)
-          }
-        } else {
-          val path = Path()
-          band.ends.forEachIndexed { pointIndex, value ->
-            val x = size.width * pointIndex / (points.size - 1f)
-            val pointY = y(value)
-            if (pointIndex == 0) path.moveTo(x, pointY) else path.lineTo(x, pointY)
-          }
-          band.starts.indices.reversed().forEach { pointIndex ->
-            val x = size.width * pointIndex / (points.size - 1f)
-            path.lineTo(x, y(band.starts[pointIndex]))
-          }
-          path.close()
-          drawPath(path, color.copy(alpha = 0.68f))
-          drawPath(path, color, style = Stroke(width = 1.5f))
+    Row(modifier = Modifier.fillMaxWidth()) {
+      BoxWithConstraints(modifier = Modifier.width(72.dp).height(200.dp)) {
+        val labelHeight = 16.dp
+        val availableHeight = maxHeight - labelHeight
+        val range = yAxis.maxValue - yAxis.minValue
+        yAxis.ticks.forEach { tick ->
+          val fraction = 1f - ((tick - yAxis.minValue) / range)
+          val y = (maxHeight * fraction - labelHeight / 2).coerceIn(0.dp, availableHeight)
+          Text(
+            text = formatAssetYAxisValue(tick, normalized),
+            modifier = Modifier.fillMaxWidth().height(labelHeight).offset(y = y),
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+          )
         }
       }
-    }
 
-    Row(modifier = Modifier.fillMaxWidth()) {
-      Text(points.first().date.toString(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-      Text(points.last().date.toString(), style = MaterialTheme.typography.labelSmall)
+      Column(modifier = Modifier.weight(1f)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+          val range = yAxis.maxValue - yAxis.minValue
+          fun y(value: Float): Float =
+            size.height - ((value - yAxis.minValue) / range) * size.height
+
+          fun x(pointIndex: Int): Float {
+            val startDate = points.first().date
+            val endDate = points.last().date
+            return if (endDate.isAfter(startDate)) {
+              size.width * assetDateFraction(points[pointIndex].date, startDate, endDate)
+            } else if (points.size > 1) {
+              size.width * pointIndex / (points.size - 1f)
+            } else {
+              0f
+            }
+          }
+
+          chartData.bands.forEachIndexed { index, band ->
+            val color = categoryColors[band.category] ?: ASSET_CHART_PALETTE[index % ASSET_CHART_PALETTE.size]
+            if (points.size == 1) {
+              val startY = y(band.starts.single())
+              val endY = y(band.ends.single())
+              val top = minOf(startY, endY)
+              val height = abs(startY - endY)
+              if (height > 0f) {
+                drawRect(
+                  color = color.copy(alpha = 0.68f),
+                  topLeft = Offset(0f, top),
+                  size = Size(size.width, height),
+                )
+                drawLine(color, Offset(0f, endY), Offset(size.width, endY), strokeWidth = 1.5f)
+              }
+            } else {
+              val path = Path()
+              band.ends.forEachIndexed { pointIndex, value ->
+                val pointX = x(pointIndex)
+                val pointY = y(value)
+                if (pointIndex == 0) path.moveTo(pointX, pointY) else path.lineTo(pointX, pointY)
+              }
+              band.starts.indices.reversed().forEach { pointIndex ->
+                path.lineTo(x(pointIndex), y(band.starts[pointIndex]))
+              }
+              path.close()
+              drawPath(path, color.copy(alpha = 0.68f))
+              drawPath(path, color, style = Stroke(width = 1.5f))
+            }
+          }
+
+          yAxis.ticks.forEach { tick ->
+            val gridY = y(tick).coerceIn(0f, size.height)
+            val isZero = abs(tick) < 0.0001f
+            drawLine(
+              color = if (isZero) axisColor else gridColor,
+              start = Offset(0f, gridY),
+              end = Offset(size.width, gridY),
+              strokeWidth = if (isZero) 1.5.dp.toPx() else 1.dp.toPx(),
+            )
+          }
+
+          xTicks.forEach { tick ->
+            val tickX = size.width * tick.fraction
+            drawLine(
+              color = axisColor,
+              start = Offset(tickX, size.height - 5.dp.toPx()),
+              end = Offset(tickX, size.height),
+              strokeWidth = 1.dp.toPx(),
+            )
+          }
+        }
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(24.dp)) {
+          val labelWidth = 56.dp
+          val maxOffset = maxWidth - labelWidth
+          xTicks.forEach { tick ->
+            val x = (maxWidth * tick.fraction - labelWidth / 2).coerceIn(0.dp, maxOffset)
+            Text(
+              text = formatAssetXAxisValue(tick.date),
+              modifier = Modifier.width(labelWidth).offset(x = x),
+              style = MaterialTheme.typography.labelSmall,
+              textAlign = TextAlign.Center,
+              maxLines = 1,
+            )
+          }
+        }
+      }
     }
 
     if (latestPieSlices.isNotEmpty()) {

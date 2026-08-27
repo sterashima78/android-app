@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.diagnostics
 
 import android.annotation.SuppressLint
 import android.app.Application

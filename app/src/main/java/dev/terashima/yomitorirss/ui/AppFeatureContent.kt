@@ -193,6 +193,7 @@ internal fun AppFeatureContent(
     )
     MainTab.WORKOUT -> WorkoutRoute(
       viewModelFactory = routeDependencies.workout.viewModelFactory,
+      aiViewModelFactory = routeDependencies.workout.aiViewModelFactory,
       writePermissions = routeDependencies.workout.writePermissions,
       modifier = modifier,
     )

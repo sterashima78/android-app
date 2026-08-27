@@ -1,14 +1,15 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.diagnostics
 
 import android.app.ActivityManager
 import android.app.Application
 import android.app.ApplicationExitInfo
 import android.content.Context
 import android.os.Build
+import dev.terashima.yomitorirss.BuildConfig
 import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
 import java.time.Instant
 
-object StartupCrashStore {
+internal object StartupCrashStore {
   private const val PREFERENCES_NAME = "startup_crash_diagnostics"
   private const val REPORT_KEY = "last_crash_report"
   private const val LAST_EXIT_TIMESTAMP_KEY = "last_process_exit_timestamp"

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.diagnostics
 
 import android.app.ApplicationExitInfo
 import org.junit.Assert.assertEquals

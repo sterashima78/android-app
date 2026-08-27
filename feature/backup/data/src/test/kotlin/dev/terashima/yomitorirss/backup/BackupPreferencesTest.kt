@@ -34,6 +34,12 @@ class BackupPreferencesTest {
   fun `allowlistのユーザー設定だけを復元する`() {
     context.getSharedPreferences("workout", Context.MODE_PRIVATE)
       .edit().putString("state_v1", "workout-history").commit()
+    context.getSharedPreferences("workout_ai", Context.MODE_PRIVATE)
+      .edit()
+      .putString("provider", "CHATGPT")
+      .putString("workout_policy", "keep-going")
+      .putString("memo:2026-08-27", "synthetic-workout-memo")
+      .commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().putString("summary_prompt", "custom-prompt").commit()
     context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
@@ -64,9 +70,12 @@ class BackupPreferencesTest {
     assertFalse(encoded.contains("duration_millis"))
     assertTrue(encoded.contains("selected_model_id"))
     assertTrue(encoded.contains("custom-library-prompt"))
+    assertTrue(encoded.contains("synthetic-workout-memo"))
 
     context.getSharedPreferences("workout", Context.MODE_PRIVATE)
       .edit().putString("state_v1", "changed").commit()
+    context.getSharedPreferences("workout_ai", Context.MODE_PRIVATE)
+      .edit().clear().putString("provider", "LOCAL").commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().clear().commit()
     context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
@@ -83,6 +92,10 @@ class BackupPreferencesTest {
       "workout-history",
       context.getSharedPreferences("workout", Context.MODE_PRIVATE).getString("state_v1", null),
     )
+    val workoutAi = context.getSharedPreferences("workout_ai", Context.MODE_PRIVATE)
+    assertEquals("CHATGPT", workoutAi.getString("provider", null))
+    assertEquals("keep-going", workoutAi.getString("workout_policy", null))
+    assertEquals("synthetic-workout-memo", workoutAi.getString("memo:2026-08-27", null))
     assertEquals(
       "custom-prompt",
       context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE).getString("summary_prompt", null),

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.diagnostics
 
 import dev.terashima.yomitorirss.core.airuntime.LocalAiProcessMemoryPhase
 import org.junit.Assert.assertEquals

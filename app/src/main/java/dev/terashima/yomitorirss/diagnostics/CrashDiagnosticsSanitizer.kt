@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.diagnostics
 
 internal object CrashDiagnosticsSanitizer {
   fun sanitize(value: String): String {
