@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.ContentType
-import dev.terashima.yomitorirss.feature.backup.BackupChangeScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +32,6 @@ class BookmarkViewModel(
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
   private val imports: BookmarkImportRepository,
-  private val backupChangeScheduler: BackupChangeScheduler,
   private val moveBookmarkToLibrary: MoveBookmarkToLibraryUseCase,
 ) : ViewModel() {
   private val _state = MutableStateFlow(BookmarkUiState())
@@ -100,7 +98,6 @@ class BookmarkViewModel(
       runCatching { articleRepository.setArticleContentType(article.id, contentType) }
         .onSuccess {
           reload()
-          backupChangeScheduler.scheduleAfterChange()
           _state.update { it.copy(message = "コンテンツ種別を変更しました") }
         }
         .onFailure(::showError)
@@ -126,7 +123,6 @@ class BookmarkViewModel(
       runCatching { bookmarkRepository.moveArticleToFolder(article.id, folderId) }
         .onSuccess {
           reload()
-          backupChangeScheduler.scheduleAfterChange()
           val folderName = when (folderId) {
             null, UNCATEGORIZED_FOLDER_ID -> "未分類"
             else -> _state.value.folders.firstOrNull { it.id == folderId }?.name ?: "フォルダ"
@@ -154,7 +150,6 @@ class BookmarkViewModel(
       runCatching { bookmarkRepository.deleteUnusedTags() }
         .onSuccess { deletedCount ->
           reload()
-          if (deletedCount > 0) backupChangeScheduler.scheduleAfterChange()
           val message = if (deletedCount > 0) {
             "未使用のタグを${deletedCount}件削除しました"
           } else {
@@ -195,7 +190,6 @@ class BookmarkViewModel(
   }
 
   private suspend fun completeImport(added: Int, duplicates: Int, skipped: Int) {
-    if (added > 0) backupChangeScheduler.scheduleAfterChange()
     _state.update { it.copy(selectedTagId = null, selectedFolderId = null) }
     reload()
     _state.update {
@@ -212,7 +206,6 @@ class BookmarkViewModel(
       runCatching { action() }
         .onSuccess {
           reload()
-          backupChangeScheduler.scheduleAfterChange()
           _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
         }
         .onFailure { error ->
@@ -231,7 +224,6 @@ class BookmarkViewModel(
       runCatching { action() }
         .onSuccess {
           reload()
-          backupChangeScheduler.scheduleAfterChange()
           if (successMessage != null) _state.update { it.copy(message = successMessage) }
         }
         .onFailure(::showError)
@@ -276,7 +268,6 @@ class BookmarkViewModel(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val imports: BookmarkImportRepository,
-    private val backupChangeScheduler: BackupChangeScheduler,
     private val moveBookmarkToLibrary: MoveBookmarkToLibraryUseCase,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -288,7 +279,6 @@ class BookmarkViewModel(
         articleRepository,
         bookmarkRepository,
         imports,
-        backupChangeScheduler,
         moveBookmarkToLibrary,
       ) as T
     }
