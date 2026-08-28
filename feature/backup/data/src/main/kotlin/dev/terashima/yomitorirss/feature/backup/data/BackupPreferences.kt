@@ -155,6 +155,10 @@ internal class BackupPreferences(context: Context) {
       PreferenceBackupRule("background_data_fetch"),
       PreferenceBackupRule("book_reader_position"),
       PreferenceBackupRule(
+        name = GoogleDriveBackupPreferences.FILE_NAME,
+        allowedKeys = setOf(GoogleDriveBackupPreferences.KEY_WIFI_ONLY),
+      ),
+      PreferenceBackupRule(
         name = "library_ai_preferences",
         allowedKeys = setOf("smb_metadata_normalization_prompt"),
       ),
