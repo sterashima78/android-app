@@ -23,7 +23,8 @@ app ownership は executable、presentation、composition の3つの Gradle boun
 ```text
 :app
 ├── MainActivity / YomitoriApplication
-├── entry/        external Intent、share、widget launch routing
+├── MainActivityDependenciesProvider / MainActivityPresentationDependencies
+├── entry/        external Intent、share、widget launch routing / IncomingIntentDependencies
 ├── security/     app lock、認証 session、secure-window transition
 ├── diagnostics/  startup crash、memory diagnostics、diagnostic presentation
 └── platform/     Custom Tab など executable lifecycle と一体の platform integration
@@ -93,7 +94,7 @@ OpenAI provider client と process-wide HTTP transport の concrete construction
 - LAN Web Server permission / dialog: `:app:presentation` の `ui.LanWebServerDialogHost`
 - Custom Tab: `platform.WebContentLauncher`
 
-feature business logic は引き続き `MainActivityDependencies` 等の narrow contract 経由で利用する。`MainActivity` 自身は feature ViewModel や feature UI を直接所有しない。
+framework-created `MainActivity` の Application lookup は監査済み `MainActivityDependenciesProvider` 1つに限定する。presentation wiring は `MainActivityPresentationDependencies`、share / external Intent mutation は `entry.IncomingIntentDependencies` から取得し、両者を再び1つの dependency aggregate に統合しない。`MainActivity` 自身は feature ViewModel や feature UI、concrete feature Data implementation を直接所有しない。
 
 ## Review rule
 
