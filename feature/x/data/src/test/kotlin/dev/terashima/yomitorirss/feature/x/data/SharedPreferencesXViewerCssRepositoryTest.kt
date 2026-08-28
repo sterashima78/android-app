@@ -62,10 +62,11 @@ class SharedPreferencesXViewerCssRepositoryTest {
     val rule = XViewerDomRule(
       kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
       pagePath = "/home",
-      containerSelector = "[role=\"tablist\"]",
-      itemSelector = "[role=\"tab\"]",
-      targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
-      targetValue = "/i/lists/",
+      containerSelector = "[data-testid=\"primaryColumn\"] [role=\"tablist\"]",
+      itemSelector = "[role=\"tab\"][aria-selected]",
+      targetKind = XViewerDomTargetKind.FINGERPRINT_SET,
+      targetValue =
+        "[{\"kind\":\"TEXT\",\"value\":\"a\"},{\"kind\":\"TEXT\",\"value\":\"b\"}]",
     )
 
     repository.save(
@@ -82,6 +83,22 @@ class SharedPreferencesXViewerCssRepositoryTest {
         "\"containerSelector\":\"[role=\\\"tablist\\\"]\"," +
         "\"itemSelector\":\"[role=\\\"tab\\\"]\",\"targetKind\":\"TEXT\"," +
         "\"targetValue\":\"Lists\"}]"
+    context.getSharedPreferences("x_viewer_preferences", Context.MODE_PRIVATE)
+      .edit()
+      .putString("dom_rules_v1", legacyRule)
+      .commit()
+    val repository = SharedPreferencesXViewerCssRepository(context) { "default-css" }
+
+    assertTrue(repository.load().domRules.isEmpty())
+  }
+
+  @Test
+  fun `旧URL prefix表示ルールは無視する`() {
+    val legacyRule =
+      "[{\"version\":1,\"kind\":\"KEEP_MATCHING_ITEMS\",\"pagePath\":\"/home\"," +
+        "\"containerSelector\":\"[role=\\\"tablist\\\"]\"," +
+        "\"itemSelector\":\"[role=\\\"tab\\\"]\",\"targetKind\":\"HREF_PATH_PREFIX\"," +
+        "\"targetValue\":\"/i/lists/\"}]"
     context.getSharedPreferences("x_viewer_preferences", Context.MODE_PRIVATE)
       .edit()
       .putString("dom_rules_v1", legacyRule)
