@@ -81,14 +81,14 @@ ADR-0193 / ADR-0196 / ADR-0200 では Activity Result host を executable `:app`
 - `:app:presentation -> :app`
 - `:app:presentation -> :feature:*:data`
 - concrete database / WorkManager infrastructure の import / construction
-- `YomitoriApplication` / `MainActivity` / `MainActivityDependenciesProvider` / `MainActivityPresentationDependencies` / `IncomingIntentDependencies` 等の executable implementation type への依存
+- `YomitoriApplication` / `MainActivity` / `MainActivityDependenciesProvider` / `MainActivityPresentationDependencies` / `MainActivityLanWebDependencies` / `IncomingIntentDependencies` 等の executable implementation type への依存
 - authorization bridge を除く executable platform/security implementation の direct import
 
 feature Data implementation が必要な instance wiring は `:app:composition` が継続して所有する。
 
 #### 2026-08-28 refinement: executable dependency aggregate を分割する
 
-ADR-0166 の 2026-08-28 refinement により、旧 `MainActivityDependencies` aggregate は廃止し、presentation wiring は `MainActivityPresentationDependencies`、external Intent mutation は `entry.IncomingIntentDependencies` に分割した。Android が生成する `MainActivity` の provider lookup は `MainActivityDependenciesProvider` 1つを維持する。
+ADR-0166 の 2026-08-28 refinement により、旧 `MainActivityDependencies` aggregate は廃止し、app-shell route wiring は `MainActivityPresentationDependencies`、LAN Web host wiring は `MainActivityLanWebDependencies`、external Intent mutation は `entry.IncomingIntentDependencies` に分割した。Android が生成する `MainActivity` の provider lookup は `MainActivityDependenciesProvider` 1つを維持する。
 
 この変更は `:app:presentation` の依存方向を変えない。presentation module は新しい executable façade 型にも依存せず、必要な runtime capability は引き続き `:app:composition` / feature Domain/UI contract から取得する。
 
