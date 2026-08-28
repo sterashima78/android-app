@@ -5,20 +5,17 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import dev.terashima.yomitorirss.MainActivityDependencies
-import dev.terashima.yomitorirss.feature.bookmark.BOOKMARKS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
-import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
-import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
-import dev.terashima.yomitorirss.feature.widget.TaskWidgetProvider
-import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider
+import dev.terashima.yomitorirss.feature.widget.WidgetLaunchContract
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
+import dev.terashima.yomitorirss.ui.AppNavigationTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class IncomingIntentHandler(
   private val activity: ComponentActivity,
-  private val onNavigate: (String) -> Unit,
+  private val onNavigate: (AppNavigationTarget) -> Unit,
   private val dependencies: MainActivityDependencies,
 ) {
   fun consume(incoming: Intent) {
@@ -29,18 +26,18 @@ internal class IncomingIntentHandler(
   }
 
   private fun consumeTaskWidget(incoming: Intent) {
-    val route = widgetLaunchRoute(incoming.action) ?: return
+    val target = widgetLaunchTarget(incoming.action) ?: return
     incoming.action = null
-    onNavigate(route)
+    onNavigate(target)
   }
 
   private fun consumeWidgetArticle(incoming: Intent) {
-    if (incoming.action != UnreadArticlesWidgetProvider.ACTION_OPEN_ARTICLE) return
-    val url = incoming.getStringExtra(UnreadArticlesWidgetProvider.EXTRA_ARTICLE_URL)
+    if (incoming.action != WidgetLaunchContract.ACTION_OPEN_ARTICLE) return
+    val url = incoming.getStringExtra(WidgetLaunchContract.EXTRA_ARTICLE_URL)
       ?.trim()
       .orEmpty()
     incoming.action = null
-    incoming.removeExtra(UnreadArticlesWidgetProvider.EXTRA_ARTICLE_URL)
+    incoming.removeExtra(WidgetLaunchContract.EXTRA_ARTICLE_URL)
     if (url.isBlank()) return
 
     if (!activity.openWebContentInCustomTab(url)) {
@@ -68,7 +65,7 @@ internal class IncomingIntentHandler(
           dependencies.addSharedWebBook(shared.url, shared.title)
         }
       }.onSuccess { book ->
-        onNavigate(LIBRARY_ROUTE)
+        onNavigate(AppNavigationTarget.LIBRARY)
         Toast.makeText(
           activity,
           "「${book.title}」を蔵書へ追加しました",
@@ -101,7 +98,7 @@ internal class IncomingIntentHandler(
           dependencies.saveSharedArticle(bookmark.url, bookmark.title, bookmark.sourceTitle)
         }
       }.onSuccess { result ->
-        onNavigate(BOOKMARKS_ROUTE)
+        onNavigate(AppNavigationTarget.BOOKMARKS)
         val message = when (result) {
           BookmarkSaveResult.ADDED -> "ブックマークに追加しました"
           BookmarkSaveResult.ALREADY_BOOKMARKED -> "すでにブックマークされています"
@@ -126,8 +123,8 @@ internal class IncomingIntentHandler(
   }
 }
 
-internal fun widgetLaunchRoute(action: String?): String? =
+internal fun widgetLaunchTarget(action: String?): AppNavigationTarget? =
   when (action) {
-    TaskWidgetProvider.ACTION_OPEN_TASKS -> TASKS_ROUTE
+    WidgetLaunchContract.ACTION_OPEN_TASKS -> AppNavigationTarget.TASKS
     else -> null
   }
