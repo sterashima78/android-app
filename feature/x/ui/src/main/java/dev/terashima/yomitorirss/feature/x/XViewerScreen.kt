@@ -155,8 +155,9 @@ fun XViewerScreen(
           super.onPageFinished(view, url)
           if (url.isXUrl()) {
             currentUrl = url
-            val css = repository.load().cssForInjection()
-            view.injectCss(css)
+            val customization = repository.load()
+            view.injectCss(customization.cssForInjection())
+            view.injectJavaScript(customization.javaScriptForInjection())
           } else {
             pickerActive = false
           }
@@ -407,6 +408,11 @@ private fun WebView.injectCss(css: String) {
     """.trimIndent(),
     null,
   )
+}
+
+private fun WebView.injectJavaScript(javaScript: String) {
+  if (javaScript.isBlank()) return
+  evaluateJavascript(javaScript, null)
 }
 
 private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
