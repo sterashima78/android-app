@@ -89,6 +89,13 @@ class DefaultBackupRepository(
     return service.backup()
   }
 
+  override fun setGoogleDriveWifiOnly(enabled: Boolean) {
+    preferences.setWifiOnly(enabled)
+    if (preferences.isConfigured()) {
+      GoogleDriveBackupScheduler.schedulePeriodic(appContext)
+    }
+  }
+
   override fun disableGoogleDrive() {
     preferences.status().folderUri?.let(Uri::parse)?.let { folderUri ->
       runCatching {
