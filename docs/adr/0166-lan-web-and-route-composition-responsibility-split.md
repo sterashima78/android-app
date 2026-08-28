@@ -52,18 +52,20 @@ P1 の owner boundary 整理後も、module ownership 自体には反しない�
 
 ADR-0205 により app-shell presentation が `:app:presentation` へ分離された後も、executable `:app` の `MainActivityDependencies` は次の異なる変更理由を1つの class に保持していた。
 
-- `AppRouteDependencies` と `LanWebServerController` を `MainActivity` の Compose presentation へ接続する責務
+- `AppRouteDependencies` を `MainActivity` の app-shell presentation へ接続する責務
+- `LanWebServerController` を LAN Web permission/dialog host へ接続する責務
 - share / external Intent から Bookmark / Library mutation capability を呼び出す責務
 
-これらは同じ framework-created `MainActivity` から利用されるが、presentation と external entry routing は独立して変更される。そのため単一の provider lookup は維持したまま、取得する façade を次へ分割する。
+これらは同じ framework-created `MainActivity` から利用されるが、route composition、LAN Web host、external entry routing は独立して変更される。そのため単一の provider lookup は維持したまま、取得する façade を次へ分割する。
 
-- `MainActivityPresentationDependencies`: `AppRouteDependencies` と `LanWebServerController` のみを公開する
+- `MainActivityPresentationDependencies`: `AppRouteDependencies` のみを公開する
+- `MainActivityLanWebDependencies`: `LanWebServerController` のみを公開する
 - `entry.IncomingIntentDependencies`: `SaveSharedBookmarkUseCase` と `addSharedWebBook` の narrow capability のみを保持する
-- `MainActivityDependenciesProvider`: Android が生成する `MainActivity` 向けの監査済み provider contract として、上記2 façade を公開する
+- `MainActivityDependenciesProvider`: Android が生成する `MainActivity` 向けの監査済み provider contract として、上記3 façade を公開する
 
-`MainActivity` は presentation rendering では `MainActivityPresentationDependencies`、`IncomingIntentHandler` の生成では `IncomingIntentDependencies` だけを利用する。旧 `MainActivityDependencies` aggregate は廃止する。
+`MainActivity` は app-shell rendering では `MainActivityPresentationDependencies`、LAN Web dialog host では `MainActivityLanWebDependencies`、`IncomingIntentHandler` の生成では `IncomingIntentDependencies` だけを利用する。旧 `MainActivityDependencies` aggregate は廃止する。
 
-この refinement は新しい Gradle module、service locator、runtime lifetime を導入しない。`YomitoriApplication` が既存 application graph から両 façade を一度だけ composition し、framework provider lookup の例外箇所も `MainActivity` 1箇所のまま維持する。
+この refinement は新しい Gradle module、service locator、runtime lifetime を導入しない。`YomitoriApplication` が既存 application graph から3 façade を一度だけ composition し、framework provider lookup の例外箇所も `MainActivity` 1箇所のまま維持する。
 
 ### 4. local diagnostic artifact を git 管理対象外にする
 
@@ -90,7 +92,7 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - diagnostic artifact ignore rule が維持される。
 - P1 の Reddit owner boundary と Summary prompt ownership の検査先を新しい composition group に合わせる。
 
-`MainActivityDependenciesSourceArchitectureTest` では、共有 Library 追加が `routeDependencies.library` を経由せず narrow capability として直接 composition され、backup scheduling 付き mutator が維持されることに加え、presentation と incoming Intent の dependency façade が再び統合されないことを検査する。
+`MainActivityDependenciesSourceArchitectureTest` では、共有 Library 追加が `routeDependencies.library` を経由せず narrow capability として直接 composition され、backup scheduling 付き mutator が維持されることに加え、presentation / LAN Web / incoming Intent の dependency façade が再び統合されないことを検査する。
 
 ## Consequences
 
@@ -99,7 +101,7 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - network/auth、read-model、HTML の変更が分離され、LAN Web のレビュー範囲が小さくなる。
 - Route composition が application runtime graph と同様に責務別 group へ分かれる。
 - app entrypoint 固有の共有処理が Route graph の内部構造から独立する。
-- MainActivity の presentation wiring と external Intent mutation が別 façade になり、不要な capability が各 caller に見えなくなる。
+- MainActivity の route presentation、LAN Web host、external Intent mutation が別 façade になり、不要な capability が各 caller に見えなくなる。
 - framework provider lookup の例外数を増やさず、変更理由だけを同一 module 内で分離できる。
 - test source layout の過去残存を自動検出できる。
 - profiling/heap artifact の accidental commit を二重に防止できる。
@@ -109,7 +111,7 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - application composition と Web data の class 数は増える。
 - Route composition group は Domain Context と1対1ではないため、Domain ownership の根拠には使えない。
 - entrypoint と Route が同じ mutation capability を利用する場合でも、application composition 側で別の narrow wiring が必要になる。
-- MainActivity provider は2つの façade property を持つため、framework entry point の composition wiring は1段増える。
+- MainActivity provider は3つの façade property を持つため、framework entry point の composition wiring は1段増える。
 - LAN Web は引き続き server-side HTML string rendering を使用する。
 
 ## Verification
@@ -117,7 +119,7 @@ public repository verifier が拒否する profiling/heap artifact とローカ�
 - `LanWebServerBoundaryTest`: server constructor が Domain Repository contract を受け取り database implementation を受け取らないこと。
 - `LanWebServerTest` / `LanWebServerRepositoryTest`: HTML escaping contract。
 - `ArchitectureCleanupSourceTest`: LAN Web responsibility、Web test package/path、Route façade、diagnostic ignore、P1 boundary regression。
-- `MainActivityDependenciesSourceArchitectureTest`: entrypoint の共有 Library 追加が Route graph を経由せず、presentation / incoming Intent façade が分離され、backup scheduling 付き capability を直接利用すること。
+- `MainActivityDependenciesSourceArchitectureTest`: entrypoint の共有 Library 追加が Route graph を経由せず、presentation / LAN Web / incoming Intent façade が分離され、backup scheduling 付き capability を直接利用すること。
 - existing `verifyArchitecture`、全 unit test、release lint、public repository verifier。
 
 ## Documentation
