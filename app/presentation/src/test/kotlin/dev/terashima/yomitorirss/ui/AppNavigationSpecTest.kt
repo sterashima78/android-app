@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.ui
 
+import dev.terashima.yomitorirss.feature.asset.ASSET_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARKS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_FOLDERS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_IMPORT_ROUTE
@@ -7,7 +8,14 @@ import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_TAGS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.bookmark.bookmarkTabForRoute
 import dev.terashima.yomitorirss.feature.bookmark.routeForBookmarkTab
+import dev.terashima.yomitorirss.feature.calendar.CALENDAR_ROUTE
+import dev.terashima.yomitorirss.feature.chat.CHAT_ROUTE
+import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
+import dev.terashima.yomitorirss.feature.health.HEALTH_ROUTE
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
+import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
+import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
+import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
@@ -22,7 +30,10 @@ import dev.terashima.yomitorirss.feature.rss.RssTab
 import dev.terashima.yomitorirss.feature.rss.routeForRssTab
 import dev.terashima.yomitorirss.feature.rss.rssTabForRoute
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
+import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
+import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
+import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_ROUTE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -40,6 +51,30 @@ class AppNavigationSpecTest {
   fun `登録されたrouteには空でない画面タイトルがある`() {
     allAppRoutes.forEach { route ->
       assertTrue(route.screenTitle().isNotBlank())
+    }
+  }
+
+  @Test
+  fun `single route featureの画面タイトルは従来表示を維持する`() {
+    val expected = mapOf(
+      INTEGRATED_ROUTE to "統合ビュー",
+      LIBRARY_ROUTE to "蔵書",
+      KNOWLEDGE_ROUTE to "ナレッジ",
+      ASSET_ROUTE to "資産",
+      MAIL_ROUTE to "メール",
+      YOUTUBE_ROUTE to "YouTube",
+      X_ROUTE to "X",
+      TASKS_ROUTE to "タスク",
+      CALENDAR_ROUTE to "カレンダー",
+      GAME_ROUTE to "ゲーム",
+      HEALTH_ROUTE to "ヘルス",
+      WORKOUT_ROUTE to "ワークアウト",
+      CHAT_ROUTE to "AIチャット",
+      SETTINGS_ROUTE to "設定",
+    )
+
+    expected.forEach { (route, title) ->
+      assertEquals(title, route.screenTitle())
     }
   }
 
