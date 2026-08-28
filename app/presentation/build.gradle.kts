@@ -174,4 +174,5 @@ dependencies {
   implementation(libs.kotlinx.coroutines.android)
 
   debugImplementation("androidx.compose.ui:ui-tooling")
+  testImplementation("junit:junit:4.13.2")
 }
