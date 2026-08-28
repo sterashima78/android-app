@@ -74,7 +74,7 @@ fun GoogleDriveBackupDialog(
             Column(modifier = Modifier.weight(1f)) {
               Text("Wi-Fi接続時のみバックアップ")
               Text(
-                "自動バックアップをWi-Fi接続中だけ実行します",
+                "Google DriveへのバックアップをWi-Fi接続中だけ実行します",
                 style = MaterialTheme.typography.bodySmall,
               )
             }
