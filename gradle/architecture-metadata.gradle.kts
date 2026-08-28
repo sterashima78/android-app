@@ -20,6 +20,7 @@ private fun featureModulesFromProjectPaths(projectPaths: Iterable<String>): Map<
     .sorted()
     .forEach { projectPath ->
       val parts = projectPath.split(':')
+      if (parts.size == 3 && parts[1] == "feature") return@forEach
       if (parts.size != 4 || parts[1] != "feature") {
         throw IllegalArgumentException("unsupported feature module path: $projectPath")
       }
@@ -165,9 +166,11 @@ private fun adrIntegrityViolations(
 private fun verifyArchitectureMetadataFixtures() {
   val modulePaths = listOf(
     ":app",
+    ":feature:alpha",
     ":feature:alpha:ui",
     ":feature:alpha:domain",
     ":feature:alpha:data",
+    ":feature:beta",
     ":feature:beta:ui",
   )
   check(
@@ -195,7 +198,7 @@ private fun verifyArchitectureMetadataFixtures() {
   ) { "Module map fixture failed to parse marked documentation table" }
 
   val mismatchErrors = moduleMapVerificationErrors(
-    listOf(":feature:alpha:domain", ":feature:alpha:ui", ":feature:beta:ui"),
+    listOf(":feature:alpha", ":feature:alpha:domain", ":feature:alpha:ui", ":feature:beta", ":feature:beta:ui"),
     """
       <!-- feature-modules:start -->
       | Feature | Layers |
