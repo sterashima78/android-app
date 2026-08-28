@@ -4,7 +4,6 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
-import dev.terashima.yomitorirss.MainActivityDependencies
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.widget.WidgetLaunchContract
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
@@ -16,7 +15,7 @@ import kotlinx.coroutines.withContext
 internal class IncomingIntentHandler(
   private val activity: ComponentActivity,
   private val onNavigate: (AppNavigationTarget) -> Unit,
-  private val dependencies: MainActivityDependencies,
+  private val dependencies: IncomingIntentDependencies,
 ) {
   fun consume(incoming: Intent) {
     consumeSharedLibrary(incoming)
