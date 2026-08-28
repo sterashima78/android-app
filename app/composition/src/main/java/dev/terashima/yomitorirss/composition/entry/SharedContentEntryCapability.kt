@@ -4,11 +4,24 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.SaveSharedBookmarkUseCase
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 
-class SharedContentEntryCapability internal constructor(
+interface SharedContentEntryCapability {
+  suspend fun saveBookmark(
+    url: String,
+    title: String,
+    sourceTitle: String,
+  ): SharedBookmarkSaveOutcome
+
+  suspend fun addWebBook(
+    url: String,
+    title: String,
+  ): AddedSharedWebBook
+}
+
+internal class DefaultSharedContentEntryCapability(
   private val saveSharedBookmark: SaveSharedBookmarkUseCase,
   private val addSharedWebBook: suspend (String, String?) -> LibraryBook,
-) {
-  suspend fun saveBookmark(
+) : SharedContentEntryCapability {
+  override suspend fun saveBookmark(
     url: String,
     title: String,
     sourceTitle: String,
@@ -17,7 +30,7 @@ class SharedContentEntryCapability internal constructor(
     BookmarkSaveResult.ALREADY_BOOKMARKED -> SharedBookmarkSaveOutcome.ALREADY_BOOKMARKED
   }
 
-  suspend fun addWebBook(
+  override suspend fun addWebBook(
     url: String,
     title: String,
   ): AddedSharedWebBook = AddedSharedWebBook(
