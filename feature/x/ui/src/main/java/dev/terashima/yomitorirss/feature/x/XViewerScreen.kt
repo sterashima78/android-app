@@ -257,7 +257,7 @@ fun XViewerScreen(
                 pickerActive = false
                 if (selector == null) {
                   scope.launch {
-                    snackbarHostState.showSnackbar("先に非表示にする要素をタップしてください")
+                    snackbarHostState.showSnackbar("要素を安全に一意識別できませんでした。別の要素を選択してください")
                   }
                   return@takeSelectedElementSelector
                 }
@@ -352,9 +352,15 @@ internal fun shouldOpenXNavigationExternally(url: String, isForMainFrame: Boolea
   return !url.isXUrl()
 }
 
+internal fun isPersistableElementPickerSelector(selector: String): Boolean {
+  val normalizedSelector = selector.trim()
+  return normalizedSelector.isNotEmpty() &&
+    !normalizedSelector.contains(":nth-of-type(", ignoreCase = true)
+}
+
 internal fun appendHiddenElementRule(css: String, selector: String): String {
   val normalizedSelector = selector.trim()
-  if (normalizedSelector.isEmpty()) return css
+  if (!isPersistableElementPickerSelector(normalizedSelector)) return css
 
   val rule = "$normalizedSelector {\n  display: none !important;\n}"
   if (css.contains(rule)) return css
@@ -376,6 +382,7 @@ internal fun decodeElementPickerSelectorResult(result: String?): String? {
   val encoded = result.removeSurrounding("\"")
   if (encoded.isBlank()) return null
   return URLDecoder.decode(encoded, StandardCharsets.UTF_8.toString())
+    .takeIf(::isPersistableElementPickerSelector)
 }
 
 private fun String.isXUrl(): Boolean {
@@ -448,60 +455,156 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
 
         const directCandidates = (element) => {
           const candidates = [];
+          const tag = element.tagName.toLowerCase();
+          const href = attributeSelector(element, 'href');
           const testId = attributeSelector(element, 'data-testid');
           const ariaLabel = attributeSelector(element, 'aria-label');
           const role = attributeSelector(element, 'role');
           const name = attributeSelector(element, 'name');
           const title = attributeSelector(element, 'title');
-          if (testId) candidates.push(testId);
-          if (role && ariaLabel) candidates.push(role + ariaLabel);
-          if (ariaLabel) candidates.push(ariaLabel);
-          if (role) candidates.push(role);
-          if (name) candidates.push(name);
-          if (title) candidates.push(title);
-          return candidates;
+          if (href) candidates.push(tag + href);
+          if (testId) candidates.push(tag + testId, testId);
+          if (role && ariaLabel) candidates.push(tag + role + ariaLabel, role + ariaLabel);
+          if (ariaLabel) candidates.push(tag + ariaLabel, ariaLabel);
+          if (role) candidates.push(tag + role, role);
+          if (name) candidates.push(tag + name, name);
+          if (title) candidates.push(tag + title, title);
+          return Array.from(new Set(candidates));
         };
 
-        const isUnique = (selector) => {
+        const scopeBaseCandidates = (element) => {
+          const candidates = [];
+          const tag = element.tagName.toLowerCase();
+          const testId = attributeSelector(element, 'data-testid');
+          const ariaLabel = attributeSelector(element, 'aria-label');
+          const role = attributeSelector(element, 'role');
+          if (testId) candidates.push(tag + testId);
+          if (role && ariaLabel) candidates.push(tag + role + ariaLabel);
+          if (ariaLabel) candidates.push(tag + ariaLabel);
+          if (role) candidates.push(tag + role);
+          candidates.push(tag);
+          return Array.from(new Set(candidates));
+        };
+
+        const uniqueMatchFor = (selector) => {
           try {
-            return document.querySelectorAll(selector).length === 1;
+            const matches = document.querySelectorAll(selector);
+            return matches.length === 1 ? matches[0] : null;
+          } catch (_) {
+            return null;
+          }
+        };
+
+        const uniquelySelects = (selector, element) => uniqueMatchFor(selector) === element;
+
+        const isRepeatableBoundary = (element) => element.matches(
+          'article[data-testid="tweet"], [data-testid="cellInnerDiv"], [data-testid="UserCell"]'
+        );
+
+        const closestSemanticBoundary = (element) => element.closest(
+          'article[data-testid="tweet"], [data-testid="cellInnerDiv"], [data-testid="UserCell"], ' +
+          '[data-testid="sidebarColumn"], nav, header, aside'
+        );
+
+        const hrefStrength = (href) => {
+          if (/^\/[A-Za-z0-9_]+\/status\/\d+/.test(href)) return 3;
+          if (/^\/[A-Za-z0-9_]+\/?(?:[?#].*)?$/.test(href)) return 2;
+          return 0;
+        };
+
+        const supportsHas = (() => {
+          try {
+            return typeof CSS !== 'undefined' &&
+              typeof CSS.supports === 'function' &&
+              CSS.supports('selector(:has(*))');
           } catch (_) {
             return false;
           }
+        })();
+
+        const boundarySelectorFor = (boundary) => {
+          if (!isRepeatableBoundary(boundary)) {
+            for (const candidate of directCandidates(boundary)) {
+              if (uniquelySelects(candidate, boundary)) return candidate;
+            }
+          }
+
+          if (!supportsHas) return null;
+
+          const anchors = Array.from(boundary.querySelectorAll('a[href]'))
+            .map((anchor) => ({ anchor, strength: hrefStrength(anchor.getAttribute('href') || '') }))
+            .filter((entry) => entry.strength > 0)
+            .sort((left, right) => right.strength - left.strength);
+
+          for (const { anchor } of anchors) {
+            const href = attributeSelector(anchor, 'href');
+            if (!href) continue;
+            const anchorSelector = 'a' + href;
+            for (const base of scopeBaseCandidates(boundary)) {
+              const candidate = base + ':has(' + anchorSelector + ')';
+              if (uniquelySelects(candidate, boundary)) return candidate;
+            }
+          }
+          return null;
         };
 
-        const structuralSegment = (element) => {
+        const stableSegment = (element) => {
           const candidates = directCandidates(element);
-          for (const candidate of candidates) {
-            if (isUnique(candidate)) return candidate;
-          }
-          if (candidates.length > 0) return candidates[0];
-
-          let segment = element.tagName.toLowerCase();
-          const parent = element.parentElement;
-          if (!parent) return segment;
-          const siblings = Array.from(parent.children)
-            .filter((child) => child.tagName === element.tagName);
-          if (siblings.length > 1) {
-            segment += ':nth-of-type(' + (siblings.indexOf(element) + 1) + ')';
-          }
-          return segment;
+          return candidates.length > 0 ? candidates[0] : element.tagName.toLowerCase();
         };
 
-        const selectorFor = (element) => {
+        const selectorWithin = (boundary, boundarySelector, element) => {
+          if (boundary === element) return boundarySelector;
+
           for (const candidate of directCandidates(element)) {
-            if (isUnique(candidate)) return candidate;
+            const scopedCandidate = boundarySelector + ' ' + candidate;
+            if (uniquelySelects(scopedCandidate, element)) return scopedCandidate;
           }
 
           const parts = [];
           let current = element;
-          for (let depth = 0; current && current !== document.documentElement && depth < 8; depth += 1) {
-            parts.unshift(structuralSegment(current));
-            const candidate = parts.join(' > ');
-            if (isUnique(candidate)) return candidate;
+          for (let depth = 0; current && current !== boundary && depth < 8; depth += 1) {
+            parts.unshift(stableSegment(current));
+            const candidate = boundarySelector + ' ' + parts.join(' > ');
+            if (uniquelySelects(candidate, element)) return candidate;
             current = current.parentElement;
           }
-          return parts.join(' > ');
+          return null;
+        };
+
+        const uniqueAncestorScope = (element) => {
+          let current = element.parentElement;
+          for (let depth = 0; current && current !== document.documentElement && depth < 8; depth += 1) {
+            for (const candidate of directCandidates(current)) {
+              if (uniquelySelects(candidate, current)) {
+                return { element: current, selector: candidate };
+              }
+            }
+            current = current.parentElement;
+          }
+          return null;
+        };
+
+        const selectorFor = (element) => {
+          const semanticBoundary = closestSemanticBoundary(element);
+          if (semanticBoundary) {
+            const boundarySelector = boundarySelectorFor(semanticBoundary);
+            if (boundarySelector) {
+              const scopedSelector = selectorWithin(semanticBoundary, boundarySelector, element);
+              if (scopedSelector) return scopedSelector;
+            }
+            if (isRepeatableBoundary(semanticBoundary)) return null;
+          }
+
+          for (const candidate of directCandidates(element)) {
+            if (uniquelySelects(candidate, element)) return candidate;
+          }
+
+          const ancestorScope = uniqueAncestorScope(element);
+          if (ancestorScope) {
+            return selectorWithin(ancestorScope.element, ancestorScope.selector, element);
+          }
+          return null;
         };
 
         const clearSelection = () => {
@@ -518,9 +621,10 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
           event.stopPropagation();
           event.stopImmediatePropagation();
 
-          const target = event.target.closest(
-            'a, button, [role="button"], [data-testid], article, section, nav, aside, img, video, span, div'
+          const preferredTarget = event.target.closest(
+            'a[href], button, [role="button"], [data-testid], article, section, nav, aside, img, video'
           );
+          const target = preferredTarget || event.target.closest('span, div');
           if (!target || target === document.body || target === document.documentElement) return;
 
           clearSelection();
@@ -567,7 +671,17 @@ private fun WebView.takeSelectedElementSelector(onResult: (String?) -> Unit) {
         const stateKey = '$X_ELEMENT_PICKER_STATE_KEY';
         const state = window[stateKey];
         if (!state) return null;
-        const selector = state.selector || null;
+        let selector = state.selector || null;
+        if (selector && state.selected) {
+          try {
+            const matches = document.querySelectorAll(selector);
+            if (matches.length !== 1 || matches[0] !== state.selected) selector = null;
+          } catch (_) {
+            selector = null;
+          }
+        } else {
+          selector = null;
+        }
         if (typeof state.stop === 'function') state.stop();
         window[stateKey] = null;
         return selector ? encodeURIComponent(selector) : null;

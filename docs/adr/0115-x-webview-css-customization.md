@@ -19,6 +19,8 @@ X は外部 Web アプリであり DOM は随時変更され得る。CSS をア�
 
 X WebView を全高表示した状態では、縦スクロールに小さな横方向成分が含まれるだけでも、外側の Compose ナビゲーションドロワーが touch stream を横取りし、WebView 側のスクロール操作が中断される可能性がある。X 画面にはドロワーを開く明示的なメニューボタンが既に存在するため、WebView 上で開始した swipe をアプリのドロワー操作にも兼用する必要はない。
 
+要素選択機能の初期実装では、選択時点で `querySelectorAll(selector).length == 1` なら selector を採用していた。しかし X のタイムラインは無限スクロールによって同種の DOM が後から追加されるため、選択時点では一意だった `data-testid` や `aria-label` が後から複数要素へ一致し、意図しない要素まで非表示になる可能性がある。また `nth-of-type()` は DOM の並び順変更に弱く、永続保存する CSS rule の識別子として適さない。
+
 ## Decision
 
 X ビュワーは `:feature:x:ui` が所有する Android WebView として実装する。
@@ -52,10 +54,16 @@ X ビュワーは `:feature:x:ui` が所有する Android WebView として実�
 - 同一 style ID を再利用し、ページ再読み込み時は重複した style 要素を増やさない
 - X 画面には「要素を非表示」操作を追加し、明示的に選択モードへ入った場合だけ DOM 選択用 JavaScript を注入する
 - 選択モード中は Web ページの capture phase の click listener で通常の click を抑止し、タップ対象を outline で可視化する。通常閲覧時にはこの listener を常駐させない
-- 要素 selector は `data-testid`、`aria-label`、`role`、`name`、`title` など比較的意味のある属性を優先し、単独で一意にならない場合のみ親子構造と `nth-of-type()` を組み合わせて一意な selector を生成する
-- class 名は X 側で変更されやすいため、要素選択機能が生成する selector の主要な識別子として使用しない
+- 要素 selector は `href`、`data-testid`、`aria-label`、`role`、`name`、`title` など比較的意味のある属性を優先し、class 名は主要な識別子として使用しない
+- 投稿、タイムラインセル、ユーザーセルのような繰り返し領域内の要素では、選択時点で偶然一意な子要素の属性をグローバル selector として保存しない
+- 繰り返し領域では、最寄りの semantic boundary を `article[data-testid="tweet"]`、`data-testid="cellInnerDiv"`、`data-testid="UserCell"` などから特定し、その領域内の status URL または profile URL の `href` を `:has(a[href="..."])` で組み合わせて boundary 自体を一意化する
+- 一意化した semantic boundary から選択要素までは、意味のある属性と親子構造を使った相対 selector を生成する
+- 要素選択機能が新規に生成する永続 CSS rule では `nth-of-type()` を使用しない。意味属性や semantic boundary から安全に一意化できない場合は selector を保存せず、別の要素を選ぶよう案内する
+- selector 確定時には `querySelectorAll()` を再実行し、現在も一致件数が 1 件で、その 1 件が実際に選択した DOM 要素である場合だけ native 側へ返す。無限スクロール等で一致件数が変化した場合は保存しない
+- `:has()` が利用できない WebView、または一意化に使える安定したリンクが存在しない繰り返し領域では、安全側に倒して自動 selector 生成を失敗扱いとする
 - 選択した selector は Web 側から自発的に Android へ送信せず、ユーザーが native UI の「選択した要素を非表示」を押した時だけ `evaluateJavascript()` の戻り値として取得する
 - 取得した selector は `display: none !important` の CSS rule として現在のカスタム CSS 末尾に追加し、`SharedPreferences` へ保存したうえで現在のページにも即時再注入する
+- native 側でも `nth-of-type()` を含む selector は永続 CSS rule として受理しない
 - 同一の生成済み rule が既に存在する場合は重複追加しない
 - カスタム CSS が無効な場合、要素選択機能から暗黙に再有効化せず、設定画面で明示的に有効化するよう案内する
 - 選択確定またはキャンセル時には click listener、選択 outline 用 style、選択状態を除去する
@@ -78,6 +86,9 @@ X の DOM は外部サービス側の変更対象であるため、セレクタ�
 - カスタム CSS を完全に無効化できるため、表示不具合が X 本体か注入 CSS かを実機で切り分けられる
 - CSS selector の調整を APK 更新なしで試せる
 - DOM inspector を別途用意しなくても、端末上のタップ操作から非表示 CSS rule を作成できる
+- 投稿などの繰り返し領域では status/profile URL を含む semantic boundary へ selector をスコープするため、後から同種の DOM が追加されても別の投稿やセルへ誤って一致しにくい
+- DOM 順序依存の `nth-of-type()` を新規生成 selector から除外するため、永続 CSS rule の脆弱性を減らせる
+- selector 保存直前にも一致対象を再検証するため、選択から確定までの間に DOM が変化したケースを安全側に処理できる
 - 選択用 JavaScript はユーザーが明示的に選択モードへ入った間だけ有効で、通常の X 操作への干渉を限定できる
 - Web ページから native API を呼ぶ bridge を公開せずに selector を取得できる
 - デフォルト CSS を保持しつつ、いつでも初期状態へ戻せる
@@ -95,8 +106,8 @@ X の DOM は外部サービス側の変更対象であるため、セレクタ�
 
 - ユーザーが不正な CSS を保存すると X の表示を崩せる
 - X の DOM 変更後は保存済み CSS が古くなり、デフォルト CSS 更新だけでは自動的に上書きされない
-- 自動生成 selector は class 名への依存を避けても X の DOM 構造変更で無効になる可能性がある
-- `nth-of-type()` を含む fallback selector は DOM の並び順変更に弱い
+- 自動生成 selector は class 名や DOM 順序への依存を減らしても、X 側の semantic attribute や URL 構造変更で無効になる可能性がある
+- 繰り返し領域に安定した status/profile URL がない場合や `:has()` が使えない WebView では、自動選択を安全に完了できず手動 CSS 編集が必要になる場合がある
 - 誤った要素を選択すると必要な UI を非表示にできるため、既存の CSS 編集・デフォルト復元機能を復旧手段として維持する必要がある
 - X 画面だけ他の画面とヘッダー構成が異なる
 - X WebView 上からのスワイプではアプリのナビゲーションドロワーを開かず、右上のメニューボタンを使用する必要がある
