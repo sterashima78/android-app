@@ -19,12 +19,12 @@ import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.diagnostics.copyCrashReport
 import dev.terashima.yomitorirss.entry.IncomingIntentHandler
 import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.platform.LanWebServerDialogHost
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import dev.terashima.yomitorirss.security.AppLockContent
 import dev.terashima.yomitorirss.security.AppLockCoordinator
 import dev.terashima.yomitorirss.security.AppLockSessionViewModel
 import dev.terashima.yomitorirss.ui.AppNavigationTarget
+import dev.terashima.yomitorirss.ui.LanWebServerDialogHost
 import dev.terashima.yomitorirss.ui.YomitoriApp
 import dev.terashima.yomitorirss.ui.YomitoriTheme
 import kotlinx.coroutines.channels.Channel
