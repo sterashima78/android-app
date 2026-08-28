@@ -57,3 +57,11 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Run ${{ matrix.name }}
         run: ${{ matrix.command }}
+      - name: Upload lint report for diagnosis
+        if: failure() && matrix.name == 'Lint'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: lint-report-diagnostic
+          path: app/build/reports/lint-results-release.txt
+          if-no-files-found: warn
+          retention-days: 1
