@@ -29,7 +29,6 @@ dev.terashima.yomitorirss
 ├── security/     app lock、認証 session、secure-window transition
 ├── diagnostics/  startup crash、memory diagnostics、diagnostic presentation
 ├── platform/     Custom Tab、OS permission、platform dialog host
-│   └── authorization/  Gmail / Google Books の Activity Result boundary
 └── ui/           app-shell navigation / presentation
 ```
 
@@ -41,8 +40,10 @@ dev.terashima.yomitorirss
 ├── composition/
 │   └── background/  startup observer / one-shot scheduler wiring
 └── platform/
-    └── authorization/  Activity Result boundary shared with app shell
+    └── authorization/  Gmail / Google Books の feature Data manager と Activity Result host を接続する bridge
 ```
+
+Activity Result launcher / callback host は executable `:app` が所有し、feature Data の authorization manager との接続に必要な dependency bridge は `:app:composition/platform/authorization` が所有する。
 
 package 分割は Gradle module の追加を意味しない。application graph の ownership と lifecycle が同じで、package で責務を局所化できる場合は `:app:composition` 内に留める。
 
