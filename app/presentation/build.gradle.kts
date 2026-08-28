@@ -34,7 +34,8 @@ val verifyPresentationBoundary by tasks.registering {
   description = "Verifies that app presentation depends on contracts/UI only, never executable app or feature data."
 
   doLast {
-    val forbidden = configurations
+    val violations = mutableListOf<String>()
+    val forbiddenDependencies = configurations
       .filterNot { "test" in it.name.lowercase() }
       .flatMap { configuration ->
         configuration.dependencies
@@ -45,11 +46,52 @@ val verifyPresentationBoundary by tasks.registering {
       .distinct()
       .sortedBy { (configuration, target) -> "$configuration:$target" }
 
-    if (forbidden.isNotEmpty()) {
+    forbiddenDependencies.forEach { (configuration, target) ->
+      violations += ":app:presentation must not depend on $target through $configuration"
+    }
+
+    val sourceRoot = file("src/main/kotlin")
+    val concreteFeatureDataImport = Regex(
+      "(?m)^\\s*import\\s+dev\\.terashima\\.yomitorirss\\.feature\\.[A-Za-z0-9_.]+\\.data\\.",
+    )
+    val infrastructureImport = Regex(
+      "(?m)^\\s*import\\s+(?:dev\\.terashima\\.yomitorirss\\.core\\.database\\.(?:DatabaseConnection|YomitoriDatabase)\\b|androidx\\.work\\.)",
+    )
+    sourceRoot.walkTopDown()
+      .filter { it.isFile && it.extension == "kt" }
+      .forEach { sourceFile ->
+        val source = sourceFile.readText()
+        val relativePath = sourceFile.relativeTo(projectDir).invariantSeparatorsPath
+        if (concreteFeatureDataImport.containsMatchIn(source)) {
+          violations += "app presentation must not import concrete feature data: $relativePath"
+        }
+        if (infrastructureImport.containsMatchIn(source)) {
+          violations += "app presentation must not import database or WorkManager infrastructure: $relativePath"
+        }
+        if (Regex("\\b(?:YomitoriApplication|MainActivity|MainActivityDependencies)\\b").containsMatchIn(source)) {
+          violations += "app presentation must not depend on executable app implementation types: $relativePath"
+        }
+      }
+
+    val yomitoriApp = file("src/main/kotlin/dev/terashima/yomitorirss/ui/YomitoriApp.kt").readText()
+    if ("rememberLauncherForActivityResult" in yomitoriApp || "ActivityResultContracts." in yomitoriApp) {
+      violations += "YomitoriApp must not own feature Activity Result launchers"
+    }
+    val featureStateCollector = Regex(
+      "\\b([A-Za-z_][A-Za-z0-9_]*)\\.state\\.collectAsState(?:WithLifecycle)?\\s*\\(",
+    )
+    featureStateCollector.findAll(yomitoriApp).forEach { match ->
+      val owner = match.groupValues[1]
+      if (owner != "appViewModel") {
+        violations += "YomitoriApp must not collect feature ViewModel state: $owner.state"
+      }
+    }
+
+    if (violations.isNotEmpty()) {
       throw GradleException(
         buildString {
-          appendLine(":app:presentation must not depend on executable :app or feature data modules:")
-          forbidden.forEach { (configuration, target) -> appendLine("- $configuration -> $target") }
+          appendLine("App presentation boundary verification failed (${violations.size} violation(s)):")
+          violations.sorted().forEach { appendLine("- $it") }
           append("Use :app:composition and feature Domain/UI contracts across the presentation boundary.")
         },
       )
