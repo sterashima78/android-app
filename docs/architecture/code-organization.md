@@ -26,13 +26,14 @@ app ownership は executable、presentation、composition の3つの Gradle boun
 ├── entry/        external Intent、share、widget launch routing
 ├── security/     app lock、認証 session、secure-window transition
 ├── diagnostics/  startup crash、memory diagnostics、diagnostic presentation
-└── platform/     Custom Tab、component/lifecycle-level OS permission / dialog host
+└── platform/     Custom Tab など executable lifecycle と一体の platform integration
 
 :app:presentation
 └── dev.terashima.yomitorirss.ui/
     ├── YomitoriApp / Theme
     ├── AppNavHost / navigation graph registration
-    ├── AppSection / AppNavigationSpec / navigation chrome
+    ├── AppSection / AppNavigationSpec / AppNavigationTarget / navigation chrome
+    ├── LanWebServerDialogHost 等の Composable permission/dialog host
     └── app-owned Route / feature UI / Composable Activity Result composition
 
 :app:composition
@@ -58,7 +59,11 @@ executable `:app` の root package `dev.terashima.yomitorirss` は Application /
 
 `:app:presentation` は feature UI の composition と app-wide navigation/chrome を所有するが、feature 固有 state/policy の owner にはならない。feature 内で完結する Screen / Route / projection は owning `:feature:<name>:ui` に残し、app presentation は callback、ViewModel factory、navigation、Composable Activity Result 等の app-wide wiring に限定する。
 
-Composable の lifecycle 内で feature authorization、calendar permission、document picker 等を接続する Activity Result launcher は `:app:presentation` に置ける。一方、LAN Web Server notification permission/dialog、Custom Tab、app lock transition のように Activity/component lifecycle や executable-only state を扱う host は `:app` に残す。
+Composable の lifecycle 内で feature authorization、calendar permission、document picker、LAN Web Server notification permission/dialog 等を接続する Activity Result launcher は `:app:presentation` に置ける。一方、Custom Tab や app lock transition のように Activity/component lifecycle と executable-only state を扱う integration は `:app` に残す。
+
+external Intent や widget launch から app-shell navigation を要求する executable code は feature UI の route constant を直接参照せず、`:app:presentation` が公開する semantic `AppNavigationTarget` を送る。feature-owned route identity への解決は presentation boundary 内で行う。
+
+framework-owned widget と Application の repository access contract は feature UI implementation class ではなく owning feature の Domain contract を使う。Task widget が Application から `TaskRepository` を取得する provider contract は `:feature:task:domain`、widget-to-app Intent action/extra の共有 contract は `:feature:widget:domain` が所有する。
 
 `:app:presentation` は `:app` へ依存せず、`:feature:*:data` や database / WorkManager infrastructure を参照しない。runtime capability は `:app:composition` の narrow facade と feature Domain/UI contract から受け取る。
 
@@ -85,7 +90,7 @@ OpenAI provider client と process-wide HTTP transport の concrete construction
 - app lock: `security.AppLockCoordinator`
 - incoming Intent: `entry.IncomingIntentHandler`
 - crash diagnostics UI: `diagnostics.CrashDiagnosticsContent`
-- LAN Web Server permission / dialog: `platform.LanWebServerDialogHost`
+- LAN Web Server permission / dialog: `:app:presentation` の `ui.LanWebServerDialogHost`
 - Custom Tab: `platform.WebContentLauncher`
 
 feature business logic は引き続き `MainActivityDependencies` 等の narrow contract 経由で利用する。`MainActivity` 自身は feature ViewModel や feature UI を直接所有しない。
