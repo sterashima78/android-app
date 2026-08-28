@@ -4,7 +4,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
+import dev.terashima.yomitorirss.composition.entry.SharedBookmarkSaveOutcome
 import dev.terashima.yomitorirss.feature.widget.WidgetLaunchContract
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import dev.terashima.yomitorirss.ui.AppNavigationTarget
@@ -99,8 +99,8 @@ internal class IncomingIntentHandler(
       }.onSuccess { result ->
         onNavigate(AppNavigationTarget.BOOKMARKS)
         val message = when (result) {
-          BookmarkSaveResult.ADDED -> "ブックマークに追加しました"
-          BookmarkSaveResult.ALREADY_BOOKMARKED -> "すでにブックマークされています"
+          SharedBookmarkSaveOutcome.ADDED -> "ブックマークに追加しました"
+          SharedBookmarkSaveOutcome.ALREADY_BOOKMARKED -> "すでにブックマークされています"
         }
         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
       }.onFailure { error ->
