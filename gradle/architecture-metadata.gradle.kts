@@ -1,8 +1,8 @@
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 
-private const val FEATURE_TABLE_START = "<!-- feature-modules:start -->"
-private const val FEATURE_TABLE_END = "<!-- feature-modules:end -->"
+private val FEATURE_TABLE_START = "<!-- feature-modules:start -->"
+private val FEATURE_TABLE_END = "<!-- feature-modules:end -->"
 private val FEATURE_LAYER_ORDER = listOf("domain", "data", "ui")
 
 private val ADR_FILENAME = Regex("""^(\d{4})-([a-z0-9][a-z0-9-]*)\.md$""")
