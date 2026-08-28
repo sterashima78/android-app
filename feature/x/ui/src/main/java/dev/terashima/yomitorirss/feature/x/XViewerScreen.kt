@@ -290,13 +290,13 @@ fun XViewerScreen(
           }
           TextButton(
             onClick = {
-              webView.takeSelectedElementKeepOnlyRule { rule ->
+              webView.takeSelectedElementListGroupRule { rule ->
                 pickerActive = false
                 if (rule == null) {
                   scope.launch {
-                    snackbarHostState.showSnackbar("この要素では「これだけ表示」ルールを作成できませんでした")
+                    snackbarHostState.showSnackbar("X のリストタブを選択してください")
                   }
-                  return@takeSelectedElementKeepOnlyRule
+                  return@takeSelectedElementListGroupRule
                 }
 
                 val savedSettings = repository.load()
@@ -304,19 +304,19 @@ fun XViewerScreen(
                   scope.launch {
                     snackbarHostState.showSnackbar("表示カスタマイズが無効です。設定から有効にしてください")
                   }
-                  return@takeSelectedElementKeepOnlyRule
+                  return@takeSelectedElementListGroupRule
                 }
 
                 val updatedSettings = savedSettings.upsertDomRule(rule)
                 repository.save(updatedSettings)
                 webView.injectDomRules(updatedSettings.domRulesForInjection())
                 scope.launch {
-                  snackbarHostState.showSnackbar("同じタブ列では選択した項目だけを表示します")
+                  snackbarHostState.showSnackbar("同じタブ列ではリストタブだけを表示します")
                 }
               }
             },
           ) {
-            Text("同じ列ではこれだけ表示")
+            Text("同じ列のリストだけ表示")
           }
         }
       } else {
@@ -336,7 +336,7 @@ fun XViewerScreen(
                 if (started) {
                   pickerActive = true
                   scope.launch {
-                    snackbarHostState.showSnackbar("対象要素をタップし、非表示または「これだけ表示」を選択してください")
+                    snackbarHostState.showSnackbar("対象要素をタップし、非表示または「リストだけ表示」を選択してください")
                   }
                 } else {
                   scope.launch {

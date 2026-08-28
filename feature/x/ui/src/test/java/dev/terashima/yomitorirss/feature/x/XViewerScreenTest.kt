@@ -148,44 +148,53 @@ class XViewerScreenTest {
   }
 
   @Test
-  fun `これだけ表示ルールをJavaScript結果から復号する`() {
+  fun `X のリスト path を判定する`() {
+    assertTrue(isXListPath("/i/lists/123456"))
+    assertTrue(isXListPath("/i/lists/example"))
+    assertFalse(isXListPath("/home"))
+    assertFalse(isXListPath("/i/lists"))
+  }
+
+  @Test
+  fun `リストタブ群表示ルールをJavaScript結果から復号する`() {
     val expected = XViewerDomRule(
-      kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+      kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
       pagePath = "/home",
       containerSelector = "div[role=\"tablist\"]",
       itemSelector = "[role=\"tab\"]",
-      targetKind = XViewerDomTargetKind.TEXT,
-      targetValue = "リスト",
+      targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
+      targetValue = "/i/lists/",
     )
     val json =
-      "{\"kind\":\"KEEP_ONLY_MATCHING_ITEM\",\"pagePath\":\"/home\"," +
+      "{\"kind\":\"KEEP_MATCHING_ITEMS\",\"pagePath\":\"/home\"," +
         "\"containerSelector\":\"div[role=\\\"tablist\\\"]\"," +
         "\"itemSelector\":\"[role=\\\"tab\\\"]\"," +
-        "\"targetKind\":\"TEXT\",\"targetValue\":\"リスト\"}"
+        "\"targetKind\":\"HREF_PATH_PREFIX\",\"targetValue\":\"/i/lists/\"}"
     val encoded = URLEncoder.encode(json, StandardCharsets.UTF_8.toString())
 
     assertEquals(expected, decodeElementPickerDomRuleResult("\"$encoded\""))
   }
 
   @Test
-  fun `不正なこれだけ表示ルールは無視する`() {
+  fun `不正なリストタブ群表示ルールは無視する`() {
     assertNull(decodeElementPickerDomRuleResult("\"not-json\""))
   }
 
   @Test
   fun `DOM表示ルールを安全なJSONに変換する`() {
     val rule = XViewerDomRule(
-      kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+      kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
       pagePath = "/home",
       containerSelector = "[role=\"tablist\"]",
       itemSelector = "[role=\"tab\"]",
-      targetKind = XViewerDomTargetKind.TEXT,
-      targetValue = "A \"quoted\" tab",
+      targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
+      targetValue = "/i/lists/",
     )
 
     val json = JSONArray(domRulesJson(listOf(rule))).getJSONObject(0)
 
-    assertEquals("A \"quoted\" tab", json.getString("targetValue"))
+    assertEquals("/i/lists/", json.getString("targetValue"))
+    assertEquals("HREF_PATH_PREFIX", json.getString("targetKind"))
     assertEquals("/home", json.getString("pagePath"))
   }
 

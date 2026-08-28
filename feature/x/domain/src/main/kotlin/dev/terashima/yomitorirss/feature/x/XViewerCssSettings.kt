@@ -6,11 +6,12 @@ private fun initialCssSets(css: String, activeSetIndex: Int): List<String> =
   List(X_CSS_SET_COUNT) { index -> if (index == activeSetIndex) css else "" }
 
 enum class XViewerDomRuleKind {
-  KEEP_ONLY_MATCHING_ITEM,
+  KEEP_MATCHING_ITEMS,
 }
 
 enum class XViewerDomTargetKind {
   HREF,
+  HREF_PATH_PREFIX,
   ARIA_LABEL,
   TEXT,
 }
@@ -31,7 +32,7 @@ data class XViewerDomRule(
   }
 
   internal fun scopeKey(): String =
-    listOf(kind.name, pagePath, containerSelector, itemSelector).joinToString("\u0000")
+    listOf(pagePath, containerSelector, itemSelector).joinToString("\u0000")
 }
 
 data class XViewerCssSettings(
