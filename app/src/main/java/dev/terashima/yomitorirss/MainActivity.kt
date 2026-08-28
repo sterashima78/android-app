@@ -41,6 +41,9 @@ class MainActivity : ComponentActivity() {
   private val presentationDependencies by lazy(LazyThreadSafetyMode.NONE) {
     dependencyProvider.mainActivityPresentationDependencies
   }
+  private val lanWebDependencies by lazy(LazyThreadSafetyMode.NONE) {
+    dependencyProvider.mainActivityLanWebDependencies
+  }
   private val incomingIntentDependencies by lazy(LazyThreadSafetyMode.NONE) {
     dependencyProvider.incomingIntentDependencies
   }
@@ -134,7 +137,7 @@ class MainActivity : ComponentActivity() {
 
     LanWebServerDialogHost(
       visible = showWebServer,
-      controller = presentationDependencies.lanWebServerController,
+      controller = lanWebDependencies.controller,
       onDismiss = { showWebServer = false },
     )
   }
