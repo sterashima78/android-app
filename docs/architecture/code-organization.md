@@ -18,7 +18,7 @@ Gradle module は ownership、依存方向、build boundary を表す。file / c
 
 ## `:app` package layout
 
-`:app` の root package `dev.terashima.yomitorirss` は、Application / Activity entry point と application-scope composition facade を中心にする。
+executable `:app` の root package `dev.terashima.yomitorirss` は Application / Activity entry point を中心にする。application-scope graph の narrow facade は同じ package namespace を使う `:app:composition` に置き、Gradle module boundary で executable shell と concrete composition を分ける。
 
 app ownership のまま独立した実装責務を持つ code は、意味のある subpackage へ配置する。
 
@@ -29,11 +29,10 @@ dev.terashima.yomitorirss
 ├── security/     app lock、認証 session、secure-window transition
 ├── diagnostics/  startup crash、memory diagnostics、diagnostic presentation
 ├── platform/     Custom Tab、OS permission、platform dialog host
-│   └── authorization/  Gmail / Google Books の Activity Result boundary
 └── ui/           app-shell navigation / presentation
 ```
 
-`:app:composition` は application graph の facade と composition-only implementation を分ける。`AppContainer`、`AppRouteDependencies`、application database schema、WorkerFactory creation など app shell が参照する narrow API は root package に残す。一方、startup/background wiring のように独立した変更理由を持つ internal implementation は `composition/` 以下の責務 package に配置する。
+`:app:composition` は application graph の facade と composition-only implementation を分ける。`AppContainer`、`AppRouteDependencies`、application database schema、WorkerFactory creation など app shell が参照する narrow API は module root package に残す。一方、startup/background wiring のように独立した変更理由を持つ internal implementation は `composition/` 以下の責務 package に配置する。
 
 ```text
 dev.terashima.yomitorirss
@@ -41,14 +40,18 @@ dev.terashima.yomitorirss
 ├── composition/
 │   └── background/  startup observer / one-shot scheduler wiring
 └── platform/
-    └── authorization/  Activity Result boundary shared with app shell
+    └── authorization/  Gmail / Google Books の feature Data manager と Activity Result host を接続する bridge
 ```
+
+Activity Result launcher / callback host は executable `:app` が所有し、feature Data の authorization manager との接続に必要な dependency bridge は `:app:composition/platform/authorization` が所有する。
 
 package 分割は Gradle module の追加を意味しない。application graph の ownership と lifecycle が同じで、package で責務を局所化できる場合は `:app:composition` 内に留める。
 
 この一覧は closed set ではない。新しい package は独立した責務名を持つ場合に追加する。
 
-feature policy や provider technical implementation は app root package の整理対象にせず、owning feature / core module へ配置する。たとえば Workout の provider routing / prompt budget policy は `:feature:workout:data`、provider-neutral `ChatGptTextInference` は `:core:ai-cloud-openai` が所有し、`:app` は instance wiring だけを担当する。
+feature policy や provider technical implementation は app root package の整理対象にせず、owning feature / core module へ配置する。たとえば Workout の provider routing / prompt budget policy は `:feature:workout:data`、provider-neutral contract への ChatGPT adapter は `:core:ai-cloud-openai`、Summary / Knowledge 固有の provider failure mapping と prompt/cache policy は各 feature の Data layer が所有する。`:app:composition` はこれらの instance wiring のみを担当する。
+
+OpenAI provider client と process-wide HTTP transport の concrete construction は `:app:composition` の責務であり、executable `:app` は `:core:ai-cloud-openai` / `:core:network` へ直接依存しない。app-owned diagnostics が直接利用する `:core:ai-runtime` / `:core:background` のように、executable shell 自身に明確な利用理由がある core capability はこの限りではない。
 
 ## MainActivity
 
@@ -84,3 +87,4 @@ feature / core / app のいずれでも、変更時に既存 file の責務が�
 - [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
 - [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
+- [ADR-0203](../adr/0203-feature-owned-provider-policy-adapters.md)

@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-27
 - Refines: [ADR-0165](0165-provider-neutral-text-inference-contract.md), [ADR-0185](0185-normalize-chatgpt-provider-failures-in-core.md), [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md), [ADR-0194](0194-workout-ai-advisor.md), [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
+- Refined by: [ADR-0200](0200-app-composition-module-boundary.md), [ADR-0203](0203-feature-owned-provider-policy-adapters.md)
 
 ## Context
 
@@ -38,11 +39,15 @@ application composition は引き続き provider adapter の選択点であり�
 
 Summary / Knowledge の feature-specific cloud adapter は今回移動しない。これらは provider failure を feature-specific failure semantics へ変換するため ADR-0185 の app composition adapter 例外を維持する。
 
+Current refinement (2026-08-28): 上記 Summary / Knowledge の composition 例外は ADR-0203 により終了した。`ChatGptKnowledgeTextInference` は `:feature:knowledge:data`、`ChatGptSummaryCloudInference` は `:feature:summary:data` が所有し、`:app:composition` は instance wiring のみを行う。
+
 ### 3. Activity Result authorization boundary は `:app/platform/authorization` に置く
 
 Gmail / Google Books の authorization dependency、authorized account、resolution outcome は Android `Intent` / `PendingIntent` を含む application/platform boundary であるため Gradle ownership は `:app` のまま維持する。
 
 物理配置だけを `dev.terashima.yomitorirss.platform.authorization` に移し、root package には置かない。Route host と runtime composition はこの platform package の型を利用する。
+
+Current refinement (2026-08-28): ADR-0200 による composition module 分離後は、Activity Result launcher / host 自体は executable `:app` が所有し、feature Data authorization manager と接続する authorization dependency bridge は `:app:composition` の `platform.authorization` package が所有する。package 名は維持しつつ、Gradle ownership は役割ごとに分離する。
 
 ### 4. `NotifyingWebLibraryMutator` は再導入しない
 
@@ -51,6 +56,8 @@ ADR-0195 に従い、automatic backup scheduling は durable persistence commit 
 ### 5. 今回は新しい Gradle module を追加しない
 
 今回の変更は既存 ownership と source placement の不一致を修正するものに限定する。`:app:composition` や provider-specific feature module の新設は、依存境界として独立した価値を再評価する別 ADR とする。
+
+Current refinement (2026-08-28): application composition には独立した dependency/build boundary の価値があると ADR-0200 で判断し、`:app:composition` を追加した。一方、provider-specific feature adapter のためだけの追加 module は ADR-0203 により引き続き作らない。
 
 ## Consequences
 
@@ -74,7 +81,8 @@ ADR-0195 に従い、automatic backup scheduling は durable persistence commit 
 - app source に `AppWorkoutAiAdvisor.kt` が存在しないことを architecture test で固定する。
 - `ChatGptTextInference` が `:core:ai-cloud-openai` に存在し、app root に存在しないことを architecture test で固定する。
 - `:core:ai-cloud-openai` と `:feature:workout:data` が `:core:ai-inference` へ依存することを architecture test で固定する。
-- authorization boundary が `platform.authorization` に存在し、app root の旧 file が存在しないことを architecture test で固定する。
+- authorization dependency bridge が `:app:composition/platform/authorization` に存在し、executable `:app` は Activity Result host に限定されることを architecture test で固定する。
+- Summary / Knowledge の provider policy adapter が `:app:composition` に戻らないことを ADR-0203 の architecture verification で固定する。
 - existing Architecture / Test / Lint / public repository verification を実行する。
 
 ## Public repository review
@@ -90,3 +98,5 @@ ADR-0195 に従い、automatic backup scheduling は durable persistence commit 
 - [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md)
 - [ADR-0194](0194-workout-ai-advisor.md)
 - [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
+- [ADR-0200](0200-app-composition-module-boundary.md)
+- [ADR-0203](0203-feature-owned-provider-policy-adapters.md)

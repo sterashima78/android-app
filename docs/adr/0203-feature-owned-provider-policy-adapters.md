@@ -2,11 +2,11 @@
 
 - Status: Accepted
 - Date: 2026-08-28
-- Refines: [ADR-0185](0185-normalize-chatgpt-provider-failures-in-core.md), [ADR-0200](0200-app-composition-module-boundary.md)
+- Refines: [ADR-0185](0185-normalize-chatgpt-provider-failures-in-core.md), [ADR-0196](0196-app-boundary-ownership-cleanup.md), [ADR-0200](0200-app-composition-module-boundary.md)
 
 ## Context
 
-ADR-0185 では OpenAI/ChatGPT protocol failure の正規化を `:core:ai-cloud-openai` に置き、Summary / Knowledge 固有の failure mapping は app adapter に残した。その後 ADR-0200 で application composition を `:app:composition` に分離した結果、`ChatGptKnowledgeTextInference` と `ChatGptSummaryCloudInference` も composition module に移った。
+ADR-0185 では OpenAI/ChatGPT protocol failure の正規化を `:core:ai-cloud-openai` に置き、Summary / Knowledge 固有の failure mapping は app adapter に残した。その後 ADR-0196 はこの app composition adapter を明示的な例外として維持し、ADR-0200 で application composition を `:app:composition` に分離した結果、`ChatGptKnowledgeTextInference` と `ChatGptSummaryCloudInference` も composition module に移った。
 
 しかし両 adapter は単なる graph wiring ではない。Knowledge の prompt budget / cache variant / safe message / retry classification、Summary の URL failure message / feature failure taxonomy mapping など、feature semantics の変更理由を持つ。これを high fan-in composition boundary が所有すると `:app:composition` が第二の business-logic module になる。
 
@@ -21,7 +21,7 @@ provider protocol と feature policy の境界を次のように分ける。
 - feature Domain / UI は `:core:ai-cloud-openai` に依存しない。provider-specific dependency は infrastructure implementation である Data layer に限定する。
 - provider-specific adapter のためだけに追加 Gradle layer/module は作らない。既存 Data layer が infrastructure ownership と test boundary を十分表現できるためである。
 
-ADR-0185 の「Summary / Knowledge feature module が `core:ai-cloud-openai` へ直接依存しない」という verification は、本 ADR により「Summary / Knowledge の Domain / UI は直接依存せず、Data の provider adapter だけが依存できる」へ置き換える。
+ADR-0185 の「Summary / Knowledge feature module が `core:ai-cloud-openai` へ直接依存しない」という verification は、本 ADR により「Summary / Knowledge の Domain / UI は直接依存せず、Data の provider adapter だけが依存できる」へ置き換える。ADR-0196 の Summary / Knowledge app composition adapter 例外も本 ADR により終了する。
 
 ## Consequences
 

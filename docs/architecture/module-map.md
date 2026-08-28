@@ -25,7 +25,9 @@
 
 `:app` は Application / Activity entry point、navigation graph、app-shell UI、Android permission / Activity Result、外部 Intent 等の application/platform boundary を担当する。feature 固有 business logic、durable persistence implementation、feature 固有 UI state の恒久的な所有場所にはしない。`:app` は `:feature:*:data` へ直接依存せず、concrete feature implementation の application-scope graph は `:app:composition` を介して利用する。
 
-`:app:composition` は application-scope の高 fan-in composition boundary である。`AppContainer`、責務別 `App*RuntimeDependencies`、Route dependency composition、DB schema aggregation、WorkerFactory、application startup の background observer wiring、feature-specific provider adapter を所有し、必要な `:feature:*:domain` / `:feature:*:data` / `:feature:*:ui` と `:core:*` を接続する。これは新しい Domain ownership ではなく、`:app` の compile classpath から concrete Data implementation を除外するための build/dependency boundary である。
+`:app:composition` は application-scope の高 fan-in composition boundary である。`AppContainer`、責務別 `App*RuntimeDependencies`、Route dependency composition、DB schema aggregation、WorkerFactory、application startup の background observer wiring、provider client と feature-owned adapter の instance wiring を所有し、必要な `:feature:*:domain` / `:feature:*:data` / `:feature:*:ui` と `:core:*` を接続する。これは新しい Domain ownership ではなく、`:app` の compile classpath から concrete Data implementation を除外するための build/dependency boundary である。Summary / Knowledge の provider failure mapping、prompt budget、cache variant 等の feature policy adapter は ADR-0203 に従い owning feature Data が所有する。
+
+OpenAI provider client と process-wide HTTP transport の concrete construction は `:app:composition` に閉じるため、executable `:app` は `:core:ai-cloud-openai` / `:core:network` へ直接依存しない。一方、app-owned diagnostics が直接利用する `:core:ai-runtime` / `:core:background` 等、executable shell 自身に明確な利用理由がある core capability は直接利用できる。
 
 feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。複数 feature を利用する presentation でも、独立した変更理由と名前を持つ feature responsibility であれば owning feature が state/action mapping を所有する。`:app` に残す adapter は Android permission / Activity Result、外部 Intent、app-shell navigation など executable shell の責務に限定する。
 
@@ -43,7 +45,7 @@ root `NavController` は `MainActivity.setContent` の Compose root で app-lock
 
 `AppContainer` は `:app:composition` に置く application-scope graph の公開 facade とし、concrete feature graph の構築は責務別の `App*RuntimeDependencies` に分割する。これは repository lifetime を変えるための分割ではなく、composition boundary 内の可読性と変更局所性を保つための構造である。DI framework や route-level service locator は導入しない。
 
-Route composition も同じ原則で分割する。`AppRouteDependencies` は既存 caller contract を維持する薄い façade とし、content-facing な factory/capability construction は `AppContentRouteDependencies`、supporting/device-facing な construction は `AppSupportingRouteDependencies` が担当する。この grouping は Bounded Context を新設するものではなく、application composition 内部の責務分割である。
+Route composition も同じ原則で分割する。`AppRouteDependencies` は既存 caller contract を維持する薄い façade とし、content-facing な factory/capability construction は `AppContentRouteDependencies`、supporting/device-facing な construction は `AppSupportingRouteDependencies` が担当する。この grouping は Bounded Context を新設するものではなく、application composition 内部の責務分割である。startup observer / scheduler wiring は `composition.background.AppBackgroundRuntime` に分離する。
 
 ## Core capabilities
 
@@ -62,7 +64,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:core:ai-inference` は provider 非依存の単発テキスト推論 contract とモデル能力・進捗を所有する。`:core:ai-runtime` は Gemma / LiteRT-LM、tokenizer、Engine lifecycle、benchmark、Vision / Conversation などローカル実装固有の capability を所有し、`LocalAiTextInference` から共通 contract へ投影する。Summary / Knowledge / Library 等の prompt や生成ポリシーは owning feature に残す。
 
-`:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離し、feature は provider protocol を直接扱わない。Summary は provider 選択、要約 prompt、metadata policy を所有し、cloud adapter はそれらの task semantics を持たない。
+`:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離する。Summary / Knowledge の Domain / UI はこの module へ依存せず、provider-specific infrastructure adapter を実装する各 feature Data のみが必要に応じて依存する。Summary は provider 選択、要約 prompt、metadata policy を、Knowledge は prompt budget / cache variant / feature failure semantics をそれぞれ所有する。
 
 `:core:background` は background execution の共有技術 policy を所有する。端末内推論を使う task の global pause / charging resume は `LocalAiBackgroundExecutionPreferences`、cloud provider を使う task の global pause は `CloudAiBackgroundExecutionPreferences` に分離する。Cloud pause に charging resume semantics は持たせない。
 
@@ -138,7 +140,8 @@ Data             -> other feature Domain / Data / core   allowed when ownership 
 UI               -> other feature Domain / UI            allowed when presentation requires it
 app              -> feature Domain / UI                   allowed for executable shell
 app              -> feature Data                          forbidden
-app:composition  -> feature Domain / Data / UI            allowed for composition
+app              -> core ai-cloud-openai / network        forbidden; concrete integration belongs to composition
+app:composition  -> feature Domain / Data / UI / core    allowed for composition
 
 core   -> feature                               forbidden
 domain -> UI / Data                             forbidden
@@ -160,8 +163,8 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
 - shared dependency version を catalog へ追加・変更する: `gradle/libs.versions.toml` を正本とし、対象 module の alias 利用と regression test を同じ変更で更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
-- app composition adapter / app shell navigation の配置や feature UI ownership を変更する: ADR と本 `App` 節を同期し、app source layout の regression test を更新する。
-- `:app:composition` の公開 facade / concrete feature dependency を変更する: `:app` に `:feature:*:data` dependency が漏れないことと、application scope lifetime を維持することを確認する。
+- app composition / app shell navigation / provider adapter ownership を変更する: ADR と本 `App` 節を同期し、app source layout / dependency regression test を更新する。
+- `:app:composition` の公開 facade / concrete feature dependency を変更する: `:app` に `:feature:*:data` や composition-only provider/network dependency が漏れないことと、application scope lifetime を維持することを確認する。
 - shared core runtime の lifetime を変更する: application composition と background entry point の両方を確認し、ADR と regression test を更新する。
 
 ## Sources
@@ -193,5 +196,8 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0188](../adr/0188-integrated-feature-owns-cross-feature-presentation.md)
 - [ADR-0192](../adr/0192-settings-feature-owns-cross-feature-presentation.md)
+- [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
+- [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
 - [ADR-0202](../adr/0202-navigation-compose-root-routing.md)
+- [ADR-0203](../adr/0203-feature-owned-provider-policy-adapters.md)

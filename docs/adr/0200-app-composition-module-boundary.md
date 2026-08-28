@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-27
 - Refines: [ADR-0003](0003-multi-module-architecture.md), [ADR-0144](0144-composition-runtime-groups-and-module-map-verification.md), [ADR-0155](0155-application-scope-http-transport.md), [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md), [ADR-0196](0196-app-boundary-ownership-cleanup.md)
+- Refined by: [ADR-0203](0203-feature-owned-provider-policy-adapters.md)
 
 ## Context
 
@@ -24,9 +25,9 @@ ADR-0193 は小さな責務の分割だけを理由に Gradle module を増や�
 - application DB schema contribution の集約
 - application WorkerFactory
 - application startup で開始する background observer / scheduler wiring
-- ADR-0185 が認める feature-specific cloud provider composition adapter
+- provider client と feature-owned adapter の instance wiring
 
-この module は新しい Domain / Bounded Context を表さない。application scope の high fan-in graph を隔離する build boundary である。
+この module は新しい Domain / Bounded Context を表さない。application scope の high fan-in graph を隔離する build boundary である。feature-specific provider policy adapter の source ownership は ADR-0203 に従い owning feature Data とし、`:app:composition` は feature 固有 mapping / prompt / failure policy を実装しない。
 
 ### 2. `:app` から `:feature:*:data` への direct dependency を禁止する
 
@@ -43,6 +44,8 @@ ADR-0193 は小さな責務の分割だけを理由に Gradle module を増や�
 
 concrete feature Data implementation は `:app:composition` だけが application graph の構築目的で参照する。
 
+同じ理由で、OpenAI provider client と process-wide HTTP transport の concrete construction にだけ必要な `:core:ai-cloud-openai` / `:core:network` も executable `:app` から直接依存せず、`:app:composition` が所有する。app-owned diagnostics など executable shell 自身に明確な利用理由がある core capability はこの対象外とする。
+
 ### 3. composition module の公開面を限定する
 
 module 越しに公開するのは executable shell が必要とする facade/capability に限定する。
@@ -56,7 +59,7 @@ module 越しに公開するのは executable shell が必要とする facade/ca
 
 ### 4. Application startup wiring も composition boundary に移す
 
-backup persistence observer、backup preference observer、widget refresh observer、bookmark enrichment backfill scheduler の concrete construction は `:app:composition` の `AppBackgroundRuntime` に集約する。
+backup persistence observer、backup preference observer、widget refresh observer、bookmark enrichment backfill scheduler の concrete construction は `:app:composition` の `composition.background.AppBackgroundRuntime` に集約する。
 
 `YomitoriApplication` は main process 判定と app-owned diagnostics を保持し、application graph の background runtime は `AppContainer.startBackgroundRuntime()` から開始する。これにより `YomitoriApplication` 自身から feature Data import を除去する。
 
@@ -92,15 +95,17 @@ application User-Agent の version は `YomitoriApplication` が `BuildConfig.VE
 - `settings.gradle.kts` が `:app:composition` を含むこと。
 - `:app` の production dependency に `:feature:*:data` が存在しないこと。
 - `:app` production source が `feature.*.data.*` を import しないこと。
+- `:app` が `:core:ai-cloud-openai` / `:core:network` へ直接依存せず、`:app:composition` がそれらを所有すること。
 - `:app:composition` が concrete feature Data dependency を所有すること。
 - `AppContainer` / WorkerFactory / route composition の existing architecture regression test を新 module path に追従させること。
-- backup startup observer の wiring が `AppBackgroundRuntime` へ移っても ADR-0195 の persistence-triggered semantics を維持すること。
+- backup startup observer の wiring が `composition.background.AppBackgroundRuntime` へ移っても ADR-0195 の persistence-triggered semantics を維持すること。
+- Summary / Knowledge の provider-specific policy adapter が owning feature Data に残ることを ADR-0203 の verification で固定すること。
 - application User-Agent が引き続き `BuildConfig.VERSION_NAME` を正本にすること。
 - `verifyArchitecture`、unit tests、lint、public repository verifier を通すこと。
 
 ## Public repository review
 
-本変更は Gradle dependency、application composition source、architecture test、current architecture documentation、ADR のみを変更する。credential、OAuth token、signing key、account identifier、private endpoint、実ユーザー URL/title、prompt、diagnostic artifact を追加しない。
+本変更は Gradle dependency、application composition source、architecture test、current architecture documentation、ADR のみを変更する。公開対象外の認証情報、実ユーザー content、private endpoint、diagnostic artifact を追加しない。
 
 ## References
 
@@ -111,3 +116,4 @@ application User-Agent の version は `YomitoriApplication` が `BuildConfig.VE
 - [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md)
 - [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
 - [ADR-0196](0196-app-boundary-ownership-cleanup.md)
+- [ADR-0203](0203-feature-owned-provider-policy-adapters.md)
