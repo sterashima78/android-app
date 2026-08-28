@@ -392,8 +392,10 @@ gradle.projectsEvaluated {
   }
 
   val markdownDocuments = repositoryMarkdownDocuments(root)
+  val existingRetiredPaths = RETIRED_DOCUMENTATION_PATHS.keys
+    .filterTo(linkedSetOf()) { root.file(it).exists() }
   violations += documentationCompatibilityViolations(
-    existingPaths = markdownDocuments.keys,
+    existingPaths = existingRetiredPaths,
     markdownDocuments = markdownDocuments,
   )
 
