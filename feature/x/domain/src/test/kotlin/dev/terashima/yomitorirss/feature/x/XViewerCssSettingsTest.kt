@@ -58,4 +58,44 @@ class XViewerCssSettingsTest {
 
     assertEquals("", settings.cssForInjection())
   }
+
+  @Test
+  fun `JavaScript が有効なら保存したスクリプトを注入する`() {
+    val settings = XViewerCssSettings(
+      enabled = true,
+      css = "",
+      javaScriptEnabled = true,
+      javaScript = "document.body.dataset.test = 'enabled';",
+    )
+
+    assertEquals(
+      "document.body.dataset.test = 'enabled';",
+      settings.javaScriptForInjection(),
+    )
+  }
+
+  @Test
+  fun `JavaScript が無効なら注入文字列は空になる`() {
+    val settings = XViewerCssSettings(
+      enabled = true,
+      css = "",
+      javaScriptEnabled = false,
+      javaScript = "document.body.dataset.test = 'disabled';",
+    )
+
+    assertEquals("", settings.javaScriptForInjection())
+  }
+
+  @Test
+  fun `CSSセットを切り替えてもJavaScript設定を保持する`() {
+    val settings = XViewerCssSettings(
+      enabled = true,
+      css = "first",
+      javaScriptEnabled = true,
+      javaScript = "window.testValue = 1;",
+    ).selectSet(1)
+
+    assertEquals(true, settings.javaScriptEnabled)
+    assertEquals("window.testValue = 1;", settings.javaScript)
+  }
 }
