@@ -155,23 +155,29 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
 
           let containers;
           try {
-            containers = document.querySelectorAll(rule.containerSelector);
+            containers = Array.from(document.querySelectorAll(rule.containerSelector));
           } catch (_) {
             return;
           }
-          if (containers.length !== 1) return;
+          if (containers.length === 0) return;
 
-          const container = containers[0];
-          let items;
-          try {
-            items = Array.from(container.querySelectorAll(rule.itemSelector));
-          } catch (_) {
-            return;
+          const applicable = [];
+          for (const container of containers) {
+            let items;
+            try {
+              items = Array.from(container.querySelectorAll(rule.itemSelector));
+            } catch (_) {
+              continue;
+            }
+            if (items.length < 2) continue;
+
+            const targets = resolveTargets(items, rule);
+            if (!targets || targets.length === 0) continue;
+            applicable.push({ items, targets });
           }
-          if (items.length < 2) return;
+          if (applicable.length !== 1) return;
 
-          const targets = resolveTargets(items, rule);
-          if (!targets || targets.length === 0) return;
+          const { items, targets } = applicable[0];
           const targetSet = new Set(targets);
           items.forEach((item) => {
             if (targetSet.has(item)) {
@@ -276,6 +282,13 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
             (target) => items.filter((item) => matchesFingerprint(item, target)).length === 1
           ) || null;
         };
+        const selectorMatchesContainer = (selector, container) => {
+          try {
+            return Array.from(document.querySelectorAll(selector)).includes(container);
+          } catch (_) {
+            return false;
+          }
+        };
         const uniquelySelects = (selector, element) => {
           try {
             const matches = document.querySelectorAll(selector);
@@ -300,8 +313,11 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
           if (testId) candidates.push(tag + testId);
           if (role) candidates.push(tag + role);
 
-          return Array.from(new Set(candidates)).find(
+          const uniqueCandidates = Array.from(new Set(candidates));
+          return uniqueCandidates.find(
             (selector) => uniquelySelects(selector, container)
+          ) || uniqueCandidates.find(
+            (selector) => selectorMatchesContainer(selector, container)
           ) || null;
         };
         const directPresentationItemFor = (tab, container) => {
