@@ -13,6 +13,10 @@ private val MARKDOWN_LOCAL_ADR_LINK = Regex(
   """\]\((?:(?:\./)?|\.\./adr/)(\d{4}-[a-z0-9][a-z0-9-]*\.md)(?:#[^)]+)?\)""",
 )
 
+private val RETIRED_DOCUMENTATION_PATHS = mapOf(
+  "docs/domain-context-map.md" to "docs/architecture/context-map.md",
+)
+
 private fun featureModulesFromProjectPaths(projectPaths: Iterable<String>): Map<String, List<String>> {
   val modules = linkedMapOf<String, MutableSet<String>>()
   projectPaths
@@ -163,6 +167,27 @@ private fun adrIntegrityViolations(
   return violations.distinct().sorted()
 }
 
+private fun documentationCompatibilityViolations(
+  existingPaths: Set<String>,
+  markdownDocuments: Map<String, String>,
+): List<String> {
+  val violations = mutableListOf<String>()
+
+  RETIRED_DOCUMENTATION_PATHS.toSortedMap().forEach { (retiredPath, currentPath) ->
+    if (retiredPath in existingPaths) {
+      violations += "$retiredPath: retired architecture compatibility entry must stay removed"
+    }
+
+    markdownDocuments.toSortedMap().forEach { (path, text) ->
+      if (retiredPath in text) {
+        violations += "$path: retired architecture path '$retiredPath' must link directly to '$currentPath'"
+      }
+    }
+  }
+
+  return violations.distinct().sorted()
+}
+
 private fun verifyArchitectureMetadataFixtures() {
   val modulePaths = listOf(
     ":app",
@@ -277,6 +302,34 @@ private fun verifyArchitectureMetadataFixtures() {
   check(brokenReferences.any { "docs/spec.md: ADR-9998 does not exist" == it }) {
     "ADR current-document reference fixture failed: $brokenReferences"
   }
+
+  val cleanDocumentation = mapOf(
+    "docs/architecture/README.md" to "See docs/architecture/context-map.md",
+  )
+  check(
+    documentationCompatibilityViolations(
+      existingPaths = cleanDocumentation.keys,
+      markdownDocuments = cleanDocumentation,
+    ).isEmpty(),
+  ) { "Current documentation compatibility fixture rejected the current path" }
+
+  val restoredCompatibilityEntry = documentationCompatibilityViolations(
+    existingPaths = setOf("docs/domain-context-map.md"),
+    markdownDocuments = emptyMap(),
+  )
+  check(restoredCompatibilityEntry.any { "retired architecture compatibility entry" in it }) {
+    "Retired documentation path fixture failed: $restoredCompatibilityEntry"
+  }
+
+  val staleDocumentationReference = documentationCompatibilityViolations(
+    existingPaths = emptySet(),
+    markdownDocuments = mapOf(
+      "docs/README.md" to "See docs/domain-context-map.md",
+    ),
+  )
+  check(staleDocumentationReference.any { "must link directly" in it }) {
+    "Retired documentation reference fixture failed: $staleDocumentationReference"
+  }
 }
 
 private fun currentArchitectureDocuments(root: Project): Map<String, String> {
@@ -292,6 +345,18 @@ private fun currentArchitectureDocuments(root: Project): Map<String, String> {
   return files.associate { file ->
     file.relativeTo(root.rootDir).invariantSeparatorsPath to file.readText()
   }
+}
+
+private fun repositoryMarkdownDocuments(root: Project): Map<String, String> {
+  val docsRoot = root.file("docs")
+  if (!docsRoot.isDirectory) return emptyMap()
+
+  return docsRoot.walkTopDown()
+    .filter { it.isFile && it.extension == "md" }
+    .sortedBy { it.path }
+    .associate { file ->
+      file.relativeTo(root.rootDir).invariantSeparatorsPath to file.readText()
+    }
 }
 
 gradle.projectsEvaluated {
@@ -326,12 +391,18 @@ gradle.projectsEvaluated {
     violations += adrIntegrityViolations(adrDocuments, currentArchitectureDocuments(root))
   }
 
+  val markdownDocuments = repositoryMarkdownDocuments(root)
+  violations += documentationCompatibilityViolations(
+    existingPaths = markdownDocuments.keys,
+    markdownDocuments = markdownDocuments,
+  )
+
   if (violations.isNotEmpty()) {
     throw GradleException(
       buildString {
         appendLine("Architecture metadata verification failed (${violations.size} violation(s)):")
         violations.distinct().sorted().forEach { appendLine("- $it") }
-        append("Keep Gradle module declarations, module-map documentation, and ADR references consistent.")
+        append("Keep Gradle module declarations, architecture documentation, and ADR references consistent.")
       },
     )
   }
