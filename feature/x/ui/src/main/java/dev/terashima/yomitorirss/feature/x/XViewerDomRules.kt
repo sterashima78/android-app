@@ -217,7 +217,12 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
         if (!state || !state.selected) return null;
 
         const selected = state.selected;
-        const selectedTab = selected.closest('[role="tab"]');
+        const closestSelectedTab = selected.closest('[role="tab"]');
+        const descendantTabs = closestSelectedTab
+          ? []
+          : Array.from(selected.querySelectorAll('[role="tab"]'));
+        const selectedTab = closestSelectedTab ||
+          (descendantTabs.length === 1 ? descendantTabs[0] : null);
         const standardTabCount = $X_HOME_STANDARD_TIMELINE_TAB_COUNT;
         const pagePath = location.pathname || '/';
         let rule = null;
@@ -312,7 +317,7 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
             const containerSelector = containerSelectorFor(container);
             const directItems = Array.from(container.querySelectorAll(':scope > [role="presentation"]'));
             const timelinePresentationItems = directItems.filter(
-              (item) => item.querySelector('[role="tab"][aria-selected]')
+              (item) => item.querySelector('[role="tab"]')
             );
             const selectedPresentationItem = directPresentationItemFor(selectedTab, container);
 
@@ -327,11 +332,11 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
               itemSelector = ':scope > [role="presentation"]';
             } else {
               timelineItems = Array.from(
-                container.querySelectorAll('[role="tab"][aria-selected]')
+                container.querySelectorAll('[role="tab"]')
               );
               items = timelineItems;
               selectedItem = selectedTab;
-              itemSelector = '[role="tab"][aria-selected]';
+              itemSelector = '[role="tab"]';
             }
 
             const selectedIndex = timelineItems.indexOf(selectedItem);
