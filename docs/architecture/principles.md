@@ -151,11 +151,11 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 機械的に検査できる規則はレビューだけに依存しない。
 
 - Gradle dependency / source ownership: `verifyArchitecture`
+- module map / ADR identifier/link integrity: `gradle/architecture-metadata.gradle.kts`
 - durable table ownership / created-table registration / app presentation composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
 - durable table manifest: `config/architecture/table-ownership.tsv`
 - transitional foreign access: `config/architecture/foreign-table-access-allowlist.tsv`
 - Android 直生成 entry point の framework provider exception: `config/architecture/framework-provider-lookups.tsv`
-- ADR identifier/link integrity: `scripts/verify_adr_integrity.py`
 - public repository の高確度な credential / private artifact: `scripts/verify_public_repository.py`
 - Android backup の SharedPreferences allowlist、機密設定の除外、cloud-backup / device-transfer の同一性: `AndroidBackupRulesArchitectureTest`
 
@@ -207,3 +207,4 @@ App composition / presentation の source ownership と active-destination ViewM
 - [ADR-0202](../adr/0202-navigation-compose-root-routing.md)
 - [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
 - [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
+- [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
