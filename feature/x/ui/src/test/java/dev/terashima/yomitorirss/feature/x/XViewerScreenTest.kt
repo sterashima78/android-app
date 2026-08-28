@@ -148,53 +148,58 @@ class XViewerScreenTest {
   }
 
   @Test
-  fun `X のリスト path を判定する`() {
-    assertTrue(isXListPath("/i/lists/123456"))
-    assertTrue(isXListPath("/i/lists/example"))
-    assertFalse(isXListPath("/home"))
-    assertFalse(isXListPath("/i/lists"))
+  fun `ホーム先頭2タブは標準タイムラインとして扱う`() {
+    assertFalse(isXCustomTimelineTabIndex(0))
+    assertFalse(isXCustomTimelineTabIndex(1))
+    assertTrue(isXCustomTimelineTabIndex(2))
+    assertTrue(isXCustomTimelineTabIndex(4))
   }
 
   @Test
-  fun `リストタブ群表示ルールをJavaScript結果から復号する`() {
+  fun `固定タイムライン群表示ルールをJavaScript結果から復号する`() {
+    val fingerprints =
+      "[{\"kind\":\"TEXT\",\"value\":\"a\"},{\"kind\":\"TEXT\",\"value\":\"b\"},{\"kind\":\"TEXT\",\"value\":\"c\"}]"
     val expected = XViewerDomRule(
       kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
       pagePath = "/home",
-      containerSelector = "div[role=\"tablist\"]",
-      itemSelector = "[role=\"tab\"]",
-      targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
-      targetValue = "/i/lists/",
+      containerSelector = "[data-testid=\"primaryColumn\"] [role=\"tablist\"]",
+      itemSelector = "[role=\"tab\"][aria-selected]",
+      targetKind = XViewerDomTargetKind.FINGERPRINT_SET,
+      targetValue = fingerprints,
     )
     val json =
       "{\"kind\":\"KEEP_MATCHING_ITEMS\",\"pagePath\":\"/home\"," +
-        "\"containerSelector\":\"div[role=\\\"tablist\\\"]\"," +
-        "\"itemSelector\":\"[role=\\\"tab\\\"]\"," +
-        "\"targetKind\":\"HREF_PATH_PREFIX\",\"targetValue\":\"/i/lists/\"}"
+        "\"containerSelector\":\"[data-testid=\\\"primaryColumn\\\"] [role=\\\"tablist\\\"]\"," +
+        "\"itemSelector\":\"[role=\\\"tab\\\"][aria-selected]\"," +
+        "\"targetKind\":\"FINGERPRINT_SET\",\"targetValue\":" +
+        "\"[{\\\"kind\\\":\\\"TEXT\\\",\\\"value\\\":\\\"a\\\"},{\\\"kind\\\":\\\"TEXT\\\",\\\"value\\\":\\\"b\\\"},{\\\"kind\\\":\\\"TEXT\\\",\\\"value\\\":\\\"c\\\"}]\"}"
     val encoded = URLEncoder.encode(json, StandardCharsets.UTF_8.toString())
 
     assertEquals(expected, decodeElementPickerDomRuleResult("\"$encoded\""))
   }
 
   @Test
-  fun `不正なリストタブ群表示ルールは無視する`() {
+  fun `不正な固定タイムライン群表示ルールは無視する`() {
     assertNull(decodeElementPickerDomRuleResult("\"not-json\""))
   }
 
   @Test
-  fun `DOM表示ルールを安全なJSONに変換する`() {
+  fun `DOM表示ルールのfingerprint集合を安全なJSONに変換する`() {
+    val fingerprints =
+      "[{\"kind\":\"TEXT\",\"value\":\"A \\\"quoted\\\" tab\"}]"
     val rule = XViewerDomRule(
       kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
       pagePath = "/home",
-      containerSelector = "[role=\"tablist\"]",
-      itemSelector = "[role=\"tab\"]",
-      targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
-      targetValue = "/i/lists/",
+      containerSelector = "[data-testid=\"primaryColumn\"] [role=\"tablist\"]",
+      itemSelector = ":scope > [role=\"presentation\"]",
+      targetKind = XViewerDomTargetKind.FINGERPRINT_SET,
+      targetValue = fingerprints,
     )
 
     val json = JSONArray(domRulesJson(listOf(rule))).getJSONObject(0)
 
-    assertEquals("/i/lists/", json.getString("targetValue"))
-    assertEquals("HREF_PATH_PREFIX", json.getString("targetKind"))
+    assertEquals(fingerprints, json.getString("targetValue"))
+    assertEquals("FINGERPRINT_SET", json.getString("targetKind"))
     assertEquals("/home", json.getString("pagePath"))
   }
 

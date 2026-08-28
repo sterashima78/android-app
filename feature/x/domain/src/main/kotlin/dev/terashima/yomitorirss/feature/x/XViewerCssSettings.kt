@@ -11,9 +11,9 @@ enum class XViewerDomRuleKind {
 
 enum class XViewerDomTargetKind {
   HREF,
-  HREF_PATH_PREFIX,
   ARIA_LABEL,
   TEXT,
+  FINGERPRINT_SET,
 }
 
 data class XViewerDomRule(

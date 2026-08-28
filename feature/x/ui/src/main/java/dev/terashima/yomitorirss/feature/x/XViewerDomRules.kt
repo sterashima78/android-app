@@ -10,9 +10,10 @@ private const val X_ELEMENT_PICKER_STATE_KEY = "__yomitoriElementPicker"
 private const val X_DOM_RULE_STATE_KEY = "__yomitoriDomRules"
 private const val X_DOM_RULE_STYLE_ID = "yomitori-x-dom-rule-style"
 private const val X_DOM_RULE_HIDDEN_ATTRIBUTE = "data-yomitori-dom-rule-hidden"
-internal const val X_LIST_PATH_PREFIX = "/i/lists/"
+internal const val X_HOME_STANDARD_TIMELINE_TAB_COUNT = 2
 
-internal fun isXListPath(path: String): Boolean = path.startsWith(X_LIST_PATH_PREFIX)
+internal fun isXCustomTimelineTabIndex(index: Int): Boolean =
+  index >= X_HOME_STANDARD_TIMELINE_TAB_COUNT
 
 internal fun decodeElementPickerDomRuleResult(result: String?): XViewerDomRule? {
   if (result == null || result == "null" || result == "undefined") return null
@@ -97,19 +98,55 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
             return '';
           }
         };
-        const matchesTarget = (item, rule) => {
-          switch (rule.targetKind) {
+        const ariaLabelFor = (item) => {
+          const direct = item.getAttribute('aria-label') || '';
+          if (direct) return direct;
+          return item.querySelector('[role="tab"][aria-label]')?.getAttribute('aria-label') || '';
+        };
+        const matchesFingerprint = (item, target) => {
+          switch (target.kind) {
+            case 'HREF_PATH':
+              return hrefPathFor(item) === target.value;
             case 'HREF':
-              return hrefFor(item) === rule.targetValue;
-            case 'HREF_PATH_PREFIX':
-              return hrefPathFor(item).startsWith(rule.targetValue);
+              return hrefFor(item) === target.value;
             case 'ARIA_LABEL':
-              return (item.getAttribute('aria-label') || '') === rule.targetValue;
+              return ariaLabelFor(item) === target.value;
             case 'TEXT':
-              return normalizeText(item.textContent) === rule.targetValue;
+              return normalizeText(item.textContent) === target.value;
             default:
               return false;
           }
+        };
+        const resolveFingerprintSet = (items, rule) => {
+          let fingerprints;
+          try {
+            fingerprints = JSON.parse(rule.targetValue);
+          } catch (_) {
+            return null;
+          }
+          if (!Array.isArray(fingerprints) || fingerprints.length === 0) return null;
+
+          const targets = [];
+          const seen = new Set();
+          for (const fingerprint of fingerprints) {
+            if (!fingerprint || typeof fingerprint.kind !== 'string' ||
+                typeof fingerprint.value !== 'string' || !fingerprint.value) {
+              return null;
+            }
+            const matches = items.filter((item) => matchesFingerprint(item, fingerprint));
+            if (matches.length !== 1 || seen.has(matches[0])) return null;
+            seen.add(matches[0]);
+            targets.push(matches[0]);
+          }
+          return targets;
+        };
+        const resolveTargets = (items, rule) => {
+          if (rule.targetKind === 'FINGERPRINT_SET') {
+            return resolveFingerprintSet(items, rule);
+          }
+          const target = { kind: rule.targetKind, value: rule.targetValue };
+          const matches = items.filter((item) => matchesFingerprint(item, target));
+          return matches.length > 0 ? matches : null;
         };
 
         const applyRule = (rule) => {
@@ -122,26 +159,26 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
           } catch (_) {
             return;
           }
+          if (containers.length !== 1) return;
 
-          containers.forEach((container) => {
-            let items;
-            try {
-              items = Array.from(container.querySelectorAll(rule.itemSelector));
-            } catch (_) {
-              return;
+          const container = containers[0];
+          let items;
+          try {
+            items = Array.from(container.querySelectorAll(rule.itemSelector));
+          } catch (_) {
+            return;
+          }
+          if (items.length < 2) return;
+
+          const targets = resolveTargets(items, rule);
+          if (!targets || targets.length === 0) return;
+          const targetSet = new Set(targets);
+          items.forEach((item) => {
+            if (targetSet.has(item)) {
+              item.removeAttribute(hiddenAttribute);
+            } else {
+              item.setAttribute(hiddenAttribute, 'true');
             }
-            if (items.length < 2) return;
-
-            const targets = items.filter((item) => matchesTarget(item, rule));
-            if (targets.length === 0) return;
-            const targetSet = new Set(targets);
-            items.forEach((item) => {
-              if (targetSet.has(item)) {
-                item.removeAttribute(hiddenAttribute);
-              } else {
-                item.setAttribute(hiddenAttribute, 'true');
-              }
-            });
           });
         };
 
@@ -180,8 +217,9 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
         if (!state || !state.selected) return null;
 
         const selected = state.selected;
-        const item = selected.closest('[role="tab"]');
-        const listPathPrefix = '$X_LIST_PATH_PREFIX';
+        const selectedTab = selected.closest('[role="tab"]');
+        const standardTabCount = $X_HOME_STANDARD_TIMELINE_TAB_COUNT;
+        const pagePath = location.pathname || '/';
         let rule = null;
 
         const escapeAttributeValue = (value) => String(value)
@@ -192,6 +230,7 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
           if (!value) return null;
           return '[' + name + '="' + escapeAttributeValue(value) + '"]';
         };
+        const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
         const hrefFor = (candidate) => {
           if (candidate.matches('a[href]')) return candidate.getAttribute('href') || '';
           return candidate.querySelector('a[href]')?.getAttribute('href') || '';
@@ -205,35 +244,112 @@ internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?
             return '';
           }
         };
+        const ariaLabelFor = (candidate) => {
+          const direct = candidate.getAttribute('aria-label') || '';
+          if (direct) return direct;
+          return candidate.querySelector('[role="tab"][aria-label]')?.getAttribute('aria-label') || '';
+        };
+        const matchesFingerprint = (candidate, target) => {
+          if (target.kind === 'HREF_PATH') return hrefPathFor(candidate) === target.value;
+          if (target.kind === 'HREF') return hrefFor(candidate) === target.value;
+          if (target.kind === 'ARIA_LABEL') return ariaLabelFor(candidate) === target.value;
+          if (target.kind === 'TEXT') return normalizeText(candidate.textContent) === target.value;
+          return false;
+        };
+        const uniqueFingerprintFor = (candidate, items) => {
+          const candidates = [];
+          const hrefPath = hrefPathFor(candidate);
+          if (hrefPath) candidates.push({ kind: 'HREF_PATH', value: hrefPath });
+          const href = hrefFor(candidate);
+          if (href) candidates.push({ kind: 'HREF', value: href });
+          const ariaLabel = ariaLabelFor(candidate);
+          if (ariaLabel) candidates.push({ kind: 'ARIA_LABEL', value: ariaLabel });
+          const text = normalizeText(candidate.textContent);
+          if (text) candidates.push({ kind: 'TEXT', value: text });
 
-        if (item && hrefPathFor(item).startsWith(listPathPrefix)) {
-          const container = item.closest('[role="tablist"], [data-testid="ScrollSnap-List"]');
+          return candidates.find(
+            (target) => items.filter((item) => matchesFingerprint(item, target)).length === 1
+          ) || null;
+        };
+        const uniquelySelects = (selector, element) => {
+          try {
+            const matches = document.querySelectorAll(selector);
+            return matches.length === 1 && matches[0] === element;
+          } catch (_) {
+            return false;
+          }
+        };
+        const containerSelectorFor = (container) => {
+          const candidates = [];
+          if (container.matches('[data-testid="ScrollSnap-List"]')) {
+            candidates.push('[data-testid="primaryColumn"] [data-testid="ScrollSnap-List"]');
+          }
+          if (container.matches('[role="tablist"]')) {
+            candidates.push('[data-testid="primaryColumn"] [role="tablist"]');
+          }
+
+          const tag = container.tagName.toLowerCase();
+          const testId = attributeSelector(container, 'data-testid');
+          const role = attributeSelector(container, 'role');
+          if (testId && role) candidates.push(tag + testId + role);
+          if (testId) candidates.push(tag + testId);
+          if (role) candidates.push(tag + role);
+
+          return Array.from(new Set(candidates)).find(
+            (selector) => uniquelySelects(selector, container)
+          ) || null;
+        };
+        const directPresentationItemFor = (tab, container) => {
+          let current = tab;
+          while (current && current.parentElement !== container) current = current.parentElement;
+          if (!current || current.parentElement !== container) return null;
+          return current.matches('[role="presentation"]') ? current : null;
+        };
+
+        if (selectedTab && (pagePath === '/home' || pagePath === '/')) {
+          const container = selectedTab.closest('[data-testid="ScrollSnap-List"], [role="tablist"]');
           if (container) {
-            const tag = container.tagName.toLowerCase();
-            const testId = attributeSelector(container, 'data-testid');
-            const role = attributeSelector(container, 'role');
-            const containerSelector = testId && role
-              ? tag + testId + role
-              : testId
-                ? tag + testId
-                : role
-                  ? tag + role
-                  : null;
-            const itemSelector = '[role="tab"]';
-            const items = Array.from(container.querySelectorAll(itemSelector));
-            const listItems = items.filter(
-              (candidate) => hrefPathFor(candidate).startsWith(listPathPrefix)
+            const containerSelector = containerSelectorFor(container);
+            const directItems = Array.from(container.querySelectorAll(':scope > [role="presentation"]'));
+            const timelinePresentationItems = directItems.filter(
+              (item) => item.querySelector('[role="tab"][aria-selected]')
             );
+            const selectedPresentationItem = directPresentationItemFor(selectedTab, container);
 
-            if (containerSelector && items.length >= 2 && listItems.includes(item)) {
-              rule = {
-                kind: 'KEEP_MATCHING_ITEMS',
-                pagePath: location.pathname || '/',
-                containerSelector,
-                itemSelector,
-                targetKind: 'HREF_PATH_PREFIX',
-                targetValue: listPathPrefix,
-              };
+            let items;
+            let timelineItems;
+            let selectedItem;
+            let itemSelector;
+            if (selectedPresentationItem && timelinePresentationItems.length > standardTabCount) {
+              items = directItems;
+              timelineItems = timelinePresentationItems;
+              selectedItem = selectedPresentationItem;
+              itemSelector = ':scope > [role="presentation"]';
+            } else {
+              timelineItems = Array.from(
+                container.querySelectorAll('[role="tab"][aria-selected]')
+              );
+              items = timelineItems;
+              selectedItem = selectedTab;
+              itemSelector = '[role="tab"][aria-selected]';
+            }
+
+            const selectedIndex = timelineItems.indexOf(selectedItem);
+            if (containerSelector && selectedIndex >= standardTabCount) {
+              const keptItems = timelineItems.slice(standardTabCount);
+              const fingerprints = keptItems.map(
+                (item) => uniqueFingerprintFor(item, items)
+              );
+              if (keptItems.length > 0 && fingerprints.every(Boolean)) {
+                rule = {
+                  kind: 'KEEP_MATCHING_ITEMS',
+                  pagePath,
+                  containerSelector,
+                  itemSelector,
+                  targetKind: 'FINGERPRINT_SET',
+                  targetValue: JSON.stringify(fingerprints),
+                };
+              }
             }
           }
         }

@@ -38,7 +38,7 @@ class XViewerCssSettingsTest {
       .copyCurrentCssTo(2)
 
     assertEquals(0, settings.activeSetIndex)
-    assertEquals("source", settings.css)
+    assertEquals("source", settings.cssAt(0))
     assertEquals("source", settings.cssAt(2))
   }
 
@@ -62,8 +62,8 @@ class XViewerCssSettingsTest {
 
   @Test
   fun `同じページとコンテナの表示ルールは新しい選択で置き換える`() {
-    val first = keepMatchingRule("/i/lists/")
-    val second = keepMatchingRule("/communities/")
+    val first = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")
+    val second = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"b\"}]")
 
     val settings = XViewerCssSettings(enabled = true, css = "")
       .upsertDomRule(first)
@@ -74,8 +74,9 @@ class XViewerCssSettingsTest {
 
   @Test
   fun `別ページの表示ルールは併存できる`() {
-    val homeRule = keepMatchingRule("/i/lists/")
-    val exploreRule = keepMatchingRule("/communities/").copy(pagePath = "/explore")
+    val homeRule = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")
+    val exploreRule = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"b\"}]")
+      .copy(pagePath = "/explore")
 
     val settings = XViewerCssSettings(enabled = true, css = "")
       .upsertDomRule(homeRule)
@@ -89,7 +90,7 @@ class XViewerCssSettingsTest {
     val settings = XViewerCssSettings(
       enabled = false,
       css = "",
-      domRules = listOf(keepMatchingRule("/i/lists/")),
+      domRules = listOf(keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")),
     )
 
     assertTrue(settings.domRulesForInjection().isEmpty())
@@ -100,7 +101,7 @@ class XViewerCssSettingsTest {
     val settings = XViewerCssSettings(
       enabled = true,
       css = "",
-      domRules = listOf(keepMatchingRule("/i/lists/")),
+      domRules = listOf(keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")),
     )
 
     assertTrue(settings.clearDomRules().domRules.isEmpty())
@@ -109,9 +110,9 @@ class XViewerCssSettingsTest {
   private fun keepMatchingRule(target: String) = XViewerDomRule(
     kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
     pagePath = "/home",
-    containerSelector = "[role=\"tablist\"]",
-    itemSelector = "[role=\"tab\"]",
-    targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
+    containerSelector = "[data-testid=\"primaryColumn\"] [role=\"tablist\"]",
+    itemSelector = "[role=\"tab\"][aria-selected]",
+    targetKind = XViewerDomTargetKind.FINGERPRINT_SET,
     targetValue = target,
   )
 }
