@@ -76,7 +76,7 @@ internal object StartupCrashStore {
 
       val memoryExit = unseen
         .filter { isAppOwnedProcessName(application.packageName, it.processName) }
-        .filter { isMemoryRelatedProcessExit(it.reason, it.description) }
+        .filter { shouldReportMemoryProcessExit(it.reason, it.description, it.importance) }
         .maxByOrNull { it.timestamp }
         ?: return@runCatching
       val processName = memoryExit.processName ?: "unknown"
@@ -133,3 +133,14 @@ internal fun isAppOwnedProcessName(packageName: String, processName: String?): B
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
     description?.contains("MemoryLimiter", ignoreCase = true) == true
+
+internal fun shouldReportMemoryProcessExit(
+  reason: Int,
+  description: String?,
+  importance: Int,
+): Boolean =
+  isMemoryRelatedProcessExit(reason, description) &&
+    !(
+      reason == ApplicationExitInfo.REASON_LOW_MEMORY &&
+        importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED
+    )
