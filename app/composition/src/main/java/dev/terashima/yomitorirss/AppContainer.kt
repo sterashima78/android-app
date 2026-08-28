@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.composition.ai.AppAiCoreRuntimeDependencies
 import dev.terashima.yomitorirss.composition.background.AppBackgroundRuntime
 import dev.terashima.yomitorirss.composition.content.AppContentRuntimeDependencies
 import dev.terashima.yomitorirss.composition.crossfeature.AppCrossFeatureRuntimeDependencies
+import dev.terashima.yomitorirss.composition.entry.SharedContentEntryCapability
 import dev.terashima.yomitorirss.composition.health.AppHealthRuntimeDependencies
 import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeRuntimeDependencies
 import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeTaskRuntimeDependencies
@@ -16,7 +17,6 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
-import dev.terashima.yomitorirss.feature.library.LibraryBook
 
 /**
  * Application-scope composition facade.
@@ -184,8 +184,14 @@ class AppContainer(
   val knowledgePageEditor get() = knowledgeRuntime.knowledgePageEditor
   val aiTaskQueueRepository get() = crossFeatureRuntime.aiTaskQueueRepository
 
-  suspend fun addSharedWebBook(url: String, title: String?): LibraryBook =
-    libraryRuntime.webLibraryMutator.addWebBook(url, title)
+  val sharedContentEntryCapability: SharedContentEntryCapability by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    SharedContentEntryCapability(
+      saveSharedBookmark = contentRuntime.saveSharedBookmarkUseCase,
+      addSharedWebBook = libraryRuntime.webLibraryMutator::addWebBook,
+    )
+  }
 
   fun startBackgroundRuntime() {
     backgroundRuntime.start()
