@@ -1,6 +1,7 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.composition.route
 
 import android.app.Application
+import dev.terashima.yomitorirss.AppContainer
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.asset.AssetViewModel

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.composition.library
 
 import android.app.Activity
 import android.app.Application
@@ -10,12 +10,6 @@ import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.bookreader.data.DefaultBookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.data.SharedPreferencesReadingPositionStore
-import dev.terashima.yomitorirss.feature.health.data.HealthConnectHealthRepository
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildScheduler
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
-import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeExecutionPreferences
-import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
@@ -50,42 +44,16 @@ import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationDepe
 import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationOutcome
 import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizedAccount
 
-/**
- * Application-scope feature runtimes consumed by more than one composition adapter.
- *
- * AppContainer owns these instances so routes and background entry points do not construct
- * parallel repository/scheduler graphs for the same durable feature state.
- */
-internal class AppFeatureRuntimeDependencies(
+/** Library repositories, schedulers, authorization bridge, and reader dependencies at application scope. */
+internal class AppLibraryRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
-  private val httpClient: HttpClient,
-  private val textInferenceProvider: () -> AiTextInference,
-  private val structuredTextInferenceProvider: () -> AiStructuredTextInference,
-  private val resumedActivityProvider: () -> Activity?,
+  httpClient: HttpClient,
+  textInferenceProvider: () -> AiTextInference,
+  structuredTextInferenceProvider: () -> AiStructuredTextInference,
+  resumedActivityProvider: () -> Activity?,
 ) {
-  val healthRepository: HealthConnectHealthRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    HealthConnectHealthRepository(application)
-  }
-
-  val knowledgeExecutionSettings: KnowledgeExecutionSettings by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    KnowledgeExecutionPreferences(application) { knowledgeBuildRuntime.onProviderChanged() }
-  }
-
-  private val knowledgeBuildRuntime: WorkManagerKnowledgeBuildTaskController by lazy(
-    LazyThreadSafetyMode.SYNCHRONIZED,
-  ) {
-    WorkManagerKnowledgeBuildTaskController(application, knowledgeExecutionSettings)
-  }
-
-  val knowledgeBuildTaskController: KnowledgeBuildTaskController
-    get() = knowledgeBuildRuntime
-
-  val knowledgeBuildScheduler: KnowledgeBuildScheduler = KnowledgeBuildScheduler {
-    knowledgeBuildRuntime.enqueue()
-  }
-
-  val library: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val runtime: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val smbRepository = CleaningSmbLibraryRepository(application, database)
     val catalogRepository = SmbMetadataAwareLibraryRepository(database)
     val organizationRepository = DefaultLibraryOrganizationRepository(database)

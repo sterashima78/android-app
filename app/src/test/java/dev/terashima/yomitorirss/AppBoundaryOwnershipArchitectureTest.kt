@@ -19,7 +19,7 @@ class AppBoundaryOwnershipArchitectureTest {
     val advisorPath = "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutAiAdvisor.kt"
     val advisor = source(advisorPath)
     val workoutBuild = source("feature/workout/data/build.gradle.kts")
-    val routeComposition = source("$compositionSourceRoot/AppSupportingRouteDependencies.kt")
+    val routeComposition = source("$compositionSourceRoot/composition/route/AppSupportingRouteDependencies.kt")
 
     assertTrue("Workout data must own the AI advisor", File(repositoryRoot, advisorPath).isFile)
     assertFalse(
@@ -36,7 +36,7 @@ class AppBoundaryOwnershipArchitectureTest {
     val adapterPath = "core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptTextInference.kt"
     val adapter = source(adapterPath)
     val cloudBuild = source("core/ai-cloud-openai/build.gradle.kts")
-    val aiComposition = source("$compositionSourceRoot/AppAiCoreRuntimeDependencies.kt")
+    val aiComposition = source("$compositionSourceRoot/composition/ai/AppAiCoreRuntimeDependencies.kt")
 
     assertTrue("OpenAI core must own ChatGptTextInference", File(repositoryRoot, adapterPath).isFile)
     assertFalse(

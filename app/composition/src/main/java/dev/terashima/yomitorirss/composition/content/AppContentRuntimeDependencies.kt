@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.composition.content
 
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier

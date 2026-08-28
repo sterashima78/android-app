@@ -2,7 +2,15 @@ package dev.terashima.yomitorirss
 
 import android.app.Activity
 import android.app.Application
+import dev.terashima.yomitorirss.composition.ai.AppAiCoreRuntimeDependencies
 import dev.terashima.yomitorirss.composition.background.AppBackgroundRuntime
+import dev.terashima.yomitorirss.composition.content.AppContentRuntimeDependencies
+import dev.terashima.yomitorirss.composition.crossfeature.AppCrossFeatureRuntimeDependencies
+import dev.terashima.yomitorirss.composition.health.AppHealthRuntimeDependencies
+import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeRuntimeDependencies
+import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeTaskRuntimeDependencies
+import dev.terashima.yomitorirss.composition.library.AppLibraryRuntimeDependencies
+import dev.terashima.yomitorirss.composition.supporting.AppSupportingRuntimeDependencies
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
@@ -37,19 +45,6 @@ class AppContainer(
     DatabaseConnection(database, persistenceChanges)
   }
 
-  private val featureRuntimeDependencies: AppFeatureRuntimeDependencies by lazy(
-    LazyThreadSafetyMode.SYNCHRONIZED,
-  ) {
-    AppFeatureRuntimeDependencies(
-      application = application,
-      database = databaseConnection,
-      httpClient = httpClient,
-      textInferenceProvider = { aiCoreRuntime.textInference },
-      structuredTextInferenceProvider = { aiCoreRuntime.structuredTextInference },
-      resumedActivityProvider = resumedActivityProvider,
-    )
-  }
-
   private val aiCoreRuntime: AppAiCoreRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppAiCoreRuntimeDependencies(application, database, httpClient)
   }
@@ -77,6 +72,29 @@ class AppContainer(
     )
   }
 
+  private val healthRuntime: AppHealthRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AppHealthRuntimeDependencies(application)
+  }
+
+  private val knowledgeTaskRuntime: AppKnowledgeTaskRuntimeDependencies by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    AppKnowledgeTaskRuntimeDependencies(application)
+  }
+
+  private val libraryRuntimeDependencies: AppLibraryRuntimeDependencies by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    AppLibraryRuntimeDependencies(
+      application = application,
+      database = databaseConnection,
+      httpClient = httpClient,
+      textInferenceProvider = { aiCoreRuntime.textInference },
+      structuredTextInferenceProvider = { aiCoreRuntime.structuredTextInference },
+      resumedActivityProvider = resumedActivityProvider,
+    )
+  }
+
   private val knowledgeRuntime: AppKnowledgeRuntimeDependencies by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {
@@ -87,7 +105,7 @@ class AppContainer(
       summaries = aiCoreRuntime.summaryRepository,
       localTextInference = aiCoreRuntime.textInference,
       cloudTextInference = aiCoreRuntime.knowledgeCloudTextInference,
-      executionSettings = featureRuntimeDependencies.knowledgeExecutionSettings,
+      executionSettings = knowledgeTaskRuntime.knowledgeExecutionSettings,
     )
   }
 
@@ -106,8 +124,8 @@ class AppContainer(
       summaryRepository = aiCoreRuntime.summaryRepository,
       taskRepository = supportingRuntime.taskRepository,
       libraryRuntime = libraryRuntime,
-      knowledgeBuildTaskController = featureRuntimeDependencies.knowledgeBuildTaskController,
-      knowledgeExecutionSettings = featureRuntimeDependencies.knowledgeExecutionSettings,
+      knowledgeBuildTaskController = knowledgeTaskRuntime.knowledgeBuildTaskController,
+      knowledgeExecutionSettings = knowledgeTaskRuntime.knowledgeExecutionSettings,
     )
   }
 
@@ -115,12 +133,12 @@ class AppContainer(
     AppBackgroundRuntime(application)
   }
 
-  internal val healthRepository get() = featureRuntimeDependencies.healthRepository
-  internal val libraryRuntime get() = featureRuntimeDependencies.library
+  internal val healthRepository get() = healthRuntime.healthRepository
+  internal val libraryRuntime get() = libraryRuntimeDependencies.runtime
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
-  internal val knowledgeBuildScheduler get() = featureRuntimeDependencies.knowledgeBuildScheduler
+  internal val knowledgeBuildScheduler get() = knowledgeTaskRuntime.knowledgeBuildScheduler
   internal val knowledgeBuildRunner get() = knowledgeRuntime.knowledgeBuildRunner
-  internal val knowledgeExecutionSettings get() = featureRuntimeDependencies.knowledgeExecutionSettings
+  internal val knowledgeExecutionSettings get() = knowledgeTaskRuntime.knowledgeExecutionSettings
   internal val textInference get() = aiCoreRuntime.textInference
   internal val cloudTextInference get() = aiCoreRuntime.cloudTextInference
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference

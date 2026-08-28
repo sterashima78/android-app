@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss
 
 import android.app.Application
+import dev.terashima.yomitorirss.composition.route.AppContentRouteDependencies
+import dev.terashima.yomitorirss.composition.route.AppSupportingRouteDependencies
 
 class AppRouteDependencies(
   application: Application,

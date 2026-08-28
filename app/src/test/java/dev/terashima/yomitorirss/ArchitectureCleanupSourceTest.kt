@@ -16,7 +16,7 @@ class ArchitectureCleanupSourceTest {
 
   @Test
   fun `App route compositionはRedditの低レベル分類規則を再実装しない`() {
-    val routeComposition = source("$compositionSourceRoot/AppContentRouteDependencies.kt")
+    val routeComposition = source("$compositionSourceRoot/composition/route/AppContentRouteDependencies.kt")
 
     assertTrue("route composition must consume the Reddit-owned boundary", "RedditSourceBoundary" in routeComposition)
     listOf(
@@ -66,7 +66,7 @@ class ArchitectureCleanupSourceTest {
     val modelContract = source(
       "feature/settings/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiModelRepository.kt",
     )
-    val routeComposition = source("$compositionSourceRoot/AppSupportingRouteDependencies.kt")
+    val routeComposition = source("$compositionSourceRoot/composition/route/AppSupportingRouteDependencies.kt")
 
     assertFalse("Settings data must not depend on Summary data", ":feature:summary:data" in settingsDataBuild)
     assertFalse("AI model repository must not construct SummaryPromptStore", "SummaryPromptStore" in settingsData)
@@ -84,9 +84,9 @@ class ArchitectureCleanupSourceTest {
     val libraryOrganization = source(
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryOrganizationSuggester.kt",
     )
-    val aiCore = source("$compositionSourceRoot/AppAiCoreRuntimeDependencies.kt")
-    val featureRuntime = source("$compositionSourceRoot/AppFeatureRuntimeDependencies.kt")
-    val knowledgeRuntime = source("$compositionSourceRoot/AppKnowledgeRuntimeDependencies.kt")
+    val aiCore = source("$compositionSourceRoot/composition/ai/AppAiCoreRuntimeDependencies.kt")
+    val libraryRuntime = source("$compositionSourceRoot/composition/library/AppLibraryRuntimeDependencies.kt")
+    val knowledgeRuntime = source("$compositionSourceRoot/composition/knowledge/AppKnowledgeRuntimeDependencies.kt")
     val workerFactory = source("$compositionSourceRoot/AppWorkerFactory.kt")
 
     assertTrue("Summary data must depend on ai-inference", ":core:ai-inference" in summaryBuild)
@@ -99,7 +99,7 @@ class ArchitectureCleanupSourceTest {
       "app AI core must compose the process-isolated local adapter once",
       "ProcessIsolatedLocalAiTextInference(application, modelManager)" in aiCore,
     )
-    assertTrue("library composition must inject text inference", "textInferenceProvider" in featureRuntime)
+    assertTrue("library composition must inject text inference", "textInferenceProvider" in libraryRuntime)
     assertTrue("knowledge composition must inject text inference", "textInference" in knowledgeRuntime)
     assertTrue("summary workers must receive text inference", "textInferenceProvider" in workerFactory)
   }
@@ -159,13 +159,13 @@ class ArchitectureCleanupSourceTest {
   fun `generic feature runtime graphはRouteとWorkerへ露出しない`() {
     listOf(
       "$compositionSourceRoot/AppRouteDependencies.kt",
-      "$compositionSourceRoot/AppContentRouteDependencies.kt",
-      "$compositionSourceRoot/AppSupportingRouteDependencies.kt",
+      "$compositionSourceRoot/composition/route/AppContentRouteDependencies.kt",
+      "$compositionSourceRoot/composition/route/AppSupportingRouteDependencies.kt",
       "$compositionSourceRoot/AppWorkerFactory.kt",
-      "$compositionSourceRoot/AppCrossFeatureRuntimeDependencies.kt",
+      "$compositionSourceRoot/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt",
     ).forEach { path ->
       assertFalse(
-        "$path must use narrow AppContainer capabilities instead of the generic feature runtime graph",
+        "$path must use narrow AppContainer capabilities instead of a generic feature runtime graph",
         "featureRuntimeDependencies" in source(path),
       )
     }
