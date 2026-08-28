@@ -216,7 +216,11 @@ class ArchitectureCleanupSourceTest {
       assertTrue("PR workflow must expose the required check: $checkName", "name: $checkName" in checkWorkflow)
     }
     assertTrue(
-      "Architecture check must include ADR integrity verification",
+      "Architecture check must include Gradle architecture metadata verification",
+      "-I gradle/architecture-metadata.gradle.kts" in checkWorkflow,
+    )
+    assertFalse(
+      "Architecture check must not invoke the retired Python ADR verifier",
       "python3 scripts/verify_adr_integrity.py" in checkWorkflow,
     )
     assertFalse("PR check workflow must not assemble the release APK", ":app:assembleRelease" in checkWorkflow)

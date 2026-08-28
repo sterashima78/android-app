@@ -86,6 +86,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0214: architecture metadata verification を Gradle/Kotlin に統合する](0214-gradle-architecture-metadata-verification.md)
 
 ## Supporting architecture areas
 
@@ -182,8 +183,7 @@ ADR の番号は4桁の一意な単調増加番号とする。新しい ADR は�
 ローカル検査:
 
 ```bash
-python3 -m unittest scripts.test_verify_adr_integrity
-python3 scripts/verify_adr_integrity.py
+./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts verifyArchitecture
 ```
 
 検査は filename/header の番号一致、番号重複、存在しない ADR 参照、壊れた ADR link に加え、`docs/architecture/*.md` と `docs/spec.md` からの ADR reference / link target も検出する。意味的に正しい ADR を参照しているかはレビューで確認する。
@@ -219,3 +219,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0171](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0214](0214-gradle-architecture-metadata-verification.md)

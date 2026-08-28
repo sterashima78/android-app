@@ -34,7 +34,7 @@ jobs:
       matrix:
         include:
           - name: Architecture
-            command: python3 -m unittest scripts.test_verify_module_map scripts.test_verify_adr_integrity && python3 scripts/verify_module_map.py && python3 scripts/verify_adr_integrity.py && ./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
+            command: ./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
           - name: Test
             command: ./gradlew --no-daemon test
           - name: Lint
