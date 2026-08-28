@@ -57,6 +57,9 @@ val verifyPresentationBoundary by tasks.registering {
     val infrastructureImport = Regex(
       "(?m)^\\s*import\\s+(?:dev\\.terashima\\.yomitorirss\\.core\\.database\\.(?:DatabaseConnection|YomitoriDatabase)\\b|androidx\\.work\\.)",
     )
+    val executablePlatformImport = Regex(
+      "(?m)^\\s*import\\s+dev\\.terashima\\.yomitorirss\\.(?:security\\.|platform\\.(?!authorization\\.))",
+    )
     sourceRoot.walkTopDown()
       .filter { it.isFile && it.extension == "kt" }
       .forEach { sourceFile ->
@@ -67,6 +70,9 @@ val verifyPresentationBoundary by tasks.registering {
         }
         if (infrastructureImport.containsMatchIn(source)) {
           violations += "app presentation must not import database or WorkManager infrastructure: $relativePath"
+        }
+        if (executablePlatformImport.containsMatchIn(source)) {
+          violations += "app presentation must receive executable platform actions through callbacks: $relativePath"
         }
         if (Regex("\\b(?:YomitoriApplication|MainActivity|MainActivityDependencies)\\b").containsMatchIn(source)) {
           violations += "app presentation must not depend on executable app implementation types: $relativePath"
