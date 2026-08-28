@@ -1,4 +1,4 @@
 package dev.terashima.yomitorirss.feature.mail
 
 const val MAIL_ROUTE = "mail"
-const val MAIL_TITLE = "Mail"
+const val MAIL_TITLE = "メール"
