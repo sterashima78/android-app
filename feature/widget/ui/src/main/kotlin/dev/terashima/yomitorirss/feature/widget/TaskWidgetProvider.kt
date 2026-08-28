@@ -63,7 +63,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
   }
 
   companion object {
-    const val ACTION_OPEN_TASKS = "dev.terashima.yomitorirss.widget.action.OPEN_TASKS"
+    const val ACTION_OPEN_TASKS = WidgetLaunchContract.ACTION_OPEN_TASKS
     internal const val ACTION_REFRESH = "dev.terashima.yomitorirss.widget.action.REFRESH_TASKS"
     internal const val ACTION_ITEM = "dev.terashima.yomitorirss.widget.action.TASK_ITEM"
     private const val EXTRA_TASK_ID = "task_id"
