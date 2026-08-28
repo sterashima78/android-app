@@ -44,7 +44,11 @@ class YomitoriApplication : Application(),
   override val mainActivityPresentationDependencies: MainActivityPresentationDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     MainActivityPresentationDependencies(
       routeDependencies = routeDependencies,
-      lanWebServerController = container.lanWebServerController,
+    )
+  }
+  override val mainActivityLanWebDependencies: MainActivityLanWebDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    MainActivityLanWebDependencies(
+      controller = container.lanWebServerController,
     )
   }
   override val incomingIntentDependencies: IncomingIntentDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
