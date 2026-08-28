@@ -1,6 +1,6 @@
 # Module Map
 
-この文書は Gradle module の物理構成と ownership の読み方を示す。module 一覧そのものの正本は [`settings.gradle.kts`](../../settings.gradle.kts) とする。
+この文書は Gradle module の物理構成と ownership の読み方を示す。module 一覧の正本は [`settings.gradle.kts`](../../settings.gradle.kts) から Gradle が評価した project graph とする。
 
 ## Top-level structure
 
@@ -77,7 +77,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 ## Feature modules
 
-この表は `settings.gradle.kts` を正本とし、`scripts/verify_module_map.py` が feature / layer の一致を検査する。表を更新し忘れた場合は Architecture CI を失敗させる。
+この表は Gradle が評価した project graph を正本とし、`gradle/architecture-metadata.gradle.kts` が feature / layer の一致を検査する。表を更新し忘れた場合は Architecture CI を失敗させる。
 
 <!-- feature-modules:start -->
 | Feature | Layers |
@@ -181,7 +181,7 @@ Data -> other feature Data は物理 dependency として許容される場合�
 
 - [`settings.gradle.kts`](../../settings.gradle.kts)
 - [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml)
-- [`scripts/verify_module_map.py`](../../scripts/verify_module_map.py)
+- [`gradle/architecture-metadata.gradle.kts`](../../gradle/architecture-metadata.gradle.kts)
 - [ADR-0001](../adr/0001-layered-architecture.md)
 - [ADR-0003](../adr/0003-multi-module-architecture.md)
 - [ADR-0004](../adr/0004-concept-oriented-modules.md)
