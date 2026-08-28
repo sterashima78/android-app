@@ -151,7 +151,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 機械的に検査できる規則はレビューだけに依存しない。
 
 - Gradle dependency / source ownership: `verifyArchitecture`
-- module map / ADR identifier/link integrity: `gradle/architecture-metadata.gradle.kts`
+- module map / ADR identifier-link integrity / current architecture documentation compatibility: `gradle/architecture-metadata.gradle.kts`
 - durable table ownership / created-table registration / app presentation composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
 - durable table manifest: `config/architecture/table-ownership.tsv`
 - transitional foreign access: `config/architecture/foreign-table-access-allowlist.tsv`
@@ -168,6 +168,8 @@ Android platform backup は `BackupPreferences.BACKUP_RULES` のうち、ファ�
 `FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、feature Worker の data-layer ownership、Worker source での parallel database / Repository graph 再構築禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
 
 Architecture job の ownership scanner は `:app:presentation` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
+
+`architecture-metadata.gradle.kts` は module-map / ADR integrity に加え、退役済み current architecture compatibility document の再作成と `docs/**/*.md` からの再参照を検出する。文書の意味的な正しさは引き続きレビューで確認する。
 
 App composition / presentation の source ownership と active-destination ViewModel activation は architecture test で補完し、historical `feature.navigation` package の再導入、manual selected-tab routing、destination dispatch より前の feature ViewModel eager activation を検出する。
 
@@ -208,3 +210,4 @@ App composition / presentation の source ownership と active-destination ViewM
 - [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
 - [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
 - [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
+- [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)

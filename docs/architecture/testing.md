@@ -135,7 +135,7 @@ CI の Architecture job は `gradle/architecture-metadata.gradle.kts` と `gradl
   verifyArchitecture
 ```
 
-`architecture-metadata.gradle.kts` は module map と ADR identifier/link integrity を検証し、旧 Python verifier が持っていた missing/stale/layer mismatch、duplicate ADR、heading mismatch、missing reference 等の fixture も Kotlin で自己検証する。
+`architecture-metadata.gradle.kts` は module map、ADR identifier/link integrity、廃止済み current architecture compatibility path の再導入・再参照を検証する。旧 Python verifier が持っていた missing/stale/layer mismatch、duplicate ADR、heading mismatch、missing reference に加え、current path / restored path / stale reference の fixture も Kotlin で自己検証する。
 
 `table-ownership.gradle.kts` は table ownership に加えて、現在次も検査する。
 
@@ -176,7 +176,7 @@ ADR 自身の identifier / link integrity は `gradle/architecture-metadata.grad
 
 新しい ADR は現在存在する最大番号より大きい一意な番号を使用し、見出し・ファイル名・参照先を一致させる。
 
-current architecture document の compatibility redirect を削除する場合は、repository 内参照を canonical `docs/architecture/` path へ移したことを意味的レビューで確認し、更新した ADR / current docs の local link は ADR integrity と通常の link review で検証する。
+current architecture document の compatibility redirect を削除する場合は、repository 内参照を canonical `docs/architecture/` path へ移したことを意味的レビューで確認する。退役 path の再作成と `docs/**/*.md` からの再参照は `architecture-metadata.gradle.kts` が拒否し、更新した ADR / current docs の local link は ADR integrity と通常の link review で検証する。
 
 ### Public repository verification
 
@@ -216,7 +216,7 @@ ruleset 移行中は workflow 分離が先行し、direct push の技術的な�
 
 CI workflow が変更された場合は、この文書のコマンドを正本とせず workflow を優先して本記述を更新する。
 
-Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../adr/0093-main-apk-build-run-status.md), [ADR-0136](../adr/0136-public-repository-content-verification.md), [ADR-0197](../adr/0197-split-pr-checks-and-main-apk-build.md), [ADR-0201](../adr/0201-remove-main-apk-commit-status.md), [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md).
+Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../adr/0093-main-apk-build-run-status.md), [ADR-0136](../adr/0136-public-repository-content-verification.md), [ADR-0197](../adr/0197-split-pr-checks-and-main-apk-build.md), [ADR-0201](../adr/0201-remove-main-apk-commit-status.md), [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md), [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md).
 
 ## Choosing tests for a change
 
@@ -236,6 +236,7 @@ Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../a
 | active-tab ViewModel activation | navigation policy unit test + app composition source regression |
 | app shell navigation package relocation | app navigation unit tests + source ownership regression + `verifyArchitecture` fixture |
 | retired one-time runtime migration | current validity contract + source regression when integration fixture is impractical |
+| retired current architecture compatibility path | Gradle metadata fixture + semantic documentation review |
 | shareable diagnostic sanitizer | pure unit test with synthetic sensitive-looking data |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
 | module map update | Gradle metadata fixture + `verifyArchitecture` |
@@ -273,3 +274,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
 - [ADR-0201](../adr/0201-remove-main-apk-commit-status.md)
 - [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
+- [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
