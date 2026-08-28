@@ -373,7 +373,12 @@ class AppCompositionSourceArchitectureTest {
           .toList(),
       )
       add(File(repositoryRoot, "$compositionSourceRoot/AppWorkerFactory.kt"))
-      add(File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/MainActivityDependencies.kt"))
+      listOf(
+        "app/src/main/java/dev/terashima/yomitorirss/MainActivityDependenciesProvider.kt",
+        "app/src/main/java/dev/terashima/yomitorirss/MainActivityPresentationDependencies.kt",
+        "app/src/main/java/dev/terashima/yomitorirss/MainActivityLanWebDependencies.kt",
+        "app/src/main/java/dev/terashima/yomitorirss/entry/IncomingIntentDependencies.kt",
+      ).forEach { path -> add(File(repositoryRoot, path)) }
     }
 
     val unexpected = boundaryFiles.flatMap { file ->
