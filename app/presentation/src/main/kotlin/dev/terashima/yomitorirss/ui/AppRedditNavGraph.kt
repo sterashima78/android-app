@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.RedditRoute
 import dev.terashima.yomitorirss.feature.reddit.RedditRouteController
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
+import dev.terashima.yomitorirss.feature.reddit.redditTabForRoute
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 
 internal fun NavGraphBuilder.registerRedditDestinations(
@@ -26,7 +27,7 @@ internal fun NavGraphBuilder.registerRedditDestinations(
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
       RedditRoute(
         modifier = Modifier.fillMaxSize(),
-        tab = requireNotNull(route.redditTab()),
+        tab = requireNotNull(redditTabForRoute(route)),
         redditViewModel = redditViewModel,
         controller = redditController,
         onOpen = onOpenArticle,
@@ -39,7 +40,7 @@ internal fun NavGraphBuilder.registerRedditDestinations(
     val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
     RedditRoute(
       modifier = Modifier.fillMaxSize(),
-      tab = requireNotNull(REDDIT_SUBSCRIPTIONS_ROUTE.redditTab()),
+      tab = requireNotNull(redditTabForRoute(REDDIT_SUBSCRIPTIONS_ROUTE)),
       redditViewModel = redditViewModel,
       controller = redditController,
       onOpen = onOpenArticle,

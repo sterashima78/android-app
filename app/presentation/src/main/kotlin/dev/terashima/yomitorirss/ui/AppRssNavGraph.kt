@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.feature.rss.RssRoute
 import dev.terashima.yomitorirss.feature.rss.RssRouteController
 import dev.terashima.yomitorirss.feature.rss.RssSettingsRoute
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
+import dev.terashima.yomitorirss.feature.rss.rssTabForRoute
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 
 internal fun NavGraphBuilder.registerRssDestinations(
@@ -35,7 +36,7 @@ internal fun NavGraphBuilder.registerRssDestinations(
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
       RssRoute(
         modifier = Modifier.fillMaxSize(),
-        tab = requireNotNull(route.rssTab()),
+        tab = requireNotNull(rssTabForRoute(route)),
         rssViewModel = rssViewModel,
         feedViewModel = feedViewModel,
         controller = rssController,

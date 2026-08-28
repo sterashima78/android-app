@@ -5,16 +5,22 @@ import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_FOLDERS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_IMPORT_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_TAGS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
+import dev.terashima.yomitorirss.feature.bookmark.bookmarkTabForRoute
+import dev.terashima.yomitorirss.feature.bookmark.routeForBookmarkTab
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.RedditTab
+import dev.terashima.yomitorirss.feature.reddit.redditTabForRoute
+import dev.terashima.yomitorirss.feature.reddit.routeForRedditTab
 import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_UNREAD_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RssTab
+import dev.terashima.yomitorirss.feature.rss.routeForRssTab
+import dev.terashima.yomitorirss.feature.rss.rssTabForRoute
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
 import org.junit.Assert.assertEquals
@@ -38,9 +44,9 @@ class AppNavigationSpecTest {
   }
 
   @Test
-  fun `RSSタブの変換は往復できる`() {
+  fun `RSSタブの変換はfeature contractで往復できる`() {
     RssTab.entries.forEach { tab ->
-      assertEquals(tab, tab.appRoute().rssTab())
+      assertEquals(tab, rssTabForRoute(routeForRssTab(tab)))
     }
   }
 
@@ -51,16 +57,16 @@ class AppNavigationSpecTest {
   }
 
   @Test
-  fun `Redditタブの変換は往復できる`() {
+  fun `Redditタブの変換はfeature contractで往復できる`() {
     RedditTab.entries.forEach { tab ->
-      assertEquals(tab, tab.appRoute().redditTab())
+      assertEquals(tab, redditTabForRoute(routeForRedditTab(tab)))
     }
   }
 
   @Test
-  fun `ブックマークタブの変換は往復できる`() {
+  fun `ブックマークタブの変換はfeature contractで往復できる`() {
     BookmarkTab.entries.forEach { tab ->
-      assertEquals(tab, tab.appRoute().bookmarkTab())
+      assertEquals(tab, bookmarkTabForRoute(routeForBookmarkTab(tab)))
     }
   }
 

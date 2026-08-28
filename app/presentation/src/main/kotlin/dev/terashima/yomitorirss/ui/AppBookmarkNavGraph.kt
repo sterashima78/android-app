@@ -15,6 +15,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_TAGS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditController
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRoute
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
+import dev.terashima.yomitorirss.feature.bookmark.bookmarkTabForRoute
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 
 internal fun NavGraphBuilder.registerBookmarkDestinations(
@@ -29,7 +30,7 @@ internal fun NavGraphBuilder.registerBookmarkDestinations(
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
       BookmarkRoute(
         modifier = Modifier.fillMaxSize(),
-        tab = requireNotNull(route.bookmarkTab()),
+        tab = requireNotNull(bookmarkTabForRoute(route)),
         bookmarkViewModel = bookmarkViewModel,
         editController = bookmarkEditController,
         onOpen = onOpenArticle,
@@ -45,7 +46,7 @@ internal fun NavGraphBuilder.registerBookmarkDestinations(
       val bookmarkViewModel: BookmarkViewModel = viewModel(factory = routeDependencies.bookmarkViewModelFactory)
       BookmarkRoute(
         modifier = Modifier.fillMaxSize(),
-        tab = requireNotNull(route.bookmarkTab()),
+        tab = requireNotNull(bookmarkTabForRoute(route)),
         bookmarkViewModel = bookmarkViewModel,
         editController = bookmarkEditController,
         onOpen = onOpenArticle,
