@@ -133,7 +133,7 @@ class BackupSchedulingArchitectureTest {
   @Test
   fun `application compositionはbackup対象の永続化変更をschedulerへbridgeする`() {
     val backgroundRuntime = repositoryFile(
-      "app/composition/src/main/java/dev/terashima/yomitorirss/AppBackgroundRuntime.kt",
+      "app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/AppBackgroundRuntime.kt",
     ).readText()
     val application = repositoryFile(
       "app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt",
