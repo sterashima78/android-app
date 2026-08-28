@@ -12,11 +12,13 @@ import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeRuntimeDepend
 import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeTaskRuntimeDependencies
 import dev.terashima.yomitorirss.composition.library.AppLibraryRuntimeDependencies
 import dev.terashima.yomitorirss.composition.supporting.AppSupportingRuntimeDependencies
+import dev.terashima.yomitorirss.composition.web.AppLanWebContentGateway
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
 
 /**
  * Application-scope composition facade.
@@ -190,6 +192,14 @@ class AppContainer(
     SharedContentEntryCapability(
       saveSharedBookmark = contentRuntime.saveSharedBookmarkUseCase,
       addSharedWebBook = libraryRuntime.webLibraryMutator::addWebBook,
+    )
+  }
+
+  val lanWebContentGateway: LanWebContentGateway by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AppLanWebContentGateway(
+      articleRepository = contentRuntime.articleRepository,
+      bookmarkRepository = contentRuntime.bookmarkRepository,
+      feedRepository = contentRuntime.feedRepository,
     )
   }
 
