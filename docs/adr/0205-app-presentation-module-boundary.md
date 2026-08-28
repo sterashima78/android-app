@@ -20,11 +20,12 @@ ADR-0193 は小さな責務のためだけに Gradle module を増やさない�
 
 - `YomitoriApp` / application theme
 - root `AppNavHost` と navigation graph registration
-- `AppSection` / `AppNavigationSpec`
+- `AppSection` / `AppNavigationSpec` / semantic `AppNavigationTarget`
 - drawer / top bar / overlay / feature message capability の app-wide chrome
 - feature ViewModel factory と feature-owned Route/Screen の app-shell composition
 - app-owned `LibraryRoute` / `MailRouteHost` / `CalendarRoute` / `SettingsRoute` 等の presentation adapter
 - Composable lifecycle に結び付く Activity Result launcher / permission / document picker wiring
+- `LanWebServerDialogHost` のように Compose lifecycle で permission launcher と feature dialog を接続する host
 
 source package は既存 caller API を維持するため `dev.terashima.yomitorirss.ui` を維持し、物理 source root を `app/presentation/src/main/kotlin` とする。
 
@@ -37,12 +38,14 @@ source package は既存 caller API を維持するため `dev.terashima.yomitor
 - startup / memory diagnostics
 - share / widget 等の external Intent routing
 - Custom Tab
-- LAN Web Server notification permission / dialog 等、Activity/component lifecycle や executable-only state に結び付く platform host
+- Activity/component lifecycle や executable-only state と一体の platform integration
 - framework-generated component と narrow provider contract の接続
 
 `:app` は `:app:presentation` と `:app:composition` を利用し、必要な feature Domain contract は直接利用できる。一方、`:feature:*:ui` / `:feature:*:data` へ直接依存しない。
 
 Custom Tab のように presentation から起動要求が発生する executable-only platform action は `MainActivity` から callback として `:app:presentation` へ渡す。presentation source は executable `:app` の platform/security implementation を直接 import しない。これにより app-lock external transition tracking 等の executable lifecycle policy を `:app` に維持する。
+
+external Intent / widget launch から app-shell navigation を要求する場合、`:app` は feature UI の route constant を参照せず `AppNavigationTarget` を送る。feature-owned route identity への変換は `:app:presentation` が所有する。widget-to-app Intent action/extra の共有 contract は `:feature:widget:domain`、Application から `TaskRepository` を取得する provider contract は `:feature:task:domain` に置き、executable `:app` が widget UI implementation class を参照しない。
 
 ### 3. root `NavController` は `MainActivity` に残す
 
@@ -54,12 +57,12 @@ ADR-0202 の app-lock navigation lifetime を維持する。
 
 ### 4. Activity Result ownership を executable lifecycle と Composable presentation に分ける
 
-ADR-0193 / ADR-0196 / ADR-0200 では Activity Result host を executable `:app` と説明していたが、実装上は feature authorization / Calendar permission / backup document picker 等が app-owned Route の Composable lifecycle に結び付いている。
+ADR-0193 / ADR-0196 / ADR-0200 では Activity Result host を executable `:app` と説明していたが、実装上は feature authorization / Calendar permission / backup document picker / LAN Web Server notification permission 等が Composable lifecycle に結び付いている。
 
 このため current ownership を次に精密化する。
 
-- Composable Route 内で feature UI と一体に lifecycle を持つ Activity Result launcher: `:app:presentation`
-- Activity/component lifecycle、app lock transition、executable-only state と一体の platform host: `:app`
+- Composable Route/host 内で feature UI と一体に lifecycle を持つ Activity Result launcher: `:app:presentation`
+- Activity/component lifecycle、app lock transition、executable-only state と一体の platform integration: `:app`
 - Gmail / Google Books の concrete Data authorization manager と Activity Result contract を接続する dependency bridge: `:app:composition/platform/authorization`
 
 これにより `:app:presentation -> :app` の逆依存を導入せず、authorization manager の concrete implementation も presentation へ漏らさない。
@@ -109,14 +112,15 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 - Android component/lifecycle concern と app-shell presentation の変更理由を build boundary で分離できる。
 - `:app:presentation` は feature Data を参照できないため、Route/Host への concrete repository wiring drift を dependency graph で遮断できる。
 - feature UI の high fan-out dependency は presentation boundary に局所化される。
+- external entry routing は semantic target / Domain contract に限定され、feature UI implementation class を executable shell に漏らさない。
 - navigation / presentation unit test を owning module に置ける。
 - `:app -> :app:presentation -> :app:composition / feature UI` という一方向の app boundary を明示できる。
 
 ### Negative
 
 - Android library module が1つ増え、Gradle configuration graph は複雑になる。
-- `MainActivity` が利用する `YomitoriApp` / `YomitoriTheme` 等は module boundary を跨ぐ public API として維持する必要がある。
-- app-owned Route の Activity Result wiring は executable module ではなく presentation module に存在するため、platform ownership の説明は lifecycle の種類を区別する必要がある。
+- `MainActivity` が利用する `YomitoriApp` / `YomitoriTheme` / `AppNavigationTarget` / `LanWebServerDialogHost` 等は module boundary を跨ぐ public API として維持する必要がある。
+- app-owned Route/host の Activity Result wiring は executable module ではなく presentation module に存在するため、platform ownership の説明は lifecycle の種類を区別する必要がある。
 - app-shell を横断して追う場合、`:app` / `:app:presentation` / `:app:composition` の3 module を確認する必要がある。
 
 ## Verification
@@ -128,6 +132,8 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 - `YomitoriApp` が feature ViewModel state や Activity Result launcher を所有しないこと。
 - app-owned Route が concrete feature Data / database / WorkManager infrastructure を import / construct しないこと。
 - presentation が executable platform/security implementation を直接 import せず、Custom Tab 等を callback で受け取ること。
+- external Intent routing が feature UI route/provider implementation を参照せず、semantic navigation target と Domain contract を使うこと。
+- Composable permission/dialog host が presentation boundary にあり、executable `:app` に feature UI dependency を戻さないこと。
 - `MainActivity` が root `NavController` を app-lock conditional UI より上に保持すること。
 - feature destination identity / feature presentation state の既存 ownership test を新 source root に追従させること。
 - presentation unit tests、existing app unit tests、`verifyArchitecture`、lint、public repository verifier を通すこと。
@@ -141,7 +147,7 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 
 ## Public repository review
 
-本変更は Gradle dependency、app-shell presentation source の module 移動、synthetic architecture/unit test、current architecture documentation のみを変更する。credential、OAuth token、account identifier、private endpoint、実ユーザー URL / title / mail / health data、diagnostic artifact を追加しない。
+本変更は Gradle dependency、app-shell presentation source の module 移動、semantic/domain integration contract、synthetic architecture/unit test、current architecture documentation のみを変更する。credential、OAuth token、account identifier、private endpoint、実ユーザー URL / title / mail / health data、diagnostic artifact を追加しない。
 
 ## References
 
