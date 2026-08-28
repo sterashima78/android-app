@@ -44,6 +44,8 @@ ADR-0193 は小さな責務の分割だけを理由に Gradle module を増や�
 
 concrete feature Data implementation は `:app:composition` だけが application graph の構築目的で参照する。
 
+同じ理由で、OpenAI provider client と process-wide HTTP transport の concrete construction にだけ必要な `:core:ai-cloud-openai` / `:core:network` も executable `:app` から直接依存せず、`:app:composition` が所有する。app-owned diagnostics など executable shell 自身に明確な利用理由がある core capability はこの対象外とする。
+
 ### 3. composition module の公開面を限定する
 
 module 越しに公開するのは executable shell が必要とする facade/capability に限定する。
@@ -93,6 +95,7 @@ application User-Agent の version は `YomitoriApplication` が `BuildConfig.VE
 - `settings.gradle.kts` が `:app:composition` を含むこと。
 - `:app` の production dependency に `:feature:*:data` が存在しないこと。
 - `:app` production source が `feature.*.data.*` を import しないこと。
+- `:app` が `:core:ai-cloud-openai` / `:core:network` へ直接依存せず、`:app:composition` がそれらを所有すること。
 - `:app:composition` が concrete feature Data dependency を所有すること。
 - `AppContainer` / WorkerFactory / route composition の existing architecture regression test を新 module path に追従させること。
 - backup startup observer の wiring が `composition.background.AppBackgroundRuntime` へ移っても ADR-0195 の persistence-triggered semantics を維持すること。
