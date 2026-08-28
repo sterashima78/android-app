@@ -37,7 +37,7 @@ Local / Remote / Android platform
 - アプリケーション固有コードは `:feature:<name>:<layer>` を基本とする。
 - `feature` は画面単位だけでなく、Article のような独立した共有概念の ownership namespace としても使う。
 - `core` は database、network、design system、AI runtime 等の横断的技術 capability に限定する。
-- `:app` は executable shell、Android component/lifecycle、app-only security / diagnostics / external Intent / platform host を所有する。
+- `:app` は executable shell、Android component/lifecycle、app-only security / diagnostics / external Intent / executable-only platform integration を所有する。
 - `:app:presentation` は app-shell navigation、app-wide chrome、app-owned Route/Host、feature UI composition を隔離する dependency/build boundary とする。
 - `:app:composition` は Domain ownership ではなく、application-scope の high fan-in concrete graph を隔離する dependency/build boundary とする。
 - `:core:data`、`:core:domain`、`:common`、`:util` のような責務の曖昧な集約先を作らない。
@@ -106,12 +106,14 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - `:app:presentation` は `:app` / `:feature:*:data` に依存せず、production source から concrete feature Data、database connection、WorkManager infrastructure、executable implementation type を import / construct しない。
 - application scope で複数の adapter / route / framework entry point から利用する concrete runtime は `:app:composition` の `AppContainer` が一度だけ構築して lifetime を所有し、同じ instance / graph を再利用する。並行した repository / scheduler graph を route や Worker ごとに再構築しない。
 - Screen と `:app:presentation` の Route/Host で concrete Repository、database connection、WorkManager dependency を生成・import しない。
-- app shell navigation state（`AppSection` / `AppNavigationSpec`）は `app/presentation/src/main/kotlin/.../ui` が所有し、`app/src/main/.../feature` と `app/src/main/.../ui` に app-shell production source を置かない。
+- app shell navigation state（`AppSection` / `AppNavigationSpec` / `AppNavigationTarget`）は `app/presentation/src/main/kotlin/.../ui` が所有し、`app/src/main/.../feature` と `app/src/main/.../ui` に app-shell production source を置かない。
 - app shell は選択中の navigation destination を確定してから、その presentation に必要な feature ViewModel だけを取得する。inactive feature の ViewModel を global host の都合で eager activation しない。
 - Activity-scoped ViewModel sharing を利用する場合でも、Summary / Bookmark overlay、TopBar、message bridge 等の共通 host は capability が必要な destination だけ mount / observe する。
 - `MainActivity` は Android lifecycle、external Intent、app lock、root `NavController` lifetime、crash diagnostics、executable-only platform callback に限定し、feature ViewModel / feature UI を直接所有しない。
 - root `NavController` は `MainActivity.setContent` で app-lock conditional UI より上に保持し、`:app:presentation` の `YomitoriApp` へ渡す。root `NavHost` と graph registration は `:app:presentation` が所有する。
-- feature authorization、Calendar permission、backup document picker 等、Composable Route と一体の Activity Result launcher は `:app:presentation` が所有できる。LAN Web Server notification permission/dialog、Custom Tab、app lock transition 等、Activity/component lifecycle や executable-only state と一体の host は `:app` が所有する。
+- feature authorization、Calendar permission、backup document picker、LAN Web Server notification permission/dialog 等、Composable Route/Host と一体の Activity Result launcher は `:app:presentation` が所有できる。Custom Tab、app lock transition 等、Activity/component lifecycle や executable-only state と一体の integration は `:app` が所有する。
+- external Intent / widget launch から app-shell navigation を要求する executable code は feature UI route constant を直接参照せず、`:app:presentation` の semantic `AppNavigationTarget` を利用する。feature route identity への解決は presentation boundary 内で行う。
+- widget-to-app Intent action/extra は `:feature:widget:domain` の contract を共有し、framework widget が Application から `TaskRepository` を得る provider contract は `:feature:task:domain` が所有する。`:app` は AppWidgetProvider implementation class を routing contract として参照しない。
 - `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
 - Android が直接生成する Activity、Service、AppWidgetProvider 等で constructor injection を差し込めない entry point に限り、監査済みの narrow Provider contract を利用できる。
@@ -120,7 +122,7 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - framework entry point 用 Provider は既存 application scope graph への接続に限定し、任意の dependency を取得する service locator として拡張しない。
 - `YomitoriApplication` implementation type への直接 cast は行わない。
 
-LAN Web Server では `MainActivity` は notification permission と dialog presentation を所有する一方、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。
+LAN Web Server では `:app:presentation` の `LanWebServerDialogHost` が notification permission と dialog presentation を所有し、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。`MainActivity` は dialog visibility と controller 接続だけを担当する。
 
 Mail Worker は `MailWorkerFactory` から application scope の `MailRepository` を constructor injection される。Worker 内で database / Repository graph を別構築しない。
 
@@ -159,7 +161,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 
 Android platform backup は `BackupPreferences.BACKUP_RULES` のうち、ファイル全体を許可する規則だけを対象とする。キー単位で許可する `library_ai_preferences.xml` と `local_summary_models.xml` は Android の XML 規則では安全に絞り込めないため、アプリ内 archive backup だけで扱い、platform backup には含めない。cloud-backup と device-transfer の SharedPreferences 方針には意図的な差を設けない。
 
-`verifyArchitecture` は `:app` の MainActivity / Worker ownership に加え、`:app:presentation` の Gradle dependency と source ownership guard を実行する。`:app:presentation` は executable `:app` / feature Data dependency、concrete feature Data / database / WorkManager import、executable implementation type、`YomitoriApp` の feature state / Activity Result ownership drift を検出する。
+`verifyArchitecture` は `:app` の MainActivity / Worker ownership に加え、`:app:presentation` の Gradle dependency と source ownership guard を実行する。`:app:presentation` は executable `:app` / feature Data dependency、concrete feature Data / database / WorkManager import、executable platform/security implementation import、executable implementation type、`YomitoriApp` の feature state / Activity Result ownership drift を検出する。
 
 `AppCompositionSourceArchitectureTest` は `:app` の `:feature:*:ui` / `:feature:*:data` direct dependency、`:app:presentation` の source root、presentation の feature Data 非依存、root NavController lifetime、feature destination/presentation ownershipを追加で固定する。MainActivity の feature ViewModel import に app-shell-specific allowlist は設けない。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
 
