@@ -10,6 +10,9 @@ private const val X_ELEMENT_PICKER_STATE_KEY = "__yomitoriElementPicker"
 private const val X_DOM_RULE_STATE_KEY = "__yomitoriDomRules"
 private const val X_DOM_RULE_STYLE_ID = "yomitori-x-dom-rule-style"
 private const val X_DOM_RULE_HIDDEN_ATTRIBUTE = "data-yomitori-dom-rule-hidden"
+internal const val X_LIST_PATH_PREFIX = "/i/lists/"
+
+internal fun isXListPath(path: String): Boolean = path.startsWith(X_LIST_PATH_PREFIX)
 
 internal fun decodeElementPickerDomRuleResult(result: String?): XViewerDomRule? {
   if (result == null || result == "null" || result == "undefined") return null
@@ -85,10 +88,21 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
           if (item.matches('a[href]')) return item.getAttribute('href') || '';
           return item.querySelector('a[href]')?.getAttribute('href') || '';
         };
+        const hrefPathFor = (item) => {
+          const href = hrefFor(item);
+          if (!href) return '';
+          try {
+            return new URL(href, location.origin).pathname;
+          } catch (_) {
+            return '';
+          }
+        };
         const matchesTarget = (item, rule) => {
           switch (rule.targetKind) {
             case 'HREF':
               return hrefFor(item) === rule.targetValue;
+            case 'HREF_PATH_PREFIX':
+              return hrefPathFor(item).startsWith(rule.targetValue);
             case 'ARIA_LABEL':
               return (item.getAttribute('aria-label') || '') === rule.targetValue;
             case 'TEXT':
@@ -99,7 +113,7 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
         };
 
         const applyRule = (rule) => {
-          if (rule.kind !== 'KEEP_ONLY_MATCHING_ITEM') return;
+          if (rule.kind !== 'KEEP_MATCHING_ITEMS') return;
           if (rule.pagePath !== location.pathname) return;
 
           let containers;
@@ -119,10 +133,10 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
             if (items.length < 2) return;
 
             const targets = items.filter((item) => matchesTarget(item, rule));
-            if (targets.length !== 1) return;
-            const target = targets[0];
+            if (targets.length === 0) return;
+            const targetSet = new Set(targets);
             items.forEach((item) => {
-              if (item === target) {
+              if (targetSet.has(item)) {
                 item.removeAttribute(hiddenAttribute);
               } else {
                 item.setAttribute(hiddenAttribute, 'true');
@@ -157,7 +171,7 @@ internal fun WebView.injectDomRules(rules: List<XViewerDomRule>) {
   )
 }
 
-internal fun WebView.takeSelectedElementKeepOnlyRule(onResult: (XViewerDomRule?) -> Unit) {
+internal fun WebView.takeSelectedElementListGroupRule(onResult: (XViewerDomRule?) -> Unit) {
   evaluateJavascript(
     """
       (() => {
@@ -167,6 +181,7 @@ internal fun WebView.takeSelectedElementKeepOnlyRule(onResult: (XViewerDomRule?)
 
         const selected = state.selected;
         const item = selected.closest('[role="tab"]');
+        const listPathPrefix = '$X_LIST_PATH_PREFIX';
         let rule = null;
 
         const escapeAttributeValue = (value) => String(value)
@@ -177,13 +192,21 @@ internal fun WebView.takeSelectedElementKeepOnlyRule(onResult: (XViewerDomRule?)
           if (!value) return null;
           return '[' + name + '="' + escapeAttributeValue(value) + '"]';
         };
-        const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
         const hrefFor = (candidate) => {
           if (candidate.matches('a[href]')) return candidate.getAttribute('href') || '';
           return candidate.querySelector('a[href]')?.getAttribute('href') || '';
         };
+        const hrefPathFor = (candidate) => {
+          const href = hrefFor(candidate);
+          if (!href) return '';
+          try {
+            return new URL(href, location.origin).pathname;
+          } catch (_) {
+            return '';
+          }
+        };
 
-        if (item) {
+        if (item && hrefPathFor(item).startsWith(listPathPrefix)) {
           const container = item.closest('[role="tablist"], [data-testid="ScrollSnap-List"]');
           if (container) {
             const tag = container.tagName.toLowerCase();
@@ -198,38 +221,19 @@ internal fun WebView.takeSelectedElementKeepOnlyRule(onResult: (XViewerDomRule?)
                   : null;
             const itemSelector = '[role="tab"]';
             const items = Array.from(container.querySelectorAll(itemSelector));
+            const listItems = items.filter(
+              (candidate) => hrefPathFor(candidate).startsWith(listPathPrefix)
+            );
 
-            const targetCandidates = [];
-            const href = hrefFor(item);
-            if (href) targetCandidates.push({ kind: 'HREF', value: href });
-            const ariaLabel = item.getAttribute('aria-label') || '';
-            if (ariaLabel) targetCandidates.push({ kind: 'ARIA_LABEL', value: ariaLabel });
-            const text = normalizeText(item.textContent);
-            if (text) targetCandidates.push({ kind: 'TEXT', value: text });
-
-            const matches = (candidate, target) => {
-              if (target.kind === 'HREF') return hrefFor(candidate) === target.value;
-              if (target.kind === 'ARIA_LABEL') {
-                return (candidate.getAttribute('aria-label') || '') === target.value;
-              }
-              if (target.kind === 'TEXT') return normalizeText(candidate.textContent) === target.value;
-              return false;
-            };
-
-            if (containerSelector && items.length >= 2) {
-              const target = targetCandidates.find(
-                (candidate) => items.filter((entry) => matches(entry, candidate)).length === 1
-              );
-              if (target) {
-                rule = {
-                  kind: 'KEEP_ONLY_MATCHING_ITEM',
-                  pagePath: location.pathname || '/',
-                  containerSelector,
-                  itemSelector,
-                  targetKind: target.kind,
-                  targetValue: target.value,
-                };
-              }
+            if (containerSelector && items.length >= 2 && listItems.includes(item)) {
+              rule = {
+                kind: 'KEEP_MATCHING_ITEMS',
+                pagePath: location.pathname || '/',
+                containerSelector,
+                itemSelector,
+                targetKind: 'HREF_PATH_PREFIX',
+                targetValue: listPathPrefix,
+              };
             }
           }
         }

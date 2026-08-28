@@ -60,12 +60,12 @@ class SharedPreferencesXViewerCssRepositoryTest {
   fun `DOM表示ルールを保存して再読込できる`() {
     val repository = SharedPreferencesXViewerCssRepository(context) { "default-css" }
     val rule = XViewerDomRule(
-      kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+      kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
       pagePath = "/home",
       containerSelector = "[role=\"tablist\"]",
       itemSelector = "[role=\"tab\"]",
-      targetKind = XViewerDomTargetKind.TEXT,
-      targetValue = "Lists",
+      targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
+      targetValue = "/i/lists/",
     )
 
     repository.save(
@@ -73,6 +73,22 @@ class SharedPreferencesXViewerCssRepositoryTest {
     )
 
     assertEquals(listOf(rule), repository.load().domRules)
+  }
+
+  @Test
+  fun `旧単一表示ルールは無視する`() {
+    val legacyRule =
+      "[{\"version\":1,\"kind\":\"KEEP_ONLY_MATCHING_ITEM\",\"pagePath\":\"/home\"," +
+        "\"containerSelector\":\"[role=\\\"tablist\\\"]\"," +
+        "\"itemSelector\":\"[role=\\\"tab\\\"]\",\"targetKind\":\"TEXT\"," +
+        "\"targetValue\":\"Lists\"}]"
+    context.getSharedPreferences("x_viewer_preferences", Context.MODE_PRIVATE)
+      .edit()
+      .putString("dom_rules_v1", legacyRule)
+      .commit()
+    val repository = SharedPreferencesXViewerCssRepository(context) { "default-css" }
+
+    assertTrue(repository.load().domRules.isEmpty())
   }
 
   @Test

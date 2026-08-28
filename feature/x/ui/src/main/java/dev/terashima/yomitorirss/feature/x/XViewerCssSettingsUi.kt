@@ -79,7 +79,7 @@ fun XViewerCssSettingsSheet(
         Text("無効にすると CSS と要素表示ルールを適用しません")
 
         Text("要素表示ルール ${settings.domRules.size} 件")
-        Text("「同じ列ではこれだけ表示」で作成したルールは、X の DOM 更新後も再適用されます。")
+        Text("「同じ列のリストだけ表示」で作成したルールは、X の DOM 更新後も再適用されます。")
         TextButton(
           onClick = { settings = settings.clearDomRules() },
           enabled = settings.domRules.isNotEmpty(),

@@ -62,8 +62,8 @@ class XViewerCssSettingsTest {
 
   @Test
   fun `同じページとコンテナの表示ルールは新しい選択で置き換える`() {
-    val first = keepOnlyRule("Following")
-    val second = keepOnlyRule("Lists")
+    val first = keepMatchingRule("/i/lists/")
+    val second = keepMatchingRule("/communities/")
 
     val settings = XViewerCssSettings(enabled = true, css = "")
       .upsertDomRule(first)
@@ -74,8 +74,8 @@ class XViewerCssSettingsTest {
 
   @Test
   fun `別ページの表示ルールは併存できる`() {
-    val homeRule = keepOnlyRule("Lists")
-    val exploreRule = keepOnlyRule("Latest").copy(pagePath = "/explore")
+    val homeRule = keepMatchingRule("/i/lists/")
+    val exploreRule = keepMatchingRule("/communities/").copy(pagePath = "/explore")
 
     val settings = XViewerCssSettings(enabled = true, css = "")
       .upsertDomRule(homeRule)
@@ -89,7 +89,7 @@ class XViewerCssSettingsTest {
     val settings = XViewerCssSettings(
       enabled = false,
       css = "",
-      domRules = listOf(keepOnlyRule("Lists")),
+      domRules = listOf(keepMatchingRule("/i/lists/")),
     )
 
     assertTrue(settings.domRulesForInjection().isEmpty())
@@ -100,18 +100,18 @@ class XViewerCssSettingsTest {
     val settings = XViewerCssSettings(
       enabled = true,
       css = "",
-      domRules = listOf(keepOnlyRule("Lists")),
+      domRules = listOf(keepMatchingRule("/i/lists/")),
     )
 
     assertTrue(settings.clearDomRules().domRules.isEmpty())
   }
 
-  private fun keepOnlyRule(target: String) = XViewerDomRule(
-    kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+  private fun keepMatchingRule(target: String) = XViewerDomRule(
+    kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
     pagePath = "/home",
     containerSelector = "[role=\"tablist\"]",
     itemSelector = "[role=\"tab\"]",
-    targetKind = XViewerDomTargetKind.TEXT,
+    targetKind = XViewerDomTargetKind.HREF_PATH_PREFIX,
     targetValue = target,
   )
 }
