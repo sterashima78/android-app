@@ -30,30 +30,33 @@ Local / Remote / Android platform
 - Repository の単一メソッドを転送するだけの UseCase は作らない。
 - 複数 Repository の orchestration、再試行、並列処理、複数画面から再利用される業務ルール等に UseCase / Application Service を利用する。
 - consumer が Repository の一部の用途しか必要としない場合は、Reader / Writer / application capability 等の narrow interface を優先する。
-- feature 固有 UI state は owning feature が所有し、`:app` は app shell、navigation、platform wiring に限定する。application-scope concrete composition は `:app:composition` が所有する。
+- feature 固有 UI state は owning feature が所有し、app-wide navigation / chrome / platform presentation wiring は `:app:presentation` が所有する。Android executable lifecycle は `:app`、application-scope concrete composition は `:app:composition` が所有する。
 
 ## Module ownership
 
 - アプリケーション固有コードは `:feature:<name>:<layer>` を基本とする。
 - `feature` は画面単位だけでなく、Article のような独立した共有概念の ownership namespace としても使う。
 - `core` は database、network、design system、AI runtime 等の横断的技術 capability に限定する。
-- `:app` は executable shell、app-shell UI、Android/platform entry point を所有し、concrete feature Data implementation の composition は `:app:composition` に隔離する。
-- `:app:composition` は Domain ownership ではなく、application-scope の high fan-in graph を隔離する dependency/build boundary とする。
+- `:app` は executable shell、Android component/lifecycle、app-only security / diagnostics / external Intent / platform host を所有する。
+- `:app:presentation` は app-shell navigation、app-wide chrome、app-owned Route/Host、feature UI composition を隔離する dependency/build boundary とする。
+- `:app:composition` は Domain ownership ではなく、application-scope の high fan-in concrete graph を隔離する dependency/build boundary とする。
 - `:core:data`、`:core:domain`、`:common`、`:util` のような責務の曖昧な集約先を作らない。
 - module の公開 API は小さく保ち、Data source、DB entity、HTTP DTO 等は必要がない限り `internal` とする。
-- 小さな責務を分けるだけのために Gradle module を増やさず、package / `internal` で十分なら同一 module に残す。
+- 小さな責務を分けるだけのために Gradle module を増やさず、package / `internal` で十分なら同一 module に残す。禁止依存を compile classpath から除外する価値がある場合は build boundary を設ける。
 
 禁止または原則回避する依存は次とする。
 
 ```text
-core   -> feature             禁止
-domain -> ui / data           禁止
-ui     -> concrete data       禁止
-app    -> feature data        禁止
-Gradle circular dependency    禁止
+core               -> feature             禁止
+domain             -> ui / data           禁止
+ui                 -> concrete data       禁止
+app                -> feature ui / data   禁止
+app:presentation   -> app                 禁止
+app:presentation   -> feature data        禁止
+Gradle circular dependency                 禁止
 ```
 
-feature 間依存そのものは、ownership と layer rule に反しない限り許容する。application composition に必要な feature Domain / Data / UI dependency は `:app:composition` が所有する。
+feature 間依存そのものは、ownership と layer rule に反しない限り許容する。app-shell presentation に必要な feature Domain / UI dependency は `:app:presentation` が所有し、application composition に必要な feature Domain / Data / UI dependency は `:app:composition` が所有する。
 
 ## Domain boundaries
 
@@ -98,14 +101,17 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 
 ## Composition and framework boundaries
 
-- `:app:composition` は application composition root として feature implementation を組み立て、`:app` はその公開 facade/capability を利用する。
-- `:app` は `:feature:*:data` に直接依存せず、production source から concrete feature Data implementation を import しない。
+- `:app:composition` は application composition root として feature implementation を組み立て、`:app` / `:app:presentation` はその公開 facade/capability を利用する。
+- `:app` は `:feature:*:ui` / `:feature:*:data` に直接依存しない。feature UI composition は `:app:presentation`、concrete Data composition は `:app:composition` を介する。
+- `:app:presentation` は `:app` / `:feature:*:data` に依存せず、production source から concrete feature Data、database connection、WorkManager infrastructure、executable implementation type を import / construct しない。
 - application scope で複数の adapter / route / framework entry point から利用する concrete runtime は `:app:composition` の `AppContainer` が一度だけ構築して lifetime を所有し、同じ instance / graph を再利用する。並行した repository / scheduler graph を route や Worker ごとに再構築しない。
-- Screen、`:app` の Route、`:app` の `ui` composition（`*Host.kt` 等を含む）で concrete Repository、database connection、WorkManager dependency を生成・import しない。
-- app shell navigation state（`AppSection` / `MainTab` / `AppViewModel`）は `app/.../ui` が所有し、`app/.../feature` に production source を置かない。
-- app shell は選択中の navigation state を確定してから、その presentation に必要な feature ViewModel だけを取得する。inactive feature の ViewModel を global host の都合で eager activation しない。
-- Activity-scoped ViewModel sharing を利用する場合でも、Summary / Bookmark overlay、TopBar、message bridge 等の共通 host は capability が必要なタブだけ mount / observe する。
-- `MainActivity` は Android lifecycle、external Intent、OS permission、app-level navigation、crash diagnostics 等の platform entry point に限定し、feature ViewModel を所有しない。app shell の `ui.AppViewModel` は Activity-scoped state として所有してよい。
+- Screen と `:app:presentation` の Route/Host で concrete Repository、database connection、WorkManager dependency を生成・import しない。
+- app shell navigation state（`AppSection` / `AppNavigationSpec`）は `app/presentation/src/main/kotlin/.../ui` が所有し、`app/src/main/.../feature` と `app/src/main/.../ui` に app-shell production source を置かない。
+- app shell は選択中の navigation destination を確定してから、その presentation に必要な feature ViewModel だけを取得する。inactive feature の ViewModel を global host の都合で eager activation しない。
+- Activity-scoped ViewModel sharing を利用する場合でも、Summary / Bookmark overlay、TopBar、message bridge 等の共通 host は capability が必要な destination だけ mount / observe する。
+- `MainActivity` は Android lifecycle、external Intent、app lock、root `NavController` lifetime、crash diagnostics、executable-only platform callback に限定し、feature ViewModel / feature UI を直接所有しない。
+- root `NavController` は `MainActivity.setContent` で app-lock conditional UI より上に保持し、`:app:presentation` の `YomitoriApp` へ渡す。root `NavHost` と graph registration は `:app:presentation` が所有する。
+- feature authorization、Calendar permission、backup document picker 等、Composable Route と一体の Activity Result launcher は `:app:presentation` が所有できる。LAN Web Server notification permission/dialog、Custom Tab、app lock transition 等、Activity/component lifecycle や executable-only state と一体の host は `:app` が所有する。
 - `MainActivity` が feature runtime を操作する場合は `MainActivityDependencies` 等から渡された narrow contract を利用し、`feature.*.data.*` implementation を直接 import しない。
 - Application / container の service locator lookup は通常の Route、Screen、ViewModel、Application Service、Data object では行わない。
 - Android が直接生成する Activity、Service、AppWidgetProvider 等で constructor injection を差し込めない entry point に限り、監査済みの narrow Provider contract を利用できる。
@@ -143,7 +149,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 機械的に検査できる規則はレビューだけに依存しない。
 
 - Gradle dependency / source ownership: `verifyArchitecture`
-- durable table ownership / created-table registration / app UI composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
+- durable table ownership / created-table registration / app presentation composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
 - durable table manifest: `config/architecture/table-ownership.tsv`
 - transitional foreign access: `config/architecture/foreign-table-access-allowlist.tsv`
 - Android 直生成 entry point の framework provider exception: `config/architecture/framework-provider-lookups.tsv`
@@ -153,13 +159,15 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 
 Android platform backup は `BackupPreferences.BACKUP_RULES` のうち、ファイル全体を許可する規則だけを対象とする。キー単位で許可する `library_ai_preferences.xml` と `local_summary_models.xml` は Android の XML 規則では安全に絞り込めないため、アプリ内 archive backup だけで扱い、platform backup には含めない。cloud-backup と device-transfer の SharedPreferences 方針には意図的な差を設けない。
 
-`verifyArchitecture` は Screen と `:app` の `*Route.kt` に加え、`MainActivity` の feature ViewModel / concrete feature data drift、`:app` production source の feature Worker を検査する。`AppCompositionSourceArchitectureTest` は `:app` の `:feature:*:data` direct dependency と production source の concrete Data import を追加で固定する。MainActivity の feature ViewModel import に app-shell-specific allowlist は設けない。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
+`verifyArchitecture` は `:app` の MainActivity / Worker ownership に加え、`:app:presentation` の Gradle dependency と source ownership guard を実行する。`:app:presentation` は executable `:app` / feature Data dependency、concrete feature Data / database / WorkManager import、executable implementation type、`YomitoriApp` の feature state / Activity Result ownership drift を検出する。
+
+`AppCompositionSourceArchitectureTest` は `:app` の `:feature:*:ui` / `:feature:*:data` direct dependency、`:app:presentation` の source root、presentation の feature Data 非依存、root NavController lifetime、feature destination/presentation ownershipを追加で固定する。MainActivity の feature ViewModel import に app-shell-specific allowlist は設けない。Worker 判定では `CoroutineWorker` / `Worker` / `ListenableWorker` の Kotlin import alias も同じ基底 class として扱う。
 
 `FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、feature Worker の data-layer ownership、Worker source での parallel database / Repository graph 再構築禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
 
-Architecture job の init script は `:app` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
+Architecture job の ownership scanner は `:app:presentation` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
-App composition の source ownership と active-tab ViewModel activation は `AppCompositionSourceArchitectureTest` で補完し、`:app -> :feature:*:data` dependency、`:app` production source の concrete Data import、`app/.../feature` production source / historical `feature.navigation` package の再導入と、selected-tab dispatch より前の feature ViewModel eager activation を検出する。
+App composition / presentation の source ownership と active-destination ViewModel activation は architecture test で補完し、historical `feature.navigation` package の再導入、manual selected-tab routing、destination dispatch より前の feature ViewModel eager activation を検出する。
 
 検査で表現しにくい ownership、命名、API 粒度、Route の orchestration 肥大化、実ユーザー情報かどうかの意味判定等はレビュー対象とする。再発しやすい構造的パターンが見つかった場合は、可能なら fixture と verification rule を追加する。
 
@@ -191,4 +199,9 @@ App composition の source ownership と active-tab ViewModel activation は `Ap
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
 - [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
 - [ADR-0160](../adr/0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
+- [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
+- [ADR-0202](../adr/0202-navigation-compose-root-routing.md)
+- [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
+- [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
