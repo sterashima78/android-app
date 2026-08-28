@@ -22,6 +22,7 @@ internal fun AppNavHost(
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenArticle: (Article) -> Unit,
+  onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
   onGameFullscreenChange: (Boolean) -> Unit,
 ) {
@@ -58,6 +59,7 @@ internal fun AppNavHost(
       routeDependencies = routeDependencies,
       biometricLockEnabled = biometricLockEnabled,
       onBiometricLockEnabledChange = onBiometricLockEnabledChange,
+      onOpenWebContent = onOpenWebContent,
       onOpenWebServer = onOpenWebServer,
       onGameFullscreenChange = onGameFullscreenChange,
     )
