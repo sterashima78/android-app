@@ -1,7 +1,7 @@
 # repository path	provider contract	reason
 app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt	MainActivityDependenciesProvider	Android constructs MainActivity and the Activity resolves its composition dependencies from Application
 core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt	DatabaseSchemaProvider	Framework-owned background entry points create the shared database from Context
-feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt	LanWebRepositoryProvider	Android constructs the LAN web Service
+feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt	LanWebContentGatewayProvider	Android constructs the LAN web Service
 feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetProvider.kt	WidgetRepositoryProvider	Android constructs the AppWidgetProvider and RemoteViewsService factory path without constructor injection
 feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetProvider.kt	WidgetRefreshSchedulerProvider	Android constructs the AppWidgetProvider that schedules refresh work
 feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/WidgetRepositoryAccess.kt	TaskRepositoryProvider	Android constructs task AppWidgetProvider entry points without constructor injection

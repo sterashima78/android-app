@@ -148,7 +148,7 @@ CI の Architecture job は `gradle/table-ownership.gradle.kts` を init script 
 
 Application への Provider lookup は Android が直接生成し constructor injection を差し込めない entry point に限定し、`config/architecture/framework-provider-lookups.tsv` と production lookup の集合を `FrameworkProviderBoundaryTest` で一致させる。不要になった manifest entry は stale として削除する。
 
-LAN Web Server の Android Service は `LanWebRepositoryProvider` を利用するが、Activity から Service implementation を直接参照しない。Activity は injected `LanWebServerController` contract を利用する。
+LAN Web Server の Android Service は `LanWebContentGatewayProvider` から Web-owned `LanWebContentGateway` を取得する。cross-feature Repository composition は `:app:composition` に閉じ、Activity から Service implementation を直接参照しない。Activity は injected `LanWebServerController` contract を利用する。
 
 WorkManager Worker は Provider lookup の例外に含めない。application-scope dependency は owning feature data module の `WorkerFactory` から constructor injection し、`:app` の `DelegatingWorkerFactory` が feature factory を `AppContainer` graph へ接続する。Worker 内に parallel database / Repository graph を作らず、`Application as? ...Provider` lookup も行わない。
 

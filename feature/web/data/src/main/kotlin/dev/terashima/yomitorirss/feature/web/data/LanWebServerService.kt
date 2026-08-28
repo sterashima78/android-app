@@ -15,7 +15,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
+import dev.terashima.yomitorirss.feature.web.LanWebContentGatewayProvider
 import java.net.Inet4Address
 import java.security.SecureRandom
 import java.util.Base64
@@ -68,7 +68,6 @@ class LanWebServerService : Service() {
     networkCallbackRegistered = false
     runCatching { server?.close() }
     server = null
-    // サーバ停止後に、表示済みの初回URLを再利用できないよう参照も破棄する。
     bootstrapToken = null
     publishedAddress = null
     executor.shutdownNow()
@@ -78,12 +77,10 @@ class LanWebServerService : Service() {
 
   private fun startServer() {
     runCatching {
-      val repositories = applicationContext as? LanWebRepositoryProvider
-        ?: error("Application must provide LAN web repositories")
+      val contentProvider = applicationContext as? LanWebContentGatewayProvider
+        ?: error("Application must provide LAN web content")
       LanWebServer(
-        articleRepository = repositories.lanWebArticleRepository,
-        bookmarkRepository = repositories.lanWebBookmarkRepository,
-        feedRepository = repositories.lanWebFeedRepository,
+        contentGateway = contentProvider.lanWebContentGateway,
         bootstrapToken = checkNotNull(bootstrapToken),
       ).also {
         it.start()

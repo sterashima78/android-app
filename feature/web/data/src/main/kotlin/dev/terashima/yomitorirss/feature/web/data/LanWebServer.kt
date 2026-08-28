@@ -1,8 +1,6 @@
 package dev.terashima.yomitorirss.feature.web.data
 
-import dev.terashima.yomitorirss.feature.article.ArticleRepository
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
 import java.io.BufferedReader
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -20,12 +18,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 
 class LanWebServer(
-  articleRepository: ArticleRepository,
-  bookmarkRepository: BookmarkRepository,
-  feedRepository: FeedRepository,
+  contentGateway: LanWebContentGateway,
   bootstrapToken: String,
 ) : AutoCloseable {
-  private val readModel = LanWebReadModel(articleRepository, bookmarkRepository, feedRepository)
+  private val readModel = LanWebReadModel(contentGateway)
   private val running = AtomicBoolean(false)
   private val acceptExecutor: ExecutorService = Executors.newSingleThreadExecutor()
   private val requestExecutor: ExecutorService = Executors.newFixedThreadPool(MAX_CONNECTIONS)
@@ -212,13 +208,11 @@ internal class LanWebAuthentication(
   fun authenticate(queryToken: String?, cookieToken: String?): AuthenticationResult {
     val expectedBootstrap = bootstrapToken
     if (expectedBootstrap != null && queryToken.securelyEquals(expectedBootstrap)) {
-      // 初回トークンは照合に成功した要求だけが一度消費できる。
       val newSessionToken = tokenGenerator()
       bootstrapToken = null
       sessionToken = newSessionToken
       return AuthenticationResult.Bootstrapped(newSessionToken)
     }
-    // token付きURLはbootstrap専用とし、Cookieがあっても再利用や差し替えを許可しない。
     if (queryToken != null) return AuthenticationResult.Rejected
     sessionToken?.takeIf { cookieToken.securelyEquals(it) }?.let {
       return AuthenticationResult.Authenticated

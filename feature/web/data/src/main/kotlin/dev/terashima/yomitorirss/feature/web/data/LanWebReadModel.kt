@@ -1,17 +1,12 @@
 package dev.terashima.yomitorirss.feature.web.data
 
-import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.article.ArticleRepository
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
-import dev.terashima.yomitorirss.feature.rss.Feed
-import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.web.LanWebArticleItem
+import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
+import dev.terashima.yomitorirss.feature.web.LanWebFeedItem
+import dev.terashima.yomitorirss.feature.web.LanWebSourceKind
 
 internal class LanWebReadModel(
-  private val articleRepository: ArticleRepository,
-  private val bookmarkRepository: BookmarkRepository,
-  private val feedRepository: FeedRepository,
+  private val contentGateway: LanWebContentGateway,
 ) {
   suspend fun loadHome(requestedView: String?): LanWebHomePage {
     val view = requestedView?.takeIf { it in LanWebViews.all } ?: LanWebViews.UNREAD
@@ -20,23 +15,23 @@ internal class LanWebReadModel(
         view = view,
         title = "Reddit",
         content = LanWebContent.Articles(
-          articles = articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isRedditArticle),
+          articles = contentGateway.listUnreadArticles().filter { it.sourceKind == LanWebSourceKind.REDDIT },
           emptyText = "Redditの未読はありません。",
         ),
       )
       LanWebViews.SAVED -> LanWebHomePage(
         view = view,
         title = "ブックマーク",
-        content = LanWebContent.Bookmarks(
-          articles = bookmarkRepository.listSavedArticles(null, null),
+        content = LanWebContent.Articles(
+          articles = contentGateway.listSavedArticles(),
           emptyText = "ブックマークはありません。",
         ),
       )
       LanWebViews.READ_LATER -> LanWebHomePage(
         view = view,
         title = "あとで読む",
-        content = LanWebContent.Bookmarks(
-          articles = bookmarkRepository.listReadLaterArticles(),
+        content = LanWebContent.Articles(
+          articles = contentGateway.listReadLaterArticles(),
           emptyText = "あとで読む記事はありません。",
         ),
       )
@@ -44,14 +39,14 @@ internal class LanWebReadModel(
         view = view,
         title = "RSSフィード",
         content = LanWebContent.Feeds(
-          feeds = feedRepository.listFeeds().filter { RedditSourceBoundary.isNonRedditFeed(it.feedUrl) },
+          feeds = contentGateway.listFeeds().filter { it.sourceKind == LanWebSourceKind.RSS },
         ),
       )
       else -> LanWebHomePage(
         view = LanWebViews.UNREAD,
         title = "RSS未読",
         content = LanWebContent.Articles(
-          articles = articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isNonRedditArticle),
+          articles = contentGateway.listUnreadArticles().filter { it.sourceKind == LanWebSourceKind.RSS },
           emptyText = "RSSの未読記事はありません。",
         ),
       )
@@ -67,17 +62,12 @@ internal data class LanWebHomePage(
 
 internal sealed interface LanWebContent {
   data class Articles(
-    val articles: List<Article>,
-    val emptyText: String,
-  ) : LanWebContent
-
-  data class Bookmarks(
-    val articles: List<BookmarkedArticle>,
+    val articles: List<LanWebArticleItem>,
     val emptyText: String,
   ) : LanWebContent
 
   data class Feeds(
-    val feeds: List<Feed>,
+    val feeds: List<LanWebFeedItem>,
   ) : LanWebContent
 }
 

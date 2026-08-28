@@ -18,7 +18,6 @@ import dev.terashima.yomitorirss.diagnostics.CrashDiagnosticsContent
 import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.diagnostics.copyCrashReport
 import dev.terashima.yomitorirss.entry.IncomingIntentHandler
-import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import dev.terashima.yomitorirss.security.AppLockContent
 import dev.terashima.yomitorirss.security.AppLockCoordinator
@@ -129,7 +128,7 @@ class MainActivity : ComponentActivity() {
       navigationRequests = navigationRequestFlow,
       biometricLockEnabled = appLockCoordinator.enabled,
       onBiometricLockEnabledChange = appLockCoordinator::updateEnabled,
-      onOpenArticle = ::openArticle,
+      onOpenArticleUrl = ::openArticleUrl,
       onOpenWebContent = { url -> openWebContentInCustomTab(url) },
       onOpenWebServer = { showWebServer = true },
       onExitApp = ::finish,
@@ -159,8 +158,8 @@ class MainActivity : ComponentActivity() {
     incomingIntentHandler.consume(incoming)
   }
 
-  private fun openArticle(article: Article) {
-    if (!openWebContentInCustomTab(article.url)) {
+  private fun openArticleUrl(url: String) {
+    if (!openWebContentInCustomTab(url)) {
       Toast.makeText(this, "記事を開けませんでした", Toast.LENGTH_LONG).show()
     }
   }

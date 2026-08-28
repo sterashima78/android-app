@@ -121,22 +121,30 @@ tasks.configureEach {
   }
 }
 
+val allowedExecutableFeatureDomainDependencies = setOf(
+  ":feature:task:domain",
+  ":feature:web:domain",
+  ":feature:widget:domain",
+)
+
 val verifyAppCompositionBoundary by tasks.registering {
   group = "verification"
-  description = "Verifies that the executable app depends on feature contracts, not feature data or UI modules."
+  description = "Verifies that the executable app depends only on its approved feature contracts."
 
   doLast {
-    val forbidden = configurations
+    val productionProjectDependencies = configurations
       .filterNot { "test" in it.name.lowercase() }
       .flatMap { configuration ->
         configuration.dependencies
           .withType(ProjectDependency::class.java)
           .map { dependency -> configuration.name to dependency.path }
       }
+      .distinct()
+
+    val forbidden = productionProjectDependencies
       .filter { (_, target) ->
         target.startsWith(":feature:") && (target.endsWith(":data") || target.endsWith(":ui"))
       }
-      .distinct()
       .sortedBy { (configuration, target) -> "$configuration:$target" }
 
     if (forbidden.isNotEmpty()) {
@@ -145,6 +153,21 @@ val verifyAppCompositionBoundary by tasks.registering {
           appendLine(":app must not depend directly on feature data or UI modules:")
           forbidden.forEach { (configuration, target) -> appendLine("- $configuration -> $target") }
           append("Use :app:composition for concrete wiring and :app:presentation for app-shell feature UI composition.")
+        },
+      )
+    }
+
+    val unexpectedFeatureDomains = productionProjectDependencies
+      .filter { (_, target) -> target.startsWith(":feature:") && target.endsWith(":domain") }
+      .filterNot { (_, target) -> target in allowedExecutableFeatureDomainDependencies }
+      .sortedBy { (configuration, target) -> "$configuration:$target" }
+
+    if (unexpectedFeatureDomains.isNotEmpty()) {
+      throw GradleException(
+        buildString {
+          appendLine(":app must keep feature Domain fan-in limited to executable framework contracts:")
+          unexpectedFeatureDomains.forEach { (configuration, target) -> appendLine("- $configuration -> $target") }
+          append("Move feature composition behind :app:composition or :app:presentation instead of widening executable :app.")
         },
       )
     }
@@ -158,33 +181,14 @@ rootProject.tasks.named("verifyArchitecture").configure {
 dependencies {
   implementation(project(":app:composition"))
   implementation(project(":app:presentation"))
-  implementation(project(":feature:ai-task-queue:domain"))
-  implementation(project(":feature:backup:domain"))
-  implementation(project(":feature:bookmark:domain"))
-  implementation(project(":feature:article:domain"))
-  implementation(project(":feature:asset:domain"))
-  implementation(project(":feature:book-reader:domain"))
-  implementation(project(":feature:chat:domain"))
-  implementation(project(":feature:calendar:domain"))
-  implementation(project(":feature:game:domain"))
-  implementation(project(":feature:health:domain"))
-  implementation(project(":feature:library:domain"))
-  implementation(project(":feature:knowledge:domain"))
-  implementation(project(":feature:mail:domain"))
+  implementation(project(":feature:task:domain"))
+  implementation(project(":feature:web:domain"))
+  implementation(project(":feature:widget:domain"))
+
   implementation(project(":core:background"))
   implementation(project(":core:database"))
   implementation(project(":core:designsystem"))
   implementation(project(":core:ai-runtime"))
-  implementation(project(":feature:reddit:domain"))
-  implementation(project(":feature:rss:domain"))
-  implementation(project(":feature:summary:domain"))
-  implementation(project(":feature:settings:domain"))
-  implementation(project(":feature:task:domain"))
-  implementation(project(":feature:web:domain"))
-  implementation(project(":feature:widget:domain"))
-  implementation(project(":feature:workout:domain"))
-  implementation(project(":feature:youtube:domain"))
-  implementation(project(":feature:x:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
   implementation("androidx.core:core-ktx:1.17.0")
