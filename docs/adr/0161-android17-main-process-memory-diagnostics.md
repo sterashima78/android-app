@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-24
+- Updated: 2026-08-28
 - Refines: [ADR-0079](0079-process-wide-local-ai-inference-sessions.md), [ADR-0145](0145-bound-vision-inference-memory-lifetime.md), [ADR-0149](0149-sanitize-shareable-crash-diagnostics.md), [ADR-0159](0159-isolate-smb-vision-inference-process.md), [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 
 ## Context
@@ -64,6 +65,16 @@ system-generated profiling result は app private `files/profiling` 以下に残
 
 推論 engine の強制 release や task ごとの process recycle は性能コストが大きいため、diagnostics で原因を切り分けた後の変更とする。
 
+### 5. cached process の通常 low-memory reclaim は startup diagnostics から除外する
+
+`ApplicationExitInfo.REASON_LOW_MEMORY` でも exit 時の importance が `ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED` の場合は、Android が expendable な cached process を memory pressure に応じて回収した通常 lifecycle と扱い、起動時の process-exit diagnostics を表示しない。
+
+- `REASON_LOW_MEMORY` を一律に除外せず、foreground / visible / service 等の状態で発生した low-memory exit は引き続き診断対象にする。
+- Android 17 の app memory limit を示す `MemoryLimiter` description は `REASON_OTHER` として観測されるため、importance が cached であることだけを理由に除外しない。
+- 未確認 exit の timestamp は診断対象判定より先に既読化する。除外した cached low-memory exit を次回起動時に再判定し続けない。
+
+この絞り込みは memory diagnostics の目的を「OS の通常 process lifecycle の記録」ではなく「アプリ側で調査価値のある memory-related termination の記録」に限定し、正常なバックグラウンド回収による偽陽性を防ぐ。
+
 ## Consequences
 
 ### Positive
@@ -73,6 +84,7 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - AI task 終了後の memory retention を5分追跡できる。
 - Android 17 の system anomaly heap dump を compileSdk/targetSdk 変更なしで取得できる。
 - shareable crash report に user content や heap dump 本体を含めない。
+- cached process の通常 low-memory reclaim をユーザー向け障害として表示しない。
 
 ### Negative
 
@@ -87,6 +99,7 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - `LocalAiMemoryDiagnosticsTest`: main-process sample field、sanitization、pid/process/time filtering、時系列化
 - `AppLocalAiMemoryMonitorTest`: active / retained / expiration window
 - `Android17MemoryAnomalyProfilerTest`: exit 前の安全な artifact name のみ抽出
+- `StartupCrashStoreTest`: cached `REASON_LOW_MEMORY` を除外し、foreground low-memory と `MemoryLimiter` は診断対象に維持する
 - app unit test
 - core background / AI runtime unit test
 - release lint
@@ -99,10 +112,13 @@ system-generated profiling result は app private `files/profiling` 以下に残
 
 - ADR index に本 ADR を追加する。
 - Android 17 memory limit の診断方法として本 ADR を current platform documentation の根拠にする。
+- 2026-08-28 の追記では cached process の通常 low-memory reclaim をユーザー向け診断対象から除外する境界を明文化した。
 
 ## Public repository review
 
 診断 label は実装 class name のみを許可し、prompt、URL、article/book title、file path、account、health data、credential 等を保存しない。profiling artifact 本体は app private storage にのみ置き、shareable report には安全な file name だけを追加する。test data は synthetic name のみを使う。
+
+2026-08-28 の変更は既存 `ApplicationExitInfo` の reason / importance の判定だけを追加し、新しい user data、device identifier、credential、file path、diagnostic payload は保存しない。
 
 ## References
 
