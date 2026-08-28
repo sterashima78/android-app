@@ -53,7 +53,9 @@ picker が `role="tab"` 自体ではなく、その内側の要素または単�
 
 ### Container / item scope
 
-container は global document で一意に解決できる selector だけを採用する。可能なら X の primary column に scope した tab container を使う。
+container selector は、可能なら X の primary column に scope した semantic selector を使う。selector が document 全体で一意ならそのまま採用するが、X が同種の `tablist` や `ScrollSnap-List` を複数持つ場合は、選択した container を含む selector も保存可能とする。
+
+container selector 自体が複数要素へ一致する場合は、保存済み fingerprint 集合を各候補 container に対して解決し、全 fingerprint が一意に解決できる候補が正確に1件の場合だけその container を採用する。0件または複数件なら fail-open とする。
 
 DOM が direct child の `[role="presentation"]` wrapper を持つ場合は、その wrapper を display item とする。これにより標準 timeline tab だけでなく同じ row の追加 control も非表示対象にできる。
 
@@ -63,13 +65,16 @@ wrapper 構造を検出できない場合は `[role="tab"]` 自体へ fallback �
 
 保存したすべての fingerprint が現在の item 集合内でそれぞれ正確に1項目へ解決され、かつ同じ item へ重複解決しない場合だけ rule を適用する。
 
+container selector が複数の候補へ一致する場合は、上記 fingerprint 条件を満たす候補 container が正確に1件であることも必要とする。
+
 条件を満たした場合は fingerprint 集合に含まれる item を表示し、それ以外の sibling item を app-owned hidden attribute で非表示にする。
 
 次のいずれかでは fail-open とし、何も隠さない。
 
-- container が0件または複数件
+- container selector の一致が0件
+- fingerprint を完全に解決できる container が0件または複数件
 - 保存済み fingerprint が壊れている
-- いずれかの fingerprint が0件または複数件へ解決される
+- いずれかの fingerprint が同一 container 内で0件または複数件へ解決される
 - 複数 fingerprint が同じ item へ解決される
 - X の DOM 更新によって item scope が成立しない
 
@@ -94,6 +99,7 @@ fingerprint には端末利用者の固定 tab 名や link path が含まれる�
 - X が `/i/lists/` link を DOM に公開しなくても、複数の固定 timeline tab をまとめて残せる
 - 固定 tab のどれか1つを選ぶだけで、同じ row の固定 tab 全体を対象にできる
 - `aria-selected` の有無に依存せず、未選択の固定 tab も group に含められる
+- 同種の tab container が複数存在しても fingerprint 集合で一意に識別できれば適用できる
 - 標準 timeline の表示文字列や UI 言語に依存しない
 - X の DOM が期待から外れた場合は fail-open するため、tab row 全体を誤って消しにくい
 - direct presentation wrapper を利用できる DOM では同じ row の追加 control も非表示にできる
@@ -103,6 +109,7 @@ fingerprint には端末利用者の固定 tab 名や link path が含まれる�
 - X ホームの先頭2 timeline tab が標準 timeline であるという構造に依存する
 - 固定 tab の追加、削除、名称変更で fingerprint 集合が一致しなくなった場合は rule の再作成が必要になる
 - text fingerprint まで fallback した場合は表示文字列変更に影響される
+- 複数 container が同じ fingerprint 集合を同時に満たす場合は安全側に倒して適用しない
 - fallback DOM では tab ではない追加 control を非表示にできない場合がある
 
 ## Alternatives
@@ -114,6 +121,10 @@ ADR-0209 で採用したが、実際の X Web DOM が List URL を公開しな�
 ### `aria-selected` を持つ tab だけを列挙する
 
 選択中タブの識別には使えるが、未選択の固定タブで属性が省略される DOM があるため採用しない。タブの存在判定は `role="tab"` に限定する。
+
+### container selector の global uniqueness を必須にする
+
+単純だが、X が同種の tab container を複数配置しただけで rule 作成が失敗する。fingerprint 集合そのものが container の識別にも利用できるため、selector の一意性だけを必須条件にはしない。
 
 ### ユーザーが複数タブを1件ずつ選択する
 
