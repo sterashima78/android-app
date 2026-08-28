@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.diagnostics
 
+import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -125,6 +126,39 @@ class StartupCrashStoreTest {
       isMemoryRelatedProcessExit(
         reason = ApplicationExitInfo.REASON_USER_REQUESTED,
         description = "user requested",
+      ),
+    )
+  }
+
+  @Test
+  fun `cached process の low memory 終了を診断対象にしない`() {
+    assertFalse(
+      shouldReportMemoryProcessExit(
+        reason = ApplicationExitInfo.REASON_LOW_MEMORY,
+        description = null,
+        importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED,
+      ),
+    )
+  }
+
+  @Test
+  fun `foreground process の low memory 終了を診断対象にする`() {
+    assertTrue(
+      shouldReportMemoryProcessExit(
+        reason = ApplicationExitInfo.REASON_LOW_MEMORY,
+        description = null,
+        importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND,
+      ),
+    )
+  }
+
+  @Test
+  fun `cached process の MemoryLimiter 終了は診断対象にする`() {
+    assertTrue(
+      shouldReportMemoryProcessExit(
+        reason = ApplicationExitInfo.REASON_OTHER,
+        description = "MemoryLimiter:AnonSwap",
+        importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED,
       ),
     )
   }
