@@ -52,6 +52,28 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   @Test
+  fun `providerとnetworkのconcrete integrationはcompositionが所有する`() {
+    val appBuild = source("app/build.gradle.kts")
+    val compositionBuild = source("app/composition/build.gradle.kts")
+    val compositionOnlyDependencies = listOf(
+      ":core:ai-cloud-openai",
+      ":core:network",
+    )
+
+    compositionOnlyDependencies.forEach { dependency ->
+      val declaration = "implementation(project(\"$dependency\"))"
+      assertFalse(
+        "executable app must not depend directly on composition-only integration: $dependency",
+        declaration in appBuild,
+      )
+      assertTrue(
+        "app composition must own concrete integration dependency: $dependency",
+        declaration in compositionBuild,
+      )
+    }
+  }
+
+  @Test
   fun `Activity result authorization bridgeはplatform packageが所有する`() {
     val authorizationPath = "$compositionSourceRoot/platform/authorization/AuthorizationDependencies.kt"
     val authorization = source(authorizationPath)
