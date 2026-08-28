@@ -28,7 +28,7 @@ fun XViewerRoute(
   repository: XViewerCssRepository,
   modifier: Modifier = Modifier,
 ) {
-  var showCssSettings by remember { mutableStateOf(false) }
+  var showCustomizationSettings by remember { mutableStateOf(false) }
 
   Box(modifier = modifier) {
     XViewerScreen(
@@ -46,16 +46,16 @@ fun XViewerRoute(
       color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
       tonalElevation = 4.dp,
     ) {
-      IconButton(onClick = { showCssSettings = true }) {
-        Icon(Icons.Default.Settings, contentDescription = "X カスタム CSS 設定")
+      IconButton(onClick = { showCustomizationSettings = true }) {
+        Icon(Icons.Default.Settings, contentDescription = "X 表示カスタマイズ設定")
       }
     }
   }
 
-  if (showCssSettings) {
-    XViewerCssSettingsSheet(
+  if (showCustomizationSettings) {
+    XViewerCustomizationDialog(
       repository = repository,
-      onDismiss = { showCssSettings = false },
+      onDismiss = { showCustomizationSettings = false },
     )
   }
 }
