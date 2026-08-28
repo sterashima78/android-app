@@ -41,6 +41,7 @@ fun YomitoriApp(
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenArticle: (Article) -> Unit,
+  onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
   onExitApp: () -> Unit,
 ) {
@@ -134,6 +135,7 @@ fun YomitoriApp(
         biometricLockEnabled = biometricLockEnabled,
         onBiometricLockEnabledChange = onBiometricLockEnabledChange,
         onOpenArticle = onOpenArticle,
+        onOpenWebContent = onOpenWebContent,
         onOpenWebServer = onOpenWebServer,
         onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
       )
