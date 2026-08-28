@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
       biometricLockEnabled = appLockCoordinator.enabled,
       onBiometricLockEnabledChange = appLockCoordinator::updateEnabled,
       onOpenArticle = ::openArticle,
+      onOpenWebContent = { url -> openWebContentInCustomTab(url) },
       onOpenWebServer = { showWebServer = true },
       onExitApp = ::finish,
     )
