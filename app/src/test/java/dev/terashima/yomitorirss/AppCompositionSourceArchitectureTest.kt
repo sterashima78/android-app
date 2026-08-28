@@ -13,6 +13,7 @@ class AppCompositionSourceArchitectureTest {
   }
 
   private val compositionSourceRoot = "app/composition/src/main/java/dev/terashima/yomitorirss"
+  private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
   fun `app feature namespaceにはproduction sourceを置かない`() {
@@ -33,17 +34,21 @@ class AppCompositionSourceArchitectureTest {
   }
 
   @Test
-  fun `app shell navigationはNavigation Composeとui ownershipに置く`() {
+  fun `app shell navigationはpresentation moduleが所有する`() {
     val appSourceRoot = File(
       repositoryRoot,
       "app/src/main/java/dev/terashima/yomitorirss",
     )
-    val legacyReferences = appSourceRoot
-      .walkTopDown()
-      .filter { it.isFile && it.extension == "kt" }
-      .filter { "dev.terashima.yomitorirss.feature.navigation" in it.readText() }
-      .map { it.relativeTo(appSourceRoot).invariantSeparatorsPath }
-      .toList()
+    val presentationRoot = File(repositoryRoot, presentationUiRoot)
+    val legacyReferences = listOf(appSourceRoot, presentationRoot)
+      .flatMap { sourceRoot ->
+        sourceRoot
+          .walkTopDown()
+          .filter { it.isFile && it.extension == "kt" }
+          .filter { "dev.terashima.yomitorirss.feature.navigation" in it.readText() }
+          .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
+          .toList()
+      }
 
     assertTrue(
       "app-shell navigation must not use the historical feature.navigation package: $legacyReferences",
@@ -51,20 +56,20 @@ class AppCompositionSourceArchitectureTest {
     )
     listOf("AppSection.kt", "AppNavigationSpec.kt", "AppNavHost.kt").forEach { fileName ->
       assertTrue(
-        "app-shell navigation implementation must live under app/ui: $fileName",
-        File(appSourceRoot, "ui/$fileName").isFile,
+        "app-shell navigation implementation must live in :app:presentation: $fileName",
+        File(presentationRoot, fileName).isFile,
       )
     }
     listOf("AppViewModel.kt", "MainTab.kt", "AppFeatureContent.kt").forEach { obsoleteFile ->
       assertFalse(
         "manual selected-tab navigation must not return: $obsoleteFile",
-        File(appSourceRoot, "ui/$obsoleteFile").isFile,
+        File(presentationRoot, obsoleteFile).isFile,
       )
     }
 
     val mainActivity = File(appSourceRoot, "MainActivity.kt").readText()
-    val yomitoriApp = File(appSourceRoot, "ui/YomitoriApp.kt").readText()
-    val navHost = File(appSourceRoot, "ui/AppNavHost.kt").readText()
+    val yomitoriApp = File(presentationRoot, "YomitoriApp.kt").readText()
+    val navHost = File(presentationRoot, "AppNavHost.kt").readText()
     val navOwnerIndex = mainActivity.indexOf("val navController = rememberNavController()")
     val lockDispatchIndex = mainActivity.indexOf("when {")
     assertTrue(
@@ -81,6 +86,66 @@ class AppCompositionSourceArchitectureTest {
     )
     assertTrue("AppNavHost must own the root Navigation Compose graph", "NavHost(" in navHost)
     assertFalse("YomitoriApp must not restore selected-tab state", "selectedTab" in yomitoriApp)
+  }
+
+  @Test
+  fun `presentation moduleはfeature UIを隔離しdataへ依存しない`() {
+    val settings = File(repositoryRoot, "settings.gradle.kts").readText()
+    val appBuild = File(repositoryRoot, "app/build.gradle.kts").readText()
+    val presentationBuild = File(repositoryRoot, "app/presentation/build.gradle.kts").readText()
+    val executableUiRoot = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui")
+
+    assertTrue(":app:presentation must be a Gradle module", "include(\":app:presentation\")" in settings)
+    assertTrue(
+      ":app must depend on the presentation boundary",
+      "implementation(project(\":app:presentation\"))" in appBuild,
+    )
+    assertFalse(
+      ":app must not depend directly on feature UI modules",
+      Regex("implementation\\(project\\(\":feature:[^\"]+:ui\"\\)\\)").containsMatchIn(appBuild),
+    )
+    assertTrue(
+      ":app:presentation must compose feature UI modules",
+      Regex("implementation\\(project\\(\":feature:[^\"]+:ui\"\\)\\)").containsMatchIn(presentationBuild),
+    )
+    assertFalse(
+      ":app:presentation must not depend on feature data modules",
+      Regex("implementation\\(project\\(\":feature:[^\"]+:data\"\\)\\)").containsMatchIn(presentationBuild),
+    )
+    assertFalse(
+      ":app:presentation must not depend on executable :app",
+      "project(\":app\")" in presentationBuild,
+    )
+    val executableUiFiles = executableUiRoot
+      .walkTopDown()
+      .filter { it.isFile && it.extension == "kt" }
+      .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
+      .toList()
+    assertTrue(
+      "app-shell production UI must not remain in executable :app: $executableUiFiles",
+      executableUiFiles.isEmpty(),
+    )
+  }
+
+  @Test
+  fun `YomitoriAppはfeature stateとActivity Resultを所有しない`() {
+    val source = File(repositoryRoot, "$presentationUiRoot/YomitoriApp.kt").readText()
+    val featurePresentationImport = Regex(
+      "(?m)^\\s*import\\s+dev\\.terashima\\.yomitorirss\\.feature\\.[A-Za-z0-9_.]+\\.(?:[A-Za-z0-9_]*UiState|[A-Za-z0-9_]*Screen|[A-Za-z0-9_]*Dialog)(?:\\s+as\\s+[A-Za-z0-9_]+)?\\s*$",
+    )
+    val stateCollector = Regex(
+      "\\b([A-Za-z_][A-Za-z0-9_]*)\\.state\\.collectAsState(?:WithLifecycle)?\\s*\\(",
+    )
+
+    assertFalse("YomitoriApp must not import feature-owned presentation state/screens", featurePresentationImport.containsMatchIn(source))
+    assertFalse("YomitoriApp must not use feature wildcard imports", Regex("(?m)^\\s*import\\s+dev\\.terashima\\.yomitorirss\\.feature\\.[A-Za-z0-9_.]+\\.\\*\\s*$").containsMatchIn(source))
+    val unexpectedCollectors = stateCollector.findAll(source)
+      .map { it.groupValues[1] }
+      .filter { it != "appViewModel" }
+      .toList()
+    assertTrue("YomitoriApp must not collect feature ViewModel state: $unexpectedCollectors", unexpectedCollectors.isEmpty())
+    assertFalse("YomitoriApp must not own Activity Result launchers", "rememberLauncherForActivityResult" in source)
+    assertFalse("YomitoriApp must not own Activity Result contracts", "ActivityResultContracts." in source)
   }
 
   @Test
@@ -210,10 +275,7 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `Library app routeはplatform authorization compositionに限定する`() {
-    val appRoute = File(
-      repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui/LibraryRoute.kt",
-    ).readText()
+    val appRoute = File(repositoryRoot, "$presentationUiRoot/LibraryRoute.kt").readText()
     val featureRoute = File(
       repositoryRoot,
       "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryFeatureRoute.kt",
@@ -238,7 +300,7 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `Integrated presentation ownershipはfeature moduleに置く`() {
-    val appUiRoot = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui")
+    val appUiRoot = File(repositoryRoot, presentationUiRoot)
     val featureRoot = File(
       repositoryRoot,
       "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui",
@@ -249,7 +311,7 @@ class AppCompositionSourceArchitectureTest {
       "IntegratedTargetDispatcher.kt",
       "IntegratedItemActions.kt",
     ).forEach { fileName ->
-      assertFalse("Integrated feature implementation must not live in app/ui: $fileName", File(appUiRoot, fileName).isFile)
+      assertFalse("Integrated feature implementation must not live in app presentation: $fileName", File(appUiRoot, fileName).isFile)
       assertTrue("Integrated feature must own $fileName", File(featureRoot, fileName).isFile)
     }
 
@@ -263,17 +325,17 @@ class AppCompositionSourceArchitectureTest {
   @Test
   fun `app compositionはnavigation destination判定より前にfeature ViewModelを生成しない`() {
     assertNoViewModelBeforeDispatch(
-      path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppNavHost.kt",
+      path = "$presentationUiRoot/AppNavHost.kt",
       functionMarker = "internal fun AppNavHost(",
       dispatchMarker = "NavHost(",
     )
     assertNoViewModelBeforeDispatch(
-      path = "app/src/main/java/dev/terashima/yomitorirss/ui/AppTopBarRoute.kt",
+      path = "$presentationUiRoot/AppTopBarRoute.kt",
       functionMarker = "internal fun AppTopBarRoute(",
       dispatchMarker = "when (selectedRoute)",
     )
     assertNoViewModelBeforeDispatch(
-      path = "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt",
+      path = "$presentationUiRoot/FeatureUiHosts.kt",
       functionMarker = "internal fun FeatureMessageEffects(",
       dispatchMarker = "val messageSources = selectedRoute.featureMessageSources()",
     )
@@ -281,7 +343,7 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `feature message effectsはnavigation capability policyを再定義しない`() {
-    val source = File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiHosts.kt").readText()
+    val source = File(repositoryRoot, "$presentationUiRoot/FeatureUiHosts.kt").readText()
 
     assertTrue(
       "FeatureMessageEffects must consume the centralized navigation capability mapping",
@@ -305,7 +367,7 @@ class AppCompositionSourceArchitectureTest {
     )
     val boundaryFiles = buildList {
       addAll(
-        File(repositoryRoot, "app/src/main/java/dev/terashima/yomitorirss/ui")
+        File(repositoryRoot, presentationUiRoot)
           .walkTopDown()
           .filter { it.isFile && it.extension == "kt" }
           .toList(),
