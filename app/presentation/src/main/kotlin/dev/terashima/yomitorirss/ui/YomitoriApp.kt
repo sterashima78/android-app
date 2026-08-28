@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import dev.terashima.yomitorirss.AppRouteDependencies
-import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
 import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
@@ -40,7 +39,7 @@ fun YomitoriApp(
   navigationRequests: Flow<AppNavigationTarget>,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
-  onOpenArticle: (Article) -> Unit,
+  onOpenArticleUrl: (String) -> Unit,
   onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
   onExitApp: () -> Unit,
@@ -134,7 +133,7 @@ fun YomitoriApp(
         bookmarkEditController = bookmarkEditController,
         biometricLockEnabled = biometricLockEnabled,
         onBiometricLockEnabledChange = onBiometricLockEnabledChange,
-        onOpenArticle = onOpenArticle,
+        onOpenArticle = { article -> onOpenArticleUrl(article.url) },
         onOpenWebContent = onOpenWebContent,
         onOpenWebServer = onOpenWebServer,
         onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
