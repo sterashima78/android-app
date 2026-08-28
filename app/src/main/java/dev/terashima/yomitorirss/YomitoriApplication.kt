@@ -13,8 +13,8 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.task.TaskRepository
+import dev.terashima.yomitorirss.feature.task.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
-import dev.terashima.yomitorirss.feature.widget.TaskRepositoryProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshSchedulerProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
