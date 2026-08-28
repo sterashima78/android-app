@@ -13,7 +13,7 @@ class MainActivityDependenciesSourceArchitectureTest {
   }
 
   @Test
-  fun `MainActivity dependencyはpresentationとincoming intentのfacadeに分離する`() {
+  fun `MainActivity dependencyはpresentationとLAN Webとincoming intentのfacadeに分離する`() {
     val legacyDependencies = File(
       repositoryRoot,
       "app/src/main/java/dev/terashima/yomitorirss/MainActivityDependencies.kt",
@@ -25,6 +25,10 @@ class MainActivityDependenciesSourceArchitectureTest {
     val presentationDependencies = File(
       repositoryRoot,
       "app/src/main/java/dev/terashima/yomitorirss/MainActivityPresentationDependencies.kt",
+    ).readText()
+    val lanWebDependencies = File(
+      repositoryRoot,
+      "app/src/main/java/dev/terashima/yomitorirss/MainActivityLanWebDependencies.kt",
     ).readText()
     val incomingDependencies = File(
       repositoryRoot,
@@ -41,6 +45,10 @@ class MainActivityDependenciesSourceArchitectureTest {
       "val mainActivityPresentationDependencies: MainActivityPresentationDependencies" in provider,
     )
     assertTrue(
+      "framework provider must expose the LAN Web facade",
+      "val mainActivityLanWebDependencies: MainActivityLanWebDependencies" in provider,
+    )
+    assertTrue(
       "framework provider must expose the incoming intent facade",
       "val incomingIntentDependencies: IncomingIntentDependencies" in provider,
     )
@@ -48,13 +56,21 @@ class MainActivityDependenciesSourceArchitectureTest {
       "presentation facade must own route composition",
       "val routeDependencies: AppRouteDependencies" in presentationDependencies,
     )
+    assertFalse(
+      "presentation facade must not own LAN Web or external Intent capabilities",
+      "LanWebServerController" in presentationDependencies ||
+        "SaveSharedBookmarkUseCase" in presentationDependencies ||
+        "LibraryBook" in presentationDependencies,
+    )
     assertTrue(
-      "presentation facade must own LAN Web presentation connection",
-      "val lanWebServerController: LanWebServerController" in presentationDependencies,
+      "LAN Web facade must own only the server controller connection",
+      "val controller: LanWebServerController" in lanWebDependencies,
     )
     assertFalse(
-      "presentation facade must not own external Intent mutation capabilities",
-      "SaveSharedBookmarkUseCase" in presentationDependencies || "LibraryBook" in presentationDependencies,
+      "LAN Web facade must not own route or external Intent capabilities",
+      "AppRouteDependencies" in lanWebDependencies ||
+        "SaveSharedBookmarkUseCase" in lanWebDependencies ||
+        "LibraryBook" in lanWebDependencies,
     )
     assertFalse(
       "incoming Intent facade must not depend on route or LAN Web presentation composition",
@@ -66,8 +82,11 @@ class MainActivityDependenciesSourceArchitectureTest {
     )
     assertTrue(
       "MainActivity presentation must use only the presentation facade",
-      "presentationDependencies.routeDependencies" in mainActivity &&
-        "presentationDependencies.lanWebServerController" in mainActivity,
+      "presentationDependencies.routeDependencies" in mainActivity,
+    )
+    assertTrue(
+      "MainActivity LAN Web host must use only the LAN Web facade",
+      "lanWebDependencies.controller" in mainActivity,
     )
   }
 
