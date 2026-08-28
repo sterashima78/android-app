@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss
 
 import android.app.Activity
 import android.app.Application
+import dev.terashima.yomitorirss.composition.background.AppBackgroundRuntime
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier

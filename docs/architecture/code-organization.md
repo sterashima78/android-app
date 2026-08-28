@@ -24,7 +24,7 @@ app ownership のまま独立した実装責務を持つ code は、意味のあ
 
 ```text
 dev.terashima.yomitorirss
-├── MainActivity / YomitoriApplication / AppContainer / composition facade
+├── MainActivity / YomitoriApplication
 ├── entry/        external Intent、share、widget launch routing
 ├── security/     app lock、認証 session、secure-window transition
 ├── diagnostics/  startup crash、memory diagnostics、diagnostic presentation
@@ -32,6 +32,19 @@ dev.terashima.yomitorirss
 │   └── authorization/  Gmail / Google Books の Activity Result boundary
 └── ui/           app-shell navigation / presentation
 ```
+
+`:app:composition` は application graph の facade と composition-only implementation を分ける。`AppContainer`、`AppRouteDependencies`、application database schema、WorkerFactory creation など app shell が参照する narrow API は root package に残す。一方、startup/background wiring のように独立した変更理由を持つ internal implementation は `composition/` 以下の責務 package に配置する。
+
+```text
+dev.terashima.yomitorirss
+├── AppContainer / AppRouteDependencies / application composition API
+├── composition/
+│   └── background/  startup observer / one-shot scheduler wiring
+└── platform/
+    └── authorization/  Activity Result boundary shared with app shell
+```
+
+package 分割は Gradle module の追加を意味しない。application graph の ownership と lifecycle が同じで、package で責務を局所化できる場合は `:app:composition` 内に留める。
 
 この一覧は closed set ではない。新しい package は独立した責務名を持つ場合に追加する。
 
@@ -70,3 +83,4 @@ feature / core / app のいずれでも、変更時に既存 file の責務が�
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
 - [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
+- [ADR-0200](../adr/0200-app-composition-module-boundary.md)
