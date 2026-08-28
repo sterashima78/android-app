@@ -32,16 +32,31 @@ dev.terashima.yomitorirss
 └── ui/           app-shell navigation / presentation
 ```
 
-`:app:composition` は application graph の facade と composition-only implementation を分ける。`AppContainer`、`AppRouteDependencies`、application database schema、WorkerFactory creation など app shell が参照する narrow API は module root package に残す。一方、startup/background wiring のように独立した変更理由を持つ internal implementation は `composition/` 以下の責務 package に配置する。
+`:app:composition` は application graph の facade と composition-only implementation を分ける。module root package には executable shell が直接参照する narrow API だけを残し、concrete graph construction は `composition/` 以下の責務 package に配置する。
 
 ```text
 dev.terashima.yomitorirss
-├── AppContainer / AppRouteDependencies / application composition API
+├── AppContainer.kt
+├── AppRouteDependencies.kt
+├── AppDatabaseSchema.kt
+├── AppWorkerFactory.kt
 ├── composition/
-│   └── background/  startup observer / one-shot scheduler wiring
+│   ├── ai/           local / cloud AI primitive composition
+│   ├── background/   startup observer / one-shot scheduler wiring
+│   ├── content/      Article / Bookmark / RSS / Reddit / YouTube graph
+│   ├── crossfeature/ owner repository 構築後の cross-feature service composition
+│   ├── health/       Health Connect repository composition
+│   ├── knowledge/    Knowledge persistence/generation と task runtime composition
+│   ├── library/      Library / SMB / book reader / authorization composition
+│   ├── route/        content / supporting route dependency construction
+│   └── supporting/   independent/supporting repository と platform adapter composition
 └── platform/
     └── authorization/  Gmail / Google Books の feature Data manager と Activity Result host を接続する bridge
 ```
+
+root package に `App*RuntimeDependencies` の generic implementation を追加しない。複数 feature の concrete wiring が増えた場合も、まず変更理由を表す責務 package を選び、異なる lifecycle / dependency boundary が必要になるまでは `:app:composition` module 内に留める。
+
+旧 `AppFeatureRuntimeDependencies` のように Health / Knowledge background task / Library runtime を1つに束ねる generic group は使わない。現在は `composition/health`、`composition/knowledge`、`composition/library` がそれぞれの application-scope construction を所有する。
 
 Activity Result launcher / callback host は executable `:app` が所有し、feature Data の authorization manager との接続に必要な dependency bridge は `:app:composition/platform/authorization` が所有する。
 
@@ -88,3 +103,4 @@ feature / core / app のいずれでも、変更時に既存 file の責務が�
 - [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
 - [ADR-0203](../adr/0203-feature-owned-provider-policy-adapters.md)
+- [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
