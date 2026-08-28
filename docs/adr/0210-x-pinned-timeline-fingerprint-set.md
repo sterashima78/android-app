@@ -30,6 +30,14 @@ rule 作成は pathname が `/` または `/home` のときだけ許可する。
 
 先頭2項目の具体的な表示文字列には依存しない。これにより X の表示言語に依存しない。
 
+### Tab recognition
+
+タイムラインタブの識別は `role="tab"` を基準とする。`aria-selected` は選択状態の補助情報であり、固定タブの存在判定条件には使用しない。
+
+X の DOM では、選択中の標準タブには `aria-selected` が存在しても、右側の固定タブには同属性が存在しない場合がある。そのため `[role="tab"][aria-selected]` で列挙すると、固定タブが sibling 集合から欠落して rule を生成できない。
+
+picker が `role="tab"` 自体ではなく、その内側の要素または単一 tab を含む presentation wrapper を選択した場合も、その tab を解決して同じ処理へ進める。
+
 ### Fingerprint
 
 各 custom timeline item について、同じ rule scope 内で一意になる最初の値を次の優先順位で選ぶ。
@@ -49,7 +57,7 @@ container は global document で一意に解決できる selector だけを採�
 
 DOM が direct child の `[role="presentation"]` wrapper を持つ場合は、その wrapper を display item とする。これにより標準 timeline tab だけでなく同じ row の追加 control も非表示対象にできる。
 
-wrapper 構造を検出できない場合は `[role="tab"][aria-selected]` 自体へ fallback する。この場合、tab ではない追加 control の非表示は保証しない。
+wrapper 構造を検出できない場合は `[role="tab"]` 自体へ fallback する。この場合、tab ではない追加 control の非表示は保証しない。
 
 ### Runtime application
 
@@ -85,6 +93,7 @@ fingerprint には端末利用者の固定 tab 名や link path が含まれる�
 
 - X が `/i/lists/` link を DOM に公開しなくても、複数の固定 timeline tab をまとめて残せる
 - 固定 tab のどれか1つを選ぶだけで、同じ row の固定 tab 全体を対象にできる
+- `aria-selected` の有無に依存せず、未選択の固定 tab も group に含められる
 - 標準 timeline の表示文字列や UI 言語に依存しない
 - X の DOM が期待から外れた場合は fail-open するため、tab row 全体を誤って消しにくい
 - direct presentation wrapper を利用できる DOM では同じ row の追加 control も非表示にできる
@@ -101,6 +110,10 @@ fingerprint には端末利用者の固定 tab 名や link path が含まれる�
 ### `/i/lists/` pathname group
 
 ADR-0209 で採用したが、実際の X Web DOM が List URL を公開しないケースで rule を生成できないため廃止する。
+
+### `aria-selected` を持つ tab だけを列挙する
+
+選択中タブの識別には使えるが、未選択の固定タブで属性が省略される DOM があるため採用しない。タブの存在判定は `role="tab"` に限定する。
 
 ### ユーザーが複数タブを1件ずつ選択する
 
