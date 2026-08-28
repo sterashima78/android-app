@@ -42,6 +42,8 @@ source package は既存 caller API を維持するため `dev.terashima.yomitor
 
 `:app` は `:app:presentation` と `:app:composition` を利用し、必要な feature Domain contract は直接利用できる。一方、`:feature:*:ui` / `:feature:*:data` へ直接依存しない。
 
+Custom Tab のように presentation から起動要求が発生する executable-only platform action は `MainActivity` から callback として `:app:presentation` へ渡す。presentation source は executable `:app` の platform/security implementation を直接 import しない。これにより app-lock external transition tracking 等の executable lifecycle policy を `:app` に維持する。
+
 ### 3. root `NavController` は `MainActivity` に残す
 
 ADR-0202 の app-lock navigation lifetime を維持する。
@@ -77,6 +79,7 @@ ADR-0193 / ADR-0196 / ADR-0200 では Activity Result host を executable `:app`
 - `:app:presentation -> :feature:*:data`
 - concrete database / WorkManager infrastructure の import / construction
 - `YomitoriApplication` / `MainActivity` / `MainActivityDependencies` 等の executable implementation type への依存
+- authorization bridge を除く executable platform/security implementation の direct import
 
 feature Data implementation が必要な instance wiring は `:app:composition` が継続して所有する。
 
@@ -124,6 +127,7 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 - `app/src/main/.../ui` に production Kotlin source が残らず、app-shell UI の正本が `app/presentation/src/main/kotlin/.../ui` であること。
 - `YomitoriApp` が feature ViewModel state や Activity Result launcher を所有しないこと。
 - app-owned Route が concrete feature Data / database / WorkManager infrastructure を import / construct しないこと。
+- presentation が executable platform/security implementation を直接 import せず、Custom Tab 等を callback で受け取ること。
 - `MainActivity` が root `NavController` を app-lock conditional UI より上に保持すること。
 - feature destination identity / feature presentation state の既存 ownership test を新 source root に追従させること。
 - presentation unit tests、existing app unit tests、`verifyArchitecture`、lint、public repository verifier を通すこと。
