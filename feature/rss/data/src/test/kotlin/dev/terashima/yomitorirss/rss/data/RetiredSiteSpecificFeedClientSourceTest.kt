@@ -1,46 +1,14 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.rss.data
 
 import java.io.File
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class CurrentCompatibilityBaselineSourceTest {
+class RetiredSiteSpecificFeedClientSourceTest {
   private val repositoryRoot: File by lazy {
     generateSequence(File(System.getProperty("user.dir")).absoluteFile) { it.parentFile }
-      .firstOrNull { File(it, "settings.gradle.kts").isFile && File(it, "app").isDirectory }
+      .firstOrNull { File(it, "settings.gradle.kts").isFile && File(it, "feature").isDirectory }
       ?: error("repository root not found")
-  }
-
-  @Test
-  fun `LocalModelManagerは退役済みrevision marker migrationを持たない`() {
-    val source = File(
-      repositoryRoot,
-      "core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalModelManager.kt",
-    ).readText()
-
-    assertFalse(source.contains("migrateLegacyCurrentModelRevisionMarkers"))
-    assertTrue(
-      source.contains(
-        "preferences.getString(modelRevisionKey(model), null) == model.artifactRevision",
-      ),
-    )
-  }
-
-  @Test
-  fun `production sourceは退役済みSummary実行設定を参照しない`() {
-    val unexpected = productionKotlinFiles()
-      .filter { file ->
-        val source = file.readText()
-        "summary_queue_execution" in source || "migrated_from_summary_queue_execution" in source
-      }
-      .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
-      .toList()
-
-    assertTrue(
-      "retired Summary preference compatibility must not return to production source: $unexpected",
-      unexpected.isEmpty(),
-    )
   }
 
   @Test
@@ -75,9 +43,4 @@ class CurrentCompatibilityBaselineSourceTest {
       implementationReferences.isEmpty(),
     )
   }
-
-  private fun productionKotlinFiles(): Sequence<File> = repositoryRoot.walkTopDown()
-    .filter(File::isFile)
-    .filter { it.extension == "kt" }
-    .filter { "/src/main/" in it.invariantSeparatorsPath }
 }
