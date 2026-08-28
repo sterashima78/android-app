@@ -78,4 +78,49 @@ class FeatureNavigationMetadataSourceArchitectureTest {
       }
     }
   }
+
+  @Test
+  fun `single route featureのtitleはowning featureが所有する`() {
+    val appSpec = File(
+      repositoryRoot,
+      "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/AppNavigationSpec.kt",
+    ).readText()
+    val featureContracts = mapOf(
+      "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/NavigationDestination.kt" to
+        ("INTEGRATED_ROUTE -> INTEGRATED_TITLE" to "const val INTEGRATED_TITLE = \"統合ビュー\""),
+      "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/NavigationDestination.kt" to
+        ("LIBRARY_ROUTE -> LIBRARY_TITLE" to "const val LIBRARY_TITLE = \"蔵書\""),
+      "feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/NavigationDestination.kt" to
+        ("KNOWLEDGE_ROUTE -> KNOWLEDGE_TITLE" to "const val KNOWLEDGE_TITLE = \"ナレッジ\""),
+      "feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/NavigationDestination.kt" to
+        ("ASSET_ROUTE -> ASSET_TITLE" to "const val ASSET_TITLE = \"資産\""),
+      "feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/NavigationDestination.kt" to
+        ("MAIL_ROUTE -> MAIL_TITLE" to "const val MAIL_TITLE = \"メール\""),
+      "feature/youtube/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/NavigationDestination.kt" to
+        ("YOUTUBE_ROUTE -> YOUTUBE_TITLE" to "const val YOUTUBE_TITLE = \"YouTube\""),
+      "feature/x/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/x/NavigationDestination.kt" to
+        ("X_ROUTE -> X_TITLE" to "const val X_TITLE = \"X\""),
+      "feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/NavigationDestination.kt" to
+        ("TASKS_ROUTE -> TASKS_TITLE" to "const val TASKS_TITLE = \"タスク\""),
+      "feature/calendar/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/NavigationDestination.kt" to
+        ("CALENDAR_ROUTE -> CALENDAR_TITLE" to "const val CALENDAR_TITLE = \"カレンダー\""),
+      "feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/NavigationDestination.kt" to
+        ("GAME_ROUTE -> GAME_TITLE" to "const val GAME_TITLE = \"ゲーム\""),
+      "feature/health/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/health/NavigationDestination.kt" to
+        ("HEALTH_ROUTE -> HEALTH_TITLE" to "const val HEALTH_TITLE = \"ヘルス\""),
+      "feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/NavigationDestination.kt" to
+        ("WORKOUT_ROUTE -> WORKOUT_TITLE" to "const val WORKOUT_TITLE = \"ワークアウト\""),
+      "feature/chat/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/NavigationDestination.kt" to
+        ("CHAT_ROUTE -> CHAT_TITLE" to "const val CHAT_TITLE = \"AIチャット\""),
+      "feature/settings/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/NavigationDestination.kt" to
+        ("SETTINGS_ROUTE -> SETTINGS_TITLE" to "const val SETTINGS_TITLE = \"設定\""),
+    )
+
+    featureContracts.forEach { (path, contracts) ->
+      val (appMapping, featureTitle) = contracts
+      val source = File(repositoryRoot, path).readText()
+      assertTrue("app title composition must consume owning feature title: $appMapping", appMapping in appSpec)
+      assertTrue("owning feature destination contract must expose title in $path", featureTitle in source)
+    }
+  }
 }

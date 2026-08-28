@@ -1,19 +1,28 @@
 package dev.terashima.yomitorirss.ui
 
 import dev.terashima.yomitorirss.feature.asset.ASSET_ROUTE
+import dev.terashima.yomitorirss.feature.asset.ASSET_TITLE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARKS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_FOLDERS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_IMPORT_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.BOOKMARK_TAGS_ROUTE
 import dev.terashima.yomitorirss.feature.bookmark.bookmarkDestinationTitle
 import dev.terashima.yomitorirss.feature.calendar.CALENDAR_ROUTE
+import dev.terashima.yomitorirss.feature.calendar.CALENDAR_TITLE
 import dev.terashima.yomitorirss.feature.chat.CHAT_ROUTE
+import dev.terashima.yomitorirss.feature.chat.CHAT_TITLE
 import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
+import dev.terashima.yomitorirss.feature.game.GAME_TITLE
 import dev.terashima.yomitorirss.feature.health.HEALTH_ROUTE
+import dev.terashima.yomitorirss.feature.health.HEALTH_TITLE
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
+import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_TITLE
 import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
+import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_TITLE
 import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
+import dev.terashima.yomitorirss.feature.library.LIBRARY_TITLE
 import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
+import dev.terashima.yomitorirss.feature.mail.MAIL_TITLE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
@@ -24,10 +33,15 @@ import dev.terashima.yomitorirss.feature.rss.RSS_SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_UNREAD_ROUTE
 import dev.terashima.yomitorirss.feature.rss.rssDestinationTitle
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
+import dev.terashima.yomitorirss.feature.settings.SETTINGS_TITLE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
+import dev.terashima.yomitorirss.feature.task.TASKS_TITLE
 import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
+import dev.terashima.yomitorirss.feature.workout.WORKOUT_TITLE
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
+import dev.terashima.yomitorirss.feature.x.X_TITLE
 import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_ROUTE
+import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_TITLE
 
 internal enum class FeatureMessageSource {
   RSS,
@@ -148,20 +162,20 @@ internal fun String.screenTitle(): String = rssDestinationTitle(this)
   ?: redditDestinationTitle(this)
   ?: bookmarkDestinationTitle(this)
   ?: when (this) {
-    INTEGRATED_ROUTE -> "統合ビュー"
-    LIBRARY_ROUTE -> "蔵書"
-    KNOWLEDGE_ROUTE -> "ナレッジ"
-    ASSET_ROUTE -> "資産"
-    MAIL_ROUTE -> "メール"
-    YOUTUBE_ROUTE -> "YouTube"
-    X_ROUTE -> "X"
-    TASKS_ROUTE -> "タスク"
-    CALENDAR_ROUTE -> "カレンダー"
-    GAME_ROUTE -> "ゲーム"
-    HEALTH_ROUTE -> "ヘルス"
-    WORKOUT_ROUTE -> "ワークアウト"
-    CHAT_ROUTE -> "AIチャット"
-    SETTINGS_ROUTE -> "設定"
+    INTEGRATED_ROUTE -> INTEGRATED_TITLE
+    LIBRARY_ROUTE -> LIBRARY_TITLE
+    KNOWLEDGE_ROUTE -> KNOWLEDGE_TITLE
+    ASSET_ROUTE -> ASSET_TITLE
+    MAIL_ROUTE -> MAIL_TITLE
+    YOUTUBE_ROUTE -> YOUTUBE_TITLE
+    X_ROUTE -> X_TITLE
+    TASKS_ROUTE -> TASKS_TITLE
+    CALENDAR_ROUTE -> CALENDAR_TITLE
+    GAME_ROUTE -> GAME_TITLE
+    HEALTH_ROUTE -> HEALTH_TITLE
+    WORKOUT_ROUTE -> WORKOUT_TITLE
+    CHAT_ROUTE -> CHAT_TITLE
+    SETTINGS_ROUTE -> SETTINGS_TITLE
     else -> error("Unknown app route: $this")
   }
 
