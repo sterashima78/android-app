@@ -8,7 +8,7 @@ import org.junit.Test
 class MainActivityFeatureBoundaryDetectorTest : LintDetectorTest() {
   override fun getDetector(): Detector = MainActivityFeatureBoundaryDetector()
 
-  override fun getIssues(): List<Issue> = listOf(MainActivityFeatureBoundaryDetector.ISSUE)
+  override fun getIssues(): MutableList<Issue> = mutableListOf(MainActivityFeatureBoundaryDetector.ISSUE)
 
   @Test
   fun `feature ViewModel importを拒否する`() {
