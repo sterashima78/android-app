@@ -116,24 +116,28 @@ current-version compatibility cleanup のように Android-heavy runtime の一�
 
 ### Module map consistency
 
-`settings.gradle.kts` を Gradle module 一覧の正本とし、`docs/architecture/module-map.md` の feature/layer 表は機械検証する。
+Gradle が評価済みの project graph を module 一覧の正本とし、`docs/architecture/module-map.md` の feature/layer 表は `gradle/architecture-metadata.gradle.kts` で機械検証する。
 
 ```bash
-python3 -m unittest scripts.test_verify_module_map
-python3 scripts/verify_module_map.py
+./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts verifyArchitecture
 ```
 
-表は `feature-modules:start/end` marker 内だけを比較対象とし、feature の追加・削除、layer の追加・削除、stale row を Architecture CI で検出する。これにより日付付きの手動スナップショットとして扱わない。
+表は `feature-modules:start/end` marker 内だけを比較対象とし、feature の追加・削除、layer の追加・削除、stale row を Architecture CI で検出する。settings file の文字列構文を再解析せず、Gradle が実際に認識した `Project.path` と比較するため、日付付きの手動スナップショットとして扱わない。
 
-### Architecture ownership init script
+### Architecture metadata / ownership init scripts
 
-CI の Architecture job は `gradle/table-ownership.gradle.kts` を init script として併用する。
+CI の Architecture job は `gradle/architecture-metadata.gradle.kts` と `gradle/table-ownership.gradle.kts` を init script として併用する。
 
 ```bash
-./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
+./gradlew --no-daemon \
+  -I gradle/architecture-metadata.gradle.kts \
+  -I gradle/table-ownership.gradle.kts \
+  verifyArchitecture
 ```
 
-この init script は table ownership に加えて、現在次も検査する。
+`architecture-metadata.gradle.kts` は module map と ADR identifier/link integrity を検証し、旧 Python verifier が持っていた missing/stale/layer mismatch、duplicate ADR、heading mismatch、missing reference 等の fixture も Kotlin で自己検証する。
+
+`table-ownership.gradle.kts` は table ownership に加えて、現在次も検査する。
 
 - owner data source の `CREATE TABLE IF NOT EXISTS` が `table-ownership.tsv` に登録されていること
 - table creator と registered owner が一致すること
@@ -164,11 +168,10 @@ Application startup smoke test は `YomitoriApplication.onCreate()` から WorkM
 
 ### ADR integrity
 
-ADR 自身の identifier / link integrity は次で検査する。
+ADR 自身の identifier / link integrity は `gradle/architecture-metadata.gradle.kts` で module map と同時に検査する。
 
 ```bash
-python3 -m unittest scripts.test_verify_adr_integrity
-python3 scripts/verify_adr_integrity.py
+./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts verifyArchitecture
 ```
 
 新しい ADR は現在存在する最大番号より大きい一意な番号を使用し、見出し・ファイル名・参照先を一致させる。
@@ -193,7 +196,7 @@ verifier は private key、代表的 credential literal、keystore / OAuth secre
 Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の4 checkを独立して並列実行する。
 
 - `Public repository`: public repository verifier の unit test と tracked content scan
-- `Architecture`: module map verifier、ADR integrity verifier、Gradle `verifyArchitecture`
+- `Architecture`: Gradle metadata verifier、table/ownership verifier、Gradle `verifyArchitecture`
 - `Test`: `./gradlew --no-daemon test`
 - `Lint`: `./gradlew --no-daemon :app:lintRelease`
 
@@ -202,10 +205,7 @@ Android の3検証は matrix で `fail-fast: false` とし、1つが失敗して
 ```bash
 python3 scripts/test_verify_public_repository.py
 python3 scripts/verify_public_repository.py
-python3 -m unittest scripts.test_verify_module_map scripts.test_verify_adr_integrity
-python3 scripts/verify_module_map.py
-python3 scripts/verify_adr_integrity.py
-./gradlew --no-daemon -I gradle/table-ownership.gradle.kts verifyArchitecture
+./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
 ```
@@ -216,7 +216,7 @@ ruleset 移行中は workflow 分離が先行し、direct push の技術的な�
 
 CI workflow が変更された場合は、この文書のコマンドを正本とせず workflow を優先して本記述を更新する。
 
-Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../adr/0093-main-apk-build-run-status.md), [ADR-0136](../adr/0136-public-repository-content-verification.md), [ADR-0197](../adr/0197-split-pr-checks-and-main-apk-build.md), [ADR-0201](../adr/0201-remove-main-apk-commit-status.md).
+Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../adr/0093-main-apk-build-run-status.md), [ADR-0136](../adr/0136-public-repository-content-verification.md), [ADR-0197](../adr/0197-split-pr-checks-and-main-apk-build.md), [ADR-0201](../adr/0201-remove-main-apk-commit-status.md), [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md).
 
 ## Choosing tests for a change
 
@@ -238,7 +238,7 @@ Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../a
 | retired one-time runtime migration | current validity contract + source regression when integration fixture is impractical |
 | shareable diagnostic sanitizer | pure unit test with synthetic sensitive-looking data |
 | module/source ownership rule | architecture fixture + `verifyArchitecture` |
-| module map update | module-map verifier unit test + consistency verification |
+| module map update | Gradle metadata fixture + `verifyArchitecture` |
 | WorkManager dependency injection | WorkerFactory boundary test + startup smoke + affected Worker behavior tests |
 | new table ownership rule | table ownership manifest/fixture + verification |
 | Android platform baseline | architecture fixture + all module `minSdk` verification |
@@ -253,7 +253,7 @@ PR review では test の「数」ではなく、変更した responsibility と
 
 - [`.github/workflows/check.yml`](../../.github/workflows/check.yml)
 - [`.github/workflows/build.yml`](../../.github/workflows/build.yml)
-- [`scripts/verify_module_map.py`](../../scripts/verify_module_map.py)
+- [`gradle/architecture-metadata.gradle.kts`](../../gradle/architecture-metadata.gradle.kts)
 - [ADR-0046](../adr/0046-automated-architecture-verification.md)
 - [ADR-0047](../adr/0047-feature-owned-database-schema-contributions.md)
 - [ADR-0055](../adr/0055-adr-numbering-policy.md)
@@ -272,3 +272,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
 - [ADR-0201](../adr/0201-remove-main-apk-commit-status.md)
+- [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
