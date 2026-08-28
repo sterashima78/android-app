@@ -69,6 +69,7 @@ internal fun googleDriveBackupNetworkConstraints(wifiOnly: Boolean): Constraints
 
   val wifiRequest = NetworkRequest.Builder()
     .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
     .build()
   return Constraints.Builder()
