@@ -81,10 +81,16 @@ ADR-0193 / ADR-0196 / ADR-0200 では Activity Result host を executable `:app`
 - `:app:presentation -> :app`
 - `:app:presentation -> :feature:*:data`
 - concrete database / WorkManager infrastructure の import / construction
-- `YomitoriApplication` / `MainActivity` / `MainActivityDependencies` 等の executable implementation type への依存
+- `YomitoriApplication` / `MainActivity` / `MainActivityDependenciesProvider` / `MainActivityPresentationDependencies` / `IncomingIntentDependencies` 等の executable implementation type への依存
 - authorization bridge を除く executable platform/security implementation の direct import
 
 feature Data implementation が必要な instance wiring は `:app:composition` が継続して所有する。
+
+#### 2026-08-28 refinement: executable dependency aggregate を分割する
+
+ADR-0166 の 2026-08-28 refinement により、旧 `MainActivityDependencies` aggregate は廃止し、presentation wiring は `MainActivityPresentationDependencies`、external Intent mutation は `entry.IncomingIntentDependencies` に分割した。Android が生成する `MainActivity` の provider lookup は `MainActivityDependenciesProvider` 1つを維持する。
+
+この変更は `:app:presentation` の依存方向を変えない。presentation module は新しい executable façade 型にも依存せず、必要な runtime capability は引き続き `:app:composition` / feature Domain/UI contract から取得する。
 
 ### 6. feature UI ownership は変更しない
 
@@ -132,7 +138,7 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 - `app/src/main/.../ui` に production Kotlin source が残らず、app-shell UI の正本が `app/presentation/src/main/kotlin/.../ui` であること。
 - `YomitoriApp` が feature ViewModel state や Activity Result launcher を所有しないこと。
 - app-owned Route が concrete feature Data / database / WorkManager infrastructure を import / construct しないこと。
-- presentation が executable platform/security implementation を直接 import せず、Custom Tab 等を callback で受け取ること。
+- presentation が executable platform/security implementation や executable dependency façade を直接 import せず、Custom Tab 等を callback で受け取ること。
 - external Intent routing が feature UI route/provider implementation を参照せず、semantic navigation target と Domain contract を使うこと。
 - feature-owned framework component を executable app manifest が宣言せず、owning feature manifest が宣言すること。
 - Composable permission/dialog host が presentation boundary にあり、executable `:app` に feature UI dependency を戻さないこと。
@@ -151,11 +157,14 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 
 本変更は Gradle dependency、app-shell presentation source の module 移動、semantic/domain integration contract、synthetic architecture/unit test、current architecture documentation のみを変更する。credential、OAuth token、account identifier、private endpoint、実ユーザー URL / title / mail / health data、diagnostic artifact を追加しない。
 
+2026-08-28 executable dependency façade refinement も app 内の dependency wiring、architecture guard、synthetic test、documentation の変更だけであり、credential、private endpoint、実ユーザーデータ、diagnostic artifact を追加しない。
+
 ## References
 
 - [ADR-0003](0003-multi-module-architecture.md)
 - [ADR-0136](0136-public-repository-content-verification.md)
 - [ADR-0150](0150-app-shell-navigation-ui-ownership.md)
+- [ADR-0166](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0188](0188-integrated-feature-owns-cross-feature-presentation.md)
 - [ADR-0192](0192-settings-feature-owns-cross-feature-presentation.md)
 - [ADR-0193](0193-within-module-responsibility-and-app-package-structure.md)
