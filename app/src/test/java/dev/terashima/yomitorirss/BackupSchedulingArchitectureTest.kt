@@ -29,8 +29,8 @@ class BackupSchedulingArchitectureTest {
   @Test
   fun `app route wiringはfeature mutation後のbackupをorchestrateしない`() {
     val paths = listOf(
-      "app/composition/src/main/java/dev/terashima/yomitorirss/AppContentRouteDependencies.kt",
-      "app/composition/src/main/java/dev/terashima/yomitorirss/AppSupportingRouteDependencies.kt",
+      "app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppContentRouteDependencies.kt",
+      "app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt",
     )
 
     paths.forEach { path ->

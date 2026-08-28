@@ -1,5 +1,6 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.composition.route
 
+import dev.terashima.yomitorirss.AppContainer
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
 import dev.terashima.yomitorirss.feature.bookmark.MoveBookmarkToLibraryUseCase
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory

@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.composition.ai
 
 import android.app.Application
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient

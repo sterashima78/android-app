@@ -10,7 +10,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.terashima.yomitorirss.LibraryRouteDependencies
+import dev.terashima.yomitorirss.composition.route.LibraryRouteDependencies
 import dev.terashima.yomitorirss.feature.library.LibraryFeatureRoute
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel

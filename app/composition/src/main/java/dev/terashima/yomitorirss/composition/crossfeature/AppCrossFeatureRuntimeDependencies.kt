@@ -1,6 +1,7 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.composition.crossfeature
 
 import android.app.Application
+import dev.terashima.yomitorirss.composition.library.LibraryRuntimeDependencies
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
