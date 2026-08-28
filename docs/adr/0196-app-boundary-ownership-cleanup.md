@@ -47,6 +47,8 @@ Gmail / Google Books の authorization dependency、authorized account、resolut
 
 物理配置だけを `dev.terashima.yomitorirss.platform.authorization` に移し、root package には置かない。Route host と runtime composition はこの platform package の型を利用する。
 
+Current refinement (2026-08-28): ADR-0200 による composition module 分離後は、Activity Result launcher / host 自体は executable `:app` が所有し、feature Data authorization manager と接続する authorization dependency bridge は `:app:composition` の `platform.authorization` package が所有する。package 名は維持しつつ、Gradle ownership は役割ごとに分離する。
+
 ### 4. `NotifyingWebLibraryMutator` は再導入しない
 
 ADR-0195 に従い、automatic backup scheduling は durable persistence commit notification を起点とする。Library mutator や UI refresh callback に backup side effect を付与する decorator は app cleanup のために再導入しない。
@@ -79,7 +81,7 @@ Current refinement (2026-08-28): application composition には独立した depe
 - app source に `AppWorkoutAiAdvisor.kt` が存在しないことを architecture test で固定する。
 - `ChatGptTextInference` が `:core:ai-cloud-openai` に存在し、app root に存在しないことを architecture test で固定する。
 - `:core:ai-cloud-openai` と `:feature:workout:data` が `:core:ai-inference` へ依存することを architecture test で固定する。
-- authorization boundary が `platform.authorization` に存在し、app root の旧 file が存在しないことを architecture test で固定する。
+- authorization dependency bridge が `:app:composition/platform/authorization` に存在し、executable `:app` は Activity Result host に限定されることを architecture test で固定する。
 - Summary / Knowledge の provider policy adapter が `:app:composition` に戻らないことを ADR-0203 の architecture verification で固定する。
 - existing Architecture / Test / Lint / public repository verification を実行する。
 
