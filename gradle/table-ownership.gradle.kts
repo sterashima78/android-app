@@ -60,21 +60,21 @@ fun appUiDependencyViolations(repositoryPath: String, sourceText: String): List<
     """(?m)^\s*import\s+dev\.terashima\.yomitorirss\.feature\.[A-Za-z0-9_.]+\.data\.""",
   )
   if (concreteFeatureDataImport.containsMatchIn(sourceText)) {
-    violations += "app UI composition must not import concrete feature data: $repositoryPath"
+    violations += "app presentation composition must not import concrete feature data: $repositoryPath"
   }
 
   val infrastructureImport = Regex(
     """(?m)^\s*import\s+(?:dev\.terashima\.yomitorirss\.core\.database\.(?:DatabaseConnection|YomitoriDatabase)\b|androidx\.work\.)""",
   )
   if (infrastructureImport.containsMatchIn(sourceText)) {
-    violations += "app UI composition must not import database or WorkManager infrastructure: $repositoryPath"
+    violations += "app presentation composition must not import database or WorkManager infrastructure: $repositoryPath"
   }
 
   val concreteConstruction = Regex(
     """\b(?:DatabaseConnection|YomitoriDatabase|Default[A-Za-z0-9_]*Repository|WorkManager[A-Za-z0-9_]*(?:Scheduler|Controller))\s*\(""",
   )
   concreteConstruction.find(sourceText)?.let { match ->
-    violations += "app UI composition must not construct concrete data/background dependencies: $repositoryPath (${match.value.trim()})"
+    violations += "app presentation composition must not construct concrete data/background dependencies: $repositoryPath (${match.value.trim()})"
   }
   return violations
 }
@@ -166,11 +166,11 @@ gradle.projectsEvaluated {
   }
 
   val appUiFixture = appUiDependencyViolations(
-    repositoryPath = "app/src/main/java/dev/terashima/yomitorirss/ui/MailRouteHost.kt",
+    repositoryPath = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/MailRouteHost.kt",
     sourceText = "import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome",
   )
   if (appUiFixture.none { "concrete feature data" in it }) {
-    throw GradleException("App UI ownership fixture failed to detect Host concrete data import")
+    throw GradleException("App presentation ownership fixture failed to detect Host concrete data import")
   }
 
   val platformFixture = androidPlatformBaselineViolations(
@@ -190,7 +190,7 @@ gradle.projectsEvaluated {
     }
   }
 
-  val appUiRoot = root.file("app/src/main")
+  val appUiRoot = root.file("app/presentation/src/main")
   if (appUiRoot.isDirectory) {
     root.fileTree(appUiRoot) { include("**/ui/**/*.kt") }
       .files
