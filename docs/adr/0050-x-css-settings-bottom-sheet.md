@@ -1,7 +1,8 @@
 # ADR-0050: X カスタム CSS 設定はボトムシートで表示する
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-11
+- Superseded by: ADR-0213
 
 ## Context
 
@@ -38,3 +39,4 @@ X のカスタム CSS 設定では、有効/無効、3つの CSS セット切り
 - ADR-0115 の X WebView / CSS 注入方針は変更しない。
 - ADR-0022 の3セット保存モデル、コピー、永続化方針は変更しない。
 - ADR-0107 の repository 明示注入方針に従い、X feature host が CSS 設定シートへ repository を渡す。
+- ADR-0213 により、スクロールと swipe-dismiss の競合を避けるためフルスクリーンダイアログへ置き換えられた。
