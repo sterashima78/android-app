@@ -14,9 +14,12 @@ class GoogleDriveBackupPreferences(context: Context) {
     lastSuccessAt = preferences.getString(KEY_LAST_SUCCESS_AT, null),
     lastFileName = preferences.getString(KEY_LAST_FILE_NAME, null),
     lastError = preferences.getString(KEY_LAST_ERROR, null),
+    wifiOnly = isWifiOnly(),
   )
 
   fun isConfigured(): Boolean = preferences.contains(KEY_FOLDER_URI)
+
+  fun isWifiOnly(): Boolean = preferences.getBoolean(KEY_WIFI_ONLY, false)
 
   fun configure(folderUri: Uri, folderName: String) {
     preferences.edit()
@@ -24,6 +27,10 @@ class GoogleDriveBackupPreferences(context: Context) {
       .putString(KEY_FOLDER_NAME, folderName)
       .remove(KEY_LAST_ERROR)
       .apply()
+  }
+
+  fun setWifiOnly(enabled: Boolean) {
+    preferences.edit().putBoolean(KEY_WIFI_ONLY, enabled).apply()
   }
 
   fun clearConfiguration() {
@@ -52,6 +59,7 @@ class GoogleDriveBackupPreferences(context: Context) {
 
   companion object {
     const val FILE_NAME = "google_drive_backup"
+    internal const val KEY_WIFI_ONLY = "wifi_only"
 
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val KEY_FOLDER_NAME = "folder_name"
