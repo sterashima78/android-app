@@ -10,12 +10,10 @@ import dev.terashima.yomitorirss.diagnostics.Android17MemoryAnomalyProfiler
 import dev.terashima.yomitorirss.diagnostics.AppLocalAiMemoryMonitor
 import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
 import dev.terashima.yomitorirss.entry.IncomingIntentDependencies
-import dev.terashima.yomitorirss.feature.article.ArticleRepository
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.task.TaskRepositoryProvider
-import dev.terashima.yomitorirss.feature.web.LanWebRepositoryProvider
+import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
+import dev.terashima.yomitorirss.feature.web.LanWebContentGatewayProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshSchedulerProvider
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
@@ -29,7 +27,7 @@ class YomitoriApplication : Application(),
   WidgetRefreshSchedulerProvider,
   TaskRepositoryProvider,
   DatabaseSchemaProvider,
-  LanWebRepositoryProvider {
+  LanWebContentGatewayProvider {
   private val currentActivityTracker = CurrentActivityTracker()
   val container: AppContainer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppContainer(
@@ -53,8 +51,7 @@ class YomitoriApplication : Application(),
   }
   override val incomingIntentDependencies: IncomingIntentDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     IncomingIntentDependencies(
-      saveSharedBookmark = container.saveSharedBookmarkUseCase,
-      addSharedWebBookCapability = container::addSharedWebBook,
+      sharedContentEntry = container.sharedContentEntryCapability,
     )
   }
   override val workManagerConfiguration: Configuration by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -67,9 +64,7 @@ class YomitoriApplication : Application(),
   override val widgetRepository: WidgetRepository get() = container.widgetRepository
   override val widgetRefreshScheduler: WidgetRefreshScheduler get() = container.widgetRefreshScheduler
   override val taskRepository: TaskRepository get() = container.taskRepository
-  override val lanWebArticleRepository: ArticleRepository get() = container.articleRepository
-  override val lanWebBookmarkRepository: BookmarkRepository get() = container.bookmarkRepository
-  override val lanWebFeedRepository: FeedRepository get() = container.feedRepository
+  override val lanWebContentGateway: LanWebContentGateway get() = container.lanWebContentGateway
 
   override fun onCreate() {
     super.onCreate()
