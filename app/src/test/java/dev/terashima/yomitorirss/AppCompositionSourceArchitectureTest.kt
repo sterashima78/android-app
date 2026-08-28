@@ -335,7 +335,7 @@ class AppCompositionSourceArchitectureTest {
       dispatchMarker = "when (selectedRoute)",
     )
     assertNoViewModelBeforeDispatch(
-      path = "$presentationUiRoot/FeatureUiHosts.kt",
+      path = "$presentationUiRoot/FeatureMessageEffects.kt",
       functionMarker = "internal fun FeatureMessageEffects(",
       dispatchMarker = "val messageSources = selectedRoute.featureMessageSources()",
     )
@@ -343,8 +343,12 @@ class AppCompositionSourceArchitectureTest {
 
   @Test
   fun `feature message effectsはnavigation capability policyを再定義しない`() {
-    val source = File(repositoryRoot, "$presentationUiRoot/FeatureUiHosts.kt").readText()
+    val legacyHost = File(repositoryRoot, "$presentationUiRoot/FeatureUiHosts.kt")
+    val overlays = File(repositoryRoot, "$presentationUiRoot/FeatureOverlays.kt")
+    val source = File(repositoryRoot, "$presentationUiRoot/FeatureMessageEffects.kt").readText()
 
+    assertFalse("mixed FeatureUiHosts file must not return", legacyHost.exists())
+    assertTrue("feature overlays must have a dedicated source file", overlays.isFile)
     assertTrue(
       "FeatureMessageEffects must consume the centralized navigation capability mapping",
       "selectedRoute.featureMessageSources()" in source,

@@ -48,7 +48,18 @@ Summary Prompt の dialog 実装は `:feature:summary:ui`、AI Task Queue の ro
 
 `FeatureUiAdapters.kt` は削除する。
 
-Settings の Summary Prompt は `SettingsFeatureScreen` から Summary UI を直接利用する。app-level Summary overlay に必要な progress label は、`FeatureUiHosts.kt` が `:feature:summary:ui` の `summaryProgressLabel` を直接呼び、専用 forwarding function は設けない。
+Settings の Summary Prompt は `SettingsFeatureScreen` から Summary UI を直接利用する。app-level Summary overlay に必要な progress label は、`FeatureOverlays.kt` が `:feature:summary:ui` の `summaryProgressLabel` を直接呼び、専用 forwarding function は設けない。
+
+### 2026-08-28 refinement: app-level message effects と overlays を物理分割する
+
+ADR-0205 で app-shell presentation が `:app:presentation` へ移った後、`FeatureUiHosts.kt` には navigation destination に応じた snackbar message effect と、Bookmark / Summary の app-level overlay host という異なる変更理由が同居していた。
+
+`FeatureUiHosts.kt` は削除し、次の責務別 source に分割する。
+
+- `FeatureMessageEffects.kt`: `featureMessageSources()` が示す active capability に対する ViewModel resolution と snackbar consumption
+- `FeatureOverlays.kt`: Bookmark edit overlay と Summary overlay の app-shell composition
+
+この refinement は presentation ownership、feature UI / Domain dependency、Route contract、ViewModel lifetime を変更しない。Gradle module を追加せず、ADR-0193 の「module 内の局所責務は package / file で分離する」原則に従う。
 
 ## Consequences
 
@@ -58,6 +69,7 @@ Settings の Summary Prompt は `SettingsFeatureScreen` から Summary UI を直
 - `:app` の Settings 関連責務が Android Activity Result、navigation、dependency wiring に限定される。
 - local overlay と cross-feature overlay の ownership 基準が統一される。
 - 実装を持たない `SettingsFeatureHost` / `FeatureUiAdapters` という特例的な app source を削除できる。
+- app-level snackbar effect と overlay host の変更理由が source file 単位で分離される。
 - ADR-0188 と同じ「cross-feature であることと app ownership を同一視しない」原則を Settings に適用できる。
 
 ### Negative
@@ -65,12 +77,14 @@ Settings の Summary Prompt は `SettingsFeatureScreen` から Summary UI を直
 - `:feature:settings:ui` から Summary、AI Task Queue、Backup UI / Domain への明示的な sibling dependency が増える。
 - sibling feature の public presentation contract 変更時に Settings UI が追随する必要がある。
 - Settings UI が sibling feature の内部実装まで参照しないよう、Data implementation dependency と循環依存を architecture verification で引き続き防ぐ必要がある。
+- app-level message effect / overlay の責務間で共通化が必要になった場合でも、汎用 host file に再統合せず ownership を明示する必要がある。
 
 ## Verification
 
 - `SettingsCompositionSourceArchitectureTest` で `SettingsRoute` が dialog / route presentation を所有しないことを検証する。
 - 同 test で `SettingsFeatureScreen` が6種類の Settings presentation と overlay selection state を所有することを検証する。
 - 同 test で `SettingsFeatureHost.kt` と `FeatureUiAdapters.kt` が `:app` に再導入されないことを検証する。
+- `AppCompositionSourceArchitectureTest` で `FeatureUiHosts.kt` が戻らず、message effect が centralized navigation capability mapping を利用し続けることを検証する。
 - `:feature:settings:ui` の compilation と unit tests を実行する。
 - `verifyArchitecture`、app unit tests、release lint を実行する。
 
@@ -79,6 +93,7 @@ Settings の Summary Prompt は `SettingsFeatureScreen` から Summary UI を直
 - ADR-0063 の app-level forwarding adapter を残す判断を本 ADR で amend する。
 - ADR-0101 の Settings cross-feature overlay を `SettingsFeatureHost` が所有する判断を本 ADR で amend する。
 - `docs/architecture/module-map.md` の App / Settings ownership 説明を更新する。
+- 2026-08-28 refinement では module ownership は変わらないため、module map の追加変更は不要とする。
 
 ## Public repository review
 
