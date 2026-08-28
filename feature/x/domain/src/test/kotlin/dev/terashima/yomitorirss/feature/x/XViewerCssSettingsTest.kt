@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.x
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class XViewerCssSettingsTest {
@@ -58,4 +59,59 @@ class XViewerCssSettingsTest {
 
     assertEquals("", settings.cssForInjection())
   }
+
+  @Test
+  fun `同じページとコンテナの表示ルールは新しい選択で置き換える`() {
+    val first = keepOnlyRule("Following")
+    val second = keepOnlyRule("Lists")
+
+    val settings = XViewerCssSettings(enabled = true, css = "")
+      .upsertDomRule(first)
+      .upsertDomRule(second)
+
+    assertEquals(listOf(second), settings.domRules)
+  }
+
+  @Test
+  fun `別ページの表示ルールは併存できる`() {
+    val homeRule = keepOnlyRule("Lists")
+    val exploreRule = keepOnlyRule("Latest").copy(pagePath = "/explore")
+
+    val settings = XViewerCssSettings(enabled = true, css = "")
+      .upsertDomRule(homeRule)
+      .upsertDomRule(exploreRule)
+
+    assertEquals(listOf(homeRule, exploreRule), settings.domRules)
+  }
+
+  @Test
+  fun `カスタマイズ無効時はDOM表示ルールを注入しない`() {
+    val settings = XViewerCssSettings(
+      enabled = false,
+      css = "",
+      domRules = listOf(keepOnlyRule("Lists")),
+    )
+
+    assertTrue(settings.domRulesForInjection().isEmpty())
+  }
+
+  @Test
+  fun `DOM表示ルールを一括削除できる`() {
+    val settings = XViewerCssSettings(
+      enabled = true,
+      css = "",
+      domRules = listOf(keepOnlyRule("Lists")),
+    )
+
+    assertTrue(settings.clearDomRules().domRules.isEmpty())
+  }
+
+  private fun keepOnlyRule(target: String) = XViewerDomRule(
+    kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+    pagePath = "/home",
+    containerSelector = "[role=\"tablist\"]",
+    itemSelector = "[role=\"tab\"]",
+    targetKind = XViewerDomTargetKind.TEXT,
+    targetValue = target,
+  )
 }
