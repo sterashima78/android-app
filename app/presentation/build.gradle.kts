@@ -60,6 +60,9 @@ val verifyPresentationBoundary by tasks.registering {
     val executablePlatformImport = Regex(
       "(?m)^\\s*import\\s+dev\\.terashima\\.yomitorirss\\.(?:security\\.|platform\\.(?!authorization\\.))",
     )
+    val executableImplementationType = Regex(
+      "\\b(?:YomitoriApplication|MainActivity|MainActivityDependenciesProvider|MainActivityPresentationDependencies|IncomingIntentDependencies)\\b",
+    )
     sourceRoot.walkTopDown()
       .filter { it.isFile && it.extension == "kt" }
       .forEach { sourceFile ->
@@ -74,7 +77,7 @@ val verifyPresentationBoundary by tasks.registering {
         if (executablePlatformImport.containsMatchIn(source)) {
           violations += "app presentation must receive executable platform actions through callbacks: $relativePath"
         }
-        if (Regex("\\b(?:YomitoriApplication|MainActivity|MainActivityDependencies)\\b").containsMatchIn(source)) {
+        if (executableImplementationType.containsMatchIn(source)) {
           violations += "app presentation must not depend on executable app implementation types: $relativePath"
         }
       }
