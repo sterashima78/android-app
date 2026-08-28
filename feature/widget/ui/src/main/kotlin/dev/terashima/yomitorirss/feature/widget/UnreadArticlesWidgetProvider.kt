@@ -73,9 +73,9 @@ class UnreadArticlesWidgetProvider : AppWidgetProvider() {
 
   companion object {
     const val ACTION_REFRESH = "dev.terashima.yomitorirss.widget.action.REFRESH_UNREAD"
-    const val ACTION_OPEN_ARTICLE = "dev.terashima.yomitorirss.widget.action.OPEN_ARTICLE"
+    const val ACTION_OPEN_ARTICLE = WidgetLaunchContract.ACTION_OPEN_ARTICLE
     const val ACTION_ITEM = "dev.terashima.yomitorirss.widget.action.ITEM"
-    const val EXTRA_ARTICLE_URL = "article_url"
+    const val EXTRA_ARTICLE_URL = WidgetLaunchContract.EXTRA_ARTICLE_URL
     const val EXTRA_ARTICLE_ID = "article_id"
     const val EXTRA_ITEM_ACTION = "item_action"
     const val ITEM_ACTION_OPEN = "open"

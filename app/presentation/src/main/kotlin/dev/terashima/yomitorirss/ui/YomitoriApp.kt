@@ -37,10 +37,11 @@ import kotlinx.coroutines.launch
 fun YomitoriApp(
   navController: NavHostController,
   routeDependencies: AppRouteDependencies,
-  navigationRequests: Flow<String>,
+  navigationRequests: Flow<AppNavigationTarget>,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenArticle: (Article) -> Unit,
+  onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
   onExitApp: () -> Unit,
 ) {
@@ -58,7 +59,7 @@ fun YomitoriApp(
   val hideAppChrome = shouldHideAppChrome(selectedRoute, gameFullscreen)
 
   LaunchedEffect(navController, navigationRequests) {
-    navigationRequests.collect { route -> navController.navigateTopLevel(route) }
+    navigationRequests.collect { target -> navController.navigateTopLevel(target.appRoute()) }
   }
 
   currentBackStackEntry?.let { owner ->
@@ -134,6 +135,7 @@ fun YomitoriApp(
         biometricLockEnabled = biometricLockEnabled,
         onBiometricLockEnabledChange = onBiometricLockEnabledChange,
         onOpenArticle = onOpenArticle,
+        onOpenWebContent = onOpenWebContent,
         onOpenWebServer = onOpenWebServer,
         onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
       )

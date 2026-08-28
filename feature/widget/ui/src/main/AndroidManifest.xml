@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <receiver
+      android:name="dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetProvider"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/unread_articles_widget_info" />
+    </receiver>
+
+    <service
+      android:name="dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetService"
+      android:exported="false"
+      android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+    <receiver
+      android:name="dev.terashima.yomitorirss.feature.widget.TaskWidgetProvider"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/task_widget_info" />
+    </receiver>
+
+    <service
+      android:name="dev.terashima.yomitorirss.feature.widget.TaskWidgetService"
+      android:exported="false"
+      android:permission="android.permission.BIND_REMOTEVIEWS" />
+  </application>
+</manifest>

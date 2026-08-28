@@ -15,12 +15,12 @@ import dev.terashima.yomitorirss.feature.library.LibraryFeatureRoute
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
 import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationOutcome
-import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun LibraryRoute(
   dependencies: LibraryRouteDependencies,
+  onOpenWebContent: (String) -> Boolean,
   modifier: Modifier = Modifier,
 ) {
   val authorization = dependencies.authorization
@@ -82,7 +82,7 @@ internal fun LibraryRoute(
     onDeleteWebMetadataExtractor = dependencies.deleteWebMetadataExtractor,
     onTestWebMetadataExtractor = dependencies.testWebMetadataExtractor,
     onOpenWebUrl = { url ->
-      if (!context.openWebContentInCustomTab(url)) {
+      if (!onOpenWebContent(url)) {
         Toast.makeText(context, "Webページを開けませんでした", Toast.LENGTH_LONG).show()
       }
     },

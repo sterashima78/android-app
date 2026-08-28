@@ -6,7 +6,7 @@
 
 ```text
 /
-├── app/        application shell / app-only platform adapters / composition module
+├── app/        executable shell / app presentation / composition boundaries
 ├── feature/    application-specific ownership
 ├── core/       cross-cutting technical capabilities
 ├── config/     machine-readable architecture configuration
@@ -20,28 +20,33 @@
 
 ```text
 :app
+:app:presentation
 :app:composition
 ```
 
-`:app` は Application / Activity entry point、navigation graph、app-shell UI、Android permission / Activity Result、外部 Intent 等の application/platform boundary を担当する。feature 固有 business logic、durable persistence implementation、feature 固有 UI state の恒久的な所有場所にはしない。`:app` は `:feature:*:data` へ直接依存せず、concrete feature implementation の application-scope graph は `:app:composition` を介して利用する。
+`:app` は executable boundary であり、Application / Activity entry point、app lock、diagnostics、外部 Intent、Custom Tab、component/lifecycle に結び付く platform host、framework-generated component と provider contract の接続を担当する。root `NavController` は Activity composition と app-lock conditional UI を跨いで保持する必要があるため `MainActivity` が所有する。`:app` は feature Domain contract を必要に応じて利用できるが、`:feature:*:ui` / `:feature:*:data` へ直接依存しない。
 
-`:app:composition` は application-scope の高 fan-in composition boundary である。`AppContainer`、責務別 `App*RuntimeDependencies`、Route dependency composition、DB schema aggregation、WorkerFactory、application startup の background observer wiring、provider client と feature-owned adapter の instance wiring を所有し、必要な `:feature:*:domain` / `:feature:*:data` / `:feature:*:ui` と `:core:*` を接続する。これは新しい Domain ownership ではなく、`:app` の compile classpath から concrete Data implementation を除外するための build/dependency boundary である。Summary / Knowledge の provider failure mapping、prompt budget、cache variant 等の feature policy adapter は ADR-0203 に従い owning feature Data が所有する。
+`:app:presentation` は app-shell presentation の build boundary である。root `NavHost` / graph registration、drawer/top bar/overlay capability、`AppSection` / `AppNavigationSpec`、`YomitoriApp`、app-owned Route host、feature UI の cross-module composition を所有する。feature authorization や calendar permission、backup document picker のように Composable lifecycle に結び付く Activity Result launcher もここで app-owned presentation adapter として接続する。一方、LAN Web Server notification permission/dialog、Custom Tab、app lock transition のように Activity/component lifecycle や executable-only state と結び付く host は `:app` に残す。
+
+`:app:presentation` は `:app:composition` の narrow facade/capability と `:feature:*:domain` / `:feature:*:ui` を利用する。concrete feature Data implementation、database/WorkManager infrastructure、`YomitoriApplication` / `MainActivity` 等の executable implementation type へ依存しない。これにより feature UI の高 fan-out compile classpath を executable shell から分離し、app-shell presentation の変更理由を独立した build boundary に局所化する。
+
+`:app:composition` は application-scope の高 fan-in composition boundary である。`AppContainer`、責務別 `App*RuntimeDependencies`、Route dependency composition、DB schema aggregation、WorkerFactory、application startup の background observer wiring、provider client と feature-owned adapter の instance wiring を所有し、必要な `:feature:*:domain` / `:feature:*:data` / `:feature:*:ui` と `:core:*` を接続する。これは新しい Domain ownership ではなく、`:app` / `:app:presentation` の compile classpath から concrete Data implementation を除外するための build/dependency boundary である。Summary / Knowledge の provider failure mapping、prompt budget、cache variant 等の feature policy adapter は ADR-0203 に従い owning feature Data が所有する。
 
 OpenAI provider client と process-wide HTTP transport の concrete construction は `:app:composition` に閉じるため、executable `:app` は `:core:ai-cloud-openai` / `:core:network` へ直接依存しない。一方、app-owned diagnostics が直接利用する `:core:ai-runtime` / `:core:background` 等、executable shell 自身に明確な利用理由がある core capability は直接利用できる。
 
-feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。複数 feature を利用する presentation でも、独立した変更理由と名前を持つ feature responsibility であれば owning feature が state/action mapping を所有する。`:app` に残す adapter は Android permission / Activity Result、外部 Intent、app-shell navigation など executable shell の責務に限定する。
+feature 内で ViewModel / Screen 接続まで完結できる root Route は owning `:feature:<name>:ui` が所有する。複数 feature を利用する presentation でも、独立した変更理由と名前を持つ feature responsibility であれば owning feature が state/action mapping を所有する。`:app:presentation` に残す adapter は root navigation、app-wide chrome/capability dispatch、feature dependency wiring、Composable Activity Result / platform callback の接続に限定する。
 
-root navigation の source of truth は `NavController` / Navigation Compose back stack とする。destination identity は owning `:feature:<name>:ui` の `NavigationDestination.kt` が route contract として公開し、`:app` は route string を再定義しない。`:app` の `AppNavHost` は root `NavHost` と graph composition を所有し、実際の `composable(route)` 登録は Home / RSS / Reddit / Bookmark / その他単一 destination feature の app-owned registration へ分割する。feature module 自身は app-level `NavController` や他 feature の graph を所有しない。
+root navigation の source of truth は `NavController` / Navigation Compose back stack とする。destination identity は owning `:feature:<name>:ui` の `NavigationDestination.kt` が route contract として公開し、app boundary は route string を再定義しない。`:app:presentation` の `AppNavHost` は root `NavHost` と graph composition を所有し、実際の `composable(route)` 登録は Home / RSS / Reddit / Bookmark / その他単一 destination feature の app-owned registration へ分割する。feature module 自身は app-level `NavController` や他 feature の graph を所有しない。
 
-root `NavController` は `MainActivity.setContent` の Compose root で app-lock の conditional UI より上に保持し、`YomitoriApp` へ明示的に渡す。これにより生体認証ロック表示のため `MainContent` が一時的に composition から外れても、現在 route、back stack、destination-scoped ViewModelStore を維持する。Activity property に navigation state holder を戻すものではない。
+root `NavController` は `MainActivity.setContent` の Compose root で app-lock の conditional UI より上に保持し、`:app:presentation` の `YomitoriApp` へ明示的に渡す。これにより生体認証ロック表示のため `MainContent` が一時的に composition から外れても、現在 route、back stack、destination-scoped ViewModelStore を維持する。Activity property に navigation state holder を戻すものではない。
 
-`AppSection` は drawer の presentation grouping として `:app` に残すが、旧 `MainTab` / `AppViewModel.selectedTab` / `AppFeatureContent` による manual routing は使わない。active destination ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、message / overlay / top bar host が route policy を重複して持たない。root destination の ViewModel は destination 内で取得し、active `NavBackStackEntry` を `ViewModelStoreOwner` とする。
+`AppSection` は drawer の presentation grouping として `:app:presentation` が所有するが、旧 `MainTab` / `AppViewModel.selectedTab` / `AppFeatureContent` による manual routing は使わない。active destination ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、message / overlay / top bar host が route policy を重複して持たない。root destination の ViewModel は destination 内で取得し、active `NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
-`Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app` は source ViewModel の wiring、Mail route への遷移、Android 外部 URL 起動などの callback だけを接続する。詳細は ADR-0188 と ADR-0202 を参照する。
+`Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app:presentation` は source ViewModel の wiring、Mail route への遷移、Android 外部 URL 起動 callback の接続だけを担当する。詳細は ADR-0188 と ADR-0202 を参照する。
 
-`Settings` も同じ ownership 原則を適用する。Models / ChatGPT Debug / AI Execution Settings に加え、Summary Prompt / AI Task Queue / Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 sibling feature は再利用可能 UI と task semantics を所有し続け、`:app` の `SettingsRoute` は Android Activity Result、backup restore 後の app-shell navigation、feature dependency wiring、platform callback の接続だけを担当する。詳細は ADR-0192 を参照する。
+`Settings` も同じ ownership 原則を適用する。Models / ChatGPT Debug / AI Execution Settings に加え、Summary Prompt / AI Task Queue / Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 sibling feature は再利用可能 UI と task semantics を所有し続け、`:app:presentation` の `SettingsRoute` は Android Activity Result、backup restore 後の app-shell navigation、feature dependency wiring、platform callback の接続だけを担当する。詳細は ADR-0192 を参照する。
 
-`app/src/main/.../feature` は feature implementation の配置場所として使わず、production Kotlin source を置かない。新しい feature Route / Screen / adapter や app shell state をこの path へ追加しない。
+`app/src/main/.../feature` は feature implementation の配置場所として使わず、production Kotlin source を置かない。app-shell production UI は `app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui` を正本とし、`app/src/main/.../ui` に戻さない。
 
 `AppContainer` は `:app:composition` に置く application-scope graph の公開 facade とし、concrete feature graph の構築は責務別の `App*RuntimeDependencies` に分割する。これは repository lifetime を変えるための分割ではなく、composition boundary 内の可読性と変更局所性を保つための構造である。DI framework や route-level service locator は導入しない。
 
@@ -130,18 +135,22 @@ Knowledge の Local / ChatGPT provider 選択は `:feature:knowledge` が所有�
 :core:<capability>
 ```
 
-Domain が Repository 等の contract を定義し、Data が実装する。`:app:composition` が必要な implementation を composition し、`:app` はその公開 facade/capability を利用する。
+Domain が Repository 等の contract を定義し、Data が実装する。`:app:composition` が必要な implementation を composition し、`:app:presentation` が app-shell で feature UI を compose し、`:app` が Android entry point からそれらを接続する。
 
 feature 間依存は許容するが、次を守る。
 
 ```text
-Domain           -> other feature Domain                  allowed
-Data             -> other feature Domain / Data / core   allowed when ownership requires it
-UI               -> other feature Domain / UI            allowed when presentation requires it
-app              -> feature Domain / UI                   allowed for executable shell
-app              -> feature Data                          forbidden
-app              -> core ai-cloud-openai / network        forbidden; concrete integration belongs to composition
-app:composition  -> feature Domain / Data / UI / core    allowed for composition
+Domain             -> other feature Domain                  allowed
+Data               -> other feature Domain / Data / core   allowed when ownership requires it
+UI                 -> other feature Domain / UI            allowed when presentation requires it
+app                -> app:presentation / app:composition   allowed
+app                -> feature Domain                       allowed for executable contracts
+app                -> feature UI / Data                    forbidden
+app                -> core ai-cloud-openai / network       forbidden; concrete integration belongs to composition
+app:presentation   -> app:composition                      allowed for narrow runtime capabilities
+app:presentation   -> feature Domain / UI                  allowed for app-shell presentation
+app:presentation   -> app / feature Data                   forbidden
+app:composition    -> feature Domain / Data / UI / core    allowed for composition
 
 core   -> feature                               forbidden
 domain -> UI / Data                             forbidden
@@ -163,8 +172,9 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - dependency rule を変更する: ADR を追加または更新し、`verifyArchitecture` と [principles.md](principles.md) を更新する。
 - shared dependency version を catalog へ追加・変更する: `gradle/libs.versions.toml` を正本とし、対象 module の alias 利用と regression test を同じ変更で更新する。
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
-- app composition / app shell navigation / provider adapter ownership を変更する: ADR と本 `App` 節を同期し、app source layout / dependency regression test を更新する。
-- `:app:composition` の公開 facade / concrete feature dependency を変更する: `:app` に `:feature:*:data` や composition-only provider/network dependency が漏れないことと、application scope lifetime を維持することを確認する。
+- app composition / app presentation / app shell navigation ownership を変更する: ADR と本 `App` 節を同期し、app source layout / dependency regression test を更新する。
+- `:app:composition` の公開 facade / concrete feature dependency を変更する: `:app` / `:app:presentation` に `:feature:*:data` や composition-only provider/network dependency が漏れないことと、application scope lifetime を維持することを確認する。
+- `:app:presentation` の dependency を変更する: executable `:app` への逆依存と feature Data dependency がなく、feature UI ownership を越えた state/policy を app presentation に持ち込まないことを確認する。
 - shared core runtime の lifetime を変更する: application composition と background entry point の両方を確認し、ADR と regression test を更新する。
 
 ## Sources
@@ -201,3 +211,5 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
 - [ADR-0202](../adr/0202-navigation-compose-root-routing.md)
 - [ADR-0203](../adr/0203-feature-owned-provider-policy-adapters.md)
+- [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
+- [ADR-0205](../adr/0205-app-presentation-module-boundary.md)

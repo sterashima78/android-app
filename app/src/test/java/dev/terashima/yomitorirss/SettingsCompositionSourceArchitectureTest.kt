@@ -1,4 +1,4 @@
-package dev.terashima.yomitoririss
+package dev.terashima.yomitorirss
 
 import java.io.File
 import org.junit.Assert.assertFalse
@@ -12,11 +12,14 @@ class SettingsCompositionSourceArchitectureTest {
       ?: error("repository root not found")
   }
 
+  private val presentationUiRoot =
+    "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
+
   @Test
   fun `SettingsRouteはplatform wiringに限定する`() {
     val source = File(
       repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui/SettingsRoute.kt",
+      "$presentationUiRoot/SettingsRoute.kt",
     ).readText()
 
     listOf(
@@ -73,19 +76,19 @@ class SettingsCompositionSourceArchitectureTest {
   fun `Settings用app presentation bridgeは残さない`() {
     val settingsHost = File(
       repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui/SettingsFeatureHost.kt",
+      "$presentationUiRoot/SettingsFeatureHost.kt",
     )
     val featureUiAdapters = File(
       repositoryRoot,
-      "app/src/main/java/dev/terashima/yomitorirss/ui/FeatureUiAdapters.kt",
+      "$presentationUiRoot/FeatureUiAdapters.kt",
     )
 
     assertFalse(
-      "SettingsFeatureHost must not reintroduce Settings presentation into app",
+      "SettingsFeatureHost must not reintroduce Settings presentation into app presentation",
       settingsHost.exists(),
     )
     assertFalse(
-      "FeatureUiAdapters must not reintroduce feature presentation forwarding into app",
+      "FeatureUiAdapters must not reintroduce feature presentation forwarding into app presentation",
       featureUiAdapters.exists(),
     )
   }

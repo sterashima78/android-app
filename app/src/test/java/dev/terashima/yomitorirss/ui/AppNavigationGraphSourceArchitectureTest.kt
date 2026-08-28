@@ -14,7 +14,7 @@ class AppNavigationGraphSourceArchitectureTest {
 
   private val appUiRoot = File(
     repositoryRoot,
-    "app/src/main/java/dev/terashima/yomitorirss/ui",
+    "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui",
   )
 
   @Test

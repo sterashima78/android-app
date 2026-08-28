@@ -36,12 +36,14 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
   routeDependencies: AppRouteDependencies,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
+  onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
   onGameFullscreenChange: (Boolean) -> Unit,
 ) {
   composable(LIBRARY_ROUTE) {
     LibraryRoute(
       dependencies = routeDependencies.library,
+      onOpenWebContent = onOpenWebContent,
       modifier = Modifier.fillMaxSize(),
     )
   }

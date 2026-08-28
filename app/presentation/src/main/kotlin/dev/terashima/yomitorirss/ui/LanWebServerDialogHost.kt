@@ -1,4 +1,4 @@
-package dev.terashima.yomitorirss.platform
+package dev.terashima.yomitorirss.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -16,7 +16,7 @@ import dev.terashima.yomitorirss.feature.web.LanWebServerController
 import dev.terashima.yomitorirss.feature.web.WebServerDialog
 
 @Composable
-internal fun LanWebServerDialogHost(
+fun LanWebServerDialogHost(
   visible: Boolean,
   controller: LanWebServerController,
   onDismiss: () -> Unit,
