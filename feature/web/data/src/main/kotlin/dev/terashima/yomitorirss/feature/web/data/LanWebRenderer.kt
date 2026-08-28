@@ -1,14 +1,12 @@
 package dev.terashima.yomitorirss.feature.web.data
 
-import dev.terashima.yomitorirss.feature.article.Article
-import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
-import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.web.LanWebArticleItem
+import dev.terashima.yomitorirss.feature.web.LanWebFeedItem
 
 internal object LanWebRenderer {
   fun renderHome(page: LanWebHomePage): String {
     val body = when (val content = page.content) {
       is LanWebContent.Articles -> renderArticles(content.articles, content.emptyText)
-      is LanWebContent.Bookmarks -> renderBookmarkedArticles(content.articles, content.emptyText)
       is LanWebContent.Feeds -> renderFeeds(content.feeds)
     }
 
@@ -49,20 +47,13 @@ internal object LanWebRenderer {
     append("</nav>")
   }
 
-  private fun renderArticles(articles: List<Article>, emptyText: String): String {
+  private fun renderArticles(articles: List<LanWebArticleItem>, emptyText: String): String {
     if (articles.isEmpty()) return "<div class=\"empty\">${escapeHtml(emptyText)}</div>"
-    return articles.joinToString(separator = "") { article -> renderArticle(article, emptyList()) }
+    return articles.joinToString(separator = "") { article -> renderArticle(article) }
   }
 
-  private fun renderBookmarkedArticles(articles: List<BookmarkedArticle>, emptyText: String): String {
-    if (articles.isEmpty()) return "<div class=\"empty\">${escapeHtml(emptyText)}</div>"
-    return articles.joinToString(separator = "") { bookmark ->
-      renderArticle(bookmark.article, bookmark.tags.map { it.name })
-    }
-  }
-
-  private fun renderArticle(article: Article, tagNames: List<String>): String {
-    val tags = if (tagNames.isEmpty()) "" else tagNames.joinToString(
+  private fun renderArticle(article: LanWebArticleItem): String {
+    val tags = if (article.tagNames.isEmpty()) "" else article.tagNames.joinToString(
       prefix = "<div class=\"tags\">",
       postfix = "</div>",
       separator = "",
@@ -73,7 +64,7 @@ internal object LanWebRenderer {
 </a>"""
   }
 
-  private fun renderFeeds(feeds: List<Feed>): String {
+  private fun renderFeeds(feeds: List<LanWebFeedItem>): String {
     if (feeds.isEmpty()) return "<div class=\"empty\">登録済みRSSフィードはありません。</div>"
     return feeds.joinToString(separator = "") { feed ->
       val href = feed.siteUrl ?: feed.feedUrl
