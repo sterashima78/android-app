@@ -74,7 +74,7 @@ feature module は app-level `NavController`、他 feature の graph、app-wide 
 
 ## Documentation
 
-- `docs/architecture/module-map.md` の destination identity 説明を、multi-route feature の tab mapping / local title metadata まで含む形に同期する。
+- `docs/architecture/module-map.md` はすでに destination identity の正本を owning `:feature:<name>:ui/NavigationDestination.kt` と定義しており、本変更はその既存規定を tab mapping / local title metadata まで具体化する refinement とする。Gradle module ownership の記述変更は不要である。
 - ADR-0205 の app-wide `AppNavigationSpec` ownership は維持するが、feature-local metadata まで app ownership と解釈しないよう本 ADR で refine する。
 
 ## Public repository review
