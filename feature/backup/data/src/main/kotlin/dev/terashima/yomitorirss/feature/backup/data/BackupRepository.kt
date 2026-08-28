@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.feature.backup.data
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.provider.DocumentsContract
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
@@ -116,11 +115,7 @@ class DefaultBackupRepository(
     if (!preferences.isWifiOnly()) return
     val connectivityManager = appContext.getSystemService(ConnectivityManager::class.java)
     val wifiAvailable = connectivityManager.allNetworks.any { network ->
-      connectivityManager.getNetworkCapabilities(network)?.let { capabilities ->
-        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-          capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-          capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-      } == true
+      connectivityManager.getNetworkCapabilities(network)?.isValidatedWifiForGoogleDriveBackup() == true
     }
     check(wifiAvailable) { "インターネット接続可能なWi-Fiに接続してからバックアップしてください" }
   }
