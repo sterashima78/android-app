@@ -32,6 +32,8 @@ class SharedPreferencesXViewerCssRepositoryTest {
     assertEquals(0, settings.activeSetIndex)
     assertEquals("default-css", settings.css)
     assertEquals("", settings.cssAt(1))
+    assertEquals(false, settings.javaScriptEnabled)
+    assertEquals("", settings.javaScript)
   }
 
   @Test
@@ -49,5 +51,22 @@ class SharedPreferencesXViewerCssRepositoryTest {
     assertEquals(1, restored.activeSetIndex)
     assertEquals("set-2", restored.css)
     assertEquals("set-1", restored.cssAt(0))
+  }
+
+  @Test
+  fun `保存したJavaScript設定を再読込できる`() {
+    val repository = SharedPreferencesXViewerCssRepository(context) { "default-css" }
+    val settings = XViewerCssSettings(
+      enabled = true,
+      css = "default-css",
+      javaScriptEnabled = true,
+      javaScript = "document.body.dataset.reader = 'custom';",
+    )
+
+    repository.save(settings)
+    val restored = repository.load()
+
+    assertEquals(true, restored.javaScriptEnabled)
+    assertEquals("document.body.dataset.reader = 'custom';", restored.javaScript)
   }
 }

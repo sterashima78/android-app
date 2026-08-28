@@ -4,6 +4,7 @@
 - Date: 2026-08-28
 - Supersedes: ADR-0206, ADR-0209, ADR-0210
 - Restores: ADR-0115
+- Amended by: ADR-0213
 
 ## Context
 
@@ -24,6 +25,8 @@ X の表示カスタマイズを ADR-0115 と PR #348 時点の CSS-only 方式�
 - 設定画面から DOM rule 件数・削除 UI を撤去する
 
 特定の X UI をまとめて隠す必要がある場合は、まずユーザー編集可能なカスタム CSS で表現する。X の DOM に特化した新しい runtime rule engine は、複数の実 DOM 例と安定した識別根拠が得られるまで再導入しない。
+
+ADR-0213 では、この rollback のうち app-owned semantic DOM rule engine を導入しない判断は維持したまま、明示的なユーザー入力として任意 JavaScript を保存・実行できる escape hatch を追加する。そのため本 ADR の「CSS だけを永続化する」という制約のみを緩和する。
 
 ## Consequences
 
@@ -51,3 +54,4 @@ CSS-only 方式では runtime から取得した List 名、URL、fingerprint �
 - ADR-0115 の local WebView CSS customization と selector safety 方針へ戻る
 - ADR-0102 の UI / Domain / Data ownership は維持する
 - ADR-0136 の公開 repository content verification を維持する
+- ADR-0213 は app-owned semantic rule を復活させず、ユーザーが明示的に保存する JavaScript だけを追加する

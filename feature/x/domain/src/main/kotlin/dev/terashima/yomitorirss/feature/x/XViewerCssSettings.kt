@@ -10,6 +10,8 @@ data class XViewerCssSettings(
   val css: String,
   val activeSetIndex: Int = 0,
   private val cssSets: List<String> = initialCssSets(css, activeSetIndex),
+  val javaScriptEnabled: Boolean = false,
+  val javaScript: String = "",
 ) {
   init {
     require(cssSets.size == X_CSS_SET_COUNT)
@@ -21,8 +23,7 @@ data class XViewerCssSettings(
     if (index == activeSetIndex) return this
 
     val updatedSets = persistedCssSets()
-    return XViewerCssSettings(
-      enabled = enabled,
+    return copy(
       css = updatedSets[index],
       activeSetIndex = index,
       cssSets = updatedSets,
@@ -58,3 +59,6 @@ interface XViewerCssRepository {
 }
 
 fun XViewerCssSettings.cssForInjection(): String = if (enabled) css else ""
+
+fun XViewerCssSettings.javaScriptForInjection(): String =
+  if (javaScriptEnabled) javaScript else ""
