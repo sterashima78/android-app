@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.text.NumberFormat
@@ -391,14 +392,19 @@ internal fun AssetStackedHistoryChart(
           }
         }
 
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(24.dp)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(64.dp)) {
           val labelWidth = 56.dp
+          val labelHeight = 16.dp
           val maxOffset = maxWidth - labelWidth
           xTicks.forEach { tick ->
             val x = (maxWidth * tick.fraction - labelWidth / 2).coerceIn(0.dp, maxOffset)
             Text(
               text = formatAssetXAxisValue(tick.date),
-              modifier = Modifier.width(labelWidth).offset(x = x),
+              modifier = Modifier
+                .width(labelWidth)
+                .height(labelHeight)
+                .offset(x = x, y = (labelWidth - labelHeight) / 2)
+                .graphicsLayer { rotationZ = 90f },
               style = MaterialTheme.typography.labelSmall,
               textAlign = TextAlign.Center,
               maxLines = 1,
