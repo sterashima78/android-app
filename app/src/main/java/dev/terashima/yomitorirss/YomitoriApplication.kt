@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchemaProvider
 import dev.terashima.yomitorirss.diagnostics.Android17MemoryAnomalyProfiler
 import dev.terashima.yomitorirss.diagnostics.AppLocalAiMemoryMonitor
 import dev.terashima.yomitorirss.diagnostics.StartupCrashStore
+import dev.terashima.yomitorirss.entry.IncomingIntentDependencies
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
@@ -40,10 +41,14 @@ class YomitoriApplication : Application(),
   val routeDependencies: AppRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppRouteDependencies(this, container)
   }
-  override val mainActivityDependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    MainActivityDependencies(
+  override val mainActivityPresentationDependencies: MainActivityPresentationDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    MainActivityPresentationDependencies(
       routeDependencies = routeDependencies,
       lanWebServerController = container.lanWebServerController,
+    )
+  }
+  override val incomingIntentDependencies: IncomingIntentDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    IncomingIntentDependencies(
       saveSharedBookmark = container.saveSharedBookmarkUseCase,
       addSharedWebBookCapability = container::addSharedWebBook,
     )
