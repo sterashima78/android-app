@@ -46,9 +46,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
+import dev.terashima.yomitorirss.feature.bookmark.bookmarkTabForRoute
+import dev.terashima.yomitorirss.feature.bookmark.routeForBookmarkTab
 import dev.terashima.yomitorirss.feature.reddit.RedditTab
+import dev.terashima.yomitorirss.feature.reddit.redditTabForRoute
+import dev.terashima.yomitorirss.feature.reddit.routeForRedditTab
 import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RssTab
+import dev.terashima.yomitorirss.feature.rss.routeForRssTab
+import dev.terashima.yomitorirss.feature.rss.rssTabForRoute
 
 @Composable
 internal fun AppDrawerContent(
@@ -163,8 +169,8 @@ internal fun AppBottomBar(
     AppSection.RSS -> NavigationBar {
       RssTab.entries.forEach { tab ->
         NavigationBarItem(
-          selected = selectedRoute.rssTab() == tab,
-          onClick = { onSelectRoute(tab.appRoute()) },
+          selected = rssTabForRoute(selectedRoute) == tab,
+          onClick = { onSelectRoute(routeForRssTab(tab)) },
           icon = {
             Icon(
               imageVector = when (tab) {
@@ -184,8 +190,8 @@ internal fun AppBottomBar(
     AppSection.REDDIT -> NavigationBar {
       RedditTab.entries.forEach { tab ->
         NavigationBarItem(
-          selected = selectedRoute.redditTab() == tab,
-          onClick = { onSelectRoute(tab.appRoute()) },
+          selected = redditTabForRoute(selectedRoute) == tab,
+          onClick = { onSelectRoute(routeForRedditTab(tab)) },
           icon = {
             Icon(
               imageVector = when (tab) {
@@ -204,8 +210,8 @@ internal fun AppBottomBar(
     AppSection.BOOKMARKS -> NavigationBar {
       BookmarkTab.entries.forEach { tab ->
         NavigationBarItem(
-          selected = selectedRoute.bookmarkTab() == tab,
-          onClick = { onSelectRoute(tab.appRoute()) },
+          selected = bookmarkTabForRoute(selectedRoute) == tab,
+          onClick = { onSelectRoute(routeForBookmarkTab(tab)) },
           icon = {
             Icon(
               imageVector = when (tab) {
