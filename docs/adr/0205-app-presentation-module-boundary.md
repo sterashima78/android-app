@@ -91,6 +91,7 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 `:app:presentation` は generic presentation feature ではない。
 
 - feature 固有 UI state / reducer / Screen / dialog / feature Route は owning `:feature:<name>:ui` に残す
+- Android が直接生成する feature-owned receiver / service 等は実装と同じ owning feature module の manifest で宣言し、executable `:app` manifest から feature UI implementation class を参照しない
 - Integrated の cross-feature projection/action ownership は ADR-0188 を維持する
 - Settings overlay/presentation policy は ADR-0192 を維持する
 - app presentation は app-wide navigation/chrome、factory/callback wiring、platform presentation adapter に限定する
@@ -133,6 +134,7 @@ feature Data implementation が必要な instance wiring は `:app:composition` 
 - app-owned Route が concrete feature Data / database / WorkManager infrastructure を import / construct しないこと。
 - presentation が executable platform/security implementation を直接 import せず、Custom Tab 等を callback で受け取ること。
 - external Intent routing が feature UI route/provider implementation を参照せず、semantic navigation target と Domain contract を使うこと。
+- feature-owned framework component を executable app manifest が宣言せず、owning feature manifest が宣言すること。
 - Composable permission/dialog host が presentation boundary にあり、executable `:app` に feature UI dependency を戻さないこと。
 - `MainActivity` が root `NavController` を app-lock conditional UI より上に保持すること。
 - feature destination identity / feature presentation state の既存 ownership test を新 source root に追従させること。
