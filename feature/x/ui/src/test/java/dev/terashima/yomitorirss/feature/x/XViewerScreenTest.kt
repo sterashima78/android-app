@@ -1,6 +1,9 @@
 package dev.terashima.yomitorirss.feature.x
 
 import android.view.MotionEvent
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -142,6 +145,48 @@ class XViewerScreenTest {
         "\"%5Bdata-testid%3D%22sidebarColumn%22%5D%20%3E%20div%3Anth-of-type%282%29\"",
       ),
     )
+  }
+
+  @Test
+  fun `これだけ表示ルールをJavaScript結果から復号する`() {
+    val expected = XViewerDomRule(
+      kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+      pagePath = "/home",
+      containerSelector = "div[role=\"tablist\"]",
+      itemSelector = "[role=\"tab\"]",
+      targetKind = XViewerDomTargetKind.TEXT,
+      targetValue = "リスト",
+    )
+    val json =
+      "{\"kind\":\"KEEP_ONLY_MATCHING_ITEM\",\"pagePath\":\"/home\"," +
+        "\"containerSelector\":\"div[role=\\\"tablist\\\"]\"," +
+        "\"itemSelector\":\"[role=\\\"tab\\\"]\"," +
+        "\"targetKind\":\"TEXT\",\"targetValue\":\"リスト\"}"
+    val encoded = URLEncoder.encode(json, StandardCharsets.UTF_8.toString())
+
+    assertEquals(expected, decodeElementPickerDomRuleResult("\"$encoded\""))
+  }
+
+  @Test
+  fun `不正なこれだけ表示ルールは無視する`() {
+    assertNull(decodeElementPickerDomRuleResult("\"not-json\""))
+  }
+
+  @Test
+  fun `DOM表示ルールを安全なJSONに変換する`() {
+    val rule = XViewerDomRule(
+      kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+      pagePath = "/home",
+      containerSelector = "[role=\"tablist\"]",
+      itemSelector = "[role=\"tab\"]",
+      targetKind = XViewerDomTargetKind.TEXT,
+      targetValue = "A \"quoted\" tab",
+    )
+
+    val json = JSONArray(domRulesJson(listOf(rule))).getJSONObject(0)
+
+    assertEquals("A \"quoted\" tab", json.getString("targetValue"))
+    assertEquals("/home", json.getString("pagePath"))
   }
 
   @Test

@@ -3,7 +3,11 @@ package dev.terashima.yomitorirss.feature.x.data
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.feature.x.XViewerCssSettings
+import dev.terashima.yomitorirss.feature.x.XViewerDomRule
+import dev.terashima.yomitorirss.feature.x.XViewerDomRuleKind
+import dev.terashima.yomitorirss.feature.x.XViewerDomTargetKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +36,7 @@ class SharedPreferencesXViewerCssRepositoryTest {
     assertEquals(0, settings.activeSetIndex)
     assertEquals("default-css", settings.css)
     assertEquals("", settings.cssAt(1))
+    assertTrue(settings.domRules.isEmpty())
   }
 
   @Test
@@ -49,5 +54,35 @@ class SharedPreferencesXViewerCssRepositoryTest {
     assertEquals(1, restored.activeSetIndex)
     assertEquals("set-2", restored.css)
     assertEquals("set-1", restored.cssAt(0))
+  }
+
+  @Test
+  fun `DOM表示ルールを保存して再読込できる`() {
+    val repository = SharedPreferencesXViewerCssRepository(context) { "default-css" }
+    val rule = XViewerDomRule(
+      kind = XViewerDomRuleKind.KEEP_ONLY_MATCHING_ITEM,
+      pagePath = "/home",
+      containerSelector = "[role=\"tablist\"]",
+      itemSelector = "[role=\"tab\"]",
+      targetKind = XViewerDomTargetKind.TEXT,
+      targetValue = "Lists",
+    )
+
+    repository.save(
+      XViewerCssSettings(enabled = true, css = "set-1", domRules = listOf(rule)),
+    )
+
+    assertEquals(listOf(rule), repository.load().domRules)
+  }
+
+  @Test
+  fun `壊れたDOM表示ルールは無視する`() {
+    context.getSharedPreferences("x_viewer_preferences", Context.MODE_PRIVATE)
+      .edit()
+      .putString("dom_rules_v1", "not-json")
+      .commit()
+    val repository = SharedPreferencesXViewerCssRepository(context) { "default-css" }
+
+    assertTrue(repository.load().domRules.isEmpty())
   }
 }
