@@ -13,6 +13,7 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   private val compositionSourceRoot = "app/composition/src/main/java/dev/terashima/yomitorirss"
+  private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
   fun `Workout AI advisorはWorkout dataが所有する`() {
@@ -77,8 +78,8 @@ class AppBoundaryOwnershipArchitectureTest {
   fun `Activity result authorization bridgeはplatform packageが所有する`() {
     val authorizationPath = "$compositionSourceRoot/platform/authorization/AuthorizationDependencies.kt"
     val authorization = source(authorizationPath)
-    val mailHost = source("app/src/main/java/dev/terashima/yomitorirss/ui/MailRouteHost.kt")
-    val libraryHost = source("app/src/main/java/dev/terashima/yomitorirss/ui/LibraryRoute.kt")
+    val mailHost = source("$presentationUiRoot/MailRouteHost.kt")
+    val libraryHost = source("$presentationUiRoot/LibraryRoute.kt")
 
     assertTrue("platform package must own authorization bridges", File(repositoryRoot, authorizationPath).isFile)
     assertFalse(
@@ -87,11 +88,11 @@ class AppBoundaryOwnershipArchitectureTest {
     )
     assertTrue("authorization bridge must own Mail activity-result boundary", "MailAuthorizationDependencies" in authorization)
     assertTrue(
-      "Mail host must import the platform authorization boundary",
+      "Mail presentation host must import the platform authorization boundary",
       "dev.terashima.yomitorirss.platform.authorization.MailAuthorizationOutcome" in mailHost,
     )
     assertTrue(
-      "Library host must import the platform authorization boundary",
+      "Library presentation host must import the platform authorization boundary",
       "dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationOutcome" in libraryHost,
     )
   }
