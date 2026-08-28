@@ -155,9 +155,8 @@ fun XViewerScreen(
           super.onPageFinished(view, url)
           if (url.isXUrl()) {
             currentUrl = url
-            val viewerSettings = repository.load()
-            view.injectCss(viewerSettings.cssForInjection())
-            view.injectDomRules(viewerSettings.domRulesForInjection())
+            val css = repository.load().cssForInjection()
+            view.injectCss(css)
           } else {
             pickerActive = false
           }
@@ -239,84 +238,50 @@ fun XViewerScreen(
       tonalElevation = 6.dp,
     ) {
       if (pickerActive) {
-        Column(
+        Row(
           modifier = Modifier.padding(horizontal = 4.dp),
-          horizontalAlignment = Alignment.End,
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalAlignment = Alignment.CenterVertically,
         ) {
-          Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+          TextButton(
+            onClick = {
+              webView.cancelElementPicker()
+              pickerActive = false
+            },
           ) {
-            TextButton(
-              onClick = {
-                webView.cancelElementPicker()
-                pickerActive = false
-              },
-            ) {
-              Text("キャンセル")
-            }
-            TextButton(
-              onClick = {
-                webView.takeSelectedElementSelector { selector ->
-                  pickerActive = false
-                  if (selector == null) {
-                    scope.launch {
-                      snackbarHostState.showSnackbar("要素を安全に一意識別できませんでした。別の要素を選択してください")
-                    }
-                    return@takeSelectedElementSelector
-                  }
-
-                  val savedSettings = repository.load()
-                  if (!savedSettings.enabled) {
-                    scope.launch {
-                      snackbarHostState.showSnackbar("表示カスタマイズが無効です。設定から有効にしてください")
-                    }
-                    return@takeSelectedElementSelector
-                  }
-
-                  val updatedSettings = savedSettings.copy(
-                    css = appendHiddenElementRule(savedSettings.css, selector),
-                  )
-                  repository.save(updatedSettings)
-                  webView.injectCss(updatedSettings.cssForInjection())
-                  scope.launch {
-                    snackbarHostState.showSnackbar("選択した要素を非表示にしました")
-                  }
-                }
-              },
-            ) {
-              Text("非表示")
-            }
+            Text("キャンセル")
           }
           TextButton(
             onClick = {
-              webView.takeSelectedElementListGroupRule { rule ->
+              webView.takeSelectedElementSelector { selector ->
                 pickerActive = false
-                if (rule == null) {
+                if (selector == null) {
                   scope.launch {
-                    snackbarHostState.showSnackbar("X のリストタブを選択してください")
+                    snackbarHostState.showSnackbar("要素を安全に一意識別できませんでした。別の要素を選択してください")
                   }
-                  return@takeSelectedElementListGroupRule
+                  return@takeSelectedElementSelector
                 }
 
                 val savedSettings = repository.load()
                 if (!savedSettings.enabled) {
                   scope.launch {
-                    snackbarHostState.showSnackbar("表示カスタマイズが無効です。設定から有効にしてください")
+                    snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
                   }
-                  return@takeSelectedElementListGroupRule
+                  return@takeSelectedElementSelector
                 }
 
-                val updatedSettings = savedSettings.upsertDomRule(rule)
+                val updatedSettings = savedSettings.copy(
+                  css = appendHiddenElementRule(savedSettings.css, selector),
+                )
                 repository.save(updatedSettings)
-                webView.injectDomRules(updatedSettings.domRulesForInjection())
+                webView.injectCss(updatedSettings.cssForInjection())
                 scope.launch {
-                  snackbarHostState.showSnackbar("同じタブ列ではリストタブだけを表示します")
+                  snackbarHostState.showSnackbar("選択した要素を非表示にしました")
                 }
               }
             },
           ) {
-            Text("同じ列のリストだけ表示")
+            Text("選択した要素を非表示")
           }
         }
       } else {
@@ -325,7 +290,7 @@ fun XViewerScreen(
             val settings = repository.load()
             when {
               !settings.enabled -> scope.launch {
-                snackbarHostState.showSnackbar("表示カスタマイズが無効です。設定から有効にしてください")
+                snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
               }
 
               webView.url?.isXUrl() != true -> scope.launch {
@@ -336,7 +301,7 @@ fun XViewerScreen(
                 if (started) {
                   pickerActive = true
                   scope.launch {
-                    snackbarHostState.showSnackbar("対象要素をタップし、非表示または「リストだけ表示」を選択してください")
+                    snackbarHostState.showSnackbar("非表示にする要素をタップし、右下のボタンで確定してください")
                   }
                 } else {
                   scope.launch {
@@ -347,7 +312,7 @@ fun XViewerScreen(
             }
           },
         ) {
-          Text("要素表示を調整")
+          Text("要素を非表示")
         }
       }
     }

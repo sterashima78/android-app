@@ -53,7 +53,7 @@ fun XViewerCssSettingsSheet(
         .padding(horizontal = 24.dp),
     ) {
       Text(
-        text = "X 表示カスタマイズ",
+        text = "X カスタム CSS",
         style = MaterialTheme.typography.headlineSmall,
       )
       Spacer(Modifier.height(12.dp))
@@ -70,22 +70,13 @@ fun XViewerCssSettingsSheet(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-          Text("表示カスタマイズを有効化")
+          Text("カスタム CSS を有効化")
           Switch(
             checked = settings.enabled,
             onCheckedChange = { settings = settings.copy(enabled = it) },
           )
         }
-        Text("無効にすると CSS と要素表示ルールを適用しません")
-
-        Text("要素表示ルール ${settings.domRules.size} 件")
-        Text("「同じ列のリストだけ表示」で作成したルールは、X の DOM 更新後も再適用されます。")
-        TextButton(
-          onClick = { settings = settings.clearDomRules() },
-          enabled = settings.domRules.isNotEmpty(),
-        ) {
-          Text("要素表示ルールをすべて削除")
-        }
+        Text("無効にすると CSS を一切注入しません")
 
         Text("CSS セット")
         Row(
@@ -145,7 +136,7 @@ fun XViewerCssSettingsSheet(
           Text("このセットをデフォルト CSS に戻す")
         }
 
-        Text("保存後、選択中の CSS セットと要素表示ルールが次回 X 画面を開いたときに反映されます。")
+        Text("保存後、選択中のセットが次回 X 画面を開いたときに反映されます。")
         Spacer(Modifier.height(4.dp))
       }
 
