@@ -34,16 +34,21 @@ class MainActivity : ComponentActivity() {
   private val appLockSession: AppLockSessionViewModel by viewModels()
   private val navigationRequests = Channel<AppNavigationTarget>(Channel.BUFFERED)
   private val navigationRequestFlow = navigationRequests.receiveAsFlow()
-  private val dependencies: MainActivityDependencies by lazy(LazyThreadSafetyMode.NONE) {
-    val provider = application as? MainActivityDependenciesProvider
+  private val dependencyProvider: MainActivityDependenciesProvider by lazy(LazyThreadSafetyMode.NONE) {
+    application as? MainActivityDependenciesProvider
       ?: error("Application must implement MainActivityDependenciesProvider")
-    provider.mainActivityDependencies
+  }
+  private val presentationDependencies by lazy(LazyThreadSafetyMode.NONE) {
+    dependencyProvider.mainActivityPresentationDependencies
+  }
+  private val incomingIntentDependencies by lazy(LazyThreadSafetyMode.NONE) {
+    dependencyProvider.incomingIntentDependencies
   }
   private val incomingIntentHandler by lazy(LazyThreadSafetyMode.NONE) {
     IncomingIntentHandler(
       activity = this,
       onNavigate = { target -> navigationRequests.trySend(target) },
-      dependencies = dependencies,
+      dependencies = incomingIntentDependencies,
     )
   }
   private val appLockCoordinator by lazy(LazyThreadSafetyMode.NONE) {
@@ -117,7 +122,7 @@ class MainActivity : ComponentActivity() {
 
     YomitoriApp(
       navController = navController,
-      routeDependencies = dependencies.routeDependencies,
+      routeDependencies = presentationDependencies.routeDependencies,
       navigationRequests = navigationRequestFlow,
       biometricLockEnabled = appLockCoordinator.enabled,
       onBiometricLockEnabledChange = appLockCoordinator::updateEnabled,
@@ -129,7 +134,7 @@ class MainActivity : ComponentActivity() {
 
     LanWebServerDialogHost(
       visible = showWebServer,
-      controller = dependencies.lanWebServerController,
+      controller = presentationDependencies.lanWebServerController,
       onDismiss = { showWebServer = false },
     )
   }
