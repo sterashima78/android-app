@@ -1,17 +1,10 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.entry
 
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkSaveResult
 import dev.terashima.yomitorirss.feature.bookmark.SaveSharedBookmarkUseCase
 import dev.terashima.yomitorirss.feature.library.LibraryBook
-import dev.terashima.yomitorirss.feature.web.LanWebServerController
 
-interface MainActivityDependenciesProvider {
-  val mainActivityDependencies: MainActivityDependencies
-}
-
-class MainActivityDependencies internal constructor(
-  val routeDependencies: AppRouteDependencies,
-  val lanWebServerController: LanWebServerController,
+class IncomingIntentDependencies internal constructor(
   private val saveSharedBookmark: SaveSharedBookmarkUseCase,
   private val addSharedWebBookCapability: suspend (String, String?) -> LibraryBook,
 ) {
