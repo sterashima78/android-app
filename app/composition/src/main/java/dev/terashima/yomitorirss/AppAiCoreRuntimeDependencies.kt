@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiStructured
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.feature.knowledge.data.ChatGptKnowledgeTextInference
 import dev.terashima.yomitorirss.feature.settings.AiModelRepository
 import dev.terashima.yomitorirss.feature.settings.ChatGptDebugRepository
 import dev.terashima.yomitorirss.feature.settings.ChatGptProviderRepository
@@ -22,6 +23,7 @@ import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryPromptSettings
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
+import dev.terashima.yomitorirss.feature.summary.data.ChatGptSummaryCloudInference
 import dev.terashima.yomitorirss.feature.summary.data.DefaultSummaryRepository
 import dev.terashima.yomitorirss.feature.summary.data.SummaryExecutionPreferences
 import dev.terashima.yomitorirss.feature.summary.data.SummaryPromptStore

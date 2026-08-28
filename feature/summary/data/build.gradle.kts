@@ -24,6 +24,7 @@ dependencies {
   implementation(project(":core:background"))
   implementation(project(":core:database"))
   implementation(project(":core:ai-inference"))
+  implementation(project(":core:ai-cloud-openai"))
 
   implementation("androidx.core:core-ktx:1.17.0")
   implementation("androidx.work:work-runtime-ktx:2.11.2")
