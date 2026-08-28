@@ -108,14 +108,40 @@ class XViewerScreenTest {
   }
 
   @Test
+  fun `nth-of-type を含む不安定なセレクタは保存しない`() {
+    val css = "body { color: black; }"
+    val selector = "article[data-testid=\"tweet\"] > div:nth-of-type(2)"
+
+    assertFalse(isPersistableElementPickerSelector(selector))
+    assertEquals(css, appendHiddenElementRule(css, selector))
+  }
+
+  @Test
+  fun `href と semantic boundary を使うセレクタは保存できる`() {
+    val selector =
+      "article[data-testid=\"tweet\"]:has(a[href=\"/user/status/123\"]) [data-testid=\"caret\"]"
+
+    assertTrue(isPersistableElementPickerSelector(selector))
+  }
+
+  @Test
   fun `JavaScript の要素セレクタ結果を復号する`() {
     assertEquals(
-      "[data-testid=\"sidebarColumn\"] > div:nth-of-type(2)",
+      "article[data-testid=\"tweet\"]:has(a[href=\"/user/status/123\"]) [data-testid=\"caret\"]",
       decodeElementPickerSelectorResult(
-        "\"%5Bdata-testid%3D%22sidebarColumn%22%5D%20%3E%20div%3Anth-of-type(2)\"",
+        "\"article%5Bdata-testid%3D%22tweet%22%5D%3Ahas%28a%5Bhref%3D%22%2Fuser%2Fstatus%2F123%22%5D%29%20%5Bdata-testid%3D%22caret%22%5D\"",
       ),
     )
     assertNull(decodeElementPickerSelectorResult("null"))
+  }
+
+  @Test
+  fun `JavaScript から返された nth-of-type セレクタも拒否する`() {
+    assertNull(
+      decodeElementPickerSelectorResult(
+        "\"%5Bdata-testid%3D%22sidebarColumn%22%5D%20%3E%20div%3Anth-of-type%282%29\"",
+      ),
+    )
   }
 
   @Test
