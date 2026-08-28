@@ -121,22 +121,30 @@ tasks.configureEach {
   }
 }
 
+val allowedExecutableFeatureDomainDependencies = setOf(
+  ":feature:task:domain",
+  ":feature:web:domain",
+  ":feature:widget:domain",
+)
+
 val verifyAppCompositionBoundary by tasks.registering {
   group = "verification"
-  description = "Verifies that the executable app depends on feature contracts, not feature data or UI modules."
+  description = "Verifies that the executable app depends only on its approved feature contracts."
 
   doLast {
-    val forbidden = configurations
+    val productionProjectDependencies = configurations
       .filterNot { "test" in it.name.lowercase() }
       .flatMap { configuration ->
         configuration.dependencies
           .withType(ProjectDependency::class.java)
           .map { dependency -> configuration.name to dependency.path }
       }
+      .distinct()
+
+    val forbidden = productionProjectDependencies
       .filter { (_, target) ->
         target.startsWith(":feature:") && (target.endsWith(":data") || target.endsWith(":ui"))
       }
-      .distinct()
       .sortedBy { (configuration, target) -> "$configuration:$target" }
 
     if (forbidden.isNotEmpty()) {
@@ -145,6 +153,21 @@ val verifyAppCompositionBoundary by tasks.registering {
           appendLine(":app must not depend directly on feature data or UI modules:")
           forbidden.forEach { (configuration, target) -> appendLine("- $configuration -> $target") }
           append("Use :app:composition for concrete wiring and :app:presentation for app-shell feature UI composition.")
+        },
+      )
+    }
+
+    val unexpectedFeatureDomains = productionProjectDependencies
+      .filter { (_, target) -> target.startsWith(":feature:") && target.endsWith(":domain") }
+      .filterNot { (_, target) -> target in allowedExecutableFeatureDomainDependencies }
+      .sortedBy { (configuration, target) -> "$configuration:$target" }
+
+    if (unexpectedFeatureDomains.isNotEmpty()) {
+      throw GradleException(
+        buildString {
+          appendLine(":app must keep feature Domain fan-in limited to executable framework contracts:")
+          unexpectedFeatureDomains.forEach { (configuration, target) -> appendLine("- $configuration -> $target") }
+          append("Move feature composition behind :app:composition or :app:presentation instead of widening executable :app.")
         },
       )
     }
