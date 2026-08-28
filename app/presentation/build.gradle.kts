@@ -61,7 +61,7 @@ val verifyPresentationBoundary by tasks.registering {
       "(?m)^\\s*import\\s+dev\\.terashima\\.yomitorirss\\.(?:security\\.|platform\\.(?!authorization\\.))",
     )
     val executableImplementationType = Regex(
-      "\\b(?:YomitoriApplication|MainActivity|MainActivityDependenciesProvider|MainActivityPresentationDependencies|IncomingIntentDependencies)\\b",
+      "\\b(?:YomitoriApplication|MainActivity|MainActivityDependenciesProvider|MainActivityPresentationDependencies|MainActivityLanWebDependencies|IncomingIntentDependencies)\\b",
     )
     sourceRoot.walkTopDown()
       .filter { it.isFile && it.extension == "kt" }
