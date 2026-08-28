@@ -6,14 +6,14 @@
 
 ## Context
 
-`ArchitectureDocumentationSourceTest` は、廃止済みの `docs/domain-context-map.md` が再作成されないことと、Markdown 文書がその互換 path を再参照しないことを app の JVM unit test として検査していた。
+`ArchitectureDocumentationSourceTest` は、ADR-0151 で廃止した旧 Context Map compatibility entry が再作成されないことと、Markdown 文書がその互換 path を再参照しないことを app の JVM unit test として検査していた。
 
 この規則はアプリ runtime や feature behavior ではなく repository documentation の整合性である。ADR-0214 で module map と ADR integrity を `gradle/architecture-metadata.gradle.kts` に集約した後も、この1規則だけが app unit test から repository 全体の Markdown を走査していた。
 
 ## Decision
 
 1. 廃止済み current-architecture compatibility path の存在・参照検査を `gradle/architecture-metadata.gradle.kts` が所有する。
-2. `docs/domain-context-map.md` は引き続き存在させず、current document は `docs/architecture/context-map.md` を直接参照する。
+2. 旧 compatibility entry は引き続き存在させず、current document は `docs/architecture/context-map.md` を直接参照する。具体的な退役 path は verifier の禁止値としてだけ保持し、current documentation へ再掲しない。
 3. verifier 内に次の fixture を持つ。
    - current path の直接参照は許可する。
    - retired compatibility document の再作成は拒否する。
