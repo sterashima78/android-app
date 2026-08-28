@@ -1,30 +1,10 @@
-package dev.terashima.yomitorirss
+package dev.terashima.yomitorirss.feature.knowledge.data
 
 import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Test
 
-class ApplicationServiceArchitectureTest {
-  @Test
-  fun `AppContainerはBookmark enrichment policyを実行しない`() {
-    val source = repositoryFile(
-      "app/composition/src/main/java/dev/terashima/yomitorirss/AppContainer.kt",
-    ).readText()
-
-    assertFalse(source.contains("shouldRequestBookmarkEnrichment("))
-    assertFalse(source.contains("requestBookmarkEnrichment(articleId)"))
-  }
-
-  @Test
-  fun `MainActivityはBookmark保存後のbackupをorchestrateしない`() {
-    val source = repositoryFile(
-      "app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt",
-    ).readText()
-
-    assertFalse(source.contains("scheduleBackupAfterBookmarkChange"))
-    assertFalse(source.contains("BackupChangeScheduler"))
-  }
-
+class KnowledgeApplicationServiceArchitectureTest {
   @Test
   fun `Knowledge RepositoryはAI生成やcross-context source収集を所有しない`() {
     val source = repositoryFile(
