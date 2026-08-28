@@ -2,16 +2,20 @@ package dev.terashima.yomitorirss.feature.backup
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import java.time.Instant
@@ -24,6 +28,7 @@ fun GoogleDriveBackupDialog(
   onDismiss: () -> Unit,
   onSelectFolder: () -> Unit,
   onBackupNow: () -> Unit,
+  onWifiOnlyChange: (Boolean) -> Unit,
   onDisable: () -> Unit,
 ) {
   AlertDialog(
@@ -61,6 +66,24 @@ fun GoogleDriveBackupDialog(
           Text(if (state.configured) "保存先を変更" else "Google Driveのフォルダを選択")
         }
         if (state.configured) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text("Wi-Fi接続時のみバックアップ")
+              Text(
+                "自動バックアップをWi-Fi接続中だけ実行します",
+                style = MaterialTheme.typography.bodySmall,
+              )
+            }
+            Switch(
+              checked = state.wifiOnly,
+              onCheckedChange = onWifiOnlyChange,
+              enabled = !state.running,
+            )
+          }
           OutlinedButton(
             onClick = onBackupNow,
             enabled = !state.running,
