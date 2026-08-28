@@ -4,5 +4,6 @@ import dev.terashima.yomitorirss.entry.IncomingIntentDependencies
 
 interface MainActivityDependenciesProvider {
   val mainActivityPresentationDependencies: MainActivityPresentationDependencies
+  val mainActivityLanWebDependencies: MainActivityLanWebDependencies
   val incomingIntentDependencies: IncomingIntentDependencies
 }
