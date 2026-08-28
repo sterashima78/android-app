@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.feature.x
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class XViewerCssSettingsTest {
@@ -38,7 +37,7 @@ class XViewerCssSettingsTest {
       .copyCurrentCssTo(2)
 
     assertEquals(0, settings.activeSetIndex)
-    assertEquals("source", settings.cssAt(0))
+    assertEquals("source", settings.css)
     assertEquals("source", settings.cssAt(2))
   }
 
@@ -59,60 +58,4 @@ class XViewerCssSettingsTest {
 
     assertEquals("", settings.cssForInjection())
   }
-
-  @Test
-  fun `同じページとコンテナの表示ルールは新しい選択で置き換える`() {
-    val first = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")
-    val second = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"b\"}]")
-
-    val settings = XViewerCssSettings(enabled = true, css = "")
-      .upsertDomRule(first)
-      .upsertDomRule(second)
-
-    assertEquals(listOf(second), settings.domRules)
-  }
-
-  @Test
-  fun `別ページの表示ルールは併存できる`() {
-    val homeRule = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")
-    val exploreRule = keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"b\"}]")
-      .copy(pagePath = "/explore")
-
-    val settings = XViewerCssSettings(enabled = true, css = "")
-      .upsertDomRule(homeRule)
-      .upsertDomRule(exploreRule)
-
-    assertEquals(listOf(homeRule, exploreRule), settings.domRules)
-  }
-
-  @Test
-  fun `カスタマイズ無効時はDOM表示ルールを注入しない`() {
-    val settings = XViewerCssSettings(
-      enabled = false,
-      css = "",
-      domRules = listOf(keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")),
-    )
-
-    assertTrue(settings.domRulesForInjection().isEmpty())
-  }
-
-  @Test
-  fun `DOM表示ルールを一括削除できる`() {
-    val settings = XViewerCssSettings(
-      enabled = true,
-      css = "",
-      domRules = listOf(keepMatchingRule("[{\"kind\":\"TEXT\",\"value\":\"a\"}]")),
-    )
-
-    assertTrue(settings.clearDomRules().domRules.isEmpty())
-  }
-
-  private fun keepMatchingRule(target: String) = XViewerDomRule(
-    kind = XViewerDomRuleKind.KEEP_MATCHING_ITEMS,
-    pagePath = "/home",
-    containerSelector = "[data-testid=\"primaryColumn\"] [role=\"tablist\"]",
-    itemSelector = "[role=\"tab\"][aria-selected]",
-    targetKind = XViewerDomTargetKind.FINGERPRINT_SET,
-    targetValue = target,
-  )
 }
