@@ -75,6 +75,24 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   @Test
+  fun `startup background compositionはbackground packageが所有する`() {
+    val backgroundPath = "$compositionSourceRoot/composition/background/AppBackgroundRuntime.kt"
+    val backgroundRuntime = source(backgroundPath)
+    val appContainer = source("$compositionSourceRoot/AppContainer.kt")
+
+    assertTrue("background package must own startup composition", File(repositoryRoot, backgroundPath).isFile)
+    assertFalse(
+      "composition root must not keep startup background runtime",
+      File(repositoryRoot, "$compositionSourceRoot/AppBackgroundRuntime.kt").exists(),
+    )
+    assertTrue(
+      "AppContainer must import the packaged background runtime",
+      "dev.terashima.yomitorirss.composition.background.AppBackgroundRuntime" in appContainer,
+    )
+    assertTrue("background runtime must keep startup scheduling", "BookmarkAutoEnrichmentBackfillScheduler.schedule" in backgroundRuntime)
+  }
+
+  @Test
   fun `LAN Web server service manifestはWeb dataが所有する`() {
     val appManifest = source("app/src/main/AndroidManifest.xml")
     val webDataManifest = source("feature/web/data/src/main/AndroidManifest.xml")
