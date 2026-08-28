@@ -10,6 +10,8 @@ private const val PREFS_NAME = "x_viewer_preferences"
 private const val KEY_CSS_ENABLED = "custom_css_enabled"
 private const val KEY_ACTIVE_CSS_SET = "active_css_set"
 private const val KEY_CUSTOM_CSS_SET_PREFIX = "custom_css_set_"
+private const val KEY_JAVASCRIPT_ENABLED = "custom_javascript_enabled"
+private const val KEY_CUSTOM_JAVASCRIPT = "custom_javascript"
 
 class SharedPreferencesXViewerCssRepository(
   context: Context,
@@ -40,6 +42,8 @@ class SharedPreferencesXViewerCssRepository(
       css = cssSets[activeSetIndex],
       activeSetIndex = activeSetIndex,
       cssSets = cssSets,
+      javaScriptEnabled = preferences.getBoolean(KEY_JAVASCRIPT_ENABLED, false),
+      javaScript = preferences.getString(KEY_CUSTOM_JAVASCRIPT, "") ?: "",
     )
   }
 
@@ -47,6 +51,8 @@ class SharedPreferencesXViewerCssRepository(
     val editor = preferences.edit()
       .putBoolean(KEY_CSS_ENABLED, settings.enabled)
       .putInt(KEY_ACTIVE_CSS_SET, settings.activeSetIndex)
+      .putBoolean(KEY_JAVASCRIPT_ENABLED, settings.javaScriptEnabled)
+      .putString(KEY_CUSTOM_JAVASCRIPT, settings.javaScript)
 
     settings.persistedCssSets().forEachIndexed { index, css ->
       editor.putString(cssSetKey(index), css)
