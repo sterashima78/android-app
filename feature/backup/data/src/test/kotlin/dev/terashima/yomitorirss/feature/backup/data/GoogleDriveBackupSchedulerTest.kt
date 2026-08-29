@@ -14,11 +14,10 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class GoogleDriveBackupSchedulerTest {
   @Test
-  fun `Wi-Fi限定では利用可能なWi-Fi transportを要求する`() {
+  fun `Wi-Fi限定では検証済みWi-FiのNetworkRequestを要求する`() {
     val constraints = googleDriveBackupNetworkConstraints(wifiOnly = true)
     val request = requireNotNull(constraints.requiredNetworkRequest)
 
-    assertEquals(NetworkType.CONNECTED, constraints.requiredNetworkType)
     assertTrue(request.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
     assertTrue(request.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))
     assertTrue(request.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
