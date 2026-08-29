@@ -72,7 +72,7 @@ private class ZipBookPageSource(
   private val zipFile = ZipFile(file)
   private val pages = zipFile.entries().asSequence()
     .filterNot { it.isDirectory }
-    .filter { entry -> entry.name.substringAfterLast('.', "").lowercase(Locale.ROOT) in IMAGE_EXTENSIONS }
+    .filter { entry -> isDisplayableZipImageEntry(entry.name) }
     .sortedWith(compareByNaturalName { it.name })
     .toList()
 
@@ -142,6 +142,17 @@ private class PdfBookPageSource(
   }
 }
 
+internal fun isDisplayableZipImageEntry(entryName: String): Boolean {
+  val normalizedName = entryName.replace('\\', '/')
+  val pathSegments = normalizedName.split('/')
+  if (pathSegments.any { it == MACOS_METADATA_DIRECTORY }) return false
+
+  val fileName = pathSegments.lastOrNull().orEmpty()
+  if (fileName.startsWith(APPLEDOUBLE_PREFIX)) return false
+
+  return fileName.substringAfterLast('.', "").lowercase(Locale.ROOT) in IMAGE_EXTENSIONS
+}
+
 private fun <T> compareByNaturalName(selector: (T) -> String): Comparator<T> = Comparator { left, right ->
   naturalCompare(selector(left), selector(right))
 }
@@ -174,5 +185,7 @@ internal fun naturalCompare(left: String, right: String): Int {
 }
 
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
+private const val MACOS_METADATA_DIRECTORY = "__MACOSX"
+private const val APPLEDOUBLE_PREFIX = "._"
 private const val MIN_PDF_WIDTH = 720
 private const val MAX_PDF_WIDTH = 2200
