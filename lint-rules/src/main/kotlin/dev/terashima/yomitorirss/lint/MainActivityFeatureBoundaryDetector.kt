@@ -21,12 +21,7 @@ class MainActivityFeatureBoundaryDetector : Detector(), SourceCodeScanner {
       override fun visitImportStatement(node: UImportStatement) {
         if (context.file.name != MAIN_ACTIVITY_FILE_NAME) return
 
-        val importText = node.sourcePsi?.text ?: return
-        val importedName = importText
-          .removePrefix("import")
-          .trim()
-          .substringBefore(" as ")
-          .trim()
+        val importedName = node.importReference?.asSourceString() ?: return
 
         when {
           importedName.startsWith(FEATURE_PACKAGE_PREFIX) && importedName.endsWith("ViewModel") -> {
