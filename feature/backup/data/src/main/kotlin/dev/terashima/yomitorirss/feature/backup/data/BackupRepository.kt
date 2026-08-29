@@ -114,9 +114,9 @@ class DefaultBackupRepository(
   private fun requireAllowedBackupNetwork() {
     if (!preferences.isWifiOnly()) return
     val connectivityManager = appContext.getSystemService(ConnectivityManager::class.java)
-    val wifiAvailable = connectivityManager.allNetworks.any { network ->
-      connectivityManager.getNetworkCapabilities(network)?.isValidatedWifiForGoogleDriveBackup() == true
-    }
+    val activeNetwork = connectivityManager.activeNetwork
+    val wifiAvailable = activeNetwork != null &&
+      connectivityManager.getNetworkCapabilities(activeNetwork)?.isValidatedWifiForGoogleDriveBackup() == true
     check(wifiAvailable) { "インターネット接続可能なWi-Fiに接続してからバックアップしてください" }
   }
 
