@@ -6,9 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowNetworkCapabilities
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -44,13 +42,12 @@ class GoogleDriveBackupNetworkPolicyTest {
   }
 
   private fun capabilities(transport: Int, validated: Boolean): NetworkCapabilities {
-    val capabilities = ShadowNetworkCapabilities.newInstance()
-    shadowOf(capabilities)
+    val builder = NetworkCapabilities.Builder()
       .addTransportType(transport)
       .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     if (validated) {
-      shadowOf(capabilities).addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+      builder.addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
-    return capabilities
+    return builder.build()
   }
 }
