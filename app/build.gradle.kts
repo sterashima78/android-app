@@ -179,6 +179,8 @@ rootProject.tasks.named("verifyArchitecture").configure {
 }
 
 dependencies {
+  lintChecks(project(":lint-rules"))
+
   implementation(project(":app:composition"))
   implementation(project(":app:presentation"))
   implementation(project(":feature:task:domain"))

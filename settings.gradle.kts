@@ -18,6 +18,7 @@ rootProject.name = "YomitoriRss"
 include(":app")
 include(":app:composition")
 include(":app:presentation")
+include(":lint-rules")
 include(":feature:ai-task-queue:domain")
 include(":feature:ai-task-queue:data")
 include(":feature:ai-task-queue:ui")
