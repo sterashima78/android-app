@@ -22,6 +22,7 @@ class MainActivityFeatureBoundaryDetectorTest : LintDetectorTest() {
           class MainActivity
           """.trimIndent(),
         ).to("src/dev/terashima/yomitorirss/MainActivity.kt"),
+        rssViewModelStub(),
       )
       .run()
       .expectContains("[MainActivityFeatureBoundary]")
@@ -37,6 +38,7 @@ class MainActivityFeatureBoundaryDetectorTest : LintDetectorTest() {
           class MainActivity
           """.trimIndent(),
         ).to("src/dev/terashima/yomitorirss/MainActivity.kt"),
+        rssViewModelStub(),
       )
       .run()
       .expectContains("[MainActivityFeatureBoundary]")
@@ -52,6 +54,7 @@ class MainActivityFeatureBoundaryDetectorTest : LintDetectorTest() {
           class MainActivity
           """.trimIndent(),
         ).to("src/dev/terashima/yomitorirss/MainActivity.kt"),
+        concreteFeatureDataStub(),
       )
       .run()
       .expectContains("[MainActivityFeatureBoundary]")
@@ -67,6 +70,7 @@ class MainActivityFeatureBoundaryDetectorTest : LintDetectorTest() {
           class MainActivity
           """.trimIndent(),
         ).to("src/dev/terashima/yomitorirss/MainActivity.kt"),
+        appViewModelStub(),
       )
       .run()
       .expectClean()
@@ -82,8 +86,33 @@ class MainActivityFeatureBoundaryDetectorTest : LintDetectorTest() {
           class OtherActivity
           """.trimIndent(),
         ).to("src/dev/terashima/yomitorirss/OtherActivity.kt"),
+        rssViewModelStub(),
       )
       .run()
       .expectClean()
   }
+
+  private fun rssViewModelStub() =
+    kotlin(
+      """
+      package dev.terashima.yomitorirss.feature.rss
+      class RssViewModel
+      """.trimIndent(),
+    ).to("src/dev/terashima/yomitorirss/feature/rss/RssViewModel.kt")
+
+  private fun concreteFeatureDataStub() =
+    kotlin(
+      """
+      package dev.terashima.yomitorirss.feature.web.data
+      class LanWebServerService
+      """.trimIndent(),
+    ).to("src/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt")
+
+  private fun appViewModelStub() =
+    kotlin(
+      """
+      package dev.terashima.yomitorirss.ui
+      class AppViewModel
+      """.trimIndent(),
+    ).to("src/dev/terashima/yomitorirss/ui/AppViewModel.kt")
 }
