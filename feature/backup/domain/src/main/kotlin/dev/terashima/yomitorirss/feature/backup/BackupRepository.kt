@@ -12,5 +12,6 @@ interface BackupRepository {
   suspend fun restoreFrom(documentUri: String)
   suspend fun configureGoogleDrive(folderUri: String): ConfigureGoogleDriveResult
   suspend fun backupToGoogleDriveNow(): String
+  fun setGoogleDriveWifiOnly(enabled: Boolean)
   fun disableGoogleDrive()
 }

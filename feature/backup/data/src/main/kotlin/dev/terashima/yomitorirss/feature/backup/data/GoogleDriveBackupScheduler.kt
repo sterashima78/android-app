@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.backup.data
 
 import android.content.Context
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -14,10 +16,6 @@ object GoogleDriveBackupScheduler {
   private const val PERIODIC_WORK_NAME = "google-drive-backup-periodic"
   private const val CHANGE_WORK_NAME = "google-drive-backup-after-change"
 
-  private val networkConstraints = Constraints.Builder()
-    .setRequiredNetworkType(NetworkType.CONNECTED)
-    .build()
-
   fun ensureScheduled(context: Context) {
     if (GoogleDriveBackupPreferences(context).isConfigured()) {
       schedulePeriodic(context)
@@ -27,8 +25,11 @@ object GoogleDriveBackupScheduler {
   }
 
   fun schedulePeriodic(context: Context) {
+    val constraints = googleDriveBackupNetworkConstraints(
+      wifiOnly = GoogleDriveBackupPreferences(context).isWifiOnly(),
+    )
     val request = PeriodicWorkRequestBuilder<GoogleDriveBackupWorker>(1, TimeUnit.DAYS)
-      .setConstraints(networkConstraints)
+      .setConstraints(constraints)
       .build()
     WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
       PERIODIC_WORK_NAME,
@@ -38,10 +39,11 @@ object GoogleDriveBackupScheduler {
   }
 
   fun scheduleAfterChange(context: Context) {
-    if (!GoogleDriveBackupPreferences(context).isConfigured()) return
+    val preferences = GoogleDriveBackupPreferences(context)
+    if (!preferences.isConfigured()) return
     val request = OneTimeWorkRequestBuilder<GoogleDriveBackupWorker>()
       .setInitialDelay(15, TimeUnit.MINUTES)
-      .setConstraints(networkConstraints)
+      .setConstraints(googleDriveBackupNetworkConstraints(preferences.isWifiOnly()))
       .build()
     WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
       CHANGE_WORK_NAME,
@@ -56,4 +58,21 @@ object GoogleDriveBackupScheduler {
       cancelUniqueWork(CHANGE_WORK_NAME)
     }
   }
+}
+
+internal fun googleDriveBackupNetworkConstraints(wifiOnly: Boolean): Constraints {
+  if (!wifiOnly) {
+    return Constraints.Builder()
+      .setRequiredNetworkType(NetworkType.CONNECTED)
+      .build()
+  }
+
+  val wifiRequest = NetworkRequest.Builder()
+    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+    .build()
+  return Constraints.Builder()
+    .setRequiredNetworkRequest(wifiRequest, NetworkType.CONNECTED)
+    .build()
 }

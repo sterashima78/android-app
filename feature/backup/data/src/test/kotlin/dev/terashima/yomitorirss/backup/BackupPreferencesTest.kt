@@ -47,7 +47,10 @@ class BackupPreferencesTest {
     context.getSharedPreferences("smb_library_credentials", Context.MODE_PRIVATE)
       .edit().putString("server", "encrypted-secret").commit()
     context.getSharedPreferences("google_drive_backup", Context.MODE_PRIVATE)
-      .edit().putString("folder_uri", "persisted-uri").commit()
+      .edit()
+      .putString("folder_uri", "persisted-uri")
+      .putBoolean("wifi_only", true)
+      .commit()
     context.getSharedPreferences("local_context_benchmarks", Context.MODE_PRIVATE)
       .edit().putLong("device-memory", 123L).commit()
 
@@ -71,6 +74,7 @@ class BackupPreferencesTest {
     assertTrue(encoded.contains("selected_model_id"))
     assertTrue(encoded.contains("custom-library-prompt"))
     assertTrue(encoded.contains("synthetic-workout-memo"))
+    assertTrue(encoded.contains("wifi_only"))
 
     context.getSharedPreferences("workout", Context.MODE_PRIVATE)
       .edit().putString("state_v1", "changed").commit()
@@ -80,6 +84,11 @@ class BackupPreferencesTest {
       .edit().clear().commit()
     context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
       .edit().putString("smb_metadata_normalization_prompt", "changed-library-prompt").commit()
+    val drivePreferences = context.getSharedPreferences("google_drive_backup", Context.MODE_PRIVATE)
+    drivePreferences.edit()
+      .putString("folder_uri", "destination-uri")
+      .putBoolean("wifi_only", false)
+      .commit()
     localModels.edit()
       .putString("selected_model_id", "model-b")
       .putString("model_revision.model-a", "destination-revision")
@@ -109,6 +118,8 @@ class BackupPreferencesTest {
       "encrypted-secret",
       context.getSharedPreferences("smb_library_credentials", Context.MODE_PRIVATE).getString("server", null),
     )
+    assertEquals("destination-uri", drivePreferences.getString("folder_uri", null))
+    assertTrue(drivePreferences.getBoolean("wifi_only", false))
     assertEquals("model-a", localModels.getString("selected_model_id", null))
     assertEquals("destination-revision", localModels.getString("model_revision.model-a", null))
     assertEquals(999L, localModels.getLong("preparing_model.model-a.duration_millis", 0L))

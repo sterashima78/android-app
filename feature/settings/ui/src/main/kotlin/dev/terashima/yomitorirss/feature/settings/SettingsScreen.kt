@@ -149,6 +149,7 @@ fun SettingsFeatureScreen(
       onDismiss = { overlay = null },
       onSelectFolder = { onSelectBackupFolder(backupState.folderUri) },
       onBackupNow = backupViewModel::backupToGoogleDriveNow,
+      onWifiOnlyChange = backupViewModel::setGoogleDriveWifiOnly,
       onDisable = backupViewModel::disableGoogleDrive,
     )
 

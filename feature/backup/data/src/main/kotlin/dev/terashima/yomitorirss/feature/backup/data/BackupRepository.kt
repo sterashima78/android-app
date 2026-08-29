@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.backup.data
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
@@ -77,7 +78,7 @@ class DefaultBackupRepository(
       }
     }
 
-    return runCatching { service.backup() }
+    return runCatching { backupToGoogleDriveNow() }
       .fold(
         onSuccess = { ConfigureGoogleDriveResult.Enabled },
         onFailure = { ConfigureGoogleDriveResult.EnabledWithInitialBackupFailure(it.userMessage()) },
@@ -86,7 +87,15 @@ class DefaultBackupRepository(
 
   override suspend fun backupToGoogleDriveNow(): String {
     check(preferences.isConfigured()) { "Google Driveの保存先を設定してください" }
+    requireAllowedBackupNetwork()
     return service.backup()
+  }
+
+  override fun setGoogleDriveWifiOnly(enabled: Boolean) {
+    preferences.setWifiOnly(enabled)
+    if (preferences.isConfigured()) {
+      GoogleDriveBackupScheduler.schedulePeriodic(appContext)
+    }
   }
 
   override fun disableGoogleDrive() {
@@ -100,6 +109,15 @@ class DefaultBackupRepository(
     }
     preferences.clearConfiguration()
     GoogleDriveBackupScheduler.cancel(appContext)
+  }
+
+  private fun requireAllowedBackupNetwork() {
+    if (!preferences.isWifiOnly()) return
+    val connectivityManager = appContext.getSystemService(ConnectivityManager::class.java)
+    val activeNetwork = connectivityManager.activeNetwork
+    val wifiAvailable = activeNetwork != null &&
+      connectivityManager.getNetworkCapabilities(activeNetwork)?.isValidatedWifiForGoogleDriveBackup() == true
+    check(wifiAvailable) { "インターネット接続可能なWi-Fiに接続してからバックアップしてください" }
   }
 
   private fun folderDisplayName(treeUri: Uri): String {

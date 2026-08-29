@@ -59,6 +59,21 @@ class BackupPreferenceChangeObserverTest {
   }
 
   @Test
+  fun `Google Drive設定はWi-Fi限定だけを永続化変更として通知する`() {
+    val notifier = PersistenceChangeNotifier()
+    val observer = BackupPreferenceChangeObserver(context, notifier)
+    observer.start()
+    val preferences = context.getSharedPreferences(GoogleDriveBackupPreferences.FILE_NAME, Context.MODE_PRIVATE)
+
+    preferences.edit().putString("folder_uri", "synthetic-folder-uri").commit()
+    assertEquals(0L, notifier.version.value)
+
+    preferences.edit().putBoolean(GoogleDriveBackupPreferences.KEY_WIFI_ONLY, true).commit()
+    assertEquals(1L, notifier.version.value)
+    observer.stop()
+  }
+
+  @Test
   fun `backup restore中のbackground preferences変更は遅延callbackも個別通知しない`() {
     val store = BackupPreferences(context)
     val preferences = context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)

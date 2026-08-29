@@ -17,6 +17,7 @@ data class BackupUiState(
   val lastSuccessAt: String? = null,
   val lastFileName: String? = null,
   val lastError: String? = null,
+  val wifiOnly: Boolean = false,
   val running: Boolean = false,
   val message: String? = null,
   val restoreCompleted: Boolean = false,
@@ -102,6 +103,13 @@ class BackupViewModel(
     }
   }
 
+  fun setGoogleDriveWifiOnly(enabled: Boolean) {
+    runCatching {
+      repository.setGoogleDriveWifiOnly(enabled)
+      updateStatus(running = _state.value.running)
+    }.onFailure(::showError)
+  }
+
   fun disableGoogleDrive() {
     runCatching { repository.disableGoogleDrive() }
       .onSuccess {
@@ -132,6 +140,7 @@ class BackupViewModel(
         lastSuccessAt = status.lastSuccessAt,
         lastFileName = status.lastFileName,
         lastError = status.lastError,
+        wifiOnly = status.wifiOnly,
         running = running,
         message = message ?: it.message,
         restoreCompleted = restoreCompleted,
