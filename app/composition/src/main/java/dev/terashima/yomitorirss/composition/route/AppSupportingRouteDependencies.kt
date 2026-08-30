@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.composition.route
 
 import android.app.Application
 import dev.terashima.yomitorirss.AppContainer
+import dev.terashima.yomitorirss.composition.background.IntegratedRefreshScheduler
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.asset.AssetViewModel
@@ -100,6 +101,15 @@ internal class AppSupportingRouteDependencies(
   fun setBackgroundFetchWifiOnly(wifiOnly: Boolean) {
     backgroundDataFetchPreferences.wifiOnly = wifiOnly
     container.mailRepository.refreshPeriodicSyncPolicy()
+    IntegratedRefreshScheduler.schedule(application)
+  }
+
+  fun integratedRefreshIntervalMinutes(): Long =
+    backgroundDataFetchPreferences.integratedRefreshIntervalMinutes
+
+  fun setIntegratedRefreshIntervalMinutes(intervalMinutes: Long) {
+    backgroundDataFetchPreferences.integratedRefreshIntervalMinutes = intervalMinutes
+    IntegratedRefreshScheduler.schedule(application)
   }
 }
 

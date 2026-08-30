@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,7 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
@@ -23,13 +27,19 @@ internal fun SettingsRoute(
   aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  initialIntegratedRefreshIntervalMinutes: Long,
+  onIntegratedRefreshIntervalChange: (Long) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenWebServer: () -> Unit,
   onNavigate: (String) -> Unit,
 ) {
+  val context = LocalContext.current
   val backupState by backupViewModel.state.collectAsState()
-
+  val notificationPermissionResultBridge = remember { NotificationPermissionResultBridge() }
+  val notificationPermissionLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.RequestPermission(),
+  ) { granted -> notificationPermissionResultBridge.complete(granted) }
   val exportLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.CreateDocument("application/zip"),
   ) { uri -> uri?.toString()?.let(backupViewModel::exportBackup) }
@@ -54,6 +64,14 @@ internal fun SettingsRoute(
     aiTaskQueueRepository = aiTaskQueueRepository,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
+    initialIntegratedRefreshIntervalMinutes = initialIntegratedRefreshIntervalMinutes,
+    onIntegratedRefreshIntervalChange = onIntegratedRefreshIntervalChange,
+    initialNotificationPermissionGranted =
+      context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
+    onRequestNotificationPermission = { onResult ->
+      notificationPermissionResultBridge.prepare(onResult)
+      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    },
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
     onSelectBackupFolder = { folderUri ->
@@ -64,4 +82,17 @@ internal fun SettingsRoute(
     onImportBackup = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
     onOpenWebServer = onOpenWebServer,
   )
+}
+
+private class NotificationPermissionResultBridge {
+  private var onResult: ((Boolean) -> Unit)? = null
+
+  fun prepare(callback: (Boolean) -> Unit) {
+    onResult = callback
+  }
+
+  fun complete(granted: Boolean) {
+    onResult?.invoke(granted)
+    onResult = null
+  }
 }

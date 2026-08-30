@@ -13,6 +13,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [persistence.md](persistence.md): schema・table access・migration ownership
 - [testing.md](testing.md): テスト責務と architecture verification
 - [platform.md](platform.md): Android runtime / SDK の現在の基準
+- [background-refresh.md](background-refresh.md): 統合ビューの周期更新、Gmail周期同期移管、新着通知・badge の現在の境界
 - [ai-runtime.md](ai-runtime.md): Local / Cloud AI の provider・execution・failure boundary
 - [web-content.md](web-content.md): ユーザー閲覧、RSS scraping、Library Web metadata の現在の境界
 - [glossary.md](glossary.md): ubiquitous language とアーキテクチャ用語
@@ -70,3 +71,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0136](../adr/0136-public-repository-content-verification.md)
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
 - [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
+- [ADR-0220](../adr/0220-integrated-background-refresh-and-notification.md)

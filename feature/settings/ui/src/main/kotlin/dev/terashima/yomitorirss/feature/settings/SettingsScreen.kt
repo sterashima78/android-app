@@ -30,6 +30,10 @@ fun SettingsFeatureScreen(
   aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  initialIntegratedRefreshIntervalMinutes: Long,
+  onIntegratedRefreshIntervalChange: (Long) -> Unit,
+  initialNotificationPermissionGranted: Boolean,
+  onRequestNotificationPermission: ((Boolean) -> Unit) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onSelectBackupFolder: (String?) -> Unit,
@@ -43,6 +47,12 @@ fun SettingsFeatureScreen(
   var backgroundFetchWifiOnly by remember(initialBackgroundFetchWifiOnly) {
     mutableStateOf(initialBackgroundFetchWifiOnly)
   }
+  var integratedRefreshIntervalMinutes by remember(initialIntegratedRefreshIntervalMinutes) {
+    mutableStateOf(initialIntegratedRefreshIntervalMinutes)
+  }
+  var notificationPermissionGranted by remember(initialNotificationPermissionGranted) {
+    mutableStateOf(initialNotificationPermissionGranted)
+  }
 
   SettingsContent(
     modifier = modifier,
@@ -50,6 +60,17 @@ fun SettingsFeatureScreen(
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundFetchWifiOnly = wifiOnly
       onBackgroundFetchWifiOnlyChange(wifiOnly)
+    },
+    integratedRefreshIntervalMinutes = integratedRefreshIntervalMinutes,
+    onIntegratedRefreshIntervalChange = { intervalMinutes ->
+      integratedRefreshIntervalMinutes = intervalMinutes
+      onIntegratedRefreshIntervalChange(intervalMinutes)
+    },
+    notificationPermissionGranted = notificationPermissionGranted,
+    onRequestNotificationPermission = {
+      onRequestNotificationPermission { granted ->
+        notificationPermissionGranted = granted
+      }
     },
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,

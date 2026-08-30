@@ -39,4 +39,10 @@ class AppRouteDependencies(
   fun setBackgroundFetchWifiOnly(wifiOnly: Boolean) {
     supporting.setBackgroundFetchWifiOnly(wifiOnly)
   }
+
+  fun integratedRefreshIntervalMinutes(): Long = supporting.integratedRefreshIntervalMinutes()
+
+  fun setIntegratedRefreshIntervalMinutes(intervalMinutes: Long) {
+    supporting.setIntegratedRefreshIntervalMinutes(intervalMinutes)
+  }
 }
