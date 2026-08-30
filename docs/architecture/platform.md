@@ -4,11 +4,11 @@
 
 ## Supported runtime
 
-- アプリの最小対応 OS は Android 14 / API 34 とする。
-- Android 13 / API 33 以下は新しい APK の対応対象外とする。
+- アプリの最小対応 OS は Android 15 / API 35 とする。
+- Android 14 / API 34 以下は新しい APK の対応対象外とする。
 - Android 17 / API 37 は現行の実行環境としてサポート対象に含める。
-- すべての Android application/library module は `minSdk = 34` 以上を宣言する。
-- OS バージョン分岐は、API 34 未満だけを支える目的では追加しない。
+- すべての Android application/library module は `minSdk = 35` 以上を宣言する。
+- OS バージョン分岐は、API 35 未満だけを支える目的では追加しない。
 - ただし、DB migration、backup format、永続化された background job の class identity など、アプリ内データ・ジョブ互換性は OS 互換性とは別契約として維持する。
 
 ## Build SDK
@@ -17,13 +17,13 @@
 
 - `compileSdk`: API 36
 - `targetSdk`: API 36
-- `minSdk`: API 34
+- `minSdk`: API 35
 
 Android 17 / API 37 SDK は現在利用可能であり、preview SDK とは扱わない。ただし Mosaic は SMB と LAN Web Server によりローカルネットワーク通信を行うため、`targetSdk = 37` は単純な version bump として実施しない。Android 17 を target するアプリでは `ACCESS_LOCAL_NETWORK` runtime permission が必要になるため、permission UX と SMB / LAN Web Server の動作確認を含む独立した platform migration として採用する。
 
 現時点では current build を API 36 に維持しつつ、Android 17 端末上の all-app behavior changes は現在の互換性対象として検証する。特に app memory limits は `targetSdkVersion` に関係なく Android 17 上で適用されるため、local AI / native memory の診断と process isolation の前提に含める。
 
-app だけを API 34 にして library module に古い baseline を残すと、到達不能な compatibility branch が module 内へ残りやすい。このため current architecture では Android application/library module の `minSdk` を API 34 以上へ統一し、architecture verification で API 33 以下への退行を禁止する。
+app だけを API 35 にして library module に古い baseline を残すと、到達不能な compatibility branch が module 内へ残りやすい。このため current architecture では Android application/library module の `minSdk` を API 35 以上へ統一し、architecture verification で API 34 以下への退行を禁止する。
 
 ## Android 17 target migration
 
@@ -39,15 +39,15 @@ app だけを API 34 にして library module に古い baseline を残すと、
 
 ## Implementation guidance
 
-API 34 以上で常に成立する framework 契約は直接表現する。代表例は次の通り。
+API 35 以上で常に成立する framework 契約は直接表現する。代表例は次の通り。
 
-- `POST_NOTIFICATIONS` の runtime permission は API 34 実行を前提として扱う。
+- `POST_NOTIFICATIONS` の runtime permission は API 35 実行を前提として扱う。
 - Widget の fill-in intent 用 `PendingIntent` は mutability を明示する。
 - API 34 の foreground service type を利用する background worker では、API 34 未満へフォールバックする `SDK_INT` 分岐を持たない。
-- API 34 から利用できる User-Initiated Data Transfer Job 等を current runtime の正規経路として利用する場合、API 33 以下専用 fallback を併設しない。
+- API 34 から利用できる User-Initiated Data Transfer Job 等を current runtime の正規経路として利用する場合、API 34 以下専用 fallback を併設しない。
 - Health Connect の capability は API level だけで利用可能性を決めない。`READ_HEALTH_DATA_HISTORY` など extension / provider 更新に依存する機能は `HealthConnectFeatures` で feature status を確認してから対応 API や権限を利用する。
 
-新しい platform API を導入する際は API 34 以上で利用可能かを確認する。API 35/36/37 以降の差分を扱う `SDK_INT` / extension feature 判定は、実際に現在の対応範囲内で動作が変わるため維持してよい。
+新しい platform API を導入する際は API 35 以上で利用可能かを確認する。API 36/37 以降の差分を扱う `SDK_INT` / extension feature 判定は、実際に現在の対応範囲内で動作が変わるため維持してよい。
 
 ## App-wide authentication boundary
 
@@ -112,12 +112,12 @@ HTTP は暗号化されないため、LAN Web は信頼できる LAN でのみ�
 CI は現在の build baseline である Android API 36 platform を利用し、少なくとも次を検証する。
 
 - architecture verification
-- 全 Android application/library module の `minSdk >= 34`
+- 全 Android application/library module の `minSdk >= 35`
 - unit tests
 - release lint
 - main branch の signed release APK build
 
-Android platform baseline は `gradle/table-ownership.gradle.kts` を併用する Architecture job で検査する。module を追加した場合も `minSdk` が 34 未満または未宣言なら CI を失敗させる。
+Android platform baseline は `gradle/table-ownership.gradle.kts` を併用する Architecture job で検査する。module を追加した場合も `minSdk` が 35 未満または未宣言なら CI を失敗させる。
 
 API 37 を compile / target baseline に採用する際は、SDK install と behavior change の検証を追加または更新してから行う。
 
@@ -136,3 +136,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0169](../adr/0169-lan-web-bootstrap-session-authentication.md)
 - [ADR-0187](../adr/0187-biometric-app-lock.md)
+- [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
