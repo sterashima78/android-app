@@ -98,6 +98,8 @@ object LocalAiTextProcessDiagnostics {
     val pid = Process.myPid()
     if (processInitialized.compareAndSet(false, true)) {
       initializeFile(applicationContext, pid)
+    }
+    if (samplerJob?.isActive != true) {
       samplerJob = diagnosticScope.launch {
         while (isActive) {
           delay(SAMPLE_INTERVAL_MILLIS)
