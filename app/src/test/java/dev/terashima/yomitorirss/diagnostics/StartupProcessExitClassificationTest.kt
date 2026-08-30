@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.diagnostics
 
 import android.app.ActivityManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,6 +26,16 @@ class StartupProcessExitClassificationTest {
         importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED,
       ),
     )
+  }
+
+  @Test
+  fun `local AI text subprocessだけをPID ring logの相関対象にする`() {
+    val packageName = "dev.terashima.yomitorirss"
+
+    assertTrue(isLocalAiTextProcessName(packageName, "$packageName:local_ai_text"))
+    assertFalse(isLocalAiTextProcessName(packageName, packageName))
+    assertFalse(isLocalAiTextProcessName(packageName, "$packageName:local_ai_vision"))
+    assertFalse(isLocalAiTextProcessName(packageName, null))
   }
 
   @Test
