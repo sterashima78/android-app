@@ -76,6 +76,8 @@ identity namespace は source 間衝突を避ける。
 
 新着 identity が空なら通知を更新しない。これにより既存未読だけを周期ごとに再通知しない。
 
+同期前または同期後の未読 snapshot の取得に失敗した場合、その実行回では新着差分を信頼できないため通知しない。同期処理自体は継続し、次回周期で再び差分を判定する。これにより同期前 snapshot の欠落を空集合として扱って既存未読を大量に新着と誤判定することを防ぐ。
+
 ## Notification and badge
 
 新着が1件以上ある場合、`integrated_view_updates` notification channel に通知する。
@@ -107,6 +109,7 @@ Worker から permission dialog を起動しない。permission request は通�
 - background refresh interval の既定値と永続化。
 - 同期前後の identity 差分による新着判定。
 - 既存未読だけでは新着が発生しないこと。
+- 同期前または同期後の snapshot が欠落した場合は通知対象を作らないこと。
 - mail の初回 sync continuation が周期 sync migration 後も維持されること。
 - app composition の WorkerFactory / startup scheduler ownership が architecture rule から逸脱していないこと。
 
