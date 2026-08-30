@@ -67,6 +67,13 @@ object LocalAiTextProcessDiagnostics {
       mode = mode,
     )
 
+  @Suppress("UNUSED_PARAMETER")
+  internal fun startSession(
+    context: Context,
+    scope: CoroutineScope,
+    mode: LocalAiTextProcessMode,
+  ): LocalAiTextProcessDiagnosticSession = startSession(context, mode)
+
   fun recentProcessReport(
     context: Context,
     pid: Int,
