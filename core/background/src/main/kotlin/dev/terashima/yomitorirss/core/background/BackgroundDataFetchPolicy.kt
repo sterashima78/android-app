@@ -19,9 +19,26 @@ class BackgroundDataFetchPreferences(context: Context) {
       preferences.edit().putBoolean(KEY_WIFI_ONLY, value).apply()
     }
 
-  private companion object {
-    const val PREFERENCES_NAME = "background_data_fetch"
-    const val KEY_WIFI_ONLY = "wifi_only"
+  var integratedRefreshIntervalMinutes: Long
+    get() = preferences.getLong(
+      KEY_INTEGRATED_REFRESH_INTERVAL_MINUTES,
+      DEFAULT_INTEGRATED_REFRESH_INTERVAL_MINUTES,
+    ).takeIf(INTEGRATED_REFRESH_INTERVAL_OPTIONS_MINUTES::contains)
+      ?: DEFAULT_INTEGRATED_REFRESH_INTERVAL_MINUTES
+    set(value) {
+      require(value in INTEGRATED_REFRESH_INTERVAL_OPTIONS_MINUTES) {
+        "Unsupported integrated refresh interval: $value minutes"
+      }
+      preferences.edit().putLong(KEY_INTEGRATED_REFRESH_INTERVAL_MINUTES, value).apply()
+    }
+
+  companion object {
+    val INTEGRATED_REFRESH_INTERVAL_OPTIONS_MINUTES = listOf(15L, 30L, 60L, 180L, 360L, 720L, 1440L)
+    const val DEFAULT_INTEGRATED_REFRESH_INTERVAL_MINUTES = 60L
+
+    private const val PREFERENCES_NAME = "background_data_fetch"
+    private const val KEY_WIFI_ONLY = "wifi_only"
+    private const val KEY_INTEGRATED_REFRESH_INTERVAL_MINUTES = "integrated_refresh_interval_minutes"
   }
 }
 
