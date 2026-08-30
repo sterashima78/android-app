@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -58,10 +57,6 @@ internal fun SettingsRoute(
     }
   }
 
-  val notificationPermissionGranted =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-      context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-
   SettingsFeatureScreen(
     modifier = modifier,
     backupViewModel = backupViewModel,
@@ -71,14 +66,11 @@ internal fun SettingsRoute(
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     initialIntegratedRefreshIntervalMinutes = initialIntegratedRefreshIntervalMinutes,
     onIntegratedRefreshIntervalChange = onIntegratedRefreshIntervalChange,
-    initialNotificationPermissionGranted = notificationPermissionGranted,
+    initialNotificationPermissionGranted =
+      context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
     onRequestNotificationPermission = { onResult ->
-      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-        onResult(true)
-      } else {
-        notificationPermissionResultBridge.prepare(onResult)
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-      }
+      notificationPermissionResultBridge.prepare(onResult)
+      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     },
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
