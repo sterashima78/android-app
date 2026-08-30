@@ -9,9 +9,11 @@ import android.os.Process
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -47,16 +49,22 @@ object LocalAiTextProcessDiagnostics {
   internal const val PROCESS_STATE_SUMMARY_MAX_BYTES = 128
   private const val BYTES_PER_KIB = 1024L
 
+  private val processInitialized = AtomicBoolean(false)
+  private val diagnosticScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private val fileLock = Any()
+  @Volatile
+  private var activeState: LocalAiTextProcessDiagnosticState? = null
+  @Volatile
+  private var appContext: Context? = null
+  private var samplerJob: Job? = null
+
   internal fun startSession(
     context: Context,
-    scope: CoroutineScope,
     mode: LocalAiTextProcessMode,
   ): LocalAiTextProcessDiagnosticSession =
     LocalAiTextProcessDiagnosticSession(
       context = context.applicationContext,
-      scope = scope,
       mode = mode,
-      sampleIntervalMillis = SAMPLE_INTERVAL_MILLIS,
     )
 
   fun recentProcessReport(
@@ -74,27 +82,83 @@ object LocalAiTextProcessDiagnostics {
     )
   }
 
-  internal fun initializeFile(context: Context, pid: Int) {
-    runCatching {
-      val file = diagnosticFile(context, pid)
-      file.parentFile?.mkdirs()
-      file.writeText("")
-      file.parentFile
-        ?.listFiles { candidate ->
-          candidate.isFile && candidate.name.startsWith(FILE_PREFIX) && candidate.name.endsWith(FILE_SUFFIX)
+  internal fun activate(
+    context: Context,
+    state: LocalAiTextProcessDiagnosticState,
+  ) {
+    val applicationContext = context.applicationContext
+    appContext = applicationContext
+    val pid = Process.myPid()
+    if (processInitialized.compareAndSet(false, true)) {
+      initializeFile(applicationContext, pid)
+      samplerJob = diagnosticScope.launch {
+        while (isActive) {
+          delay(SAMPLE_INTERVAL_MILLIS)
+          recordActiveSample()
         }
-        ?.sortedByDescending(File::lastModified)
-        ?.drop(MAX_RETAINED_FILES)
-        ?.forEach { stale -> runCatching { stale.delete() } }
+      }
+    }
+    updateState(applicationContext, state)
+  }
+
+  internal fun updateState(
+    context: Context,
+    state: LocalAiTextProcessDiagnosticState,
+  ) {
+    activeState = state
+    publishProcessStateSummary(context, state)
+    recordSample(context, state)
+  }
+
+  private fun recordActiveSample() {
+    val context = appContext ?: return
+    val state = activeState ?: return
+    recordSample(context, state)
+  }
+
+  private fun recordSample(
+    context: Context,
+    state: LocalAiTextProcessDiagnosticState,
+  ) {
+    val runtime = Runtime.getRuntime()
+    val line = buildLocalAiTextProcessDiagnosticLine(
+      timestamp = System.currentTimeMillis(),
+      pid = Process.myPid(),
+      processName = Application.getProcessName(),
+      state = state,
+      pssKb = Debug.getPss().toLong(),
+      rssKb = processRssKb(),
+      nativeHeapKb = Debug.getNativeHeapAllocatedSize() / BYTES_PER_KIB,
+      javaHeapKb = (runtime.totalMemory() - runtime.freeMemory()) / BYTES_PER_KIB,
+    )
+    appendSample(context, line, Process.myPid())
+  }
+
+  private fun initializeFile(context: Context, pid: Int) {
+    synchronized(fileLock) {
+      runCatching {
+        val file = diagnosticFile(context, pid)
+        file.parentFile?.mkdirs()
+        file.writeText("")
+        file.parentFile
+          ?.listFiles { candidate ->
+            candidate.isFile && candidate.name.startsWith(FILE_PREFIX) && candidate.name.endsWith(FILE_SUFFIX)
+          }
+          ?.sortedByDescending(File::lastModified)
+          ?.drop(MAX_RETAINED_FILES)
+          ?.forEach { stale -> runCatching { stale.delete() } }
+      }
     }
   }
 
-  internal fun appendSample(context: Context, line: String, pid: Int) {
-    runCatching {
-      val file = diagnosticFile(context, pid)
-      file.parentFile?.mkdirs()
-      val previous = if (file.isFile) file.readLines() else emptyList()
-      file.writeText((previous.filter(String::isNotBlank) + line).takeLast(MAX_SAMPLES).joinToString("\n"))
+  private fun appendSample(context: Context, line: String, pid: Int) {
+    synchronized(fileLock) {
+      runCatching {
+        val file = diagnosticFile(context, pid)
+        file.parentFile?.mkdirs()
+        val previous = if (file.isFile) file.readLines() else emptyList()
+        file.writeText((previous.filter(String::isNotBlank) + line).takeLast(MAX_SAMPLES).joinToString("\n"))
+      }
     }
   }
 
@@ -104,11 +168,8 @@ object LocalAiTextProcessDiagnostics {
 
 internal class LocalAiTextProcessDiagnosticSession(
   private val context: Context,
-  private val scope: CoroutineScope,
   private val mode: LocalAiTextProcessMode,
-  private val sampleIntervalMillis: Long,
 ) {
-  private val pid = Process.myPid()
   @Volatile
   private var state = LocalAiTextProcessDiagnosticState(
     mode = mode,
@@ -117,17 +178,9 @@ internal class LocalAiTextProcessDiagnosticSession(
     contextTokens = null,
     speculativeDecodingEnabled = null,
   )
-  private var samplerJob: Job? = null
 
   fun start() {
-    LocalAiTextProcessDiagnostics.initializeFile(context, pid)
-    publishAndSample()
-    samplerJob = scope.launch(Dispatchers.IO) {
-      while (isActive) {
-        delay(sampleIntervalMillis)
-        recordSample()
-      }
-    }
+    LocalAiTextProcessDiagnostics.activate(context, state)
   }
 
   fun mark(
@@ -143,34 +196,11 @@ internal class LocalAiTextProcessDiagnosticSession(
       contextTokens = contextTokens,
       speculativeDecodingEnabled = speculativeDecodingEnabled,
     )
-    publishAndSample()
+    LocalAiTextProcessDiagnostics.updateState(context, state)
   }
 
   fun stop() {
     mark(LocalAiTextProcessPhase.RECYCLE)
-    samplerJob?.cancel()
-    samplerJob = null
-  }
-
-  private fun publishAndSample() {
-    publishProcessStateSummary(context, state)
-    recordSample()
-  }
-
-  private fun recordSample() {
-    val runtime = Runtime.getRuntime()
-    val snapshot = state
-    val line = buildLocalAiTextProcessDiagnosticLine(
-      timestamp = System.currentTimeMillis(),
-      pid = pid,
-      processName = Application.getProcessName(),
-      state = snapshot,
-      pssKb = Debug.getPss().toLong(),
-      rssKb = processRssKb(),
-      nativeHeapKb = Debug.getNativeHeapAllocatedSize() / 1024L,
-      javaHeapKb = (runtime.totalMemory() - runtime.freeMemory()) / 1024L,
-    )
-    LocalAiTextProcessDiagnostics.appendSample(context, line, pid)
   }
 }
 
@@ -208,10 +238,12 @@ private fun publishProcessStateSummary(
 ) {
   if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
   runCatching {
-    val summary = buildLocalAiTextProcessStateSummary(state)
-      .toByteArray(StandardCharsets.US_ASCII)
-      .take(LocalAiTextProcessDiagnostics.PROCESS_STATE_SUMMARY_MAX_BYTES)
-      .toByteArray()
+    val bytes = buildLocalAiTextProcessStateSummary(state).toByteArray(StandardCharsets.US_ASCII)
+    val summary = if (bytes.size <= LocalAiTextProcessDiagnostics.PROCESS_STATE_SUMMARY_MAX_BYTES) {
+      bytes
+    } else {
+      bytes.copyOf(LocalAiTextProcessDiagnostics.PROCESS_STATE_SUMMARY_MAX_BYTES)
+    }
     context.getSystemService(ActivityManager::class.java).setProcessStateSummary(summary)
   }
 }
