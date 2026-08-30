@@ -14,7 +14,7 @@
 └── gradle/     build configuration and architecture verification support
 ```
 
-共通 external dependency version は、移行済み dependency について [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml) を正本とする。module-local `build.gradle.kts` は generated `libs` accessor を利用する。Android platform baseline は別契約であり、各 Android module の `minSdk = 34` 明示と architecture verification を維持する。
+共通 external dependency version は、移行済み dependency について [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml) を正本とする。module-local `build.gradle.kts` は generated `libs` accessor を利用する。Android platform baseline は別契約であり、各 Android module の `minSdk = 35` 明示と architecture verification を維持する。
 
 ## App
 
@@ -157,7 +157,6 @@ domain -> UI / Data                             forbidden
 UI     -> concrete Data implementation          forbidden
 circular Gradle dependency                      forbidden
 ```
-
 Data -> other feature Data は物理 dependency として許容される場合があるが、別 Context の persistence ownership を越える根拠にはならない。cross-context access は [persistence.md](persistence.md) と [context-map.md](context-map.md) の規則を優先する。
 
 ## Module boundary and Domain boundary
@@ -213,3 +212,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0203](../adr/0203-feature-owned-provider-policy-adapters.md)
 - [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
 - [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
+- [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
