@@ -40,6 +40,8 @@ Summary、Knowledge 等が利用する Local `AiTextInference.generate()` は ma
 - process 内の `LocalModelManager` は最大2 generation だけ再利用し、その後は unbind と process exit で native resource を回収する。
 - 1 generation だけで後続 request がない場合も30秒 idle で process を終了する。
 - process death / Binder failure は新しい process で1回だけ再試行し、durable task 全体の retry policy は owning feature に残す。
+- child は `ActivityManager.setProcessStateSummary()` に text / structured、prepare / generate / recycle 等の安全な runtime state を128 bytes以下で登録し、PID単位の app-private ring log に PSS / RSS / native heap / Java heap を保存する。prompt、output、model id、書誌情報、URL、file path 等の user content は保存しない。
+- Android 17 の memory-related exit report は `REASON_LOW_MEMORY`、API 37 の `REASON_MEMORY_LIMITER`、既存の `MemoryLimiter` description を扱い、`ApplicationExitInfo.pid` と終了時刻で child の ring log を相関する。
 - `PREPARING_MODEL` / `GENERATING_RESPONSE` の provider-neutral progress は child process から main process へ転送する。
 - prompt と output は diagnostics や log へ保存せず、IPC payload は128 Ki characters以下の text と必要最小限の primitive metadata に制限する。
 - `selectedModel()` と `countTokens()` は main process の application-scope `LocalModelManager` を利用する。重い generation Engine の lifecycle だけを subprocess へ分離する。
@@ -47,7 +49,7 @@ Summary、Knowledge 等が利用する Local `AiTextInference.generate()` は ma
 
 この境界は Android 17 の main-process memory diagnostics で、Library organization 実行中に Java heap が小さいまま native heap / PSS が継続増加し `MemoryLimiter:AnonSwap` に至った実測を根拠とする。backend は診断 report から確定できないため、GPU/OpenCL 固有の不具合とは断定せず、process lifetime に残留する native allocation 全般に対する safety boundary として扱う。
 
-Android の `SharedPreferences` は複数 process 間の整合性保証を持たないため、process isolation を導入する際は設定の正本も main process に固定する。child process は Binder snapshot を execution input とし、main process の model/backend/context preference を直接同期ストアとして扱わない。
+Android の `SharedPreferences` は複数 process 間の整合性保証を持たないため、process isolation を導入する際は設定の正本も main process に固定する。child process は Binder snapshot を execution input とし、main process の model/backend/context preference を直接同期ストアとして扱わない。subprocess の memory telemetry も SharedPreferences には保存せず、PID単位の app-private file を child process 自身が所有する。
 
 ## Local structured text inference boundary
 
@@ -59,6 +61,7 @@ Library organization の構造化結果は通常テキストの JSON として�
 - Library organization では `submit_library_organization(tags, collections, reason)` の tool arguments だけを分類結果として利用し、通常の model text は採用しない。
 - tool schema で型を限定した後も Library feature が件数、長さ、空値、重複等を再検証する。検証失敗時の repair は1回だけとする。
 - structured request は1 bound-service lifetime で完結させ、終了時に child process を recycle して native resource を回収する。
+- structured request の Binder transport が `RemoteException` / `DeadObjectException` で失敗した場合だけ、同じ immutable execution snapshot を使って新しい process で1回再試行する。model / tool / validation error は transport retry せず、Library feature の bounded repair と分離する。
 - service は `android:exported="false"` とし、prompt、書誌データ、tool arguments、model output を log / diagnostics / SharedPreferences へ保存しない。
 
 この capability は Chat の対話的 tool calling とは別である。Chat は会話履歴、streaming、複数 tool execution を扱うため、引き続き Chat 用 runtime boundary を利用する。
@@ -107,3 +110,4 @@ application-scope で再利用するのは adapter / manager ownership であり
 - [ADR-0190](../adr/0190-isolate-local-text-inference-process.md)
 - [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
 - [ADR-0199](../adr/0199-library-organization-structured-tool-output.md)
+- [ADR-0219](../adr/0219-local-ai-subprocess-exit-diagnostics-and-recovery.md)
