@@ -32,14 +32,12 @@ internal class IntegratedRefreshWorker(
     refreshSources()
 
     val after = runCatching { unreadKeys() }.getOrNull()
-    if (before != null && after != null) {
-      val newItems = newUnreadKeys(before, after)
-      if (newItems.isNotEmpty()) {
-        IntegratedRefreshNotifier(applicationContext).notifyNewItems(
-          newCount = newItems.size,
-          totalUnread = after.size,
-        )
-      }
+    val newItems = newUnreadKeys(before, after)
+    if (newItems.isNotEmpty() && after != null) {
+      IntegratedRefreshNotifier(applicationContext).notifyNewItems(
+        newCount = newItems.size,
+        totalUnread = after.size,
+      )
     }
     return Result.success()
   }
@@ -65,7 +63,8 @@ internal class IntegratedRefreshWorker(
   }
 }
 
-internal fun newUnreadKeys(before: Set<String>, after: Set<String>): Set<String> = after - before
+internal fun newUnreadKeys(before: Set<String>?, after: Set<String>?): Set<String> =
+  if (before == null || after == null) emptySet() else after - before
 
 internal class IntegratedRefreshWorkerFactory(
   private val container: AppContainer,
