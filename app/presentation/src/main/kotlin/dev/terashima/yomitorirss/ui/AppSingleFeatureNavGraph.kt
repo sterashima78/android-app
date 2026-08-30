@@ -124,6 +124,8 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
       aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
       initialBackgroundFetchWifiOnly = routeDependencies.backgroundFetchWifiOnly(),
       onBackgroundFetchWifiOnlyChange = routeDependencies::setBackgroundFetchWifiOnly,
+      initialIntegratedRefreshIntervalMinutes = routeDependencies.integratedRefreshIntervalMinutes(),
+      onIntegratedRefreshIntervalChange = routeDependencies::setIntegratedRefreshIntervalMinutes,
       biometricLockEnabled = biometricLockEnabled,
       onBiometricLockEnabledChange = onBiometricLockEnabledChange,
       onOpenWebServer = onOpenWebServer,
