@@ -126,14 +126,16 @@ internal object StartupCrashStore {
             appendLine("localAiMemoryDiagnostics:")
             append(diagnostics)
           }
-          LocalAiTextProcessDiagnostics.recentProcessReport(
-            context = application,
-            pid = memoryExit.pid,
-            untilTimestamp = memoryExit.timestamp,
-          )?.let { diagnostics ->
-            appendLine()
-            appendLine("localAiTextProcessDiagnostics:")
-            append(diagnostics)
+          if (isLocalAiTextProcessName(application.packageName, processName)) {
+            LocalAiTextProcessDiagnostics.recentProcessReport(
+              context = application,
+              pid = memoryExit.pid,
+              untilTimestamp = memoryExit.timestamp,
+            )?.let { diagnostics ->
+              appendLine()
+              appendLine("localAiTextProcessDiagnostics:")
+              append(diagnostics)
+            }
           }
         },
       )
@@ -147,6 +149,9 @@ internal object StartupCrashStore {
 
 internal fun isAppOwnedProcessName(packageName: String, processName: String?): Boolean =
   processName == packageName || processName?.startsWith("$packageName:") == true
+
+internal fun isLocalAiTextProcessName(packageName: String, processName: String?): Boolean =
+  processName == "$packageName:local_ai_text"
 
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
