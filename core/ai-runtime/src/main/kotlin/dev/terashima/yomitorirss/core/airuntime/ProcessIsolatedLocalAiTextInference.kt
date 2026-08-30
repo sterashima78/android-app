@@ -386,6 +386,7 @@ class LocalTextInferenceService : Service() {
   private val batchPolicy = TextInferenceProcessBatchPolicy()
   private var isolatedContext: TextInferenceSnapshotContext? = null
   private var modelManager: LocalModelManager? = null
+  private lateinit var processDiagnostics: LocalAiTextProcessDiagnosticSession
   private val messenger = Messenger(
     Handler(Looper.getMainLooper()) { message ->
       if (message.what != MSG_GENERATE || message.replyTo == null) return@Handler false
@@ -407,10 +408,21 @@ class LocalTextInferenceService : Service() {
     },
   )
 
+  override fun onCreate() {
+    super.onCreate()
+    processDiagnostics = LocalAiTextProcessDiagnostics.startSession(
+      context = applicationContext,
+      scope = scope,
+      mode = LocalAiTextProcessMode.TEXT,
+    )
+    processDiagnostics.start()
+  }
+
   override fun onBind(intent: Intent?): IBinder = messenger.binder
 
   override fun onDestroy() {
     val activeInference = inFlight.get()
+    if (::processDiagnostics.isInitialized) processDiagnostics.stop()
     scope.cancel()
     if (!activeInference) {
       runCatching { modelManager?.close() }
@@ -432,12 +444,25 @@ class LocalTextInferenceService : Service() {
     val result = try {
       val request = decodeRequest(bundle)
       snapshot = request.snapshot
+      processDiagnostics.mark(
+        phase = LocalAiTextProcessPhase.REQUEST_RECEIVED,
+        backend = request.snapshot.backend,
+        contextTokens = request.snapshot.contextTokens,
+        speculativeDecodingEnabled = request.snapshot.speculativeDecodingEnabled,
+      )
+      processDiagnostics.mark(LocalAiTextProcessPhase.PREPARING_MODEL)
       val manager = acquireManager(request.snapshot)
       coroutineScope {
         val progressJob = launch {
           manager.inferenceProgress
             .filterNotNull()
-            .collect { progress -> sendProgress(replyTo, progress) }
+            .collect { progress ->
+              when (progress.stage.name) {
+                "PREPARING_MODEL" -> processDiagnostics.mark(LocalAiTextProcessPhase.PREPARING_MODEL)
+                "GENERATING_RESPONSE" -> processDiagnostics.mark(LocalAiTextProcessPhase.GENERATING_RESPONSE)
+              }
+              sendProgress(replyTo, progress)
+            }
         }
         try {
           manager.generate(request.prompt).also { output ->
@@ -451,6 +476,9 @@ class LocalTextInferenceService : Service() {
       error
     } finally {
       inFlight.set(false)
+      if (::processDiagnostics.isInitialized) {
+        processDiagnostics.mark(LocalAiTextProcessPhase.COMPLETED)
+      }
     }
 
     val retire = batchPolicy.requestFinished()
