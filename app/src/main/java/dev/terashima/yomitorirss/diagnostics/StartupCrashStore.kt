@@ -7,7 +7,11 @@ import android.content.Context
 import android.os.Build
 import dev.terashima.yomitorirss.BuildConfig
 import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
+import dev.terashima.yomitorirss.core.airuntime.LocalAiTextProcessDiagnostics
+import java.nio.charset.StandardCharsets
 import java.time.Instant
+
+internal const val ANDROID_17_REASON_MEMORY_LIMITER = 17
 
 internal object StartupCrashStore {
   private const val PREFERENCES_NAME = "startup_crash_diagnostics"
@@ -95,10 +99,15 @@ internal object StartupCrashStore {
           appendLine("pid=${memoryExit.pid}")
           appendLine("process=$processName")
           appendLine("reason=${memoryExit.reason}")
+          appendLine("reasonName=${processExitReasonName(memoryExit.reason)}")
           appendLine("status=${memoryExit.status}")
           appendLine("importance=${memoryExit.importance}")
+          appendLine("importanceName=${processImportanceName(memoryExit.importance)}")
           appendLine("pssKb=${memoryExit.pss}")
           appendLine("rssKb=${memoryExit.rss}")
+          processStateSummary(memoryExit)?.let { processState ->
+            appendLine("processState=$processState")
+          }
           memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
             appendLine("description=$description")
           }
@@ -117,6 +126,15 @@ internal object StartupCrashStore {
             appendLine("localAiMemoryDiagnostics:")
             append(diagnostics)
           }
+          LocalAiTextProcessDiagnostics.recentProcessReport(
+            context = application,
+            pid = memoryExit.pid,
+            untilTimestamp = memoryExit.timestamp,
+          )?.let { diagnostics ->
+            appendLine()
+            appendLine("localAiTextProcessDiagnostics:")
+            append(diagnostics)
+          }
         },
       )
       preferences.edit().putString(REPORT_KEY, report).commit()
@@ -132,6 +150,7 @@ internal fun isAppOwnedProcessName(packageName: String, processName: String?): B
 
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
+    reason == ANDROID_17_REASON_MEMORY_LIMITER ||
     description?.contains("MemoryLimiter", ignoreCase = true) == true
 
 internal fun shouldReportMemoryProcessExit(
@@ -144,3 +163,26 @@ internal fun shouldReportMemoryProcessExit(
       reason == ApplicationExitInfo.REASON_LOW_MEMORY &&
         importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED
     )
+
+internal fun processExitReasonName(reason: Int): String = when (reason) {
+  ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW_MEMORY"
+  ApplicationExitInfo.REASON_OTHER -> "OTHER"
+  ANDROID_17_REASON_MEMORY_LIMITER -> "MEMORY_LIMITER"
+  else -> "REASON_$reason"
+}
+
+internal fun processImportanceName(importance: Int): String = when (importance) {
+  ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND -> "FOREGROUND"
+  ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE -> "FOREGROUND_SERVICE"
+  ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE -> "VISIBLE"
+  ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE -> "SERVICE"
+  ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED -> "CACHED"
+  else -> "IMPORTANCE_$importance"
+}
+
+private fun processStateSummary(exitInfo: ApplicationExitInfo): String? {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+  return exitInfo.processStateSummary
+    ?.let { bytes -> String(bytes, StandardCharsets.US_ASCII) }
+    ?.takeIf(String::isNotBlank)
+}
