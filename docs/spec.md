@@ -1,6 +1,6 @@
 # Mosaic 現行仕様
 
-- 更新日: 2026-08-29
+- 更新日: 2026-08-30
 - 対象: 現在の `main` 系列
 
 ## 1. 目的
@@ -32,7 +32,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 ## 3. 対象環境
 
-- Android 14（API 34）以降を対象とする。
+- Android 15（API 35）以降を対象とする。
 - compile / target API は Android API 36 系とする。
 - 配布対象CPUは arm64-v8a とする。
 - Kotlin と Jetpack Compose を主要実装技術とする。
