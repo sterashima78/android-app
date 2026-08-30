@@ -8,7 +8,7 @@
 
 ADR-0190 / ADR-0199 により、単発 Local text inference と structured text inference は `:local_ai_text` subprocess へ隔離し、native allocation が main process に累積しないよう process death を最終 reclamation boundary としている。
 
-Android 17 / Pixel 11 実機では `dev.terashima.yomitorirss:local_ai_text` が `ApplicationExitInfo.REASON_LOW_MEMORY`、`importance=IMPORTANCE_SERVICE` で終了した。ただし既存 report には終了直前に通常 text / structured のどちらを実行していたか、model preparation / generation / recycle のどの phase だったか、subprocess の PSS / RSS / native heap が終了前に増加していたかが残らない。
+Android 17 実機では `dev.terashima.yomitorirss:local_ai_text` が `ApplicationExitInfo.REASON_LOW_MEMORY`、`importance=IMPORTANCE_SERVICE` で終了した。ただし既存 report には終了直前に通常 text / structured のどちらを実行していたか、model preparation / generation / recycle のどの phase だったか、subprocess の PSS / RSS / native heap が終了前に増加していたかが残らない。
 
 既存 `LocalAiMemoryDiagnostics` は main process と vision process の診断を SharedPreferences に保存する。Android の SharedPreferences は複数 process 間の同期ストアとして保証されず、ADR-0190 では inference 設定について main / child の preference ownership を明確に分離している。`:local_ai_text` の死亡診断を同じ SharedPreferences へ追加すると、その境界を診断経路から再び曖昧にする。
 
@@ -106,6 +106,7 @@ process isolation の目的は、native allocation が大きくなった Local A
   - symbolic reason / importance name
 - `ProcessIsolatedLocalAiStructuredTextInferenceTest`
   - structured transport attempt budget が初回 + 1 retry で固定される
+  - immutable snapshot を retry loop 前に確定し、`RemoteException` のみを transport retry とする source contract
 - existing `StartupCrashStoreTest`
 - existing `ProcessIsolatedLocalAiTextInferenceTest`
 - `:core:ai-runtime:test`
