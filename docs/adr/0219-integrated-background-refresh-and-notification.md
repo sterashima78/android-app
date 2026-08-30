@@ -67,6 +67,8 @@ Gmail アカウント接続時の初回ページ同期、checkpoint、network re
 
 未読総数の増減だけでは判定しない。同じ周期で既読化と新規追加が相殺されても、新しい identity を検出できるようにする。既存未読だけが残っている場合は再通知しない。
 
+同期前または同期後の未読 snapshot 取得に失敗した場合、その実行回では新着差分を信頼できないため通知しない。失敗した snapshot を空集合へ置換すると既存未読を新着と誤判定し得るため、通知の false positive 回避を優先する。source refresh 自体は継続し、次回周期で再び差分判定する。
+
 ### 6. 通知と launcher badge は notification channel で表現する
 
 新着 identity が1件以上ある場合だけ `integrated_view_updates` channel へ通知する。
@@ -91,6 +93,7 @@ Android runtime permission API の呼び出しは app presentation に置き、`
 
 - アプリを開いていない期間も統合ビューの主要 source を同じ設定周期で更新できる。
 - 新着通知と badge が統合未読状態を基準に一度だけ更新される。
+- 未読 snapshot の部分失敗を大量誤通知へ変換しない。
 - Gmail の二重周期取得を避けられる。
 - UI lifecycle と background execution が分離され、既存 application-scope WorkerFactory 方針を維持できる。
 - Wi-Fi 制約と周期設定を一つの background preference に集約できる。
@@ -100,12 +103,13 @@ Android runtime permission API の呼び出しは app presentation に置き、`
 - WorkManager の periodic work は exact timer ではないため、選択した間隔より実行が遅れることがある。
 - 一つの Worker が複数 source を逐次更新するため、source 数やネットワーク状況によって1回の実行時間が伸びる。
 - launcher によって badge の見え方が異なる。
+- snapshot 取得に失敗した実行回では、実際に新着があっても通知を見送る。
 - Gmail の周期同期 owner が feature/mail 単独から application-scope integrated refresh へ移るため、旧 durable work の cleanup を維持する必要がある。
 
 ## Verification
 
 - `BackgroundDataFetchPreferencesTest` で既定1時間と interval persistence を検証する。
-- `IntegratedRefreshWorkerTest` で同期前後の identity 差分だけが新着になること、既存未読だけでは新着が空になることを検証する。
+- `IntegratedRefreshWorkerTest` で同期前後の identity 差分だけが新着になること、既存未読だけでは新着が空になること、前後いずれかの snapshot が欠落した場合は通知対象を作らないことを検証する。
 - settings UI / app presentation の compile と既存 UI tests を通す。
 - `MailSyncScheduler` の初回同期 continuation が維持され、旧 `gmail-mail-sync` periodic work が startup で cancel されることを source/worker tests で確認する。
 - `verifyArchitecture`、unit tests、Lint、public repository verifier を通す。
