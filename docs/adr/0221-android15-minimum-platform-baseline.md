@@ -60,7 +60,6 @@ APK の install 下限だけなら成立するが、module 内へ API 34 compati
 - `scripts/test_verify_public_repository.py`
 - `scripts/verify_public_repository.py`
 - PR diff で Android application/library module の `minSdk` が 35 以上であることを独立レビューする。
-- API 35 managed device を利用する instrumentation/e2e 経路は既存設定を維持する。
 
 ## Public repository note
 
