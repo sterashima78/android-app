@@ -7,7 +7,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ListenableWorker
@@ -33,7 +32,7 @@ internal class IntegratedRefreshWorker(
     refreshSources()
 
     val after = unreadKeys()
-    val newItems = after - before
+    val newItems = newUnreadKeys(before, after)
     if (newItems.isNotEmpty()) {
       IntegratedRefreshNotifier(applicationContext).notifyNewItems(
         newCount = newItems.size,
@@ -66,6 +65,8 @@ internal class IntegratedRefreshWorker(
       .forEach { thread -> add("mail:${thread.accountId}:${thread.id}") }
   }
 }
+
+internal fun newUnreadKeys(before: Set<String>, after: Set<String>): Set<String> = after - before
 
 internal class IntegratedRefreshWorkerFactory(
   private val container: AppContainer,
@@ -100,8 +101,6 @@ internal object IntegratedRefreshScheduler {
       request,
     )
   }
-
-  internal fun requestConstraints(context: Context): Constraints = backgroundDataFetchConstraints(context)
 }
 
 private class IntegratedRefreshNotifier(
