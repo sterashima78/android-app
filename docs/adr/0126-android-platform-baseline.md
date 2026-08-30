@@ -1,7 +1,8 @@
 # ADR-0126: Android 14 を最小プラットフォーム基準とする
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-19
+- Superseded by: [ADR-0221](0221-android15-minimum-platform-baseline.md)
 - Refines: [ADR-0003](0003-multi-module-architecture.md), [ADR-0046](0046-automated-architecture-verification.md)
 
 ## Context
