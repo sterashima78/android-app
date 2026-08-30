@@ -38,8 +38,6 @@ interface MailRepository {
 
   fun markInitialSyncError(accountId: String, message: String?)
 
-  fun refreshPeriodicSyncPolicy()
-
   suspend fun setThreadRead(accountId: String, threadId: String, read: Boolean)
 
   suspend fun setThreadStarred(accountId: String, threadId: String, starred: Boolean)
