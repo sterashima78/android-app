@@ -4,17 +4,14 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ListenableWorker
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.core.background.isBackgroundDataFetchAllowed
 import dev.terashima.yomitorirss.feature.mail.MailAuthorizationRequiredException
 import dev.terashima.yomitorirss.feature.mail.MailInitialSyncStep
@@ -59,28 +56,17 @@ class MailSyncScheduler(context: Context) {
     )
   }
 
+  /**
+   * Periodic mail refresh is owned by the app-level integrated refresh worker.
+   * Keep this compatibility entry point so account connection and older callers also retire any
+   * persisted standalone periodic work from previous app versions.
+   */
   fun schedulePeriodic() {
-    val request = PeriodicWorkRequestBuilder<MailSyncWorker>(30, TimeUnit.MINUTES)
-      .setConstraints(backgroundDataFetchConstraints(appContext))
-      .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-      .build()
-    workManager.enqueueUniquePeriodicWork(
-      PERIODIC_WORK_NAME,
-      ExistingPeriodicWorkPolicy.UPDATE,
-      request,
-    )
+    cancelPeriodic()
   }
 
   fun refreshPeriodicNetworkPolicy() {
-    val workInfos = workManager.getWorkInfosForUniqueWork(PERIODIC_WORK_NAME)
-    workInfos.addListener(
-      {
-        if (runCatching { workInfos.get().isNotEmpty() }.getOrDefault(false)) {
-          schedulePeriodic()
-        }
-      },
-      appContext.mainExecutor,
-    )
+    cancelPeriodic()
   }
 
   fun cancelAccount(accountId: String) {
