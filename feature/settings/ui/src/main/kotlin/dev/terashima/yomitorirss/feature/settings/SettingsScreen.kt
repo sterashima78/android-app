@@ -32,8 +32,8 @@ fun SettingsFeatureScreen(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   initialIntegratedRefreshIntervalMinutes: Long,
   onIntegratedRefreshIntervalChange: (Long) -> Unit,
-  notificationPermissionGranted: Boolean,
-  onRequestNotificationPermission: () -> Unit,
+  initialNotificationPermissionGranted: Boolean,
+  onRequestNotificationPermission: ((Boolean) -> Unit) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onSelectBackupFolder: (String?) -> Unit,
@@ -50,6 +50,9 @@ fun SettingsFeatureScreen(
   var integratedRefreshIntervalMinutes by remember(initialIntegratedRefreshIntervalMinutes) {
     mutableStateOf(initialIntegratedRefreshIntervalMinutes)
   }
+  var notificationPermissionGranted by remember(initialNotificationPermissionGranted) {
+    mutableStateOf(initialNotificationPermissionGranted)
+  }
 
   SettingsContent(
     modifier = modifier,
@@ -64,7 +67,11 @@ fun SettingsFeatureScreen(
       onIntegratedRefreshIntervalChange(intervalMinutes)
     },
     notificationPermissionGranted = notificationPermissionGranted,
-    onRequestNotificationPermission = onRequestNotificationPermission,
+    onRequestNotificationPermission = {
+      onRequestNotificationPermission { granted ->
+        notificationPermissionGranted = granted
+      }
+    },
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
     onOpenModels = {
