@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.feature.backup.data.AndroidBackupChangeScheduler
 import dev.terashima.yomitorirss.feature.backup.data.BackupPreferenceChangeObserver
 import dev.terashima.yomitorirss.feature.backup.data.PersistenceBackupChangeObserver
+import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 import dev.terashima.yomitorirss.feature.summary.data.BookmarkAutoEnrichmentBackfillScheduler
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetRefreshObserver
 import kotlinx.coroutines.flow.filter
@@ -40,6 +41,7 @@ internal class AppBackgroundRuntime(
     backupPreferenceChangeObserver.start()
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(application) }
+    runCatching { MailSyncScheduler(application).cancelPeriodic() }
     runCatching { IntegratedRefreshScheduler.schedule(application) }
   }
 }
