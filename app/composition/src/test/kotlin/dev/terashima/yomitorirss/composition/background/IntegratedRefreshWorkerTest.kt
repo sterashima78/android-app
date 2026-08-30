@@ -19,4 +19,14 @@ class IntegratedRefreshWorkerTest {
 
     assertEquals(emptySet<String>(), newUnreadKeys(before, after))
   }
+
+  @Test
+  fun `同期前snapshotを取得できない場合は新着通知対象を作らない`() {
+    assertEquals(emptySet<String>(), newUnreadKeys(null, setOf("article:a")))
+  }
+
+  @Test
+  fun `同期後snapshotを取得できない場合は新着通知対象を作らない`() {
+    assertEquals(emptySet<String>(), newUnreadKeys(setOf("article:a"), null))
+  }
 }
