@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -23,6 +26,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -32,6 +39,8 @@ fun SettingsContent(
   modifier: Modifier,
   backgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  integratedRefreshIntervalMinutes: Long,
+  onIntegratedRefreshIntervalChange: (Long) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
@@ -61,6 +70,12 @@ fun SettingsContent(
     item { SettingsDivider() }
 
     item { SettingsHeader("バックグラウンド取得") }
+    item {
+      SettingsIntervalRow(
+        intervalMinutes = integratedRefreshIntervalMinutes,
+        onIntervalChange = onIntegratedRefreshIntervalChange,
+      )
+    }
     item {
       SettingsSwitchRow(
         icon = Icons.Default.Download,
@@ -134,6 +149,37 @@ fun SettingsContent(
 }
 
 @Composable
+private fun SettingsIntervalRow(
+  intervalMinutes: Long,
+  onIntervalChange: (Long) -> Unit,
+) {
+  var expanded by remember { mutableStateOf(false) }
+  Box {
+    ListItem(
+      modifier = Modifier.clickable { expanded = true },
+      headlineContent = { Text("統合ビューの更新間隔") },
+      supportingContent = { Text("現在: ${integratedRefreshIntervalLabel(intervalMinutes)}") },
+      leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
+      trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+    )
+    DropdownMenu(
+      expanded = expanded,
+      onDismissRequest = { expanded = false },
+    ) {
+      integratedRefreshIntervalsMinutes.forEach { interval ->
+        DropdownMenuItem(
+          text = { Text(integratedRefreshIntervalLabel(interval)) },
+          onClick = {
+            expanded = false
+            onIntervalChange(interval)
+          },
+        )
+      }
+    }
+  }
+}
+
+@Composable
 private fun SettingsHeader(text: String) {
   Text(
     text = text,
@@ -178,3 +224,11 @@ private fun SettingsSwitchRow(
 
 @Composable
 private fun SettingsDivider() { HorizontalDivider() }
+
+private val integratedRefreshIntervalsMinutes = listOf(15L, 30L, 60L, 180L, 360L, 720L, 1440L)
+
+private fun integratedRefreshIntervalLabel(minutes: Long): String = when {
+  minutes < 60 -> "${minutes}分"
+  minutes % 1440L == 0L -> "${minutes / 1440L}日"
+  else -> "${minutes / 60L}時間"
+}
