@@ -30,6 +30,8 @@ fun SettingsFeatureScreen(
   aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  initialIntegratedRefreshIntervalMinutes: Long,
+  onIntegratedRefreshIntervalChange: (Long) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onSelectBackupFolder: (String?) -> Unit,
@@ -43,6 +45,9 @@ fun SettingsFeatureScreen(
   var backgroundFetchWifiOnly by remember(initialBackgroundFetchWifiOnly) {
     mutableStateOf(initialBackgroundFetchWifiOnly)
   }
+  var integratedRefreshIntervalMinutes by remember(initialIntegratedRefreshIntervalMinutes) {
+    mutableStateOf(initialIntegratedRefreshIntervalMinutes)
+  }
 
   SettingsContent(
     modifier = modifier,
@@ -50,6 +55,11 @@ fun SettingsFeatureScreen(
     onBackgroundFetchWifiOnlyChange = { wifiOnly ->
       backgroundFetchWifiOnly = wifiOnly
       onBackgroundFetchWifiOnlyChange(wifiOnly)
+    },
+    integratedRefreshIntervalMinutes = integratedRefreshIntervalMinutes,
+    onIntegratedRefreshIntervalChange = { intervalMinutes ->
+      integratedRefreshIntervalMinutes = intervalMinutes
+      onIntegratedRefreshIntervalChange(intervalMinutes)
     },
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
