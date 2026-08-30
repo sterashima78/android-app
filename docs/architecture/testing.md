@@ -144,9 +144,9 @@ CI の Architecture job は `gradle/architecture-metadata.gradle.kts` と `gradl
 - owner 以外から durable table を参照していないこと
 - `foreign-table-access-allowlist.tsv` の unknown / stale entry がないこと
 - `:app` の `ui` composition 配下（`*Host.kt` 等を含む）が concrete feature data、database、WorkManager implementation を import / construct しないこと
-- 全 Android application/library module が `minSdk = 34` 以上を宣言すること
+- 全 Android application/library module が `minSdk = 35` 以上を宣言すること
 
-`MailRouteHost.kt` 相当の concrete data import と API 29 module を fixture として持ち、guardrail 自体が退行しないことも固定する。
+`MailRouteHost.kt` 相当の concrete data import と API 34 module を fixture として持ち、guardrail 自体が退行しないことも固定する。
 
 ### Framework provider / WorkerFactory boundary
 
@@ -275,3 +275,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0201](../adr/0201-remove-main-apk-commit-status.md)
 - [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
+- [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)

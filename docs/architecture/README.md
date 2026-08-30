@@ -72,3 +72,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0151](../adr/0151-retire-current-architecture-compatibility-redirects.md)
 - [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
 - [ADR-0220](../adr/0220-integrated-background-refresh-and-notification.md)
+- [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)

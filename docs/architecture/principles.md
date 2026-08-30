@@ -141,9 +141,9 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 
 ## Android platform baseline
 
-- 全 Android application/library module は `minSdk = 34` 以上を宣言する。
-- API 34 未満だけを支える `SDK_INT` fallback は持たない。
-- API 35/36/37 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
+- 全 Android application/library module は `minSdk = 35` 以上を宣言する。
+- API 35 未満だけを支える `SDK_INT` fallback は持たない。
+- API 36/37 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
 - Android 17 / API 37 は現行の実行環境として扱う。現在の build baseline は `compileSdk = 36` / `targetSdk = 36` とし、`targetSdk = 37` は SMB / LAN Web Server の `ACCESS_LOCAL_NETWORK` runtime permission UX と integration test を含む独立した platform migration として行う。
 
 ## Architecture enforcement
@@ -167,7 +167,7 @@ Android platform backup は `BackupPreferences.BACKUP_RULES` のうち、ファ�
 
 `FrameworkProviderBoundaryTest` は監査 manifest と production provider lookup の完全一致、WorkManager Worker での provider lookup 禁止、feature Worker の data-layer ownership、Worker source での parallel database / Repository graph 再構築禁止、`Configuration.Provider` / application WorkerFactory / default WorkManager initializer removal の組み合わせを固定する。
 
-Architecture job の ownership scanner は `:app:presentation` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 34 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
+Architecture job の ownership scanner は `:app:presentation` の `ui` composition をファイル名に依存せず検査し、`MailRouteHost.kt` のような Host に concrete data wiring が移ることも防ぐ。同時に全 Android module の API 35 baseline と、owner schema で作成される durable table の manifest 登録を検査する。
 
 `architecture-metadata.gradle.kts` は module-map / ADR integrity に加え、退役済み current architecture compatibility document の再作成と `docs/**/*.md` からの再参照を検出する。文書の意味的な正しさは引き続きレビューで確認する。
 
@@ -211,3 +211,4 @@ App composition / presentation の source ownership と active-destination ViewM
 - [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
 - [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
+- [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)

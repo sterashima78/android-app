@@ -10,7 +10,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [35])
 class SmbMetadataNormalizationInferenceProcessTest {
   @Test
   fun `2冊目の完了で vision process を再生成する`() {
