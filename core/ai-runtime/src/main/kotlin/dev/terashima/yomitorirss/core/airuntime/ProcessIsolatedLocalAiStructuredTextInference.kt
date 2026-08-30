@@ -7,12 +7,14 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.DeadObjectException
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.Process
+import android.os.RemoteException
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
@@ -28,6 +30,7 @@ import kotlinx.coroutines.launch
 
 private const val STRUCTURED_TEXT_IPC_MAX_CHARS = 128 * 1024
 private const val STRUCTURED_TEXT_MAX_ERROR_CHARS = 500
+internal const val STRUCTURED_TEXT_PROCESS_MAX_ATTEMPTS = 2
 private const val STRUCTURED_TEXT_MODEL_PREFERENCES_NAME = "local_summary_models"
 private const val STRUCTURED_TEXT_BENCHMARK_PREFERENCES_NAME = "local_context_benchmarks"
 private const val STRUCTURED_TEXT_CHILD_MODEL_PREFERENCES_NAME = "local_ai_structured_text_model_snapshot"
@@ -84,13 +87,20 @@ class ProcessIsolatedLocalAiStructuredTextInference(
     }
 
     val snapshot = captureStructuredTextSnapshot(appContext, manager)
-    val session = StructuredTextInferenceSession(appContext)
-    return try {
-      session.connect()
-      session.generate(systemInstruction, userMessage, tool, snapshot)
-    } finally {
-      session.close()
+    var lastRemoteError: RemoteException? = null
+    repeat(STRUCTURED_TEXT_PROCESS_MAX_ATTEMPTS) { attempt ->
+      val session = StructuredTextInferenceSession(appContext)
+      try {
+        session.connect()
+        return session.generate(systemInstruction, userMessage, tool, snapshot)
+      } catch (error: RemoteException) {
+        lastRemoteError = error
+        if (attempt == STRUCTURED_TEXT_PROCESS_MAX_ATTEMPTS - 1) throw error
+      } finally {
+        session.close()
+      }
     }
+    throw requireNotNull(lastRemoteError)
   }
 }
 
@@ -188,18 +198,24 @@ private class StructuredTextInferenceSession(
     }
   }
 
-  override fun onServiceDisconnected(name: ComponentName?) {
-    if (!connected.isCompleted) {
-      connected.completeExceptionally(IllegalStateException("構造化ローカルAI推論プロセスが終了しました"))
-    }
-    pendingResponse.getAndSet(null)?.completeExceptionally(
-      IllegalStateException("構造化ローカルAI推論プロセスが終了しました"),
-    )
+  override fun onServiceDisconnected(name: ComponentName?) = onBinderDied()
+
+  override fun onBindingDied(name: ComponentName?) = onBinderDied()
+
+  override fun onNullBinding(name: ComponentName?) {
+    connected.completeExceptionally(IllegalStateException("構造化ローカルAI推論プロセスが Binder を返しませんでした"))
+  }
+
+  private fun onBinderDied() {
+    val error = DeadObjectException()
+    if (!connected.isCompleted) connected.completeExceptionally(error)
+    pendingResponse.getAndSet(null)?.completeExceptionally(error)
   }
 }
 
 class LocalStructuredTextInferenceService : Service() {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private lateinit var processDiagnostics: LocalAiTextProcessDiagnosticSession
   private val messenger = Messenger(
     Handler(Looper.getMainLooper()) { message ->
       if (message.what != MSG_STRUCTURED_GENERATE || message.replyTo == null) return@Handler false
@@ -219,9 +235,20 @@ class LocalStructuredTextInferenceService : Service() {
     },
   )
 
+  override fun onCreate() {
+    super.onCreate()
+    processDiagnostics = LocalAiTextProcessDiagnostics.startSession(
+      context = applicationContext,
+      scope = scope,
+      mode = LocalAiTextProcessMode.STRUCTURED,
+    )
+    processDiagnostics.start()
+  }
+
   override fun onBind(intent: Intent?): IBinder = messenger.binder
 
   override fun onDestroy() {
+    if (::processDiagnostics.isInitialized) processDiagnostics.stop()
     scope.cancel()
     applicationContext.deleteSharedPreferences(STRUCTURED_TEXT_CHILD_MODEL_PREFERENCES_NAME)
     applicationContext.deleteSharedPreferences(STRUCTURED_TEXT_CHILD_BENCHMARK_PREFERENCES_NAME)
@@ -229,31 +256,45 @@ class LocalStructuredTextInferenceService : Service() {
     Process.killProcess(Process.myPid())
   }
 
-  private fun handleStructuredRequest(bundle: Bundle): Bundle = runCatching {
-    val request = decodeStructuredRequest(bundle)
-    val context = StructuredTextSnapshotContext(applicationContext)
-    context.applySnapshot(request.snapshot)
-    LocalModelManager(context).use { manager ->
-      val calls = mutableListOf<AiStructuredToolCall>()
-      val localTool = request.tool.toLocalInferenceTool { arguments ->
-        calls += AiStructuredToolCall(request.tool.name, arguments)
-        "構造化出力を受理しました"
-      }
-      manager.generateConversation(
-        LocalInferenceConversationRequest(
-          systemInstruction = request.systemInstruction,
-          initialMessages = emptyList(),
-          userMessage = request.userMessage,
-          tools = listOf(localTool),
-        ),
+  private fun handleStructuredRequest(bundle: Bundle): Bundle {
+    val result = runCatching {
+      val request = decodeStructuredRequest(bundle)
+      processDiagnostics.mark(
+        phase = LocalAiTextProcessPhase.REQUEST_RECEIVED,
+        backend = request.snapshot.backend,
+        contextTokens = request.snapshot.contextTokens,
+        speculativeDecodingEnabled = request.snapshot.speculativeDecodingEnabled,
       )
-      require(calls.size == 1) { "構造化出力ツールは1回だけ呼び出してください" }
-      calls.single()
+      processDiagnostics.mark(LocalAiTextProcessPhase.PREPARING_MODEL)
+      val context = StructuredTextSnapshotContext(applicationContext)
+      context.applySnapshot(request.snapshot)
+      LocalModelManager(context).use { manager ->
+        val calls = mutableListOf<AiStructuredToolCall>()
+        val localTool = request.tool.toLocalInferenceTool { arguments ->
+          calls += AiStructuredToolCall(request.tool.name, arguments)
+          "構造化出力を受理しました"
+        }
+        processDiagnostics.mark(LocalAiTextProcessPhase.GENERATING_RESPONSE)
+        manager.generateConversation(
+          LocalInferenceConversationRequest(
+            systemInstruction = request.systemInstruction,
+            initialMessages = emptyList(),
+            userMessage = request.userMessage,
+            tools = listOf(localTool),
+          ),
+        )
+        require(calls.size == 1) { "構造化出力ツールは1回だけ呼び出してください" }
+        calls.single()
+      }
     }
-  }.fold(
-    onSuccess = ::structuredSuccessResponse,
-    onFailure = { error -> structuredErrorResponse(error.structuredTextUserMessage()) },
-  )
+    if (::processDiagnostics.isInitialized) {
+      processDiagnostics.mark(LocalAiTextProcessPhase.COMPLETED)
+    }
+    return result.fold(
+      onSuccess = ::structuredSuccessResponse,
+      onFailure = { error -> structuredErrorResponse(error.structuredTextUserMessage()) },
+    )
+  }
 }
 
 private data class DecodedStructuredRequest(
