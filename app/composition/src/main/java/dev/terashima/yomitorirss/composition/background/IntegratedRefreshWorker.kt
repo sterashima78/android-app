@@ -20,6 +20,7 @@ import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.feature.mail.Mailbox
 import dev.terashima.yomitorirss.feature.reddit.isRedditFeedUrl
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 internal class IntegratedRefreshWorker(
   appContext: Context,
@@ -27,11 +28,11 @@ internal class IntegratedRefreshWorker(
   private val container: AppContainer,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    val before = runCatching { unreadKeys() }.getOrNull()
+    val before = unreadKeysOrNull()
 
     refreshSources()
 
-    val after = runCatching { unreadKeys() }.getOrNull()
+    val after = unreadKeysOrNull()
     val newItems = newUnreadKeys(before, after)
     if (newItems.isNotEmpty() && after != null) {
       IntegratedRefreshNotifier(applicationContext).notifyNewItems(
@@ -43,14 +44,22 @@ internal class IntegratedRefreshWorker(
   }
 
   private suspend fun refreshSources() {
-    runCatching {
+    runIsolatedRefresh {
       val feeds = container.feedRepository.listFeeds()
         .filterNot { isRedditFeedUrl(it.feedUrl) }
       container.refreshFeedsUseCase(feeds) { _, _ -> }
     }
-    runCatching { container.redditRepository.refreshAll { _, _ -> } }
-    runCatching { container.youtubeRepository.refresh() }
-    runCatching { container.mailRepository.sync(accountId = null) }
+    runIsolatedRefresh { container.redditRepository.refreshAll { _, _ -> } }
+    runIsolatedRefresh { container.youtubeRepository.refresh() }
+    runIsolatedRefresh { container.mailRepository.sync(accountId = null) }
+  }
+
+  private suspend fun unreadKeysOrNull(): Set<String>? = try {
+    unreadKeys()
+  } catch (error: CancellationException) {
+    throw error
+  } catch (_: Throwable) {
+    null
   }
 
   private suspend fun unreadKeys(): Set<String> = buildSet {
@@ -60,6 +69,16 @@ internal class IntegratedRefreshWorker(
       .forEach { video -> add("youtube:${video.id}") }
     container.mailRepository.getThreads(null, Mailbox.UNREAD, "")
       .forEach { thread -> add("mail:${thread.accountId}:${thread.id}") }
+  }
+}
+
+private suspend fun runIsolatedRefresh(block: suspend () -> Unit) {
+  try {
+    block()
+  } catch (error: CancellationException) {
+    throw error
+  } catch (_: Throwable) {
+    // A source-specific failure must not prevent the remaining sources from refreshing.
   }
 }
 
