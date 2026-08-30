@@ -23,6 +23,8 @@ internal fun SettingsRoute(
   aiTaskQueueRepository: AiTaskQueueRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
+  initialIntegratedRefreshIntervalMinutes: Long,
+  onIntegratedRefreshIntervalChange: (Long) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenWebServer: () -> Unit,
@@ -54,6 +56,8 @@ internal fun SettingsRoute(
     aiTaskQueueRepository = aiTaskQueueRepository,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
+    initialIntegratedRefreshIntervalMinutes = initialIntegratedRefreshIntervalMinutes,
+    onIntegratedRefreshIntervalChange = onIntegratedRefreshIntervalChange,
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
     onSelectBackupFolder = { folderUri ->
