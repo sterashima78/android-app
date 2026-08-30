@@ -9,9 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
@@ -38,15 +36,10 @@ internal fun SettingsRoute(
 ) {
   val context = LocalContext.current
   val backupState by backupViewModel.state.collectAsState()
-  var notificationPermissionGranted by remember {
-    mutableStateOf(
-      context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
-    )
-  }
-
+  val notificationPermissionResultBridge = remember { NotificationPermissionResultBridge() }
   val notificationPermissionLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission(),
-  ) { granted -> notificationPermissionGranted = granted }
+  ) { granted -> notificationPermissionResultBridge.complete(granted) }
   val exportLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.CreateDocument("application/zip"),
   ) { uri -> uri?.toString()?.let(backupViewModel::exportBackup) }
@@ -73,8 +66,10 @@ internal fun SettingsRoute(
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     initialIntegratedRefreshIntervalMinutes = initialIntegratedRefreshIntervalMinutes,
     onIntegratedRefreshIntervalChange = onIntegratedRefreshIntervalChange,
-    notificationPermissionGranted = notificationPermissionGranted,
-    onRequestNotificationPermission = {
+    initialNotificationPermissionGranted =
+      context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
+    onRequestNotificationPermission = { onResult ->
+      notificationPermissionResultBridge.prepare(onResult)
       notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     },
     biometricLockEnabled = biometricLockEnabled,
@@ -87,4 +82,17 @@ internal fun SettingsRoute(
     onImportBackup = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
     onOpenWebServer = onOpenWebServer,
   )
+}
+
+private class NotificationPermissionResultBridge {
+  private var onResult: ((Boolean) -> Unit)? = null
+
+  fun prepare(callback: (Boolean) -> Unit) {
+    onResult = callback
+  }
+
+  fun complete(granted: Boolean) {
+    onResult?.invoke(granted)
+    onResult = null
+  }
 }
