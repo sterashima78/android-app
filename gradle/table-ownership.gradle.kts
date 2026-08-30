@@ -89,9 +89,9 @@ fun androidPlatformBaselineViolations(repositoryPath: String, buildText: String)
     ?.groupValues
     ?.get(1)
     ?.toIntOrNull()
-    ?: return listOf("Android module must declare minSdk = 34 or newer: $repositoryPath")
-  return if (minSdk < 34) {
-    listOf("Android module minSdk must be API 34 or newer, found $minSdk: $repositoryPath")
+    ?: return listOf("Android module must declare minSdk = 35 or newer: $repositoryPath")
+  return if (minSdk < 35) {
+    listOf("Android module minSdk must be API 35 or newer, found $minSdk: $repositoryPath")
   } else {
     emptyList()
   }
@@ -175,10 +175,10 @@ gradle.projectsEvaluated {
 
   val platformFixture = androidPlatformBaselineViolations(
     repositoryPath = "feature/example/ui/build.gradle.kts",
-    buildText = "id(\"com.android.library\")\nandroid { defaultConfig { minSdk = 29 } }",
+    buildText = "id(\"com.android.library\")\nandroid { defaultConfig { minSdk = 34 } }",
   )
-  if (platformFixture.none { "API 34" in it }) {
-    throw GradleException("Android platform baseline fixture failed to detect minSdk 29")
+  if (platformFixture.none { "API 35" in it }) {
+    throw GradleException("Android platform baseline fixture failed to detect minSdk 34")
   }
 
   val violations = mutableListOf<String>()
