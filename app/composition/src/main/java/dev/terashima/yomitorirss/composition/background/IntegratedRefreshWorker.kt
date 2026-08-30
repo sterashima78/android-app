@@ -27,17 +27,19 @@ internal class IntegratedRefreshWorker(
   private val container: AppContainer,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    val before = unreadKeys()
+    val before = runCatching { unreadKeys() }.getOrNull()
 
     refreshSources()
 
-    val after = unreadKeys()
-    val newItems = newUnreadKeys(before, after)
-    if (newItems.isNotEmpty()) {
-      IntegratedRefreshNotifier(applicationContext).notifyNewItems(
-        newCount = newItems.size,
-        totalUnread = after.size,
-      )
+    val after = runCatching { unreadKeys() }.getOrNull()
+    if (before != null && after != null) {
+      val newItems = newUnreadKeys(before, after)
+      if (newItems.isNotEmpty()) {
+        IntegratedRefreshNotifier(applicationContext).notifyNewItems(
+          newCount = newItems.size,
+          totalUnread = after.size,
+        )
+      }
     }
     return Result.success()
   }
@@ -54,14 +56,11 @@ internal class IntegratedRefreshWorker(
   }
 
   private suspend fun unreadKeys(): Set<String> = buildSet {
-    runCatching { container.articleRepository.listUnreadArticles() }
-      .getOrDefault(emptyList())
+    container.articleRepository.listUnreadArticles()
       .forEach { article -> add("article:${article.id}") }
-    runCatching { container.youtubeRepository.listUnreadVideos() }
-      .getOrDefault(emptyList())
+    container.youtubeRepository.listUnreadVideos()
       .forEach { video -> add("youtube:${video.id}") }
-    runCatching { container.mailRepository.getThreads(null, Mailbox.UNREAD, "") }
-      .getOrDefault(emptyList())
+    container.mailRepository.getThreads(null, Mailbox.UNREAD, "")
       .forEach { thread -> add("mail:${thread.accountId}:${thread.id}") }
   }
 }
@@ -136,7 +135,7 @@ private class IntegratedRefreshNotifier(
       .setContentText("${newCount}件の新着があります（未読 ${totalUnread}件）")
       .setNumber(totalUnread)
       .setAutoCancel(true)
-      .apply { launchPendingIntent?.let(::setContentIntent) }
+      .apply { launchPendingIntent?.let { setContentIntent(it) } }
       .build()
 
     manager.notify(NOTIFICATION_ID, notification)
