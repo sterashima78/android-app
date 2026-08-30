@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.DropdownMenu
@@ -41,6 +42,8 @@ fun SettingsContent(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   integratedRefreshIntervalMinutes: Long,
   onIntegratedRefreshIntervalChange: (Long) -> Unit,
+  notificationPermissionGranted: Boolean,
+  onRequestNotificationPermission: () -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenModels: () -> Unit,
@@ -75,6 +78,22 @@ fun SettingsContent(
         intervalMinutes = integratedRefreshIntervalMinutes,
         onIntervalChange = onIntegratedRefreshIntervalChange,
       )
+    }
+    item {
+      if (notificationPermissionGranted) {
+        SettingsStatusRow(
+          icon = Icons.Default.Notifications,
+          title = "新着通知",
+          supporting = "有効。新しい未読アイテムがあると通知とアプリアイコンのバッジを更新します",
+        )
+      } else {
+        SettingsRow(
+          icon = Icons.Default.Notifications,
+          title = "新着通知を有効にする",
+          supporting = "タップして通知権限を許可します",
+          onClick = onRequestNotificationPermission,
+        )
+      }
     }
     item {
       SettingsSwitchRow(
@@ -202,6 +221,19 @@ private fun SettingsRow(
     supportingContent = supporting?.let { { Text(it) } },
     leadingContent = { Icon(icon, contentDescription = null) },
     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+  )
+}
+
+@Composable
+private fun SettingsStatusRow(
+  icon: ImageVector,
+  title: String,
+  supporting: String,
+) {
+  ListItem(
+    headlineContent = { Text(title) },
+    supportingContent = { Text(supporting) },
+    leadingContent = { Icon(icon, contentDescription = null) },
   )
 }
 
