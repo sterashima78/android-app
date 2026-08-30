@@ -40,5 +40,6 @@ internal class AppBackgroundRuntime(
     backupPreferenceChangeObserver.start()
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(application) }
+    runCatching { IntegratedRefreshScheduler.schedule(application) }
   }
 }
