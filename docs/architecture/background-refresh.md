@@ -120,7 +120,7 @@ notification shade と launcher badge/dot の見え方、WorkManager の実際�
 - [ADR-0006](../adr/0006-durable-background-sync.md)
 - [ADR-0192](../adr/0192-settings-feature-owns-cross-feature-presentation.md)
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
-- [ADR-0219](../adr/0219-integrated-background-refresh-and-notification.md)
+- [ADR-0220](../adr/0220-integrated-background-refresh-and-notification.md)
 - [Android Developers: Define work requests](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work)
 - [Android Developers: PeriodicWorkRequest](https://developer.android.com/reference/androidx/work/PeriodicWorkRequest)
 - [Android Developers: Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
