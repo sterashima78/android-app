@@ -70,4 +70,4 @@ Cloud topic worker同士をKnowledge独自のgateでは直列化しない。各t
 
 - [ADR-0109](../adr/0109-generated-knowledge-wiki.md)
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
-- [ADR-0226](../adr/0226-partition-auto-wiki-generation-by-topic.md)
+- [ADR-0227](../adr/0227-partition-auto-wiki-generation-by-topic.md)
