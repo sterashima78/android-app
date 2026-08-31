@@ -30,6 +30,8 @@ producer と executable app entry routing の間は narrow launch contract を�
 
 producer は feature route 文字列、Compose navigation controller、Activity の overlay state を参照しない。launcher Intent に semantic action を設定した explicit `PendingIntent` を `contentIntent` に使用する。
 
+`IntegratedRefreshNotificationContract` は application-scope producer と executable shell の間だけで共有する固定文字列 contract として `:app:composition` から公開する。これは ADR-0200 の公開面制限に対する narrow exception とし、runtime dependency graph、Repository、Data implementation、UI implementation を追加公開しない。feature-owned producer である LAN Web サーバは同じ contract を `:feature:web:domain` が所有する。
+
 ### 3. `IncomingIntentHandler` が notification action を `AppNavigationTarget` へ解決する
 
 `IncomingIntentHandler` が notification action を一度だけ consume し、次の semantic target へ変換する。
@@ -59,12 +61,13 @@ routing のために追加するのは固定 semantic action のみとする。�
 ### Negative
 
 - notification producer と app entry routing の間に small launch contract が増える。
+- `:app:composition` の公開面に固定 semantic action contract が1つ増える。
 - route だけでは表現できない Web サーバ dialog は app-shell callback との組み合わせが必要になる。
 
 ## Verification
 
 - `NotificationLaunchRoutingTest` で notification action から semantic target への解決を検証する。
-- `AppNavigationTargetTest` で integrated / Web server target の concrete route 解決を検証する。
+- `AppNavigationTargetTest` で integrated / Web server target の concrete route 解決と Web server dialog request 判定を検証する。
 - existing widget Intent routing tests を維持し、notification action 追加で既存 action を誤 consume しないことを確認する。
 - `verifyArchitecture`、unit tests、Lint、public repository verifier を通す。
 - release candidate APK で cold start、warm start、app lock 後の notification tap を確認する。
