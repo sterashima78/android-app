@@ -18,7 +18,7 @@ internal data class SmbLibraryUiBinding(
   val onDeferMetadataCandidate: (String) -> Unit,
   val onRejectMetadataCandidate: (String) -> Unit,
   val onReopenMetadataCandidate: (String) -> Unit,
-  val onRetryMetadataCandidate: (String) -> Unit,
+  val onRetryMetadataCandidate: (String, String?) -> Unit,
 )
 
 internal val LocalSmbLibraryUiBinding = staticCompositionLocalOf<SmbLibraryUiBinding?> { null }
