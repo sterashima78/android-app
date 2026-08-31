@@ -42,14 +42,20 @@ private fun rssSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_feeds",
-        description = "購読中のRSSフィードを一覧・検索する。Reddit購読は含まない。最大10件の詳細を返す。",
+        description = "購読中のRSSフィードを一覧・検索する。Reddit購読は含まない。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      val query = arguments.query()
-      val feeds = feedRepository.listFeeds()
-        .filter { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) }
-        .filter { feed -> query.isBlank() || listOf(feed.title, feed.feedUrl, feed.siteUrl.orEmpty()).any { it.contains(query, true) } }
+      val feeds = rankByQuery(
+        items = feedRepository.listFeeds().filter { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) },
+        query = arguments.query(),
+      ) { feed ->
+        listOf(
+          RetrievalField(feed.title, weight = 4),
+          RetrievalField(feed.siteUrl.orEmpty(), weight = 2),
+          RetrievalField(feed.feedUrl),
+        )
+      }
       formatCollection(feeds, DEFAULT_TOOL_ITEMS) { feed ->
         "- id=${feed.id} | title=${feed.title} | feed_url=${feed.feedUrl} | site_url=${feed.siteUrl.orEmpty()} | last_fetched_at=${feed.lastFetchedAt.orEmpty()} | last_error=${feed.lastError.orEmpty()}"
       }
@@ -57,7 +63,7 @@ private fun rssSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_unread_articles",
-        description = "RSSの未読記事をタイトル・配信元で検索する。Redditは含まない。最大10件の詳細を返す。",
+        description = "RSSの未読記事をタイトル・配信元で語彙検索する。Redditは含まない。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
@@ -81,16 +87,20 @@ private fun redditSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_reddit_subscriptions",
-        description = "購読中のRedditコミュニティとスレッドを一覧・検索する。最大10件の詳細を返す。",
+        description = "購読中のRedditコミュニティとスレッドを一覧・語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      val query = arguments.query()
-      val subscriptions = redditRepository.listSubscriptions()
-        .filter { subscription ->
-          query.isBlank() || listOf(subscription.title, subscription.feedUrl, subscription.kind.name)
-            .any { it.contains(query, true) }
-        }
+      val subscriptions = rankByQuery(
+        items = redditRepository.listSubscriptions(),
+        query = arguments.query(),
+      ) { subscription ->
+        listOf(
+          RetrievalField(subscription.title, weight = 4),
+          RetrievalField(subscription.kind.name, weight = 2),
+          RetrievalField(subscription.feedUrl),
+        )
+      }
       formatCollection(subscriptions, DEFAULT_TOOL_ITEMS) { subscription ->
         "- id=${subscription.id} | title=${subscription.title} | kind=${subscription.kind.name.lowercase()} | feed_url=${subscription.feedUrl} | last_fetched_at=${subscription.lastFetchedAt.orEmpty()} | last_error=${subscription.lastError.orEmpty()}"
       }
@@ -98,7 +108,7 @@ private fun redditSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_reddit_unread",
-        description = "Redditの未読投稿・新着コメントをタイトル・配信元で検索する。最大10件の詳細を返す。",
+        description = "Redditの未読投稿・新着コメントをタイトル・配信元で語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
@@ -117,15 +127,15 @@ private fun bookmarkSkill(
 ): AgentSkill = AgentSkill(
   name = "bookmark-reader",
   description = "保存済み・あとで読む記事、ブックマークフォルダ、タグ、AI要約を参照するSkill。",
-  instructions = "ブックマーク、保存記事、あとで読む、フォルダ、タグ、保存記事の内容について質問されたときに利用する。検索と回答にはタグと保存済みAI要約を優先して利用する。読み取り専用で利用する。",
+  instructions = "ブックマーク、保存記事、あとで読む、フォルダ、タグ、保存記事の内容について質問されたときに利用する。候補検索ではタイトル・タグ・保存済みAI要約等を使い、回答根拠として本文相当の要約が必要な候補だけget_saved_article_detailで詳細取得する。読み取り専用で利用する。",
   tools = listOf(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_recent_saved_articles",
-        description = "最近ブックマークした保存記事を保存日時の新しい順に最大10件返す。「最近」「最新」「直近」のブックマークを求められた場合に使う。引数は不要。",
+        description = "最近ブックマークした保存記事を保存日時の新しい順に最大10件の候補として返す。「最近」「最新」「直近」のブックマークを求められた場合に使う。引数は不要。",
       ),
     ) {
-      formatBookmarkedArticles(
+      formatBookmarkedArticleCandidates(
         recentBookmarks(bookmarkRepository.listSavedArticles(tagId = null, folderId = null)),
         summaryRepository,
         query = "",
@@ -135,11 +145,11 @@ private fun bookmarkSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_saved_articles",
-        description = "保存済みブックマークをキーワードでタイトル・配信元・フォルダ・タグ・AI要約から検索し、保存日時の新しい順に最大10件返す。単に最近・最新の記事を求める場合はlist_recent_saved_articlesを使う。",
+        description = "保存済みブックマークをタイトル・配信元・フォルダ・タグ・AI要約から語彙検索し、関連度順に最大10件の候補を返す。単に最近・最新の記事を求める場合はlist_recent_saved_articlesを使う。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      formatBookmarkedArticles(
+      formatBookmarkedArticleCandidates(
         recentBookmarks(bookmarkRepository.listSavedArticles(tagId = null, folderId = null)),
         summaryRepository,
         arguments.query(),
@@ -149,11 +159,11 @@ private fun bookmarkSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_read_later_articles",
-        description = "あとで読むフォルダの記事をタイトル・配信元・タグ・AI要約で検索する。最大10件の詳細を返す。",
+        description = "あとで読むフォルダの記事をタイトル・配信元・タグ・AI要約から語彙検索し、関連度順に最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      formatBookmarkedArticles(
+      formatBookmarkedArticleCandidates(
         bookmarkRepository.listReadLaterArticles(),
         summaryRepository,
         arguments.query(),
@@ -162,14 +172,31 @@ private fun bookmarkSkill(
     },
     LambdaAgentTool(
       definition = AgentToolDefinition(
+        name = "get_saved_article_detail",
+        description = "候補検索で得た保存記事1件について、回答根拠に必要な場合だけメタデータと保存済みAI要約全文を取得する。候補に含まれるarticle idを指定する。",
+        arguments = listOf(
+          AgentToolArgument(
+            name = "article_id",
+            description = "候補検索結果に含まれる保存記事のid。",
+            required = true,
+          ),
+        ),
+      ),
+    ) { arguments ->
+      val articleId = arguments["article_id"]?.trim().orEmpty()
+      val bookmarked = findSavedArticle(bookmarkRepository, articleId)
+      formatBookmarkedArticleDetail(bookmarked, summaryRepository)
+    },
+    LambdaAgentTool(
+      definition = AgentToolDefinition(
         name = "list_bookmark_folders",
-        description = "ブックマークフォルダを一覧・検索する。最大10件の詳細を返す。",
+        description = "ブックマークフォルダを一覧・語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      val query = arguments.query()
-      val folders = bookmarkRepository.listFolders()
-        .filter { query.isBlank() || it.name.contains(query, true) }
+      val folders = rankByQuery(bookmarkRepository.listFolders(), arguments.query()) { folder ->
+        listOf(RetrievalField(folder.name, weight = 4))
+      }
       formatCollection(folders, DEFAULT_TOOL_ITEMS) { folder ->
         "- id=${folder.id} | name=${folder.name} | system=${folder.isSystem}"
       }
@@ -177,13 +204,13 @@ private fun bookmarkSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_bookmark_tags",
-        description = "ブックマークタグを一覧・検索する。最大10件の詳細を返す。",
+        description = "ブックマークタグを一覧・語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
-      val query = arguments.query()
-      val tags = bookmarkRepository.listTags()
-        .filter { query.isBlank() || it.name.contains(query, true) }
+      val tags = rankByQuery(bookmarkRepository.listTags(), arguments.query()) { tag ->
+        listOf(RetrievalField(tag.name, weight = 4))
+      }
       formatCollection(tags, DEFAULT_TOOL_ITEMS) { tag -> "- id=${tag.id} | name=${tag.name}" }
     },
   ),
@@ -197,7 +224,7 @@ private fun historySkill(articleRepository: ArticleRepository): AgentSkill = Age
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_read_history",
-        description = "既読履歴をタイトル・配信元で検索する。最大10件の詳細を返す。",
+        description = "既読履歴をタイトル・配信元で語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
@@ -214,19 +241,24 @@ private fun taskSkill(taskRepository: TaskRepository): AgentSkill = AgentSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_tasks",
-        description = "タスクをタイトル・説明と状態で検索する。最大10件の詳細を返す。",
+        description = "タスクをタイトル・説明と状態で語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments() + AgentToolArgument(
           name = "status",
           description = "all, open, completed, overdue のいずれか。省略時は all。",
         ),
       ),
     ) { arguments ->
-      val query = arguments.query()
       val today = LocalDate.now()
       val status = arguments["status"]?.trim()?.lowercase().orEmpty().ifBlank { "all" }
-      val tasks = taskRepository.listTasks()
-        .filter { task -> query.isBlank() || listOf(task.title, task.description).any { it.contains(query, true) } }
-        .filter { task -> task.matchesStatus(status, today) }
+      val tasks = rankByQuery(
+        items = taskRepository.listTasks().filter { task -> task.matchesStatus(status, today) },
+        query = arguments.query(),
+      ) { task ->
+        listOf(
+          RetrievalField(task.title, weight = 4),
+          RetrievalField(task.description, weight = 2),
+        )
+      }
       formatCollection(tasks, DEFAULT_TOOL_ITEMS) { task -> formatTask(task, today) }
     },
   ),
@@ -242,7 +274,7 @@ private class LambdaAgentTool(
 internal fun commonSearchArguments(): List<AgentToolArgument> = listOf(
   AgentToolArgument(
     name = "query",
-    description = "部分一致で絞り込む実際の検索語。全件を見る場合は省略する。「最近」「最新」「直近」「新しい順」は検索語ではないのでqueryへ入れない。",
+    description = "語彙検索に使う具体的な検索語。空白区切りの複数語は異なる項目に一致してよい。自然文をそのまま入れず、対象を表す短い語を使う。全件を見る場合は省略する。「最近」「最新」「直近」「新しい順」は検索語ではないのでqueryへ入れない。",
   ),
 )
 
@@ -256,15 +288,18 @@ private fun formatArticles(
   query: String,
   limit: Int,
 ): String {
-  val filtered = articles.filter { article ->
-    query.isBlank() || listOf(article.title, article.sourceTitle).any { it.contains(query, true) }
+  val ranked = rankByQuery(articles, query) { article ->
+    listOf(
+      RetrievalField(article.title, weight = 4),
+      RetrievalField(article.sourceTitle, weight = 2),
+    )
   }
-  return formatCollection(filtered, limit) { article ->
+  return formatCollection(ranked, limit) { article ->
     "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | url=${article.url}"
   }
 }
 
-private suspend fun formatBookmarkedArticles(
+private suspend fun formatBookmarkedArticleCandidates(
   bookmarkedArticles: List<BookmarkedArticle>,
   summaryRepository: SummaryRepository,
   query: String,
@@ -273,21 +308,43 @@ private suspend fun formatBookmarkedArticles(
   val enriched = bookmarkedArticles.map { bookmarked ->
     bookmarked to summaryRepository.findSummary(bookmarked.article.id)
   }
-  val filtered = enriched.filter { (bookmarked, summary) ->
+  val ranked = rankByQuery(enriched, query) { (bookmarked, summary) ->
     val article = bookmarked.article
-    query.isBlank() || listOf(
-      article.title,
-      article.sourceTitle,
-      bookmarked.folder?.name.orEmpty(),
-      bookmarked.tags.joinToString(" ") { tag -> tag.name },
-      summary.orEmpty(),
-    ).any { value -> value.contains(query, true) }
+    listOf(
+      RetrievalField(article.title, weight = 5),
+      RetrievalField(bookmarked.tags.joinToString(" ") { tag -> tag.name }, weight = 4),
+      RetrievalField(summary.orEmpty(), weight = 3),
+      RetrievalField(bookmarked.folder?.name.orEmpty(), weight = 2),
+      RetrievalField(article.sourceTitle, weight = 2),
+    )
   }
-  return formatCollection(filtered, limit) { (bookmarked, summary) ->
+  return formatCollection(ranked, limit) { (bookmarked, summary) ->
     val article = bookmarked.article
-    val compactSummary = summary.orEmpty().replace(Regex("\\s+"), " ").trim()
-    "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | saved_at=${bookmarked.savedAt} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | summary=$compactSummary | url=${article.url}"
+    val summaryExcerpt = compactExcerpt(summary.orEmpty(), SUMMARY_EXCERPT_CHARS)
+    "- id=${article.id} | title=${article.title} | source=${article.sourceTitle} | saved_at=${bookmarked.savedAt} | published_at=${article.publishedAt} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | summary_excerpt=$summaryExcerpt"
   }
+}
+
+private suspend fun findSavedArticle(
+  bookmarkRepository: BookmarkRepository,
+  articleId: String,
+): BookmarkedArticle? {
+  if (articleId.isBlank()) return null
+  return (
+    bookmarkRepository.listSavedArticles(tagId = null, folderId = null) +
+      bookmarkRepository.listReadLaterArticles()
+    ).distinctBy { it.article.id }
+    .firstOrNull { bookmarked -> bookmarked.article.id == articleId }
+}
+
+private suspend fun formatBookmarkedArticleDetail(
+  bookmarked: BookmarkedArticle?,
+  summaryRepository: SummaryRepository,
+): String {
+  if (bookmarked == null) return "該当する保存記事はありません。"
+  val article = bookmarked.article
+  val summary = summaryRepository.findSummary(article.id).orEmpty().replace(Regex("\\s+"), " ").trim()
+  return "id=${article.id} | title=${article.title} | source=${article.sourceTitle} | saved_at=${bookmarked.savedAt} | published_at=${article.publishedAt} | read_at=${article.readAt.orEmpty()} | folder=${bookmarked.folder?.name.orEmpty()} | tags=${bookmarked.tags.joinToString(",") { tag -> tag.name }} | summary=$summary | url=${article.url}"
 }
 
 private fun <T> formatCollection(
@@ -324,3 +381,4 @@ private fun formatTask(task: TaskItem, today: LocalDate): String {
 }
 
 private const val DEFAULT_TOOL_ITEMS = 10
+private const val SUMMARY_EXCERPT_CHARS = 240
