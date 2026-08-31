@@ -60,7 +60,7 @@ fun YomitoriApp(
   LaunchedEffect(navController, navigationRequests) {
     navigationRequests.collect { target ->
       navController.navigateTopLevel(target.appRoute())
-      if (target == AppNavigationTarget.WEB_SERVER) {
+      if (target.opensWebServerDialog()) {
         onOpenWebServer()
       }
     }
@@ -162,6 +162,9 @@ fun YomitoriApp(
     }
   }
 }
+
+internal fun AppNavigationTarget.opensWebServerDialog(): Boolean =
+  this == AppNavigationTarget.WEB_SERVER
 
 internal fun shouldHideAppChrome(
   selectedRoute: String,
