@@ -16,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dev.terashima.yomitorirss.feature.web.LanWebContentGatewayProvider
+import dev.terashima.yomitorirss.feature.web.LanWebServerLaunchContract
 import java.net.Inet4Address
 import java.security.SecureRandom
 import java.util.Base64
@@ -142,17 +143,26 @@ class LanWebServerService : Service() {
       Intent(this, LanWebServerService::class.java).setAction(ACTION_STOP),
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+    val openPendingIntent = packageManager.getLaunchIntentForPackage(packageName)?.let { intent ->
+      intent.action = LanWebServerLaunchContract.ACTION_OPEN_SERVER
+      PendingIntent.getActivity(
+        this,
+        NOTIFICATION_ID,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+      )
+    }
     val detail = if (address == null) {
-      "LAN接続を待機中です。タップして停止"
+      "LAN接続を待機中です"
     } else {
-      "http://$address:${LanWebServer.PORT}/  タップして停止"
+      "http://$address:${LanWebServer.PORT}/"
     }
     return NotificationCompat.Builder(this, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.stat_notify_sync)
       .setContentTitle("Webサーバ起動中")
       .setContentText(detail)
       .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
-      .setContentIntent(stopIntent)
+      .apply { openPendingIntent?.let { setContentIntent(it) } }
       .addAction(0, "停止", stopIntent)
       .setOngoing(true)
       .setOnlyAlertOnce(true)
