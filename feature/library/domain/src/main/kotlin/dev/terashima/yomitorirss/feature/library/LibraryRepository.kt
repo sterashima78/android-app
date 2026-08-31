@@ -1,8 +1,10 @@
 package dev.terashima.yomitorirss.feature.library
 
-interface LibraryRepository {
+interface LibraryReader {
   suspend fun snapshot(): LibrarySnapshot
+}
 
+interface LibraryRepository : LibraryReader {
   suspend fun hideBook(book: LibraryBook)
 
   suspend fun restoreBook(book: LibraryBook)

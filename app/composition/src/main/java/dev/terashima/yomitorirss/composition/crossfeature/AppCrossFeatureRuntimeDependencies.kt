@@ -12,8 +12,10 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.LocalChatGenerator
 import dev.terashima.yomitorirss.feature.chat.data.createAppResourceSkills
+import dev.terashima.yomitorirss.feature.chat.data.createKnowledgeLibraryResourceSkills
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeReader
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.summary.BackfillBookmarkAutoEnrichmentUseCase
@@ -36,6 +38,7 @@ internal class AppCrossFeatureRuntimeDependencies(
   private val summaryRepository: SummaryRepository,
   private val taskRepository: TaskRepository,
   private val libraryRuntime: LibraryRuntimeDependencies,
+  private val knowledgeReader: KnowledgeReader,
   private val knowledgeBuildTaskController: KnowledgeBuildTaskController,
   private val knowledgeExecutionSettings: KnowledgeExecutionSettings,
 ) {
@@ -49,6 +52,9 @@ internal class AppCrossFeatureRuntimeDependencies(
         redditRepository = redditRepository,
         summaryRepository = summaryRepository,
         taskRepository = taskRepository,
+      ) + createKnowledgeLibraryResourceSkills(
+        knowledgeReader = knowledgeReader,
+        libraryReader = libraryRuntime.catalogRepository,
       ),
     )
   }

@@ -21,6 +21,8 @@ dependencies {
   implementation(project(":feature:chat:domain"))
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:bookmark:domain"))
+  implementation(project(":feature:knowledge:domain"))
+  implementation(project(":feature:library:domain"))
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:rss:domain"))
   implementation(project(":feature:summary:domain"))
