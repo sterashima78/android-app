@@ -126,6 +126,7 @@ class AppContainer(
       summaryRepository = aiCoreRuntime.summaryRepository,
       taskRepository = supportingRuntime.taskRepository,
       libraryRuntime = libraryRuntime,
+      knowledgeReader = knowledgeRuntime.knowledgeRepository,
       knowledgeBuildTaskController = knowledgeTaskRuntime.knowledgeBuildTaskController,
       knowledgeExecutionSettings = knowledgeTaskRuntime.knowledgeExecutionSettings,
     )
