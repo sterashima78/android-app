@@ -10,16 +10,17 @@ import org.junit.Test
 
 class KnowledgeTopicsTest {
   @Test
-  fun `タグがある資料はタグ単位のトピックになる`() {
+  fun `タグがある資料は3件以上ならタグ単位のトピックになる`() {
     val topics = buildKnowledgeTopics(
       listOf(
         source("a", tags = listOf("Android", "AI")),
-        source("b", tags = listOf("Android")),
+        source("b", tags = listOf("Android", "AI")),
+        source("c", tags = listOf("Android", "AI")),
       ),
     )
 
-    assertEquals(listOf("Android", "AI"), topics.map { it.title })
-    assertEquals(2, topics.first { it.title == "Android" }.sources.size)
+    assertEquals(listOf("AI", "Android"), topics.map { it.title })
+    assertEquals(3, topics.first { it.title == "Android" }.sources.size)
   }
 
   @Test
@@ -91,8 +92,20 @@ class KnowledgeTopicsTest {
 
   @Test
   fun `正規化キーが同じでもトピック表示名が変わるとfingerprintが変わる`() {
-    val before = buildKnowledgeTopics(listOf(source("a", tags = listOf("Android")))).single()
-    val after = buildKnowledgeTopics(listOf(source("a", tags = listOf("ANDROID")))).single()
+    val before = buildKnowledgeTopics(
+      listOf(
+        source("a", tags = listOf("Android")),
+        source("b", tags = listOf("Android")),
+        source("c", tags = listOf("Android")),
+      ),
+    ).single()
+    val after = buildKnowledgeTopics(
+      listOf(
+        source("a", tags = listOf("ANDROID")),
+        source("b", tags = listOf("ANDROID")),
+        source("c", tags = listOf("ANDROID")),
+      ),
+    ).single()
 
     assertEquals(before.id, after.id)
     assertNotEquals(before.sourceFingerprint, after.sourceFingerprint)
