@@ -177,7 +177,7 @@ class SmbMetadataNormalizationWorker(
                   "source = ? AND source_id = ?",
                   arrayOf(LibrarySource.SMB.name, item.sourceId),
                 )
-                repository.retryCandidate(item.sourceId)
+                repository.retryCandidate(item.sourceId, item.supplementalContext)
                 if (smbRepository.enqueueMissingCoverPrefetch() > 0) {
                   coverPrefetchScheduler.enqueue()
                 }
@@ -192,6 +192,8 @@ class SmbMetadataNormalizationWorker(
                 currentFileName = item.originalFileName,
                 coverFile = coverFile,
                 promptTemplate = promptTemplate,
+                previousProposal = item.previousProposal,
+                supplementalContext = item.supplementalContext,
               )
               currentCoroutineContext().ensureActive()
               repository.saveGeneratedCandidate(
