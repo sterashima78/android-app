@@ -15,7 +15,6 @@ import androidx.work.ListenableWorker
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
@@ -69,6 +68,7 @@ class WorkManagerKnowledgeBuildTaskController(
 
   private fun kick(forceReschedule: Boolean) {
     if (!state.requested || state.stopped || state.failed) return
+    if (shouldSkipKnowledgeBuildKick(forceReschedule, state.hasPendingTopics)) return
     val requestId = state.ensureRequestId() ?: return
     val provider = executionSettings.currentProvider()
     if (isKnowledgeProviderPaused(appContext, provider)) {
@@ -82,6 +82,7 @@ class WorkManagerKnowledgeBuildTaskController(
   override suspend fun pauseForGlobalGate() {
     if (!state.requested) return
     workManager.cancelAllWorkByTag(WORK_TAG).await()
+    state.clearPlannedTopics()
   }
 
   override suspend fun stop(): Boolean {
@@ -119,17 +120,8 @@ class WorkManagerKnowledgeBuildTaskController(
       )
     }
 
-    val workInfos = withContext(Dispatchers.IO) {
-      workManager.getWorkInfosByTag(WORK_TAG).get()
-    }
-    val workState = when {
-      workInfos.any { it.state == WorkInfo.State.RUNNING } -> KnowledgeBuildTaskState.RUNNING
-      workInfos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED } ->
-        KnowledgeBuildTaskState.QUEUED
-      else -> KnowledgeBuildTaskState.QUEUED
-    }
     return KnowledgeBuildTaskSnapshot(
-      state = workState,
+      state = knowledgeBuildTaskState(state.hasPendingTopics),
       error = state.error,
     )
   }
@@ -166,8 +158,7 @@ class WorkManagerKnowledgeBuildTaskController(
   internal fun kickFromChargingResume() {
     if (!state.requested || state.stopped || state.failed) return
     if (executionSettings.currentProvider() != KnowledgeExecutionProvider.LOCAL) return
-    val requestId = state.ensureRequestId() ?: return
-    enqueueBuildWork(ExistingWorkPolicy.KEEP, KnowledgeExecutionProvider.LOCAL, requestId)
+    kick(forceReschedule = false)
   }
 
   private fun enqueueBuildWork(
@@ -196,6 +187,14 @@ class WorkManagerKnowledgeBuildTaskController(
 
 internal fun knowledgeBuildExistingWorkPolicy(forceReschedule: Boolean): ExistingWorkPolicy =
   if (forceReschedule) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
+
+internal fun shouldSkipKnowledgeBuildKick(
+  forceReschedule: Boolean,
+  hasPendingTopics: Boolean,
+): Boolean = !forceReschedule && hasPendingTopics
+
+internal fun knowledgeBuildTaskState(hasPendingTopics: Boolean): KnowledgeBuildTaskState =
+  if (hasPendingTopics) KnowledgeBuildTaskState.RUNNING else KnowledgeBuildTaskState.QUEUED
 
 internal fun isKnowledgeProviderPaused(
   context: Context,
@@ -276,17 +275,25 @@ internal class KnowledgeTopicBuildWorker(
     if (isKnowledgeProviderPaused(applicationContext, provider)) return Result.retry()
 
     return try {
-      setForeground(
-        createKnowledgeBuildForegroundInfo(
-          context = applicationContext,
-          notificationId = KNOWLEDGE_NOTIFICATION_BASE_ID + (id.hashCode() and 0x3fff),
-        ),
-      )
       when (provider) {
         KnowledgeExecutionProvider.LOCAL -> LocalAiBackgroundTaskGate.withPermit {
+          setForeground(
+            createKnowledgeBuildForegroundInfo(
+              context = applicationContext,
+              notificationId = KNOWLEDGE_NOTIFICATION_BASE_ID + (id.hashCode() and 0x3fff),
+            ),
+          )
           runTopic(state, requestId, provider, topicId)
         }
-        KnowledgeExecutionProvider.CHATGPT -> runTopic(state, requestId, provider, topicId)
+        KnowledgeExecutionProvider.CHATGPT -> {
+          setForeground(
+            createKnowledgeBuildForegroundInfo(
+              context = applicationContext,
+              notificationId = KNOWLEDGE_NOTIFICATION_BASE_ID + (id.hashCode() and 0x3fff),
+            ),
+          )
+          runTopic(state, requestId, provider, topicId)
+        }
       }
     } catch (cancelled: CancellationException) {
       throw cancelled

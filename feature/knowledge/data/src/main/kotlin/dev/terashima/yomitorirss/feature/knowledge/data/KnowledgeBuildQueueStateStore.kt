@@ -21,6 +21,11 @@ class KnowledgeBuildQueueStateStore(context: Context) {
   val error: String?
     get() = preferences.getString(KEY_ERROR, null)
 
+  val hasPendingTopics: Boolean
+    get() = synchronized(LOCK) {
+      preferences.getStringSet(KEY_PENDING_TOPIC_IDS, emptySet()).orEmpty().isNotEmpty()
+    }
+
   fun request(): String = synchronized(LOCK) {
     startNewAttempt()
   }
@@ -44,6 +49,11 @@ class KnowledgeBuildQueueStateStore(context: Context) {
       .putStringSet(KEY_PENDING_TOPIC_IDS, topicIds.toSet())
       .apply()
     true
+  }
+
+  fun clearPlannedTopics() = synchronized(LOCK) {
+    if (!requested) return@synchronized
+    preferences.edit().remove(KEY_PENDING_TOPIC_IDS).apply()
   }
 
   fun markTopicCompleted(requestId: String, topicId: String): Boolean = synchronized(LOCK) {
