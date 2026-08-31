@@ -50,7 +50,11 @@ internal data class GeneratedKnowledgeDocument(
   val bodyMarkdown: String,
 )
 
-internal fun buildKnowledgeTopics(sources: List<KnowledgeGenerationSource>): List<KnowledgeTopic> {
+internal fun buildKnowledgeTopics(
+  sources: List<KnowledgeGenerationSource>,
+  maxSourcesPerTopic: Int = MAX_SOURCES_PER_TOPIC,
+): List<KnowledgeTopic> {
+  require(maxSourcesPerTopic > 0)
   val grouped = linkedMapOf<TopicIdentity, MutableList<KnowledgeGenerationSource>>()
   sources.forEach { source ->
     val tags = source.tags.map(String::trim).filter(String::isNotBlank).distinctBy { it.lowercase() }
@@ -72,7 +76,7 @@ internal fun buildKnowledgeTopics(sources: List<KnowledgeGenerationSource>): Lis
       title = identity.title,
       sources = topicSources.distinctBy(KnowledgeGenerationSource::articleId)
         .sortedWith(compareByDescending<KnowledgeGenerationSource> { it.savedAt }.thenBy { it.title })
-        .take(MAX_SOURCES_PER_TOPIC),
+        .take(maxSourcesPerTopic),
     )
   }.sortedWith(compareByDescending<KnowledgeTopic> { it.sources.size }.thenBy { it.title.lowercase() })
 }

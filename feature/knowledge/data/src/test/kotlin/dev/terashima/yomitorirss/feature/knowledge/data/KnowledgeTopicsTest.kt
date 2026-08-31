@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.knowledge.data
 
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -31,6 +32,44 @@ class KnowledgeTopicsTest {
     )
 
     assertEquals(setOf("開発", "Example Feed"), topics.map { it.title }.toSet())
+  }
+
+  @Test
+  fun `自動Wikiのトピックは指定したソース上限まで保持できる`() {
+    val topics = buildKnowledgeTopics(
+      sources = (1..120).map { index ->
+        source("article-$index", tags = listOf("Android"), savedAt = "2026-08-${(index % 28 + 1).toString().padStart(2, '0')}T00:00:00Z")
+      },
+      maxSourcesPerTopic = 100,
+    )
+
+    assertEquals(100, topics.single().sources.size)
+  }
+
+  @Test
+  fun `Cloud自動Wikiは100件までLocalは従来の12件までを使う`() {
+    assertEquals(12, autoWikiSourceLimit(KnowledgeExecutionProvider.LOCAL))
+    assertEquals(100, autoWikiSourceLimit(KnowledgeExecutionProvider.CHATGPT))
+  }
+
+  @Test
+  fun `Cloud上限の100ソースでもプロンプト予算内に収めて全出典番号を渡す`() {
+    val topic = buildKnowledgeTopics(
+      sources = (1..100).map { index ->
+        source(
+          id = "article-$index",
+          title = "資料$index",
+          summary = "要約本文".repeat(500),
+          tags = listOf("Android"),
+        )
+      },
+      maxSourcesPerTopic = 100,
+    ).single()
+
+    val prompt = buildKnowledgePagePrompt(topic, promptBudgetChars = 16_000)
+
+    assertTrue(prompt.contains("[100]"))
+    assertTrue(prompt.length <= 16_000)
   }
 
   @Test

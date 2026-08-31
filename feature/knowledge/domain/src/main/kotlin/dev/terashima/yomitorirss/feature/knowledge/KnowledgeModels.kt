@@ -33,3 +33,9 @@ data class KnowledgeBuildResult(
   val pending: Int,
   val skippedWithoutSummary: Int,
 )
+
+data class KnowledgeBuildPlan(
+  val topicIds: List<String>,
+  val reused: Int,
+  val skippedWithoutSummary: Int,
+)
