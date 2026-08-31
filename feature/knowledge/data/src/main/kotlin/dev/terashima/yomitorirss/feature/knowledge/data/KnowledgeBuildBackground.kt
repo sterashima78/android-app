@@ -68,7 +68,7 @@ class WorkManagerKnowledgeBuildTaskController(
 
   private fun kick(forceReschedule: Boolean) {
     if (!state.requested || state.stopped || state.failed) return
-    if (!forceReschedule && state.hasPendingTopics) return
+    if (shouldSkipKnowledgeBuildKick(forceReschedule, state.hasPendingTopics)) return
     val requestId = state.ensureRequestId() ?: return
     val provider = executionSettings.currentProvider()
     if (isKnowledgeProviderPaused(appContext, provider)) {
@@ -188,11 +188,13 @@ class WorkManagerKnowledgeBuildTaskController(
 internal fun knowledgeBuildExistingWorkPolicy(forceReschedule: Boolean): ExistingWorkPolicy =
   if (forceReschedule) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
 
+internal fun shouldSkipKnowledgeBuildKick(
+  forceReschedule: Boolean,
+  hasPendingTopics: Boolean,
+): Boolean = !forceReschedule && hasPendingTopics
+
 internal fun knowledgeBuildTaskState(hasPendingTopics: Boolean): KnowledgeBuildTaskState =
   if (hasPendingTopics) KnowledgeBuildTaskState.RUNNING else KnowledgeBuildTaskState.QUEUED
-
-internal fun shouldSerializeKnowledgeTopicWork(provider: KnowledgeExecutionProvider): Boolean =
-  provider == KnowledgeExecutionProvider.LOCAL
 
 internal fun isKnowledgeProviderPaused(
   context: Context,
@@ -243,12 +245,11 @@ internal class KnowledgeBuildWorker(
         return Result.success()
       }
 
-      enqueueKnowledgeTopicWork(
-        context = applicationContext,
-        provider = provider,
-        requestId = requestId,
-        topicIds = plan.topicIds,
-      )
+      WorkManager.getInstance(applicationContext).enqueue(
+        plan.topicIds.map { topicId ->
+          knowledgeTopicWorkRequest(provider, requestId, topicId)
+        },
+      ).await()
       Result.success()
     } catch (cancelled: CancellationException) {
       throw cancelled
@@ -274,17 +275,25 @@ internal class KnowledgeTopicBuildWorker(
     if (isKnowledgeProviderPaused(applicationContext, provider)) return Result.retry()
 
     return try {
-      setForeground(
-        createKnowledgeBuildForegroundInfo(
-          context = applicationContext,
-          notificationId = KNOWLEDGE_NOTIFICATION_BASE_ID + (id.hashCode() and 0x3fff),
-        ),
-      )
       when (provider) {
         KnowledgeExecutionProvider.LOCAL -> LocalAiBackgroundTaskGate.withPermit {
+          setForeground(
+            createKnowledgeBuildForegroundInfo(
+              context = applicationContext,
+              notificationId = KNOWLEDGE_NOTIFICATION_BASE_ID + (id.hashCode() and 0x3fff),
+            ),
+          )
           runTopic(state, requestId, provider, topicId)
         }
-        KnowledgeExecutionProvider.CHATGPT -> runTopic(state, requestId, provider, topicId)
+        KnowledgeExecutionProvider.CHATGPT -> {
+          setForeground(
+            createKnowledgeBuildForegroundInfo(
+              context = applicationContext,
+              notificationId = KNOWLEDGE_NOTIFICATION_BASE_ID + (id.hashCode() and 0x3fff),
+            ),
+          )
+          runTopic(state, requestId, provider, topicId)
+        }
       }
     } catch (cancelled: CancellationException) {
       throw cancelled
@@ -314,32 +323,6 @@ internal class KnowledgeTopicBuildWorker(
     state.markTopicCompleted(requestId, topicId)
     return Result.success()
   }
-}
-
-private suspend fun enqueueKnowledgeTopicWork(
-  context: Context,
-  provider: KnowledgeExecutionProvider,
-  requestId: String,
-  topicIds: List<String>,
-) {
-  val workManager = WorkManager.getInstance(context)
-  val requests = topicIds.map { topicId ->
-    knowledgeTopicWorkRequest(provider, requestId, topicId)
-  }
-  if (!shouldSerializeKnowledgeTopicWork(provider)) {
-    workManager.enqueue(requests).await()
-    return
-  }
-
-  var continuation = workManager.beginUniqueWork(
-    "$KNOWLEDGE_LOCAL_TOPIC_CHAIN_PREFIX:$requestId",
-    ExistingWorkPolicy.REPLACE,
-    requests.first(),
-  )
-  requests.drop(1).forEach { request ->
-    continuation = continuation.then(request)
-  }
-  continuation.enqueue().await()
 }
 
 internal fun knowledgeTopicWorkRequest(
@@ -444,4 +427,3 @@ private const val KNOWLEDGE_REQUEST_ID_KEY = "knowledge_request_id"
 private const val KNOWLEDGE_TOPIC_ID_KEY = "knowledge_topic_id"
 private const val KNOWLEDGE_NOTIFICATION_CHANNEL_ID = "knowledge_ai_generation"
 private const val KNOWLEDGE_NOTIFICATION_BASE_ID = 8770
-private const val KNOWLEDGE_LOCAL_TOPIC_CHAIN_PREFIX = "knowledge-ai-wiki-local-topics"
