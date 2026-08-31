@@ -4,8 +4,20 @@
 
 ADR は「なぜその判断をしたか」を残す Decision Log とし、このディレクトリは複数 ADR の結果として「現在どう設計するか」を参照しやすい形へ投影する。
 
+## Start here
+
+人間がアプリ全体を把握して変更判断を行う場合は、まず次の順で読む。
+
+1. [system-overview.md](system-overview.md): capability、主要 data flow、invariant、decision-sensitive boundary を短時間で把握する
+2. [change-impact-review.md](change-impact-review.md): 新しい要求を実装する前の Impact Brief と、実装後の System Diff / 独立レビューを行う
+3. 必要な詳細だけ下記の current architecture document と ADR へ降りる
+
+`system-overview.md` は詳細仕様の新しい正本ではなく、人間向けの index / projection である。値や一覧が code / manifest から一意に決まる場合は、それらの source of truth を参照する。
+
 ## Documents
 
+- [system-overview.md](system-overview.md): 人間向けの全体 System Map / Capability Map / Data Flow / invariant / decision-sensitive surface
+- [change-impact-review.md](change-impact-review.md): AI agent 主導開発の discovery、Impact Brief、human decision、System Diff、独立レビュー手順
 - [principles.md](principles.md): 実装時に守るアーキテクチャ原則と禁止事項
 - [module-map.md](module-map.md): Gradle module と物理 ownership の現在形
 - [code-organization.md](code-organization.md): module 内の file / package 分割と `:app` package layout
@@ -39,6 +51,8 @@ settings.gradle.kts / config/architecture/* / Gradle verification / production c
   機械的に検査可能な構造と実装
 ```
 
+`system-overview.md` は上記 current architecture document 群のさらに上に置く人間向け projection であり、source of truth の優先順位を変更しない。
+
 矛盾が見つかった場合は次のように扱う。
 
 1. 新しい Accepted ADR が architecture document より新しい判断をしている場合、ADR を基準に architecture document を更新する。
@@ -51,8 +65,11 @@ settings.gradle.kts / config/architecture/* / Gradle verification / production c
 
 - 新規または更新 ADR が必要か
 - `docs/architecture/` の現在形が変わるか
+- `system-overview.md` の capability / data flow / invariant / decision-sensitive surface が変わるか
 - `settings.gradle.kts`、`config/architecture/*`、`verifyArchitecture` 等の機械的制約を更新すべきか
 - 既存 ADR の `Superseded` / `Amended by` / `Refines` 等の関係を更新すべきか
+
+複数 Context、durable state、background runtime、AI data egress、platform / trust boundary 等へ影響する変更では、production code 変更前に [change-impact-review.md](change-impact-review.md) の Impact Brief を作る。
 
 Architecture document の規範的な節には末尾の `Sources` で根拠 ADR を示す。理由・議論・代替案は重複記載せず ADR を参照する。
 
@@ -77,3 +94,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0225](../adr/0225-chat-lexical-retrieval-and-query-reformulation.md)
 - [ADR-0227](../adr/0227-partition-auto-wiki-generation-by-topic.md)
+- [ADR-0228](../adr/0228-human-architecture-control-plane.md)
