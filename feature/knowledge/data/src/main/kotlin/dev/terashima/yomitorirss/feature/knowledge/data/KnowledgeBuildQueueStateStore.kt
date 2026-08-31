@@ -51,6 +51,11 @@ class KnowledgeBuildQueueStateStore(context: Context) {
     true
   }
 
+  fun clearPlannedTopics() = synchronized(LOCK) {
+    if (!requested) return@synchronized
+    preferences.edit().remove(KEY_PENDING_TOPIC_IDS).apply()
+  }
+
   fun markTopicCompleted(requestId: String, topicId: String): Boolean = synchronized(LOCK) {
     if (preferences.getString(KEY_REQUEST_ID, null) != requestId || !requested) {
       return@synchronized false
