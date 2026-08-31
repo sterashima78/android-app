@@ -84,9 +84,6 @@ class DefaultSummaryRepository(
   override suspend fun findSummary(articleId: String): String? =
     database.findSummary(articleId)?.summary
 
-  override suspend fun findSummaries(articleIds: Collection<String>): Map<String, String> =
-    database.findSummaries(articleIds).mapValues { (_, record) -> record.summary }
-
   private fun requireExecutionProviderAvailable() {
     when (executionSettings.currentProvider()) {
       SummaryExecutionProvider.LOCAL ->
