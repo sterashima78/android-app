@@ -33,11 +33,12 @@ class AiTaskQueueViewModel(
   fun startObserving() {
     if (pollingJob?.isActive == true) return
     pollingJob = viewModelScope.launch(Dispatchers.IO) {
+      reload()
       runCatching { repository.kick() }
         .onFailure(::showError)
       while (isActive) {
-        reload()
         delay(POLL_INTERVAL_MILLIS)
+        reload()
       }
     }
   }
@@ -102,9 +103,10 @@ class AiTaskQueueViewModel(
 
   private suspend fun reload() {
     runCatching {
+      val tasks = repository.listTasks()
       QueueSnapshot(
-        tasks = repository.listTasks(),
-        taskCounts = repository.taskCounts(),
+        tasks = tasks,
+        taskCounts = countAiTaskQueueTasks(tasks),
         executionState = repository.executionState(),
       )
     }
@@ -153,6 +155,14 @@ class AiTaskQueueViewModel(
     const val POLL_INTERVAL_MILLIS = 1_000L
   }
 }
+
+internal fun countAiTaskQueueTasks(tasks: List<AiTaskQueueItem>): AiTaskQueueCounts = AiTaskQueueCounts(
+  running = tasks.count { it.state == AiTaskQueueItemState.RUNNING },
+  queued = tasks.count { it.state == AiTaskQueueItemState.QUEUED },
+  pausedOrStopped = tasks.count {
+    it.state == AiTaskQueueItemState.PAUSED || it.state == AiTaskQueueItemState.STOPPED
+  },
+)
 
 internal fun prepareVisibleAiTasks(tasks: List<AiTaskQueueItem>): List<AiTaskQueueItem> =
   tasks
