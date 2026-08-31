@@ -221,14 +221,14 @@ class LibraryViewModel(
     message = "書誌候補を未確認へ戻しました",
   ) { it.reopenCandidate(sourceId) }
 
-  fun retrySmbMetadataCandidate(sourceId: String) {
+  fun retrySmbMetadataCandidate(sourceId: String, supplementalContext: String? = null) {
     val normalizer = smbMetadataNormalizationRepository ?: return
     val smb = smbRepository ?: return
     if (_state.value.smbMetadataNormalizationBusy) return
     viewModelScope.launch(Dispatchers.IO) {
       _state.update { it.copy(smbMetadataNormalizationBusy = true) }
       runCatching {
-        normalizer.retryCandidate(sourceId)
+        normalizer.retryCandidate(sourceId, supplementalContext)
         val failedCoverCount = smb.retryFailedCoverPrefetch()
         val missingCoverCount = smb.enqueueMissingCoverPrefetch()
         if (
