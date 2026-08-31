@@ -21,6 +21,11 @@ class KnowledgeBuildQueueStateStore(context: Context) {
   val error: String?
     get() = preferences.getString(KEY_ERROR, null)
 
+  val hasPendingTopics: Boolean
+    get() = synchronized(LOCK) {
+      preferences.getStringSet(KEY_PENDING_TOPIC_IDS, emptySet()).orEmpty().isNotEmpty()
+    }
+
   fun request(): String = synchronized(LOCK) {
     startNewAttempt()
   }
