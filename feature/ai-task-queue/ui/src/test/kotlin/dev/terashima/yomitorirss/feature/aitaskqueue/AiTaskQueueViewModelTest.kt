@@ -35,6 +35,22 @@ class AiTaskQueueViewModelTest {
   }
 
   @Test
+  fun `取得済みタスクから表示件数を計算する`() {
+    val counts = countAiTaskQueueTasks(
+      listOf(
+        task("running", AiTaskQueueItemState.RUNNING),
+        task("queued-1", AiTaskQueueItemState.QUEUED),
+        task("queued-2", AiTaskQueueItemState.QUEUED),
+        task("paused", AiTaskQueueItemState.PAUSED),
+        task("stopped", AiTaskQueueItemState.STOPPED),
+        task("completed", AiTaskQueueItemState.COMPLETED),
+      ),
+    )
+
+    assertEquals(AiTaskQueueCounts(running = 1, queued = 2, pausedOrStopped = 2), counts)
+  }
+
+  @Test
   fun `同じ状態では高優先度タスクを先に並べる`() {
     val tasks = listOf(
       task("normal", AiTaskQueueItemState.QUEUED, priority = AiTaskQueueItemPriority.NORMAL),
