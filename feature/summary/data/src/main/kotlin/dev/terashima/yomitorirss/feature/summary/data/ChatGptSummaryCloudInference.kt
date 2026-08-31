@@ -30,14 +30,7 @@ class ChatGptSummaryCloudInference(
     val guardedPrompt = webFetchGuardedPrompt(prompt)
     val result = retryWebTargetOpen {
       val generated = client.generateWithWebSearch(modelId, guardedPrompt, url)
-      if (isLikelyWebFetchFailureText(generated.text)) {
-        throw ChatGptProviderException(
-          kind = ChatGptProviderFailureKind.WEB_TARGET_NOT_OPENED,
-          retryable = true,
-          statusCode = null,
-          message = "ChatGPT / Codex web target content was unavailable",
-        )
-      }
+      if (isLikelyWebFetchFailureText(generated.text)) throw SummaryWebFetchUnavailableException()
       generated
     }
     SummaryCloudGenerationResult(result.modelId, result.text)
@@ -50,6 +43,8 @@ class ChatGptSummaryCloudInference(
     block()
   } catch (error: CancellationException) {
     throw error
+  } catch (error: SummaryWebFetchUnavailableException) {
+    throw webFetchUnavailableFailure()
   } catch (error: ChatGptProviderException) {
     throw classifySummaryProviderFailure(error)
   } catch (error: IllegalStateException) {
@@ -73,6 +68,9 @@ internal suspend fun <T> retryWebTargetOpen(
       return block()
     } catch (error: CancellationException) {
       throw error
+    } catch (error: SummaryWebFetchUnavailableException) {
+      if (attempt == maxAttempts) throw error
+      if (baseDelayMillis > 0L) delay(baseDelayMillis * attempt)
     } catch (error: ChatGptProviderException) {
       if (error.kind != ChatGptProviderFailureKind.WEB_TARGET_NOT_OPENED || attempt == maxAttempts) {
         throw error
@@ -126,11 +124,7 @@ internal fun classifySummaryProviderFailure(error: ChatGptProviderException): Su
     false,
     "ChatGPT へ接続してください",
   )
-  ChatGptProviderFailureKind.WEB_TARGET_NOT_OPENED -> SummaryCloudInferenceException(
-    SummaryCloudFailureKind.UNKNOWN,
-    false,
-    "ChatGPT / Codex が指定した記事URLを複数回試しましたが取得できませんでした",
-  )
+  ChatGptProviderFailureKind.WEB_TARGET_NOT_OPENED -> webFetchUnavailableFailure()
   ChatGptProviderFailureKind.UNKNOWN -> SummaryCloudInferenceException(
     SummaryCloudFailureKind.UNKNOWN,
     false,
@@ -138,12 +132,20 @@ internal fun classifySummaryProviderFailure(error: ChatGptProviderException): Su
   )
 }
 
+private fun webFetchUnavailableFailure(): SummaryCloudInferenceException = SummaryCloudInferenceException(
+  SummaryCloudFailureKind.UNKNOWN,
+  false,
+  "ChatGPT / Codex が指定した記事URLを複数回試しましたが取得できませんでした",
+)
+
 private fun sanitizeUnknownAdapterMessage(message: String?): String =
   if (message.orEmpty().contains("利用モデルを選択", true)) {
     "ChatGPT / Codex の利用モデルを選択してください"
   } else {
     "ChatGPT / Codex のクラウド推論に失敗しました"
   }
+
+private class SummaryWebFetchUnavailableException : IllegalStateException("Cloud article content was unavailable")
 
 private const val CLOUD_WEB_FETCH_MAX_ATTEMPTS = 3
 private const val CLOUD_WEB_FETCH_RETRY_BASE_DELAY_MILLIS = 500L
