@@ -58,7 +58,12 @@ fun YomitoriApp(
   val hideAppChrome = shouldHideAppChrome(selectedRoute, gameFullscreen)
 
   LaunchedEffect(navController, navigationRequests) {
-    navigationRequests.collect { target -> navController.navigateTopLevel(target.appRoute()) }
+    navigationRequests.collect { target ->
+      navController.navigateTopLevel(target.appRoute())
+      if (target.opensWebServerDialog()) {
+        onOpenWebServer()
+      }
+    }
   }
 
   currentBackStackEntry?.let { owner ->
@@ -157,6 +162,9 @@ fun YomitoriApp(
     }
   }
 }
+
+internal fun AppNavigationTarget.opensWebServerDialog(): Boolean =
+  this == AppNavigationTarget.WEB_SERVER
 
 internal fun shouldHideAppChrome(
   selectedRoute: String,

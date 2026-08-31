@@ -4,7 +4,9 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import dev.terashima.yomitorirss.composition.background.IntegratedRefreshNotificationContract
 import dev.terashima.yomitorirss.composition.entry.SharedBookmarkSaveOutcome
+import dev.terashima.yomitorirss.feature.web.LanWebServerLaunchContract
 import dev.terashima.yomitorirss.feature.widget.WidgetLaunchContract
 import dev.terashima.yomitorirss.platform.openWebContentInCustomTab
 import dev.terashima.yomitorirss.ui.AppNavigationTarget
@@ -20,8 +22,15 @@ internal class IncomingIntentHandler(
   fun consume(incoming: Intent) {
     consumeSharedLibrary(incoming)
     consumeSharedBookmark(incoming)
+    consumeNotificationNavigation(incoming)
     consumeTaskWidget(incoming)
     consumeWidgetArticle(incoming)
+  }
+
+  private fun consumeNotificationNavigation(incoming: Intent) {
+    val target = notificationLaunchTarget(incoming.action) ?: return
+    incoming.action = null
+    onNavigate(target)
   }
 
   private fun consumeTaskWidget(incoming: Intent) {
@@ -121,6 +130,13 @@ internal class IncomingIntentHandler(
       "dev.terashima.yomitorirss.action.ADD_SHARED_URL_TO_LIBRARY"
   }
 }
+
+internal fun notificationLaunchTarget(action: String?): AppNavigationTarget? =
+  when (action) {
+    IntegratedRefreshNotificationContract.ACTION_OPEN_INTEGRATED -> AppNavigationTarget.INTEGRATED
+    LanWebServerLaunchContract.ACTION_OPEN_SERVER -> AppNavigationTarget.WEB_SERVER
+    else -> null
+  }
 
 internal fun widgetLaunchTarget(action: String?): AppNavigationTarget? =
   when (action) {

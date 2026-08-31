@@ -86,8 +86,10 @@ identity namespace は source 間衝突を避ける。
 - notification number は同期後の統合未読総数とする。
 - notification 本文は今回の新着件数と未読総数だけを表示する。
 - 記事タイトル、メール件名、URL、本文、OAuth 情報を通知 payload や固定ログへ追加しない。
-- notification tap は launcher entry point を開く。
+- notification tap は `IntegratedRefreshNotificationContract.ACTION_OPEN_INTEGRATED` を持つ launcher Activity の explicit `PendingIntent` を発火し、`IncomingIntentHandler` が `AppNavigationTarget.INTEGRATED` へ解決して統合ビューを開く。
 - launcher が数字 badge と dot のどちらを表示するかは launcher implementation に依存する。
+
+notification producer は Compose route 文字列や `NavController` を参照しない。notification tap の semantic action は executable app の external Intent routing で concrete route へ解決する。cold start / warm start とも同じ入口を使い、app lock 中は既存の unlock 後 intent consumption に従う。
 
 `POST_NOTIFICATIONS` が未許可でも background refresh は停止しない。通知だけを省略する。
 
@@ -110,10 +112,11 @@ Worker から permission dialog を起動しない。permission request は通�
 - 同期前後の identity 差分による新着判定。
 - 既存未読だけでは新着が発生しないこと。
 - 同期前または同期後の snapshot が欠落した場合は通知対象を作らないこと。
+- notification semantic action が integrated app navigation target へ解決されること。
 - mail の初回 sync continuation が周期 sync migration 後も維持されること。
 - app composition の WorkerFactory / startup scheduler ownership が architecture rule から逸脱していないこと。
 
-notification shade と launcher badge/dot の見え方、WorkManager の実際の遅延挙動は platform / launcher の影響を受けるため、release candidate APK で実端末確認も行う。
+notification shade と launcher badge/dot の見え方、notification tap の cold/warm start、WorkManager の実際の遅延挙動は platform / launcher の影響を受けるため、release candidate APK で実端末確認も行う。
 
 ## Sources
 
@@ -121,6 +124,7 @@ notification shade と launcher badge/dot の見え方、WorkManager の実際�
 - [ADR-0192](../adr/0192-settings-feature-owns-cross-feature-presentation.md)
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
 - [ADR-0220](../adr/0220-integrated-background-refresh-and-notification.md)
+- [ADR-0222](../adr/0222-notification-tap-routing.md)
 - [Android Developers: Define work requests](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work)
 - [Android Developers: PeriodicWorkRequest](https://developer.android.com/reference/androidx/work/PeriodicWorkRequest)
 - [Android Developers: Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
