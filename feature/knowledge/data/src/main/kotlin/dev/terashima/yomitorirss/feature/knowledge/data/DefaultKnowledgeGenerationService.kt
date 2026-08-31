@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.knowledge.data
 
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildPlan
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildResult
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePage
@@ -20,57 +21,84 @@ class DefaultKnowledgeGenerationService(
   private val summaries: SummaryReader,
   private val textInference: AiTextInference,
 ) : KnowledgeBuilder, KnowledgePageCreator, KnowledgePageEditor {
-  override suspend fun rebuild(): KnowledgeBuildResult = withContext(Dispatchers.IO) {
+  override suspend fun rebuild(): KnowledgeBuildResult = rebuild(MAX_SOURCES_PER_TOPIC)
+
+  internal suspend fun rebuild(maxSourcesPerTopic: Int): KnowledgeBuildResult {
+    val plan = planRebuild(maxSourcesPerTopic)
+    var generated = 0
+    plan.topicIds.forEach { topicId ->
+      if (rebuildTopic(topicId, maxSourcesPerTopic)) generated += 1
+    }
+    return KnowledgeBuildResult(
+      generated = generated,
+      reused = plan.reused,
+      pending = 0,
+      skippedWithoutSummary = plan.skippedWithoutSummary,
+    )
+  }
+
+  internal suspend fun planRebuild(maxSourcesPerTopic: Int): KnowledgeBuildPlan = withContext(Dispatchers.IO) {
+    require(maxSourcesPerTopic > 0)
     val snapshot = loadSourceSnapshot()
-    val topics = buildKnowledgeTopics(snapshot.sources)
+    val topics = buildKnowledgeTopics(snapshot.sources, maxSourcesPerTopic)
     store.deleteObsoletePages(topics.mapTo(linkedSetOf(), KnowledgeTopic::id))
 
     val fingerprints = store.loadFingerprints()
     val editorManagedIds = store.loadEditorManagedIds()
-    var generated = 0
     var reused = 0
-    var pending = 0
-    val inputBudget = promptBudgetChars()
-
-    topics.forEach { topic ->
-      if (topic.id in editorManagedIds || fingerprints[topic.id] == topic.sourceFingerprint) {
-        reused += 1
-        return@forEach
+    val topicIds = buildList {
+      topics.forEach { topic ->
+        if (topic.id in editorManagedIds || fingerprints[topic.id] == topic.sourceFingerprint) {
+          reused += 1
+        } else {
+          add(topic.id)
+        }
       }
-      if (generated >= MAX_GENERATED_PAGES_PER_BUILD) {
-        pending += 1
-        return@forEach
-      }
-
-      val existingPage = store.findPage(topic.id)
-      val prompt = existingPage
-        ?.let { buildKnowledgeRefreshPrompt(it, topic, inputBudget) }
-        ?: buildKnowledgePagePrompt(topic, inputBudget)
-      val generatedDocument = parseGeneratedKnowledgeDocument(
-        raw = textInference.generate(prompt),
-        fallbackTitle = topic.title,
-      )
-      store.persistPage(
-        id = topic.id,
-        title = topic.title,
-        body = generatedDocument.bodyMarkdown,
-        topicKind = topic.kind,
-        topicKey = topic.key,
-        editorManaged = false,
-        sources = topic.sources,
-        sourceFingerprint = topic.sourceFingerprint,
-        generatedAt = Instant.now().toString(),
-      )
-      generated += 1
     }
 
     store.notifyChanged()
-    KnowledgeBuildResult(
-      generated = generated,
+    KnowledgeBuildPlan(
+      topicIds = topicIds,
       reused = reused,
-      pending = pending,
       skippedWithoutSummary = snapshot.skippedWithoutSummary,
     )
+  }
+
+  internal suspend fun rebuildTopic(
+    topicId: String,
+    maxSourcesPerTopic: Int,
+  ): Boolean = withContext(Dispatchers.IO) {
+    require(maxSourcesPerTopic > 0)
+    val snapshot = loadSourceSnapshot()
+    val topic = buildKnowledgeTopics(snapshot.sources, maxSourcesPerTopic)
+      .firstOrNull { it.id == topicId }
+      ?: return@withContext false
+
+    if (topic.id in store.loadEditorManagedIds()) return@withContext false
+    if (store.loadFingerprints()[topic.id] == topic.sourceFingerprint) return@withContext false
+
+    val inputBudget = promptBudgetChars()
+    val existingPage = store.findPage(topic.id)
+    val prompt = existingPage
+      ?.let { buildKnowledgeRefreshPrompt(it, topic, inputBudget) }
+      ?: buildKnowledgePagePrompt(topic, inputBudget)
+    val generatedDocument = parseGeneratedKnowledgeDocument(
+      raw = textInference.generate(prompt),
+      fallbackTitle = topic.title,
+    )
+    store.persistPage(
+      id = topic.id,
+      title = topic.title,
+      body = generatedDocument.bodyMarkdown,
+      topicKind = topic.kind,
+      topicKey = topic.key,
+      editorManaged = false,
+      sources = topic.sources,
+      sourceFingerprint = topic.sourceFingerprint,
+      generatedAt = Instant.now().toString(),
+    )
+    store.notifyChanged()
+    true
   }
 
   override suspend fun createPage(
@@ -192,7 +220,6 @@ class DefaultKnowledgeGenerationService(
   )
 
   companion object {
-    private const val MAX_GENERATED_PAGES_PER_BUILD = 8
     private const val DEFAULT_PROMPT_BUDGET_CHARS = 16_000
     private const val EDITOR_TOPIC_KIND = "llm"
   }
@@ -360,15 +387,25 @@ private fun buildSourcePromptText(
   sources: List<KnowledgeGenerationSource>,
   charBudget: Int,
 ): String {
-  val perSource = (charBudget / sources.size.coerceAtLeast(1)).coerceIn(300, 3_000)
-  return sources.mapIndexed { index, source ->
+  if (sources.isEmpty() || charBudget <= 0) return ""
+  val headers = sources.mapIndexed { index, source ->
     """
       |[${index + 1}] ${source.title}
       |提供元: ${source.sourceTitle}
       |要約:
-      |${source.summary.take(perSource)}
+      |
     """.trimMargin()
-  }.joinToString("\n\n")
+  }
+  val separatorChars = (sources.size - 1).coerceAtLeast(0) * 2
+  val summaryBudget = (
+    charBudget - headers.sumOf(String::length) - separatorChars
+  ).coerceAtLeast(0)
+  val perSource = summaryBudget / sources.size
+  val remainder = summaryBudget % sources.size
+  return sources.mapIndexed { index, source ->
+    val summaryChars = (perSource + if (index < remainder) 1 else 0).coerceAtMost(MAX_SUMMARY_CHARS_PER_SOURCE)
+    headers[index] + source.summary.take(summaryChars)
+  }.joinToString("\n\n").take(charBudget)
 }
 
 private fun editorFingerprint(
@@ -386,3 +423,4 @@ private fun editorFingerprint(
 private const val REFRESH_PROMPT_FIXED_CHARS = 2_500
 private const val EDIT_PROMPT_FIXED_CHARS = 2_500
 private const val MIN_SOURCE_PROMPT_CHARS = 1_500
+private const val MAX_SUMMARY_CHARS_PER_SOURCE = 3_000

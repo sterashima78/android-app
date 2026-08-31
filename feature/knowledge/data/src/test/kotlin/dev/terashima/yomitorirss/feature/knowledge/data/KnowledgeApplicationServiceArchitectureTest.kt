@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.knowledge.data
 
 import java.io.File
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KnowledgeApplicationServiceArchitectureTest {
@@ -26,6 +27,18 @@ class KnowledgeApplicationServiceArchitectureTest {
     assertFalse(source.contains("DatabaseConnection"))
     assertFalse(source.contains("rawQuery("))
     assertFalse(source.contains("ContentValues"))
+  }
+
+  @Test
+  fun `自動Wikiの親Workerは計画だけを行い生成はトピックWorkerへ分割する`() {
+    val source = repositoryFile(
+      "feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeBuildBackground.kt",
+    ).readText()
+
+    assertTrue(source.contains("knowledgeBuilder.planRebuild(provider)"))
+    assertTrue(source.contains("OneTimeWorkRequestBuilder<KnowledgeTopicBuildWorker>()"))
+    assertTrue(source.contains("knowledgeBuilder.rebuildTopic(provider, topicId)"))
+    assertFalse(source.contains("knowledgeBuilder.rebuild(provider)"))
   }
 
   private fun repositoryFile(path: String): File {

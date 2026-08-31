@@ -15,6 +15,8 @@ interface KnowledgeExecutionSettings {
 
 /** Background build capability with the execution provider fixed when work is scheduled. */
 interface KnowledgeBuildRunner {
+  suspend fun planRebuild(provider: KnowledgeExecutionProvider): KnowledgeBuildPlan
+  suspend fun rebuildTopic(provider: KnowledgeExecutionProvider, topicId: String): Boolean
   suspend fun rebuild(provider: KnowledgeExecutionProvider): KnowledgeBuildResult
 }
 

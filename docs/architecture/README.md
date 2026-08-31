@@ -16,6 +16,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [background-refresh.md](background-refresh.md): 統合ビューの周期更新、Gmail周期同期移管、新着通知・badge の現在の境界
 - [ai-runtime.md](ai-runtime.md): Local / Cloud AI の provider・execution・failure boundary
 - [chat-retrieval.md](chat-retrieval.md): AI Chat の lexical retrieval、query reformulation、candidate/detail boundary
+- [knowledge.md](knowledge.md): Knowledge自動Wikiのトピック分割、provider別source上限、background execution
 - [web-content.md](web-content.md): ユーザー閲覧、RSS scraping、Library Web metadata の現在の境界
 - [glossary.md](glossary.md): ubiquitous language とアーキテクチャ用語
 - [../adr/README.md](../adr/README.md): Decision Log の読み方と主要 ADR の索引
@@ -75,3 +76,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0220](../adr/0220-integrated-background-refresh-and-notification.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0225](../adr/0225-chat-lexical-retrieval-and-query-reformulation.md)
+- [ADR-0226](../adr/0226-partition-auto-wiki-generation-by-topic.md)
