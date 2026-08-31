@@ -22,9 +22,9 @@ KnowledgeBuildWorker
 
 `KnowledgeBuildWorker` は計画だけを担当し、LLM推論を行わない。変更が必要なトピックごとに独立した `KnowledgeTopicBuildWorker` をWorkManagerへ登録し、各Workerは1トピックだけを生成または更新する。
 
-Local providerでは、同一 `requestId` のトピックWorkerをWorkManager dependency chainとして直列化する。これにより多数のLocal topic workerを同時にrunnable / foreground待機状態にせず、1件が完了してから次の1件を実行可能にする。`LocalAiBackgroundTaskGate` は別途維持し、Summary・Library等を含むfeature横断のLocal AI排他・優先度制御を担当する。
+Local providerでもトピックWorker同士へWorkManager dependencyを作らず、各topicの失敗は他topicから独立させる。ただしLocal workerは `LocalAiBackgroundTaskGate` のpermitを取得してからforeground化する。permit待ちのworkerはforeground serviceを開始せず、実際に高コストなLocal AI処理を行うworkerだけをforegroundにする。`LocalAiBackgroundTaskGate` はSummary・Library等を含むfeature横断のLocal AI排他・優先度制御を担当する。
 
-ChatGPT providerではKnowledge独自の直列化を行わず、各topicを独立したWorkManager taskとして扱う。network constraintとretry/backoffは各workerへ適用する。
+ChatGPT providerでは各topicを独立したWorkManager taskとして扱う。network constraintとretry/backoffは各workerへ適用する。
 
 トピックWorkerは実行直前に最新の保存済み要約から対象トピックを再構築し、editor-managed状態とfingerprintを再確認する。別Workerや再計画で既に同じ内容が生成済みならLLMを呼ばない。
 
@@ -61,7 +61,7 @@ Knowledgeの実行先はユーザーが `LOCAL` / `CHATGPT` を明示選択す�
 
 自動Wikiでは計画時のprovider snapshotをトピックWorkerへ引き継ぐ。
 
-- Local topic worker: WorkManager上では同一generationを直列化し、`LocalAiBackgroundTaskGate`、Local pause、charging resumeを利用する。
+- Local topic worker: 独立したWorkRequestのまま `LocalAiBackgroundTaskGate`、Local pause、charging resumeを利用し、permit取得後にforeground化する。
 - ChatGPT topic worker: Cloud pause、network connectivity constraint、retryable failureのexponential backoffを利用する。
 - Cloudの計画Workerは端末内データだけを読むためnetwork constraintを要求しない。
 - provider変更時は現在generationのWorkをキャンセルし、新providerで再計画する。
