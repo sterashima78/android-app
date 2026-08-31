@@ -22,9 +22,17 @@ KnowledgeBuildWorker
 
 `KnowledgeBuildWorker` は計画だけを担当し、LLM推論を行わない。変更が必要なトピックごとに独立した `KnowledgeTopicBuildWorker` をWorkManagerへ登録し、各Workerは1トピックだけを生成または更新する。
 
+Local providerでは、同一 `requestId` のトピックWorkerをWorkManager dependency chainとして直列化する。これにより多数のLocal topic workerを同時にrunnable / foreground待機状態にせず、1件が完了してから次の1件を実行可能にする。`LocalAiBackgroundTaskGate` は別途維持し、Summary・Library等を含むfeature横断のLocal AI排他・優先度制御を担当する。
+
+ChatGPT providerではKnowledge独自の直列化を行わず、各topicを独立したWorkManager taskとして扱う。network constraintとretry/backoffは各workerへ適用する。
+
 トピックWorkerは実行直前に最新の保存済み要約から対象トピックを再構築し、editor-managed状態とfingerprintを再確認する。別Workerや再計画で既に同じ内容が生成済みならLLMを呼ばない。
 
 再構築要求には `requestId` を持たせ、計画Workerと子Workerへ同じIDを渡す。再要求、provider変更、停止・失敗後の再開では新しいIDで再計画するため、古いgenerationのWorkerは現在queue stateを更新できない。
+
+計画完了後はpending topic集合をdurable queue stateとして保持する。pending topicが残っている間の通常 `kick()` は新しい計画Workerを投入しない。Global pauseで現在generationのWorkをキャンセルする場合はpending topic集合を破棄し、再開時に保存済みデータから再計画する。すでに生成済みのページはfingerprint比較で再利用される。
+
+AIタスクキューへKnowledge build状態を投影するときは、個々のWorkManager `WorkInfo` を全件列挙しない。provider pause、stopped / failed状態、およびpending topic集合から `PAUSED` / `STOPPED` / `FAILED` / `RUNNING` / `QUEUED` を投影し、監視UIの読み取り負荷をWork数へ比例させない。
 
 ## Topic and source selection
 
@@ -53,7 +61,7 @@ Knowledgeの実行先はユーザーが `LOCAL` / `CHATGPT` を明示選択す�
 
 自動Wikiでは計画時のprovider snapshotをトピックWorkerへ引き継ぐ。
 
-- Local topic worker: `LocalAiBackgroundTaskGate`、Local pause、charging resumeを利用する。
+- Local topic worker: WorkManager上では同一generationを直列化し、`LocalAiBackgroundTaskGate`、Local pause、charging resumeを利用する。
 - ChatGPT topic worker: Cloud pause、network connectivity constraint、retryable failureのexponential backoffを利用する。
 - Cloudの計画Workerは端末内データだけを読むためnetwork constraintを要求しない。
 - provider変更時は現在generationのWorkをキャンセルし、新providerで再計画する。
@@ -71,3 +79,4 @@ Cloud topic worker同士をKnowledge独自のgateでは直列化しない。各t
 - [ADR-0109](../adr/0109-generated-knowledge-wiki.md)
 - [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0227](../adr/0227-partition-auto-wiki-generation-by-topic.md)
+- [ADR-0229](../adr/0229-bound-knowledge-rebuild-runtime-pressure.md)
