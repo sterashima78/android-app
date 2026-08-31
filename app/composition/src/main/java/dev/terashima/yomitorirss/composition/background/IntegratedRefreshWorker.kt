@@ -140,9 +140,10 @@ private class IntegratedRefreshNotifier(
     )
 
     val launchPendingIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { intent ->
+      intent.action = IntegratedRefreshNotificationContract.ACTION_OPEN_INTEGRATED
       PendingIntent.getActivity(
         context,
-        0,
+        NOTIFICATION_ID,
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
       )
