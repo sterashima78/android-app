@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySource
+import dev.terashima.yomitorirss.feature.library.MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS
 import dev.terashima.yomitorirss.feature.library.SmbBookMetadataProposal
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationBatchSnapshot
@@ -87,6 +88,7 @@ class DefaultSmbMetadataNormalizationRepository(
             )
             putNull("proposed_file_name")
             putNull("metadata_json")
+            putNull("reanalysis_context")
             putNull("error")
             put("created_at", now)
             put("updated_at", now)
@@ -222,10 +224,14 @@ class DefaultSmbMetadataNormalizationRepository(
     )
   }
 
-  override suspend fun retryCandidate(sourceId: String): Unit = withContext(Dispatchers.IO) {
+  override suspend fun retryCandidate(
+    sourceId: String,
+    supplementalContext: String?,
+  ): Unit = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
     val item = queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
     require(item.status in REANALYZABLE_STATUSES) { "再解析できる候補がありません" }
+    val context = sanitizeReanalysisContext(supplementalContext)
 
     val currentBook = findLibraryBook(database, LibrarySource.SMB, sourceId)
       ?: error("対象のファイルサーバ書籍が見つかりません")
@@ -258,7 +264,8 @@ class DefaultSmbMetadataNormalizationRepository(
               },
             )
             putNull("proposed_file_name")
-            putNull("metadata_json")
+            item.proposal?.let { put("metadata_json", proposalToJson(it)) } ?: putNull("metadata_json")
+            context?.let { put("reanalysis_context", it) } ?: putNull("reanalysis_context")
             putNull("error")
             put("created_at", now)
             put("updated_at", now)
@@ -281,7 +288,7 @@ class DefaultSmbMetadataNormalizationRepository(
               },
             )
             putNull("proposed_file_name")
-            putNull("metadata_json")
+            context?.let { put("reanalysis_context", it) } ?: putNull("reanalysis_context")
             putNull("error")
             put("updated_at", now)
           },
@@ -385,7 +392,8 @@ class DefaultSmbMetadataNormalizationRepository(
     return database.transaction {
       val next = rawQuery(
         """
-          SELECT i.batch_id, i.source_id, i.original_file_name, i.input_size, i.input_modified_at
+          SELECT i.batch_id, i.source_id, i.original_file_name, i.input_size, i.input_modified_at,
+                 i.metadata_json, i.reanalysis_context
           FROM $ITEM_TABLE i
           JOIN $BATCH_TABLE b ON b.batch_id = i.batch_id
           WHERE b.status = ? AND i.status = ?
@@ -404,6 +412,8 @@ class DefaultSmbMetadataNormalizationRepository(
           originalFileName = cursor.getString(2),
           inputSize = cursor.getLong(3),
           inputModifiedAt = cursor.getLong(4),
+          previousProposal = if (cursor.isNull(5)) null else proposalFromJson(cursor.getString(5)),
+          supplementalContext = if (cursor.isNull(6)) null else cursor.getString(6),
         )
       } ?: return@transaction null
       val changed = update(
@@ -434,6 +444,7 @@ class DefaultSmbMetadataNormalizationRepository(
           put("status", SmbMetadataNormalizationStatus.PENDING_REVIEW.name)
           put("proposed_file_name", fileName)
           put("metadata_json", proposalToJson(sanitized))
+          putNull("reanalysis_context")
           putNull("error")
           put("updated_at", now)
         },
@@ -496,6 +507,7 @@ class DefaultSmbMetadataNormalizationRepository(
           put("status", SmbMetadataNormalizationStatus.APPLIED.name)
           put("proposed_file_name", proposedFileName)
           put("metadata_json", proposalToJson(proposal))
+          putNull("reanalysis_context")
           putNull("error")
           put("updated_at", now)
         },
@@ -557,6 +569,7 @@ class DefaultSmbMetadataNormalizationRepository(
         ITEM_TABLE,
         ContentValues().apply {
           put("metadata_json", proposalToJson(proposal))
+          putNull("reanalysis_context")
           putNull("error")
           put("updated_at", now)
         },
@@ -641,7 +654,6 @@ class DefaultSmbMetadataNormalizationRepository(
         ContentValues().apply {
           put("status", SmbMetadataNormalizationStatus.SKIPPED.name)
           putNull("proposed_file_name")
-          putNull("metadata_json")
           put("error", message)
           put("updated_at", now)
         },
@@ -838,6 +850,8 @@ internal data class ClaimedSmbMetadataNormalizationItem(
   val originalFileName: String,
   val inputSize: Long,
   val inputModifiedAt: Long,
+  val previousProposal: SmbBookMetadataProposal? = null,
+  val supplementalContext: String? = null,
 )
 
 internal data class SmbNormalizationInput(
@@ -928,6 +942,7 @@ internal fun ensureSmbMetadataNormalizationSchema(db: SQLiteDatabase) {
         status TEXT NOT NULL,
         proposed_file_name TEXT,
         metadata_json TEXT,
+        reanalysis_context TEXT,
         error TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
@@ -935,6 +950,15 @@ internal fun ensureSmbMetadataNormalizationSchema(db: SQLiteDatabase) {
       )
     """.trimIndent(),
   )
+  val itemColumns = db.rawQuery("PRAGMA table_info($ITEM_TABLE)", null).use { cursor ->
+    buildSet {
+      val nameIndex = cursor.getColumnIndexOrThrow("name")
+      while (cursor.moveToNext()) add(cursor.getString(nameIndex))
+    }
+  }
+  if ("reanalysis_context" !in itemColumns) {
+    db.execSQL("ALTER TABLE $ITEM_TABLE ADD COLUMN reanalysis_context TEXT")
+  }
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_smb_metadata_normalization_status ON $ITEM_TABLE(status, updated_at)",
   )
@@ -1052,6 +1076,11 @@ private fun sanitizeSmbBookMetadataProposal(proposal: SmbBookMetadataProposal): 
     reason = reason,
   )
 }
+
+private fun sanitizeReanalysisContext(value: String?): String? =
+  value?.trim()?.takeIf(String::isNotEmpty)?.also {
+    require(it.length <= MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS) { "再解析の補足情報が長すぎます" }
+  }
 
 private fun String?.cleaned(maxLength: Int): String? = this?.trim()?.takeIf(String::isNotEmpty)?.also {
   require(it.length <= maxLength) { "書誌情報候補が長すぎます" }

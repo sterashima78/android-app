@@ -17,6 +17,7 @@ import android.os.RemoteException
 import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnosticPhase
 import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.feature.library.MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS
 import dev.terashima.yomitorirss.feature.library.SmbBookMetadataProposal
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -42,6 +43,8 @@ private const val MSG_RESULT = 2
 private const val KEY_FILE_NAME = "file_name"
 private const val KEY_COVER_PATH = "cover_path"
 private const val KEY_PROMPT_TEMPLATE = "prompt_template"
+private const val KEY_PREVIOUS_PROPOSAL = "previous_proposal"
+private const val KEY_SUPPLEMENTAL_CONTEXT = "supplemental_context"
 private const val KEY_SUCCESS = "success"
 private const val KEY_ERROR = "error"
 private const val KEY_RETIRE = "retire"
@@ -83,6 +86,8 @@ internal class RemoteSmbMetadataNormalizationSuggester(
     currentFileName: String,
     coverFile: File,
     promptTemplate: String,
+    previousProposal: SmbBookMetadataProposal? = null,
+    supplementalContext: String? = null,
   ): SmbBookMetadataProposal = requestMutex.withLock {
     var lastRemoteError: RemoteException? = null
     repeat(2) { attempt ->
@@ -95,6 +100,8 @@ internal class RemoteSmbMetadataNormalizationSuggester(
           currentFileName = currentFileName,
           coverFile = coverFile,
           promptTemplate = promptTemplate,
+          previousProposal = previousProposal,
+          supplementalContext = supplementalContext,
         )
         if (response.retireAfterResponse) retire(active)
         response.error?.let { throw IllegalArgumentException(it) }
@@ -160,6 +167,8 @@ private class RemoteInferenceSession(
     currentFileName: String,
     coverFile: File,
     promptTemplate: String,
+    previousProposal: SmbBookMetadataProposal?,
+    supplementalContext: String?,
   ): RemoteInferenceResponse {
     val response = CompletableDeferred<Bundle>()
     check(pendingResponse.compareAndSet(null, response)) { "AI推論要求が重複しています" }
@@ -169,6 +178,8 @@ private class RemoteInferenceSession(
           putString(KEY_FILE_NAME, currentFileName)
           putString(KEY_COVER_PATH, coverFile.absolutePath)
           putString(KEY_PROMPT_TEMPLATE, promptTemplate)
+          previousProposal?.let { putBundle(KEY_PREVIOUS_PROPOSAL, it.toBundle()) }
+          supplementalContext?.let { putString(KEY_SUPPLEMENTAL_CONTEXT, it) }
         }
         replyTo = replyMessenger
       }
@@ -298,6 +309,8 @@ class SmbMetadataNormalizationInferenceService : Service() {
         currentFileName = request.currentFileName,
         coverBytes = request.coverFile.readBytes(),
         promptTemplate = request.promptTemplate,
+        previousProposal = request.previousProposal,
+        supplementalContext = request.supplementalContext,
       )
       retire = batchPolicy.itemFinished()
       successResponse(proposal, retire)
@@ -316,12 +329,23 @@ class SmbMetadataNormalizationInferenceService : Service() {
     }
     val promptTemplate = requireNotNull(bundle.getString(KEY_PROMPT_TEMPLATE)) { "解析プロンプトがありません" }
     require(promptTemplate.length <= MAX_PROMPT_CHARS) { "解析プロンプトが長すぎます" }
+    val supplementalContext = bundle.getString(KEY_SUPPLEMENTAL_CONTEXT)?.trim()?.takeIf(String::isNotEmpty)
+    require(supplementalContext == null || supplementalContext.length <= MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS) {
+      "再解析の補足情報が長すぎます"
+    }
+    val previousProposal = bundle.getBundle(KEY_PREVIOUS_PROPOSAL)?.toProposal()
     val coverPath = requireNotNull(bundle.getString(KEY_COVER_PATH)) { "表紙キャッシュがありません" }
     val coverFile = File(coverPath).canonicalFile
     val cacheRoot = applicationContext.cacheDir.canonicalFile
     require(coverFile.isUnder(cacheRoot) && coverFile.isFile) { "表紙キャッシュを読み取れません" }
     require(coverFile.length() in 1..MAX_COVER_BYTES) { "表紙画像が大きすぎます" }
-    return InferenceRequest(currentFileName, coverFile, promptTemplate)
+    return InferenceRequest(
+      currentFileName = currentFileName,
+      coverFile = coverFile,
+      promptTemplate = promptTemplate,
+      previousProposal = previousProposal,
+      supplementalContext = supplementalContext,
+    )
   }
 }
 
@@ -329,6 +353,8 @@ private data class InferenceRequest(
   val currentFileName: String,
   val coverFile: File,
   val promptTemplate: String,
+  val previousProposal: SmbBookMetadataProposal?,
+  val supplementalContext: String?,
 )
 
 private fun File.isUnder(root: File): Boolean =

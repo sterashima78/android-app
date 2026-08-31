@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.library
 
+const val MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS = 2_000
+
 enum class SmbMetadataNormalizationBatchStatus(val label: String) {
   RUNNING("解析中"),
   COMPLETED("解析完了"),
@@ -83,7 +85,7 @@ interface SmbMetadataNormalizationRepository {
 
   suspend fun reopenCandidate(sourceId: String)
 
-  suspend fun retryCandidate(sourceId: String)
+  suspend fun retryCandidate(sourceId: String, supplementalContext: String? = null)
 }
 
 interface SmbMetadataNormalizationScheduler {

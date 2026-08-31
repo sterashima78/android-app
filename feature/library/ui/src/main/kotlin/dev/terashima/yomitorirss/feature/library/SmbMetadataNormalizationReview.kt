@@ -56,7 +56,7 @@ internal fun SmbMetadataNormalizationSettingsSection(
   onDefer: (String) -> Unit,
   onReject: (String) -> Unit,
   onReopen: (String) -> Unit,
-  onRetry: (String) -> Unit,
+  onRetry: (String, String?) -> Unit,
 ) {
   var reviewVisible by remember { mutableStateOf(false) }
   if (reviewVisible && snapshot != null) {
@@ -124,11 +124,12 @@ private fun SmbMetadataNormalizationReviewDialog(
   onDefer: (String) -> Unit,
   onReject: (String) -> Unit,
   onReopen: (String) -> Unit,
-  onRetry: (String) -> Unit,
+  onRetry: (String, String?) -> Unit,
   onDismiss: () -> Unit,
 ) {
   var filter by remember { mutableStateOf(SmbNormalizationReviewFilter.PENDING) }
   var editing by remember { mutableStateOf<SmbMetadataNormalizationItem?>(null) }
+  var reanalyzing by remember { mutableStateOf<SmbMetadataNormalizationItem?>(null) }
 
   editing?.let { item ->
     SmbMetadataCandidateEditDialog(
@@ -137,6 +138,17 @@ private fun SmbMetadataNormalizationReviewDialog(
       onApply = { fileName, proposal ->
         onApply(item.sourceId, fileName, proposal)
         editing = null
+      },
+    )
+  }
+
+  reanalyzing?.let { item ->
+    SmbMetadataReanalysisDialog(
+      item = item,
+      onDismiss = { reanalyzing = null },
+      onConfirm = { supplementalContext ->
+        onRetry(item.sourceId, supplementalContext)
+        reanalyzing = null
       },
     )
   }
@@ -205,7 +217,7 @@ private fun SmbMetadataNormalizationReviewDialog(
                 onDefer = { onDefer(item.sourceId) },
                 onReject = { onReject(item.sourceId) },
                 onReopen = { onReopen(item.sourceId) },
-                onRetry = { onRetry(item.sourceId) },
+                onRetry = { reanalyzing = item },
                 modifier = Modifier.padding(horizontal = 12.dp),
               )
             }
@@ -215,6 +227,55 @@ private fun SmbMetadataNormalizationReviewDialog(
       }
     }
   }
+}
+
+@Composable
+private fun SmbMetadataReanalysisDialog(
+  item: SmbMetadataNormalizationItem,
+  onDismiss: () -> Unit,
+  onConfirm: (String?) -> Unit,
+) {
+  var supplementalContext by remember(item.batchId, item.sourceId) { mutableStateOf("") }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("書誌情報を再解析") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          if (item.proposal != null) {
+            "現在の解析結果を前回結果として引き継ぎ、表紙とファイル名に照らして独立に再評価します。同じ結果が妥当な場合はそのまま採用されます。"
+          } else {
+            "表紙とファイル名をもう一度解析します。必要であれば補足情報を追加できます。"
+          },
+          style = MaterialTheme.typography.bodyMedium,
+        )
+        OutlinedTextField(
+          value = supplementalContext,
+          onValueChange = { value ->
+            if (value.length <= MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS) supplementalContext = value
+          },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("補足情報（任意）") },
+          placeholder = { Text("例: 著者は○○、シリーズ第8巻、表紙の英字は副題") },
+          minLines = 3,
+          maxLines = 6,
+        )
+        Text(
+          "${supplementalContext.length} / $MAX_SMB_METADATA_REANALYSIS_CONTEXT_CHARS",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onConfirm(supplementalContext.trim().takeIf(String::isNotEmpty))
+        },
+      ) { Text("再解析") }
+    },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("キャンセル") } },
+  )
 }
 
 @Composable

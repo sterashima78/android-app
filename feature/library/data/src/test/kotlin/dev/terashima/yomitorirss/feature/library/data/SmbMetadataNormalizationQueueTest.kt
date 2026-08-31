@@ -90,41 +90,52 @@ class SmbMetadataNormalizationQueueTest {
     val book = insertSmbBook(sourceId = "retry-rejected-book", fileName = "scan_rejected.cbz")
     repository.startBatch(listOf(book))
     val item = repository.claimNext()!!
-    repository.saveGeneratedCandidate(item, "架空再解析本.cbz", proposal("架空再解析本"))
+    val firstProposal = proposal("架空再解析本")
+    repository.saveGeneratedCandidate(item, "架空再解析本.cbz", firstProposal)
     repository.rejectCandidate(book.sourceId)
 
-    repository.retryCandidate(book.sourceId)
+    repository.retryCandidate(book.sourceId, "著者表記を再確認")
 
     assertEquals(0, normalizationDecisionCount(book.sourceId))
     assertEquals(
       SmbMetadataNormalizationStatus.QUEUED,
       repository.batchSnapshot()!!.items.single().status,
     )
-    assertEquals(book.sourceId, repository.claimNext()!!.sourceId)
+    val retried = repository.claimNext()!!
+    assertEquals(book.sourceId, retried.sourceId)
+    assertEquals(firstProposal, retried.previousProposal)
+    assertEquals("著者表記を再確認", retried.supplementalContext)
   }
 
   @Test
-  fun `未確認と保留の候補は古い提案を破棄して再解析できる`() = runBlocking {
+  fun `未確認と保留の候補は前回提案を保持して再解析できる`() = runBlocking {
     val book = insertSmbBook(sourceId = "review-retry-book", fileName = "scan_review.cbz")
     repository.startBatch(listOf(book))
     val first = repository.claimNext()!!
-    repository.saveGeneratedCandidate(first, "最初の候補.cbz", proposal("最初の候補"))
+    val firstProposal = proposal("最初の候補")
+    repository.saveGeneratedCandidate(first, "最初の候補.cbz", firstProposal)
 
-    repository.retryCandidate(book.sourceId)
+    repository.retryCandidate(book.sourceId, "タイトルの副題を確認")
     var retried = repository.batchSnapshot()!!.items.single()
     assertEquals(SmbMetadataNormalizationStatus.QUEUED, retried.status)
     assertNull(retried.proposedFileName)
-    assertNull(retried.proposal)
+    assertEquals(firstProposal, retried.proposal)
 
     val second = repository.claimNext()!!
-    repository.saveGeneratedCandidate(second, "二回目の候補.cbz", proposal("二回目の候補"))
+    assertEquals(firstProposal, second.previousProposal)
+    assertEquals("タイトルの副題を確認", second.supplementalContext)
+    val secondProposal = proposal("二回目の候補")
+    repository.saveGeneratedCandidate(second, "二回目の候補.cbz", secondProposal)
     repository.deferCandidate(book.sourceId)
     repository.retryCandidate(book.sourceId)
 
     retried = repository.batchSnapshot()!!.items.single()
     assertEquals(SmbMetadataNormalizationStatus.QUEUED, retried.status)
     assertNull(retried.proposedFileName)
-    assertNull(retried.proposal)
+    assertEquals(secondProposal, retried.proposal)
+    val third = repository.claimNext()!!
+    assertEquals(secondProposal, third.previousProposal)
+    assertNull(third.supplementalContext)
   }
 
   @Test
@@ -132,7 +143,8 @@ class SmbMetadataNormalizationQueueTest {
     val rejectedBook = insertSmbBook(sourceId = "historical-rejected-book", fileName = "scan_old.cbz")
     repository.startBatch(listOf(rejectedBook))
     val rejectedClaim = repository.claimNext()!!
-    repository.saveGeneratedCandidate(rejectedClaim, "過去の候補.cbz", proposal("過去の候補"))
+    val rejectedProposal = proposal("過去の候補")
+    repository.saveGeneratedCandidate(rejectedClaim, "過去の候補.cbz", rejectedProposal)
     repository.rejectCandidate(rejectedBook.sourceId)
 
     val currentBook = insertSmbBook(sourceId = "current-book", fileName = "scan_current.cbz")
@@ -149,7 +161,7 @@ class SmbMetadataNormalizationQueueTest {
     assertEquals(afterRetry.batchId, requeued.batchId)
     assertEquals(SmbMetadataNormalizationStatus.QUEUED, requeued.status)
     assertNull(requeued.proposedFileName)
-    assertNull(requeued.proposal)
+    assertEquals(rejectedProposal, requeued.proposal)
     assertEquals(0, normalizationDecisionCount(rejectedBook.sourceId))
     assertEquals(SmbMetadataNormalizationBatchStatus.RUNNING, afterRetry.status)
   }
@@ -291,7 +303,7 @@ class SmbMetadataNormalizationQueueTest {
   }
 
   @Test
-  fun `候補生成後にファイルrevisionが変わった場合は再解析可能な状態へ移す`() = runBlocking {
+  fun `候補生成後にファイルrevisionが変わった場合は前回提案を保持して再解析可能な状態へ移す`() = runBlocking {
     val book = insertSmbBook(sourceId = "changed-book", fileName = "scan_004.cbz", modifiedAt = 20L)
     repository.startBatch(listOf(book))
     val item = repository.claimNext()!!
@@ -314,7 +326,7 @@ class SmbMetadataNormalizationQueueTest {
     val staleCandidate = repository.batchSnapshot()!!.items.single()
     assertEquals(SmbMetadataNormalizationStatus.SKIPPED, staleCandidate.status)
     assertNull(staleCandidate.proposedFileName)
-    assertNull(staleCandidate.proposal)
+    assertEquals(proposal, staleCandidate.proposal)
   }
 
   @Test
