@@ -8,8 +8,8 @@
 
 ADR-0227 では、自動Wiki再構築を計画Workerとトピック単位Workerへ分割した。1個の長時間Workerへ複数ページ生成を集約しない点は維持したい一方、Local providerで多数の変更トピックがある場合に次の負荷が発生した。
 
-- 計画完了後、全 `KnowledgeTopicBuildWorker` が同時にWorkManagerへ登録される。
-- Local workerは `LocalAiBackgroundTaskGate` でLLM推論自体は直列化されるが、複数WorkerがWorkManager上で実行可能になり、foreground化やcoroutine待機、WorkManager内部状態管理の負荷は残る。
+- 計画完了後、全 `KnowledgeTopicBuildWorker` がWorkManagerへ登録される。
+- Local workerは `LocalAiBackgroundTaskGate` でLLM推論自体は直列化されるが、permit待ちへ入る前に各workerがforeground化されていたため、多数workerが同時にforeground executionとして立ち上がり得た。
 - 計画WorkerはトピックWorker登録後に完了するため、再構築要求自体がまだ継続中でも通常の `kick()` から同じ `requestId` の計画Workerを再投入できる。AIタスクキューを開く処理も `kick()` を行うため、同一トピックWorker群を重複投入し得る。
 - AIタスクキューは1秒周期でKnowledgeの `WORK_TAG` に属する全 `WorkInfo` を列挙して状態を求めていた。トピック数や重複Workが増えるほど、監視UI自体がWorkManager DB負荷を増幅する。
 - AIタスクキュー全体でも、一覧取得後に件数計算のため再度 `listTasks()` 相当の処理を行っていた。
@@ -28,16 +28,16 @@ Knowledge queue stateのpending topic集合を、現在generationの計画が既
 
 これにより、画面遷移やruntime復帰目的の `kick()` を冪等なwake-up操作として扱い、計画済みWorkの重複投入を避ける。
 
-### 2. LocalのKnowledge topic workerをWorkManager上でも直列化する
+### 2. Local topic workerはpermit取得後にだけforeground化する
 
-Local providerの変更トピックは、同一 `requestId` ごとのunique WorkManager dependency chainとして登録する。
+ADR-0227の「変更トピックごとに独立したWorkRequestを登録する」方針を維持する。Local providerでは各 `KnowledgeTopicBuildWorker` が `LocalAiBackgroundTaskGate` のpermitを取得してからforeground化し、LLM生成へ進む。
 
-- 1つの `KnowledgeTopicBuildWorker` が成功してから次のtopic workerを実行可能にする。
-- 各workerが1トピックだけを扱うADR-0227の分割方針は維持する。
-- `LocalAiBackgroundTaskGate` も維持し、Summary・Library等を含むfeature横断の高コストLocal AI処理との排他・優先度制御を引き続き担当する。
-- WorkManager chainはKnowledge内部で同時に多数のLocal workerをrunnableにしないためのpressure制御であり、`LocalAiBackgroundTaskGate` の代替ではない。
+- permit待ちのLocal workerはforeground serviceを開始しない。
+- 実際に高コストなLocal AI処理を行うworkerだけがforegroundになる。
+- 各topic workerはWorkManager上では独立したままとし、1トピックの失敗が別トピックの実行可否へ依存関係を作らない。
+- `LocalAiBackgroundTaskGate` はSummary・Library等を含むfeature横断の高コストLocal AI処理との排他・優先度制御を引き続き担当する。
 
-ChatGPT providerはADR-0227の方針を維持し、topic worker同士をKnowledge独自に直列化しない。network constraintとretry/backoffへ委譲する。
+ChatGPT providerはADR-0227の方針を維持し、各topic workerを独立実行する。network constraintとretry/backoffへ委譲する。
 
 ### 3. AIタスクキューのKnowledge状態取得で全WorkInfoを列挙しない
 
@@ -59,23 +59,24 @@ AIタスクキューは `repository.listTasks()` の結果からrunning / queued
 
 ### Positive
 
-- Local自動Wiki再作成で多数のforeground topic workerが同時にrunnable / waitingになることを防げる。
 - AIタスクキューを開くなど通常のwake-up操作で同一generationを重複計画しない。
+- Local自動Wiki再作成でpermit待ちのtopic workerまで一斉にforeground化することを避けられる。
 - Knowledge task数が増えてもAIタスクキューの1秒pollingが全 `WorkInfo` 数に比例しない。
 - AIタスクキューのComposite task構築回数を1refreshあたり2回から1回へ減らす。
-- ADR-0227の「1 worker = 1 topic」というdurability境界は維持する。
+- ADR-0227の「1 worker = 1 topic」と「1 topicの失敗が他topicを停止させない」というdurability境界を維持する。
 
 ### Negative
 
-- Local Knowledgeの複数topicはWorkManager levelでも完全直列になるため、Knowledge単独で見たthroughputは並列実行より低い。ただしLocal LLM推論は元々process-wide gateで直列であり、実効生成throughputへの影響は限定的である。
+- WorkManagerには変更topic数分の独立WorkRequestを登録するため、WorkManager row数自体はADR-0227と同じだけ増える。
+- permit待ちのLocal CoroutineWorkerは存在するため、worker object / coroutineの待機コストを完全には除去しない。
 - Knowledgeの `RUNNING` 表示はpending topic集合を基準にするため、個々のworkerがscheduler待ちしている瞬間まで厳密には区別しない。
 - 各topic workerが最新source snapshotから対象topicを再構築するADR-0227のコストは今回変更しない。保存済み資料数が非常に大きい場合のsource snapshot最適化は別の計測結果に基づいて扱う。
 
 ## Alternatives considered
 
-### LocalAiBackgroundTaskGateだけに任せる
+### WorkManager dependency chainでLocal topicを直列化する
 
-LLM推論の同時実行は防げるが、WorkManager worker、foreground state、待機coroutine、WorkInfo管理の同時存在を減らせないため採用しない。
+同時runnable worker数を強く制限できるが、通常のWorkManager dependency chainでは先行workerの失敗が後続workerへ伝播し、ADR-0227の「1トピックの失敗が他トピックの生成を止めない」性質を損なうため採用しない。
 
 ### ADR-0227以前の単一長時間Workerへ戻す
 
@@ -87,7 +88,7 @@ runtime pressureは小さくなるが、プロセス終了耐性、トピック�
 
 ## Verification
 
-- Local providerだけがtopic Workの直列化対象になることをunit testする。
+- pending topicがある通常 `kick()` は再計画をskipし、明示的なforce rescheduleはskipしないpolicyをunit testする。
 - pending topicの有無からKnowledge queueの `RUNNING` / `QUEUED` 投影をunit testする。
 - AIタスクキューの件数を取得済みtask集合から計算することをunit testする。
 - Knowledge data / AI task queue UIのunit test、architecture checks、public repository checks、lintをPR CIで実行する。
