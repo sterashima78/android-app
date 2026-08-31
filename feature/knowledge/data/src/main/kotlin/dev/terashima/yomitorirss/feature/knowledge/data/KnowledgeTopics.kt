@@ -55,9 +55,25 @@ internal fun buildKnowledgeTopics(
   maxSourcesPerTopic: Int = MAX_SOURCES_PER_TOPIC,
 ): List<KnowledgeTopic> {
   require(maxSourcesPerTopic > 0)
+  val eligibleTagKeys = sources
+    .flatMap { source ->
+      source.tags
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinctBy { it.lowercase() }
+        .map { tag -> tag.lowercase() to source.articleId }
+    }
+    .groupBy(keySelector = Pair<String, String>::first, valueTransform = Pair<String, String>::second)
+    .filterValues { articleIds -> articleIds.distinct().size >= MIN_SOURCES_PER_TAG_TOPIC }
+    .keys
+
   val grouped = linkedMapOf<TopicIdentity, MutableList<KnowledgeGenerationSource>>()
   sources.forEach { source ->
-    val tags = source.tags.map(String::trim).filter(String::isNotBlank).distinctBy { it.lowercase() }
+    val tags = source.tags
+      .map(String::trim)
+      .filter(String::isNotBlank)
+      .distinctBy { it.lowercase() }
+      .filter { it.lowercase() in eligibleTagKeys }
     val folderName = source.folderName?.trim().orEmpty()
     val sourceTitle = source.sourceTitle.trim().ifBlank { "その他" }
     val identities = when {
@@ -238,6 +254,7 @@ private data class ScoredSource(
 )
 
 internal const val MAX_SOURCES_PER_TOPIC = 12
+internal const val MIN_SOURCES_PER_TAG_TOPIC = 3
 private const val MAX_SEARCH_TERMS = 24
 private const val MAX_TITLE_LENGTH = 80
 private val JAPANESE_PARTICLE_PATTERN = Regex("について|として|から|まで|より|とは|との|の|を|に|で|が|は|へ|と")
