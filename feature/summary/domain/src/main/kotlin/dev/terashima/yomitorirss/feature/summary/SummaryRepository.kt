@@ -44,6 +44,13 @@ interface BookmarkEnrichmentBatchRequester {
 interface SummaryReader {
   /** 保存済みの要約を返す。AIチャット等の読み取り用途向け。 */
   suspend fun findSummary(articleId: String): String?
+
+  /** 複数記事の保存済み要約をまとめて返す。大量読み取り側は実装のbatch queryを利用できる。 */
+  suspend fun findSummaries(articleIds: Collection<String>): Map<String, String> = buildMap {
+    articleIds.distinct().forEach { articleId ->
+      findSummary(articleId)?.let { summary -> put(articleId, summary) }
+    }
+  }
 }
 
 interface SummaryRepository :
