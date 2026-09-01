@@ -83,6 +83,8 @@ APK共有
 7. 関連 ADR — 判断理由、却下案、compatibility condition
 8. production code / tests / machine-readable manifests — 実装との照合
 
+関連 ADR は最新のものだけでなく、対象判断に至る古い ADR、`Superseded` / `Amended by` / `Refines` 等で接続された ADR も必要に応じて確認する。
+
 詳細な調査手順は `docs/architecture/change-impact-review.md` を参照する。
 
 ## 4. 実装前の Change Impact Review
@@ -140,7 +142,9 @@ agent がレビューまたは事前判断が必要と判断した場合は、�
 
 既存の仕組みで要求を満たせる場合は、新しい概念や第二実装を追加するより既存 capability の拡張を優先する。
 
-新しい設計判断が発生した場合は ADR を追加または更新する。current architecture が変わる場合は `docs/architecture/` も同じ変更内で更新する。
+設計的な意思決定または既存設計の変更が発生した場合は ADR に記録する。新規 ADR の追加だけを選択肢とせず、関連する古い ADR を確認し、判断の関係に応じて追記、`Amended by` / `Refines` 等の関係更新、`Superseded` への変更などを行う。古い ADR を現在形へ単純に書き換えて履歴を失わせない。
+
+current architecture が変わる場合は `docs/architecture/` も同じ変更内で更新する。
 
 ## 7. テストと検証
 
@@ -259,6 +263,7 @@ Tests proving the change:
 - user-visible behavior が変わるなら `docs/spec.md`
 - current architecture が変わるなら `docs/architecture/`
 - design decision があるなら ADR
+- 既存 ADR の判断を変更・補足・廃止するなら、関連する古い ADR の status / relationship / reference
 - machine-checkable invariant が変わるなら verifier / lint / manifest
 
 の更新漏れがないか確認する。
