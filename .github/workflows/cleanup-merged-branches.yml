@@ -1,0 +1,100 @@
+name: Cleanup merged branches
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-merged-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete merged PR branches
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete merged PR branches that have not changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repo="${GITHUB_REPOSITORY}"
+          default_branch="${{ github.event.repository.default_branch }}"
+          pulls_file="${RUNNER_TEMP}/pulls.json"
+          branches_file="${RUNNER_TEMP}/branches.json"
+
+          gh api --paginate -X GET "repos/${repo}/pulls?state=all&per_page=100" \
+            | jq -s 'add' > "${pulls_file}"
+          gh api --paginate -X GET "repos/${repo}/branches?per_page=100" \
+            | jq -s 'add' > "${branches_file}"
+
+          deleted_count=0
+          skipped_count=0
+
+          while IFS= read -r branch_json; do
+            branch="$(jq -r '.name' <<< "${branch_json}")"
+            sha="$(jq -r '.commit.sha' <<< "${branch_json}")"
+            protected="$(jq -r '.protected' <<< "${branch_json}")"
+
+            if [[ "${branch}" == "${default_branch}" || "${protected}" == "true" ]]; then
+              skipped_count=$((skipped_count + 1))
+              continue
+            fi
+
+            if jq -e \
+              --arg repo "${repo}" \
+              --arg branch "${branch}" \
+              'any(.[]; .state == "open" and .head.repo.full_name == $repo and .head.ref == $branch)' \
+              "${pulls_file}" >/dev/null; then
+              echo "Skip ${branch}: an open pull request still uses this branch."
+              skipped_count=$((skipped_count + 1))
+              continue
+            fi
+
+            merged_pr_number="$(
+              jq -r \
+                --arg repo "${repo}" \
+                --arg branch "${branch}" \
+                --arg sha "${sha}" \
+                '[
+                  .[]
+                  | select(
+                      .merged_at != null
+                      and .head.repo.full_name == $repo
+                      and .head.ref == $branch
+                      and .head.sha == $sha
+                    )
+                ]
+                | sort_by(.merged_at)
+                | last
+                | .number // empty' \
+                "${pulls_file}"
+            )"
+
+            if [[ -z "${merged_pr_number}" ]]; then
+              echo "Skip ${branch}: current head does not match a merged pull request."
+              skipped_count=$((skipped_count + 1))
+              continue
+            fi
+
+            echo "Delete ${branch}: unchanged since merged pull request #${merged_pr_number}."
+            gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
+            deleted_count=$((deleted_count + 1))
+          done < <(jq -c '.[]' "${branches_file}")
+
+          {
+            echo "### Merged branch cleanup"
+            echo
+            echo "- Deleted: ${deleted_count}"
+            echo "- Skipped: ${skipped_count}"
+            echo
+            echo "A branch is deleted only when its current head SHA exactly matches the head SHA of a merged pull request."
+          } >> "${GITHUB_STEP_SUMMARY}"
