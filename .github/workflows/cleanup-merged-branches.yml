@@ -16,11 +16,11 @@ concurrency:
 
 jobs:
   cleanup:
-    name: Delete integrated branches
+    name: Delete stale branches
     runs-on: ubuntu-latest
 
     steps:
-      - name: Delete merged and PR-unassociated branches
+      - name: Delete closed-PR and PR-unassociated branches
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -37,13 +37,12 @@ jobs:
           gh api --paginate -X GET "repos/${repo}/branches?per_page=100" \
             | jq -s 'add' > "${branches_file}"
 
-          deleted_merged_count=0
+          deleted_closed_pr_count=0
           deleted_unassociated_count=0
           skipped_count=0
 
           while IFS= read -r branch_json; do
             branch="$(jq -r '.name' <<< "${branch_json}")"
-            sha="$(jq -r '.commit.sha' <<< "${branch_json}")"
             protected="$(jq -r '.protected' <<< "${branch_json}")"
 
             if [[ "${branch}" == "${default_branch}" || "${protected}" == "true" ]]; then
@@ -61,50 +60,28 @@ jobs:
               continue
             fi
 
-            merged_pr_number="$(
+            closed_pr_number="$(
               jq -r \
                 --arg repo "${repo}" \
                 --arg branch "${branch}" \
-                --arg sha "${sha}" \
                 '[
                   .[]
                   | select(
-                      .merged_at != null
+                      .state == "closed"
                       and .head.repo.full_name == $repo
                       and .head.ref == $branch
-                      and .head.sha == $sha
                     )
                 ]
-                | sort_by(.merged_at)
+                | sort_by(.closed_at)
                 | last
                 | .number // empty' \
                 "${pulls_file}"
             )"
 
-            if [[ -n "${merged_pr_number}" ]]; then
-              echo "Delete ${branch}: unchanged since merged pull request #${merged_pr_number}."
+            if [[ -n "${closed_pr_number}" ]]; then
+              echo "Delete ${branch}: associated pull request #${closed_pr_number} is closed."
               gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
-              deleted_merged_count=$((deleted_merged_count + 1))
-              continue
-            fi
-
-            associated_pr_number="$(
-              jq -r \
-                --arg repo "${repo}" \
-                --arg branch "${branch}" \
-                '[
-                  .[]
-                  | select(.head.repo.full_name == $repo and .head.ref == $branch)
-                ]
-                | sort_by(.created_at)
-                | last
-                | .number // empty' \
-                "${pulls_file}"
-            )"
-
-            if [[ -n "${associated_pr_number}" ]]; then
-              echo "Skip ${branch}: it is associated with pull request #${associated_pr_number}, but the current head is not an unchanged merged PR head."
-              skipped_count=$((skipped_count + 1))
+              deleted_closed_pr_count=$((deleted_closed_pr_count + 1))
               continue
             fi
 
@@ -113,15 +90,16 @@ jobs:
             deleted_unassociated_count=$((deleted_unassociated_count + 1))
           done < <(jq -c '.[]' "${branches_file}")
 
-          deleted_count=$((deleted_merged_count + deleted_unassociated_count))
+          deleted_count=$((deleted_closed_pr_count + deleted_unassociated_count))
 
           {
             echo "### Branch cleanup"
             echo
             echo "- Deleted: ${deleted_count}"
-            echo "  - Unchanged merged PR branches: ${deleted_merged_count}"
+            echo "  - Branches associated with closed PRs: ${deleted_closed_pr_count}"
             echo "  - Branches never associated with a PR: ${deleted_unassociated_count}"
             echo "- Skipped: ${skipped_count}"
             echo
-            echo "Branches that have never been associated with a pull request are deleted regardless of commits that are not present on ${default_branch}."
+            echo "Branches are kept only when they are the default/protected branch or are currently used by an open pull request."
+            echo "Closed-PR and PR-unassociated branches are deleted regardless of commits that are not present on ${default_branch}."
           } >> "${GITHUB_STEP_SUMMARY}"
