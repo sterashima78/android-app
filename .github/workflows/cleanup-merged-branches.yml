@@ -2,7 +2,8 @@ name: Cleanup merged branches
 
 on:
   schedule:
-    - cron: "17 3 * * *"
+    # GitHub Actions cron is UTC. 17:00 UTC = 02:00 JST on the following day.
+    - cron: "0 17 * * *"
   workflow_dispatch:
 
 permissions:
@@ -15,11 +16,11 @@ concurrency:
 
 jobs:
   cleanup:
-    name: Delete merged PR branches
+    name: Delete integrated branches
     runs-on: ubuntu-latest
 
     steps:
-      - name: Delete merged PR branches that have not changed
+      - name: Delete merged and safely integrated branches
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -36,7 +37,20 @@ jobs:
           gh api --paginate -X GET "repos/${repo}/branches?per_page=100" \
             | jq -s 'add' > "${branches_file}"
 
-          deleted_count=0
+          default_sha="$(
+            jq -r \
+              --arg branch "${default_branch}" \
+              '.[] | select(.name == $branch) | .commit.sha' \
+              "${branches_file}"
+          )"
+
+          if [[ -z "${default_sha}" || "${default_sha}" == "null" ]]; then
+            echo "Could not resolve the default branch SHA for ${default_branch}." >&2
+            exit 1
+          fi
+
+          deleted_merged_count=0
+          deleted_unassociated_count=0
           skipped_count=0
 
           while IFS= read -r branch_json; do
@@ -79,22 +93,81 @@ jobs:
                 "${pulls_file}"
             )"
 
-            if [[ -z "${merged_pr_number}" ]]; then
-              echo "Skip ${branch}: current head does not match a merged pull request."
+            if [[ -n "${merged_pr_number}" ]]; then
+              echo "Delete ${branch}: unchanged since merged pull request #${merged_pr_number}."
+              gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
+              deleted_merged_count=$((deleted_merged_count + 1))
+              continue
+            fi
+
+            associated_pr_number="$(
+              jq -r \
+                --arg repo "${repo}" \
+                --arg branch "${branch}" \
+                '[
+                  .[]
+                  | select(.head.repo.full_name == $repo and .head.ref == $branch)
+                ]
+                | sort_by(.created_at)
+                | last
+                | .number // empty' \
+                "${pulls_file}"
+            )"
+
+            if [[ -n "${associated_pr_number}" ]]; then
+              echo "Skip ${branch}: it is associated with pull request #${associated_pr_number}, but the current head is not an unchanged merged PR head."
               skipped_count=$((skipped_count + 1))
               continue
             fi
 
-            echo "Delete ${branch}: unchanged since merged pull request #${merged_pr_number}."
-            gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
-            deleted_count=$((deleted_count + 1))
+            merged_alias_pr_number="$(
+              jq -r \
+                --arg repo "${repo}" \
+                --arg sha "${sha}" \
+                '[
+                  .[]
+                  | select(
+                      .merged_at != null
+                      and .head.repo.full_name == $repo
+                      and .head.sha == $sha
+                    )
+                ]
+                | sort_by(.merged_at)
+                | last
+                | .number // empty' \
+                "${pulls_file}"
+            )"
+
+            if [[ -n "${merged_alias_pr_number}" ]]; then
+              echo "Delete ${branch}: no PR uses this branch name, and its head matches merged pull request #${merged_alias_pr_number}."
+              gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
+              deleted_unassociated_count=$((deleted_unassociated_count + 1))
+              continue
+            fi
+
+            comparison="$(gh api -X GET "repos/${repo}/compare/${default_sha}...${sha}")"
+            ahead_by="$(jq -r '.ahead_by' <<< "${comparison}")"
+
+            if [[ "${ahead_by}" == "0" ]]; then
+              echo "Delete ${branch}: no PR uses this branch name, and it has no commits ahead of ${default_branch}."
+              gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
+              deleted_unassociated_count=$((deleted_unassociated_count + 1))
+              continue
+            fi
+
+            echo "Skip ${branch}: no PR uses this branch name, but it still has ${ahead_by} commit(s) ahead of ${default_branch}."
+            skipped_count=$((skipped_count + 1))
           done < <(jq -c '.[]' "${branches_file}")
 
+          deleted_count=$((deleted_merged_count + deleted_unassociated_count))
+
           {
-            echo "### Merged branch cleanup"
+            echo "### Branch cleanup"
             echo
             echo "- Deleted: ${deleted_count}"
+            echo "  - Unchanged merged PR branches: ${deleted_merged_count}"
+            echo "  - PR-unassociated branches already integrated into ${default_branch}: ${deleted_unassociated_count}"
             echo "- Skipped: ${skipped_count}"
             echo
-            echo "A branch is deleted only when its current head SHA exactly matches the head SHA of a merged pull request."
+            echo "PR-unassociated branches are deleted only when their head exactly matches a merged PR head or they have no commits ahead of ${default_branch}."
           } >> "${GITHUB_STEP_SUMMARY}"
