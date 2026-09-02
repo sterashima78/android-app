@@ -2,7 +2,7 @@
 
 この文書は、このリポジトリで AI agent に開発を依頼するときの共通入口である。
 
-依頼時にこのファイルを参照するよう指示された agent は、個別の実装指示だけでなく、この文書に定めた調査・設計判断・実装・検証・レビュー・PR・マージ・APK共有までの流れを適用する。
+依頼時にこのファイルを参照するよう指示された agent は、個別の実装指示だけでなく、この文書に定めた調査・設計判断・Draft PR・実装・検証・レビュー・PR・マージ・APK共有までの流れを適用する。
 
 詳細なアーキテクチャ判断や current state はこの文書へ複製せず、`docs/architecture/`、`docs/adr/`、machine-readable architecture rule、production code、test を正本とする。
 
@@ -19,7 +19,7 @@
 - 追加される複雑性や将来の削除コストを許容するか
 - ownership、durable state、trust boundary、compatibility を変更してよいか
 
-AI agent は調査、設計案作成、実装、テスト、ドキュメント更新、独立レビュー、PR作成、マージまで担当できる。
+AI agent は調査、設計案作成、Draft PR 作成、実装、テスト、ドキュメント更新、独立レビュー、PR更新、マージまで担当できる。
 
 ## 2. 全体フロー
 
@@ -35,6 +35,12 @@ Change Impact Brief（必要な変更のみ）
   +--> 人間の判断が必要 --> 判断を得るまで production code を変更しない
   |
   v
+実装ブランチ作成 / 最初の変更
+  |
+  v
+Draft PR 作成
+  |
+  v
 AI agent による実装
   |
   v
@@ -47,7 +53,7 @@ System Diff
 独立レビュー
   |
   v
-Pull Request
+Draft PR 更新 / Ready for review
   |
   v
 CI
@@ -129,6 +135,12 @@ agent がレビューまたは事前判断が必要と判断した場合は、�
 
 実装時は `docs/architecture/principles.md` と対象領域の current architecture document を守る。
 
+実装ブランチを remote へ push し、`main` との差分になる最初の変更ができた時点で Draft PR を作成する。大部分の実装、テスト、ドキュメント更新を終えるまで PR 作成を遅らせない。
+
+`.github/workflows/cleanup-merged-branches.yml` は default / protected branch と open PR が使用する branch だけを保持するため、open な Draft PR は作業ブランチを保持するシグナルでもある。remote に作業ブランチを残したまま open PR がない状態を継続しない。
+
+Draft PR の作成時点では最終的な System Diff や Verification result が未確定でもよい。目的、想定 scope、作業中であることが判別できる情報を記載し、実装の進行に合わせて更新する。
+
 特に次を暗黙に変更しない。
 
 - Context / feature ownership
@@ -183,7 +195,7 @@ PR CI の baseline は `.github/workflows/check.yml` とし、少なくとも次
 
 ## 8. 実装後の System Diff
 
-PR を作る前に、コード diff とは別に system の変化を整理する。
+Draft PR を Ready for review にする前に、コード diff とは別に system の変化を整理する。
 
 最低限、次を確認する。
 
@@ -224,9 +236,9 @@ Tests proving the change:
 
 詳細は `docs/architecture/change-impact-review.md` の Post-change System Diff を参照する。
 
-## 9. PR 作成前の独立レビュー
+## 9. Ready for review 前の独立レビュー
 
-実装を担当した観点とは別に、少なくとも次の4点をレビューする。
+実装を担当した観点とは別に、Draft PR を Ready for review にする前に少なくとも次の4点をレビューする。
 
 ### 9.1 Public repository
 
@@ -270,7 +282,7 @@ Tests proving the change:
 
 ## 10. Pull Request
 
-PR には、単なる実装ファイル一覧ではなく変更の意味を記載する。
+Draft PR は実装の早い段階で作成し、進捗に合わせて内容を更新する。Ready for review にする時点では、単なる実装ファイル一覧ではなく変更の意味を記載する。
 
 最低限、次を含める。
 
@@ -280,7 +292,9 @@ PR には、単なる実装ファイル一覧ではなく変更の意味を記�
 - Verification / test result
 - 必要な ADR / architecture / spec 更新
 
-PR 作成前に `main` との差分を確認し、意図しないファイルが含まれていないことを確認する。
+Ready for review にする前に `main` との差分を確認し、意図しないファイルが含まれていないことを確認する。
+
+独立レビューと必要な検証が完了し、PR本文が現在の変更内容を反映したら Draft を解除して Ready for review にする。
 
 ## 11. CI とマージ
 
@@ -312,7 +326,7 @@ production code を変更していない documentation-only PR であっても�
 
 ```text
 docs/development-workflow.md
-  開発の進め方 / decision gate / PR / merge / delivery
+  開発の進め方 / decision gate / Draft PR / PR / merge / delivery
 
         |
         v
@@ -350,7 +364,7 @@ machine-readable rules / production code / tests
 docs/development-workflow.md に従って進めてください。
 ```
 
-この指示を受けた agent は、この文書を入口として必要な current architecture / ADR / code / test を調査し、必要な場合だけ Change Impact Brief と人間の判断を挟み、実装から APK 共有までを一連の作業として扱う。
+この指示を受けた agent は、この文書を入口として必要な current architecture / ADR / code / test を調査し、必要な場合だけ Change Impact Brief と人間の判断を挟み、Draft PR 作成から実装、APK 共有までを一連の作業として扱う。
 
 ## Related documents
 
