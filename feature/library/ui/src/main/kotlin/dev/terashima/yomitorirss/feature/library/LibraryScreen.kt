@@ -12,12 +12,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -25,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -36,18 +38,18 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,6 +66,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -430,7 +434,6 @@ private fun LibrarySeriesTab(
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibrarySeriesBooksSheet(
   section: LibrarySeriesSection,
@@ -443,71 +446,86 @@ private fun LibrarySeriesBooksSheet(
 ) {
   var mergeMenuExpanded by remember(section.key) { mutableStateOf(false) }
 
-  ModalBottomSheet(
+  Dialog(
     onDismissRequest = onDismiss,
+    properties = DialogProperties(
+      usePlatformDefaultWidth = false,
+      dismissOnClickOutside = false,
+    ),
   ) {
-    Column(
+    Surface(
       modifier = Modifier
-        .fillMaxWidth()
-        .fillMaxHeight(0.85f),
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.safeDrawing),
+      color = MaterialTheme.colorScheme.surface,
     ) {
-      Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-      ) {
-        Text(
-          section.name,
-          style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.SemiBold,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-          "${section.books.size} 冊",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (mergeTargets.isNotEmpty()) {
-          Box {
-            TextButton(onClick = { mergeMenuExpanded = true }) {
-              Text("別のシリーズにマージ")
-            }
-            DropdownMenu(
-              expanded = mergeMenuExpanded,
-              onDismissRequest = { mergeMenuExpanded = false },
-            ) {
-              mergeTargets.forEach { target ->
-                DropdownMenuItem(
-                  text = {
-                    Column {
-                      Text(target.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                      Text(
-                        target.books.map { it.source.label }.distinct().joinToString(" / "),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                      )
-                    }
-                  },
-                  onClick = {
-                    mergeMenuExpanded = false
-                    onMerge(target)
-                  },
-                )
+      Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+          verticalAlignment = Alignment.Top,
+        ) {
+          Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+          ) {
+            Text(
+              section.name,
+              style = MaterialTheme.typography.titleLarge,
+              fontWeight = FontWeight.SemiBold,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+              "${section.books.size} 冊",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (mergeTargets.isNotEmpty()) {
+              Box {
+                TextButton(onClick = { mergeMenuExpanded = true }) {
+                  Text("別のシリーズにマージ")
+                }
+                DropdownMenu(
+                  expanded = mergeMenuExpanded,
+                  onDismissRequest = { mergeMenuExpanded = false },
+                ) {
+                  mergeTargets.forEach { target ->
+                    DropdownMenuItem(
+                      text = {
+                        Column {
+                          Text(target.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                          Text(
+                            target.books.map { it.source.label }.distinct().joinToString(" / "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                          )
+                        }
+                      },
+                      onClick = {
+                        mergeMenuExpanded = false
+                        onMerge(target)
+                      },
+                    )
+                  }
+                }
               }
             }
           }
+          IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, contentDescription = "閉じる")
+          }
         }
+        LibraryBookGrid(
+          books = section.books,
+          actionLabel = "非表示",
+          onOpenSmbBook = onOpenSmbBook,
+          onAction = onHideBook,
+          onEditSeries = onEditSeries,
+          modifier = Modifier.weight(1f),
+        )
       }
-      LibraryBookGrid(
-        books = section.books,
-        actionLabel = "非表示",
-        onOpenSmbBook = onOpenSmbBook,
-        onAction = onHideBook,
-        onEditSeries = onEditSeries,
-        modifier = Modifier.weight(1f),
-      )
     }
   }
 }
