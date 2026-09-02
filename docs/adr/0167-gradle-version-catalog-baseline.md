@@ -71,10 +71,10 @@ version catalog の対象を、既存の Kotlin coroutines Android / Kotlin seri
 - AndroidX Core KTX 1.17.0
 - AndroidX Activity Compose 1.13.0
 - AndroidX Navigation Compose 2.9.8
-- AndroidX WebKit 1.17.0
+- AndroidX WebKit 1.16.0
 
 追加した dependency は既存の全利用箇所を同じ変更で generated `libs` accessor へ移行する。`RepositoryGovernanceSourceTest` は移行対象 coordinate の literal 宣言を repository 内の `build.gradle.kts` から横断検出し、catalog と module-local declaration の二重正本化を防ぐ。
 
-同時に Gradle wrapper を 9.5.0 から 9.6.1 へ更新する。AndroidX WebKit は 1.16.0 から 1.17.0、Activity Compose は 1.11.0 から 1.13.0 へ更新する。
+同時に Gradle wrapper を 9.5.0 から 9.6.1、Activity Compose を 1.11.0 から 1.13.0 へ更新する。AndroidX WebKit は 2026-09-03 時点の stable である 1.16.0 を維持し、version catalog への集約のみ行う。
 
-2026-09-03 時点で、Compose / Core / Navigation / Lifecycle の一部最新 stable 系列は API 37 build baseline への更新とまとめて検討すべきため、本拡張には含めない。`compileSdk` / `targetSdk` を変更する場合は既存の platform ADR に従い、別の platform decision として扱う。
+2026-09-03 時点で、API 37 build baseline への更新を伴う dependency 群は本拡張には含めない。`compileSdk` / `targetSdk` を変更する場合は既存の platform ADR に従い、別の platform decision として扱う。また、公開直後の Android Gradle Plugin 9.4 系への更新は今回の catalog migration と分離し、現行 checks と build pipeline を安定させたうえで別変更として扱う。
