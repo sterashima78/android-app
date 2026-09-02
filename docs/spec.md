@@ -1,6 +1,6 @@
 # Mosaic 現行仕様
 
-- 更新日: 2026-08-31
+- 更新日: 2026-09-03
 - 対象: 現在の `main` 系列
 
 ## 1. 目的
@@ -177,6 +177,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - X向けWebView表示とカスタムCSS設定を提供する。
 - 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
+- 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。
 - RSS未読やTask等をホーム画面widgetへ表示する。
 - Gameなど独立した補助featureを含む。
