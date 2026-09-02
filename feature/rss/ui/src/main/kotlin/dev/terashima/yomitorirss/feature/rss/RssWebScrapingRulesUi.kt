@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package dev.terashima.yomitorirss.feature.rss
 
 import androidx.compose.foundation.layout.Arrangement
@@ -7,13 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -22,11 +22,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @Composable
 internal fun RssWebScrapingRulesUi(
@@ -131,7 +132,7 @@ internal fun RssWebScrapingRulesUi(
   }
 
   if (creatingRule || editingRule != null) {
-    RssWebScrapingRuleEditorSheet(
+    RssWebScrapingRuleEditorDialog(
       rule = editingRule,
       testState = testState,
       onSave = { id, pattern, code, timeout ->
@@ -151,7 +152,7 @@ internal fun RssWebScrapingRulesUi(
 }
 
 @Composable
-private fun RssWebScrapingRuleEditorSheet(
+private fun RssWebScrapingRuleEditorDialog(
   rule: RssWebScrapingRule?,
   testState: WebScrapingRuleTestUiState,
   onSave: (String?, String, String, Int) -> Unit,
@@ -175,152 +176,161 @@ private fun RssWebScrapingRuleEditorSheet(
     listOf(urlPattern, functionCode, timeoutText, testUrl).joinToString("\u0000")
   }
   val showTestResult = testedSignature == currentSignature
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
   LaunchedEffect(rule?.id) { onClearTest() }
 
-  ModalBottomSheet(
+  Dialog(
     onDismissRequest = { if (!testState.running) onDismiss() },
-    sheetState = sheetState,
+    properties = DialogProperties(
+      usePlatformDefaultWidth = false,
+      dismissOnClickOutside = false,
+    ),
   ) {
-    Column(
+    Surface(
       modifier = Modifier
-        .fillMaxWidth()
-        .fillMaxHeight(0.94f)
-        .imePadding()
-        .padding(horizontal = 20.dp),
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.safeDrawing),
+      color = MaterialTheme.colorScheme.surface,
     ) {
-      Text(
-        if (rule == null) "Web 取得ルールを追加" else "Web 取得ルールを編集",
-        style = MaterialTheme.typography.headlineSmall,
-      )
-      Spacer(Modifier.height(10.dp))
       Column(
         modifier = Modifier
-          .fillMaxWidth()
-          .weight(1f)
-          .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+          .fillMaxSize()
+          .imePadding()
+          .padding(horizontal = 20.dp),
       ) {
         Text(
-          "URL パターンは HTTPS glob です。* は任意長、? は1文字に一致します。",
-          style = MaterialTheme.typography.bodySmall,
+          if (rule == null) "Web 取得ルールを追加" else "Web 取得ルールを編集",
+          modifier = Modifier.padding(top = 20.dp),
+          style = MaterialTheme.typography.headlineSmall,
         )
-        OutlinedTextField(
-          value = urlPattern,
-          onValueChange = {
-            urlPattern = it
-            testedSignature = null
-          },
-          modifier = Modifier.fillMaxWidth(),
-          label = { Text("URL パターン") },
-          placeholder = { Text("https://example.com/series/*") },
-          singleLine = true,
-        )
-        OutlinedTextField(
-          value = timeoutText,
-          onValueChange = {
-            timeoutText = it.filter(Char::isDigit)
-            testedSignature = null
-          },
-          modifier = Modifier.fillMaxWidth(),
-          label = { Text("WebView タイムアウト（秒）") },
-          supportingText = {
-            Text("$MIN_RSS_WEB_SCRAPING_TIMEOUT_SECONDS〜$MAX_RSS_WEB_SCRAPING_TIMEOUT_SECONDS 秒")
-          },
-          isError = timeoutText.isNotBlank() && !timeoutValid,
-          singleLine = true,
-        )
-        Text(
-          "関数はページコンテキストで実行され、Promise<{ title, siteUrl?, items }> を返します。" +
-            "items は title と url が必須、externalId と publishedAt は任意です。",
-          style = MaterialTheme.typography.bodySmall,
-        )
-        OutlinedTextField(
-          value = functionCode,
-          onValueChange = {
-            functionCode = it
-            testedSignature = null
-          },
+        Spacer(Modifier.height(10.dp))
+        Column(
           modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 280.dp),
-          label = { Text("取得スクリプト") },
-          textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-          minLines = 12,
-        )
-
-        HorizontalDivider()
-        Text("実行テスト", style = MaterialTheme.typography.titleMedium)
-        Text(
-          "保存前の URL パターンとスクリプトをそのまま実行し、実際に生成されるデータを確認します。",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedTextField(
-          value = testUrl,
-          onValueChange = {
-            testUrl = it
-            testedSignature = null
-          },
-          modifier = Modifier.fillMaxWidth(),
-          label = { Text("テスト URL") },
-          placeholder = { Text("https://example.com/series/sample") },
-          singleLine = true,
-        )
-        TextButton(
-          onClick = {
-            val timeout = timeoutSeconds ?: return@TextButton
-            testedSignature = currentSignature
-            onTest(urlPattern, functionCode, timeout, testUrl)
-          },
-          enabled = !testState.running &&
-            urlPattern.isNotBlank() &&
-            functionCode.isNotBlank() &&
-            testUrl.isNotBlank() &&
-            timeoutValid,
+            .weight(1f)
+            .verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          Text(if (testState.running) "実行中…" else "実行テスト")
-        }
-        if (testState.running && showTestResult) {
-          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-        if (showTestResult) {
-          testState.error?.let { error ->
-            Text(
-              "取得失敗: $error",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.error,
-            )
-          }
-          testState.result?.let { result ->
-            RssWebScrapingPreviewCard(result)
-          }
-        }
-        Spacer(Modifier.height(8.dp))
-      }
+          Text(
+            "URL パターンは HTTPS glob です。* は任意長、? は1文字に一致します。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+          OutlinedTextField(
+            value = urlPattern,
+            onValueChange = {
+              urlPattern = it
+              testedSignature = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("URL パターン") },
+            placeholder = { Text("https://example.com/series/*") },
+            singleLine = true,
+          )
+          OutlinedTextField(
+            value = timeoutText,
+            onValueChange = {
+              timeoutText = it.filter(Char::isDigit)
+              testedSignature = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("WebView タイムアウト（秒）") },
+            supportingText = {
+              Text("$MIN_RSS_WEB_SCRAPING_TIMEOUT_SECONDS〜$MAX_RSS_WEB_SCRAPING_TIMEOUT_SECONDS 秒")
+            },
+            isError = timeoutText.isNotBlank() && !timeoutValid,
+            singleLine = true,
+          )
+          Text(
+            "関数はページコンテキストで実行され、Promise<{ title, siteUrl?, items }> を返します。" +
+              "items は title と url が必須、externalId と publishedAt は任意です。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+          OutlinedTextField(
+            value = functionCode,
+            onValueChange = {
+              functionCode = it
+              testedSignature = null
+            },
+            modifier = Modifier
+              .fillMaxWidth()
+              .heightIn(min = 280.dp),
+            label = { Text("取得スクリプト") },
+            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            minLines = 12,
+          )
 
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        TextButton(onClick = onDismiss, enabled = !testState.running) {
-          Text("キャンセル")
+          HorizontalDivider()
+          Text("実行テスト", style = MaterialTheme.typography.titleMedium)
+          Text(
+            "保存前の URL パターンとスクリプトをそのまま実行し、実際に生成されるデータを確認します。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          OutlinedTextField(
+            value = testUrl,
+            onValueChange = {
+              testUrl = it
+              testedSignature = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("テスト URL") },
+            placeholder = { Text("https://example.com/series/sample") },
+            singleLine = true,
+          )
+          TextButton(
+            onClick = {
+              val timeout = timeoutSeconds ?: return@TextButton
+              testedSignature = currentSignature
+              onTest(urlPattern, functionCode, timeout, testUrl)
+            },
+            enabled = !testState.running &&
+              urlPattern.isNotBlank() &&
+              functionCode.isNotBlank() &&
+              testUrl.isNotBlank() &&
+              timeoutValid,
+          ) {
+            Text(if (testState.running) "実行中…" else "実行テスト")
+          }
+          if (testState.running && showTestResult) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+          }
+          if (showTestResult) {
+            testState.error?.let { error ->
+              Text(
+                "取得失敗: $error",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+              )
+            }
+            testState.result?.let { result ->
+              RssWebScrapingPreviewCard(result)
+            }
+          }
+          Spacer(Modifier.height(8.dp))
         }
-        TextButton(
-          onClick = {
-            val timeout = timeoutSeconds ?: return@TextButton
-            onSave(rule?.id, urlPattern, functionCode, timeout)
-          },
-          enabled = !testState.running &&
-            urlPattern.isNotBlank() &&
-            functionCode.isNotBlank() &&
-            timeoutValid,
+
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically,
         ) {
-          Text("保存")
+          TextButton(onClick = onDismiss, enabled = !testState.running) {
+            Text("キャンセル")
+          }
+          TextButton(
+            onClick = {
+              val timeout = timeoutSeconds ?: return@TextButton
+              onSave(rule?.id, urlPattern, functionCode, timeout)
+            },
+            enabled = !testState.running &&
+              urlPattern.isNotBlank() &&
+              functionCode.isNotBlank() &&
+              timeoutValid,
+          ) {
+            Text("保存")
+          }
         }
       }
     }

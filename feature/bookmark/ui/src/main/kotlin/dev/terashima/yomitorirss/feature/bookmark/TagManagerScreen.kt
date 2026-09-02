@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package dev.terashima.yomitorirss.feature.bookmark
 
 import androidx.compose.foundation.layout.Arrangement
@@ -7,23 +5,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
 import dev.terashima.yomitorirss.feature.article.ContentType
@@ -142,53 +144,65 @@ internal fun TagManagerScreen(
   }
 
   selectedTag?.let { tag ->
-    ModalBottomSheet(
+    Dialog(
       onDismissRequest = { selectedTagId = null },
+      properties = DialogProperties(
+        usePlatformDefaultWidth = false,
+        dismissOnClickOutside = false,
+      ),
     ) {
-      Column(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
+      Surface(
+        modifier = Modifier
+          .fillMaxSize()
+          .windowInsetsPadding(WindowInsets.safeDrawing),
+        color = MaterialTheme.colorScheme.surface,
       ) {
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 8.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Text(
-            "${tag.name}  ${selectedBookmarks.size}件",
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-          )
-          IconButton(
-            onClick = {
-              editing = tag
-              editingName = tag.name
-            },
+        Column(modifier = Modifier.fillMaxSize()) {
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
           ) {
-            Icon(Icons.Default.Edit, "タグ名を変更")
+            Text(
+              "${tag.name}  ${selectedBookmarks.size}件",
+              style = MaterialTheme.typography.titleMedium,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              modifier = Modifier.weight(1f),
+            )
+            IconButton(
+              onClick = {
+                editing = tag
+                editingName = tag.name
+              },
+            ) {
+              Icon(Icons.Default.Edit, "タグ名を変更")
+            }
+            IconButton(
+              onClick = {
+                selectedTagId = null
+                onDelete(tag)
+              },
+            ) {
+              Icon(Icons.Default.Delete, "タグを削除")
+            }
+            IconButton(onClick = { selectedTagId = null }) {
+              Icon(Icons.Default.Close, "閉じる")
+            }
           }
-          IconButton(
-            onClick = {
-              selectedTagId = null
-              onDelete(tag)
-            },
-          ) {
-            Icon(Icons.Default.Delete, "タグを削除")
-          }
-        }
 
-        ArticleList(
-          modifier = Modifier.weight(1f),
-          articles = selectedBookmarks.map(BookmarkedArticle::article),
-          bookmarkDetails = selectedBookmarks.associateBy { it.article.id },
-          emptyText = "このタグの記事はありません",
-          left = SwipeChoice("ブックマーク解除", MaterialTheme.colorScheme.error, onUnsave),
-          onOpen = onOpen,
-          onSummarize = onSummarize,
-          onEditTags = onEditTags,
-          onMoveFolder = onMoveFolder,
-          onSetContentType = onSetContentType,
-        )
+          ArticleList(
+            modifier = Modifier.weight(1f),
+            articles = selectedBookmarks.map(BookmarkedArticle::article),
+            bookmarkDetails = selectedBookmarks.associateBy { it.article.id },
+            emptyText = "このタグの記事はありません",
+            left = SwipeChoice("ブックマーク解除", MaterialTheme.colorScheme.error, onUnsave),
+            onOpen = onOpen,
+            onSummarize = onSummarize,
+            onEditTags = onEditTags,
+            onMoveFolder = onMoveFolder,
+            onSetContentType = onSetContentType,
+          )
+        }
       }
     }
   }
