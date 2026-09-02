@@ -39,7 +39,7 @@ class RepositoryGovernanceSourceTest {
     assertTrue("catalog must own the AndroidX Core version", "androidx-core = \"1.17.0\"" in catalog)
     assertTrue("catalog must own the AndroidX Activity version", "androidx-activity = \"1.13.0\"" in catalog)
     assertTrue("catalog must own the AndroidX Navigation version", "androidx-navigation = \"2.9.8\"" in catalog)
-    assertTrue("catalog must own the AndroidX WebKit version", "androidx-webkit = \"1.17.0\"" in catalog)
+    assertTrue("catalog must own the AndroidX WebKit version", "androidx-webkit = \"1.16.0\"" in catalog)
     assertTrue("catalog must own the coroutines version", "kotlinx-coroutines = \"1.11.0\"" in catalog)
     assertTrue("catalog must own the serialization version", "kotlinx-serialization = \"1.11.0\"" in catalog)
     assertTrue("catalog must own the JUnit4 version", "junit4 = \"4.13.2\"" in catalog)
