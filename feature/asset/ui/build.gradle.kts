@@ -26,7 +26,7 @@ dependencies {
   implementation(project(":feature:asset:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
-  implementation("androidx.activity:activity-compose:1.11.0")
+  implementation(libs.androidx.activity.compose)
   implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
   implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
   implementation("androidx.compose.ui:ui")
