@@ -2,7 +2,7 @@
 androidx-core = "1.17.0"
 androidx-activity = "1.13.0"
 androidx-navigation = "2.9.8"
-androidx-webkit = "1.17.0"
+androidx-webkit = "1.16.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 junit4 = "4.13.2"
