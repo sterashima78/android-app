@@ -1,23 +1,23 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package dev.terashima.yomitorirss.feature.summary
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import dev.terashima.yomitorirss.core.designsystem.MarkdownText
 import dev.terashima.yomitorirss.feature.article.Article
 
@@ -40,66 +42,80 @@ fun SummaryDialog(
   onDismiss: () -> Unit,
   onRetry: (replaceBookmarkTags: Boolean) -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   var replaceBookmarkTags by remember(article.id) { mutableStateOf(false) }
-  ModalBottomSheet(
+
+  Dialog(
     onDismissRequest = onDismiss,
-    sheetState = sheetState,
+    properties = DialogProperties(
+      usePlatformDefaultWidth = false,
+      dismissOnClickOutside = false,
+    ),
   ) {
-    Column(
+    Surface(
       modifier = Modifier
-        .fillMaxWidth()
-        .fillMaxHeight(0.9f)
-        .padding(horizontal = 24.dp),
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.safeDrawing),
+      color = MaterialTheme.colorScheme.surface,
     ) {
-      Text("記事の要約", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-      Spacer(Modifier.height(8.dp))
-      Text(
-        article.title,
-        style = MaterialTheme.typography.labelLarge,
-        maxLines = 3,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Spacer(Modifier.height(16.dp))
-      LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-        item {
-          if (loading) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            Text(progress ?: "記事本文を取得しています")
-          } else {
-            MarkdownText(text.orEmpty())
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(horizontal = 24.dp),
+      ) {
+        Text(
+          "記事の要約",
+          modifier = Modifier.padding(top = 20.dp),
+          style = MaterialTheme.typography.headlineSmall,
+          fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+          article.title,
+          style = MaterialTheme.typography.labelLarge,
+          maxLines = 3,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(16.dp))
+        LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+          item {
+            if (loading) {
+              LinearProgressIndicator(Modifier.fillMaxWidth())
+              Spacer(Modifier.height(8.dp))
+              Text(progress ?: "記事本文を取得しています")
+            } else {
+              MarkdownText(text.orEmpty())
+            }
           }
         }
-      }
-      if (!loading && text != null) {
+        if (!loading && text != null) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Checkbox(
+              checked = replaceBookmarkTags,
+              onCheckedChange = { replaceBookmarkTags = it },
+            )
+            Column(modifier = Modifier.weight(1f)) {
+              Text("ブックマークのタグも再生成")
+              Text(
+                "ONにすると既存タグを生成されたタグで置き換えます",
+                style = MaterialTheme.typography.bodySmall,
+              )
+            }
+          }
+        }
+        Spacer(Modifier.height(8.dp))
         Row(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+          horizontalArrangement = Arrangement.End,
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Checkbox(
-            checked = replaceBookmarkTags,
-            onCheckedChange = { replaceBookmarkTags = it },
-          )
-          Column(modifier = Modifier.weight(1f)) {
-            Text("ブックマークのタグも再生成")
-            Text(
-              "ONにすると既存タグを生成されたタグで置き換えます",
-              style = MaterialTheme.typography.bodySmall,
-            )
+          if (!loading && text != null) {
+            TextButton(onClick = { onRetry(replaceBookmarkTags) }) { Text("再生成") }
           }
+          TextButton(onClick = onDismiss) { Text("閉じる") }
         }
-      }
-      Spacer(Modifier.height(8.dp))
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        if (!loading && text != null) {
-          TextButton(onClick = { onRetry(replaceBookmarkTags) }) { Text("再生成") }
-        }
-        TextButton(onClick = onDismiss) { Text("閉じる") }
       }
     }
   }
