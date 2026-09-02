@@ -61,3 +61,20 @@ source regression test で catalog entry と Settings/Chat data の alias 利用
 ## Public repository review
 
 version catalog、build script、source regression、architecture documentation のみを変更する。credential、token、private endpoint、ユーザーデータ、database、backup、診断 artifact は含めない。
+
+## 2026-09-03 extension
+
+ADR-0221 により、上記の `minSdk = 34` は現在の platform baseline ではない。現在は `compileSdk = 36` / `targetSdk = 36` / `minSdk = 35` を維持し、本拡張でも platform baseline 自体は変更しない。
+
+version catalog の対象を、既存の Kotlin coroutines Android / Kotlin serialization JSON / JUnit4 に加えて次へ拡張する。
+
+- AndroidX Core KTX 1.17.0
+- AndroidX Activity Compose 1.13.0
+- AndroidX Navigation Compose 2.9.8
+- AndroidX WebKit 1.17.0
+
+追加した dependency は既存の全利用箇所を同じ変更で generated `libs` accessor へ移行する。`RepositoryGovernanceSourceTest` は移行対象 coordinate の literal 宣言を repository 内の `build.gradle.kts` から横断検出し、catalog と module-local declaration の二重正本化を防ぐ。
+
+同時に Gradle wrapper を 9.5.0 から 9.6.1 へ更新する。AndroidX WebKit は 1.16.0 から 1.17.0、Activity Compose は 1.11.0 から 1.13.0 へ更新する。
+
+2026-09-03 時点で、Compose / Core / Navigation / Lifecycle の一部最新 stable 系列は API 37 build baseline への更新とまとめて検討すべきため、本拡張には含めない。`compileSdk` / `targetSdk` を変更する場合は既存の platform ADR に従い、別の platform decision として扱う。
