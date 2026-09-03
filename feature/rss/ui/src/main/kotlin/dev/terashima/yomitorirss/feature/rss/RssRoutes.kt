@@ -72,6 +72,8 @@ fun RssRoute(
         onReadLater = rssViewModel::readLater,
         onUnsave = rssViewModel::unsave,
         onRemoveReadLater = rssViewModel::removeReadLater,
+        onReviewUnsave = rssViewModel::reviewUnsave,
+        onReviewRemoveReadLater = rssViewModel::reviewRemoveReadLater,
         onRestoreReadLater = rssViewModel::restoreReadLater,
         onOpen = onOpen,
         onSummarize = onSummarize,
