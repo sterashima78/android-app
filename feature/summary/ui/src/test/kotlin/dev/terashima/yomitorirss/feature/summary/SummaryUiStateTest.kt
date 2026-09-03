@@ -13,5 +13,9 @@ class SummaryUiStateTest {
     assertNull(state.text)
     assertFalse(state.loading)
     assertNull(state.message)
+    assertNull(state.review.articleId)
+    assertNull(state.review.text)
+    assertFalse(state.review.loading)
+    assertNull(state.review.error)
   }
 }
