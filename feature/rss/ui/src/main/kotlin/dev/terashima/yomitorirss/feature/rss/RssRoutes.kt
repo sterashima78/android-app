@@ -49,6 +49,7 @@ fun RssRoute(
   onSummarize: (Article) -> Unit,
   onPrepareReviewSummary: (Article) -> Unit,
   onRetryReviewSummary: (Article) -> Unit,
+  onStopReviewSummary: () -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
 ) {
@@ -79,6 +80,7 @@ fun RssRoute(
         onSummarize = onSummarize,
         onPrepareReviewSummary = onPrepareReviewSummary,
         onRetryReviewSummary = onRetryReviewSummary,
+        onStopReviewSummary = onStopReviewSummary,
         reviewSummaryArticleId = reviewSummaryArticleId,
         reviewSummaryText = reviewSummaryText,
         reviewSummaryLoading = reviewSummaryLoading,
