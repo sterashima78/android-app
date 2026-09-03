@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,6 +47,7 @@ fun RssScreen(
   onSummarize: (Article) -> Unit,
   onPrepareReviewSummary: (Article) -> Unit,
   onRetryReviewSummary: (Article) -> Unit,
+  onStopReviewSummary: () -> Unit,
   reviewSummaryArticleId: String?,
   reviewSummaryText: String?,
   reviewSummaryLoading: Boolean,
@@ -79,6 +81,9 @@ fun RssScreen(
       }
 
       if (reviewing) {
+        DisposableEffect(Unit) {
+          onDispose(onStopReviewSummary)
+        }
         ReadLaterReviewScreen(
           initialArticles = bookmarkedArticles,
           currentReadLater = visibleReadLater,
