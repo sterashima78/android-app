@@ -43,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.designsystem.MarkdownText
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 @Composable
@@ -61,7 +64,7 @@ internal fun ReadLaterReviewScreen(
   onRestoreReadLater: (BookmarkedArticle) -> Unit,
   onExit: () -> Unit,
 ) {
-  var sessionIds by rememberSaveable {
+  val sessionIds by rememberSaveable {
     mutableStateOf(initialArticles.map { it.article.id })
   }
   var currentIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -77,23 +80,10 @@ internal fun ReadLaterReviewScreen(
     }
   }
 
-  if (currentIndex >= sessionIds.size) {
-    ReviewCompleted(
-      remainingCount = currentReadLater.size,
-      onExit = onExit,
-    )
-    return
-  }
-
-  if (current == null) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-      LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 32.dp))
+  current?.let { reviewed ->
+    LaunchedEffect(reviewed.article.id) {
+      onPrepareSummary(reviewed.article)
     }
-    return
-  }
-
-  LaunchedEffect(current.article.id) {
-    onPrepareSummary(current.article)
   }
 
   fun advance() {
@@ -116,91 +106,105 @@ internal fun ReadLaterReviewScreen(
   }
 
   Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
-      ReviewHeader(
-        current = currentIndex + 1,
-        total = sessionIds.size,
+    when {
+      currentIndex >= sessionIds.size -> ReviewCompleted(
+        remainingCount = currentReadLater.size,
         onExit = onExit,
       )
 
-      ArticleHeader(current.article)
-      HorizontalDivider()
-
-      LazyColumn(
-        modifier = Modifier.weight(1f).fillMaxWidth(),
+      current == null -> Box(
+        Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
       ) {
-        item {
-          SummaryContent(
-            articleId = current.article.id,
-            summaryArticleId = summaryArticleId,
-            summaryText = summaryText,
-            summaryLoading = summaryLoading,
-            summaryError = summaryError,
-            onRetry = { onRetrySummary(current.article) },
-          )
-        }
+        LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 32.dp))
       }
 
-      HorizontalDivider()
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        OutlinedButton(
-          onClick = { onOpen(current.article) },
-          modifier = Modifier.weight(1f),
+      else -> Column(Modifier.fillMaxSize()) {
+        ReviewHeader(
+          current = currentIndex + 1,
+          total = sessionIds.size,
+          onExit = onExit,
+        )
+
+        ArticleHeader(current.article)
+        HorizontalDivider()
+
+        LazyColumn(
+          modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
-          Text("記事を開く")
-        }
-        OutlinedButton(
-          onClick = {
-            onOpen(
-              current.article.copy(
-                url = "https://b.hatena.ne.jp/entry?url=${Uri.encode(current.article.url)}",
-              ),
+          item {
+            SummaryContent(
+              articleId = current.article.id,
+              summaryArticleId = summaryArticleId,
+              summaryText = summaryText,
+              summaryLoading = summaryLoading,
+              summaryError = summaryError,
+              onRetry = { onRetrySummary(current.article) },
             )
-          },
-          modifier = Modifier.weight(1f),
-        ) {
-          Text("はてブを見る")
+          }
         }
-      }
 
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        OutlinedButton(
-          onClick = ::advance,
-          modifier = Modifier.weight(1f),
+        HorizontalDivider()
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          Text("保留")
+          OutlinedButton(
+            onClick = { onOpen(current.article) },
+            modifier = Modifier.weight(1f),
+          ) {
+            Text("記事を開く")
+          }
+          OutlinedButton(
+            onClick = {
+              onOpen(
+                current.article.copy(
+                  url = "https://b.hatena.ne.jp/entry?url=${Uri.encode(current.article.url)}",
+                ),
+              )
+            },
+            modifier = Modifier.weight(1f),
+          ) {
+            Text("はてブを見る")
+          }
         }
-        Button(
-          onClick = {
-            val reviewed = current
-            advance()
-            onMoveToUncategorized(reviewed.article)
-            showUndo("未分類へ移動しました") { onRestoreReadLater(reviewed) }
-          },
-          modifier = Modifier.weight(1f),
+
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          Text("未分類へ")
-        }
-        Button(
-          onClick = {
-            val reviewed = current
-            advance()
-            onDelete(reviewed.article)
-            showUndo("ブックマークを削除しました") { onRestoreReadLater(reviewed) }
-          },
-          modifier = Modifier.weight(1f),
-          colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.error,
-            contentColor = MaterialTheme.colorScheme.onError,
-          ),
-        ) {
-          Text("削除")
+          OutlinedButton(
+            onClick = ::advance,
+            modifier = Modifier.weight(1f),
+          ) {
+            Text("保留")
+          }
+          Button(
+            onClick = {
+              val item = current
+              advance()
+              onMoveToUncategorized(item.article)
+              showUndo("未分類へ移動しました") { onRestoreReadLater(item) }
+            },
+            modifier = Modifier.weight(1f),
+          ) {
+            Text("未分類へ")
+          }
+          Button(
+            onClick = {
+              val item = current
+              advance()
+              onDelete(item.article)
+              showUndo("ブックマークを削除しました") { onRestoreReadLater(item) }
+            },
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+            ),
+          ) {
+            Text("削除")
+          }
         }
       }
     }
@@ -253,7 +257,10 @@ private fun ArticleHeader(article: Article) {
     )
     Spacer(Modifier.height(6.dp))
     Text(
-      article.sourceTitle,
+      listOfNotNull(
+        article.sourceTitle.takeIf(String::isNotBlank),
+        reviewTimeLabel(article.publishedAt).takeIf(String::isNotBlank),
+      ).joinToString(" · "),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       maxLines = 1,
@@ -340,3 +347,9 @@ private fun ReviewCompleted(
     }
   }
 }
+
+private fun reviewTimeLabel(value: String): String = runCatching {
+  Instant.parse(value)
+    .atZone(ZoneId.systemDefault())
+    .format(DateTimeFormatter.ofPattern("M/d HH:mm"))
+}.getOrDefault("")
