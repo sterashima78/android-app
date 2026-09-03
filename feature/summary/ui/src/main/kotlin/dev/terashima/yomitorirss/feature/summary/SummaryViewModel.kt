@@ -158,11 +158,21 @@ class SummaryViewModel(
 
   private suspend fun waitForReviewSummary(articleId: String) {
     while (currentCoroutineContext().isActive && _state.value.review.articleId == articleId) {
-      repository.findSummary(articleId)?.let { summary ->
-        setReviewSummary(articleId, summary)
-        return
-      }
       delay(REVIEW_SUMMARY_POLL_INTERVAL_MS)
+      when (val result = repository.request(articleId, forceRefresh = false)) {
+        is SummaryRequestResult.Cached -> {
+          setReviewSummary(articleId, result.summary)
+          return
+        }
+
+        is SummaryRequestResult.PreviousFailure -> {
+          setReviewError(articleId, "要約に失敗しました: ${result.error}")
+          return
+        }
+
+        SummaryRequestResult.Processing,
+        is SummaryRequestResult.Enqueued -> Unit
+      }
     }
   }
 
