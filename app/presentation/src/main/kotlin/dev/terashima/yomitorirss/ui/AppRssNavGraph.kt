@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
@@ -34,14 +36,21 @@ internal fun NavGraphBuilder.registerRssDestinations(
       val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
       val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
       val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
+      val summaryState by summaryViewModel.state.collectAsState()
       RssRoute(
         modifier = Modifier.fillMaxSize(),
         tab = requireNotNull(rssTabForRoute(route)),
         rssViewModel = rssViewModel,
         feedViewModel = feedViewModel,
         controller = rssController,
+        reviewSummaryArticleId = summaryState.review.articleId,
+        reviewSummaryText = summaryState.review.text,
+        reviewSummaryLoading = summaryState.review.loading,
+        reviewSummaryError = summaryState.review.error,
         onOpen = onOpenArticle,
         onSummarize = { article -> summaryViewModel.summarize(article) },
+        onPrepareReviewSummary = summaryViewModel::prepareReview,
+        onRetryReviewSummary = summaryViewModel::retryReview,
         onEditTags = bookmarkEditController::editTags,
         onMoveFolder = bookmarkEditController::moveFolder,
       )
