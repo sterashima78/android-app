@@ -108,7 +108,7 @@ class SummaryViewModel(
     val review = _state.value.review
     if (
       review.articleId == article.id &&
-      (review.text != null || review.loading || review.error != null)
+      (review.text != null || reviewJob?.isActive == true || review.error != null)
     ) {
       return
     }
@@ -117,6 +117,18 @@ class SummaryViewModel(
 
   fun retryReview(article: Article) {
     loadReview(article = article, forceRefresh = true)
+  }
+
+  fun stopReview() {
+    reviewJob?.cancel()
+    reviewJob = null
+    _state.update { state ->
+      if (state.review.loading) {
+        state.copy(review = state.review.copy(loading = false))
+      } else {
+        state
+      }
+    }
   }
 
   private fun loadReview(
