@@ -51,6 +51,7 @@ internal fun NavGraphBuilder.registerRssDestinations(
         onSummarize = { article -> summaryViewModel.summarize(article) },
         onPrepareReviewSummary = summaryViewModel::prepareReview,
         onRetryReviewSummary = summaryViewModel::retryReview,
+        onStopReviewSummary = summaryViewModel::stopReview,
         onEditTags = bookmarkEditController::editTags,
         onMoveFolder = bookmarkEditController::moveFolder,
       )
