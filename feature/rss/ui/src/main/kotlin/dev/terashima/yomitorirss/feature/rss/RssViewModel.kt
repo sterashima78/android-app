@@ -80,6 +80,25 @@ class RssViewModel(
     bookmarkRepository.removeReadLater(article.id)
   }
 
+  fun restoreReadLater(bookmarkedArticle: BookmarkedArticle) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        bookmarkRepository.markReadLater(bookmarkedArticle.article.id)
+        bookmarkRepository.replaceArticleTags(
+          bookmarkedArticle.article.id,
+          bookmarkedArticle.tags.mapTo(mutableSetOf()) { it.id },
+        )
+      }.onSuccess {
+        reload()
+      }.onFailure { error ->
+        reload()
+        _state.update {
+          it.copy(message = "元に戻せませんでした: ${error.userMessage()}")
+        }
+      }
+    }
+  }
+
   fun setArticleContentType(article: Article, contentType: ContentType?) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { articleRepository.setArticleContentType(article.id, contentType) }
