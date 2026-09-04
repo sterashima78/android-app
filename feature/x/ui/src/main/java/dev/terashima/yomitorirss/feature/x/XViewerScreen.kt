@@ -286,34 +286,43 @@ fun XViewerScreen(
           }
         }
       } else {
-        TextButton(
-          onClick = {
-            val settings = repository.load()
-            when {
-              !settings.enabled -> scope.launch {
-                snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
-              }
+        Row(
+          modifier = Modifier.padding(horizontal = 4.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          TextButton(onClick = { webView.reload() }) {
+            Text("再読み込み")
+          }
+          TextButton(
+            onClick = {
+              val settings = repository.load()
+              when {
+                !settings.enabled -> scope.launch {
+                  snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
+                }
 
-              webView.url?.isXUrl() != true -> scope.launch {
-                snackbarHostState.showSnackbar("X のページを表示しているときだけ利用できます")
-              }
+                webView.url?.isXUrl() != true -> scope.launch {
+                  snackbarHostState.showSnackbar("X のページを表示しているときだけ利用できます")
+                }
 
-              else -> webView.startElementPicker { started ->
-                if (started) {
-                  pickerActive = true
-                  scope.launch {
-                    snackbarHostState.showSnackbar("非表示にする要素をタップし、右下のボタンで確定してください")
-                  }
-                } else {
-                  scope.launch {
-                    snackbarHostState.showSnackbar("要素選択モードを開始できませんでした")
+                else -> webView.startElementPicker { started ->
+                  if (started) {
+                    pickerActive = true
+                    scope.launch {
+                      snackbarHostState.showSnackbar("非表示にする要素をタップし、右下のボタンで確定してください")
+                    }
+                  } else {
+                    scope.launch {
+                      snackbarHostState.showSnackbar("要素選択モードを開始できませんでした")
+                    }
                   }
                 }
               }
-            }
-          },
-        ) {
-          Text("要素を非表示")
+            },
+          ) {
+            Text("要素を非表示")
+          }
         }
       }
     }
@@ -434,7 +443,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const pickerStyle = document.createElement('style');
         pickerStyle.id = styleId;
         pickerStyle.textContent =
-          '[' + selectedAttribute + '="true"] {' +
+          '[' + selectedAttribute + '=\"true\"] {' +
           ' outline: 3px solid #ff9800 !important;' +
           ' outline-offset: 2px !important;' +
           '}';
@@ -451,12 +460,12 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
 
         const escapeAttributeValue = (value) => String(value)
           .replace(/\\/g, '\\\\')
-          .replace(/"/g, '\\"');
+          .replace(/\"/g, '\\\"');
 
         const attributeSelector = (element, name) => {
           const value = element.getAttribute(name);
           if (!value) return null;
-          return '[' + name + '="' + escapeAttributeValue(value) + '"]';
+          return '[' + name + '=\"' + escapeAttributeValue(value) + '\"]';
         };
 
         const directCandidates = (element) => {
@@ -504,12 +513,12 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const uniquelySelects = (selector, element) => uniqueMatchFor(selector) === element;
 
         const isRepeatableBoundary = (element) => element.matches(
-          'article[data-testid="tweet"], [data-testid="cellInnerDiv"], [data-testid="UserCell"]'
+          'article[data-testid=\"tweet\"], [data-testid=\"cellInnerDiv\"], [data-testid=\"UserCell\"]'
         );
 
         const closestSemanticBoundary = (element) => element.closest(
-          'article[data-testid="tweet"], [data-testid="cellInnerDiv"], [data-testid="UserCell"], ' +
-          '[data-testid="sidebarColumn"], nav, header, aside'
+          'article[data-testid=\"tweet\"], [data-testid=\"cellInnerDiv\"], [data-testid=\"UserCell\"], ' +
+          '[data-testid=\"sidebarColumn\"], nav, header, aside'
         );
 
         const hrefStrength = (href) => {
@@ -628,7 +637,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
           event.stopImmediatePropagation();
 
           const preferredTarget = event.target.closest(
-            'a[href], button, [role="button"], [data-testid], article, section, nav, aside, img, video'
+            'a[href], button, [role=\"button\"], [data-testid], article, section, nav, aside, img, video'
           );
           const target = preferredTarget || event.target.closest('span, div');
           if (!target || target === document.body || target === document.documentElement) return;
