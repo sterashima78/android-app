@@ -1,6 +1,6 @@
 # Mosaic 現行仕様
 
-- 更新日: 2026-09-04
+- 更新日: 2026-09-05
 - 対象: 現在の `main` 系列
 
 ## 1. 目的
@@ -180,7 +180,8 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 ## 10. Web、X、Widget、補助機能
 
-- X向けWebView表示とカスタムCSS設定を提供する。
+- X向けWebView表示とカスタムCSS / JavaScript設定を提供する。
+- X WebViewでは表示中ページを手動で再読み込みでき、再読み込み後は保存済みのカスタムCSS / JavaScriptを再適用する。
 - 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
 - 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。

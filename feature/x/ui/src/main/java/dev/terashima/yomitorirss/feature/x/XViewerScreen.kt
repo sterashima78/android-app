@@ -286,34 +286,43 @@ fun XViewerScreen(
           }
         }
       } else {
-        TextButton(
-          onClick = {
-            val settings = repository.load()
-            when {
-              !settings.enabled -> scope.launch {
-                snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
-              }
+        Row(
+          modifier = Modifier.padding(horizontal = 4.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          TextButton(onClick = { webView.reload() }) {
+            Text("再読み込み")
+          }
+          TextButton(
+            onClick = {
+              val settings = repository.load()
+              when {
+                !settings.enabled -> scope.launch {
+                  snackbarHostState.showSnackbar("カスタム CSS が無効です。設定から有効にしてください")
+                }
 
-              webView.url?.isXUrl() != true -> scope.launch {
-                snackbarHostState.showSnackbar("X のページを表示しているときだけ利用できます")
-              }
+                webView.url?.isXUrl() != true -> scope.launch {
+                  snackbarHostState.showSnackbar("X のページを表示しているときだけ利用できます")
+                }
 
-              else -> webView.startElementPicker { started ->
-                if (started) {
-                  pickerActive = true
-                  scope.launch {
-                    snackbarHostState.showSnackbar("非表示にする要素をタップし、右下のボタンで確定してください")
-                  }
-                } else {
-                  scope.launch {
-                    snackbarHostState.showSnackbar("要素選択モードを開始できませんでした")
+                else -> webView.startElementPicker { started ->
+                  if (started) {
+                    pickerActive = true
+                    scope.launch {
+                      snackbarHostState.showSnackbar("非表示にする要素をタップし、右下のボタンで確定してください")
+                    }
+                  } else {
+                    scope.launch {
+                      snackbarHostState.showSnackbar("要素選択モードを開始できませんでした")
+                    }
                   }
                 }
               }
-            }
-          },
-        ) {
-          Text("要素を非表示")
+            },
+          ) {
+            Text("要素を非表示")
+          }
         }
       }
     }
