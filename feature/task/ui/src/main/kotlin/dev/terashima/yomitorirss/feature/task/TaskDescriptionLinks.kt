@@ -51,7 +51,7 @@ internal data class TaskDescriptionUrl(
 internal fun findTaskDescriptionUrls(description: String): List<TaskDescriptionUrl> =
   taskDescriptionUrlRegex.findAll(description).mapNotNull { match ->
     val value = match.value.trimEnd { it in taskDescriptionTrailingPunctuation }
-    if (value.length <= "https://".length) return@mapNotNull null
+    if (value == "http://" || value == "https://") return@mapNotNull null
     TaskDescriptionUrl(
       value = value,
       range = match.range.first..(match.range.first + value.lastIndex),
