@@ -24,6 +24,8 @@ X 表示カスタマイズに、ユーザーが直接編集する JavaScript を
 - 保存先は既存の `x_viewer_preferences` とし、`custom_javascript_enabled` と `custom_javascript` を追加する
 - JavaScript は top-level の X / Twitter ページの `onPageFinished` 後に、専用 WebView の `evaluateJavascript` で実行する
 - X 以外へ遷移したページでは実行しない
+- X 画面には表示中ページを明示的に再読み込みする操作を提供し、現在の WebView に対して `reload()` を実行する
+- 手動再読み込み後も既存の `onPageFinished` 経路を利用して、保存済みのカスタム CSS と JavaScript を再適用する。これにより設定変更の再実行と、JavaScript が既に発生させた副作用のリセットを利用者が明示的に行える
 - Android の `addJavascriptInterface` やその他の native bridge は公開しない
 - script の内容、実行結果、例外内容をアプリのログやクラッシュ診断へ出力しない
 - CSS の3セット、CSS の有効状態、要素 picker による CSS rule 生成は変更しない
