@@ -12,7 +12,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 
-private val taskDescriptionUrlRegex = Regex("https?://\\S+")
+private val taskDescriptionUrlRegex = Regex("https?://\\S+", RegexOption.IGNORE_CASE)
 private val taskDescriptionTrailingPunctuation = setOf(
   '.',
   ',',
@@ -51,7 +51,9 @@ internal data class TaskDescriptionUrl(
 internal fun findTaskDescriptionUrls(description: String): List<TaskDescriptionUrl> =
   taskDescriptionUrlRegex.findAll(description).mapNotNull { match ->
     val value = match.value.trimEnd { it in taskDescriptionTrailingPunctuation }
-    if (value == "http://" || value == "https://") return@mapNotNull null
+    if (value.equals("http://", ignoreCase = true) || value.equals("https://", ignoreCase = true)) {
+      return@mapNotNull null
+    }
     TaskDescriptionUrl(
       value = value,
       range = match.range.first..(match.range.first + value.lastIndex),
