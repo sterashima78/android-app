@@ -18,7 +18,7 @@ android {
 
 dependencies {
   implementation(project(":feature:web:domain"))
-  implementation("androidx.core:core-ktx:1.17.0")
+  implementation(libs.androidx.core.ktx)
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
   testImplementation("junit:junit:4.13.2")
 }
