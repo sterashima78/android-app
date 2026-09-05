@@ -139,13 +139,14 @@ class DefaultBookmarkRepository(
     }
   }
 
-  override suspend fun restoreReadLater(articleId: String, tagIds: Set<String>) {
+  override suspend fun restoreReadLater(articleId: String, tags: Set<Tag>) {
     reviewMutationMutex.withLock {
       val wasBookmarked = stateStore.isBookmarked(articleId)
       database.transaction {
+        val restoredTagIds = tagStore.resolveOrRestoreTags(tags)
         stateStore.save(articleId)
         associationStore.addReadLater(articleId)
-        associationStore.replaceArticleTags(articleId, tagIds)
+        associationStore.replaceArticleTags(articleId, restoredTagIds)
       }
       dataChanges.notifyChanged()
       notifyNewBookmark(articleId, wasBookmarked)
