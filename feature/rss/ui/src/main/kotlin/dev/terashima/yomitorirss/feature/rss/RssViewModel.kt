@@ -34,7 +34,6 @@ class RssViewModel(
   private val _state = MutableStateFlow(RssUiState())
   val state: StateFlow<RssUiState> = _state.asStateFlow()
   private val reloadMutex = Mutex()
-  private val reviewMutationMutex = Mutex()
 
   init {
     viewModelScope.launch(Dispatchers.IO) {
@@ -91,20 +90,17 @@ class RssViewModel(
 
   fun restoreReadLater(bookmarkedArticle: BookmarkedArticle) {
     viewModelScope.launch(Dispatchers.IO) {
-      reviewMutationMutex.withLock {
-        runCatching {
-          bookmarkRepository.markReadLater(bookmarkedArticle.article.id)
-          bookmarkRepository.replaceArticleTags(
-            bookmarkedArticle.article.id,
-            bookmarkedArticle.tags.mapTo(mutableSetOf()) { it.id },
-          )
-        }.onSuccess {
-          reload()
-        }.onFailure { error ->
-          reload()
-          _state.update {
-            it.copy(message = "元に戻せませんでした: ${error.userMessage()}")
-          }
+      runCatching {
+        bookmarkRepository.restoreReadLater(
+          bookmarkedArticle.article.id,
+          bookmarkedArticle.tags.mapTo(mutableSetOf()) { it.id },
+        )
+      }.onSuccess {
+        reload()
+      }.onFailure { error ->
+        reload()
+        _state.update {
+          it.copy(message = "元に戻せませんでした: ${error.userMessage()}")
         }
       }
     }
@@ -168,21 +164,19 @@ class RssViewModel(
   ) {
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
     viewModelScope.launch(Dispatchers.IO) {
-      reviewMutationMutex.withLock {
-        runCatching { action() }
-          .onSuccess {
-            reload()
-            _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
+      runCatching { action() }
+        .onSuccess {
+          reload()
+          _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds - article.id) }
+        }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              hiddenArticleIds = it.hiddenArticleIds - article.id,
+              message = "操作を反映できなかったため元に戻しました: ${error.userMessage()}",
+            )
           }
-          .onFailure { error ->
-            _state.update {
-              it.copy(
-                hiddenArticleIds = it.hiddenArticleIds - article.id,
-                message = "操作を反映できなかったため元に戻しました: ${error.userMessage()}",
-              )
-            }
-          }
-      }
+        }
     }
   }
 
