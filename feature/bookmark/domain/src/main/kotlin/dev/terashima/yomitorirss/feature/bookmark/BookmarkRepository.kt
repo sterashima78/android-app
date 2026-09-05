@@ -32,6 +32,7 @@ interface BookmarkMutator {
   suspend fun markReadLater(articleId: String)
   suspend fun unsaveArticle(articleId: String)
   suspend fun removeReadLater(articleId: String)
+  suspend fun restoreReadLater(articleId: String, tagIds: Set<String>)
 }
 
 interface SharedBookmarkSaver {
