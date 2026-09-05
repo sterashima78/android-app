@@ -273,12 +273,7 @@ private fun TaskRow(
           textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
         )
         if (task.description.isNotBlank()) {
-          Text(
-            text = task.description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 3,
-          )
+          TaskDescriptionText(description = task.description)
         }
         Text(
           text = taskStatusLabel(task, status),
