@@ -13,6 +13,8 @@ import dev.terashima.yomitorirss.feature.bookmark.YOUTUBE_FOLDER_NAME
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class DefaultBookmarkRepository(
   private val database: DatabaseConnection,
@@ -26,6 +28,7 @@ class DefaultBookmarkRepository(
   private val tagStore = BookmarkTagStore(database)
   private val folderStore = BookmarkFolderStore(database)
   private val associationStore = BookmarkAssociationStore(database)
+  private val reviewMutationMutex = Mutex()
   override val changes: StateFlow<Long> = dataChanges.version
 
   override suspend fun listSavedArticles(tagId: String?, folderId: String?): List<BookmarkedArticle> =
@@ -122,14 +125,31 @@ class DefaultBookmarkRepository(
   }
 
   override suspend fun unsaveArticle(articleId: String) {
-    stateStore.unsave(articleId)
-    associationStore.clearArticleAssociations(articleId)
-    dataChanges.notifyChanged()
+    reviewMutationMutex.withLock {
+      stateStore.unsave(articleId)
+      associationStore.clearArticleAssociations(articleId)
+      dataChanges.notifyChanged()
+    }
   }
 
   override suspend fun removeReadLater(articleId: String) {
-    associationStore.removeReadLater(articleId)
-    dataChanges.notifyChanged()
+    reviewMutationMutex.withLock {
+      associationStore.removeReadLater(articleId)
+      dataChanges.notifyChanged()
+    }
+  }
+
+  override suspend fun restoreReadLater(articleId: String, tagIds: Set<String>) {
+    reviewMutationMutex.withLock {
+      val wasBookmarked = stateStore.isBookmarked(articleId)
+      database.transaction {
+        stateStore.save(articleId)
+        associationStore.addReadLater(articleId)
+        associationStore.replaceArticleTags(articleId, tagIds)
+      }
+      dataChanges.notifyChanged()
+      notifyNewBookmark(articleId, wasBookmarked)
+    }
   }
 
   override suspend fun saveSharedArticle(
