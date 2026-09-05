@@ -26,7 +26,7 @@ dependencies {
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.foundation:foundation")
   implementation("androidx.compose.material3:material3")
-  implementation("androidx.webkit:webkit:1.16.0")
+  implementation(libs.androidx.webkit)
 
   testImplementation("junit:junit:4.13.2")
 }
