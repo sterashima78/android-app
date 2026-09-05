@@ -93,7 +93,7 @@ class RssViewModel(
       runCatching {
         bookmarkRepository.restoreReadLater(
           bookmarkedArticle.article.id,
-          bookmarkedArticle.tags.mapTo(mutableSetOf()) { it.id },
+          bookmarkedArticle.tags.toSet(),
         )
       }.onSuccess {
         reload()
