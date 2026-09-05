@@ -51,6 +51,35 @@ internal class BookmarkTagStore(
       ids.sumOf { id -> delete("tags", "id=?", arrayOf(id)) }
     }
   }
+
+  /**
+   * Resolves tag snapshots captured before a destructive bookmark mutation.
+   *
+   * Removing the final article association also removes the tag row via the cleanup trigger. Undo
+   * must therefore restore a missing catalog entry before re-adding the association. If the user
+   * has already recreated a tag with the same normalized name, reuse that current tag instead of
+   * violating the catalog's unique-name constraint.
+   */
+  fun resolveOrRestoreTags(tags: Set<Tag>): Set<String> {
+    if (tags.isEmpty()) return emptySet()
+    val existingById = listTags().associateByTo(mutableMapOf(), Tag::id)
+    val existingByNormalizedName = existingById.values.associateByTo(mutableMapOf(), Tag::normalizedName)
+
+    return tags.mapTo(mutableSetOf()) { snapshot ->
+      existingById[snapshot.id]?.id
+        ?: existingByNormalizedName[snapshot.normalizedName]?.id
+        ?: run {
+          check(
+            database.write {
+              insertWithOnConflict("tags", null, snapshot.values(), SQLiteDatabase.CONFLICT_ABORT)
+            } != -1L,
+          ) { "タグを復元できませんでした: ${snapshot.name}" }
+          existingById[snapshot.id] = snapshot
+          existingByNormalizedName[snapshot.normalizedName] = snapshot
+          snapshot.id
+        }
+    }
+  }
 }
 
 private fun Tag.values(): ContentValues = values(
