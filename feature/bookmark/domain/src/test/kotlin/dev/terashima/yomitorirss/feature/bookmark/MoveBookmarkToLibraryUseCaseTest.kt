@@ -55,6 +55,7 @@ class MoveBookmarkToLibraryUseCaseTest {
         events += "bookmark:unsave"
       }
       override suspend fun removeReadLater(articleId: String) = Unit
+      override suspend fun restoreReadLater(articleId: String, tagIds: Set<String>) = Unit
     }
     return MoveBookmarkToLibraryUseCase(
       webLibrary = webLibrary,
