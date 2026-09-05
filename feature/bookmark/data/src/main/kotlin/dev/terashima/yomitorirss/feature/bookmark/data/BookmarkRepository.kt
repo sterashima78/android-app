@@ -126,8 +126,10 @@ class DefaultBookmarkRepository(
 
   override suspend fun unsaveArticle(articleId: String) {
     reviewMutationMutex.withLock {
-      stateStore.unsave(articleId)
-      associationStore.clearArticleAssociations(articleId)
+      database.transaction {
+        stateStore.unsave(articleId)
+        associationStore.clearArticleAssociations(articleId)
+      }
       dataChanges.notifyChanged()
     }
   }
