@@ -5,30 +5,18 @@ import org.junit.Test
 
 class LibraryOrganizationBatchTest {
   @Test
-  fun `解析進捗は解析待ちと解析中を未完了として数える`() {
+  fun `解析進捗は解析待ちと解析中だけを未完了として数える`() {
     val batch = batchOf(
       LibraryOrganizationCandidateStatus.QUEUED,
       LibraryOrganizationCandidateStatus.PROCESSING,
-      LibraryOrganizationCandidateStatus.PENDING_REVIEW,
       LibraryOrganizationCandidateStatus.APPLIED,
-      LibraryOrganizationCandidateStatus.FAILED,
-    )
-
-    assertEquals(5, batch.total)
-    assertEquals(3, batch.processed)
-  }
-
-  @Test
-  fun `未確認と保留は独立して仕分け件数を数える`() {
-    val batch = batchOf(
-      LibraryOrganizationCandidateStatus.PENDING_REVIEW,
-      LibraryOrganizationCandidateStatus.PENDING_REVIEW,
-      LibraryOrganizationCandidateStatus.DEFERRED,
       LibraryOrganizationCandidateStatus.REJECTED,
+      LibraryOrganizationCandidateStatus.FAILED,
+      LibraryOrganizationCandidateStatus.SKIPPED,
     )
 
-    assertEquals(2, batch.pendingReview)
-    assertEquals(1, batch.deferred)
+    assertEquals(6, batch.total)
+    assertEquals(4, batch.processed)
   }
 }
 

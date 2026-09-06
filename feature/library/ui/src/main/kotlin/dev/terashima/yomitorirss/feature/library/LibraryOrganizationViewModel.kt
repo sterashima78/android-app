@@ -299,8 +299,6 @@ private fun buildSeriesReorganizationMessage(
 }
 
 private val DISCARDABLE_PREVIOUS_RESULTS = setOf(
-  LibraryOrganizationCandidateStatus.PENDING_REVIEW,
-  LibraryOrganizationCandidateStatus.DEFERRED,
   LibraryOrganizationCandidateStatus.FAILED,
   LibraryOrganizationCandidateStatus.SKIPPED,
 )
