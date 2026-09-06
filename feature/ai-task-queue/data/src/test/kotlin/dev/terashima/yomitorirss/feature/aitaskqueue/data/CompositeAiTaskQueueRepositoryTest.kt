@@ -205,11 +205,7 @@ private class FakeLibraryOrganizationRepository(
   override suspend fun resumeBatch() {
     batch = batch?.copy(status = LibraryOrganizationBatchStatus.RUNNING)
   }
-  override suspend fun updateCandidate(key: LibraryBookKey, draft: LibraryOrganizationDraft) = Unit
-  override suspend fun acceptCandidate(book: LibraryBook, draft: LibraryOrganizationDraft) = Unit
-  override suspend fun deferCandidate(key: LibraryBookKey) = Unit
   override suspend fun rejectCandidate(key: LibraryBookKey) = Unit
-  override suspend fun reopenCandidate(key: LibraryBookKey) = Unit
   override suspend fun retryCandidate(key: LibraryBookKey) {
     batch = batch?.let { current ->
       current.copy(
@@ -284,7 +280,7 @@ private fun testBatch(status: LibraryOrganizationBatchStatus): LibraryOrganizati
       LibraryOrganizationCandidate(
         batchId = "batch-1",
         key = LibraryBookKey(LibrarySource.KINDLE, "book-1"),
-        status = LibraryOrganizationCandidateStatus.PENDING_REVIEW,
+        status = LibraryOrganizationCandidateStatus.APPLIED,
         updatedAt = 1L,
       ),
       LibraryOrganizationCandidate(
