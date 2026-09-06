@@ -87,6 +87,9 @@ android {
       "META-INF/LGPL2.1",
       "META-INF/LICENSE.md",
       "META-INF/NOTICE.md",
+      "org/bouncycastle/pqc/legacy/picnic/lowmcL1.bin.properties",
+      "org/bouncycastle/pqc/legacy/picnic/lowmcL3.bin.properties",
+      "org/bouncycastle/pqc/legacy/picnic/lowmcL5.bin.properties",
     )
   }
 
