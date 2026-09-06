@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.core.airuntime
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,5 +51,21 @@ class CurrentCompatibilityBaselineSourceTest {
 
     assertFalse(source.contains("recent_vision_memory_samples"))
     assertTrue(source.contains("recent_inference_memory_samples"))
+  }
+
+  @Test
+  fun `LiteRT LM更新時はJNI用R8 ruleを再確認する`() {
+    val buildFile = File(repositoryRoot, "core/ai-runtime/build.gradle.kts").readText()
+    val proguardRules = File(repositoryRoot, "app/proguard-rules.pro").readText()
+    val version = Regex("litertlm-android:([0-9.]+)")
+      .find(buildFile)
+      ?.groupValues
+      ?.get(1)
+
+    assertEquals("0.16.1", version)
+    assertTrue(proguardRules.contains("LiteRT-LM 0.16.1 JNI"))
+    assertFalse(proguardRules.contains("-keep class com.google.ai.edge.litertlm.** { *; }"))
+    assertTrue(proguardRules.contains("com.google.ai.edge.litertlm.InputData\$Text"))
+    assertTrue(proguardRules.contains("com.google.ai.edge.litertlm.LiteRtLmJni\$JniMessageCallback"))
   }
 }
