@@ -66,10 +66,10 @@ class DefaultLibraryOrganizationRepository(
     database.transaction {
       val latest = queryLatestBatchSnapshot(this)
       if (latest != null && latest.candidates.any { candidate ->
-          candidate.status in ACTIVE_OR_REVIEW_CANDIDATE_STATUSES
+          candidate.status in UNFINISHED_CANDIDATE_STATUSES
         }
       ) {
-        error("前回のAI整理候補を仕分けしてから新しい一括解析を開始してください")
+        error("前回のAI整理に未完了タスクが残っています")
       }
 
       val targets = uniqueBooks.filterNot { book -> hasClassification(book.organizationKey()) }
@@ -154,101 +154,14 @@ class DefaultLibraryOrganizationRepository(
     }
   }
 
-  override suspend fun updateCandidate(
-    key: LibraryBookKey,
-    draft: LibraryOrganizationDraft,
-  ): Unit = withContext(Dispatchers.IO) {
-    ensureLibraryOrganizationSchema(database.writable)
-    val update = sanitizeUpdate(key, draft)
-    val now = System.currentTimeMillis()
-    database.transaction {
-      val batchId = latestBatchId() ?: error("AI整理候補がありません")
-      val changed = update(
-        BATCH_ITEM_TABLE,
-        ContentValues().apply {
-          put("tag_names_json", namesToJson(update.tagNames))
-          put("collection_names_json", namesToJson(update.collectionNames))
-          put("updated_at", now)
-        },
-        "batch_id = ? AND source = ? AND source_id = ? AND status IN (?, ?)",
-        arrayOf(
-          batchId,
-          key.source.name,
-          key.sourceId,
-          LibraryOrganizationCandidateStatus.PENDING_REVIEW.name,
-          LibraryOrganizationCandidateStatus.DEFERRED.name,
-        ),
-      )
-      require(changed > 0) { "編集できるAI整理候補がありません" }
-      Unit
-    }
-  }
-
-  override suspend fun acceptCandidate(
-    book: LibraryBook,
-    draft: LibraryOrganizationDraft,
-  ): Unit = withContext(Dispatchers.IO) {
-    ensureLibraryOrganizationSchema(database.writable)
-    val key = book.organizationKey()
-    val update = sanitizeUpdate(key, draft)
-    val now = System.currentTimeMillis()
-    database.transaction {
-      val batchId = latestBatchId() ?: error("AI整理候補がありません")
-      val candidateStatus = queryCandidateStatus(batchId, key)
-      require(
-        candidateStatus == LibraryOrganizationCandidateStatus.PENDING_REVIEW ||
-          candidateStatus == LibraryOrganizationCandidateStatus.DEFERRED,
-      ) { "採用できるAI整理候補がありません" }
-      require(!hasClassification(key)) {
-        "この蔵書は別の操作ですでに整理されています。現在の整理情報を確認してください"
-      }
-      val currentReadingStatus = queryReadingStatus(key)
-      writeOrganization(update.copy(readingStatus = currentReadingStatus), now)
-      update(
-        BATCH_ITEM_TABLE,
-        ContentValues().apply {
-          put("status", LibraryOrganizationCandidateStatus.APPLIED.name)
-          put("tag_names_json", namesToJson(update.tagNames))
-          put("collection_names_json", namesToJson(update.collectionNames))
-          putNull("error")
-          put("updated_at", now)
-        },
-        "batch_id = ? AND source = ? AND source_id = ?",
-        arrayOf(batchId, key.source.name, key.sourceId),
-      )
-      Unit
-    }
-  }
-
-  override suspend fun deferCandidate(key: LibraryBookKey) {
-    changeCandidateStatus(
-      key = key,
-      allowed = setOf(LibraryOrganizationCandidateStatus.PENDING_REVIEW),
-      target = LibraryOrganizationCandidateStatus.DEFERRED,
-    )
-  }
-
   override suspend fun rejectCandidate(key: LibraryBookKey) {
     changeCandidateStatus(
       key = key,
       allowed = setOf(
-        LibraryOrganizationCandidateStatus.PENDING_REVIEW,
-        LibraryOrganizationCandidateStatus.DEFERRED,
         LibraryOrganizationCandidateStatus.FAILED,
         LibraryOrganizationCandidateStatus.SKIPPED,
       ),
       target = LibraryOrganizationCandidateStatus.REJECTED,
-    )
-  }
-
-  override suspend fun reopenCandidate(key: LibraryBookKey) {
-    changeCandidateStatus(
-      key = key,
-      allowed = setOf(
-        LibraryOrganizationCandidateStatus.DEFERRED,
-        LibraryOrganizationCandidateStatus.REJECTED,
-      ),
-      target = LibraryOrganizationCandidateStatus.PENDING_REVIEW,
     )
   }
 
@@ -357,10 +270,13 @@ class DefaultLibraryOrganizationRepository(
     }
   }
 
-  internal fun saveGeneratedCandidate(
+  internal fun applyGeneratedSuggestion(
     item: ClaimedLibraryOrganizationBatchItem,
+    book: LibraryBook,
     suggestion: LibraryOrganizationSuggestion,
   ) {
+    val key = book.organizationKey()
+    require(key == item.key) { "AI整理対象が一致しません" }
     val tagNames = sanitizeNames(suggestion.tagNames, MAX_TAGS_PER_BOOK, "タグ")
     val collectionNames = sanitizeNames(
       suggestion.collectionNames,
@@ -370,10 +286,28 @@ class DefaultLibraryOrganizationRepository(
     require(tagNames.isNotEmpty() || collectionNames.isNotEmpty()) { "分類候補がありませんでした" }
     val now = System.currentTimeMillis()
     database.transaction {
+      require(queryCandidateStatus(item.batchId, item.key) == LibraryOrganizationCandidateStatus.PROCESSING) {
+        "処理中のAI整理タスクがありません"
+      }
+      val targetStatus = if (hasClassification(key)) {
+        LibraryOrganizationCandidateStatus.REJECTED
+      } else {
+        val currentReadingStatus = queryReadingStatus(key)
+        writeOrganization(
+          SanitizedOrganizationUpdate(
+            key = key,
+            tagNames = tagNames,
+            collectionNames = collectionNames,
+            readingStatus = currentReadingStatus,
+          ),
+          now,
+        )
+        LibraryOrganizationCandidateStatus.APPLIED
+      }
       update(
         BATCH_ITEM_TABLE,
         ContentValues().apply {
-          put("status", LibraryOrganizationCandidateStatus.PENDING_REVIEW.name)
+          put("status", targetStatus.name)
           put("tag_names_json", namesToJson(tagNames))
           put("collection_names_json", namesToJson(collectionNames))
           put("reason", suggestion.reason)
@@ -452,30 +386,11 @@ class DefaultLibraryOrganizationRepository(
     }
   }
 
-  internal fun batchTaxonomyContext(batchId: String): Pair<List<String>, List<String>> {
+  internal fun batchTaxonomyContext(): Pair<List<String>, List<String>> {
     ensureLibraryOrganizationSchema(database.writable)
     val snapshot = queryOrganizationSnapshot()
-    val tags = snapshot.tags.map(LibraryOrganizationTag::name).toMutableList()
-    val collections = snapshot.collections.map(LibraryCollection::name).toMutableList()
-    database.readable.rawQuery(
-      """
-        SELECT tag_names_json, collection_names_json
-        FROM $BATCH_ITEM_TABLE
-        WHERE batch_id = ? AND status IN (?, ?)
-        ORDER BY updated_at
-      """.trimIndent(),
-      arrayOf(
-        batchId,
-        LibraryOrganizationCandidateStatus.PENDING_REVIEW.name,
-        LibraryOrganizationCandidateStatus.DEFERRED.name,
-      ),
-    ).use { cursor ->
-      while (cursor.moveToNext()) {
-        addDistinctNames(tags, jsonToNames(cursor.getString(0)))
-        addDistinctNames(collections, jsonToNames(cursor.getString(1)))
-      }
-    }
-    return tags.takeLast(MAX_TAXONOMY_CONTEXT) to collections.takeLast(MAX_TAXONOMY_CONTEXT)
+    return snapshot.tags.map(LibraryOrganizationTag::name).takeLast(MAX_TAXONOMY_CONTEXT) to
+      snapshot.collections.map(LibraryCollection::name).takeLast(MAX_TAXONOMY_CONTEXT)
   }
 
   private suspend fun changeCandidateStatus(
@@ -591,7 +506,7 @@ class DefaultLibraryOrganizationRepository(
                 source = LibrarySource.valueOf(cursor.getString(0)),
                 sourceId = cursor.getString(1),
               ),
-              status = LibraryOrganizationCandidateStatus.valueOf(cursor.getString(2)),
+              status = decodeCandidateStatus(cursor.getString(2)),
               tagNames = jsonToNames(cursor.getString(3)),
               collectionNames = jsonToNames(cursor.getString(4)),
               reason = cursor.getString(5),
@@ -739,7 +654,7 @@ class DefaultLibraryOrganizationRepository(
     arrayOf(batchId, key.source.name, key.sourceId),
   ).use { cursor ->
     if (!cursor.moveToFirst()) return null
-    runCatching { LibraryOrganizationCandidateStatus.valueOf(cursor.getString(0)) }.getOrNull()
+    decodeCandidateStatus(cursor.getString(0))
   }
 
   private fun SQLiteDatabase.latestBatchId(): String? = rawQuery(
@@ -1009,22 +924,22 @@ private fun jsonToNames(raw: String): List<String> = runCatching {
   }
 }.getOrDefault(emptyList())
 
-private fun addDistinctNames(destination: MutableList<String>, values: List<String>) {
-  val known = destination.mapTo(linkedSetOf(), ::normalizeLibraryOrganizationName)
-  values.forEach { value ->
-    if (known.add(normalizeLibraryOrganizationName(value))) destination += value
-  }
+private fun decodeCandidateStatus(raw: String): LibraryOrganizationCandidateStatus = when (raw) {
+  RETIRED_PENDING_REVIEW_STATUS,
+  RETIRED_DEFERRED_STATUS,
+  -> LibraryOrganizationCandidateStatus.REJECTED
+  else -> LibraryOrganizationCandidateStatus.valueOf(raw)
 }
 
-private val ACTIVE_OR_REVIEW_CANDIDATE_STATUSES = setOf(
+private val UNFINISHED_CANDIDATE_STATUSES = setOf(
   LibraryOrganizationCandidateStatus.QUEUED,
   LibraryOrganizationCandidateStatus.PROCESSING,
-  LibraryOrganizationCandidateStatus.PENDING_REVIEW,
-  LibraryOrganizationCandidateStatus.DEFERRED,
   LibraryOrganizationCandidateStatus.FAILED,
   LibraryOrganizationCandidateStatus.SKIPPED,
 )
 
+private const val RETIRED_PENDING_REVIEW_STATUS = "PENDING_REVIEW"
+private const val RETIRED_DEFERRED_STATUS = "DEFERRED"
 private const val TAG_TABLE = "library_organization_tags"
 private const val COLLECTION_TABLE = "library_organization_collections"
 private const val ITEM_TAG_TABLE = "library_item_organization_tags"
