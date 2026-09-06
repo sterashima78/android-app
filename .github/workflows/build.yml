@@ -68,7 +68,11 @@ jobs:
           PY
           )"
           test -n "$VERSION_NAME"
-          mv app/build/outputs/apk/release/app-release.apk "mosaic-${VERSION_NAME}-arm64-v8a.apk"
+          APK_PATH="mosaic-${VERSION_NAME}-arm64-v8a.apk"
+          mv app/build/outputs/apk/release/app-release.apk "$APK_PATH"
+          printf 'APK_PATH=%s\n' "$APK_PATH" >> "$GITHUB_ENV"
+      - name: Report APK size
+        run: python3 scripts/report_apk_size.py "$APK_PATH"
       - name: Upload APK
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
