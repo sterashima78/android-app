@@ -93,9 +93,7 @@ class DefaultAssetRepository(
       BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use(::parseTsv)
     } ?: error("ファイルを開けませんでした")
     require(rows.isNotEmpty()) { "インポートできる資産データがありません" }
-    replaceSnapshots(rows, SOURCE_FILE)
-    val importedRows = rows.filter { it.amount >= 0L }
-    return AssetImportResult(importedRows.size, importedRows.map { it.date }.distinct().size)
+    return replaceSnapshots(rows, SOURCE_FILE)
   }
 
   override suspend fun importMoneyForwardJson(json: String): AssetImportResult {
@@ -121,9 +119,7 @@ class DefaultAssetRepository(
       }
     }
     require(rows.isNotEmpty()) { "MoneyForward から資産データを取得できませんでした" }
-    replaceSnapshots(rows, SOURCE_MONEY_FORWARD)
-    val importedRows = rows.filter { it.amount >= 0L }
-    return AssetImportResult(importedRows.size, if (importedRows.isEmpty()) 0 else 1)
+    return replaceSnapshots(rows, SOURCE_MONEY_FORWARD)
   }
 
   override suspend fun addCategory(category: String) {
@@ -164,11 +160,12 @@ class DefaultAssetRepository(
     }
   }
 
-  private fun replaceSnapshots(rows: List<ParsedAssetRow>, source: String) {
+  private fun replaceSnapshots(rows: List<ParsedAssetRow>, source: String): AssetImportResult {
+    val replacements = buildAssetSnapshotReplacements(rows)
     database.transaction {
-      rows.groupBy { it.date }.forEach { (date, dateRows) ->
+      replacements.forEach { (date, dateRows) ->
         delete("asset_entries", "snapshot_date=?", arrayOf(date.toString()))
-        dateRows.filter { it.amount >= 0L }.forEach { row ->
+        dateRows.forEach { row ->
           insertOrThrow(
             "asset_entries",
             null,
@@ -183,6 +180,10 @@ class DefaultAssetRepository(
         }
       }
     }
+    return AssetImportResult(
+      rowCount = replacements.values.sumOf(List<ParsedAssetRow>::size),
+      snapshotCount = replacements.values.count(List<ParsedAssetRow>::isNotEmpty),
+    )
   }
 }
 
@@ -192,6 +193,9 @@ internal data class ParsedAssetRow(
   val amount: Long,
   val account: String,
 )
+
+internal fun buildAssetSnapshotReplacements(rows: List<ParsedAssetRow>): Map<LocalDate, List<ParsedAssetRow>> =
+  rows.groupBy(ParsedAssetRow::date).mapValues { (_, dateRows) -> dateRows.filter { it.amount >= 0L } }
 
 internal fun parseTsv(reader: BufferedReader): List<ParsedAssetRow> {
   val result = mutableListOf<ParsedAssetRow>()
