@@ -2,8 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-08-24
-- Updated: 2026-08-28
-- Refines: [ADR-0079](0079-process-wide-local-ai-inference-sessions.md), [ADR-0145](0145-bound-vision-inference-memory-lifetime.md), [ADR-0149](0149-sanitize-shareable-crash-diagnostics.md), [ADR-0159](0159-isolate-smb-vision-inference-process.md), [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- Updated: 2026-09-06
+- Refines: [ADR-0059](0059-current-version-compatibility-baseline.md), [ADR-0060](0060-converge-to-current-persisted-data-formats.md), [ADR-0079](0079-process-wide-local-ai-inference-sessions.md), [ADR-0145](0145-bound-vision-inference-memory-lifetime.md), [ADR-0149](0149-sanitize-shareable-crash-diagnostics.md), [ADR-0159](0159-isolate-smb-vision-inference-process.md), [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 
 ## Context
 
@@ -42,7 +42,7 @@ AI permit 保持中は `main-active-background-ai`、permit 解放後は直前 t
 
 これにより、次回 MemoryLimiter kill で「特定 task 実行中に増え続けた」「task 終了後も RSS/native memory が下がらなかった」を区別できる。常時 sampler にはせず、local-AI と無関係な通常利用時の overhead を避ける。
 
-既存の vision memory sample と main-process sample は同じ report store に統合し、process exit timestamp より前かつ同一 pid/process の行だけを crash report に時系列で添付する。旧 `recent_vision_memory_samples` は読み取り互換だけ維持し、新規書き込みは統合 key へ行う。
+vision memory sample と main-process sample は同じ `recent_inference_memory_samples` report store に統合し、process exit timestamp より前かつ同一 pid/process の行だけを crash report に時系列で添付する。統合導入時には旧 `recent_vision_memory_samples` を読み取り互換として残したが、現在配布中の更新ベースラインでは統合 key への書き込みへ収束済みであり、2026-09-06 に旧 key の読み取り互換を終了する。旧値は診断履歴であり、ユーザーコンテンツやバックアップ対象の durable state ではないため migration は行わない。
 
 ### 3. Android 17 では anomaly profiling trigger を登録する
 
@@ -85,6 +85,7 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - Android 17 の system anomaly heap dump を compileSdk/targetSdk 変更なしで取得できる。
 - shareable crash report に user content や heap dump 本体を含めない。
 - cached process の通常 low-memory reclaim をユーザー向け障害として表示しない。
+- 現行診断storeだけをruntimeが理解し、退役済みkeyの互換分岐を維持しない。
 
 ### Negative
 
@@ -92,11 +93,13 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - API 37 constant を compileSdk 36 から数値で参照するため、Android 17 API documentation との一致をレビューで維持する必要がある。
 - Java heap dump だけでは GPU/OpenCL/native runtime retention を直接説明できない場合がある。
 - 本変更は原因特定を改善するもので、text inference の native memory retention 自体を直ちに解消するものではない。
+- 旧 `recent_vision_memory_samples` にだけ残る過去診断行は現行版では参照しない。
 
 ## Verification
 
 - `LocalAiBackgroundTaskGateTest`: permit 保持中の label、待機 task への切り替え、idle clear
 - `LocalAiMemoryDiagnosticsTest`: main-process sample field、sanitization、pid/process/time filtering、時系列化
+- `CurrentCompatibilityBaselineSourceTest`: 旧 `recent_vision_memory_samples` がproduction sourceへ戻らず、統合keyだけを利用すること
 - `AppLocalAiMemoryMonitorTest`: active / retained / expiration window
 - `Android17MemoryAnomalyProfilerTest`: exit 前の安全な artifact name のみ抽出
 - `StartupCrashStoreTest`: cached `REASON_LOW_MEMORY` を除外し、foreground low-memory と `MemoryLimiter` は診断対象に維持する
@@ -113,6 +116,7 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - ADR index に本 ADR を追加する。
 - Android 17 memory limit の診断方法として本 ADR を current platform documentation の根拠にする。
 - 2026-08-28 の追記では cached process の通常 low-memory reclaim をユーザー向け診断対象から除外する境界を明文化した。
+- 2026-09-06 の追記では ADR-0059 / ADR-0060 の current-version compatibility baseline に従い、統合済みdiagnostics storeの旧read compatibilityを退役させた。
 
 ## Public repository review
 
@@ -120,8 +124,12 @@ system-generated profiling result は app private `files/profiling` 以下に残
 
 2026-08-28 の変更は既存 `ApplicationExitInfo` の reason / importance の判定だけを追加し、新しい user data、device identifier、credential、file path、diagnostic payload は保存しない。
 
+2026-09-06 の変更は旧diagnostics SharedPreferences keyの読み取りを削除するだけで、新しい保存データや外部送信を追加しない。
+
 ## References
 
+- [ADR-0059](0059-current-version-compatibility-baseline.md)
+- [ADR-0060](0060-converge-to-current-persisted-data-formats.md)
 - Android Developers: Android 17 behavior changes for all apps — App memory limits
 - Android Developers: Android 17 features and APIs — Profiling trigger for app anomalies
 - Android Developers: `ProfilingManager`
