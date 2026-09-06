@@ -72,8 +72,6 @@ enum class LibraryOrganizationBatchStatus(val label: String) {
 enum class LibraryOrganizationCandidateStatus(val label: String) {
   QUEUED("解析待ち"),
   PROCESSING("解析中"),
-  PENDING_REVIEW("未確認"),
-  DEFERRED("保留"),
   APPLIED("採用済み"),
   REJECTED("却下"),
   FAILED("失敗"),
@@ -103,12 +101,6 @@ data class LibraryOrganizationBatchSnapshot(
     it.status != LibraryOrganizationCandidateStatus.QUEUED &&
       it.status != LibraryOrganizationCandidateStatus.PROCESSING
   }
-  val pendingReview: Int get() = candidates.count {
-    it.status == LibraryOrganizationCandidateStatus.PENDING_REVIEW
-  }
-  val deferred: Int get() = candidates.count {
-    it.status == LibraryOrganizationCandidateStatus.DEFERRED
-  }
 }
 
 fun LibraryBook.organizationKey(): LibraryBookKey = LibraryBookKey(source, sourceId)
@@ -133,21 +125,7 @@ interface LibraryOrganizationRepository {
 
   suspend fun resumeBatch()
 
-  suspend fun updateCandidate(
-    key: LibraryBookKey,
-    draft: LibraryOrganizationDraft,
-  )
-
-  suspend fun acceptCandidate(
-    book: LibraryBook,
-    draft: LibraryOrganizationDraft,
-  )
-
-  suspend fun deferCandidate(key: LibraryBookKey)
-
   suspend fun rejectCandidate(key: LibraryBookKey)
-
-  suspend fun reopenCandidate(key: LibraryBookKey)
 
   suspend fun retryCandidate(key: LibraryBookKey)
 }
