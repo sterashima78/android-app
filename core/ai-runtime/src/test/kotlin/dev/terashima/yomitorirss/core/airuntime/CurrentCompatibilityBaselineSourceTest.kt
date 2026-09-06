@@ -28,6 +28,20 @@ class CurrentCompatibilityBaselineSourceTest {
   }
 
   @Test
+  fun `LocalModelManagerは退役済みQwen artifact cleanupを持たない`() {
+    val source = File(
+      repositoryRoot,
+      "core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalModelManager.kt",
+    ).readText()
+
+    assertFalse(source.contains("cleanupRetiredModelArtifacts"))
+    assertFalse(source.contains("qwen2.5-0.5b-q8"))
+    assertFalse(source.contains("qwen2.5-1.5b-q8"))
+    assertFalse(source.contains("qwen3-4b-mixed-int4"))
+    assertTrue(source.contains("cleanupOutdatedModelArtifacts"))
+  }
+
+  @Test
   fun `LocalAiMemoryDiagnosticsは統合済みreport keyだけを利用する`() {
     val source = File(
       repositoryRoot,
