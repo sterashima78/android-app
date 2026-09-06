@@ -20,7 +20,7 @@ dependencies {
   implementation(project(":core:ai-inference"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
-  implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
+  implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
 
   testImplementation("junit:junit:4.13.2")
 }
