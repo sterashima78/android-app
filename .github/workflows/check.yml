@@ -39,6 +39,8 @@ jobs:
             command: ./gradlew --no-daemon test
           - name: Lint
             command: ./gradlew --no-daemon :app:lintRelease
+          - name: R8
+            command: ./gradlew --no-daemon :app:minifyReleaseWithR8
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
