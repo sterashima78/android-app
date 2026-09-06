@@ -3,20 +3,20 @@
 # remove Kotlin APIs that are not used by this app or the native bridge.
 -keep,allowoptimization class com.google.ai.edge.litertlm.LiteRtLmJniException { *; }
 
--keepnames class com.google.ai.edge.litertlm.BenchmarkInfo
+-keep,allowoptimization class com.google.ai.edge.litertlm.BenchmarkInfo
 -keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.BenchmarkInfo {
     <init>(double,double,int,int,double,double);
 }
 
--keepnames class com.google.ai.edge.litertlm.InputData$Text
+-keep,allowoptimization class com.google.ai.edge.litertlm.InputData$Text
 -keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.InputData$Text {
     java.lang.String getText();
 }
--keepnames class com.google.ai.edge.litertlm.InputData$Audio
+-keep,allowoptimization class com.google.ai.edge.litertlm.InputData$Audio
 -keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.InputData$Audio {
     byte[] getBytes();
 }
--keepnames class com.google.ai.edge.litertlm.InputData$Image
+-keep,allowoptimization class com.google.ai.edge.litertlm.InputData$Image
 -keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.InputData$Image {
     byte[] getBytes();
 }
