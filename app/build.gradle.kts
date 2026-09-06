@@ -71,9 +71,13 @@ android {
       versionNameSuffix = "-debug"
     }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       signingConfigs.findByName("release")?.let { signingConfig = it }
-      proguardFiles("proguard-rules.pro")
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro",
+      )
     }
   }
 
