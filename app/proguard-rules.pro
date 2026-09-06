@@ -1,5 +1,3 @@
--keep class com.google.ai.edge.litertlm.** { *; }
-
 # androidx.privacysandbox.sdkruntime references optional SDK Sandbox platform APIs.
 # The app does not use Privacy Sandbox directly; these guarded compatibility paths
 # can remain unresolved while R8 removes unreachable code.
