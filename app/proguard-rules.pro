@@ -1,5 +1,4 @@
 -keep class com.google.ai.edge.litertlm.** { *; }
--keep class com.google.mediapipe.tasks.genai.** { *; }
 
 # androidx.privacysandbox.sdkruntime references optional SDK Sandbox platform APIs.
 # The app does not use Privacy Sandbox directly; these guarded compatibility paths
