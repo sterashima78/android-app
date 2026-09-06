@@ -36,4 +36,12 @@ class YouTubeChannelUrlTest {
       )
     }
   }
+
+  @Test
+  fun `通常動画だけのplaylist feed URLを生成できる`() {
+    assertEquals(
+      "https://www.youtube.com/feeds/videos.xml?playlist_id=UULF_x5XG1OV2P6uZZ5FSM9Ttw",
+      YouTubeChannelUrl.feed("UC_x5XG1OV2P6uZZ5FSM9Ttw"),
+    )
+  }
 }
