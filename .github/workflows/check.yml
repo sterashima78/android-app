@@ -61,6 +61,21 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Run ${{ matrix.name }}
         run: ${{ matrix.command }}
+      - name: Report R8 DEX size
+        if: matrix.name == 'R8'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("app/build/intermediates/dex/release/minifyReleaseWithR8")
+          dex_files = sorted(root.rglob("*.dex"))
+          if not dex_files:
+              raise SystemExit(f"No DEX files found under {root}")
+          total = sum(path.stat().st_size for path in dex_files)
+          print(f"R8_DEX_BYTES={total}")
+          for path in dex_files:
+              print(f"{path.stat().st_size}\t{path}")
+          PY
       - name: Upload test reports on failure
         if: failure() && matrix.name == 'Test'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
