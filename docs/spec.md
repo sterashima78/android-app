@@ -67,6 +67,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 ### 4.3 Reddit / YouTube
 
 - Reddit と YouTube は source 固有の購読・表示・判定を持つ。
+- YouTube のチャンネル更新では通常動画のみ取得し、Shorts とライブ配信は更新対象外とする。
 - 共通コンテンツとして扱う箇所でも source の種類を失わない。
 - 自動AI処理の対象可否は source / content type の方針に従う。
 
