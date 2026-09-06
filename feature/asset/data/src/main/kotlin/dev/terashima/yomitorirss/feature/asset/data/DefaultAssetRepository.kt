@@ -29,6 +29,7 @@ class DefaultAssetRepository(
         SELECT e.snapshot_date, COALESCE(c.category, ?), SUM(e.amount)
         FROM asset_entries e
         LEFT JOIN asset_categories c ON c.asset_name = e.name
+        WHERE e.amount >= 0
         GROUP BY e.snapshot_date, COALESCE(c.category, ?)
         ORDER BY e.snapshot_date ASC
       """.trimIndent(),
@@ -52,6 +53,7 @@ class DefaultAssetRepository(
         SELECT DISTINCT e.name, COALESCE(c.category, ?)
         FROM asset_entries e
         LEFT JOIN asset_categories c ON c.asset_name = e.name
+        WHERE e.amount >= 0
         ORDER BY e.name COLLATE NOCASE
       """.trimIndent(),
       arrayOf(DEFAULT_CATEGORY),
@@ -92,7 +94,8 @@ class DefaultAssetRepository(
     } ?: error("ファイルを開けませんでした")
     require(rows.isNotEmpty()) { "インポートできる資産データがありません" }
     replaceSnapshots(rows, SOURCE_FILE)
-    return AssetImportResult(rows.size, rows.map { it.date }.distinct().size)
+    val importedRows = rows.filter { it.amount >= 0L }
+    return AssetImportResult(importedRows.size, importedRows.map { it.date }.distinct().size)
   }
 
   override suspend fun importMoneyForwardJson(json: String): AssetImportResult {
@@ -119,7 +122,8 @@ class DefaultAssetRepository(
     }
     require(rows.isNotEmpty()) { "MoneyForward から資産データを取得できませんでした" }
     replaceSnapshots(rows, SOURCE_MONEY_FORWARD)
-    return AssetImportResult(rows.size, 1)
+    val importedRows = rows.filter { it.amount >= 0L }
+    return AssetImportResult(importedRows.size, if (importedRows.isEmpty()) 0 else 1)
   }
 
   override suspend fun addCategory(category: String) {
@@ -164,7 +168,7 @@ class DefaultAssetRepository(
     database.transaction {
       rows.groupBy { it.date }.forEach { (date, dateRows) ->
         delete("asset_entries", "snapshot_date=?", arrayOf(date.toString()))
-        dateRows.forEach { row ->
+        dateRows.filter { it.amount >= 0L }.forEach { row ->
           insertOrThrow(
             "asset_entries",
             null,
