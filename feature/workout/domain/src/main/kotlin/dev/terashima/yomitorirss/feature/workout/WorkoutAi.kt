@@ -15,8 +15,6 @@ enum class WorkoutAiRequestType {
 data class WorkoutAiSettings(
   val provider: WorkoutAiProvider = WorkoutAiProvider.LOCAL,
   val workoutPolicy: String = "",
-  // Legacy persisted value. Menu candidates are now derived from WorkoutSnapshot.exercises.
-  val menuCandidates: String = "",
 )
 
 interface WorkoutAiSettingsRepository {
