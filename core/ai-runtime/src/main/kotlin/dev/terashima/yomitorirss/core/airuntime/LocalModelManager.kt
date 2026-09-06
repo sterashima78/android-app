@@ -113,7 +113,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
   val inferenceSettings: StateFlow<LocalInferenceSettings> = _inferenceSettings.asStateFlow()
 
   init {
-    cleanupRetiredModelArtifacts()
     cleanupOutdatedModelArtifacts()
     refreshModels()
   }
@@ -671,19 +670,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
   private fun modelTokenizerCacheDirectory(model: ModelDefinition) =
     File(modelCacheDirectory(model), "tokenizer").apply { mkdirs() }
 
-  private fun cleanupRetiredModelArtifacts() {
-    val selectedId = preferences.getString(SELECTED_MODEL_KEY, null)
-    if (selectedId in RETIRED_MODEL_IDS) preferences.edit().remove(SELECTED_MODEL_KEY).apply()
-
-    RETIRED_MODEL_FILES.forEach { fileName ->
-      File(modelsDirectory(), fileName).delete()
-      File(modelsDirectory(), "$fileName.part").delete()
-    }
-    RETIRED_MODEL_IDS.forEach { modelId ->
-      File(appContext.cacheDir, "local-summary-models/$modelId").deleteRecursively()
-    }
-  }
-
   private fun cleanupOutdatedModelArtifacts() {
     MODEL_CATALOG.forEach { model ->
       val file = modelFile(model)
@@ -805,17 +791,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
         sharedInferenceManager
           ?: LocalModelManager(context.applicationContext).also { sharedInferenceManager = it }
       }
-
-    private val RETIRED_MODEL_IDS = setOf(
-      "qwen2.5-0.5b-q8",
-      "qwen3-4b-mixed-int4",
-      "qwen2.5-1.5b-q8",
-    )
-    private val RETIRED_MODEL_FILES = setOf(
-      "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
-      "qwen3_4b_mixed_int4.litertlm",
-      "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
-    )
 
     private val MODEL_CATALOG = listOf(
       ModelDefinition(
