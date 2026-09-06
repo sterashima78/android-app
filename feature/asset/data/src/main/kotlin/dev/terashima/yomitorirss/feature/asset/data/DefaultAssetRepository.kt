@@ -29,6 +29,7 @@ class DefaultAssetRepository(
         SELECT e.snapshot_date, COALESCE(c.category, ?), SUM(e.amount)
         FROM asset_entries e
         LEFT JOIN asset_categories c ON c.asset_name = e.name
+        WHERE e.amount >= 0
         GROUP BY e.snapshot_date, COALESCE(c.category, ?)
         ORDER BY e.snapshot_date ASC
       """.trimIndent(),
@@ -52,6 +53,7 @@ class DefaultAssetRepository(
         SELECT DISTINCT e.name, COALESCE(c.category, ?)
         FROM asset_entries e
         LEFT JOIN asset_categories c ON c.asset_name = e.name
+        WHERE e.amount >= 0
         ORDER BY e.name COLLATE NOCASE
       """.trimIndent(),
       arrayOf(DEFAULT_CATEGORY),
@@ -91,8 +93,7 @@ class DefaultAssetRepository(
       BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use(::parseTsv)
     } ?: error("ファイルを開けませんでした")
     require(rows.isNotEmpty()) { "インポートできる資産データがありません" }
-    replaceSnapshots(rows, SOURCE_FILE)
-    return AssetImportResult(rows.size, rows.map { it.date }.distinct().size)
+    return replaceSnapshots(rows, SOURCE_FILE)
   }
 
   override suspend fun importMoneyForwardJson(json: String): AssetImportResult {
@@ -118,8 +119,7 @@ class DefaultAssetRepository(
       }
     }
     require(rows.isNotEmpty()) { "MoneyForward から資産データを取得できませんでした" }
-    replaceSnapshots(rows, SOURCE_MONEY_FORWARD)
-    return AssetImportResult(rows.size, 1)
+    return replaceSnapshots(rows, SOURCE_MONEY_FORWARD)
   }
 
   override suspend fun addCategory(category: String) {
@@ -160,9 +160,10 @@ class DefaultAssetRepository(
     }
   }
 
-  private fun replaceSnapshots(rows: List<ParsedAssetRow>, source: String) {
+  private fun replaceSnapshots(rows: List<ParsedAssetRow>, source: String): AssetImportResult {
+    val replacements = buildAssetSnapshotReplacements(rows)
     database.transaction {
-      rows.groupBy { it.date }.forEach { (date, dateRows) ->
+      replacements.forEach { (date, dateRows) ->
         delete("asset_entries", "snapshot_date=?", arrayOf(date.toString()))
         dateRows.forEach { row ->
           insertOrThrow(
@@ -179,6 +180,10 @@ class DefaultAssetRepository(
         }
       }
     }
+    return AssetImportResult(
+      rowCount = replacements.values.sumOf(List<ParsedAssetRow>::size),
+      snapshotCount = replacements.values.count(List<ParsedAssetRow>::isNotEmpty),
+    )
   }
 }
 
@@ -188,6 +193,9 @@ internal data class ParsedAssetRow(
   val amount: Long,
   val account: String,
 )
+
+internal fun buildAssetSnapshotReplacements(rows: List<ParsedAssetRow>): Map<LocalDate, List<ParsedAssetRow>> =
+  rows.groupBy(ParsedAssetRow::date).mapValues { (_, dateRows) -> dateRows.filter { it.amount >= 0L } }
 
 internal fun parseTsv(reader: BufferedReader): List<ParsedAssetRow> {
   val result = mutableListOf<ParsedAssetRow>()
