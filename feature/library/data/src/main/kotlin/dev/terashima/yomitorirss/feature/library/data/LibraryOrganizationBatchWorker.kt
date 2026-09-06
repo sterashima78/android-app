@@ -21,10 +21,8 @@ import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchStatus
-import dev.terashima.yomitorirss.feature.library.LibraryOrganizationDraft
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSeriesContext
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSnapshot
-import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggestion
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.organizationKey
@@ -198,8 +196,7 @@ class LibraryOrganizationBatchWorker(
               }
 
               setForeground(createForegroundInfo(book.title))
-              val (existingTags, existingCollections) =
-                organizationRepository.batchTaxonomyContext(item.batchId)
+              val (existingTags, existingCollections) = organizationRepository.batchTaxonomyContext()
               val seriesContext = seriesOrganizationContextFor(
                 book = book,
                 books = allBooks,
@@ -213,8 +210,7 @@ class LibraryOrganizationBatchWorker(
                 seriesContext = seriesContext,
               )
               currentCoroutineContext().ensureActive()
-              persistAndAutoApplySuggestion(
-                repository = organizationRepository,
+              organizationRepository.applyGeneratedSuggestion(
                 item = item,
                 book = book,
                 suggestion = suggestion,
@@ -288,49 +284,6 @@ class LibraryOrganizationBatchWorker(
     internal const val WORK_TAG = "library-ai-organization"
     private const val CHANNEL_ID = "library_ai_organization"
     private const val NOTIFICATION_ID = 8768
-  }
-}
-
-private suspend fun persistAndAutoApplySuggestion(
-  repository: DefaultLibraryOrganizationRepository,
-  item: ClaimedLibraryOrganizationBatchItem,
-  book: LibraryBook,
-  suggestion: LibraryOrganizationSuggestion,
-) {
-  repository.saveGeneratedCandidate(item, suggestion)
-  try {
-    repository.acceptCandidate(
-      book = book,
-      draft = LibraryOrganizationDraft(
-        tagNames = suggestion.tagNames,
-        collectionNames = suggestion.collectionNames,
-        readingStatus = null,
-      ),
-    )
-  } catch (cancelled: CancellationException) {
-    throw cancelled
-  } catch (error: Throwable) {
-    val currentOrganization = try {
-      repository.snapshot().organizationFor(book)
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (_: Throwable) {
-      null
-    }
-    val manuallyOrganized = currentOrganization?.let { organization ->
-      organization.tags.isNotEmpty() || organization.collections.isNotEmpty()
-    } == true
-    if (!manuallyOrganized) throw error
-
-    // A manual edit that raced with AI application wins. The transient generated candidate must not
-    // overwrite it or block the next batch waiting for approval.
-    try {
-      repository.rejectCandidate(item.key)
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (_: Throwable) {
-      // The manual organization already won. A stale candidate can remain as recovery state.
-    }
   }
 }
 
