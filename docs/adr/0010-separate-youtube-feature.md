@@ -149,3 +149,18 @@ YouTube と RSS のデータ ownership は分離したまま、一覧上のト�
 - ADR-0004 の concept ownership を優先し、Atom という transport ではなく YouTube という product concept に module を割り当てる
 - ADR-0009 の「transport と product concept を分離する」考え方を踏襲するが、YouTube では RSS transport 自体も共有しない
 - ADR-0098 は専用 `youtube.db` という physical persistence decision のみを置き換え、YouTube feature ownership は維持する
+
+## Amendment 2026-09-06: 更新対象を通常動画のみに限定する
+
+ユーザーが YouTube の更新確認で Shorts とライブ配信を必要としないため、取得対象を通常動画のみに限定する。
+
+購読入力は引き続き channel ID URL のままとし、抽出した `UC...` channel ID から通常動画用 playlist ID を導出する。
+
+```text
+UCxxxxxxxx -> UULFxxxxxxxx
+https://www.youtube.com/feeds/videos.xml?playlist_id=UULFxxxxxxxx
+```
+
+この playlist feed を利用することで、既存の Atom parser、repository contract、永続化モデルを変更せずに通常動画だけを取得する。YouTube Data API、API key、Google OAuth は引き続き導入しない。
+
+`UULF` は YouTube が公式 API contract として文書化している識別子ではないため、将来利用できなくなった場合は `youtube:data` の adapter 内で取得方式を再検討する。Shorts やライブ配信を再び対象にする場合も、source 固有の要求として明示的に判断する。

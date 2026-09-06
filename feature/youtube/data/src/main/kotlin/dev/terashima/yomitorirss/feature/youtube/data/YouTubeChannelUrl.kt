@@ -26,5 +26,5 @@ internal object YouTubeChannelUrl {
   fun canonical(channelId: String): String = "https://www.youtube.com/channel/$channelId"
 
   fun feed(channelId: String): String =
-    "https://www.youtube.com/feeds/videos.xml?channel_id=$channelId"
+    "https://www.youtube.com/feeds/videos.xml?playlist_id=UULF${channelId.removePrefix("UC")}"
 }
