@@ -2,8 +2,9 @@
 
 - Status: Accepted
 - Date: 2026-08-27
+- Amended: 2026-09-06
 - Supersedes in part: [ADR-0194](0194-workout-ai-advisor.md) Decision 1, Decision 2, Decision 3, Decision 5
-- Refines: [ADR-0015](0015-shared-ui-interaction-primitives.md), [ADR-0019](0019-feature-bottom-tab-navigation.md), [ADR-0023](0023-chat-markdown-rendering.md)
+- Refines: [ADR-0015](0015-shared-ui-interaction-primitives.md), [ADR-0019](0019-feature-bottom-tab-navigation.md), [ADR-0023](0023-chat-markdown-rendering.md), [ADR-0059](0059-current-version-compatibility-baseline.md), [ADR-0060](0060-converge-to-current-persisted-data-formats.md)
 
 ## Context
 
@@ -39,7 +40,7 @@ provider 選択、cloud 送信内容の説明、ワークアウト方針は Work
 
 AI prompt のメニュー候補は `WorkoutSnapshot.exercises` から毎回生成する。種目名だけでなく目標セット数と単位も含める。
 
-既存 `workout_ai` SharedPreferences の `menu_candidates` は後方互換のため読み書き可能な legacy field として当面残すが、UI と prompt は参照しない。新たな migration は不要とする。
+当初は既存 `workout_ai` SharedPreferences の `menu_candidates` を後方互換用の legacy field として読み書き可能なまま残した。現在配布中の更新ベースラインでは PR #333 以降この値を UI・prompt・domain behavior のいずれも参照しておらず、ADR-0059 / ADR-0060 の現行形式へ収束する方針に従って 2026-09-06 に runtime の read/write と `WorkoutAiSettings.menuCandidates` を削除する。既存端末の SharedPreferences に旧キーが残っていても参照しないため、値を消去する migration は行わない。
 
 ### 4. 当日の完了済み履歴と進行中セットを「今日」の context に統合する
 
@@ -70,11 +71,12 @@ feature 固有の session 管理、入力欄、prompt 構築、provider state �
 - Workout 完了後でも当日実績を AI が参照できる。
 - Workout と一般チャットの Markdown 表示・message bubble が一致する。
 - 共通UIは designsystem、feature 固有の状態・domain policy は feature 所有という既存の module boundary を維持できる。
+- 未使用になった `menu_candidates` の runtime compatibility code を保持し続けない。
 
 ### Negative
 
 - Workout bottom navigation が5項目になる。
-- `menu_candidates` の legacy persistence key は当面残るため、完全削除は将来の cleanup になる。
+- 旧 `menu_candidates` だけを利用していた過去版から現行版へ直接更新してその値を引き継ぐことは保証しない。現在配布中の更新ベースラインでは登録済みトレーニングメニューが唯一の source of truth である。
 - Workout AI は chat UI を使うが、自由入力チャットではないため一般チャットと操作モデルは完全には同一でない。
 
 ## Verification
@@ -84,13 +86,16 @@ feature 固有の session 管理、入力欄、prompt 構築、provider state �
 - prompt builder の unit test で `WorkoutSnapshot.exercises` の種目、目標セット数、単位が prompt に含まれることを固定する。
 - 当日完了済み history のセットが「今日の記録済みセット」に含まれ、「記録済みセット: なし」と矛盾しないことを unit test する。
 - 同日の完了済み history が過去記録セクションへ重複掲載されないことを unit test する。
+- `WorkoutAiSettings` と `DefaultWorkoutAiSettingsRepository` が `menu_candidates` を参照しないことを確認する。
 - feature/chat と feature/workout が `core/designsystem` の `ChatMessageBubble` を利用することを architecture review する。
 - assistant response が `MarkdownText` 経由で表示されることを確認する。
-- Architecture / Test / Lint / public repository verification を実行する。
+- Architecture / Test / Lint / R8 / public repository verification を実行する。
 
 ## References
 
 - [ADR-0015](0015-shared-ui-interaction-primitives.md)
 - [ADR-0019](0019-feature-bottom-tab-navigation.md)
 - [ADR-0023](0023-chat-markdown-rendering.md)
+- [ADR-0059](0059-current-version-compatibility-baseline.md)
+- [ADR-0060](0060-converge-to-current-persisted-data-formats.md)
 - [ADR-0194](0194-workout-ai-advisor.md)
