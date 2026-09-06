@@ -100,7 +100,7 @@ class DefaultAssetRepositoryTest {
   private fun insertEntry(date: String, name: String, amount: Long) {
     helper.writableDatabase.execSQL(
       "INSERT INTO asset_entries(snapshot_date,name,amount,account,source) VALUES(?,?,?,?,?)",
-      arrayOf(date, name, amount, "", "test"),
+      arrayOf<Any?>(date, name, amount, "", "test"),
     )
   }
 
