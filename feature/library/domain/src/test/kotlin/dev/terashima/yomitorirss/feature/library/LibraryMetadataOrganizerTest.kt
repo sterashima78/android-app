@@ -221,17 +221,7 @@ private class FakeOrganizationRepository(
 
   override suspend fun resumeBatch() = error("not used")
 
-  override suspend fun updateCandidate(key: LibraryBookKey, draft: LibraryOrganizationDraft) =
-    error("not used")
-
-  override suspend fun acceptCandidate(book: LibraryBook, draft: LibraryOrganizationDraft) =
-    error("not used")
-
-  override suspend fun deferCandidate(key: LibraryBookKey) = error("not used")
-
   override suspend fun rejectCandidate(key: LibraryBookKey) = error("not used")
-
-  override suspend fun reopenCandidate(key: LibraryBookKey) = error("not used")
 
   override suspend fun retryCandidate(key: LibraryBookKey) = error("not used")
 }
