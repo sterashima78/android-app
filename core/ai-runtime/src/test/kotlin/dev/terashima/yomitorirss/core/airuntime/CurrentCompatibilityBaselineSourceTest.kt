@@ -26,4 +26,15 @@ class CurrentCompatibilityBaselineSourceTest {
       ),
     )
   }
+
+  @Test
+  fun `LocalAiMemoryDiagnosticsは統合済みreport keyだけを利用する`() {
+    val source = File(
+      repositoryRoot,
+      "core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalAiMemoryDiagnostics.kt",
+    ).readText()
+
+    assertFalse(source.contains("recent_vision_memory_samples"))
+    assertTrue(source.contains("recent_inference_memory_samples"))
+  }
 }
