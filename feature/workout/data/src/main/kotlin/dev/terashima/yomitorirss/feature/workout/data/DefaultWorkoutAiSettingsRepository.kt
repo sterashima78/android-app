@@ -13,14 +13,12 @@ class DefaultWorkoutAiSettingsRepository(context: Context) : WorkoutAiSettingsRe
       WorkoutAiProvider.valueOf(preferences.getString(KEY_PROVIDER, null).orEmpty())
     }.getOrDefault(WorkoutAiProvider.LOCAL),
     workoutPolicy = preferences.getString(KEY_POLICY, "").orEmpty(),
-    menuCandidates = preferences.getString(KEY_MENU_CANDIDATES, "").orEmpty(),
   )
 
   override suspend fun saveSettings(settings: WorkoutAiSettings) {
     preferences.edit()
       .putString(KEY_PROVIDER, settings.provider.name)
       .putString(KEY_POLICY, settings.workoutPolicy)
-      .putString(KEY_MENU_CANDIDATES, settings.menuCandidates)
       .apply()
   }
 
@@ -40,7 +38,6 @@ class DefaultWorkoutAiSettingsRepository(context: Context) : WorkoutAiSettingsRe
   private companion object {
     const val KEY_PROVIDER = "provider"
     const val KEY_POLICY = "workout_policy"
-    const val KEY_MENU_CANDIDATES = "menu_candidates"
     const val MEMO_PREFIX = "memo:"
   }
 }
