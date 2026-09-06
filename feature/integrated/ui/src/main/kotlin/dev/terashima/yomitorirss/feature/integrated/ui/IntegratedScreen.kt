@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +37,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -147,7 +147,6 @@ fun IntegratedScreen(
   }
 
   Column(modifier = modifier.fillMaxSize()) {
-    InboxSummary(total = items.size, tab = selectedTab)
     SourceFilters(
       selected = selectedSource,
       counts = items.groupingBy(IntegratedItem::source).eachCount(),
@@ -202,7 +201,7 @@ fun IntegratedScreen(
         }
       }
     }
-    NavigationBar {
+    NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
       IntegratedTab.entries.forEach { tab ->
         NavigationBarItem(
           selected = selectedTab == tab,
@@ -220,45 +219,6 @@ fun IntegratedScreen(
           label = { Text(tab.label, maxLines = 1) },
         )
       }
-    }
-  }
-}
-
-@Composable
-private fun InboxSummary(total: Int, tab: IntegratedTab) {
-  Surface(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-    shape = MaterialTheme.shapes.large,
-    tonalElevation = 1.dp,
-  ) {
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column(modifier = Modifier.weight(1f)) {
-        Text(
-          text = when (tab) {
-            IntegratedTab.UNREAD -> "未処理"
-            IntegratedTab.READ_LATER -> "あとで読む"
-            IntegratedTab.HISTORY -> "履歴"
-          },
-          style = MaterialTheme.typography.labelLarge,
-        )
-        Text(
-          text = when (tab) {
-            IntegratedTab.UNREAD -> if (total == 0) "インボックスゼロ" else "$total 件を仕分けできます"
-            IntegratedTab.READ_LATER -> if (total == 0) "保留中のアイテムはありません" else "$total 件をあとで確認できます"
-            IntegratedTab.HISTORY -> if (total == 0) "履歴はありません" else "$total 件の履歴があります"
-          },
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.SemiBold,
-        )
-      }
-      Text(
-        text = total.toString(),
-        style = MaterialTheme.typography.headlineMedium,
-        color = if (total == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-      )
     }
   }
 }
