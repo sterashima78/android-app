@@ -27,7 +27,6 @@ internal enum class LocalAiEngineCloseStatus(val wireName: String) {
 object LocalAiMemoryDiagnostics {
   private const val PREFERENCES_NAME = "local_ai_memory_diagnostics"
   private const val REPORT_KEY = "recent_inference_memory_samples"
-  private const val LEGACY_REPORT_KEY = "recent_vision_memory_samples"
   private const val MAX_SAMPLES = 128
   private const val TAG = "LocalAiMemory"
   private const val BYTES_PER_KIB = 1024L
@@ -93,16 +92,8 @@ object LocalAiMemoryDiagnostics {
     untilTimestamp: Long,
   ): String? {
     val preferences = context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-    val report = sequenceOf(
-      preferences.getString(LEGACY_REPORT_KEY, null),
-      preferences.getString(REPORT_KEY, null),
-    )
-      .filterNotNull()
-      .flatMap { it.lineSequence() }
-      .filter(String::isNotBlank)
-      .joinToString("\n")
     return filterDiagnosticLines(
-      report = report,
+      report = preferences.getString(REPORT_KEY, null),
       pid = pid,
       processName = processName,
       untilTimestamp = untilTimestamp,
