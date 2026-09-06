@@ -1,4 +1,70 @@
--keep class com.google.ai.edge.litertlm.** { *; }
+# LiteRT-LM 0.16.1 JNI looks up these JVM classes and members by exact name.
+# Re-review this block when upgrading LiteRT-LM; avoid package-wide keep so R8 can
+# remove Kotlin APIs that are not used by this app or the native bridge.
+-keep,allowoptimization class com.google.ai.edge.litertlm.LiteRtLmJniException { *; }
+
+-keepnames class com.google.ai.edge.litertlm.BenchmarkInfo
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.BenchmarkInfo {
+    <init>(double,double,int,int,double,double);
+}
+
+-keepnames class com.google.ai.edge.litertlm.InputData$Text
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.InputData$Text {
+    java.lang.String getText();
+}
+-keepnames class com.google.ai.edge.litertlm.InputData$Audio
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.InputData$Audio {
+    byte[] getBytes();
+}
+-keepnames class com.google.ai.edge.litertlm.InputData$Image
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.InputData$Image {
+    byte[] getBytes();
+}
+
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.SamplerConfig {
+    int getTopK();
+    double getTopP();
+    double getTemperature();
+    int getSeed();
+}
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.ThinkingConfig {
+    boolean getEnableThinking();
+    int getThinkingTokenBudget();
+}
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.RepetitionPenaltyConfig {
+    java.lang.Float getRepetitionPenalty();
+    java.lang.Float getPresencePenalty();
+    java.lang.Float getFrequencyPenalty();
+    java.lang.Integer getWindowSize();
+}
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.NoRepeatNgramConfig {
+    java.lang.Integer getNoRepeatNgramSize();
+    java.lang.Integer getWindowSize();
+}
+-keepclassmembers,allowoptimization class com.google.ai.edge.litertlm.SuppressTokensConfig {
+    int[] getSuppressTokensArray();
+}
+
+-keep,allowoptimization interface com.google.ai.edge.litertlm.LiteRtLmJni$JniInferenceCallback {
+    void onNext(java.lang.String);
+    void onDone();
+    void onError(int, java.lang.String);
+}
+-keepclassmembers,allowoptimization class * implements com.google.ai.edge.litertlm.LiteRtLmJni$JniInferenceCallback {
+    void onNext(java.lang.String);
+    void onDone();
+    void onError(int, java.lang.String);
+}
+-keep,allowoptimization interface com.google.ai.edge.litertlm.LiteRtLmJni$JniMessageCallback {
+    void onMessage(java.lang.String);
+    void onDone();
+    void onError(int, java.lang.String);
+}
+-keepclassmembers,allowoptimization class * implements com.google.ai.edge.litertlm.LiteRtLmJni$JniMessageCallback {
+    void onMessage(java.lang.String);
+    void onDone();
+    void onError(int, java.lang.String);
+}
 
 # androidx.privacysandbox.sdkruntime references optional SDK Sandbox platform APIs.
 # The app does not use Privacy Sandbox directly; these guarded compatibility paths
