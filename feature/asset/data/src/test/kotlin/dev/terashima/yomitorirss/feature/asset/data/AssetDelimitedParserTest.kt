@@ -4,6 +4,7 @@ import java.io.BufferedReader
 import java.io.StringReader
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AssetDelimitedParserTest {
@@ -53,6 +54,31 @@ class AssetDelimitedParserTest {
 
     assertEquals("Deposit / Bank A", row.name)
     assertEquals("Bank A", row.account)
+  }
+
+  @Test
+  fun `負の金額はスナップショット置換対象から除外する`() {
+    val rows = parse(
+      """
+        2026-08-18	Asset A	1000
+        2026-08-18	Asset B	-250
+        2026-08-18	Asset C	0
+      """.trimIndent(),
+    )
+
+    val replacements = buildAssetSnapshotReplacements(rows)
+
+    assertEquals(listOf(1000L, 0L), replacements.getValue(LocalDate.of(2026, 8, 18)).map { it.amount })
+  }
+
+  @Test
+  fun `負の金額しかない日も既存スナップショットを置換する日付として保持する`() {
+    val rows = parse("2026-08-18\tAsset A\t-250")
+
+    val replacements = buildAssetSnapshotReplacements(rows)
+
+    assertTrue(replacements.containsKey(LocalDate.of(2026, 8, 18)))
+    assertTrue(replacements.getValue(LocalDate.of(2026, 8, 18)).isEmpty())
   }
 
   @Test(expected = IllegalStateException::class)
