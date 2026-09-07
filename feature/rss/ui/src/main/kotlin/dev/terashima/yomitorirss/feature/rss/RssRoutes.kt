@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.feature.article.Article
+import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 
 class RssRouteController internal constructor() {
   internal var showAddFeed by mutableStateOf(false)
@@ -52,6 +53,7 @@ fun RssRoute(
   onStopReviewSummary: () -> Unit,
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
+  onListen: (List<BookmarkedArticle>) -> Unit,
 ) {
   val rssState by rssViewModel.state.collectAsState()
   val feedState by feedViewModel.state.collectAsState()
@@ -88,6 +90,7 @@ fun RssRoute(
         onEditTags = onEditTags,
         onMoveFolder = onMoveFolder,
         onSetContentType = rssViewModel::setArticleContentType,
+        onListen = onListen,
       )
     }
   }
@@ -143,7 +146,7 @@ fun FeedRoute(
   } else {
     PullToRefreshContainer(
       modifier = modifier,
-      isRefreshing = state.refreshing,
+      isRefreshing = feedState.refreshing,
       onRefresh = feedViewModel::refresh,
     ) {
       FeedScreen(
