@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.mail.data.mailDatabaseSchema
 import dev.terashima.yomitorirss.feature.rss.data.rssDatabaseSchema
 import dev.terashima.yomitorirss.feature.summary.data.summaryDatabaseSchema
 import dev.terashima.yomitorirss.feature.task.data.taskDatabaseSchema
+import dev.terashima.yomitorirss.feature.video.data.videoDatabaseSchema
 import dev.terashima.yomitorirss.feature.youtube.data.youtubeDatabaseSchema
 
 val appDatabaseSchema = DatabaseSchema(
@@ -27,5 +28,6 @@ val appDatabaseSchema = DatabaseSchema(
     taskDatabaseSchema,
     chatDatabaseSchema,
     youtubeDatabaseSchema,
+    videoDatabaseSchema,
   ),
 )
