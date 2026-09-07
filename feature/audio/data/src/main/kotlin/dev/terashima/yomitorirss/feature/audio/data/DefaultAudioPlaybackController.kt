@@ -18,6 +18,7 @@ import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackState
 import dev.terashima.yomitorirss.feature.audio.AudioPreparationStatus
 import dev.terashima.yomitorirss.feature.audio.AudioQueueItem
+import dev.terashima.yomitorirss.feature.audio.normalizeAudioQueue
 import dev.terashima.yomitorirss.feature.summary.SummaryReader
 import dev.terashima.yomitorirss.feature.summary.SummaryRequestResult
 import dev.terashima.yomitorirss.feature.summary.SummaryRequester
@@ -60,7 +61,7 @@ class DefaultAudioPlaybackController(
   private var positionJob: Job? = null
 
   override fun play(items: List<AudioQueueItem>) {
-    val queue = items.distinctBy(AudioQueueItem::contentId)
+    val queue = normalizeAudioQueue(items)
     if (queue.isEmpty()) return
 
     prepareJob?.cancel()
