@@ -70,6 +70,14 @@ Media3 MediaSessionService / ExoPlayer
 - 生成中または新規enqueueされた要約は、保存済み結果が利用可能になるまで限定時間pollする。
 - 要約取得に失敗した項目は再生対象から除外し、Audio独自の要約生成経路は追加しない。
 
+## Progressive TTS preparation
+
+要約解決後のTTS音声はqueue順に1件ずつ生成する。最初の再生可能な音声ファイルが完成した時点でMedia3のqueueへ設定して再生を開始し、後続項目は再生中も生成を継続する。後続の音声ファイルが完成するたびに現在のMedia3 queue末尾へ追加し、全件の音声生成完了を再生開始条件にはしない。
+
+生成が再生速度に追いつかずMedia3 queueの末尾へ到達した場合は、次の音声が追加されるまで再生可能項目がない状態になる。停止や新しいqueueでの再生開始時には進行中のTTS生成も既存のcontroller jobとともにcancelする。
+
+この先行生成はAudio capability内のprocess-local preparationであり、新しいdurable queue、Worker、schedulerは追加しない。
+
 ## TTS cache
 
 読み上げ対象は記事タイトルと保存済み要約を連結したテキストとする。Android `TextToSpeech.synthesizeToFile` を利用し、生成ファイルは app cache directory 配下の `summary-audio` へ保存する。
@@ -114,8 +122,9 @@ Audio playback自体による新しいnetwork通信はない。端末のTTS engi
 ## Verification
 
 - `:feature:audio:domain` unit testでqueue order / deduplication / current item semanticsを検証する。
+- `:feature:audio:data` unit testで最初の音声準備完了を後続音声の準備完了より先に再生開始へ渡せることを検証する。
 - Architecture verificationでmodule metadataとapp/presentation/composition境界を検証する。
-- Android実機では、音声生成、連続再生、background継続、通知・lock screen・Bluetooth control、seek、速度変更、再生後もread stateが変化しないことを確認する。
+- Android実機では、最初の音声完成時の即時再生、再生中の後続音声生成、連続再生、background継続、通知・lock screen・Bluetooth control、seek、速度変更、再生後もread stateが変化しないことを確認する。
 
 ## Sources
 
