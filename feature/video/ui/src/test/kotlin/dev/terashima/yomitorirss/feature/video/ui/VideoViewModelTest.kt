@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
 import dev.terashima.yomitorirss.feature.video.VideoItem
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackState
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
@@ -62,6 +64,53 @@ class VideoViewModelTest {
       assertFalse(viewModel.state.value.busy)
       assertNull(viewModel.state.value.busyMessage)
       assertEquals("追加に失敗しました", viewModel.state.value.message)
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
+  fun `再生セッションと全画面状態と最新位置をViewModel内に保持する`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val repository = FakeVideoRepository()
+      val viewModel = VideoViewModel(repository)
+      advanceUntilIdle()
+      val item = VideoItem(
+        id = "video-1",
+        source = VideoSource.WEB,
+        sourceId = "https://example.com/video",
+        title = "テスト動画",
+        updatedAtEpochMillis = 1L,
+        playbackState = VideoPlaybackState(
+          positionMs = 4_000L,
+          durationMs = 10_000L,
+          lastPlayedAtEpochMillis = 1L,
+          completed = false,
+        ),
+      )
+      val target = VideoPlaybackTarget.Stream(
+        url = "https://example.com/video.mp4",
+        mimeType = "video/mp4",
+        referrerUrl = "https://example.com",
+      )
+
+      viewModel.openPlayback(item, target)
+
+      assertEquals(VideoPlaybackSession(item, target), viewModel.playbackSession.value)
+      assertEquals(4_000L, viewModel.resumePositionMs(item))
+
+      viewModel.setPlaybackFullscreen(true)
+      viewModel.savePlayback(item, positionMs = 6_500L, durationMs = 10_000L)
+
+      assertTrue(viewModel.playbackSession.value?.isFullscreen == true)
+      assertEquals(6_500L, viewModel.resumePositionMs(item))
+      advanceUntilIdle()
+
+      viewModel.closePlayback()
+
+      assertNull(viewModel.playbackSession.value)
+      assertEquals(4_000L, viewModel.resumePositionMs(item))
     } finally {
       Dispatchers.resetMain()
     }

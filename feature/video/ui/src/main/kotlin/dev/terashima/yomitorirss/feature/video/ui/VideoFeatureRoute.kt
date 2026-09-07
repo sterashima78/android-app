@@ -29,9 +29,8 @@ fun VideoFeatureRoute(
 ) {
   val viewModel: VideoViewModel = viewModel(factory = viewModelFactory)
   val state by viewModel.state.collectAsState()
+  val playbackSession by viewModel.playbackSession.collectAsState()
   val scope = rememberCoroutineScope()
-  var playerItem by remember { mutableStateOf<VideoItem?>(null) }
-  var playerTarget by remember { mutableStateOf<VideoPlaybackTarget?>(null) }
   var resolving by remember { mutableStateOf(false) }
 
   fun play(item: VideoItem) {
@@ -44,10 +43,7 @@ fun VideoFeatureRoute(
             is VideoPlaybackTarget.WebPage -> onOpenWebUrl(target.url)
             is VideoPlaybackTarget.Stream,
             is VideoPlaybackTarget.Smb,
-            -> {
-              playerItem = item
-              playerTarget = target
-            }
+            -> viewModel.openPlayback(item, target)
           }
         },
         onFailure = {
@@ -76,19 +72,20 @@ fun VideoFeatureRoute(
     }
   }
 
-  val activeItem = playerItem
-  val activeTarget = playerTarget
-  if (activeItem != null && activeTarget != null) {
+  val activeSession = playbackSession
+  if (activeSession != null) {
     VideoPlayerDialog(
-      item = activeItem,
-      target = activeTarget,
+      item = activeSession.item,
+      target = activeSession.target,
+      resumePositionMs = viewModel.resumePositionMs(activeSession.item),
+      isFullscreen = activeSession.isFullscreen,
       byteSourceFactory = byteSourceFactory,
+      onFullscreenChange = viewModel::setPlaybackFullscreen,
       onSavePlayback = { positionMs, durationMs ->
-        viewModel.savePlayback(activeItem, positionMs, durationMs)
+        viewModel.savePlayback(activeSession.item, positionMs, durationMs)
       },
       onDismiss = {
-        playerItem = null
-        playerTarget = null
+        viewModel.closePlayback()
         viewModel.reload()
       },
     )

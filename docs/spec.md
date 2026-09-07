@@ -100,7 +100,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - Media3で通常のHTTP動画とHLS streamを再生する。SMB動画は蔵書で設定済みのSMB接続情報を利用し、動画ファイル全体を事前downloadせずrandom-access readで再生する。
-- 再生画面では全画面表示へ切り替えられる。全画面中はsystem barsを隠し、画面端のスワイプで一時表示できる。全画面解除または再生画面を閉じると通常表示へ戻る。
+- 再生画面では全画面表示へ切り替えられる。全画面へ入ると横向き表示へ切り替えてsystem barsを隠し、画面端のスワイプで一時表示できる。全画面解除または再生画面を閉じると通常の縦向き表示へ戻る。
 - SMB passwordやserver credentialをVideo側へ複製しない。SMB credentialは従来どおりLibrary側の保護された保存領域を利用する。
 - 動画ごとに再生位置、duration、最終再生日時、視聴済み状態を保存し、次回再生時に保存位置から再開する。
 - durationが取得できる動画は95%以上再生すると視聴済みとし、一覧から手動で視聴済み / 未視聴を変更できる。

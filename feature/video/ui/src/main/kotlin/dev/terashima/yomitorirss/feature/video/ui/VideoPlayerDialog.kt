@@ -1,5 +1,9 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.webkit.WebSettings
@@ -17,11 +21,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,13 +46,15 @@ import kotlinx.coroutines.delay
 internal fun VideoPlayerDialog(
   item: VideoItem,
   target: VideoPlaybackTarget,
+  resumePositionMs: Long,
+  isFullscreen: Boolean,
   byteSourceFactory: VideoByteSourceFactory,
+  onFullscreenChange: (Boolean) -> Unit,
   onSavePlayback: (positionMs: Long, durationMs: Long) -> Unit,
   onDismiss: () -> Unit,
 ) {
   require(target is VideoPlaybackTarget.Stream || target is VideoPlaybackTarget.Smb)
   val context = LocalContext.current
-  var isFullscreen by rememberSaveable(item.id) { mutableStateOf(false) }
   val player = remember(item.id, target) {
     val builder = ExoPlayer.Builder(context)
     when (target) {
@@ -83,8 +85,7 @@ internal fun VideoPlayerDialog(
       }
       setMediaItem(mediaItem)
       prepare()
-      val resumePosition = item.playbackState?.positionMs ?: 0L
-      if (resumePosition > 0L) seekTo(resumePosition)
+      if (resumePositionMs > 0L) seekTo(resumePositionMs)
       playWhenReady = true
     }
   }
@@ -118,7 +119,7 @@ internal fun VideoPlayerDialog(
   Dialog(
     onDismissRequest = {
       if (isFullscreen) {
-        isFullscreen = false
+        onFullscreenChange(false)
       } else {
         onDismiss()
       }
@@ -128,6 +129,7 @@ internal fun VideoPlayerDialog(
       dismissOnClickOutside = false,
     ),
   ) {
+    FullscreenOrientationEffect(isFullscreen)
     FullscreenSystemBarsEffect(isFullscreen)
     Surface(
       modifier = Modifier.fillMaxSize(),
@@ -145,7 +147,7 @@ internal fun VideoPlayerDialog(
           modifier = Modifier.fillMaxSize(),
         )
         Row(modifier = Modifier.align(Alignment.TopEnd)) {
-          IconButton(onClick = { isFullscreen = !isFullscreen }) {
+          IconButton(onClick = { onFullscreenChange(!isFullscreen) }) {
             Icon(
               imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
               contentDescription = if (isFullscreen) "全画面を終了" else "全画面表示",
@@ -167,6 +169,29 @@ internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map
 }
 
 @Composable
+private fun FullscreenOrientationEffect(isFullscreen: Boolean) {
+  val activity = LocalContext.current.findActivity()
+
+  LaunchedEffect(activity, isFullscreen) {
+    activity?.requestedOrientation = videoPlayerRequestedOrientation(isFullscreen)
+  }
+
+  DisposableEffect(activity) {
+    onDispose {
+      if (activity?.isChangingConfigurations != true) {
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+      }
+    }
+  }
+}
+
+internal fun videoPlayerRequestedOrientation(isFullscreen: Boolean): Int = if (isFullscreen) {
+  ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+} else {
+  ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+}
+
+@Composable
 private fun FullscreenSystemBarsEffect(isFullscreen: Boolean) {
   val view = LocalView.current
   DisposableEffect(view, isFullscreen) {
@@ -184,4 +209,10 @@ private fun FullscreenSystemBarsEffect(isFullscreen: Boolean) {
       if (isFullscreen) controller?.show(WindowInsets.Type.systemBars())
     }
   }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+  is Activity -> this
+  is ContextWrapper -> baseContext.findActivity()
+  else -> null
 }
