@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.video.VideoPlaybackResolver
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
+import java.net.URI
 
 class DefaultVideoPlaybackResolver(
   private val smbMediaFileAccess: SmbMediaFileAccess,
@@ -59,9 +60,16 @@ class DefaultVideoPlaybackResolver(
         VideoPlaybackTarget.Stream(
           url = it,
           mimeType = custom.mimeType,
-          referrerUrl = pageUrl,
+          referrerUrl = webStreamReferrerUrl(pageUrl),
         )
       }
       ?: VideoPlaybackTarget.WebPage(pageUrl)
   }
 }
+
+internal fun webStreamReferrerUrl(pageUrl: String): String? = runCatching {
+  val uri = URI(pageUrl)
+  val scheme = uri.scheme?.lowercase()
+  require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
+  URI(scheme, null, uri.host, uri.port, "/", null, null).toString()
+}.getOrNull()
