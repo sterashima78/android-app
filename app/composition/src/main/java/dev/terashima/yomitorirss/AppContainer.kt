@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss
 import android.app.Activity
 import android.app.Application
 import dev.terashima.yomitorirss.composition.ai.AppAiCoreRuntimeDependencies
+import dev.terashima.yomitorirss.composition.audio.AppAudioRuntimeDependencies
 import dev.terashima.yomitorirss.composition.background.AppBackgroundRuntime
 import dev.terashima.yomitorirss.composition.content.AppContentRuntimeDependencies
 import dev.terashima.yomitorirss.composition.crossfeature.AppCrossFeatureRuntimeDependencies
@@ -49,6 +50,14 @@ class AppContainer(
 
   private val aiCoreRuntime: AppAiCoreRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     AppAiCoreRuntimeDependencies(application, database, httpClient)
+  }
+
+  private val audioRuntime: AppAudioRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AppAudioRuntimeDependencies(
+      application = application,
+      summaryReader = aiCoreRuntime.summaryRepository,
+      summaryRequester = aiCoreRuntime.summaryRepository,
+    )
   }
 
   private val contentRuntime: AppContentRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -147,6 +156,7 @@ class AppContainer(
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
   internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings
 
+  val audioPlaybackController get() = audioRuntime.playbackController
   val bookmarkContentQuery get() = contentRuntime.bookmarkContentQuery
   val articleRepository get() = contentRuntime.articleRepository
   val assetRepository get() = supportingRuntime.assetRepository
