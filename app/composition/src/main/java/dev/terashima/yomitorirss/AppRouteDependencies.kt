@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss
 import android.app.Application
 import dev.terashima.yomitorirss.composition.route.AppContentRouteDependencies
 import dev.terashima.yomitorirss.composition.route.AppSupportingRouteDependencies
+import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
 
 class AppRouteDependencies(
   application: Application,
@@ -11,6 +12,7 @@ class AppRouteDependencies(
   private val content = AppContentRouteDependencies(container)
   private val supporting = AppSupportingRouteDependencies(application, container)
 
+  val audioPlaybackController: AudioPlaybackController = container.audioPlaybackController
   val rssViewModelFactory get() = content.rssViewModelFactory
   val redditViewModelFactory get() = content.redditViewModelFactory
   val feedViewModelFactory get() = content.feedViewModelFactory

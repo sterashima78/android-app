@@ -123,6 +123,8 @@ dependencies {
   implementation(project(":feature:bookmark:ui"))
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:ui"))
+  implementation(project(":feature:audio:domain"))
+  implementation(project(":feature:audio:ui"))
   implementation(project(":feature:asset:domain"))
   implementation(project(":feature:asset:ui"))
   implementation(project(":feature:book-reader:domain"))
