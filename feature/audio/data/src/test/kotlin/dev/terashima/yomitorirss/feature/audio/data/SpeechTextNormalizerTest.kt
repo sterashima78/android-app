@@ -56,8 +56,8 @@ class SpeechTextNormalizerTest {
   @Test
   fun `Markdownではない記号は保持する`() {
     assertEquals(
-      "C# と snake_case はそのまま読む",
-      markdownToSpeechText("C# と snake_case はそのまま読む"),
+      "C# と snake_case_test はそのまま読む",
+      markdownToSpeechText("C# と snake_case_test はそのまま読む"),
     )
   }
 }
