@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-07
 - Refines: [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0180](0180-rss-custom-web-scraping-rules.md), [ADR-0235](0235-summary-audio-playback.md)
+- Amends: [ADR-0138](0138-database-v27-compatibility-baseline.md)
 
 ## Context
 
@@ -11,6 +12,8 @@ Mosaic で、SMB ファイルサーバー上の動画、Web ページ由来の�
 Web ページは単なる動画ブックマークとして外部ページを開く場合と、ページ内 JavaScript から再生可能な stream URL を取得してアプリ内で再生できる場合がある。サムネイルは既定で OGP / HTML metadata を利用するが、URL pattern ごとに端末上の JavaScript で取得方法を上書きできる必要がある。
 
 Library は SMB credential / server settings と Web metadata extractor を、RSS は Web scraping rule をそれぞれ owning Context 内で所有している。Audio は Media3 / foreground media playback runtime の既存例を持つ。
+
+Video は新しい durable table を追加するため、ADR-0047 に従って application database version も更新する必要がある。ADR-0138 は version 27 を直前の更新互換性 baseline とし、backup restore は current application schema version と snapshot version の完全一致を要求している。
 
 ## Decision
 
@@ -84,9 +87,19 @@ Video は item ごとに再生位置、duration、最終再生日時、completed
 
 95% 以上再生した item は completed とみなす。UI から手動で未視聴 / 視聴済みに変更できる。
 
+### database version を 28 へ進める
+
+Video-owned `video_items`、`video_playback_state`、`video_web_extractor_rules` を application schema contribution に追加し、database version を 28 とする。
+
+version 27 の現在インストールから version 28 へのアプリ更新を保証し、upgrade 時に全 feature schema contribution を再適用することで Video table を追加する。version 26 以下からの直接更新を再びサポートしない。
+
+backup restore は ADR-0138 の exact-version policy を維持する。version 28 アプリは version 28 snapshot を復元対象とし、version 27 snapshot を直接復元しない。更新後に生成した通常の自動・手動backupを新しいrestore baselineとする。
+
 ### Media3 を利用する
 
 アプリ内動画再生は既存 version catalog の Media3 を利用する。SMB file は全ファイルを端末へ事前 download せず、random-access capable DataSource 経由で再生する。
+
+HTTP動画に加え、Web extractorが返すHLS streamを再生するためMedia3 HLS moduleを利用する。
 
 v1 は foreground UI player を対象とし、background audio continuation / Cast / download / transcoding は追加しない。
 
@@ -95,16 +108,18 @@ v1 は foreground UI player を対象とし、background audio continuation / Ca
 - SMB / Web / 将来の service adapter を共通 VideoItem に投影できる。
 - Web page bookmark と stream-capable page を同じ identity で扱える。
 - サイト変更時は rule 更新だけで追従できる。
-- Video-owned rule table と playback state table が durable user data として追加される。
+- Video-owned catalog、rule、playback state table が durable user data として追加される。
 - Library の SMB credential ownership は維持され、duplicate credential state は増えない。
 - Library/RSS/Video で user-authored Web extraction semantics は各 Context が所有する一方、WebView execution mechanism の共通化は今回行わない。重複が増えた場合は dedicated technical executor 抽出を別判断とする。
+- version 27 のインストールから version 28 への更新は対応するが、version 27 snapshot は version 28 の exact-version restore 対象にはしない。
 
 ## Verification
 
 - URL glob matching / precedence を unit test する。
 - extractor result validation と Web fallback を unit test する。
 - Video schema / repository の catalog、rule、playback state persistence を unit test する。
+- version 27 database を version 28 schema で開き、Video table が追加される migration test を行う。
 - Library の narrow SMB access contract が credential value を Video へ公開しないことを確認する。
 - Media3 playback target mapping を unit test する。
 - architecture verification で Video-owned table と module dependency を確認する。
-- Android 実機で SMB MP4/MKV、HTTP stream、Web fallback、seek、resume を確認する。
+- Android 実機で SMB MP4/MKV、HTTP/HLS stream、Web fallback、seek、resume を確認する。
