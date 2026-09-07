@@ -34,4 +34,14 @@ class ApplicationProcessPolicyTest {
       ),
     )
   }
+
+  @Test
+  fun `godot process では application runtime を初期化しない`() {
+    assertFalse(
+      shouldInitializeMainProcessRuntime(
+        processName = "dev.terashima.yomitorirss:godot",
+        packageName = "dev.terashima.yomitorirss",
+      ),
+    )
+  }
 }
