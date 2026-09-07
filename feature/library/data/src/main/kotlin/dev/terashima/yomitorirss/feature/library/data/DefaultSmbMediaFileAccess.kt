@@ -213,11 +213,14 @@ private class OpenedSmbMediaReadHandle(
   }
 }
 
-private fun normalizeMediaSmbPath(path: String): String = path
-  .replace('/', '\\')
-  .split('\\')
-  .filter { it.isNotBlank() && it != "." }
-  .joinToString("\\")
+internal fun normalizeMediaSmbPath(path: String): String {
+  val segments = path
+    .replace('/', '\\')
+    .split('\\')
+    .filter { it.isNotBlank() && it != "." }
+  require(".." !in segments) { "SMB動画のパスに .. は使用できません" }
+  return segments.joinToString("\\")
+}
 
 private fun joinMediaSmbPath(parent: String, child: String): String =
   listOf(normalizeMediaSmbPath(parent), normalizeMediaSmbPath(child))
