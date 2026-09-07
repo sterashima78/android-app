@@ -161,21 +161,14 @@ class AndroidWebVideoExtractorClient(
         title = value.optString("title").takeIf(String::isNotBlank),
         thumbnailUrl = value.optString("thumbnailUrl")
           .takeIf(String::isNotBlank)
-          ?.let { resolveUrl(finalUrl, it, httpsOnly = true) },
+          ?.let { resolveWebVideoExtractorUrl(finalUrl, it, httpsOnly = true) },
         streamUrl = value.optString("streamUrl")
           .takeIf(String::isNotBlank)
-          ?.let { resolveUrl(finalUrl, it, httpsOnly = false) },
+          ?.let { resolveWebVideoExtractorUrl(finalUrl, it, httpsOnly = false) },
         mimeType = value.optString("mimeType").takeIf(String::isNotBlank),
       ),
     )
   }
-
-  private fun resolveUrl(baseUrl: String, candidate: String, httpsOnly: Boolean): String? = runCatching {
-    val resolved = URI(baseUrl).resolve(candidate)
-    val scheme = resolved.scheme?.lowercase()
-    val allowed = if (httpsOnly) scheme == "https" else scheme == "https" || scheme == "http"
-    resolved.takeIf { allowed && it.host != null }?.toString()
-  }.getOrNull()
 
   private fun startScript(stateKey: String, rule: WebVideoExtractorRule): String {
     val key = JSONObject.quote(stateKey)
@@ -232,7 +225,18 @@ class AndroidWebVideoExtractorClient(
   }
 }
 
-private fun isSafeExtractorPageUrl(url: String): Boolean = runCatching {
+internal fun resolveWebVideoExtractorUrl(
+  baseUrl: String,
+  candidate: String,
+  httpsOnly: Boolean,
+): String? = runCatching {
+  val resolved = URI(baseUrl).resolve(candidate)
+  val scheme = resolved.scheme?.lowercase()
+  val allowed = if (httpsOnly) scheme == "https" else scheme == "https" || scheme == "http"
+  resolved.takeIf { allowed && !it.host.isNullOrBlank() }?.toString()
+}.getOrNull()
+
+internal fun isSafeExtractorPageUrl(url: String): Boolean = runCatching {
   val uri = URI(url)
   uri.scheme.equals("https", ignoreCase = true) &&
     !uri.host.isNullOrBlank() &&
