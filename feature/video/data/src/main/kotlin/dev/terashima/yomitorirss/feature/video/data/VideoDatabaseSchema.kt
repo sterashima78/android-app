@@ -1,11 +1,18 @@
 package dev.terashima.yomitorirss.feature.video.data
 
 import android.database.sqlite.SQLiteDatabase
+import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val videoDatabaseSchema = DatabaseSchemaContribution(
   owner = "video",
   createSchema = ::ensureVideoSchema,
+  migrations = listOf(
+    DatabaseMigration(
+      targetVersion = 29,
+      migrate = ::migrateLegacyVideoSmbSources,
+    ),
+  ),
 )
 
 internal fun ensureVideoSchema(db: SQLiteDatabase) {
@@ -71,5 +78,23 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_rules_updated ON video_web_extractor_rules(updated_at DESC)",
+  )
+}
+
+private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO video_smb_sources(
+        id, server_id, share_name, root_path, updated_at
+      )
+      SELECT
+        'legacy-library:' || id,
+        id,
+        share_name,
+        root_path,
+        updated_at
+      FROM smb_library_servers
+      WHERE TRIM(share_name) <> ''
+    """.trimIndent(),
   )
 }
