@@ -1,8 +1,12 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -12,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
@@ -63,6 +68,10 @@ fun VideoFeatureRoute(
       onRefreshSmb = { smbSettingsVisible = true },
       onRemove = viewModel::remove,
       onSetCompleted = viewModel::setCompleted,
+      onSaveVideo = viewModel::saveVideo,
+      onRemoveSavedVideo = viewModel::removeSavedVideo,
+      onSaveFolder = viewModel::saveFolder,
+      onDeleteFolder = viewModel::deleteFolder,
       onSaveExtractorRule = viewModel::saveExtractorRule,
       onDeleteExtractorRule = viewModel::deleteExtractorRule,
       onDismissMessage = viewModel::dismissMessage,
@@ -70,6 +79,21 @@ fun VideoFeatureRoute(
     )
     if (resolving) {
       CircularProgressIndicator(Modifier.align(Alignment.Center))
+    }
+    state.busyMessage?.let { busyMessage ->
+      Card(
+        modifier = Modifier
+          .align(Alignment.TopCenter)
+          .padding(16.dp),
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          CircularProgressIndicator(Modifier.padding(end = 12.dp), strokeWidth = 2.dp)
+          Text(busyMessage)
+        }
+      }
     }
   }
 

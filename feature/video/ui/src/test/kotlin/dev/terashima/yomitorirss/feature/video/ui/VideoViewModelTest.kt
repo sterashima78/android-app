@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.video.ui
 import dev.terashima.yomitorirss.feature.library.SmbConnectionProfile
 import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.library.SmbLibraryLocation
+import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackState
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
@@ -34,7 +35,7 @@ class VideoViewModelTest {
       val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
       advanceUntilIdle()
 
-      viewModel.addWeb("https://example.com/video")
+      viewModel.addWeb("https://example.invalid/video")
 
       assertTrue(viewModel.state.value.busy)
       assertEquals("Web動画を追加中…", viewModel.state.value.busyMessage)
@@ -59,7 +60,7 @@ class VideoViewModelTest {
       val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
       advanceUntilIdle()
 
-      viewModel.addWeb("https://example.com/video")
+      viewModel.addWeb("https://example.invalid/video")
 
       assertEquals("Web動画を追加中…", viewModel.state.value.busyMessage)
       repository.addGate.complete(Unit)
@@ -83,7 +84,7 @@ class VideoViewModelTest {
       val item = VideoItem(
         id = "video-1",
         source = VideoSource.WEB,
-        sourceId = "https://example.com/video",
+        sourceId = "https://example.invalid/video",
         title = "テスト動画",
         updatedAtEpochMillis = 1L,
         playbackState = VideoPlaybackState(
@@ -94,27 +95,40 @@ class VideoViewModelTest {
         ),
       )
       val target = VideoPlaybackTarget.Stream(
-        url = "https://example.com/video.mp4",
+        url = "https://cdn.example.invalid/video.mp4",
         mimeType = "video/mp4",
-        referrerUrl = "https://example.com/",
+        referrerUrl = "https://example.invalid/",
       )
 
       viewModel.openPlayback(item, target)
-
       assertEquals(VideoPlaybackSession(item, target), viewModel.playbackSession.value)
       assertEquals(4_000L, viewModel.resumePositionMs(item))
 
       viewModel.setPlaybackFullscreen(true)
       viewModel.savePlayback(item, positionMs = 6_500L, durationMs = 10_000L)
-
       assertTrue(viewModel.playbackSession.value?.isFullscreen == true)
       assertEquals(6_500L, viewModel.resumePositionMs(item))
       advanceUntilIdle()
 
       viewModel.closePlayback()
-
       assertNull(viewModel.playbackSession.value)
       assertEquals(4_000L, viewModel.resumePositionMs(item))
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
+  fun `保存フォルダをsnapshotへ読み込む`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val repository = FakeVideoRepository().apply {
+        storedFolders += VideoFolder(id = "folder-1", name = "あとで見る")
+      }
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      advanceUntilIdle()
+
+      assertEquals(listOf("folder-1"), viewModel.state.value.folders.map(VideoFolder::id))
     } finally {
       Dispatchers.resetMain()
     }
@@ -125,6 +139,7 @@ class VideoViewModelTest {
   ) : VideoRepository {
     val addGate = CompletableDeferred<Unit>()
     private val storedItems = mutableListOf<VideoItem>()
+    val storedFolders = mutableListOf<VideoFolder>()
 
     override suspend fun items(): List<VideoItem> = storedItems.toList()
 
@@ -142,14 +157,15 @@ class VideoViewModelTest {
     }
 
     override suspend fun remove(id: String) = Unit
-
     override suspend fun refreshSmb(): Int = 0
-
     override fun smbSources(): List<VideoSmbSource> = emptyList()
-
     override fun saveSmbSource(source: VideoSmbSource): VideoSmbSource = source
-
     override fun deleteSmbSource(id: String) = Unit
+    override fun folders(): List<VideoFolder> = storedFolders.toList()
+    override fun saveFolder(folder: VideoFolder): VideoFolder = folder
+    override fun deleteFolder(id: String) = Unit
+    override fun saveVideo(videoId: String, folderId: String?) = Unit
+    override fun removeSavedVideo(videoId: String) = Unit
 
     override suspend fun updatePlayback(
       videoId: String,
@@ -159,11 +175,8 @@ class VideoViewModelTest {
     ) = Unit
 
     override suspend fun setCompleted(videoId: String, completed: Boolean) = Unit
-
     override fun extractorRules(): List<WebVideoExtractorRule> = emptyList()
-
     override fun saveExtractorRule(rule: WebVideoExtractorRule): WebVideoExtractorRule = rule
-
     override fun deleteExtractorRule(id: String) = Unit
   }
 }
@@ -177,10 +190,7 @@ private object FakeSmbConnectionProfileRepository : SmbConnectionProfileReposito
   ): SmbConnectionProfile = profile
 
   override suspend fun deleteConnectionProfile(profileId: String) = Unit
-
   override suspend fun libraryLocations(): List<SmbLibraryLocation> = emptyList()
-
   override suspend fun saveLibraryLocation(location: SmbLibraryLocation): SmbLibraryLocation = location
-
   override suspend fun deleteLibraryLocation(serverId: String) = Unit
 }

@@ -59,13 +59,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 
+private const val SAVED_ALL = "__all__"
+private const val SAVED_UNCATEGORIZED = "__uncategorized__"
+
 private enum class VideoTab(val label: String) {
   ALL("すべて"),
   CONTINUE("続き"),
+  SAVED("保存"),
   COMPLETED("視聴済み"),
   SETTINGS("設定"),
 }
@@ -78,6 +83,10 @@ fun VideoScreen(
   onRefreshSmb: () -> Unit,
   onRemove: (VideoItem) -> Unit,
   onSetCompleted: (VideoItem, Boolean) -> Unit,
+  onSaveVideo: (VideoItem, String?) -> Unit,
+  onRemoveSavedVideo: (VideoItem) -> Unit,
+  onSaveFolder: (VideoFolder) -> Unit,
+  onDeleteFolder: (String) -> Unit,
   onSaveExtractorRule: (WebVideoExtractorRule) -> Unit,
   onDeleteExtractorRule: (String) -> Unit,
   onDismissMessage: () -> Unit,
@@ -86,9 +95,12 @@ fun VideoScreen(
   val snackbar = remember { SnackbarHostState() }
   var tabName by rememberSaveable { mutableStateOf(VideoTab.ALL.name) }
   var sourceName by rememberSaveable { mutableStateOf<String?>(null) }
+  var savedFolderFilter by rememberSaveable { mutableStateOf(SAVED_ALL) }
   var addWebVisible by remember { mutableStateOf(false) }
   var editingRule by remember { mutableStateOf<WebVideoExtractorRule?>(null) }
   var newRuleVisible by remember { mutableStateOf(false) }
+  var editingFolder by remember { mutableStateOf<VideoFolder?>(null) }
+  var newFolderVisible by remember { mutableStateOf(false) }
   val tab = VideoTab.valueOf(tabName)
   val source = sourceName?.let { selected -> VideoSource.entries.firstOrNull { it.name == selected } }
 
@@ -125,6 +137,22 @@ fun VideoScreen(
     )
   }
 
+  if (newFolderVisible || editingFolder != null) {
+    VideoFolderDialog(
+      initial = editingFolder,
+      busy = state.busy,
+      onDismiss = {
+        editingFolder = null
+        newFolderVisible = false
+      },
+      onSave = { folder ->
+        editingFolder = null
+        newFolderVisible = false
+        onSaveFolder(folder)
+      },
+    )
+  }
+
   Scaffold(
     modifier = modifier.fillMaxSize(),
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -147,6 +175,7 @@ fun VideoScreen(
                 imageVector = when (item) {
                   VideoTab.ALL -> Icons.Default.List
                   VideoTab.CONTINUE -> Icons.Default.PlayCircle
+                  VideoTab.SAVED -> Icons.Default.Add
                   VideoTab.COMPLETED -> Icons.Default.CheckCircle
                   VideoTab.SETTINGS -> Icons.Default.Settings
                 },
@@ -170,19 +199,28 @@ fun VideoScreen(
         VideoSettings(
           state = state,
           onRefreshSmb = onRefreshSmb,
+          onNewFolder = { newFolderVisible = true },
+          onEditFolder = { editingFolder = it },
+          onDeleteFolder = onDeleteFolder,
           onNewRule = { newRuleVisible = true },
           onEditRule = { editingRule = it },
           onDeleteRule = onDeleteExtractorRule,
         )
       } else {
-        val filtered = remember(state.items, tab, source) {
+        val filtered = remember(state.items, tab, source, savedFolderFilter) {
           state.items.filter { item ->
-            (source == null || item.source == source) && when (tab) {
+            val tabMatches = when (tab) {
               VideoTab.ALL -> true
               VideoTab.CONTINUE -> item.playbackState?.let { it.positionMs > 0L && !it.completed } == true
+              VideoTab.SAVED -> when (savedFolderFilter) {
+                SAVED_ALL -> item.savedState != null
+                SAVED_UNCATEGORIZED -> item.savedState?.folderId == null
+                else -> item.savedState?.folderId == savedFolderFilter
+              }
               VideoTab.COMPLETED -> item.playbackState?.completed == true
               VideoTab.SETTINGS -> false
             }
+            (source == null || item.source == source) && tabMatches
           }
         }
         Column(Modifier.fillMaxSize()) {
@@ -190,11 +228,19 @@ fun VideoScreen(
             selected = source,
             onSelected = { sourceName = it?.name },
           )
+          if (tab == VideoTab.SAVED) {
+            SavedFolderFilters(
+              folders = state.folders,
+              selected = savedFolderFilter,
+              onSelected = { savedFolderFilter = it },
+            )
+          }
           if (filtered.isEmpty()) {
             Text(
               when (tab) {
                 VideoTab.ALL -> "動画がありません。Web URLを追加するか、設定からSMB動画を同期してください。"
                 VideoTab.CONTINUE -> "再生途中の動画はありません。"
+                VideoTab.SAVED -> "保存した動画はありません。動画を長押しして保存できます。"
                 VideoTab.COMPLETED -> "視聴済みの動画はありません。"
                 VideoTab.SETTINGS -> ""
               },
@@ -212,29 +258,15 @@ fun VideoScreen(
               items(filtered, key = VideoItem::id) { item ->
                 VideoCard(
                   item = item,
+                  folders = state.folders,
                   onPlay = { onPlay(item) },
                   onRemove = { onRemove(item) },
                   onSetCompleted = { completed -> onSetCompleted(item, completed) },
+                  onSave = { folderId -> onSaveVideo(item, folderId) },
+                  onRemoveSaved = { onRemoveSavedVideo(item) },
                 )
               }
             }
-          }
-        }
-      }
-
-      state.busyMessage?.let { busyMessage ->
-        Card(
-          modifier = Modifier
-            .align(Alignment.TopCenter)
-            .padding(16.dp),
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            Text(busyMessage, style = MaterialTheme.typography.bodyMedium)
           }
         }
       }
@@ -278,13 +310,64 @@ private fun VideoSourceFilters(
 }
 
 @Composable
+private fun SavedFolderFilters(
+  folders: List<VideoFolder>,
+  selected: String,
+  onSelected: (String) -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .horizontalScroll(rememberScrollState())
+      .padding(horizontal = 12.dp, vertical = 4.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    FilterChip(
+      selected = selected == SAVED_ALL,
+      onClick = { onSelected(SAVED_ALL) },
+      label = { Text("すべて") },
+    )
+    FilterChip(
+      selected = selected == SAVED_UNCATEGORIZED,
+      onClick = { onSelected(SAVED_UNCATEGORIZED) },
+      label = { Text("未分類") },
+    )
+    folders.forEach { folder ->
+      FilterChip(
+        selected = selected == folder.id,
+        onClick = { onSelected(folder.id) },
+        label = { Text(folder.name) },
+      )
+    }
+  }
+}
+
+@Composable
 private fun VideoCard(
   item: VideoItem,
+  folders: List<VideoFolder>,
   onPlay: () -> Unit,
   onRemove: () -> Unit,
   onSetCompleted: (Boolean) -> Unit,
+  onSave: (String?) -> Unit,
+  onRemoveSaved: () -> Unit,
 ) {
   var menuExpanded by remember(item.id) { mutableStateOf(false) }
+  var destinationVisible by remember(item.id) { mutableStateOf(false) }
+  val folderName = item.savedState?.folderId?.let { folderId -> folders.firstOrNull { it.id == folderId }?.name }
+
+  if (destinationVisible) {
+    SaveDestinationDialog(
+      folders = folders,
+      currentFolderId = item.savedState?.folderId,
+      onDismiss = { destinationVisible = false },
+      onSelect = { folderId ->
+        destinationVisible = false
+        onSave(folderId)
+      },
+    )
+  }
+
   Column(Modifier.fillMaxWidth()) {
     Box {
       Card(
@@ -330,6 +413,37 @@ private fun VideoCard(
         expanded = menuExpanded,
         onDismissRequest = { menuExpanded = false },
       ) {
+        if (item.savedState == null) {
+          DropdownMenuItem(
+            text = { Text("保存") },
+            onClick = {
+              menuExpanded = false
+              onSave(null)
+            },
+          )
+          DropdownMenuItem(
+            text = { Text("フォルダに保存") },
+            onClick = {
+              menuExpanded = false
+              destinationVisible = true
+            },
+          )
+        } else {
+          DropdownMenuItem(
+            text = { Text("保存先を変更") },
+            onClick = {
+              menuExpanded = false
+              destinationVisible = true
+            },
+          )
+          DropdownMenuItem(
+            text = { Text("保存解除") },
+            onClick = {
+              menuExpanded = false
+              onRemoveSaved()
+            },
+          )
+        }
         val completed = item.playbackState?.completed == true
         DropdownMenuItem(
           text = { Text(if (completed) "未視聴に戻す" else "視聴済みにする") },
@@ -349,10 +463,19 @@ private fun VideoCard(
     }
     Spacer(Modifier.height(6.dp))
     Text(
-      when (item.source) {
-        VideoSource.SMB -> "SMB"
-        VideoSource.WEB -> "Web"
-        VideoSource.SERVICE -> "サービス"
+      buildString {
+        append(
+          when (item.source) {
+            VideoSource.SMB -> "SMB"
+            VideoSource.WEB -> "Web"
+            VideoSource.SERVICE -> "サービス"
+          },
+        )
+        item.savedState?.let {
+          append(" ・ 保存済み")
+          if (folderName != null) append(" / $folderName")
+          else append(" / 未分類")
+        }
       },
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.primary,
@@ -375,9 +498,54 @@ private fun VideoCard(
 }
 
 @Composable
+private fun SaveDestinationDialog(
+  folders: List<VideoFolder>,
+  currentFolderId: String?,
+  onDismiss: () -> Unit,
+  onSelect: (String?) -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("保存先を選択") },
+    text = {
+      Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        TextButton(
+          onClick = { onSelect(null) },
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Text(if (currentFolderId == null) "未分類 ✓" else "未分類")
+        }
+        folders.forEach { folder ->
+          TextButton(
+            onClick = { onSelect(folder.id) },
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text(if (currentFolderId == folder.id) "${folder.name} ✓" else folder.name)
+          }
+        }
+        if (folders.isEmpty()) {
+          Text(
+            "フォルダは設定画面から作成できます。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+        }
+      }
+    },
+    confirmButton = {},
+    dismissButton = { TextButton(onClick = onDismiss) { Text("閉じる") } },
+  )
+}
+
+@Composable
 private fun VideoSettings(
   state: VideoUiState,
   onRefreshSmb: () -> Unit,
+  onNewFolder: () -> Unit,
+  onEditFolder: (VideoFolder) -> Unit,
+  onDeleteFolder: (String) -> Unit,
   onNewRule: () -> Unit,
   onEditRule: (WebVideoExtractorRule) -> Unit,
   onDeleteRule: (String) -> Unit,
@@ -389,16 +557,42 @@ private fun VideoSettings(
       .padding(16.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
+    Text("保存フォルダ", style = MaterialTheme.typography.titleMedium)
+    Text(
+      "保存した動画は未分類または1つのフォルダに整理できます。フォルダを削除しても動画の保存状態は維持され、未分類へ戻ります。",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    Button(onClick = onNewFolder, enabled = !state.busy) {
+      Text("フォルダを追加")
+    }
+    state.folders.forEach { folder ->
+      Card(Modifier.fillMaxWidth()) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(folder.name, fontWeight = FontWeight.Medium)
+          Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = { onEditFolder(folder) }) { Text("名前変更") }
+            TextButton(onClick = { onDeleteFolder(folder.id) }) { Text("削除") }
+          }
+        }
+      }
+    }
+
     Text("SMB", style = MaterialTheme.typography.titleMedium)
     Text(
-      "蔵書で設定済みのSMB接続を利用します。動画側にはパスワードを保存しません。",
+      "全体設定のSMB接続を利用し、動画側で同期する共有・パスを設定します。動画側にはパスワードを保存しません。",
       style = MaterialTheme.typography.bodySmall,
     )
     Button(onClick = onRefreshSmb, enabled = !state.busy) {
       if (state.busy) {
         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
       } else {
-        Text("SMB動画を同期")
+        Text("SMB動画の設定・同期")
       }
     }
 
@@ -433,6 +627,45 @@ private fun VideoSettings(
       }
     }
   }
+}
+
+@Composable
+private fun VideoFolderDialog(
+  initial: VideoFolder?,
+  busy: Boolean,
+  onDismiss: () -> Unit,
+  onSave: (VideoFolder) -> Unit,
+) {
+  var name by remember(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(if (initial == null) "フォルダを追加" else "フォルダ名を変更") },
+    text = {
+      OutlinedTextField(
+        value = name,
+        onValueChange = { name = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("フォルダ名") },
+        singleLine = true,
+      )
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onSave(
+            VideoFolder(
+              id = initial?.id.orEmpty(),
+              name = name.trim(),
+              createdAtEpochMillis = initial?.createdAtEpochMillis ?: 0L,
+              updatedAtEpochMillis = initial?.updatedAtEpochMillis ?: 0L,
+            ),
+          )
+        },
+        enabled = name.isNotBlank() && !busy,
+      ) { Text("保存") }
+    },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("キャンセル") } },
+  )
 }
 
 @Composable

@@ -49,4 +49,6 @@ videos	:feature:youtube:data
 video_items	:feature:video:data
 video_playback_state	:feature:video:data
 video_smb_sources	:feature:video:data
+video_folders	:feature:video:data
+video_saved_items	:feature:video:data
 video_web_extractor_rules	:feature:video:data

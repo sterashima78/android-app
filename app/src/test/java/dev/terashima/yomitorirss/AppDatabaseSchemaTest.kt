@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(29, db.version)
+    assertEquals(30, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -99,6 +99,8 @@ class AppDatabaseSchemaTest {
         "video_items",
         "video_playback_state",
         "video_smb_sources",
+        "video_folders",
+        "video_saved_items",
         "video_web_extractor_rules",
       ),
       tableNames(db),
@@ -193,7 +195,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(29, db.version)
+    assertEquals(30, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -204,6 +206,59 @@ class AppDatabaseSchemaTest {
       "videos",
       singleString(db, "SELECT root_path FROM video_smb_sources WHERE server_id = ?", arrayOf("legacy-server")),
     )
+    assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
+  }
+
+  @Test
+  fun `version 29 database adds saved Video tables without auto-saving items`() {
+    val previousSchema = DatabaseSchema(
+      version = 29,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v29",
+          createSchema = { db ->
+            db.execSQL(
+              """
+                CREATE TABLE video_items(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  source TEXT NOT NULL,
+                  source_id TEXT NOT NULL,
+                  title TEXT NOT NULL,
+                  page_url TEXT,
+                  thumbnail_url TEXT,
+                  duration_ms INTEGER,
+                  size_bytes INTEGER,
+                  mime_type TEXT,
+                  updated_at INTEGER NOT NULL,
+                  UNIQUE(source, source_id)
+                )
+              """.trimIndent(),
+            )
+          },
+        ),
+      ),
+    )
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    legacy.writableDatabase.insertOrThrow(
+      "video_items",
+      null,
+      ContentValues().apply {
+        put("id", "legacy-video")
+        put("source", "WEB")
+        put("source_id", "https://example.invalid/video")
+        put("title", "Legacy video")
+        put("page_url", "https://example.invalid/video")
+        put("updated_at", 1234L)
+      },
+    )
+    legacy.close()
+
+    val db = openDatabase().writableDatabase
+
+    assertEquals(30, db.version)
+    assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
+    assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
+    assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
   }
 
   @Test
