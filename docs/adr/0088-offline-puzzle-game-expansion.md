@@ -38,3 +38,5 @@ ADR-0080 では、一人用ゲームの一覧と画面遷移を `:feature:game:u
 ## Relationship
 
 本 ADR は ADR-0080 の Game feature 境界を維持したまま対象ゲームを拡張する。ADR-0085 の盤面優先・コンテキスト入力方針は数独固有の判断として維持し、今回のゲームでは各ルールに適した入力方式を採用する。
+
+[ADR-0234](0234-godot-sudoku-poc.md) は将来のリアルタイムゲーム向け engine 埋め込みを評価するため、この pure Kotlin domain + Compose UI 方針とは別の比較用 Godot 数独を POC として追加する。既存ゲーム群にはこの例外を波及させない。

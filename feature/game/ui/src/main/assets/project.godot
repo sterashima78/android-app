@@ -1,0 +1,25 @@
+; Engine configuration file.
+; Godot Sudoku proof of concept embedded in Mosaic.
+config_version=5
+
+[application]
+
+config/name="Mosaic Godot Sudoku"
+run/main_scene="res://sudoku.tscn"
+config/features=PackedStringArray("4.7")
+config/use_hidden_project_data_directory=false
+boot_splash/show_image=false
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/stretch/mode="canvas_items"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.035, 0.043, 0.067, 1)
