@@ -102,6 +102,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 | summary | domain / data / ui |
 | settings | domain / data / ui |
 | task | domain / data / ui |
+| video | domain / data / ui |
 | web | domain / data / ui |
 | widget | domain / data / ui |
 | workout | domain / data / ui |
@@ -112,6 +113,8 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 全 feature に3 layer を強制しない。独立した責務・依存・ビルド境界として価値がある layer だけを module 化する。
 
 `:feature:audio` は保存済み要約の音声再生 capability を所有する。Domain は process-local の再生キューと操作 contract、Data は Android TTS / Media3 / `MediaSessionService`、UI は再生コントロールを所有する。Content / Curation / Summary の durable state は所有せず、Summary の公開 read/request contract だけを利用する。詳細は ADR-0235 を参照する。
+
+`:feature:video` は SMB / Web / 将来の service adapter 由来動画を同じ catalog に投影し、Web extractor rule、再生位置、視聴済み状態と foreground video playback UI を所有する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 を参照する。
 
 Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
 
@@ -217,3 +220,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0235](../adr/0235-summary-audio-playback.md)
+- [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
