@@ -27,6 +27,7 @@ internal class AppVideoRuntimeDependencies(
     )
     val playbackResolver = DefaultVideoPlaybackResolver(
       smbMediaFileAccess = smbMediaFileAccess,
+      smbSources = repository::smbSources,
       rules = repository::extractorRules,
       webExtractorClient = extractorClient,
     )

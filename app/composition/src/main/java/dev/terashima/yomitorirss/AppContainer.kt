@@ -209,6 +209,7 @@ class AppContainer(
   val knowledgePageCreator get() = knowledgeRuntime.knowledgePageCreator
   val knowledgePageEditor get() = knowledgeRuntime.knowledgePageEditor
   val aiTaskQueueRepository get() = crossFeatureRuntime.aiTaskQueueRepository
+  val smbConnectionProfileRepository get() = libraryRuntime.smbConnectionProfileRepository
 
   val sharedContentEntryCapability: SharedContentEntryCapability by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,

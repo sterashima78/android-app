@@ -3,8 +3,11 @@ package dev.terashima.yomitorirss.feature.video.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfile
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoRepository
+import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +16,8 @@ import kotlinx.coroutines.launch
 
 data class VideoUiState(
   val items: List<VideoItem> = emptyList(),
+  val smbProfiles: List<SmbConnectionProfile> = emptyList(),
+  val smbSources: List<VideoSmbSource> = emptyList(),
   val extractorRules: List<WebVideoExtractorRule> = emptyList(),
   val loading: Boolean = true,
   val busy: Boolean = false,
@@ -21,6 +26,7 @@ data class VideoUiState(
 
 class VideoViewModel(
   private val repository: VideoRepository,
+  private val smbConnectionProfiles: SmbConnectionProfileRepository,
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(VideoUiState())
   val state: StateFlow<VideoUiState> = mutableState.asStateFlow()
@@ -31,20 +37,8 @@ class VideoViewModel(
 
   fun reload() {
     viewModelScope.launch {
-      runCatching {
-        val items = repository.items()
-        val rules = repository.extractorRules()
-        items to rules
-      }.fold(
-        onSuccess = { (items, rules) ->
-          mutableState.value = mutableState.value.copy(
-            items = items,
-            extractorRules = rules,
-            loading = false,
-            busy = false,
-            message = null,
-          )
-        },
+      runCatching(::loadSnapshot).fold(
+        onSuccess = ::showSnapshot,
         onFailure = { error ->
           mutableState.value = mutableState.value.copy(
             loading = false,
@@ -62,6 +56,16 @@ class VideoViewModel(
 
   fun refreshSmb() = launchMutation("SMB動画を同期できませんでした") {
     repository.refreshSmb()
+  }
+
+  fun saveSmbSource(source: VideoSmbSource) = launchMutation("SMB同期場所を保存できませんでした") {
+    val validProfile = smbConnectionProfiles.connectionProfiles().any { it.id == source.serverId }
+    require(validProfile) { "SMB接続設定がありません" }
+    repository.saveSmbSource(source)
+  }
+
+  fun deleteSmbSource(id: String) = launchMutation("SMB同期場所を削除できませんでした") {
+    repository.deleteSmbSource(id)
   }
 
   fun remove(item: VideoItem) = launchMutation("動画を削除できませんでした") {
@@ -105,17 +109,8 @@ class VideoViewModel(
     viewModelScope.launch {
       runCatching { block() }.fold(
         onSuccess = {
-          runCatching {
-            repository.items() to repository.extractorRules()
-          }.fold(
-            onSuccess = { (items, rules) ->
-              mutableState.value = mutableState.value.copy(
-                items = items,
-                extractorRules = rules,
-                loading = false,
-                busy = false,
-              )
-            },
+          runCatching(::loadSnapshot).fold(
+            onSuccess = ::showSnapshot,
             onFailure = { error ->
               mutableState.value = mutableState.value.copy(
                 busy = false,
@@ -134,13 +129,40 @@ class VideoViewModel(
     }
   }
 
+  private suspend fun loadSnapshot(): LoadedVideoState = LoadedVideoState(
+    items = repository.items(),
+    smbProfiles = smbConnectionProfiles.connectionProfiles(),
+    smbSources = repository.smbSources(),
+    extractorRules = repository.extractorRules(),
+  )
+
+  private fun showSnapshot(loaded: LoadedVideoState) {
+    mutableState.value = mutableState.value.copy(
+      items = loaded.items,
+      smbProfiles = loaded.smbProfiles,
+      smbSources = loaded.smbSources,
+      extractorRules = loaded.extractorRules,
+      loading = false,
+      busy = false,
+      message = null,
+    )
+  }
+
   class Factory(
     private val repository: VideoRepository,
+    private val smbConnectionProfiles: SmbConnectionProfileRepository,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(VideoViewModel::class.java))
-      return VideoViewModel(repository) as T
+      return VideoViewModel(repository, smbConnectionProfiles) as T
     }
   }
+
+  private data class LoadedVideoState(
+    val items: List<VideoItem>,
+    val smbProfiles: List<SmbConnectionProfile>,
+    val smbSources: List<VideoSmbSource>,
+    val extractorRules: List<WebVideoExtractorRule>,
+  )
 }

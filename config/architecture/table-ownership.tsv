@@ -30,6 +30,7 @@ library_item_organization_collections	:feature:library:data
 library_item_reading_status	:feature:library:data
 library_organization_batches	:feature:library:data
 library_organization_batch_items	:feature:library:data
+smb_connection_profiles	:feature:library:data
 smb_library_servers	:feature:library:data
 smb_cover_prefetch_queue	:feature:library:data
 smb_metadata_normalization_batches	:feature:library:data
@@ -47,4 +48,5 @@ channels	:feature:youtube:data
 videos	:feature:youtube:data
 video_items	:feature:video:data
 video_playback_state	:feature:video:data
+video_smb_sources	:feature:video:data
 video_web_extractor_rules	:feature:video:data
