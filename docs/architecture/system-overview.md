@@ -441,4 +441,4 @@ Architecture Control Plane が機能しているかは、次の質問にコー�
 - [`../adr/0228-human-architecture-control-plane.md`](../adr/0228-human-architecture-control-plane.md)
 - [`../adr/0235-summary-audio-playback.md`](../adr/0235-summary-audio-playback.md)
 - [`../adr/0237-video-library-and-web-extraction.md`](../adr/0237-video-library-and-web-extraction.md)
-- [`../adr/0238-shared-smb-connection-profiles-and-feature-locations.md`](../adr/0238-shared-smb-connection-profiles-and-feature-locations.md)
+- [`../adr/0239-shared-smb-connection-profiles-and-feature-locations.md`](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
