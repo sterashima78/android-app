@@ -54,6 +54,7 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 - Godot Android sample が扱う Activity configuration change を manifest で処理対象として宣言し、Godot runtime 実行中の Activity recreation を避ける。
 - Godot runtime は専用 `:godot` process で実行し、engine / scene の異常終了や force quit が Mosaic の main process を巻き込まないよう隔離する。
 - process あたり Godot Engine instance が1つという Godot Android Library の制約を受け入れる。
+- release build の R8 では Godot native JNI が名前解決する `org.godotengine.godot.**` の class/member 名を保持する。keep rule は Godot dependency と同じ `:feature:game:ui` が consumer rule として所有する。
 - network、permission、credential、background execution、durable state は追加しない。
 - Godot project は APK assets に同梱し、runtime asset download を行わない。
 
