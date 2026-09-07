@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.game
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -61,6 +63,7 @@ fun GameRoute(
 ) {
   var screen by rememberSaveable { mutableStateOf(GameScreen.LIST.name) }
   val gameScreen = GameScreen.valueOf(screen)
+  val context = LocalContext.current
   val currentOnOrientationPreferenceChange by rememberUpdatedState(onOrientationPreferenceChange)
   val currentOnChromePreferenceChange by rememberUpdatedState(onChromePreferenceChange)
 
@@ -73,6 +76,9 @@ fun GameRoute(
     GameScreen.LIST -> GameListScreen(
       modifier = modifier,
       onOpenSudoku = { screen = GameScreen.SUDOKU.name },
+      onOpenGodotSudoku = {
+        context.startActivity(Intent(context, GodotSudokuActivity::class.java))
+      },
       onOpen2048 = { screen = GameScreen.GAME_2048.name },
       onOpenNonogram = { screen = GameScreen.NONOGRAM.name },
       onOpenMinesweeper = { screen = GameScreen.MINESWEEPER.name },
@@ -163,6 +169,7 @@ internal fun chromePreferenceFor(screen: GameScreen): GameChromePreference = whe
 private fun GameListScreen(
   modifier: Modifier,
   onOpenSudoku: () -> Unit,
+  onOpenGodotSudoku: () -> Unit,
   onOpen2048: () -> Unit,
   onOpenNonogram: () -> Unit,
   onOpenMinesweeper: () -> Unit,
@@ -192,6 +199,7 @@ private fun GameListScreen(
         }
       }
     }
+    GameTextCard("G", "Godot 数独 (POC)", "Godot Engine の UI とアニメーションで遊ぶ比較用数独", onOpenGodotSudoku)
     GameTextCard("2048", "2048", "同じ数字を重ねて2048を目指すスライドパズル", onOpen2048)
     GameTextCard("▦", "ノノグラム", "縦横の数字を手掛かりにマスを塗る5×5ピクロス", onOpenNonogram)
     GameTextCard("✹", "マインスイーパー", "数字を手掛かりに地雷を避けて盤面を開くパズル", onOpenMinesweeper)
