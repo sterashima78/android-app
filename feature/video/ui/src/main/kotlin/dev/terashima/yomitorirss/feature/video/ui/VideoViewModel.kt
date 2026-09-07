@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.video.VideoItem
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,11 +21,21 @@ data class VideoUiState(
   val message: String? = null,
 )
 
+data class VideoPlaybackSession(
+  val item: VideoItem,
+  val target: VideoPlaybackTarget,
+  val isFullscreen: Boolean = false,
+)
+
 class VideoViewModel(
   private val repository: VideoRepository,
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(VideoUiState())
   val state: StateFlow<VideoUiState> = mutableState.asStateFlow()
+
+  private val mutablePlaybackSession = MutableStateFlow<VideoPlaybackSession?>(null)
+  val playbackSession: StateFlow<VideoPlaybackSession?> = mutablePlaybackSession.asStateFlow()
+  private var latestPlaybackPositionMs: Long = 0L
 
   init {
     reload()
@@ -78,7 +89,32 @@ class VideoViewModel(
     repository.setCompleted(item.id, completed)
   }
 
+  fun openPlayback(item: VideoItem, target: VideoPlaybackTarget) {
+    require(target is VideoPlaybackTarget.Stream || target is VideoPlaybackTarget.Smb)
+    latestPlaybackPositionMs = item.playbackState?.positionMs ?: 0L
+    mutablePlaybackSession.value = VideoPlaybackSession(item, target)
+  }
+
+  fun setPlaybackFullscreen(isFullscreen: Boolean) {
+    val session = mutablePlaybackSession.value ?: return
+    mutablePlaybackSession.value = session.copy(isFullscreen = isFullscreen)
+  }
+
+  fun closePlayback() {
+    mutablePlaybackSession.value = null
+    latestPlaybackPositionMs = 0L
+  }
+
+  fun resumePositionMs(item: VideoItem): Long = if (mutablePlaybackSession.value?.item?.id == item.id) {
+    latestPlaybackPositionMs
+  } else {
+    item.playbackState?.positionMs ?: 0L
+  }
+
   fun savePlayback(item: VideoItem, positionMs: Long, durationMs: Long) {
+    if (mutablePlaybackSession.value?.item?.id == item.id) {
+      latestPlaybackPositionMs = positionMs.coerceAtLeast(0L)
+    }
     viewModelScope.launch {
       runCatching {
         repository.updatePlayback(item.id, positionMs, durationMs)
