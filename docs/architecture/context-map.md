@@ -30,8 +30,17 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
 | Curation       | | Summary        | | Knowledge        |
 | Bookmark       | | summaries      | | wiki / sources   |
 | Tag / Folder   | | task pipeline  | | generated state  |
-| Read Later     | +----------------+ +------------------+
-+----------------+
+| Read Later     | +-------+--------+ +------------------+
++-------+--------+         |
+        |                  |
+        +--------+---------+
+                 |
+                 v
+          +--------------+
+          | Audio        |
+          | queue / TTS  |
+          | media session|
+          +--------------+
 
 +----------------------+
 | YouTube context      |
@@ -94,6 +103,17 @@ Content を入力として generated summary と task lifecycle / priority の S
 - Read Later priority / Bookmark retry は `BookmarkContentQuery` を利用する。
 - Curation tag/folder 更新は `BookmarkEnrichmentRepository` を利用する。
 - Summary data は Content / Curation table を直接参照しない。
+
+### Audio
+
+現在の主要な実装 module は `:feature:audio:{domain,data,ui}`。保存済み要約を端末内TTSで音声化し、Media3のmedia sessionとして連続再生する。
+
+- 再生キュー、再生操作、TTS音声cache、media session接続を所有する。
+- 保存済み要約は `SummaryReader`、未生成要約の要求は `SummaryRequester` を利用し、Summary tableを直接参照しない。
+- RSS Read Later presentationが開始時点の表示順とtitle/source metadataを `AudioQueueItem` として渡す。AudioはCuration tableやContent tableを直接readしない。
+- 再生開始、完了、skip、停止によってContentのreading stateやCurationのRead Later membershipを変更しない。
+- queue、position、playback speed、生成音声をdurable user stateとして所有しない。音声ファイルは再生成可能なapp cacheとする。
+- cloud TTSやAudio固有の外部通信を追加しない。
 
 ### Knowledge
 
@@ -175,6 +195,7 @@ Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds
 - `ContentClassificationSourceQuery`
 - `ContentRetentionProtectionQuery`
 - Calendar の `TaskReader` / `WorkoutReader` 合成 read model
+- Audio の `SummaryReader` / `SummaryRequester` 利用
 
 大量 read で owner API の合成が実測上問題になる場合だけ、read-only かつ purpose-specific な Named Projection を検討する。
 
@@ -211,3 +232,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0184](../adr/0184-remove-site-specific-manga-rss-clients.md)
 - [ADR-0186](../adr/0186-bookmark-to-library-one-way-ownership.md)
 - [ADR-0189](../adr/0189-workout-owned-health-connect-export-adapter.md)
+- [ADR-0235](../adr/0235-summary-audio-playback.md)
