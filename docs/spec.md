@@ -219,3 +219,81 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。
 - RSS未読やTask等をホーム画面widgetへ表示する。
 - Gameでは数独、2048、ノノグラム、マインスイーパー、クロンダイク、スパイダーソリティア等の端末内ゲームを提供する。
+- Godot Engine の既存Androidアプリ埋め込み方式を評価するPOCとして、既存Compose数独とは別に「Godot 数独 (POC)」を提供する。POCの進行状態は永続化しない。
+
+## 11. 永続化
+
+- durable relational user dataは原則として単一のSQLite database `yomitori-rss.db` に保存する。
+- database fileを共有していてもtable ownershipは共有しない。
+- 各feature data moduleが自身のschema contributionとmigrationを所有し、`:app` がapplication-level schemaをcompositionする。
+- 他Contextのtableへ直接writeしない。cross-context操作はowner API、command port、query APIを利用する。
+- 現在のschema versionやtable一覧はコードとmachine-readable manifestを正本とし、この仕様書では固定値を持たない。
+
+詳細は `docs/architecture/persistence.md` を参照する。
+
+## 12. バックアップと復元
+
+- アプリ独自backupは、統合SQLite databaseの整合したsnapshotを含むMosaic形式のZIP archiveとする。
+- backupにはmanifest、database snapshot、allowlistされたuser preferencesを含む。
+- checksum、SQLite application id、integrity check等を利用して復元前にarchiveを検証する。
+- database snapshotは現在のapplication schema versionと一致する場合だけ復元対象とし、異なるschema versionのbackupは復元前に拒否する。
+- Google Driveでは、保存先設定後にバックアップ対象変更から15分後と1日1回の自動バックアップを行い、手動実行も提供する。
+- 「Wi-Fi接続時のみバックアップ」を有効にした場合、Google Driveへの自動・手動・初回バックアップはインターネット接続可能なWi-Fiが利用できる場合だけ実行する。既定はOFFとする。
+- Wi-Fi限定設定はallowlistされたuser preferenceとしてbackup対象とするが、Google Drive保存先URI・表示名・実行履歴はbackup対象外とする。
+- credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
+- SMB表紙cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
+
+詳細は ADR-0099、ADR-0100、ADR-0135、ADR-0138、ADR-0195、ADR-0217 と `docs/architecture/persistence.md` を参照する。
+
+## 13. Background execution
+
+- durableなbackground処理にはWorkManagerを利用する。
+- feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
+- ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
+- `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
+- Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
+- WorkManager Worker は Provider lookup の例外に含めず、owning feature の `WorkerFactory` から constructor injection し、`:app` の WorkerFactory composition が application graph へ接続する。
+- frameworkが永続化した旧class nameとの互換が必要な場合だけ、ADRで根拠を持つcompatibility shimを残す。
+
+## 14. 更新互換性
+
+- 現在配布中の最新版を次版への更新互換性baselineとする。
+- 移行完了が確認された一時的migrationや旧形式fallbackは恒久的に保持しない。
+- databaseとアプリ独自backupは、現在利用中の最新版へ収束した状態を基準に互換性範囲を定める。
+- 現在のユーザーデータを失う可能性がある形式変更では、現行形式へ安全に収束してから旧処理を削除する。
+- frameworkがclass name等を永続化する場合は、必要な期間だけ明示的compatibilityを維持する。
+- application idと内部database file名は既存インストールの継続性のため維持する。
+
+## 15. Privacy / security
+
+- 公開リポジトリへcredential、token、OAuth secret、実ユーザーのメールアドレス、健康データ、バックアップ、SMB接続情報等を保存しない。
+- fixtureとtest dataには人工データを利用する。
+- backup対象のSharedPreferencesはallowlist方式とし、将来追加される値を暗黙に外部backupへ含めない。
+- Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
+- AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
+- ユーザーがコピーして共有できるクラッシュ診断は保存前にサニタイズし、URL の path/query、メールアドレス、credential-like 値、端末内 private path を伏せる。
+
+## 16. 現在の非目標
+
+- Mosaic独自のユーザー登録 / ログイン基盤
+- Mosaic独自serverを介した複数端末の常時同期
+- durable user dataを必須のremote backendへ保存する構成
+- Health ConnectとWorkoutの双方向同期
+- AIからの任意SQL、任意コード実行、無制限の書き込みtool
+- credentialやmodel artifactをアプリ独自backupへ含めること
+
+feature追加・廃止に伴い非目標が変わる場合は、対応するADRまたは仕様変更と同じPRで更新する。
+
+## 17. 関連文書
+
+- `docs/architecture/README.md`: current architecture documentの入口
+- `docs/architecture/principles.md`: layer / ownership / framework boundary
+- `docs/architecture/context-map.md`: Domain ContextとContext間関係
+- `docs/architecture/module-map.md`: Gradle module構成
+- `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
+- `docs/architecture/video.md`: SMB / Web動画カタログ、抽出、Media3再生境界
+- `docs/architecture/game.md`: Game と Godot POC の runtime boundary
+- `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
+- `docs/architecture/testing.md`: testとarchitecture verification
+- `docs/architecture/platform.md`: Android platform基準
+- `docs/adr/README.md`: ADR索引
