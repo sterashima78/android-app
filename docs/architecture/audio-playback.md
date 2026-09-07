@@ -46,6 +46,9 @@ AudioPlaybackController
           +---- SummaryRequester ---> existing Summary queue
           |
           v
+ Markdown -> speech text normalization
+          |
+          v
 Android TextToSpeech.synthesizeToFile
           |
           v
@@ -78,11 +81,15 @@ Media3 MediaSessionService / ExoPlayer
 
 この先行生成はAudio capability内のprocess-local preparationであり、新しいdurable queue、Worker、schedulerは追加しない。
 
-## TTS cache
+## Speech text normalization and TTS cache
 
-読み上げ対象は記事タイトルと保存済み要約を連結したテキストとする。Android `TextToSpeech.synthesizeToFile` を利用し、生成ファイルは app cache directory 配下の `summary-audio` へ保存する。
+読み上げ対象は記事タイトルと保存済み要約を連結したテキストとする。ただし保存済み要約は表示用MarkdownをそのままTTSへ渡さず、Audio内で読み上げ用プレーンテキストへ正規化する。
 
-cache key は `contentId` と要約本文から生成するため、要約が変化すれば別音声を生成する。cache は再生成可能であり、database、backup、exportの対象にしない。
+正規化では、見出し、箇条書き、引用、強調、取り消し線、inline code、link、reference link、tableなどのMarkdown構文記号を読み上げ対象から除き、ユーザーが読む本文やlink labelは維持する。Markdown以外の通常の文字列まで広く削除する変換にはしない。
+
+Android `TextToSpeech.synthesizeToFile` を利用し、生成ファイルは app cache directory 配下の `summary-audio` へ保存する。
+
+cache key はspeech cache format version、`contentId`、正規化後の最終読み上げテキストから生成する。これにより要約やタイトルが変化した場合だけでなく、読み上げ正規化ルールを変更した場合も古い音声cacheを再利用しない。cache は再生成可能であり、database、backup、exportの対象にしない。
 
 初期実装ではTTS engineの最大入力長を超えるテキストは最大長までを読み上げ対象とする。長文分割・結合は別の改善として扱う。
 
@@ -123,6 +130,7 @@ Audio playback自体による新しいnetwork通信はない。端末のTTS engi
 
 - `:feature:audio:domain` unit testでqueue order / deduplication / current item semanticsを検証する。
 - `:feature:audio:data` unit testで最初の音声準備完了を後続音声の準備完了より先に再生開始へ渡せることを検証する。
+- `:feature:audio:data` unit testでMarkdown表示構文が読み上げテキストから除去され、通常の本文記号は維持されることを検証する。
 - Architecture verificationでmodule metadataとapp/presentation/composition境界を検証する。
 - Android実機では、最初の音声完成時の即時再生、再生中の後続音声生成、連続再生、background継続、通知・lock screen・Bluetooth control、seek、速度変更、再生後もread stateが変化しないことを確認する。
 
