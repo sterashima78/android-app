@@ -55,6 +55,7 @@ fun RssScreen(
   onEditTags: (Article) -> Unit,
   onMoveFolder: (Article) -> Unit,
   onSetContentType: (Article, ContentType?) -> Unit,
+  onListen: (List<BookmarkedArticle>) -> Unit,
 ) {
   when (tab) {
     RssTab.UNREAD -> ArticleList(
@@ -106,6 +107,12 @@ fun RssScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.End,
           ) {
+            TextButton(
+              onClick = { onListen(bookmarkedArticles) },
+              enabled = bookmarkedArticles.isNotEmpty(),
+            ) {
+              Text("音声で聴く")
+            }
             TextButton(
               onClick = { reviewing = true },
               enabled = bookmarkedArticles.isNotEmpty(),
