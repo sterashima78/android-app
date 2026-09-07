@@ -96,6 +96,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - トップレベルの「動画」画面で、SMBファイルサーバー由来とWeb URL由来の動画を同じ一覧から扱う。
 - 一覧には「すべて / 続き / 視聴済み / 設定」を用意し、sourceを「すべて / SMB / Web / サービス」で絞り込める。「サービス」は将来のadapter用分類であり、初期実装では専用サービス連携を追加しない。
 - Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
+- Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
 - URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - Media3で通常のHTTP動画とHLS streamを再生する。SMB動画は蔵書で設定済みのSMB接続情報を利用し、動画ファイル全体を事前downloadせずrandom-access readで再生する。

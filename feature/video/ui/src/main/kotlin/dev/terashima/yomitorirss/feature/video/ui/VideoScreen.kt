@@ -221,6 +221,23 @@ fun VideoScreen(
           }
         }
       }
+
+      state.busyMessage?.let { busyMessage ->
+        Card(
+          modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(16.dp),
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            Text(busyMessage, style = MaterialTheme.typography.bodyMedium)
+          }
+        }
+      }
     }
   }
 }
