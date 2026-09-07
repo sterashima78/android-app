@@ -146,7 +146,7 @@ fun FeedRoute(
   } else {
     PullToRefreshContainer(
       modifier = modifier,
-      isRefreshing = feedState.refreshing,
+      isRefreshing = state.refreshing,
       onRefresh = feedViewModel::refresh,
     ) {
       FeedScreen(
