@@ -42,10 +42,18 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
           | media session|
           +--------------+
 
-+----------------------+
-| YouTube context      |
-| channels / videos    |
-+----------+-----------+
++----------------------+        +----------------------+
+| YouTube context      |        | Library context      |
+| channels / videos    |        | books / SMB settings |
++----------+-----------+        +----------+-----------+
+           |                               |
+           |                               | SmbMediaFileAccess
+           |                               v
+           |                      +----------------------+
+           |                      | Video context        |
+           |                      | catalog / playback   |
+           |                      | Web extractor rules  |
+           |                      +----------------------+
            |
            +---- content integration ----> Content context
 
@@ -149,6 +157,22 @@ Web source は URL を identity とし、Library data layer がまず HTTP(S) �
 
 Library は Bookmark への逆方向移動を所有せず、Bookmark の保存 capability に依存しない。Bookmark から Library への移動時も Library は `WebLibraryAdder` として移動先の作成だけを担当する。
 
+Library は SMB server settings と credential の owner でもある。Video 等がSMB上のmedia fileを必要とする場合は、Library Domainのread-only `SmbMediaFileAccess` capabilityを利用する。server host、username、password、Keystore key等をconsumerへ公開せず、file listingとrandom-access readだけを境界の外へ出す。
+
+### Video
+
+現在の主要な実装 module は `:feature:video:{domain,data,ui}`。Video は SMB / Web 由来の動画を共通 `VideoItem` catalogへ投影し、Web extractor ruleと視聴状態を所有する。
+
+- `video_items` にVideo catalog projectionを保存する。
+- `video_playback_state` に再生位置、duration、最終再生日時、completed stateを保存する。
+- `video_web_extractor_rules` にURL glob patternとPromiseベースのtitle / thumbnail / playback extractorを保存する。
+- Web itemのdurable identityはpage URLとし、stream URLは保存しない。
+- SMB itemはLibraryの `SmbMediaFileAccess` を利用し、Library tableやcredential storeを直接所有しない。
+- Media3 foreground playerを利用し、Audioのbackground `MediaSessionService`を共同所有・複製しない。
+- Video再生によってContentのread state、Curationのmembership、Library book stateを書き換えない。
+
+詳細は [video.md](video.md) と ADR-0237 を参照する。
+
 ### Other application contexts
 
 Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
@@ -196,6 +220,7 @@ Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds
 - `ContentRetentionProtectionQuery`
 - Calendar の `TaskReader` / `WorkoutReader` 合成 read model
 - Audio の `SummaryReader` / `SummaryRequester` 利用
+- Video の Library-owned `SmbMediaFileAccess` 利用
 
 大量 read で owner API の合成が実測上問題になる場合だけ、read-only かつ purpose-specific な Named Projection を検討する。
 
@@ -209,7 +234,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0138 で database version 27 を互換性 baseline としたため、最後に残っていた v24 -> v25 ownership transfer migration も終了した。現在 `foreign-table-access-allowlist.tsv` に例外 entry はない。
+ADR-0138 で version 27 より前の更新互換性を終了し、ADR-0237 で現在のapplication database versionを28へ進めた。version 27はversion 28への更新元baselineとして維持し、それ以前のschemaへ戻るmigrationは再導入しない。現在 `foreign-table-access-allowlist.tsv` に例外 entry はない。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -233,3 +258,4 @@ ADR-0138 で database version 27 を互換性 baseline としたため、最後�
 - [ADR-0186](../adr/0186-bookmark-to-library-one-way-ownership.md)
 - [ADR-0189](../adr/0189-workout-owned-health-connect-export-adapter.md)
 - [ADR-0235](../adr/0235-summary-audio-playback.md)
+- [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
