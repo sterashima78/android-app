@@ -25,6 +25,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [persistence.md](persistence.md): schema・table access・migration ownership
 - [testing.md](testing.md): テスト責務と architecture verification
 - [platform.md](platform.md): Android runtime / SDK の現在の基準
+- [audio-playback.md](audio-playback.md): 保存済み要約のTTS、Media3、foreground media playbackのownership / runtime boundary
 - [game.md](game.md): Game feature と Godot POC の runtime / ownership boundary
 - [background-refresh.md](background-refresh.md): 統合ビューの周期更新、Gmail周期同期移管、新着通知・badge の現在の境界
 - [ai-runtime.md](ai-runtime.md): Local / Cloud AI の provider・execution・failure boundary
@@ -97,3 +98,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0227](../adr/0227-partition-auto-wiki-generation-by-topic.md)
 - [ADR-0228](../adr/0228-human-architecture-control-plane.md)
 - [ADR-0234](../adr/0234-godot-sudoku-poc.md)
+- [ADR-0235](../adr/0235-summary-audio-playback.md)
