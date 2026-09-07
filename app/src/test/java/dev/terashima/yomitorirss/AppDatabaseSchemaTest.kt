@@ -37,7 +37,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(27, db.version)
+    assertEquals(28, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -93,6 +93,9 @@ class AppDatabaseSchemaTest {
         "chat_messages",
         "channels",
         "videos",
+        "video_items",
+        "video_playback_state",
+        "video_web_extractor_rules",
       ),
       db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'android_metadata'",
