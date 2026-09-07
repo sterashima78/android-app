@@ -86,6 +86,10 @@ class DefaultAudioPlaybackController(
         prepareAndPlay(queue)
       }.onFailure { error ->
         if (error is CancellationException) return@onFailure
+        mediaController?.let { controller ->
+          controller.stop()
+          controller.clearMediaItems()
+        }
         mutableState.update {
           it.copy(
             isPlaying = false,
@@ -153,57 +157,84 @@ class DefaultAudioPlaybackController(
 
   private suspend fun prepareAndPlay(queue: List<AudioQueueItem>) {
     val summaries = resolveSummaries(queue)
-    val prepared = mutableListOf<Pair<AudioQueueItem, File>>()
+    val playableItems = mutableListOf<AudioQueueItem>()
+    var controller: MediaController? = null
 
-    queue.forEach { item ->
-      val summary = summaries[item.contentId] ?: return@forEach
-      val file = synthesize(item, summary)
-      prepared += item to file
-      mutableState.update {
-        it.copy(
-          preparedCount = prepared.size,
-          message = "音声を準備しています (${prepared.size}/${queue.size})",
-        )
-      }
-    }
+    val preparedCount = prepareProgressively(
+      items = queue,
+      prepare = { item ->
+        val summary = summaries[item.contentId] ?: return@prepareProgressively null
+        synthesize(item, summary)
+      },
+      onPrepared = { item, file, preparedNumber ->
+        val activeController = controller ?: ensureMediaController().also { controller = it }
+        val mediaItem = createMediaItem(item, file)
+        val isFirstPreparedItem = preparedNumber == 1
+        val appendedIndex = activeController.mediaItemCount
+        val resumeFromEnded = !isFirstPreparedItem && activeController.playbackState == Player.STATE_ENDED
 
-    if (prepared.isEmpty()) {
+        if (isFirstPreparedItem) {
+          activeController.setMediaItem(mediaItem)
+          activeController.prepare()
+          activeController.play()
+        } else {
+          activeController.addMediaItem(mediaItem)
+          if (resumeFromEnded) {
+            activeController.seekToDefaultPosition(appendedIndex)
+            activeController.prepare()
+            activeController.play()
+          }
+        }
+
+        playableItems += item
+        mutableState.update {
+          it.copy(
+            items = playableItems.toList(),
+            currentIndex = if (it.currentIndex < 0) 0 else it.currentIndex,
+            isPlaying = activeController.isPlaying,
+            playbackSpeed = activeController.playbackParameters.speed,
+            preparationStatus = AudioPreparationStatus.READY,
+            preparedCount = preparedNumber,
+            totalCount = queue.size,
+            message = if (preparedNumber < summaries.size) {
+              "再生しながら音声を準備しています ($preparedNumber/${queue.size})"
+            } else {
+              null
+            },
+          )
+        }
+        syncPlayerState(activeController)
+        if (isFirstPreparedItem) startPositionUpdates(activeController)
+      },
+    )
+
+    if (preparedCount == 0) {
       error("再生できる要約がありません")
     }
 
-    val controller = ensureMediaController()
-    val playableItems = prepared.map { it.first }
-    val mediaItems = prepared.map { (item, file) ->
-      MediaItem.Builder()
-        .setMediaId(item.contentId)
-        .setUri(Uri.fromFile(file))
-        .setMediaMetadata(
-          MediaMetadata.Builder()
-            .setTitle(item.title)
-            .setArtist(item.source)
-            .build(),
-        )
-        .build()
+    val skippedCount = queue.size - preparedCount
+    mutableState.update {
+      it.copy(
+        message = if (skippedCount > 0) {
+          "要約を取得できなかった${skippedCount}件を除いて再生します"
+        } else {
+          null
+        },
+      )
     }
-
-    controller.setMediaItems(mediaItems)
-    controller.prepare()
-    controller.play()
-
-    val skippedCount = queue.size - prepared.size
-    mutableState.value = AudioPlaybackState(
-      items = playableItems,
-      currentIndex = if (playableItems.isEmpty()) -1 else 0,
-      isPlaying = true,
-      playbackSpeed = controller.playbackParameters.speed,
-      preparationStatus = AudioPreparationStatus.READY,
-      preparedCount = prepared.size,
-      totalCount = queue.size,
-      message = if (skippedCount > 0) "要約を取得できなかった${skippedCount}件を除いて再生します" else null,
-    )
-    syncPlayerState(controller)
-    startPositionUpdates(controller)
   }
+
+  private fun createMediaItem(item: AudioQueueItem, file: File): MediaItem =
+    MediaItem.Builder()
+      .setMediaId(item.contentId)
+      .setUri(Uri.fromFile(file))
+      .setMediaMetadata(
+        MediaMetadata.Builder()
+          .setTitle(item.title)
+          .setArtist(item.source)
+          .build(),
+      )
+      .build()
 
   private suspend fun resolveSummaries(queue: List<AudioQueueItem>): Map<String, String> {
     val summaries = linkedMapOf<String, String>()
@@ -412,6 +443,20 @@ class DefaultAudioPlaybackController(
     const val MIN_PLAYBACK_SPEED = 0.75f
     const val MAX_PLAYBACK_SPEED = 2.0f
   }
+}
+
+internal suspend fun <Item, Prepared> prepareProgressively(
+  items: List<Item>,
+  prepare: suspend (Item) -> Prepared?,
+  onPrepared: suspend (Item, Prepared, Int) -> Unit,
+): Int {
+  var preparedCount = 0
+  items.forEach { item ->
+    val prepared = prepare(item) ?: return@forEach
+    preparedCount += 1
+    onPrepared(item, prepared, preparedCount)
+  }
+  return preparedCount
 }
 
 internal fun isInstalledOfflineJapaneseVoice(
