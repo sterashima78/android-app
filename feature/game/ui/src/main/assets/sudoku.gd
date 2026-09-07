@@ -25,7 +25,6 @@ const BASE_SOLUTION = [
 ]
 
 const COLOR_BACKGROUND = Color("10131f")
-const COLOR_PANEL = Color("1a2032")
 const COLOR_CELL = Color("20283b")
 const COLOR_GIVEN = Color("25334d")
 const COLOR_SELECTED = Color("6657d9")
@@ -54,6 +53,7 @@ var mistake_label: Label
 var status_label: Label
 var completion_layer: Control
 var completion_card: PanelContainer
+var completion_message_label: Label
 
 func _ready():
 	rng.randomize()
@@ -112,7 +112,7 @@ func _build_ui():
 	footer.text = "Godot Control + Tween で描画・入力・アニメーションを実装した POC"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.add_theme_font_size_override("font_size", 21)
-	footer.add_theme_color_override("font_color", Color(COLOR_MUTED, 0.72))
+	footer.add_theme_color_override("font_color", Color(COLOR_MUTED.r, COLOR_MUTED.g, COLOR_MUTED.b, 0.72))
 	content.add_child(footer)
 
 	_build_completion_layer()
@@ -163,12 +163,12 @@ func _build_stats():
 	row.add_theme_constant_override("separation", 18)
 
 	var timer_chip = _stat_chip("TIME")
-	timer_label = timer_chip.get_node("Value")
+	timer_label = timer_chip.find_child("Value", true, false) as Label
 	timer_label.text = "00:00"
 	row.add_child(timer_chip)
 
 	var mistake_chip = _stat_chip("MISS")
-	mistake_label = mistake_chip.get_node("Value")
+	mistake_label = mistake_chip.find_child("Value", true, false) as Label
 	mistake_label.text = "0"
 	row.add_child(mistake_chip)
 	return row
@@ -259,7 +259,7 @@ func _build_completion_layer():
 	completion_card = PanelContainer.new()
 	completion_card.custom_minimum_size = Vector2(690, 430)
 	var style = _rounded_style(Color(0.10, 0.13, 0.21, 0.99), 42)
-	style.border_color = Color(COLOR_ACCENT, 0.75)
+	style.border_color = Color(COLOR_ACCENT.r, COLOR_ACCENT.g, COLOR_ACCENT.b, 0.75)
 	style.border_width_left = 3
 	style.border_width_right = 3
 	style.border_width_top = 3
@@ -288,12 +288,11 @@ func _build_completion_layer():
 	title.add_theme_font_size_override("font_size", 52)
 	title.add_theme_color_override("font_color", COLOR_TEXT)
 	box.add_child(title)
-	var message = Label.new()
-	message.name = "Message"
-	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	message.add_theme_font_size_override("font_size", 27)
-	message.add_theme_color_override("font_color", COLOR_MUTED)
-	box.add_child(message)
+	completion_message_label = Label.new()
+	completion_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	completion_message_label.add_theme_font_size_override("font_size", 27)
+	completion_message_label.add_theme_color_override("font_color", COLOR_MUTED)
+	box.add_child(completion_message_label)
 	var again = Button.new()
 	again.text = "もう一度"
 	again.custom_minimum_size = Vector2(360, 80)
@@ -452,7 +451,7 @@ func _animate_error(cell: Control):
 func _animate_new_board():
 	board_panel.pivot_offset = board_panel.size * 0.5
 	board_panel.scale = Vector2(0.94, 0.94)
-	board_panel.modulate.a = 0.35
+	board_panel.modulate = Color(1.0, 1.0, 1.0, 0.35)
 	var tween = create_tween().set_parallel(true)
 	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(board_panel, "scale", Vector2.ONE, 0.36)
@@ -462,7 +461,7 @@ func _play_intro():
 	await get_tree().process_frame
 	board_panel.pivot_offset = board_panel.size * 0.5
 	board_panel.scale = Vector2(0.86, 0.86)
-	board_panel.modulate.a = 0.0
+	board_panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	var tween = create_tween().set_parallel(true)
 	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(board_panel, "scale", Vector2.ONE, 0.62).set_delay(0.06)
@@ -470,12 +469,10 @@ func _play_intro():
 
 func _show_completion():
 	completion_layer.visible = true
-	var message = completion_card.get_node("VBoxContainer/Message") if completion_card.has_node("VBoxContainer/Message") else null
-	if message:
-		message.text = "TIME %s   ·   MISS %d" % [_formatted_time(), mistakes]
+	completion_message_label.text = "TIME %s   ·   MISS %d" % [_formatted_time(), mistakes]
 	completion_card.pivot_offset = completion_card.size * 0.5
 	completion_card.scale = Vector2(0.72, 0.72)
-	completion_card.modulate.a = 0.0
+	completion_card.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	var tween = create_tween().set_parallel(true)
 	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(completion_card, "scale", Vector2.ONE, 0.55)
