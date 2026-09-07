@@ -114,6 +114,7 @@ class AppContainer(
       database = databaseConnection,
       httpClient = httpClient,
       smbMediaFileAccess = libraryRuntime.smbMediaFileAccess,
+      smbConnectionProfileRepository = libraryRuntime.smbConnectionProfileRepository,
       resumedActivityProvider = resumedActivityProvider,
     )
   }
