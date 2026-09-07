@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.library.SmbMediaFile
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.SmbMediaLocation
@@ -21,6 +22,7 @@ class DefaultVideoRepository(
   private val database: DatabaseConnection,
   httpClient: HttpClient,
   private val smbMediaFileAccess: SmbMediaFileAccess,
+  private val smbConnectionProfiles: SmbConnectionProfileRepository,
   private val webExtractorClient: AndroidWebVideoExtractorClient,
 ) : VideoRepository {
   private val metadataClient = WebVideoMetadataClient(httpClient)
@@ -69,8 +71,9 @@ class DefaultVideoRepository(
 
   override suspend fun refreshSmb(): Int {
     ensureSchema()
-    val sources = smbSources()
-    require(sources.isNotEmpty()) { "動画設定でSMB同期場所を追加してください" }
+    val validProfileIds = smbConnectionProfiles.connectionProfiles().mapTo(HashSet()) { it.id }
+    val sources = smbSources().filter { it.serverId in validProfileIds }
+    require(sources.isNotEmpty()) { "動画設定で有効なSMB同期場所を追加してください" }
     val files = buildList {
       sources.forEach { source ->
         addAll(
@@ -83,14 +86,24 @@ class DefaultVideoRepository(
       }
     }
     val now = System.currentTimeMillis()
-    val incoming = files.map { it.toVideoItem(now) }
+    val incoming = files.map { it.toVideoItem(now) }.distinctBy(VideoItem::id)
     val incomingIds = incoming.mapTo(HashSet()) { it.id }
+    val legacyPlaybackTargets = files
+      .groupBy { file -> stableVideoId(VideoSource.SMB, legacySmbVideoSourceId(file.serverId, file.path)) }
+      .mapNotNull { (legacyId, matchingFiles) ->
+        val targetIds = matchingFiles.map { it.toVideoItem(now).id }.distinct()
+        targetIds.singleOrNull()?.let { targetId -> legacyId to targetId }
+      }
+      .toMap()
     database.transaction {
+      incoming.forEach(::upsertVideoItem)
+      legacyPlaybackTargets.forEach { (legacyId, targetId) ->
+        migratePlaybackStateIfAbsent(legacyId, targetId)
+      }
       existingSmbIds().filterNot(incomingIds::contains).forEach { staleId ->
         delete("video_playback_state", "video_id = ?", arrayOf(staleId))
         delete("video_items", "id = ?", arrayOf(staleId))
       }
-      incoming.forEach(::upsertVideoItem)
     }
     return incoming.size
   }
@@ -334,6 +347,24 @@ private fun SQLiteDatabase.upsertVideoItem(item: VideoItem) {
   }
   val updated = update("video_items", values, "id = ?", arrayOf(item.id))
   if (updated == 0) insertOrThrow("video_items", null, values)
+}
+
+private fun SQLiteDatabase.migratePlaybackStateIfAbsent(
+  legacyVideoId: String,
+  targetVideoId: String,
+) {
+  if (legacyVideoId == targetVideoId) return
+  execSQL(
+    """
+      INSERT OR IGNORE INTO video_playback_state(
+        video_id, position_ms, duration_ms, last_played_at, completed
+      )
+      SELECT ?, position_ms, duration_ms, last_played_at, completed
+      FROM video_playback_state
+      WHERE video_id = ?
+    """.trimIndent(),
+    arrayOf(targetVideoId, legacyVideoId),
+  )
 }
 
 private fun SmbMediaFile.toVideoItem(now: Long): VideoItem {
