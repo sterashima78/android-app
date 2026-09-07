@@ -86,6 +86,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 | backup | domain / data / ui |
 | bookmark | domain / data / ui |
 | article | domain / data / ui |
+| audio | domain / data / ui |
 | asset | domain / data / ui |
 | book-reader | domain / data / ui |
 | calendar | domain / data / ui |
@@ -109,6 +110,8 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 <!-- feature-modules:end -->
 
 全 feature に3 layer を強制しない。独立した責務・依存・ビルド境界として価値がある layer だけを module 化する。
+
+`:feature:audio` は保存済み要約の音声再生 capability を所有する。Domain は process-local の再生キューと操作 contract、Data は Android TTS / Media3 / `MediaSessionService`、UI は再生コントロールを所有する。Content / Curation / Summary の durable state は所有せず、Summary の公開 read/request contract だけを利用する。詳細は ADR-0235 を参照する。
 
 Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
 
@@ -213,3 +216,4 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
 - [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
+- [ADR-0235](../adr/0235-summary-audio-playback.md)
