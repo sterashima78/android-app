@@ -29,6 +29,28 @@ internal fun ensureLibrarySchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     """
+      CREATE TABLE IF NOT EXISTS smb_connection_profiles(
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        host TEXT NOT NULL,
+        port INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        domain_name TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO smb_connection_profiles(
+        id, name, host, port, username, domain_name, updated_at
+      )
+      SELECT id, name, host, port, username, domain_name, updated_at
+      FROM smb_library_servers
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
       CREATE TABLE IF NOT EXISTS smb_cover_prefetch_queue(
         source_id TEXT PRIMARY KEY NOT NULL,
         title TEXT NOT NULL,

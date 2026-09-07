@@ -12,15 +12,16 @@ import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.File as SmbFile
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfile
 import dev.terashima.yomitorirss.feature.library.SmbMediaFile
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
+import dev.terashima.yomitorirss.feature.library.SmbMediaLocation
 import dev.terashima.yomitorirss.feature.library.SmbMediaReadHandle
-import dev.terashima.yomitorirss.feature.library.SmbServerSettings
 import java.util.EnumSet
 
 /**
- * Read-only SMB media adapter owned by Library. It reuses the same Library server table and
- * encrypted credential store but never exposes credential values through the Domain contract.
+ * Read-only SMB media adapter. Connection details and credentials remain inside Library Data while
+ * callers explicitly provide the share/root they own as feature settings.
  */
 class DefaultSmbMediaFileAccess(
   context: Context,
@@ -28,38 +29,43 @@ class DefaultSmbMediaFileAccess(
 ) : SmbMediaFileAccess {
   private val credentialStore = SmbCredentialReader(context.applicationContext)
 
-  override suspend fun listMediaFiles(extensions: Set<String>): List<SmbMediaFile> {
+  override suspend fun listMediaFiles(
+    location: SmbMediaLocation,
+    extensions: Set<String>,
+  ): List<SmbMediaFile> {
     ensureLibrarySchema(database.writable)
+    val normalized = normalizeLocation(location)
+    val profile = queryProfile(normalized.serverId)
+    val password = credentialStore.load(profile.id)
+      ?: error("${profile.name} のSMB認証情報がありません")
     val normalizedExtensions = extensions.map { it.lowercase().trimStart('.') }.toSet()
     require(normalizedExtensions.isNotEmpty()) { "動画拡張子が指定されていません" }
 
-    return buildList {
-      queryServers().forEach { server ->
-        val password = credentialStore.load(server.id)
-          ?: error("${server.name} のSMB認証情報がありません")
-        withShare(server, password) { share ->
-          scanDirectory(
-            share = share,
-            server = server,
-            path = server.rootPath,
-            depth = 0,
-            extensions = normalizedExtensions,
-            result = this,
-          )
-        }
-        require(size <= MAX_MEDIA_FILES) { "SMB動画が上限の $MAX_MEDIA_FILES 件を超えています" }
+    return withShare(profile, normalized.share, password) { share ->
+      buildList {
+        scanDirectory(
+          share = share,
+          location = normalized,
+          path = normalized.rootPath,
+          depth = 0,
+          extensions = normalizedExtensions,
+          result = this,
+        )
       }
     }
   }
 
-  override fun openMediaFile(serverId: String, path: String): SmbMediaReadHandle {
+  override fun openMediaFile(
+    location: SmbMediaLocation,
+    path: String,
+  ): SmbMediaReadHandle {
     ensureLibrarySchema(database.writable)
-    val server = queryServers().firstOrNull { it.id == serverId }
-      ?: error("SMBサーバ設定がありません")
+    val normalized = normalizeLocation(location)
     val normalizedPath = normalizeMediaSmbPath(path)
-    require(isPathWithinRoot(normalizedPath, server.rootPath)) { "SMB動画のパスが設定範囲外です" }
-    val password = credentialStore.load(server.id)
-      ?: error("${server.name} のSMB認証情報がありません")
+    require(isPathWithinRoot(normalizedPath, normalized.rootPath)) { "SMB動画のパスが設定範囲外です" }
+    val profile = queryProfile(normalized.serverId)
+    val password = credentialStore.load(profile.id)
+      ?: error("${profile.name} のSMB認証情報がありません")
 
     val client = SMBClient()
     var connection: Connection? = null
@@ -67,10 +73,10 @@ class DefaultSmbMediaFileAccess(
     var share: DiskShare? = null
     var remoteFile: SmbFile? = null
     try {
-      connection = client.connect(server.host, server.port)
-      val auth = AuthenticationContext(server.username, password.toCharArray(), server.domain)
+      connection = client.connect(profile.host, profile.port)
+      val auth = AuthenticationContext(profile.username, password.toCharArray(), profile.domain)
       session = connection.authenticate(auth)
-      share = session.connectShare(server.share) as? DiskShare
+      share = session.connectShare(normalized.share) as? DiskShare
         ?: error("SMB共有がディスク共有ではありません")
       remoteFile = share.openFile(
         normalizedPath,
@@ -99,36 +105,30 @@ class DefaultSmbMediaFileAccess(
     }
   }
 
-  private fun queryServers(): List<SmbServerSettings> = database.readable.rawQuery(
+  private fun queryProfile(serverId: String): SmbConnectionProfile = database.readable.rawQuery(
     """
-      SELECT id, name, host, port, share_name, root_path, username, domain_name
-      FROM smb_library_servers
-      ORDER BY name COLLATE NOCASE, id
+      SELECT id, name, host, port, username, domain_name
+      FROM smb_connection_profiles
+      WHERE id = ?
+      LIMIT 1
     """.trimIndent(),
-    null,
+    arrayOf(serverId),
   ).use { cursor ->
-    buildList {
-      while (cursor.moveToNext()) {
-        add(
-          SmbServerSettings(
-            id = cursor.getString(cursor.getColumnIndexOrThrow("id")),
-            name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
-            host = cursor.getString(cursor.getColumnIndexOrThrow("host")),
-            port = cursor.getInt(cursor.getColumnIndexOrThrow("port")),
-            share = cursor.getString(cursor.getColumnIndexOrThrow("share_name")),
-            rootPath = cursor.getString(cursor.getColumnIndexOrThrow("root_path")),
-            username = cursor.getString(cursor.getColumnIndexOrThrow("username")),
-            domain = cursor.getString(cursor.getColumnIndexOrThrow("domain_name")),
-            credentialConfigured = true,
-          ),
-        )
-      }
-    }
+    if (!cursor.moveToFirst()) error("SMB接続設定がありません")
+    SmbConnectionProfile(
+      id = cursor.getString(0),
+      name = cursor.getString(1),
+      host = cursor.getString(2),
+      port = cursor.getInt(3),
+      username = cursor.getString(4),
+      domain = cursor.getString(5),
+      credentialConfigured = true,
+    )
   }
 
   private fun scanDirectory(
     share: DiskShare,
-    server: SmbServerSettings,
+    location: SmbMediaLocation,
     path: String,
     depth: Int,
     extensions: Set<String>,
@@ -141,14 +141,16 @@ class DefaultSmbMediaFileAccess(
       val childPath = joinMediaSmbPath(path, name)
       val isDirectory = entry.fileAttributes and FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value != 0L
       if (isDirectory) {
-        scanDirectory(share, server, childPath, depth + 1, extensions, result)
+        scanDirectory(share, location, childPath, depth + 1, extensions, result)
         return@forEach
       }
       val extension = name.substringAfterLast('.', "").lowercase()
       if (extension !in extensions) return@forEach
       require(result.size < MAX_MEDIA_FILES) { "SMB動画が上限の $MAX_MEDIA_FILES 件を超えています" }
       result += SmbMediaFile(
-        serverId = server.id,
+        serverId = location.serverId,
+        share = location.share,
+        rootPath = location.rootPath,
         path = childPath,
         name = name,
         size = entry.endOfFile,
@@ -158,14 +160,15 @@ class DefaultSmbMediaFileAccess(
   }
 
   private fun <T> withShare(
-    server: SmbServerSettings,
+    profile: SmbConnectionProfile,
+    shareName: String,
     password: String,
     block: (DiskShare) -> T,
   ): T = SMBClient().use { client ->
-    client.connect(server.host, server.port).use { connection ->
-      val auth = AuthenticationContext(server.username, password.toCharArray(), server.domain)
+    client.connect(profile.host, profile.port).use { connection ->
+      val auth = AuthenticationContext(profile.username, password.toCharArray(), profile.domain)
       connection.authenticate(auth).use { session ->
-        val share = session.connectShare(server.share) as? DiskShare
+        val share = session.connectShare(shareName) as? DiskShare
           ?: error("SMB共有がディスク共有ではありません")
         share.use(block)
       }
@@ -203,6 +206,15 @@ private class OpenedSmbMediaReadHandle(
     runCatching { connection.close() }
     runCatching { client.close() }
   }
+}
+
+private fun normalizeLocation(location: SmbMediaLocation): SmbMediaLocation = location.copy(
+  serverId = location.serverId.trim(),
+  share = location.share.trim().trim('/', '\\'),
+  rootPath = normalizeMediaSmbPath(location.rootPath),
+).also { normalized ->
+  require(normalized.serverId.isNotBlank()) { "SMB接続設定がありません" }
+  require(normalized.share.isNotBlank()) { "SMB共有名がありません" }
 }
 
 internal fun normalizeMediaSmbPath(path: String): String {

@@ -10,13 +10,16 @@ import java.util.Locale
 
 internal data class SmbVideoLocation(
   val serverId: String,
+  val share: String?,
   val path: String,
 )
 
-internal fun smbVideoSourceId(serverId: String, path: String): String {
+internal fun smbVideoSourceId(serverId: String, share: String, path: String): String {
   require(serverId.isNotBlank()) { "SMB動画のserverIdがありません" }
+  require(share.isNotBlank()) { "SMB動画のshareがありません" }
   require(path.isNotBlank()) { "SMB動画のpathがありません" }
-  return "mosaic-smb-video://file?serverId=${encodeSmbVideoIdPart(serverId)}&path=${encodeSmbVideoIdPart(path)}"
+  return "mosaic-smb-video://file?serverId=${encodeSmbVideoIdPart(serverId)}" +
+    "&share=${encodeSmbVideoIdPart(share)}&path=${encodeSmbVideoIdPart(path)}"
 }
 
 internal fun parseSmbVideoSourceId(sourceId: String): SmbVideoLocation {
@@ -25,10 +28,25 @@ internal fun parseSmbVideoSourceId(sourceId: String): SmbVideoLocation {
   require(uri.scheme == "mosaic-smb-video" && uri.host == "file") { "SMB動画IDが不正です" }
   val serverId = queryParameter(uri.rawQuery, "serverId")?.takeIf(String::isNotBlank)
     ?: error("SMB動画のserverIdがありません")
+  val share = queryParameter(uri.rawQuery, "share")?.takeIf(String::isNotBlank)
   val path = queryParameter(uri.rawQuery, "path")?.takeIf(String::isNotBlank)
     ?: error("SMB動画のpathがありません")
-  return SmbVideoLocation(serverId, path)
+  return SmbVideoLocation(serverId, share, path)
 }
+
+internal fun isSmbVideoPathWithinRoot(path: String, rootPath: String): Boolean {
+  val normalizedPath = normalizeSmbVideoPath(path)
+  val normalizedRoot = normalizeSmbVideoPath(rootPath)
+  return normalizedRoot.isEmpty() || normalizedPath == normalizedRoot ||
+    normalizedPath.startsWith("$normalizedRoot\\")
+}
+
+private fun normalizeSmbVideoPath(path: String): String = path
+  .replace('/', '\\')
+  .split('\\')
+  .filter { it.isNotBlank() && it != "." }
+  .also { require(".." !in it) { "SMB動画のパスに .. は使用できません" } }
+  .joinToString("\\")
 
 private fun encodeSmbVideoIdPart(value: String): String =
   URLEncoder.encode(value, StandardCharsets.UTF_8.name())

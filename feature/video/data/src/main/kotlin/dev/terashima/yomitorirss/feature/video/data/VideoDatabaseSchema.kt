@@ -40,6 +40,18 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     """
+      CREATE TABLE IF NOT EXISTS video_smb_sources (
+        id TEXT PRIMARY KEY NOT NULL,
+        server_id TEXT NOT NULL,
+        share_name TEXT NOT NULL,
+        root_path TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(server_id, share_name, root_path)
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
       CREATE TABLE IF NOT EXISTS video_web_extractor_rules (
         id TEXT PRIMARY KEY NOT NULL,
         url_pattern TEXT NOT NULL,
@@ -53,6 +65,9 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_items_source_updated ON video_items(source, updated_at DESC)",
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_smb_sources_updated ON video_smb_sources(updated_at DESC)",
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_rules_updated ON video_web_extractor_rules(updated_at DESC)",
