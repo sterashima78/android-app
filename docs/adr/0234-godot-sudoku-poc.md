@@ -55,4 +55,6 @@ POC 評価後、次のいずれかを別 ADR で決める。
 1. Godot をリアルタイム Game の正式 runtime とし、数独 POC 自体は削除する。
 2. Godot 採用を見送り、dependency / Activity / Godot assets / 一覧項目を削除する。
 
+判断時には release APK の実機起動、盤面操作、戻る操作、主要アニメーション、日本語表示を確認し、Compose 版との APK size、起動感、実装保守性を比較する。
+
 POC を理由なく恒久的な第二数独実装として残さない。
