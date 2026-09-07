@@ -29,6 +29,16 @@ class DefaultVideoPlaybackResolverTest {
   }
 
   @Test
+  fun `SMB動画IDは特殊文字を含むserverとpathを往復できる`() {
+    val location = parseSmbVideoSourceId(
+      smbVideoSourceId("server & 1", "videos\\A+B movie #1.mkv"),
+    )
+
+    assertEquals("server & 1", location.serverId)
+    assertEquals("videos\\A+B movie #1.mkv", location.path)
+  }
+
+  @Test
   fun `SMB再生先はcatalogの長さを利用しbyte sourceはoffset readを委譲する`() = runBlocking {
     val smb = FakeSmbAccess(payload = "0123456789".toByteArray())
     val sourceId = smbVideoSourceId("server-1", "videos\\movie.mkv")
