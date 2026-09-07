@@ -27,6 +27,7 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +66,14 @@ class DefaultAudioPlaybackController(
     if (queue.isEmpty()) return
 
     prepareJob?.cancel()
+    positionJob?.cancel()
+    positionJob = null
+    textToSpeech?.stop()
+    mediaController?.let { controller ->
+      controller.stop()
+      controller.clearMediaItems()
+    }
+
     prepareJob = scope.launch {
       mutableState.value = AudioPlaybackState(
         items = queue,
@@ -76,6 +85,7 @@ class DefaultAudioPlaybackController(
       runCatching {
         prepareAndPlay(queue)
       }.onFailure { error ->
+        if (error is CancellationException) return@onFailure
         mutableState.update {
           it.copy(
             isPlaying = false,
@@ -259,6 +269,8 @@ class DefaultAudioPlaybackController(
     } catch (error: Throwable) {
       output.delete()
       throw error
+    } finally {
+      synthesisWaiters.remove(utteranceId)
     }
     if (!output.isFile || output.length() == 0L) error("音声ファイルを生成できませんでした")
     return output
@@ -274,15 +286,27 @@ class DefaultAudioPlaybackController(
       error("端末の音声合成エンジンを初期化できませんでした")
     }
 
-    if (tts.isLanguageAvailable(Locale.JAPANESE) >= TextToSpeech.LANG_AVAILABLE) {
-      tts.language = Locale.JAPANESE
+    val offlineJapaneseVoice = tts.voices
+      .orEmpty()
+      .asSequence()
+      .filter { voice -> !voice.isNetworkConnectionRequired }
+      .filter { voice -> voice.locale.language == Locale.JAPANESE.language }
+      .maxByOrNull { voice -> voice.quality }
+    if (offlineJapaneseVoice == null || tts.setVoice(offlineJapaneseVoice) != TextToSpeech.SUCCESS) {
+      tts.shutdown()
+      error("オフラインで利用できる日本語音声がありません")
     }
+
     tts.setOnUtteranceProgressListener(
       object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String) = Unit
 
         override fun onDone(utteranceId: String) {
           synthesisWaiters.remove(utteranceId)?.complete(Unit)
+        }
+
+        override fun onStop(utteranceId: String, interrupted: Boolean) {
+          synthesisWaiters.remove(utteranceId)?.cancel(CancellationException("音声合成を停止しました"))
         }
 
         @Deprecated("Deprecated in Android API")
