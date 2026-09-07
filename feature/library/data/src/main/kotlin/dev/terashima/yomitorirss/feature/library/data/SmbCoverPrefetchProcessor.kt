@@ -33,7 +33,7 @@ internal class SmbCoverPrefetchProcessor(
   private val database: DatabaseConnection,
 ) {
   private val appContext = context.applicationContext
-  private val credentialReader = SmbCoverPrefetchCredentialReader(appContext)
+  private val credentialReader = SmbCredentialReader(appContext)
   private val coverCacheCoordinator = SmbCoverCacheCoordinator(appContext, database)
   private val bookCacheRoot = File(appContext.cacheDir, BOOK_CACHE_DIRECTORY)
   private val tempRoot = File(appContext.cacheDir, TEMP_DIRECTORY).apply { mkdirs() }
@@ -291,7 +291,7 @@ internal fun formatSmbBookFileSize(bytes: Long): String = when {
   else -> "$bytes B"
 }
 
-private class SmbCoverPrefetchCredentialReader(context: Context) {
+internal class SmbCredentialReader(context: Context) {
   private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
   fun load(serverId: String): String? {
