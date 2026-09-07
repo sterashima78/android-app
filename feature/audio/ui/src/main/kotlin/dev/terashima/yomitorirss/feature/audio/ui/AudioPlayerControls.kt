@@ -118,7 +118,7 @@ fun AudioPlayerControls(
             verticalAlignment = Alignment.CenterVertically,
           ) {
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-              listOf(1f, 1.25f, 1.5f, 2f).forEach { speed ->
+              listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
                 TextButton(onClick = { onSetSpeed(speed) }) {
                   val selected = (state.playbackSpeed * 100).roundToInt() == (speed * 100).roundToInt()
                   Text(if (selected) "[${formatSpeed(speed)}]" else formatSpeed(speed))
@@ -146,6 +146,7 @@ private fun formatDuration(milliseconds: Long): String {
 }
 
 private fun formatSpeed(speed: Float): String = when (speed) {
+  0.75f -> "0.75x"
   1f -> "1x"
   1.25f -> "1.25x"
   1.5f -> "1.5x"
