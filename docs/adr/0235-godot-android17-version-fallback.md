@@ -1,7 +1,8 @@
 # ADR-0235: Android 17 向け Godot POC は 4.6.3 stable を使用する
 
-Status: Accepted
-Date: 2026-09-07
+- Status: Accepted
+- Date: 2026-09-07
+- Amends: [ADR-0234](0234-godot-sudoku-poc.md)
 
 ## Context
 
