@@ -1,9 +1,6 @@
 package dev.terashima.yomitorirss.feature.library.data
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.util.Base64
 import com.hierynomus.msfscc.FileAttributes
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.mssmb2.SMB2CreateDisposition
@@ -19,12 +16,7 @@ import dev.terashima.yomitorirss.feature.library.SmbMediaFile
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.SmbMediaReadHandle
 import dev.terashima.yomitorirss.feature.library.SmbServerSettings
-import java.security.KeyStore
 import java.util.EnumSet
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 
 /**
  * Read-only SMB media adapter owned by Library. It reuses the same Library server table and
@@ -34,7 +26,7 @@ class DefaultSmbMediaFileAccess(
   context: Context,
   private val database: DatabaseConnection,
 ) : SmbMediaFileAccess {
-  private val credentialStore = MediaSmbCredentialReader(context.applicationContext)
+  private val credentialStore = SmbCredentialReader(context.applicationContext)
 
   override suspend fun listMediaFiles(extensions: Set<String>): List<SmbMediaFile> {
     ensureLibrarySchema(database.writable)
@@ -230,43 +222,4 @@ private fun joinMediaSmbPath(parent: String, child: String): String =
 private fun isPathWithinRoot(path: String, rootPath: String): Boolean {
   val root = normalizeMediaSmbPath(rootPath)
   return root.isEmpty() || path == root || path.startsWith("$root\\")
-}
-
-private class MediaSmbCredentialReader(context: Context) {
-  private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-
-  fun load(serverId: String): String? {
-    val value = preferences.getString(serverId, null) ?: return null
-    val parts = value.split(':', limit = 2)
-    if (parts.size != 2) return null
-    return runCatching {
-      val iv = Base64.decode(parts[0], Base64.NO_WRAP)
-      val encrypted = Base64.decode(parts[1], Base64.NO_WRAP)
-      val cipher = Cipher.getInstance(TRANSFORMATION)
-      cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
-      cipher.doFinal(encrypted).toString(Charsets.UTF_8)
-    }.getOrNull()
-  }
-
-  private fun key(): SecretKey {
-    val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-    (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
-    val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-    generator.init(
-      KeyGenParameterSpec.Builder(
-        KEY_ALIAS,
-        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-      )
-        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-        .build(),
-    )
-    return generator.generateKey()
-  }
-
-  private companion object {
-    const val PREFERENCES_NAME = "smb_library_credentials"
-    const val KEY_ALIAS = "yomitori.smb.library.credentials.v1"
-    const val TRANSFORMATION = "AES/GCM/NoPadding"
-  }
 }
