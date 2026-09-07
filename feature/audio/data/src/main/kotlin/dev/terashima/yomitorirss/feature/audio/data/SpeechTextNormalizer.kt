@@ -27,24 +27,28 @@ internal fun markdownToSpeechText(markdown: String): String {
 private fun normalizeMarkdownLineForSpeech(line: String): String {
   if (MARKDOWN_FENCE.matches(line) ||
     MARKDOWN_HORIZONTAL_RULE.matches(line) ||
-    MARKDOWN_TABLE_DELIMITER.matches(line)
+    MARKDOWN_SETEXT_HEADING.matches(line) ||
+    MARKDOWN_TABLE_DELIMITER.matches(line) ||
+    MARKDOWN_REFERENCE_DEFINITION.matches(line)
   ) {
     return ""
   }
 
   val withoutStructure = line
-    .replace(MARKDOWN_HEADING_PREFIX, "")
     .replace(MARKDOWN_BLOCKQUOTE_PREFIX, "")
+    .replace(MARKDOWN_HEADING_PREFIX, "")
+    .replace(MARKDOWN_HEADING_SUFFIX, "")
     .replace(MARKDOWN_UNORDERED_LIST_PREFIX, "")
     .replace(MARKDOWN_ORDERED_LIST_PREFIX, "")
+    .replace(MARKDOWN_TASK_PREFIX, "")
     .trim()
 
   if ('|' !in withoutStructure) return withoutStructure
 
   return withoutStructure
     .split('|')
-    .map(String::trim)
-    .filter(String::isNotEmpty)
+    .map { cell -> cell.trim() }
+    .filter { cell -> cell.isNotEmpty() }
     .joinToString("、")
 }
 
@@ -61,9 +65,13 @@ private val MARKDOWN_EMPHASIS_UNDERSCORE = Regex("""(?<!_)_([^_\n]+)_(?!_)""")
 private val MARKDOWN_ESCAPE = Regex("""\\([\\`*_{}\[\]()#+\-.!>~|])""")
 private val MARKDOWN_FENCE = Regex("""^\s{0,3}(?:`{3,}|~{3,}).*$""")
 private val MARKDOWN_HORIZONTAL_RULE = Regex("""^\s{0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$""")
+private val MARKDOWN_SETEXT_HEADING = Regex("""^\s{0,3}=+\s*$""")
 private val MARKDOWN_TABLE_DELIMITER = Regex("""^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$""")
+private val MARKDOWN_REFERENCE_DEFINITION = Regex("""^\s{0,3}\[[^]]+]:\s*\S+.*$""")
 private val MARKDOWN_HEADING_PREFIX = Regex("""^\s{0,3}#{1,6}\s+""")
+private val MARKDOWN_HEADING_SUFFIX = Regex("""\s+#+\s*$""")
 private val MARKDOWN_BLOCKQUOTE_PREFIX = Regex("""^(?:\s{0,3}>\s?)+""")
 private val MARKDOWN_UNORDERED_LIST_PREFIX = Regex("""^\s{0,3}[-+*]\s+(?:\[[ xX]\]\s+)?""")
 private val MARKDOWN_ORDERED_LIST_PREFIX = Regex("""^\s{0,3}\d+[.)]\s+""")
+private val MARKDOWN_TASK_PREFIX = Regex("""^\s*\[[ xX]\]\s+""")
 private val EXCESS_BLANK_LINES = Regex("""\n{3,}""")
