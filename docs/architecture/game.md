@@ -1,6 +1,6 @@
 # Game Architecture
 
-この文書は Game feature の current architecture を示す。設計判断の履歴は ADR-0080、ADR-0082、ADR-0083、ADR-0085、ADR-0088、ADR-0234、ADR-0235 を参照する。
+この文書は Game feature の current architecture を示す。設計判断の履歴は ADR-0080、ADR-0082、ADR-0083、ADR-0085、ADR-0088、ADR-0234、ADR-0236 を参照する。
 
 ## Ownership
 
@@ -23,7 +23,7 @@ pure Kotlin rules / state transition
 
 ## Godot Sudoku POC
 
-ADR-0234 により、リアルタイム 2D game engine 採用可能性を評価するため、既存 Compose 数独とは別に Godot 数独を POC として持つ。ADR-0235 により、Android 17 実機での 4.7.2 native crash 回避検証として runtime baseline は一時的に Godot 4.6.3 stable とする。
+ADR-0234 により、リアルタイム 2D game engine 採用可能性を評価するため、既存 Compose 数独とは別に Godot 数独を POC として持つ。ADR-0236 により、Android 17 実機での 4.7.2 native crash 回避検証として runtime baseline は一時的に Godot 4.6.3 stable とする。
 
 ```text
 GameRoute / Compose game list
@@ -75,6 +75,6 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 - [ADR-0080](../adr/0080-game-section-and-sudoku.md)
 - [ADR-0088](../adr/0088-offline-puzzle-game-expansion.md)
 - [ADR-0234](../adr/0234-godot-sudoku-poc.md)
-- [ADR-0235](../adr/0235-godot-android17-version-fallback.md)
+- [ADR-0236](../adr/0236-godot-android17-version-fallback.md)
 - `feature/game/domain/`
 - `feature/game/ui/`
