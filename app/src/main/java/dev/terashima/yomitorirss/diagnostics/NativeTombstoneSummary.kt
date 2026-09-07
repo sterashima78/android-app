@@ -324,7 +324,8 @@ private class TombstoneProtoReader(
   }
 
   fun skipLengthDelimited() {
-    position += readLength()
+    val length = readLength()
+    position += length
   }
 
   fun skip(wireType: Int) {
