@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.video.VideoSource
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -26,6 +27,24 @@ class DefaultVideoPlaybackResolverTest {
       VideoPlaybackTarget.WebPage("https://example.com/watch/1"),
       resolver.resolve(item),
     )
+  }
+
+  @Test
+  fun `WebストリームのRefererは元ページのoriginだけに制限する`() {
+    assertEquals(
+      "https://example.com/",
+      webStreamReferrerUrl("https://example.com/watch/1?token=secret#player"),
+    )
+    assertEquals(
+      "https://example.com:8443/",
+      webStreamReferrerUrl("https://example.com:8443/watch/1"),
+    )
+  }
+
+  @Test
+  fun `HTTP以外のURLはWebストリームRefererにしない`() {
+    assertNull(webStreamReferrerUrl("file:///tmp/video.html"))
+    assertNull(webStreamReferrerUrl("not a url"))
   }
 
   @Test
