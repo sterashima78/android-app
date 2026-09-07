@@ -112,7 +112,7 @@ class DefaultAudioPlaybackController(
     mediaController?.let { controller ->
       val duration = controller.duration.takeIf { it != C.TIME_UNSET && it > 0L }
       val destination = (controller.currentPosition + deltaMs).coerceAtLeast(0L).let { position ->
-        duration?.let(position::coerceAtMost) ?: position
+        duration?.let { max -> position.coerceAtMost(max) } ?: position
       }
       controller.seekTo(destination)
       syncPlayerState(controller)
@@ -128,6 +128,8 @@ class DefaultAudioPlaybackController(
   override fun stop() {
     prepareJob?.cancel()
     prepareJob = null
+    positionJob?.cancel()
+    positionJob = null
     textToSpeech?.stop()
     mediaController?.let { controller ->
       controller.stop()
@@ -157,7 +159,7 @@ class DefaultAudioPlaybackController(
     }
 
     val controller = ensureMediaController()
-    val playableItems = prepared.map(Pair<AudioQueueItem, File>::first)
+    val playableItems = prepared.map { it.first }
     val mediaItems = prepared.map { (item, file) ->
       MediaItem.Builder()
         .setMediaId(item.contentId)
@@ -306,7 +308,7 @@ class DefaultAudioPlaybackController(
       ComponentName(applicationContext, AudioPlaybackService::class.java),
     )
     val future = MediaController.Builder(applicationContext, token).buildAsync()
-    val controller = suspendCancellableCoroutine { continuation ->
+    val controller = suspendCancellableCoroutine<MediaController> { continuation ->
       future.addListener(
         {
           runCatching(future::get)
@@ -339,7 +341,7 @@ class DefaultAudioPlaybackController(
   private fun startPositionUpdates(controller: MediaController) {
     positionJob?.cancel()
     positionJob = scope.launch {
-      while (isActive) {
+      while (isActive && mutableState.value.preparationStatus != AudioPreparationStatus.IDLE) {
         syncPlayerState(controller)
         delay(POSITION_UPDATE_INTERVAL_MS)
       }
