@@ -36,3 +36,5 @@
 ## Relationship
 
 ADR-0003 の feature-first / 必要な layer のみ作る方針、および app は navigation と composition root に限定する方針を継承する。
+
+[ADR-0234](0234-godot-sudoku-poc.md) は、ゲームエンジン埋め込み評価のため比較用の第二数独実装を意図的に追加する。既存 Compose 数独と `:feature:game:domain` の ownership は本 ADR の判断を維持する。
