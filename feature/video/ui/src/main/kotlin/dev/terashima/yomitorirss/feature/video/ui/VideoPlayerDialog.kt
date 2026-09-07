@@ -153,7 +153,8 @@ internal fun VideoPlayerDialog(
 private fun FullscreenSystemBarsEffect(isFullscreen: Boolean) {
   val view = LocalView.current
   DisposableEffect(view, isFullscreen) {
-    val window = (view.parent as? DialogWindowProvider)?.window
+    val parent = view.parent
+    val window = if (parent is DialogWindowProvider) parent.window else null
     val controller = window?.insetsController
     if (isFullscreen) {
       controller?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
