@@ -75,6 +75,29 @@ class ContentSourceGatewayTest {
   }
 
   @Test
+  fun `Source再取得は同一identityの既読状態を維持する`() {
+    val source = ContentSourceSnapshot("feed-1", "Feed", "https://example.com/feed")
+    val item = SourceContentItem("ext", "identity", "https://example.com/a", "Article", "2026-08-19T00:00:00Z")
+    gateway.upsertSourceContent(
+      source = source,
+      items = listOf(item),
+      fetchedAt = "2026-08-19T01:00:00Z",
+      insertedReadAt = "2026-08-19T02:00:00Z",
+    )
+
+    gateway.upsertSourceContent(
+      source = source,
+      items = listOf(item),
+      fetchedAt = "2026-09-07T00:00:00Z",
+    )
+
+    helper.readableDatabase.rawQuery("SELECT read_at FROM articles WHERE identity_key='identity'", null).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals("2026-08-19T02:00:00Z", cursor.getString(0))
+    }
+  }
+
+  @Test
   fun `Source ingestionは一致するBookmark済みdetached Contentをすべて再関連付けする`() {
     insertDetached("saved-1", "old-identity-1", "https://example.com/shared")
     insertDetached("saved-2", "old-identity-2", "https://example.com/shared")

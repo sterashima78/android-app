@@ -30,7 +30,7 @@ class DefaultArticleRepository(
     val cutoff = contentRetentionPolicy.expiryCutoff(Instant.now()).toString()
     val deleted = database.transaction {
       val expiredCandidateIds = rawQuery(
-        "SELECT id FROM articles WHERE read_at IS NOT NULL AND read_at<?",
+        "SELECT id FROM articles WHERE feed_id IS NULL AND read_at IS NOT NULL AND read_at<?",
         arrayOf(cutoff),
       ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
       if (expiredCandidateIds.isEmpty()) return@transaction 0

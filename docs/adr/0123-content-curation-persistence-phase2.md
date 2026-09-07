@@ -102,3 +102,11 @@ ADR、manifest、migration test には token、credential、OAuth secret、個�
 - Summary persistence の変更理由が分離される。
 - cross-context command は単一 DB transaction ではなくなるため、失敗時の再実行可能性を維持する必要がある。
 - upgrade 済み DB には legacy `articles.saved_at` column が残るが runtime state としては利用しない。
+
+## Amendment 2026-09-07: Source-linked Content は identity retention を優先する
+
+ADR-0119 の 2026-09-07 amendment により、30日 cleanup は detached Content (`feed_id IS NULL`) に限定する。購読中 Source に紐づく Content は、Bookmark の有無に関係なく同一 Source item の既読 identity を維持するため cleanup しない。
+
+Curation / Summary の `ContentRetentionProtectionQuery` は引き続き detached Content の削除保護に利用する。Source 削除時の Bookmark 保持判定も本 ADR の named capability を維持し、未保存 Source Content は `ContentSourceGateway.detachSourceContent` が削除する。
+
+この変更は Content/Curation ownership、table schema、migration、公開 capability を変更しない。
