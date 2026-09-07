@@ -32,6 +32,7 @@ fun VideoFeatureRoute(
   val playbackSession by viewModel.playbackSession.collectAsState()
   val scope = rememberCoroutineScope()
   var resolving by remember { mutableStateOf(false) }
+  var smbSettingsVisible by remember { mutableStateOf(false) }
 
   fun play(item: VideoItem) {
     if (resolving) return
@@ -59,7 +60,7 @@ fun VideoFeatureRoute(
       state = state,
       onPlay = ::play,
       onAddWeb = viewModel::addWeb,
-      onRefreshSmb = viewModel::refreshSmb,
+      onRefreshSmb = { smbSettingsVisible = true },
       onRemove = viewModel::remove,
       onSetCompleted = viewModel::setCompleted,
       onSaveExtractorRule = viewModel::saveExtractorRule,
@@ -70,6 +71,16 @@ fun VideoFeatureRoute(
     if (resolving) {
       CircularProgressIndicator(Modifier.align(Alignment.Center))
     }
+  }
+
+  if (smbSettingsVisible) {
+    VideoSmbSettingsDialog(
+      state = state,
+      onSave = viewModel::saveSmbSource,
+      onDelete = viewModel::deleteSmbSource,
+      onSync = viewModel::refreshSmb,
+      onDismiss = { smbSettingsVisible = false },
+    )
   }
 
   val activeSession = playbackSession

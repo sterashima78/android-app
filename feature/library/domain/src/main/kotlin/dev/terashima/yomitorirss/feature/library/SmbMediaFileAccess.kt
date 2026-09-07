@@ -1,7 +1,15 @@
 package dev.terashima.yomitorirss.feature.library
 
+data class SmbMediaLocation(
+  val serverId: String,
+  val share: String,
+  val rootPath: String = "",
+)
+
 data class SmbMediaFile(
   val serverId: String,
+  val share: String,
+  val rootPath: String,
   val path: String,
   val name: String,
   val size: Long,
@@ -20,14 +28,17 @@ interface SmbMediaReadHandle : AutoCloseable {
 }
 
 /**
- * Read-only capability for consumers that need files from Library-owned SMB connections.
- * Credentials and connection settings never cross this contract.
+ * Read-only capability for consumers that need files from an SMB connection profile.
+ * Credentials and connection details never cross this contract.
  */
 interface SmbMediaFileAccess {
-  suspend fun listMediaFiles(extensions: Set<String>): List<SmbMediaFile>
+  suspend fun listMediaFiles(
+    location: SmbMediaLocation,
+    extensions: Set<String>,
+  ): List<SmbMediaFile>
 
   fun openMediaFile(
-    serverId: String,
+    location: SmbMediaLocation,
     path: String,
   ): SmbMediaReadHandle
 }

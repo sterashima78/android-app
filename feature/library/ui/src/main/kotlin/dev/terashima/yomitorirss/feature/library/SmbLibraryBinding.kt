@@ -29,19 +29,34 @@ internal fun LibraryUiState.canEditSmbMetadataNormalizationPrompt(): Boolean =
 @Composable
 internal fun SmbLibrarySettingsFromBinding() {
   val binding = LocalSmbLibraryUiBinding.current ?: return
-  SmbLibrarySettingsSection(
-    servers = binding.state.smbServers,
-    busy = binding.state.smbSettingsBusy,
-    syncing = binding.state.smbSyncing,
-    coverPrefetchBusy = binding.state.smbCoverPrefetchBusy,
-    coverPrefetch = binding.state.smbCoverPrefetch,
-    onSync = binding.onSync,
-    onSave = binding.onSave,
-    onDelete = binding.onDelete,
-    onEnqueueCovers = binding.onEnqueueCovers,
-    onRetryFailedCovers = binding.onRetryFailedCovers,
-    onRescheduleCovers = binding.onRescheduleCovers,
-  )
+  val connectionProfiles = LocalSmbConnectionProfileRepository.current
+  if (connectionProfiles != null) {
+    SmbLibraryLocationSettingsSection(
+      repository = connectionProfiles,
+      busy = binding.state.smbSettingsBusy,
+      syncing = binding.state.smbSyncing,
+      coverPrefetchBusy = binding.state.smbCoverPrefetchBusy,
+      coverPrefetch = binding.state.smbCoverPrefetch,
+      onSync = binding.onSync,
+      onEnqueueCovers = binding.onEnqueueCovers,
+      onRetryFailedCovers = binding.onRetryFailedCovers,
+      onRescheduleCovers = binding.onRescheduleCovers,
+    )
+  } else {
+    SmbLibrarySettingsSection(
+      servers = binding.state.smbServers,
+      busy = binding.state.smbSettingsBusy,
+      syncing = binding.state.smbSyncing,
+      coverPrefetchBusy = binding.state.smbCoverPrefetchBusy,
+      coverPrefetch = binding.state.smbCoverPrefetch,
+      onSync = binding.onSync,
+      onSave = binding.onSave,
+      onDelete = binding.onDelete,
+      onEnqueueCovers = binding.onEnqueueCovers,
+      onRetryFailedCovers = binding.onRetryFailedCovers,
+      onRescheduleCovers = binding.onRescheduleCovers,
+    )
+  }
   SmbMetadataNormalizationPromptSettingsSection(
     prompt = binding.state.smbMetadataNormalizationPrompt,
     editable = binding.state.canEditSmbMetadataNormalizationPrompt(),

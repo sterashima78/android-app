@@ -154,7 +154,7 @@ Kindle / Audible / Google Books / SMB / Web URL
          Book Reader        AI normalization
 ```
 
-SMB credential、WebView metadata extraction、cover cache、AI normalization は同じ Library capability の周辺にあるが、credential、cache、durable user data、AI input を同一種類のデータとして扱わない。
+SMB connection profile / credential、Library用SMB share/path、WebView metadata extraction、cover cache、AI normalization は同じ Library capability の周辺にあるが、credential、feature-specific location、cache、durable user data、AI input を同一種類のデータとして扱わない。SMB connection profileは全体設定から管理し、Library設定ではLibrary用share/pathだけを設定する。
 
 Evidence:
 
@@ -166,28 +166,35 @@ Evidence:
 ### 3.4 Video
 
 ```text
-Web page URL --------------------------+
-   |                                   |
-   +-- static HTML / OGP               |
-   +-- custom WebView extractor        |
-                                       v
-                                  Video catalog
-                                       |
-Library SMB settings/credential        |
-   |                                   |
-   +-- SmbMediaFileAccess -------------+
-                                       |
-                           +-----------+-----------+
-                           |                       |
-                           v                       v
-                    Media3 foreground        Web page fallback
-                    Stream / SMB read
+Web page URL -------------------------------+
+   |                                        |
+   +-- static HTML / OGP                    |
+   +-- custom WebView extractor             |
+                                            v
+                                       Video catalog
+                                            |
+Global SMB connection profile               |
+ Library-owned host/user/credential          |
+   |                                        |
+   +-- SmbConnectionProfileRepository       |
+   |                                        |
+Video-owned share / root path                |
+   |                                        |
+   +-- SmbMediaFileAccess ------------------+
+                                            |
+                                +-----------+-----------+
+                                |                       |
+                                v                       v
+                         Media3 foreground        Web page fallback
+                         Stream / SMB read
 ```
 
 重要な境界:
 
-- Video はcatalog、Web extractor rule、再生位置・completed stateを所有する。
-- SMB server settings / credentialはLibrary ownershipを維持し、Videoは `SmbMediaFileAccess` のfile listing / random-access readだけを利用する。
+- Video はcatalog、Video用SMB share/root path、Web extractor rule、再生位置・completed stateを所有する。
+- SMB connection profile / credentialはLibrary ownershipを維持し、アプリ全体設定から `SmbConnectionProfileRepository` 経由で管理する。
+- LibraryとVideoは同じconnection profileを共有できるが、同期するshare / root pathは各Contextが別々に所有する。
+- Videoは `SmbMediaFileAccess` に自身の `SmbMediaLocation` を明示し、file listing / random-access readだけを利用する。host/user/passwordはVideoへ公開しない。
 - Web stream URLはdurable stateとして保存せず再生時に解決する。
 - Web playback extractorでstream URLを取得できなければWeb page targetへfallbackする。
 - SMB動画は全ファイルを事前downloadせずoffset readをMedia3 DataSourceへ接続する。
@@ -434,3 +441,4 @@ Architecture Control Plane が機能しているかは、次の質問にコー�
 - [`../adr/0228-human-architecture-control-plane.md`](../adr/0228-human-architecture-control-plane.md)
 - [`../adr/0235-summary-audio-playback.md`](../adr/0235-summary-audio-playback.md)
 - [`../adr/0237-video-library-and-web-extraction.md`](../adr/0237-video-library-and-web-extraction.md)
+- [`../adr/0239-shared-smb-connection-profiles-and-feature-locations.md`](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)

@@ -99,10 +99,13 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
 - URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
-- Media3で通常のHTTP動画とHLS streamを再生する。SMB動画は蔵書で設定済みのSMB接続情報を利用し、動画ファイル全体を事前downloadせずrandom-access readで再生する。
+- SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして登録・編集する。passwordは画面へ再表示しない。
+- 動画設定では全体設定のSMB接続プロファイルを選び、動画として同期するshareとパスを個別に登録する。蔵書とは異なるshare / pathを指定でき、同じ接続プロファイルへ複数の動画同期場所を登録できる。
+- 全体設定で削除された接続先を参照する動画同期場所は設定画面で無効として表示し、削除できる。無効な同期場所はSMB同期対象から除外し、他の有効な同期場所の同期を妨げない。
+- SMB passwordやserver credentialをVideo側へ複製しない。SMB credentialはLibrary側が所有する保護領域を利用し、Video側は接続プロファイルIDと自身のshare/pathだけを保持する。
+- Media3で通常のHTTP動画とHLS streamを再生する。SMB動画は動画ファイル全体を事前downloadせずrandom-access readで再生する。
 - 再生画面では全画面表示へ切り替えられる。全画面へ入ると横向き表示へ切り替えてsystem barsを隠し、画面端のスワイプで一時表示できる。全画面解除または再生画面を閉じると通常の縦向き表示へ戻る。
-- SMB passwordやserver credentialをVideo側へ複製しない。SMB credentialは従来どおりLibrary側の保護された保存領域を利用する。
-- 動画ごとに再生位置、duration、最終再生日時、視聴済み状態を保存し、次回再生時に保存位置から再開する。
+- 動画ごとに再生位置、duration、最終再生日時、視聴済み状態を保存し、次回再生時に保存位置から再開する。既存版で保存済みのSMB動画は、同じserver/pathの対応が一意に決まる場合、shareを含む新しい動画identityへ初回再同期時に再生状態を引き継ぐ。
 - durationが取得できる動画は95%以上再生すると視聴済みとし、一覧から手動で視聴済み / 未視聴を変更できる。
 - 初期実装の動画再生はforeground画面内で行う。画面を閉じた後のbackground音声継続、Cast、動画download、transcodingは提供しない。
 
@@ -152,9 +155,12 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 ### 7.2 SMB / ファイルサーバー
 
-- SMB server上の書籍を蔵書へ取り込む。
-- 表紙画像は再生成可能なcacheとして扱い、backgroundで先読みできる。
-- SMB credentialはAndroid Keystoreを利用して保護し、アプリ独自backupへ含めない。
+- SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして管理する。
+- 蔵書設定では登録済みSMB接続を選び、蔵書として同期するshareとパスだけを個別に設定する。動画設定とは独立しているため、同じ接続先でも異なるshare / pathを指定できる。
+- SMB server上のZIP / CBZ / PDF書籍を蔵書へ取り込む。
+- 蔵書の同期場所を解除しても全体設定のSMB接続とpasswordは削除しない。
+- 表紙画像は再生成可能なcacheとして扱い、backgroundで先読みできる。既存の表紙先読みキューの進捗・失敗・待機理由を確認し、必要に応じて再試行できる。
+- SMB credentialはAndroid Keystoreを利用して保護し、画面へ再表示せず、アプリ独自backupへ含めない。
 
 ### 7.3 書誌正規化
 

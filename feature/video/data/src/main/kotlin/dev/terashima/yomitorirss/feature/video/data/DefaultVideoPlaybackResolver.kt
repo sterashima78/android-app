@@ -1,17 +1,20 @@
 package dev.terashima.yomitorirss.feature.video.data
 
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
+import dev.terashima.yomitorirss.feature.library.SmbMediaLocation
 import dev.terashima.yomitorirss.feature.video.VideoByteSource
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackResolver
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
+import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import java.net.URI
 
 class DefaultVideoPlaybackResolver(
   private val smbMediaFileAccess: SmbMediaFileAccess,
+  private val smbSources: () -> List<VideoSmbSource>,
   private val rules: () -> List<WebVideoExtractorRule>,
   private val webExtractorClient: AndroidWebVideoExtractorClient,
 ) : VideoPlaybackResolver, VideoByteSourceFactory {
@@ -31,7 +34,16 @@ class DefaultVideoPlaybackResolver(
 
   override fun open(sourceId: String): VideoByteSource {
     val location = parseSmbVideoSourceId(sourceId)
-    val handle = smbMediaFileAccess.openMediaFile(location.serverId, location.path)
+    val configured = smbSources()
+      .filter { source -> source.serverId == location.serverId }
+      .filter { source -> location.share == null || source.share == location.share }
+      .filter { source -> isSmbVideoPathWithinRoot(location.path, source.rootPath) }
+      .maxByOrNull { source -> source.rootPath.length }
+      ?: error("このSMB動画の同期場所設定がありません")
+    val handle = smbMediaFileAccess.openMediaFile(
+      location = SmbMediaLocation(configured.serverId, configured.share, configured.rootPath),
+      path = location.path,
+    )
     return object : VideoByteSource {
       override val length: Long get() = handle.size
 

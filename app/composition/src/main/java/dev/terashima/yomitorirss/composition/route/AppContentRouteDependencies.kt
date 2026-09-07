@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorTestResult
@@ -73,8 +74,7 @@ internal class AppContentRouteDependencies(
     MailViewModel.Factory(container.mailRepository)
   }
 
-  val mailAuthorization: MailAuthorizationDependencies
-    get() = container.mailAuthorization
+  val mailAuthorization: MailAuthorizationDependencies get() = container.mailAuthorization
 
   val summaryViewModelFactory: SummaryViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     SummaryViewModel.Factory(container.summaryRepository)
@@ -114,6 +114,7 @@ internal class AppContentRouteDependencies(
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
+      smbConnectionProfileRepository = runtime.smbConnectionProfileRepository,
       addWebBook = webLibraryMutator::addWebBook,
       refreshWebBook = webLibraryMutator::refreshWebBookWithReport,
       removeWebBook = webLibraryMutator::removeWebBook,
@@ -141,6 +142,7 @@ data class LibraryRouteDependencies internal constructor(
   val libraryViewModelFactory: LibraryViewModel.Factory,
   val organizationViewModelFactory: LibraryOrganizationViewModel.Factory,
   val smbRepository: SmbLibraryRepository,
+  val smbConnectionProfileRepository: SmbConnectionProfileRepository,
   val addWebBook: suspend (String, String?) -> LibraryBook,
   val refreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
   val removeWebBook: suspend (LibraryBook) -> Unit,

@@ -1,5 +1,38 @@
 package dev.terashima.yomitorirss.feature.library
 
+data class SmbConnectionProfile(
+  val id: String,
+  val name: String,
+  val host: String,
+  val port: Int = 445,
+  val username: String,
+  val domain: String = "",
+  val credentialConfigured: Boolean = false,
+)
+
+data class SmbLibraryLocation(
+  val serverId: String,
+  val share: String,
+  val rootPath: String = "",
+)
+
+interface SmbConnectionProfileRepository {
+  suspend fun connectionProfiles(): List<SmbConnectionProfile>
+
+  suspend fun saveConnectionProfile(
+    profile: SmbConnectionProfile,
+    password: String?,
+  ): SmbConnectionProfile
+
+  suspend fun deleteConnectionProfile(profileId: String)
+
+  suspend fun libraryLocations(): List<SmbLibraryLocation>
+
+  suspend fun saveLibraryLocation(location: SmbLibraryLocation): SmbLibraryLocation
+
+  suspend fun deleteLibraryLocation(serverId: String)
+}
+
 data class SmbServerSettings(
   val id: String,
   val name: String,

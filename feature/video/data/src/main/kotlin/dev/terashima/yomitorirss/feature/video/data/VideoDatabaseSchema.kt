@@ -1,11 +1,18 @@
 package dev.terashima.yomitorirss.feature.video.data
 
 import android.database.sqlite.SQLiteDatabase
+import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val videoDatabaseSchema = DatabaseSchemaContribution(
   owner = "video",
   createSchema = ::ensureVideoSchema,
+  migrations = listOf(
+    DatabaseMigration(
+      targetVersion = 29,
+      migrate = ::migrateLegacyVideoSmbSources,
+    ),
+  ),
 )
 
 internal fun ensureVideoSchema(db: SQLiteDatabase) {
@@ -40,6 +47,18 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     """
+      CREATE TABLE IF NOT EXISTS video_smb_sources (
+        id TEXT PRIMARY KEY NOT NULL,
+        server_id TEXT NOT NULL,
+        share_name TEXT NOT NULL,
+        root_path TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(server_id, share_name, root_path)
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
       CREATE TABLE IF NOT EXISTS video_web_extractor_rules (
         id TEXT PRIMARY KEY NOT NULL,
         url_pattern TEXT NOT NULL,
@@ -55,6 +74,27 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
     "CREATE INDEX IF NOT EXISTS idx_video_items_source_updated ON video_items(source, updated_at DESC)",
   )
   db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_smb_sources_updated ON video_smb_sources(updated_at DESC)",
+  )
+  db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_rules_updated ON video_web_extractor_rules(updated_at DESC)",
+  )
+}
+
+private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO video_smb_sources(
+        id, server_id, share_name, root_path, updated_at
+      )
+      SELECT
+        'legacy-library:' || id,
+        id,
+        share_name,
+        root_path,
+        updated_at
+      FROM smb_library_servers
+      WHERE TRIM(share_name) <> ''
+    """.trimIndent(),
   )
 }

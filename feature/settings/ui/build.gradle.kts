@@ -23,6 +23,7 @@ android {
 
 dependencies {
   implementation(project(":feature:settings:domain"))
+  implementation(project(":feature:library:domain"))
   implementation(project(":feature:summary:domain"))
   implementation(project(":feature:summary:ui"))
   implementation(project(":feature:knowledge:domain"))

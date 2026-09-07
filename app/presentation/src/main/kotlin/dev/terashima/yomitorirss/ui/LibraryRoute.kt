@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.composition.route.LibraryRouteDependencies
 import dev.terashima.yomitorirss.feature.library.LibraryFeatureRoute
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationViewModel
 import dev.terashima.yomitorirss.feature.library.LibraryViewModel
+import dev.terashima.yomitorirss.feature.library.ProvideSmbConnectionProfileRepository
 import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationOutcome
 import kotlinx.coroutines.launch
 
@@ -69,25 +70,27 @@ internal fun LibraryRoute(
     }
   }
 
-  LibraryFeatureRoute(
-    modifier = modifier,
-    viewModel = libraryViewModel,
-    organizationViewModel = organizationViewModel,
-    onSyncGooglePlayBooks = requestSync,
-    onAddWebBook = { url -> dependencies.addWebBook(url, null) },
-    onRefreshWebBook = dependencies.refreshWebBook,
-    onDeleteWebBook = dependencies.removeWebBook,
-    onListWebMetadataExtractors = dependencies.listWebMetadataExtractors,
-    onSaveWebMetadataExtractor = dependencies.saveWebMetadataExtractor,
-    onDeleteWebMetadataExtractor = dependencies.deleteWebMetadataExtractor,
-    onTestWebMetadataExtractor = dependencies.testWebMetadataExtractor,
-    onOpenWebUrl = { url ->
-      if (!onOpenWebContent(url)) {
-        Toast.makeText(context, "Webページを開けませんでした", Toast.LENGTH_LONG).show()
-      }
-    },
-    smbRepository = dependencies.smbRepository,
-    pageSourceFactory = dependencies.bookReader.pageSourceFactory,
-    readingPositionStore = dependencies.bookReader.readingPositionStore,
-  )
+  ProvideSmbConnectionProfileRepository(dependencies.smbConnectionProfileRepository) {
+    LibraryFeatureRoute(
+      modifier = modifier,
+      viewModel = libraryViewModel,
+      organizationViewModel = organizationViewModel,
+      onSyncGooglePlayBooks = requestSync,
+      onAddWebBook = { url -> dependencies.addWebBook(url, null) },
+      onRefreshWebBook = dependencies.refreshWebBook,
+      onDeleteWebBook = dependencies.removeWebBook,
+      onListWebMetadataExtractors = dependencies.listWebMetadataExtractors,
+      onSaveWebMetadataExtractor = dependencies.saveWebMetadataExtractor,
+      onDeleteWebMetadataExtractor = dependencies.deleteWebMetadataExtractor,
+      onTestWebMetadataExtractor = dependencies.testWebMetadataExtractor,
+      onOpenWebUrl = { url ->
+        if (!onOpenWebContent(url)) {
+          Toast.makeText(context, "Webページを開けませんでした", Toast.LENGTH_LONG).show()
+        }
+      },
+      smbRepository = dependencies.smbRepository,
+      pageSourceFactory = dependencies.bookReader.pageSourceFactory,
+      readingPositionStore = dependencies.bookReader.readingPositionStore,
+    )
+  }
 }
