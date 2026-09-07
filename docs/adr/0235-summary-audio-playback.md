@@ -14,8 +14,8 @@ Android の background media playback は `MediaSessionService` 内に Player �
 
 ## Decision
 
-- `:feature:audio:{domain,data,ui}` を追加し、要約音声再生を独立 capability として所有する。
-- Audio は Content / Summary の公開 read contract を利用し、各 Context の table を直接参照しない。
+- `:feature:audio:{domain,data,ui}` を追加し、要約音声再生を独立した delivery capability として所有する。新しい Domain Context は追加しない。
+- Audio は Summary の公開 read/request contract を利用し、各 Context の table を直接参照しない。Content / Curation からは presentation が最小の queue item へ投影して渡す。
 - 初期対象は「あとで読む」の記事群とし、再生開始時に対象記事をキュー化する。
 - 保存済み要約がある記事を読み上げる。要約が未生成の場合は既存 Summary requester へ要求し、生成待ちの項目は再生可能になった時点で扱う。Audio 独自の要約生成は持たない。
 - 読み上げは Android `TextToSpeech.synthesizeToFile` で app cache 内の一時音声ファイルへ生成し、Media3 ExoPlayer で再生する。
@@ -23,7 +23,7 @@ Android の background media playback は `MediaSessionService` 内に Player �
 - manifest に `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_MEDIA_PLAYBACK` と `mediaPlayback` foreground service type を追加する。
 - Media3 は安定版 1.11.0 を利用する。
 - 再生キュー、再生位置、生成音声は durable source of truth にしない。音声ファイルは再生成可能な cache とする。
-- 再生完了、スキップ、キュー完了のいずれでも Content の既読 / 未読状態を変更しない。
+- 再生開始、再生完了、スキップ、停止、キュー完了のいずれでも Content の既読 / 未読状態を変更しない。Curation の Bookmark / Read Later 状態も変更しない。
 - 再生速度、前後シーク、前後項目移動を Player capability として提供する。
 - cloud TTS、音声ファイルのバックアップ、履歴永続化、再生済みフラグは初期実装の対象外とする。
 
@@ -50,16 +50,15 @@ Evidence:
 ### Affected system areas
 
 Capabilities:
-- Audio playback を追加。
+- Audio playback delivery capability を追加。
 
 Contexts:
-- Audio を新規追加。Content / Curation / Summary の ownership は変更しない。
+- Content / Curation / Summary の Context と ownership は変更しない。Audio は Domain Context ではなく delivery capability とする。
 
 Modules:
 - `:feature:audio:domain`
 - `:feature:audio:data`
 - `:feature:audio:ui`
-- `:app`
 - `:app:composition`
 - `:app:presentation`
 
@@ -76,7 +75,8 @@ External / trust boundary:
 ### Boundaries that must not change
 
 - Audio は Content / Curation / Summary の durable table を直接 read/write しない。
-- 再生操作は reading state を変更しない。
+- Audio module は Content の read-state command や Curation mutation capability に依存しない。
+- 再生操作は reading state / Bookmark / Read Later membership を変更しない。
 - 再生キューを新しい durable source of truth にしない。
 - TTS 音声を backup / export 対象にしない。
 
@@ -115,7 +115,7 @@ Option A を採用する。既存 ownership を保ち、Android の標準 backgr
 ### System delta
 
 New concepts:
-- Audio playback capability
+- Audio playback delivery capability
 - process-local playback queue
 - TTS audio cache
 - MediaSessionService
@@ -133,7 +133,7 @@ New external communication:
 - none
 
 Changed data flow:
-- `Content/Curation/Summary -> UI` に加え、`Content/Curation/Summary -> Audio -> TTS cache -> Media3 playback` を追加。
+- `Content/Curation/Summary -> UI` に加え、`Content/Curation presentation projection -> Audio -> Summary contract -> TTS cache -> Media3 playback` を追加。
 
 ### Compatibility / migration / rollback
 
@@ -143,14 +143,14 @@ Changed data flow:
 ### Verification plan
 
 Unit:
-- queue order、summary missing state、再生完了で reading state command が発行されないこと。
+- queue order / duplicate elimination / current item semanticsを検証する。
 
 Integration / architecture:
 - `verifyArchitecture`。
-- Audio が owner Domain contract のみを参照すること。
+- Audio Data が Summary Domain contractだけをfeature間依存として利用し、Content/CurationのDataやmutation contractを参照しないことをdiffとdependency graphで確認する。
 
 Android / E2E:
-- MediaSessionService 起動、background継続、通知 control、Bluetooth/media button、速度変更、skip/seek を実端末またはinstrumentationで確認。
+- MediaSessionService 起動、background継続、通知 control、Bluetooth/media button、速度変更、skip/seek、再生後もread stateが変わらないことを実端末で確認対象とする。
 
 Public repository review:
 - user content、生成音声、実URL等をfixture / artifactとしてcommitしない。
@@ -158,13 +158,13 @@ Public repository review:
 ### Documentation
 
 ADR:
-- required。本ADR。
+- 本ADRを追加する。
 
 Current architecture docs:
-- system overview / context map / module map / platform を更新する。
+- `docs/architecture/audio-playback.md` を追加し、`module-map.md` と architecture index を更新する。
 
 Spec:
-- 音声再生のuser-visible behaviorを追加する。
+- `docs/spec.md` に音声再生のuser-visible behaviorを追加する。
 
 ### Human decision
 
