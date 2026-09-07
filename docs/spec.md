@@ -1,6 +1,6 @@
 # Mosaic 現行仕様
 
-- 更新日: 2026-09-06
+- 更新日: 2026-09-07
 - 対象: 現在の `main` 系列
 
 ## 1. 目的
@@ -36,6 +36,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - compile / target API は Android API 36 系とする。
 - 配布対象CPUは arm64-v8a とする。
 - Kotlin と Jetpack Compose を主要実装技術とする。
+- Game の実験的数独では、既存 Android アプリへ組み込んだ Godot runtime を利用する。
 - ユーザー向け名称は Mosaic とする。
 - 既存インストールとの互換性のため application id `dev.terashima.yomitorirss` と内部 database file 名 `yomitori-rss.db` は維持する。
 
@@ -191,7 +192,8 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。
 - RSS未読やTask等をホーム画面widgetへ表示する。
-- Gameなど独立した補助featureを含む。
+- Gameでは数独、2048、ノノグラム、マインスイーパー、クロンダイク、スパイダーソリティア等の端末内ゲームを提供する。
+- Godot Engine の既存Androidアプリ埋め込み方式を評価するPOCとして、既存Compose数独とは別に「Godot 数独 (POC)」を提供する。POCの進行状態は永続化しない。
 
 ## 11. 永続化
 
@@ -261,6 +263,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/principles.md`: layer / ownership / framework boundary
 - `docs/architecture/context-map.md`: Domain ContextとContext間関係
 - `docs/architecture/module-map.md`: Gradle module構成
+- `docs/architecture/game.md`: Game と Godot POC の runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: testとarchitecture verification
 - `docs/architecture/platform.md`: Android platform基準
