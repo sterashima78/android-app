@@ -114,17 +114,20 @@ fun AudioPlayerControls(
 
           Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-              listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
-                TextButton(onClick = { onSetSpeed(speed) }) {
-                  val selected = (state.playbackSpeed * 100).roundToInt() == (speed * 100).roundToInt()
-                  Text(if (selected) "[${formatSpeed(speed)}]" else formatSpeed(speed))
-                }
+            listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
+              TextButton(onClick = { onSetSpeed(speed) }) {
+                val selected = (state.playbackSpeed * 100).roundToInt() == (speed * 100).roundToInt()
+                Text(if (selected) "[${formatSpeed(speed)}]" else formatSpeed(speed))
               }
             }
+          }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+          ) {
             TextButton(onClick = onStop) { Text("終了") }
           }
 
