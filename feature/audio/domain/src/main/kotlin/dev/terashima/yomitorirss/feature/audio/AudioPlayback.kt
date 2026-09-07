@@ -8,6 +8,9 @@ data class AudioQueueItem(
   val source: String?,
 )
 
+fun normalizeAudioQueue(items: List<AudioQueueItem>): List<AudioQueueItem> =
+  items.distinctBy(AudioQueueItem::contentId)
+
 enum class AudioPreparationStatus {
   IDLE,
   PREPARING,
