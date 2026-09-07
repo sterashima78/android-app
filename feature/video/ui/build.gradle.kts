@@ -34,7 +34,7 @@ dependencies {
   implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.exoplayer.hls)
-  implementation("androidx.media3:media3-ui:1.11.0")
+  implementation(libs.androidx.media3.ui)
   implementation("io.coil-kt.coil3:coil-compose:3.5.0")
   implementation(libs.kotlinx.coroutines.android)
 
