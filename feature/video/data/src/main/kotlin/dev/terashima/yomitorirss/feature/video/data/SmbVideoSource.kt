@@ -1,7 +1,10 @@
 package dev.terashima.yomitorirss.feature.video.data
 
-import android.net.Uri
 import dev.terashima.yomitorirss.feature.video.VideoSource
+import java.net.URI
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -10,23 +13,33 @@ internal data class SmbVideoLocation(
   val path: String,
 )
 
-internal fun smbVideoSourceId(serverId: String, path: String): String = Uri.Builder()
-  .scheme("mosaic-smb-video")
-  .authority("file")
-  .appendQueryParameter("serverId", serverId)
-  .appendQueryParameter("path", path)
-  .build()
-  .toString()
+internal fun smbVideoSourceId(serverId: String, path: String): String {
+  require(serverId.isNotBlank()) { "SMB動画のserverIdがありません" }
+  require(path.isNotBlank()) { "SMB動画のpathがありません" }
+  return "mosaic-smb-video://file?serverId=${encodeSmbVideoIdPart(serverId)}&path=${encodeSmbVideoIdPart(path)}"
+}
 
 internal fun parseSmbVideoSourceId(sourceId: String): SmbVideoLocation {
-  val uri = Uri.parse(sourceId)
+  val uri = runCatching { URI(sourceId) }.getOrNull()
+    ?: error("SMB動画IDが不正です")
   require(uri.scheme == "mosaic-smb-video" && uri.host == "file") { "SMB動画IDが不正です" }
-  val serverId = uri.getQueryParameter("serverId")?.takeIf(String::isNotBlank)
+  val serverId = queryParameter(uri.rawQuery, "serverId")?.takeIf(String::isNotBlank)
     ?: error("SMB動画のserverIdがありません")
-  val path = uri.getQueryParameter("path")?.takeIf(String::isNotBlank)
+  val path = queryParameter(uri.rawQuery, "path")?.takeIf(String::isNotBlank)
     ?: error("SMB動画のpathがありません")
   return SmbVideoLocation(serverId, path)
 }
+
+private fun encodeSmbVideoIdPart(value: String): String =
+  URLEncoder.encode(value, StandardCharsets.UTF_8.name())
+
+private fun queryParameter(rawQuery: String?, name: String): String? = rawQuery
+  ?.split('&')
+  ?.firstOrNull { it.substringBefore('=') == name }
+  ?.substringAfter('=', "")
+  ?.let { encoded ->
+    runCatching { URLDecoder.decode(encoded, StandardCharsets.UTF_8.name()) }.getOrNull()
+  }
 
 internal fun stableVideoId(source: VideoSource, sourceId: String): String {
   val digest = MessageDigest.getInstance("SHA-256")
