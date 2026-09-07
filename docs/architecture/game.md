@@ -30,7 +30,7 @@ GameRoute / Compose game list
         |
         | explicit Activity launch
         v
-GodotSudokuActivity
+GodotSudokuActivity (:godot process)
         |
         v
 Godot Android Library 4.7.2
@@ -42,7 +42,7 @@ assets/project.godot
 sudoku.tscn + sudoku.gd
 ```
 
-Godot runtime は Game 一覧を表示しただけでは生成しない。ユーザーが `Godot 数独 (POC)` を選択したときだけ専用 Activity を起動する。
+Godot runtime は Game 一覧を表示しただけでは生成しない。ユーザーが `Godot 数独 (POC)` を選択したときだけ専用 Activity / process を起動する。
 
 Godot project は `:feature:game:ui` の assets とし、POC 内の盤面状態、入力、数独解判定、Control UI、Tween animation は GDScript が所有する。既存 Kotlin `Sudoku` model と状態同期せず、二つの数独は比較用の独立実装である。
 
@@ -51,7 +51,8 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 ## Runtime and platform boundary
 
 - Godot Activity は portrait 固定とする。
-- orientation / screen-size configuration change は Activity manifest で処理対象として宣言する。
+- Godot Android sample が扱う Activity configuration change を manifest で処理対象として宣言し、Godot runtime 実行中の Activity recreation を避ける。
+- Godot runtime は専用 `:godot` process で実行し、engine / scene の異常終了や force quit が Mosaic の main process を巻き込まないよう隔離する。
 - process あたり Godot Engine instance が1つという Godot Android Library の制約を受け入れる。
 - network、permission、credential、background execution、durable state は追加しない。
 - Godot project は APK assets に同梱し、runtime asset download を行わない。
@@ -64,7 +65,7 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 
 - APK size 増加
 - cold / warm launch behavior
-- Android Activity / app navigation lifecycle
+- Android Activity / process / app navigation lifecycle
 - UI / animation の実装量と変更容易性
 - Android 端末上の入力 responsiveness
 - 将来の sprite / scene / audio / particle を使うゲームへの拡張性
