@@ -271,3 +271,28 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
 - AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
 - ユーザーがコピーして共有できるクラッシュ診断は保存前にサニタイズし、URL の path/query、メールアドレス、credential-like 値、端末内 private path を伏せる。
+
+## 16. 現在の非目標
+
+- Mosaic独自のユーザー登録 / ログイン基盤
+- Mosaic独自serverを介した複数端末の常時同期
+- durable user dataを必須のremote backendへ保存する構成
+- Health ConnectとWorkoutの双方向同期
+- AIからの任意SQL、任意コード実行、無制限の書き込みtool
+- credentialやmodel artifactをアプリ独自backupへ含めること
+
+feature追加・廃止に伴い非目標が変わる場合は、対応するADRまたは仕様変更と同じPRで更新する。
+
+## 17. 関連文書
+
+- `docs/architecture/README.md`: current architecture documentの入口
+- `docs/architecture/principles.md`: layer / ownership / framework boundary
+- `docs/architecture/context-map.md`: Domain ContextとContext間関係
+- `docs/architecture/module-map.md`: Gradle module構成
+- `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
+- `docs/architecture/video.md`: SMB / Web動画カタログ、抽出、Media3再生境界
+- `docs/architecture/game.md`: Game と Godot POC の runtime boundary
+- `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
+- `docs/architecture/testing.md`: testとarchitecture verification
+- `docs/architecture/platform.md`: Android platform基準
+- `docs/adr/README.md`: ADR索引
