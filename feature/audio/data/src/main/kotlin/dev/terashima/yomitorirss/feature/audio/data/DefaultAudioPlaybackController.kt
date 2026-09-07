@@ -145,7 +145,9 @@ class DefaultAudioPlaybackController(
     mediaController?.let { controller ->
       controller.stop()
       controller.clearMediaItems()
+      controller.release()
     }
+    mediaController = null
     mutableState.value = AudioPlaybackState()
   }
 
