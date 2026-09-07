@@ -118,6 +118,10 @@ internal object StartupCrashStore {
         reportableExit.description?.takeIf(String::isNotBlank)?.let { description ->
           appendLine("description=$description")
         }
+        nativeTombstoneSummary(reportableExit)?.let { tombstone ->
+          appendLine()
+          appendLine(tombstone)
+        }
         recentMemoryProfilingArtifactNames(application, reportableExit.timestamp)
           .takeIf { it.isNotEmpty() }
           ?.let { artifacts ->
@@ -231,6 +235,16 @@ internal fun processImportanceName(importance: Int): String = when (importance) 
   ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE -> "SERVICE"
   ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED -> "CACHED"
   else -> "IMPORTANCE_$importance"
+}
+
+internal fun nativeTombstoneSummary(exitInfo: ApplicationExitInfo): String? {
+  if (exitInfo.reason != ApplicationExitInfo.REASON_CRASH_NATIVE) return null
+  return runCatching {
+    exitInfo.traceInputStream?.use(::readNativeTombstoneSummary)
+      ?: "nativeTombstone=unavailable"
+  }.getOrElse {
+    "nativeTombstone=unavailable"
+  }
 }
 
 private fun processStateSummary(exitInfo: ApplicationExitInfo): String? {
