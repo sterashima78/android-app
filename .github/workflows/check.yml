@@ -27,6 +27,36 @@ jobs:
       - name: Verify tracked public content
         run: python3 scripts/verify_public_repository.py
 
+  godot_project:
+    name: Godot 4.6.3 project
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download Godot 4.6.3
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output "$RUNNER_TEMP/godot.zip" \
+            https://github.com/godotengine/godot-builds/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          echo "d0bc2113065e481c9c2c2b2c37daa4e8be3fe9e27f0ab9ab0b6096e9a37907f3  $RUNNER_TEMP/godot.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          chmod +x "$RUNNER_TEMP/godot/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Run Godot Sudoku headless
+        run: |
+          set -euo pipefail
+          LOG="$RUNNER_TEMP/godot-sudoku.log"
+          "$RUNNER_TEMP/godot/Godot_v4.6.3-stable_linux.x86_64" \
+            --headless \
+            --path feature/game/ui/src/main/assets \
+            --quit-after 5 \
+            --verbose 2>&1 | tee "$LOG"
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Cannot load.*sudoku" "$LOG"; then
+            echo "Godot project validation failed"
+            exit 1
+          fi
+
   checks:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
