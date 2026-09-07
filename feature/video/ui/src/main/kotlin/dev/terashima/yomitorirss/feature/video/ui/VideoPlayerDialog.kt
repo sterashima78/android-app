@@ -105,7 +105,13 @@ internal fun VideoPlayerDialog(
   }
 
   Dialog(
-    onDismissRequest = onDismiss,
+    onDismissRequest = {
+      if (isFullscreen) {
+        isFullscreen = false
+      } else {
+        onDismiss()
+      }
+    },
     properties = DialogProperties(
       usePlatformDefaultWidth = false,
       dismissOnClickOutside = false,
