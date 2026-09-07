@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.SettingsFeatureScreen
 import java.time.LocalDate
@@ -25,6 +26,7 @@ internal fun SettingsRoute(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   aiTaskQueueRepository: AiTaskQueueRepository,
+  smbConnectionProfileRepository: SmbConnectionProfileRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   initialIntegratedRefreshIntervalMinutes: Long,
@@ -62,6 +64,7 @@ internal fun SettingsRoute(
     backupViewModel = backupViewModel,
     aiSettingsViewModel = aiSettingsViewModel,
     aiTaskQueueRepository = aiTaskQueueRepository,
+    smbConnectionProfileRepository = smbConnectionProfileRepository,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     initialIntegratedRefreshIntervalMinutes = initialIntegratedRefreshIntervalMinutes,

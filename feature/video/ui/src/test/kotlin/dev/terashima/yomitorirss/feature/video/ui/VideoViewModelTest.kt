@@ -1,9 +1,13 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfile
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
+import dev.terashima.yomitorirss.feature.library.SmbLibraryLocation
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackState
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoRepository
+import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.CompletableDeferred
@@ -27,7 +31,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository()
-      val viewModel = VideoViewModel(repository)
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
       advanceUntilIdle()
 
       viewModel.addWeb("https://example.com/video")
@@ -52,7 +56,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository(addFailure = IllegalStateException("追加に失敗しました"))
-      val viewModel = VideoViewModel(repository)
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
       advanceUntilIdle()
 
       viewModel.addWeb("https://example.com/video")
@@ -74,7 +78,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository()
-      val viewModel = VideoViewModel(repository)
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
       advanceUntilIdle()
       val item = VideoItem(
         id = "video-1",
@@ -92,7 +96,7 @@ class VideoViewModelTest {
       val target = VideoPlaybackTarget.Stream(
         url = "https://example.com/video.mp4",
         mimeType = "video/mp4",
-        referrerUrl = "https://example.com",
+        referrerUrl = "https://example.com/",
       )
 
       viewModel.openPlayback(item, target)
@@ -141,6 +145,12 @@ class VideoViewModelTest {
 
     override suspend fun refreshSmb(): Int = 0
 
+    override fun smbSources(): List<VideoSmbSource> = emptyList()
+
+    override fun saveSmbSource(source: VideoSmbSource): VideoSmbSource = source
+
+    override fun deleteSmbSource(id: String) = Unit
+
     override suspend fun updatePlayback(
       videoId: String,
       positionMs: Long,
@@ -156,4 +166,21 @@ class VideoViewModelTest {
 
     override fun deleteExtractorRule(id: String) = Unit
   }
+}
+
+private object FakeSmbConnectionProfileRepository : SmbConnectionProfileRepository {
+  override suspend fun connectionProfiles(): List<SmbConnectionProfile> = emptyList()
+
+  override suspend fun saveConnectionProfile(
+    profile: SmbConnectionProfile,
+    password: String?,
+  ): SmbConnectionProfile = profile
+
+  override suspend fun deleteConnectionProfile(profileId: String) = Unit
+
+  override suspend fun libraryLocations(): List<SmbLibraryLocation> = emptyList()
+
+  override suspend fun saveLibraryLocation(location: SmbLibraryLocation): SmbLibraryLocation = location
+
+  override suspend fun deleteLibraryLocation(serverId: String) = Unit
 }

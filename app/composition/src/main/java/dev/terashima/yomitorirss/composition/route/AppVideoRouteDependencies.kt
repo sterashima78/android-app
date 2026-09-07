@@ -11,7 +11,10 @@ internal class AppVideoRouteDependencies(
   val dependencies: VideoRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val runtime = container.videoRuntime
     VideoRouteDependencies(
-      viewModelFactory = VideoViewModel.Factory(runtime.repository),
+      viewModelFactory = VideoViewModel.Factory(
+        repository = runtime.repository,
+        smbConnectionProfiles = container.smbConnectionProfileRepository,
+      ),
       playbackResolver = runtime.playbackResolver,
       byteSourceFactory = runtime.byteSourceFactory,
     )

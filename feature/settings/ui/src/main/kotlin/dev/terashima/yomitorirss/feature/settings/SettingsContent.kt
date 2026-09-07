@@ -46,6 +46,7 @@ fun SettingsContent(
   onRequestNotificationPermission: () -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
+  onOpenSmbConnections: () -> Unit,
   onOpenModels: () -> Unit,
   onOpenChatGptDebug: () -> Unit,
   onOpenAiExecutionSettings: () -> Unit,
@@ -68,6 +69,17 @@ fun SettingsContent(
         supporting = "アプリ起動時とバックグラウンドから戻ったときに認証を要求",
         checked = biometricLockEnabled,
         onCheckedChange = onBiometricLockEnabledChange,
+      )
+    }
+    item { SettingsDivider() }
+
+    item { SettingsHeader("接続") }
+    item {
+      SettingsRow(
+        icon = Icons.Default.Dns,
+        title = "SMB接続",
+        supporting = "蔵書・動画で共通利用するサーバと認証情報",
+        onClick = onOpenSmbConnections,
       )
     }
     item { SettingsDivider() }

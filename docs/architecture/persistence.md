@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は ADR-0237 により 28 である。ADR-0138 の version 27 は version 28 への更新元 baseline として維持し、version 27 database を version 28 で開くと全 feature contribution を再適用して Video table を追加する。version 26 以下からの直接更新は保証しない。
+現在の application database version は ADR-0239 により 29 である。version 28 を version 29 への更新元 baseline とし、version 28 database を version 29 で開くと SMB connection profile と Video-owned SMB source を追加し、従来 Video が暗黙利用していた Library SMB location を初期 Video source へ移行する。version 27 以下から version 29 への直接更新は保証しない。
 
-バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 28 アプリでは version 28 snapshot を受理し、version 27 snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 29 アプリでは version 29 snapshot を受理し、version 28 snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -93,7 +93,11 @@ RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`fe
 
 ### Library schema
 
-Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、Web source の URL pattern 別 metadata extractor (`web_library_metadata_extractors`)、SMB server・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。
+Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、Web source の URL pattern 別 metadata extractor (`web_library_metadata_extractors`)、SMB connection profile / Library SMB location・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。
+
+SMB connection profile は `smb_connection_profiles` に name / host / port / username / domain を保存し、password は従来と同じ backup 対象外の app-private encrypted credential storeへ保存する。`smb_library_servers` はLibrary用share / root pathと既存Library runtime向けのconnection projectionとして維持する。全体設定でprofileを作成してもLibrary locationが未設定なら `smb_library_servers` rowは不要であり、Library設定でshare / root pathを保存したときだけLibrary同期対象になる。
+
+version 28以前の `smb_library_servers` rowはschema初期化時に同じIDで `smb_connection_profiles` へ取り込む。credential keyはIDを維持するためpasswordの再暗号化や再入力は不要である。
 
 `web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由とした database version bump は行わない。
 
@@ -103,13 +107,15 @@ Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達�
 
 ### Video schema
 
-Video Context の fresh DB schema は `VideoDatabaseSchema.kt` を正本とし、`video_items`、`video_playback_state`、`video_web_extractor_rules` を作成する。
+Video Context の fresh DB schema は `VideoDatabaseSchema.kt` を正本とし、`video_items`、`video_playback_state`、`video_smb_sources`、`video_web_extractor_rules` を作成する。
 
-`video_items` は SMB / Web 等のcatalog projection、`video_playback_state` は再生位置・duration・最終再生日時・completed state、`video_web_extractor_rules` は URL glob pattern と Promise ベースの title / thumbnail / playback extractor function code を保存する。これらはVideo-owned durable user dataであり、通常のdatabase snapshot backupに含まれる。
+`video_items` は SMB / Web 等のcatalog projection、`video_playback_state` は再生位置・duration・最終再生日時・completed state、`video_smb_sources` は connection profile ID / share / root pathからなるVideo専用SMB同期場所、`video_web_extractor_rules` は URL glob pattern と Promise ベースの title / thumbnail / playback extractor function code を保存する。これらはVideo-owned durable user dataであり、通常のdatabase snapshot backupに含まれる。
 
-stream URLは期限付きURLになり得るため保存しない。SMB server settingsとcredentialはLibrary ownershipを維持し、Video tableへ複製しない。VideoがSMB fileへアクセスする場合はLibrary Domainの `SmbMediaFileAccess` capabilityを利用する。
+stream URLは期限付きURLになり得るため保存しない。SMB connection profileとcredentialはLibrary ownershipを維持し、Video tableへ複製しない。VideoがSMB fileへアクセスする場合はLibrary Domainの `SmbConnectionProfileRepository` と `SmbMediaFileAccess` capabilityを利用し、caller-owned share / root pathを `SmbMediaLocation` として明示する。
 
-Video table追加はapplication database version 28への更新理由であり、version 27 databaseからのupgrade testで3tableの生成を固定する。
+version 28 -> 29 migrationでは従来Videoが暗黙利用していた `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ1回だけ取り込む。このmigrationに限りVideo DataからLibrary-owned `smb_library_servers` をreadするため、`foreign-table-access-allowlist.tsv` にversion 28 compatibility限定の例外を登録する。
+
+version 28由来のSMB Video itemはshareを含まない旧source IDを持つ。初回再同期時に同一server/pathから新identityが一意に決まる場合は、再生位置・duration・completed stateを新しいserver/share/path identityへ引き継いでから旧catalog rowを削除する。
 
 ## Access ownership rule
 
@@ -145,7 +151,7 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `article_summaries`, `summary_*` | `:feature:summary:data` |
 | `mail_*` | `:feature:mail:data` |
 | `library_*`, `web_library_metadata_extractors`, `hidden_library_items`, `smb_*` | `:feature:library:data` |
-| `video_items`, `video_playback_state`, `video_web_extractor_rules` | `:feature:video:data` |
+| `video_items`, `video_playback_state`, `video_smb_sources`, `video_web_extractor_rules` | `:feature:video:data` |
 | `knowledge_*` | `:feature:knowledge:data` |
 | `asset_*` | `:feature:asset:data` |
 | `tasks` | `:feature:task:data` |
@@ -179,7 +185,8 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - Summary は Article metadata を `ArticleRepository`、Bookmark / Read Later membership を `BookmarkContentQuery` から取得する。
 - RSS ingestion は Content table を直接 write せず `ContentSourceGateway` を利用する。
 - AI task queue は SMB 書誌正規化 table を直接参照せず、Library-owned `SmbMetadataNormalizationRepository` を通じて task projection と再試行を行う。
-- Video は `smb_library_servers` やcredential storageを直接参照せず、Library-owned `SmbMediaFileAccess` からSMB video listing / random-access readを取得する。
+- 全体設定とVideoは `smb_connection_profiles` やcredential storageを直接参照せず、Library-owned `SmbConnectionProfileRepository` を利用する。
+- Video はSMB file accessでLibrary tableを直接参照せず、Library-owned `SmbMediaFileAccess` にVideo-owned share / root pathを明示してlisting / random-access readを取得する。
 - Backup restore は Library の cache invalidation を `LibraryBackupRestoreInitializer` に委譲し、Library-owned table を直接変更しない。
 
 ### Named Projection
@@ -188,7 +195,9 @@ owner API の合成で実測上の性能問題がある read path に限り read
 
 ## Transitional foreign access
 
-通常 runtime の Content / Curation / Summary / RSS 間 foreign table access は ADR-0123 で解消済みである。ADR-0138 で v24 -> v25 の bookmark ownership transfer migration も互換性 baseline から外れたため、現在の `foreign-table-access-allowlist.tsv` に例外 entry はない。
+通常 runtime の Content / Curation / Summary / RSS / Library / Video 間 foreign table accessはowner Domain capabilityへ収束している。
+
+現在の `foreign-table-access-allowlist.tsv` には、ADR-0239のversion 28 -> 29 migrationでVideo Dataが旧 `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ取り込むread-only例外だけを登録する。この例外はruntime pathではなくmigration限定であり、version 28 upgrade baselineから外れた時点で削除する。
 
 allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
 
@@ -231,3 +240,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
 - [ADR-0195](../adr/0195-trigger-backup-from-persistence-commit-boundary.md)
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
+- [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)

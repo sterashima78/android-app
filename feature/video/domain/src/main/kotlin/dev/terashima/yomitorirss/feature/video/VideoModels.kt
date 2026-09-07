@@ -20,6 +20,14 @@ data class VideoItem(
   val playbackState: VideoPlaybackState? = null,
 )
 
+data class VideoSmbSource(
+  val id: String,
+  val serverId: String,
+  val share: String,
+  val rootPath: String = "",
+  val updatedAtEpochMillis: Long = 0L,
+)
+
 data class VideoPlaybackState(
   val positionMs: Long,
   val durationMs: Long,
@@ -68,6 +76,12 @@ interface VideoRepository {
   suspend fun remove(id: String)
 
   suspend fun refreshSmb(): Int
+
+  fun smbSources(): List<VideoSmbSource>
+
+  fun saveSmbSource(source: VideoSmbSource): VideoSmbSource
+
+  fun deleteSmbSource(id: String)
 
   suspend fun updatePlayback(
     videoId: String,
