@@ -11,9 +11,11 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRoute
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupDialog
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.summary.SummaryPromptDialog
 
 private enum class SettingsOverlay {
+  SMB_CONNECTIONS,
   MODELS,
   CHAT_GPT_DEBUG,
   AI_EXECUTION_SETTINGS,
@@ -28,6 +30,7 @@ fun SettingsFeatureScreen(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   aiTaskQueueRepository: AiTaskQueueRepository,
+  smbConnectionProfileRepository: SmbConnectionProfileRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   initialIntegratedRefreshIntervalMinutes: Long,
@@ -74,6 +77,7 @@ fun SettingsFeatureScreen(
     },
     biometricLockEnabled = biometricLockEnabled,
     onBiometricLockEnabledChange = onBiometricLockEnabledChange,
+    onOpenSmbConnections = { overlay = SettingsOverlay.SMB_CONNECTIONS },
     onOpenModels = {
       aiSettingsViewModel.prepareModelManager()
       overlay = SettingsOverlay.MODELS
@@ -98,6 +102,11 @@ fun SettingsFeatureScreen(
   )
 
   when (overlay) {
+    SettingsOverlay.SMB_CONNECTIONS -> SmbConnectionSettingsDialog(
+      repository = smbConnectionProfileRepository,
+      onDismiss = { overlay = null },
+    )
+
     SettingsOverlay.MODELS -> ModelManagerDialog(
       supported = aiState.supported,
       models = aiState.models,

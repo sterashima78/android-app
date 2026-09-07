@@ -38,6 +38,7 @@ class AppRouteDependencies(
   val calendarViewModelFactory get() = supporting.calendarViewModelFactory
   val workout get() = supporting.workout
   val xViewerCssRepository get() = supporting.xViewerCssRepository
+  val smbConnectionProfileRepository get() = container.smbConnectionProfileRepository
 
   fun backgroundFetchWifiOnly(): Boolean = supporting.backgroundFetchWifiOnly()
 
