@@ -8,7 +8,7 @@ import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
 
 class AppRouteDependencies(
   application: Application,
-  container: AppContainer,
+  private val container: AppContainer,
 ) {
   private val content = AppContentRouteDependencies(container)
   private val supporting = AppSupportingRouteDependencies(application, container)
