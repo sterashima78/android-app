@@ -196,23 +196,18 @@ dependencies {
 
   implementation(project(":core:background"))
   implementation(project(":core:database"))
-  implementation(project(":core:designsystem"))
   implementation(project(":core:ai-runtime"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
-  implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.activity.compose)
   implementation("androidx.browser:browser:1.10.0")
   implementation(libs.androidx.navigation.compose)
   implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
-  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
   implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("androidx.compose.ui:ui")
-  implementation("androidx.compose.ui:ui-tooling-preview")
   implementation("androidx.compose.foundation:foundation")
   implementation("androidx.compose.material3:material3")
-  implementation("androidx.compose.material:material-icons-extended")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
   debugImplementation("androidx.compose.ui:ui-tooling")
