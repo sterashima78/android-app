@@ -46,7 +46,6 @@ class RepositoryGovernanceSourceTest {
 
     val expectedAliases = mapOf(
       "app/build.gradle.kts" to listOf(
-        "libs.androidx.core.ktx",
         "libs.androidx.activity.compose",
         "libs.androidx.navigation.compose",
       ),
