@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.composition.video
 import android.app.Activity
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackResolver
@@ -15,6 +16,7 @@ internal class AppVideoRuntimeDependencies(
   database: DatabaseConnection,
   httpClient: HttpClient,
   smbMediaFileAccess: SmbMediaFileAccess,
+  smbConnectionProfileRepository: SmbConnectionProfileRepository,
   resumedActivityProvider: () -> Activity?,
 ) {
   val runtime: VideoRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -23,6 +25,7 @@ internal class AppVideoRuntimeDependencies(
       database = database,
       httpClient = httpClient,
       smbMediaFileAccess = smbMediaFileAccess,
+      smbConnectionProfiles = smbConnectionProfileRepository,
       webExtractorClient = extractorClient,
     )
     val playbackResolver = DefaultVideoPlaybackResolver(
