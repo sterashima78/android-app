@@ -25,7 +25,7 @@ internal object StartupCrashStore {
     if (installed) return
     synchronized(this) {
       if (installed) return
-      recordPreviousReportableExit(application)
+      recordRecentProcessExit(application)
       val previous = Thread.getDefaultUncaughtExceptionHandler()
       Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
         record(application, thread.name, throwable)
@@ -64,92 +64,91 @@ internal object StartupCrashStore {
     preferences(context).edit().remove(REPORT_KEY).commit()
   }
 
-  private fun recordPreviousReportableExit(application: Application) {
-    runCatching {
-      val preferences = preferences(application)
-      val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
-      val activityManager = application.getSystemService(ActivityManager::class.java)
-      val unseen = activityManager
-        .getHistoricalProcessExitReasons(application.packageName, 0, 0)
-        .filter { it.timestamp > lastSeen }
-      if (unseen.isEmpty()) return@runCatching
+  fun recordRecentProcessExit(context: Context): Boolean = runCatching {
+    val preferences = preferences(context)
+    val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
+    val activityManager = context.getSystemService(ActivityManager::class.java)
+    val unseen = activityManager
+      .getHistoricalProcessExitReasons(context.packageName, 0, 0)
+      .filter { it.timestamp > lastSeen }
+    if (unseen.isEmpty()) return@runCatching false
 
-      preferences.edit()
-        .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf { it.timestamp })
-        .commit()
+    preferences.edit()
+      .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf { it.timestamp })
+      .commit()
 
-      val reportableExit = unseen
-        .filter { isAppOwnedProcessName(application.packageName, it.processName) }
-        .filter {
-          shouldReportProcessExit(
-            packageName = application.packageName,
-            processName = it.processName,
-            reason = it.reason,
-            description = it.description,
-            importance = it.importance,
-          )
+    val reportableExit = unseen
+      .filter { isAppOwnedProcessName(context.packageName, it.processName) }
+      .filter {
+        shouldReportProcessExit(
+          packageName = context.packageName,
+          processName = it.processName,
+          reason = it.reason,
+          description = it.description,
+          importance = it.importance,
+        )
+      }
+      .maxByOrNull { it.timestamp }
+      ?: return@runCatching false
+    val processName = reportableExit.processName ?: "unknown"
+
+    val report = sanitizeCrashDetails(
+      buildString {
+        appendLine("Mosaic process exit report")
+        appendLine("timestamp=${Instant.ofEpochMilli(reportableExit.timestamp)}")
+        appendLine("version=${BuildConfig.VERSION_NAME}")
+        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+        appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
+        appendLine("sdk=${Build.VERSION.SDK_INT}")
+        appendLine("release=${Build.VERSION.RELEASE}")
+        appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
+        appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
+        appendLine("pid=${reportableExit.pid}")
+        appendLine("process=$processName")
+        appendLine("reason=${reportableExit.reason}")
+        appendLine("reasonName=${processExitReasonName(reportableExit.reason)}")
+        appendLine("status=${reportableExit.status}")
+        appendLine("importance=${reportableExit.importance}")
+        appendLine("importanceName=${processImportanceName(reportableExit.importance)}")
+        appendLine("pssKb=${reportableExit.pss}")
+        appendLine("rssKb=${reportableExit.rss}")
+        processStateSummary(reportableExit)?.let { processState ->
+          appendLine("processState=$processState")
         }
-        .maxByOrNull { it.timestamp }
-        ?: return@runCatching
-      val processName = reportableExit.processName ?: "unknown"
-
-      val report = sanitizeCrashDetails(
-        buildString {
-          appendLine("Mosaic process exit report")
-          appendLine("timestamp=${Instant.ofEpochMilli(reportableExit.timestamp)}")
-          appendLine("version=${BuildConfig.VERSION_NAME}")
-          appendLine("versionCode=${BuildConfig.VERSION_CODE}")
-          appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
-          appendLine("sdk=${Build.VERSION.SDK_INT}")
-          appendLine("release=${Build.VERSION.RELEASE}")
-          appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
-          appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
-          appendLine("pid=${reportableExit.pid}")
-          appendLine("process=$processName")
-          appendLine("reason=${reportableExit.reason}")
-          appendLine("reasonName=${processExitReasonName(reportableExit.reason)}")
-          appendLine("status=${reportableExit.status}")
-          appendLine("importance=${reportableExit.importance}")
-          appendLine("importanceName=${processImportanceName(reportableExit.importance)}")
-          appendLine("pssKb=${reportableExit.pss}")
-          appendLine("rssKb=${reportableExit.rss}")
-          processStateSummary(reportableExit)?.let { processState ->
-            appendLine("processState=$processState")
+        reportableExit.description?.takeIf(String::isNotBlank)?.let { description ->
+          appendLine("description=$description")
+        }
+        recentMemoryProfilingArtifactNames(context, reportableExit.timestamp)
+          .takeIf { it.isNotEmpty() }
+          ?.let { artifacts ->
+            appendLine("profilingArtifacts=${artifacts.joinToString()}")
           }
-          reportableExit.description?.takeIf(String::isNotBlank)?.let { description ->
-            appendLine("description=$description")
-          }
-          recentMemoryProfilingArtifactNames(application, reportableExit.timestamp)
-            .takeIf { it.isNotEmpty() }
-            ?.let { artifacts ->
-              appendLine("profilingArtifacts=${artifacts.joinToString()}")
-            }
-          LocalAiMemoryDiagnostics.recentInferenceReport(
-            context = application,
+        LocalAiMemoryDiagnostics.recentInferenceReport(
+          context = context,
+          pid = reportableExit.pid,
+          processName = processName,
+          untilTimestamp = reportableExit.timestamp,
+        )?.let { diagnostics ->
+          appendLine()
+          appendLine("localAiMemoryDiagnostics:")
+          append(diagnostics)
+        }
+        if (isLocalAiTextProcessName(context.packageName, processName)) {
+          LocalAiTextProcessDiagnostics.recentProcessReport(
+            context = context,
             pid = reportableExit.pid,
-            processName = processName,
             untilTimestamp = reportableExit.timestamp,
           )?.let { diagnostics ->
             appendLine()
-            appendLine("localAiMemoryDiagnostics:")
+            appendLine("localAiTextProcessDiagnostics:")
             append(diagnostics)
           }
-          if (isLocalAiTextProcessName(application.packageName, processName)) {
-            LocalAiTextProcessDiagnostics.recentProcessReport(
-              context = application,
-              pid = reportableExit.pid,
-              untilTimestamp = reportableExit.timestamp,
-            )?.let { diagnostics ->
-              appendLine()
-              appendLine("localAiTextProcessDiagnostics:")
-              append(diagnostics)
-            }
-          }
-        },
-      )
-      preferences.edit().putString(REPORT_KEY, report).commit()
-    }
-  }
+        }
+      },
+    )
+    preferences.edit().putString(REPORT_KEY, report).commit()
+    true
+  }.getOrDefault(false)
 
   private fun preferences(context: Context) =
     context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -186,12 +185,15 @@ internal fun shouldReportGodotProcessExit(
   reason: Int,
 ): Boolean =
   isGodotProcessName(packageName, processName) &&
-    reason in setOf(
+    when (reason) {
       ApplicationExitInfo.REASON_CRASH,
       ApplicationExitInfo.REASON_CRASH_NATIVE,
       ApplicationExitInfo.REASON_ANR,
       ApplicationExitInfo.REASON_INITIALIZATION_FAILURE,
-    )
+      -> true
+
+      else -> false
+    }
 
 internal fun shouldReportProcessExit(
   packageName: String,
