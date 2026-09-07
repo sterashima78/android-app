@@ -277,16 +277,16 @@ class DefaultAudioPlaybackController(
 
   private suspend fun synthesize(item: AudioQueueItem, summary: String): File {
     val tts = ensureTextToSpeech()
-    val cacheDirectory = File(applicationContext.cacheDir, CACHE_DIRECTORY).apply { mkdirs() }
-    val cacheKey = sha256("${item.contentId}\u0000$summary")
-    val output = File(cacheDirectory, "$cacheKey.wav")
-    if (output.isFile && output.length() > 0L) return output
-
     val text = buildString {
       append(item.title.trim())
       append("。")
-      append(summary.trim())
+      append(markdownToSpeechText(summary))
     }.take(TextToSpeech.getMaxSpeechInputLength())
+
+    val cacheDirectory = File(applicationContext.cacheDir, CACHE_DIRECTORY).apply { mkdirs() }
+    val cacheKey = sha256("$SPEECH_CACHE_VERSION\u0000${item.contentId}\u0000$text")
+    val output = File(cacheDirectory, "$cacheKey.wav")
+    if (output.isFile && output.length() > 0L) return output
 
     val utteranceId = UUID.randomUUID().toString()
     val completed = CompletableDeferred<Unit>()
@@ -437,6 +437,7 @@ class DefaultAudioPlaybackController(
 
   private companion object {
     const val CACHE_DIRECTORY = "summary-audio"
+    const val SPEECH_CACHE_VERSION = "plain-markdown-v1"
     const val SUMMARY_WAIT_TIMEOUT_MS = 10 * 60 * 1000L
     const val SUMMARY_POLL_INTERVAL_MS = 2_000L
     const val POSITION_UPDATE_INTERVAL_MS = 500L
