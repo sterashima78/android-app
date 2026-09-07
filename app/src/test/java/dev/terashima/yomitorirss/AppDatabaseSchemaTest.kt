@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
+import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -38,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(28, db.version)
+    assertEquals(29, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -75,6 +76,7 @@ class AppDatabaseSchemaTest {
         "library_audible_source_series",
         "web_library_metadata_extractors",
         "smb_library_servers",
+        "smb_connection_profiles",
         "smb_cover_prefetch_queue",
         "smb_metadata_normalization_batches",
         "smb_metadata_normalization_items",
@@ -96,6 +98,7 @@ class AppDatabaseSchemaTest {
         "videos",
         "video_items",
         "video_playback_state",
+        "video_smb_sources",
         "video_web_extractor_rules",
       ),
       tableNames(db),
@@ -103,19 +106,104 @@ class AppDatabaseSchemaTest {
   }
 
   @Test
-  fun `version 27 database is upgraded with Video tables`() {
+  fun `version 28 database migrates shared SMB profile and Video location`() {
     val previousSchema = DatabaseSchema(
-      version = 27,
-      contributions = appDatabaseSchema.contributions.filterNot { it.owner == "video" },
+      version = 28,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v28",
+          createSchema = { db ->
+            db.execSQL(
+              """
+                CREATE TABLE smb_library_servers(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  name TEXT NOT NULL,
+                  host TEXT NOT NULL,
+                  port INTEGER NOT NULL,
+                  share_name TEXT NOT NULL,
+                  root_path TEXT NOT NULL,
+                  username TEXT NOT NULL,
+                  domain_name TEXT NOT NULL,
+                  updated_at INTEGER NOT NULL
+                )
+              """.trimIndent(),
+            )
+            db.execSQL(
+              """
+                CREATE TABLE video_items(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  source TEXT NOT NULL,
+                  source_id TEXT NOT NULL,
+                  title TEXT NOT NULL,
+                  page_url TEXT,
+                  thumbnail_url TEXT,
+                  duration_ms INTEGER,
+                  size_bytes INTEGER,
+                  mime_type TEXT,
+                  updated_at INTEGER NOT NULL,
+                  UNIQUE(source, source_id)
+                )
+              """.trimIndent(),
+            )
+            db.execSQL(
+              """
+                CREATE TABLE video_playback_state(
+                  video_id TEXT PRIMARY KEY NOT NULL,
+                  position_ms INTEGER NOT NULL,
+                  duration_ms INTEGER NOT NULL,
+                  last_played_at INTEGER NOT NULL,
+                  completed INTEGER NOT NULL DEFAULT 0
+                )
+              """.trimIndent(),
+            )
+            db.execSQL(
+              """
+                CREATE TABLE video_web_extractor_rules(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  url_pattern TEXT NOT NULL,
+                  title_function TEXT,
+                  thumbnail_function TEXT,
+                  playback_function TEXT,
+                  timeout_seconds INTEGER NOT NULL DEFAULT 15,
+                  updated_at INTEGER NOT NULL
+                )
+              """.trimIndent(),
+            )
+          },
+        ),
+      ),
     )
-    YomitoriDatabase.create(context, previousSchema).close()
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    legacy.writableDatabase.insertOrThrow(
+      "smb_library_servers",
+      null,
+      ContentValues().apply {
+        put("id", "legacy-server")
+        put("name", "Home NAS")
+        put("host", "nas.example.invalid")
+        put("port", 445)
+        put("share_name", "media")
+        put("root_path", "videos")
+        put("username", "reader")
+        put("domain_name", "")
+        put("updated_at", 1234L)
+      },
+    )
+    legacy.close()
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(28, db.version)
-    assertTrue("video_items" in tableNames(db))
-    assertTrue("video_playback_state" in tableNames(db))
-    assertTrue("video_web_extractor_rules" in tableNames(db))
+    assertEquals(29, db.version)
+    assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
+    assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
+    assertEquals(
+      "media",
+      singleString(db, "SELECT share_name FROM video_smb_sources WHERE server_id = ?", arrayOf("legacy-server")),
+    )
+    assertEquals(
+      "videos",
+      singleString(db, "SELECT root_path FROM video_smb_sources WHERE server_id = ?", arrayOf("legacy-server")),
+    )
   }
 
   @Test
@@ -204,4 +292,13 @@ private fun countRows(
 ): Int = db.rawQuery("SELECT COUNT(*) FROM $table WHERE $selection", args).use { cursor ->
   check(cursor.moveToFirst())
   cursor.getInt(0)
+}
+
+private fun singleString(
+  db: SQLiteDatabase,
+  sql: String,
+  args: Array<String>,
+): String = db.rawQuery(sql, args).use { cursor ->
+  check(cursor.moveToFirst())
+  cursor.getString(0)
 }
