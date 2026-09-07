@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Godot Sudoku proof of concept embedded in Mosaic.
+; Godot Sudoku embedded in Mosaic.
 config_version=5
 
 [application]

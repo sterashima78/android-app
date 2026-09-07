@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-17
 - Refines: ADR-0080
+- Amended by: [ADR-0238](0238-promote-godot-sudoku.md) — 盤面優先と必要時だけ入力 UI を出す原則を維持しつつ、Godot の floating number panel と完成時のみの判定へ置き換える。
 
 ## Context
 
@@ -39,4 +40,6 @@ ADR-0080 で追加した数独の初期 UI は、9 個の数字ボタンを 3×3
 
 ## Relationship
 
-ADR-0080 の Game feature / domain / UI の責務分離と問題生成方式は変更しない。本 ADR は数独のプレイ画面と選択状態の操作ライフサイクルのみを具体化する。
+ADR-0080 の Game feature / domain / UI の責務分離と問題生成方式を変更せず、当初は数独のプレイ画面と選択状態の操作ライフサイクルのみを具体化した。
+
+[ADR-0238](0238-promote-godot-sudoku.md) により、縦スクロールを使わず盤面を優先すること、入力 UI を編集セル選択時だけ表示すること、完成表示を overlay とする原則は維持する。一方、Compose 固有の animation、2段固定 input dock、使用済み数字の無効化、入力ごとの正誤判定、正解入力後の選択解除、`:feature:game:domain` による数独判定は置き換えられ、Godot の選択セル付近に出る floating number panel と全マス入力後だけの完成判定を正式仕様とする。

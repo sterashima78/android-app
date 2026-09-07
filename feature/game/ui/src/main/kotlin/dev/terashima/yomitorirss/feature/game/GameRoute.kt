@@ -31,7 +31,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 internal enum class GameScreen {
   LIST,
-  SUDOKU,
   GAME_2048,
   NONOGRAM,
   MINESWEEPER,
@@ -52,7 +51,6 @@ enum class GameChromePreference {
 @Composable
 fun GameRoute(
   modifier: Modifier = Modifier,
-  sudokuViewModel: SudokuViewModel = viewModel(),
   game2048ViewModel: Game2048ViewModel = viewModel(),
   nonogramViewModel: NonogramViewModel = viewModel(),
   minesweeperViewModel: MinesweeperViewModel = viewModel(),
@@ -75,8 +73,7 @@ fun GameRoute(
   when (gameScreen) {
     GameScreen.LIST -> GameListScreen(
       modifier = modifier,
-      onOpenSudoku = { screen = GameScreen.SUDOKU.name },
-      onOpenGodotSudoku = {
+      onOpenSudoku = {
         context.startActivity(Intent(context, GodotSudokuActivity::class.java))
       },
       onOpen2048 = { screen = GameScreen.GAME_2048.name },
@@ -85,19 +82,6 @@ fun GameRoute(
       onOpenKlondike = { screen = GameScreen.KLONDIKE.name },
       onOpenSpider = { screen = GameScreen.SPIDER.name },
     )
-
-    GameScreen.SUDOKU -> {
-      val state by sudokuViewModel.state.collectAsState()
-      SudokuScreen(
-        modifier = modifier,
-        state = state,
-        onBack = { screen = GameScreen.LIST.name },
-        onNewGame = sudokuViewModel::newGame,
-        onSelectCell = sudokuViewModel::selectCell,
-        onEnterNumber = sudokuViewModel::enterNumber,
-        onClearCell = sudokuViewModel::clearSelectedCell,
-      )
-    }
 
     GameScreen.GAME_2048 -> {
       val state by game2048ViewModel.state.collectAsState()
@@ -169,7 +153,6 @@ internal fun chromePreferenceFor(screen: GameScreen): GameChromePreference = whe
 private fun GameListScreen(
   modifier: Modifier,
   onOpenSudoku: () -> Unit,
-  onOpenGodotSudoku: () -> Unit,
   onOpen2048: () -> Unit,
   onOpenNonogram: () -> Unit,
   onOpenMinesweeper: () -> Unit,
@@ -199,7 +182,6 @@ private fun GameListScreen(
         }
       }
     }
-    GameTextCard("G", "Godot 数独 (POC)", "Godot Engine の UI とアニメーションで遊ぶ比較用数独", onOpenGodotSudoku)
     GameTextCard("2048", "2048", "同じ数字を重ねて2048を目指すスライドパズル", onOpen2048)
     GameTextCard("▦", "ノノグラム", "縦横の数字を手掛かりにマスを塗る5×5ピクロス", onOpenNonogram)
     GameTextCard("✹", "マインスイーパー", "数字を手掛かりに地雷を避けて盤面を開くパズル", onOpenMinesweeper)

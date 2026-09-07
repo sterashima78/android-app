@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-16
+- Amended by: [ADR-0238](0238-promote-godot-sudoku.md) — 数独の正式実装を Godot へ移し、数独固有の domain ownership と即時採点を廃止する。
 
 ## Context
 
@@ -37,4 +38,6 @@
 
 ADR-0003 の feature-first / 必要な layer のみ作る方針、および app は navigation と composition root に限定する方針を継承する。
 
-[ADR-0234](0234-godot-sudoku-poc.md) は、ゲームエンジン埋め込み評価のため比較用の第二数独実装を意図的に追加する。既存 Compose 数独と `:feature:game:domain` の ownership は本 ADR の判断を維持する。
+[ADR-0234](0234-godot-sudoku-poc.md) は、ゲームエンジン埋め込み評価のため比較用の第二数独実装を意図的に追加した。その時点では既存 Compose 数独と `:feature:game:domain` の ownership を維持した。
+
+[ADR-0238](0238-promote-godot-sudoku.md) は評価後の判断として Godot 数独を正式実装へ昇格し、本 ADR のうち数独固有の domain ownership、`SudokuViewModel`、即時正誤判定に関する判断を置き換える。Game feature 自体の ownership、永続化を追加しない方針、オフラインで完結する境界は維持する。
