@@ -101,6 +101,28 @@ class ArticleRepositoryBoundaryTest {
     assertTrue(articleExists("keep-me"))
   }
 
+  @Test
+  fun `cleanupは購読中Sourceの既読Content identityを保持する`() = runBlocking {
+    helper.writableDatabase.insertOrThrow("feeds", null, ContentValues().apply { put("id", "feed-1") })
+    insertArticle(id = "source-read", feedId = "feed-1", readAt = "2026-01-01T00:00:00Z")
+    insertArticle(id = "detached-read", readAt = "2026-01-01T00:00:00Z")
+    var requestedCandidateIds: Set<String> = emptySet()
+    val repository = repository(
+      retentionQuery = object : ContentRetentionProtectionQuery {
+        override fun protectedContentIds(contentIds: Set<String>): Set<String> {
+          requestedCandidateIds = contentIds
+          return emptySet()
+        }
+      },
+    )
+
+    repository.cleanupExpiredArticles()
+
+    assertEquals(setOf("detached-read"), requestedCandidateIds)
+    assertTrue(articleExists("source-read"))
+    assertFalse(articleExists("detached-read"))
+  }
+
   private fun repository(
     classificationQuery: ContentClassificationSourceQuery = object : ContentClassificationSourceQuery {
       override suspend fun findOverrides(sourceIds: Set<String>) = emptyMap<String, SourceContentTypeOverrides>()
