@@ -246,23 +246,20 @@ private fun SQLiteDatabase.existingSmbIds(): Set<String> = rawQuery(
 ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
 
 private fun SQLiteDatabase.upsertVideoItem(item: VideoItem) {
-  insertWithOnConflict(
-    "video_items",
-    null,
-    ContentValues().apply {
-      put("id", item.id)
-      put("source", item.source.name)
-      put("source_id", item.sourceId)
-      put("title", item.title)
-      putNullable("page_url", item.pageUrl)
-      putNullable("thumbnail_url", item.thumbnailUrl)
-      putNullable("duration_ms", item.durationMs)
-      putNullable("size_bytes", item.sizeBytes)
-      putNullable("mime_type", item.mimeType)
-      put("updated_at", item.updatedAtEpochMillis)
-    },
-    SQLiteDatabase.CONFLICT_REPLACE,
-  )
+  val values = ContentValues().apply {
+    put("id", item.id)
+    put("source", item.source.name)
+    put("source_id", item.sourceId)
+    put("title", item.title)
+    putNullable("page_url", item.pageUrl)
+    putNullable("thumbnail_url", item.thumbnailUrl)
+    putNullable("duration_ms", item.durationMs)
+    putNullable("size_bytes", item.sizeBytes)
+    putNullable("mime_type", item.mimeType)
+    put("updated_at", item.updatedAtEpochMillis)
+  }
+  val updated = update("video_items", values, "id = ?", arrayOf(item.id))
+  if (updated == 0) insertOrThrow("video_items", null, values)
 }
 
 private fun SmbMediaFile.toVideoItem(now: Long): VideoItem {
