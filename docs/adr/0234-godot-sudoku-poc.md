@@ -17,10 +17,11 @@ Godot を既存 Android アプリへ埋め込む方式を評価するため、ga
 - Godot 4.7.2 stable の Android AAR `org.godotengine:godot:4.7.2.stable` を `:feature:game:ui` に限定して追加する。
 - 既存 Compose 数独は変更せず、ゲーム一覧に `Godot 数独 (POC)` を別項目として追加する。
 - Godot runtime は専用 `GodotSudokuActivity` で起動し、Game feature を開いただけでは生成しない。
+- Godot runtime は Android の専用 `:godot` process で実行する。Godot engine / scene の異常終了や force quit が Mosaic の main process を巻き込まないことを POC の platform boundary とする。
 - Godot project は `:feature:game:ui` の Android assets に配置し、Android APK へ同梱する。外部 asset download、network、permission は追加しない。
 - POC の数独ルールと画面状態は Godot project 内の GDScript が所有する。既存 `:feature:game:domain` の Sudoku model と同期させず、永続 source of truth も追加しない。
 - Godot の Control / GridContainer / Tween 等を使い、盤面、number pad、選択状態、正解入力、誤入力、完成演出を engine 側 UI / animation として実装する。
-- 画面回転は portrait に固定する。Godot Android library の制約に合わせ、orientation / screen size configuration change は Activity 側で処理対象として宣言する。
+- 画面回転は portrait に固定する。Godot Android library の制約に合わせ、Godot Android sample が扱う configuration change を Activity 側で処理対象として宣言し、Activity recreation を避ける。
 - POC は process あたり単一 Godot instance という Godot Android library の制約を受け入れる。複数 Godot game、PCK 分割、Android-Godot 間 plugin bridge は今回の対象外とする。
 
 ## Change Impact Brief
@@ -31,6 +32,7 @@ Godot を既存 Android アプリへ埋め込む方式を評価するため、ga
 - Changed durable data / schema: none。
 - Changed background execution: none。
 - Changed external communication / permission / credential boundary: none。
+- Changed process boundary: Godot runtime は app main process ではなく専用 `:godot` process で実行する。
 - New concepts introduced: embedded Godot runtime、Godot-owned game scene。
 - Rollback: Godot dependency、Activity、assets、一覧項目を削除するだけでよく migration は不要。
 
@@ -39,6 +41,7 @@ Godot を既存 Android アプリへ埋め込む方式を評価するため、ga
 ### Positive
 
 - Mosaic 全体を game engine application にせず、特定ゲームだけ engine を利用できるか検証できる。
+- Godot runtime の native crash / force quit を Mosaic の main process から隔離できる。
 - Compose と Godot の UI / animation 実装コスト、APK size、起動時間、lifecycle を比較できる。
 - 将来のリアルタイム 2D ゲームで engine 再実装を避ける判断材料になる。
 
@@ -47,6 +50,7 @@ Godot を既存 Android アプリへ埋め込む方式を評価するため、ga
 - 同じ数独を Compose と Godot で二重実装するため、POC 期間中は意図的に duplicate implementation を持つ。
 - 約 100 MB 級の Godot Android AAR を build dependency に追加するため、APK size 増加が見込まれる。
 - Godot project の GDScript は既存 Kotlin unit test の対象外であり、POC では Android 上の起動・操作確認が重要になる。
+- 専用 process の起動コストと追加 memory footprint を POC 評価に含める必要がある。
 
 ## Exit criteria
 
