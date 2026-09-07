@@ -55,7 +55,13 @@ class DefaultVideoPlaybackResolver(
     }
     return custom?.streamUrl
       ?.takeIf(String::isNotBlank)
-      ?.let { VideoPlaybackTarget.Stream(it, custom.mimeType) }
+      ?.let {
+        VideoPlaybackTarget.Stream(
+          url = it,
+          mimeType = custom.mimeType,
+          referrerUrl = pageUrl,
+        )
+      }
       ?: VideoPlaybackTarget.WebPage(pageUrl)
   }
 }
