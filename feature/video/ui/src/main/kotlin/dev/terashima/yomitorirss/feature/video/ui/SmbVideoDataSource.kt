@@ -23,19 +23,26 @@ internal class SmbVideoDataSource(
       ?.takeIf(String::isNotBlank)
       ?: error("SMB動画のsourceIdがありません")
     val openedSource = byteSourceFactory.open(sourceId)
-    source = openedSource
-    uri = dataSpec.uri
-    position = dataSpec.position
-    require(position <= openedSource.length) { "SMB動画の再生位置がファイル範囲外です" }
-    val available = openedSource.length - position
-    bytesRemaining = if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
-      available
-    } else {
-      minOf(dataSpec.length, available)
+    try {
+      position = dataSpec.position
+      require(position <= openedSource.length) { "SMB動画の再生位置がファイル範囲外です" }
+      val available = openedSource.length - position
+      bytesRemaining = if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
+        available
+      } else {
+        minOf(dataSpec.length, available)
+      }
+      source = openedSource
+      uri = dataSpec.uri
+      opened = true
+      transferStarted(dataSpec)
+      return bytesRemaining
+    } catch (error: Throwable) {
+      openedSource.close()
+      position = 0L
+      bytesRemaining = 0L
+      throw error
     }
-    opened = true
-    transferStarted(dataSpec)
-    return bytesRemaining
   }
 
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
