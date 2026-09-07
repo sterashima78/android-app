@@ -39,4 +39,5 @@ dependencies {
   implementation(libs.kotlinx.coroutines.android)
 
   testImplementation(libs.junit4)
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }
