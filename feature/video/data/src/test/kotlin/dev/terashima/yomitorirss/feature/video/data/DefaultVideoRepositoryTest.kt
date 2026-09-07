@@ -16,6 +16,7 @@ import dev.terashima.yomitorirss.feature.library.SmbMediaFile
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.SmbMediaLocation
 import dev.terashima.yomitorirss.feature.library.SmbMediaReadHandle
+import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import kotlinx.coroutines.runBlocking
@@ -23,6 +24,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -200,6 +203,59 @@ class DefaultVideoRepositoryTest {
 
     repository.deleteSmbSource(created.id)
     assertEquals(listOf("source-1"), repository.smbSources().map(VideoSmbSource::id))
+  }
+
+  @Test
+  fun `保存状態は再生状態と独立して保存解除できる`() = runBlocking {
+    repository.refreshSmb()
+    val item = repository.items().single()
+
+    repository.saveVideo(item.id)
+    repository.updatePlayback(item.id, positionMs = 25_000L, durationMs = 100_000L)
+
+    val saved = repository.items().single()
+    assertNotNull(saved.savedState)
+    assertNull(saved.savedState!!.folderId)
+    assertEquals(25_000L, saved.playbackState!!.positionMs)
+
+    repository.removeSavedVideo(item.id)
+
+    val unsaved = repository.items().single()
+    assertNull(unsaved.savedState)
+    assertEquals(25_000L, unsaved.playbackState!!.positionMs)
+  }
+
+  @Test
+  fun `保存動画はフォルダへ移動できフォルダ削除後は未分類へ戻る`() = runBlocking {
+    repository.refreshSmb()
+    val item = repository.items().single()
+    val folder = repository.saveFolder(VideoFolder(id = "", name = "映画"))
+
+    repository.saveVideo(item.id, folder.id)
+    assertEquals(folder.id, repository.items().single().savedState!!.folderId)
+
+    repository.saveFolder(folder.copy(name = "長編映画"))
+    assertEquals("長編映画", repository.folders().single().name)
+    assertEquals(folder.id, repository.items().single().savedState!!.folderId)
+
+    repository.deleteFolder(folder.id)
+
+    assertTrue(repository.folders().isEmpty())
+    val saved = repository.items().single().savedState
+    assertNotNull(saved)
+    assertNull(saved!!.folderId)
+  }
+
+  @Test
+  fun `フォルダ名は大文字小文字を無視して重複できない`() {
+    repository.saveFolder(VideoFolder(id = "", name = "Favorites"))
+
+    val result = runCatching {
+      repository.saveFolder(VideoFolder(id = "", name = "favorites"))
+    }
+
+    assertTrue(result.isFailure)
+    assertEquals(1, repository.folders().size)
   }
 
   @Test

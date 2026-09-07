@@ -1,6 +1,6 @@
 # Video
 
-この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md) と [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md) を参照する。
+この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md) を参照する。
 
 ## Ownership
 
@@ -11,6 +11,7 @@ Video は SMB / Web / 将来の service adapter 由来動画を同じ catalog �
 - Web page URL identity
 - Web video extractor rule
 - 再生位置 / duration / 最終再生日時 / completed state
+- 保存済み動画とVideo専用フォルダ
 - foreground video playback presentation
 
 現在の module は次のとおり。
@@ -21,11 +22,11 @@ Video は SMB / Web / 将来の service adapter 由来動画を同じ catalog �
 :feature:video:ui
 ```
 
-`:feature:video:domain` は `VideoItem`、`VideoSmbSource`、`VideoPlaybackState`、`WebVideoExtractorRule`、`VideoRepository`、`VideoPlaybackResolver`、`VideoByteSourceFactory` 等の contract を所有する。
+`:feature:video:domain` は `VideoItem`、`VideoSmbSource`、`VideoPlaybackState`、`VideoSavedState`、`VideoFolder`、`WebVideoExtractorRule`、`VideoRepository`、`VideoPlaybackResolver`、`VideoByteSourceFactory` 等の contract を所有する。
 
-`:feature:video:data` は Video-owned database schema、Video用SMB同期場所、Web metadata取得、WebView extractor、SMB catalog projection、playback target resolutionを所有する。
+`:feature:video:data` は Video-owned database schema、Video用SMB同期場所、保存状態・フォルダ、Web metadata取得、WebView extractor、SMB catalog projection、playback target resolutionを所有する。
 
-`:feature:video:ui` は一覧、source filter、「続き」「視聴済み」、設定、Media3 foreground playerを所有する。
+`:feature:video:ui` は一覧、source filter、「続き」「保存」「視聴済み」、保存フォルダ管理、設定、Media3 foreground playerを所有する。
 
 ## Shared SMB connection boundary
 
@@ -111,7 +112,20 @@ custom title / thumbnail extractionが失敗した場合は静的metadataを維�
 
 Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginのみを `Referer` として、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。path、query、fragmentはreferrerへ含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。Cookie、Authorization、その他のcredentialはWebViewからMedia3へ引き継がない。
 
-v1のVideo playerはforeground UI lifetimeとする。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
+v1のVideo playerはforeground UI lifetimeとする。全画面表示では横向きへ切り替え、通常表示へ戻ると縦向きへ復帰する。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
+
+## Saved items and folders
+
+保存は動画本体のdownloadではなく、Video catalog itemに対する整理状態である。`video_saved_items` rowの存在を保存済みのsource of truthとし、再生位置やcompleted stateとは独立して扱う。
+
+保存済み動画は最大1つのVideo専用フォルダへ所属する。
+
+- `folder_id = NULL`: 未分類
+- `folder_id` が存在: 対応する `video_folders` へ所属
+
+フォルダ削除時は保存rowを削除せず `folder_id` をNULLへ戻す。保存、保存解除、保存先変更、フォルダ操作によって `video_playback_state` は変更しない。
+
+Curation-owned `bookmark_folders` / `article_folders` は利用しない。Videoの保存状態はContent/Bookmarkの保存状態とは別の概念としてVideo Context内に閉じる。
 
 ## Durable data
 
@@ -120,15 +134,19 @@ Video Dataは次のtableを所有する。
 - `video_items`
 - `video_playback_state`
 - `video_smb_sources`
+- `video_folders`
+- `video_saved_items`
 - `video_web_extractor_rules`
 
-`video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所、`video_web_extractor_rules` はユーザー設定として保存する。
+`video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所、`video_folders` / `video_saved_items` は保存と整理状態、`video_web_extractor_rules` はユーザー設定として保存する。
 
-stream URL、stream referrer、WebView user agent、SMB credentialはVideoのdurable stateに含めない。
+stream URL、stream referrer、WebView user agent、動画ファイル本体、SMB credentialはVideoのdurable stateに含めない。
 
 SMB接続プロファイルはLibrary-owned `smb_connection_profiles` に保存し、Library用SMB同期場所は既存 `smb_library_servers` のshare / root pathとして維持する。Videoはこれらのforeign tableを通常runtimeで直接read/writeしない。
 
-`video_smb_sources` と `smb_connection_profiles` の追加によりapplication database versionは29である。version 28 -> 29 migrationでは、従来Videoが暗黙利用していた `smb_library_servers` のshare / root pathを初期 `video_smb_sources` として一度だけ取り込む。このmigrationだけは明示されたforeign-table read allowlistを利用し、version 28 upgrade baselineの退役時に削除する。
+ADR-0239で `video_smb_sources` と `smb_connection_profiles` を追加してapplication database versionを29とし、version 28 -> 29 migrationで従来Videoが暗黙利用していた `smb_library_servers` のshare / root pathを初期 `video_smb_sources` として一度だけ取り込む。このmigrationだけは明示されたforeign-table read allowlistを利用する。
+
+ADR-0240でapplication database versionを30へ進め、`video_folders` と `video_saved_items` を追加する。version 29 -> 30では既存Video itemを自動保存せず、保存状態とフォルダは空から開始する。
 
 ## Playback state semantics
 
@@ -138,6 +156,7 @@ SMB接続プロファイルはLibrary-owned `smb_connection_profiles` に保存�
 - completedはUIから手動変更できる。
 - 手動で未視聴へ戻しても保存済みposition / durationは維持する。
 - 「続き」はpositionが0より大きくcompletedでないitemを対象とする。
+- 保存 / 保存解除 / folder移動では再生状態を変更しない。
 
 Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Library book stateを書き換えない。
 
@@ -151,6 +170,9 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - Web streamのreferrerに元pageのpath / query / fragmentを含めない。
 - WebView Cookie / Authorization等のcredentialをMedia3へ暗黙に複製しない。
 - Video用の第二のSMB credential storeを作らない。
+- Video保存状態にCuration-owned tableを利用しない。
+- フォルダ削除で保存済み動画を自動的に保存解除しない。
+- 保存状態の変更でplayback stateを変更しない。
 - foreground video playbackをAudioのbackground media sessionへ暗黙に統合しない。
 - user-authored Web extractor functionや実URLをpublic repositoryのfixture/documentへ保存しない。
 
@@ -158,17 +180,20 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 
 - Web extractor ruleのglob matching / precedenceをunit testする。
 - Video用SMB sourceの保存・列挙・削除、SMB catalog projection、stale item削除、playback state semanticsをrepository testする。
+- 保存 / 保存解除、保存先変更、folder CRUD、folder削除時の未分類化、同名folder拒否をrepository testする。
+- 保存状態とplayback stateが独立していることをrepository testする。
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - Web streamのreferrerをoriginへ縮小し、Media3 HTTP request propertyへ変換することをunit testする。
-- app database fresh schemaとversion 28 -> 29 migrationをtestする。
+- app database fresh schema、version 28 -> 29、version 29 -> 30をtestする。
 - architecture verificationでmodule graph、table ownership、migration foreign-read allowlist、navigation ownershipを検証する。
-- Android実機ではLibraryとVideoで異なるSMB share/pathを指定し、MP4/MKV、Web stream、Web fallback、seek、resumeを確認する。
+- Android実機では保存タブ、未分類 / folder filter、保存先変更、folder CRUDに加え、LibraryとVideoで異なるSMB share/path、Web stream、全画面、seek、resumeを確認する。
 
 ## Sources
 
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
 - [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
+- [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
 - [module-map.md](module-map.md)
 - [context-map.md](context-map.md)
 - [persistence.md](persistence.md)

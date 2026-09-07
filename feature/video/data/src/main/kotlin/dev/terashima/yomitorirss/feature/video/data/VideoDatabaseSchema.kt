@@ -59,6 +59,28 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     """
+      CREATE TABLE IF NOT EXISTS video_folders (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        normalized_name TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS video_saved_items (
+        video_id TEXT PRIMARY KEY NOT NULL,
+        folder_id TEXT,
+        saved_at INTEGER NOT NULL,
+        FOREIGN KEY(video_id) REFERENCES video_items(id) ON DELETE CASCADE,
+        FOREIGN KEY(folder_id) REFERENCES video_folders(id) ON DELETE SET NULL
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
       CREATE TABLE IF NOT EXISTS video_web_extractor_rules (
         id TEXT PRIMARY KEY NOT NULL,
         url_pattern TEXT NOT NULL,
@@ -75,6 +97,12 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_smb_sources_updated ON video_smb_sources(updated_at DESC)",
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_folders_name ON video_folders(normalized_name)",
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_saved_items_folder_saved ON video_saved_items(folder_id, saved_at DESC)",
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_rules_updated ON video_web_extractor_rules(updated_at DESC)",

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.library.SmbConnectionProfile
 import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
+import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoRepository
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 
 data class VideoUiState(
   val items: List<VideoItem> = emptyList(),
+  val folders: List<VideoFolder> = emptyList(),
   val smbProfiles: List<SmbConnectionProfile> = emptyList(),
   val smbSources: List<VideoSmbSource> = emptyList(),
   val extractorRules: List<WebVideoExtractorRule> = emptyList(),
@@ -82,6 +84,22 @@ class VideoViewModel(
 
   fun deleteSmbSource(id: String) = launchMutation("SMB同期場所を削除できませんでした") {
     repository.deleteSmbSource(id)
+  }
+
+  fun saveVideo(item: VideoItem, folderId: String? = null) = launchMutation("動画を保存できませんでした") {
+    repository.saveVideo(item.id, folderId)
+  }
+
+  fun removeSavedVideo(item: VideoItem) = launchMutation("動画の保存を解除できませんでした") {
+    repository.removeSavedVideo(item.id)
+  }
+
+  fun saveFolder(folder: VideoFolder) = launchMutation("フォルダを保存できませんでした") {
+    repository.saveFolder(folder)
+  }
+
+  fun deleteFolder(id: String) = launchMutation("フォルダを削除できませんでした") {
+    repository.deleteFolder(id)
   }
 
   fun remove(item: VideoItem) = launchMutation("動画を削除できませんでした") {
@@ -179,6 +197,7 @@ class VideoViewModel(
 
   private suspend fun loadSnapshot(): LoadedVideoState = LoadedVideoState(
     items = repository.items(),
+    folders = repository.folders(),
     smbProfiles = smbConnectionProfiles.connectionProfiles(),
     smbSources = repository.smbSources(),
     extractorRules = repository.extractorRules(),
@@ -187,6 +206,7 @@ class VideoViewModel(
   private fun showSnapshot(loaded: LoadedVideoState) {
     mutableState.value = mutableState.value.copy(
       items = loaded.items,
+      folders = loaded.folders,
       smbProfiles = loaded.smbProfiles,
       smbSources = loaded.smbSources,
       extractorRules = loaded.extractorRules,
@@ -210,6 +230,7 @@ class VideoViewModel(
 
   private data class LoadedVideoState(
     val items: List<VideoItem>,
+    val folders: List<VideoFolder>,
     val smbProfiles: List<SmbConnectionProfile>,
     val smbSources: List<VideoSmbSource>,
     val extractorRules: List<WebVideoExtractorRule>,

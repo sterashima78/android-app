@@ -18,6 +18,7 @@ data class VideoItem(
   val mimeType: String? = null,
   val updatedAtEpochMillis: Long,
   val playbackState: VideoPlaybackState? = null,
+  val savedState: VideoSavedState? = null,
 )
 
 data class VideoSmbSource(
@@ -33,6 +34,18 @@ data class VideoPlaybackState(
   val durationMs: Long,
   val lastPlayedAtEpochMillis: Long,
   val completed: Boolean,
+)
+
+data class VideoSavedState(
+  val folderId: String? = null,
+  val savedAtEpochMillis: Long,
+)
+
+data class VideoFolder(
+  val id: String,
+  val name: String,
+  val createdAtEpochMillis: Long = 0L,
+  val updatedAtEpochMillis: Long = 0L,
 )
 
 data class WebVideoExtractorRule(
@@ -82,6 +95,16 @@ interface VideoRepository {
   fun saveSmbSource(source: VideoSmbSource): VideoSmbSource
 
   fun deleteSmbSource(id: String)
+
+  fun folders(): List<VideoFolder>
+
+  fun saveFolder(folder: VideoFolder): VideoFolder
+
+  fun deleteFolder(id: String)
+
+  fun saveVideo(videoId: String, folderId: String? = null)
+
+  fun removeSavedVideo(videoId: String)
 
   suspend fun updatePlayback(
     videoId: String,
