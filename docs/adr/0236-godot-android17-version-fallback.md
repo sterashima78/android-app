@@ -36,3 +36,11 @@ Godot 4.7.2 では Android 17 / Pixel 端末上の `libgodot_android.so` native 
 - Android 17 で報告されている 4.7.2 native crash の影響を避けられる可能性がある。
 - POC は最新 Godot 4.7 系固有機能を評価しない。
 - upstream で Android 17 crash が修正された stable release を確認した時点で、再度 version update を評価する。
+
+## Follow-up: release R8 / JNI crash
+
+4.6.3 へ切り替えた release APK でも Android 17 / Pixel 11 で起動直後の crash が再現した。2026-09-07 の native tombstone では `libgodot_android.so` の `JNIEnv::GetMethodID` から `NoSuchMethodError` が発生し、同じ process の Java frame では `org.godotengine.godot.Godot.e` のように Godot API のメソッド名が R8 により難読化されていた。
+
+Godot native code は JNI で Java/Kotlin 側メソッドを名前解決するため、release minification では `org.godotengine.godot.**` の class/member 名を保持する必要がある。Godot dependency を所有する `:feature:game:ui` が consumer ProGuard rule を公開し、app 側の R8 設定へ伝播させる。
+
+この evidence により、4.6.3 への downgrade だけでは今回観測した launch crash を解消できないことが分かった。ただし修正検証で変数を増やさないため、この変更では 4.6.3 baseline を維持する。R8/JNI fix の Android 17 実機確認後に 4.7.2 stable へ戻すかを別変更で評価する。
