@@ -16,6 +16,7 @@ data class VideoUiState(
   val extractorRules: List<WebVideoExtractorRule> = emptyList(),
   val loading: Boolean = true,
   val busy: Boolean = false,
+  val busyMessage: String? = null,
   val message: String? = null,
 )
 
@@ -42,6 +43,7 @@ class VideoViewModel(
             extractorRules = rules,
             loading = false,
             busy = false,
+            busyMessage = null,
             message = null,
           )
         },
@@ -49,6 +51,7 @@ class VideoViewModel(
           mutableState.value = mutableState.value.copy(
             loading = false,
             busy = false,
+            busyMessage = null,
             message = error.message ?: "動画一覧を読み込めませんでした",
           )
         },
@@ -56,7 +59,10 @@ class VideoViewModel(
     }
   }
 
-  fun addWeb(url: String) = launchMutation("Web動画を追加できませんでした") {
+  fun addWeb(url: String) = launchMutation(
+    fallbackMessage = "Web動画を追加できませんでした",
+    busyMessage = "Web動画を追加中…",
+  ) {
     repository.addWeb(url)
   }
 
@@ -98,10 +104,15 @@ class VideoViewModel(
 
   private fun launchMutation(
     fallbackMessage: String,
+    busyMessage: String? = null,
     block: suspend () -> Unit,
   ) {
     if (mutableState.value.busy) return
-    mutableState.value = mutableState.value.copy(busy = true, message = null)
+    mutableState.value = mutableState.value.copy(
+      busy = true,
+      busyMessage = busyMessage,
+      message = null,
+    )
     viewModelScope.launch {
       runCatching { block() }.fold(
         onSuccess = {
@@ -114,11 +125,13 @@ class VideoViewModel(
                 extractorRules = rules,
                 loading = false,
                 busy = false,
+                busyMessage = null,
               )
             },
             onFailure = { error ->
               mutableState.value = mutableState.value.copy(
                 busy = false,
+                busyMessage = null,
                 message = error.message ?: fallbackMessage,
               )
             },
@@ -127,6 +140,7 @@ class VideoViewModel(
         onFailure = { error ->
           mutableState.value = mutableState.value.copy(
             busy = false,
+            busyMessage = null,
             message = error.message ?: fallbackMessage,
           )
         },
