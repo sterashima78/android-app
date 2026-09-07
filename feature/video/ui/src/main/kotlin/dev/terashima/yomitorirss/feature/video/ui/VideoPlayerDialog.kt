@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.video.ui
 
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.webkit.WebSettings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +33,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -53,10 +55,19 @@ internal fun VideoPlayerDialog(
   var isFullscreen by rememberSaveable(item.id) { mutableStateOf(false) }
   val player = remember(item.id, target) {
     val builder = ExoPlayer.Builder(context)
-    if (target is VideoPlaybackTarget.Smb) {
-      builder.setMediaSourceFactory(
+    when (target) {
+      is VideoPlaybackTarget.Stream -> {
+        val httpFactory = DefaultHttpDataSource.Factory()
+          .setUserAgent(WebSettings.getDefaultUserAgent(context))
+          .setDefaultRequestProperties(webStreamRequestProperties(target))
+        builder.setMediaSourceFactory(
+          DefaultMediaSourceFactory(context).setDataSourceFactory(httpFactory),
+        )
+      }
+      is VideoPlaybackTarget.Smb -> builder.setMediaSourceFactory(
         DefaultMediaSourceFactory(SmbVideoDataSource.Factory(byteSourceFactory)),
       )
+      is VideoPlaybackTarget.WebPage -> Unit
     }
     builder.build().apply {
       val mediaItem = when (target) {
@@ -147,6 +158,12 @@ internal fun VideoPlayerDialog(
       }
     }
   }
+}
+
+internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map<String, String> = buildMap {
+  target.referrerUrl
+    ?.takeIf(String::isNotBlank)
+    ?.let { put("Referer", it) }
 }
 
 @Composable
