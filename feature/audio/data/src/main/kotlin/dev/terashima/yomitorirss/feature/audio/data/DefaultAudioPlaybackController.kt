@@ -291,12 +291,17 @@ class DefaultAudioPlaybackController(
     val offlineJapaneseVoice = tts.voices
       .orEmpty()
       .asSequence()
-      .filter { voice -> !voice.isNetworkConnectionRequired }
-      .filter { voice -> voice.locale.language == Locale.JAPANESE.language }
+      .filter { voice ->
+        isInstalledOfflineJapaneseVoice(
+          language = voice.locale.language,
+          isNetworkConnectionRequired = voice.isNetworkConnectionRequired,
+          features = voice.features,
+        )
+      }
       .maxByOrNull { voice -> voice.quality }
     if (offlineJapaneseVoice == null || tts.setVoice(offlineJapaneseVoice) != TextToSpeech.SUCCESS) {
       tts.shutdown()
-      error("オフラインで利用できる日本語音声がありません")
+      error("インストール済みのオフライン日本語音声がありません")
     }
 
     tts.setOnUtteranceProgressListener(
@@ -318,8 +323,13 @@ class DefaultAudioPlaybackController(
         }
 
         override fun onError(utteranceId: String, errorCode: Int) {
+          val message = if (errorCode == TextToSpeech.ERROR_NOT_INSTALLED_YET) {
+            "日本語音声データのインストールが完了していません"
+          } else {
+            "音声合成に失敗しました ($errorCode)"
+          }
           synthesisWaiters.remove(utteranceId)
-            ?.completeExceptionally(IllegalStateException("音声合成に失敗しました ($errorCode)"))
+            ?.completeExceptionally(IllegalStateException(message))
         }
       },
     )
@@ -403,3 +413,12 @@ class DefaultAudioPlaybackController(
     const val MAX_PLAYBACK_SPEED = 2.0f
   }
 }
+
+internal fun isInstalledOfflineJapaneseVoice(
+  language: String,
+  isNetworkConnectionRequired: Boolean,
+  features: Set<String>,
+): Boolean =
+  language == Locale.JAPANESE.language &&
+    !isNetworkConnectionRequired &&
+    TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in features
