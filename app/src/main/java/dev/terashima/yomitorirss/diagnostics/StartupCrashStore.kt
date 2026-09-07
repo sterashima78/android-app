@@ -64,12 +64,12 @@ internal object StartupCrashStore {
     preferences(context).edit().remove(REPORT_KEY).commit()
   }
 
-  fun recordRecentProcessExit(context: Context): Boolean = runCatching {
-    val preferences = preferences(context)
+  fun recordRecentProcessExit(application: Application): Boolean = runCatching {
+    val preferences = preferences(application)
     val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
-    val activityManager = context.getSystemService(ActivityManager::class.java)
+    val activityManager = application.getSystemService(ActivityManager::class.java)
     val unseen = activityManager
-      .getHistoricalProcessExitReasons(context.packageName, 0, 0)
+      .getHistoricalProcessExitReasons(application.packageName, 0, 0)
       .filter { it.timestamp > lastSeen }
     if (unseen.isEmpty()) return@runCatching false
 
@@ -78,10 +78,10 @@ internal object StartupCrashStore {
       .commit()
 
     val reportableExit = unseen
-      .filter { isAppOwnedProcessName(context.packageName, it.processName) }
+      .filter { isAppOwnedProcessName(application.packageName, it.processName) }
       .filter {
         shouldReportProcessExit(
-          packageName = context.packageName,
+          packageName = application.packageName,
           processName = it.processName,
           reason = it.reason,
           description = it.description,
@@ -118,13 +118,13 @@ internal object StartupCrashStore {
         reportableExit.description?.takeIf(String::isNotBlank)?.let { description ->
           appendLine("description=$description")
         }
-        recentMemoryProfilingArtifactNames(context, reportableExit.timestamp)
+        recentMemoryProfilingArtifactNames(application, reportableExit.timestamp)
           .takeIf { it.isNotEmpty() }
           ?.let { artifacts ->
             appendLine("profilingArtifacts=${artifacts.joinToString()}")
           }
         LocalAiMemoryDiagnostics.recentInferenceReport(
-          context = context,
+          context = application,
           pid = reportableExit.pid,
           processName = processName,
           untilTimestamp = reportableExit.timestamp,
@@ -133,9 +133,9 @@ internal object StartupCrashStore {
           appendLine("localAiMemoryDiagnostics:")
           append(diagnostics)
         }
-        if (isLocalAiTextProcessName(context.packageName, processName)) {
+        if (isLocalAiTextProcessName(application.packageName, processName)) {
           LocalAiTextProcessDiagnostics.recentProcessReport(
-            context = context,
+            context = application,
             pid = reportableExit.pid,
             untilTimestamp = reportableExit.timestamp,
           )?.let { diagnostics ->
