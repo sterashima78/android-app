@@ -45,3 +45,6 @@ chat_sessions	:feature:chat:data
 chat_messages	:feature:chat:data
 channels	:feature:youtube:data
 videos	:feature:youtube:data
+video_items	:feature:video:data
+video_playback_state	:feature:video:data
+video_web_extractor_rules	:feature:video:data
