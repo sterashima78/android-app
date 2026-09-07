@@ -82,13 +82,13 @@ class DefaultSmbMediaFileAccess(
         ?: error("SMB共有がディスク共有ではありません")
       remoteFile = share.openFile(
         normalizedPath,
-        EnumSet.of(AccessMask.FILE_READ_DATA),
+        EnumSet.of(AccessMask.FILE_READ_DATA, AccessMask.FILE_READ_ATTRIBUTES),
         null,
         SMB2ShareAccess.ALL,
         SMB2CreateDisposition.FILE_OPEN,
         null,
       )
-      val size = remoteFile.getFileInformation().standardInformation.endOfFile
+      val size = remoteFile.getLength()
       return OpenedSmbMediaReadHandle(
         client = client,
         connection = connection,
