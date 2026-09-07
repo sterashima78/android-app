@@ -32,7 +32,7 @@ dependencies {
   implementation("androidx.compose.material3:material3")
   implementation("androidx.compose.material:material-icons-extended")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-  implementation("org.godotengine:godot:4.7.2.stable")
+  implementation(libs.godot.android)
 
   testImplementation("junit:junit:4.13.2")
 }
