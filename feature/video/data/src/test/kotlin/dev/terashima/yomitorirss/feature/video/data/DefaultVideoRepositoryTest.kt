@@ -75,6 +75,22 @@ class DefaultVideoRepositoryTest {
   }
 
   @Test
+  fun `SMB再同期しても既存動画の再生位置を維持する`() = runBlocking {
+    repository.refreshSmb()
+    val item = repository.items().single()
+    repository.updatePlayback(item.id, positionMs = 20_000L, durationMs = 100_000L)
+
+    assertEquals(1, repository.refreshSmb())
+
+    val refreshed = repository.items().single()
+    val playback = refreshed.playbackState!!
+    assertEquals(item.id, refreshed.id)
+    assertEquals(20_000L, playback.positionMs)
+    assertEquals(100_000L, playback.durationMs)
+    assertFalse(playback.completed)
+  }
+
+  @Test
   fun `再生率95パーセント以上で視聴済みになり手動解除しても位置を維持する`() = runBlocking {
     repository.refreshSmb()
     val item = repository.items().single()
