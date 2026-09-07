@@ -31,7 +31,7 @@ const COLOR_SELECTED = Color("6657d9")
 const COLOR_RELATED = Color("303b59")
 const COLOR_ACCENT = Color("8b7cff")
 const COLOR_SUCCESS = Color("62d6a5")
-const COLOR_ERROR = Color("ff738a")
+const COLOR_CORAL = Color("ff738a")
 const COLOR_TEXT = Color("f5f6fb")
 const COLOR_MUTED = Color("aeb7cc")
 const COLOR_GRID = Color("58647d")
@@ -41,7 +41,6 @@ var solution = []
 var values = []
 var cells = []
 var selected_index := -1
-var mistakes := 0
 var elapsed_seconds := 0.0
 var completed := false
 var rng := RandomNumberGenerator.new()
@@ -49,8 +48,8 @@ var rng := RandomNumberGenerator.new()
 var board_panel: PanelContainer
 var grid: GridContainer
 var timer_label: Label
-var mistake_label: Label
 var status_label: Label
+var number_panel: PanelContainer
 var completion_layer: Control
 var completion_card: PanelContainer
 var completion_message_label: Label
@@ -77,16 +76,16 @@ func _build_ui():
 
 	var safe = MarginContainer.new()
 	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	safe.add_theme_constant_override("margin_left", 48)
-	safe.add_theme_constant_override("margin_right", 48)
-	safe.add_theme_constant_override("margin_top", 52)
-	safe.add_theme_constant_override("margin_bottom", 46)
+	safe.add_theme_constant_override("margin_left", 24)
+	safe.add_theme_constant_override("margin_right", 24)
+	safe.add_theme_constant_override("margin_top", 42)
+	safe.add_theme_constant_override("margin_bottom", 36)
 	add_child(safe)
 
 	var content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 22)
+	content.add_theme_constant_override("separation", 18)
 	safe.add_child(content)
 
 	content.add_child(_build_header())
@@ -100,21 +99,20 @@ func _build_ui():
 	board_center.add_child(board_panel)
 
 	status_label = Label.new()
-	status_label.text = "空いているマスを選んで数字を入力"
+	status_label.text = "空いているマスをタップして数字を入力"
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_label.add_theme_font_size_override("font_size", 28)
 	status_label.add_theme_color_override("font_color", COLOR_MUTED)
 	content.add_child(status_label)
 
-	content.add_child(_build_number_pad())
-
 	var footer = Label.new()
-	footer.text = "Godot Control + Tween で描画・入力・アニメーションを実装した POC"
+	footer.text = "選択したマスの近くに数字パネルが表示されます"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.add_theme_font_size_override("font_size", 21)
 	footer.add_theme_color_override("font_color", Color(COLOR_MUTED.r, COLOR_MUTED.g, COLOR_MUTED.b, 0.72))
 	content.add_child(footer)
 
+	_build_number_panel()
 	_build_completion_layer()
 
 func _build_header():
@@ -140,7 +138,7 @@ func _build_header():
 	title.add_theme_color_override("font_color", COLOR_TEXT)
 	titles.add_child(title)
 	var subtitle = Label.new()
-	subtitle.text = "GODOT ENGINE POC"
+	subtitle.text = "CLASSIC 9×9"
 	subtitle.add_theme_font_size_override("font_size", 20)
 	subtitle.add_theme_color_override("font_color", COLOR_ACCENT)
 	titles.add_child(subtitle)
@@ -160,22 +158,15 @@ func _build_header():
 func _build_stats():
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 18)
-
 	var timer_chip = _stat_chip("TIME")
 	timer_label = timer_chip.find_child("Value", true, false) as Label
 	timer_label.text = "00:00"
 	row.add_child(timer_chip)
-
-	var mistake_chip = _stat_chip("MISS")
-	mistake_label = mistake_chip.find_child("Value", true, false) as Label
-	mistake_label.text = "0"
-	row.add_child(mistake_chip)
 	return row
 
 func _stat_chip(caption: String):
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(210, 78)
+	panel.custom_minimum_size = Vector2(230, 78)
 	panel.add_theme_stylebox_override("panel", _rounded_style(Color(0.10, 0.13, 0.20, 0.92), 24))
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -195,7 +186,7 @@ func _stat_chip(caption: String):
 
 func _build_board():
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(920, 920)
+	panel.custom_minimum_size = Vector2(1010, 1010)
 	var panel_style = _rounded_style(Color(0.065, 0.078, 0.12, 0.98), 34)
 	panel_style.content_margin_left = 16
 	panel_style.content_margin_right = 16
@@ -211,40 +202,79 @@ func _build_board():
 
 	for i in range(81):
 		var button = Button.new()
-		button.custom_minimum_size = Vector2(95, 95)
+		button.custom_minimum_size = Vector2(106, 106)
 		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_font_size_override("font_size", 39)
+		button.add_theme_font_size_override("font_size", 43)
 		button.pressed.connect(_on_cell_pressed.bind(i))
 		grid.add_child(button)
 		cells.append(button)
 	return panel
 
-func _build_number_pad():
-	var center = CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row = HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 9)
-	center.add_child(row)
+func _build_number_panel():
+	number_panel = PanelContainer.new()
+	number_panel.custom_minimum_size = Vector2(356, 446)
+	number_panel.visible = false
+	number_panel.z_index = 20
+	var panel_style = _rounded_style(Color(0.075, 0.095, 0.15, 0.995), 30)
+	panel_style.border_color = Color(COLOR_ACCENT.r, COLOR_ACCENT.g, COLOR_ACCENT.b, 0.72)
+	panel_style.border_width_left = 2
+	panel_style.border_width_right = 2
+	panel_style.border_width_top = 2
+	panel_style.border_width_bottom = 2
+	panel_style.content_margin_left = 18
+	panel_style.content_margin_right = 18
+	panel_style.content_margin_top = 18
+	panel_style.content_margin_bottom = 18
+	number_panel.add_theme_stylebox_override("panel", panel_style)
+	add_child(number_panel)
+
+	var box = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	number_panel.add_child(box)
+
+	var hint = Label.new()
+	hint.text = "数字を入力"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 23)
+	hint.add_theme_color_override("font_color", COLOR_MUTED)
+	box.add_child(hint)
+
+	var digits_grid = GridContainer.new()
+	digits_grid.columns = 3
+	digits_grid.add_theme_constant_override("h_separation", 8)
+	digits_grid.add_theme_constant_override("v_separation", 8)
+	box.add_child(digits_grid)
+
 	for number in range(1, 10):
 		var button = Button.new()
 		button.text = str(number)
-		button.custom_minimum_size = Vector2(91, 86)
+		button.custom_minimum_size = Vector2(98, 82)
 		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_font_size_override("font_size", 36)
+		button.add_theme_font_size_override("font_size", 38)
 		button.add_theme_color_override("font_color", COLOR_TEXT)
-		button.add_theme_stylebox_override("normal", _rounded_style(Color(0.12, 0.15, 0.23, 0.96), 22))
-		button.add_theme_stylebox_override("hover", _rounded_style(Color(0.18, 0.21, 0.33, 1.0), 22))
-		button.add_theme_stylebox_override("pressed", _rounded_style(COLOR_SELECTED, 22))
+		button.add_theme_stylebox_override("normal", _rounded_style(Color(0.12, 0.15, 0.23, 1.0), 20))
+		button.add_theme_stylebox_override("hover", _rounded_style(Color(0.18, 0.21, 0.33, 1.0), 20))
+		button.add_theme_stylebox_override("pressed", _rounded_style(COLOR_SELECTED, 20))
 		button.pressed.connect(_on_number_pressed.bind(number))
-		row.add_child(button)
-	return center
+		digits_grid.add_child(button)
+
+	var clear = Button.new()
+	clear.text = "消去"
+	clear.custom_minimum_size = Vector2(0, 66)
+	clear.focus_mode = Control.FOCUS_NONE
+	clear.add_theme_font_size_override("font_size", 25)
+	clear.add_theme_color_override("font_color", COLOR_MUTED)
+	clear.add_theme_stylebox_override("normal", _rounded_style(Color(0.10, 0.13, 0.20, 1.0), 18))
+	clear.add_theme_stylebox_override("pressed", _rounded_style(Color(0.17, 0.20, 0.30, 1.0), 18))
+	clear.pressed.connect(_on_clear_pressed)
+	box.add_child(clear)
 
 func _build_completion_layer():
 	completion_layer = Control.new()
 	completion_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	completion_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	completion_layer.visible = false
+	completion_layer.z_index = 40
 	add_child(completion_layer)
 
 	var shade = ColorRect.new()
@@ -323,12 +353,11 @@ func _new_game(animated := true):
 		solution.append(digits[value - 1])
 	values = puzzle.duplicate()
 	selected_index = -1
-	mistakes = 0
 	elapsed_seconds = 0.0
 	completed = false
-	mistake_label.text = "0"
-	status_label.text = "空いているマスを選んで数字を入力"
+	status_label.text = "空いているマスをタップして数字を入力"
 	status_label.add_theme_color_override("font_color", COLOR_MUTED)
+	number_panel.visible = false
 	completion_layer.visible = false
 	_refresh_board()
 	if animated:
@@ -385,68 +414,94 @@ func _on_cell_pressed(index: int):
 		return
 	selected_index = index
 	_refresh_board()
+	status_label.text = "%d行 %d列を選択中" % [index / 9 + 1, index % 9 + 1]
+	status_label.add_theme_color_override("font_color", COLOR_MUTED)
 	var cell = cells[index]
 	cell.pivot_offset = cell.size * 0.5
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(cell, "scale", Vector2(1.06, 1.06), 0.08)
-	tween.tween_property(cell, "scale", Vector2.ONE, 0.12)
+	tween.tween_property(cell, "scale", Vector2(1.05, 1.05), 0.07)
+	tween.tween_property(cell, "scale", Vector2.ONE, 0.10)
+	_show_number_panel(index)
+
+func _show_number_panel(index: int):
+	number_panel.visible = true
+	number_panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	number_panel.scale = Vector2(0.92, 0.92)
+	call_deferred("_position_number_panel", index)
+
+func _position_number_panel(index: int):
+	if not number_panel.visible or index != selected_index:
+		return
+	number_panel.reset_size()
+	var cell_rect = cells[index].get_global_rect()
+	var panel_size = number_panel.size
+	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
+		panel_size = number_panel.custom_minimum_size
+	var viewport_size = get_viewport_rect().size
+	var edge_margin = 18.0
+	var gap = 18.0
+	var x = cell_rect.get_center().x - panel_size.x * 0.5
+	x = clamp(x, edge_margin, viewport_size.x - panel_size.x - edge_margin)
+	var below = cell_rect.end.y + gap
+	var above = cell_rect.position.y - panel_size.y - gap
+	var y = below
+	if below + panel_size.y > viewport_size.y - edge_margin:
+		y = above
+	y = clamp(y, edge_margin, viewport_size.y - panel_size.y - edge_margin)
+	number_panel.position = Vector2(x, y)
+	number_panel.pivot_offset = panel_size * 0.5
+	var tween = create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(number_panel, "scale", Vector2.ONE, 0.18)
+	tween.tween_property(number_panel, "modulate:a", 1.0, 0.12)
+
+func _hide_number_panel():
+	number_panel.visible = false
+	number_panel.scale = Vector2.ONE
+	number_panel.modulate = Color.WHITE
 
 func _on_number_pressed(number: int):
 	if selected_index < 0 or completed:
 		return
 	if puzzle[selected_index] != 0:
 		return
-	var current = selected_index
-	if solution[current] == number:
-		values[current] = number
-		selected_index = _find_next_empty(current)
+	values[selected_index] = number
+	_refresh_board()
+	_hide_number_panel()
+	_check_board_completion()
+
+func _on_clear_pressed():
+	if selected_index < 0 or completed:
+		return
+	if puzzle[selected_index] != 0:
+		return
+	values[selected_index] = 0
+	_refresh_board()
+	_hide_number_panel()
+	status_label.text = "数字を消去しました"
+	status_label.add_theme_color_override("font_color", COLOR_MUTED)
+
+func _check_board_completion():
+	for value in values:
+		if value == 0:
+			status_label.text = "入力しました。次のマスを選べます"
+			status_label.add_theme_color_override("font_color", COLOR_MUTED)
+			return
+	if _matches_solution():
+		completed = true
+		selected_index = -1
 		_refresh_board()
-		_animate_correct(cells[current])
-		status_label.text = "正解。次のマスへ"
-		status_label.add_theme_color_override("font_color", COLOR_SUCCESS)
-		if _is_complete():
-			completed = true
-			selected_index = -1
-			_refresh_board()
-			_show_completion()
+		_show_completion()
 	else:
-		mistakes += 1
-		mistake_label.text = str(mistakes)
-		status_label.text = "その数字ではありません"
-		status_label.add_theme_color_override("font_color", COLOR_ERROR)
-		_animate_error(cells[current])
+		status_label.text = "盤面はまだ完成していません。入力を見直してください"
+		status_label.add_theme_color_override("font_color", COLOR_MUTED)
 
-func _find_next_empty(from_index: int):
-	for step in range(1, 82):
-		var index = (from_index + step) % 81
-		if values[index] == 0:
-			return index
-	return -1
-
-func _is_complete():
+func _matches_solution():
 	for i in range(81):
 		if values[i] != solution[i]:
 			return false
 	return true
-
-func _animate_correct(cell: Control):
-	cell.pivot_offset = cell.size * 0.5
-	cell.scale = Vector2(0.72, 0.72)
-	cell.modulate = Color(0.62, 1.0, 0.82, 1.0)
-	var tween = create_tween().set_parallel(true)
-	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(cell, "scale", Vector2.ONE, 0.34)
-	tween.tween_property(cell, "modulate", Color.WHITE, 0.30)
-
-func _animate_error(cell: Control):
-	cell.pivot_offset = cell.size * 0.5
-	var tween = create_tween()
-	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(cell, "rotation", deg_to_rad(4.0), 0.045)
-	tween.tween_property(cell, "rotation", deg_to_rad(-4.0), 0.07)
-	tween.tween_property(cell, "rotation", deg_to_rad(3.0), 0.06)
-	tween.tween_property(cell, "rotation", 0.0, 0.06)
 
 func _animate_new_board():
 	board_panel.pivot_offset = board_panel.size * 0.5
@@ -469,7 +524,7 @@ func _play_intro():
 
 func _show_completion():
 	completion_layer.visible = true
-	completion_message_label.text = "TIME %s   ·   MISS %d" % [_formatted_time(), mistakes]
+	completion_message_label.text = "TIME %s" % _formatted_time()
 	completion_card.pivot_offset = completion_card.size * 0.5
 	completion_card.scale = Vector2(0.72, 0.72)
 	completion_card.modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -480,7 +535,7 @@ func _show_completion():
 	_spawn_confetti()
 
 func _spawn_confetti():
-	var palette = [COLOR_ACCENT, COLOR_SUCCESS, Color("ffd166"), COLOR_ERROR, Color("62b8ff")]
+	var palette = [COLOR_ACCENT, COLOR_SUCCESS, Color("ffd166"), COLOR_CORAL, Color("62b8ff")]
 	for i in range(34):
 		var piece = ColorRect.new()
 		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -1,6 +1,6 @@
 # ADR-0234: Godot Android Library で数独 POC を追加する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0238](0238-promote-godot-sudoku.md)
 - Date: 2026-09-07
 - Refines: [ADR-0080](0080-game-section-and-sudoku.md), [ADR-0088](0088-offline-puzzle-game-expansion.md)
 - Amended by: [ADR-0236](0236-godot-android17-version-fallback.md) — Android 17 実機での 4.7.2 native crash 回避検証として runtime baseline を 4.6.3 stable へ変更する。
