@@ -99,3 +99,4 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0228](../adr/0228-human-architecture-control-plane.md)
 - [ADR-0234](../adr/0234-godot-sudoku-poc.md)
 - [ADR-0235](../adr/0235-summary-audio-playback.md)
+- [ADR-0236](../adr/0236-godot-android17-version-fallback.md)
