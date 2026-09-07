@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-22
 - Amends: [ADR-0059](0059-current-version-compatibility-baseline.md), [ADR-0100](0100-current-mosaic-backup-and-database-baseline.md), [ADR-0123](0123-content-curation-persistence-phase2.md)
+- Amended by: [ADR-0237](0237-video-library-and-web-extraction.md)
 
 ## Context
 
@@ -24,6 +25,8 @@ production code には version 13〜27 到達のためだけの migration と mi
 - v24 -> v25 の `articles.saved_at` -> `bookmarks` ownership transfer migration を削除し、対応する foreign-table allowlist entry も削除する。
 - `articles.saved_at` は現行 schema に存在せず、Curation の bookmark state は `bookmarks` table のみを source of truth とする。
 
+ADR-0237 により次の schema change では application database version を 28 へ進める。version 27 は version 28 への更新元 baseline として扱い、backup restore の exact-version policy は維持する。
+
 ## Consequences
 
 ### Positive
@@ -41,9 +44,9 @@ production code には version 13〜27 到達のためだけの migration と mi
 
 ## Verification
 
-- fresh database が version 27 の全 feature schema を生成する test を維持する。
+- fresh database が current application version の全 feature schema を生成する test を維持する。
 - current version の snapshot round-trip test を維持する。
-- current version と異なる snapshot schema version を拒否する test を追加する。
+- current version と異なる snapshot schema version を拒否する test を維持する。
 - `foreign-table-access-allowlist.tsv` に runtime/migration exception が残っていないことを architecture verification で確認する。
 - 全 unit tests、architecture verification、release lint を CI で実行する。
 

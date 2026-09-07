@@ -91,6 +91,19 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 再生開始、再生完了、skip、停止、queue完了のいずれでも記事の既読 / 未読状態を変更しない。「あとで読む」の所属やブックマーク状態も変更しない。
 - 再生queue、再生位置、再生済み状態はdurable user stateとして保存しない。生成した音声は再生成可能なcacheとして扱い、backup / export対象にしない。
 
+### 4.6 動画
+
+- トップレベルの「動画」画面で、SMBファイルサーバー由来とWeb URL由来の動画を同じ一覧から扱う。
+- 一覧には「すべて / 続き / 視聴済み / 設定」を用意し、sourceを「すべて / SMB / Web / サービス」で絞り込める。「サービス」は将来のadapter用分類であり、初期実装では専用サービス連携を追加しない。
+- Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
+- URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。
+- Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
+- Media3で通常のHTTP動画とHLS streamを再生する。SMB動画は蔵書で設定済みのSMB接続情報を利用し、動画ファイル全体を事前downloadせずrandom-access readで再生する。
+- SMB passwordやserver credentialをVideo側へ複製しない。SMB credentialは従来どおりLibrary側の保護された保存領域を利用する。
+- 動画ごとに再生位置、duration、最終再生日時、視聴済み状態を保存し、次回再生時に保存位置から再開する。
+- durationが取得できる動画は95%以上再生すると視聴済みとし、一覧から手動で視聴済み / 未視聴を変更できる。
+- 初期実装の動画再生はforeground画面内で行う。画面を閉じた後のbackground音声継続、Cast、動画download、transcodingは提供しない。
+
 ## 5. 端末内AI
 
 ### 5.1 共通runtime
@@ -277,6 +290,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/context-map.md`: Domain ContextとContext間関係
 - `docs/architecture/module-map.md`: Gradle module構成
 - `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
+- `docs/architecture/video.md`: SMB / Web動画カタログ、抽出、Media3再生境界
 - `docs/architecture/game.md`: Game と Godot POC の runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: testとarchitecture verification

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -85,6 +86,7 @@ internal fun AppDrawerContent(
                 AppSection.REDDIT -> Icons.Default.Forum
                 AppSection.BOOKMARKS -> Icons.Default.Bookmark
                 AppSection.LIBRARY -> Icons.Default.LibraryBooks
+                AppSection.VIDEO -> Icons.Default.VideoLibrary
                 AppSection.KNOWLEDGE -> Icons.Default.MenuBook
                 AppSection.ASSETS -> Icons.Default.AccountBalanceWallet
                 AppSection.MAIL -> Icons.Default.Email

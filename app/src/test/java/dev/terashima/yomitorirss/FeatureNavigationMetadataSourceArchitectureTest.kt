@@ -98,6 +98,8 @@ class FeatureNavigationMetadataSourceArchitectureTest {
         ("MAIL_ROUTE -> MAIL_TITLE" to "const val MAIL_TITLE = \"メール\""),
       "feature/youtube/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/NavigationDestination.kt" to
         ("YOUTUBE_ROUTE -> YOUTUBE_TITLE" to "const val YOUTUBE_TITLE = \"YouTube\""),
+      "feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/NavigationDestination.kt" to
+        ("VIDEO_ROUTE -> VIDEO_TITLE" to "const val VIDEO_TITLE = \"動画\""),
       "feature/x/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/x/NavigationDestination.kt" to
         ("X_ROUTE -> X_TITLE" to "const val X_TITLE = \"X\""),
       "feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/NavigationDestination.kt" to

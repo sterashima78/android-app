@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeRuntimeDepend
 import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeTaskRuntimeDependencies
 import dev.terashima.yomitorirss.composition.library.AppLibraryRuntimeDependencies
 import dev.terashima.yomitorirss.composition.supporting.AppSupportingRuntimeDependencies
+import dev.terashima.yomitorirss.composition.video.AppVideoRuntimeDependencies
 import dev.terashima.yomitorirss.composition.web.AppLanWebContentGateway
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -106,6 +107,17 @@ class AppContainer(
     )
   }
 
+  private val videoRuntimeDependencies: AppVideoRuntimeDependencies by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    AppVideoRuntimeDependencies(
+      database = databaseConnection,
+      httpClient = httpClient,
+      smbMediaFileAccess = libraryRuntime.smbMediaFileAccess,
+      resumedActivityProvider = resumedActivityProvider,
+    )
+  }
+
   private val knowledgeRuntime: AppKnowledgeRuntimeDependencies by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {
@@ -147,6 +159,7 @@ class AppContainer(
 
   internal val healthRepository get() = healthRuntime.healthRepository
   internal val libraryRuntime get() = libraryRuntimeDependencies.runtime
+  internal val videoRuntime get() = videoRuntimeDependencies.runtime
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
   internal val knowledgeBuildScheduler get() = knowledgeTaskRuntime.knowledgeBuildScheduler
   internal val knowledgeBuildRunner get() = knowledgeRuntime.knowledgeBuildRunner

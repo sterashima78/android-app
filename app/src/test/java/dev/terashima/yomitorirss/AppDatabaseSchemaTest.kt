@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
+import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -37,7 +38,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(27, db.version)
+    assertEquals(28, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -93,12 +94,28 @@ class AppDatabaseSchemaTest {
         "chat_messages",
         "channels",
         "videos",
+        "video_items",
+        "video_playback_state",
+        "video_web_extractor_rules",
       ),
-      db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'android_metadata'",
-        null,
-      ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } },
+      tableNames(db),
     )
+  }
+
+  @Test
+  fun `version 27 database is upgraded with Video tables`() {
+    val previousSchema = DatabaseSchema(
+      version = 27,
+      contributions = appDatabaseSchema.contributions.filterNot { it.owner == "video" },
+    )
+    YomitoriDatabase.create(context, previousSchema).close()
+
+    val db = openDatabase().writableDatabase
+
+    assertEquals(28, db.version)
+    assertTrue("video_items" in tableNames(db))
+    assertTrue("video_playback_state" in tableNames(db))
+    assertTrue("video_web_extractor_rules" in tableNames(db))
   }
 
   @Test
@@ -173,6 +190,11 @@ private fun columnNames(db: SQLiteDatabase, table: String): Set<String> =
       while (cursor.moveToNext()) add(cursor.getString(nameIndex))
     }
   }
+
+private fun tableNames(db: SQLiteDatabase): Set<String> = db.rawQuery(
+  "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'android_metadata'",
+  null,
+).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
 
 private fun countRows(
   db: SQLiteDatabase,

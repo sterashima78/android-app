@@ -25,6 +25,7 @@ import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TaskRoute
+import dev.terashima.yomitorirss.feature.video.ui.VIDEO_ROUTE
 import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
 import dev.terashima.yomitorirss.feature.workout.WorkoutRoute
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
@@ -43,6 +44,13 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
   composable(LIBRARY_ROUTE) {
     LibraryRoute(
       dependencies = routeDependencies.library,
+      onOpenWebContent = onOpenWebContent,
+      modifier = Modifier.fillMaxSize(),
+    )
+  }
+  composable(VIDEO_ROUTE) {
+    VideoRoute(
+      dependencies = routeDependencies.video,
       onOpenWebContent = onOpenWebContent,
       modifier = Modifier.fillMaxSize(),
     )

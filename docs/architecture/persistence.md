@@ -13,7 +13,7 @@ Single physical SQLite database
         +-- RSS-owned tables
         +-- Curation-owned tables
         +-- Summary-owned tables
-        +-- Mail / Library / Asset / Task / ... owned tables
+        +-- Mail / Library / Video / Asset / Task / ... owned tables
 ```
 
 各 feature/context が自身の schema contribution と migration の意味を所有する。
@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の互換性 baseline は database version 27 である。version 27 到達のための過去 migration は削除済みで、fresh install は各 feature の `createSchema` を正本とする。今後 schema version を上げる場合は version 27 以降の直前 baseline から必要な migration を owner data module に追加する。
+現在の application database version は ADR-0237 により 28 である。ADR-0138 の version 27 は version 28 への更新元 baseline として維持し、version 27 database を version 28 で開くと全 feature contribution を再適用して Video table を追加する。version 26 以下からの直接更新は保証しない。
 
-バックアップも現在の application schema と同じ database version の snapshot のみを復元対象とする。schema version が異なる snapshot は復元処理へ進む前に拒否する。今後 database version を上げる際に直前 version のバックアップを維持する場合は、schema migration と restore baseline を同じ変更で更新する。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 28 アプリでは version 28 snapshot を受理し、version 27 snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -89,17 +89,27 @@ BackupChangeScheduler
 
 RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`feeds` / `feed_folders` に加えて Web ページから synthetic feed を生成する user-defined rule を `rss_web_scraping_rules` に保存する。
 
-`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時を保持する RSS-owned durable user data である。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 version 27 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
+`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時を保持する RSS-owned durable user data である。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
 
 ### Library schema
 
 Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、Web source の URL pattern 別 metadata extractor (`web_library_metadata_extractors`)、SMB server・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。
 
-`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 version 27 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由とした database version bump は行わない。
+`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由とした database version bump は行わない。
 
 `DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
 
 これにより単体 lookup が全蔵書 snapshot 構築や Kindle title normalization 等の無関係な処理を暗黙に実行することを避ける。
+
+### Video schema
+
+Video Context の fresh DB schema は `VideoDatabaseSchema.kt` を正本とし、`video_items`、`video_playback_state`、`video_web_extractor_rules` を作成する。
+
+`video_items` は SMB / Web 等のcatalog projection、`video_playback_state` は再生位置・duration・最終再生日時・completed state、`video_web_extractor_rules` は URL glob pattern と Promise ベースの title / thumbnail / playback extractor function code を保存する。これらはVideo-owned durable user dataであり、通常のdatabase snapshot backupに含まれる。
+
+stream URLは期限付きURLになり得るため保存しない。SMB server settingsとcredentialはLibrary ownershipを維持し、Video tableへ複製しない。VideoがSMB fileへアクセスする場合はLibrary Domainの `SmbMediaFileAccess` capabilityを利用する。
+
+Video table追加はapplication database version 28への更新理由であり、version 27 databaseからのupgrade testで3tableの生成を固定する。
 
 ## Access ownership rule
 
@@ -135,6 +145,7 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `article_summaries`, `summary_*` | `:feature:summary:data` |
 | `mail_*` | `:feature:mail:data` |
 | `library_*`, `web_library_metadata_extractors`, `hidden_library_items`, `smb_*` | `:feature:library:data` |
+| `video_items`, `video_playback_state`, `video_web_extractor_rules` | `:feature:video:data` |
 | `knowledge_*` | `:feature:knowledge:data` |
 | `asset_*` | `:feature:asset:data` |
 | `tasks` | `:feature:task:data` |
@@ -168,6 +179,7 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - Summary は Article metadata を `ArticleRepository`、Bookmark / Read Later membership を `BookmarkContentQuery` から取得する。
 - RSS ingestion は Content table を直接 write せず `ContentSourceGateway` を利用する。
 - AI task queue は SMB 書誌正規化 table を直接参照せず、Library-owned `SmbMetadataNormalizationRepository` を通じて task projection と再試行を行う。
+- Video は `smb_library_servers` やcredential storageを直接参照せず、Library-owned `SmbMediaFileAccess` からSMB video listing / random-access readを取得する。
 - Backup restore は Library の cache invalidation を `LibraryBackupRestoreInitializer` に委譲し、Library-owned table を直接変更しない。
 
 ### Named Projection
@@ -218,3 +230,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0177](../adr/0177-web-library-early-custom-extraction-and-rule-timeout.md)
 - [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
 - [ADR-0195](../adr/0195-trigger-backup-from-persistence-commit-boundary.md)
+- [ADR-0237](../adr/0237-video-library-and-web-extraction.md)

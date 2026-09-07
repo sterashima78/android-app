@@ -154,6 +154,8 @@ dependencies {
   implementation(project(":feature:settings:ui"))
   implementation(project(":feature:task:domain"))
   implementation(project(":feature:task:ui"))
+  implementation(project(":feature:video:domain"))
+  implementation(project(":feature:video:ui"))
   implementation(project(":feature:web:domain"))
   implementation(project(":feature:web:ui"))
   implementation(project(":feature:widget:domain"))

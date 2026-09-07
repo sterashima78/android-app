@@ -16,6 +16,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.SmbLibraryRepository
+import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
@@ -27,6 +28,7 @@ import dev.terashima.yomitorirss.feature.library.data.AndroidWebViewLibraryMetad
 import dev.terashima.yomitorirss.feature.library.data.CleaningSmbLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultLibraryOrganizationSuggester
+import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.data.DefaultSmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMetadataExtractorRepository
 import dev.terashima.yomitorirss.feature.library.data.DefaultWebLibraryMutator
@@ -55,6 +57,7 @@ internal class AppLibraryRuntimeDependencies(
 ) {
   val runtime: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val smbRepository = CleaningSmbLibraryRepository(application, database)
+    val smbMediaFileAccess = DefaultSmbMediaFileAccess(application, database)
     val catalogRepository = SmbMetadataAwareLibraryRepository(database)
     val organizationRepository = DefaultLibraryOrganizationRepository(database)
     val organizationSuggester = DefaultLibraryOrganizationSuggester(
@@ -113,6 +116,7 @@ internal class AppLibraryRuntimeDependencies(
       organizationSuggester = organizationSuggester,
       organizationBatchScheduler = organizationBatchScheduler,
       smbRepository = smbRepository,
+      smbMediaFileAccess = smbMediaFileAccess,
       smbCoverPrefetchScheduler = smbCoverPrefetchScheduler,
       smbMetadataNormalizationRepository = smbMetadataNormalizationRepository,
       smbMetadataNormalizationScheduler = smbMetadataNormalizationScheduler,
@@ -145,6 +149,7 @@ internal data class LibraryRuntimeDependencies(
   val organizationSuggester: LibraryOrganizationSuggester,
   val organizationBatchScheduler: LibraryOrganizationBatchScheduler,
   val smbRepository: SmbLibraryRepository,
+  val smbMediaFileAccess: SmbMediaFileAccess,
   val smbCoverPrefetchScheduler: SmbCoverPrefetchScheduler,
   val smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository,
   val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler,

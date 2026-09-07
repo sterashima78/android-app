@@ -36,6 +36,8 @@ import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_TITLE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TASKS_TITLE
+import dev.terashima.yomitorirss.feature.video.ui.VIDEO_ROUTE
+import dev.terashima.yomitorirss.feature.video.ui.VIDEO_TITLE
 import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
 import dev.terashima.yomitorirss.feature.workout.WORKOUT_TITLE
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
@@ -67,6 +69,7 @@ internal val allAppRoutes: Set<String> = linkedSetOf(
   BOOKMARK_TAGS_ROUTE,
   BOOKMARK_IMPORT_ROUTE,
   LIBRARY_ROUTE,
+  VIDEO_ROUTE,
   KNOWLEDGE_ROUTE,
   ASSET_ROUTE,
   MAIL_ROUTE,
@@ -143,6 +146,7 @@ internal fun String.appSection(): AppSection = when (this) {
   REDDIT_UNREAD_ROUTE, REDDIT_READ_LATER_ROUTE, REDDIT_SUBSCRIPTIONS_ROUTE -> AppSection.REDDIT
   BOOKMARKS_ROUTE, BOOKMARK_FOLDERS_ROUTE, BOOKMARK_TAGS_ROUTE, BOOKMARK_IMPORT_ROUTE -> AppSection.BOOKMARKS
   LIBRARY_ROUTE -> AppSection.LIBRARY
+  VIDEO_ROUTE -> AppSection.VIDEO
   KNOWLEDGE_ROUTE -> AppSection.KNOWLEDGE
   ASSET_ROUTE -> AppSection.ASSETS
   MAIL_ROUTE -> AppSection.MAIL
@@ -164,6 +168,7 @@ internal fun String.screenTitle(): String = rssDestinationTitle(this)
   ?: when (this) {
     INTEGRATED_ROUTE -> INTEGRATED_TITLE
     LIBRARY_ROUTE -> LIBRARY_TITLE
+    VIDEO_ROUTE -> VIDEO_TITLE
     KNOWLEDGE_ROUTE -> KNOWLEDGE_TITLE
     ASSET_ROUTE -> ASSET_TITLE
     MAIL_ROUTE -> MAIL_TITLE
@@ -185,6 +190,7 @@ internal fun AppSection.defaultRoute(): String = when (this) {
   AppSection.REDDIT -> REDDIT_UNREAD_ROUTE
   AppSection.BOOKMARKS -> BOOKMARKS_ROUTE
   AppSection.LIBRARY -> LIBRARY_ROUTE
+  AppSection.VIDEO -> VIDEO_ROUTE
   AppSection.KNOWLEDGE -> KNOWLEDGE_ROUTE
   AppSection.ASSETS -> ASSET_ROUTE
   AppSection.MAIL -> MAIL_ROUTE

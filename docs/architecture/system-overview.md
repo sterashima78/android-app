@@ -16,6 +16,7 @@ Mosaic は、端末内に個人情報を集約し、source 固有の意味を保
 | Curation | Bookmark、あとで読む、Tag、Folder | Curation (`feature:bookmark`) |
 | Generated content | Summary、metadata補完、Knowledge | Summary / Knowledge |
 | Audio playback | 保存済み要約の端末内TTS、連続再生、media session | Audio |
+| Video playback | SMB / Web動画catalog、Web extractor、視聴継続、foreground Media3再生 | Video |
 | Personal communication | Gmail閲覧・整理 | Mail |
 | Library | Kindle / Audible / Google Books / SMB / Web、Book Reader | Library |
 | Planning | Task、Calendar | Task / Calendar |
@@ -162,7 +163,45 @@ Evidence:
 - [`persistence.md`](persistence.md)
 - `feature/library/`
 
-### 3.4 Task / Calendar / Workout / Health
+### 3.4 Video
+
+```text
+Web page URL --------------------------+
+   |                                   |
+   +-- static HTML / OGP               |
+   +-- custom WebView extractor        |
+                                       v
+                                  Video catalog
+                                       |
+Library SMB settings/credential        |
+   |                                   |
+   +-- SmbMediaFileAccess -------------+
+                                       |
+                           +-----------+-----------+
+                           |                       |
+                           v                       v
+                    Media3 foreground        Web page fallback
+                    Stream / SMB read
+```
+
+重要な境界:
+
+- Video はcatalog、Web extractor rule、再生位置・completed stateを所有する。
+- SMB server settings / credentialはLibrary ownershipを維持し、Videoは `SmbMediaFileAccess` のfile listing / random-access readだけを利用する。
+- Web stream URLはdurable stateとして保存せず再生時に解決する。
+- Web playback extractorでstream URLを取得できなければWeb page targetへfallbackする。
+- SMB動画は全ファイルを事前downloadせずoffset readをMedia3 DataSourceへ接続する。
+- foreground video playerはAudioのbackground `MediaSessionService` と別runtimeであり、Cast/download/transcodingはv1対象外とする。
+
+Evidence:
+
+- [`video.md`](video.md)
+- [`context-map.md`](context-map.md)
+- [`persistence.md`](persistence.md)
+- `feature/video/`
+- `feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbMediaFileAccess.kt`
+
+### 3.5 Task / Calendar / Workout / Health
 
 ```text
 Task --------------------+
@@ -193,7 +232,7 @@ Evidence:
 - `feature/workout/`
 - `feature/health/`
 
-### 3.5 Background execution
+### 3.6 Background execution
 
 ```text
 UI / app startup / periodic trigger
@@ -220,7 +259,7 @@ Evidence:
 - `app/composition/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt`
 - `app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/`
 
-### 3.6 Summary audio playback
+### 3.7 Summary audio playback
 
 ```text
 RSS Read Later presentation
@@ -289,6 +328,7 @@ Evidence:
 
 - [`persistence.md`](persistence.md)
 - [`web-content.md`](web-content.md)
+- [`video.md`](video.md)
 - [`platform.md`](platform.md)
 - `config/architecture/table-ownership.tsv`
 - `scripts/verify_public_repository.py`
@@ -389,6 +429,8 @@ Architecture Control Plane が機能しているかは、次の質問にコー�
 - [`background-refresh.md`](background-refresh.md)
 - [`ai-runtime.md`](ai-runtime.md)
 - [`audio-playback.md`](audio-playback.md)
+- [`video.md`](video.md)
 - [`web-content.md`](web-content.md)
 - [`../adr/0228-human-architecture-control-plane.md`](../adr/0228-human-architecture-control-plane.md)
 - [`../adr/0235-summary-audio-playback.md`](../adr/0235-summary-audio-playback.md)
+- [`../adr/0237-video-library-and-web-extraction.md`](../adr/0237-video-library-and-web-extraction.md)
