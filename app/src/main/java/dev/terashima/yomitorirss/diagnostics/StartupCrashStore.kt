@@ -25,7 +25,7 @@ internal object StartupCrashStore {
     if (installed) return
     synchronized(this) {
       if (installed) return
-      recordPreviousMemoryExit(application)
+      recordRecentProcessExit(application)
       val previous = Thread.getDefaultUncaughtExceptionHandler()
       Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
         record(application, thread.name, throwable)
@@ -64,84 +64,91 @@ internal object StartupCrashStore {
     preferences(context).edit().remove(REPORT_KEY).commit()
   }
 
-  private fun recordPreviousMemoryExit(application: Application) {
-    runCatching {
-      val preferences = preferences(application)
-      val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
-      val activityManager = application.getSystemService(ActivityManager::class.java)
-      val unseen = activityManager
-        .getHistoricalProcessExitReasons(application.packageName, 0, 0)
-        .filter { it.timestamp > lastSeen }
-      if (unseen.isEmpty()) return@runCatching
+  fun recordRecentProcessExit(application: Application): Boolean = runCatching {
+    val preferences = preferences(application)
+    val lastSeen = preferences.getLong(LAST_EXIT_TIMESTAMP_KEY, 0L)
+    val activityManager = application.getSystemService(ActivityManager::class.java)
+    val unseen = activityManager
+      .getHistoricalProcessExitReasons(application.packageName, 0, 0)
+      .filter { it.timestamp > lastSeen }
+    if (unseen.isEmpty()) return@runCatching false
 
-      preferences.edit()
-        .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf { it.timestamp })
-        .commit()
+    preferences.edit()
+      .putLong(LAST_EXIT_TIMESTAMP_KEY, unseen.maxOf { it.timestamp })
+      .commit()
 
-      val memoryExit = unseen
-        .filter { isAppOwnedProcessName(application.packageName, it.processName) }
-        .filter { shouldReportMemoryProcessExit(it.reason, it.description, it.importance) }
-        .maxByOrNull { it.timestamp }
-        ?: return@runCatching
-      val processName = memoryExit.processName ?: "unknown"
+    val reportableExit = unseen
+      .filter { isAppOwnedProcessName(application.packageName, it.processName) }
+      .filter {
+        shouldReportProcessExit(
+          packageName = application.packageName,
+          processName = it.processName,
+          reason = it.reason,
+          description = it.description,
+          importance = it.importance,
+        )
+      }
+      .maxByOrNull { it.timestamp }
+      ?: return@runCatching false
+    val processName = reportableExit.processName ?: "unknown"
 
-      val report = sanitizeCrashDetails(
-        buildString {
-          appendLine("Mosaic process exit report")
-          appendLine("timestamp=${Instant.ofEpochMilli(memoryExit.timestamp)}")
-          appendLine("version=${BuildConfig.VERSION_NAME}")
-          appendLine("versionCode=${BuildConfig.VERSION_CODE}")
-          appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
-          appendLine("sdk=${Build.VERSION.SDK_INT}")
-          appendLine("release=${Build.VERSION.RELEASE}")
-          appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
-          appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
-          appendLine("pid=${memoryExit.pid}")
-          appendLine("process=$processName")
-          appendLine("reason=${memoryExit.reason}")
-          appendLine("reasonName=${processExitReasonName(memoryExit.reason)}")
-          appendLine("status=${memoryExit.status}")
-          appendLine("importance=${memoryExit.importance}")
-          appendLine("importanceName=${processImportanceName(memoryExit.importance)}")
-          appendLine("pssKb=${memoryExit.pss}")
-          appendLine("rssKb=${memoryExit.rss}")
-          processStateSummary(memoryExit)?.let { processState ->
-            appendLine("processState=$processState")
+    val report = sanitizeCrashDetails(
+      buildString {
+        appendLine("Mosaic process exit report")
+        appendLine("timestamp=${Instant.ofEpochMilli(reportableExit.timestamp)}")
+        appendLine("version=${BuildConfig.VERSION_NAME}")
+        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+        appendLine("commit=${BuildConfig.GIT_COMMIT_SHA}")
+        appendLine("sdk=${Build.VERSION.SDK_INT}")
+        appendLine("release=${Build.VERSION.RELEASE}")
+        appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
+        appendLine("abis=${Build.SUPPORTED_ABIS.joinToString()}")
+        appendLine("pid=${reportableExit.pid}")
+        appendLine("process=$processName")
+        appendLine("reason=${reportableExit.reason}")
+        appendLine("reasonName=${processExitReasonName(reportableExit.reason)}")
+        appendLine("status=${reportableExit.status}")
+        appendLine("importance=${reportableExit.importance}")
+        appendLine("importanceName=${processImportanceName(reportableExit.importance)}")
+        appendLine("pssKb=${reportableExit.pss}")
+        appendLine("rssKb=${reportableExit.rss}")
+        processStateSummary(reportableExit)?.let { processState ->
+          appendLine("processState=$processState")
+        }
+        reportableExit.description?.takeIf(String::isNotBlank)?.let { description ->
+          appendLine("description=$description")
+        }
+        recentMemoryProfilingArtifactNames(application, reportableExit.timestamp)
+          .takeIf { it.isNotEmpty() }
+          ?.let { artifacts ->
+            appendLine("profilingArtifacts=${artifacts.joinToString()}")
           }
-          memoryExit.description?.takeIf(String::isNotBlank)?.let { description ->
-            appendLine("description=$description")
-          }
-          recentMemoryProfilingArtifactNames(application, memoryExit.timestamp)
-            .takeIf { it.isNotEmpty() }
-            ?.let { artifacts ->
-              appendLine("profilingArtifacts=${artifacts.joinToString()}")
-            }
-          LocalAiMemoryDiagnostics.recentInferenceReport(
+        LocalAiMemoryDiagnostics.recentInferenceReport(
+          context = application,
+          pid = reportableExit.pid,
+          processName = processName,
+          untilTimestamp = reportableExit.timestamp,
+        )?.let { diagnostics ->
+          appendLine()
+          appendLine("localAiMemoryDiagnostics:")
+          append(diagnostics)
+        }
+        if (isLocalAiTextProcessName(application.packageName, processName)) {
+          LocalAiTextProcessDiagnostics.recentProcessReport(
             context = application,
-            pid = memoryExit.pid,
-            processName = processName,
-            untilTimestamp = memoryExit.timestamp,
+            pid = reportableExit.pid,
+            untilTimestamp = reportableExit.timestamp,
           )?.let { diagnostics ->
             appendLine()
-            appendLine("localAiMemoryDiagnostics:")
+            appendLine("localAiTextProcessDiagnostics:")
             append(diagnostics)
           }
-          if (isLocalAiTextProcessName(application.packageName, processName)) {
-            LocalAiTextProcessDiagnostics.recentProcessReport(
-              context = application,
-              pid = memoryExit.pid,
-              untilTimestamp = memoryExit.timestamp,
-            )?.let { diagnostics ->
-              appendLine()
-              appendLine("localAiTextProcessDiagnostics:")
-              append(diagnostics)
-            }
-          }
-        },
-      )
-      preferences.edit().putString(REPORT_KEY, report).commit()
-    }
-  }
+        }
+      },
+    )
+    preferences.edit().putString(REPORT_KEY, report).commit()
+    true
+  }.getOrDefault(false)
 
   private fun preferences(context: Context) =
     context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -152,6 +159,9 @@ internal fun isAppOwnedProcessName(packageName: String, processName: String?): B
 
 internal fun isLocalAiTextProcessName(packageName: String, processName: String?): Boolean =
   processName == "$packageName:local_ai_text"
+
+internal fun isGodotProcessName(packageName: String, processName: String?): Boolean =
+  processName == "$packageName:godot"
 
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
@@ -169,8 +179,46 @@ internal fun shouldReportMemoryProcessExit(
         importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED
     )
 
+internal fun shouldReportGodotProcessExit(
+  packageName: String,
+  processName: String?,
+  reason: Int,
+): Boolean =
+  isGodotProcessName(packageName, processName) &&
+    when (reason) {
+      ApplicationExitInfo.REASON_CRASH,
+      ApplicationExitInfo.REASON_CRASH_NATIVE,
+      ApplicationExitInfo.REASON_ANR,
+      ApplicationExitInfo.REASON_INITIALIZATION_FAILURE,
+      -> true
+
+      else -> false
+    }
+
+internal fun shouldReportProcessExit(
+  packageName: String,
+  processName: String?,
+  reason: Int,
+  description: String?,
+  importance: Int,
+): Boolean =
+  shouldReportMemoryProcessExit(reason, description, importance) ||
+    shouldReportGodotProcessExit(packageName, processName, reason)
+
 internal fun processExitReasonName(reason: Int): String = when (reason) {
+  ApplicationExitInfo.REASON_UNKNOWN -> "UNKNOWN"
+  ApplicationExitInfo.REASON_EXIT_SELF -> "EXIT_SELF"
+  ApplicationExitInfo.REASON_SIGNALED -> "SIGNALED"
   ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW_MEMORY"
+  ApplicationExitInfo.REASON_CRASH -> "CRASH"
+  ApplicationExitInfo.REASON_CRASH_NATIVE -> "CRASH_NATIVE"
+  ApplicationExitInfo.REASON_ANR -> "ANR"
+  ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "INITIALIZATION_FAILURE"
+  ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "PERMISSION_CHANGE"
+  ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "EXCESSIVE_RESOURCE_USAGE"
+  ApplicationExitInfo.REASON_USER_REQUESTED -> "USER_REQUESTED"
+  ApplicationExitInfo.REASON_USER_STOPPED -> "USER_STOPPED"
+  ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "DEPENDENCY_DIED"
   ApplicationExitInfo.REASON_OTHER -> "OTHER"
   ANDROID_17_REASON_MEMORY_LIMITER -> "MEMORY_LIMITER"
   else -> "REASON_$reason"

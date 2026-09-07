@@ -162,4 +162,45 @@ class StartupCrashStoreTest {
       ),
     )
   }
+
+  @Test
+  fun `Godot process の native crash を診断対象にする`() {
+    assertTrue(
+      shouldReportGodotProcessExit(
+        packageName = "dev.terashima.yomitorirss",
+        processName = "dev.terashima.yomitorirss:godot",
+        reason = ApplicationExitInfo.REASON_CRASH_NATIVE,
+      ),
+    )
+  }
+
+  @Test
+  fun `Godot process の正常終了を診断対象にしない`() {
+    assertFalse(
+      shouldReportGodotProcessExit(
+        packageName = "dev.terashima.yomitorirss",
+        processName = "dev.terashima.yomitorirss:godot",
+        reason = ApplicationExitInfo.REASON_EXIT_SELF,
+      ),
+    )
+  }
+
+  @Test
+  fun `別 subprocess の native crash を Godot 診断対象にしない`() {
+    assertFalse(
+      shouldReportGodotProcessExit(
+        packageName = "dev.terashima.yomitorirss",
+        processName = "dev.terashima.yomitorirss:local_ai_text",
+        reason = ApplicationExitInfo.REASON_CRASH_NATIVE,
+      ),
+    )
+  }
+
+  @Test
+  fun `Godot native crash の reason name を共有レポート向けに明示する`() {
+    assertEquals(
+      "CRASH_NATIVE",
+      processExitReasonName(ApplicationExitInfo.REASON_CRASH_NATIVE),
+    )
+  }
 }
