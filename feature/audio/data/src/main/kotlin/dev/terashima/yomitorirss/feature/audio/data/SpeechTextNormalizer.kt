@@ -18,20 +18,20 @@ internal fun markdownToSpeechText(markdown: String): String {
 
   return inlineNormalized
     .lineSequence()
-    .map(::normalizeMarkdownLineForSpeech)
+    .mapNotNull(::normalizeMarkdownLineForSpeech)
     .joinToString("\n")
     .replace(EXCESS_BLANK_LINES, "\n\n")
     .trim()
 }
 
-private fun normalizeMarkdownLineForSpeech(line: String): String {
+private fun normalizeMarkdownLineForSpeech(line: String): String? {
   if (MARKDOWN_FENCE.matches(line) ||
     MARKDOWN_HORIZONTAL_RULE.matches(line) ||
     MARKDOWN_SETEXT_HEADING.matches(line) ||
     MARKDOWN_TABLE_DELIMITER.matches(line) ||
     MARKDOWN_REFERENCE_DEFINITION.matches(line)
   ) {
-    return ""
+    return null
   }
 
   val withoutStructure = line
