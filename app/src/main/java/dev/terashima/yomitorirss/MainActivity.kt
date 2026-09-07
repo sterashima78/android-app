@@ -105,12 +105,11 @@ class MainActivity : ComponentActivity() {
 
   override fun onResume() {
     super.onResume()
+    appLockCoordinator.onResume()
     if (!showingCrashDiagnostics && StartupCrashStore.recordRecentProcessExit(this)) {
       showingCrashDiagnostics = true
       recreate()
-      return
     }
-    appLockCoordinator.onResume()
   }
 
   override fun onPause() {
