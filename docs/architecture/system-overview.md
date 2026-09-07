@@ -15,6 +15,7 @@ Mosaic は、端末内に個人情報を集約し、source 固有の意味を保
 | Content ingestion | RSS / Atom、Reddit、YouTube、Web由来コンテンツ | RSS / Reddit / YouTube / Content |
 | Curation | Bookmark、あとで読む、Tag、Folder | Curation (`feature:bookmark`) |
 | Generated content | Summary、metadata補完、Knowledge | Summary / Knowledge |
+| Audio playback | 保存済み要約の端末内TTS、連続再生、media session | Audio |
 | Personal communication | Gmail閲覧・整理 | Mail |
 | Library | Kindle / Audible / Google Books / SMB / Web、Book Reader | Library |
 | Planning | Task、Calendar | Task / Calendar |
@@ -219,6 +220,42 @@ Evidence:
 - `app/composition/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt`
 - `app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/`
 
+### 3.6 Summary audio playback
+
+```text
+RSS Read Later presentation
+          |
+          | display order + title/source
+          v
+       Audio queue
+          |
+          +---- SummaryReader / SummaryRequester ---> Summary
+          |
+          v
+ Android offline Japanese TTS
+          |
+          v
+   regenerable app cache
+          |
+          v
+ MediaSessionService / ExoPlayer
+```
+
+重要な境界:
+
+- Audio は Content / Curation / Summary の durable state owner ではない。
+- 再生経路から Content の reading state や Curation の Read Later membership を変更しない。
+- queue、position、playback speed、TTS音声を Mosaic の durable user state として保存しない。
+- TTS は network 接続必須 voice を選択せず、Audio 再生自体による cloud data egress を追加しない。
+- foreground media playback は WorkManager / durable background queue とは別の platform runtime とする。
+
+Evidence:
+
+- [`audio-playback.md`](audio-playback.md)
+- [`platform.md`](platform.md)
+- `feature/audio/`
+- `app/composition/src/main/java/dev/terashima/yomitorirss/composition/audio/`
+
 ## 4. Persistence and trust boundaries
 
 ### Durable relational data
@@ -246,6 +283,7 @@ credential、OAuth token、SMB credential 等は通常 user data と同じ backu
 - ChatGPT cloud execution
 - Android Backup / document export
 - LAN Web Server
+- Android foreground media playback / MediaSession
 
 Evidence:
 
@@ -288,6 +326,7 @@ Evidence:
 | Cloud AI routing | private data の external egress が変わる |
 | WebView / JavaScript | untrusted Web content、process failure、bridge security を扱う |
 | Android component / permission | OS version、entry point、navigation、background restriction に波及する |
+| Foreground media / MediaSession | service lifetime、notification、external media control、background restriction に影響する |
 | SMB / Gmail credentials | secret storage と backup boundary を誤ると情報漏えいにつながる |
 | Shared concept / new module | ownership を誤ると feature 間依存と abstraction が長期固定される |
 
@@ -349,5 +388,7 @@ Architecture Control Plane が機能しているかは、次の質問にコー�
 - [`platform.md`](platform.md)
 - [`background-refresh.md`](background-refresh.md)
 - [`ai-runtime.md`](ai-runtime.md)
+- [`audio-playback.md`](audio-playback.md)
 - [`web-content.md`](web-content.md)
 - [`../adr/0228-human-architecture-control-plane.md`](../adr/0228-human-architecture-control-plane.md)
+- [`../adr/0235-summary-audio-playback.md`](../adr/0235-summary-audio-playback.md)

@@ -56,6 +56,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 
 ### Domain / Context / persistence
 
@@ -68,6 +69,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0128: Calendar を複数 Context と Android Calendar Provider の read model として扱う](0128-calendar-read-model-and-android-calendar-provider.md)
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 - [ADR-0138: database version 27 を更新・バックアップ互換性の基準とする](0138-database-v27-compatibility-baseline.md)
+- [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 
 ### Documentation / repository governance
 
@@ -106,6 +108,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
+- [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 
 ### Health
 
@@ -174,6 +177,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 
 この索引は「現在の architecture source set」を優先した案内であり、全 ADR の機能別目録ではない。特定 feature の設計履歴は `docs/adr/` の番号順ファイルまたは repository search から辿る。
 
@@ -222,3 +226,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0175](0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0214](0214-gradle-architecture-metadata-verification.md)
 - [ADR-0228](0228-human-architecture-control-plane.md)
+- [ADR-0235](0235-summary-audio-playback.md)

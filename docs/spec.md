@@ -79,6 +79,17 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 統合ビュー下部の「未読 / あとで読む / 履歴」タブは、app shell が確保済みの system navigation 領域を重複して確保しない。
 - 履歴や保存状態は owner Context の API を通して参照する。
 
+### 4.5 要約の音声再生
+
+- RSS の「あとで読む」から、現在表示している並び順の記事を「音声で聴く」で連続再生できる。
+- 各項目は記事タイトルと保存済み要約を端末の音声合成機能で読み上げる。
+- 保存済み要約がない記事は Summary が所有する既存の要約キューへ要求し、利用可能になった要約を読み上げ対象にする。Audio独自の要約生成は行わない。
+- 要約を取得できない項目は再生対象から除外し、取得できた項目の順序は元の「あとで読む」の並び順を維持する。
+- 再生、一時停止、前の記事、次の記事、15秒戻し、30秒送り、1x / 1.25x / 1.5x / 2x の再生速度変更を提供する。
+- 画面を閉じてもmedia playbackとして再生を継続し、通知、lock screen、Bluetooth等の標準media controlから操作できる。
+- 再生開始、再生完了、skip、停止、queue完了のいずれでも記事の既読 / 未読状態を変更しない。「あとで読む」の所属やブックマーク状態も変更しない。
+- 再生queue、再生位置、再生済み状態はdurable user stateとして保存しない。生成した音声は再生成可能なcacheとして扱い、backup / export対象にしない。
+
 ## 5. 端末内AI
 
 ### 5.1 共通runtime
@@ -223,6 +234,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - durableなbackground処理にはWorkManagerを利用する。
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
+- ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
 - WorkManager Worker は Provider lookup の例外に含めず、owning feature の `WorkerFactory` から constructor injection し、`:app` の WorkerFactory composition が application graph へ接続する。
@@ -263,6 +275,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/principles.md`: layer / ownership / framework boundary
 - `docs/architecture/context-map.md`: Domain ContextとContext間関係
 - `docs/architecture/module-map.md`: Gradle module構成
+- `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
 - `docs/architecture/game.md`: Game と Godot POC の runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: testとarchitecture verification

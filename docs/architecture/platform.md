@@ -73,6 +73,20 @@ LAN Web Server は `:feature:web:data` が所有し、read-only HTTP contract �
 
 HTTP は暗号化されないため、LAN Web は信頼できる LAN でのみ利用する。別 Context の database implementation を server へ直接注入せず、Domain Repository contract を利用する。
 
+## Foreground media playback boundary
+
+保存済み要約のAudio再生は `:feature:audio:data` の `AudioPlaybackService` が所有する。これはWorkManagerやdurable background queueではなく、ユーザーが明示的に開始したforeground media playbackである。
+
+- `AudioPlaybackService` は AndroidX Media3 の `MediaSessionService` を継承し、service内でExoPlayerとMediaSessionを保持する。
+- manifestには `android.permission.FOREGROUND_SERVICE`、`android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK`、`foregroundServiceType="mediaPlayback"` を宣言する。
+- application-scopeの `AudioPlaybackController` は `:app:composition` が一度だけ構築し、RSS Read Later presentationから利用する。Routeごとにplayer/session graphを再構築しない。
+- TTSはAndroid `TextToSpeech.synthesizeToFile` を利用し、network接続必須voiceは選択しない。オフライン利用可能な日本語voiceがない場合は再生準備を失敗として扱う。
+- 生成音声はapp cache内の再生成可能ファイルであり、database、backup、exportへ含めない。
+- media playbackからContentのreading stateやCurationのRead Later membershipを更新しない。
+- Audio再生そのものによるcloud TTSや新規network通信は追加しない。
+
+詳細は [audio-playback.md](audio-playback.md) を参照する。
+
 ## Process boundaries and local AI
 
 - 通常の UI、WorkManager、DB、widget、startup diagnostics は application の main process が所有する。
@@ -137,3 +151,4 @@ API 37 を compile / target baseline に採用する際は、SDK install と beh
 - [ADR-0169](../adr/0169-lan-web-bootstrap-session-authentication.md)
 - [ADR-0187](../adr/0187-biometric-app-lock.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
+- [ADR-0235](../adr/0235-summary-audio-playback.md)

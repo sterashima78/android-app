@@ -36,6 +36,8 @@ dependencies {
   implementation(project(":feature:article:domain"))
   implementation(project(":feature:article:data"))
   implementation(project(":feature:article:ui"))
+  implementation(project(":feature:audio:domain"))
+  implementation(project(":feature:audio:data"))
   implementation(project(":feature:asset:domain"))
   implementation(project(":feature:asset:data"))
   implementation(project(":feature:asset:ui"))
