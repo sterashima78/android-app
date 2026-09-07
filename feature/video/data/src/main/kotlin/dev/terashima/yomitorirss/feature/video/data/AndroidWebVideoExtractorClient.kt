@@ -25,7 +25,7 @@ import org.json.JSONTokener
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal class AndroidWebVideoExtractorClient(
+class AndroidWebVideoExtractorClient(
   private val activityProvider: () -> Activity?,
 ) {
   suspend fun extract(url: String, rule: WebVideoExtractorRule): WebVideoExtractionResult {
@@ -148,14 +148,23 @@ internal class AndroidWebVideoExtractorClient(
       ?: error("動画抽出の状態を読み取れませんでした")
     val json = JSONObject(jsonString)
     val state = json.optString("state")
-    if (state != "done") return PollResult(state = state, message = json.optString("message").takeIf(String::isNotBlank))
+    if (state != "done") {
+      return PollResult(
+        state = state,
+        message = json.optString("message").takeIf(String::isNotBlank),
+      )
+    }
     val value = json.optJSONObject("value") ?: JSONObject()
     return PollResult(
       state = state,
       result = WebVideoExtractionResult(
         title = value.optString("title").takeIf(String::isNotBlank),
-        thumbnailUrl = value.optString("thumbnailUrl").takeIf(String::isNotBlank)?.let { resolveUrl(finalUrl, it, httpsOnly = true) },
-        streamUrl = value.optString("streamUrl").takeIf(String::isNotBlank)?.let { resolveUrl(finalUrl, it, httpsOnly = false) },
+        thumbnailUrl = value.optString("thumbnailUrl")
+          .takeIf(String::isNotBlank)
+          ?.let { resolveUrl(finalUrl, it, httpsOnly = true) },
+        streamUrl = value.optString("streamUrl")
+          .takeIf(String::isNotBlank)
+          ?.let { resolveUrl(finalUrl, it, httpsOnly = false) },
         mimeType = value.optString("mimeType").takeIf(String::isNotBlank),
       ),
     )
@@ -200,7 +209,10 @@ internal class AndroidWebVideoExtractorClient(
             }
           };
         }).catch((error) => {
-          window[key] = { state: 'error', message: String(error && error.message ? error.message : error).slice(0, 240) };
+          window[key] = {
+            state: 'error',
+            message: String(error && error.message ? error.message : error).slice(0, 240)
+          };
         });
         return true;
       })();
