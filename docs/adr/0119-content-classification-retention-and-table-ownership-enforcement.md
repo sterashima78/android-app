@@ -90,6 +90,22 @@ Gradle 9 では任意 build file を指定する `-b/--build-file` が利用で�
 
 manifest、allowlist、ADR、テストには token、credential、実ユーザーの購読 URL、作品名、個人データを含めない。テスト URL は `example.com` の固定値だけを使用する。
 
+## Amendment 2026-09-07: 購読中 Source の既読 identity は cleanup しない
+
+30日 cleanup が購読中 RSS Source に紐づく既読 Content 行まで削除すると、その item が Source の現在の feed に残っている場合、次回 ingestion で同じ `identity_key` が新規 Content として再作成され、`read_at = NULL` の未読として再浮上することが確認された。
+
+既読状態は単なる履歴表示用 metadata ではなく、「同じ source item を再び未読として提示しない」ための source identity state でもある。そのため cleanup 対象を `feed_id IS NULL` の detached Content に限定する。
+
+- 購読中 Source に紐づく Content は、既読から30日を超えても identity と `read_at` を保持する。
+- 履歴 UI は従来どおり直近30日の `read_at` だけを表示し、古い行を UI に再表示しない。
+- Source 削除時は `ContentSourceGateway.detachSourceContent` が未保存 Content を削除するため、購読解除後まで全 Source item を保持し続けない。
+- detached Content の30日 cleanup と Curation / Summary の protection query は維持する。
+- 新しい table、column、migration、durable source of truth は追加しない。
+
+この変更により、Source が同じ identity を再配信しても既存行との conflict により既読状態が維持される。Source が GUID / Atom ID / URL を変更して identity 自体を変更した場合は別 item として扱う既存仕様を維持する。
+
+回帰テストでは `ArticleRepositoryBoundaryTest` で購読中 Source の既読 Content が cleanup 候補にならないこと、`ContentSourceGatewayTest` で同一 identity の再取得が既存 `read_at` を維持することを検証する。
+
 ## Remaining follow-up
 
 - `articles.saved_at` を Bookmark-owned persistence へ移行する。
