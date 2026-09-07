@@ -3,8 +3,9 @@
   <application>
     <activity
       android:name="dev.terashima.yomitorirss.feature.game.GodotSudokuActivity"
-      android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+      android:configChanges="layoutDirection|locale|orientation|keyboardHidden|screenSize|smallestScreenSize|density|keyboard|navigation|screenLayout|uiMode"
       android:exported="false"
+      android:process=":godot"
       android:screenOrientation="portrait"
       android:theme="@style/MosaicGodotGameTheme" />
   </application>
