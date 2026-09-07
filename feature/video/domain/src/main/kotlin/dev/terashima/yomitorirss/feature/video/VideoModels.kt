@@ -48,6 +48,7 @@ sealed interface VideoPlaybackTarget {
   data class Stream(
     val url: String,
     val mimeType: String? = null,
+    val referrerUrl: String? = null,
   ) : VideoPlaybackTarget
 
   data class Smb(

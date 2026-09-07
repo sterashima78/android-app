@@ -85,9 +85,11 @@ custom title / thumbnail extractionが失敗した場合は静的metadataを維�
 
 再生targetはDomainで次の3種類へ正規化する。
 
-- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL
+- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は元pageのoriginをtransientなreferrer contextとして持てる。
 - `VideoPlaybackTarget.Smb`: Library-owned SMB read capabilityを使うrandom-access source
 - `VideoPlaybackTarget.WebPage`: アプリ内video playerではなくWeb pageを開くfallback
+
+Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginのみを `Referer` として、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。path、query、fragmentはreferrerへ含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。Cookie、Authorization、その他のcredentialはWebViewからMedia3へ引き継がない。
 
 v1のVideo playerはforeground UI lifetimeとする。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
 
@@ -101,7 +103,7 @@ Video Dataは次のtableを所有する。
 
 `video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_web_extractor_rules` はユーザー設定として保存する。
 
-stream URLとSMB credentialはVideoのdurable stateに含めない。
+stream URL、stream referrer、WebView user agent、SMB credentialはVideoのdurable stateに含めない。
 
 新しいschema contributionはapp database schemaへ登録する。Video tableを既存installへ追加するためdatabase versionを28へ更新する。
 
@@ -121,6 +123,8 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - VideoはLibrary-owned SMB credential/server tableを共同所有しない。
 - VideoはYouTube/Library等のforeign durable tableを直接read/writeしない。
 - stream URLをdurable source of truthにしない。
+- Web streamのreferrerに元pageのpath / query / fragmentを含めない。
+- WebView Cookie / Authorization等のcredentialをMedia3へ暗黙に複製しない。
 - Video用の第二のSMB credential storeを作らない。
 - foreground video playbackをAudioのbackground media sessionへ暗黙に統合しない。
 - user-authored Web extractor functionや実URLをpublic repositoryのfixture/documentへ保存しない。
@@ -130,6 +134,7 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - Web extractor ruleのglob matching / precedenceをunit testする。
 - SMB catalog projection、stale item削除、playback state semanticsをrepository testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
+- Web streamのreferrerをoriginへ縮小し、Media3 HTTP request propertyへ変換することをunit testする。
 - app database fresh schemaとschema versionをtestする。
 - architecture verificationでmodule graph、table ownership、navigation ownershipを検証する。
 - Android実機ではSMB MP4/MKV、Web stream、Web fallback、seek、resumeを確認する。
