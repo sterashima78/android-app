@@ -6,7 +6,7 @@ config_version=5
 
 config/name="Mosaic Godot Sudoku"
 run/main_scene="res://sudoku.tscn"
-config/features=PackedStringArray("4.7")
+config/features=PackedStringArray("4.6")
 config/use_hidden_project_data_directory=false
 boot_splash/show_image=false
 
