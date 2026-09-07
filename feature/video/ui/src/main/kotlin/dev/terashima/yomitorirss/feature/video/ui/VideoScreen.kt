@@ -130,8 +130,8 @@ fun VideoScreen(
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
     snackbarHost = { SnackbarHost(snackbar) },
     floatingActionButton = {
-      if (tab != VideoTab.SETTINGS) {
-        FloatingActionButton(onClick = { addWebVisible = true }, enabled = !state.busy) {
+      if (tab != VideoTab.SETTINGS && !state.busy) {
+        FloatingActionButton(onClick = { addWebVisible = true }) {
           Icon(Icons.Default.Add, contentDescription = "Web動画を追加")
         }
       }
@@ -294,16 +294,18 @@ private fun VideoCard(
               modifier = Modifier.fillMaxSize(),
             )
           }
-          val state = item.playbackState
-          if (state != null && state.durationMs > 0L && !state.completed) {
-            val ratio = (state.positionMs.toFloat() / state.durationMs.toFloat()).coerceIn(0f, 1f)
-            Box(
-              modifier = Modifier
-                .fillMaxWidth(ratio)
-                .height(4.dp)
-                .align(Alignment.BottomStart)
-                .background(MaterialTheme.colorScheme.primary),
-            )
+          val playback = item.playbackState
+          if (playback != null && playback.durationMs > 0L && !playback.completed) {
+            val ratio = (playback.positionMs.toFloat() / playback.durationMs.toFloat()).coerceIn(0f, 1f)
+            if (ratio > 0f) {
+              Box(
+                modifier = Modifier
+                  .fillMaxWidth(ratio)
+                  .height(4.dp)
+                  .align(Alignment.BottomStart)
+                  .background(MaterialTheme.colorScheme.primary),
+              )
+            }
           }
         }
       }
@@ -376,7 +378,11 @@ private fun VideoSettings(
       style = MaterialTheme.typography.bodySmall,
     )
     Button(onClick = onRefreshSmb, enabled = !state.busy) {
-      if (state.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("SMB動画を同期")
+      if (state.busy) {
+        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+      } else {
+        Text("SMB動画を同期")
+      }
     }
 
     Text("Web抽出ルール", style = MaterialTheme.typography.titleMedium)
@@ -452,7 +458,8 @@ private fun WebVideoExtractorRuleDialog(
   var playbackCode by remember(initial?.id) { mutableStateOf(initial?.playbackExtractorCode.orEmpty()) }
   var timeout by remember(initial?.id) { mutableStateOf((initial?.timeoutSeconds ?: 15).toString()) }
   val timeoutValue = timeout.toIntOrNull()
-  val valid = pattern.startsWith("https://") && timeoutValue in 1..60 &&
+  val valid = pattern.startsWith("https://") &&
+    timeoutValue != null && timeoutValue in 1..60 &&
     listOf(titleCode, thumbnailCode, playbackCode).any(String::isNotBlank)
 
   AlertDialog(
@@ -529,11 +536,15 @@ private fun WebVideoExtractorRuleDialog(
 
 private fun formatPlaybackPosition(positionMs: Long, durationMs: Long): String {
   fun format(value: Long): String {
-    val totalSeconds = (value.coerceAtLeast(0L) / 1_000)
+    val totalSeconds = value.coerceAtLeast(0L) / 1_000
     val hours = totalSeconds / 3_600
     val minutes = (totalSeconds % 3_600) / 60
     val seconds = totalSeconds % 60
-    return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
+    return if (hours > 0) {
+      "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+      "%d:%02d".format(minutes, seconds)
+    }
   }
   return if (durationMs > 0L) "${format(positionMs)} / ${format(durationMs)}" else format(positionMs)
 }
