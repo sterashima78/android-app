@@ -21,7 +21,7 @@ Library は SMB credential / server settings と Web metadata extractor を、RS
 - Video catalog item と source type
 - Web page URL identity
 - Web video extractor rule
-- Web metadata / thumbnail cache
+- Web metadata projection / thumbnail URL
 - playback position / completed state
 - SMB 動画の catalog projection
 - Media3 video playback UI
@@ -66,9 +66,9 @@ custom thumbnail / title extraction が失敗した場合は static metadata を
 
 ### stream URL は transient resolution とする
 
-再生時に playback extractor が設定されていれば stream URL を解決し Media3 へ渡す。解決済み URL は process-local cache として扱ってよいが durable source of truth にしない。
+再生時に playback extractor が設定されていれば、その時点で stream URL を解決し Media3 へ渡す。解決済み URL は保存せず、次回再生では再度解決する。
 
-cached stream URL の再生が失敗した場合は 1 回だけ extractor を再実行して再試行し、それでも失敗する場合は Web page を開く fallback を提示する。
+playback extractor が設定されていない場合、抽出に失敗した場合、または有効な stream URL を返さない場合は Web page を開く fallback target とする。
 
 ### SMB credential ownership は移動しない
 
