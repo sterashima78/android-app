@@ -123,4 +123,19 @@ class WebVideoPlaybackCookieProviderTest {
       capture.cookieFor("https://media.example.com/video/master.m3u8"),
     )
   }
+
+  @Test
+  fun `stream URL確定後は一致しないrequest Cookieを破棄する`() {
+    val capture = WebVideoRequestCookieCapture(enabled = true)
+    val streamUrl = "https://media.example.com/video/master.m3u8?session=fixture"
+    val otherUrl = "https://player.example.net/config.json"
+
+    capture.record(streamUrl, mapOf("Cookie" to "stream=value"))
+    capture.record(otherUrl, mapOf("Cookie" to "other=value"))
+
+    capture.retainOnly(streamUrl)
+
+    assertEquals("stream=value", capture.cookieFor(streamUrl))
+    assertNull(capture.cookieFor(otherUrl))
+  }
 }
