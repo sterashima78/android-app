@@ -38,7 +38,7 @@ class DefaultVideoThumbnailResolver(
     }
     thumbnailDirectory.listFiles()
       ?.filter { file -> file.name.startsWith("${item.id}-") && file != target }
-      ?.forEach(File::delete)
+      ?.forEach { file -> file.delete() }
 
     val temporary = File(thumbnailDirectory, ".${target.name}.${System.nanoTime()}.tmp")
     val dataSource = VideoMediaDataSource(byteSourceFactory.open(item.sourceId))
