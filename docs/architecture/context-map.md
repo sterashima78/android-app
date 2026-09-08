@@ -99,7 +99,7 @@ RSS は通常の RSS / Atom discovery に加え、RSS を公開していない W
 
 組み込みの site-specific synthetic feed client は ADR-0184 で廃止済みであり、feed 取得は一致する user-defined rule を優先し、該当 rule がなければ通常の RSS / Atom discovery / fetch へ進む。特定 host を根拠に新規 feed を暗黙に `COMIC` へ分類する処理も持たず、必要な分類は feed / folder の設定で明示する。
 
-動画チャンネル購読は Content の上流 Source Context として独立所有せず、ADR-0241 により Video Context の provider adapter として扱う。subscription / unread / refresh の durable lifecycle は Video が所有する。
+動画チャンネル購読は Content の上流 Source Context として独立所有せず、ADR-0242 により Video Context の provider adapter として扱う。subscription / unread / refresh の durable lifecycle は Video が所有する。
 
 ### Summary
 
@@ -172,7 +172,7 @@ Library は SMB server settings と credential の owner でもある。Video �
 - Media3 foreground playerを利用し、Audioのbackground `MediaSessionService`を共同所有・複製しない。
 - Video再生によってContentのread state、Curationのmembership、Library book stateを書き換えない。
 
-詳細は [video.md](video.md)、ADR-0237、ADR-0241 を参照する。
+詳細は [video.md](video.md)、ADR-0237、ADR-0241、ADR-0242 を参照する。
 
 ### Other application contexts
 
@@ -236,7 +236,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0241 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。application database versionは31で、version 30を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
+ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。application database versionは31で、version 30を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -263,4 +263,5 @@ ADR-0241 により、既存の動画チャンネル購読はVideo-owned provider
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
 - [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
-- [ADR-0241](../adr/0241-video-subscription-providers.md)
+- [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
+- [ADR-0242](../adr/0242-video-subscription-providers.md)
