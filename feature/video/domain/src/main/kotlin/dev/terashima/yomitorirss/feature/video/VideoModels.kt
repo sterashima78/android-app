@@ -71,6 +71,31 @@ fun interface VideoPlaybackCookieProvider {
   fun cookieHeaderFor(url: String): String?
 }
 
+enum class WebVideoSecFetchSite {
+  SAME_ORIGIN,
+  SAME_SITE,
+  CROSS_SITE,
+  NONE,
+  OTHER,
+}
+
+/**
+ * Non-sensitive, transient diagnostics comparing the observed WebView stream request with
+ * the native playback context. Header values, URLs, and Cookie values must never be stored here.
+ */
+data class WebVideoPlaybackDiagnostics(
+  val cookieSharingEnabled: Boolean = false,
+  val cookieInterceptSupported: Boolean = false,
+  val streamRequestObserved: Boolean = false,
+  val streamRequestCookieObserved: Boolean = false,
+  val profileCookieAvailable: Boolean = false,
+  val streamRequestRefererObserved: Boolean = false,
+  val streamRequestRefererHasPathOrQuery: Boolean = false,
+  val streamRequestOriginObserved: Boolean = false,
+  val streamRequestOriginMatchesReferrerOrigin: Boolean? = null,
+  val secFetchSite: WebVideoSecFetchSite? = null,
+)
+
 data class WebVideoExtractionResult(
   val title: String? = null,
   val thumbnailUrl: String? = null,
@@ -78,6 +103,7 @@ data class WebVideoExtractionResult(
   val mimeType: String? = null,
   val referrerUrl: String? = null,
   val cookieProvider: VideoPlaybackCookieProvider? = null,
+  val playbackDiagnostics: WebVideoPlaybackDiagnostics? = null,
 )
 
 sealed interface VideoPlaybackTarget {
@@ -86,6 +112,7 @@ sealed interface VideoPlaybackTarget {
     val mimeType: String? = null,
     val referrerUrl: String? = null,
     val cookieProvider: VideoPlaybackCookieProvider? = null,
+    val playbackDiagnostics: WebVideoPlaybackDiagnostics? = null,
   ) : VideoPlaybackTarget
 
   data class Smb(
