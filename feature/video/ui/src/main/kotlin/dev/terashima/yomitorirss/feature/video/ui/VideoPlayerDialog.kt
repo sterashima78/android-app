@@ -231,7 +231,10 @@ internal fun VideoPlayerDialog(
               object : GestureDetector.SimpleOnGestureListener() {
                 override fun onDown(e: MotionEvent): Boolean = true
 
+                override fun onSingleTapConfirmed(e: MotionEvent): Boolean = playerView.performClick()
+
                 override fun onDoubleTap(e: MotionEvent): Boolean {
+                  playerView.hideController()
                   player.seekTo(
                     videoPlayerDoubleTapSeekPositionMs(
                       currentPositionMs = player.currentPosition,
@@ -245,9 +248,16 @@ internal fun VideoPlayerDialog(
               },
             )
             playerView = object : PlayerView(viewContext) {
-              override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-                gestureDetector.onTouchEvent(event)
-                return super.dispatchTouchEvent(event)
+              override fun onTouchEvent(event: MotionEvent): Boolean = gestureDetector.onTouchEvent(event)
+
+              override fun performClick(): Boolean {
+                super.performClick()
+                if (isControllerFullyVisible) {
+                  hideController()
+                } else {
+                  showController()
+                }
+                return true
               }
             }.apply {
               useController = true
