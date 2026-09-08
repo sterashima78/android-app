@@ -67,5 +67,5 @@ interface VideoProviderRepository {
 
   fun setWatchLater(videoId: String, watchLater: Boolean)
 
-  fun markAllRead()
+  fun markAllRead(providerId: String? = null)
 }
