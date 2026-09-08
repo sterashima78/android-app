@@ -11,6 +11,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
@@ -78,12 +79,19 @@ class AndroidWebVideoExtractorClient(
       setGeolocationEnabled(false)
       mediaPlaybackRequiresUserGesture = true
     }
+    val captureRequestCookies = includePlaybackCookies &&
+      WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)
+    if (captureRequestCookies) {
+      WebSettingsCompat.setCookiesIncludedInShouldInterceptRequest(webView.settings, true)
+    }
     profileCookieManager.setAcceptThirdPartyCookies(webView, false)
+    val requestReferrers = WebVideoRequestReferrerCapture()
+    val requestCookies = WebVideoRequestCookieCapture(enabled = captureRequestCookies)
     val playbackCookieProvider = createPlaybackCookieProvider(
       enabled = includePlaybackCookies,
+      capturedCookieLookup = requestCookies::cookieFor,
       cookieLookup = profileCookieManager::getCookie,
     )
-    val requestReferrers = WebVideoRequestReferrerCapture()
 
     var completed = false
     val stateKey = "__mosaicVideoExtractor_${SystemClock.uptimeMillis()}"
@@ -145,6 +153,7 @@ class AndroidWebVideoExtractorClient(
         request: WebResourceRequest,
       ): WebResourceResponse? {
         requestReferrers.record(request.url.toString(), request.requestHeaders)
+        requestCookies.record(request.url.toString(), request.requestHeaders)
         return null
       }
 
@@ -290,15 +299,53 @@ internal class WebVideoRequestReferrerCapture(
   }
 }
 
+internal class WebVideoRequestCookieCapture(
+  private val enabled: Boolean,
+  private val maxEntries: Int = 64,
+) {
+  private val entries = mutableListOf<Pair<String, String>>()
+
+  init {
+    require(maxEntries > 0)
+  }
+
+  @Synchronized
+  fun record(requestUrl: String, requestHeaders: Map<String, String>) {
+    if (!enabled) return
+    val safeRequestUrl = validPlaybackRequestUrl(requestUrl) ?: return
+    val cookie = requestHeaders.entries
+      .firstOrNull { (name, _) -> name.equals("Cookie", ignoreCase = true) }
+      ?.value
+      ?.takeIf(String::isNotBlank)
+      ?: return
+    entries.removeAll { (url, _) -> samePlaybackRequestUrl(url, safeRequestUrl) }
+    entries += safeRequestUrl to cookie
+    while (entries.size > maxEntries) entries.removeAt(0)
+  }
+
+  @Synchronized
+  fun cookieFor(requestUrl: String): String? {
+    if (!enabled) return null
+    val safeRequestUrl = validPlaybackRequestUrl(requestUrl) ?: return null
+    return entries.lastOrNull { (url, _) -> samePlaybackRequestUrl(url, safeRequestUrl) }?.second
+  }
+}
+
 internal fun createPlaybackCookieProvider(
   enabled: Boolean,
+  capturedCookieLookup: (String) -> String? = { null },
   cookieLookup: (String) -> String?,
 ): VideoPlaybackCookieProvider? = if (!enabled) {
   null
 } else {
   VideoPlaybackCookieProvider { url ->
     val safeUrl = validPlaybackCookieUrl(url) ?: return@VideoPlaybackCookieProvider null
-    cookieLookup(safeUrl)?.takeIf(String::isNotBlank)
+    runCatching { capturedCookieLookup(safeUrl) }
+      .getOrNull()
+      ?.takeIf(String::isNotBlank)
+      ?: runCatching { cookieLookup(safeUrl) }
+        .getOrNull()
+        ?.takeIf(String::isNotBlank)
   }
 }
 
