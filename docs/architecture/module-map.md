@@ -42,7 +42,7 @@ root `NavController` は `MainActivity.setContent` の Compose root で app-lock
 
 `AppSection` は drawer の presentation grouping として `:app:presentation` が所有するが、旧 `MainTab` / `AppViewModel.selectedTab` / `AppFeatureContent` による manual routing は使わない。active destination ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、message / overlay / top bar host が route policy を重複して持たない。root destination の ViewModel は destination 内で取得し、active `NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
-`Integrated` はこの原則の代表例であり、RSS / Reddit / YouTube / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。`:app:presentation` は source ViewModel の wiring、Mail route への遷移、Android 外部 URL 起動 callback の接続だけを担当する。詳細は ADR-0188 と ADR-0202 を参照する。
+`Integrated` はこの原則の代表例であり、RSS / Reddit / Video Provider / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。購読動画は Video Domain の read/write contract を利用し、旧 source-specific UI/runtime へ依存しない。`:app:presentation` は source ViewModel / Domain contract の wiring、Mail route への遷移、Android 外部 URL 起動 callback の接続だけを担当する。詳細は ADR-0188、ADR-0202、ADR-0241 を参照する。
 
 `Settings` も同じ ownership 原則を適用する。Models / ChatGPT Debug / AI Execution Settings に加え、Summary Prompt / AI Task Queue / Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 sibling feature は再利用可能 UI と task semantics を所有し続け、`:app:presentation` の `SettingsRoute` は Android Activity Result、backup restore 後の app-shell navigation、feature dependency wiring、platform callback の接続だけを担当する。詳細は ADR-0192 を参照する。
 
@@ -106,7 +106,6 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 | web | domain / data / ui |
 | widget | domain / data / ui |
 | workout | domain / data / ui |
-| youtube | domain / data / ui |
 | x | domain / data / ui |
 <!-- feature-modules:end -->
 
@@ -114,7 +113,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:feature:audio` は保存済み要約の音声再生 capability を所有する。Domain は process-local の再生キューと操作 contract、Data は Android TTS / Media3 / `MediaSessionService`、UI は再生コントロールを所有する。Content / Curation / Summary の durable state は所有せず、Summary の公開 read/request contract だけを利用する。詳細は ADR-0235 を参照する。
 
-`:feature:video` は SMB / Web / 将来の service adapter 由来動画を同じ catalog に投影し、Web extractor rule、再生位置、視聴済み状態と foreground video playback UI を所有する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 を参照する。
+`:feature:video` は SMB / Web / 購読型 provider 由来動画を同じ catalog に投影し、Web extractor rule、provider設定・subscription・provider itemの未読/あとで見る状態・refresh lifecycle、再生位置、視聴済み状態、Video保存状態と foreground video playback UI を所有する。Web URL の単発登録は購読型 provider と分離する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 と ADR-0241 を参照する。
 
 Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
 
@@ -198,26 +197,3 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
 - [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
 - [ADR-0155](../adr/0155-application-scope-http-transport.md)
-- [ADR-0156](../adr/0156-active-tab-message-capability-policy.md)
-- [ADR-0157](../adr/0157-mosaic-external-and-compatibility-identifiers.md)
-- [ADR-0158](../adr/0158-bounded-book-page-geometry-cache.md)
-- [ADR-0159](../adr/0159-isolate-smb-vision-inference-process.md)
-- [ADR-0165](../adr/0165-provider-neutral-text-inference-contract.md)
-- [ADR-0166](../adr/0166-lan-web-and-route-composition-responsibility-split.md)
-- [ADR-0167](../adr/0167-gradle-version-catalog-baseline.md)
-- [ADR-0168](../adr/0168-chatgpt-codex-cloud-debug-adapter.md)
-- [ADR-0171](../adr/0171-summary-local-chatgpt-routing-and-web-fetch.md)
-- [ADR-0172](../adr/0172-separate-ai-provider-routing-and-runtime-controls.md)
-- [ADR-0175](../adr/0175-knowledge-local-chatgpt-routing.md)
-- [ADR-0188](../adr/0188-integrated-feature-owns-cross-feature-presentation.md)
-- [ADR-0192](../adr/0192-settings-feature-owns-cross-feature-presentation.md)
-- [ADR-0193](../adr/0193-within-module-responsibility-and-app-package-structure.md)
-- [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
-- [ADR-0200](../adr/0200-app-composition-module-boundary.md)
-- [ADR-0202](../adr/0202-navigation-compose-root-routing.md)
-- [ADR-0203](../adr/0203-feature-owned-provider-policy-adapters.md)
-- [ADR-0204](../adr/0204-app-composition-internal-package-ownership.md)
-- [ADR-0205](../adr/0205-app-presentation-module-boundary.md)
-- [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
-- [ADR-0235](../adr/0235-summary-audio-playback.md)
-- [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
