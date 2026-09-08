@@ -1,13 +1,17 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,6 +44,7 @@ fun VideoFeatureRoute(
   var resolving by remember { mutableStateOf(false) }
   var smbSettingsVisible by remember { mutableStateOf(false) }
   var providerSettingsVisible by remember { mutableStateOf(false) }
+  var providerInboxVisible by remember { mutableStateOf(false) }
 
   fun play(item: VideoItem) {
     if (resolving) return
@@ -62,47 +67,65 @@ fun VideoFeatureRoute(
     }
   }
 
-  Box(modifier.fillMaxSize()) {
-    VideoScreen(
-      state = state,
-      onPlay = ::play,
-      onAddWeb = viewModel::addWeb,
-      onRefreshSmb = { smbSettingsVisible = true },
-      onRemove = viewModel::remove,
-      onSetCompleted = viewModel::setCompleted,
-      onSaveVideo = viewModel::saveVideo,
-      onRemoveSavedVideo = viewModel::removeSavedVideo,
-      onSaveFolder = viewModel::saveFolder,
-      onDeleteFolder = viewModel::deleteFolder,
-      onSaveExtractorRule = viewModel::saveExtractorRule,
-      onDeleteExtractorRule = viewModel::deleteExtractorRule,
-      onDismissMessage = viewModel::dismissMessage,
-      modifier = Modifier.fillMaxSize(),
-    )
-    Button(
-      onClick = { providerSettingsVisible = true },
-      enabled = !state.busy,
+  Column(modifier.fillMaxSize()) {
+    Row(
       modifier = Modifier
-        .align(Alignment.TopEnd)
-        .padding(12.dp),
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp),
+      horizontalArrangement = Arrangement.End,
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text("購読設定")
-    }
-    if (resolving) {
-      CircularProgressIndicator(Modifier.align(Alignment.Center))
-    }
-    state.busyMessage?.let { busyMessage ->
-      Card(
-        modifier = Modifier
-          .align(Alignment.TopCenter)
-          .padding(16.dp),
+      TextButton(
+        onClick = { providerInboxVisible = true },
+        enabled = !state.loading && !state.busy,
       ) {
-        Row(
-          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-          verticalAlignment = Alignment.CenterVertically,
+        Text("未読 ${state.unreadProviderVideos.size}")
+      }
+      TextButton(
+        onClick = { providerSettingsVisible = true },
+        enabled = !state.loading && !state.busy,
+      ) {
+        Text("購読設定")
+      }
+    }
+
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .weight(1f),
+    ) {
+      VideoScreen(
+        state = state,
+        onPlay = ::play,
+        onAddWeb = viewModel::addWeb,
+        onRefreshSmb = { smbSettingsVisible = true },
+        onRemove = viewModel::remove,
+        onSetCompleted = viewModel::setCompleted,
+        onSaveVideo = viewModel::saveVideo,
+        onRemoveSavedVideo = viewModel::removeSavedVideo,
+        onSaveFolder = viewModel::saveFolder,
+        onDeleteFolder = viewModel::deleteFolder,
+        onSaveExtractorRule = viewModel::saveExtractorRule,
+        onDeleteExtractorRule = viewModel::deleteExtractorRule,
+        onDismissMessage = viewModel::dismissMessage,
+        modifier = Modifier.fillMaxSize(),
+      )
+      if (resolving) {
+        CircularProgressIndicator(Modifier.align(Alignment.Center))
+      }
+      state.busyMessage?.let { busyMessage ->
+        Card(
+          modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(16.dp),
         ) {
-          CircularProgressIndicator(Modifier.padding(end = 12.dp), strokeWidth = 2.dp)
-          Text(busyMessage)
+          Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            CircularProgressIndicator(Modifier.padding(end = 12.dp), strokeWidth = 2.dp)
+            Text(busyMessage)
+          }
         }
       }
     }
@@ -128,6 +151,20 @@ fun VideoFeatureRoute(
       onRefresh = viewModel::refreshProviders,
       onMarkRead = viewModel::markProviderRead,
       onDismiss = { providerSettingsVisible = false },
+    )
+  }
+
+  if (providerInboxVisible) {
+    VideoProviderInboxDialog(
+      state = state,
+      onPlay = { item ->
+        providerInboxVisible = false
+        play(item.video)
+      },
+      onMarkRead = viewModel::markProviderRead,
+      onSetWatchLater = viewModel::setProviderWatchLater,
+      onMarkAllRead = viewModel::markAllProviderRead,
+      onDismiss = { providerInboxVisible = false },
     )
   }
 
