@@ -37,31 +37,32 @@ fun isVideoSmbPathWithinRoot(path: String, rootPath: String): Boolean {
 fun VideoItem.smbBrowserPath(sources: List<VideoSmbSource>): VideoSmbBrowserPath? {
   if (source != VideoSource.SMB) return null
   val identity = parseVideoSmbSourceId(sourceId) ?: return null
-  val source = sources
-    .asSequence()
-    .filter { it.serverId == identity.serverId }
-    .filter { identity.share == null || it.share.equals(identity.share, ignoreCase = true) }
-    .filter { isVideoSmbPathWithinRoot(identity.path, it.rootPath) }
-    .maxByOrNull { videoSmbPathSegments(it.rootPath).size }
-    ?: return null
+  return runCatching {
+    val source = sources
+      .asSequence()
+      .filter { it.serverId == identity.serverId }
+      .filter { identity.share == null || it.share.equals(identity.share, ignoreCase = true) }
+      .filter { isVideoSmbPathWithinRoot(identity.path, it.rootPath) }
+      .maxByOrNull { videoSmbPathSegments(it.rootPath).size }
+      ?: return null
 
-  val pathSegments = videoSmbPathSegments(identity.path)
-  val rootSegments = videoSmbPathSegments(source.rootPath)
-  val relative = pathSegments.drop(rootSegments.size)
-  if (relative.isEmpty()) return null
-  return VideoSmbBrowserPath(
-    sourceId = source.id,
-    rootName = rootSegments.lastOrNull() ?: source.share,
-    directories = relative.dropLast(1),
-  )
+    val pathSegments = videoSmbPathSegments(identity.path)
+    val rootSegments = videoSmbPathSegments(source.rootPath)
+    val relative = pathSegments.drop(rootSegments.size)
+    if (relative.isEmpty()) return null
+    VideoSmbBrowserPath(
+      sourceId = source.id,
+      rootName = rootSegments.lastOrNull() ?: source.share,
+      directories = relative.dropLast(1),
+    )
+  }.getOrNull()
 }
 
 private fun videoSmbPathSegments(path: String): List<String> = path
   .replace('/', '\\')
   .split('\\')
   .filter { it.isNotBlank() && it != "." }
-  .takeUnless { ".." in it }
-  .orEmpty()
+  .also { require(".." !in it) { "SMB動画のパスに .. は使用できません" } }
 
 private fun queryParameter(rawQuery: String?, name: String): String? = rawQuery
   ?.split('&')
