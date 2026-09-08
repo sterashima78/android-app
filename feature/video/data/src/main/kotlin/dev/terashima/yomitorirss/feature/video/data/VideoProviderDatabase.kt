@@ -38,19 +38,18 @@ internal class VideoProviderDatabase(
       updatedAtEpochMillis = now,
     )
     database.write {
-      insertWithOnConflict(
-        "video_providers",
-        null,
-        ContentValues().apply {
-          put("id", saved.id)
-          put("provider_type", saved.type.name)
-          put("name", saved.name)
-          put("enabled", if (saved.enabled) 1 else 0)
-          put("created_at", saved.createdAtEpochMillis)
-          put("updated_at", saved.updatedAtEpochMillis)
-        },
-        SQLiteDatabase.CONFLICT_REPLACE,
-      )
+      val values = ContentValues().apply {
+        put("provider_type", saved.type.name)
+        put("name", saved.name)
+        put("enabled", if (saved.enabled) 1 else 0)
+        put("created_at", saved.createdAtEpochMillis)
+        put("updated_at", saved.updatedAtEpochMillis)
+      }
+      val updated = update("video_providers", values, "id = ?", arrayOf(saved.id))
+      if (updated == 0) {
+        values.put("id", saved.id)
+        insertOrThrow("video_providers", null, values)
+      }
     }
     return saved
   }
@@ -96,20 +95,25 @@ internal class VideoProviderDatabase(
         createdAtEpochMillis = createdAt,
         updatedAtEpochMillis = now,
       )
-      insertWithOnConflict(
+      val subscriptionValues = ContentValues().apply {
+        put("provider_id", subscription.providerId)
+        put("source_id", subscription.sourceId)
+        put("title", subscription.title)
+        put("source_url", subscription.sourceUrl)
+        put("created_at", subscription.createdAtEpochMillis)
+        put("updated_at", subscription.updatedAtEpochMillis)
+      }
+      val subscriptionUpdated = update(
         "video_subscriptions",
-        null,
-        ContentValues().apply {
-          put("id", subscription.id)
-          put("provider_id", subscription.providerId)
-          put("source_id", subscription.sourceId)
-          put("title", subscription.title)
-          put("source_url", subscription.sourceUrl)
-          put("created_at", subscription.createdAtEpochMillis)
-          put("updated_at", subscription.updatedAtEpochMillis)
-        },
-        SQLiteDatabase.CONFLICT_REPLACE,
+        subscriptionValues,
+        "id = ?",
+        arrayOf(subscription.id),
       )
+      if (subscriptionUpdated == 0) {
+        subscriptionValues.put("id", subscription.id)
+        insertOrThrow("video_subscriptions", null, subscriptionValues)
+      }
+
       var added = 0
       feed.videos.forEach { incoming ->
         val videoId = providerVideoId(provider.id, incoming.id)
@@ -169,12 +173,7 @@ internal class VideoProviderDatabase(
     database.transaction {
       videoIds("subscription_id = ?", arrayOf(subscriptionId)).forEach { videoId ->
         if (hasRetainedVideoState(videoId)) {
-          update(
-            "video_provider_items",
-            ContentValues().apply { putNull("subscription_id") },
-            "video_id = ?",
-            arrayOf(videoId),
-          )
+          delete("video_provider_items", "video_id = ?", arrayOf(videoId))
         } else {
           delete("video_items", "id = ?", arrayOf(videoId))
         }
