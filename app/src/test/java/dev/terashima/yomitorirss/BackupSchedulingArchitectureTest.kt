@@ -14,7 +14,8 @@ class BackupSchedulingArchitectureTest {
       "feature/rss/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/FeedViewModel.kt",
       "feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditViewModel.kt",
       "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkViewModel.kt",
-      "feature/youtube/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/YouTubeViewModel.kt",
+      "feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/VideoViewModel.kt",
+      "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedVideoProviderViewModel.kt",
       "feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeViewModel.kt",
       "feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt",
     )
@@ -62,7 +63,7 @@ class BackupSchedulingArchitectureTest {
       "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/AudibleStructuredSeriesMetadata.kt",
       "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
       "feature/task/data/src/main/kotlin/dev/terashima/yomitorirss/feature/task/data/TaskStore.kt",
-      "feature/youtube/data/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/data/YouTubeDatabase.kt",
+      "feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/VideoProviderDatabase.kt",
     )
     val rawMutation = Regex(
       """database\.writable\s*\.\s*(?:insert\w*|update|delete|replace\w*|execSQL)\s*\(""",

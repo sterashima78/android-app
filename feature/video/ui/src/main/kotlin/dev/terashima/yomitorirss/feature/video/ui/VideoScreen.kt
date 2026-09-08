@@ -462,13 +462,15 @@ private fun VideoCard(
             onSetCompleted(!completed)
           },
         )
-        DropdownMenuItem(
-          text = { Text("一覧から削除") },
-          onClick = {
-            menuExpanded = false
-            onRemove()
-          },
-        )
+        if (item.source != VideoSource.SERVICE) {
+          DropdownMenuItem(
+            text = { Text("一覧から削除") },
+            onClick = {
+              menuExpanded = false
+              onRemove()
+            },
+          )
+        }
       }
     }
     Spacer(Modifier.height(6.dp))

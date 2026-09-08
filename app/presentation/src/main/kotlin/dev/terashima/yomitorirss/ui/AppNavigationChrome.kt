@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
@@ -90,7 +89,6 @@ internal fun AppDrawerContent(
                 AppSection.KNOWLEDGE -> Icons.Default.MenuBook
                 AppSection.ASSETS -> Icons.Default.AccountBalanceWallet
                 AppSection.MAIL -> Icons.Default.Email
-                AppSection.YOUTUBE -> Icons.Default.PlayArrow
                 AppSection.X -> Icons.Default.Public
                 AppSection.TASKS -> Icons.Default.Checklist
                 AppSection.CALENDAR -> Icons.Default.CalendarMonth

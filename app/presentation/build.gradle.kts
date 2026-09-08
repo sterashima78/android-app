@@ -162,8 +162,6 @@ dependencies {
   implementation(project(":feature:widget:ui"))
   implementation(project(":feature:workout:domain"))
   implementation(project(":feature:workout:ui"))
-  implementation(project(":feature:youtube:domain"))
-  implementation(project(":feature:youtube:ui"))
   implementation(project(":feature:x:domain"))
   implementation(project(":feature:x:ui"))
 

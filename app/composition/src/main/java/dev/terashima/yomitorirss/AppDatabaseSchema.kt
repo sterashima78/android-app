@@ -12,10 +12,9 @@ import dev.terashima.yomitorirss.feature.rss.data.rssDatabaseSchema
 import dev.terashima.yomitorirss.feature.summary.data.summaryDatabaseSchema
 import dev.terashima.yomitorirss.feature.task.data.taskDatabaseSchema
 import dev.terashima.yomitorirss.feature.video.data.videoDatabaseSchema
-import dev.terashima.yomitorirss.feature.youtube.data.youtubeDatabaseSchema
 
 val appDatabaseSchema = DatabaseSchema(
-  version = 30,
+  version = 31,
   contributions = listOf(
     rssDatabaseSchema,
     articleDatabaseSchema,
@@ -27,7 +26,6 @@ val appDatabaseSchema = DatabaseSchema(
     assetDatabaseSchema,
     taskDatabaseSchema,
     chatDatabaseSchema,
-    youtubeDatabaseSchema,
     videoDatabaseSchema,
   ),
 )

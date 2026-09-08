@@ -42,8 +42,6 @@ import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
 import dev.terashima.yomitorirss.feature.workout.WORKOUT_TITLE
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
 import dev.terashima.yomitorirss.feature.x.X_TITLE
-import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_ROUTE
-import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_TITLE
 
 internal enum class FeatureMessageSource {
   RSS,
@@ -73,7 +71,6 @@ internal val allAppRoutes: Set<String> = linkedSetOf(
   KNOWLEDGE_ROUTE,
   ASSET_ROUTE,
   MAIL_ROUTE,
-  YOUTUBE_ROUTE,
   X_ROUTE,
   TASKS_ROUTE,
   CALENDAR_ROUTE,
@@ -150,7 +147,6 @@ internal fun String.appSection(): AppSection = when (this) {
   KNOWLEDGE_ROUTE -> AppSection.KNOWLEDGE
   ASSET_ROUTE -> AppSection.ASSETS
   MAIL_ROUTE -> AppSection.MAIL
-  YOUTUBE_ROUTE -> AppSection.YOUTUBE
   X_ROUTE -> AppSection.X
   TASKS_ROUTE -> AppSection.TASKS
   CALENDAR_ROUTE -> AppSection.CALENDAR
@@ -172,7 +168,6 @@ internal fun String.screenTitle(): String = rssDestinationTitle(this)
     KNOWLEDGE_ROUTE -> KNOWLEDGE_TITLE
     ASSET_ROUTE -> ASSET_TITLE
     MAIL_ROUTE -> MAIL_TITLE
-    YOUTUBE_ROUTE -> YOUTUBE_TITLE
     X_ROUTE -> X_TITLE
     TASKS_ROUTE -> TASKS_TITLE
     CALENDAR_ROUTE -> CALENDAR_TITLE
@@ -194,7 +189,6 @@ internal fun AppSection.defaultRoute(): String = when (this) {
   AppSection.KNOWLEDGE -> KNOWLEDGE_ROUTE
   AppSection.ASSETS -> ASSET_ROUTE
   AppSection.MAIL -> MAIL_ROUTE
-  AppSection.YOUTUBE -> YOUTUBE_ROUTE
   AppSection.X -> X_ROUTE
   AppSection.TASKS -> TASKS_ROUTE
   AppSection.CALENDAR -> CALENDAR_ROUTE

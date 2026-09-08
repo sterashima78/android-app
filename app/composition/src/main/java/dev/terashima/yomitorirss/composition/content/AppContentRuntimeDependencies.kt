@@ -35,8 +35,6 @@ import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.data.SummaryContentRetentionProtectionQuery
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.data.DefaultWidgetRepository
-import dev.terashima.yomitorirss.feature.youtube.YouTubeRepository
-import dev.terashima.yomitorirss.feature.youtube.data.DefaultYouTubeRepository
 
 /** Content/Curation ingestion graph kept at application scope. */
 internal class AppContentRuntimeDependencies(
@@ -124,10 +122,6 @@ internal class AppContentRuntimeDependencies(
 
   val redditRepository: RedditRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultRedditRepository(feedRepository)
-  }
-
-  val youtubeRepository: YouTubeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultYouTubeRepository(database, httpClient)
   }
 
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

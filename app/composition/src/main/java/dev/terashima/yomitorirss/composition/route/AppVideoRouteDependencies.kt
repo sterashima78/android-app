@@ -3,6 +3,8 @@ package dev.terashima.yomitorirss.composition.route
 import dev.terashima.yomitorirss.AppContainer
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackResolver
+import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
+import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.ui.VideoViewModel
 
 internal class AppVideoRouteDependencies(
@@ -11,8 +13,11 @@ internal class AppVideoRouteDependencies(
   val dependencies: VideoRouteDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val runtime = container.videoRuntime
     VideoRouteDependencies(
+      repository = runtime.repository,
+      providerRepository = runtime.providerRepository,
       viewModelFactory = VideoViewModel.Factory(
         repository = runtime.repository,
+        providerRepository = runtime.providerRepository,
         smbConnectionProfiles = container.smbConnectionProfileRepository,
         thumbnailResolver = runtime.thumbnailResolver,
       ),
@@ -23,6 +28,8 @@ internal class AppVideoRouteDependencies(
 }
 
 data class VideoRouteDependencies internal constructor(
+  val repository: VideoRepository,
+  val providerRepository: VideoProviderRepository,
   val viewModelFactory: VideoViewModel.Factory,
   val playbackResolver: VideoPlaybackResolver,
   val byteSourceFactory: VideoByteSourceFactory,

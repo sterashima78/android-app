@@ -33,7 +33,6 @@ import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
 import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
-import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_ROUTE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -62,7 +61,6 @@ class AppNavigationSpecTest {
       KNOWLEDGE_ROUTE to "ナレッジ",
       ASSET_ROUTE to "資産",
       MAIL_ROUTE to "メール",
-      YOUTUBE_ROUTE to "YouTube",
       X_ROUTE to "X",
       TASKS_ROUTE to "タスク",
       CALENDAR_ROUTE to "カレンダー",

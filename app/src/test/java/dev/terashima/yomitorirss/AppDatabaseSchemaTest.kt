@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(30, db.version)
+    assertEquals(31, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -94,14 +94,15 @@ class AppDatabaseSchemaTest {
         "tasks",
         "chat_sessions",
         "chat_messages",
-        "channels",
-        "videos",
         "video_items",
         "video_playback_state",
         "video_smb_sources",
         "video_folders",
         "video_saved_items",
         "video_web_extractor_rules",
+        "video_providers",
+        "video_subscriptions",
+        "video_provider_items",
       ),
       tableNames(db),
     )
@@ -195,7 +196,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(30, db.version)
+    assertEquals(31, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -255,10 +256,95 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(30, db.version)
+    assertEquals(31, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
+  }
+
+  @Test
+  fun `version 30 subscription data migrates to Video provider state`() {
+    val previousSchema = DatabaseSchema(
+      version = 30,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v30",
+          createSchema = { db ->
+            db.execSQL(
+              """
+                CREATE TABLE channels(
+                  channel_id TEXT PRIMARY KEY NOT NULL,
+                  title TEXT NOT NULL,
+                  channel_url TEXT NOT NULL,
+                  added_at INTEGER NOT NULL
+                )
+              """.trimIndent(),
+            )
+            db.execSQL(
+              """
+                CREATE TABLE videos(
+                  video_id TEXT PRIMARY KEY NOT NULL,
+                  channel_id TEXT NOT NULL,
+                  title TEXT NOT NULL,
+                  video_url TEXT NOT NULL,
+                  published_at INTEGER NOT NULL,
+                  is_read INTEGER NOT NULL DEFAULT 0,
+                  is_watch_later INTEGER NOT NULL DEFAULT 0
+                )
+              """.trimIndent(),
+            )
+          },
+        ),
+      ),
+    )
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    legacy.writableDatabase.insertOrThrow(
+      "channels",
+      null,
+      ContentValues().apply {
+        put("channel_id", "channel-1")
+        put("title", "Channel")
+        put("channel_url", "https://example.invalid/channel-1")
+        put("added_at", 100L)
+      },
+    )
+    legacy.writableDatabase.insertOrThrow(
+      "videos",
+      null,
+      ContentValues().apply {
+        put("video_id", "video-unread")
+        put("channel_id", "channel-1")
+        put("title", "Unread")
+        put("video_url", "https://example.invalid/video-unread")
+        put("published_at", 200L)
+        put("is_read", 0)
+        put("is_watch_later", 0)
+      },
+    )
+    legacy.writableDatabase.insertOrThrow(
+      "videos",
+      null,
+      ContentValues().apply {
+        put("video_id", "video-read")
+        put("channel_id", "channel-1")
+        put("title", "Read")
+        put("video_url", "https://example.invalid/video-read")
+        put("published_at", 150L)
+        put("is_read", 1)
+        put("is_watch_later", 0)
+      },
+    )
+    legacy.close()
+
+    val db = openDatabase().writableDatabase
+
+    assertEquals(31, db.version)
+    assertEquals(1, countRows(db, "video_providers", "provider_type=?", arrayOf("YOUTUBE")))
+    assertEquals(1, countRows(db, "video_subscriptions", "source_id=?", arrayOf("channel-1")))
+    assertEquals(2, countRows(db, "video_provider_items", "provider_id=?", arrayOf("youtube")))
+    assertEquals(1, countRows(db, "video_provider_items", "is_read=0", emptyArray()))
+    assertEquals(1, countRows(db, "video_provider_items", "is_read=1", emptyArray()))
+    assertEquals(2, countRows(db, "video_items", "source=?", arrayOf("SERVICE")))
   }
 
   @Test

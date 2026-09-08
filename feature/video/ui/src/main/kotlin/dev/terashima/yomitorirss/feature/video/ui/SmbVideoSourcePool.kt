@@ -100,6 +100,7 @@ internal class SmbVideoSourcePool(
   )
 }
 
+/** Aggregates small Media3 reads into one SMB read-ahead window. */
 private class ReadAheadVideoByteSource(
   private val delegate: VideoByteSource,
 ) : VideoByteSource {

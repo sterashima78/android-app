@@ -2,7 +2,9 @@ package dev.terashima.yomitorirss.feature.integrated.ui
 
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailThread
-import dev.terashima.yomitorirss.feature.youtube.YouTubeVideo
+import dev.terashima.yomitorirss.feature.video.VideoItem
+import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
+import dev.terashima.yomitorirss.feature.video.VideoSource
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -14,27 +16,27 @@ class IntegratedTargetDispatcherTest {
     val dispatcher = dispatcher(calls)
     val rss = article("rss")
     val reddit = article("reddit")
-    val youtube = youtube("youtube")
+    val video = providerVideo("video")
     val mail = mail("mail")
 
     dispatcher.markProcessed(IntegratedTarget.Rss(rss))
     dispatcher.markProcessed(IntegratedTarget.Reddit(reddit))
-    dispatcher.markProcessed(IntegratedTarget.YouTube(youtube))
+    dispatcher.markProcessed(IntegratedTarget.ProviderVideo(video))
     dispatcher.markProcessed(IntegratedTarget.Mail(mail))
     dispatcher.defer(IntegratedTarget.Rss(rss))
     dispatcher.defer(IntegratedTarget.Reddit(reddit))
-    dispatcher.defer(IntegratedTarget.YouTube(youtube))
+    dispatcher.defer(IntegratedTarget.ProviderVideo(video))
     dispatcher.defer(IntegratedTarget.Mail(mail))
 
     assertEquals(
       listOf(
         "rss:read:rss",
         "reddit:read:reddit",
-        "youtube:read:youtube",
+        "video:read:video",
         "mail:read:mail",
         "rss:later:rss",
         "reddit:later:reddit",
-        "youtube:later:youtube",
+        "video:later:video",
         "mail:later:mail",
       ),
       calls,
@@ -45,17 +47,17 @@ class IntegratedTargetDispatcherTest {
   fun `source固有でない操作は何もせずopenだけ正しいcallbackへ委譲する`() {
     val calls = mutableListOf<String>()
     val dispatcher = dispatcher(calls)
-    val youtube = youtube("youtube")
+    val video = providerVideo("video")
     val mail = mail("mail")
 
-    dispatcher.unsave(IntegratedTarget.YouTube(youtube))
-    dispatcher.toggleMailStarred(IntegratedTarget.YouTube(youtube))
-    dispatcher.archive(IntegratedTarget.YouTube(youtube))
-    dispatcher.open(IntegratedTarget.YouTube(youtube))
+    dispatcher.unsave(IntegratedTarget.ProviderVideo(video))
+    dispatcher.toggleMailStarred(IntegratedTarget.ProviderVideo(video))
+    dispatcher.archive(IntegratedTarget.ProviderVideo(video))
+    dispatcher.open(IntegratedTarget.ProviderVideo(video))
     dispatcher.open(IntegratedTarget.Mail(mail))
     dispatcher.open(null)
 
-    assertEquals(listOf("open:youtube:youtube", "open:mail:mail"), calls)
+    assertEquals(listOf("open:video:video", "open:mail:mail"), calls)
   }
 
   private fun dispatcher(calls: MutableList<String>) = IntegratedTargetDispatcher(
@@ -75,11 +77,11 @@ class IntegratedTargetDispatcherTest {
       unsave = { calls += "reddit:unsave:${it.id}" },
       removeReadLater = { calls += "reddit:remove-later:${it.id}" },
     ),
-    youtube = IntegratedYouTubeTargetActions(
-      markRead = { calls += "youtube:read:${it.id}" },
-      markUnread = { calls += "youtube:unread:${it.id}" },
-      saveAndRead = { calls += "youtube:save:${it.id}" },
-      toggleWatchLater = { calls += "youtube:later:${it.id}" },
+    providerVideo = IntegratedProviderVideoTargetActions(
+      markRead = { calls += "video:read:${it.providerItemId}" },
+      markUnread = { calls += "video:unread:${it.providerItemId}" },
+      saveAndRead = { calls += "video:save:${it.providerItemId}" },
+      toggleWatchLater = { calls += "video:later:${it.providerItemId}" },
     ),
     mail = IntegratedMailTargetActions(
       toggleRead = { calls += "mail:read:${it.id}" },
@@ -89,7 +91,7 @@ class IntegratedTargetDispatcherTest {
     ),
     onOpenArticle = { calls += "open:article:${it.id}" },
     onOpenMail = { calls += "open:mail:${it.id}" },
-    onOpenYouTube = { calls += "open:youtube:${it.id}" },
+    onOpenProviderVideo = { calls += "open:video:${it.providerItemId}" },
   )
 
   private fun article(id: String) = Article(
@@ -106,12 +108,19 @@ class IntegratedTargetDispatcherTest {
     sourceFeedUrl = "https://example.com/feed.xml",
   )
 
-  private fun youtube(id: String) = YouTubeVideo(
-    id = id,
-    channelId = "channel",
-    channelTitle = "Channel",
-    title = id,
-    url = "https://example.com/$id",
+  private fun providerVideo(id: String) = VideoProviderVideo(
+    video = VideoItem(
+      id = "provider:youtube:$id",
+      source = VideoSource.SERVICE,
+      sourceId = "youtube:$id",
+      title = id,
+      pageUrl = "https://example.com/$id",
+      updatedAtEpochMillis = Instant.parse("2026-08-26T00:00:00Z").toEpochMilli(),
+    ),
+    providerId = "youtube",
+    providerItemId = id,
+    subscriptionId = "youtube:channel",
+    subscriptionTitle = "Channel",
     publishedAtEpochMillis = Instant.parse("2026-08-26T00:00:00Z").toEpochMilli(),
     isRead = false,
     isWatchLater = false,

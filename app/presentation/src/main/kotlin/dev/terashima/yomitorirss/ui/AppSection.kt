@@ -10,7 +10,6 @@ enum class AppSection(val label: String) {
   KNOWLEDGE("ナレッジ"),
   ASSETS("資産"),
   MAIL("メール"),
-  YOUTUBE("YouTube"),
   X("X"),
   TASKS("タスク"),
   CALENDAR("カレンダー"),

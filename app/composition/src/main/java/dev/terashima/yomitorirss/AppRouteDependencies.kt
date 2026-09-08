@@ -26,7 +26,6 @@ class AppRouteDependencies(
   val chatViewModelFactory get() = content.chatViewModelFactory
   val knowledgeViewModelFactory get() = content.knowledgeViewModelFactory
   val library get() = content.library
-  val youtubeViewModelFactory get() = content.youtubeViewModelFactory
   val video get() = videoRoutes.dependencies
 
   val backupViewModelFactory get() = supporting.backupViewModelFactory

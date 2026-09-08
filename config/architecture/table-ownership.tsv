@@ -44,6 +44,7 @@ asset_category_definitions	:feature:asset:data
 tasks	:feature:task:data
 chat_sessions	:feature:chat:data
 chat_messages	:feature:chat:data
+# Retired v30 migration inputs. Keep the former owner until the v30 upgrade baseline and matching allowlist retire.
 channels	:feature:youtube:data
 videos	:feature:youtube:data
 video_items	:feature:video:data
@@ -52,3 +53,6 @@ video_smb_sources	:feature:video:data
 video_folders	:feature:video:data
 video_saved_items	:feature:video:data
 video_web_extractor_rules	:feature:video:data
+video_providers	:feature:video:data
+video_subscriptions	:feature:video:data
+video_provider_items	:feature:video:data

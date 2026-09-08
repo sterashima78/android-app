@@ -7,9 +7,14 @@ import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackState
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
+import dev.terashima.yomitorirss.feature.video.VideoProvider
+import dev.terashima.yomitorirss.feature.video.VideoProviderRefreshResult
+import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
+import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
+import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import dev.terashima.yomitorirss.feature.video.VideoThumbnailResolver
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.CompletableDeferred
@@ -33,7 +38,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository()
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      val viewModel = videoViewModel(repository)
       advanceUntilIdle()
 
       viewModel.addWeb("https://example.invalid/video")
@@ -58,7 +63,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository(addFailure = IllegalStateException("追加に失敗しました"))
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      val viewModel = videoViewModel(repository)
       advanceUntilIdle()
 
       viewModel.addWeb("https://example.invalid/video")
@@ -80,7 +85,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository(smbFailure = IllegalStateException())
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      val viewModel = videoViewModel(repository)
       advanceUntilIdle()
 
       viewModel.refreshSmb()
@@ -103,7 +108,7 @@ class VideoViewModelTest {
       val repository = FakeVideoRepository(
         smbFailure = IllegalStateException(null, IllegalArgumentException("接続処理に失敗しました")),
       )
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      val viewModel = videoViewModel(repository)
       advanceUntilIdle()
 
       viewModel.refreshSmb()
@@ -137,7 +142,7 @@ class VideoViewModelTest {
           return "file:///cache/${item.id}.jpg"
         }
       }
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository, resolver)
+      val viewModel = videoViewModel(repository, resolver)
       advanceUntilIdle()
 
       viewModel.ensureThumbnail(viewModel.state.value.items.single())
@@ -169,7 +174,7 @@ class VideoViewModelTest {
       val resolver = object : VideoThumbnailResolver {
         override suspend fun resolve(item: VideoItem): String? = error("フレームを取得できません")
       }
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository, resolver)
+      val viewModel = videoViewModel(repository, resolver)
       advanceUntilIdle()
 
       viewModel.ensureThumbnail(viewModel.state.value.items.single())
@@ -205,7 +210,7 @@ class VideoViewModelTest {
           return "file:///cache/${item.id}-${item.sizeBytes}.jpg"
         }
       }
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository, resolver)
+      val viewModel = videoViewModel(repository, resolver)
       advanceUntilIdle()
 
       viewModel.ensureThumbnail(viewModel.state.value.items.single())
@@ -229,7 +234,7 @@ class VideoViewModelTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
       val repository = FakeVideoRepository()
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      val viewModel = videoViewModel(repository)
       advanceUntilIdle()
       val item = VideoItem(
         id = "video-1",
@@ -275,7 +280,7 @@ class VideoViewModelTest {
       val repository = FakeVideoRepository().apply {
         storedFolders += VideoFolder(id = "folder-1", name = "あとで見る")
       }
-      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      val viewModel = videoViewModel(repository)
       advanceUntilIdle()
 
       assertEquals(listOf("folder-1"), viewModel.state.value.folders.map(VideoFolder::id))
@@ -283,6 +288,16 @@ class VideoViewModelTest {
       Dispatchers.resetMain()
     }
   }
+
+  private fun videoViewModel(
+    repository: VideoRepository,
+    thumbnailResolver: VideoThumbnailResolver = FakeVideoThumbnailResolver,
+  ): VideoViewModel = VideoViewModel(
+    repository = repository,
+    providerRepository = FakeVideoProviderRepository,
+    smbConnectionProfiles = FakeSmbConnectionProfileRepository,
+    thumbnailResolver = thumbnailResolver,
+  )
 
   private class FakeVideoRepository(
     private val addFailure: Throwable? = null,
@@ -336,6 +351,29 @@ class VideoViewModelTest {
     override fun saveExtractorRule(rule: WebVideoExtractorRule): WebVideoExtractorRule = rule
     override fun deleteExtractorRule(id: String) = Unit
   }
+}
+
+private object FakeVideoThumbnailResolver : VideoThumbnailResolver {
+  override suspend fun resolve(item: VideoItem): String? = item.thumbnailUrl
+}
+
+private object FakeVideoProviderRepository : VideoProviderRepository {
+  override fun providers(): List<VideoProvider> = emptyList()
+  override fun saveProvider(provider: VideoProvider): VideoProvider = provider
+  override fun deleteProvider(id: String) = Unit
+  override fun subscriptions(providerId: String?): List<VideoSubscription> = emptyList()
+  override suspend fun subscribe(providerId: String, sourceUrl: String): VideoSubscription = error("unused")
+  override suspend fun unsubscribe(subscriptionId: String) = Unit
+  override suspend fun refreshProviders(providerId: String?): VideoProviderRefreshResult =
+    VideoProviderRefreshResult(0, 0, 0)
+
+  override fun unreadVideos(): List<VideoProviderVideo> = emptyList()
+  override fun watchLaterVideos(): List<VideoProviderVideo> = emptyList()
+  override fun historyVideos(limit: Int): List<VideoProviderVideo> = emptyList()
+  override fun markRead(videoId: String) = Unit
+  override fun markUnread(videoId: String) = Unit
+  override fun setWatchLater(videoId: String, watchLater: Boolean) = Unit
+  override fun markAllRead(providerId: String?) = Unit
 }
 
 private object FakeSmbConnectionProfileRepository : SmbConnectionProfileRepository {

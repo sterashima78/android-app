@@ -50,7 +50,7 @@ internal class IntegratedRefreshWorker(
       container.refreshFeedsUseCase(feeds) { _, _ -> }
     }
     runIsolatedRefresh { container.redditRepository.refreshAll { _, _ -> } }
-    runIsolatedRefresh { container.youtubeRepository.refresh() }
+    runIsolatedRefresh { container.videoProviderRepository.refreshProviders() }
     runIsolatedRefresh { container.mailRepository.sync(accountId = null) }
   }
 
@@ -65,8 +65,8 @@ internal class IntegratedRefreshWorker(
   private suspend fun unreadKeys(): Set<String> = buildSet {
     container.articleRepository.listUnreadArticles()
       .forEach { article -> add("article:${article.id}") }
-    container.youtubeRepository.listUnreadVideos()
-      .forEach { video -> add("youtube:${video.id}") }
+    container.videoProviderRepository.unreadVideos()
+      .forEach { video -> add("video-provider:${video.providerId}:${video.providerItemId}") }
     container.mailRepository.getThreads(null, Mailbox.UNREAD, "")
       .forEach { thread -> add("mail:${thread.accountId}:${thread.id}") }
   }
@@ -134,7 +134,7 @@ private class IntegratedRefreshNotifier(
         "統合ビューの新着",
         NotificationManager.IMPORTANCE_DEFAULT,
       ).apply {
-        description = "RSS・Reddit・YouTube・メールの新しい未読アイテム"
+        description = "RSS・Reddit・購読動画・メールの新しい未読アイテム"
         setShowBadge(true)
       },
     )
