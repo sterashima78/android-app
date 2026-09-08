@@ -17,6 +17,8 @@ android {
 }
 
 dependencies {
+  implementation(project(":core:database"))
+  implementation(project(":core:network"))
   implementation(project(":feature:youtube:domain"))
   implementation(project(":feature:video:domain"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
