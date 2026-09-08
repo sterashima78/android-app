@@ -4,6 +4,7 @@
 - Date: 2026-09-07
 - Refines: [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0180](0180-rss-custom-web-scraping-rules.md), [ADR-0235](0235-summary-audio-playback.md)
 - Amends: [ADR-0138](0138-database-v27-compatibility-baseline.md)
+- Amended by: [ADR-0241](0241-video-web-stream-cookie-opt-in.md)
 
 ## Context
 
@@ -91,7 +92,7 @@ Video は item ごとに再生位置、duration、最終再生日時、completed
 
 Video-owned `video_items`、`video_playback_state`、`video_web_extractor_rules` を application schema contribution に追加し、database version を 28 とする。
 
-version 27 の現在インストールから version 28 へのアプリ更新を保証し、upgrade 時に全 feature schema contribution を再適用することで Video table を追加する。version 26 以下からの直接更新を再びサポートしない。
+version 27 の現在インストールから version 28 への更新を保証し、upgrade 時に全 feature schema contribution を再適用することで Video table を追加する。version 26 以下からの直接更新を再びサポートしない。
 
 backup restore は ADR-0138 の exact-version policy を維持する。version 28 アプリは version 28 snapshot を復元対象とし、version 27 snapshot を直接復元しない。更新後に生成した通常の自動・手動backupを新しいrestore baselineとする。
 
