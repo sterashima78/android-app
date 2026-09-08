@@ -56,6 +56,8 @@ import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackDiagnostics
+import dev.terashima.yomitorirss.feature.video.WebVideoSecFetchSite
 import java.net.URI
 import kotlinx.coroutines.delay
 
@@ -292,6 +294,15 @@ internal fun VideoPlayerDialog(
                   style = MaterialTheme.typography.bodySmall,
                 )
               }
+              if (status.httpStatusCode == 403 && target is VideoPlaybackTarget.Stream) {
+                webVideoPlaybackDiagnosticLines(target.playbackDiagnostics).forEach { line ->
+                  Text(
+                    text = line,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                  )
+                }
+              }
               if (status.canRetry) {
                 Button(onClick = ::retryPlayback) {
                   Text("再試行")
@@ -374,6 +385,45 @@ internal fun videoPlayerStatusUi(
       canRetry = false,
     )
   }
+}
+
+internal fun webVideoPlaybackDiagnosticLines(diagnostics: WebVideoPlaybackDiagnostics?): List<String> {
+  if (diagnostics == null) return listOf("Web診断: 情報なし")
+
+  val cookieSource = when {
+    !diagnostics.cookieSharingEnabled -> "共有OFF"
+    diagnostics.streamRequestCookieObserved -> "実request"
+    diagnostics.profileCookieAvailable -> "profile fallback"
+    else -> "なし"
+  }
+  val referrer = when {
+    !diagnostics.streamRequestRefererObserved -> "なし"
+    diagnostics.streamRequestRefererHasPathOrQuery -> "あり（path/queryあり）"
+    else -> "あり（originのみ）"
+  }
+  val origin = when {
+    !diagnostics.streamRequestOriginObserved -> "なし"
+    diagnostics.streamRequestOriginMatchesReferrerOrigin == true -> "あり（Referer originと一致）"
+    diagnostics.streamRequestOriginMatchesReferrerOrigin == false -> "あり（Referer originと不一致）"
+    else -> "あり（比較不可）"
+  }
+  val secFetchSite = when (diagnostics.secFetchSite) {
+    WebVideoSecFetchSite.SAME_ORIGIN -> "same-origin"
+    WebVideoSecFetchSite.SAME_SITE -> "same-site"
+    WebVideoSecFetchSite.CROSS_SITE -> "cross-site"
+    WebVideoSecFetchSite.NONE -> "none"
+    WebVideoSecFetchSite.OTHER -> "other"
+    null -> "なし"
+  }
+
+  return listOf(
+    "WebView stream request: ${if (diagnostics.streamRequestObserved) "観測" else "未観測"}",
+    "Cookie intercept: ${if (diagnostics.cookieInterceptSupported) "対応" else "非対応"}",
+    "Cookie: $cookieSource",
+    "Referer: $referrer",
+    "Origin: $origin",
+    "Sec-Fetch-Site: $secFetchSite",
+  )
 }
 
 internal fun findHttpStatusCode(error: Throwable?): Int? {

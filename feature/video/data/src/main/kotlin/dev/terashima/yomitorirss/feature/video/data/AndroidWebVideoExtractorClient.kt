@@ -79,14 +79,15 @@ class AndroidWebVideoExtractorClient(
       setGeolocationEnabled(false)
       mediaPlaybackRequiresUserGesture = true
     }
-    val captureRequestCookies = includePlaybackCookies &&
-      WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)
+    val cookieInterceptSupported = WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)
+    val captureRequestCookies = includePlaybackCookies && cookieInterceptSupported
     if (captureRequestCookies) {
       WebSettingsCompat.setCookiesIncludedInShouldInterceptRequest(webView.settings, true)
     }
     profileCookieManager.setAcceptThirdPartyCookies(webView, false)
     val requestReferrers = WebVideoRequestReferrerCapture()
     val requestCookies = WebVideoRequestCookieCapture(enabled = captureRequestCookies)
+    val requestDiagnostics = WebVideoRequestDiagnosticsCapture()
 
     var completed = false
     val stateKey = "__mosaicVideoExtractor_${SystemClock.uptimeMillis()}"
@@ -136,12 +137,32 @@ class AndroidWebVideoExtractorClient(
                     cookieLookup = profileCookieManager::getCookie,
                   )
                 }
+                val playbackDiagnostics = streamUrl?.let { resolvedStreamUrl ->
+                  val observed = requestDiagnostics.diagnosticsFor(resolvedStreamUrl)
+                  val capturedCookieObserved = requestCookies.cookieFor(resolvedStreamUrl) != null
+                  val profileCookieAvailable = if (includePlaybackCookies) {
+                    runCatching {
+                      !profileCookieManager.getCookie(resolvedStreamUrl).isNullOrBlank()
+                    }.getOrDefault(false)
+                  } else {
+                    false
+                  }
+                  webVideoPlaybackDiagnostics(
+                    cookieSharingEnabled = includePlaybackCookies,
+                    cookieInterceptSupported = cookieInterceptSupported,
+                    observed = observed,
+                    streamRequestCookieObserved = capturedCookieObserved,
+                    profileCookieAvailable = profileCookieAvailable,
+                  )
+                }
                 if (streamUrl == null) requestCookies.clear()
+                requestDiagnostics.clear()
                 finish(
                   Result.success(
                     extraction.copy(
                       referrerUrl = streamUrl?.let(requestReferrers::referrerFor),
                       cookieProvider = playbackCookieProvider,
+                      playbackDiagnostics = playbackDiagnostics,
                     ),
                   ),
                 )
@@ -163,6 +184,7 @@ class AndroidWebVideoExtractorClient(
         view: WebView,
         request: WebResourceRequest,
       ): WebResourceResponse? {
+        requestDiagnostics.record(request.url.toString(), request.requestHeaders)
         requestReferrers.record(request.url.toString(), request.requestHeaders)
         requestCookies.record(request.url.toString(), request.requestHeaders)
         return null
@@ -188,7 +210,14 @@ class AndroidWebVideoExtractorClient(
     }
 
     continuation.invokeOnCancellation {
-      handler.post { if (!completed) { completed = true; requestCookies.clear(); dispose() } }
+      handler.post {
+        if (!completed) {
+          completed = true
+          requestCookies.clear()
+          requestDiagnostics.clear()
+          dispose()
+        }
+      }
     }
     webView.loadUrl(requestedUrl)
   }
