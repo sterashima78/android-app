@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.webkit.WebSettings
@@ -59,6 +61,7 @@ import kotlinx.coroutines.delay
 
 internal const val VIDEO_PLAYER_SLOW_LOADING_MS = 10_000L
 internal const val VIDEO_PLAYER_STALLED_LOADING_MS = 30_000L
+internal const val VIDEO_PLAYER_DOUBLE_TAP_SEEK_MS = 15_000L
 
 internal data class VideoPlayerStatusUi(
   val message: String,
@@ -222,10 +225,36 @@ internal fun VideoPlayerDialog(
       Box(Modifier.fillMaxSize()) {
         AndroidView(
           factory = { viewContext ->
-            PlayerView(viewContext).apply {
+            lateinit var playerView: PlayerView
+            val gestureDetector = GestureDetector(
+              viewContext,
+              object : GestureDetector.SimpleOnGestureListener() {
+                override fun onDown(e: MotionEvent): Boolean = true
+
+                override fun onDoubleTap(e: MotionEvent): Boolean {
+                  player.seekTo(
+                    videoPlayerDoubleTapSeekPositionMs(
+                      currentPositionMs = player.currentPosition,
+                      durationMs = player.duration,
+                      tapX = e.x,
+                      playerWidth = playerView.width.toFloat(),
+                    ),
+                  )
+                  return true
+                }
+              },
+            )
+            playerView = object : PlayerView(viewContext) {
+              override fun onTouchEvent(event: MotionEvent): Boolean {
+                gestureDetector.onTouchEvent(event)
+                return super.onTouchEvent(event)
+              }
+            }.apply {
               useController = true
+              keepScreenOn = true
               this.player = player
             }
+            playerView
           },
           update = { it.player = player },
           modifier = Modifier.fillMaxSize(),
@@ -285,6 +314,23 @@ internal fun VideoPlayerDialog(
       }
     }
   }
+}
+
+internal fun videoPlayerDoubleTapSeekPositionMs(
+  currentPositionMs: Long,
+  durationMs: Long,
+  tapX: Float,
+  playerWidth: Float,
+): Long {
+  val current = currentPositionMs.coerceAtLeast(0L)
+  if (playerWidth <= 0f) return current
+  val deltaMs = if (tapX < playerWidth / 2f) {
+    -VIDEO_PLAYER_DOUBLE_TAP_SEEK_MS
+  } else {
+    VIDEO_PLAYER_DOUBLE_TAP_SEEK_MS
+  }
+  val target = (current + deltaMs).coerceAtLeast(0L)
+  return if (durationMs > 0L) target.coerceAtMost(durationMs) else target
 }
 
 internal fun videoPlayerStatusUi(
