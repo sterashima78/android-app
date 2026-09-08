@@ -68,7 +68,6 @@ class AppContainer(
       dataChanges = dataChanges,
       httpClient = httpClient,
       summaryRepository = aiCoreRuntime.summaryRepository,
-      videoProviderRepository = videoRuntime.providerRepository,
     )
   }
 
@@ -180,7 +179,6 @@ class AppContainer(
   val bookmarkImportRepository get() = contentRuntime.bookmarkImportRepository
   val feedRepository get() = contentRuntime.feedRepository
   val redditRepository get() = contentRuntime.redditRepository
-  val youtubeRepository get() = contentRuntime.youtubeRepository
   val videoProviderRepository get() = videoRuntime.providerRepository
   val feedImportRepository get() = contentRuntime.feedImportRepository
   val refreshFeedsUseCase get() = contentRuntime.refreshFeedsUseCase
