@@ -5,7 +5,6 @@ import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.allowsAutomaticAiEnrichment
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
 import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
-import dev.terashima.yomitorirss.feature.youtube.isYouTubeVideoUrl
 
 class BookmarkAutoEnrichmentUseCase(
   private val articleRepository: ArticleRepository,
@@ -48,7 +47,7 @@ fun shouldRequestBookmarkEnrichment(
   contentType: ContentType = ContentType.ARTICLE,
 ): Boolean =
   contentType.allowsAutomaticAiEnrichment() &&
-    !isYouTubeVideoUrl(url) &&
+    !PROVIDER_VIDEO_URL_REGEX.containsMatchIn(url) &&
     RedditSourceBoundary.isNonRedditFeed(sourceFeedUrl) &&
     RedditSourceBoundary.isNonRedditFeed(url)
 
@@ -65,3 +64,8 @@ private suspend fun BookmarkReader.listAutomaticEnrichmentArticleIds(): List<Str
     }
     .map { it.id }
     .toList()
+
+private val PROVIDER_VIDEO_URL_REGEX = Regex(
+  pattern = "(?:youtube\\.com/watch\\?(?:[^#]*&)?v=|youtu\\.be/|youtube\\.com/shorts/)([A-Za-z0-9_-]{11})",
+  option = RegexOption.IGNORE_CASE,
+)
