@@ -10,7 +10,7 @@ import org.junit.Test
 
 class VideoPlayerRequestPropertiesTest {
   @Test
-  fun `Webストリームは元ページoriginをRefererとして送る`() {
+  fun `Webストリームは元ページoriginをRefererとOriginとして送る`() {
     val target = VideoPlaybackTarget.Stream(
       url = "https://cdn.example.com/video/master.m3u8",
       mimeType = "application/x-mpegURL",
@@ -18,8 +18,19 @@ class VideoPlayerRequestPropertiesTest {
     )
 
     assertEquals(
-      mapOf("Referer" to "https://example.com/"),
+      mapOf(
+        "Referer" to "https://example.com/",
+        "Origin" to "https://example.com",
+      ),
       webStreamRequestProperties(target),
+    )
+  }
+
+  @Test
+  fun `Originはpathやqueryを含めずportを保持する`() {
+    assertEquals(
+      "https://example.com:8443",
+      webStreamOriginHeaderValue("https://example.com:8443/watch/1?x=1#section"),
     )
   }
 
@@ -84,16 +95,31 @@ class VideoPlayerRequestPropertiesTest {
   }
 
   @Test
-  fun `Playerエラーは再生不能としてエラーコードと再試行を出す`() {
+  fun `HTTP Playerエラーはステータス番号も表示状態へ渡す`() {
     val status = videoPlayerStatusUi(
       playbackState = Player.STATE_IDLE,
       loadingElapsedMs = 0L,
       errorCodeName = "ERROR_CODE_IO_BAD_HTTP_STATUS",
+      httpStatusCode = 403,
     )
 
     assertEquals("再生できません。", status?.message)
     assertEquals("ERROR_CODE_IO_BAD_HTTP_STATUS", status?.errorCodeName)
+    assertEquals(403, status?.httpStatusCode)
     assertFalse(status?.showProgress == true)
+    assertTrue(status?.canRetry == true)
+  }
+
+  @Test
+  fun `HTTP番号がないPlayerエラーも従来どおり表示する`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_IDLE,
+      loadingElapsedMs = 0L,
+      errorCodeName = "ERROR_CODE_IO_NETWORK_CONNECTION_FAILED",
+    )
+
+    assertEquals("再生できません。", status?.message)
+    assertNull(status?.httpStatusCode)
     assertTrue(status?.canRetry == true)
   }
 

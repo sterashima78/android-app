@@ -18,6 +18,9 @@ import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.SmbMediaLocation
 import dev.terashima.yomitorirss.feature.library.SmbMediaReadHandle
 import java.util.EnumSet
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Read-only SMB media adapter. Connection details and credentials remain inside Library Data while
@@ -26,13 +29,14 @@ import java.util.EnumSet
 class DefaultSmbMediaFileAccess(
   context: Context,
   private val database: DatabaseConnection,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : SmbMediaFileAccess {
   private val credentialStore = SmbCredentialReader(context.applicationContext)
 
   override suspend fun listMediaFiles(
     location: SmbMediaLocation,
     extensions: Set<String>,
-  ): List<SmbMediaFile> {
+  ): List<SmbMediaFile> = withContext(ioDispatcher) {
     ensureLibrarySchema(database.writable)
     val normalized = normalizeLocation(location)
     val profile = queryProfile(normalized.serverId)
@@ -41,7 +45,7 @@ class DefaultSmbMediaFileAccess(
     val normalizedExtensions = extensions.map { it.lowercase().trimStart('.') }.toSet()
     require(normalizedExtensions.isNotEmpty()) { "動画拡張子が指定されていません" }
 
-    return try {
+    try {
       withShare(profile, normalized.share, password) { share ->
         buildList {
           scanDirectory(

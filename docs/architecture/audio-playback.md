@@ -85,7 +85,7 @@ Media3 MediaSessionService / ExoPlayer
 
 読み上げ対象は記事タイトルと保存済み要約を連結したテキストとする。ただし保存済み要約は表示用MarkdownをそのままTTSへ渡さず、Audio内で読み上げ用プレーンテキストへ正規化する。
 
-正規化では、見出し、箇条書き、引用、強調、取り消し線、inline code、link、reference link、tableなどのMarkdown構文記号を読み上げ対象から除き、ユーザーが読む本文やlink labelは維持する。Markdown以外の通常の文字列まで広く削除する変換にはしない。
+正規化では、見出し、箇条書き、引用、強調、取り消し線、inline code、link、reference link、tableなどのMarkdown構文記号を読み上げ対象から除き、ユーザーが読む本文や通常のlink labelは維持する。一方、引用元として付与された括弧付きlink、URL自体を表示するlink、bare HTTP(S) URLは読み上げ対象から除外する。Markdown以外の通常の文字列まで広く削除する変換にはしない。
 
 Android `TextToSpeech.synthesizeToFile` を利用し、生成ファイルは app cache directory 配下の `summary-audio` へ保存する。
 
@@ -130,7 +130,7 @@ Audio playback自体による新しいnetwork通信はない。端末のTTS engi
 
 - `:feature:audio:domain` unit testでqueue order / deduplication / current item semanticsを検証する。
 - `:feature:audio:data` unit testで最初の音声準備完了を後続音声の準備完了より先に再生開始へ渡せることを検証する。
-- `:feature:audio:data` unit testでMarkdown表示構文が読み上げテキストから除去され、通常の本文記号は維持されることを検証する。
+- `:feature:audio:data` unit testでMarkdown表示構文と引用元URLが読み上げテキストから除去され、通常の本文とlink labelは維持されることを検証する。
 - Architecture verificationでmodule metadataとapp/presentation/composition境界を検証する。
 - Android実機では、最初の音声完成時の即時再生、再生中の後続音声生成、連続再生、background継続、通知・lock screen・Bluetooth control、seek、速度変更、再生後もread stateが変化しないことを確認する。
 
