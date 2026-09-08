@@ -92,24 +92,30 @@ class VideoViewModel(
     if (item.source != VideoSource.SMB || !item.thumbnailUrl.isNullOrBlank()) return
     if (!thumbnailRequests.add(item.id)) return
     viewModelScope.launch {
+      var retryItem: VideoItem? = null
       try {
         val thumbnailUrl = runCatching { thumbnailResolver.resolve(item) }
           .getOrNull()
           ?.takeIf(String::isNotBlank)
           ?: return@launch
         val current = mutableState.value
-        if (current.items.none { it.id == item.id }) return@launch
+        val currentItem = current.items.firstOrNull { it.id == item.id } ?: return@launch
+        if (currentItem.sourceId != item.sourceId || currentItem.sizeBytes != item.sizeBytes) {
+          retryItem = currentItem
+          return@launch
+        }
         mutableState.value = current.copy(
-          items = current.items.map { currentItem ->
-            if (currentItem.id == item.id && currentItem.thumbnailUrl.isNullOrBlank()) {
-              currentItem.copy(thumbnailUrl = thumbnailUrl)
+          items = current.items.map { candidate ->
+            if (candidate.id == item.id && candidate.thumbnailUrl.isNullOrBlank()) {
+              candidate.copy(thumbnailUrl = thumbnailUrl)
             } else {
-              currentItem
+              candidate
             }
           },
         )
       } finally {
         thumbnailRequests.remove(item.id)
+        retryItem?.let(::ensureThumbnail)
       }
     }
   }
