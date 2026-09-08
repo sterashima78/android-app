@@ -30,12 +30,18 @@ class DefaultVideoThumbnailResolver(
     if (item.source != VideoSource.SMB) return item.thumbnailUrl
     val target = File(thumbnailDirectory, thumbnailCacheFileName(item))
     return withContext(ioDispatcher) {
-      if (target.isFile && target.length() > 0L) return@withContext Uri.fromFile(target).toString()
+      cachedThumbnail(target)?.let { return@withContext it }
       generationSemaphore.withPermit {
-        if (target.isFile && target.length() > 0L) return@withPermit Uri.fromFile(target).toString()
+        cachedThumbnail(target)?.let { return@withPermit it }
         runCatching { generateThumbnail(item, target) }.getOrNull()
       }
     }
+  }
+
+  private fun cachedThumbnail(target: File): String? {
+    if (!target.isFile || target.length() <= 0L) return null
+    target.setLastModified(System.currentTimeMillis())
+    return Uri.fromFile(target).toString()
   }
 
   private fun generateThumbnail(item: VideoItem, target: File): String {
@@ -63,13 +69,36 @@ class DefaultVideoThumbnailResolver(
       }
       if (!temporary.renameTo(target)) {
         temporary.copyTo(target, overwrite = true)
-        check(temporary.delete()) { "動画サムネイルの一時ファイルを削除できません" }
+        temporary.delete()
       }
+      target.setLastModified(System.currentTimeMillis())
+      pruneCache()
       return Uri.fromFile(target).toString()
     } finally {
       retriever.release()
       dataSource.close()
       temporary.delete()
+    }
+  }
+
+  private fun pruneCache() {
+    val files = thumbnailDirectory.listFiles()
+      ?.asSequence()
+      ?.filter { file -> file.isFile && !file.name.startsWith('.') }
+      ?.sortedByDescending(File::lastModified)
+      ?.toList()
+      ?: return
+    var keptFiles = 0
+    var keptBytes = 0L
+    files.forEach { file ->
+      val size = file.length().coerceAtLeast(0L)
+      val canKeep = keptFiles < MAX_CACHE_FILES && keptBytes + size <= MAX_CACHE_BYTES
+      if (canKeep) {
+        keptFiles += 1
+        keptBytes += size
+      } else {
+        file.delete()
+      }
     }
   }
 
@@ -132,6 +161,8 @@ class DefaultVideoThumbnailResolver(
     const val MIN_FRAME_TIME_MS = 1_000L
     const val MAX_FRAME_TIME_MS = 30_000L
     const val MAX_CONCURRENT_GENERATIONS = 2
+    const val MAX_CACHE_FILES = 2_000
+    const val MAX_CACHE_BYTES = 256L * 1024L * 1024L
 
     fun thumbnailCacheFileName(item: VideoItem): String =
       "${item.id}-${item.sizeBytes ?: 0L}.jpg"
