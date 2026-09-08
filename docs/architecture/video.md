@@ -112,11 +112,13 @@ custom title / thumbnail extractionが失敗した場合は静的metadataを維�
 
 再生targetはDomainで次の3種類へ正規化する。
 
-- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は元pageのoriginと、明示opt-in時だけ一時的なCookie providerを持てる。
+- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は抽出中に観測した実メディアrequestの参照元origin、取得できない場合は元page originを一時的に持ち、明示opt-in時だけCookie providerも持てる。
 - `VideoPlaybackTarget.Smb`: Library-owned SMB read capabilityを使うrandom-access source
 - `VideoPlaybackTarget.WebPage`: アプリ内video playerではなくWeb pageを開くfallback
 
-Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginだけから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、元pageのpath、query、fragmentはどちらにも含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。
+Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現する。dedicated WebView extractorの `shouldInterceptRequest` でHTTP(S) resource requestを観測し、playback extractorが返したstream URLと同一requestが存在する場合だけ、そのrequestの `Referer` をorigin rootへ縮約して利用する。stream URLと一致しない別requestの参照元は候補として流用しない。実requestの参照元を取得できない場合は元pageのoriginへfallbackする。
+
+選択した参照元originから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、page / player URLのpath、query、fragmentはどちらにも含めない。request interceptionではCookie / Authorization等のcredentialを新たに取得・転送せず、これらのrequest contextは再生時だけ利用してdatabaseへ保存しない。
 
 一致した抽出ルールで `shareCookiesForPlayback` が有効な場合だけ、抽出に使った専用WebView profileのCookieManagerを `VideoPlaybackCookieProvider` としてtransientに再生targetへ接続する。Cookie文字列をtargetの通常data fieldへコピーせず、Media3のHTTP DataSourceが各request URLを処理する時点でproviderへ問い合わせる。CookieManager自身のhost / path / Secure等の選択に従い、そのURLへ適用されるCookieだけを `Cookie` headerとして付与する。provider取得が失敗した場合はCookieを付けずにrequestを継続する。
 
@@ -181,7 +183,9 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - SMB thumbnail生成のために第二のSMB read implementationを作らず、既存 `VideoByteSourceFactory` / `SmbMediaFileAccess` boundaryを再利用する。
 - SMB thumbnailはdurable source of truthにせず、生成失敗をcatalog同期・再生失敗へ昇格させない。
 - stream URLをdurable source of truthにしない。
-- Web streamの `Referer` / `Origin` に元pageのpath / query / fragmentを含めない。
+- Web streamの実request参照元を利用する場合もstream URLとの同一requestだけを採用し、別requestの参照元を推測で流用しない。
+- Web streamの `Referer` / `Origin` にpage / player URLのpath / query / fragmentを含めない。
+- request interceptionをCookie / Authorization等のcredential captureへ暗黙に拡張しない。
 - WebView CookieをMedia3へ共有するのはruleで明示opt-inされたforeground playbackだけとする。
 - Cookie共有の既定値はOFFとし、既存ruleを自動的にONへしない。
 - Cookie値 / Authorization等のcredentialをdurable state、log、error UIへ複製しない。
@@ -202,7 +206,8 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
-- Web streamの元page originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
+- Web streamは実requestとstream URLが一致する場合だけ観測Refererをoriginへ縮約して優先し、不一致または取得不能時は元page originへfallbackすることをunit testする。
+- 選択したWeb stream参照元originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
 - Cookie共有OFFではproviderを作らず、ONの場合だけrequest URLごとにprofile Cookie lookupすることをunit testする。
 - `video_web_extractor_rules` のCookie共有booleanを保存・復元し、既存schema refinementでdefault OFFになることをrepository testする。
 - app database fresh schema、version 28 -> 29、version 29 -> 30をtestする。
