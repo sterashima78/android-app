@@ -37,13 +37,13 @@ Cookie共有が有効なruleでWeb streamを再生する場合だけ、extractor
 
 ### Media3 requestごとにCookieを解決する
 
-Media3のHTTP DataSourceはrequest URLごとにjust-in-timeでCookieを取得する。
+Cookie共有が有効な再生では、Video UIが所有するHTTP DataSourceがrequest URLごとにjust-in-timeでCookieを取得する。
 
-固定Cookie headerをmanifest / segment / redirect先のすべてへ一律設定せず、WebView profileのCookieManagerへそのrequest URLのCookie選択を委譲する。
+固定Cookie headerをmanifest / segment / redirect先のすべてへ一律設定せず、WebView profileのCookieManagerへそのrequest URLのCookie選択を委譲する。HTTP redirectはDataSource側で自動追従させず、各redirect先URLについてCookieを改めて解決してから次のrequestを送る。Cookie共有経路ではHTTPとHTTPSをまたぐcross-protocol redirectを許可しない。
 
-これによりhost / path / Secure等の通常Cookie選択をWebView側へ維持し、無関係なrequest先へ同じCookie文字列を複製することを避ける。
+これによりhost / path / Secure等の通常Cookie選択をWebView側へ維持し、redirect先を含む無関係なrequest先へ同じCookie文字列を複製することを避ける。
 
-既存の `Referer` / `Origin` / `User-Agent` のtransient request contextは維持する。
+既存の `Referer` / `Origin` / `User-Agent` のtransient request contextは維持する。Cookie共有がOFFの場合は既存のHTTP DataSourceをそのまま利用する。
 
 ### schemaはadditive refinementとする
 
@@ -59,6 +59,7 @@ application database versionは30のままとする。既存ruleはdefault 0でC
 - credential boundaryはVideo extractor WebViewからVideo foreground playbackへ限定的に拡張される。
 - Cookie値の新しいdurable source of truthは増えない。
 - rule設定はbackup対象なので、Cookie共有を許可したというユーザー設定は端末移行後も維持される。ただしCookie値自体はbackupされないため、必要なsessionは再度WebView側で成立する必要がある。
+- Cookie共有ONの再生ではredirectを手動処理するため、redirect先ごとにCookie policyを再評価できる一方、cross-protocol redirectは従来の非Cookie再生より厳しく拒否する。
 - partitioned Cookie等でWebViewの通常 `getCookie` semanticsだけでは再現できない場合は、request interception等の別設計を追加判断する。今回それを自動的に有効化しない。
 
 ## Security invariants
@@ -66,6 +67,8 @@ application database versionは30のままとする。既存ruleはdefault 0でC
 - Cookie共有はruleごとの明示opt-inでのみ有効にする。
 - defaultはOFFとし、既存ruleを自動的にONへ移行しない。
 - Cookie値をdurable state / log / error UIへ保存・表示しない。
+- redirect先ではCookieを元requestから転送せず、そのURLに対して専用WebView profileから再解決する。
+- Cookie共有時のcross-protocol redirectを許可しない。
 - default WebView profileのCookieをVideo extractorへ混ぜない。
 - `Authorization` 等へcredential共有を一般化しない。
 - user-authored extractor functionや実URLをpublic repositoryのfixture/documentへ保存しない。
@@ -76,6 +79,6 @@ application database versionは30のままとする。既存ruleはdefault 0でC
 - repositoryでruleのCookie共有booleanを保存・復元できることをtestする。
 - ruleがOFFの場合にplayback cookie providerを作らないことをtestする。
 - ruleがONの場合だけ専用WebView profile由来のproviderをplayback targetへ渡すことをtestする。
-- Media3 request header解決でCookie providerがrequest URLごとに評価されることをunit testする。
+- playback HTTP requestとredirect先URLごとにCookie providerが評価されることをunit testする。
 - Cookie値をfixture、log、documentへ含めずpublic repository verificationを通す。
 - Android実機でOFF時は従来動作、ON時はCookieが必要なWeb streamの再生可否を確認する。
