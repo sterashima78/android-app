@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.feature.library.SmbMediaReadHandle
 import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
+import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -256,6 +257,70 @@ class DefaultVideoRepositoryTest {
 
     assertTrue(result.isFailure)
     assertEquals(1, repository.folders().size)
+  }
+
+  @Test
+  fun `Web抽出ルールのCookie共有opt-inを保存復元できる`() {
+    val saved = repository.saveExtractorRule(
+      WebVideoExtractorRule(
+        id = "",
+        urlPattern = "https://example.invalid/*",
+        playbackExtractorCode = "async () => ({})",
+        updatedAtEpochMillis = 0L,
+        shareCookiesForPlayback = true,
+      ),
+    )
+
+    val restored = repository.extractorRules().single { it.id == saved.id }
+    assertTrue(restored.shareCookiesForPlayback)
+
+    repository.saveExtractorRule(restored.copy(shareCookiesForPlayback = false))
+    assertFalse(repository.extractorRules().single { it.id == saved.id }.shareCookiesForPlayback)
+  }
+
+  @Test
+  fun `既存Web抽出ルールschemaにはCookie共有列をOFFで追加する`() {
+    val db = helper.writableDatabase
+    db.execSQL("DROP TABLE video_web_extractor_rules")
+    db.execSQL(
+      """
+        CREATE TABLE video_web_extractor_rules (
+          id TEXT PRIMARY KEY NOT NULL,
+          url_pattern TEXT NOT NULL,
+          title_function TEXT,
+          thumbnail_function TEXT,
+          playback_function TEXT,
+          timeout_seconds INTEGER NOT NULL DEFAULT 15,
+          updated_at INTEGER NOT NULL
+        )
+      """.trimIndent(),
+    )
+    db.insertOrThrow(
+      "video_web_extractor_rules",
+      null,
+      ContentValues().apply {
+        put("id", "legacy-rule")
+        put("url_pattern", "https://example.invalid/*")
+        put("timeout_seconds", 15)
+        put("updated_at", 1L)
+      },
+    )
+
+    ensureVideoSchema(db)
+
+    val columnNames = db.rawQuery("PRAGMA table_info(video_web_extractor_rules)", null).use { cursor ->
+      val nameColumn = cursor.getColumnIndexOrThrow("name")
+      buildSet { while (cursor.moveToNext()) add(cursor.getString(nameColumn)) }
+    }
+    assertTrue("share_cookies_for_playback" in columnNames)
+    val value = db.rawQuery(
+      "SELECT share_cookies_for_playback FROM video_web_extractor_rules WHERE id = ?",
+      arrayOf("legacy-rule"),
+    ).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      cursor.getInt(0)
+    }
+    assertEquals(0, value)
   }
 
   @Test
