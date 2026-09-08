@@ -46,6 +46,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -62,6 +63,7 @@ internal data class VideoPlayerStatusUi(
   val showProgress: Boolean,
   val canRetry: Boolean,
   val errorCodeName: String? = null,
+  val httpStatusCode: Int? = null,
 )
 
 @Composable
@@ -113,6 +115,7 @@ internal fun VideoPlayerDialog(
   }
   var playbackState by remember(player) { mutableStateOf(player.playbackState) }
   var playbackErrorCodeName by remember(player) { mutableStateOf<String?>(null) }
+  var playbackHttpStatusCode by remember(player) { mutableStateOf<Int?>(null) }
   var loadingElapsedMs by remember(player) { mutableStateOf(0L) }
 
   fun savePosition() {
@@ -122,6 +125,7 @@ internal fun VideoPlayerDialog(
 
   fun retryPlayback() {
     playbackErrorCodeName = null
+    playbackHttpStatusCode = null
     playbackState = Player.STATE_IDLE
     loadingElapsedMs = 0L
     player.stop()
@@ -133,12 +137,16 @@ internal fun VideoPlayerDialog(
     val listener = object : Player.Listener {
       override fun onPlaybackStateChanged(newPlaybackState: Int) {
         playbackState = newPlaybackState
-        if (newPlaybackState == Player.STATE_READY) playbackErrorCodeName = null
+        if (newPlaybackState == Player.STATE_READY) {
+          playbackErrorCodeName = null
+          playbackHttpStatusCode = null
+        }
         if (newPlaybackState == Player.STATE_ENDED) savePosition()
       }
 
       override fun onPlayerError(error: PlaybackException) {
         playbackErrorCodeName = error.errorCodeName
+        playbackHttpStatusCode = findHttpStatusCode(error)
       }
     }
     player.addListener(listener)
@@ -171,6 +179,7 @@ internal fun VideoPlayerDialog(
     playbackState = playbackState,
     loadingElapsedMs = loadingElapsedMs,
     errorCodeName = playbackErrorCodeName,
+    httpStatusCode = playbackHttpStatusCode,
   )
 
   Dialog(
@@ -229,6 +238,13 @@ internal fun VideoPlayerDialog(
                   style = MaterialTheme.typography.bodySmall,
                 )
               }
+              status.httpStatusCode?.let {
+                Text(
+                  text = "HTTPステータス: $it",
+                  textAlign = TextAlign.Center,
+                  style = MaterialTheme.typography.bodySmall,
+                )
+              }
               if (status.canRetry) {
                 Button(onClick = ::retryPlayback) {
                   Text("再試行")
@@ -257,6 +273,7 @@ internal fun videoPlayerStatusUi(
   playbackState: Int,
   loadingElapsedMs: Long,
   errorCodeName: String?,
+  httpStatusCode: Int? = null,
 ): VideoPlayerStatusUi? {
   if (!errorCodeName.isNullOrBlank()) {
     return VideoPlayerStatusUi(
@@ -264,6 +281,7 @@ internal fun videoPlayerStatusUi(
       showProgress = false,
       canRetry = true,
       errorCodeName = errorCodeName,
+      httpStatusCode = httpStatusCode,
     )
   }
 
@@ -292,6 +310,15 @@ internal fun videoPlayerStatusUi(
       canRetry = false,
     )
   }
+}
+
+internal fun findHttpStatusCode(error: Throwable?): Int? {
+  var current = error
+  while (current != null) {
+    if (current is HttpDataSource.InvalidResponseCodeException) return current.responseCode
+    current = current.cause
+  }
+  return null
 }
 
 internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map<String, String> = buildMap {

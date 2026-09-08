@@ -84,16 +84,31 @@ class VideoPlayerRequestPropertiesTest {
   }
 
   @Test
-  fun `Playerエラーは再生不能としてエラーコードと再試行を出す`() {
+  fun `HTTP Playerエラーはステータス番号も表示状態へ渡す`() {
     val status = videoPlayerStatusUi(
       playbackState = Player.STATE_IDLE,
       loadingElapsedMs = 0L,
       errorCodeName = "ERROR_CODE_IO_BAD_HTTP_STATUS",
+      httpStatusCode = 403,
     )
 
     assertEquals("再生できません。", status?.message)
     assertEquals("ERROR_CODE_IO_BAD_HTTP_STATUS", status?.errorCodeName)
+    assertEquals(403, status?.httpStatusCode)
     assertFalse(status?.showProgress == true)
+    assertTrue(status?.canRetry == true)
+  }
+
+  @Test
+  fun `HTTP番号がないPlayerエラーも従来どおり表示する`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_IDLE,
+      loadingElapsedMs = 0L,
+      errorCodeName = "ERROR_CODE_IO_NETWORK_CONNECTION_FAILED",
+    )
+
+    assertEquals("再生できません。", status?.message)
+    assertNull(status?.httpStatusCode)
     assertTrue(status?.canRetry == true)
   }
 
