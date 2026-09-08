@@ -58,6 +58,42 @@ class VideoProviderDatabaseTest {
   }
 
   @Test
+  fun `provider read modelは共通Videoの再生状態と保存状態を含む`() {
+    val provider = database.saveProvider(testProvider())
+    database.upsertProviderFeed(provider, testFeed())
+    val videoId = database.unreadVideos().single().video.id
+    helper.writableDatabase.insertOrThrow(
+      "video_playback_state",
+      null,
+      ContentValues().apply {
+        put("video_id", videoId)
+        put("position_ms", 12_000L)
+        put("duration_ms", 60_000L)
+        put("last_played_at", 300L)
+        put("completed", 0)
+      },
+    )
+    helper.writableDatabase.insertOrThrow(
+      "video_saved_items",
+      null,
+      ContentValues().apply {
+        put("video_id", videoId)
+        putNull("folder_id")
+        put("saved_at", 400L)
+      },
+    )
+
+    val item = database.unreadVideos().single().video
+
+    assertEquals(12_000L, item.playbackState?.positionMs)
+    assertEquals(60_000L, item.playbackState?.durationMs)
+    assertEquals(300L, item.playbackState?.lastPlayedAtEpochMillis)
+    assertFalse(item.playbackState?.completed ?: true)
+    assertEquals(400L, item.savedState?.savedAtEpochMillis)
+    assertEquals(null, item.savedState?.folderId)
+  }
+
+  @Test
   fun `再取得しても既存動画の既読状態を維持する`() {
     val provider = database.saveProvider(testProvider())
     database.upsertProviderFeed(provider, testFeed())
