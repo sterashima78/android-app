@@ -33,11 +33,8 @@ import dev.terashima.yomitorirss.feature.rss.data.RssContentClassificationSource
 import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.data.SummaryContentRetentionProtectionQuery
-import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import dev.terashima.yomitorirss.feature.widget.data.DefaultWidgetRepository
-import dev.terashima.yomitorirss.feature.youtube.YouTubeRepository
-import dev.terashima.yomitorirss.feature.youtube.data.DefaultYouTubeRepository
 
 /** Content/Curation ingestion graph kept at application scope. */
 internal class AppContentRuntimeDependencies(
@@ -46,7 +43,6 @@ internal class AppContentRuntimeDependencies(
   private val dataChanges: DataChangeNotifier,
   private val httpClient: HttpClient,
   private val summaryRepository: SummaryRepository,
-  private val videoProviderRepository: VideoProviderRepository,
 ) {
   val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkContentQuery(database)
@@ -126,10 +122,6 @@ internal class AppContentRuntimeDependencies(
 
   val redditRepository: RedditRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultRedditRepository(feedRepository)
-  }
-
-  val youtubeRepository: YouTubeRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultYouTubeRepository(videoProviderRepository)
   }
 
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
