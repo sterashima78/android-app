@@ -7,6 +7,8 @@ import java.io.IOException
 import java.net.URI
 import java.time.Instant
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
 
 internal data class VideoProviderFeed(
@@ -36,7 +38,7 @@ internal class YouTubeVideoProviderClient(
 
   suspend fun refresh(sourceId: String): VideoProviderFeed = fetch(validateChannelId(sourceId))
 
-  private suspend fun fetch(channelId: String): VideoProviderFeed {
+  private suspend fun fetch(channelId: String): VideoProviderFeed = withContext(Dispatchers.IO) {
     val response = httpClient.execute(
       HttpRequest(
         url = feedUrl(channelId),
@@ -46,7 +48,7 @@ internal class YouTubeVideoProviderClient(
     if (!response.isSuccessful) {
       throw IOException("動画チャンネルの取得に失敗しました: HTTP ${response.statusCode}")
     }
-    return parse(response.body)
+    parse(response.body)
   }
 
   private fun parse(bytes: ByteArray): VideoProviderFeed {
