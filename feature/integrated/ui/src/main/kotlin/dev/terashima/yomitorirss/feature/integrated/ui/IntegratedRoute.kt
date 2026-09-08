@@ -22,7 +22,8 @@ import dev.terashima.yomitorirss.feature.mail.Mailbox
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
-import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
+import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
+import dev.terashima.yomitorirss.feature.video.VideoRepository
 
 @Composable
 fun IntegratedRoute(
@@ -30,19 +31,25 @@ fun IntegratedRoute(
   redditViewModel: RedditViewModel,
   feedViewModel: FeedViewModel,
   mailViewModel: MailViewModel,
-  youtubeViewModelFactory: YouTubeViewModel.Factory,
+  videoProviderRepository: VideoProviderRepository,
+  videoRepository: VideoRepository,
   onOpenArticle: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onNavigateToMail: () -> Unit,
   onOpenExternalUrl: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val youtubeViewModel: YouTubeViewModel = viewModel(factory = youtubeViewModelFactory)
+  val videoProviderViewModel: IntegratedVideoProviderViewModel = viewModel(
+    factory = IntegratedVideoProviderViewModel.Factory(
+      providers = videoProviderRepository,
+      videos = videoRepository,
+    ),
+  )
   val rssState by rssViewModel.state.collectAsState()
   val redditState by redditViewModel.state.collectAsState()
   val feedState by feedViewModel.state.collectAsState()
   val mailState by mailViewModel.state.collectAsState()
-  val youtubeState by youtubeViewModel.state.collectAsState()
+  val videoProviderState by videoProviderViewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
   var selectedTabName by rememberSaveable { mutableStateOf(IntegratedTab.UNREAD.name) }
   val selectedTab = IntegratedTab.entries.firstOrNull { it.name == selectedTabName }
@@ -66,20 +73,20 @@ fun IntegratedRoute(
     snackbarHostState.showSnackbar(message)
     mailViewModel.dismissMessage()
   }
-  LaunchedEffect(youtubeState.message) {
-    val message = youtubeState.message ?: return@LaunchedEffect
+  LaunchedEffect(videoProviderState.message) {
+    val message = videoProviderState.message ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(message)
-    youtubeViewModel.dismissMessage()
+    videoProviderViewModel.dismissMessage()
   }
 
   val initialized = rssState.initialized &&
     redditState.initialized &&
     mailState.initialized &&
-    youtubeState.initialized
+    videoProviderState.initialized
   val entries = integratedEntries(
     rssState = rssState,
     redditState = redditState,
-    youtubeState = youtubeState,
+    videoProviderState = videoProviderState,
     mailState = mailState,
     tab = selectedTab,
   )
@@ -87,14 +94,16 @@ fun IntegratedRoute(
   val dispatcher = integratedTargetDispatcher(
     rssViewModel = rssViewModel,
     redditViewModel = redditViewModel,
-    youtubeViewModel = youtubeViewModel,
+    videoProviderViewModel = videoProviderViewModel,
     mailViewModel = mailViewModel,
     onOpenArticle = onOpenArticle,
     onOpenMail = { thread ->
       mailViewModel.openThread(thread)
       onNavigateToMail()
     },
-    onOpenYouTube = { video -> onOpenExternalUrl(video.url) },
+    onOpenProviderVideo = { item ->
+      item.video.pageUrl?.takeIf(String::isNotBlank)?.let(onOpenExternalUrl)
+    },
   )
 
   Box(modifier = modifier.fillMaxSize()) {
@@ -107,13 +116,13 @@ fun IntegratedRoute(
         items = entries.map(IntegratedEntry::item),
         isRefreshing = feedState.refreshing ||
           redditState.refreshing ||
-          youtubeState.refreshing ||
+          videoProviderState.refreshing ||
           mailState.loading,
         onSelectTab = { selectedTabName = it.name },
         onRefresh = {
           feedViewModel.refresh()
           redditViewModel.refresh()
-          youtubeViewModel.refresh()
+          videoProviderViewModel.refresh()
           mailViewModel.refresh()
         },
         onMarkProcessed = { item -> dispatcher.markProcessed(targetsByKey[item.key]) },
