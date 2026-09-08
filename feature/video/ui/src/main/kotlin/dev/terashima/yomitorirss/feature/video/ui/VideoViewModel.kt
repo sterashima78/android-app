@@ -13,12 +13,19 @@ import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
 import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
+import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.VideoSubscription
+import dev.terashima.yomitorirss.feature.video.VideoThumbnailResolver
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private val NoOpVideoThumbnailResolver = object : VideoThumbnailResolver {
+  override suspend fun resolve(item: VideoItem): String? = item.thumbnailUrl
+}
 
 data class VideoUiState(
   val items: List<VideoItem> = emptyList(),
@@ -46,12 +53,14 @@ class VideoViewModel(
   private val repository: VideoRepository,
   private val providerRepository: VideoProviderRepository,
   private val smbConnectionProfiles: SmbConnectionProfileRepository,
+  private val thumbnailResolver: VideoThumbnailResolver = NoOpVideoThumbnailResolver,
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(VideoUiState())
   val state: StateFlow<VideoUiState> = mutableState.asStateFlow()
 
   private val mutablePlaybackSession = MutableStateFlow<VideoPlaybackSession?>(null)
   val playbackSession: StateFlow<VideoPlaybackSession?> = mutablePlaybackSession.asStateFlow()
+  private val thumbnailRequests = mutableSetOf<String>()
   private var latestPlaybackPositionMs: Long = 0L
 
   init {
@@ -86,6 +95,42 @@ class VideoViewModel(
       repository.refreshSmb()
     } catch (error: Throwable) {
       throw IllegalStateException(smbSyncFailureMessage(error), error)
+    }
+  }
+
+  fun ensureThumbnail(item: VideoItem) {
+    if (item.source != VideoSource.SMB || !item.thumbnailUrl.isNullOrBlank()) return
+    if (!thumbnailRequests.add(item.id)) return
+    viewModelScope.launch {
+      var retryItem: VideoItem? = null
+      try {
+        val thumbnailUrl = try {
+          thumbnailResolver.resolve(item)?.takeIf(String::isNotBlank)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (_: Throwable) {
+          null
+        }
+        val current = mutableState.value
+        val currentItem = current.items.firstOrNull { it.id == item.id } ?: return@launch
+        if (currentItem.sourceId != item.sourceId || currentItem.sizeBytes != item.sizeBytes) {
+          retryItem = currentItem
+          return@launch
+        }
+        if (thumbnailUrl == null) return@launch
+        mutableState.value = current.copy(
+          items = current.items.map { candidate ->
+            if (candidate.id == item.id && candidate.thumbnailUrl.isNullOrBlank()) {
+              candidate.copy(thumbnailUrl = thumbnailUrl)
+            } else {
+              candidate
+            }
+          },
+        )
+      } finally {
+        thumbnailRequests.remove(item.id)
+        retryItem?.let(::ensureThumbnail)
+      }
     }
   }
 
@@ -295,11 +340,17 @@ class VideoViewModel(
     private val repository: VideoRepository,
     private val providerRepository: VideoProviderRepository,
     private val smbConnectionProfiles: SmbConnectionProfileRepository,
+    private val thumbnailResolver: VideoThumbnailResolver = NoOpVideoThumbnailResolver,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(VideoViewModel::class.java))
-      return VideoViewModel(repository, providerRepository, smbConnectionProfiles) as T
+      return VideoViewModel(
+        repository,
+        providerRepository,
+        smbConnectionProfiles,
+        thumbnailResolver,
+      ) as T
     }
   }
 

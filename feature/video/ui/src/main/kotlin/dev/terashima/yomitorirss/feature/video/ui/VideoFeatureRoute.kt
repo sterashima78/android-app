@@ -96,6 +96,7 @@ fun VideoFeatureRoute(
       VideoScreen(
         state = state,
         onPlay = ::play,
+        onEnsureThumbnail = viewModel::ensureThumbnail,
         onAddWeb = viewModel::addWeb,
         onRefreshSmb = { smbSettingsVisible = true },
         onRemove = viewModel::remove,
