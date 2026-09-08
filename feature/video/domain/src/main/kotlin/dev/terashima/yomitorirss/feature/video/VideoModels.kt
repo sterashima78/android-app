@@ -56,13 +56,24 @@ data class WebVideoExtractorRule(
   val playbackExtractorCode: String? = null,
   val timeoutSeconds: Int = 15,
   val updatedAtEpochMillis: Long,
+  val shareCookiesForPlayback: Boolean = false,
 )
+
+/**
+ * Transient capability for resolving the Cookie request header for Web stream playback.
+ *
+ * Returned values may contain credentials. Callers must not persist or log them.
+ */
+fun interface VideoPlaybackCookieProvider {
+  fun cookieHeaderFor(url: String): String?
+}
 
 data class WebVideoExtractionResult(
   val title: String? = null,
   val thumbnailUrl: String? = null,
   val streamUrl: String? = null,
   val mimeType: String? = null,
+  val cookieProvider: VideoPlaybackCookieProvider? = null,
 )
 
 sealed interface VideoPlaybackTarget {
@@ -70,6 +81,7 @@ sealed interface VideoPlaybackTarget {
     val url: String,
     val mimeType: String? = null,
     val referrerUrl: String? = null,
+    val cookieProvider: VideoPlaybackCookieProvider? = null,
   ) : VideoPlaybackTarget
 
   data class Smb(
