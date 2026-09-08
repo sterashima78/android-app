@@ -54,6 +54,26 @@ class SpeechTextNormalizerTest {
   }
 
   @Test
+  fun `引用元を示すURLリンクは読み上げない`() {
+    val markdown = """
+      要点です。([参照元](https://example.com/article))
+      URL表記の参照です。[https://example.com/source](https://example.com/source)
+      補足URL https://example.com/detail
+      詳細は[仕様](https://example.com/spec)を参照。
+    """.trimIndent()
+
+    assertEquals(
+      """
+        要点です。
+        URL表記の参照です。
+        補足URL
+        詳細は仕様を参照。
+      """.trimIndent(),
+      markdownToSpeechText(markdown),
+    )
+  }
+
+  @Test
   fun `Markdownではない記号は保持する`() {
     assertEquals(
       "C# と snake_case_test はそのまま読む",
