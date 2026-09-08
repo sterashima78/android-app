@@ -19,7 +19,10 @@ data class VideoItem(
   val updatedAtEpochMillis: Long,
   val playbackState: VideoPlaybackState? = null,
   val savedState: VideoSavedState? = null,
-)
+) {
+  val isSaved: Boolean
+    get() = source == VideoSource.SMB || source == VideoSource.WEB || savedState != null
+}
 
 data class VideoSmbSource(
   val id: String,

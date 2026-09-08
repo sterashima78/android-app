@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
@@ -65,13 +67,10 @@ import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 
-private const val SAVED_ALL = "__all__"
-private const val SAVED_UNCATEGORIZED = "__uncategorized__"
-
 private enum class VideoTab(val label: String) {
   ALL("すべて"),
   CONTINUE("続き"),
-  SAVED("保存"),
+  SAVED("保存済み"),
   COMPLETED("視聴済み"),
   SETTINGS("設定"),
 }
@@ -97,7 +96,7 @@ fun VideoScreen(
   val snackbar = remember { SnackbarHostState() }
   var tabName by rememberSaveable { mutableStateOf(VideoTab.ALL.name) }
   var sourceName by rememberSaveable { mutableStateOf<String?>(null) }
-  var savedFolderFilter by rememberSaveable { mutableStateOf(SAVED_ALL) }
+  var savedLocation by remember { mutableStateOf<VideoSavedBrowserLocation>(VideoSavedBrowserLocation.Root) }
   var addWebVisible by remember { mutableStateOf(false) }
   var editingRule by remember { mutableStateOf<WebVideoExtractorRule?>(null) }
   var newRuleVisible by remember { mutableStateOf(false) }
@@ -110,6 +109,10 @@ fun VideoScreen(
     val message = state.message ?: return@LaunchedEffect
     snackbar.showSnackbar(message)
     onDismissMessage()
+  }
+
+  LaunchedEffect(source) {
+    savedLocation = VideoSavedBrowserLocation.Root
   }
 
   if (addWebVisible) {
@@ -177,7 +180,7 @@ fun VideoScreen(
                 imageVector = when (item) {
                   VideoTab.ALL -> Icons.Default.List
                   VideoTab.CONTINUE -> Icons.Default.PlayCircle
-                  VideoTab.SAVED -> Icons.Default.Add
+                  VideoTab.SAVED -> Icons.Default.Folder
                   VideoTab.COMPLETED -> Icons.Default.CheckCircle
                   VideoTab.SETTINGS -> Icons.Default.Settings
                 },
@@ -209,66 +212,60 @@ fun VideoScreen(
           onDeleteRule = onDeleteExtractorRule,
         )
       } else {
-        val filtered = remember(state.items, tab, source, savedFolderFilter) {
-          state.items.filter { item ->
-            val tabMatches = when (tab) {
-              VideoTab.ALL -> true
-              VideoTab.CONTINUE -> item.playbackState?.let { it.positionMs > 0L && !it.completed } == true
-              VideoTab.SAVED -> when (savedFolderFilter) {
-                SAVED_ALL -> item.savedState != null
-                SAVED_UNCATEGORIZED -> item.savedState?.folderId == null
-                else -> item.savedState?.folderId == savedFolderFilter
-              }
-              VideoTab.COMPLETED -> item.playbackState?.completed == true
-              VideoTab.SETTINGS -> false
-            }
-            (source == null || item.source == source) && tabMatches
-          }
-        }
         Column(Modifier.fillMaxSize()) {
           VideoSourceFilters(
             selected = source,
             onSelected = { sourceName = it?.name },
           )
           if (tab == VideoTab.SAVED) {
-            SavedFolderFilters(
-              folders = state.folders,
-              selected = savedFolderFilter,
-              onSelected = { savedFolderFilter = it },
-            )
-          }
-          if (filtered.isEmpty()) {
-            Text(
-              when (tab) {
-                VideoTab.ALL -> "動画がありません。Web URLを追加するか、設定からSMB動画を同期してください。"
-                VideoTab.CONTINUE -> "再生途中の動画はありません。"
-                VideoTab.SAVED -> "保存した動画はありません。動画を長押しして保存できます。"
-                VideoTab.COMPLETED -> "視聴済みの動画はありません。"
-                VideoTab.SETTINGS -> ""
-              },
-              modifier = Modifier.padding(24.dp),
-              style = MaterialTheme.typography.bodyMedium,
+            VideoSavedBrowser(
+              state = state,
+              source = source,
+              location = savedLocation,
+              onLocationChange = { savedLocation = it },
+              onPlay = onPlay,
+              onEnsureThumbnail = onEnsureThumbnail,
+              onRemove = onRemove,
+              onSetCompleted = onSetCompleted,
+              onSaveVideo = onSaveVideo,
+              onRemoveSavedVideo = onRemoveSavedVideo,
             )
           } else {
-            LazyVerticalGrid(
-              columns = GridCells.Adaptive(minSize = 160.dp),
-              modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(12.dp),
-              horizontalArrangement = Arrangement.spacedBy(12.dp),
-              verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-              items(filtered, key = VideoItem::id) { item ->
-                VideoCard(
-                  item = item,
-                  folders = state.folders,
-                  onPlay = { onPlay(item) },
-                  onEnsureThumbnail = { onEnsureThumbnail(item) },
-                  onRemove = { onRemove(item) },
-                  onSetCompleted = { completed -> onSetCompleted(item, completed) },
-                  onSave = { folderId -> onSaveVideo(item, folderId) },
-                  onRemoveSaved = { onRemoveSavedVideo(item) },
-                )
+            val filtered = remember(state.items, tab, source) {
+              state.items.filter { item ->
+                val tabMatches = when (tab) {
+                  VideoTab.ALL -> true
+                  VideoTab.CONTINUE -> item.playbackState?.let { it.positionMs > 0L && !it.completed } == true
+                  VideoTab.SAVED -> false
+                  VideoTab.COMPLETED -> item.playbackState?.completed == true
+                  VideoTab.SETTINGS -> false
+                }
+                (source == null || item.source == source) && tabMatches
               }
+            }
+            if (filtered.isEmpty()) {
+              Text(
+                when (tab) {
+                  VideoTab.ALL -> "動画がありません。Web URLを追加するか、設定からSMB動画を同期してください。"
+                  VideoTab.CONTINUE -> "再生途中の動画はありません。"
+                  VideoTab.SAVED -> ""
+                  VideoTab.COMPLETED -> "視聴済みの動画はありません。"
+                  VideoTab.SETTINGS -> ""
+                },
+                modifier = Modifier.padding(24.dp),
+                style = MaterialTheme.typography.bodyMedium,
+              )
+            } else {
+              VideoGrid(
+                items = filtered,
+                folders = state.folders,
+                onPlay = onPlay,
+                onEnsureThumbnail = onEnsureThumbnail,
+                onRemove = onRemove,
+                onSetCompleted = onSetCompleted,
+                onSaveVideo = onSaveVideo,
+                onRemoveSavedVideo = onRemoveSavedVideo,
+              )
             }
           }
         }
@@ -313,33 +310,151 @@ private fun VideoSourceFilters(
 }
 
 @Composable
-private fun SavedFolderFilters(
-  folders: List<VideoFolder>,
-  selected: String,
-  onSelected: (String) -> Unit,
+private fun VideoSavedBrowser(
+  state: VideoUiState,
+  source: VideoSource?,
+  location: VideoSavedBrowserLocation,
+  onLocationChange: (VideoSavedBrowserLocation) -> Unit,
+  onPlay: (VideoItem) -> Unit,
+  onEnsureThumbnail: (VideoItem) -> Unit,
+  onRemove: (VideoItem) -> Unit,
+  onSetCompleted: (VideoItem, Boolean) -> Unit,
+  onSaveVideo: (VideoItem, String?) -> Unit,
+  onRemoveSavedVideo: (VideoItem) -> Unit,
 ) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .horizontalScroll(rememberScrollState())
-      .padding(horizontal = 12.dp, vertical = 4.dp),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  val content = remember(state.items, state.folders, state.smbSources, source, location) {
+    buildVideoSavedBrowserContent(
+      items = state.items,
+      folders = state.folders,
+      smbSources = state.smbSources,
+      location = location,
+      sourceFilter = source,
+    )
+  }
+
+  Column(Modifier.fillMaxSize()) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp, vertical = 2.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      content.breadcrumbs.forEachIndexed { index, breadcrumb ->
+        if (index > 0) Text("/")
+        TextButton(
+          onClick = { onLocationChange(breadcrumb.location) },
+          enabled = index != content.breadcrumbs.lastIndex,
+        ) {
+          Text(breadcrumb.label, maxLines = 1)
+        }
+      }
+    }
+
+    if (content.directories.isEmpty() && content.videos.isEmpty()) {
+      Text(
+        if (location == VideoSavedBrowserLocation.Root) {
+          "保存済み動画はありません。SMB動画を同期するか、Web動画を追加するとここに表示されます。"
+        } else {
+          "このフォルダには動画がありません。"
+        },
+        modifier = Modifier.padding(24.dp),
+        style = MaterialTheme.typography.bodyMedium,
+      )
+    } else {
+      LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 160.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        items(content.directories, key = VideoSavedDirectoryEntry::key) { directory ->
+          SavedDirectoryCard(
+            entry = directory,
+            onClick = { onLocationChange(directory.location) },
+          )
+        }
+        items(content.videos, key = VideoItem::id) { item ->
+          VideoCard(
+            item = item,
+            folders = state.folders,
+            onPlay = { onPlay(item) },
+            onEnsureThumbnail = { onEnsureThumbnail(item) },
+            onRemove = { onRemove(item) },
+            onSetCompleted = { completed -> onSetCompleted(item, completed) },
+            onSave = { folderId -> onSaveVideo(item, folderId) },
+            onRemoveSaved = { onRemoveSavedVideo(item) },
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun SavedDirectoryCard(
+  entry: VideoSavedDirectoryEntry,
+  onClick: () -> Unit,
+) {
+  Column(Modifier.fillMaxWidth()) {
+    Card(
+      modifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(16f / 9f)
+        .clickable(onClick = onClick),
+    ) {
+      Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+      ) {
+        Icon(
+          Icons.Default.Folder,
+          contentDescription = null,
+          modifier = Modifier.size(48.dp),
+        )
+      }
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(
+      entry.name,
+      style = MaterialTheme.typography.bodyMedium,
+      fontWeight = FontWeight.Medium,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+    )
+  }
+}
+
+@Composable
+private fun VideoGrid(
+  items: List<VideoItem>,
+  folders: List<VideoFolder>,
+  onPlay: (VideoItem) -> Unit,
+  onEnsureThumbnail: (VideoItem) -> Unit,
+  onRemove: (VideoItem) -> Unit,
+  onSetCompleted: (VideoItem, Boolean) -> Unit,
+  onSaveVideo: (VideoItem, String?) -> Unit,
+  onRemoveSavedVideo: (VideoItem) -> Unit,
+) {
+  LazyVerticalGrid(
+    columns = GridCells.Adaptive(minSize = 160.dp),
+    modifier = Modifier.fillMaxSize(),
+    contentPadding = PaddingValues(12.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    FilterChip(
-      selected = selected == SAVED_ALL,
-      onClick = { onSelected(SAVED_ALL) },
-      label = { Text("すべて") },
-    )
-    FilterChip(
-      selected = selected == SAVED_UNCATEGORIZED,
-      onClick = { onSelected(SAVED_UNCATEGORIZED) },
-      label = { Text("未分類") },
-    )
-    folders.forEach { folder ->
-      FilterChip(
-        selected = selected == folder.id,
-        onClick = { onSelected(folder.id) },
-        label = { Text(folder.name) },
+    items(items, key = VideoItem::id) { item ->
+      VideoCard(
+        item = item,
+        folders = folders,
+        onPlay = { onPlay(item) },
+        onEnsureThumbnail = { onEnsureThumbnail(item) },
+        onRemove = { onRemove(item) },
+        onSetCompleted = { completed -> onSetCompleted(item, completed) },
+        onSave = { folderId -> onSaveVideo(item, folderId) },
+        onRemoveSaved = { onRemoveSavedVideo(item) },
       )
     }
   }
@@ -423,36 +538,59 @@ private fun VideoCard(
         expanded = menuExpanded,
         onDismissRequest = { menuExpanded = false },
       ) {
-        if (item.savedState == null) {
-          DropdownMenuItem(
-            text = { Text("保存") },
-            onClick = {
-              menuExpanded = false
-              onSave(null)
-            },
-          )
-          DropdownMenuItem(
-            text = { Text("フォルダに保存") },
-            onClick = {
-              menuExpanded = false
-              destinationVisible = true
-            },
-          )
-        } else {
-          DropdownMenuItem(
-            text = { Text("保存先を変更") },
-            onClick = {
-              menuExpanded = false
-              destinationVisible = true
-            },
-          )
-          DropdownMenuItem(
-            text = { Text("保存解除") },
-            onClick = {
-              menuExpanded = false
-              onRemoveSaved()
-            },
-          )
+        when (item.source) {
+          VideoSource.SMB -> Unit
+          VideoSource.WEB -> {
+            DropdownMenuItem(
+              text = { Text(if (item.savedState?.folderId == null) "フォルダへ移動" else "保存先を変更") },
+              onClick = {
+                menuExpanded = false
+                destinationVisible = true
+              },
+            )
+            if (item.savedState?.folderId != null) {
+              DropdownMenuItem(
+                text = { Text("未分類へ移動") },
+                onClick = {
+                  menuExpanded = false
+                  onRemoveSaved()
+                },
+              )
+            }
+          }
+          VideoSource.SERVICE -> {
+            if (item.savedState == null) {
+              DropdownMenuItem(
+                text = { Text("保存") },
+                onClick = {
+                  menuExpanded = false
+                  onSave(null)
+                },
+              )
+              DropdownMenuItem(
+                text = { Text("フォルダに保存") },
+                onClick = {
+                  menuExpanded = false
+                  destinationVisible = true
+                },
+              )
+            } else {
+              DropdownMenuItem(
+                text = { Text("保存先を変更") },
+                onClick = {
+                  menuExpanded = false
+                  destinationVisible = true
+                },
+              )
+              DropdownMenuItem(
+                text = { Text("保存解除") },
+                onClick = {
+                  menuExpanded = false
+                  onRemoveSaved()
+                },
+              )
+            }
+          }
         }
         val completed = item.playbackState?.completed == true
         DropdownMenuItem(
@@ -483,10 +621,12 @@ private fun VideoCard(
             VideoSource.SERVICE -> "サービス"
           },
         )
-        item.savedState?.let {
+        if (item.isSaved) {
           append(" ・ 保存済み")
-          if (folderName != null) append(" / $folderName")
-          else append(" / 未分類")
+          if (item.source != VideoSource.SMB) {
+            if (folderName != null) append(" / $folderName")
+            else append(" / 未分類")
+          }
         }
       },
       style = MaterialTheme.typography.labelSmall,
@@ -518,7 +658,7 @@ private fun SaveDestinationDialog(
 ) {
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("保存先を選択") },
+    title = { Text("整理先を選択") },
     text = {
       Column(
         modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -569,9 +709,9 @@ private fun VideoSettings(
       .padding(16.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    Text("保存フォルダ", style = MaterialTheme.typography.titleMedium)
+    Text("整理フォルダ", style = MaterialTheme.typography.titleMedium)
     Text(
-      "保存した動画は未分類または1つのフォルダに整理できます。フォルダを削除しても動画の保存状態は維持され、未分類へ戻ります。",
+      "Web動画と明示保存した購読動画は、保存済み画面のフォルダへ整理できます。SMB動画は同期元のディレクトリ階層をそのまま辿ります。",
       style = MaterialTheme.typography.bodySmall,
     )
     Button(onClick = onNewFolder, enabled = !state.busy) {

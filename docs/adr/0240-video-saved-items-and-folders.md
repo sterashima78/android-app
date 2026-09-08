@@ -4,6 +4,7 @@
 - Date: 2026-09-08
 - Refines: [ADR-0237](0237-video-library-and-web-extraction.md)
 - Follows: [ADR-0239](0239-shared-smb-connection-profiles-and-feature-locations.md)
+- Amended by: [ADR-0244](0244-video-intrinsic-saved-sources-and-file-browser.md) — SMB / Web の保存済み判定を source lifecycle に合わせ、保存画面をファイルブラウザ型へ変更する。
 
 ## Context
 
@@ -53,6 +54,8 @@ Curation の Bookmark / Folder table は利用せず、Video Repository contract
 
 `video_saved_items.video_id` を primary key とし、row の存在を保存済み状態の source of truth とする。`folder_id` は nullable とする。
 
+この全source共通の source-of-truth 定義は ADR-0244 で更新される。SMB / Web では catalog item の存在自体を保存済みとして扱い、`video_saved_items` は購読型Providerの明示保存と、Web / Provider item のVideo専用フォルダ所属に利用する。
+
 ### database version を 30 へ進める
 
 ADR-0239 の version 29 schema を更新元 baseline とし、version 30 で Video saved/folder table を追加する。
@@ -77,4 +80,4 @@ backup restore の exact-version policy は維持する。
 - 同名フォルダの正規化と重複拒否を test する。
 - version 29 -> 30 migration と fresh schema を test する。
 - architecture verification で table ownership を検証する。
-- UI では保存タブ、未分類 / folder filter、保存先変更、folder CRUD を確認する。
+- UI では保存タブ、未分類 / folder filter、保存先変更、folder CRUD を確認する。ADR-0244 適用後のcurrent UI verificationは同ADRとcurrent architectureを正本とする。
