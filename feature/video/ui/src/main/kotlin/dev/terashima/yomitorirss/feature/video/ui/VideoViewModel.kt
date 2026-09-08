@@ -29,6 +29,7 @@ data class VideoUiState(
   val providers: List<VideoProvider> = emptyList(),
   val subscriptions: List<VideoSubscription> = emptyList(),
   val unreadProviderVideos: List<VideoProviderVideo> = emptyList(),
+  val watchLaterProviderVideos: List<VideoProviderVideo> = emptyList(),
   val loading: Boolean = true,
   val busy: Boolean = false,
   val busyMessage: String? = null,
@@ -136,6 +137,10 @@ class VideoViewModel(
     "あとで見る状態を更新できませんでした",
   ) {
     providerRepository.setWatchLater(item.video.id, watchLater)
+  }
+
+  fun markAllProviderRead() = launchMutation("すべて既読にできませんでした") {
+    providerRepository.markAllRead()
   }
 
   fun saveVideo(item: VideoItem, folderId: String? = null) = launchMutation("動画を保存できませんでした") {
@@ -265,6 +270,7 @@ class VideoViewModel(
     providers = providerRepository.providers(),
     subscriptions = providerRepository.subscriptions(),
     unreadProviderVideos = providerRepository.unreadVideos(),
+    watchLaterProviderVideos = providerRepository.watchLaterVideos(),
   )
 
   private fun showSnapshot(loaded: LoadedVideoState) {
@@ -277,6 +283,7 @@ class VideoViewModel(
       providers = loaded.providers,
       subscriptions = loaded.subscriptions,
       unreadProviderVideos = loaded.unreadProviderVideos,
+      watchLaterProviderVideos = loaded.watchLaterProviderVideos,
       loading = false,
       busy = false,
       busyMessage = null,
@@ -305,5 +312,6 @@ class VideoViewModel(
     val providers: List<VideoProvider>,
     val subscriptions: List<VideoSubscription>,
     val unreadProviderVideos: List<VideoProviderVideo>,
+    val watchLaterProviderVideos: List<VideoProviderVideo>,
   )
 }
