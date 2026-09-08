@@ -42,6 +42,7 @@ internal class AppVideoRuntimeDependencies(
       repository = repository,
       playbackResolver = playbackResolver,
       thumbnailResolver = DefaultVideoThumbnailResolver(
+        context = application,
         byteSourceFactory = playbackResolver,
         cacheDirectory = application.cacheDir,
       ),
