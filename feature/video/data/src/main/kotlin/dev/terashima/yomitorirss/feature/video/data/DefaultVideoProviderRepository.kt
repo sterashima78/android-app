@@ -77,5 +77,5 @@ class DefaultVideoProviderRepository(
 
   override fun setWatchLater(videoId: String, watchLater: Boolean) = database.setWatchLater(videoId, watchLater)
 
-  override fun markAllRead() = database.markAllRead()
+  override fun markAllRead(providerId: String?) = database.markAllRead(providerId)
 }
