@@ -14,6 +14,8 @@ import java.io.FileOutputStream
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 class DefaultVideoThumbnailResolver(
@@ -22,13 +24,17 @@ class DefaultVideoThumbnailResolver(
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : VideoThumbnailResolver {
   private val thumbnailDirectory = File(cacheDirectory, "video-thumbnails")
+  private val generationSemaphore = Semaphore(MAX_CONCURRENT_GENERATIONS)
 
   override suspend fun resolve(item: VideoItem): String? {
     if (item.source != VideoSource.SMB) return item.thumbnailUrl
-    val target = File(thumbnailDirectory, "${item.id}-${item.updatedAtEpochMillis}.jpg")
+    val target = File(thumbnailDirectory, thumbnailCacheFileName(item))
     return withContext(ioDispatcher) {
       if (target.isFile && target.length() > 0L) return@withContext Uri.fromFile(target).toString()
-      runCatching { generateThumbnail(item, target) }.getOrNull()
+      generationSemaphore.withPermit {
+        if (target.isFile && target.length() > 0L) return@withPermit Uri.fromFile(target).toString()
+        runCatching { generateThumbnail(item, target) }.getOrNull()
+      }
     }
   }
 
@@ -125,5 +131,9 @@ class DefaultVideoThumbnailResolver(
     const val DEFAULT_THUMBNAIL_HEIGHT = 360
     const val MIN_FRAME_TIME_MS = 1_000L
     const val MAX_FRAME_TIME_MS = 30_000L
+    const val MAX_CONCURRENT_GENERATIONS = 2
+
+    fun thumbnailCacheFileName(item: VideoItem): String =
+      "${item.id}-${item.sizeBytes ?: 0L}.jpg"
   }
 }
