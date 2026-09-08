@@ -111,6 +111,7 @@ class AppContainer(
     LazyThreadSafetyMode.SYNCHRONIZED,
   ) {
     AppVideoRuntimeDependencies(
+      application = application,
       database = databaseConnection,
       httpClient = httpClient,
       smbMediaFileAccess = libraryRuntime.smbMediaFileAccess,
