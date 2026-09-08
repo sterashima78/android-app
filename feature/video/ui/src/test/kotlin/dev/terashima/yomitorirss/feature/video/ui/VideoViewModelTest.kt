@@ -75,6 +75,49 @@ class VideoViewModelTest {
   }
 
   @Test
+  fun `SMB同期失敗のmessageが空でも原因種別を公開する`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val repository = FakeVideoRepository(smbFailure = IllegalStateException())
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      advanceUntilIdle()
+
+      viewModel.refreshSmb()
+      advanceUntilIdle()
+
+      assertFalse(viewModel.state.value.busy)
+      assertEquals(
+        "SMB動画を同期できませんでした: IllegalStateException",
+        viewModel.state.value.message,
+      )
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
+  fun `SMB同期失敗では内側の具体的なmessageを優先する`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val repository = FakeVideoRepository(
+        smbFailure = IllegalStateException(null, IllegalArgumentException("接続処理に失敗しました")),
+      )
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository)
+      advanceUntilIdle()
+
+      viewModel.refreshSmb()
+      advanceUntilIdle()
+
+      assertEquals(
+        "SMB動画を同期できませんでした: 接続処理に失敗しました",
+        viewModel.state.value.message,
+      )
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
   fun `再生セッションと全画面状態と最新位置をViewModel内に保持する`() = runTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
@@ -136,6 +179,7 @@ class VideoViewModelTest {
 
   private class FakeVideoRepository(
     private val addFailure: Throwable? = null,
+    private val smbFailure: Throwable? = null,
   ) : VideoRepository {
     val addGate = CompletableDeferred<Unit>()
     private val storedItems = mutableListOf<VideoItem>()
@@ -157,7 +201,12 @@ class VideoViewModelTest {
     }
 
     override suspend fun remove(id: String) = Unit
-    override suspend fun refreshSmb(): Int = 0
+
+    override suspend fun refreshSmb(): Int {
+      smbFailure?.let { throw it }
+      return 0
+    }
+
     override fun smbSources(): List<VideoSmbSource> = emptyList()
     override fun saveSmbSource(source: VideoSmbSource): VideoSmbSource = source
     override fun deleteSmbSource(id: String) = Unit

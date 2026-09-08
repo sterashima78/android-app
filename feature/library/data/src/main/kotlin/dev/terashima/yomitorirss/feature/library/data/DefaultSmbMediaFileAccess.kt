@@ -41,17 +41,21 @@ class DefaultSmbMediaFileAccess(
     val normalizedExtensions = extensions.map { it.lowercase().trimStart('.') }.toSet()
     require(normalizedExtensions.isNotEmpty()) { "動画拡張子が指定されていません" }
 
-    return withShare(profile, normalized.share, password) { share ->
-      buildList {
-        scanDirectory(
-          share = share,
-          location = normalized,
-          path = normalized.rootPath,
-          depth = 0,
-          extensions = normalizedExtensions,
-          result = this,
-        )
+    return try {
+      withShare(profile, normalized.share, password) { share ->
+        buildList {
+          scanDirectory(
+            share = share,
+            location = normalized,
+            path = normalized.rootPath,
+            depth = 0,
+            extensions = normalizedExtensions,
+            result = this,
+          )
+        }
       }
+    } catch (error: Throwable) {
+      throw IllegalStateException(smbMediaListFailureMessage(profile.name, normalized, error), error)
     }
   }
 
@@ -224,6 +228,22 @@ internal fun normalizeMediaSmbPath(path: String): String {
     .filter { it.isNotBlank() && it != "." }
   require(".." !in segments) { "SMB動画のパスに .. は使用できません" }
   return segments.joinToString("\\")
+}
+
+internal fun smbMediaListFailureMessage(
+  profileName: String,
+  location: SmbMediaLocation,
+  error: Throwable,
+): String {
+  val path = listOf(location.share, location.rootPath.replace('\\', '/'))
+    .filter(String::isNotBlank)
+    .joinToString("/")
+  val detail = generateSequence(error) { it.cause }
+    .mapNotNull { cause -> cause.message?.trim()?.takeIf(String::isNotEmpty) }
+    .firstOrNull()
+    ?: error::class.simpleName
+    ?: "原因を取得できませんでした"
+  return "$profileName ($path) のSMB動画一覧を取得できませんでした: $detail"
 }
 
 private fun joinMediaSmbPath(parent: String, child: String): String =
