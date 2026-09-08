@@ -48,7 +48,7 @@ internal class IntegratedVideoProviderViewModel(
       } catch (error: CancellationException) {
         throw error
       } catch (error: Throwable) {
-        mutableState.value = snapshot().copy(message = error.userMessage())
+        mutableState.value = snapshotOrCurrent().copy(message = error.userMessage())
       }
     }
   }
@@ -97,10 +97,16 @@ internal class IntegratedVideoProviderViewModel(
       } catch (error: CancellationException) {
         throw error
       } catch (error: Throwable) {
-        mutableState.value = snapshot().copy(message = error.userMessage().ifBlank { fallbackMessage })
+        val message = error.userMessage().ifBlank { fallbackMessage }
+        mutableState.value = snapshotOrCurrent().copy(message = message)
       }
     }
   }
+
+  private fun snapshotOrCurrent(): IntegratedVideoProviderState =
+    runCatching(::snapshot).getOrElse {
+      mutableState.value.copy(initialized = true, refreshing = false)
+    }
 
   private fun snapshot(): IntegratedVideoProviderState {
     val providerIds = youtubeProviderIds()
