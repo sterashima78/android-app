@@ -127,7 +127,7 @@ internal class WebVideoHttpDataSource(
           defaultRequestProperties = defaultRequestProperties,
           dataSpecRequestProperties = dataSpec.httpRequestHeaders,
           cookieProvider = cookieProvider,
-        ).forEach(::setRequestProperty)
+        ).forEach { (name, value) -> setRequestProperty(name, value) }
         rangeRequestHeader(dataSpec)?.let { setRequestProperty("Range", it) }
         connect()
       }
@@ -135,9 +135,12 @@ internal class WebVideoHttpDataSource(
       val responseCode = current.responseCode
       if (responseCode !in REDIRECT_CODES) return current
       val location = current.getHeaderField("Location")
-      current.disconnect()
       if (location.isNullOrBlank()) return current
-      if (redirectCount >= MAX_REDIRECTS) throw IOException("Web動画のredirect回数が上限を超えました")
+      if (redirectCount >= MAX_REDIRECTS) {
+        current.disconnect()
+        throw IOException("Web動画のredirect回数が上限を超えました")
+      }
+      current.disconnect()
       url = URL(currentUrl, location)
     }
     error("unreachable")
