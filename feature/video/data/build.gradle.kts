@@ -23,6 +23,8 @@ dependencies {
   implementation(project(":core:network"))
 
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.media3.exoplayer)
+  implementation(libs.androidx.media3.inspector.frame)
   implementation(libs.androidx.webkit)
   implementation(libs.kotlinx.coroutines.android)
   implementation("org.jsoup:jsoup:1.22.2")
