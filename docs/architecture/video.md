@@ -1,6 +1,6 @@
 # Video
 
-この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-subscription-providers.md) を参照する。
+この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md) を参照する。
 
 ## Ownership
 
@@ -97,13 +97,14 @@ HTML / OGP metadata
 Video catalog
 ```
 
-custom ruleはVideo-owned durable user dataであり、URL glob patternと任意のPromise-returning JavaScript functionを保存する。
+custom ruleはVideo-owned durable user dataであり、URL glob pattern、任意のPromise-returning JavaScript function、再生時Cookie共有のopt-in設定を保存する。
 
 - title extractor
 - thumbnail extractor
 - playback extractor
+- `shareCookiesForPlayback`: default false
 
-WebViewは専用profileを利用し、HTTPS pageだけを対象とする。file/content access、mixed content、window生成、geolocation等を有効化しない。native JavaScript bridgeは公開しない。
+WebViewは専用profileを利用し、HTTPS pageだけを対象とする。file/content access、mixed content、window生成、geolocation等を有効化しない。native JavaScript bridgeは公開しない。Cookie共有の設定にかかわらずthird-party Cookie acceptanceを暗黙に有効化しない。
 
 custom title / thumbnail extractionが失敗した場合は静的metadataを維持する。playback extractorが利用できない、または結果を取得できない場合はpage URLをWeb表示するtargetへfallbackする。
 
@@ -147,11 +148,15 @@ providerを無効化するとbackground refresh対象から外すが、設定と
 
 再生targetはDomainで次の3種類へ正規化する。
 
-- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は元pageのoriginをtransientなreferrer contextとして持てる。
+- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は元pageのoriginと、明示opt-in時だけ一時的なCookie providerを持てる。
 - `VideoPlaybackTarget.Smb`: Library-owned SMB read capabilityを使うrandom-access source
 - `VideoPlaybackTarget.WebPage`: アプリ内video playerではなくWeb pageを開くfallback
 
-Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginだけから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、元pageのpath、query、fragmentはどちらにも含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。Cookie、Authorization、その他のcredentialはWebViewからMedia3へ引き継がない。
+Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginだけから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、元pageのpath、query、fragmentはどちらにも含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。
+
+一致した抽出ルールで `shareCookiesForPlayback` が有効な場合だけ、抽出に使った専用WebView profileのCookieManagerを `VideoPlaybackCookieProvider` としてtransientに再生targetへ接続する。Cookie文字列をtargetの通常data fieldへコピーせず、Media3のHTTP DataSourceが各request URLを処理する時点でproviderへ問い合わせる。CookieManager自身のhost / path / Secure等の選択に従い、そのURLへ適用されるCookieだけを `Cookie` headerとして付与する。provider取得が失敗した場合はCookieを付けずにrequestを継続する。
+
+Cookie共有がOFFの場合はproviderを作らず、従来どおりCookieを送らない。Cookie値、Authorization、その他のcredentialをdatabase、backup、export、log、error UIへ保存・表示しない。`Authorization` 等の共有へ一般化しない。
 
 v1のVideo playerはforeground UI lifetimeとする。全画面表示では横向きへ切り替え、通常表示へ戻ると縦向きへ復帰する。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
 
@@ -182,9 +187,9 @@ Video Dataは次のtableを所有する。
 - `video_subscriptions`
 - `video_provider_items`
 
-`video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所、`video_folders` / `video_saved_items` は保存と整理状態、`video_web_extractor_rules` はユーザー設定、`video_providers` / `video_subscriptions` / `video_provider_items` は購読型providerの設定・membership・item stateとして保存する。
+`video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所、`video_folders` / `video_saved_items` は保存と整理状態、`video_web_extractor_rules` はユーザー設定、`video_providers` / `video_subscriptions` / `video_provider_items` は購読型providerの設定・membership・item stateとして保存する。Cookie共有のboolean設定はruleのdurable stateだが、Cookie値そのものは保存しない。
 
-stream URL、stream request context（referrer / origin / user agent）、動画ファイル本体、SMB credential、生成済みSMB thumbnail fileはVideoのdurable stateに含めない。SMB thumbnailはapplication cache内の派生データでありbackup / export対象にしない。
+stream URL、stream request context（referrer / origin / user agent / cookie value）、動画ファイル本体、SMB credential、生成済みSMB thumbnail fileはVideoのdurable stateに含めない。SMB thumbnailはapplication cache内の派生データでありbackup / export対象にしない。
 
 SMB接続プロファイルはLibrary-owned `smb_connection_profiles` に保存し、Library用SMB同期場所は既存 `smb_library_servers` のshare / root pathとして維持する。Videoはこれらのforeign tableを通常runtimeで直接read/writeしない。
 
@@ -192,7 +197,9 @@ ADR-0239で `video_smb_sources` と `smb_connection_profiles` を追加してapp
 
 ADR-0240でapplication database versionを30へ進め、`video_folders` と `video_saved_items` を追加する。version 29 -> 30では既存Video itemを自動保存せず、保存状態とフォルダは空から開始する。
 
-ADR-0241でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。
+ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存version 30 databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
+
+ADR-0242でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。version 31 schema initializationでもADR-0241のCookie列refinementはidempotentに適用される。
 
 ## Playback state semantics
 
@@ -218,7 +225,10 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - SMB thumbnailはdurable source of truthにせず、生成失敗をcatalog同期・再生失敗へ昇格させない。
 - stream URLをdurable source of truthにしない。
 - Web streamの `Referer` / `Origin` に元pageのpath / query / fragmentを含めない。
-- WebView Cookie / Authorization等のcredentialをMedia3へ暗黙に複製しない。
+- WebView CookieをMedia3へ共有するのはruleで明示opt-inされたforeground playbackだけとする。
+- Cookie共有の既定値はOFFとし、既存ruleを自動的にONへしない。
+- Cookie値 / Authorization等のcredentialをdurable state、log、error UIへ複製しない。
+- default WebView profileのCookieをVideo extractor profileへ混ぜない。
 - Video用の第二のSMB credential storeを作らない。
 - Video保存状態にCuration-owned tableを利用しない。
 - フォルダ削除で保存済み動画を自動的に保存解除しない。
@@ -245,16 +255,19 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
 - Web streamの元page originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
+- Cookie共有OFFではproviderを作らず、ONの場合だけrequest URLごとにprofile Cookie lookupすることをunit testする。
+- `video_web_extractor_rules` のCookie共有booleanを保存・復元し、既存schema refinementでdefault OFFになることをrepository testする。
 - app database fresh schema、version 28 -> 29、version 29 -> 30、version 30 -> 31をtestする。
 - architecture verificationでmodule graph、table ownership、migration foreign-read allowlist、navigation ownershipを検証する。
-- Android実機では保存タブ、未分類 / folder filter、保存先変更、folder CRUD、provider有効化・subscription追加・refresh・未読状態に加え、LibraryとVideoで異なるSMB share/path、SMB動画thumbnail表示、Web stream、全画面、seek、resumeを確認する。
+- Android実機では保存タブ、未分類 / folder filter、保存先変更、folder CRUD、provider有効化・subscription追加・refresh・未読状態に加え、LibraryとVideoで異なるSMB share/path、SMB動画thumbnail表示、Web stream、Cookie共有OFF/ON、全画面、seek、resumeを確認する。
 
 ## Sources
 
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
 - [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
-- [ADR-0241](../adr/0241-video-subscription-providers.md)
+- [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
+- [ADR-0242](../adr/0242-video-subscription-providers.md)
 - [module-map.md](module-map.md)
 - [context-map.md](context-map.md)
 - [persistence.md](persistence.md)
