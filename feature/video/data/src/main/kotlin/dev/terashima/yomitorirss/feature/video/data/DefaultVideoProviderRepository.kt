@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 
 class DefaultVideoProviderRepository(
   database: DatabaseConnection,
@@ -55,7 +56,10 @@ class DefaultVideoProviderRepository(
             refreshed += 1
             added += addedCount
           },
-          onFailure = { failed += 1 },
+          onFailure = { error ->
+            if (error is CancellationException) throw error
+            failed += 1
+          },
         )
       }
     }
