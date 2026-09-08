@@ -68,7 +68,7 @@ import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 
 private enum class VideoTab(val label: String) {
-  ALL("すべて"),
+  ALL("未視聴"),
   CONTINUE("続き"),
   SAVED("保存済み"),
   COMPLETED("視聴済み"),
@@ -234,7 +234,7 @@ fun VideoScreen(
             val filtered = remember(state.items, tab, source) {
               state.items.filter { item ->
                 val tabMatches = when (tab) {
-                  VideoTab.ALL -> true
+                  VideoTab.ALL -> item.isUnwatched()
                   VideoTab.CONTINUE -> item.playbackState?.let { it.positionMs > 0L && !it.completed } == true
                   VideoTab.SAVED -> false
                   VideoTab.COMPLETED -> item.playbackState?.completed == true
@@ -246,7 +246,7 @@ fun VideoScreen(
             if (filtered.isEmpty()) {
               Text(
                 when (tab) {
-                  VideoTab.ALL -> "動画がありません。Web URLを追加するか、設定からSMB動画を同期してください。"
+                  VideoTab.ALL -> "未視聴の動画はありません。"
                   VideoTab.CONTINUE -> "再生途中の動画はありません。"
                   VideoTab.SAVED -> ""
                   VideoTab.COMPLETED -> "視聴済みの動画はありません。"
@@ -976,4 +976,9 @@ private fun formatPlaybackPosition(positionMs: Long, durationMs: Long): String {
     }
   }
   return if (durationMs > 0L) "${format(positionMs)} / ${format(durationMs)}" else format(positionMs)
+}
+
+internal fun VideoItem.isUnwatched(): Boolean {
+  val playback = playbackState
+  return !isSaved && (playback == null || (!playback.completed && playback.positionMs <= 0L))
 }
