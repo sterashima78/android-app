@@ -78,7 +78,7 @@ class DefaultVideoPlaybackResolver(
         VideoPlaybackTarget.Stream(
           url = it,
           mimeType = custom.mimeType,
-          referrerUrl = webStreamReferrerUrl(pageUrl),
+          referrerUrl = custom.referrerUrl ?: webStreamReferrerUrl(pageUrl),
           cookieProvider = custom.cookieProvider,
         )
       }
