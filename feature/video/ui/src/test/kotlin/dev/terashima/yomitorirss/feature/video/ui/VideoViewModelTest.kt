@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
+import dev.terashima.yomitorirss.feature.video.VideoThumbnailResolver
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -118,6 +119,70 @@ class VideoViewModelTest {
   }
 
   @Test
+  fun `SMB動画サムネイルを解決すると一覧へ反映する`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val item = VideoItem(
+        id = "smb-video-1",
+        source = VideoSource.SMB,
+        sourceId = "mosaic-smb-video://file?serverId=server&share=media&path=movie.mp4",
+        title = "テスト動画",
+        updatedAtEpochMillis = 1L,
+      )
+      val repository = FakeVideoRepository(initialItems = listOf(item))
+      var resolveCount = 0
+      val resolver = object : VideoThumbnailResolver {
+        override suspend fun resolve(item: VideoItem): String {
+          resolveCount += 1
+          return "file:///cache/${item.id}.jpg"
+        }
+      }
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository, resolver)
+      advanceUntilIdle()
+
+      viewModel.ensureThumbnail(viewModel.state.value.items.single())
+      advanceUntilIdle()
+
+      assertEquals("file:///cache/smb-video-1.jpg", viewModel.state.value.items.single().thumbnailUrl)
+      assertEquals(1, resolveCount)
+
+      viewModel.ensureThumbnail(viewModel.state.value.items.single())
+      advanceUntilIdle()
+      assertEquals(1, resolveCount)
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
+  fun `サムネイル解決失敗は動画一覧のエラーにしない`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val item = VideoItem(
+        id = "smb-video-1",
+        source = VideoSource.SMB,
+        sourceId = "mosaic-smb-video://file?serverId=server&share=media&path=movie.mp4",
+        title = "テスト動画",
+        updatedAtEpochMillis = 1L,
+      )
+      val repository = FakeVideoRepository(initialItems = listOf(item))
+      val resolver = object : VideoThumbnailResolver {
+        override suspend fun resolve(item: VideoItem): String? = error("フレームを取得できません")
+      }
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository, resolver)
+      advanceUntilIdle()
+
+      viewModel.ensureThumbnail(viewModel.state.value.items.single())
+      advanceUntilIdle()
+
+      assertNull(viewModel.state.value.items.single().thumbnailUrl)
+      assertNull(viewModel.state.value.message)
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
   fun `再生セッションと全画面状態と最新位置をViewModel内に保持する`() = runTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
@@ -180,9 +245,10 @@ class VideoViewModelTest {
   private class FakeVideoRepository(
     private val addFailure: Throwable? = null,
     private val smbFailure: Throwable? = null,
+    initialItems: List<VideoItem> = emptyList(),
   ) : VideoRepository {
     val addGate = CompletableDeferred<Unit>()
-    private val storedItems = mutableListOf<VideoItem>()
+    private val storedItems = initialItems.toMutableList()
     val storedFolders = mutableListOf<VideoFolder>()
 
     override suspend fun items(): List<VideoItem> = storedItems.toList()
