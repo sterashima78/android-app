@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
 import dev.terashima.yomitorirss.feature.video.VideoProvider
 import dev.terashima.yomitorirss.feature.video.VideoProviderType
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -59,7 +60,7 @@ class DefaultVideoProviderRepositoryTest {
   }
 
   @Test
-  fun `一つのsubscription更新失敗は他のsubscription更新を妨げない`() = runBlocking {
+  fun `一つのsubscription更新失敗は他を更新したあと部分失敗として通知する`() = runBlocking {
     val database = VideoProviderDatabase(connection)
     val provider = database.saveProvider(testProvider())
     database.upsertProviderFeed(provider, emptyFeed(CHANNEL_ID_1, "Channel A"))
@@ -67,11 +68,9 @@ class DefaultVideoProviderRepositoryTest {
     val http = PartialFailureHttpClient()
     val repository = DefaultVideoProviderRepository(connection, http)
 
-    val result = repository.refreshProviders()
+    val error = runCatching { repository.refreshProviders() }.exceptionOrNull()
 
-    assertEquals(1, result.refreshedSubscriptions)
-    assertEquals(1, result.failedSubscriptions)
-    assertEquals(1, result.addedVideos)
+    assertTrue(error is IOException)
     assertEquals(setOf(CHANNEL_ID_1, CHANNEL_ID_2), http.requestedChannelIds.toSet())
     assertEquals("video-2", repository.unreadVideos().single().providerItemId)
   }
