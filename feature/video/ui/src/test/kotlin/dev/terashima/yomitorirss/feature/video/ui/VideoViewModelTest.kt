@@ -183,6 +183,48 @@ class VideoViewModelTest {
   }
 
   @Test
+  fun `サムネイル生成中に動画versionが変わると最新versionを再解決する`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val oldItem = VideoItem(
+        id = "smb-video-1",
+        source = VideoSource.SMB,
+        sourceId = "mosaic-smb-video://file?serverId=server&share=media&path=movie.mp4",
+        title = "テスト動画",
+        sizeBytes = 100L,
+        updatedAtEpochMillis = 1L,
+      )
+      val newItem = oldItem.copy(sizeBytes = 200L, updatedAtEpochMillis = 2L)
+      val repository = FakeVideoRepository(initialItems = listOf(oldItem))
+      val oldGenerationGate = CompletableDeferred<Unit>()
+      val resolvedSizes = mutableListOf<Long?>()
+      val resolver = object : VideoThumbnailResolver {
+        override suspend fun resolve(item: VideoItem): String {
+          resolvedSizes += item.sizeBytes
+          if (item.sizeBytes == oldItem.sizeBytes) oldGenerationGate.await()
+          return "file:///cache/${item.id}-${item.sizeBytes}.jpg"
+        }
+      }
+      val viewModel = VideoViewModel(repository, FakeSmbConnectionProfileRepository, resolver)
+      advanceUntilIdle()
+
+      viewModel.ensureThumbnail(viewModel.state.value.items.single())
+      advanceUntilIdle()
+      repository.storedItems[0] = newItem
+      viewModel.reload()
+      advanceUntilIdle()
+
+      oldGenerationGate.complete(Unit)
+      advanceUntilIdle()
+
+      assertEquals(listOf(100L, 200L), resolvedSizes)
+      assertEquals("file:///cache/smb-video-1-200.jpg", viewModel.state.value.items.single().thumbnailUrl)
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
   fun `再生セッションと全画面状態と最新位置をViewModel内に保持する`() = runTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
@@ -248,7 +290,7 @@ class VideoViewModelTest {
     initialItems: List<VideoItem> = emptyList(),
   ) : VideoRepository {
     val addGate = CompletableDeferred<Unit>()
-    private val storedItems = initialItems.toMutableList()
+    val storedItems = initialItems.toMutableList()
     val storedFolders = mutableListOf<VideoFolder>()
 
     override suspend fun items(): List<VideoItem> = storedItems.toList()
