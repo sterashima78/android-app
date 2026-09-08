@@ -1,84 +1,98 @@
 package dev.terashima.yomitorirss.feature.youtube.data
 
-import dev.terashima.yomitorirss.core.database.DatabaseConnection
-import dev.terashima.yomitorirss.core.network.HttpClient
-import dev.terashima.yomitorirss.core.network.HttpRequest
+import dev.terashima.yomitorirss.feature.video.VideoProvider
+import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
+import dev.terashima.yomitorirss.feature.video.VideoProviderType
+import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.youtube.YouTubeChannel
 import dev.terashima.yomitorirss.feature.youtube.YouTubeRepository
 import dev.terashima.yomitorirss.feature.youtube.YouTubeVideo
-import java.io.IOException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class DefaultYouTubeRepository(
-  database: DatabaseConnection,
-  private val httpClient: HttpClient = HttpClient.create(),
+  private val providers: VideoProviderRepository,
 ) : YouTubeRepository {
-  private val database = YouTubeDatabase(database)
-  private val parser = YouTubeFeedParser()
-
-  override suspend fun listChannels(): List<YouTubeChannel> = withContext(Dispatchers.IO) {
-    database.listChannels()
-  }
-
-  override suspend fun listUnreadVideos(): List<YouTubeVideo> = withContext(Dispatchers.IO) {
-    database.listUnreadVideos()
-  }
-
-  override suspend fun listWatchLaterVideos(): List<YouTubeVideo> = withContext(Dispatchers.IO) {
-    database.listWatchLaterVideos()
-  }
-
-  override suspend fun listHistoryVideos(): List<YouTubeVideo> = withContext(Dispatchers.IO) {
-    database.listHistoryVideos()
-  }
-
-  override suspend fun subscribe(channelUrl: String): YouTubeChannel = withContext(Dispatchers.IO) {
-    val requestedChannelId = YouTubeChannelUrl.channelId(channelUrl)
-    val feed = fetchFeed(requestedChannelId)
-    require(feed.channelId == requestedChannelId) {
-      "YouTubeチャンネルIDが取得結果と一致しません"
-    }
-    database.upsertFeed(feed)
-  }
-
-  override suspend fun unsubscribe(channelId: String) = withContext(Dispatchers.IO) {
-    database.deleteChannel(channelId)
-  }
-
-  override suspend fun refresh() = withContext(Dispatchers.IO) {
-    val channels = database.listChannels()
-    var failures = 0
-    channels.forEach { channel ->
-      runCatching { database.upsertFeed(fetchFeed(channel.id)) }
-        .onFailure { failures += 1 }
-    }
-    if (failures > 0) {
-      throw IOException("${channels.size}件中${failures}件のYouTubeチャンネルを更新できませんでした")
+  override suspend fun listChannels(): List<YouTubeChannel> {
+    val provider = youtubeProvider() ?: return emptyList()
+    return providers.subscriptions(provider.id).map { subscription ->
+      YouTubeChannel(
+        id = subscription.sourceId,
+        title = subscription.title,
+        url = subscription.sourceUrl,
+      )
     }
   }
 
-  override suspend fun markRead(videoId: String) = withContext(Dispatchers.IO) {
-    database.markRead(videoId)
+  override suspend fun listUnreadVideos(): List<YouTubeVideo> = youtubeVideos(providers.unreadVideos())
+
+  override suspend fun listWatchLaterVideos(): List<YouTubeVideo> = youtubeVideos(providers.watchLaterVideos())
+
+  override suspend fun listHistoryVideos(): List<YouTubeVideo> = youtubeVideos(providers.historyVideos())
+
+  override suspend fun subscribe(channelUrl: String): YouTubeChannel {
+    val provider = youtubeProvider() ?: providers.saveProvider(
+      VideoProvider(
+        id = "youtube",
+        type = VideoProviderType.YOUTUBE,
+        name = "YouTube",
+        enabled = true,
+      ),
+    )
+    val subscription = providers.subscribe(provider.id, channelUrl)
+    return YouTubeChannel(subscription.sourceId, subscription.title, subscription.sourceUrl)
   }
 
-  override suspend fun markUnread(videoId: String) = withContext(Dispatchers.IO) {
-    database.markUnread(videoId)
+  override suspend fun unsubscribe(channelId: String) {
+    val provider = youtubeProvider() ?: return
+    providers.subscriptions(provider.id)
+      .firstOrNull { it.sourceId == channelId }
+      ?.let { providers.unsubscribe(it.id) }
   }
 
-  override suspend fun setWatchLater(videoId: String, watchLater: Boolean) = withContext(Dispatchers.IO) {
-    database.setWatchLater(videoId, watchLater)
+  override suspend fun refresh() {
+    youtubeProvider()?.let { providers.refreshProviders(it.id) }
   }
 
-  override suspend fun markAllRead() = withContext(Dispatchers.IO) {
-    database.markAllRead()
+  override suspend fun markRead(videoId: String) {
+    youtubeProvider()?.let { providers.markRead(providerVideoId(it.id, videoId)) }
   }
 
-  private suspend fun fetchFeed(channelId: String): ParsedYouTubeFeed {
-    val response = httpClient.execute(HttpRequest(url = YouTubeChannelUrl.feed(channelId), maxResponseBytes = 4L * 1024 * 1024))
-    if (!response.isSuccessful) {
-      throw IOException("YouTubeの取得に失敗しました: HTTP ${response.statusCode}")
-    }
-    return parser.parse(response.body)
+  override suspend fun markUnread(videoId: String) {
+    youtubeProvider()?.let { providers.markUnread(providerVideoId(it.id, videoId)) }
+  }
+
+  override suspend fun setWatchLater(videoId: String, watchLater: Boolean) {
+    youtubeProvider()?.let { providers.setWatchLater(providerVideoId(it.id, videoId), watchLater) }
+  }
+
+  override suspend fun markAllRead() {
+    providers.markAllRead()
+  }
+
+  private fun youtubeProvider(): VideoProvider? = providers.providers().firstOrNull {
+    it.type == VideoProviderType.YOUTUBE
+  }
+
+  private fun youtubeVideos(videos: List<VideoProviderVideo>): List<YouTubeVideo> {
+    val provider = youtubeProvider() ?: return emptyList()
+    val subscriptions = providers.subscriptions(provider.id).associateBy { it.id }
+    return videos.asSequence()
+      .filter { it.providerId == provider.id }
+      .map { item ->
+        val subscription = item.subscriptionId?.let(subscriptions::get)
+        YouTubeVideo(
+          id = item.providerItemId,
+          channelId = subscription?.sourceId.orEmpty(),
+          channelTitle = item.subscriptionTitle.orEmpty(),
+          title = item.video.title,
+          url = item.video.pageUrl.orEmpty(),
+          publishedAtEpochMillis = item.publishedAtEpochMillis,
+          isRead = item.isRead,
+          isWatchLater = item.isWatchLater,
+        )
+      }
+      .toList()
   }
 }
+
+private fun providerVideoId(providerId: String, providerItemId: String): String =
+  "provider:$providerId:$providerItemId"
