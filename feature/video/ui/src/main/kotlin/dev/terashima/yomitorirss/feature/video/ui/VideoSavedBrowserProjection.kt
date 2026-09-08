@@ -57,19 +57,25 @@ internal fun buildVideoSavedBrowserContent(
         .mapNotNull { item -> item.smbBrowserPath(smbSources)?.let { path -> item to path } }
         .toList()
       val mappedSmbIds = smbLocations.mapTo(HashSet()) { it.first.id }
-      val smbRoots = smbLocations
-        .groupBy { it.second.sourceId }
-        .mapNotNull { (sourceId, values) ->
-          val rootName = values.firstOrNull()?.second?.rootName ?: return@mapNotNull null
+      val smbRoots = if (sourceFilter == null || sourceFilter == VideoSource.SMB) {
+        smbSources.map { source ->
+          val rootName = source.rootPath
+            .replace('/', '\\')
+            .split('\\')
+            .lastOrNull(String::isNotBlank)
+            ?: source.share
           VideoSavedDirectoryEntry(
-            key = "smb:$sourceId",
+            key = "smb:${source.id}",
             name = rootName,
             location = VideoSavedBrowserLocation.SmbDirectory(
-              sourceId = sourceId,
+              sourceId = source.id,
               rootName = rootName,
             ),
           )
         }
+      } else {
+        emptyList()
+      }
       val customFolders = if (sourceFilter == VideoSource.SMB) {
         emptyList()
       } else {
