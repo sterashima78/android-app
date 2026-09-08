@@ -30,7 +30,6 @@ import dev.terashima.yomitorirss.feature.workout.WORKOUT_ROUTE
 import dev.terashima.yomitorirss.feature.workout.WorkoutRoute
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
 import dev.terashima.yomitorirss.feature.x.XViewerRoute
-import dev.terashima.yomitorirss.feature.youtube.YOUTUBE_ROUTE
 
 internal fun NavGraphBuilder.registerSingleFeatureDestinations(
   navController: NavHostController,
@@ -71,12 +70,6 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
     MailRouteHost(
       modifier = Modifier.fillMaxSize(),
       routeDependencies = routeDependencies,
-    )
-  }
-  composable(YOUTUBE_ROUTE) {
-    YouTubeRouteHost(
-      viewModelFactory = routeDependencies.youtubeViewModelFactory,
-      modifier = Modifier.fillMaxSize(),
     )
   }
   composable(X_ROUTE) {
