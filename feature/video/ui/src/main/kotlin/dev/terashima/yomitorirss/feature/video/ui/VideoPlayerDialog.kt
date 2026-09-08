@@ -245,9 +245,9 @@ internal fun VideoPlayerDialog(
               },
             )
             playerView = object : PlayerView(viewContext) {
-              override fun onTouchEvent(event: MotionEvent): Boolean {
+              override fun dispatchTouchEvent(event: MotionEvent): Boolean {
                 gestureDetector.onTouchEvent(event)
-                return super.onTouchEvent(event)
+                return super.dispatchTouchEvent(event)
               }
             }.apply {
               useController = true
