@@ -61,6 +61,42 @@ class VideoPlayerRequestPropertiesTest {
   }
 
   @Test
+  fun `redirect先を含む各request URLでCookieを引き直す`() {
+    val requested = mutableListOf<String>()
+    val provider = VideoPlaybackCookieProvider { url ->
+      requested += url
+      when {
+        "edge.example.com" in url -> "edge=1"
+        "media.example.com" in url -> "media=2"
+        else -> null
+      }
+    }
+
+    val first = webVideoRequestProperties(
+      requestUrl = "https://edge.example.com/master.m3u8",
+      defaultRequestProperties = mapOf("Referer" to "https://example.com/"),
+      dataSpecRequestProperties = emptyMap(),
+      cookieProvider = provider,
+    )
+    val redirected = webVideoRequestProperties(
+      requestUrl = "https://media.example.com/master.m3u8",
+      defaultRequestProperties = mapOf("Referer" to "https://example.com/"),
+      dataSpecRequestProperties = emptyMap(),
+      cookieProvider = provider,
+    )
+
+    assertEquals("edge=1", first["Cookie"])
+    assertEquals("media=2", redirected["Cookie"])
+    assertEquals(
+      listOf(
+        "https://edge.example.com/master.m3u8",
+        "https://media.example.com/master.m3u8",
+      ),
+      requested,
+    )
+  }
+
+  @Test
   fun `CookieがないrequestにはCookie headerを追加しない`() {
     val provider = VideoPlaybackCookieProvider { null }
 
