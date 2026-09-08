@@ -29,9 +29,10 @@ class DefaultVideoThumbnailResolverTest {
       source = VideoSource.SMB,
       sourceId = "mosaic-smb-video://file?serverId=server&share=media&path=movie.mp4",
       title = "テスト動画",
+      sizeBytes = 1_234L,
       updatedAtEpochMillis = 123L,
     )
-    val thumbnailFile = File(cacheDirectory, "video-thumbnails/${item.id}-${item.updatedAtEpochMillis}.jpg")
+    val thumbnailFile = File(cacheDirectory, "video-thumbnails/${item.id}-${item.sizeBytes}.jpg")
     check(thumbnailFile.parentFile?.mkdirs() == true)
     thumbnailFile.writeBytes(byteArrayOf(1, 2, 3))
     var opened = false
