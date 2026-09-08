@@ -8,8 +8,12 @@ import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
+import dev.terashima.yomitorirss.feature.video.VideoProvider
+import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
+import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
+import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +26,9 @@ data class VideoUiState(
   val smbProfiles: List<SmbConnectionProfile> = emptyList(),
   val smbSources: List<VideoSmbSource> = emptyList(),
   val extractorRules: List<WebVideoExtractorRule> = emptyList(),
+  val providers: List<VideoProvider> = emptyList(),
+  val subscriptions: List<VideoSubscription> = emptyList(),
+  val unreadProviderVideos: List<VideoProviderVideo> = emptyList(),
   val loading: Boolean = true,
   val busy: Boolean = false,
   val busyMessage: String? = null,
@@ -36,6 +43,7 @@ data class VideoPlaybackSession(
 
 class VideoViewModel(
   private val repository: VideoRepository,
+  private val providerRepository: VideoProviderRepository,
   private val smbConnectionProfiles: SmbConnectionProfileRepository,
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(VideoUiState())
@@ -88,6 +96,46 @@ class VideoViewModel(
 
   fun deleteSmbSource(id: String) = launchMutation("SMB同期場所を削除できませんでした") {
     repository.deleteSmbSource(id)
+  }
+
+  fun saveProvider(provider: VideoProvider) = launchMutation("動画プロバイダを保存できませんでした") {
+    providerRepository.saveProvider(provider)
+  }
+
+  fun deleteProvider(id: String) = launchMutation("動画プロバイダを削除できませんでした") {
+    providerRepository.deleteProvider(id)
+  }
+
+  fun subscribe(providerId: String, sourceUrl: String) = launchMutation(
+    fallbackMessage = "動画の購読を追加できませんでした",
+    busyMessage = "購読先を確認中…",
+  ) {
+    providerRepository.subscribe(providerId, sourceUrl)
+  }
+
+  fun unsubscribe(subscriptionId: String) = launchMutation("動画の購読を解除できませんでした") {
+    providerRepository.unsubscribe(subscriptionId)
+  }
+
+  fun refreshProviders(providerId: String? = null) = launchMutation(
+    fallbackMessage = "動画プロバイダを更新できませんでした",
+    busyMessage = "購読動画を更新中…",
+  ) {
+    providerRepository.refreshProviders(providerId)
+  }
+
+  fun markProviderRead(item: VideoProviderVideo) = launchMutation("未読状態を更新できませんでした") {
+    providerRepository.markRead(item.video.id)
+  }
+
+  fun markProviderUnread(item: VideoProviderVideo) = launchMutation("未読状態を更新できませんでした") {
+    providerRepository.markUnread(item.video.id)
+  }
+
+  fun setProviderWatchLater(item: VideoProviderVideo, watchLater: Boolean) = launchMutation(
+    "あとで見る状態を更新できませんでした",
+  ) {
+    providerRepository.setWatchLater(item.video.id, watchLater)
   }
 
   fun saveVideo(item: VideoItem, folderId: String? = null) = launchMutation("動画を保存できませんでした") {
@@ -214,6 +262,9 @@ class VideoViewModel(
     smbProfiles = smbConnectionProfiles.connectionProfiles(),
     smbSources = repository.smbSources(),
     extractorRules = repository.extractorRules(),
+    providers = providerRepository.providers(),
+    subscriptions = providerRepository.subscriptions(),
+    unreadProviderVideos = providerRepository.unreadVideos(),
   )
 
   private fun showSnapshot(loaded: LoadedVideoState) {
@@ -223,6 +274,9 @@ class VideoViewModel(
       smbProfiles = loaded.smbProfiles,
       smbSources = loaded.smbSources,
       extractorRules = loaded.extractorRules,
+      providers = loaded.providers,
+      subscriptions = loaded.subscriptions,
+      unreadProviderVideos = loaded.unreadProviderVideos,
       loading = false,
       busy = false,
       busyMessage = null,
@@ -232,12 +286,13 @@ class VideoViewModel(
 
   class Factory(
     private val repository: VideoRepository,
+    private val providerRepository: VideoProviderRepository,
     private val smbConnectionProfiles: SmbConnectionProfileRepository,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(VideoViewModel::class.java))
-      return VideoViewModel(repository, smbConnectionProfiles) as T
+      return VideoViewModel(repository, providerRepository, smbConnectionProfiles) as T
     }
   }
 
@@ -247,5 +302,8 @@ class VideoViewModel(
     val smbProfiles: List<SmbConnectionProfile>,
     val smbSources: List<VideoSmbSource>,
     val extractorRules: List<WebVideoExtractorRule>,
+    val providers: List<VideoProvider>,
+    val subscriptions: List<VideoSubscription>,
+    val unreadProviderVideos: List<VideoProviderVideo>,
   )
 }
