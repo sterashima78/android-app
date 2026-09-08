@@ -1,7 +1,10 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
+import androidx.media3.common.Player
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,5 +30,81 @@ class VideoPlayerRequestPropertiesTest {
     )
 
     assertTrue(webStreamRequestProperties(target).isEmpty())
+  }
+
+  @Test
+  fun `再生準備中は準備状態を表示する`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_IDLE,
+      loadingElapsedMs = 0L,
+      errorCodeName = null,
+    )
+
+    assertEquals("再生を準備しています…", status?.message)
+    assertTrue(status?.showProgress == true)
+    assertFalse(status?.canRetry == true)
+  }
+
+  @Test
+  fun `読み込み開始直後は進行中として表示する`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_BUFFERING,
+      loadingElapsedMs = 3_000L,
+      errorCodeName = null,
+    )
+
+    assertEquals("動画を読み込んでいます…", status?.message)
+    assertTrue(status?.showProgress == true)
+    assertFalse(status?.canRetry == true)
+  }
+
+  @Test
+  fun `10秒以上の読み込みは時間がかかっていることを表示する`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_BUFFERING,
+      loadingElapsedMs = 12_000L,
+      errorCodeName = null,
+    )
+
+    assertEquals("再生開始を待っています（12秒）。通常より時間がかかっています。", status?.message)
+    assertFalse(status?.canRetry == true)
+  }
+
+  @Test
+  fun `30秒以上の読み込みはエラー未検出として再試行を出す`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_BUFFERING,
+      loadingElapsedMs = 30_000L,
+      errorCodeName = null,
+    )
+
+    assertEquals("30秒以上読み込みが続いています。再生エラーはまだ検出されていません。", status?.message)
+    assertTrue(status?.showProgress == true)
+    assertTrue(status?.canRetry == true)
+  }
+
+  @Test
+  fun `Playerエラーは再生不能としてエラーコードと再試行を出す`() {
+    val status = videoPlayerStatusUi(
+      playbackState = Player.STATE_IDLE,
+      loadingElapsedMs = 0L,
+      errorCodeName = "ERROR_CODE_IO_BAD_HTTP_STATUS",
+    )
+
+    assertEquals("再生できません。", status?.message)
+    assertEquals("ERROR_CODE_IO_BAD_HTTP_STATUS", status?.errorCodeName)
+    assertFalse(status?.showProgress == true)
+    assertTrue(status?.canRetry == true)
+  }
+
+  @Test
+  fun `再生可能状態では状態オーバーレイを表示しない`() {
+    assertNull(
+      videoPlayerStatusUi(
+        playbackState = Player.STATE_READY,
+        loadingElapsedMs = 0L,
+        errorCodeName = null,
+      ),
+    )
   }
 }
