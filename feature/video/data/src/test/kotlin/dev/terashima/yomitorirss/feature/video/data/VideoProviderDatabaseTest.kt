@@ -11,7 +11,6 @@ import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -29,6 +28,10 @@ class VideoProviderDatabaseTest {
   fun setUp() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     helper = object : SQLiteOpenHelper(context, null, null, 1) {
+      override fun onConfigure(db: SQLiteDatabase) {
+        db.setForeignKeyConstraintsEnabled(true)
+      }
+
       override fun onCreate(db: SQLiteDatabase) = ensureVideoSchema(db)
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
@@ -74,6 +77,41 @@ class VideoProviderDatabaseTest {
   }
 
   @Test
+  fun `provider設定を更新してもsubscriptionとitemを維持する`() {
+    val provider = database.saveProvider(testProvider())
+    val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
+
+    database.saveProvider(provider.copy(enabled = false, name = "Disabled Provider"))
+
+    assertFalse(database.providers().single().enabled)
+    assertEquals(subscription.id, database.subscriptions(provider.id).single().id)
+    assertEquals(subscription.id, database.unreadVideos().single().subscriptionId)
+  }
+
+  @Test
+  fun `feed再取得で返らない既存itemもsubscription membershipを維持する`() {
+    val provider = database.saveProvider(testProvider())
+    val (subscription, _) = database.upsertProviderFeed(
+      provider,
+      testFeed(
+        videos = listOf(
+          testFeedItem("video-1", 1_000L),
+          testFeedItem("video-2", 2_000L),
+        ),
+      ),
+    )
+
+    database.upsertProviderFeed(
+      provider,
+      testFeed(videos = listOf(testFeedItem("video-2", 2_000L))),
+    )
+
+    val unread = database.unreadVideos()
+    assertEquals(setOf("video-1", "video-2"), unread.map { it.providerItemId }.toSet())
+    assertTrue(unread.all { it.subscriptionId == subscription.id })
+  }
+
+  @Test
   fun `購読解除は未保存かつ未再生の動画をcatalogから削除する`() {
     val provider = database.saveProvider(testProvider())
     val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
@@ -86,7 +124,7 @@ class VideoProviderDatabaseTest {
   }
 
   @Test
-  fun `購読解除しても保存済み動画はcatalogに残す`() {
+  fun `購読解除しても保存済み動画はcatalogに残すがprovider一覧から外す`() {
     val provider = database.saveProvider(testProvider())
     val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
     val videoId = database.unreadVideos().single().video.id
@@ -103,12 +141,18 @@ class VideoProviderDatabaseTest {
     database.unsubscribe(subscription.id)
 
     assertTrue(videoExists(videoId))
-    val retained = database.unreadVideos().single()
-    assertNull(retained.subscriptionId)
+    assertFalse(providerItemExists(videoId))
+    assertTrue(database.unreadVideos().isEmpty())
+    assertTrue(database.historyVideos(10).isEmpty())
   }
 
   private fun videoExists(videoId: String): Boolean = helper.readableDatabase.rawQuery(
     "SELECT 1 FROM video_items WHERE id = ? LIMIT 1",
+    arrayOf(videoId),
+  ).use { it.moveToFirst() }
+
+  private fun providerItemExists(videoId: String): Boolean = helper.readableDatabase.rawQuery(
+    "SELECT 1 FROM video_provider_items WHERE video_id = ? LIMIT 1",
     arrayOf(videoId),
   ).use { it.moveToFirst() }
 
@@ -119,11 +163,9 @@ class VideoProviderDatabaseTest {
     enabled = true,
   )
 
-  private fun testFeed(title: String = "動画1"): VideoProviderFeed = VideoProviderFeed(
-    sourceId = "channel-1",
-    title = "チャンネル1",
-    sourceUrl = "https://example.invalid/channel-1",
-    videos = listOf(
+  private fun testFeed(
+    title: String = "動画1",
+    videos: List<VideoProviderFeedItem> = listOf(
       VideoProviderFeedItem(
         id = "video-1",
         title = title,
@@ -132,5 +174,18 @@ class VideoProviderDatabaseTest {
         publishedAtEpochMillis = 1_000L,
       ),
     ),
+  ): VideoProviderFeed = VideoProviderFeed(
+    sourceId = "channel-1",
+    title = "チャンネル1",
+    sourceUrl = "https://example.invalid/channel-1",
+    videos = videos,
+  )
+
+  private fun testFeedItem(id: String, publishedAt: Long): VideoProviderFeedItem = VideoProviderFeedItem(
+    id = id,
+    title = id,
+    url = "https://example.invalid/$id",
+    thumbnailUrl = null,
+    publishedAtEpochMillis = publishedAt,
   )
 }
