@@ -44,8 +44,6 @@ asset_category_definitions	:feature:asset:data
 tasks	:feature:task:data
 chat_sessions	:feature:chat:data
 chat_messages	:feature:chat:data
-channels	:feature:youtube:data
-videos	:feature:youtube:data
 video_items	:feature:video:data
 video_playback_state	:feature:video:data
 video_smb_sources	:feature:video:data
