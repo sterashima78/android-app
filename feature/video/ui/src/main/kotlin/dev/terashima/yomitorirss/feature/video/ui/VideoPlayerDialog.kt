@@ -7,31 +7,43 @@ import android.content.pm.ActivityInfo
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.webkit.WebSettings
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -41,6 +53,16 @@ import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import kotlinx.coroutines.delay
+
+internal const val VIDEO_PLAYER_SLOW_LOADING_MS = 10_000L
+internal const val VIDEO_PLAYER_STALLED_LOADING_MS = 30_000L
+
+internal data class VideoPlayerStatusUi(
+  val message: String,
+  val showProgress: Boolean,
+  val canRetry: Boolean,
+  val errorCodeName: String? = null,
+)
 
 @Composable
 internal fun VideoPlayerDialog(
@@ -89,16 +111,34 @@ internal fun VideoPlayerDialog(
       playWhenReady = true
     }
   }
+  var playbackState by remember(player) { mutableStateOf(player.playbackState) }
+  var playbackErrorCodeName by remember(player) { mutableStateOf<String?>(null) }
+  var loadingElapsedMs by remember(player) { mutableStateOf(0L) }
 
   fun savePosition() {
     val duration = player.duration.takeIf { it > 0L } ?: item.playbackState?.durationMs ?: 0L
     onSavePlayback(player.currentPosition.coerceAtLeast(0L), duration)
   }
 
+  fun retryPlayback() {
+    playbackErrorCodeName = null
+    playbackState = Player.STATE_IDLE
+    loadingElapsedMs = 0L
+    player.stop()
+    player.prepare()
+    player.playWhenReady = true
+  }
+
   DisposableEffect(player) {
     val listener = object : Player.Listener {
-      override fun onPlaybackStateChanged(playbackState: Int) {
-        if (playbackState == Player.STATE_ENDED) savePosition()
+      override fun onPlaybackStateChanged(newPlaybackState: Int) {
+        playbackState = newPlaybackState
+        if (newPlaybackState == Player.STATE_READY) playbackErrorCodeName = null
+        if (newPlaybackState == Player.STATE_ENDED) savePosition()
+      }
+
+      override fun onPlayerError(error: PlaybackException) {
+        playbackErrorCodeName = error.errorCodeName
       }
     }
     player.addListener(listener)
@@ -109,12 +149,29 @@ internal fun VideoPlayerDialog(
     }
   }
 
+  LaunchedEffect(player, playbackState, playbackErrorCodeName) {
+    loadingElapsedMs = 0L
+    val isLoading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
+    if (isLoading && playbackErrorCodeName == null) {
+      while (true) {
+        delay(1_000)
+        loadingElapsedMs += 1_000L
+      }
+    }
+  }
+
   LaunchedEffect(player) {
     while (true) {
       delay(2_000)
       if (player.playbackState != Player.STATE_IDLE) savePosition()
     }
   }
+
+  val statusUi = videoPlayerStatusUi(
+    playbackState = playbackState,
+    loadingElapsedMs = loadingElapsedMs,
+    errorCodeName = playbackErrorCodeName,
+  )
 
   Dialog(
     onDismissRequest = {
@@ -146,6 +203,40 @@ internal fun VideoPlayerDialog(
           update = { it.player = player },
           modifier = Modifier.fillMaxSize(),
         )
+        statusUi?.let { status ->
+          Surface(
+            modifier = Modifier
+              .align(Alignment.Center)
+              .padding(24.dp),
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 6.dp,
+          ) {
+            Column(
+              modifier = Modifier.padding(20.dp),
+              horizontalAlignment = Alignment.CenterHorizontally,
+              verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+              if (status.showProgress) CircularProgressIndicator()
+              Text(
+                text = status.message,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              status.errorCodeName?.let {
+                Text(
+                  text = "エラーコード: $it",
+                  textAlign = TextAlign.Center,
+                  style = MaterialTheme.typography.bodySmall,
+                )
+              }
+              if (status.canRetry) {
+                Button(onClick = ::retryPlayback) {
+                  Text("再試行")
+                }
+              }
+            }
+          }
+        }
         Row(modifier = Modifier.align(Alignment.TopEnd)) {
           IconButton(onClick = { onFullscreenChange(!isFullscreen) }) {
             Icon(
@@ -159,6 +250,47 @@ internal fun VideoPlayerDialog(
         }
       }
     }
+  }
+}
+
+internal fun videoPlayerStatusUi(
+  playbackState: Int,
+  loadingElapsedMs: Long,
+  errorCodeName: String?,
+): VideoPlayerStatusUi? {
+  if (!errorCodeName.isNullOrBlank()) {
+    return VideoPlayerStatusUi(
+      message = "再生できません。",
+      showProgress = false,
+      canRetry = true,
+      errorCodeName = errorCodeName,
+    )
+  }
+
+  val isLoading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
+  if (!isLoading) return null
+
+  return when {
+    loadingElapsedMs >= VIDEO_PLAYER_STALLED_LOADING_MS -> VideoPlayerStatusUi(
+      message = "30秒以上読み込みが続いています。再生エラーはまだ検出されていません。",
+      showProgress = true,
+      canRetry = true,
+    )
+    loadingElapsedMs >= VIDEO_PLAYER_SLOW_LOADING_MS -> VideoPlayerStatusUi(
+      message = "再生開始を待っています（${loadingElapsedMs / 1_000}秒）。通常より時間がかかっています。",
+      showProgress = true,
+      canRetry = false,
+    )
+    playbackState == Player.STATE_IDLE -> VideoPlayerStatusUi(
+      message = "再生を準備しています…",
+      showProgress = true,
+      canRetry = false,
+    )
+    else -> VideoPlayerStatusUi(
+      message = "動画を読み込んでいます…",
+      showProgress = true,
+      canRetry = false,
+    )
   }
 }
 
