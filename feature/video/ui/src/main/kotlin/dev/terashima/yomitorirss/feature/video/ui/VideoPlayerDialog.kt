@@ -80,7 +80,14 @@ internal fun VideoPlayerDialog(
 ) {
   require(target is VideoPlaybackTarget.Stream || target is VideoPlaybackTarget.Smb)
   val context = LocalContext.current
-  val player = remember(item.id, target) {
+  val smbDataSourceFactory = remember(item.id, target, byteSourceFactory) {
+    if (target is VideoPlaybackTarget.Smb) {
+      SmbVideoDataSource.Factory(byteSourceFactory)
+    } else {
+      null
+    }
+  }
+  val player = remember(item.id, target, smbDataSourceFactory) {
     val builder = ExoPlayer.Builder(context)
     when (target) {
       is VideoPlaybackTarget.Stream -> {
@@ -92,7 +99,7 @@ internal fun VideoPlayerDialog(
         )
       }
       is VideoPlaybackTarget.Smb -> builder.setMediaSourceFactory(
-        DefaultMediaSourceFactory(SmbVideoDataSource.Factory(byteSourceFactory)),
+        DefaultMediaSourceFactory(requireNotNull(smbDataSourceFactory)),
       )
       is VideoPlaybackTarget.WebPage -> Unit
     }
@@ -134,7 +141,7 @@ internal fun VideoPlayerDialog(
     player.playWhenReady = true
   }
 
-  DisposableEffect(player) {
+  DisposableEffect(player, smbDataSourceFactory) {
     val listener = object : Player.Listener {
       override fun onPlaybackStateChanged(newPlaybackState: Int) {
         playbackState = newPlaybackState
@@ -155,6 +162,7 @@ internal fun VideoPlayerDialog(
       savePosition()
       player.removeListener(listener)
       player.release()
+      smbDataSourceFactory?.close()
     }
   }
 
