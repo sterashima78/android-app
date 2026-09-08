@@ -42,10 +42,8 @@ class DefaultVideoProviderRepository(
     var refreshed = 0
     var added = 0
     var failed = 0
-    var attempted = 0
     activeProviders.forEach { provider ->
       database.subscriptions(provider.id).forEach { subscription ->
-        attempted += 1
         runCatching {
           val feed = when (provider.type) {
             VideoProviderType.YOUTUBE -> youtubeClient.refresh(subscription.sourceId)
@@ -63,8 +61,8 @@ class DefaultVideoProviderRepository(
         )
       }
     }
-    if (failed > 0 && refreshed == 0 && attempted > 0) {
-      throw IOException("動画プロバイダを更新できませんでした")
+    if (failed > 0) {
+      throw IOException("動画プロバイダの一部を更新できませんでした（成功: $refreshed / 失敗: $failed）")
     }
     return VideoProviderRefreshResult(refreshed, added, failed)
   }
