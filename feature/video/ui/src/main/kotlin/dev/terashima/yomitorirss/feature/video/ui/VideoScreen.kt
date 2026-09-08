@@ -80,6 +80,7 @@ private enum class VideoTab(val label: String) {
 fun VideoScreen(
   state: VideoUiState,
   onPlay: (VideoItem) -> Unit,
+  onEnsureThumbnail: (VideoItem) -> Unit,
   onAddWeb: (String) -> Unit,
   onRefreshSmb: () -> Unit,
   onRemove: (VideoItem) -> Unit,
@@ -261,6 +262,7 @@ fun VideoScreen(
                   item = item,
                   folders = state.folders,
                   onPlay = { onPlay(item) },
+                  onEnsureThumbnail = { onEnsureThumbnail(item) },
                   onRemove = { onRemove(item) },
                   onSetCompleted = { completed -> onSetCompleted(item, completed) },
                   onSave = { folderId -> onSaveVideo(item, folderId) },
@@ -348,6 +350,7 @@ private fun VideoCard(
   item: VideoItem,
   folders: List<VideoFolder>,
   onPlay: () -> Unit,
+  onEnsureThumbnail: () -> Unit,
   onRemove: () -> Unit,
   onSetCompleted: (Boolean) -> Unit,
   onSave: (String?) -> Unit,
@@ -356,6 +359,12 @@ private fun VideoCard(
   var menuExpanded by remember(item.id) { mutableStateOf(false) }
   var destinationVisible by remember(item.id) { mutableStateOf(false) }
   val folderName = item.savedState?.folderId?.let { folderId -> folders.firstOrNull { it.id == folderId }?.name }
+
+  LaunchedEffect(item.id, item.thumbnailUrl) {
+    if (item.source == VideoSource.SMB && item.thumbnailUrl.isNullOrBlank()) {
+      onEnsureThumbnail()
+    }
+  }
 
   if (destinationVisible) {
     SaveDestinationDialog(
