@@ -249,16 +249,6 @@ internal fun VideoPlayerDialog(
             )
             playerView = object : PlayerView(viewContext) {
               override fun onTouchEvent(event: MotionEvent): Boolean = gestureDetector.onTouchEvent(event)
-
-              override fun performClick(): Boolean {
-                super.performClick()
-                if (isControllerFullyVisible) {
-                  hideController()
-                } else {
-                  showController()
-                }
-                return true
-              }
             }.apply {
               useController = true
               keepScreenOn = true
