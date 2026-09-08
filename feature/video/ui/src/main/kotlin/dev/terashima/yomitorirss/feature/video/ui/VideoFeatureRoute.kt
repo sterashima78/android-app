@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -38,6 +39,7 @@ fun VideoFeatureRoute(
   val scope = rememberCoroutineScope()
   var resolving by remember { mutableStateOf(false) }
   var smbSettingsVisible by remember { mutableStateOf(false) }
+  var providerSettingsVisible by remember { mutableStateOf(false) }
 
   fun play(item: VideoItem) {
     if (resolving) return
@@ -77,6 +79,15 @@ fun VideoFeatureRoute(
       onDismissMessage = viewModel::dismissMessage,
       modifier = Modifier.fillMaxSize(),
     )
+    Button(
+      onClick = { providerSettingsVisible = true },
+      enabled = !state.busy,
+      modifier = Modifier
+        .align(Alignment.TopEnd)
+        .padding(12.dp),
+    ) {
+      Text("購読設定")
+    }
     if (resolving) {
       CircularProgressIndicator(Modifier.align(Alignment.Center))
     }
@@ -104,6 +115,19 @@ fun VideoFeatureRoute(
       onDelete = viewModel::deleteSmbSource,
       onSync = viewModel::refreshSmb,
       onDismiss = { smbSettingsVisible = false },
+    )
+  }
+
+  if (providerSettingsVisible) {
+    VideoProviderSettingsDialog(
+      state = state,
+      onSaveProvider = viewModel::saveProvider,
+      onDeleteProvider = viewModel::deleteProvider,
+      onSubscribe = viewModel::subscribe,
+      onUnsubscribe = viewModel::unsubscribe,
+      onRefresh = viewModel::refreshProviders,
+      onMarkRead = viewModel::markProviderRead,
+      onDismiss = { providerSettingsVisible = false },
     )
   }
 
