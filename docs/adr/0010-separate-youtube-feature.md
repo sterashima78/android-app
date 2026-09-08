@@ -1,9 +1,9 @@
 # ADR-0010: YouTube を RSS から独立した feature として扱う
 
-- Status: Accepted; subscription / video persistence / UI ownership partially superseded by ADR-0241
+- Status: Accepted; subscription / video persistence / UI ownership partially superseded by ADR-0242
 - Date: 2026-08-09
 - Amended by: ADR-0098
-- Partially superseded by: [ADR-0241](0241-video-subscription-providers.md)
+- Partially superseded by: [ADR-0242](0242-video-subscription-providers.md)
 
 ## Context
 
@@ -150,7 +150,7 @@ YouTube と RSS のデータ ownership は分離したまま、一覧上のト�
 - ADR-0004 の concept ownership を優先し、Atom という transport ではなく YouTube という product concept に module を割り当てる
 - ADR-0009 の「transport と product concept を分離する」考え方を踏襲するが、YouTube では RSS transport 自体も共有しない
 - ADR-0098 は専用 `youtube.db` という physical persistence decision のみを置き換え、YouTube feature ownership は維持する
-- ADR-0241 は subscription / video persistence / refresh lifecycle / top-level UI ownership を Video Context へ移し、このADRの該当decisionを置き換える。source-specific transport adapterをRSSへ混在させない原則は維持する。
+- ADR-0242 は subscription / video persistence / refresh lifecycle / top-level UI ownership を Video Context へ移し、このADRの該当decisionを置き換える。source-specific transport adapterをRSSへ混在させない原則は維持する。
 
 ## Amendment 2026-09-06: 更新対象を通常動画のみに限定する
 
