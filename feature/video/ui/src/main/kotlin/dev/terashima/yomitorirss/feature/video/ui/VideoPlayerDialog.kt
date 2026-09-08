@@ -47,11 +47,13 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import java.net.URI
 import kotlinx.coroutines.delay
@@ -87,8 +89,17 @@ internal fun VideoPlayerDialog(
         val httpFactory = DefaultHttpDataSource.Factory()
           .setUserAgent(WebSettings.getDefaultUserAgent(context))
           .setDefaultRequestProperties(webStreamRequestProperties(target))
+        val dataSourceFactory = target.cookieProvider?.let { cookieProvider ->
+          ResolvingDataSource.Factory(httpFactory) { dataSpec ->
+            val cookieHeaders = webStreamCookieRequestProperties(
+              requestUrl = dataSpec.uri.toString(),
+              cookieProvider = cookieProvider,
+            )
+            if (cookieHeaders.isEmpty()) dataSpec else dataSpec.withRequestHeaders(cookieHeaders)
+          }
+        } ?: httpFactory
         builder.setMediaSourceFactory(
-          DefaultMediaSourceFactory(context).setDataSourceFactory(httpFactory),
+          DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory),
         )
       }
       is VideoPlaybackTarget.Smb -> builder.setMediaSourceFactory(
@@ -326,6 +337,17 @@ internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map
   val referrerUrl = target.referrerUrl?.takeIf(String::isNotBlank) ?: return@buildMap
   put("Referer", referrerUrl)
   webStreamOriginHeaderValue(referrerUrl)?.let { put("Origin", it) }
+}
+
+internal fun webStreamCookieRequestProperties(
+  requestUrl: String,
+  cookieProvider: VideoPlaybackCookieProvider,
+): Map<String, String> {
+  val cookie = runCatching { cookieProvider.cookieHeaderFor(requestUrl) }
+    .getOrNull()
+    ?.takeIf(String::isNotBlank)
+    ?: return emptyMap()
+  return mapOf("Cookie" to cookie)
 }
 
 internal fun webStreamOriginHeaderValue(referrerUrl: String): String? = runCatching {
