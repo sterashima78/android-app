@@ -5,9 +5,14 @@ internal fun markdownToSpeechText(markdown: String): String {
     .replace("\r\n", "\n")
     .replace('\r', '\n')
     .replace(MARKDOWN_IMAGE) { match -> match.groupValues[1] }
-    .replace(MARKDOWN_LINK) { match -> match.groupValues[1] }
+    .replace(MARKDOWN_PARENTHESIZED_CITATION_LINK, "")
+    .replace(MARKDOWN_LINK) { match ->
+      val label = match.groupValues[1]
+      if (URL_LIKE_LINK_LABEL.matches(label.trim())) "" else label
+    }
     .replace(MARKDOWN_REFERENCE_LINK) { match -> match.groupValues[1] }
     .replace(MARKDOWN_AUTOLINK, "")
+    .replace(BARE_HTTP_URL, "")
     .replace(MARKDOWN_INLINE_CODE) { match -> match.groupValues[1] }
     .replace(MARKDOWN_STRONG_ASTERISK) { match -> match.groupValues[1] }
     .replace(MARKDOWN_STRONG_UNDERSCORE) { match -> match.groupValues[1] }
@@ -53,9 +58,15 @@ private fun normalizeMarkdownLineForSpeech(line: String): String? {
 }
 
 private val MARKDOWN_IMAGE = Regex("""!\[([^]]*)]\([^)]*\)""")
+private val MARKDOWN_PARENTHESIZED_CITATION_LINK = Regex("""\(\s*\[[^]]+]\(https?://[^)]*\)\s*\)""", RegexOption.IGNORE_CASE)
 private val MARKDOWN_LINK = Regex("""\[([^]]+)]\([^)]*\)""")
 private val MARKDOWN_REFERENCE_LINK = Regex("""\[([^]]+)]\[[^]]*]""")
-private val MARKDOWN_AUTOLINK = Regex("""<https?://[^>]+>""")
+private val MARKDOWN_AUTOLINK = Regex("""<https?://[^>]+>""", RegexOption.IGNORE_CASE)
+private val BARE_HTTP_URL = Regex("""https?://[^\s<>()\[\]、。！？]+""", RegexOption.IGNORE_CASE)
+private val URL_LIKE_LINK_LABEL = Regex(
+  """^(?:(?:https?://|www\.)\S+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:/\S*)?)$""",
+  RegexOption.IGNORE_CASE,
+)
 private val MARKDOWN_INLINE_CODE = Regex("""`([^`\n]+)`""")
 private val MARKDOWN_STRONG_ASTERISK = Regex("""\*\*([^*\n]+)\*\*""")
 private val MARKDOWN_STRONG_UNDERSCORE = Regex("""(?<![\p{L}\p{N}_])__([^_\n]+)__(?![\p{L}\p{N}_])""")
