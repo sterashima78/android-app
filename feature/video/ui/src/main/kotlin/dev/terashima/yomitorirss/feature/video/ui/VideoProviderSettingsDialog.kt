@@ -24,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.video.VideoProvider
 import dev.terashima.yomitorirss.feature.video.VideoProviderType
-import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 
 @Composable
 internal fun VideoProviderSettingsDialog(
@@ -34,7 +33,6 @@ internal fun VideoProviderSettingsDialog(
   onSubscribe: (String, String) -> Unit,
   onUnsubscribe: (String) -> Unit,
   onRefresh: (String?) -> Unit,
-  onMarkRead: (VideoProviderVideo) -> Unit,
   onDismiss: () -> Unit,
 ) {
   var sourceUrl by remember { mutableStateOf("") }
@@ -151,27 +149,6 @@ internal fun VideoProviderSettingsDialog(
                   Text("解除")
                 }
               }
-            }
-          }
-        }
-
-        HorizontalDivider()
-        Text("未読動画 ${state.unreadProviderVideos.size}件", fontWeight = FontWeight.SemiBold)
-        state.unreadProviderVideos.take(20).forEach { item ->
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Column(Modifier.weight(1f)) {
-              Text(item.video.title)
-              item.subscriptionTitle?.takeIf(String::isNotBlank)?.let { Text(it) }
-            }
-            TextButton(
-              onClick = { onMarkRead(item) },
-              enabled = !state.busy,
-            ) {
-              Text("既読")
             }
           }
         }
