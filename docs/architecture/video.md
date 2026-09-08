@@ -1,6 +1,6 @@
 # Video
 
-この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md) を参照する。
+この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md) を参照する。
 
 ## Ownership
 
@@ -157,11 +157,13 @@ providerを無効化するとbackground refresh対象から外すが、設定と
 
 Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現する。dedicated WebView extractorの `shouldInterceptRequest` でHTTP(S) resource requestを観測し、playback extractorが返したstream URLと同一requestが存在する場合だけ、そのrequestの `Referer` をorigin rootへ縮約して利用する。stream URLと一致しない別requestの参照元は候補として流用しない。実requestの参照元を取得できない場合は元pageのoriginへfallbackする。
 
-選択した参照元originから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、page / player URLのpath、query、fragmentはどちらにも含めない。request interceptionではCookie / Authorization等のcredentialを新たに取得・転送せず、これらのrequest contextは再生時だけ利用してdatabaseへ保存しない。
+選択した参照元originから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、page / player URLのpath、query、fragmentはどちらにも含めない。これらのrequest contextは再生時だけ利用してdatabaseへ保存しない。
 
-一致した抽出ルールで `shareCookiesForPlayback` が有効な場合だけ、抽出に使った専用WebView profileのCookieManagerを `VideoPlaybackCookieProvider` としてtransientに再生targetへ接続する。Cookie文字列をtargetの通常data fieldへコピーせず、Media3のHTTP DataSourceが各request URLを処理する時点でproviderへ問い合わせる。CookieManager自身のhost / path / Secure等の選択に従い、そのURLへ適用されるCookieだけを `Cookie` headerとして付与する。provider取得が失敗した場合はCookieを付けずにrequestを継続する。
+一致した抽出ルールで `shareCookiesForPlayback` が有効な場合だけ、専用WebView profile由来のCookieを `VideoPlaybackCookieProvider` としてtransientに再生targetへ接続する。`WebViewFeature.COOKIE_INTERCEPT` が利用可能な環境では、extractor WebViewのrequest interceptionへCookie headerを含める設定を有効化し、playback extractorが返したstream URLと同一requestで観測した `Cookie` headerを初回stream request用として優先する。このrequest CookieはWebView自身がそのrequest contextに対して選択した値なので、partitioned CookieもWebViewのpartition contextに従う。
 
-Cookie共有がOFFの場合はproviderを作らず、従来どおりCookieを送らない。Cookie値、Authorization、その他のcredentialをdatabase、backup、export、log、error UIへ保存・表示しない。`Authorization` 等の共有へ一般化しない。
+実request Cookieを観測していないURL、manifestから派生したsegment、redirect先などでは、ADR-0241の既存profile CookieManager lookupへfallbackする。観測済みCookieをhostやdirectoryだけを根拠に別URLへ流用しない。`COOKIE_INTERCEPT` 非対応環境でも既存providerだけで再生を継続する。
+
+Cookie共有がOFFの場合はrequest Cookie captureを有効化せずproviderも作らない。Cookie値、Authorization、その他のcredentialをdatabase、backup、export、log、error UIへ保存・表示しない。request interceptionを `Authorization` 等の任意credential共有へ一般化しない。third-party Cookie acceptanceも暗黙に変更しない。
 
 v1のVideo playerはforeground UI lifetimeとする。全画面表示では横向きへ切り替え、通常表示へ戻ると縦向きへ復帰する。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
 
@@ -252,7 +254,9 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - stream URLをdurable source of truthにしない。
 - Web streamの実request参照元を利用する場合もstream URLとの同一requestだけを採用し、別requestの参照元を推測で流用しない。
 - Web streamの `Referer` / `Origin` にpage / player URLのpath / query / fragmentを含めない。
-- request interceptionをCookie / Authorization等のcredential captureへ暗黙に拡張しない。
+- WebView request CookieをcaptureするのはCookie共有ONかつ `COOKIE_INTERCEPT` 対応時だけとする。
+- 観測したrequest Cookieはstream URLとの完全一致requestだけで優先し、別URLへ推測で流用しない。
+- request interceptionを `Authorization` や任意credential headerのcaptureへ一般化しない。
 - WebView CookieをMedia3へ共有するのはruleで明示opt-inされたforeground playbackだけとする。
 - Cookie共有の既定値はOFFとし、既存ruleを自動的にONへしない。
 - Cookie値 / Authorization等のcredentialをdurable state、log、error UIへ複製しない。
@@ -287,7 +291,8 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
 - Web streamは実requestとstream URLが一致する場合だけ観測Refererをoriginへ縮約して優先し、不一致または取得不能時は元page originへfallbackすることをunit testする。
 - 選択したWeb stream参照元originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
-- Cookie共有OFFではproviderを作らず、ONの場合だけrequest URLごとにprofile Cookie lookupすることをunit testする。
+- Cookie共有OFFではproviderとrequest Cookie captureを作動させず、ONでは完全一致requestの観測Cookieをprofile lookupより優先することをunit testする。
+- 観測CookieがないURLではprofile CookieManager lookupへfallbackし、別URLの観測Cookieを流用しないことをunit testする。
 - `video_web_extractor_rules` のCookie共有booleanを保存・復元し、既存schema refinementでdefault OFFになることをrepository testする。
 - app database fresh schema、version 28 -> 29、version 29 -> 30、version 30 -> 31をtestする。
 - architecture verificationでmodule graph、table ownership、migration foreign-read allowlist、navigation ownershipを検証する。
@@ -300,6 +305,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
 - [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
+- [ADR-0243](../adr/0243-video-web-request-cookie-capture.md)
 - [ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)
 - [module-map.md](module-map.md)
 - [context-map.md](context-map.md)

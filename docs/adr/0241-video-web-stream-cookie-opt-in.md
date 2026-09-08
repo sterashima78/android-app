@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-08
 - Amends: [ADR-0237](0237-video-library-and-web-extraction.md)
+- Amended by: [ADR-0243](0243-video-web-request-cookie-capture.md)
 
 ## Context
 
