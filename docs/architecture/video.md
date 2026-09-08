@@ -13,6 +13,7 @@ Video は SMB / Web / 将来の service adapter 由来動画を同じ catalog �
 - 再生位置 / duration / 最終再生日時 / completed state
 - 保存済み動画とVideo専用フォルダ
 - foreground video playback presentation
+- SMB動画から再生成できるthumbnail cache
 
 現在の module は次のとおり。
 
@@ -22,11 +23,11 @@ Video は SMB / Web / 将来の service adapter 由来動画を同じ catalog �
 :feature:video:ui
 ```
 
-`:feature:video:domain` は `VideoItem`、`VideoSmbSource`、`VideoPlaybackState`、`VideoSavedState`、`VideoFolder`、`WebVideoExtractorRule`、`VideoRepository`、`VideoPlaybackResolver`、`VideoByteSourceFactory` 等の contract を所有する。
+`:feature:video:domain` は `VideoItem`、`VideoSmbSource`、`VideoPlaybackState`、`VideoSavedState`、`VideoFolder`、`WebVideoExtractorRule`、`VideoRepository`、`VideoPlaybackResolver`、`VideoThumbnailResolver`、`VideoByteSourceFactory` 等の contract を所有する。
 
-`:feature:video:data` は Video-owned database schema、Video用SMB同期場所、保存状態・フォルダ、Web metadata取得、WebView extractor、SMB catalog projection、playback target resolutionを所有する。
+`:feature:video:data` は Video-owned database schema、Video用SMB同期場所、保存状態・フォルダ、Web metadata取得、WebView extractor、SMB catalog projection、playback target resolution、SMB動画のthumbnail cache生成を所有する。
 
-`:feature:video:ui` は一覧、source filter、「続き」「保存」「視聴済み」、保存フォルダ管理、設定、Media3 foreground playerを所有する。
+`:feature:video:ui` は一覧、source filter、「続き」「保存」「視聴済み」、保存フォルダ管理、設定、Media3 foreground playerを所有する。一覧へ入ったSMB動画カードだけthumbnail resolutionを要求し、同期時に全動画を事前生成しない。
 
 ## Shared SMB connection boundary
 
@@ -70,6 +71,10 @@ SMBJ
 SMB動画のdurable source identityにはconnection profile ID、share、pathを含める。同じserver/pathでもshareが異なるファイルを区別するためである。version 28で作成済みのshareを含まない旧source IDは読み取り互換を維持し、設定されたserver/rootから再生先を解決できる。
 
 SMB再生では全動画を端末へ事前downloadせず、SMBJのoffset readを `VideoByteSource` / Media3 `DataSource` へ接続する。
+
+SMB thumbnailも同じrandom-access boundaryを再利用する。`VideoThumbnailResolver` は `VideoByteSourceFactory` を `MediaDataSource` へadapterし、`MediaMetadataRetriever` で動画の冒頭寄りの代表frameを取得する。元動画全体を端末へ保存せず、最大辺640pxのJPEGをapplication cache配下へ保存する。生成は一覧で表示対象になった項目に限定し、同時生成数を制限する。
+
+thumbnail cacheはVideo item IDとファイルサイズをcache keyに含める。同じ同期対象を再同期しても通常は既存cacheを再利用し、サイズが変わった動画では再生成する。同一path・同一sizeの内容置換を厳密に検出するdurable fingerprintは持たず、cacheはあくまで再生成可能なbest-effort projectionとする。生成失敗はcatalog同期や動画再生の失敗へ昇格させない。
 
 ## Web source and extractor
 
@@ -145,7 +150,7 @@ Video Dataは次のtableを所有する。
 
 `video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所、`video_folders` / `video_saved_items` は保存と整理状態、`video_web_extractor_rules` はユーザー設定として保存する。Cookie共有のboolean設定はruleのdurable stateだが、Cookie値そのものは保存しない。
 
-stream URL、stream request context（referrer / origin / user agent / cookie value）、動画ファイル本体、SMB credentialはVideoのdurable stateに含めない。
+stream URL、stream request context（referrer / origin / user agent / cookie value）、動画ファイル本体、SMB credential、生成済みSMB thumbnail fileはVideoのdurable stateに含めない。SMB thumbnailはapplication cache内の派生データでありbackup / export対象にしない。
 
 SMB接続プロファイルはLibrary-owned `smb_connection_profiles` に保存し、Library用SMB同期場所は既存 `smb_library_servers` のshare / root pathとして維持する。Videoはこれらのforeign tableを通常runtimeで直接read/writeしない。
 
@@ -173,6 +178,8 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - Videoのshare / root pathはVideo-owned `video_smb_sources` に保存する。
 - Videoは通常runtimeでLibrary-owned SMB tableを直接read/writeしない。
 - `SmbMediaFileAccess` の外へcredentialやhost/user情報を公開しない。
+- SMB thumbnail生成のために第二のSMB read implementationを作らず、既存 `VideoByteSourceFactory` / `SmbMediaFileAccess` boundaryを再利用する。
+- SMB thumbnailはdurable source of truthにせず、生成失敗をcatalog同期・再生失敗へ昇格させない。
 - stream URLをdurable source of truthにしない。
 - Web streamの `Referer` / `Origin` に元pageのpath / query / fragmentを含めない。
 - WebView CookieをMedia3へ共有するのはruleで明示opt-inされたforeground playbackだけとする。
@@ -194,12 +201,13 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - 保存状態とplayback stateが独立していることをrepository testする。
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
+- SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
 - Web streamの元page originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
 - Cookie共有OFFではproviderを作らず、ONの場合だけrequest URLごとにprofile Cookie lookupすることをunit testする。
 - `video_web_extractor_rules` のCookie共有booleanを保存・復元し、既存schema refinementでdefault OFFになることをrepository testする。
 - app database fresh schema、version 28 -> 29、version 29 -> 30をtestする。
 - architecture verificationでmodule graph、table ownership、migration foreign-read allowlist、navigation ownershipを検証する。
-- Android実機では保存タブ、未分類 / folder filter、保存先変更、folder CRUDに加え、LibraryとVideoで異なるSMB share/path、Web stream、Cookie共有OFF/ON、全画面、seek、resumeを確認する。
+- Android実機では保存タブ、未分類 / folder filter、保存先変更、folder CRUDに加え、LibraryとVideoで異なるSMB share/path、SMB動画thumbnail表示、Web stream、Cookie共有OFF/ON、全画面、seek、resumeを確認する。
 
 ## Sources
 
