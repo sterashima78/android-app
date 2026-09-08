@@ -31,7 +31,7 @@ fun isVideoSmbPathWithinRoot(path: String, rootPath: String): Boolean {
   val pathSegments = videoSmbPathSegments(path)
   val rootSegments = videoSmbPathSegments(rootPath)
   if (rootSegments.size > pathSegments.size) return false
-  return rootSegments.indices.all { index -> pathSegments[index].equals(rootSegments[index], ignoreCase = true) }
+  return rootSegments.indices.all { index -> pathSegments[index] == rootSegments[index] }
 }
 
 fun VideoItem.smbBrowserPath(sources: List<VideoSmbSource>): VideoSmbBrowserPath? {
@@ -41,7 +41,7 @@ fun VideoItem.smbBrowserPath(sources: List<VideoSmbSource>): VideoSmbBrowserPath
     val source = sources
       .asSequence()
       .filter { it.serverId == identity.serverId }
-      .filter { identity.share == null || it.share.equals(identity.share, ignoreCase = true) }
+      .filter { identity.share == null || it.share == identity.share }
       .filter { isVideoSmbPathWithinRoot(identity.path, it.rootPath) }
       .maxByOrNull { videoSmbPathSegments(it.rootPath).size }
       ?: return null
