@@ -39,6 +39,20 @@ class VideoSavedBrowserProjectionTest {
   }
 
   @Test
+  fun `動画がなくても設定済みSMB同期rootを表示する`() {
+    val content = buildVideoSavedBrowserContent(
+      items = emptyList(),
+      folders = emptyList(),
+      smbSources = listOf(smbSource),
+      location = VideoSavedBrowserLocation.Root,
+      sourceFilter = null,
+    )
+
+    assertEquals(listOf("videos"), content.directories.map { it.name })
+    assertTrue(content.videos.isEmpty())
+  }
+
+  @Test
   fun `SMB directoryでは直下folderと動画を同じ階層として投影する`() {
     val content = buildVideoSavedBrowserContent(
       items = listOf(
