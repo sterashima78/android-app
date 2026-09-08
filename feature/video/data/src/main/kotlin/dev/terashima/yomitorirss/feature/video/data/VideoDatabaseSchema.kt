@@ -91,11 +91,13 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
         title_function TEXT,
         thumbnail_function TEXT,
         playback_function TEXT,
+        share_cookies_for_playback INTEGER NOT NULL DEFAULT 0,
         timeout_seconds INTEGER NOT NULL DEFAULT 15,
         updated_at INTEGER NOT NULL
       )
     """.trimIndent(),
   )
+  ensureVideoWebExtractorRuleCookieColumn(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS video_providers (
@@ -164,6 +166,26 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_provider_items_subscription ON video_provider_items(subscription_id, published_at DESC)",
   )
+}
+
+private fun ensureVideoWebExtractorRuleCookieColumn(db: SQLiteDatabase) {
+  val hasColumn = db.rawQuery("PRAGMA table_info(video_web_extractor_rules)", null).use { cursor ->
+    val nameColumn = cursor.getColumnIndexOrThrow("name")
+    var found = false
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameColumn) == "share_cookies_for_playback") {
+        found = true
+        break
+      }
+    }
+    found
+  }
+  if (!hasColumn) {
+    db.execSQL(
+      "ALTER TABLE video_web_extractor_rules " +
+        "ADD COLUMN share_cookies_for_playback INTEGER NOT NULL DEFAULT 0",
+    )
+  }
 }
 
 private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
