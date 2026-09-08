@@ -13,6 +13,7 @@ internal class AppVideoRouteDependencies(
     VideoRouteDependencies(
       viewModelFactory = VideoViewModel.Factory(
         repository = runtime.repository,
+        providerRepository = runtime.providerRepository,
         smbConnectionProfiles = container.smbConnectionProfileRepository,
       ),
       playbackResolver = runtime.playbackResolver,
