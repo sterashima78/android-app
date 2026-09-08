@@ -10,10 +10,10 @@ import org.junit.Test
 
 class VideoUnwatchedFilterTest {
   @Test
-  fun `未保存かつ未再生のprovider動画だけ未視聴になる`() {
+  fun `未保存かつ視聴済みでないprovider動画は未視聴になる`() {
     assertTrue(service().isUnwatched())
+    assertTrue(service(positionMs = 1L).isUnwatched())
     assertFalse(service(saved = true).isUnwatched())
-    assertFalse(service(positionMs = 1L).isUnwatched())
     assertFalse(service(completed = true).isUnwatched())
   }
 
