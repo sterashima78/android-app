@@ -5,9 +5,11 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.video.VideoItem
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackState
 import dev.terashima.yomitorirss.feature.video.VideoProvider
 import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
+import dev.terashima.yomitorirss.feature.video.VideoSavedState
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import java.util.Locale
@@ -239,10 +241,14 @@ internal class VideoProviderDatabase(
         SELECT i.id, i.source, i.source_id, i.title, i.page_url, i.thumbnail_url,
                i.duration_ms, i.size_bytes, i.mime_type, i.updated_at,
                p.provider_id, p.provider_item_id, p.subscription_id, s.title,
-               p.published_at, p.is_read, p.is_watch_later
+               p.published_at, p.is_read, p.is_watch_later,
+               ps.position_ms, ps.duration_ms, ps.last_played_at, ps.completed,
+               sv.folder_id, sv.saved_at
         FROM video_provider_items p
         JOIN video_items i ON i.id = p.video_id
         LEFT JOIN video_subscriptions s ON s.id = p.subscription_id
+        LEFT JOIN video_playback_state ps ON ps.video_id = i.id
+        LEFT JOIN video_saved_items sv ON sv.video_id = i.id
         WHERE $whereClause
         ORDER BY p.published_at DESC
         $limitClause
@@ -310,6 +316,24 @@ private fun Cursor.toProviderVideo(): VideoProviderVideo = VideoProviderVideo(
     sizeBytes = longOrNull(7),
     mimeType = stringOrNull(8),
     updatedAtEpochMillis = getLong(9),
+    playbackState = if (isNull(17)) {
+      null
+    } else {
+      VideoPlaybackState(
+        positionMs = getLong(17),
+        durationMs = getLong(18),
+        lastPlayedAtEpochMillis = getLong(19),
+        completed = getInt(20) != 0,
+      )
+    },
+    savedState = if (isNull(22)) {
+      null
+    } else {
+      VideoSavedState(
+        folderId = stringOrNull(21),
+        savedAtEpochMillis = getLong(22),
+      )
+    },
   ),
   providerId = getString(10),
   providerItemId = getString(11),
