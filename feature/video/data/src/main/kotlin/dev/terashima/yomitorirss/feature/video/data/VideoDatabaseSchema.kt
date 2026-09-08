@@ -185,6 +185,8 @@ private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
 }
 
 private fun migrateLegacyVideoSubscriptions(db: SQLiteDatabase) {
+  if (!db.tableExists("channels") || !db.tableExists("videos")) return
+
   val now = System.currentTimeMillis()
   db.execSQL(
     """
@@ -250,3 +252,8 @@ private fun migrateLegacyVideoSubscriptions(db: SQLiteDatabase) {
     """.trimIndent(),
   )
 }
+
+private fun SQLiteDatabase.tableExists(name: String): Boolean = rawQuery(
+  "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+  arrayOf(name),
+).use { it.moveToFirst() }
