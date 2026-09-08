@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.video.VideoThumbnailResolver
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
@@ -33,7 +34,13 @@ class DefaultVideoThumbnailResolver(
       cachedThumbnail(target)?.let { return@withContext it }
       generationSemaphore.withPermit {
         cachedThumbnail(target)?.let { return@withPermit it }
-        runCatching { generateThumbnail(item, target) }.getOrNull()
+        try {
+          generateThumbnail(item, target)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (_: Throwable) {
+          null
+        }
       }
     }
   }
