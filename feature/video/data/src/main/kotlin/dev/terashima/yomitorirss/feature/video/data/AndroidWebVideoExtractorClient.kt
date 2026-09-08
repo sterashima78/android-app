@@ -87,11 +87,6 @@ class AndroidWebVideoExtractorClient(
     profileCookieManager.setAcceptThirdPartyCookies(webView, false)
     val requestReferrers = WebVideoRequestReferrerCapture()
     val requestCookies = WebVideoRequestCookieCapture(enabled = captureRequestCookies)
-    val playbackCookieProvider = createPlaybackCookieProvider(
-      enabled = includePlaybackCookies,
-      capturedCookieLookup = requestCookies::cookieFor,
-      cookieLookup = profileCookieManager::getCookie,
-    )
 
     var completed = false
     val stateKey = "__mosaicVideoExtractor_${SystemClock.uptimeMillis()}"
@@ -126,11 +121,25 @@ class AndroidWebVideoExtractorClient(
               "pending" -> handler.postDelayed({ poll(finalUrl) }, POLL_DELAY_MILLIS)
               "done" -> {
                 val extraction = poll.result ?: WebVideoExtractionResult()
+                val streamUrl = extraction.streamUrl
+                val playbackCookieProvider = streamUrl?.let { resolvedStreamUrl ->
+                  createPlaybackCookieProvider(
+                    enabled = includePlaybackCookies,
+                    capturedCookieLookup = { requestUrl ->
+                      if (samePlaybackRequestUrl(requestUrl, resolvedStreamUrl)) {
+                        requestCookies.cookieFor(requestUrl)
+                      } else {
+                        null
+                      }
+                    },
+                    cookieLookup = profileCookieManager::getCookie,
+                  )
+                }
                 finish(
                   Result.success(
                     extraction.copy(
-                      referrerUrl = extraction.streamUrl?.let(requestReferrers::referrerFor),
-                      cookieProvider = playbackCookieProvider.takeIf { extraction.streamUrl != null },
+                      referrerUrl = streamUrl?.let(requestReferrers::referrerFor),
+                      cookieProvider = playbackCookieProvider,
                     ),
                   ),
                 )
