@@ -42,7 +42,7 @@ root `NavController` は `MainActivity.setContent` の Compose root で app-lock
 
 `AppSection` は drawer の presentation grouping として `:app:presentation` が所有するが、旧 `MainTab` / `AppViewModel.selectedTab` / `AppFeatureContent` による manual routing は使わない。active destination ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、message / overlay / top bar host が route policy を重複して持たない。root destination の ViewModel は destination 内で取得し、active `NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
-`Integrated` はこの原則の代表例であり、RSS / Reddit / Video Provider / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。購読動画は Video Domain の read/write contract を利用し、旧 source-specific UI/runtime へ依存しない。`:app:presentation` は source ViewModel / Domain contract の wiring、Mail route への遷移、Android 外部 URL 起動 callback の接続だけを担当する。詳細は ADR-0188、ADR-0202、ADR-0241 を参照する。
+`Integrated` はこの原則の代表例であり、RSS / Reddit / Video Provider / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。購読動画は Video Domain の read/write contract を利用し、旧 source-specific UI/runtime へ依存しない。`:app:presentation` は source ViewModel / Domain contract の wiring、Mail route への遷移、Android 外部 URL 起動 callback の接続だけを担当する。詳細は ADR-0188、ADR-0202、ADR-0242 を参照する。
 
 `Settings` も同じ ownership 原則を適用する。Models / ChatGPT Debug / AI Execution Settings に加え、Summary Prompt / AI Task Queue / Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 sibling feature は再利用可能 UI と task semantics を所有し続け、`:app:presentation` の `SettingsRoute` は Android Activity Result、backup restore 後の app-shell navigation、feature dependency wiring、platform callback の接続だけを担当する。詳細は ADR-0192 を参照する。
 
@@ -113,7 +113,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:feature:audio` は保存済み要約の音声再生 capability を所有する。Domain は process-local の再生キューと操作 contract、Data は Android TTS / Media3 / `MediaSessionService`、UI は再生コントロールを所有する。Content / Curation / Summary の durable state は所有せず、Summary の公開 read/request contract だけを利用する。詳細は ADR-0235 を参照する。
 
-`:feature:video` は SMB / Web / 購読型 provider 由来動画を同じ catalog に投影し、Web extractor rule、provider設定・subscription・provider itemの未読/あとで見る状態・refresh lifecycle、再生位置、視聴済み状態、Video保存状態と foreground video playback UI を所有する。Web URL の単発登録は購読型 provider と分離する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 と ADR-0241 を参照する。
+`:feature:video` は SMB / Web / 購読型 provider 由来動画を同じ catalog に投影し、Web extractor rule、provider設定・subscription・provider itemの未読/あとで見る状態・refresh lifecycle、再生位置、視聴済み状態、Video保存状態と foreground video playback UI を所有する。Web URL の単発登録は購読型 provider と分離する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 と ADR-0242 を参照する。
 
 Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
 
@@ -178,22 +178,3 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
 - app composition / app presentation / app shell navigation ownership を変更する: ADR と本 `App` 節を同期し、app source layout / dependency regression test を更新する。
 - `:app:composition` の公開 facade / concrete feature dependency を変更する: `:app` / `:app:presentation` に `:feature:*:data` や composition-only provider/network dependency が漏れないことと、application scope lifetime を維持することを確認する。
-- `:app:presentation` の dependency を変更する: executable `:app` への逆依存と feature Data dependency がなく、feature UI ownership を越えた state/policy を app presentation に持ち込まないことを確認する。
-- shared core runtime の lifetime を変更する: application composition と background entry point の両方を確認し、ADR と regression test を更新する。
-
-## Sources
-
-- [`settings.gradle.kts`](../../settings.gradle.kts)
-- [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml)
-- [`gradle/architecture-metadata.gradle.kts`](../../gradle/architecture-metadata.gradle.kts)
-- [ADR-0001](../adr/0001-layered-architecture.md)
-- [ADR-0003](../adr/0003-multi-module-architecture.md)
-- [ADR-0004](../adr/0004-concept-oriented-modules.md)
-- [ADR-0046](../adr/0046-automated-architecture-verification.md)
-- [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
-- [ADR-0127](../adr/0127-health-connect-read-only.md)
-- [ADR-0128](../adr/0128-calendar-read-model-and-android-calendar-provider.md)
-- [ADR-0142](../adr/0142-app-route-and-task-widget-ownership-cleanup.md)
-- [ADR-0144](../adr/0144-composition-runtime-groups-and-module-map-verification.md)
-- [ADR-0150](../adr/0150-app-shell-navigation-ui-ownership.md)
-- [ADR-0155](../adr/0155-application-scope-http-transport.md)
