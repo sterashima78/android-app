@@ -123,6 +123,7 @@ class AndroidWebVideoExtractorClient(
                 val extraction = poll.result ?: WebVideoExtractionResult()
                 val streamUrl = extraction.streamUrl
                 val playbackCookieProvider = streamUrl?.let { resolvedStreamUrl ->
+                  requestCookies.retainOnly(resolvedStreamUrl)
                   createPlaybackCookieProvider(
                     enabled = includePlaybackCookies,
                     capturedCookieLookup = { requestUrl ->
@@ -135,6 +136,7 @@ class AndroidWebVideoExtractorClient(
                     cookieLookup = profileCookieManager::getCookie,
                   )
                 }
+                if (streamUrl == null) requestCookies.clear()
                 finish(
                   Result.success(
                     extraction.copy(
@@ -186,7 +188,7 @@ class AndroidWebVideoExtractorClient(
     }
 
     continuation.invokeOnCancellation {
-      handler.post { if (!completed) { completed = true; dispose() } }
+      handler.post { if (!completed) { completed = true; requestCookies.clear(); dispose() } }
     }
     webView.loadUrl(requestedUrl)
   }
@@ -337,6 +339,25 @@ internal class WebVideoRequestCookieCapture(
     if (!enabled) return null
     val safeRequestUrl = validPlaybackRequestUrl(requestUrl) ?: return null
     return entries.lastOrNull { (url, _) -> samePlaybackRequestUrl(url, safeRequestUrl) }?.second
+  }
+
+  @Synchronized
+  fun retainOnly(requestUrl: String) {
+    if (!enabled) {
+      entries.clear()
+      return
+    }
+    val safeRequestUrl = validPlaybackRequestUrl(requestUrl)
+    if (safeRequestUrl == null) {
+      entries.clear()
+      return
+    }
+    entries.removeAll { (url, _) -> !samePlaybackRequestUrl(url, safeRequestUrl) }
+  }
+
+  @Synchronized
+  fun clear() {
+    entries.clear()
   }
 }
 
