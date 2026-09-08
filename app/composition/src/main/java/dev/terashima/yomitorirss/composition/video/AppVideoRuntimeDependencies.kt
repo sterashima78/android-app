@@ -7,9 +7,11 @@ import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackResolver
+import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import dev.terashima.yomitorirss.feature.video.data.AndroidWebVideoExtractorClient
 import dev.terashima.yomitorirss.feature.video.data.DefaultVideoPlaybackResolver
+import dev.terashima.yomitorirss.feature.video.data.DefaultVideoProviderRepository
 import dev.terashima.yomitorirss.feature.video.data.DefaultVideoRepository
 
 internal class AppVideoRuntimeDependencies(
@@ -28,6 +30,10 @@ internal class AppVideoRuntimeDependencies(
       smbConnectionProfiles = smbConnectionProfileRepository,
       webExtractorClient = extractorClient,
     )
+    val providerRepository = DefaultVideoProviderRepository(
+      database = database,
+      httpClient = httpClient,
+    )
     val playbackResolver = DefaultVideoPlaybackResolver(
       smbMediaFileAccess = smbMediaFileAccess,
       smbSources = repository::smbSources,
@@ -36,6 +42,7 @@ internal class AppVideoRuntimeDependencies(
     )
     VideoRuntimeDependencies(
       repository = repository,
+      providerRepository = providerRepository,
       playbackResolver = playbackResolver,
       byteSourceFactory = playbackResolver,
     )
@@ -44,6 +51,7 @@ internal class AppVideoRuntimeDependencies(
 
 internal data class VideoRuntimeDependencies(
   val repository: VideoRepository,
+  val providerRepository: VideoProviderRepository,
   val playbackResolver: VideoPlaybackResolver,
   val byteSourceFactory: VideoByteSourceFactory,
 )
