@@ -140,9 +140,36 @@ class VideoProviderDatabaseTest {
 
     database.unsubscribe(subscription.id)
 
+    assertRetainedWithoutProviderMembership(videoId)
+  }
+
+  @Test
+  fun `購読解除しても再生履歴を持つ動画はcatalogに残すがprovider一覧から外す`() {
+    val provider = database.saveProvider(testProvider())
+    val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
+    val videoId = database.unreadVideos().single().video.id
+    helper.writableDatabase.insertOrThrow(
+      "video_playback_state",
+      null,
+      ContentValues().apply {
+        put("video_id", videoId)
+        put("position_ms", 10_000L)
+        put("duration_ms", 60_000L)
+        put("last_played_at", 200L)
+        put("completed", 0)
+      },
+    )
+
+    database.unsubscribe(subscription.id)
+
+    assertRetainedWithoutProviderMembership(videoId)
+  }
+
+  private fun assertRetainedWithoutProviderMembership(videoId: String) {
     assertTrue(videoExists(videoId))
     assertFalse(providerItemExists(videoId))
     assertTrue(database.unreadVideos().isEmpty())
+    assertTrue(database.watchLaterVideos().isEmpty())
     assertTrue(database.historyVideos(10).isEmpty())
   }
 
