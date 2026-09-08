@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
 import androidx.media3.common.Player
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,6 +42,82 @@ class VideoPlayerRequestPropertiesTest {
     )
 
     assertTrue(webStreamRequestProperties(target).isEmpty())
+  }
+
+  @Test
+  fun `CookieはMedia3のrequest URLごとにproviderへ問い合わせる`() {
+    val requested = mutableListOf<String>()
+    val provider = VideoPlaybackCookieProvider { url ->
+      requested += url
+      "a=b"
+    }
+    val requestUrl = "https://media.example.com/video/segment-1.ts"
+
+    assertEquals(
+      mapOf("Cookie" to "a=b"),
+      webStreamCookieRequestProperties(requestUrl, provider),
+    )
+    assertEquals(listOf(requestUrl), requested)
+  }
+
+  @Test
+  fun `redirect先を含む各request URLでCookieを引き直す`() {
+    val requested = mutableListOf<String>()
+    val provider = VideoPlaybackCookieProvider { url ->
+      requested += url
+      when {
+        "edge.example.com" in url -> "edge=1"
+        "media.example.com" in url -> "media=2"
+        else -> null
+      }
+    }
+
+    val first = webVideoRequestProperties(
+      requestUrl = "https://edge.example.com/master.m3u8",
+      defaultRequestProperties = mapOf("Referer" to "https://example.com/"),
+      dataSpecRequestProperties = emptyMap(),
+      cookieProvider = provider,
+    )
+    val redirected = webVideoRequestProperties(
+      requestUrl = "https://media.example.com/master.m3u8",
+      defaultRequestProperties = mapOf("Referer" to "https://example.com/"),
+      dataSpecRequestProperties = emptyMap(),
+      cookieProvider = provider,
+    )
+
+    assertEquals("edge=1", first["Cookie"])
+    assertEquals("media=2", redirected["Cookie"])
+    assertEquals(
+      listOf(
+        "https://edge.example.com/master.m3u8",
+        "https://media.example.com/master.m3u8",
+      ),
+      requested,
+    )
+  }
+
+  @Test
+  fun `CookieがないrequestにはCookie headerを追加しない`() {
+    val provider = VideoPlaybackCookieProvider { null }
+
+    assertTrue(
+      webStreamCookieRequestProperties(
+        "https://media.example.com/video/segment-1.ts",
+        provider,
+      ).isEmpty(),
+    )
+  }
+
+  @Test
+  fun `Cookie取得失敗時はcredentialを付けず再生requestを継続できる`() {
+    val provider = VideoPlaybackCookieProvider { error("lookup failed") }
+
+    assertTrue(
+      webStreamCookieRequestProperties(
+        "https://media.example.com/video/segment-1.ts",
+        provider,
+      ).isEmpty(),
+    )
   }
 
   @Test

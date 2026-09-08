@@ -102,6 +102,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
 - Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
 - URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。
+- Web抽出ルールでは「再生時にWebViewのCookieを共有する」をルールごとに設定でき、既定はOFFとする。有効な場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用し、Cookie値自体は保存・backup・logへ残さない。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして登録・編集する。passwordは画面へ再表示しない。
 - 動画設定では全体設定のSMB接続プロファイルを選び、動画として同期するshareとパスを個別に登録する。蔵書とは異なるshare / pathを指定でき、同じ接続プロファイルへ複数の動画同期場所を登録できる。

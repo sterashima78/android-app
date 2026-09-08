@@ -68,7 +68,7 @@ class DefaultVideoPlaybackResolver(
     val pageUrl = item.pageUrl ?: item.sourceId
     val rule = findMatchingWebVideoExtractorRule(rules(), pageUrl)
     val custom = if (!rule?.playbackExtractorCode.isNullOrBlank()) {
-      runCatching { webExtractorClient.extract(pageUrl, requireNotNull(rule)) }.getOrNull()
+      runCatching { webExtractorClient.extractForPlayback(pageUrl, requireNotNull(rule)) }.getOrNull()
     } else {
       null
     }
@@ -79,6 +79,7 @@ class DefaultVideoPlaybackResolver(
           url = it,
           mimeType = custom.mimeType,
           referrerUrl = webStreamReferrerUrl(pageUrl),
+          cookieProvider = custom.cookieProvider,
         )
       }
       ?: VideoPlaybackTarget.WebPage(pageUrl)
