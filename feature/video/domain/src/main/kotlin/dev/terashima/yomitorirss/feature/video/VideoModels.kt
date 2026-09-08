@@ -73,6 +73,7 @@ data class WebVideoExtractionResult(
   val thumbnailUrl: String? = null,
   val streamUrl: String? = null,
   val mimeType: String? = null,
+  val referrerUrl: String? = null,
   val cookieProvider: VideoPlaybackCookieProvider? = null,
 )
 

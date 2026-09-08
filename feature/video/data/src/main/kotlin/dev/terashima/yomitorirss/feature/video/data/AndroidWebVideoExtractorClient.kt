@@ -7,6 +7,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -82,6 +83,7 @@ class AndroidWebVideoExtractorClient(
       enabled = includePlaybackCookies,
       cookieLookup = profileCookieManager::getCookie,
     )
+    val requestReferrers = WebVideoRequestReferrerCapture()
 
     var completed = false
     val stateKey = "__mosaicVideoExtractor_${SystemClock.uptimeMillis()}"
@@ -119,6 +121,7 @@ class AndroidWebVideoExtractorClient(
                 finish(
                   Result.success(
                     extraction.copy(
+                      referrerUrl = extraction.streamUrl?.let(requestReferrers::referrerFor),
                       cookieProvider = playbackCookieProvider.takeIf { extraction.streamUrl != null },
                     ),
                   ),
@@ -136,6 +139,14 @@ class AndroidWebVideoExtractorClient(
     webView.webViewClient = object : WebViewClient() {
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
         !isSafeExtractorPageUrl(request.url.toString())
+
+      override fun shouldInterceptRequest(
+        view: WebView,
+        request: WebResourceRequest,
+      ): WebResourceResponse? {
+        requestReferrers.record(request.url.toString(), request.requestHeaders)
+        return null
+      }
 
       override fun onPageFinished(view: WebView, url: String) {
         if (completed || !isSafeExtractorPageUrl(url)) return
@@ -250,6 +261,35 @@ class AndroidWebVideoExtractorClient(
   }
 }
 
+internal class WebVideoRequestReferrerCapture(
+  private val maxEntries: Int = 64,
+) {
+  private val entries = mutableListOf<Pair<String, String>>()
+
+  init {
+    require(maxEntries > 0)
+  }
+
+  @Synchronized
+  fun record(requestUrl: String, requestHeaders: Map<String, String>) {
+    val safeRequestUrl = validPlaybackRequestUrl(requestUrl) ?: return
+    val referrer = requestHeaders.entries
+      .firstOrNull { (name, _) -> name.equals("Referer", ignoreCase = true) }
+      ?.value
+      ?.let(::webVideoReferrerOrigin)
+      ?: return
+    entries.removeAll { (url, _) -> samePlaybackRequestUrl(url, safeRequestUrl) }
+    entries += safeRequestUrl to referrer
+    while (entries.size > maxEntries) entries.removeAt(0)
+  }
+
+  @Synchronized
+  fun referrerFor(requestUrl: String): String? {
+    val safeRequestUrl = validPlaybackRequestUrl(requestUrl) ?: return null
+    return entries.lastOrNull { (url, _) -> samePlaybackRequestUrl(url, safeRequestUrl) }?.second
+  }
+}
+
 internal fun createPlaybackCookieProvider(
   enabled: Boolean,
   cookieLookup: (String) -> String?,
@@ -268,6 +308,38 @@ internal fun validPlaybackCookieUrl(url: String): String? = runCatching {
   uri.takeIf {
     (scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank()
   }?.toString()
+}.getOrNull()
+
+internal fun validPlaybackRequestUrl(url: String): String? = runCatching {
+  val withoutFragment = url.substringBefore('#')
+  val uri = URI(withoutFragment)
+  val scheme = uri.scheme?.lowercase()
+  withoutFragment.takeIf {
+    (scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank()
+  }
+}.getOrNull()
+
+internal fun samePlaybackRequestUrl(left: String, right: String): Boolean = runCatching {
+  val leftUri = URI(left)
+  val rightUri = URI(right)
+  leftUri.scheme.equals(rightUri.scheme, ignoreCase = true) &&
+    leftUri.host.equals(rightUri.host, ignoreCase = true) &&
+    effectivePort(leftUri) == effectivePort(rightUri) &&
+    leftUri.rawPath == rightUri.rawPath &&
+    leftUri.rawQuery == rightUri.rawQuery
+}.getOrDefault(false)
+
+private fun effectivePort(uri: URI): Int = when {
+  uri.port >= 0 -> uri.port
+  uri.scheme.equals("https", ignoreCase = true) -> 443
+  else -> 80
+}
+
+internal fun webVideoReferrerOrigin(referrerUrl: String): String? = runCatching {
+  val uri = URI(referrerUrl)
+  val scheme = uri.scheme?.lowercase()
+  require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
+  URI(scheme, null, uri.host, uri.port, "/", null, null).toString()
 }.getOrNull()
 
 internal fun resolveWebVideoExtractorUrl(
