@@ -78,7 +78,7 @@ class DefaultVideoPlaybackResolver(
         VideoPlaybackTarget.Stream(
           url = it,
           mimeType = custom.mimeType,
-          referrerUrl = custom.referrerUrl ?: webStreamReferrerUrl(pageUrl),
+          referrerUrl = webStreamReferrerUrl(pageUrl, custom.referrerUrl),
           cookieProvider = custom.cookieProvider,
         )
       }
@@ -86,9 +86,15 @@ class DefaultVideoPlaybackResolver(
   }
 }
 
-internal fun webStreamReferrerUrl(pageUrl: String): String? = runCatching {
-  val uri = URI(pageUrl)
-  val scheme = uri.scheme?.lowercase()
-  require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
-  URI(scheme, null, uri.host, uri.port, "/", null, null).toString()
-}.getOrNull()
+internal fun webStreamReferrerUrl(
+  pageUrl: String,
+  capturedReferrerUrl: String? = null,
+): String? {
+  capturedReferrerUrl?.let(::webVideoReferrerOrigin)?.let { return it }
+  return runCatching {
+    val uri = URI(pageUrl)
+    val scheme = uri.scheme?.lowercase()
+    require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
+    URI(scheme, null, uri.host, uri.port, "/", null, null).toString()
+  }.getOrNull()
+}
