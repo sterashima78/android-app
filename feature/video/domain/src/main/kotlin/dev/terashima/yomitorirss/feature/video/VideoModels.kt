@@ -138,6 +138,10 @@ interface VideoPlaybackResolver {
   suspend fun resolve(item: VideoItem): VideoPlaybackTarget
 }
 
+interface VideoThumbnailResolver {
+  suspend fun resolve(item: VideoItem): String?
+}
+
 interface VideoByteSource : AutoCloseable {
   val length: Long
 
