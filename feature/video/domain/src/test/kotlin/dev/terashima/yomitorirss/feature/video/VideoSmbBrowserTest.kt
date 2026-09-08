@@ -64,6 +64,13 @@ class VideoSmbBrowserTest {
     assertEquals(listOf("series"), path?.directories)
   }
 
+  @Test
+  fun `SMB root判定は既存のcase sensitiveなpath境界を維持する`() {
+    assertTrue(isVideoSmbPathWithinRoot("videos\\movies\\movie.mp4", "videos\\movies"))
+    assertFalse(isVideoSmbPathWithinRoot("Videos\\movies\\movie.mp4", "videos\\movies"))
+    assertFalse(isVideoSmbPathWithinRoot("videos\\movies2\\movie.mp4", "videos\\movies"))
+  }
+
   private fun item(source: VideoSource, savedState: VideoSavedState? = null) = VideoItem(
     id = source.name,
     source = source,
