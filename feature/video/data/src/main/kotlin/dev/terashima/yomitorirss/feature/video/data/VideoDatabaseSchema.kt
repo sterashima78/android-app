@@ -12,6 +12,10 @@ val videoDatabaseSchema = DatabaseSchemaContribution(
       targetVersion = 29,
       migrate = ::migrateLegacyVideoSmbSources,
     ),
+    DatabaseMigration(
+      targetVersion = 31,
+      migrate = ::migrateLegacyVideoSubscriptions,
+    ),
   ),
 )
 
@@ -93,6 +97,50 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
     """.trimIndent(),
   )
   db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS video_providers (
+        id TEXT PRIMARY KEY NOT NULL,
+        provider_type TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS video_subscriptions (
+        id TEXT PRIMARY KEY NOT NULL,
+        provider_id TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(provider_id, source_id),
+        FOREIGN KEY(provider_id) REFERENCES video_providers(id) ON DELETE CASCADE
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS video_provider_items (
+        video_id TEXT PRIMARY KEY NOT NULL,
+        provider_id TEXT NOT NULL,
+        subscription_id TEXT,
+        provider_item_id TEXT NOT NULL,
+        published_at INTEGER NOT NULL,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        is_watch_later INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(provider_id, provider_item_id),
+        FOREIGN KEY(video_id) REFERENCES video_items(id) ON DELETE CASCADE,
+        FOREIGN KEY(provider_id) REFERENCES video_providers(id) ON DELETE CASCADE,
+        FOREIGN KEY(subscription_id) REFERENCES video_subscriptions(id) ON DELETE SET NULL
+      )
+    """.trimIndent(),
+  )
+  db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_items_source_updated ON video_items(source, updated_at DESC)",
   )
   db.execSQL(
@@ -106,6 +154,15 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_video_rules_updated ON video_web_extractor_rules(updated_at DESC)",
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_subscriptions_provider ON video_subscriptions(provider_id, title COLLATE NOCASE)",
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_provider_items_unread ON video_provider_items(is_read, is_watch_later, published_at DESC)",
+  )
+  db.execSQL(
+    "CREATE INDEX IF NOT EXISTS idx_video_provider_items_subscription ON video_provider_items(subscription_id, published_at DESC)",
   )
 }
 
@@ -123,6 +180,73 @@ private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
         updated_at
       FROM smb_library_servers
       WHERE TRIM(share_name) <> ''
+    """.trimIndent(),
+  )
+}
+
+private fun migrateLegacyVideoSubscriptions(db: SQLiteDatabase) {
+  val now = System.currentTimeMillis()
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO video_providers(
+        id, provider_type, name, enabled, created_at, updated_at
+      )
+      SELECT
+        'youtube', 'YOUTUBE', 'YouTube', 1,
+        COALESCE(MIN(added_at), ?), COALESCE(MAX(added_at), ?)
+      FROM channels
+      HAVING COUNT(*) > 0
+    """.trimIndent(),
+    arrayOf(now, now),
+  )
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO video_subscriptions(
+        id, provider_id, source_id, title, source_url, created_at, updated_at
+      )
+      SELECT
+        'youtube:' || channel_id,
+        'youtube',
+        channel_id,
+        title,
+        channel_url,
+        added_at,
+        added_at
+      FROM channels
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO video_items(
+        id, source, source_id, title, page_url, thumbnail_url,
+        duration_ms, size_bytes, mime_type, updated_at
+      )
+      SELECT
+        'provider:youtube:' || video_id,
+        'SERVICE',
+        'youtube:' || video_id,
+        title,
+        video_url,
+        'https://i.ytimg.com/vi/' || video_id || '/hqdefault.jpg',
+        NULL, NULL, NULL, published_at
+      FROM videos
+    """.trimIndent(),
+  )
+  db.execSQL(
+    """
+      INSERT OR IGNORE INTO video_provider_items(
+        video_id, provider_id, subscription_id, provider_item_id,
+        published_at, is_read, is_watch_later
+      )
+      SELECT
+        'provider:youtube:' || video_id,
+        'youtube',
+        'youtube:' || channel_id,
+        video_id,
+        published_at,
+        is_read,
+        is_watch_later
+      FROM videos
     """.trimIndent(),
   )
 }
