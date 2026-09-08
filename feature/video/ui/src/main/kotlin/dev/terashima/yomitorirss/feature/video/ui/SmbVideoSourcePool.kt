@@ -53,7 +53,7 @@ internal class SmbVideoSourcePool(
     sourceToClose?.close()
   }
 
-  internal class Lease private constructor(
+  internal class Lease internal constructor(
     private val pool: SmbVideoSourcePool,
     private val sourceId: String,
     private val entry: Entry,
@@ -87,17 +87,9 @@ internal class SmbVideoSourcePool(
       released = true
       pool.release(entry)
     }
-
-    internal companion object {
-      operator fun invoke(
-        pool: SmbVideoSourcePool,
-        sourceId: String,
-        entry: Entry,
-      ): Lease = Lease(pool, sourceId, entry)
-    }
   }
 
-  private class Entry(
+  internal class Entry(
     val source: VideoByteSource,
     var activeLeases: Int = 0,
     var retired: Boolean = false,
