@@ -47,7 +47,6 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
-import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -93,18 +92,17 @@ internal fun VideoPlayerDialog(
     val builder = ExoPlayer.Builder(context)
     when (target) {
       is VideoPlaybackTarget.Stream -> {
-        val httpFactory = DefaultHttpDataSource.Factory()
-          .setUserAgent(WebSettings.getDefaultUserAgent(context))
-          .setDefaultRequestProperties(webStreamRequestProperties(target))
+        val userAgent = WebSettings.getDefaultUserAgent(context)
+        val requestProperties = webStreamRequestProperties(target)
         val dataSourceFactory = target.cookieProvider?.let { cookieProvider ->
-          ResolvingDataSource.Factory(httpFactory) { dataSpec ->
-            val cookieHeaders = webStreamCookieRequestProperties(
-              requestUrl = dataSpec.uri.toString(),
-              cookieProvider = cookieProvider,
-            )
-            if (cookieHeaders.isEmpty()) dataSpec else dataSpec.withRequestHeaders(cookieHeaders)
-          }
-        } ?: httpFactory
+          WebVideoHttpDataSource.Factory(
+            userAgent = userAgent,
+            defaultRequestProperties = requestProperties,
+            cookieProvider = cookieProvider,
+          )
+        } ?: DefaultHttpDataSource.Factory()
+          .setUserAgent(userAgent)
+          .setDefaultRequestProperties(requestProperties)
         builder.setMediaSourceFactory(
           DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory),
         )
