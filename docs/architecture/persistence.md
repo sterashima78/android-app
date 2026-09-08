@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は ADR-0240 により 30 である。ADR-0239 の version 29 を version 30 への更新元 baseline とし、version 29 database を version 30 で開くと Video-owned `video_folders` と `video_saved_items` を追加する。既存 VideoItem は自動的に保存済みへ移行しない。version 28 -> 29 の SMB connection profile / Video SMB source migrationは引き続き適用される。
+現在の application database version は ADR-0241 により 31 である。version 30 を version 31 への更新元 baseline とし、version 30 database を version 31 で開くと Video-owned provider設定・subscription・provider item stateを追加し、旧専用subscription/video tableが存在する場合だけその状態を一度取り込む。version 28 -> 29 の SMB connection profile / Video SMB source migrationとversion 29 -> 30のVideo保存状態追加は引き続き適用される。
 
-バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 30 アプリでは version 30 snapshot を受理し、version 29 以下の snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 31 アプリでは version 31 snapshot を受理し、version 30 以下の snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -103,21 +103,37 @@ version 28以前の `smb_library_servers` rowはschema初期化時に同じIDで
 
 `DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
 
-これにより単体 lookup が全蔵書 snapshot 構築や Kindle title normalization 等の無関係な処理を暗黙に実行することを避ける。
+これにより単体 lookup が全蔵書 snapshot 構築やtitle normalization等の無関係な処理を暗黙に実行することを避ける。
 
 ### Video schema
 
-Video Context の fresh DB schema は `VideoDatabaseSchema.kt` を正本とし、`video_items`、`video_playback_state`、`video_smb_sources`、`video_folders`、`video_saved_items`、`video_web_extractor_rules` を作成する。
+Video Context の fresh DB schema は `VideoDatabaseSchema.kt` を正本とし、次のtableを作成する。
 
-`video_items` は SMB / Web 等のcatalog projection、`video_playback_state` は再生位置・duration・最終再生日時・completed state、`video_smb_sources` は connection profile ID / share / root pathからなるVideo専用SMB同期場所、`video_folders` と `video_saved_items` は保存済み動画と1件最大1folderの整理状態、`video_web_extractor_rules` は URL glob pattern と Promise ベースの title / thumbnail / playback extractor function code を保存する。これらはVideo-owned durable user dataであり、通常のdatabase snapshot backupに含まれる。
+- `video_items`
+- `video_playback_state`
+- `video_smb_sources`
+- `video_folders`
+- `video_saved_items`
+- `video_web_extractor_rules`
+- `video_providers`
+- `video_subscriptions`
+- `video_provider_items`
+
+`video_items` は SMB / Web / provider由来のcatalog projection、`video_playback_state` は再生位置・duration・最終再生日時・completed state、`video_smb_sources` は connection profile ID / share / root pathからなるVideo専用SMB同期場所、`video_folders` と `video_saved_items` は保存済み動画と1件最大1folderの整理状態、`video_web_extractor_rules` は URL glob pattern と Promise ベースの title / thumbnail / playback extractor function code を保存する。
+
+`video_providers` は購読型providerのidentity / type / display name / enabled state、`video_subscriptions` はprovider内のsource identity / title / source URL、`video_provider_items` はprovider item identity、subscription membership、publish time、unread / watch-later stateを保存する。これらはVideo-owned durable user dataであり、通常のdatabase snapshot backupに含まれる。
 
 `video_saved_items` は `video_id` をprimary keyとし、rowの存在を保存済み状態のsource of truthとする。`folder_id` はnullableで、NULLは未分類を表す。folder削除時は保存rowを削除せず `folder_id` をNULLへ戻す。保存 / 保存解除 / folder移動は `video_playback_state` を変更しない。
+
+provider itemは `video_items` へ `VideoSource.SERVICE` として投影し、provider-specific persistenceとは別のcatalogを作らない。provider refreshでは既存 `video_provider_items` のread / watch-later stateと既存Videoのplayback / saved stateを保持する。Web itemは単発登録のままで `video_provider_items` を持たない。
 
 stream URLと動画ファイル本体は保存しない。SMB connection profileとcredentialはLibrary ownershipを維持し、Video tableへ複製しない。VideoがSMB fileへアクセスする場合はLibrary Domainの `SmbConnectionProfileRepository` と `SmbMediaFileAccess` capabilityを利用し、caller-owned share / root pathを `SmbMediaLocation` として明示する。
 
 version 28 -> 29 migrationでは従来Videoが暗黙利用していた `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ1回だけ取り込む。このmigrationに限りVideo DataからLibrary-owned `smb_library_servers` をreadするため、`foreign-table-access-allowlist.tsv` にversion 28 compatibility限定の例外を登録する。
 
 version 29 -> 30では `schema.create` のidempotent contributionにより `video_folders` と `video_saved_items` を追加する。既存VideoItemを自動保存せず、新しい保存状態は空から開始する。
+
+version 30 -> 31では provider tableを追加し、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、provider item、publish time、read / watch-later stateをVideo-owned tableへ一度だけ取り込む。旧tableはfresh schemaで作成せず、current runtimeから参照しない。Video Dataから旧tableへのreadはこのmigrationだけを `foreign-table-access-allowlist.tsv` で許可する。
 
 version 28由来のSMB Video itemはshareを含まない旧source IDを持つ。初回再同期時に同一server/pathから新identityが一意に決まる場合は、再生位置・duration・completed stateを新しいserver/share/path identityへ引き継いでから旧catalog rowを削除する。
 
@@ -155,12 +171,12 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `article_summaries`, `summary_*` | `:feature:summary:data` |
 | `mail_*` | `:feature:mail:data` |
 | `library_*`, `web_library_metadata_extractors`, `hidden_library_items`, `smb_*` | `:feature:library:data` |
-| `video_items`, `video_playback_state`, `video_smb_sources`, `video_folders`, `video_saved_items`, `video_web_extractor_rules` | `:feature:video:data` |
+| `video_items`, `video_playback_state`, `video_smb_sources`, `video_folders`, `video_saved_items`, `video_web_extractor_rules`, `video_providers`, `video_subscriptions`, `video_provider_items` | `:feature:video:data` |
 | `knowledge_*` | `:feature:knowledge:data` |
 | `asset_*` | `:feature:asset:data` |
 | `tasks` | `:feature:task:data` |
 | `chat_*` | `:feature:chat:data` |
-| `channels`, `videos` | `:feature:youtube:data` |
+| legacy subscription/video tables | migration input only; owner manifest retained until v30 upgrade baseline retires |
 
 `gradle/table-ownership.gradle.kts` は owner data source 内の `CREATE TABLE IF NOT EXISTS` を抽出し、次を失敗させる。
 
@@ -191,6 +207,7 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - AI task queue は SMB 書誌正規化 table を直接参照せず、Library-owned `SmbMetadataNormalizationRepository` を通じて task projection と再試行を行う。
 - 全体設定とVideoは `smb_connection_profiles` やcredential storageを直接参照せず、Library-owned `SmbConnectionProfileRepository` を利用する。
 - Video はSMB file accessでLibrary tableを直接参照せず、Library-owned `SmbMediaFileAccess` にVideo-owned share / root pathを明示してlisting / random-access readを取得する。
+- 統合未読表示とbackground refreshはprovider-specific tableを直接参照せず、Video-owned `VideoProviderRepository` を利用する。
 - Backup restore は Library の cache invalidation を `LibraryBackupRestoreInitializer` に委譲し、Library-owned table を直接変更しない。
 
 ### Named Projection
@@ -201,7 +218,12 @@ owner API の合成で実測上の性能問題がある read path に限り read
 
 通常 runtime の Content / Curation / Summary / RSS / Library / Video 間 foreign table accessはowner Domain capabilityへ収束している。
 
-現在の `foreign-table-access-allowlist.tsv` には、ADR-0239のversion 28 -> 29 migrationでVideo Dataが旧 `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ取り込むread-only例外だけを登録する。この例外はruntime pathではなくmigration限定であり、version 28 upgrade baselineから外れた時点で削除する。
+現在の `foreign-table-access-allowlist.tsv` にはmigration限定のread-only例外だけを登録する。
+
+- ADR-0239: version 28 -> 29で旧 `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ取り込む。
+- ADR-0241: version 30 -> 31で旧専用subscription/video tableの状態をVideo-owned provider stateへ取り込む。
+
+これらはruntime pathではない。version 28 / version 30 upgrade baselineがそれぞれ不要になった時点で対応するallowlist entryとmigration compatibilityを削除する。
 
 allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
 
@@ -246,3 +268,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
 - [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
+- [ADR-0241](../adr/0241-video-subscription-providers.md)
