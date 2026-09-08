@@ -72,7 +72,7 @@ SMB動画のdurable source identityにはconnection profile ID、share、pathを
 
 SMB再生では全動画を端末へ事前downloadせず、SMBJのoffset readを `VideoByteSource` / Media3 `DataSource` へ接続する。
 
-SMB thumbnailも同じrandom-access boundaryを再利用する。`VideoThumbnailResolver` は `VideoByteSourceFactory` を `MediaDataSource` へadapterし、`MediaMetadataRetriever` で動画の冒頭寄りの代表frameを取得する。元動画全体を端末へ保存せず、最大辺640pxのJPEGをapplication cache配下へ保存する。生成は一覧で表示対象になった項目に限定し、同時生成数を制限する。
+SMB thumbnailも同じrandom-access boundaryを再利用する。`VideoThumbnailResolver` は `VideoByteSourceFactory` を Media3 `DataSource` へadapterし、`FrameExtractor` で動画の冒頭寄りの同期frameを取得する。プラットフォームの `MediaMetadataRetriever` は利用しない。元動画全体を端末へ保存せず、最大辺640pxのJPEGをapplication cache配下へ保存する。生成は一覧で表示対象になった項目に限定し、同時生成数を制限する。
 
 thumbnail cacheはVideo item IDとファイルサイズをcache keyに含める。同じ同期対象を再同期しても通常は既存cacheを再利用し、サイズが変わった動画では再生成する。同一path・同一sizeの内容置換を厳密に検出するdurable fingerprintは持たず、cacheはあくまで再生成可能なbest-effort projectionとする。生成失敗はcatalog同期や動画再生の失敗へ昇格させない。
 
