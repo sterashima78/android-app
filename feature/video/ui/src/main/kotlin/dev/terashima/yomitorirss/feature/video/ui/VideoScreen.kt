@@ -979,6 +979,5 @@ private fun formatPlaybackPosition(positionMs: Long, durationMs: Long): String {
 }
 
 internal fun VideoItem.isUnwatched(): Boolean {
-  val playback = playbackState
-  return !isSaved && (playback == null || (!playback.completed && playback.positionMs <= 0L))
+  return !isSaved && playbackState?.completed != true
 }
