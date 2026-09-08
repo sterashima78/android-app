@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.VideoThumbnailResolver
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -94,9 +95,13 @@ class VideoViewModel(
     viewModelScope.launch {
       var retryItem: VideoItem? = null
       try {
-        val thumbnailUrl = runCatching { thumbnailResolver.resolve(item) }
-          .getOrNull()
-          ?.takeIf(String::isNotBlank)
+        val thumbnailUrl = try {
+          thumbnailResolver.resolve(item)?.takeIf(String::isNotBlank)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (_: Throwable) {
+          null
+        }
         val current = mutableState.value
         val currentItem = current.items.firstOrNull { it.id == item.id } ?: return@launch
         if (currentItem.sourceId != item.sourceId || currentItem.sizeBytes != item.sizeBytes) {
