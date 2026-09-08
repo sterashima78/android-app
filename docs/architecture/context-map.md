@@ -43,19 +43,15 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
           +--------------+
 
 +----------------------+        +----------------------+
-| YouTube context      |        | Library context      |
-| channels / videos    |        | books / SMB settings |
-+----------+-----------+        +----------+-----------+
-           |                               |
-           |                               | SmbMediaFileAccess
-           |                               v
-           |                      +----------------------+
-           |                      | Video context        |
-           |                      | catalog / playback   |
-           |                      | Web extractor rules  |
-           |                      +----------------------+
-           |
-           +---- content integration ----> Content context
+| Library context      |        | Video context        |
+| books / SMB settings |------->| catalog / playback   |
++----------------------+  SMB   | Web / subscriptions  |
+                         access +----------+-----------+
+                                            |
+                                   provider adapter
+                                            |
+                                            v
+                                  external video feeds
 
 Presentation / delivery:
   Web / Widget / Integrated UI / Calendar
@@ -93,7 +89,7 @@ Bookmark は ContentItemId を参照する。`savedAt` の正規 persistence は
 
 Bookmark から Web Library への移動は Curation-owned `MoveBookmarkToLibraryUseCase` が所有する。Bookmark domain は Library domain の narrow `WebLibraryAdder` capability だけに一方向依存し、移動先の作成成功後に Bookmark を解除する。Library から Bookmark への逆方向移動は提供しない。
 
-### Source contexts: RSS / Reddit / YouTube
+### Source contexts: RSS / Reddit
 
 Content の上流 Source Context として扱う。各 Source 固有の subscription、synchronization / fetch state、authentication、external API / site semantics、source-specific metadata は各 Context が所有する。
 
@@ -102,6 +98,8 @@ RSS から Content への ingestion は Content-owned `ContentSourceGateway` を
 RSS は通常の RSS / Atom discovery に加え、RSS を公開していない Web ページから synthetic feed を生成する取得方法も所有する。user-defined Web scraping rule は `rss_web_scraping_rules` に URL glob pattern、Promise ベースの JavaScript function、timeout を保存し、RSS-owned `FeedRepository` 経由で管理・実行する。Library の custom metadata extractor と execution pattern は似ているが、RSS から Library Context の repository/client へ依存せず、それぞれの source semantics と durable state を各 Context 内に閉じる。
 
 組み込みの site-specific synthetic feed client は ADR-0184 で廃止済みであり、feed 取得は一致する user-defined rule を優先し、該当 rule がなければ通常の RSS / Atom discovery / fetch へ進む。特定 host を根拠に新規 feed を暗黙に `COMIC` へ分類する処理も持たず、必要な分類は feed / folder の設定で明示する。
+
+動画チャンネル購読は Content の上流 Source Context として独立所有せず、ADR-0241 により Video Context の provider adapter として扱う。subscription / unread / refresh の durable lifecycle は Video が所有する。
 
 ### Summary
 
@@ -149,7 +147,7 @@ Calendar は Task / Workout の command owner ではなく、初期実装は読�
 
 ### Library
 
-現在の主要な実装 module は `:feature:library:{domain,data,ui}`。Library は Google Play Books、Kindle、Audible、SMB、Web を `LibraryBook` catalog の source として扱い、`library_items` と Library 固有の整理 metadata を所有する。
+現在の主要な実装 module は `:feature:library:{domain,data,ui}`。Library は複数の書籍source、SMB、Web を `LibraryBook` catalog の source として扱い、`library_items` と Library 固有の整理 metadata を所有する。
 
 Web source は URL を identity とし、Library data layer がまず HTTP(S) ページの OGP / HTML metadata を取得する。通常は HTTPS ページで metadata が不足する場合だけ短命な WebView で JavaScript 実行後の DOM metadata を補完するが、Library-owned `WebLibraryMetadataExtractor` が requested URL に一致する場合は静的 metadata が揃っていても WebView を実行し、登録された Promise ベースの非同期関数の `title` / `thumbnailUrl` をサイト固有の override として利用する。custom extractor は専用 WebView profile の既存 security boundary 内でのみ動作し、native JavaScript bridge は公開しない。URL pattern と function code は `web_library_metadata_extractors` に保存する Library-owned durable user data である。
 
@@ -161,17 +159,20 @@ Library は SMB server settings と credential の owner でもある。Video �
 
 ### Video
 
-現在の主要な実装 module は `:feature:video:{domain,data,ui}`。Video は SMB / Web 由来の動画を共通 `VideoItem` catalogへ投影し、Web extractor ruleと視聴状態を所有する。
+現在の主要な実装 module は `:feature:video:{domain,data,ui}`。Video は SMB / Web / 購読型provider由来の動画を共通 `VideoItem` catalogへ投影し、Web extractor rule、provider lifecycle、視聴・保存状態を所有する。
 
 - `video_items` にVideo catalog projectionを保存する。
 - `video_playback_state` に再生位置、duration、最終再生日時、completed stateを保存する。
 - `video_web_extractor_rules` にURL glob patternとPromiseベースのtitle / thumbnail / playback extractorを保存する。
-- Web itemのdurable identityはpage URLとし、stream URLは保存しない。
+- `video_providers` / `video_subscriptions` / `video_provider_items` にprovider設定、subscription、provider itemのpublish timeと未読状態を保存する。
+- Web itemのdurable identityはpage URLとし、stream URLは保存しない。Web単発登録にsubscription / unread semanticsを持たせない。
+- provider adapterは外部source固有のURL正規化・endpoint解決・response parsingを担当し、subscription / unread / refresh persistenceはVideoの共通lifecycleを利用する。
+- provider itemは `VideoSource.SERVICE` として同じcatalogへ投影し、playback / saved stateを通常のVideo itemと共有する。
 - SMB itemはLibraryの `SmbMediaFileAccess` を利用し、Library tableやcredential storeを直接所有しない。
 - Media3 foreground playerを利用し、Audioのbackground `MediaSessionService`を共同所有・複製しない。
 - Video再生によってContentのread state、Curationのmembership、Library book stateを書き換えない。
 
-詳細は [video.md](video.md) と ADR-0237 を参照する。
+詳細は [video.md](video.md)、ADR-0237、ADR-0241 を参照する。
 
 ### Other application contexts
 
@@ -221,6 +222,7 @@ Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds
 - Calendar の `TaskReader` / `WorkoutReader` 合成 read model
 - Audio の `SummaryReader` / `SummaryRequester` 利用
 - Video の Library-owned `SmbMediaFileAccess` 利用
+- 統合未読表示の Video-owned `VideoProviderRepository` 利用
 
 大量 read で owner API の合成が実測上問題になる場合だけ、read-only かつ purpose-specific な Named Projection を検討する。
 
@@ -234,7 +236,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0138 で version 27 より前の更新互換性を終了し、ADR-0237 で現在のapplication database versionを28へ進めた。version 27はversion 28への更新元baselineとして維持し、それ以前のschemaへ戻るmigrationは再導入しない。現在 `foreign-table-access-allowlist.tsv` に例外 entry はない。
+ADR-0241 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。application database versionは31で、version 30を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -259,3 +261,6 @@ ADR-0138 で version 27 より前の更新互換性を終了し、ADR-0237 で�
 - [ADR-0189](../adr/0189-workout-owned-health-connect-export-adapter.md)
 - [ADR-0235](../adr/0235-summary-audio-playback.md)
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
+- [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
+- [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
+- [ADR-0241](../adr/0241-video-subscription-providers.md)
