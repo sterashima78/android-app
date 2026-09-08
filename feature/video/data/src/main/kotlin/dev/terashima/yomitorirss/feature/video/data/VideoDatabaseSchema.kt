@@ -251,6 +251,9 @@ private fun migrateLegacyVideoSubscriptions(db: SQLiteDatabase) {
       FROM videos
     """.trimIndent(),
   )
+
+  db.execSQL("DROP TABLE IF EXISTS videos")
+  db.execSQL("DROP TABLE IF EXISTS channels")
 }
 
 private fun SQLiteDatabase.tableExists(name: String): Boolean = rawQuery(
