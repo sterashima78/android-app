@@ -11,17 +11,23 @@ import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import java.net.URI
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class DefaultVideoPlaybackResolver(
   private val smbMediaFileAccess: SmbMediaFileAccess,
   private val smbSources: () -> List<VideoSmbSource>,
   private val rules: () -> List<WebVideoExtractorRule>,
   private val webExtractorClient: AndroidWebVideoExtractorClient,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : VideoPlaybackResolver, VideoByteSourceFactory {
   override suspend fun resolve(item: VideoItem): VideoPlaybackTarget = when (item.source) {
     VideoSource.SMB -> VideoPlaybackTarget.Smb(
       sourceId = item.sourceId,
-      length = item.sizeBytes ?: open(item.sourceId).use(VideoByteSource::length),
+      length = item.sizeBytes ?: withContext(ioDispatcher) {
+        open(item.sourceId).use(VideoByteSource::length)
+      },
       mimeType = item.mimeType,
     )
 

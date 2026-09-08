@@ -8,6 +8,9 @@ import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
+import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -111,6 +114,38 @@ class DefaultVideoPlaybackResolverTest {
   }
 
   @Test
+  fun `SMB動画のsize fallbackはIO dispatcher経由でopenする`() = runBlocking {
+    val smb = FakeSmbAccess(payload = "0123".toByteArray())
+    val dispatcher = RecordingDispatcher()
+    val sourceId = smbVideoSourceId("server-1", "media", "videos\\movie.mkv")
+    val resolver = resolver(
+      smb = smb,
+      smbSources = listOf(
+        VideoSmbSource(
+          id = "source-1",
+          serverId = "server-1",
+          share = "media",
+          rootPath = "videos",
+        ),
+      ),
+      ioDispatcher = dispatcher,
+    )
+
+    assertEquals(
+      VideoPlaybackTarget.Smb(sourceId, 4L, null),
+      resolver.resolve(
+        item(
+          source = VideoSource.SMB,
+          sourceId = sourceId,
+          sizeBytes = null,
+        ),
+      ),
+    )
+    assertEquals(1, dispatcher.dispatchCount)
+    assertEquals(1, smb.openCount)
+  }
+
+  @Test
   fun `旧SMB動画IDはpathを含む設定から再生できる`() {
     val smb = FakeSmbAccess(payload = "0123".toByteArray())
     val resolver = resolver(
@@ -136,11 +171,13 @@ class DefaultVideoPlaybackResolverTest {
   private fun resolver(
     smb: SmbMediaFileAccess,
     smbSources: List<VideoSmbSource> = emptyList(),
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
   ) = DefaultVideoPlaybackResolver(
     smbMediaFileAccess = smb,
     smbSources = { smbSources },
     rules = { emptyList() },
     webExtractorClient = AndroidWebVideoExtractorClient { null },
+    ioDispatcher = ioDispatcher,
   )
 
   private fun item(
@@ -204,5 +241,15 @@ private class FakeSmbAccess(
         closed = true
       }
     }
+  }
+}
+
+private class RecordingDispatcher : CoroutineDispatcher() {
+  var dispatchCount: Int = 0
+    private set
+
+  override fun dispatch(context: CoroutineContext, block: Runnable) {
+    dispatchCount += 1
+    block.run()
   }
 }
