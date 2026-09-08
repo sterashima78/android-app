@@ -65,7 +65,7 @@ class DefaultYouTubeRepository(
   }
 
   override suspend fun markAllRead() {
-    providers.markAllRead()
+    youtubeProvider()?.let { providers.markAllRead(it.id) }
   }
 
   private fun youtubeProvider(): VideoProvider? = providers.providers().firstOrNull {
