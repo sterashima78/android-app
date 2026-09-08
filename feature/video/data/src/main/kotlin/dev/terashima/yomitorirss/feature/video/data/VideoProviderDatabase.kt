@@ -207,14 +207,20 @@ internal class VideoProviderDatabase(
     if (watchLater) put("is_read", 0)
   }
 
-  fun markAllRead() {
+  fun markAllRead(providerId: String?) {
     ensureSchema()
+    val where = if (providerId == null) {
+      "is_read = 0 AND is_watch_later = 0"
+    } else {
+      "provider_id = ? AND is_read = 0 AND is_watch_later = 0"
+    }
+    val args = providerId?.let { arrayOf(it) }
     database.write {
       update(
         "video_provider_items",
         ContentValues().apply { put("is_read", 1) },
-        "is_read = 0 AND is_watch_later = 0",
-        null,
+        where,
+        args,
       )
     }
   }
