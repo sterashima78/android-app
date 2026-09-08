@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -628,6 +629,13 @@ private fun VideoSettings(
             }.joinToString(" / "),
             style = MaterialTheme.typography.labelSmall,
           )
+          if (rule.shareCookiesForPlayback) {
+            Text(
+              "再生時Cookie共有: 有効",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.primary,
+            )
+          }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onEditRule(rule) }) { Text("編集") }
             TextButton(onClick = { onDeleteRule(rule.id) }) { Text("削除") }
@@ -715,6 +723,9 @@ private fun WebVideoExtractorRuleDialog(
   var titleCode by remember(initial?.id) { mutableStateOf(initial?.titleExtractorCode.orEmpty()) }
   var thumbnailCode by remember(initial?.id) { mutableStateOf(initial?.thumbnailExtractorCode.orEmpty()) }
   var playbackCode by remember(initial?.id) { mutableStateOf(initial?.playbackExtractorCode.orEmpty()) }
+  var shareCookiesForPlayback by remember(initial?.id) {
+    mutableStateOf(initial?.shareCookiesForPlayback ?: false)
+  }
   var timeout by remember(initial?.id) { mutableStateOf((initial?.timeoutSeconds ?: 15).toString()) }
   val timeoutValue = timeout.toIntOrNull()
   val valid = pattern.startsWith("https://") &&
@@ -762,6 +773,22 @@ private fun WebVideoExtractorRuleDialog(
           "各関数は async ({ url }) => ({ ... }) の形式でPromiseを返します。",
           style = MaterialTheme.typography.labelSmall,
         )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Checkbox(
+            checked = shareCookiesForPlayback,
+            onCheckedChange = { shareCookiesForPlayback = it },
+          )
+          Column(modifier = Modifier.padding(start = 4.dp)) {
+            Text("再生時にWebViewのCookieを共有する")
+            Text(
+              "Cookieが必要なstreamだけで有効にしてください。Cookie値は保存せず、再生中のHTTP requestにだけ利用します。",
+              style = MaterialTheme.typography.labelSmall,
+            )
+          }
+        }
         OutlinedTextField(
           value = timeout,
           onValueChange = { timeout = it.filter(Char::isDigit) },
@@ -784,6 +811,7 @@ private fun WebVideoExtractorRuleDialog(
               playbackExtractorCode = playbackCode.trim().takeIf(String::isNotBlank),
               timeoutSeconds = requireNotNull(timeoutValue),
               updatedAtEpochMillis = initial?.updatedAtEpochMillis ?: 0L,
+              shareCookiesForPlayback = shareCookiesForPlayback,
             ),
           )
         },

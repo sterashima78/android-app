@@ -52,6 +52,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import java.net.URI
 import kotlinx.coroutines.delay
@@ -91,11 +92,19 @@ internal fun VideoPlayerDialog(
     val builder = ExoPlayer.Builder(context)
     when (target) {
       is VideoPlaybackTarget.Stream -> {
-        val httpFactory = DefaultHttpDataSource.Factory()
-          .setUserAgent(WebSettings.getDefaultUserAgent(context))
-          .setDefaultRequestProperties(webStreamRequestProperties(target))
+        val userAgent = WebSettings.getDefaultUserAgent(context)
+        val requestProperties = webStreamRequestProperties(target)
+        val dataSourceFactory = target.cookieProvider?.let { cookieProvider ->
+          WebVideoHttpDataSource.Factory(
+            userAgent = userAgent,
+            defaultRequestProperties = requestProperties,
+            cookieProvider = cookieProvider,
+          )
+        } ?: DefaultHttpDataSource.Factory()
+          .setUserAgent(userAgent)
+          .setDefaultRequestProperties(requestProperties)
         builder.setMediaSourceFactory(
-          DefaultMediaSourceFactory(context).setDataSourceFactory(httpFactory),
+          DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory),
         )
       }
       is VideoPlaybackTarget.Smb -> builder.setMediaSourceFactory(
@@ -334,6 +343,17 @@ internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map
   val referrerUrl = target.referrerUrl?.takeIf(String::isNotBlank) ?: return@buildMap
   put("Referer", referrerUrl)
   webStreamOriginHeaderValue(referrerUrl)?.let { put("Origin", it) }
+}
+
+internal fun webStreamCookieRequestProperties(
+  requestUrl: String,
+  cookieProvider: VideoPlaybackCookieProvider,
+): Map<String, String> {
+  val cookie = runCatching { cookieProvider.cookieHeaderFor(requestUrl) }
+    .getOrNull()
+    ?.takeIf(String::isNotBlank)
+    ?: return emptyMap()
+  return mapOf("Cookie" to cookie)
 }
 
 internal fun webStreamOriginHeaderValue(referrerUrl: String): String? = runCatching {

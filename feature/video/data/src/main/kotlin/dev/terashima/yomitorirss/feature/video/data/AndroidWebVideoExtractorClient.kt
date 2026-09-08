@@ -5,7 +5,6 @@ import android.app.Activity
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -13,6 +12,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractionResult
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 import java.net.URI
@@ -28,7 +28,17 @@ import kotlin.coroutines.resumeWithException
 class AndroidWebVideoExtractorClient(
   private val activityProvider: () -> Activity?,
 ) {
-  suspend fun extract(url: String, rule: WebVideoExtractorRule): WebVideoExtractionResult {
+  suspend fun extract(url: String, rule: WebVideoExtractorRule): WebVideoExtractionResult =
+    extract(url, rule, includePlaybackCookies = false)
+
+  suspend fun extractForPlayback(url: String, rule: WebVideoExtractorRule): WebVideoExtractionResult =
+    extract(url, rule, includePlaybackCookies = rule.shareCookiesForPlayback)
+
+  private suspend fun extract(
+    url: String,
+    rule: WebVideoExtractorRule,
+    includePlaybackCookies: Boolean,
+  ): WebVideoExtractionResult {
     validateWebVideoExtractorRule(rule)
     require(isSafeExtractorPageUrl(url)) { "動画抽出はHTTPSページのみ対応しています" }
     return withTimeout(rule.timeoutSeconds * 1_000L) {
@@ -38,7 +48,7 @@ class AndroidWebVideoExtractorClient(
         }
         val activity = requireNotNull(activityProvider()) { "動画抽出を実行できる画面がありません" }
         require(!activity.isFinishing && !activity.isDestroyed) { "動画抽出を実行できる画面がありません" }
-        extractOnMainThread(activity, url, rule)
+        extractOnMainThread(activity, url, rule, includePlaybackCookies)
       }
     }
   }
@@ -48,10 +58,12 @@ class AndroidWebVideoExtractorClient(
     activity: Activity,
     requestedUrl: String,
     rule: WebVideoExtractorRule,
+    includePlaybackCookies: Boolean,
   ): WebVideoExtractionResult = suspendCancellableCoroutine { continuation ->
     val handler = Handler(Looper.getMainLooper())
     val webView = WebView(activity)
     WebViewCompat.setProfile(webView, PROFILE_NAME)
+    val profileCookieManager = WebViewCompat.getProfile(webView).cookieManager
     webView.settings.apply {
       javaScriptEnabled = true
       domStorageEnabled = true
@@ -65,7 +77,11 @@ class AndroidWebVideoExtractorClient(
       setGeolocationEnabled(false)
       mediaPlaybackRequiresUserGesture = true
     }
-    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false)
+    profileCookieManager.setAcceptThirdPartyCookies(webView, false)
+    val playbackCookieProvider = createPlaybackCookieProvider(
+      enabled = includePlaybackCookies,
+      cookieLookup = profileCookieManager::getCookie,
+    )
 
     var completed = false
     val stateKey = "__mosaicVideoExtractor_${SystemClock.uptimeMillis()}"
@@ -98,7 +114,16 @@ class AndroidWebVideoExtractorClient(
           onSuccess = { poll ->
             when (poll.state) {
               "pending" -> handler.postDelayed({ poll(finalUrl) }, POLL_DELAY_MILLIS)
-              "done" -> finish(Result.success(poll.result ?: WebVideoExtractionResult()))
+              "done" -> {
+                val extraction = poll.result ?: WebVideoExtractionResult()
+                finish(
+                  Result.success(
+                    extraction.copy(
+                      cookieProvider = playbackCookieProvider.takeIf { extraction.streamUrl != null },
+                    ),
+                  ),
+                )
+              }
               "error" -> finish(Result.failure(IllegalStateException(poll.message ?: "動画抽出に失敗しました")))
               else -> finish(Result.failure(IllegalStateException("動画抽出の実行状態が不正です")))
             }
@@ -224,6 +249,26 @@ class AndroidWebVideoExtractorClient(
     const val POLL_DELAY_MILLIS = 100L
   }
 }
+
+internal fun createPlaybackCookieProvider(
+  enabled: Boolean,
+  cookieLookup: (String) -> String?,
+): VideoPlaybackCookieProvider? = if (!enabled) {
+  null
+} else {
+  VideoPlaybackCookieProvider { url ->
+    val safeUrl = validPlaybackCookieUrl(url) ?: return@VideoPlaybackCookieProvider null
+    cookieLookup(safeUrl)?.takeIf(String::isNotBlank)
+  }
+}
+
+internal fun validPlaybackCookieUrl(url: String): String? = runCatching {
+  val uri = URI(url)
+  val scheme = uri.scheme?.lowercase()
+  uri.takeIf {
+    (scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank()
+  }?.toString()
+}.getOrNull()
 
 internal fun resolveWebVideoExtractorUrl(
   baseUrl: String,

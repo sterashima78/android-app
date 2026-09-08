@@ -306,7 +306,7 @@ class DefaultVideoRepository(
     return database.readable.rawQuery(
       """
         SELECT id, url_pattern, title_function, thumbnail_function,
-               playback_function, timeout_seconds, updated_at
+               playback_function, share_cookies_for_playback, timeout_seconds, updated_at
         FROM video_web_extractor_rules
         ORDER BY updated_at DESC, id
       """.trimIndent(),
@@ -321,8 +321,9 @@ class DefaultVideoRepository(
               titleExtractorCode = cursor.stringOrNull(2),
               thumbnailExtractorCode = cursor.stringOrNull(3),
               playbackExtractorCode = cursor.stringOrNull(4),
-              timeoutSeconds = cursor.getInt(5),
-              updatedAtEpochMillis = cursor.getLong(6),
+              shareCookiesForPlayback = cursor.getInt(5) != 0,
+              timeoutSeconds = cursor.getInt(6),
+              updatedAtEpochMillis = cursor.getLong(7),
             ),
           )
         }
@@ -351,6 +352,7 @@ class DefaultVideoRepository(
           putNullable("title_function", saved.titleExtractorCode)
           putNullable("thumbnail_function", saved.thumbnailExtractorCode)
           putNullable("playback_function", saved.playbackExtractorCode)
+          put("share_cookies_for_playback", if (saved.shareCookiesForPlayback) 1 else 0)
           put("timeout_seconds", saved.timeoutSeconds)
           put("updated_at", saved.updatedAtEpochMillis)
         },
