@@ -21,7 +21,6 @@ import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
-import dev.terashima.yomitorirss.feature.youtube.YouTubeViewModel
 import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationDependencies
 import dev.terashima.yomitorirss.platform.authorization.MailAuthorizationDependencies
 
@@ -126,13 +125,6 @@ internal class AppContentRouteDependencies(
         pageSourceFactory = runtime.bookPageSourceFactory,
         readingPositionStore = runtime.readingPositionStore,
       ),
-    )
-  }
-
-  val youtubeViewModelFactory: YouTubeViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    YouTubeViewModel.Factory(
-      repository = container.youtubeRepository,
-      bookmarkRepository = container.bookmarkRepository,
     )
   }
 }
