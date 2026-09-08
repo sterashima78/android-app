@@ -14,7 +14,8 @@ class BackupSchedulingArchitectureTest {
       "feature/rss/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/FeedViewModel.kt",
       "feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditViewModel.kt",
       "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkViewModel.kt",
-      "feature/youtube/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/youtube/YouTubeViewModel.kt",
+      "feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/VideoViewModel.kt",
+      "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedVideoProviderViewModel.kt",
       "feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeViewModel.kt",
       "feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt",
     )
