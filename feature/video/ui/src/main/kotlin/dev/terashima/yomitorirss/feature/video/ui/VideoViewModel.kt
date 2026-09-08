@@ -73,7 +73,11 @@ class VideoViewModel(
   }
 
   fun refreshSmb() = launchMutation("SMB動画を同期できませんでした") {
-    repository.refreshSmb()
+    try {
+      repository.refreshSmb()
+    } catch (error: Throwable) {
+      throw IllegalStateException(smbSyncFailureMessage(error), error)
+    }
   }
 
   fun saveSmbSource(source: VideoSmbSource) = launchMutation("SMB同期場所を保存できませんでした") {
@@ -193,6 +197,15 @@ class VideoViewModel(
         },
       )
     }
+  }
+
+  private fun smbSyncFailureMessage(error: Throwable): String {
+    val detail = generateSequence(error) { it.cause }
+      .mapNotNull { cause -> cause.message?.trim()?.takeIf(String::isNotEmpty) }
+      .firstOrNull()
+      ?: error::class.simpleName
+      ?: "原因を取得できませんでした"
+    return "SMB動画を同期できませんでした: $detail"
   }
 
   private suspend fun loadSnapshot(): LoadedVideoState = LoadedVideoState(
