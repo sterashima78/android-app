@@ -110,7 +110,7 @@ custom title / thumbnail extractionが失敗した場合は静的metadataを維�
 - `VideoPlaybackTarget.Smb`: Library-owned SMB read capabilityを使うrandom-access source
 - `VideoPlaybackTarget.WebPage`: アプリ内video playerではなくWeb pageを開くfallback
 
-Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginのみを `Referer` として、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。path、query、fragmentはreferrerへ含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。Cookie、Authorization、その他のcredentialはWebViewからMedia3へ引き継がない。
+Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現するため、元pageのoriginだけから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、元pageのpath、query、fragmentはどちらにも含めない。これらは再生時だけ生成・利用し、databaseへ保存しない。Cookie、Authorization、その他のcredentialはWebViewからMedia3へ引き継がない。
 
 v1のVideo playerはforeground UI lifetimeとする。全画面表示では横向きへ切り替え、通常表示へ戻ると縦向きへ復帰する。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
 
@@ -140,7 +140,7 @@ Video Dataは次のtableを所有する。
 
 `video_items` はcatalog projection、`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所、`video_folders` / `video_saved_items` は保存と整理状態、`video_web_extractor_rules` はユーザー設定として保存する。
 
-stream URL、stream referrer、WebView user agent、動画ファイル本体、SMB credentialはVideoのdurable stateに含めない。
+stream URL、stream request context（referrer / origin / user agent）、動画ファイル本体、SMB credentialはVideoのdurable stateに含めない。
 
 SMB接続プロファイルはLibrary-owned `smb_connection_profiles` に保存し、Library用SMB同期場所は既存 `smb_library_servers` のshare / root pathとして維持する。Videoはこれらのforeign tableを通常runtimeで直接read/writeしない。
 
@@ -167,7 +167,7 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - Videoは通常runtimeでLibrary-owned SMB tableを直接read/writeしない。
 - `SmbMediaFileAccess` の外へcredentialやhost/user情報を公開しない。
 - stream URLをdurable source of truthにしない。
-- Web streamのreferrerに元pageのpath / query / fragmentを含めない。
+- Web streamの `Referer` / `Origin` に元pageのpath / query / fragmentを含めない。
 - WebView Cookie / Authorization等のcredentialをMedia3へ暗黙に複製しない。
 - Video用の第二のSMB credential storeを作らない。
 - Video保存状態にCuration-owned tableを利用しない。
@@ -184,7 +184,7 @@ Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Li
 - 保存状態とplayback stateが独立していることをrepository testする。
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
-- Web streamのreferrerをoriginへ縮小し、Media3 HTTP request propertyへ変換することをunit testする。
+- Web streamの元page originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
 - app database fresh schema、version 28 -> 29、version 29 -> 30をtestする。
 - architecture verificationでmodule graph、table ownership、migration foreign-read allowlist、navigation ownershipを検証する。
 - Android実機では保存タブ、未分類 / folder filter、保存先変更、folder CRUDに加え、LibraryとVideoで異なるSMB share/path、Web stream、全画面、seek、resumeを確認する。
