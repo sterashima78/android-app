@@ -123,7 +123,7 @@ internal fun buildVideoSavedBrowserContent(
       val childDirectories = matching
         .mapNotNull { (_, path) -> path.directories.getOrNull(location.path.size) }
         .distinct()
-        .sortedBy(String::lowercase)
+        .sortedBy { it.lowercase() }
         .map { child ->
           val childPath = location.path + child
           VideoSavedDirectoryEntry(
