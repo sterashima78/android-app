@@ -107,6 +107,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 動画設定では全体設定のSMB接続プロファイルを選び、動画として同期するshareとパスを個別に登録する。蔵書とは異なるshare / pathを指定でき、同じ接続プロファイルへ複数の動画同期場所を登録できる。
 - 全体設定で削除された接続先を参照する動画同期場所は設定画面で無効として表示し、削除できる。無効な同期場所はSMB同期対象から除外し、他の有効な同期場所の同期を妨げない。
 - SMB passwordやserver credentialをVideo側へ複製しない。SMB credentialはLibrary側が所有する保護領域を利用し、Video側は接続プロファイルIDと自身のshare/pathだけを保持する。
+- SMB同期で登録した動画は、一覧に表示された時点で動画ファイルから代表フレームをサムネイルとして生成する。生成結果は再生成可能な端末内cacheとして扱い、生成失敗時も同期・再生は継続する。
 - Media3で通常のHTTP動画とHLS streamを再生する。SMB動画は動画ファイル全体を事前downloadせずrandom-access readで再生する。
 - 再生準備中 / 読み込み中 / 長時間読み込み / 再生エラーを画面上で区別して表示する。10秒以上の待機では経過時間を示し、30秒以上続く場合は再生エラーがまだ検出されていないことを明示して再試行できる。Media3が再生エラーを返した場合は再生不能としてエラーコードと再試行操作を表示する。
 - 再生画面では全画面表示へ切り替えられる。全画面へ入ると横向き表示へ切り替えてsystem barsを隠し、画面端のスワイプで一時表示できる。全画面解除または再生画面を閉じると通常の縦向き表示へ戻る。
@@ -253,7 +254,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 「Wi-Fi接続時のみバックアップ」を有効にした場合、Google Driveへの自動・手動・初回バックアップはインターネット接続可能なWi-Fiが利用できる場合だけ実行する。既定はOFFとする。
 - Wi-Fi限定設定はallowlistされたuser preferenceとしてbackup対象とするが、Google Drive保存先URI・表示名・実行履歴はbackup対象外とする。
 - credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
-- SMB表紙cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
+- SMB表紙cacheやSMB動画thumbnail cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
 
 詳細は ADR-0099、ADR-0100、ADR-0135、ADR-0138、ADR-0195、ADR-0217 と `docs/architecture/persistence.md` を参照する。
 
