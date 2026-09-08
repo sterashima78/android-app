@@ -11,7 +11,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - 主要なユーザーデータは端末内に保持する。
 - Mosaic 独自のアカウントや同期サーバーを必須としない。
-- RSS、Reddit、YouTube、Gmail、蔵書など source 固有の意味を維持しつつ、必要な箇所だけ共通の閲覧・整理・AI処理へ接続する。
+- RSS、Reddit、動画購読source、メール、蔵書など source 固有の意味を維持しつつ、必要な箇所だけ共通の閲覧・整理・AI処理へ接続する。
 - 要約、チャット、書誌推定などのAI処理は、ダウンロード済みの端末内モデルを利用する。
 - バックグラウンド処理は画面の寿命から分離し、必要に応じて WorkManager と永続キューを利用する。
 - credential、token、外部サービスの認証情報は、通常のユーザーデータと分離して扱う。
@@ -65,16 +65,19 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 一括再実行でメタデータ生成まで成功した記事は、既存タグを新しく生成されたタグで置き換える。処理中の記事は重複してキューへ追加しない。
 - 単記事の要約再生成では「ブックマークのタグも再生成」を選択でき、既定はOFFとする。ONの場合だけ、メタデータ生成成功後に既存タグを生成タグで置き換える。
 
-### 4.3 Reddit / YouTube
-- Reddit と YouTube は source 固有の購読・表示・判定を持つ。
-- YouTube のチャンネル更新では通常動画のみ取得し、Shorts とライブ配信は更新対象外とする。
-- 共通コンテンツとして扱う箇所でも source の種類を失わない。
+### 4.3 Reddit / 動画購読source
+
+- Reddit は source 固有の購読・表示・判定を自身のContextで扱う。
+- 動画チャンネル購読は Video Context が購読型Providerとして扱い、provider設定、subscription、更新、未読状態を共通のVideo lifecycleで管理する。
+- 初期の組み込み動画Providerでは通常動画だけを更新対象とし、短尺専用形式とライブ配信は更新対象外とする。
+- 共通表示へ投影しても source の種類を失わない。
 - 自動AI処理の対象可否は source / content type の方針に従う。
 
 ### 4.4 統合ビューと履歴
 
 - 複数sourceのコンテンツを横断して閲覧するpresentationを提供する。
-- 統合ビュー上部の source フィルターに「すべて / RSS / Reddit / YouTube / メール」の件数を表示し、一覧領域を優先するため重複する全体件数サマリーは表示しない。
+- 統合ビュー上部の source フィルターには通常feed、Reddit、動画購読、メール等の未読件数を表示し、一覧領域を優先するため重複する全体件数サマリーは表示しない。
+- 動画購読sourceの未読 / 履歴は Video Context の公開APIから取得し、旧専用tableを直接参照しない。
 - 統合ビュー下部の「未読 / あとで読む / 履歴」タブは、app shell が確保済みの system navigation 領域を重複して確保しない。
 - 履歴や保存状態は owner Context の API を通して参照する。
 
@@ -93,16 +96,23 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 ### 4.6 動画
 
-- トップレベルの「動画」画面で、SMBファイルサーバー由来とWeb URL由来の動画を同じ一覧から扱う。
-- 一覧には「すべて / 続き / 保存 / 視聴済み / 設定」を用意し、sourceを「すべて / SMB / Web / サービス」で絞り込める。「サービス」は将来のadapter用分類であり、初期実装では専用サービス連携を追加しない。
+- トップレベルの「動画」画面で、SMBファイルサーバー由来、Web URL由来、購読型Provider由来の動画を同じcatalogから扱う。
+- 一覧には「すべて / 続き / 保存 / 視聴済み / 設定」を用意し、sourceを「すべて / SMB / Web / サービス」で絞り込める。「サービス」は購読型Providerが取得した動画を表す。
 - 動画を視聴状態とは独立して保存 / 保存解除できる。保存は動画本体のdownloadを意味せず、catalog itemの整理状態だけを端末内に保持する。
 - 保存済み動画は「未分類」またはVideo専用フォルダ1つへ所属できる。「保存」タブでは保存済み全体、未分類、各フォルダで絞り込める。
 - Video専用フォルダは設定画面から作成、名称変更、削除できる。フォルダを削除しても所属していた動画の保存状態は維持し、未分類へ戻す。
 - 保存 / 保存解除 / 保存先変更 / フォルダ操作では、再生位置や視聴済み状態を変更しない。
 - Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
 - Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
+- Web URL登録は1件を明示的に追加する単発操作であり、購読・未読・background refreshの対象にはしない。
 - URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
+- 動画設定では購読型Providerを追加・有効化 / 無効化できる。Providerを無効化しても設定・subscription・取得済み動画は削除せず、background refresh対象からだけ外す。
+- 有効なProviderへチャンネル等のsource URLをsubscriptionとして追加し、手動またはbackgroundで更新できる。
+- Provider更新で新しく発見した動画はVideo catalogへ追加し、provider由来の未読として表示する。既存動画の更新では未読 / 既読、あとで見る、保存、再生位置を保持する。
+- provider由来の未読 / 既読状態と視聴済み状態は独立して扱う。既読化で視聴済みへ変更せず、再生完了で自動的に既読化しない。
+- subscription解除時、未保存かつ再生履歴のない取得済み動画は削除できる。保存済みまたは再生履歴を持つ動画はsubscription membershipだけを外してcatalogへ残す。
+- 旧専用購読画面はトップレベル導線から廃止し、購読設定は「動画」画面へ集約する。既存インストールのsubscriptionと未読状態は更新時にVideo-owned stateへ移行する。
 - SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして登録・編集する。passwordは画面へ再表示しない。
 - 動画設定では全体設定のSMB接続プロファイルを選び、動画として同期するshareとパスを個別に登録する。蔵書とは異なるshare / pathを指定でき、同じ接続プロファイルへ複数の動画同期場所を登録できる。
 - 全体設定で削除された接続先を参照する動画同期場所は設定画面で無効として表示し、削除できる。無効な同期場所はSMB同期対象から除外し、他の有効な同期場所の同期を妨げない。
@@ -261,6 +271,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - durableなbackground処理にはWorkManagerを利用する。
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
+- 統合更新では通常feed、Reddit、Video購読Provider、メール等の更新を個別に分離して実行する。Video購読はprovider-specific repositoryではなくVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
 - ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
@@ -303,7 +314,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/context-map.md`: Domain ContextとContext間関係
 - `docs/architecture/module-map.md`: Gradle module構成
 - `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
-- `docs/architecture/video.md`: SMB / Web動画カタログ、抽出、Media3再生境界
+- `docs/architecture/video.md`: SMB / Web / 購読型Provider動画カタログ、抽出、更新、Media3再生境界
 - `docs/architecture/game.md`: Game と Godot 数独の runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: testとarchitecture verification
