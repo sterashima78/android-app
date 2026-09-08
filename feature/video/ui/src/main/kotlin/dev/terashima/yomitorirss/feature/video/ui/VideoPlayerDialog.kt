@@ -53,6 +53,7 @@ import androidx.media3.ui.PlayerView
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
+import java.net.URI
 import kotlinx.coroutines.delay
 
 internal const val VIDEO_PLAYER_SLOW_LOADING_MS = 10_000L
@@ -322,10 +323,17 @@ internal fun findHttpStatusCode(error: Throwable?): Int? {
 }
 
 internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map<String, String> = buildMap {
-  target.referrerUrl
-    ?.takeIf(String::isNotBlank)
-    ?.let { put("Referer", it) }
+  val referrerUrl = target.referrerUrl?.takeIf(String::isNotBlank) ?: return@buildMap
+  put("Referer", referrerUrl)
+  webStreamOriginHeaderValue(referrerUrl)?.let { put("Origin", it) }
 }
+
+internal fun webStreamOriginHeaderValue(referrerUrl: String): String? = runCatching {
+  val uri = URI(referrerUrl)
+  val scheme = uri.scheme?.lowercase()
+  require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
+  URI(scheme, null, uri.host, uri.port, null, null, null).toString()
+}.getOrNull()
 
 @Composable
 private fun FullscreenOrientationEffect(isFullscreen: Boolean) {

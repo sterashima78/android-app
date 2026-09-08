@@ -10,7 +10,7 @@ import org.junit.Test
 
 class VideoPlayerRequestPropertiesTest {
   @Test
-  fun `Webストリームは元ページoriginをRefererとして送る`() {
+  fun `Webストリームは元ページoriginをRefererとOriginとして送る`() {
     val target = VideoPlaybackTarget.Stream(
       url = "https://cdn.example.com/video/master.m3u8",
       mimeType = "application/x-mpegURL",
@@ -18,8 +18,19 @@ class VideoPlayerRequestPropertiesTest {
     )
 
     assertEquals(
-      mapOf("Referer" to "https://example.com/"),
+      mapOf(
+        "Referer" to "https://example.com/",
+        "Origin" to "https://example.com",
+      ),
       webStreamRequestProperties(target),
+    )
+  }
+
+  @Test
+  fun `Originはpathやqueryを含めずportを保持する`() {
+    assertEquals(
+      "https://example.com:8443",
+      webStreamOriginHeaderValue("https://example.com:8443/watch/1?x=1#section"),
     )
   }
 
