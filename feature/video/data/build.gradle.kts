@@ -23,6 +23,7 @@ dependencies {
   implementation(project(":core:network"))
 
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.media3.effect)
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.inspector.frame)
   implementation(libs.androidx.webkit)
