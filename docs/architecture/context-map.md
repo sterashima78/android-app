@@ -257,7 +257,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0247 によりPodcast-owned durable stateを追加した。application database versionは33で、version 32を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
+ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0249 によりPodcast-owned durable stateを追加した。application database versionは33で、version 32を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -286,4 +286,4 @@ ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
 - [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
-- [ADR-0247](../adr/0247-news-podcast-context.md)
+- [ADR-0249](../adr/0249-news-podcast-context.md)
