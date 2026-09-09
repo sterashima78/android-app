@@ -26,6 +26,10 @@ internal data class VideoProviderFeedItem(
   val publishedAtEpochMillis: Long,
 )
 
+internal class VideoProviderHttpException(
+  val statusCode: Int,
+) : IOException("動画チャンネルの取得に失敗しました: HTTP $statusCode")
+
 internal class YouTubeVideoProviderClient(
   private val httpClient: HttpClient,
 ) {
@@ -46,7 +50,7 @@ internal class YouTubeVideoProviderClient(
       ),
     )
     if (!response.isSuccessful) {
-      throw IOException("動画チャンネルの取得に失敗しました: HTTP ${response.statusCode}")
+      throw VideoProviderHttpException(response.statusCode)
     }
     parse(response.body)
   }
