@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
+import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
@@ -9,15 +10,17 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
   createSchema = ::createPodcastSchema,
   migrations = listOf(
     DatabaseMigration(targetVersion = 33) { db -> createPodcastSchema(db) },
+    DatabaseMigration(targetVersion = 34) { db -> migratePodcastSources(db) },
   ),
 )
 
 private fun createPodcastSchema(db: SQLiteDatabase) {
+  createPodcastSourcesTable(db)
   db.execSQL(
     "CREATE TABLE IF NOT EXISTS podcast_programs(" +
       "id TEXT PRIMARY KEY NOT NULL," +
       "name TEXT NOT NULL," +
-      "feed_ids TEXT NOT NULL," +
+      "source_ids TEXT NOT NULL," +
       "provider TEXT NOT NULL," +
       "schedule_enabled INTEGER NOT NULL DEFAULT 0," +
       "schedule_hour INTEGER NOT NULL DEFAULT 7," +
@@ -60,3 +63,87 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       ")",
   )
 }
+
+private fun createPodcastSourcesTable(db: SQLiteDatabase) {
+  db.execSQL(
+    "CREATE TABLE IF NOT EXISTS podcast_sources(" +
+      "id TEXT PRIMARY KEY NOT NULL," +
+      "name TEXT NOT NULL," +
+      "feed_url TEXT NOT NULL UNIQUE" +
+      ")",
+  )
+}
+
+private fun migratePodcastSources(db: SQLiteDatabase) {
+  createPodcastSourcesTable(db)
+  if (!db.hasColumn("podcast_programs", "feed_ids")) return
+
+  val legacySourceIds = db.rawQuery("SELECT feed_ids FROM podcast_programs", null).use { cursor ->
+    buildSet {
+      while (cursor.moveToNext()) {
+        cursor.getString(0).lineSequence().filter(String::isNotBlank).forEach(::add)
+      }
+    }
+  }
+  legacySourceIds.forEach { sourceId ->
+    db.rawQuery(
+      "SELECT title,feed_url FROM feeds WHERE id=? LIMIT 1",
+      arrayOf(sourceId),
+    ).use { cursor ->
+      if (!cursor.moveToFirst()) return@use
+      db.insertWithOnConflict(
+        "podcast_sources",
+        null,
+        ContentValues().apply {
+          put("id", sourceId)
+          put("name", cursor.getString(0))
+          put("feed_url", cursor.getString(1))
+        },
+        SQLiteDatabase.CONFLICT_IGNORE,
+      )
+    }
+  }
+
+  migrateLegacyConsumedIdentities(db)
+  db.execSQL("ALTER TABLE podcast_programs RENAME COLUMN feed_ids TO source_ids")
+}
+
+private fun migrateLegacyConsumedIdentities(db: SQLiteDatabase) {
+  val mappings = db.rawQuery(
+    "SELECT id,feed_id,identity_key FROM articles " +
+      "WHERE feed_id IS NOT NULL AND id IN (SELECT article_id FROM podcast_consumed_articles)",
+    null,
+  ).use { cursor ->
+    buildList {
+      while (cursor.moveToNext()) {
+        add(LegacyArticleIdentity(cursor.getString(0), cursor.getString(1), cursor.getString(2)))
+      }
+    }
+  }
+  mappings.forEach { mapping ->
+    val migratedId = "${mapping.sourceId}:${mapping.identityKey}"
+    db.execSQL(
+      "UPDATE podcast_episode_articles SET article_id=? WHERE article_id=? AND feed_id=?",
+      arrayOf(migratedId, mapping.articleId, mapping.sourceId),
+    )
+    db.execSQL(
+      "UPDATE podcast_consumed_articles SET article_id=? WHERE article_id=?",
+      arrayOf(migratedId, mapping.articleId),
+    )
+  }
+}
+
+private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean =
+  rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == column) return@use true
+    }
+    false
+  }
+
+private data class LegacyArticleIdentity(
+  val articleId: String,
+  val sourceId: String,
+  val identityKey: String,
+)
