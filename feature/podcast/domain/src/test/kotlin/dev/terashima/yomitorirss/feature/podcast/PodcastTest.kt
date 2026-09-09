@@ -6,6 +6,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -42,13 +43,16 @@ class PodcastTest {
   }
 
   @Test
-  fun `最大記事数を超えた未消費記事は次回生成に回す`() = runSuspend {
+  fun `最大記事数を超えた候補はfeedから消えても予約済みsnapshotから次回生成する`() = runSuspend {
     val program = program(maxArticlesPerEpisode = 1)
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
     val useCase = GeneratePodcastEpisodeUseCase(repository, source, RecordingGenerator("原稿")) { 1234L }
 
     val first = useCase.generate(program.id) as PodcastGenerationResult.Generated
+    assertEquals(PodcastEpisodeStatus.QUEUED, repository.episodes.single { it.articles.single().articleId == "a2" }.status)
+
+    source.entries = emptyList()
     val second = useCase.generate(program.id) as PodcastGenerationResult.Generated
 
     assertEquals(listOf("a1"), first.episode.articles.map { it.articleId })
@@ -96,6 +100,23 @@ class PodcastTest {
     assertEquals(listOf("a1"), resumed.episode.articles.map { it.articleId })
     assertEquals(1, repository.episodes.size)
     assertFalse(resumeGenerator.prompt.orEmpty().contains("a2"))
+  }
+
+  @Test
+  fun `同じ番組の生成中に重複生成を開始しない`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1")))
+    lateinit var useCase: GeneratePodcastEpisodeUseCase
+    val generator = ReentrantGenerator { useCase.generate(program.id) }
+    useCase = GeneratePodcastEpisodeUseCase(repository, source, generator) { 1234L }
+
+    val generated = useCase.generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(PodcastEpisodeStatus.READY, generated.episode.status)
+    assertNotNull(generator.overlappingFailure)
+    assertTrue(generator.overlappingFailure is IllegalStateException)
+    assertEquals(1, repository.episodes.size)
   }
 
   @Test
@@ -163,6 +184,17 @@ private class CancellingGenerator : PodcastScriptGenerator {
   }
 }
 
+private class ReentrantGenerator(
+  private val overlappingGenerate: suspend () -> Unit,
+) : PodcastScriptGenerator {
+  var overlappingFailure: Throwable? = null
+
+  override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
+    overlappingFailure = runCatching { overlappingGenerate() }.exceptionOrNull()
+    return "原稿"
+  }
+}
+
 private class FakePodcastRepository(
   private val program: PodcastProgram,
 ) : PodcastRepository {
@@ -175,29 +207,43 @@ private class FakePodcastRepository(
   override suspend fun deleteProgram(programId: String) = Unit
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> = episodes.filter { it.programId == programId }
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episodes.find { it.id == episodeId }
-  override suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? =
-    episodes.firstOrNull { it.programId == programId && it.status == PodcastEpisodeStatus.GENERATING }
+
+  override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
+    val index = episodes.indexOfFirst {
+      it.programId == programId && it.status == PodcastEpisodeStatus.GENERATING
+    }.takeIf { it >= 0 } ?: episodes.indexOfFirst {
+      it.programId == programId && it.status == PodcastEpisodeStatus.QUEUED
+    }
+    if (index < 0) return null
+    val pending = episodes[index]
+    if (pending.status == PodcastEpisodeStatus.QUEUED) {
+      episodes[index] = pending.copy(status = PodcastEpisodeStatus.GENERATING)
+    }
+    return episodes[index]
+  }
 
   override suspend fun reserveEpisode(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
     createdAtEpochMillis: Long,
   ): PodcastEpisode? {
-    val selected = candidates
-      .filterNot { it.articleId in consumed }
-      .take(program.maxArticlesPerEpisode)
-    if (selected.isEmpty()) return null
-    consumed += selected.map { it.articleId }
-    val episode = PodcastEpisode(
-      id = "episode-${episodes.size + 1}",
-      programId = program.id,
-      title = program.name,
-      createdAtEpochMillis = createdAtEpochMillis,
-      status = PodcastEpisodeStatus.GENERATING,
-      articles = selected.map { it.toEpisodeArticle() },
-    )
-    episodes += episode
-    return episode
+    val available = candidates.distinctBy { it.articleId }.filterNot { it.articleId in consumed }
+    if (available.isEmpty()) return null
+    var first: PodcastEpisode? = null
+    available.chunked(program.maxArticlesPerEpisode).forEachIndexed { chunkIndex, selected ->
+      consumed += selected.map { it.articleId }
+      val episode = PodcastEpisode(
+        id = "episode-${episodes.size + 1}",
+        programId = program.id,
+        title = program.name,
+        createdAtEpochMillis = createdAtEpochMillis + chunkIndex,
+        status = if (chunkIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED,
+        articles = selected.map { it.toEpisodeArticle() },
+      )
+      episodes += episode
+      if (first == null) first = episode
+    }
+    return first
   }
 
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode =
