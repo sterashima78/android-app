@@ -123,6 +123,7 @@ class AndroidWebVideoExtractorClient(
               "done" -> {
                 val extraction = poll.result ?: WebVideoExtractionResult()
                 val streamUrl = extraction.streamUrl
+                val capturedReferrerUrl = streamUrl?.let(requestReferrers::referrerFor)
                 val playbackCookieProvider = streamUrl?.let { resolvedStreamUrl ->
                   requestCookies.retainOnly(resolvedStreamUrl)
                   createPlaybackCookieProvider(
@@ -160,7 +161,10 @@ class AndroidWebVideoExtractorClient(
                 finish(
                   Result.success(
                     extraction.copy(
-                      referrerUrl = streamUrl?.let(requestReferrers::referrerFor),
+                      referrerUrl = selectWebVideoPlaybackReferrerUrl(
+                        capturedReferrerUrl = capturedReferrerUrl,
+                        explicitReferrerUrl = extraction.referrerUrl,
+                      ),
                       cookieProvider = playbackCookieProvider,
                       playbackDiagnostics = playbackDiagnostics,
                     ),
@@ -251,6 +255,9 @@ class AndroidWebVideoExtractorClient(
           .takeIf(String::isNotBlank)
           ?.let { resolveWebVideoExtractorUrl(finalUrl, it, httpsOnly = false) },
         mimeType = value.optString("mimeType").takeIf(String::isNotBlank),
+        referrerUrl = value.optString("referrerUrl")
+          .takeIf(String::isNotBlank)
+          ?.let { resolveWebVideoExtractorUrl(finalUrl, it, httpsOnly = false) },
       ),
     )
   }
@@ -284,6 +291,7 @@ class AndroidWebVideoExtractorClient(
               thumbnailUrl: thumbnailResult && typeof thumbnailResult.thumbnailUrl === 'string' ? thumbnailResult.thumbnailUrl : null,
               streamUrl: playbackResult && typeof playbackResult.streamUrl === 'string' ? playbackResult.streamUrl : null,
               mimeType: playbackResult && typeof playbackResult.mimeType === 'string' ? playbackResult.mimeType : null,
+              referrerUrl: playbackResult && typeof playbackResult.referrerUrl === 'string' ? playbackResult.referrerUrl : null,
             }
           };
         }).catch((error) => {
@@ -447,6 +455,13 @@ internal fun webVideoReferrerOrigin(referrerUrl: String): String? = runCatching 
   require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
   URI(scheme, null, uri.host, uri.port, "/", null, null).toString()
 }.getOrNull()
+
+internal fun selectWebVideoPlaybackReferrerUrl(
+  capturedReferrerUrl: String?,
+  explicitReferrerUrl: String?,
+): String? = capturedReferrerUrl
+  ?.takeIf(String::isNotBlank)
+  ?: explicitReferrerUrl?.takeIf(String::isNotBlank)
 
 internal fun resolveWebVideoExtractorUrl(
   baseUrl: String,
