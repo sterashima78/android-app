@@ -67,7 +67,7 @@ class WebVideoRequestReferrerCaptureTest {
       "https://player.example.net/",
       webStreamReferrerUrl(
         pageUrl = "https://page.example.com/watch/1",
-        capturedReferrerUrl = "https://player.example.net/embed/123?mode=fixture#player",
+        preferredReferrerUrl = "https://player.example.net/embed/123?mode=fixture#player",
       ),
     )
   }
@@ -78,7 +78,7 @@ class WebVideoRequestReferrerCaptureTest {
       "https://page.example.com/",
       webStreamReferrerUrl(
         pageUrl = "https://page.example.com/watch/1",
-        capturedReferrerUrl = "file:///tmp/player.html",
+        preferredReferrerUrl = "file:///tmp/player.html",
       ),
     )
   }
@@ -116,7 +116,7 @@ class WebVideoRequestReferrerCaptureTest {
       "https://explicit.example.org/",
       webStreamReferrerUrl(
         pageUrl = "https://page.example.com/watch/1",
-        capturedReferrerUrl = selected,
+        preferredReferrerUrl = selected,
       ),
     )
   }
