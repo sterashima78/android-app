@@ -51,7 +51,6 @@ internal fun integratedItemActions(
     }
   }
 
-  is IntegratedTarget.ProviderVideo,
   is IntegratedTarget.Mail -> emptyList()
 }
 
