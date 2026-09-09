@@ -26,6 +26,7 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [testing.md](testing.md): テスト責務と architecture verification
 - [platform.md](platform.md): Android runtime / SDK の現在の基準
 - [audio-playback.md](audio-playback.md): 保存済み要約のTTS、Media3、foreground media playbackのownership / runtime boundary
+- [podcast.md](podcast.md): Podcast専用source、feed取得、episode生成、consumed state、Audio委譲の境界
 - [video.md](video.md): SMB / Web 動画catalog、Web extractor、視聴状態、foreground Media3 playbackのownership / runtime boundary
 - [game.md](game.md): Game feature と正式版 Godot 数独の runtime / ownership boundary
 - [background-refresh.md](background-refresh.md): 統合ビューの周期更新、Gmail周期同期移管、新着通知・badge の現在の境界
@@ -103,3 +104,5 @@ current architecture document への repository 内リンクは、このディ�
 - [ADR-0236](../adr/0236-godot-android17-version-fallback.md)
 - [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
 - [ADR-0238](../adr/0238-promote-godot-sudoku.md)
+- [ADR-0249](../adr/0249-news-podcast-context.md)
+- [ADR-0250](../adr/0250-podcast-owned-feed-sources.md)
