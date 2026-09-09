@@ -113,6 +113,61 @@ func valid_foundation_targets() -> Array:
 		return [suit]
 	return []
 
+func flip_tableau_top(pile_index: int):
+	if is_won() or pile_index < 0 or pile_index >= tableau.size():
+		return
+	var pile: Array = tableau[pile_index]
+	if pile.is_empty() or pile.back()["face_up"]:
+		return
+	pile.back()["face_up"] = true
+	selection = null
+	moves += 1
+
+func move_selected_to_tableau(target_pile_index: int):
+	if selection == null or target_pile_index < 0 or target_pile_index >= tableau.size():
+		return
+	if selection["kind"] == "tableau" and selection["pile"] == target_pile_index:
+		selection = null
+		return
+
+	var moving = _selected_cards()
+	if moving == null or not _is_valid_tableau_run(moving):
+		return
+	var target = null if tableau[target_pile_index].is_empty() else tableau[target_pile_index].back()
+	if not _can_place_on_tableau(moving[0], target):
+		return
+
+	_remove_selection()
+	for card in moving:
+		tableau[target_pile_index].append({"card": card, "face_up": true})
+	selection = null
+	moves += 1
+
+func move_selected_to_foundation(target_suit: int):
+	if selection == null:
+		return
+	if selection["kind"] == "foundation" and selection["suit"] == target_suit:
+		selection = null
+		return
+
+	var moving = _selected_cards()
+	if moving == null or moving.size() != 1:
+		return
+	var card = moving[0]
+	if card["suit"] != target_suit or card["rank"] != foundations[target_suit].size() + 1:
+		return
+
+	_remove_selection()
+	foundations[target_suit].append(card)
+	selection = null
+	moves += 1
+
+func is_won() -> bool:
+	var total := 0
+	for pile in foundations:
+		total += pile.size()
+	return total == 52
+
 func _toggle_selection(next_selection: Dictionary):
 	if _same_selection(selection, next_selection):
 		selection = null
