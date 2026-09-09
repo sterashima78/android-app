@@ -37,6 +37,7 @@ internal class AppVideoRuntimeDependencies(
     val providerRepository = DefaultVideoProviderRepository(
       database = database,
       httpClient = httpClient,
+      context = application,
     )
     val playbackResolver = DefaultVideoPlaybackResolver(
       smbMediaFileAccess = smbMediaFileAccess,
