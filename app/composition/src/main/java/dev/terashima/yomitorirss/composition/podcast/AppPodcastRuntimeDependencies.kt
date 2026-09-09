@@ -5,7 +5,6 @@ import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.network.HttpClient
-import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
 import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
@@ -16,7 +15,6 @@ import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFac
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastScheduleController
-import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssFeedContentReader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +26,6 @@ internal class AppPodcastRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   httpClient: HttpClient,
-  @Suppress("UNUSED_PARAMETER") contentArticles: ArticleRepository,
-  @Suppress("UNUSED_PARAMETER") feedRepository: FeedRepository,
   localTextInference: AiTextInference,
   cloudTextInference: AiTextInference,
   audioPlaybackController: AudioPlaybackController,
