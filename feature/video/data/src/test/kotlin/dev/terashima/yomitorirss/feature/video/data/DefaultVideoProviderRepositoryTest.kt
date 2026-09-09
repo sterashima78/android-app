@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -60,7 +61,7 @@ class DefaultVideoProviderRepositoryTest {
   }
 
   @Test
-  fun `一つのsubscription更新失敗は他を更新したあと部分失敗として通知する`() = runBlocking {
+  fun `一つのsubscription更新失敗は他を更新したあと理由付き部分失敗として通知する`() = runBlocking {
     val database = VideoProviderDatabase(connection)
     val provider = database.saveProvider(testProvider())
     database.upsertProviderFeed(provider, emptyFeed(CHANNEL_ID_1, "Channel A"))
@@ -73,6 +74,53 @@ class DefaultVideoProviderRepositoryTest {
     assertTrue(error is IOException)
     assertEquals(setOf(CHANNEL_ID_1, CHANNEL_ID_2), http.requestedChannelIds.toSet())
     assertEquals("video-2", repository.unreadVideos().single().providerItemId)
+    assertEquals(
+      "動画プロバイダの一部を更新できませんでした（成功: 1 / 失敗: 1）\n失敗理由: HTTP 400 × 1",
+      error?.message,
+    )
+    assertEquals(1, error?.suppressed?.size)
+  }
+
+  @Test
+  fun `一時的な404は再試行し成功できる`() = runBlocking {
+    val database = VideoProviderDatabase(connection)
+    val provider = database.saveProvider(testProvider())
+    database.upsertProviderFeed(provider, emptyFeed(CHANNEL_ID_1, "Channel A"))
+    val http = TransientNotFoundHttpClient()
+    val repository = DefaultVideoProviderRepository(connection, http)
+
+    val result = repository.refreshProviders()
+
+    assertEquals(2, http.requestCount)
+    assertEquals(1, result.refreshedSubscriptions)
+    assertEquals(0, result.failedSubscriptions)
+    assertEquals(1, result.addedVideos)
+    assertEquals("video-retried", repository.unreadVideos().single().providerItemId)
+  }
+
+  @Test
+  fun `複数の最終失敗はHTTP statusごとに集約する`() = runBlocking {
+    val database = VideoProviderDatabase(connection)
+    val provider = database.saveProvider(testProvider())
+    database.upsertProviderFeed(provider, emptyFeed(CHANNEL_ID_1, "Channel A"))
+    database.upsertProviderFeed(provider, emptyFeed(CHANNEL_ID_2, "Channel B"))
+    val repository = DefaultVideoProviderRepository(connection, DistinctPermanentFailureHttpClient())
+
+    val error = runCatching { repository.refreshProviders() }.exceptionOrNull()
+
+    assertTrue(error is IOException)
+    assertEquals(
+      "動画プロバイダの一部を更新できませんでした（成功: 0 / 失敗: 2）\n" +
+        "失敗理由: HTTP 400 × 1 / HTTP 403 × 1",
+      error?.message,
+    )
+    assertEquals(2, error?.suppressed?.size)
+  }
+
+  @Test
+  fun `custom providerの失敗は自動再試行対象にしない`() {
+    assertFalse(shouldRetryProviderRefresh(VideoProviderType.CUSTOM, IOException("network")))
+    assertTrue(shouldRetryProviderRefresh(VideoProviderType.YOUTUBE, VideoProviderHttpException(500)))
   }
 
   @Test
@@ -180,16 +228,30 @@ class DefaultVideoProviderRepositoryTest {
       val channelId = request.channelId()
       requestedChannelIds += channelId
       return if (channelId == CHANNEL_ID_1) {
-        HttpResponse(
-          statusCode = 500,
-          reasonPhrase = "failure",
-          finalUrl = request.url,
-          headers = emptyMap(),
-          body = byteArrayOf(),
-        )
+        failureResponse(request, 400)
       } else {
         successResponse(channelId, videoId = "video-2")
       }
+    }
+  }
+
+  private class TransientNotFoundHttpClient : HttpClient {
+    var requestCount = 0
+
+    override suspend fun execute(request: HttpRequest): HttpResponse {
+      requestCount += 1
+      return if (requestCount == 1) {
+        failureResponse(request, 404)
+      } else {
+        successResponse(request.channelId(), videoId = "video-retried")
+      }
+    }
+  }
+
+  private class DistinctPermanentFailureHttpClient : HttpClient {
+    override suspend fun execute(request: HttpRequest): HttpResponse {
+      val status = if (request.channelId() == CHANNEL_ID_1) 400 else 403
+      return failureResponse(request, status)
     }
   }
 
@@ -210,6 +272,14 @@ class DefaultVideoProviderRepositoryTest {
       val playlistId = url.substringAfter("playlist_id=UULF")
       return "UC$playlistId"
     }
+
+    fun failureResponse(request: HttpRequest, statusCode: Int): HttpResponse = HttpResponse(
+      statusCode = statusCode,
+      reasonPhrase = "failure",
+      finalUrl = request.url,
+      headers = emptyMap(),
+      body = byteArrayOf(),
+    )
 
     fun successResponse(channelId: String, videoId: String): HttpResponse {
       val xml = """
