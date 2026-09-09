@@ -31,6 +31,20 @@ class PodcastTest {
   }
 
   @Test
+  fun `番組が参照するソース定義が欠落している場合は設定エラーにする`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program).apply { sources.clear() }
+    val source = FakeFeedContentSource(listOf(entry("a1")))
+    val useCase = GeneratePodcastEpisodeUseCase(repository, source, RecordingGenerator("原稿")) { 1234L }
+
+    val error = runCatching { useCase.generate(program.id) }.exceptionOrNull()
+
+    assertTrue(error is IllegalArgumentException)
+    assertTrue(error?.message.orEmpty().contains("番組設定を確認"))
+    assertTrue(source.requestedSources.isEmpty())
+  }
+
+  @Test
   fun `同じ番組で消費済みの記事は次のエピソードに含めない`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
@@ -211,13 +225,16 @@ private class FakePodcastRepository(
   private val program: PodcastProgram,
 ) : PodcastRepository {
   val episodes = mutableListOf<PodcastEpisode>()
+  val sources = mutableListOf(source())
   private val consumed = mutableSetOf<String>()
-  private var source = source()
 
-  override suspend fun listSources(): List<PodcastSource> = listOf(source)
-  override suspend fun findSource(sourceId: String): PodcastSource? = source.takeIf { it.id == sourceId }
-  override suspend fun saveSource(source: PodcastSource) { this.source = source }
-  override suspend fun deleteSource(sourceId: String) = Unit
+  override suspend fun listSources(): List<PodcastSource> = sources.toList()
+  override suspend fun findSource(sourceId: String): PodcastSource? = sources.find { it.id == sourceId }
+  override suspend fun saveSource(source: PodcastSource) {
+    sources.removeAll { it.id == source.id }
+    sources += source
+  }
+  override suspend fun deleteSource(sourceId: String) { sources.removeAll { it.id == sourceId } }
   override suspend fun listPrograms(): List<PodcastProgram> = listOf(program)
   override suspend fun findProgram(programId: String): PodcastProgram? = program.takeIf { it.id == programId }
   override suspend fun saveProgram(program: PodcastProgram) = Unit
