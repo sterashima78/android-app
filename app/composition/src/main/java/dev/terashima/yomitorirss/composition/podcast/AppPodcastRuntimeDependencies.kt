@@ -33,7 +33,7 @@ internal class AppPodcastRuntimeDependencies(
   localTextInference: AiTextInference,
   cloudTextInference: AiTextInference,
   audioPlaybackController: AudioPlaybackController,
-  persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
+  private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val repository = SqlitePodcastRepository(database)
