@@ -12,9 +12,8 @@ class RssPodcastFeedContentSource(
   override suspend fun latestEntries(feedIds: Set<String>, limit: Int): List<PodcastFeedEntry> {
     if (feedIds.isEmpty() || limit <= 0) return emptyList()
 
-    val unreadBySourceIdentity = articleRepository.listUnreadArticles()
+    val unreadBySourceIdentity = articleRepository.listUnreadArticles(feedIds)
       .asSequence()
-      .filter { article -> article.feedId != null && article.feedId in feedIds }
       .associateBy { article -> requireNotNull(article.feedId) to article.identityKey }
     if (unreadBySourceIdentity.isEmpty()) return emptyList()
 
