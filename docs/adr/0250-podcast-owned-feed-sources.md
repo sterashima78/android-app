@@ -40,7 +40,7 @@ application compositionはprocess-wide HTTP transportを再利用し、Podcast�
 
 application database versionを34へ進め、Podcast-owned `podcast_sources` tableを追加し、`podcast_programs.feed_ids` を `source_ids` へrenameする。
 
-version 33で保存済みのprogramは旧feed IDをそのままsource IDとして維持する。migration時に旧RSS `feeds` tableから対応するtitle / feed URLを一度だけコピーして `podcast_sources` を初期化する。
+version 33で保存済みのprogramは旧feed IDをそのままsource IDとして維持する。migration時に旧RSS `feeds` tableから対応する表示名（custom titleがあればそれを優先）とfeed URLを一度だけコピーして `podcast_sources` を初期化する。
 
 旧Podcast consumed stateが参照するContent articleに `feed_id` と `identity_key` が残っている場合は、`sourceId:identityKey` 形式のPodcast-owned identityへ一度だけ変換し、upgrade直後に同じentryが再利用されることを防ぐ。
 
@@ -63,5 +63,5 @@ version 33で保存済みのprogramは旧feed IDをそのままsource IDとし�
 - source URLから取得したentryがContent read stateなしでepisode候補になることをtestする。
 - 同じsource entryが同一番組でconsumed後に再生成されないことをtestする。
 - RSS購読一覧が空でもPodcast-owned sourceから生成できることをtestする。
-- version 33 -> 34 migrationで既存programのfeed IDがsource IDとして維持され、対応するfeed URLと変換可能なconsumed identityがPodcast-owned stateへコピーされることをtestする。
+- version 33 -> 34 migrationで既存programのfeed IDがsource IDとして維持され、対応する表示名・feed URLと変換可能なconsumed identityがPodcast-owned stateへコピーされることをtestする。
 - Podcast runtimeからArticleRepository / FeedRepository / RSS table direct read依存が消えることをarchitecture verificationする。
