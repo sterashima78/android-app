@@ -156,7 +156,9 @@ class GeneratePodcastEpisodeUseCase(
       return@withProgramGeneration generateReserved(program, pending)
     }
     val sources = repository.listSources().filter { it.id in program.sourceIds }
-    if (sources.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
+      "番組に利用できないソースがあります。番組設定を確認してください"
+    }
     val candidates = feedContentSource.latestEntries(
       sources = sources,
       limit = Int.MAX_VALUE,
