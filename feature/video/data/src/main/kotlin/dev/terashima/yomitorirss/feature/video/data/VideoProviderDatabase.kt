@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.feature.video.VideoSavedState
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import java.util.Locale
+import java.util.UUID
 
 internal class VideoProviderDatabase(
   private val database: DatabaseConnection,
@@ -20,30 +21,51 @@ internal class VideoProviderDatabase(
   fun providers(): List<VideoProvider> {
     ensureSchema()
     return database.readable.rawQuery(
-      "SELECT id, provider_type, name, enabled, created_at, updated_at FROM video_providers ORDER BY name COLLATE NOCASE, id",
+      "SELECT id, provider_type, name, enabled, created_at, updated_at, function_code FROM video_providers ORDER BY name COLLATE NOCASE, id",
       null,
     ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.toProvider()) } }
   }
 
   fun saveProvider(provider: VideoProvider): VideoProvider {
     ensureSchema()
-    val existingId = queryProviderId(provider.type)
+    val existingType = provider.id.trim().takeIf(String::isNotBlank)
+      ?.let(::queryProviderStorageType)
+      ?.toVideoProviderType()
+    require(existingType == null || existingType == provider.type) { "動画プロバイダの種類は変更できません" }
+
+    val existingId = if (provider.type == VideoProviderType.CUSTOM) null else queryProviderId(provider.type)
     val now = System.currentTimeMillis()
     val id = provider.id.trim().takeIf(String::isNotBlank)
       ?: existingId
-      ?: provider.type.name.lowercase(Locale.ROOT)
+      ?: if (provider.type == VideoProviderType.CUSTOM) {
+        "custom:${UUID.randomUUID()}"
+      } else {
+        provider.type.name.lowercase(Locale.ROOT)
+      }
     require(existingId == null || existingId == id) { "同じ種類の動画プロバイダが既に登録されています" }
+
+    val functionCode = if (provider.type == VideoProviderType.CUSTOM) {
+      requireNotNull(provider.functionCode?.trim()?.takeIf(String::isNotBlank)) {
+        "カスタム動画プロバイダにはfunction codeが必要です"
+      }.also {
+        require(it.length <= MAX_CUSTOM_PROVIDER_FUNCTION_CHARS) { "function codeが長すぎます" }
+      }
+    } else {
+      null
+    }
     val saved = provider.copy(
       id = id,
       name = provider.name.trim().ifBlank { provider.type.defaultDisplayName() },
+      functionCode = functionCode,
       createdAtEpochMillis = queryProviderCreatedAt(id) ?: provider.createdAtEpochMillis.takeIf { it > 0L } ?: now,
       updatedAtEpochMillis = now,
     )
     database.write {
       val values = ContentValues().apply {
-        put("provider_type", saved.type.name)
+        put("provider_type", saved.providerTypeStorageValue())
         put("name", saved.name)
         put("enabled", if (saved.enabled) 1 else 0)
+        putStringOrNull("function_code", saved.functionCode)
         put("created_at", saved.createdAtEpochMillis)
         put("updated_at", saved.updatedAtEpochMillis)
       }
@@ -262,6 +284,11 @@ internal class VideoProviderDatabase(
     arrayOf(type.name),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
 
+  private fun queryProviderStorageType(id: String): String? = database.readable.rawQuery(
+    "SELECT provider_type FROM video_providers WHERE id = ? LIMIT 1",
+    arrayOf(id),
+  ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+
   private fun queryProviderCreatedAt(id: String): Long? = database.readable.rawQuery(
     "SELECT created_at FROM video_providers WHERE id = ? LIMIT 1",
     arrayOf(id),
@@ -287,11 +314,12 @@ internal class VideoProviderDatabase(
 
 private fun Cursor.toProvider(): VideoProvider = VideoProvider(
   id = getString(0),
-  type = VideoProviderType.valueOf(getString(1)),
+  type = getString(1).toVideoProviderType(),
   name = getString(2),
   enabled = getInt(3) != 0,
   createdAtEpochMillis = getLong(4),
   updatedAtEpochMillis = getLong(5),
+  functionCode = stringOrNull(6),
 )
 
 private fun Cursor.toSubscription(): VideoSubscription = VideoSubscription(
@@ -350,6 +378,17 @@ private fun ContentValues.putStringOrNull(key: String, value: String?) = if (val
 private fun providerSubscriptionId(providerId: String, sourceId: String): String = "$providerId:$sourceId"
 private fun providerVideoId(providerId: String, itemId: String): String = "provider:$providerId:$itemId"
 private fun providerItemSourceId(providerId: String, itemId: String): String = "$providerId:$itemId"
+private fun VideoProvider.providerTypeStorageValue(): String = when (type) {
+  VideoProviderType.YOUTUBE -> type.name
+  VideoProviderType.CUSTOM -> "CUSTOM:$id"
+}
+private fun String.toVideoProviderType(): VideoProviderType = when {
+  startsWith("CUSTOM:") -> VideoProviderType.CUSTOM
+  else -> VideoProviderType.valueOf(this)
+}
 private fun VideoProviderType.defaultDisplayName(): String = when (this) {
   VideoProviderType.YOUTUBE -> "YouTube"
+  VideoProviderType.CUSTOM -> "カスタム"
 }
+
+private const val MAX_CUSTOM_PROVIDER_FUNCTION_CHARS = 128 * 1024
