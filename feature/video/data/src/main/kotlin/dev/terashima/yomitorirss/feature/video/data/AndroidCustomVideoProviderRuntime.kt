@@ -79,7 +79,7 @@ internal class AndroidCustomVideoProviderRuntime(
             responses.put(executeRequest(step.request))
           }
           is ScriptStep.Done -> {
-            val feed = parseFeed(step.value)
+            val feed = parseFeedValue(step.value)
             if (expectedSourceId != null) {
               require(feed.sourceId == expectedSourceId) {
                 "カスタム動画プロバイダのsourceIdがrefresh前後で変化しました"
@@ -178,44 +178,7 @@ internal class AndroidCustomVideoProviderRuntime(
   }
 
   private suspend fun executeRequest(request: JSONObject): JSONObject {
-    val url = request.requiredString("url", MAX_URL_CHARS)
-    requireHttpsUrl(url, "request URL")
-    val method = request.optString("method", "GET")
-      .uppercase(Locale.ROOT)
-      .let { value ->
-        runCatching { HttpMethod.valueOf(value) }
-          .getOrElse { throw IllegalArgumentException("未対応のHTTP methodです") }
-      }
-    val headers = buildMap {
-      val json = request.optJSONObject("headers") ?: JSONObject()
-      val keys = json.keys()
-      while (keys.hasNext()) {
-        val name = keys.next()
-        require(name.lowercase(Locale.ROOT) !in FORBIDDEN_CREDENTIAL_HEADERS) {
-          "credential headerはカスタム動画プロバイダへ保存できません"
-        }
-        val value = json.optString(name)
-        require(name.isNotBlank() && value.length <= MAX_HEADER_VALUE_CHARS) { "HTTP headerが不正です" }
-        put(name, value)
-      }
-    }
-    val body = request.optStringOrNull("body")?.toByteArray(Charsets.UTF_8)?.also {
-      require(it.size <= MAX_REQUEST_BODY_BYTES) { "HTTP request bodyが大きすぎます" }
-    }
-    val contentType = request.optStringOrNull("contentType")?.also {
-      require(it.length <= MAX_HEADER_VALUE_CHARS) { "Content-Typeが長すぎます" }
-    }
-    val response = httpClient.execute(
-      HttpRequest(
-        url = url,
-        method = method,
-        headers = headers,
-        body = body,
-        contentType = contentType,
-        maxResponseBytes = MAX_RESPONSE_BYTES,
-        maxErrorResponseBytes = MAX_RESPONSE_BYTES,
-      ),
-    )
+    val response = httpClient.execute(buildHttpRequest(request))
     requireHttpsUrl(response.finalUrl, "response URL")
     return JSONObject()
       .put("status", response.statusCode)
@@ -228,46 +191,6 @@ internal class AndroidCustomVideoProviderRuntime(
         },
       )
       .put("body", response.body.toString(Charsets.UTF_8))
-  }
-
-  private fun parseFeed(value: JSONObject): VideoProviderFeed {
-    val sourceId = value.requiredString("sourceId", MAX_ID_CHARS)
-    val title = value.requiredString("title", MAX_TITLE_CHARS)
-    val sourceUrl = value.requiredString("sourceUrl", MAX_URL_CHARS).also {
-      requireSafeOutputUrl(it, "sourceUrl")
-    }
-    val videosJson = value.optJSONArray("videos")
-      ?: throw IllegalArgumentException("カスタム動画プロバイダのvideosがありません")
-    require(videosJson.length() <= MAX_VIDEOS) { "カスタム動画プロバイダの動画件数が上限を超えました" }
-    val videos = buildList {
-      for (index in 0 until videosJson.length()) {
-        val item = videosJson.optJSONObject(index)
-          ?: throw IllegalArgumentException("カスタム動画プロバイダの動画がobjectではありません")
-        val url = item.requiredString("url", MAX_URL_CHARS).also {
-          requireSafeOutputUrl(it, "video URL")
-        }
-        val thumbnailUrl = item.optStringOrNull("thumbnailUrl")?.also {
-          requireSafeOutputUrl(it, "thumbnail URL")
-        }
-        val publishedAt = item.optLong("publishedAtEpochMillis", Long.MIN_VALUE)
-        require(publishedAt >= 0L) { "publishedAtEpochMillisが不正です" }
-        add(
-          VideoProviderFeedItem(
-            id = item.requiredString("id", MAX_ID_CHARS),
-            title = item.requiredString("title", MAX_TITLE_CHARS),
-            url = url,
-            thumbnailUrl = thumbnailUrl,
-            publishedAtEpochMillis = publishedAt,
-          ),
-        )
-      }
-    }
-    return VideoProviderFeed(
-      sourceId = sourceId,
-      title = title,
-      sourceUrl = sourceUrl,
-      videos = videos,
-    )
   }
 
   private fun startScript(
@@ -285,19 +208,16 @@ internal class AndroidCustomVideoProviderRuntime(
         const input = ${input};
         const responses = ${responses};
         window[key] = { state: 'pending' };
-        class PendingRequest extends Error {
-          constructor(request) {
-            super('host request required');
-            this.request = request;
-          }
-        }
         let requestIndex = 0;
         const api = Object.freeze({
           fetch(request) {
             const index = requestIndex++;
-            if (index < responses.length) return responses[index];
-            if (!request || typeof request !== 'object') throw new Error('api.fetch request must be an object');
-            throw new PendingRequest(request);
+            if (index < responses.length) return Promise.resolve(responses[index]);
+            if (!request || typeof request !== 'object') {
+              return Promise.reject(new Error('api.fetch request must be an object'));
+            }
+            window[key] = { state: 'request', request };
+            return new Promise(() => {});
           }
         });
         Promise.resolve()
@@ -311,14 +231,10 @@ internal class AndroidCustomVideoProviderRuntime(
             window[key] = { state: 'done', value };
           })
           .catch(error => {
-            if (error instanceof PendingRequest) {
-              window[key] = { state: 'request', request: error.request };
-            } else {
-              window[key] = {
-                state: 'error',
-                message: String(error && error.message ? error.message : error)
-              };
-            }
+            window[key] = {
+              state: 'error',
+              message: String(error && error.message ? error.message : error)
+            };
           });
       })();
     """.trimIndent()
@@ -356,20 +272,99 @@ internal class AndroidCustomVideoProviderRuntime(
     data class Done(val value: JSONObject) : ScriptStep
   }
 
-  private companion object {
-    const val PROFILE_NAME = "mosaic-video-custom-provider"
-    const val EXECUTION_TIMEOUT_MILLIS = 30_000L
-    const val POLL_DELAY_MILLIS = 50L
-    const val MAX_REQUESTS = 8
-    const val MAX_RESPONSE_BYTES = 4L * 1024 * 1024
-    const val MAX_REQUEST_BODY_BYTES = 512 * 1024
-    const val MAX_FUNCTION_CHARS = 128 * 1024
-    const val MAX_URL_CHARS = 8 * 1024
-    const val MAX_HEADER_VALUE_CHARS = 16 * 1024
-    const val MAX_ID_CHARS = 4 * 1024
-    const val MAX_TITLE_CHARS = 16 * 1024
-    const val MAX_VIDEOS = 500
-    val FORBIDDEN_CREDENTIAL_HEADERS = setOf(
+  companion object {
+    internal fun buildHttpRequest(request: JSONObject): HttpRequest {
+      val url = request.requiredString("url", MAX_URL_CHARS)
+      requireHttpsUrl(url, "request URL")
+      val method = request.optString("method", "GET")
+        .uppercase(Locale.ROOT)
+        .let { value ->
+          runCatching { HttpMethod.valueOf(value) }
+            .getOrElse { throw IllegalArgumentException("未対応のHTTP methodです") }
+        }
+      val headers = buildMap {
+        val json = request.optJSONObject("headers") ?: JSONObject()
+        val keys = json.keys()
+        while (keys.hasNext()) {
+          val name = keys.next()
+          require(name.lowercase(Locale.ROOT) !in FORBIDDEN_CREDENTIAL_HEADERS) {
+            "credential headerはカスタム動画プロバイダへ保存できません"
+          }
+          val value = json.optString(name)
+          require(name.isNotBlank() && value.length <= MAX_HEADER_VALUE_CHARS) { "HTTP headerが不正です" }
+          put(name, value)
+        }
+      }
+      val body = request.optStringOrNull("body")?.toByteArray(Charsets.UTF_8)?.also {
+        require(it.size <= MAX_REQUEST_BODY_BYTES) { "HTTP request bodyが大きすぎます" }
+      }
+      val contentType = request.optStringOrNull("contentType")?.also {
+        require(it.length <= MAX_HEADER_VALUE_CHARS) { "Content-Typeが長すぎます" }
+      }
+      return HttpRequest(
+        url = url,
+        method = method,
+        headers = headers,
+        body = body,
+        contentType = contentType,
+        maxResponseBytes = MAX_RESPONSE_BYTES,
+        maxErrorResponseBytes = MAX_RESPONSE_BYTES,
+      )
+    }
+
+    internal fun parseFeedValue(value: JSONObject): VideoProviderFeed {
+      val sourceId = value.requiredString("sourceId", MAX_ID_CHARS)
+      val title = value.requiredString("title", MAX_TITLE_CHARS)
+      val sourceUrl = value.requiredString("sourceUrl", MAX_URL_CHARS).also {
+        requireSafeOutputUrl(it, "sourceUrl")
+      }
+      val videosJson = value.optJSONArray("videos")
+        ?: throw IllegalArgumentException("カスタム動画プロバイダのvideosがありません")
+      require(videosJson.length() <= MAX_VIDEOS) { "カスタム動画プロバイダの動画件数が上限を超えました" }
+      val videos = buildList {
+        for (index in 0 until videosJson.length()) {
+          val item = videosJson.optJSONObject(index)
+            ?: throw IllegalArgumentException("カスタム動画プロバイダの動画がobjectではありません")
+          val url = item.requiredString("url", MAX_URL_CHARS).also {
+            requireSafeOutputUrl(it, "video URL")
+          }
+          val thumbnailUrl = item.optStringOrNull("thumbnailUrl")?.also {
+            requireSafeOutputUrl(it, "thumbnail URL")
+          }
+          val publishedAt = item.optLong("publishedAtEpochMillis", Long.MIN_VALUE)
+          require(publishedAt >= 0L) { "publishedAtEpochMillisが不正です" }
+          add(
+            VideoProviderFeedItem(
+              id = item.requiredString("id", MAX_ID_CHARS),
+              title = item.requiredString("title", MAX_TITLE_CHARS),
+              url = url,
+              thumbnailUrl = thumbnailUrl,
+              publishedAtEpochMillis = publishedAt,
+            ),
+          )
+        }
+      }
+      return VideoProviderFeed(
+        sourceId = sourceId,
+        title = title,
+        sourceUrl = sourceUrl,
+        videos = videos,
+      )
+    }
+
+    private const val PROFILE_NAME = "mosaic-video-custom-provider"
+    private const val EXECUTION_TIMEOUT_MILLIS = 30_000L
+    private const val POLL_DELAY_MILLIS = 50L
+    private const val MAX_REQUESTS = 8
+    private const val MAX_RESPONSE_BYTES = 4L * 1024 * 1024
+    private const val MAX_REQUEST_BODY_BYTES = 512 * 1024
+    private const val MAX_FUNCTION_CHARS = 128 * 1024
+    private const val MAX_URL_CHARS = 8 * 1024
+    private const val MAX_HEADER_VALUE_CHARS = 16 * 1024
+    private const val MAX_ID_CHARS = 4 * 1024
+    private const val MAX_TITLE_CHARS = 16 * 1024
+    private const val MAX_VIDEOS = 500
+    private val FORBIDDEN_CREDENTIAL_HEADERS = setOf(
       "authorization",
       "cookie",
       "proxy-authorization",
