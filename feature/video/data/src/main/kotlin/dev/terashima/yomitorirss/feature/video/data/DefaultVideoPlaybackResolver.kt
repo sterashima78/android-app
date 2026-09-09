@@ -89,9 +89,9 @@ class DefaultVideoPlaybackResolver(
 
 internal fun webStreamReferrerUrl(
   pageUrl: String,
-  capturedReferrerUrl: String? = null,
+  preferredReferrerUrl: String? = null,
 ): String? {
-  capturedReferrerUrl?.let(::webVideoReferrerOrigin)?.let { return it }
+  preferredReferrerUrl?.let(::webVideoReferrerOrigin)?.let { return it }
   return runCatching {
     val uri = URI(pageUrl)
     val scheme = uri.scheme?.lowercase()
