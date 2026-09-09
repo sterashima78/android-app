@@ -1,10 +1,7 @@
 package dev.terashima.yomitorirss.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -26,7 +23,6 @@ internal fun NavGraphBuilder.registerHomeDestination(
   onOpenArticle: (Article) -> Unit,
 ) {
   composable(INTEGRATED_ROUTE) {
-    val context = LocalContext.current
     val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
     val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
     val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
@@ -38,16 +34,9 @@ internal fun NavGraphBuilder.registerHomeDestination(
       redditViewModel = redditViewModel,
       feedViewModel = feedViewModel,
       mailViewModel = mailViewModel,
-      videoProviderRepository = routeDependencies.video.providerRepository,
-      videoRepository = routeDependencies.video.repository,
       onOpenArticle = onOpenArticle,
       onSummarize = { article -> summaryViewModel.summarize(article) },
       onNavigateToMail = { navController.navigateTopLevel(MAIL_ROUTE) },
-      onOpenExternalUrl = { url ->
-        runCatching {
-          context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        }
-      },
     )
   }
 }
