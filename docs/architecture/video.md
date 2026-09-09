@@ -173,6 +173,8 @@ providerを無効化するとbackground refresh対象から外すが、設定と
 
 Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現する。dedicated WebView extractorの `shouldInterceptRequest` でHTTP(S) resource requestを観測し、playback extractorが返したstream URLと同一requestが存在する場合だけ、そのrequestの `Referer` をorigin rootへ縮約して利用する。stream URLと一致しない別requestの参照元は候補として流用しない。exact requestの参照元を取得できない場合はplayback extractorが返した `referrerUrl` をHTTP(S) URLとして解決して利用し、それもない場合だけ元pageのoriginを利用する。
 
+foreground playback extractionでは、playback extractorがstream URLを返した時点でexact stream requestがまだ観測されていない場合だけ、dedicated WebViewを最大1秒追加保持し、100ms間隔で同一stream requestの到着を待つ。観測できた時点で即座に抽出を完了し、観測できないまま上限へ達した場合は既存のprofile Cookie / explicit referrer fallbackへ進む。この追加観測はforeground playbackだけに適用し、Web URL登録やmetadata extractionの待ち時間は増やさない。
+
 選択した参照元から `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。既定の`Referer`はorigin root URL、`Origin`は常にscheme / host / optional portだけとする。`shareReferrerPathForPlayback` がONで、かつplayback extractorのexplicit `referrerUrl`が採用された場合だけ、`Referer`へpathを残す。query / fragment / userinfoは常に除去する。WebView実request由来の参照元と元page fallbackはこの設定で拡張せずorigin-onlyを維持する。これらのrequest contextは再生時だけ利用してdatabaseへ保存しない。
 
 一致した抽出ルールで `shareCookiesForPlayback` が有効な場合だけ、専用WebView profile由来のCookieを `VideoPlaybackCookieProvider` としてtransientに再生targetへ接続する。`WebViewFeature.COOKIE_INTERCEPT` が利用可能な環境では、extractor WebViewのrequest interceptionへCookie headerを含める設定を有効化し、playback extractorが返したstream URLと同一requestで観測した `Cookie` headerを初回stream request用として優先する。このrequest CookieはWebView自身がそのrequest contextに対して選択した値なので、partitioned CookieもWebViewのpartition contextに従う。
@@ -273,6 +275,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - SMB itemをVideo専用folderへ移動せず、元directory階層を優先する。
 - stream URLをdurable source of truthにしない。
 - Web streamの実request参照元を利用する場合もstream URLとの同一requestだけを採用し、別requestの参照元を推測で流用しない。
+- foreground playbackの追加観測はexact stream request未観測時だけboundedに行い、上限到達後は従来fallbackへ戻る。
 - exact stream requestの参照元を観測できない場合だけplayback extractorのexplicit `referrerUrl`を利用する。既定ではorigin-onlyとし、ruleの明示opt-in時だけexplicit参照元のpathを保持できる。
 - Referer path共有の既定値はOFFとし、既存ruleを自動的にONへしない。
 - Referer path共有をONにしてもquery / fragment / userinfoを送らず、`Origin`は常にorigin-onlyを維持する。
@@ -319,6 +322,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
 - Web streamは実requestとstream URLが一致する場合だけ観測Referer originを優先し、exact requestがない場合はexplicit `referrerUrl`、それもない場合は元page originへfallbackすることをunit testする。
+- foreground playbackでstream URL取得時にexact request未観測なら追加観測を行い、観測済みまたは非再生抽出では追加観測しない条件をunit testする。
 - Referer path共有OFFではexplicit参照元をoriginへ縮約し、ONではexplicit参照元のpathだけを保持してquery / fragment / userinfoを除去することをunit testする。
 - path付きRefererでも `Origin` はorigin-onlyであることをunit testする。
 - Cookie共有OFFではproviderとrequest Cookie captureを作動させず、ONでは完全一致requestの観測Cookieをprofile lookupより優先することをunit testする。
