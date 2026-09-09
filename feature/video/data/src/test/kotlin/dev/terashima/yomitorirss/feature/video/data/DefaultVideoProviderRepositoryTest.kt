@@ -92,6 +92,31 @@ class DefaultVideoProviderRepositoryTest {
     assertTrue(http.requests.isEmpty())
   }
 
+  @Test
+  fun `custom providerは共通subscriptionとrefresh lifecycleを利用する`() = runBlocking {
+    val runtime = RecordingCustomProviderRuntime()
+    val repository = DefaultVideoProviderRepository(connection, UnusedHttpClient, runtime)
+    val provider = repository.saveProvider(
+      VideoProvider(
+        id = "",
+        type = VideoProviderType.CUSTOM,
+        name = "Custom Provider",
+        functionCode = "async (input, api) => ({})",
+      ),
+    )
+
+    val subscription = repository.subscribe(provider.id, "source-input")
+    val refresh = repository.refreshProviders(provider.id)
+
+    assertEquals("custom-source", subscription.sourceId)
+    assertEquals(listOf("source-input"), runtime.subscribeInputs)
+    assertEquals(listOf("custom-source"), runtime.refreshInputs)
+    assertEquals(listOf(provider.functionCode, provider.functionCode), runtime.functionCodes)
+    assertEquals(1, refresh.refreshedSubscriptions)
+    assertEquals(1, refresh.addedVideos)
+    assertEquals(setOf("custom-video-1", "custom-video-2"), repository.unreadVideos().map { it.providerItemId }.toSet())
+  }
+
   private fun testProvider(): VideoProvider = VideoProvider(
     id = "provider-1",
     type = VideoProviderType.YOUTUBE,
@@ -109,6 +134,43 @@ class DefaultVideoProviderRepositoryTest {
     override suspend fun execute(request: HttpRequest): HttpResponse {
       throw CancellationException("cancelled")
     }
+  }
+
+  private object UnusedHttpClient : HttpClient {
+    override suspend fun execute(request: HttpRequest): HttpResponse = error("HTTP client should not be used")
+  }
+
+  private class RecordingCustomProviderRuntime : CustomVideoProviderRuntime {
+    val subscribeInputs = mutableListOf<String>()
+    val refreshInputs = mutableListOf<String>()
+    val functionCodes = mutableListOf<String>()
+
+    override suspend fun subscribe(functionCode: String, sourceUrl: String): VideoProviderFeed {
+      functionCodes += functionCode
+      subscribeInputs += sourceUrl
+      return customFeed("custom-video-1")
+    }
+
+    override suspend fun refresh(functionCode: String, sourceId: String): VideoProviderFeed {
+      functionCodes += functionCode
+      refreshInputs += sourceId
+      return customFeed("custom-video-2")
+    }
+
+    private fun customFeed(videoId: String): VideoProviderFeed = VideoProviderFeed(
+      sourceId = "custom-source",
+      title = "Custom Source",
+      sourceUrl = "https://example.invalid/custom-source",
+      videos = listOf(
+        VideoProviderFeedItem(
+          id = videoId,
+          title = videoId,
+          url = "https://example.invalid/$videoId",
+          thumbnailUrl = null,
+          publishedAtEpochMillis = if (videoId.endsWith("1")) 1_000L else 2_000L,
+        ),
+      ),
+    )
   }
 
   private class PartialFailureHttpClient : HttpClient {
