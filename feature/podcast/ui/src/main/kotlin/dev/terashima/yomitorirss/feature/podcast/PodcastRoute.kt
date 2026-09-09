@@ -37,6 +37,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.Instant
@@ -331,151 +334,168 @@ private fun PodcastProgramEditorDialog(
     parsedMinute != null && parsedMinute in 0..59 &&
     parsedMaxArticles != null && parsedMaxArticles in 1..50
 
-  AlertDialog(
+  Dialog(
     onDismissRequest = onDismiss,
-    title = { Text(if (program == null) "番組を追加" else "番組を編集") },
-    text = {
-      Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-      ) {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it },
-          label = { Text("番組名") },
-          singleLine = true,
-          modifier = Modifier.fillMaxWidth(),
-        )
-
-        Text("生成AI", style = MaterialTheme.typography.titleSmall)
-        ProviderOption("ローカルAI", PodcastGenerationProvider.LOCAL, provider) { provider = it }
-        ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
-
-        HorizontalDivider()
-        Text("利用するソース", style = MaterialTheme.typography.titleSmall)
+    properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Surface(
+      modifier = Modifier.fillMaxSize(),
+      color = MaterialTheme.colorScheme.background,
+    ) {
+      Column(Modifier.fillMaxSize()) {
         Text(
-          "ここで追加したソースはニュースポッドキャスト専用です。RSS購読一覧とは別に管理されます。",
-          style = MaterialTheme.typography.bodySmall,
+          if (program == null) "番組を追加" else "番組を編集",
+          modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
+          style = MaterialTheme.typography.titleLarge,
         )
-        OutlinedTextField(
-          value = newSourceName,
-          onValueChange = { newSourceName = it },
-          label = { Text("ソース名") },
-          singleLine = true,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-          value = newSourceUrl,
-          onValueChange = { newSourceUrl = it },
-          label = { Text("RSS / Atom URL") },
-          singleLine = true,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedButton(
-          enabled = newSourceName.isNotBlank() && newSourceUrl.isNotBlank(),
-          onClick = {
-            onAddSource(newSourceName, newSourceUrl)
-            newSourceName = ""
-            newSourceUrl = ""
-          },
-          modifier = Modifier.fillMaxWidth(),
+        HorizontalDivider()
+        Column(
+          modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
+          verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          Icon(Icons.Default.Add, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Podcast用ソースを追加")
-        }
-        if (sources.isEmpty()) {
-          Text("利用できるソースがありません。上からPodcast用ソースを追加してください。")
-        } else {
-          sources.forEach { source ->
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Checkbox(
-                checked = source.id in selectedSourceIds,
-                onCheckedChange = { checked ->
-                  selectedSourceIds = if (checked) selectedSourceIds + source.id else selectedSourceIds - source.id
-                },
-              )
-              Column(Modifier.weight(1f)) {
-                Text(source.name)
-                Text(source.feedUrl, style = MaterialTheme.typography.bodySmall)
-              }
-              IconButton(
-                enabled = source.id !in sourceIdsInUse,
-                onClick = {
-                  selectedSourceIds -= source.id
-                  onDeleteSource(source.id)
-                },
+          OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("番組名") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+          )
+
+          Text("生成AI", style = MaterialTheme.typography.titleSmall)
+          ProviderOption("ローカルAI", PodcastGenerationProvider.LOCAL, provider) { provider = it }
+          ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
+
+          HorizontalDivider()
+          Text("利用するソース", style = MaterialTheme.typography.titleSmall)
+          Text(
+            "ここで追加したソースはニュースポッドキャスト専用です。RSS購読一覧とは別に管理されます。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+          OutlinedTextField(
+            value = newSourceName,
+            onValueChange = { newSourceName = it },
+            label = { Text("ソース名") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+          )
+          OutlinedTextField(
+            value = newSourceUrl,
+            onValueChange = { newSourceUrl = it },
+            label = { Text("RSS / Atom URL") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+          )
+          OutlinedButton(
+            enabled = newSourceName.isNotBlank() && newSourceUrl.isNotBlank(),
+            onClick = {
+              onAddSource(newSourceName, newSourceUrl)
+              newSourceName = ""
+              newSourceUrl = ""
+            },
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Podcast用ソースを追加")
+          }
+          if (sources.isEmpty()) {
+            Text("利用できるソースがありません。上からPodcast用ソースを追加してください。")
+          } else {
+            sources.forEach { source ->
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
               ) {
-                Icon(Icons.Default.Delete, contentDescription = "ソースを削除")
+                Checkbox(
+                  checked = source.id in selectedSourceIds,
+                  onCheckedChange = { checked ->
+                    selectedSourceIds = if (checked) selectedSourceIds + source.id else selectedSourceIds - source.id
+                  },
+                )
+                Column(Modifier.weight(1f)) {
+                  Text(source.name)
+                  Text(source.feedUrl, style = MaterialTheme.typography.bodySmall)
+                }
+                IconButton(
+                  enabled = source.id !in sourceIdsInUse,
+                  onClick = {
+                    selectedSourceIds -= source.id
+                    onDeleteSource(source.id)
+                  },
+                ) {
+                  Icon(Icons.Default.Delete, contentDescription = "ソースを削除")
+                }
               }
             }
+            if (sourceIdsInUse.isNotEmpty()) {
+              Text("番組で利用中のソースは、番組から外して保存した後に削除できます。", style = MaterialTheme.typography.bodySmall)
+            }
           }
-          if (sourceIdsInUse.isNotEmpty()) {
-            Text("番組で利用中のソースは、番組から外して保存した後に削除できます。", style = MaterialTheme.typography.bodySmall)
-          }
-        }
 
-        HorizontalDivider()
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-          Text("毎日自動生成", modifier = Modifier.weight(1f))
-          Switch(checked = scheduleEnabled, onCheckedChange = { scheduleEnabled = it })
-        }
-        if (scheduleEnabled) {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-              value = hour,
-              onValueChange = { hour = it.filter(Char::isDigit).take(2) },
-              label = { Text("時") },
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              singleLine = true,
-              modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-              value = minute,
-              onValueChange = { minute = it.filter(Char::isDigit).take(2) },
-              label = { Text("分") },
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              singleLine = true,
-              modifier = Modifier.weight(1f),
-            )
+          HorizontalDivider()
+          Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("毎日自動生成", modifier = Modifier.weight(1f))
+            Switch(checked = scheduleEnabled, onCheckedChange = { scheduleEnabled = it })
           }
-        }
-        OutlinedTextField(
-          value = maxArticles,
-          onValueChange = { maxArticles = it.filter(Char::isDigit).take(2) },
-          label = { Text("1回に使う最大記事数") },
-          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-          singleLine = true,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-          "原稿にはRSS/Atomフィード内の本文だけを使用し、記事リンク先は取得しません。",
-          style = MaterialTheme.typography.bodySmall,
-        )
-      }
-    },
-    confirmButton = {
-      TextButton(
-        enabled = valid,
-        onClick = {
-          onSave(
-            program?.id,
-            name,
-            selectedSourceIds,
-            provider,
-            scheduleEnabled,
-            requireNotNull(parsedHour),
-            requireNotNull(parsedMinute),
-            requireNotNull(parsedMaxArticles),
+          if (scheduleEnabled) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              OutlinedTextField(
+                value = hour,
+                onValueChange = { hour = it.filter(Char::isDigit).take(2) },
+                label = { Text("時") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+              )
+              OutlinedTextField(
+                value = minute,
+                onValueChange = { minute = it.filter(Char::isDigit).take(2) },
+                label = { Text("分") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+              )
+            }
+          }
+          OutlinedTextField(
+            value = maxArticles,
+            onValueChange = { maxArticles = it.filter(Char::isDigit).take(2) },
+            label = { Text("1回に使う最大記事数") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
           )
-        },
-      ) { Text("保存") }
-    },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("キャンセル") } },
-  )
+          Text(
+            "原稿にはRSS/Atomフィード内の本文だけを使用し、記事リンク先は取得しません。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+        }
+        HorizontalDivider()
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          TextButton(onClick = onDismiss) { Text("キャンセル") }
+          TextButton(
+            enabled = valid,
+            onClick = {
+              onSave(
+                program?.id,
+                name,
+                selectedSourceIds,
+                provider,
+                scheduleEnabled,
+                requireNotNull(parsedHour),
+                requireNotNull(parsedMinute),
+                requireNotNull(parsedMaxArticles),
+              )
+            },
+          ) { Text("保存") }
+        }
+      }
+    }
+  }
 }
 
 @Composable
