@@ -1,6 +1,6 @@
 # Video
 
-この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)、[ADR-0245](../adr/0245-video-custom-provider-code.md) を参照する。
+この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)、[ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)、[ADR-0246](../adr/0246-video-custom-provider-code.md) を参照する。
 
 ## Ownership
 
@@ -107,6 +107,8 @@ custom ruleはVideo-owned durable user dataであり、URL glob pattern、任意
 - playback extractor
 - `shareCookiesForPlayback`: default false
 
+playback extractorは `{ streamUrl, mimeType?, referrerUrl? }` を返せる。`referrerUrl` はexact stream requestをWebViewで観測できない場合に利用する任意の再生元URL hintであり、最終page URLから相対解決できる。Media3へ渡す前にoriginへ縮約し、path / query / fragmentは送らない。
+
 WebViewは専用profileを利用し、HTTPS pageだけを対象とする。file/content access、mixed content、window生成、geolocation等を有効化しない。native JavaScript bridgeは公開しない。Cookie共有の設定にかかわらずthird-party Cookie acceptanceを暗黙に有効化しない。
 
 custom title / thumbnail extractionが失敗した場合は静的metadataを維持する。playback extractorが利用できない、または結果を取得できない場合はpage URLをWeb表示するtargetへfallbackする。
@@ -148,7 +150,7 @@ custom providerの外部通信はhostが提供する `api.fetch` を利用する
 
 `Authorization`、`Cookie`、proxy credential、API key相当のcredential headerは初期custom provider contractでは受け付けず、既存WebView Cookie、mail credential、SMB credential、cloud token等を暗黙に注入しない。認証付きproviderを追加する場合は、function codeとは分離されたprotected credential capabilityとして別途設計判断する。
 
-custom provider runtimeはActivityに依存せずapplication contextから構成し、統合background refreshからも利用できる。native JavaScript bridgeで同期的なネットワーク権限を渡さず、`api.fetch` 呼び出しごとにhostでrequestを実行して既知responseを与えた状態でfunctionを再評価する。そのため同一実行中のrequest sequenceはinputとそれまでのresponseに対して再現可能であることをcontractとする。
+custom provider runtimeはActivityに依存せずapplication contextから構成し、統合background refreshからも利用できる。native JavaScript bridgeやWebView自身のnetwork loadは利用せず、`api.fetch` が返すPromiseをhost側のbounded HTTP responseで解決する。複数requestが同時に開始された場合もrequest IDとqueueで対応関係を保持し、rendererが終了した場合は当該provider実行を失敗として局所化する。
 
 新しく取得したprovider itemは `VideoSource.SERVICE` の `video_items` として投影し、`video_provider_items` でprovider item ID、subscription、publish time、未読状態を保持する。既存itemのrefreshではread / watch-later stateを上書きしない。
 
@@ -164,11 +166,11 @@ providerを無効化するとbackground refresh対象から外すが、設定と
 
 再生targetはDomainで次の3種類へ正規化する。
 
-- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は抽出中に観測した実メディアrequestの参照元origin、取得できない場合は元page originを一時的に持ち、明示opt-in時だけCookie providerも持てる。
+- `VideoPlaybackTarget.Stream`: HTTP(S)等のMedia3再生可能URL。Web item由来の場合は抽出中に観測した実メディアrequestの参照元origin、観測できない場合はplayback extractorのexplicit `referrerUrl` origin、さらに取得できない場合は元page originを一時的に持ち、明示opt-in時だけCookie providerも持てる。
 - `VideoPlaybackTarget.Smb`: Library-owned SMB read capabilityを使うrandom-access source
 - `VideoPlaybackTarget.WebPage`: アプリ内video playerではなくWeb pageを開くfallback
 
-Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現する。dedicated WebView extractorの `shouldInterceptRequest` でHTTP(S) resource requestを観測し、playback extractorが返したstream URLと同一requestが存在する場合だけ、そのrequestの `Referer` をorigin rootへ縮約して利用する。stream URLと一致しない別requestの参照元は候補として流用しない。実requestの参照元を取得できない場合は元page originへfallbackする。
+Web streamをMedia3で直接再生する場合、ブラウザ埋め込み再生と同等の最低限のHTTP文脈を再現する。dedicated WebView extractorの `shouldInterceptRequest` でHTTP(S) resource requestを観測し、playback extractorが返したstream URLと同一requestが存在する場合だけ、そのrequestの `Referer` をorigin rootへ縮約して利用する。stream URLと一致しない別requestの参照元は候補として流用しない。exact requestの参照元を取得できない場合はplayback extractorが返した `referrerUrl` をHTTP(S) URLとして解決し、そのoriginへfallbackする。それもない場合だけ元pageのoriginを利用する。
 
 選択した参照元originから `Referer` と `Origin` を生成し、Android WebViewのdefault user agentを `User-Agent` としてmanifest / segment requestへ付与する。`Referer` はorigin root URL、`Origin` はscheme / host / optional portだけとし、page / player URLのpath、query、fragmentはどちらにも含めない。これらのrequest contextは再生時だけ利用してdatabaseへ保存しない。
 
@@ -238,7 +240,7 @@ ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEG
 
 ADR-0242でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。version 31 schema initializationでもADR-0241のCookie列refinementはidempotentに適用される。
 
-ADR-0245でapplication database versionを32へ進め、`video_providers.function_code` を追加する。version 31 -> 32 migrationは既存provider row、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みproviderはfunction codeを持たず、custom providerだけがfunction codeをdurable user configurationとして保持する。backup restoreのexact-version policyは変更しない。
+ADR-0246でapplication database versionを32へ進め、`video_providers.function_code` を追加する。version 31 -> 32 migrationは既存provider row、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みproviderはfunction codeを持たず、custom providerだけがfunction codeをdurable user configurationとして保持する。backup restoreのexact-version policyは変更しない。
 
 ## Playback state semantics
 
@@ -268,6 +270,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - SMB itemをVideo専用folderへ移動せず、元directory階層を優先する。
 - stream URLをdurable source of truthにしない。
 - Web streamの実request参照元を利用する場合もstream URLとの同一requestだけを採用し、別requestの参照元を推測で流用しない。
+- exact stream requestの参照元を観測できない場合だけplayback extractorのexplicit `referrerUrl`を利用し、それもMedia3へ渡す前にoriginへ縮約する。
 - Web streamの `Referer` / `Origin` にpage / player URLのpath / query / fragmentを含めない。
 - WebView request CookieをcaptureするのはCookie共有ONかつ `COOKIE_INTERCEPT` 対応時だけとする。
 - 観測したrequest Cookieはstream URLとの完全一致requestだけで優先し、別URLへ推測で流用しない。
@@ -310,7 +313,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
-- Web streamは実requestとstream URLが一致する場合だけ観測Refererをoriginへ縮約して優先し、不一致または取得不能時は元page originへfallbackすることをunit testする。
+- Web streamは実requestとstream URLが一致する場合だけ観測Refererをoriginへ縮約して優先し、exact requestがない場合はexplicit `referrerUrl`、それもない場合は元page originへfallbackすることをunit testする。
 - 選択したWeb stream参照元originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
 - Cookie共有OFFではproviderとrequest Cookie captureを作動させず、ONでは完全一致requestの観測Cookieをprofile lookupより優先することをunit testする。
 - 観測CookieがないURLではprofile CookieManager lookupへfallbackし、別URLの観測Cookieを流用しないことをunit testする。
@@ -328,7 +331,8 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
 - [ADR-0243](../adr/0243-video-web-request-cookie-capture.md)
 - [ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)
-- [ADR-0245](../adr/0245-video-custom-provider-code.md)
+- [ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)
+- [ADR-0246](../adr/0246-video-custom-provider-code.md)
 - [module-map.md](module-map.md)
 - [context-map.md](context-map.md)
 - [persistence.md](persistence.md)
