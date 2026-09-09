@@ -18,6 +18,8 @@ RSS readerの購読状態やContentのread / unread stateはPodcastのsource of 
 
 Podcast画面からsourceを追加できる。どの番組からも参照されていないsourceだけ削除できる。reader側のRSS購読を追加・削除・既読化してもPodcast sourceは変更しない。Podcast sourceを追加・削除してもreader側のRSS購読一覧は変更しない。
 
+番組保存時はすべての `sourceIds` に対応するPodcast sourceが存在することを検証する。互換migrationで旧source metadataを復元できず参照だけが残った番組は、新規feed取得を行わず設定エラーとして扱う。編集画面では復元できないsource IDを選択状態へ持ち越さず、利用可能なsourceを選び直して保存できる。
+
 ## Feed-content boundary
 
 Podcast data moduleはRSS domainの `RssFeedContentReader.latestEntriesFromSources` を利用する。このAPIは呼び出し側が渡したsource IDとfeed URLを直接読み、RSS購読登録を要求しない。
@@ -30,7 +32,7 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 
 1. `GeneratePodcastEpisodeUseCase` が番組を取得する。
 2. 中断済みまたは予約済みepisodeがあれば、そのsnapshotを優先して再開する。
-3. 番組の `sourceIds` に対応するPodcast-owned source定義を取得する。
+3. 番組の `sourceIds` に対応するPodcast-owned source定義を取得し、欠落があれば設定エラーとする。
 4. source URLからRSS / Atom entryのtitle / bodyを取得する。
 5. program-scoped `podcast_consumed_articles` に存在しないentryだけを候補にする。
 6. 最大記事数単位でepisodeへ分割し、候補の本文を `podcast_episode_articles` へsnapshotする。
@@ -56,7 +58,7 @@ Podcast-owned tablesは次のとおり。
 application database version 33ではPodcast番組がRSS readerのfeed IDを直接保持していた。version 34 migrationは次を一度だけ実行する。
 
 - `podcast_sources` を作成する。
-- 旧 `podcast_programs.feed_ids` に含まれるIDについて、RSS-owned `feeds` からtitle / feed URLをコピーする。
+- 旧 `podcast_programs.feed_ids` に含まれるIDについて、RSS-owned `feeds` から表示名（custom titleがあればそれを優先）とfeed URLをコピーする。
 - Content articleが残っている消費済みentryは `feed_id` / `identity_key` からPodcast-owned stable identityへ変換する。
 - `feed_ids` columnを `source_ids` へrenameする。
 
@@ -65,6 +67,7 @@ application database version 33ではPodcast番組がRSS readerのfeed IDを直�
 ## Invariants
 
 - 番組には1つ以上のPodcast sourceが必要である。
+- 番組が参照するPodcast sourceは保存時点で存在しなければならない。
 - source URLはPodcast Contextのdurable stateとして保持する。
 - 同一番組では一度予約したstable entry identityを新規episodeへ再利用しない。
 - episodeへ予約したfeed bodyは生成時点でsnapshotし、後続のfeed rotationに依存しない。
