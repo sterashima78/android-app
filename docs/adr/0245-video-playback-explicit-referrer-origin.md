@@ -4,7 +4,7 @@
 - Date: 2026-09-09
 - Refines: [ADR-0237](0237-video-library-and-web-extraction.md)
 - Follows: [ADR-0243](0243-video-web-request-cookie-capture.md)
-- Amended by: [ADR-0247](0247-video-playback-referrer-path-opt-in.md)
+- Amended by: [ADR-0248](0248-video-playback-referrer-path-opt-in.md)
 
 ## Context
 
@@ -49,7 +49,7 @@ Media3へ渡す参照元は次の優先順位で決定する。
 - path / query / fragmentは送らない
 - userinfoを送らない
 
-ADR-0247で、ruleが明示opt-inし、かつplayback extractorのexplicit `referrerUrl`が採用された場合だけ、`Referer`へpathを残せるように改訂する。query / fragment / userinfoと`Origin`の境界は変更しない。
+ADR-0248で、ruleが明示opt-inし、かつplayback extractorのexplicit `referrerUrl`が採用された場合だけ、`Referer`へpathを残せるように改訂する。query / fragment / userinfoと`Origin`の境界は変更しない。
 
 ### Cookie共有境界は変更しない
 
@@ -65,13 +65,13 @@ ADR-0241 / ADR-0243のCookie共有opt-inとrequest Cookie capture規則は変更
 - exact stream requestをWebViewで観測できなくても、user-defined ruleが埋め込みplayer等の再生元URLを把握できる場合、そのoriginをnative playbackへ明示できる。
 - 個別site固有のURLやplayer判定をproduction codeへ追加せず、既存のuser-defined extractor capabilityを拡張できる。
 - 既存ruleは`referrerUrl`を返さなければ従来どおり動作するためdurable migrationは不要である。
-- 既定ではfull Refererが必要なstreamは対応外である。path共有の限定的opt-inはADR-0247で定義し、query共有が必要な場合はさらに別判断する。
+- 既定ではfull Refererが必要なstreamは対応外である。path共有の限定的opt-inはADR-0248で定義し、query共有が必要な場合はさらに別判断する。
 
 ## Security / privacy invariants
 
 - `referrerUrl`はHTTP(S)以外を利用しない。
 - 既定ではMedia3へ送る前にoriginへ縮約する。
-- ADR-0247のopt-inでもquery / fragment / userinfoを送らない。
+- ADR-0248のopt-inでもquery / fragment / userinfoを送らない。
 - 実URLをrepository fixture / documentへ保存しない。
 - exact stream requestの実Refererが得られた場合は、それを優先する。
 - Cookie / Authorization / arbitrary header共有の範囲を拡張しない。
@@ -82,6 +82,6 @@ ADR-0241 / ADR-0243のCookie共有opt-inとrequest Cookie capture規則は変更
 - exact request Refererがexplicit `referrerUrl`より優先されることをtestする。
 - exact requestがない場合にexplicit `referrerUrl`へfallbackすることをtestする。
 - 既定ではresolverでexplicit URLもoriginへ縮約され、path/query/fragmentがMedia3へ渡らないことをtestする。
-- ADR-0247のopt-inではexplicit URLのpathだけを保持できることをtestする。
+- ADR-0248のopt-inではexplicit URLのpathだけを保持できることをtestする。
 - `referrerUrl`未指定時の既存page-origin fallbackを維持することをtestする。
 - Public repository / Architecture / Unit Test / Lint / R8を通す。
