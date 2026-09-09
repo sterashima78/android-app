@@ -141,15 +141,13 @@ class DefaultVideoProviderRepository internal constructor(
 
 internal fun shouldRetryProviderRefresh(type: VideoProviderType, error: Throwable): Boolean {
   if (type != VideoProviderType.YOUTUBE) return false
-  return when (error) {
-    is VideoProviderHttpException -> error.statusCode == 404 ||
+  return error is VideoProviderHttpException && (
+    error.statusCode == 404 ||
       error.statusCode == 408 ||
       error.statusCode == 425 ||
       error.statusCode == 429 ||
       error.statusCode in 500..599
-    is IOException -> true
-    else -> false
-  }
+    )
 }
 
 private fun providerRefreshException(refreshed: Int, failures: List<Throwable>): IOException {
