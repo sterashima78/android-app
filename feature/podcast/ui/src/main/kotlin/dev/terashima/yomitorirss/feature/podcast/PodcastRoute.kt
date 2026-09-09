@@ -307,7 +307,13 @@ private fun PodcastProgramEditorDialog(
   onSave: (String?, String, Set<String>, PodcastGenerationProvider, Boolean, Int, Int, Int) -> Unit,
 ) {
   var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
-  var selectedSourceIds by remember(program?.id) { mutableStateOf(program?.sourceIds.orEmpty()) }
+  var selectedSourceIds by remember(program?.id) {
+    mutableStateOf(
+      program?.sourceIds.orEmpty().filterTo(mutableSetOf()) { sourceId ->
+        sources.any { it.id == sourceId }
+      },
+    )
+  }
   var newSourceName by remember(program?.id) { mutableStateOf("") }
   var newSourceUrl by remember(program?.id) { mutableStateOf("") }
   var provider by remember(program?.id) { mutableStateOf(program?.provider ?: PodcastGenerationProvider.LOCAL) }
