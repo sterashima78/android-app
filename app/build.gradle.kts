@@ -22,6 +22,13 @@ val hasCompleteReleaseSigning = releaseSigningValues.all { !it.isNullOrBlank() }
 val gitCommitSha = providers.environmentVariable("GITHUB_SHA").orNull
   ?.takeIf { it.matches(Regex("[0-9a-fA-F]{7,40}")) }
   ?: "local"
+val configuredVersionCode = providers.environmentVariable("MOSAIC_VERSION_CODE").orNull
+val appVersionCode = when {
+  configuredVersionCode.isNullOrBlank() -> 2
+  else -> configuredVersionCode.toIntOrNull()
+    ?.takeIf { it in 1..2_100_000_000 }
+    ?: throw GradleException("MOSAIC_VERSION_CODE must be an integer between 1 and 2100000000.")
+}
 
 if (hasAnyReleaseSigningValue && !hasCompleteReleaseSigning) {
   throw GradleException("Release signing configuration is incomplete.")
@@ -35,7 +42,7 @@ android {
     applicationId = "dev.terashima.yomitorirss"
     minSdk = 35
     targetSdk = 36
-    versionCode = 2
+    versionCode = appVersionCode
     versionName = "0.2.0"
     buildConfigField("String", "GIT_COMMIT_SHA", "\"$gitCommitSha\"")
 

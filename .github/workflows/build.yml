@@ -23,6 +23,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Derive release version code
+        run: |
+          set -euo pipefail
+          VERSION_CODE="$(git rev-list --count HEAD)"
+          test "$VERSION_CODE" -gt 2
+          test "$VERSION_CODE" -le 2100000000
+          printf 'MOSAIC_VERSION_CODE=%s\n' "$VERSION_CODE" >> "$GITHUB_ENV"
       - name: Verify tracked public content
         run: python3 scripts/verify_public_repository.py
       - name: Set up Java
@@ -59,16 +68,21 @@ jobs:
       - name: Name APK from build version
         run: |
           set -euo pipefail
-          VERSION_NAME="$(python3 - <<'PY'
+          mapfile -t VERSION_METADATA < <(python3 - <<'PY'
           import json
           from pathlib import Path
 
           metadata = json.loads(Path("app/build/outputs/apk/release/output-metadata.json").read_text())
-          print(metadata["elements"][0]["versionName"])
+          element = metadata["elements"][0]
+          print(element["versionName"])
+          print(element["versionCode"])
           PY
-          )"
+          )
+          VERSION_NAME="${VERSION_METADATA[0]}"
+          VERSION_CODE="${VERSION_METADATA[1]}"
           test -n "$VERSION_NAME"
-          APK_PATH="mosaic-${VERSION_NAME}-arm64-v8a.apk"
+          test "$VERSION_CODE" = "$MOSAIC_VERSION_CODE"
+          APK_PATH="mosaic-${VERSION_NAME}-${VERSION_CODE}-arm64-v8a.apk"
           mv app/build/outputs/apk/release/app-release.apk "$APK_PATH"
           printf 'APK_PATH=%s\n' "$APK_PATH" >> "$GITHUB_ENV"
       - name: Report APK size
