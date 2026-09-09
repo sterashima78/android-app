@@ -1,6 +1,6 @@
 # Video
 
-この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)、[ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)、[ADR-0246](../adr/0246-video-custom-provider-code.md)、[ADR-0247](../adr/0247-video-playback-referrer-path-opt-in.md) を参照する。
+この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)、[ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)、[ADR-0246](../adr/0246-video-custom-provider-code.md)、[ADR-0248](../adr/0248-video-playback-referrer-path-opt-in.md) を参照する。
 
 ## Ownership
 
@@ -239,9 +239,9 @@ ADR-0240でapplication database versionを30へ進め、`video_folders` と `vid
 
 ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存version 30 databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
 
-ADR-0247では同じtableへ `share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存databaseではidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でReferer path共有OFFとなり、この追加だけを理由としたdatabase version bumpは行わない。
+ADR-0248では同じtableへ `share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存databaseではidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でReferer path共有OFFとなり、この追加だけを理由としたdatabase version bumpは行わない。
 
-ADR-0242でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。version 31 schema initializationでもADR-0241とADR-0247のadditive rule column refinementはidempotentに適用される。
+ADR-0242でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。version 31 schema initializationでもADR-0241とADR-0248のadditive rule column refinementはidempotentに適用される。
 
 ADR-0246でapplication database versionを32へ進め、`video_providers.function_code` を追加する。version 31 -> 32 migrationは既存provider row、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みproviderはfunction codeを持たず、custom providerだけがfunction codeをdurable user configurationとして保持する。backup restoreのexact-version policyは変更しない。
 
@@ -339,7 +339,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - [ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)
 - [ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)
 - [ADR-0246](../adr/0246-video-custom-provider-code.md)
-- [ADR-0247](../adr/0247-video-playback-referrer-path-opt-in.md)
+- [ADR-0248](../adr/0248-video-playback-referrer-path-opt-in.md)
 - [module-map.md](module-map.md)
 - [context-map.md](context-map.md)
 - [persistence.md](persistence.md)
