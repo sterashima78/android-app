@@ -79,7 +79,7 @@ class DefaultAudioPlaybackController(
         items = queue,
         preparationStatus = AudioPreparationStatus.PREPARING,
         totalCount = queue.size,
-        message = "要約と音声を準備しています",
+        message = "音声を準備しています",
       )
 
       runCatching {
@@ -156,15 +156,15 @@ class DefaultAudioPlaybackController(
   }
 
   private suspend fun prepareAndPlay(queue: List<AudioQueueItem>) {
-    val summaries = resolveSummaries(queue)
+    val speechTexts = resolveSpeechTexts(queue)
     val playableItems = mutableListOf<AudioQueueItem>()
     var controller: MediaController? = null
 
     val preparedCount = prepareProgressively(
       items = queue,
       prepare = { item ->
-        val summary = summaries[item.contentId] ?: return@prepareProgressively null
-        synthesize(item, summary)
+        val speechText = speechTexts[item.contentId] ?: return@prepareProgressively null
+        synthesize(item, speechText)
       },
       onPrepared = { item, file, preparedNumber ->
         val activeController = controller ?: ensureMediaController().also { controller = it }
@@ -196,7 +196,7 @@ class DefaultAudioPlaybackController(
             preparationStatus = AudioPreparationStatus.READY,
             preparedCount = preparedNumber,
             totalCount = queue.size,
-            message = if (preparedNumber < summaries.size) {
+            message = if (preparedNumber < speechTexts.size) {
               "再生しながら音声を準備しています ($preparedNumber/${queue.size})"
             } else {
               null
@@ -209,14 +209,14 @@ class DefaultAudioPlaybackController(
     )
 
     if (preparedCount == 0) {
-      error("再生できる要約がありません")
+      error("再生できる音声がありません")
     }
 
     val skippedCount = queue.size - preparedCount
     mutableState.update {
       it.copy(
         message = if (skippedCount > 0) {
-          "要約を取得できなかった${skippedCount}件を除いて再生します"
+          "音声を準備できなかった${skippedCount}件を除いて再生します"
         } else {
           null
         },
@@ -236,17 +236,23 @@ class DefaultAudioPlaybackController(
       )
       .build()
 
-  private suspend fun resolveSummaries(queue: List<AudioQueueItem>): Map<String, String> {
-    val summaries = linkedMapOf<String, String>()
+  private suspend fun resolveSpeechTexts(queue: List<AudioQueueItem>): Map<String, String> {
+    val speechTexts = linkedMapOf<String, String>()
     val pending = linkedSetOf<String>()
 
     queue.forEach { item ->
+      val directText = item.speechText?.trim()
+      if (!directText.isNullOrBlank()) {
+        speechTexts[item.contentId] = directText
+        return@forEach
+      }
+
       val cached = summaryReader.findSummary(item.contentId)
       if (!cached.isNullOrBlank()) {
-        summaries[item.contentId] = cached
+        speechTexts[item.contentId] = cached
       } else {
         when (val result = summaryRequester.request(item.contentId, forceRefresh = false)) {
-          is SummaryRequestResult.Cached -> summaries[item.contentId] = result.summary
+          is SummaryRequestResult.Cached -> speechTexts[item.contentId] = result.summary
           is SummaryRequestResult.PreviousFailure -> Unit
           SummaryRequestResult.Processing,
           is SummaryRequestResult.Enqueued -> pending += item.contentId
@@ -254,7 +260,7 @@ class DefaultAudioPlaybackController(
       }
     }
 
-    if (pending.isEmpty()) return summaries
+    if (pending.isEmpty()) return speechTexts
 
     val deadline = SystemClock.elapsedRealtime() + SUMMARY_WAIT_TIMEOUT_MS
     while (pending.isNotEmpty() && SystemClock.elapsedRealtime() < deadline && currentCoroutineContext().isActive) {
@@ -262,25 +268,25 @@ class DefaultAudioPlaybackController(
       pending.toList().forEach { contentId ->
         val summary = summaryReader.findSummary(contentId)
         if (!summary.isNullOrBlank()) {
-          summaries[contentId] = summary
+          speechTexts[contentId] = summary
           pending.remove(contentId)
         }
       }
       mutableState.update {
-        val readyCount = summaries.size
-        it.copy(message = "要約を待っています ($readyCount/${queue.size})")
+        val readyCount = speechTexts.size
+        it.copy(message = "読み上げ内容を待っています ($readyCount/${queue.size})")
       }
     }
 
-    return summaries
+    return speechTexts
   }
 
-  private suspend fun synthesize(item: AudioQueueItem, summary: String): File {
+  private suspend fun synthesize(item: AudioQueueItem, speechText: String): File {
     val tts = ensureTextToSpeech()
     val text = buildString {
       append(item.title.trim())
       append("。")
-      append(markdownToSpeechText(summary))
+      append(markdownToSpeechText(speechText))
     }.take(TextToSpeech.getMaxSpeechInputLength())
 
     val cacheDirectory = File(applicationContext.cacheDir, CACHE_DIRECTORY).apply { mkdirs() }

@@ -8,6 +8,8 @@ interface ArticleRepository {
   suspend fun findArticle(articleId: String): Article?
   suspend fun findArticles(articleIds: Collection<String>): List<Article>
   suspend fun listUnreadArticles(): List<Article>
+  suspend fun listUnreadArticles(feedIds: Set<String>): List<Article> =
+    listUnreadArticles().filter { article -> article.feedId in feedIds }
   suspend fun listHistoryArticles(): List<Article>
   suspend fun markArticleRead(articleId: String)
   suspend fun markArticleUnread(articleId: String)

@@ -81,6 +81,29 @@ class ArticleRepositoryBoundaryTest {
   }
 
   @Test
+  fun `feed指定の未読取得は全体500件上限の外でも対象feedを返す`() = runBlocking {
+    repeat(501) { index ->
+      insertArticle(
+        id = "other-$index",
+        feedId = "other-feed",
+        readAt = null,
+        publishedAt = "2026-02-01T00:00:00Z",
+      )
+    }
+    insertArticle(
+      id = "selected",
+      feedId = "selected-feed",
+      readAt = null,
+      publishedAt = "2026-01-01T00:00:00Z",
+    )
+    val repository = repository()
+
+    val selected = repository.listUnreadArticles(setOf("selected-feed"))
+
+    assertEquals(listOf("selected"), selected.map { it.id })
+  }
+
+  @Test
   fun `cleanupは外部schemaを直接参照せず保護queryの結果を使う`() = runBlocking {
     insertArticle(id = "delete-me", readAt = "2026-01-01T00:00:00Z")
     insertArticle(id = "keep-me", readAt = "2026-01-01T00:00:00Z")
@@ -136,7 +159,12 @@ class ArticleRepositoryBoundaryTest {
     contentRetentionProtectionQuery = retentionQuery,
   )
 
-  private fun insertArticle(id: String, feedId: String? = null, readAt: String?) {
+  private fun insertArticle(
+    id: String,
+    feedId: String? = null,
+    readAt: String?,
+    publishedAt: String = "2026-01-01T00:00:00Z",
+  ) {
     helper.writableDatabase.insertOrThrow(
       "articles",
       null,
@@ -147,8 +175,8 @@ class ArticleRepositoryBoundaryTest {
         put("identity_key", "test:$id")
         put("url", "https://example.com/$id")
         put("title", id)
-        put("published_at", "2026-01-01T00:00:00Z")
-        put("fetched_at", "2026-01-01T00:00:00Z")
+        put("published_at", publishedAt)
+        put("fetched_at", publishedAt)
         if (readAt == null) putNull("read_at") else put("read_at", readAt)
         put("source_title", "test")
         put("source_feed_url", "")

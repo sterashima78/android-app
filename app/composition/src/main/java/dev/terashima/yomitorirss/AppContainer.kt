@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.composition.health.AppHealthRuntimeDependencies
 import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeRuntimeDependencies
 import dev.terashima.yomitorirss.composition.knowledge.AppKnowledgeTaskRuntimeDependencies
 import dev.terashima.yomitorirss.composition.library.AppLibraryRuntimeDependencies
+import dev.terashima.yomitorirss.composition.podcast.AppPodcastRuntimeDependencies
 import dev.terashima.yomitorirss.composition.supporting.AppSupportingRuntimeDependencies
 import dev.terashima.yomitorirss.composition.video.AppVideoRuntimeDependencies
 import dev.terashima.yomitorirss.composition.web.AppLanWebContentGateway
@@ -68,6 +69,19 @@ class AppContainer(
       dataChanges = dataChanges,
       httpClient = httpClient,
       summaryRepository = aiCoreRuntime.summaryRepository,
+    )
+  }
+
+  private val podcastRuntime: AppPodcastRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    AppPodcastRuntimeDependencies(
+      application = application,
+      database = databaseConnection,
+      httpClient = httpClient,
+      contentArticles = articleRepository,
+      feedRepository = contentRuntime.feedRepository,
+      localTextInference = aiCoreRuntime.textInference,
+      cloudTextInference = aiCoreRuntime.cloudTextInference,
+      audioPlaybackController = audioRuntime.playbackController,
     )
   }
 
@@ -170,8 +184,10 @@ class AppContainer(
   internal val cloudTextInference get() = aiCoreRuntime.cloudTextInference
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
   internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings
+  internal val podcastWorkerFactory get() = podcastRuntime.workerFactory
 
   val audioPlaybackController get() = audioRuntime.playbackController
+  val podcastViewModelFactory get() = podcastRuntime.viewModelFactory
   val bookmarkContentQuery get() = contentRuntime.bookmarkContentQuery
   val articleRepository get() = contentRuntime.articleRepository
   val assetRepository get() = supportingRuntime.assetRepository
@@ -232,5 +248,6 @@ class AppContainer(
 
   fun startBackgroundRuntime() {
     backgroundRuntime.start()
+    podcastRuntime.restoreSchedules()
   }
 }

@@ -6,6 +6,7 @@ data class AudioQueueItem(
   val contentId: String,
   val title: String,
   val source: String?,
+  val speechText: String? = null,
 )
 
 fun normalizeAudioQueue(items: List<AudioQueueItem>): List<AudioQueueItem> =

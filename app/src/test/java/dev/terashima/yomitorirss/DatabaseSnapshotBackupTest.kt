@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss
 
+import android.app.Application
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
@@ -14,7 +15,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(application = YomitoriApplication::class, sdk = [35])
+@Config(application = Application::class, sdk = [35])
 class DatabaseSnapshotBackupTest {
   private lateinit var context: Context
 
@@ -31,7 +32,7 @@ class DatabaseSnapshotBackupTest {
 
   @Test
   fun `WALを含むDBをsnapshotして置換復元できる`() {
-    val database = YomitoriDatabase.create(context)
+    val database = createDatabase()
     val snapshot = File(context.cacheDir, "snapshot-roundtrip.db")
     snapshot.delete()
     try {
@@ -67,7 +68,7 @@ class DatabaseSnapshotBackupTest {
 
   @Test(expected = IllegalArgumentException::class)
   fun `Yomitori識別子のないSQLite fileは復元対象にしない`() {
-    val database = YomitoriDatabase.create(context)
+    val database = createDatabase()
     val snapshot = File(context.cacheDir, "unmarked-snapshot.db")
     snapshot.delete()
     try {
@@ -81,7 +82,7 @@ class DatabaseSnapshotBackupTest {
 
   @Test(expected = IllegalArgumentException::class)
   fun `現在と異なるschema versionのsnapshotは復元対象にしない`() {
-    val database = YomitoriDatabase.create(context)
+    val database = createDatabase()
     val snapshot = File(context.cacheDir, "old-version-snapshot.db")
     snapshot.delete()
     try {
@@ -96,4 +97,7 @@ class DatabaseSnapshotBackupTest {
       snapshot.delete()
     }
   }
+
+  private fun createDatabase(): YomitoriDatabase =
+    YomitoriDatabase.create(context, appDatabaseSchema)
 }

@@ -60,6 +60,18 @@ class DefaultArticleRepository(
     "$ARTICLE_SELECT WHERE a.read_at IS NULL ORDER BY a.published_at DESC LIMIT 500",
   )
 
+  override suspend fun listUnreadArticles(feedIds: Set<String>): List<Article> {
+    val ids = feedIds.asSequence().filter(String::isNotBlank).distinct().toList()
+    if (ids.isEmpty()) return emptyList()
+    return ids.chunked(400).flatMap { chunk ->
+      val placeholders = chunk.joinToString(",") { "?" }
+      articles(
+        "$ARTICLE_SELECT WHERE a.read_at IS NULL AND a.feed_id IN($placeholders) ORDER BY a.published_at DESC",
+        chunk.toTypedArray(),
+      )
+    }.sortedByDescending(Article::publishedAt)
+  }
+
   override suspend fun listHistoryArticles(): List<Article> = articles(
     "$ARTICLE_SELECT WHERE a.read_at>=? ORDER BY a.read_at DESC LIMIT 500",
     arrayOf(Instant.now().minusSeconds(30L * 86400).toString()),

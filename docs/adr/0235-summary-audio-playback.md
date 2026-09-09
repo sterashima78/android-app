@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-07
 - Refines: [ADR-0125](0125-application-service-and-capability-segregation.md), [ADR-0150](0150-app-shell-navigation-ui-ownership.md), [ADR-0200](0200-app-composition-module-boundary.md)
+- Refined by: [ADR-0249](0249-news-podcast-context.md)
 
 ## Context
 

@@ -23,6 +23,8 @@ import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
 import dev.terashima.yomitorirss.feature.library.LIBRARY_TITLE
 import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
 import dev.terashima.yomitorirss.feature.mail.MAIL_TITLE
+import dev.terashima.yomitorirss.feature.podcast.PODCAST_ROUTE
+import dev.terashima.yomitorirss.feature.podcast.PODCAST_TITLE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
@@ -57,6 +59,7 @@ internal val allAppRoutes: Set<String> = linkedSetOf(
   INTEGRATED_ROUTE,
   RSS_UNREAD_ROUTE,
   RSS_READ_LATER_ROUTE,
+  PODCAST_ROUTE,
   REDDIT_UNREAD_ROUTE,
   REDDIT_READ_LATER_ROUTE,
   REDDIT_SUBSCRIPTIONS_ROUTE,
@@ -140,6 +143,7 @@ internal fun String.usesBookmarkEditOverlay(): Boolean = when (this) {
 internal fun String.appSection(): AppSection = when (this) {
   INTEGRATED_ROUTE -> AppSection.HOME
   RSS_UNREAD_ROUTE, RSS_READ_LATER_ROUTE, RSS_FEEDS_ROUTE, RSS_SETTINGS_ROUTE -> AppSection.RSS
+  PODCAST_ROUTE -> AppSection.PODCAST
   REDDIT_UNREAD_ROUTE, REDDIT_READ_LATER_ROUTE, REDDIT_SUBSCRIPTIONS_ROUTE -> AppSection.REDDIT
   BOOKMARKS_ROUTE, BOOKMARK_FOLDERS_ROUTE, BOOKMARK_TAGS_ROUTE, BOOKMARK_IMPORT_ROUTE -> AppSection.BOOKMARKS
   LIBRARY_ROUTE -> AppSection.LIBRARY
@@ -163,6 +167,7 @@ internal fun String.screenTitle(): String = rssDestinationTitle(this)
   ?: bookmarkDestinationTitle(this)
   ?: when (this) {
     INTEGRATED_ROUTE -> INTEGRATED_TITLE
+    PODCAST_ROUTE -> PODCAST_TITLE
     LIBRARY_ROUTE -> LIBRARY_TITLE
     VIDEO_ROUTE -> VIDEO_TITLE
     KNOWLEDGE_ROUTE -> KNOWLEDGE_TITLE
@@ -182,6 +187,7 @@ internal fun String.screenTitle(): String = rssDestinationTitle(this)
 internal fun AppSection.defaultRoute(): String = when (this) {
   AppSection.HOME -> INTEGRATED_ROUTE
   AppSection.RSS -> RSS_UNREAD_ROUTE
+  AppSection.PODCAST -> PODCAST_ROUTE
   AppSection.REDDIT -> REDDIT_UNREAD_ROUTE
   AppSection.BOOKMARKS -> BOOKMARKS_ROUTE
   AppSection.LIBRARY -> LIBRARY_ROUTE
