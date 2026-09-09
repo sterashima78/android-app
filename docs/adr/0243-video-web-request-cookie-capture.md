@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-08
 - Amends: [ADR-0241](0241-video-web-stream-cookie-opt-in.md)
+- Followed by: [ADR-0245](0245-video-playback-explicit-referrer-origin.md)
 
 ## Context
 
