@@ -133,12 +133,12 @@ Content を入力として generated summary と task lifecycle / priority の S
 現在の主要な実装 module は `:feature:podcast:{domain,data,ui}`。Podcast は複数のRSS / Atomフィードを束ねる番組、生成単位のエピソード、生成に利用した記事スナップショット、生成原稿、番組別の記事消費履歴、定刻生成設定を所有する。
 
 - RSS Context からは `FeedRepository` と feed body専用の `RssFeedContentReader` を利用し、リンク先ページの取得処理には依存しない。
-- Content Context からは `ArticleRepository` の未読read modelを利用して生成開始時点の対象を選ぶ。Podcast は Content table を直接readせず、生成や再生でContentのreading stateを変更しない。
+- Content Context からは `ArticleRepository` の対象feed別未読read modelを利用して予約時点の対象を選ぶ。Podcast は Content table を直接readせず、生成や再生でContentのreading stateを変更しない。
 - 未読候補とRSS feed contentを source identity で照合し、Podcastへ保存する記事identityには Content-owned article ID を利用する。
-- 番組ごとの消費履歴で重複を除外した後に `maxArticlesPerEpisode` を適用し、上限を超えた未消費記事は後続エピソード候補として残す。
-- AI推論前にエピソードと記事スナップショットをatomicに予約する。通常失敗時はFAILEDとして保持し、明示再生成では同じ記事スナップショットを再利用する。中断時はGENERATINGのまま保持し、次回生成で同じスナップショットから再開する。
-- 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。local推論は共通AI実行ゲートを利用し、定刻生成はprovider別のbackground pauseを尊重する。
-- 定刻実行はPodcast-owned scheduler adapterが担当し、`:app:composition` はapplication起動時のschedule reconciliationとWorkerFactory wiringだけを行う。
+- 番組ごとの消費履歴で重複を除外した後に候補を `maxArticlesPerEpisode` ごとに分割し、現在取得できた未消費候補を記事スナップショットとしてまとめて予約する。最初のエピソードを `GENERATING`、上限を超えた後続エピソードを `QUEUED` として保持する。
+- AI推論前にエピソード、記事スナップショット、consumed stateをatomicに予約する。次回生成は既存の `GENERATING`、次に最古の `QUEUED` を新しいfeed取得より優先する。通常失敗時は `FAILED` として保持し、明示再生成では同じ記事スナップショットを再利用する。中断時は `GENERATING` のまま保持し、次回生成で同じスナップショットから再開する。
+- 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。選択modelのprompt/input上限へ収まるよう入力を制限する。local推論は共通AI実行ゲートを利用し、定刻生成はprovider別のbackground pauseを尊重する。
+- 定刻実行はPodcast-owned scheduler adapterが次回ローカル日時を再計算するone-shot workを担当する。`:app:composition` はapplication起動時とdurable persistence置換後のschedule reconciliation、WorkerFactory wiringだけを行う。
 - 生成済み原稿の再生はAudioの `AudioPlaybackController` を利用する。PodcastはTTS、media session、音声cacheを共同所有しない。
 
 ### Knowledge
