@@ -31,15 +31,26 @@ class AndroidWebVideoExtractorClient(
   private val activityProvider: () -> Activity?,
 ) {
   suspend fun extract(url: String, rule: WebVideoExtractorRule): WebVideoExtractionResult =
-    extract(url, rule, includePlaybackCookies = false)
+    extract(
+      url = url,
+      rule = rule,
+      includePlaybackCookies = false,
+      observePlaybackRequest = false,
+    )
 
   suspend fun extractForPlayback(url: String, rule: WebVideoExtractorRule): WebVideoExtractionResult =
-    extract(url, rule, includePlaybackCookies = rule.shareCookiesForPlayback)
+    extract(
+      url = url,
+      rule = rule,
+      includePlaybackCookies = rule.shareCookiesForPlayback,
+      observePlaybackRequest = true,
+    )
 
   private suspend fun extract(
     url: String,
     rule: WebVideoExtractorRule,
     includePlaybackCookies: Boolean,
+    observePlaybackRequest: Boolean,
   ): WebVideoExtractionResult {
     validateWebVideoExtractorRule(rule)
     require(isSafeExtractorPageUrl(url)) { "動画抽出はHTTPSページのみ対応しています" }
@@ -50,7 +61,13 @@ class AndroidWebVideoExtractorClient(
         }
         val activity = requireNotNull(activityProvider()) { "動画抽出を実行できる画面がありません" }
         require(!activity.isFinishing && !activity.isDestroyed) { "動画抽出を実行できる画面がありません" }
-        extractOnMainThread(activity, url, rule, includePlaybackCookies)
+        extractOnMainThread(
+          activity = activity,
+          requestedUrl = url,
+          rule = rule,
+          includePlaybackCookies = includePlaybackCookies,
+          observePlaybackRequest = observePlaybackRequest,
+        )
       }
     }
   }
@@ -61,6 +78,7 @@ class AndroidWebVideoExtractorClient(
     requestedUrl: String,
     rule: WebVideoExtractorRule,
     includePlaybackCookies: Boolean,
+    observePlaybackRequest: Boolean,
   ): WebVideoExtractionResult = suspendCancellableCoroutine { continuation ->
     val handler = Handler(Looper.getMainLooper())
     val webView = WebView(activity)
@@ -112,6 +130,84 @@ class AndroidWebVideoExtractorClient(
       )
     }
 
+    fun completeExtraction(extraction: WebVideoExtractionResult) {
+      if (completed) return
+      val streamUrl = extraction.streamUrl
+      val capturedReferrerUrl = streamUrl?.let(requestReferrers::referrerFor)
+      val playbackCookieProvider = streamUrl?.let { resolvedStreamUrl ->
+        requestCookies.retainOnly(resolvedStreamUrl)
+        createPlaybackCookieProvider(
+          enabled = includePlaybackCookies,
+          capturedCookieLookup = { requestUrl ->
+            if (samePlaybackRequestUrl(requestUrl, resolvedStreamUrl)) {
+              requestCookies.cookieFor(requestUrl)
+            } else {
+              null
+            }
+          },
+          cookieLookup = profileCookieManager::getCookie,
+        )
+      }
+      val playbackDiagnostics = streamUrl?.let { resolvedStreamUrl ->
+        val observed = requestDiagnostics.diagnosticsFor(resolvedStreamUrl)
+        val capturedCookieObserved = requestCookies.cookieFor(resolvedStreamUrl) != null
+        val profileCookieAvailable = if (includePlaybackCookies) {
+          runCatching {
+            !profileCookieManager.getCookie(resolvedStreamUrl).isNullOrBlank()
+          }.getOrDefault(false)
+        } else {
+          false
+        }
+        webVideoPlaybackDiagnostics(
+          cookieSharingEnabled = includePlaybackCookies,
+          cookieInterceptSupported = cookieInterceptSupported,
+          observed = observed,
+          streamRequestCookieObserved = capturedCookieObserved,
+          profileCookieAvailable = profileCookieAvailable,
+        )
+      }
+      if (streamUrl == null) requestCookies.clear()
+      requestDiagnostics.clear()
+      finish(
+        Result.success(
+          extraction.copy(
+            referrerUrl = selectWebVideoPlaybackReferrerUrl(
+              capturedReferrerUrl = capturedReferrerUrl,
+              explicitReferrerUrl = extraction.referrerUrl,
+            ),
+            cookieProvider = playbackCookieProvider,
+            playbackDiagnostics = playbackDiagnostics,
+          ),
+        ),
+      )
+    }
+
+    fun finishAfterRequestObservation(extraction: WebVideoExtractionResult) {
+      val streamUrl = extraction.streamUrl?.takeIf(String::isNotBlank)
+      val observed = streamUrl?.let(requestDiagnostics::diagnosticsFor) ?: ObservedWebVideoRequestDiagnostics()
+      if (!shouldObserveWebVideoStreamRequestAfterExtraction(
+          observePlaybackRequest = observePlaybackRequest,
+          streamUrl = streamUrl,
+          observed = observed,
+        )
+      ) {
+        completeExtraction(extraction)
+        return
+      }
+
+      val deadline = SystemClock.uptimeMillis() + STREAM_REQUEST_OBSERVATION_WINDOW_MILLIS
+      fun observe() {
+        if (completed) return
+        val requestObserved = requestDiagnostics.diagnosticsFor(requireNotNull(streamUrl)).streamRequestObserved
+        if (requestObserved || SystemClock.uptimeMillis() >= deadline) {
+          completeExtraction(extraction)
+        } else {
+          handler.postDelayed({ observe() }, STREAM_REQUEST_OBSERVATION_POLL_MILLIS)
+        }
+      }
+      handler.postDelayed({ observe() }, STREAM_REQUEST_OBSERVATION_POLL_MILLIS)
+    }
+
     fun poll(finalUrl: String) {
       if (completed) return
       webView.evaluateJavascript(pollScript(stateKey)) { raw ->
@@ -120,57 +216,7 @@ class AndroidWebVideoExtractorClient(
           onSuccess = { poll ->
             when (poll.state) {
               "pending" -> handler.postDelayed({ poll(finalUrl) }, POLL_DELAY_MILLIS)
-              "done" -> {
-                val extraction = poll.result ?: WebVideoExtractionResult()
-                val streamUrl = extraction.streamUrl
-                val capturedReferrerUrl = streamUrl?.let(requestReferrers::referrerFor)
-                val playbackCookieProvider = streamUrl?.let { resolvedStreamUrl ->
-                  requestCookies.retainOnly(resolvedStreamUrl)
-                  createPlaybackCookieProvider(
-                    enabled = includePlaybackCookies,
-                    capturedCookieLookup = { requestUrl ->
-                      if (samePlaybackRequestUrl(requestUrl, resolvedStreamUrl)) {
-                        requestCookies.cookieFor(requestUrl)
-                      } else {
-                        null
-                      }
-                    },
-                    cookieLookup = profileCookieManager::getCookie,
-                  )
-                }
-                val playbackDiagnostics = streamUrl?.let { resolvedStreamUrl ->
-                  val observed = requestDiagnostics.diagnosticsFor(resolvedStreamUrl)
-                  val capturedCookieObserved = requestCookies.cookieFor(resolvedStreamUrl) != null
-                  val profileCookieAvailable = if (includePlaybackCookies) {
-                    runCatching {
-                      !profileCookieManager.getCookie(resolvedStreamUrl).isNullOrBlank()
-                    }.getOrDefault(false)
-                  } else {
-                    false
-                  }
-                  webVideoPlaybackDiagnostics(
-                    cookieSharingEnabled = includePlaybackCookies,
-                    cookieInterceptSupported = cookieInterceptSupported,
-                    observed = observed,
-                    streamRequestCookieObserved = capturedCookieObserved,
-                    profileCookieAvailable = profileCookieAvailable,
-                  )
-                }
-                if (streamUrl == null) requestCookies.clear()
-                requestDiagnostics.clear()
-                finish(
-                  Result.success(
-                    extraction.copy(
-                      referrerUrl = selectWebVideoPlaybackReferrerUrl(
-                        capturedReferrerUrl = capturedReferrerUrl,
-                        explicitReferrerUrl = extraction.referrerUrl,
-                      ),
-                      cookieProvider = playbackCookieProvider,
-                      playbackDiagnostics = playbackDiagnostics,
-                    ),
-                  ),
-                )
-              }
+              "done" -> finishAfterRequestObservation(poll.result ?: WebVideoExtractionResult())
               "error" -> finish(Result.failure(IllegalStateException(poll.message ?: "動画抽出に失敗しました")))
               else -> finish(Result.failure(IllegalStateException("動画抽出の実行状態が不正です")))
             }
@@ -315,8 +361,16 @@ class AndroidWebVideoExtractorClient(
   private companion object {
     const val PROFILE_NAME = "mosaic-video-extractor"
     const val POLL_DELAY_MILLIS = 100L
+    const val STREAM_REQUEST_OBSERVATION_WINDOW_MILLIS = 1_000L
+    const val STREAM_REQUEST_OBSERVATION_POLL_MILLIS = 100L
   }
 }
+
+internal fun shouldObserveWebVideoStreamRequestAfterExtraction(
+  observePlaybackRequest: Boolean,
+  streamUrl: String?,
+  observed: ObservedWebVideoRequestDiagnostics,
+): Boolean = observePlaybackRequest && !streamUrl.isNullOrBlank() && !observed.streamRequestObserved
 
 internal class WebVideoRequestReferrerCapture(
   private val maxEntries: Int = 64,
