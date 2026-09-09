@@ -16,6 +16,7 @@ Mosaic は、端末内に個人情報を集約し、source 固有の意味を保
 | Curation | Bookmark、あとで読む、Tag、Folder | Curation (`feature:bookmark`) |
 | Generated content | Summary、metadata補完、Knowledge | Summary / Knowledge |
 | Audio playback | 保存済み要約の端末内TTS、連続再生、media session | Audio |
+| News podcast | Podcast専用RSS / Atom source、episode生成、定刻生成 | Podcast |
 | Video playback | SMB / Web動画catalog、Web extractor、視聴継続、foreground Media3再生 | Video |
 | Personal communication | Gmail閲覧・整理 | Mail |
 | Library | Kindle / Audible / Google Books / SMB / Web、Book Reader | Library |
@@ -302,6 +303,38 @@ Evidence:
 - `feature/audio/`
 - `app/composition/src/main/java/dev/terashima/yomitorirss/composition/audio/`
 
+### 3.8 News podcast
+
+```text
+Podcast-owned RSS / Atom source URLs
+                 |
+                 v
+       URL-based feed content reader
+                 |
+                 v
+              Podcast
+      program / episode / snapshot
+        program-scoped consumed state
+                 |
+                 v
+               Audio
+```
+
+重要な境界:
+
+- Podcast sourceはRSS readerの購読とは別のdurable lifecycleを持つ。reader側の購読追加・削除・既読化をPodcast sourceへ同期しない。
+- RSS / AtomのHTTP取得・解析能力は再利用するが、Podcast runtimeは `FeedRepository`、`ArticleRepository`、RSS購読table、Content read stateへ依存しない。
+- 生成候補は「readerで未読か」ではなく「そのPodcast番組で未消費か」で決める。
+- feedに含まれるtitle / bodyだけをAI入力にし、リンク先ページや一般知識を自動追加しない。
+- Podcastがsource、番組、episode、snapshot、consumed state、scheduleを所有し、生成済み原稿のTTS / media sessionはAudioへ委譲する。
+
+Evidence:
+
+- [`podcast.md`](podcast.md)
+- [`context-map.md`](context-map.md)
+- [`persistence.md`](persistence.md)
+- `feature/podcast/`
+
 ## 4. Persistence and trust boundaries
 
 ### Durable relational data
@@ -358,6 +391,7 @@ Evidence:
 12. compatibility のために維持すべき identity と、一時 migration を区別する。
 13. architecture 上の意思決定は ADR に記録し、current architecture document を同時に更新する。
 14. 機械検査可能な architecture rule は可能な限り CI / manifest で強制する。
+15. Podcastのsource lifecycleとentry消費状態をRSS readerの購読・既読stateに従属させない。
 
 ## 6. Decision-sensitive surfaces
 
@@ -436,9 +470,12 @@ Architecture Control Plane が機能しているかは、次の質問にコー�
 - [`background-refresh.md`](background-refresh.md)
 - [`ai-runtime.md`](ai-runtime.md)
 - [`audio-playback.md`](audio-playback.md)
+- [`podcast.md`](podcast.md)
 - [`video.md`](video.md)
 - [`web-content.md`](web-content.md)
 - [`../adr/0228-human-architecture-control-plane.md`](../adr/0228-human-architecture-control-plane.md)
 - [`../adr/0235-summary-audio-playback.md`](../adr/0235-summary-audio-playback.md)
 - [`../adr/0237-video-library-and-web-extraction.md`](../adr/0237-video-library-and-web-extraction.md)
 - [`../adr/0239-shared-smb-connection-profiles-and-feature-locations.md`](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
+- [`../adr/0249-news-podcast-context.md`](../adr/0249-news-podcast-context.md)
+- [`../adr/0250-podcast-owned-feed-sources.md`](../adr/0250-podcast-owned-feed-sources.md)
