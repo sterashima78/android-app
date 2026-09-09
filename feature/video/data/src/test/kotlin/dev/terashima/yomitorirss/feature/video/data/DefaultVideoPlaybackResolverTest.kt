@@ -8,6 +8,8 @@ import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackDiagnostics
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackReferrerSource
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +52,39 @@ class DefaultVideoPlaybackResolverTest {
   fun `HTTP以外のURLはWebストリームRefererにしない`() {
     assertNull(webStreamReferrerUrl("file:///tmp/video.html"))
     assertNull(webStreamReferrerUrl("not a url"))
+  }
+
+  @Test
+  fun `実requestのRefererを観測した場合は実requestを参照元経路とする`() {
+    assertEquals(
+      WebVideoPlaybackReferrerSource.OBSERVED_REQUEST,
+      webVideoPlaybackReferrerSource(
+        diagnostics = WebVideoPlaybackDiagnostics(streamRequestRefererObserved = true),
+        selectedReferrerUrl = "https://player.example.net/",
+      ),
+    )
+  }
+
+  @Test
+  fun `実requestのReferer未観測で参照元URLがあればextractor指定とする`() {
+    assertEquals(
+      WebVideoPlaybackReferrerSource.EXTRACTOR,
+      webVideoPlaybackReferrerSource(
+        diagnostics = WebVideoPlaybackDiagnostics(streamRequestObserved = false),
+        selectedReferrerUrl = "https://player.example.net/embed/1",
+      ),
+    )
+  }
+
+  @Test
+  fun `参照元URLがなければ元ページを参照元経路とする`() {
+    assertEquals(
+      WebVideoPlaybackReferrerSource.PAGE,
+      webVideoPlaybackReferrerSource(
+        diagnostics = WebVideoPlaybackDiagnostics(),
+        selectedReferrerUrl = null,
+      ),
+    )
   }
 
   @Test
