@@ -24,7 +24,6 @@ android {
 dependencies {
   implementation(project(":feature:audio:domain"))
   implementation(project(":feature:podcast:domain"))
-  implementation(project(":feature:rss:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
   implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
