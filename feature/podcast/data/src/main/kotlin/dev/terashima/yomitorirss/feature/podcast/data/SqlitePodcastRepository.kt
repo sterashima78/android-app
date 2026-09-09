@@ -12,11 +12,51 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
+import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import java.util.UUID
 
 class SqlitePodcastRepository(
   private val database: DatabaseConnection,
 ) : PodcastRepository {
+  override suspend fun listSources(): List<PodcastSource> = database.readable.rawQuery(
+    "SELECT * FROM podcast_sources ORDER BY name COLLATE NOCASE",
+    null,
+  ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.source()) } }
+
+  override suspend fun findSource(sourceId: String): PodcastSource? = database.readable.rawQuery(
+    "SELECT * FROM podcast_sources WHERE id=? LIMIT 1",
+    arrayOf(sourceId),
+  ).use { cursor -> if (cursor.moveToFirst()) cursor.source() else null }
+
+  override suspend fun saveSource(source: PodcastSource) {
+    database.write {
+      val updated = update(
+        "podcast_sources",
+        source.values(),
+        "id=?",
+        arrayOf(source.id),
+      )
+      if (updated == 0) {
+        insertOrThrow("podcast_sources", null, source.values())
+      }
+    }
+  }
+
+  override suspend fun deleteSource(sourceId: String) {
+    val referenced = database.readable.rawQuery(
+      "SELECT source_ids FROM podcast_programs",
+      null,
+    ).use { cursor ->
+      var found = false
+      while (!found && cursor.moveToNext()) {
+        found = sourceId in cursor.getString(0).lineSequence().filter(String::isNotBlank).toSet()
+      }
+      found
+    }
+    require(!referenced) { "番組で利用中のソースは削除できません" }
+    database.write { delete("podcast_sources", "id=?", arrayOf(sourceId)) }
+  }
+
   override suspend fun listPrograms(): List<PodcastProgram> = database.readable.rawQuery(
     "SELECT * FROM podcast_programs ORDER BY name COLLATE NOCASE",
     null,
@@ -185,10 +225,16 @@ class SqlitePodcastRepository(
   }
 }
 
+private fun PodcastSource.values(): ContentValues = ContentValues().apply {
+  put("id", id)
+  put("name", name)
+  put("feed_url", feedUrl)
+}
+
 private fun PodcastProgram.values(): ContentValues = ContentValues().apply {
   put("id", id)
   put("name", name)
-  put("feed_ids", feedIds.sorted().joinToString("\n"))
+  put("source_ids", sourceIds.sorted().joinToString("\n"))
   put("provider", provider.name)
   put("schedule_enabled", if (schedule.enabled) 1 else 0)
   put("schedule_hour", schedule.hour)
@@ -196,12 +242,18 @@ private fun PodcastProgram.values(): ContentValues = ContentValues().apply {
   put("max_articles", maxArticlesPerEpisode)
 }
 
+private fun Cursor.source(): PodcastSource = PodcastSource(
+  id = string("id"),
+  name = string("name"),
+  feedUrl = string("feed_url"),
+)
+
 private fun Cursor.programOrNull(): PodcastProgram? = if (moveToFirst()) program() else null
 
 private fun Cursor.program(): PodcastProgram = PodcastProgram(
   id = string("id"),
   name = string("name"),
-  feedIds = string("feed_ids").lineSequence().filter(String::isNotBlank).toSet(),
+  sourceIds = string("source_ids").lineSequence().filter(String::isNotBlank).toSet(),
   provider = PodcastGenerationProvider.valueOf(string("provider")),
   schedule = PodcastSchedule(
     enabled = int("schedule_enabled") != 0,
