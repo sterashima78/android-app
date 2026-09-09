@@ -61,6 +61,17 @@ class DefaultVideoPlaybackResolverTest {
   }
 
   @Test
+  fun `opt-in時はpercent encoded pathを変更せず共有する`() {
+    assertEquals(
+      "https://player.example.net/embed/a%2Fb%20c",
+      webVideoPlaybackReferrerUrl(
+        referrerUrl = "https://player.example.net/embed/a%2Fb%20c?token=fixture#player",
+        shareReferrerPath = true,
+      ),
+    )
+  }
+
+  @Test
   fun `opt-in時もRefererからuserinfo query fragmentを除去する`() {
     assertEquals(
       "https://player.example.net:8443/embed/123",
