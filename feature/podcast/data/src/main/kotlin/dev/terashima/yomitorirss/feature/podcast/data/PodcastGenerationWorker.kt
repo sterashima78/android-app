@@ -4,10 +4,10 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
-import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.ListenableWorker
 import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
@@ -28,26 +28,38 @@ class PodcastGenerationWorker(
   params: WorkerParameters,
   private val repository: PodcastRepository,
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
+  private val scheduleController: PodcastScheduleController,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     val programId = inputData.getString(KEY_PROGRAM_ID) ?: return Result.failure()
-    val program = repository.findProgram(programId) ?: return Result.failure()
-    val localPaused = LocalAiBackgroundExecutionPreferences(applicationContext).paused
-    val cloudPaused = CloudAiBackgroundExecutionPreferences(applicationContext).paused
-    if (shouldSkipPodcastGeneration(program.provider, localPaused, cloudPaused)) {
-      return Result.success()
-    }
-
+    val program = repository.findProgram(programId) ?: return Result.success()
+    var scheduleNext = true
     return try {
-      generatePodcastEpisode.generate(programId)
+      val localPaused = LocalAiBackgroundExecutionPreferences(applicationContext).paused
+      val cloudPaused = CloudAiBackgroundExecutionPreferences(applicationContext).paused
+      if (!shouldSkipPodcastGeneration(program.provider, localPaused, cloudPaused)) {
+        try {
+          generatePodcastEpisode.generate(programId)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (_: Throwable) {
+          // Generation persists its episode failure. The scheduled chain itself stays successful so
+          // the next daily occurrence remains eligible to run.
+        }
+      }
       Result.success()
     } catch (error: CancellationException) {
+      scheduleNext = false
       throw error
-    } catch (_: Throwable) {
-      // The use case persists the reserved episode as FAILED. Retrying this periodic work by
-      // program id would reserve a different set of articles; retry is intentionally explicit by
-      // episode id so the stored article snapshot is reused.
-      Result.failure()
+    } finally {
+      if (scheduleNext) {
+        val currentProgram = try {
+          repository.findProgram(programId)
+        } catch (_: Throwable) {
+          null
+        }
+        currentProgram?.let(scheduleController::scheduleNext)
+      }
     }
   }
 
@@ -59,13 +71,20 @@ class PodcastGenerationWorker(
 class PodcastGenerationWorkerFactory(
   private val repository: PodcastRepository,
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
+  private val scheduleController: PodcastScheduleController,
 ) : WorkerFactory() {
   override fun createWorker(
     appContext: Context,
     workerClassName: String,
     workerParameters: WorkerParameters,
   ): ListenableWorker? = if (workerClassName == PodcastGenerationWorker::class.java.name) {
-    PodcastGenerationWorker(appContext, workerParameters, repository, generatePodcastEpisode)
+    PodcastGenerationWorker(
+      appContext,
+      workerParameters,
+      repository,
+      generatePodcastEpisode,
+      scheduleController,
+    )
   } else {
     null
   }
@@ -81,24 +100,28 @@ class WorkManagerPodcastScheduleController(
   }
 
   override fun sync(program: PodcastProgram) {
-    enqueue(program, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
+    enqueue(program, ExistingWorkPolicy.REPLACE)
   }
 
   override fun ensure(program: PodcastProgram) {
-    enqueue(program, ExistingPeriodicWorkPolicy.KEEP)
+    enqueue(program, ExistingWorkPolicy.KEEP)
+  }
+
+  override fun scheduleNext(program: PodcastProgram) {
+    enqueue(program, ExistingWorkPolicy.APPEND_OR_REPLACE)
   }
 
   override fun cancel(programId: String) {
     workManager.cancelUniqueWork(workName(programId))
   }
 
-  private fun enqueue(program: PodcastProgram, policy: ExistingPeriodicWorkPolicy) {
+  private fun enqueue(program: PodcastProgram, policy: ExistingWorkPolicy) {
     if (!program.schedule.enabled) {
       cancel(program.id)
       return
     }
 
-    val request = PeriodicWorkRequestBuilder<PodcastGenerationWorker>(24, TimeUnit.HOURS)
+    val request = OneTimeWorkRequestBuilder<PodcastGenerationWorker>()
       .setInputData(Data.Builder().putString(PodcastGenerationWorker.KEY_PROGRAM_ID, program.id).build())
       .setInitialDelay(nextRunDelayMillis(now(), program.schedule.hour, program.schedule.minute), TimeUnit.MILLISECONDS)
       .setConstraints(
@@ -108,7 +131,7 @@ class WorkManagerPodcastScheduleController(
       )
       .build()
 
-    workManager.enqueueUniquePeriodicWork(workName(program.id), policy, request)
+    workManager.enqueueUniqueWork(workName(program.id), policy, request)
   }
 
   private fun workName(programId: String): String = "podcast-program-$programId"
