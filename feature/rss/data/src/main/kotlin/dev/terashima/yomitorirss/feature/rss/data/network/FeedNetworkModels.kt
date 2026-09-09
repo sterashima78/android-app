@@ -6,6 +6,7 @@ internal data class ParsedArticle(
   val url: String,
   val title: String,
   val publishedAt: String,
+  val feedContent: String = "",
 )
 
 internal data class ParsedFeed(

@@ -8,13 +8,14 @@ import dev.terashima.yomitorirss.feature.chat.data.chatDatabaseSchema
 import dev.terashima.yomitorirss.feature.knowledge.data.knowledgeDatabaseSchema
 import dev.terashima.yomitorirss.feature.library.data.libraryDatabaseSchema
 import dev.terashima.yomitorirss.feature.mail.data.mailDatabaseSchema
+import dev.terashima.yomitorirss.feature.podcast.data.podcastDatabaseSchema
 import dev.terashima.yomitorirss.feature.rss.data.rssDatabaseSchema
 import dev.terashima.yomitorirss.feature.summary.data.summaryDatabaseSchema
 import dev.terashima.yomitorirss.feature.task.data.taskDatabaseSchema
 import dev.terashima.yomitorirss.feature.video.data.videoDatabaseSchema
 
 val appDatabaseSchema = DatabaseSchema(
-  version = 32,
+  version = 33,
   contributions = listOf(
     rssDatabaseSchema,
     articleDatabaseSchema,
@@ -27,5 +28,6 @@ val appDatabaseSchema = DatabaseSchema(
     taskDatabaseSchema,
     chatDatabaseSchema,
     videoDatabaseSchema,
+    podcastDatabaseSchema,
   ),
 )

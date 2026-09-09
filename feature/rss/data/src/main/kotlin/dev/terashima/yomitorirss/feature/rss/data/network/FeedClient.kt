@@ -94,7 +94,18 @@ internal class FeedClient(
       if (articleTitle.isBlank() || url.isBlank()) return@mapNotNull null
       val externalId = entry.directChildText("id").trim().ifBlank { null }
       val published = parseDate(entry.directChildText("published").ifBlank { entry.directChildText("updated") })
-      ParsedArticle(externalId, identityKey(externalId, url, articleTitle, published), url, articleTitle, published)
+      val feedContent = entry.directChildText("content")
+        .ifBlank { entry.directChildText("summary") }
+        .repairText()
+        .trim()
+      ParsedArticle(
+        externalId = externalId,
+        identityKey = identityKey(externalId, url, articleTitle, published),
+        url = url,
+        title = articleTitle,
+        publishedAt = published,
+        feedContent = feedContent,
+      )
     }
     return ParsedFeed(title, feedUrl, siteUrl, articles)
   }
@@ -119,7 +130,18 @@ internal class FeedClient(
           .ifBlank { item.directChildText("date") }
           .ifBlank { item.directChildText("updated") },
       )
-      ParsedArticle(guid, identityKey(guid, url, articleTitle, published), url, articleTitle, published)
+      val feedContent = item.directChildText("encoded")
+        .ifBlank { item.directChildText("description") }
+        .repairText()
+        .trim()
+      ParsedArticle(
+        externalId = guid,
+        identityKey = identityKey(guid, url, articleTitle, published),
+        url = url,
+        title = articleTitle,
+        publishedAt = published,
+        feedContent = feedContent,
+      )
     }
     if (articles.isEmpty() && title == feedUrl) error("RSSフィードを解析できませんでした")
     return ParsedFeed(title, feedUrl, siteUrl, articles)

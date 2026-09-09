@@ -21,6 +21,8 @@ import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
 import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
+import dev.terashima.yomitorirss.feature.podcast.PODCAST_ROUTE
+import dev.terashima.yomitorirss.feature.podcast.PodcastRoute
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
@@ -70,6 +72,12 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
     MailRouteHost(
       modifier = Modifier.fillMaxSize(),
       routeDependencies = routeDependencies,
+    )
+  }
+  composable(PODCAST_ROUTE) {
+    PodcastRoute(
+      viewModelFactory = routeDependencies.podcastViewModelFactory,
+      modifier = Modifier.fillMaxSize(),
     )
   }
   composable(X_ROUTE) {

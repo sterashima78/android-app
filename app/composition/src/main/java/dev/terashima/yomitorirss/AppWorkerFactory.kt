@@ -20,6 +20,7 @@ import dev.terashima.yomitorirss.feature.widget.data.WidgetWorkerFactory
 fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
   DelegatingWorkerFactory().apply {
     addFactory(IntegratedRefreshWorkerFactory(container))
+    addFactory(container.podcastWorkerFactory)
     addFactory(BackupWorkerFactory { container.backupRepository })
     addFactory(KnowledgeWorkerFactory { container.knowledgeBuildRunner })
     addFactory(MailWorkerFactory { container.mailRepository })

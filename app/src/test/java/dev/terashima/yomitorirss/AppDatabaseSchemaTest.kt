@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(32, db.version)
+    assertEquals(33, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -104,6 +104,10 @@ class AppDatabaseSchemaTest {
         "video_providers",
         "video_subscriptions",
         "video_provider_items",
+        "podcast_programs",
+        "podcast_episodes",
+        "podcast_episode_articles",
+        "podcast_consumed_articles",
       ),
       tableNames(db),
     )
@@ -197,7 +201,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(32, db.version)
+    assertEquals(33, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -257,7 +261,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(32, db.version)
+    assertEquals(33, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
@@ -339,7 +343,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(32, db.version)
+    assertEquals(33, db.version)
     assertEquals(1, countRows(db, "video_providers", "provider_type=?", arrayOf("YOUTUBE")))
     assertEquals(1, countRows(db, "video_subscriptions", "source_id=?", arrayOf("channel-1")))
     assertEquals(2, countRows(db, "video_provider_items", "provider_id=?", arrayOf("youtube")))
@@ -390,13 +394,68 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(32, db.version)
+    assertEquals(33, db.version)
     assertTrue("function_code" in columnNames(db, "video_providers"))
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("builtin-provider")))
     assertEquals(
       "YOUTUBE",
       singleString(db, "SELECT provider_type FROM video_providers WHERE id = ?", arrayOf("builtin-provider")),
     )
+  }
+
+  @Test
+  fun `version 32 database adds Podcast tables without losing Video provider state`() {
+    val previousSchema = DatabaseSchema(
+      version = 32,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v32",
+          createSchema = { db ->
+            db.execSQL(
+              """
+                CREATE TABLE video_providers(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  provider_type TEXT NOT NULL UNIQUE,
+                  name TEXT NOT NULL,
+                  enabled INTEGER NOT NULL DEFAULT 1,
+                  function_code TEXT,
+                  created_at INTEGER NOT NULL,
+                  updated_at INTEGER NOT NULL
+                )
+              """.trimIndent(),
+            )
+          },
+        ),
+      ),
+    )
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    legacy.writableDatabase.insertOrThrow(
+      "video_providers",
+      null,
+      ContentValues().apply {
+        put("id", "custom-provider")
+        put("provider_type", "CUSTOM")
+        put("name", "Custom Provider")
+        put("enabled", 1)
+        put("function_code", "return null")
+        put("created_at", 100L)
+        put("updated_at", 200L)
+      },
+    )
+    legacy.close()
+
+    val db = openDatabase().writableDatabase
+
+    assertEquals(33, db.version)
+    assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("custom-provider")))
+    assertEquals(
+      "return null",
+      singleString(db, "SELECT function_code FROM video_providers WHERE id = ?", arrayOf("custom-provider")),
+    )
+    assertTrue("podcast_programs" in tableNames(db))
+    assertTrue("podcast_episodes" in tableNames(db))
+    assertTrue("podcast_episode_articles" in tableNames(db))
+    assertTrue("podcast_consumed_articles" in tableNames(db))
   }
 
   @Test

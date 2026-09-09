@@ -95,6 +95,7 @@ internal fun AppDrawerContent(
                 AppSection.GAME -> Icons.Default.SportsEsports
                 AppSection.HEALTH -> Icons.Default.Favorite
                 AppSection.WORKOUT -> Icons.Default.FitnessCenter
+                AppSection.PODCAST -> Icons.Default.RssFeed
                 AppSection.AI_CHAT -> Icons.Default.Chat
                 AppSection.SETTINGS -> Icons.Default.Settings
               },

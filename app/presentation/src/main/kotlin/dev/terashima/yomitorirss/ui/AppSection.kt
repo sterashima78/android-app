@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.ui
 enum class AppSection(val label: String) {
   HOME("統合ビュー"),
   RSS("RSS"),
+  PODCAST("ニュースポッドキャスト"),
   REDDIT("Reddit"),
   BOOKMARKS("ブックマーク"),
   LIBRARY("蔵書"),
