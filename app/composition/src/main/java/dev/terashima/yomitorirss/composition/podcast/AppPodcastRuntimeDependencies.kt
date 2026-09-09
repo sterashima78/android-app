@@ -28,8 +28,8 @@ internal class AppPodcastRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   httpClient: HttpClient,
-  contentArticles: ArticleRepository,
-  feedRepository: FeedRepository,
+  @Suppress("UNUSED_PARAMETER") contentArticles: ArticleRepository,
+  @Suppress("UNUSED_PARAMETER") feedRepository: FeedRepository,
   localTextInference: AiTextInference,
   cloudTextInference: AiTextInference,
   audioPlaybackController: AudioPlaybackController,
@@ -41,7 +41,6 @@ internal class AppPodcastRuntimeDependencies(
     repository = repository,
     feedContentSource = RssPodcastFeedContentSource(
       reader = DefaultRssFeedContentReader(database, httpClient),
-      articleRepository = contentArticles,
     ),
     scriptGenerator = DefaultPodcastScriptGenerator(localTextInference, cloudTextInference),
   )
@@ -49,7 +48,6 @@ internal class AppPodcastRuntimeDependencies(
 
   val viewModelFactory = PodcastViewModel.Factory(
     repository = repository,
-    feedRepository = feedRepository,
     generatePodcastEpisode = generationUseCase,
     scheduleController = scheduleController,
     audioPlaybackController = audioPlaybackController,
