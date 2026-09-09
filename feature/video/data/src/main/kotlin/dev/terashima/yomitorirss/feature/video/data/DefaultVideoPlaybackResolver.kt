@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackDiagnostics
 import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackReferrerSource
 import java.net.URI
 import kotlinx.coroutines.CoroutineDispatcher
@@ -76,24 +77,30 @@ class DefaultVideoPlaybackResolver(
     return custom?.streamUrl
       ?.takeIf(String::isNotBlank)
       ?.let {
-        val playbackReferrerSource = when {
-          custom.playbackDiagnostics?.streamRequestRefererObserved == true ->
-            WebVideoPlaybackReferrerSource.OBSERVED_REQUEST
-          !custom.referrerUrl.isNullOrBlank() -> WebVideoPlaybackReferrerSource.EXTRACTOR
-          else -> WebVideoPlaybackReferrerSource.PAGE
-        }
         VideoPlaybackTarget.Stream(
           url = it,
           mimeType = custom.mimeType,
           referrerUrl = webStreamReferrerUrl(pageUrl, custom.referrerUrl),
           cookieProvider = custom.cookieProvider,
           playbackDiagnostics = custom.playbackDiagnostics?.copy(
-            playbackReferrerSource = playbackReferrerSource,
+            playbackReferrerSource = webVideoPlaybackReferrerSource(
+              diagnostics = custom.playbackDiagnostics,
+              selectedReferrerUrl = custom.referrerUrl,
+            ),
           ),
         )
       }
       ?: VideoPlaybackTarget.WebPage(pageUrl)
   }
+}
+
+internal fun webVideoPlaybackReferrerSource(
+  diagnostics: WebVideoPlaybackDiagnostics?,
+  selectedReferrerUrl: String?,
+): WebVideoPlaybackReferrerSource = when {
+  diagnostics?.streamRequestRefererObserved == true -> WebVideoPlaybackReferrerSource.OBSERVED_REQUEST
+  !selectedReferrerUrl.isNullOrBlank() -> WebVideoPlaybackReferrerSource.EXTRACTOR
+  else -> WebVideoPlaybackReferrerSource.PAGE
 }
 
 internal fun webStreamReferrerUrl(
