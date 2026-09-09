@@ -79,11 +79,13 @@ internal fun VideoUnwatchedList(
         left = SwipeAction(
           label = "視聴済み",
           color = MaterialTheme.colorScheme.primary,
+          dismissesItem = false,
           onCommit = { onSetCompleted(item, true) },
         ),
         right = SwipeAction(
           label = "保存",
           color = MaterialTheme.colorScheme.secondary,
+          dismissesItem = false,
           onCommit = { onSaveVideo(item, null) },
         ),
       ) {
