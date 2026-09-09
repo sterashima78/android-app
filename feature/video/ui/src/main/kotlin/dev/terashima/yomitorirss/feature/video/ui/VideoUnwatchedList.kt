@@ -31,13 +31,13 @@ import dev.terashima.yomitorirss.core.designsystem.SwipeAction
 import dev.terashima.yomitorirss.core.designsystem.SwipeActionListItem
 import dev.terashima.yomitorirss.feature.video.VideoItem
 
-enum class VideoUnwatchedLayout {
+internal enum class VideoUnwatchedLayout {
   GRID,
   LIST,
 }
 
 @Composable
-fun VideoUnwatchedLayoutSelector(
+internal fun VideoUnwatchedLayoutSelector(
   selected: VideoUnwatchedLayout,
   onSelected: (VideoUnwatchedLayout) -> Unit,
 ) {
@@ -63,7 +63,7 @@ fun VideoUnwatchedLayoutSelector(
 }
 
 @Composable
-fun VideoUnwatchedList(
+internal fun VideoUnwatchedList(
   items: List<VideoItem>,
   onPlay: (VideoItem) -> Unit,
   onSaveVideo: (VideoItem, String?) -> Unit,
@@ -77,7 +77,7 @@ fun VideoUnwatchedList(
       SwipeActionListItem(
         itemKey = item.id,
         left = SwipeAction(
-          label = "既読",
+          label = "視聴済み",
           color = MaterialTheme.colorScheme.primary,
           onCommit = { onSetCompleted(item, true) },
         ),
