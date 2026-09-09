@@ -468,8 +468,53 @@ class AppDatabaseSchemaTest {
         DatabaseSchemaContribution(
           owner = "legacy-v33",
           createSchema = { db ->
-            db.execSQL("CREATE TABLE feeds(id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,feed_url TEXT NOT NULL)")
-            db.execSQL("CREATE TABLE articles(id TEXT PRIMARY KEY NOT NULL,feed_id TEXT,identity_key TEXT NOT NULL)")
+            db.execSQL(
+              """
+                CREATE TABLE feed_folders(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  name TEXT NOT NULL,
+                  normalized_name TEXT NOT NULL UNIQUE,
+                  created_at TEXT NOT NULL,
+                  content_type TEXT
+                )
+              """.trimIndent(),
+            )
+            db.execSQL(
+              """
+                CREATE TABLE feeds(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  title TEXT NOT NULL,
+                  custom_title TEXT,
+                  feed_url TEXT NOT NULL UNIQUE,
+                  site_url TEXT,
+                  etag TEXT,
+                  last_modified TEXT,
+                  last_fetched_at TEXT,
+                  last_error TEXT,
+                  created_at TEXT NOT NULL,
+                  folder_id TEXT REFERENCES feed_folders(id) ON DELETE SET NULL,
+                  content_type TEXT
+                )
+              """.trimIndent(),
+            )
+            db.execSQL(
+              """
+                CREATE TABLE articles(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  feed_id TEXT REFERENCES feeds(id) ON DELETE SET NULL,
+                  external_id TEXT,
+                  identity_key TEXT NOT NULL,
+                  url TEXT NOT NULL,
+                  title TEXT NOT NULL,
+                  published_at TEXT NOT NULL,
+                  fetched_at TEXT NOT NULL,
+                  read_at TEXT,
+                  source_title TEXT NOT NULL,
+                  source_feed_url TEXT NOT NULL,
+                  content_type TEXT
+                )
+              """.trimIndent(),
+            )
             db.execSQL(
               "CREATE TABLE podcast_programs(" +
                 "id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,feed_ids TEXT NOT NULL,provider TEXT NOT NULL," +
@@ -503,8 +548,10 @@ class AppDatabaseSchemaTest {
       null,
       ContentValues().apply {
         put("id", "feed-1")
-        put("title", "ニュース")
+        put("title", "取得元ニュース")
+        put("custom_title", "カスタムニュース")
         put("feed_url", "https://example.invalid/feed.xml")
+        put("created_at", "2026-09-01T00:00:00Z")
       },
     )
     db.insertOrThrow(
@@ -514,6 +561,12 @@ class AppDatabaseSchemaTest {
         put("id", "article-1")
         put("feed_id", "feed-1")
         put("identity_key", "entry-1")
+        put("url", "https://example.invalid/article-1")
+        put("title", "記事")
+        put("published_at", "2026-09-01T00:00:00Z")
+        put("fetched_at", "2026-09-01T00:00:01Z")
+        put("source_title", "カスタムニュース")
+        put("source_feed_url", "https://example.invalid/feed.xml")
       },
     )
     db.insertOrThrow(
@@ -569,7 +622,7 @@ class AppDatabaseSchemaTest {
 
     assertEquals(34, migrated.version)
     assertEquals(
-      "ニュース",
+      "カスタムニュース",
       singleString(migrated, "SELECT name FROM podcast_sources WHERE id=?", arrayOf("feed-1")),
     )
     assertEquals(
