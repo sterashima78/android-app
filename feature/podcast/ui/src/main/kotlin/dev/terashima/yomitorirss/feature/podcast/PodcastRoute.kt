@@ -115,10 +115,11 @@ fun PodcastRoute(
   if (editorVisible) {
     PodcastProgramEditorDialog(
       program = editorProgram,
-      feeds = state.feeds,
+      sources = state.sources,
+      onAddSource = viewModel::saveSource,
       onDismiss = { editorVisible = false },
-      onSave = { id, name, feedIds, provider, scheduleEnabled, hour, minute, maxArticles ->
-        viewModel.saveProgram(id, name, feedIds, provider, scheduleEnabled, hour, minute, maxArticles)
+      onSave = { id, name, sourceIds, provider, scheduleEnabled, hour, minute, maxArticles ->
+        viewModel.saveProgram(id, name, sourceIds, provider, scheduleEnabled, hour, minute, maxArticles)
         editorVisible = false
       },
     )
@@ -160,7 +161,7 @@ private fun PodcastContent(
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
     if (state.programs.isEmpty()) {
-      Text("番組がありません。右下の「番組を追加」から、利用するフィードと生成方法を設定してください。")
+      Text("番組がありません。右下の「番組を追加」から、Podcast用のソースと生成方法を設定してください。")
       Spacer(Modifier.height(64.dp))
       return@Column
     }
@@ -182,7 +183,7 @@ private fun PodcastContent(
       ProgramCard(
         program = program,
         generating = program.id in state.busyProgramIds,
-        feedCount = program.feedIds.size,
+        sourceCount = program.sourceIds.size,
         onGenerate = { onGenerate(program.id) },
         onEdit = { onEdit(program) },
         onDelete = { onDelete(program) },
@@ -211,7 +212,7 @@ private fun PodcastContent(
 private fun ProgramCard(
   program: PodcastProgram,
   generating: Boolean,
-  feedCount: Int,
+  sourceCount: Int,
   onGenerate: () -> Unit,
   onEdit: () -> Unit,
   onDelete: () -> Unit,
@@ -222,7 +223,7 @@ private fun ProgramCard(
         Column(Modifier.weight(1f)) {
           Text(program.name, style = MaterialTheme.typography.titleLarge)
           Text(
-            "${feedCount}フィード・${if (program.provider == PodcastGenerationProvider.LOCAL) "ローカルAI" else "クラウドAI"}",
+            "${sourceCount}ソース・${if (program.provider == PodcastGenerationProvider.LOCAL) "ローカルAI" else "クラウドAI"}",
             style = MaterialTheme.typography.bodyMedium,
           )
           Text(
@@ -296,12 +297,15 @@ private fun EpisodeCard(
 @Composable
 private fun PodcastProgramEditorDialog(
   program: PodcastProgram?,
-  feeds: List<PodcastFeedOption>,
+  sources: List<PodcastSource>,
+  onAddSource: (String, String) -> Unit,
   onDismiss: () -> Unit,
   onSave: (String?, String, Set<String>, PodcastGenerationProvider, Boolean, Int, Int, Int) -> Unit,
 ) {
   var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
-  var selectedFeedIds by remember(program?.id) { mutableStateOf(program?.feedIds.orEmpty()) }
+  var selectedSourceIds by remember(program?.id) { mutableStateOf(program?.sourceIds.orEmpty()) }
+  var newSourceName by remember(program?.id) { mutableStateOf("") }
+  var newSourceUrl by remember(program?.id) { mutableStateOf("") }
   var provider by remember(program?.id) { mutableStateOf(program?.provider ?: PodcastGenerationProvider.LOCAL) }
   var scheduleEnabled by remember(program?.id) { mutableStateOf(program?.schedule?.enabled ?: false) }
   var hour by remember(program?.id) { mutableStateOf((program?.schedule?.hour ?: 7).toString()) }
@@ -312,7 +316,7 @@ private fun PodcastProgramEditorDialog(
   val parsedMinute = minute.toIntOrNull()
   val parsedMaxArticles = maxArticles.toIntOrNull()
   val valid = name.isNotBlank() &&
-    selectedFeedIds.isNotEmpty() &&
+    selectedSourceIds.isNotEmpty() &&
     parsedHour != null && parsedHour in 0..23 &&
     parsedMinute != null && parsedMinute in 0..59 &&
     parsedMaxArticles != null && parsedMaxArticles in 1..50
@@ -338,22 +342,56 @@ private fun PodcastProgramEditorDialog(
         ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
 
         HorizontalDivider()
-        Text("利用するフィード", style = MaterialTheme.typography.titleSmall)
-        if (feeds.isEmpty()) {
-          Text("利用できるフィードがありません。先にRSSフィードを追加してください。")
+        Text("利用するソース", style = MaterialTheme.typography.titleSmall)
+        Text(
+          "ここで追加したソースはニュースポッドキャスト専用です。RSS購読一覧とは別に管理されます。",
+          style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedTextField(
+          value = newSourceName,
+          onValueChange = { newSourceName = it },
+          label = { Text("ソース名") },
+          singleLine = true,
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = newSourceUrl,
+          onValueChange = { newSourceUrl = it },
+          label = { Text("RSS / Atom URL") },
+          singleLine = true,
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedButton(
+          enabled = newSourceName.isNotBlank() && newSourceUrl.isNotBlank(),
+          onClick = {
+            onAddSource(newSourceName, newSourceUrl)
+            newSourceName = ""
+            newSourceUrl = ""
+          },
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Icon(Icons.Default.Add, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Podcast用ソースを追加")
+        }
+        if (sources.isEmpty()) {
+          Text("利用できるソースがありません。上からPodcast用ソースを追加してください。")
         } else {
-          feeds.forEach { feed ->
+          sources.forEach { source ->
             Row(
               modifier = Modifier.fillMaxWidth(),
               verticalAlignment = Alignment.CenterVertically,
             ) {
               Checkbox(
-                checked = feed.id in selectedFeedIds,
+                checked = source.id in selectedSourceIds,
                 onCheckedChange = { checked ->
-                  selectedFeedIds = if (checked) selectedFeedIds + feed.id else selectedFeedIds - feed.id
+                  selectedSourceIds = if (checked) selectedSourceIds + source.id else selectedSourceIds - source.id
                 },
               )
-              Text(feed.title)
+              Column(Modifier.weight(1f)) {
+                Text(source.name)
+                Text(source.feedUrl, style = MaterialTheme.typography.bodySmall)
+              }
             }
           }
         }
@@ -404,7 +442,7 @@ private fun PodcastProgramEditorDialog(
           onSave(
             program?.id,
             name,
-            selectedFeedIds,
+            selectedSourceIds,
             provider,
             scheduleEnabled,
             requireNotNull(parsedHour),
