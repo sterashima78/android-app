@@ -18,9 +18,9 @@ ADR-0249ではPodcast番組が既存RSS購読のfeed IDを選び、Contentの未
 
 Podcast Contextに `PodcastSource` を追加し、source ID、表示名、RSS / Atom feed URLをdurable stateとして保存する。
 
-番組はRSS Contextのfeed IDではなくPodcast-owned source ID集合を参照する。sourceはPodcast画面から追加・編集・削除でき、RSS購読一覧には自動追加しない。RSS購読の追加・削除・既読化もPodcast sourceへ反映しない。
+番組はRSS Contextのfeed IDではなくPodcast-owned source ID集合を参照する。sourceはPodcast画面から追加でき、未使用sourceはPodcast画面から削除できる。RSS購読一覧には自動追加しない。RSS購読の追加・削除・既読化もPodcast sourceへ反映しない。
 
-同じPodcast sourceは複数番組から再利用できる。
+同じPodcast sourceは複数番組から再利用できる。番組で利用中のsourceは先に番組から外して保存するまで削除できない。
 
 ### feed取得・entry消費はPodcastのライフサイクルで完結する
 
@@ -32,7 +32,7 @@ Podcastはsource IDとfeed entry identityから安定したarticle identityを�
 
 ### RSSのfeed形式処理は再利用するが、RSS購読stateには依存しない
 
-RSS / AtomのHTTP取得・解析ロジックは既存capabilityを拡張して再利用する。PodcastからRSS-owned tableやContent tableをreadしない。
+RSS / AtomのHTTP取得・解析ロジックは既存capabilityを拡張して再利用する。Podcastのruntime pathからRSS-owned tableやContent tableをreadしない。
 
 application compositionはprocess-wide HTTP transportを再利用し、Podcast専用のconnection poolを追加しない。
 
@@ -42,9 +42,11 @@ application database versionを34へ進め、Podcast-owned `podcast_sources` tab
 
 version 33で保存済みのprogramは旧feed IDをそのままsource IDとして維持する。migration時に旧RSS `feeds` tableから対応するtitle / feed URLを一度だけコピーして `podcast_sources` を初期化する。
 
-これは既存Podcast設定を失わずにownershipを移すためのone-time compatibility migrationであり、runtime codeはmigration後にRSS `feeds` tableを参照しない。このmigration pathだけをforeign-table allowlistへ明示し、version 33 upgrade baseline退役時に削除する。
+旧Podcast consumed stateが参照するContent articleに `feed_id` と `identity_key` が残っている場合は、`sourceId:identityKey` 形式のPodcast-owned identityへ一度だけ変換し、upgrade直後に同じentryが再利用されることを防ぐ。
 
-旧RSS feedがmigration前に既に削除されておりURLを復元できない場合、そのsourceは自動復元できない。これは旧設計がPodcast側にURLを保持していなかったことによる制約であり、ユーザーはPodcast画面からsourceを再追加できる。
+これは既存Podcast設定を失わずにownershipを移すためのone-time compatibility migrationであり、runtime codeはmigration後にRSS `feeds` / Content `articles` tableを参照しない。このmigration pathだけをforeign-table allowlistへ明示し、version 33 upgrade baseline退役時に削除する。
+
+旧RSS feedがmigration前に既に削除されておりURLを復元できない場合、そのsourceは自動復元できない。旧consumed articleがContent cleanupですでに消えている場合、そのentry identityも変換できない。いずれも旧設計がPodcast側に必要なsource metadata / entry identityを保持していなかったことによる互換性上の制約である。source自体はPodcast画面から再追加できる。
 
 ## Consequences
 
@@ -52,14 +54,14 @@ version 33で保存済みのprogramは旧feed IDをそのままsource IDとし�
 - RSS側でfeedを削除・既読化してもPodcastのsource定義とconsumed stateは変化しない。
 - Podcast生成候補は「RSS readerで未読か」ではなく「このPodcast番組で未消費か」で決まる。
 - Podcast Contextにsource定義というdurable stateが追加される。
-- version 33 -> 34だけ、ownership移行のためRSS `feeds` tableを読むmigration exceptionが必要になる。
+- version 33 -> 34だけ、ownership移行のためRSS `feeds` / Content `articles` tableを読むmigration exceptionが必要になる。
 - RSS / Atom parserを複製せず、既存format capabilityを再利用できる。
 
 ## Verification
 
-- Podcast sourceのcreate / edit / deleteと複数番組からの参照をrepository testする。
+- Podcast sourceのcreate / delete、利用中sourceの削除拒否、複数番組からの参照をrepository boundaryで固定する。
 - source URLから取得したentryがContent read stateなしでepisode候補になることをtestする。
 - 同じsource entryが同一番組でconsumed後に再生成されないことをtestする。
 - RSS購読一覧が空でもPodcast-owned sourceから生成できることをtestする。
-- version 33 -> 34 migrationで既存programのfeed IDがsource IDとして維持され、対応するfeed URLがPodcast-owned sourceへコピーされることをtestする。
+- version 33 -> 34 migrationで既存programのfeed IDがsource IDとして維持され、対応するfeed URLと変換可能なconsumed identityがPodcast-owned stateへコピーされることをtestする。
 - Podcast runtimeからArticleRepository / FeedRepository / RSS table direct read依存が消えることをarchitecture verificationする。
