@@ -274,6 +274,7 @@ private fun EpisodeCard(
             Text("再生")
           }
         }
+        PodcastEpisodeStatus.QUEUED -> Text("生成待ち", style = MaterialTheme.typography.bodyMedium)
         PodcastEpisodeStatus.GENERATING -> Row(verticalAlignment = Alignment.CenterVertically) {
           CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
           Spacer(Modifier.width(8.dp))
