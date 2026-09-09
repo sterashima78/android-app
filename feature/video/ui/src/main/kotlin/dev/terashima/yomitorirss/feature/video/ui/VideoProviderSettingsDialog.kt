@@ -36,7 +36,6 @@ internal fun VideoProviderSettingsDialog(
   onRefresh: (String?) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  var sourceUrl by remember { mutableStateOf("") }
   var showCustomEditor by remember { mutableStateOf(false) }
   var customName by remember { mutableStateOf("") }
   var customFunctionCode by remember { mutableStateOf("") }
@@ -112,16 +111,11 @@ internal fun VideoProviderSettingsDialog(
             HorizontalDivider()
             ProviderEditor(
               provider = provider,
-              sourceUrl = sourceUrl,
               busy = state.busy,
               subscriptions = state.subscriptions.filter { it.providerId == provider.id },
-              onSourceUrlChange = { sourceUrl = it },
               onSaveProvider = onSaveProvider,
               onDeleteProvider = onDeleteProvider,
-              onSubscribe = { providerId, value ->
-                onSubscribe(providerId, value)
-                sourceUrl = ""
-              },
+              onSubscribe = onSubscribe,
               onUnsubscribe = onUnsubscribe,
               onRefresh = onRefresh,
             )
@@ -140,16 +134,15 @@ internal fun VideoProviderSettingsDialog(
 @Composable
 private fun ProviderEditor(
   provider: VideoProvider,
-  sourceUrl: String,
   busy: Boolean,
   subscriptions: List<dev.terashima.yomitorirss.feature.video.VideoSubscription>,
-  onSourceUrlChange: (String) -> Unit,
   onSaveProvider: (VideoProvider) -> Unit,
   onDeleteProvider: (String) -> Unit,
   onSubscribe: (String, String) -> Unit,
   onUnsubscribe: (String) -> Unit,
   onRefresh: (String?) -> Unit,
 ) {
+  var subscriptionInput by remember(provider.id) { mutableStateOf("") }
   var customName by remember(provider.id, provider.name) { mutableStateOf(provider.name) }
   var customFunctionCode by remember(provider.id, provider.functionCode) {
     mutableStateOf(provider.functionCode.orEmpty())
@@ -198,8 +191,8 @@ private fun ProviderEditor(
   }
 
   OutlinedTextField(
-    value = sourceUrl,
-    onValueChange = onSourceUrlChange,
+    value = subscriptionInput,
+    onValueChange = { subscriptionInput = it },
     modifier = Modifier.fillMaxWidth(),
     enabled = provider.enabled && !busy,
     singleLine = true,
@@ -210,10 +203,13 @@ private fun ProviderEditor(
   Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     Button(
       onClick = {
-        val value = sourceUrl.trim()
-        if (value.isNotEmpty()) onSubscribe(provider.id, value)
+        val value = subscriptionInput.trim()
+        if (value.isNotEmpty()) {
+          onSubscribe(provider.id, value)
+          subscriptionInput = ""
+        }
       },
-      enabled = provider.enabled && sourceUrl.isNotBlank() && !busy,
+      enabled = provider.enabled && subscriptionInput.isNotBlank() && !busy,
     ) {
       Text("購読を追加")
     }
@@ -263,7 +259,8 @@ private fun CustomProviderEditor(
 ) {
   Text(
     "function は async (input, api) => ({ sourceId, title, sourceUrl, videos }) の形式で設定します。" +
-      " 外部取得は api.fetch({ url, method, headers, body, contentType }) を使用します。",
+      " 外部取得は api.fetch({ url, method, headers, body, contentType }) を使用します。" +
+      " 認証情報はfunction codeやheadersへ含めないでください。",
   )
   OutlinedTextField(
     value = name,
