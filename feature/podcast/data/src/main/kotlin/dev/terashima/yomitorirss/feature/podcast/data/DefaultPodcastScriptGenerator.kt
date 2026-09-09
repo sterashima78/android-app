@@ -20,7 +20,17 @@ class DefaultPodcastScriptGenerator(
   }
 
   private suspend fun generateWith(inference: AiTextInference, prompt: String): String {
-    checkNotNull(inference.selectedModel()) { "利用するAIモデルを選択してください" }
-    return inference.generate(prompt)
+    val model = checkNotNull(inference.selectedModel()) { "利用するAIモデルを選択してください" }
+    val promptBudgetChars = minOf(model.promptBudgetChars, model.maxInputChars)
+    return inference.generate(limitPodcastPrompt(prompt, promptBudgetChars))
   }
+}
+
+internal fun limitPodcastPrompt(prompt: String, maxChars: Int): String {
+  require(maxChars > 0) { "maxChars must be positive" }
+  if (prompt.length <= maxChars) return prompt
+
+  val marker = "\n\n[入力記事はモデルの入力上限に合わせて末尾を省略しています]"
+  if (marker.length >= maxChars) return prompt.take(maxChars)
+  return prompt.take(maxChars - marker.length).trimEnd() + marker
 }
