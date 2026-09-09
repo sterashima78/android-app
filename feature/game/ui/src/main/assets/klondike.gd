@@ -137,6 +137,118 @@ func _build_top_row(viewport_size: Vector2):
 			message += " · 移動先なし"
 		_add_label(message, Rect2(title_left, 116, title_width, 30), 19, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 
+func _build_tableau(viewport_size: Vector2):
+	var top := 184.0
+	var bottom := viewport_size.y - 18.0
+	var board_width := min(viewport_size.x - 80.0, 1500.0)
+	var gap := 14.0
+	var card_w := (board_width - gap * 6.0) / 7.0
+	var card_h := min(card_w * 1.38, 274.0)
+	var left := (viewport_size.x - board_width) * 0.5
+	var available_height := bottom - top
+	var valid_targets := game.valid_tableau_targets()
+
+	for pile_index in range(7):
+		var pile: Array = game.tableau[pile_index]
+		var x := left + pile_index * (card_w + gap)
+		if pile.is_empty():
+			var is_target: bool = pile_index in valid_targets
+			_add_slot_button("K", Rect2(x, top, card_w, card_h), is_target, func(target_pile = pile_index):
+				game.move_selected_to_tableau(target_pile)
+				_render()
+			)
+			continue
+
+		var step := 0.0
+		if pile.size() > 1:
+			step = clamp((available_height - card_h) / float(pile.size() - 1), 22.0, 54.0)
+
+		for card_index in range(pile.size()):
+			var tableau_card: Dictionary = pile[card_index]
+			var rect := Rect2(x, top + step * card_index, card_w, card_h)
+			var is_top := card_index == pile.size() - 1
+			if tableau_card["face_up"]:
+				var is_selected := _selection_contains_tableau_card(pile_index, card_index)
+				var is_target := is_top and pile_index in valid_targets
+				_add_card_button(tableau_card["card"], rect, is_selected, is_target, func(target_pile = pile_index, target_card = card_index):
+					if target_pile in game.valid_tableau_targets():
+						game.move_selected_to_tableau(target_pile)
+					else:
+						game.select_tableau(target_pile, target_card)
+					_render()
+				)
+			else:
+				var callback := Callable()
+				if is_top and game.selection == null:
+					callback = func(target_pile = pile_index):
+						game.flip_tableau_top(target_pile)
+						_render()
+				_add_back_button("◆", rect, callback)
+
+func _add_card_button(card: Dictionary, rect: Rect2, selected: bool, target: bool, callback: Callable):
+	var label := "%s %s" % [KlondikeModel.rank_label(card["rank"]), KlondikeModel.suit_symbol(card["suit"])]
+	var button := _base_button(label, rect, callback)
+	var foreground := COLOR_RED if KlondikeModel.suit_is_red(card["suit"]) else COLOR_CARD_TEXT
+	var border := COLOR_SELECTED if selected else (COLOR_TARGET if target else Color(0, 0, 0, 0.22))
+	var width := 5 if selected or target else 1
+	button.add_theme_font_size_override("font_size", int(clamp(rect.size.x * 0.19, 23.0, 36.0)))
+	button.add_theme_color_override("font_color", foreground)
+	button.add_theme_color_override("font_hover_color", foreground)
+	button.add_theme_color_override("font_pressed_color", foreground)
+	button.add_theme_stylebox_override("normal", _rounded_style(COLOR_CARD, border, width, 12))
+	button.add_theme_stylebox_override("hover", _rounded_style(Color("fffdf8"), border, width, 12))
+	button.add_theme_stylebox_override("pressed", _rounded_style(Color("e9e2d4"), border, width, 12))
+
+func _add_back_button(text_value: String, rect: Rect2, callback: Callable):
+	var button := _base_button(text_value, rect, callback)
+	button.add_theme_font_size_override("font_size", int(clamp(rect.size.x * 0.17, 20.0, 32.0)))
+	button.add_theme_color_override("font_color", Color(1, 1, 1, 0.88))
+	button.add_theme_stylebox_override("normal", _rounded_style(COLOR_BACK, COLOR_BACK_ACCENT, 3, 12))
+	button.add_theme_stylebox_override("hover", _rounded_style(Color("315f91"), COLOR_BACK_ACCENT, 3, 12))
+	button.add_theme_stylebox_override("pressed", _rounded_style(Color("1d416b"), COLOR_BACK_ACCENT, 3, 12))
+
+func _add_slot_button(text_value: String, rect: Rect2, active: bool, callback: Callable):
+	var button := _base_button(text_value, rect, callback if active else Callable())
+	var border := COLOR_TARGET if active else Color(1, 1, 1, 0.28)
+	var width := 4 if active else 2
+	button.add_theme_font_size_override("font_size", int(clamp(rect.size.x * 0.16, 18.0, 30.0)))
+	button.add_theme_color_override("font_color", Color(1, 1, 1, 0.58))
+	button.add_theme_stylebox_override("normal", _rounded_style(COLOR_SLOT, border, width, 12))
+	button.add_theme_stylebox_override("hover", _rounded_style(Color(1, 1, 1, 0.15), border, width, 12))
+	button.add_theme_stylebox_override("pressed", _rounded_style(Color(1, 1, 1, 0.20), border, width, 12))
+
+func _build_win_overlay(viewport_size: Vector2):
+	var shade = ColorRect.new()
+	shade.position = Vector2.ZERO
+	shade.size = viewport_size
+	shade.color = Color(0, 0, 0, 0.70)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	surface.add_child(shade)
+
+	var card_rect := Rect2((viewport_size.x - 620.0) * 0.5, (viewport_size.y - 330.0) * 0.5, 620, 330)
+	var panel = PanelContainer.new()
+	panel.position = card_rect.position
+	panel.size = card_rect.size
+	panel.add_theme_stylebox_override("panel", _rounded_style(Color("17372f"), COLOR_TARGET, 3, 28))
+	surface.add_child(panel)
+
+	_add_label("クリア", Rect2(card_rect.position.x + 40, card_rect.position.y + 42, 540, 70), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_label("52枚すべてを組札へ移動しました", Rect2(card_rect.position.x + 40, card_rect.position.y + 120, 540, 50), 25, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_label("%d 手" % game.moves, Rect2(card_rect.position.x + 40, card_rect.position.y + 166, 540, 40), 22, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_action_button("次のゲーム", Rect2(card_rect.position.x + 180, card_rect.position.y + 230, 260, 64), func():
+		game.reset()
+		_render()
+	)
+
+func _selection_is(kind: String) -> bool:
+	return game.selection != null and game.selection["kind"] == kind
+
+func _selection_is_foundation(suit: int) -> bool:
+	return _selection_is("foundation") and game.selection["suit"] == suit
+
+func _selection_contains_tableau_card(pile_index: int, card_index: int) -> bool:
+	return _selection_is("tableau") and game.selection["pile"] == pile_index and card_index >= game.selection["card"]
+
 func _add_label(text_value: String, rect: Rect2, font_size: int, color: Color, alignment: int):
 	var label = Label.new()
 	label.text = text_value
