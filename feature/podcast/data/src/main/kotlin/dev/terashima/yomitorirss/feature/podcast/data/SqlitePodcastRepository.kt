@@ -43,18 +43,20 @@ class SqlitePodcastRepository(
   }
 
   override suspend fun deleteSource(sourceId: String) {
-    val referenced = database.readable.rawQuery(
-      "SELECT source_ids FROM podcast_programs",
-      null,
-    ).use { cursor ->
-      var found = false
-      while (!found && cursor.moveToNext()) {
-        found = sourceId in cursor.getString(0).lineSequence().filter(String::isNotBlank).toSet()
+    database.transaction {
+      val referenced = rawQuery(
+        "SELECT source_ids FROM podcast_programs",
+        null,
+      ).use { cursor ->
+        var found = false
+        while (!found && cursor.moveToNext()) {
+          found = sourceId in cursor.getString(0).lineSequence().filter(String::isNotBlank).toSet()
+        }
+        found
       }
-      found
+      require(!referenced) { "番組で利用中のソースは削除できません" }
+      delete("podcast_sources", "id=?", arrayOf(sourceId))
     }
-    require(!referenced) { "番組で利用中のソースは削除できません" }
-    database.write { delete("podcast_sources", "id=?", arrayOf(sourceId)) }
   }
 
   override suspend fun listPrograms(): List<PodcastProgram> = database.readable.rawQuery(
@@ -68,7 +70,8 @@ class SqlitePodcastRepository(
   ).use { cursor -> cursor.programOrNull() }
 
   override suspend fun saveProgram(program: PodcastProgram) {
-    database.write {
+    database.transaction {
+      require(allSourcesExist(this, program.sourceIds)) { "利用できないソースが含まれています" }
       val updated = update(
         "podcast_programs",
         program.values(),
@@ -303,6 +306,16 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
   publishedAtEpochMillis = publishedAtEpochMillis,
   feedContent = feedContent,
 )
+
+private fun allSourcesExist(db: SQLiteDatabase, sourceIds: Set<String>): Boolean {
+  val ids = sourceIds.toList()
+  val placeholders = ids.joinToString(",") { "?" }
+  val found = db.rawQuery(
+    "SELECT id FROM podcast_sources WHERE id IN($placeholders)",
+    ids.toTypedArray(),
+  ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
+  return found.size == ids.size
+}
 
 private fun isConsumed(db: SQLiteDatabase, programId: String, articleId: String): Boolean = db.rawQuery(
   "SELECT 1 FROM podcast_consumed_articles WHERE program_id=? AND article_id=? LIMIT 1",
