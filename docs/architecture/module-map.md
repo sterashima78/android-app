@@ -114,7 +114,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:feature:audio` は保存済み要約または呼び出し元が渡した読み上げ原稿の音声再生 capability を所有する。Domain は process-local の再生キューと操作 contract、Data は Android TTS / Media3 / `MediaSessionService`、UI は再生コントロールを所有する。Content / Curation / Summary / Podcast の durable state は所有せず、読み上げ対象の意味は呼び出し元 feature が所有する。詳細は ADR-0235 を参照する。
 
-`:feature:podcast` は複数フィードを束ねる番組定義、番組ごとの記事消費状態、生成済みエピソードと原稿、生成provider・定刻生成設定を所有する。RSS からはRSS / Atomに含まれる本文だけを narrow read contract で受け取り、リンク先本文を取得しない。未読判定はContentの公開read APIを利用し、Content / RSS tableを直接参照しない。原稿生成は既存の local/cloud text inference capability を利用し、音声化と MediaSession 操作は `:feature:audio` を再利用する。定刻生成は同じ生成 UseCase を Worker から呼び出し、別の生成経路を持たない。詳細は ADR-0246 を参照する。
+`:feature:podcast` は複数フィードを束ねる番組定義、番組ごとの記事消費状態、生成済みエピソードと原稿、生成provider・定刻生成設定を所有する。RSS からはRSS / Atomに含まれる本文だけを narrow read contract で受け取り、リンク先本文を取得しない。未読判定はContentの公開read APIを利用し、Content / RSS tableを直接参照しない。原稿生成は既存の local/cloud text inference capability を利用し、音声化と MediaSession 操作は `:feature:audio` を再利用する。定刻生成は同じ生成 UseCase を Worker から呼び出し、別の生成経路を持たない。詳細は ADR-0249 を参照する。
 
 `:feature:video` は SMB / Web / 購読型 provider 由来動画を同じ catalog に投影し、Web extractor rule、provider設定・subscription・provider itemの未読/あとで見る状態・refresh lifecycle、再生位置、視聴済み状態、Video保存状態と foreground video playback UI を所有する。Web URL の単発登録は購読型 provider と分離する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 と ADR-0242 を参照する。
 
