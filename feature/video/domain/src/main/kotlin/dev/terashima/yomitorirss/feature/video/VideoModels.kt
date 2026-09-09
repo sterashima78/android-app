@@ -79,6 +79,12 @@ enum class WebVideoSecFetchSite {
   OTHER,
 }
 
+enum class WebVideoPlaybackReferrerSource {
+  OBSERVED_REQUEST,
+  EXTRACTOR,
+  PAGE,
+}
+
 /**
  * Non-sensitive, transient diagnostics comparing the observed WebView stream request with
  * the native playback context. Header values, URLs, and Cookie values must never be stored here.
@@ -94,6 +100,7 @@ data class WebVideoPlaybackDiagnostics(
   val streamRequestOriginObserved: Boolean = false,
   val streamRequestOriginMatchesReferrerOrigin: Boolean? = null,
   val secFetchSite: WebVideoSecFetchSite? = null,
+  val playbackReferrerSource: WebVideoPlaybackReferrerSource? = null,
 )
 
 data class WebVideoExtractionResult(

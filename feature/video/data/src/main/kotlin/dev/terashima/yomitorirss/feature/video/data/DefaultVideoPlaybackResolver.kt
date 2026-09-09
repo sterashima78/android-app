@@ -10,6 +10,8 @@ import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackDiagnostics
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackReferrerSource
 import java.net.URI
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -80,11 +82,25 @@ class DefaultVideoPlaybackResolver(
           mimeType = custom.mimeType,
           referrerUrl = webStreamReferrerUrl(pageUrl, custom.referrerUrl),
           cookieProvider = custom.cookieProvider,
-          playbackDiagnostics = custom.playbackDiagnostics,
+          playbackDiagnostics = custom.playbackDiagnostics?.copy(
+            playbackReferrerSource = webVideoPlaybackReferrerSource(
+              diagnostics = custom.playbackDiagnostics,
+              selectedReferrerUrl = custom.referrerUrl,
+            ),
+          ),
         )
       }
       ?: VideoPlaybackTarget.WebPage(pageUrl)
   }
+}
+
+internal fun webVideoPlaybackReferrerSource(
+  diagnostics: WebVideoPlaybackDiagnostics?,
+  selectedReferrerUrl: String?,
+): WebVideoPlaybackReferrerSource = when {
+  diagnostics?.streamRequestRefererObserved == true -> WebVideoPlaybackReferrerSource.OBSERVED_REQUEST
+  !selectedReferrerUrl.isNullOrBlank() -> WebVideoPlaybackReferrerSource.EXTRACTOR
+  else -> WebVideoPlaybackReferrerSource.PAGE
 }
 
 internal fun webStreamReferrerUrl(
