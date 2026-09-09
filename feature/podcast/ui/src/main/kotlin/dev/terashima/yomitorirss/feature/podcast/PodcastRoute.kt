@@ -308,10 +308,10 @@ private fun PodcastProgramEditorDialog(
 ) {
   var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
   var selectedSourceIds by remember(program?.id) {
-    mutableStateOf(
-      program?.sourceIds.orEmpty().filterTo(mutableSetOf()) { sourceId ->
+    mutableStateOf<Set<String>>(
+      program?.sourceIds.orEmpty().filter { sourceId ->
         sources.any { it.id == sourceId }
-      },
+      }.toSet(),
     )
   }
   var newSourceName by remember(program?.id) { mutableStateOf("") }
