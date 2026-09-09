@@ -76,7 +76,9 @@ class WorkManagerPodcastScheduleController(
   private val now: () -> ZonedDateTime = ZonedDateTime::now,
 ) : PodcastScheduleController {
   private val appContext = context.applicationContext
-  private val workManager = WorkManager.getInstance(appContext)
+  private val workManager: WorkManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkManager.getInstance(appContext)
+  }
 
   override fun sync(program: PodcastProgram) {
     enqueue(program, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
