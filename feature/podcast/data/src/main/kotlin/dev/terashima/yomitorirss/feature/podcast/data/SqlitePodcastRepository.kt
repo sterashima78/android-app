@@ -55,67 +55,99 @@ class SqlitePodcastRepository(
     arrayOf(episodeId),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.episode(database) else null }
 
-  override suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? = database.readable.rawQuery(
-    "SELECT * FROM podcast_episodes WHERE program_id=? AND status=? ORDER BY created_at LIMIT 1",
-    arrayOf(programId, PodcastEpisodeStatus.GENERATING.name),
-  ).use { cursor -> if (cursor.moveToFirst()) cursor.episode(database) else null }
+  override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
+    val episodeId = database.transaction {
+      val pending = rawQuery(
+        "SELECT id,status FROM podcast_episodes " +
+          "WHERE program_id=? AND status IN (?,?) " +
+          "ORDER BY CASE status WHEN ? THEN 0 ELSE 1 END, created_at, id LIMIT 1",
+        arrayOf(
+          programId,
+          PodcastEpisodeStatus.GENERATING.name,
+          PodcastEpisodeStatus.QUEUED.name,
+          PodcastEpisodeStatus.GENERATING.name,
+        ),
+      ).use { cursor ->
+        if (!cursor.moveToFirst()) null else cursor.getString(0) to PodcastEpisodeStatus.valueOf(cursor.getString(1))
+      } ?: return@transaction null
+
+      if (pending.second == PodcastEpisodeStatus.QUEUED) {
+        val updated = update(
+          "podcast_episodes",
+          ContentValues().apply { put("status", PodcastEpisodeStatus.GENERATING.name) },
+          "id=? AND status=?",
+          arrayOf(pending.first, PodcastEpisodeStatus.QUEUED.name),
+        )
+        check(updated == 1) { "queued episode could not be claimed: ${pending.first}" }
+      }
+      pending.first
+    }
+    return episodeId?.let { findEpisode(it) }
+  }
 
   override suspend fun reserveEpisode(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
     createdAtEpochMillis: Long,
   ): PodcastEpisode? = database.transaction {
-    val selected = candidates
+    val pendingCandidates = candidates
+      .distinctBy(PodcastFeedEntry::articleId)
       .filterNot { candidate -> isConsumed(this, program.id, candidate.articleId) }
-      .take(program.maxArticlesPerEpisode)
-    if (selected.isEmpty()) return@transaction null
+    if (pendingCandidates.isEmpty()) return@transaction null
 
-    val episodeId = UUID.randomUUID().toString()
-    insertOrThrow(
-      "podcast_episodes",
-      null,
-      ContentValues().apply {
-        put("id", episodeId)
-        put("program_id", program.id)
-        put("title", program.name)
-        put("created_at", createdAtEpochMillis)
-        put("status", PodcastEpisodeStatus.GENERATING.name)
-      },
-    )
-    selected.forEachIndexed { index, article ->
+    var firstEpisode: PodcastEpisode? = null
+    pendingCandidates.chunked(program.maxArticlesPerEpisode).forEachIndexed { chunkIndex, selected ->
+      val episodeId = UUID.randomUUID().toString()
+      val status = if (chunkIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
+      val episodeCreatedAt = createdAtEpochMillis + chunkIndex
       insertOrThrow(
-        "podcast_episode_articles",
+        "podcast_episodes",
         null,
         ContentValues().apply {
-          put("episode_id", episodeId)
-          put("position", index)
-          put("article_id", article.articleId)
-          put("feed_id", article.feedId)
-          put("title", article.title)
-          if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
-          if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
-          put("feed_content", article.feedContent)
-        },
-      )
-      insertOrThrow(
-        "podcast_consumed_articles",
-        null,
-        ContentValues().apply {
+          put("id", episodeId)
           put("program_id", program.id)
-          put("article_id", article.articleId)
-          put("episode_id", episodeId)
-          put("consumed_at", createdAtEpochMillis)
+          put("title", program.name)
+          put("created_at", episodeCreatedAt)
+          put("status", status.name)
         },
       )
+      selected.forEachIndexed { index, article ->
+        insertOrThrow(
+          "podcast_episode_articles",
+          null,
+          ContentValues().apply {
+            put("episode_id", episodeId)
+            put("position", index)
+            put("article_id", article.articleId)
+            put("feed_id", article.feedId)
+            put("title", article.title)
+            if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
+            if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
+            put("feed_content", article.feedContent)
+          },
+        )
+        insertOrThrow(
+          "podcast_consumed_articles",
+          null,
+          ContentValues().apply {
+            put("program_id", program.id)
+            put("article_id", article.articleId)
+            put("episode_id", episodeId)
+            put("consumed_at", createdAtEpochMillis)
+          },
+        )
+      }
+      val episode = PodcastEpisode(
+        id = episodeId,
+        programId = program.id,
+        title = program.name,
+        createdAtEpochMillis = episodeCreatedAt,
+        status = status,
+        articles = selected.map(PodcastFeedEntry::toEpisodeArticle),
+      )
+      if (firstEpisode == null) firstEpisode = episode
     }
-    PodcastEpisode(
-      id = episodeId,
-      programId = program.id,
-      title = program.name,
-      createdAtEpochMillis = createdAtEpochMillis,
-      status = PodcastEpisodeStatus.GENERATING,
-      articles = selected.map(PodcastFeedEntry::toEpisodeArticle),
-    )
+    firstEpisode
   }
 
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode {
