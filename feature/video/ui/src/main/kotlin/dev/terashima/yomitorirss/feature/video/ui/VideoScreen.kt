@@ -96,6 +96,7 @@ fun VideoScreen(
   val snackbar = remember { SnackbarHostState() }
   var tabName by rememberSaveable { mutableStateOf(VideoTab.ALL.name) }
   var sourceName by rememberSaveable { mutableStateOf<String?>(null) }
+  var unwatchedLayoutName by rememberSaveable { mutableStateOf(VideoUnwatchedLayout.GRID.name) }
   var savedLocation by remember { mutableStateOf<VideoSavedBrowserLocation>(VideoSavedBrowserLocation.Root) }
   var addWebVisible by remember { mutableStateOf(false) }
   var editingRule by remember { mutableStateOf<WebVideoExtractorRule?>(null) }
@@ -104,6 +105,7 @@ fun VideoScreen(
   var newFolderVisible by remember { mutableStateOf(false) }
   val tab = VideoTab.valueOf(tabName)
   val source = sourceName?.let { selected -> VideoSource.entries.firstOrNull { it.name == selected } }
+  val unwatchedLayout = VideoUnwatchedLayout.valueOf(unwatchedLayoutName)
 
   LaunchedEffect(state.message) {
     val message = state.message ?: return@LaunchedEffect
@@ -217,6 +219,12 @@ fun VideoScreen(
             selected = source,
             onSelected = { sourceName = it?.name },
           )
+          if (tab == VideoTab.ALL) {
+            VideoUnwatchedLayoutSelector(
+              selected = unwatchedLayout,
+              onSelected = { unwatchedLayoutName = it.name },
+            )
+          }
           if (tab == VideoTab.SAVED) {
             VideoSavedBrowser(
               state = state,
@@ -254,6 +262,13 @@ fun VideoScreen(
                 },
                 modifier = Modifier.padding(24.dp),
                 style = MaterialTheme.typography.bodyMedium,
+              )
+            } else if (tab == VideoTab.ALL && unwatchedLayout == VideoUnwatchedLayout.LIST) {
+              VideoUnwatchedList(
+                items = filtered,
+                onPlay = onPlay,
+                onSaveVideo = onSaveVideo,
+                onSetCompleted = onSetCompleted,
               )
             } else {
               VideoGrid(
