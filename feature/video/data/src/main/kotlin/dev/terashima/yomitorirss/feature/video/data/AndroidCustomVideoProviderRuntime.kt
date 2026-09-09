@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -67,16 +68,19 @@ internal class AndroidCustomVideoProviderRuntime(
       "安全なカスタム動画プロバイダ実行環境を利用できません"
     }
 
-    val webView = withContext(Dispatchers.Main.immediate) { createWebView() }
-    val responses = JSONArray()
+    val rendererLifecycle = CustomProviderRendererLifecycle()
+    val webView = withContext(Dispatchers.Main.immediate) { createWebView(rendererLifecycle) }
+    val stateKey = "__mosaicCustomVideoProvider_${SystemClock.uptimeMillis()}_${System.identityHashCode(webView)}"
+    var nextScript = startScript(stateKey, functionCode, input)
     var requestCount = 0
     try {
       while (true) {
-        when (val step = evaluateStep(webView, functionCode, input, responses)) {
+        when (val step = evaluateStep(webView, rendererLifecycle, nextScript)) {
           is ScriptStep.Request -> {
             requestCount += 1
             require(requestCount <= MAX_REQUESTS) { "カスタム動画プロバイダのHTTP request回数が上限を超えました" }
-            responses.put(executeRequest(step.request))
+            val response = executeRequest(step.request)
+            nextScript = resumeScript(stateKey, step.id, response)
           }
           is ScriptStep.Done -> {
             val feed = parseFeedValue(step.value)
@@ -93,6 +97,7 @@ internal class AndroidCustomVideoProviderRuntime(
       error("カスタム動画プロバイダの実行が完了しませんでした")
     } finally {
       withContext(NonCancellable + Dispatchers.Main.immediate) {
+        rendererLifecycle.onFailure = null
         webView.stopLoading()
         webView.webViewClient = WebViewClient()
         webView.clearHistory()
@@ -103,44 +108,57 @@ internal class AndroidCustomVideoProviderRuntime(
   }
 
   @SuppressLint("SetJavaScriptEnabled")
-  private fun createWebView(): WebView = WebView(appContext).also { webView ->
-    WebViewCompat.setProfile(webView, PROFILE_NAME)
-    WebViewCompat.getProfile(webView).cookieManager.apply {
-      setAcceptCookie(false)
-      setAcceptThirdPartyCookies(webView, false)
+  private fun createWebView(rendererLifecycle: CustomProviderRendererLifecycle): WebView =
+    WebView(appContext).also { webView ->
+      WebViewCompat.setProfile(webView, PROFILE_NAME)
+      WebViewCompat.getProfile(webView).cookieManager.apply {
+        setAcceptCookie(false)
+        setAcceptThirdPartyCookies(webView, false)
+      }
+      webView.settings.apply {
+        javaScriptEnabled = true
+        domStorageEnabled = false
+        allowFileAccess = false
+        allowContentAccess = false
+        blockNetworkLoads = true
+        mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        javaScriptCanOpenWindowsAutomatically = false
+        setSupportMultipleWindows(false)
+        safeBrowsingEnabled = true
+        setGeolocationEnabled(false)
+      }
+      webView.webViewClient = object : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+          rendererLifecycle.fail(
+            IllegalStateException(
+              if (detail.didCrash()) {
+                "カスタム動画プロバイダのWebViewがクラッシュしました"
+              } else {
+                "カスタム動画プロバイダのWebViewが終了しました"
+              },
+            ),
+          )
+          return true
+        }
+      }
     }
-    webView.settings.apply {
-      javaScriptEnabled = true
-      domStorageEnabled = false
-      allowFileAccess = false
-      allowContentAccess = false
-      blockNetworkLoads = true
-      mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-      javaScriptCanOpenWindowsAutomatically = false
-      setSupportMultipleWindows(false)
-      safeBrowsingEnabled = true
-      setGeolocationEnabled(false)
-    }
-    webView.webViewClient = object : WebViewClient() {
-      override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
-    }
-  }
 
   private suspend fun evaluateStep(
     webView: WebView,
-    functionCode: String,
-    input: JSONObject,
-    responses: JSONArray,
+    rendererLifecycle: CustomProviderRendererLifecycle,
+    script: String,
   ): ScriptStep = withContext(Dispatchers.Main.immediate) {
     suspendCancellableCoroutine { continuation ->
       val handler = Handler(Looper.getMainLooper())
-      val stateKey = "__mosaicCustomVideoProvider_${SystemClock.uptimeMillis()}_${responses.length()}"
       var completed = false
 
       fun finish(result: Result<ScriptStep>) {
         if (completed) return
         completed = true
         handler.removeCallbacksAndMessages(null)
+        rendererLifecycle.onFailure = null
         if (!continuation.isActive) return
         result.fold(
           onSuccess = { continuation.resume(it) },
@@ -148,10 +166,24 @@ internal class AndroidCustomVideoProviderRuntime(
         )
       }
 
+      rendererLifecycle.failure?.let { failure ->
+        finish(Result.failure(failure))
+        return@suspendCancellableCoroutine
+      }
+      rendererLifecycle.onFailure = { failure -> finish(Result.failure(failure)) }
+
       fun poll() {
         if (completed || !continuation.isActive) return
-        webView.evaluateJavascript(pollScript(stateKey)) { raw ->
+        rendererLifecycle.failure?.let { failure ->
+          finish(Result.failure(failure))
+          return
+        }
+        webView.evaluateJavascript(pollScript(stateKey = null)) { raw ->
           if (completed || !continuation.isActive) return@evaluateJavascript
+          rendererLifecycle.failure?.let { failure ->
+            finish(Result.failure(failure))
+            return@evaluateJavascript
+          }
           runCatching { parseStep(raw) }.fold(
             onSuccess = { step ->
               if (step == ScriptStep.Pending) {
@@ -169,9 +201,10 @@ internal class AndroidCustomVideoProviderRuntime(
         handler.post {
           completed = true
           handler.removeCallbacksAndMessages(null)
+          rendererLifecycle.onFailure = null
         }
       }
-      webView.evaluateJavascript(startScript(stateKey, functionCode, input, responses)) {
+      webView.evaluateJavascript(script) {
         if (!completed) poll()
       }
     }
@@ -197,7 +230,6 @@ internal class AndroidCustomVideoProviderRuntime(
     stateKey: String,
     functionCode: String,
     input: JSONObject,
-    responses: JSONArray,
   ): String {
     val key = JSONObject.quote(stateKey)
     val source = JSONObject.quote(functionCode)
@@ -206,22 +238,44 @@ internal class AndroidCustomVideoProviderRuntime(
         const key = $key;
         const source = $source;
         const input = ${input};
-        const responses = ${responses};
-        window[key] = { state: 'pending' };
-        let requestIndex = 0;
-        let hostRequestPending = false;
-        const pendingHostResponse = () => new Promise(() => {});
+        const state = {
+          state: 'pending',
+          request: null,
+          value: null,
+          message: null,
+          nextRequestId: 0,
+          queue: [],
+          resolvers: new Map()
+        };
+        window[key] = state;
+        const exposeNextRequest = () => {
+          if (state.state === 'done' || state.state === 'error') return;
+          const next = state.queue.length > 0 ? state.queue[0] : null;
+          state.request = next;
+          state.state = next ? 'request' : 'pending';
+        };
+        state.deliver = (id, response) => {
+          const next = state.queue.length > 0 ? state.queue[0] : null;
+          if (!next || next.id !== id) throw new Error('host response does not match pending request');
+          state.queue.shift();
+          const resolver = state.resolvers.get(id);
+          state.resolvers.delete(id);
+          state.request = null;
+          if (!resolver) throw new Error('host response resolver is missing');
+          exposeNextRequest();
+          resolver.resolve(response);
+        };
         const api = Object.freeze({
           fetch(request) {
-            const index = requestIndex++;
-            if (index < responses.length) return Promise.resolve(responses[index]);
-            if (hostRequestPending) return pendingHostResponse();
             if (!request || typeof request !== 'object') {
               return Promise.reject(new Error('api.fetch request must be an object'));
             }
-            hostRequestPending = true;
-            window[key] = { state: 'request', request };
-            return pendingHostResponse();
+            const id = state.nextRequestId++;
+            return new Promise((resolve, reject) => {
+              state.resolvers.set(id, { resolve, reject });
+              state.queue.push({ id, request });
+              exposeNextRequest();
+            });
           }
         });
         Promise.resolve()
@@ -232,21 +286,62 @@ internal class AndroidCustomVideoProviderRuntime(
           })
           .then(value => {
             if (!value || typeof value !== 'object') throw new Error('provider result must be an object');
-            window[key] = { state: 'done', value };
+            state.state = 'done';
+            state.request = null;
+            state.value = value;
           })
           .catch(error => {
-            window[key] = {
-              state: 'error',
-              message: String(error && error.message ? error.message : error)
-            };
+            state.state = 'error';
+            state.request = null;
+            state.message = String(error && error.message ? error.message : error);
           });
       })();
     """.trimIndent()
   }
 
-  private fun pollScript(stateKey: String): String {
+  private fun resumeScript(stateKey: String, requestId: Int, response: JSONObject): String {
     val key = JSONObject.quote(stateKey)
-    return "JSON.stringify(window[$key] || { state: 'pending' })"
+    val responseJson = JSONObject.quote(response.toString())
+    return """
+      (() => {
+        const state = window[$key];
+        if (!state || typeof state.deliver !== 'function') {
+          throw new Error('custom provider execution state is missing');
+        }
+        state.deliver($requestId, JSON.parse($responseJson));
+        return true;
+      })();
+    """.trimIndent()
+  }
+
+  private fun pollScript(stateKey: String?): String {
+    val key = stateKey?.let(JSONObject::quote)
+    return if (key == null) {
+      """
+        (() => {
+          const keys = Object.keys(window).filter(key => key.startsWith('__mosaicCustomVideoProvider_'));
+          const state = keys.length > 0 ? window[keys[keys.length - 1]] : null;
+          return JSON.stringify(state ? {
+            state: state.state,
+            request: state.request,
+            value: state.value,
+            message: state.message
+          } : { state: 'pending' });
+        })()
+      """.trimIndent()
+    } else {
+      """
+        (() => {
+          const state = window[$key];
+          return JSON.stringify(state ? {
+            state: state.state,
+            request: state.request,
+            value: state.value,
+            message: state.message
+          } : { state: 'pending' });
+        })()
+      """.trimIndent()
+    }
   }
 
   private fun parseStep(raw: String?): ScriptStep {
@@ -255,10 +350,17 @@ internal class AndroidCustomVideoProviderRuntime(
     val json = JSONObject(jsonString)
     return when (json.optString("state")) {
       "pending" -> ScriptStep.Pending
-      "request" -> ScriptStep.Request(
-        json.optJSONObject("request")
-          ?: throw IllegalStateException("カスタム動画プロバイダのrequestが不正です"),
-      )
+      "request" -> {
+        val pending = json.optJSONObject("request")
+          ?: throw IllegalStateException("カスタム動画プロバイダのrequestが不正です")
+        val id = pending.optInt("id", -1)
+        require(id >= 0) { "カスタム動画プロバイダのrequest IDが不正です" }
+        ScriptStep.Request(
+          id = id,
+          request = pending.optJSONObject("request")
+            ?: throw IllegalStateException("カスタム動画プロバイダのrequestが不正です"),
+        )
+      }
       "done" -> ScriptStep.Done(
         json.optJSONObject("value")
           ?: throw IllegalStateException("カスタム動画プロバイダの戻り値が不正です"),
@@ -272,7 +374,7 @@ internal class AndroidCustomVideoProviderRuntime(
 
   private sealed interface ScriptStep {
     data object Pending : ScriptStep
-    data class Request(val request: JSONObject) : ScriptStep
+    data class Request(val id: Int, val request: JSONObject) : ScriptStep
     data class Done(val value: JSONObject) : ScriptStep
   }
 
@@ -375,6 +477,20 @@ internal class AndroidCustomVideoProviderRuntime(
       "x-api-key",
       "api-key",
     )
+  }
+}
+
+private class CustomProviderRendererLifecycle {
+  @Volatile
+  var failure: Throwable? = null
+    private set
+
+  var onFailure: ((Throwable) -> Unit)? = null
+
+  fun fail(error: Throwable) {
+    if (failure != null) return
+    failure = error
+    onFailure?.invoke(error)
   }
 }
 
