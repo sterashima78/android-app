@@ -54,7 +54,9 @@ class AndroidWebVideoExtractorClient(
   ): WebVideoExtractionResult {
     validateWebVideoExtractorRule(rule)
     require(isSafeExtractorPageUrl(url)) { "動画抽出はHTTPSページのみ対応しています" }
-    return withTimeout(rule.timeoutSeconds * 1_000L) {
+    val timeoutMillis = rule.timeoutSeconds * 1_000L +
+      if (observePlaybackRequest) STREAM_REQUEST_OBSERVATION_WINDOW_MILLIS else 0L
+    return withTimeout(timeoutMillis) {
       withContext(Dispatchers.Main.immediate) {
         require(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
           "安全なWebView動画抽出を利用できません。Android System WebViewを更新してください"
