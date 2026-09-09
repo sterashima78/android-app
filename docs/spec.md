@@ -95,7 +95,19 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 再生開始、再生完了、skip、停止、queue完了のいずれでも記事の既読 / 未読状態を変更しない。「あとで読む」の所属やブックマーク状態も変更しない。
 - 再生queue、再生位置、再生済み状態はdurable user stateとして保存しない。生成した音声は再生成可能なcacheとして扱い、backup / export対象にしない。
 
-### 4.6 動画
+### 4.6 ニュースポッドキャスト
+
+- トップレベルの「ニュースポッドキャスト」画面で、複数のRSS / Atomフィードを1つの番組として登録・編集・削除できる。
+- 番組ごとに利用するフィード、生成AI、1回に使う最大記事数、毎日の自動生成時刻を設定できる。生成AIはローカルAIまたはクラウドAIを明示選択し、自動fallbackは行わない。
+- 手動または設定した定刻に、対象フィードの未読記事から音声番組用の日本語原稿を生成する。
+- 原稿の根拠にはRSS / Atomフィード内に含まれるタイトルと本文だけを利用し、記事リンク先の本文や一般知識を自動取得・追加しない。
+- 番組ごとに一度生成対象として予約した記事は次回の新規エピソードでは再利用しない。Podcast生成・再生によって元記事の既読 / 未読状態は変更しない。
+- 1回の最大記事数を超える未読候補は生成時点の本文を後続エピソード用に保存し、フィード更新で元entryが消えても後続生成に利用できる。
+- 生成中断時は同じ記事スナップショットから次回実行で再開する。通常の生成失敗は失敗状態として表示し、「同じ記事で再生成」から同じ記事内容を使って再試行できる。
+- 生成済みエピソードは既存の音声再生機能で再生し、バックグラウンド、通知、lock screen、Bluetooth等の標準media controlを利用できる。
+- 番組とエピソード、生成に利用した記事スナップショット、番組別の記事消費状態、生成原稿、定刻設定はdurable user stateとして保存し、通常のdatabase snapshot backup対象とする。
+
+### 4.7 動画
 
 - トップレベルの「動画」画面で、SMBファイルサーバー由来、Web URL由来、購読型Provider由来の動画を同じcatalogから扱う。
 - 一覧には「未視聴 / 続き / 保存済み / 視聴済み / 設定」を用意し、sourceを「すべて / SMB / Web / サービス」で絞り込める。「サービス」は購読型Providerが取得した動画を表す。
@@ -286,6 +298,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
 - 統合更新では通常feed、Reddit、Video購読Provider、メール等の更新を個別に分離して実行する。Video購読はprovider-specific repositoryではなくVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
 - custom Video Providerのfunction実行はforeground Activityに依存せず、Video-owned runtimeからbackground refreshでも実行する。
+- Podcastの定刻生成は番組ごとに次のローカル日時を再計算するone-shot work chainとして実行し、通常の生成失敗後も翌日のscheduleを維持する。
 - ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
