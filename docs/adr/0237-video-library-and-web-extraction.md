@@ -5,6 +5,7 @@
 - Refines: [ADR-0173](0173-web-library-custom-metadata-extractors.md), [ADR-0180](0180-rss-custom-web-scraping-rules.md), [ADR-0235](0235-summary-audio-playback.md)
 - Amends: [ADR-0138](0138-database-v27-compatibility-baseline.md)
 - Amended by: [ADR-0241](0241-video-web-stream-cookie-opt-in.md)
+- Refined by: [ADR-0245](0245-video-playback-explicit-referrer-origin.md)
 
 ## Context
 

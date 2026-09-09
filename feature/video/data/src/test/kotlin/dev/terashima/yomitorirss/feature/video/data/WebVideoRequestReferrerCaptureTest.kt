@@ -67,7 +67,7 @@ class WebVideoRequestReferrerCaptureTest {
       "https://player.example.net/",
       webStreamReferrerUrl(
         pageUrl = "https://page.example.com/watch/1",
-        capturedReferrerUrl = "https://player.example.net/embed/123?mode=fixture#player",
+        preferredReferrerUrl = "https://player.example.net/embed/123?mode=fixture#player",
       ),
     )
   }
@@ -78,7 +78,57 @@ class WebVideoRequestReferrerCaptureTest {
       "https://page.example.com/",
       webStreamReferrerUrl(
         pageUrl = "https://page.example.com/watch/1",
-        capturedReferrerUrl = "file:///tmp/player.html",
+        preferredReferrerUrl = "file:///tmp/player.html",
+      ),
+    )
+  }
+
+  @Test
+  fun `実request参照元はextractor指定参照元より優先する`() {
+    assertEquals(
+      "https://observed.example.net/",
+      selectWebVideoPlaybackReferrerUrl(
+        capturedReferrerUrl = "https://observed.example.net/",
+        explicitReferrerUrl = "https://explicit.example.org/embed/123",
+      ),
+    )
+  }
+
+  @Test
+  fun `実request未観測ならextractor指定参照元を利用する`() {
+    assertEquals(
+      "https://explicit.example.org/embed/123",
+      selectWebVideoPlaybackReferrerUrl(
+        capturedReferrerUrl = null,
+        explicitReferrerUrl = "https://explicit.example.org/embed/123",
+      ),
+    )
+  }
+
+  @Test
+  fun `extractor指定参照元もMedia3へ渡す前にoriginへ縮約する`() {
+    val selected = selectWebVideoPlaybackReferrerUrl(
+      capturedReferrerUrl = null,
+      explicitReferrerUrl = "https://explicit.example.org/embed/123?token=fixture#player",
+    )
+
+    assertEquals(
+      "https://explicit.example.org/",
+      webStreamReferrerUrl(
+        pageUrl = "https://page.example.com/watch/1",
+        preferredReferrerUrl = selected,
+      ),
+    )
+  }
+
+  @Test
+  fun `相対的なextractor指定参照元は最終ページURLから解決する`() {
+    assertEquals(
+      "https://page.example.com/player/embed/123",
+      resolveWebVideoExtractorUrl(
+        baseUrl = "https://page.example.com/watch/1",
+        candidate = "/player/embed/123",
+        httpsOnly = false,
       ),
     )
   }
