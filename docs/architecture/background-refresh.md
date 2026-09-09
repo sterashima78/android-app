@@ -4,7 +4,7 @@
 
 ## Integrated periodic refresh
 
-統合ビューの主要 source である RSS、Reddit、YouTube、Gmail の周期更新は `:app:composition` の application-scope WorkManager job が所有する。
+通常feed、Reddit、購読型動画Provider、メールの周期更新は `:app:composition` の application-scope WorkManager job が所有する。購読型動画Providerの更新は Video Context の新着状態を保つために同じjobで実行するが、統合ビューの表示対象と新着通知対象には含めない。
 
 ```text
 Application startup / Settings
@@ -17,8 +17,8 @@ integrated-view-periodic-refresh
           |
           v
 IntegratedRefreshWorker
-  |        |        |        |
- RSS     Reddit   YouTube   Gmail
+  |        |          |        |
+ RSS     Reddit   Video Provider   Mail
 ```
 
 - durable job は `integrated-view-periodic-refresh` という unique periodic work とする。
@@ -26,6 +26,7 @@ IntegratedRefreshWorker
 - UI ViewModel は background entry point から呼ばない。
 - source owner が公開する既存 Repository / use case contract を利用する。
 - source 単位の失敗は他 source の取得を止めない。
+- 購読型動画Providerは Video-owned provider refresh capability を利用し、統合ビュー用のread modelやcommandを経由しない。
 - WorkManager periodic execution は exact timer と扱わない。Doze、battery optimization、network constraints により遅延し得る。
 
 ## Refresh interval
@@ -44,35 +45,34 @@ WorkManager の periodic work の最短周期が15分であるため、それ未
 
 既存の「Wi-Fi 接続中のみ取得」は統合 refresh にも適用する。network constraint が満たされない期間は、設定した周期を過ぎても取得を開始しない。
 
-## Gmail migration boundary
+## Mail migration boundary
 
-Gmail の初回同期と周期同期は責務を分ける。
+メールの初回同期と周期同期は責務を分ける。
 
 - 初回同期: `feature/mail:data` の `MailSyncWorker` がページング checkpoint、network retry、continuation を所有する。
 - 周期同期: application-scope `IntegratedRefreshWorker` が他 source と同じ実行単位で `MailRepository.sync(null)` を呼ぶ。
 
-旧バージョンの `gmail-mail-sync` periodic work は startup で cancel する。`MailSyncScheduler.schedulePeriodic()` と `refreshPeriodicNetworkPolicy()` は upgrade 時の旧 durable work cleanup 用 compatibility entry point とし、新しい periodic work を作成しない。
+旧バージョンの mail periodic work は startup で cancel する。`MailSyncScheduler.schedulePeriodic()` と `refreshPeriodicNetworkPolicy()` は upgrade 時の旧 durable work cleanup 用 compatibility entry point とし、新しい periodic work を作成しない。
 
 ## New-item detection
 
-通知対象は同期前後の未読 identity の差分 `after - before` とする。件数だけの差では判定しない。
+統合ビューの通知対象は、統合ビューへ表示する source について同期前後の未読 identity の差分 `after - before` とする。件数だけの差では判定しない。購読型動画Providerは周期更新するが、この snapshot には含めない。
 
 ```text
-before unread identities
+before integrated-view unread identities
         |
-        | refresh RSS / Reddit / YouTube / Gmail
+        | refresh RSS / Reddit / Video Provider / Mail
         v
-after unread identities
+after integrated-view unread identities
         |
         v
-after - before = newly fetched unread identities
+after - before = newly fetched integrated-view unread identities
 ```
 
 identity namespace は source 間衝突を避ける。
 
 - RSS / Reddit: `article:<articleId>`
-- YouTube: `youtube:<videoId>`
-- Gmail: `mail:<accountId>:<threadId>`
+- Mail: `mail:<accountId>:<threadId>`
 
 新着 identity が空なら通知を更新しない。これにより既存未読だけを周期ごとに再通知しない。
 
@@ -83,8 +83,9 @@ identity namespace は source 間衝突を避ける。
 新着が1件以上ある場合、`integrated_view_updates` notification channel に通知する。
 
 - channel は launcher badge を許可する。
-- notification number は同期後の統合未読総数とする。
+- notification number は同期後の統合ビュー未読総数とする。
 - notification 本文は今回の新着件数と未読総数だけを表示する。
+- 購読型動画Providerの未読は notification number と新着件数に含めない。
 - 記事タイトル、メール件名、URL、本文、OAuth 情報を通知 payload や固定ログへ追加しない。
 - notification tap は `IntegratedRefreshNotificationContract.ACTION_OPEN_INTEGRATED` を持つ launcher Activity の explicit `PendingIntent` を発火し、`IncomingIntentHandler` が `AppNavigationTarget.INTEGRATED` へ解決して統合ビューを開く。
 - launcher が数字 badge と dot のどちらを表示するかは launcher implementation に依存する。
@@ -109,8 +110,9 @@ Worker から permission dialog を起動しない。permission request は通�
 最低限、次を自動テストする。
 
 - background refresh interval の既定値と永続化。
-- 同期前後の identity 差分による新着判定。
+- 統合ビュー表示sourceの同期前後 identity 差分による新着判定。
 - 既存未読だけでは新着が発生しないこと。
+- 購読型動画Providerを更新しても統合ビュー通知件数へ含めないこと。
 - 同期前または同期後の snapshot が欠落した場合は通知対象を作らないこと。
 - notification semantic action が integrated app navigation target へ解決されること。
 - mail の初回 sync continuation が周期 sync migration 後も維持されること。
@@ -125,6 +127,7 @@ notification shade と launcher badge/dot の見え方、notification tap の co
 - [ADR-0200](../adr/0200-app-composition-module-boundary.md)
 - [ADR-0220](../adr/0220-integrated-background-refresh-and-notification.md)
 - [ADR-0222](../adr/0222-notification-tap-routing.md)
+- [ADR-0247](../adr/0247-keep-video-out-of-integrated-view.md)
 - [Android Developers: Define work requests](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work)
 - [Android Developers: PeriodicWorkRequest](https://developer.android.com/reference/androidx/work/PeriodicWorkRequest)
 - [Android Developers: Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
