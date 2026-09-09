@@ -127,6 +127,7 @@ internal fun webVideoPlaybackReferrerUrl(
   val uri = URI(referrerUrl)
   val scheme = uri.scheme?.lowercase()
   require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
-  val path = if (shareReferrerPath) uri.path?.takeIf(String::isNotBlank) ?: "/" else "/"
-  URI(scheme, null, uri.host, uri.port, path, null, null).toString()
+  val origin = URI(scheme, null, uri.host, uri.port, null, null, null).toString()
+  val path = if (shareReferrerPath) uri.rawPath?.takeIf(String::isNotBlank) ?: "/" else "/"
+  "$origin$path"
 }.getOrNull()
