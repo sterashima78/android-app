@@ -34,7 +34,6 @@ internal enum class GameScreen {
   GAME_2048,
   NONOGRAM,
   MINESWEEPER,
-  KLONDIKE,
   SPIDER,
 }
 
@@ -54,7 +53,6 @@ fun GameRoute(
   game2048ViewModel: Game2048ViewModel = viewModel(),
   nonogramViewModel: NonogramViewModel = viewModel(),
   minesweeperViewModel: MinesweeperViewModel = viewModel(),
-  klondikeViewModel: KlondikeViewModel = viewModel(),
   spiderViewModel: SpiderViewModel = viewModel(),
   onOrientationPreferenceChange: (GameOrientationPreference) -> Unit = {},
   onChromePreferenceChange: (GameChromePreference) -> Unit = {},
@@ -79,7 +77,9 @@ fun GameRoute(
       onOpen2048 = { screen = GameScreen.GAME_2048.name },
       onOpenNonogram = { screen = GameScreen.NONOGRAM.name },
       onOpenMinesweeper = { screen = GameScreen.MINESWEEPER.name },
-      onOpenKlondike = { screen = GameScreen.KLONDIKE.name },
+      onOpenKlondike = {
+        context.startActivity(Intent(context, GodotKlondikeActivity::class.java))
+      },
       onOpenSpider = { screen = GameScreen.SPIDER.name },
     )
 
@@ -119,12 +119,6 @@ fun GameRoute(
       )
     }
 
-    GameScreen.KLONDIKE -> KlondikeRoute(
-      modifier = modifier,
-      viewModel = klondikeViewModel,
-      onBack = { screen = GameScreen.LIST.name },
-    )
-
     GameScreen.SPIDER -> SpiderRoute(
       modifier = modifier,
       viewModel = spiderViewModel,
@@ -134,18 +128,12 @@ fun GameRoute(
 }
 
 internal fun orientationPreferenceFor(screen: GameScreen): GameOrientationPreference = when (screen) {
-  GameScreen.KLONDIKE,
-  GameScreen.SPIDER,
-  -> GameOrientationPreference.SENSOR_LANDSCAPE
-
+  GameScreen.SPIDER -> GameOrientationPreference.SENSOR_LANDSCAPE
   else -> GameOrientationPreference.PORTRAIT
 }
 
 internal fun chromePreferenceFor(screen: GameScreen): GameChromePreference = when (screen) {
-  GameScreen.KLONDIKE,
-  GameScreen.SPIDER,
-  -> GameChromePreference.FULLSCREEN
-
+  GameScreen.SPIDER -> GameChromePreference.FULLSCREEN
   else -> GameChromePreference.STANDARD
 }
 
