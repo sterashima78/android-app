@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(31, db.version)
+    assertEquals(32, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -47,6 +47,7 @@ class AppDatabaseSchemaTest {
     assertTrue("content_type" in columnNames(db, "articles"))
     assertFalse("saved_at" in columnNames(db, "articles"))
     assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
+    assertTrue("function_code" in columnNames(db, "video_providers"))
     assertEquals(
       setOf(
         "feed_folders",
@@ -196,7 +197,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(31, db.version)
+    assertEquals(32, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -256,7 +257,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(31, db.version)
+    assertEquals(32, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
@@ -338,13 +339,64 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(31, db.version)
+    assertEquals(32, db.version)
     assertEquals(1, countRows(db, "video_providers", "provider_type=?", arrayOf("YOUTUBE")))
     assertEquals(1, countRows(db, "video_subscriptions", "source_id=?", arrayOf("channel-1")))
     assertEquals(2, countRows(db, "video_provider_items", "provider_id=?", arrayOf("youtube")))
     assertEquals(1, countRows(db, "video_provider_items", "is_read=0", emptyArray()))
     assertEquals(1, countRows(db, "video_provider_items", "is_read=1", emptyArray()))
     assertEquals(2, countRows(db, "video_items", "source=?", arrayOf("SERVICE")))
+    assertTrue("function_code" in columnNames(db, "video_providers"))
+  }
+
+  @Test
+  fun `version 31 provider data gains custom function column without losing state`() {
+    val previousSchema = DatabaseSchema(
+      version = 31,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v31",
+          createSchema = { db ->
+            db.execSQL(
+              """
+                CREATE TABLE video_providers(
+                  id TEXT PRIMARY KEY NOT NULL,
+                  provider_type TEXT NOT NULL UNIQUE,
+                  name TEXT NOT NULL,
+                  enabled INTEGER NOT NULL DEFAULT 1,
+                  created_at INTEGER NOT NULL,
+                  updated_at INTEGER NOT NULL
+                )
+              """.trimIndent(),
+            )
+          },
+        ),
+      ),
+    )
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    legacy.writableDatabase.insertOrThrow(
+      "video_providers",
+      null,
+      ContentValues().apply {
+        put("id", "builtin-provider")
+        put("provider_type", "YOUTUBE")
+        put("name", "Built-in Provider")
+        put("enabled", 1)
+        put("created_at", 100L)
+        put("updated_at", 200L)
+      },
+    )
+    legacy.close()
+
+    val db = openDatabase().writableDatabase
+
+    assertEquals(32, db.version)
+    assertTrue("function_code" in columnNames(db, "video_providers"))
+    assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("builtin-provider")))
+    assertEquals(
+      "YOUTUBE",
+      singleString(db, "SELECT provider_type FROM video_providers WHERE id = ?", arrayOf("builtin-provider")),
+    )
   }
 
   @Test
