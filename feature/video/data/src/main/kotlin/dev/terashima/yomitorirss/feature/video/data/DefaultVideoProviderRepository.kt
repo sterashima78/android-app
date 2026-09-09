@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.video.data
 
+import android.content.Context
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.video.VideoProvider
@@ -11,10 +12,22 @@ import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 
-class DefaultVideoProviderRepository(
+class DefaultVideoProviderRepository internal constructor(
   database: DatabaseConnection,
   httpClient: HttpClient,
+  private val customProviderRuntime: CustomVideoProviderRuntime?,
 ) : VideoProviderRepository {
+  constructor(
+    database: DatabaseConnection,
+    httpClient: HttpClient,
+  ) : this(database, httpClient, null)
+
+  constructor(
+    database: DatabaseConnection,
+    httpClient: HttpClient,
+    context: Context,
+  ) : this(database, httpClient, AndroidCustomVideoProviderRuntime(context, httpClient))
+
   private val database = VideoProviderDatabase(database)
   private val youtubeClient = YouTubeVideoProviderClient(httpClient)
 
@@ -31,6 +44,7 @@ class DefaultVideoProviderRepository(
     require(provider.enabled) { "動画プロバイダが無効です" }
     val feed = when (provider.type) {
       VideoProviderType.YOUTUBE -> youtubeClient.subscribe(sourceUrl)
+      VideoProviderType.CUSTOM -> customRuntime().subscribe(provider.requireFunctionCode(), sourceUrl)
     }
     return database.upsertProviderFeed(provider, feed).first
   }
@@ -47,6 +61,7 @@ class DefaultVideoProviderRepository(
         runCatching {
           val feed = when (provider.type) {
             VideoProviderType.YOUTUBE -> youtubeClient.refresh(subscription.sourceId)
+            VideoProviderType.CUSTOM -> customRuntime().refresh(provider.requireFunctionCode(), subscription.sourceId)
           }
           database.upsertProviderFeed(provider, feed).second
         }.fold(
@@ -80,4 +95,12 @@ class DefaultVideoProviderRepository(
   override fun setWatchLater(videoId: String, watchLater: Boolean) = database.setWatchLater(videoId, watchLater)
 
   override fun markAllRead(providerId: String?) = database.markAllRead(providerId)
+
+  private fun customRuntime(): CustomVideoProviderRuntime = requireNotNull(customProviderRuntime) {
+    "カスタム動画プロバイダ実行環境が構成されていません"
+  }
+}
+
+private fun VideoProvider.requireFunctionCode(): String = requireNotNull(functionCode?.takeIf(String::isNotBlank)) {
+  "カスタム動画プロバイダのfunction codeがありません"
 }

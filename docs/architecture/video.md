@@ -1,6 +1,6 @@
 # Video
 
-この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)、[ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md) を参照する。
+この文書は Video feature の current architecture を示す。設計判断の履歴は [ADR-0237](../adr/0237-video-library-and-web-extraction.md)、[ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)、[ADR-0240](../adr/0240-video-saved-items-and-folders.md)、[ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)、[ADR-0242](../adr/0242-video-subscription-providers.md)、[ADR-0243](../adr/0243-video-web-request-cookie-capture.md)、[ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)、[ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)、[ADR-0246](../adr/0246-video-custom-provider-code.md) を参照する。
 
 ## Ownership
 
@@ -11,7 +11,7 @@ Video は SMB / Web / 購読型provider由来動画を同じ catalog へ投影�
 - SMB source identityから再構築する保存画面用directory projection
 - Web page URL identity
 - Web video extractor rule
-- 購読型provider設定、subscription、provider item identity / publish time
+- 購読型provider設定、custom provider function code、subscription、provider item identity / publish time
 - provider item の unread / read / watch-later state
 - provider refresh lifecycle
 - 再生位置 / duration / 最終再生日時 / completed state
@@ -29,9 +29,9 @@ Video は SMB / Web / 購読型provider由来動画を同じ catalog へ投影�
 
 `:feature:video:domain` は `VideoItem`、`VideoSmbSource`、`VideoSmbFileIdentity`、`VideoSmbBrowserPath`、`VideoPlaybackState`、`VideoSavedState`、`VideoFolder`、`VideoProvider`、`VideoSubscription`、`VideoProviderVideo`、`WebVideoExtractorRule`、`VideoRepository`、`VideoProviderRepository`、`VideoPlaybackResolver`、`VideoThumbnailResolver`、`VideoByteSourceFactory` 等の contract と、SMB source identity / sync rootからbrowser pathを導出するpure ruleを所有する。
 
-`:feature:video:data` は Video-owned database schema、Video用SMB同期場所、明示保存状態・フォルダ、Web metadata取得、WebView extractor、SMB catalog projection、provider adapter / feed parsing / refresh、playback target resolution、SMB動画のthumbnail cache生成を所有する。
+`:feature:video:data` は Video-owned database schema、Video用SMB同期場所、明示保存状態・フォルダ、Web metadata取得、WebView extractor、SMB catalog projection、組み込みprovider adapter / custom provider runtime / feed validation / refresh、playback target resolution、SMB動画のthumbnail cache生成を所有する。
 
-`:feature:video:ui` は一覧、source filter、「続き」「保存済み」「視聴済み」、保存済み動画のfile browser、整理フォルダ管理、provider / subscription設定、provider未読確認、設定、Media3 foreground playerを所有する。一覧へ入ったSMB動画カードだけthumbnail resolutionを要求し、同期時に全動画を事前生成しない。
+`:feature:video:ui` は一覧、source filter、「続き」「保存済み」「視聴済み」、保存済み動画のfile browser、整理フォルダ管理、provider / subscription設定、custom provider function editor、provider未読確認、設定、Media3 foreground playerを所有する。一覧へ入ったSMB動画カードだけthumbnail resolutionを要求し、同期時に全動画を事前生成しない。
 
 ## Shared SMB connection boundary
 
@@ -117,27 +117,40 @@ Web URL登録は1件のVideo itemを明示的に追加する操作であり、�
 
 ## Subscription providers
 
-購読型providerは、provider設定・subscription・取得済みitem stateをVideo Context内で共通化する。provider adapterは外部source固有の入力正規化、endpoint解決、response parsingだけを担当し、subscription / unread / refresh lifecycleを独自実装しない。
+購読型providerは、provider設定・subscription・取得済みitem stateをVideo Context内で共通化する。組み込みadapterとユーザー定義custom providerはいずれも外部source固有の入力正規化、endpoint解決、response parsing、item projectionだけを担当し、subscription / unread / refresh lifecycleを独自実装しない。
 
 ```text
 Video Settings
    |
    +---- provider enabled state
-   +---- subscription source URL
+   +---- custom provider function code
+   +---- subscription input
    |
    v
 VideoProviderRepository
    |
    +---- video_providers
    +---- video_subscriptions
-   +---- provider adapter ----> bounded feed fetch / parse
    |
+   +---- built-in adapter -------> bounded feed fetch / parse
+   |
+   +---- custom JS runtime ------> bounded HTTPS api.fetch
+   |                                   |
+   |                                   +---- no implicit credentials
    v
 video_provider_items + video_items
    |
    +---- unread / read / watch later
    +---- playback / saved state は既存Video stateを利用
 ```
+
+custom providerは複数登録できる。function codeは `async (input, api) => ProviderFeed` 相当のJavaScript function expressionとして保存し、subscribe時は `input.mode = "subscribe"` とユーザー入力、refresh時は `input.mode = "refresh"` と保存済みsource IDを受け取る。戻り値はsource ID、表示タイトル、source URLと動画item配列へ正規化し、Video Dataがvalidation後に既存provider stateへ投影する。
+
+custom providerの外部通信はhostが提供する `api.fetch` を利用する。requestはcredentialを含まないHTTPS URLに限定し、request回数、body size、response size、function size、実行時間をboundedにする。custom runtimeにはdatabase、filesystem、Android object、他Contextのrepositoryを公開しない。専用WebView profileではCookieを受け入れず、direct network loadも無効化する。
+
+`Authorization`、`Cookie`、proxy credential、API key相当のcredential headerは初期custom provider contractでは受け付けず、既存WebView Cookie、mail credential、SMB credential、cloud token等を暗黙に注入しない。認証付きproviderを追加する場合は、function codeとは分離されたprotected credential capabilityとして別途設計判断する。
+
+custom provider runtimeはActivityに依存せずapplication contextから構成し、統合background refreshからも利用できる。native JavaScript bridgeやWebView自身のnetwork loadは利用せず、`api.fetch` が返すPromiseをhost側のbounded HTTP responseで解決する。複数requestが同時に開始された場合もrequest IDとqueueで対応関係を保持し、rendererが終了した場合は当該provider実行を失敗として局所化する。
 
 新しく取得したprovider itemは `VideoSource.SERVICE` の `video_items` として投影し、`video_provider_items` でprovider item ID、subscription、publish time、未読状態を保持する。既存itemのrefreshではread / watch-later stateを上書きしない。
 
@@ -211,7 +224,7 @@ Video Dataは次のtableを所有する。
 - `video_subscriptions`
 - `video_provider_items`
 
-`video_items` はcatalog projectionであり、SMB / Webではrowの存在自体が保存済み画面への所属も意味する。`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所とbrowser root境界、`video_folders` はWeb / SERVICEの整理folder、`video_saved_items` はSERVICEの明示保存とWeb / SERVICEのfolder所属、`video_web_extractor_rules` はユーザー設定、`video_providers` / `video_subscriptions` / `video_provider_items` は購読型providerの設定・membership・item stateとして保存する。Cookie共有のboolean設定はruleのdurable stateだが、Cookie値そのものは保存しない。
+`video_items` はcatalog projectionであり、SMB / Webではrowの存在自体が保存済み画面への所属も意味する。`video_playback_state` はユーザーの視聴継続状態、`video_smb_sources` はVideo用SMB同期場所とbrowser root境界、`video_folders` はWeb / SERVICEの整理folder、`video_saved_items` はSERVICEの明示保存とWeb / SERVICEのfolder所属、`video_web_extractor_rules` はユーザー設定、`video_providers` / `video_subscriptions` / `video_provider_items` は購読型providerの設定・membership・item stateとして保存する。custom providerのfunction codeは `video_providers.function_code` に保存する。Cookie共有のboolean設定はruleのdurable stateだが、Cookie値そのものは保存しない。
 
 SMB directory hierarchy用の新しいdurable tableは持たない。directoryは `video_items.source_id` と `video_smb_sources.root_path` から再構築できるprojectionとする。
 
@@ -226,6 +239,8 @@ ADR-0240でapplication database versionを30へ進め、`video_folders` と `vid
 ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存version 30 databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
 
 ADR-0242でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。version 31 schema initializationでもADR-0241のCookie列refinementはidempotentに適用される。
+
+ADR-0246でapplication database versionを32へ進め、`video_providers.function_code` を追加する。version 31 -> 32 migrationは既存provider row、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みproviderはfunction codeを持たず、custom providerだけがfunction codeをdurable user configurationとして保持する。backup restoreのexact-version policyは変更しない。
 
 ## Playback state semantics
 
@@ -270,11 +285,14 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - 保存状態の変更でplayback stateを変更しない。
 - Web単発登録へsubscription / unread semanticsを持ち込まない。
 - provider adapterごとにsubscription / unread / refresh persistenceを複製しない。
+- custom provider codeへdatabase、filesystem、他Context repository、既存credentialを公開しない。
+- custom providerの外部requestはboundedなHTTPS `api.fetch` 経由とし、credential headerを暗黙または設定値から送らない。
+- custom provider function codeをcredential storeとして扱わない。
 - provider refreshで既存itemのread / playback / saved stateを上書きしない。
 - subscription解除で保存済みまたは再生履歴を持つVideo itemを暗黙に削除しない。
 - migration完了後のcurrent runtimeで旧provider専用tableを参照しない。
 - foreground video playbackをAudioのbackground media sessionへ暗黙に統合しない。
-- user-authored Web extractor functionや実URLをpublic repositoryのfixture/documentへ保存しない。
+- user-authored Web extractor function、custom provider function、実URLをpublic repositoryのfixture/documentへ保存しない。
 
 ## Verification
 
@@ -286,20 +304,23 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - SERVICEの保存 / 保存解除、Web / SERVICEの保存先変更、folder CRUD、folder削除時の未分類化、同名folder拒否をrepository testする。
 - 保存状態とplayback stateが独立していることをrepository testする。
 - provider設定、enabled state、subscription CRUD、refresh、未読 / 既読 / watch-later stateをrepository testする。
-- provider feed adapterのURL検証、通常動画feed endpoint、XML parsing、要求source IDとの一致をunit testする。
+- 組み込みprovider feed adapterのURL検証、feed endpoint、response parsing、要求source IDとの一致をunit testする。
+- custom providerを複数保存でき、function code更新でprovider identityを維持することをrepository testする。
+- custom providerのsubscribe / refreshが共通 `VideoProviderRepository` lifecycleを利用し、source IDとitem stateを共通projectionへ渡すことをrepository testする。
+- custom provider runtimeのHTTPS制約、credential header拒否、request / response size、request回数、timeout、戻り値validationをruntime boundary testの対象とする。
 - provider refreshで既存item stateを保持し、新規itemだけを未読として追加することをrepository testする。
 - subscription解除時のretention ruleをrepository testする。
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
-- Web streamは実requestとstream URLが一致する場合だけ観測Refererをoriginへ縮約して優先し、未観測時はextractor `referrerUrl` origin、それもない場合は元page originへfallbackすることをunit testする。
+- Web streamは実requestとstream URLが一致する場合だけ観測Refererをoriginへ縮約して優先し、exact requestがない場合はexplicit `referrerUrl`、それもない場合は元page originへfallbackすることをunit testする。
 - 選択したWeb stream参照元originを `Referer` / `Origin` のMedia3 HTTP request propertyへ変換し、path / query / fragmentを送らないことをunit testする。
 - Cookie共有OFFではproviderとrequest Cookie captureを作動させず、ONでは完全一致requestの観測Cookieをprofile lookupより優先することをunit testする。
 - 観測CookieがないURLではprofile CookieManager lookupへfallbackし、別URLの観測Cookieを流用しないことをunit testする。
 - `video_web_extractor_rules` のCookie共有booleanを保存・復元し、既存schema refinementでdefault OFFになることをrepository testする。
-- app database fresh schema、version 28 -> 29、version 29 -> 30、version 30 -> 31をtestする。
+- app database fresh schema、version 28 -> 29、version 29 -> 30、version 30 -> 31、version 31 -> 32をtestする。
 - architecture verificationでmodule graph、table ownership、migration foreign-read allowlist、navigation ownershipを検証する。
-- Android実機では保存済みタブでSMB同期root / 子directory / 動画を辿れること、directoryと動画が同じ一覧へ並ぶこと、Web動画が未分類または整理folderへ表示されること、SERVICE動画の明示保存 / 保存解除、folder CRUDに加え、LibraryとVideoで異なるSMB share/path、SMB動画thumbnail表示、Web stream、Cookie共有OFF/ON、全画面、seek、resumeを確認する。
+- Android実機では保存済みタブでSMB同期root / 子directory / 動画を辿れること、directoryと動画が同じ一覧へ並ぶこと、Web動画が未分類または整理folderへ表示されること、SERVICE動画の明示保存 / 保存解除、folder CRUDに加え、LibraryとVideoで異なるSMB share/path、SMB動画thumbnail表示、Web stream、Cookie共有OFF/ON、custom providerの追加・購読・background refresh、全画面、seek、resumeを確認する。
 
 ## Sources
 
@@ -311,6 +332,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - [ADR-0243](../adr/0243-video-web-request-cookie-capture.md)
 - [ADR-0244](../adr/0244-video-intrinsic-saved-sources-and-file-browser.md)
 - [ADR-0245](../adr/0245-video-playback-explicit-referrer-origin.md)
+- [ADR-0246](../adr/0246-video-custom-provider-code.md)
 - [module-map.md](module-map.md)
 - [context-map.md](context-map.md)
 - [persistence.md](persistence.md)

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
-import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoRepository
 import kotlinx.coroutines.CancellationException
@@ -43,7 +42,7 @@ internal class IntegratedVideoProviderViewModel(
     mutableState.value = mutableState.value.copy(refreshing = true, message = null)
     viewModelScope.launch(Dispatchers.IO) {
       try {
-        youtubeProviderIds().forEach { providerId -> providers.refreshProviders(providerId) }
+        providers.refreshProviders()
         mutableState.value = snapshot().copy(message = "購読動画を更新しました")
       } catch (error: CancellationException) {
         throw error
@@ -109,7 +108,7 @@ internal class IntegratedVideoProviderViewModel(
     }
 
   private fun snapshot(): IntegratedVideoProviderState {
-    val providerIds = youtubeProviderIds()
+    val providerIds = providers.providers().mapTo(linkedSetOf()) { it.id }
     return IntegratedVideoProviderState(
       initialized = true,
       unread = providers.unreadVideos().filter { it.providerId in providerIds },
@@ -119,11 +118,6 @@ internal class IntegratedVideoProviderViewModel(
       message = null,
     )
   }
-
-  private fun youtubeProviderIds(): Set<String> = providers.providers()
-    .asSequence()
-    .filter { it.type == VideoProviderType.YOUTUBE }
-    .mapTo(linkedSetOf()) { it.id }
 
   class Factory(
     private val providers: VideoProviderRepository,

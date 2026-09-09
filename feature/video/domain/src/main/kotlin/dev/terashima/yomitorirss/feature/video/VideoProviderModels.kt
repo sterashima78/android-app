@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.video
 
 enum class VideoProviderType {
   YOUTUBE,
+  CUSTOM,
 }
 
 data class VideoProvider(
@@ -9,6 +10,7 @@ data class VideoProvider(
   val type: VideoProviderType,
   val name: String,
   val enabled: Boolean = true,
+  val functionCode: String? = null,
   val createdAtEpochMillis: Long = 0L,
   val updatedAtEpochMillis: Long = 0L,
 )

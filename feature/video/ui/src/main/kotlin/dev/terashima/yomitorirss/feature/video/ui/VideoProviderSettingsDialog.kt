@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,7 +36,9 @@ internal fun VideoProviderSettingsDialog(
   onRefresh: (String?) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  var sourceUrl by remember { mutableStateOf("") }
+  var showCustomEditor by remember { mutableStateOf(false) }
+  var customName by remember { mutableStateOf("") }
+  var customFunctionCode by remember { mutableStateOf("") }
   val configuredTypes = state.providers.mapTo(HashSet()) { it.type }
 
   AlertDialog(
@@ -53,7 +56,7 @@ internal fun VideoProviderSettingsDialog(
         )
 
         VideoProviderType.entries
-          .filterNot(configuredTypes::contains)
+          .filter { it != VideoProviderType.CUSTOM && it !in configuredTypes }
           .forEach { type ->
             Button(
               onClick = {
@@ -72,84 +75,50 @@ internal fun VideoProviderSettingsDialog(
             }
           }
 
-        state.providers.forEach { provider ->
-          HorizontalDivider()
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Column(Modifier.weight(1f)) {
-              Text(provider.name, fontWeight = FontWeight.SemiBold)
-              Text(if (provider.enabled) "有効" else "無効")
-            }
-            TextButton(
-              onClick = { onSaveProvider(provider.copy(enabled = !provider.enabled)) },
-              enabled = !state.busy,
-            ) {
-              Text(if (provider.enabled) "無効化" else "有効化")
-            }
-            TextButton(
-              onClick = { onDeleteProvider(provider.id) },
-              enabled = !state.busy,
-            ) {
-              Text("削除")
-            }
-          }
-
-          OutlinedTextField(
-            value = sourceUrl,
-            onValueChange = { sourceUrl = it },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = provider.enabled && !state.busy,
-            singleLine = true,
-            label = { Text("チャンネルURL") },
+        Button(
+          onClick = { showCustomEditor = !showCustomEditor },
+          enabled = !state.busy,
+        ) {
+          Text(if (showCustomEditor) "カスタム追加を閉じる" else "カスタムプロバイダを追加")
+        }
+        if (showCustomEditor) {
+          CustomProviderEditor(
+            name = customName,
+            functionCode = customFunctionCode,
+            enabled = !state.busy,
+            onNameChange = { customName = it },
+            onFunctionCodeChange = { customFunctionCode = it },
+            actionLabel = "追加",
+            onSave = {
+              onSaveProvider(
+                VideoProvider(
+                  id = "",
+                  type = VideoProviderType.CUSTOM,
+                  name = customName,
+                  enabled = true,
+                  functionCode = customFunctionCode,
+                ),
+              )
+              customName = ""
+              customFunctionCode = ""
+              showCustomEditor = false
+            },
           )
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-              onClick = {
-                val value = sourceUrl.trim()
-                if (value.isNotEmpty()) {
-                  onSubscribe(provider.id, value)
-                  sourceUrl = ""
-                }
-              },
-              enabled = provider.enabled && sourceUrl.isNotBlank() && !state.busy,
-            ) {
-              Text("購読を追加")
-            }
-            TextButton(
-              onClick = { onRefresh(provider.id) },
-              enabled = provider.enabled && !state.busy,
-            ) {
-              Text("更新")
-            }
-          }
+        }
 
-          val subscriptions = state.subscriptions.filter { it.providerId == provider.id }
-          if (subscriptions.isEmpty()) {
-            Text("購読中のチャンネルはありません")
-          } else {
-            subscriptions.forEach { subscription ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Column(Modifier.weight(1f)) {
-                  Text(subscription.title)
-                  Text(subscription.sourceUrl)
-                }
-                TextButton(
-                  onClick = { onUnsubscribe(subscription.id) },
-                  enabled = !state.busy,
-                ) {
-                  Text("解除")
-                }
-              }
-            }
+        state.providers.forEach { provider ->
+          key(provider.id) {
+            HorizontalDivider()
+            ProviderEditor(
+              provider = provider,
+              busy = state.busy,
+              subscriptions = state.subscriptions.filter { it.providerId == provider.id },
+              onSaveProvider = onSaveProvider,
+              onDeleteProvider = onDeleteProvider,
+              onSubscribe = onSubscribe,
+              onUnsubscribe = onUnsubscribe,
+              onRefresh = onRefresh,
+            )
           }
         }
       }
@@ -162,6 +131,162 @@ internal fun VideoProviderSettingsDialog(
   )
 }
 
+@Composable
+private fun ProviderEditor(
+  provider: VideoProvider,
+  busy: Boolean,
+  subscriptions: List<dev.terashima.yomitorirss.feature.video.VideoSubscription>,
+  onSaveProvider: (VideoProvider) -> Unit,
+  onDeleteProvider: (String) -> Unit,
+  onSubscribe: (String, String) -> Unit,
+  onUnsubscribe: (String) -> Unit,
+  onRefresh: (String?) -> Unit,
+) {
+  var subscriptionInput by remember(provider.id) { mutableStateOf("") }
+  var customName by remember(provider.id, provider.name) { mutableStateOf(provider.name) }
+  var customFunctionCode by remember(provider.id, provider.functionCode) {
+    mutableStateOf(provider.functionCode.orEmpty())
+  }
+
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Column(Modifier.weight(1f)) {
+      Text(provider.name, fontWeight = FontWeight.SemiBold)
+      Text(if (provider.enabled) "有効" else "無効")
+    }
+    TextButton(
+      onClick = { onSaveProvider(provider.copy(enabled = !provider.enabled)) },
+      enabled = !busy,
+    ) {
+      Text(if (provider.enabled) "無効化" else "有効化")
+    }
+    TextButton(
+      onClick = { onDeleteProvider(provider.id) },
+      enabled = !busy,
+    ) {
+      Text("削除")
+    }
+  }
+
+  if (provider.type == VideoProviderType.CUSTOM) {
+    CustomProviderEditor(
+      name = customName,
+      functionCode = customFunctionCode,
+      enabled = !busy,
+      onNameChange = { customName = it },
+      onFunctionCodeChange = { customFunctionCode = it },
+      actionLabel = "設定を保存",
+      onSave = {
+        onSaveProvider(
+          provider.copy(
+            name = customName,
+            functionCode = customFunctionCode,
+          ),
+        )
+      },
+    )
+  }
+
+  OutlinedTextField(
+    value = subscriptionInput,
+    onValueChange = { subscriptionInput = it },
+    modifier = Modifier.fillMaxWidth(),
+    enabled = provider.enabled && !busy,
+    singleLine = true,
+    label = {
+      Text(if (provider.type == VideoProviderType.CUSTOM) "購読入力" else "チャンネルURL")
+    },
+  )
+  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Button(
+      onClick = {
+        val value = subscriptionInput.trim()
+        if (value.isNotEmpty()) {
+          onSubscribe(provider.id, value)
+          subscriptionInput = ""
+        }
+      },
+      enabled = provider.enabled && subscriptionInput.isNotBlank() && !busy,
+    ) {
+      Text("購読を追加")
+    }
+    TextButton(
+      onClick = { onRefresh(provider.id) },
+      enabled = provider.enabled && !busy,
+    ) {
+      Text("更新")
+    }
+  }
+
+  if (subscriptions.isEmpty()) {
+    Text("購読中のチャンネルはありません")
+  } else {
+    subscriptions.forEach { subscription ->
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Column(Modifier.weight(1f)) {
+          Text(subscription.title)
+          Text(subscription.sourceUrl)
+        }
+        TextButton(
+          onClick = { onUnsubscribe(subscription.id) },
+          enabled = !busy,
+        ) {
+          Text("解除")
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CustomProviderEditor(
+  name: String,
+  functionCode: String,
+  enabled: Boolean,
+  onNameChange: (String) -> Unit,
+  onFunctionCodeChange: (String) -> Unit,
+  actionLabel: String,
+  onSave: () -> Unit,
+) {
+  Text(
+    "function は async (input, api) => ({ sourceId, title, sourceUrl, videos }) の形式で設定します。" +
+      " 外部取得は api.fetch({ url, method, headers, body, contentType }) を使用します。" +
+      " 認証情報はfunction codeやheadersへ含めないでください。",
+  )
+  OutlinedTextField(
+    value = name,
+    onValueChange = onNameChange,
+    modifier = Modifier.fillMaxWidth(),
+    enabled = enabled,
+    singleLine = true,
+    label = { Text("プロバイダ名") },
+  )
+  OutlinedTextField(
+    value = functionCode,
+    onValueChange = onFunctionCodeChange,
+    modifier = Modifier.fillMaxWidth(),
+    enabled = enabled,
+    minLines = 8,
+    label = { Text("JavaScript function") },
+  )
+  Button(
+    onClick = onSave,
+    enabled = enabled && name.isNotBlank() && functionCode.isNotBlank(),
+  ) {
+    Text(actionLabel)
+  }
+}
+
 private fun VideoProviderType.displayName(): String = when (this) {
   VideoProviderType.YOUTUBE -> "YouTube"
+  VideoProviderType.CUSTOM -> "カスタム"
 }

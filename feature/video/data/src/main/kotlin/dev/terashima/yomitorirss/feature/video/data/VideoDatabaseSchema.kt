@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.video.data
 
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseMigration
+import dev.terashima.yomitorirss.core.database.DatabaseMigrationPhase
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val videoDatabaseSchema = DatabaseSchemaContribution(
@@ -15,6 +16,11 @@ val videoDatabaseSchema = DatabaseSchemaContribution(
     DatabaseMigration(
       targetVersion = 31,
       migrate = ::migrateLegacyVideoSubscriptions,
+    ),
+    DatabaseMigration(
+      targetVersion = 32,
+      phase = DatabaseMigrationPhase.BEFORE_SCHEMA,
+      migrate = ::migrateCustomVideoProviderCode,
     ),
   ),
 )
@@ -105,11 +111,13 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
         provider_type TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         enabled INTEGER NOT NULL DEFAULT 1,
+        function_code TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )
     """.trimIndent(),
   )
+  ensureVideoProviderFunctionCodeColumn(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS video_subscriptions (
@@ -169,23 +177,22 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
 }
 
 private fun ensureVideoWebExtractorRuleCookieColumn(db: SQLiteDatabase) {
-  val hasColumn = db.rawQuery("PRAGMA table_info(video_web_extractor_rules)", null).use { cursor ->
-    val nameColumn = cursor.getColumnIndexOrThrow("name")
-    var found = false
-    while (cursor.moveToNext()) {
-      if (cursor.getString(nameColumn) == "share_cookies_for_playback") {
-        found = true
-        break
-      }
-    }
-    found
-  }
-  if (!hasColumn) {
+  if (!db.hasColumn("video_web_extractor_rules", "share_cookies_for_playback")) {
     db.execSQL(
       "ALTER TABLE video_web_extractor_rules " +
         "ADD COLUMN share_cookies_for_playback INTEGER NOT NULL DEFAULT 0",
     )
   }
+}
+
+private fun ensureVideoProviderFunctionCodeColumn(db: SQLiteDatabase) {
+  if (db.tableExists("video_providers") && !db.hasColumn("video_providers", "function_code")) {
+    db.execSQL("ALTER TABLE video_providers ADD COLUMN function_code TEXT")
+  }
+}
+
+private fun migrateCustomVideoProviderCode(db: SQLiteDatabase) {
+  ensureVideoProviderFunctionCodeColumn(db)
 }
 
 private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
@@ -276,6 +283,21 @@ private fun migrateLegacyVideoSubscriptions(db: SQLiteDatabase) {
 
   db.execSQL("DROP TABLE IF EXISTS videos")
   db.execSQL("DROP TABLE IF EXISTS channels")
+}
+
+private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean = rawQuery(
+  "PRAGMA table_info($table)",
+  null,
+).use { cursor ->
+  val nameColumn = cursor.getColumnIndexOrThrow("name")
+  var found = false
+  while (cursor.moveToNext()) {
+    if (cursor.getString(nameColumn) == column) {
+      found = true
+      break
+    }
+  }
+  found
 }
 
 private fun SQLiteDatabase.tableExists(name: String): Boolean = rawQuery(
