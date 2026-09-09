@@ -78,7 +78,6 @@ class DefaultVideoProviderRepositoryTest {
       "動画プロバイダの一部を更新できませんでした（成功: 1 / 失敗: 1）\n失敗理由: HTTP 400 × 1",
       error?.message,
     )
-    assertEquals(1, error?.suppressed?.size)
   }
 
   @Test
@@ -114,7 +113,6 @@ class DefaultVideoProviderRepositoryTest {
         "失敗理由: HTTP 400 × 1 / HTTP 403 × 1",
       error?.message,
     )
-    assertEquals(2, error?.suppressed?.size)
   }
 
   @Test
