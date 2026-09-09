@@ -87,7 +87,7 @@ private fun migratePodcastSources(db: SQLiteDatabase) {
   }
   legacySourceIds.forEach { sourceId ->
     db.rawQuery(
-      "SELECT title,feed_url FROM feeds WHERE id=? LIMIT 1",
+      "SELECT COALESCE(custom_title,title),feed_url FROM feeds WHERE id=? LIMIT 1",
       arrayOf(sourceId),
     ).use { cursor ->
       if (!cursor.moveToFirst()) return@use
