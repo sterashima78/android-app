@@ -11,6 +11,8 @@ import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoSubscription
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import org.xml.sax.SAXException
 
 class DefaultVideoProviderRepository internal constructor(
   database: DatabaseConnection,
@@ -52,34 +54,57 @@ class DefaultVideoProviderRepository internal constructor(
   override suspend fun unsubscribe(subscriptionId: String) = database.unsubscribe(subscriptionId)
 
   override suspend fun refreshProviders(providerId: String?): VideoProviderRefreshResult {
-    val activeProviders = database.providers().filter { it.enabled && (providerId == null || it.id == providerId) }
+    val targets = database.providers()
+      .filter { it.enabled && (providerId == null || it.id == providerId) }
+      .flatMap { provider ->
+        database.subscriptions(provider.id).map { subscription -> RefreshTarget(provider, subscription) }
+      }
     var refreshed = 0
     var added = 0
-    var failed = 0
-    activeProviders.forEach { provider ->
-      database.subscriptions(provider.id).forEach { subscription ->
-        runCatching {
-          val feed = when (provider.type) {
-            VideoProviderType.YOUTUBE -> youtubeClient.refresh(subscription.sourceId)
-            VideoProviderType.CUSTOM -> customRuntime().refresh(provider.requireFunctionCode(), subscription.sourceId)
+    var pending = targets
+    var attempt = 0
+    val finalFailures = mutableListOf<Throwable>()
+
+    while (pending.isNotEmpty()) {
+      val retryTargets = mutableListOf<RefreshTarget>()
+      pending.forEach { target ->
+        val feed = try {
+          refreshFeed(target)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (error: Throwable) {
+          if (
+            attempt < PROVIDER_REFRESH_RETRY_DELAYS_MILLIS.size &&
+            shouldRetryProviderRefresh(target.provider.type, error)
+          ) {
+            retryTargets += target
+          } else {
+            finalFailures += error
           }
-          database.upsertProviderFeed(provider, feed).second
-        }.fold(
-          onSuccess = { addedCount ->
-            refreshed += 1
-            added += addedCount
-          },
-          onFailure = { error ->
-            if (error is CancellationException) throw error
-            failed += 1
-          },
-        )
+          return@forEach
+        }
+
+        try {
+          added += database.upsertProviderFeed(target.provider, feed).second
+          refreshed += 1
+        } catch (error: CancellationException) {
+          throw error
+        } catch (error: Throwable) {
+          finalFailures += error
+        }
+      }
+
+      pending = retryTargets
+      if (pending.isNotEmpty()) {
+        delay(PROVIDER_REFRESH_RETRY_DELAYS_MILLIS[attempt])
+        attempt += 1
       }
     }
-    if (failed > 0) {
-      throw IOException("動画プロバイダの一部を更新できませんでした（成功: $refreshed / 失敗: $failed）")
+
+    if (finalFailures.isNotEmpty()) {
+      throw providerRefreshException(refreshed, finalFailures)
     }
-    return VideoProviderRefreshResult(refreshed, added, failed)
+    return VideoProviderRefreshResult(refreshed, added, 0)
   }
 
   override fun unreadVideos(): List<VideoProviderVideo> = database.unreadVideos()
@@ -96,11 +121,67 @@ class DefaultVideoProviderRepository internal constructor(
 
   override fun markAllRead(providerId: String?) = database.markAllRead(providerId)
 
+  private suspend fun refreshFeed(target: RefreshTarget): VideoProviderFeed = when (target.provider.type) {
+    VideoProviderType.YOUTUBE -> youtubeClient.refresh(target.subscription.sourceId)
+    VideoProviderType.CUSTOM -> customRuntime().refresh(
+      target.provider.requireFunctionCode(),
+      target.subscription.sourceId,
+    )
+  }
+
   private fun customRuntime(): CustomVideoProviderRuntime = requireNotNull(customProviderRuntime) {
     "カスタム動画プロバイダ実行環境が構成されていません"
   }
+
+  private data class RefreshTarget(
+    val provider: VideoProvider,
+    val subscription: VideoSubscription,
+  )
+}
+
+internal fun shouldRetryProviderRefresh(type: VideoProviderType, error: Throwable): Boolean {
+  if (type != VideoProviderType.YOUTUBE) return false
+  return when (error) {
+    is VideoProviderHttpException -> error.statusCode == 404 ||
+      error.statusCode == 408 ||
+      error.statusCode == 425 ||
+      error.statusCode == 429 ||
+      error.statusCode in 500..599
+    is IOException -> true
+    else -> false
+  }
+}
+
+private fun providerRefreshException(refreshed: Int, failures: List<Throwable>): IOException {
+  val reasons = failures
+    .groupingBy(::providerRefreshFailureReason)
+    .eachCount()
+    .entries
+    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+    .joinToString(" / ") { (reason, count) -> "$reason × $count" }
+  return IOException(
+    "動画プロバイダの一部を更新できませんでした（成功: $refreshed / 失敗: ${failures.size}）\n" +
+      "失敗理由: $reasons",
+  ).also { aggregate ->
+    failures.forEach(aggregate::addSuppressed)
+  }
+}
+
+private fun providerRefreshFailureReason(error: Throwable): String = when (error) {
+  is VideoProviderHttpException -> "HTTP ${error.statusCode}"
+  is SAXException -> "フィード解析エラー"
+  is IOException -> when {
+    error.message.orEmpty().startsWith("ネットワーク通信がタイムアウトしました") -> "タイムアウト"
+    error.message.orEmpty().startsWith("ホスト名を解決できませんでした") -> "DNSエラー"
+    error.message.orEmpty().startsWith("サーバーに接続できませんでした") -> "接続エラー"
+    else -> "通信エラー"
+  }
+  is IllegalArgumentException, is IllegalStateException -> "プロバイダ処理エラー"
+  else -> "その他のエラー"
 }
 
 private fun VideoProvider.requireFunctionCode(): String = requireNotNull(functionCode?.takeIf(String::isNotBlank)) {
   "カスタム動画プロバイダのfunction codeがありません"
 }
+
+private val PROVIDER_REFRESH_RETRY_DELAYS_MILLIS = longArrayOf(500L, 1_500L)
