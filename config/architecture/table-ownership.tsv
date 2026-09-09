@@ -44,6 +44,7 @@ asset_category_definitions	:feature:asset:data
 tasks	:feature:task:data
 chat_sessions	:feature:chat:data
 chat_messages	:feature:chat:data
+podcast_sources	:feature:podcast:data
 podcast_programs	:feature:podcast:data
 podcast_episodes	:feature:podcast:data
 podcast_episode_articles	:feature:podcast:data
