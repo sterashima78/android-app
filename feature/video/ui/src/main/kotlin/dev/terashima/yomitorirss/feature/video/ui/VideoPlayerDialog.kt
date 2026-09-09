@@ -57,6 +57,7 @@ import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackDiagnostics
+import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackReferrerSource
 import dev.terashima.yomitorirss.feature.video.WebVideoSecFetchSite
 import java.net.URI
 import kotlinx.coroutines.delay
@@ -295,7 +296,10 @@ internal fun VideoPlayerDialog(
                 )
               }
               if (status.httpStatusCode == 403 && target is VideoPlaybackTarget.Stream) {
-                webVideoPlaybackDiagnosticLines(target.playbackDiagnostics).forEach { line ->
+                webVideoPlaybackDiagnosticLines(
+                  diagnostics = target.playbackDiagnostics,
+                  nativeRequestProperties = webStreamRequestProperties(target),
+                ).forEach { line ->
                   Text(
                     text = line,
                     textAlign = TextAlign.Center,
@@ -387,7 +391,10 @@ internal fun videoPlayerStatusUi(
   }
 }
 
-internal fun webVideoPlaybackDiagnosticLines(diagnostics: WebVideoPlaybackDiagnostics?): List<String> {
+internal fun webVideoPlaybackDiagnosticLines(
+  diagnostics: WebVideoPlaybackDiagnostics?,
+  nativeRequestProperties: Map<String, String> = emptyMap(),
+): List<String> {
   if (diagnostics == null) return listOf("Web診断: 情報なし")
 
   val cookieSource = when {
@@ -415,14 +422,23 @@ internal fun webVideoPlaybackDiagnosticLines(diagnostics: WebVideoPlaybackDiagno
     WebVideoSecFetchSite.OTHER -> "other"
     null -> "なし"
   }
+  val playbackReferrerSource = when (diagnostics.playbackReferrerSource) {
+    WebVideoPlaybackReferrerSource.OBSERVED_REQUEST -> "WebView実request"
+    WebVideoPlaybackReferrerSource.EXTRACTOR -> "extractor指定"
+    WebVideoPlaybackReferrerSource.PAGE -> "元ページ"
+    null -> "不明"
+  }
 
   return listOf(
     "WebView stream request: ${if (diagnostics.streamRequestObserved) "観測" else "未観測"}",
     "Cookie intercept: ${if (diagnostics.cookieInterceptSupported) "対応" else "非対応"}",
     "Cookie: $cookieSource",
-    "Referer: $referrer",
-    "Origin: $origin",
+    "WebView Referer: $referrer",
+    "WebView Origin: $origin",
     "Sec-Fetch-Site: $secFetchSite",
+    "再生参照元: $playbackReferrerSource",
+    "Native Referer: ${if (nativeRequestProperties.containsKey("Referer")) "あり" else "なし"}",
+    "Native Origin: ${if (nativeRequestProperties.containsKey("Origin")) "あり" else "なし"}",
   )
 }
 
