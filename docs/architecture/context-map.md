@@ -136,8 +136,8 @@ Content を入力として generated summary と task lifecycle / priority の S
 - Content Context からは `ArticleRepository` の未読read modelを利用して生成開始時点の対象を選ぶ。Podcast は Content table を直接readせず、生成や再生でContentのreading stateを変更しない。
 - 未読候補とRSS feed contentを source identity で照合し、Podcastへ保存する記事identityには Content-owned article ID を利用する。
 - 番組ごとの消費履歴で重複を除外した後に `maxArticlesPerEpisode` を適用し、上限を超えた未消費記事は後続エピソード候補として残す。
-- AI推論前にエピソードと記事スナップショットをatomicに予約し、推論失敗時もFAILEDエピソードとして保持する。明示的な再生成は既存エピソードIDを使い、同じ記事スナップショットを再利用する。
-- 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。
+- AI推論前にエピソードと記事スナップショットをatomicに予約する。通常失敗時はFAILEDとして保持し、明示再生成では同じ記事スナップショットを再利用する。中断時はGENERATINGのまま保持し、次回生成で同じスナップショットから再開する。
+- 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。local推論は共通AI実行ゲートを利用し、定刻生成はprovider別のbackground pauseを尊重する。
 - 定刻実行はPodcast-owned scheduler adapterが担当し、`:app:composition` はapplication起動時のschedule reconciliationとWorkerFactory wiringだけを行う。
 - 生成済み原稿の再生はAudioの `AudioPlaybackController` を利用する。PodcastはTTS、media session、音声cacheを共同所有しない。
 
@@ -257,7 +257,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0246 によりPodcast-owned durable stateを追加した。application database versionは32で、version 31を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
+ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0247 によりPodcast-owned durable stateを追加した。application database versionは33で、version 32を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -286,4 +286,4 @@ ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
 - [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
-- [ADR-0246](../adr/0246-news-podcast-context.md)
+- [ADR-0247](../adr/0247-news-podcast-context.md)
