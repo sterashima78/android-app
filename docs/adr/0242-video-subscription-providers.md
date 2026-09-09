@@ -5,7 +5,7 @@
 - Supersedes: [ADR-0010](0010-separate-youtube-feature.md) の source-specific subscription / video persistence / UI ownership
 - Refines: [ADR-0237](0237-video-library-and-web-extraction.md), [ADR-0240](0240-video-saved-items-and-folders.md)
 - Coexists with: [ADR-0241](0241-video-web-stream-cookie-opt-in.md)
-- Amended by: [ADR-0245](0245-video-custom-provider-code.md) のユーザー定義Provider実行方式
+- Amended by: [ADR-0246](0246-video-custom-provider-code.md) のユーザー定義Provider実行方式
 
 ## Context
 
@@ -35,7 +35,7 @@ Web URL の単発登録は従来どおり `VideoSource.WEB` とし、subscriptio
 
 初期 provider implementation は既存のチャンネルフィード取得 capability を Video Data adapter へ移行して利用する。将来 provider を増やす場合も、Video が所有する subscription / unread / refresh lifecycle を再利用し、provider adapter は source-specific input normalization、endpoint resolution、response parsing、item projection だけを担当する。
 
-この初期判断のうち「任意コードを保存しない」部分は、対応可能なsourceをapplication releaseへ固定しないため ADR-0245 で変更された。Provider固有処理をユーザー定義コードへ拡張しても、subscription / unread / refresh / playback / saved state のownershipは本ADRのままVideoに維持する。
+この初期判断のうち「任意コードを保存しない」部分は、対応可能なsourceをapplication releaseへ固定しないため ADR-0246 で変更された。Provider固有処理をユーザー定義コードへ拡張しても、subscription / unread / refresh / playback / saved state のownershipは本ADRのままVideoに維持する。
 
 ### Provider item は Video catalog に保存する
 
@@ -86,7 +86,7 @@ provider の有効化、購読管理、未読動画の確認は Video UI から�
 - 既存 source-specific durable data の migration が必要になる。
 - current database version を進める必要がある。
 - 統合未読 UI / background refresh / navigation の接続変更が必要になる。
-- provider adapter contract を追加するが、任意 provider DSL までは提供しないため、新しい取得方式には code-level adapter の追加が必要になる。この制約はADR-0245でユーザー定義コード方式へ変更された。
+- provider adapter contract を追加するが、任意 provider DSL までは提供しないため、新しい取得方式には code-level adapter の追加が必要になる。この制約はADR-0246でユーザー定義コード方式へ変更された。
 
 ## Compatibility
 
