@@ -168,6 +168,33 @@ func is_won() -> bool:
 		total += pile.size()
 	return total == 52
 
+static func suit_is_red(suit: int) -> bool:
+	return suit == Suit.DIAMONDS or suit == Suit.HEARTS
+
+static func suit_symbol(suit: int) -> String:
+	match suit:
+		Suit.CLUBS:
+			return "♣"
+		Suit.DIAMONDS:
+			return "♦"
+		Suit.HEARTS:
+			return "♥"
+		Suit.SPADES:
+			return "♠"
+	return "?"
+
+static func rank_label(rank: int) -> String:
+	match rank:
+		1:
+			return "A"
+		11:
+			return "J"
+		12:
+			return "Q"
+		13:
+			return "K"
+	return str(rank)
+
 func _toggle_selection(next_selection: Dictionary):
 	if _same_selection(selection, next_selection):
 		selection = null
@@ -185,6 +212,58 @@ func _same_selection(left, right) -> bool:
 		"tableau":
 			return left["pile"] == right["pile"] and left["card"] == right["card"]
 	return false
+
+func _selected_cards():
+	if selection == null:
+		return null
+	match selection["kind"]:
+		"waste":
+			return null if waste.is_empty() else [waste.back()]
+		"foundation":
+			var foundation: Array = foundations[selection["suit"]]
+			return null if foundation.is_empty() else [foundation.back()]
+		"tableau":
+			var pile: Array = tableau[selection["pile"]]
+			var card_index: int = selection["card"]
+			if card_index < 0 or card_index >= pile.size():
+				return null
+			var result: Array = []
+			for index in range(card_index, pile.size()):
+				if not pile[index]["face_up"]:
+					return null
+				result.append(pile[index]["card"])
+			return result
+	return null
+
+func _is_valid_tableau_run(cards: Array) -> bool:
+	for index in range(cards.size() - 1):
+		var upper = cards[index]
+		var lower = cards[index + 1]
+		if upper["rank"] != lower["rank"] + 1:
+			return false
+		if suit_is_red(upper["suit"]) == suit_is_red(lower["suit"]):
+			return false
+	return true
+
+func _can_place_on_tableau(card: Dictionary, target) -> bool:
+	if target == null:
+		return card["rank"] == 13
+	if not target["face_up"]:
+		return false
+	var target_card = target["card"]
+	return target_card["rank"] == card["rank"] + 1 and suit_is_red(target_card["suit"]) != suit_is_red(card["suit"])
+
+func _remove_selection():
+	match selection["kind"]:
+		"waste":
+			waste.pop_back()
+		"foundation":
+			foundations[selection["suit"]].pop_back()
+		"tableau":
+			var source: Array = tableau[selection["pile"]]
+			source.resize(selection["card"])
+			if not source.is_empty() and not source.back()["face_up"]:
+				source.back()["face_up"] = true
 
 func _shuffle(deck: Array):
 	for index in range(deck.size() - 1, 0, -1):
