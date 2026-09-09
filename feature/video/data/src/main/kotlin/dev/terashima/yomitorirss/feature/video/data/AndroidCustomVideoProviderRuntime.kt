@@ -209,15 +209,19 @@ internal class AndroidCustomVideoProviderRuntime(
         const responses = ${responses};
         window[key] = { state: 'pending' };
         let requestIndex = 0;
+        let hostRequestPending = false;
+        const pendingHostResponse = () => new Promise(() => {});
         const api = Object.freeze({
           fetch(request) {
             const index = requestIndex++;
             if (index < responses.length) return Promise.resolve(responses[index]);
+            if (hostRequestPending) return pendingHostResponse();
             if (!request || typeof request !== 'object') {
               return Promise.reject(new Error('api.fetch request must be an object'));
             }
+            hostRequestPending = true;
             window[key] = { state: 'request', request };
-            return new Promise(() => {});
+            return pendingHostResponse();
           }
         });
         Promise.resolve()
