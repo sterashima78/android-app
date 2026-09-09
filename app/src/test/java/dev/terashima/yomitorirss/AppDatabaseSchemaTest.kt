@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(33, db.version)
+    assertEquals(34, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -104,6 +104,7 @@ class AppDatabaseSchemaTest {
         "video_providers",
         "video_subscriptions",
         "video_provider_items",
+        "podcast_sources",
         "podcast_programs",
         "podcast_episodes",
         "podcast_episode_articles",
@@ -201,7 +202,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(33, db.version)
+    assertEquals(34, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -261,7 +262,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(33, db.version)
+    assertEquals(34, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
@@ -343,7 +344,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(33, db.version)
+    assertEquals(34, db.version)
     assertEquals(1, countRows(db, "video_providers", "provider_type=?", arrayOf("YOUTUBE")))
     assertEquals(1, countRows(db, "video_subscriptions", "source_id=?", arrayOf("channel-1")))
     assertEquals(2, countRows(db, "video_provider_items", "provider_id=?", arrayOf("youtube")))
@@ -394,7 +395,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(33, db.version)
+    assertEquals(34, db.version)
     assertTrue("function_code" in columnNames(db, "video_providers"))
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("builtin-provider")))
     assertEquals(
@@ -446,16 +447,148 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(33, db.version)
+    assertEquals(34, db.version)
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("custom-provider")))
     assertEquals(
       "return null",
       singleString(db, "SELECT function_code FROM video_providers WHERE id = ?", arrayOf("custom-provider")),
     )
+    assertTrue("podcast_sources" in tableNames(db))
     assertTrue("podcast_programs" in tableNames(db))
     assertTrue("podcast_episodes" in tableNames(db))
     assertTrue("podcast_episode_articles" in tableNames(db))
     assertTrue("podcast_consumed_articles" in tableNames(db))
+  }
+
+  @Test
+  fun `version 33 Podcast feed selection migrates to owned sources`() {
+    val previousSchema = DatabaseSchema(
+      version = 33,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v33",
+          createSchema = { db ->
+            db.execSQL("CREATE TABLE feeds(id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,feed_url TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE articles(id TEXT PRIMARY KEY NOT NULL,feed_id TEXT,identity_key TEXT NOT NULL)")
+            db.execSQL(
+              "CREATE TABLE podcast_programs(" +
+                "id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,feed_ids TEXT NOT NULL,provider TEXT NOT NULL," +
+                "schedule_enabled INTEGER NOT NULL DEFAULT 0,schedule_hour INTEGER NOT NULL DEFAULT 7," +
+                "schedule_minute INTEGER NOT NULL DEFAULT 0,max_articles INTEGER NOT NULL DEFAULT 12)",
+            )
+            db.execSQL(
+              "CREATE TABLE podcast_episodes(" +
+                "id TEXT PRIMARY KEY NOT NULL,program_id TEXT NOT NULL,title TEXT NOT NULL,created_at INTEGER NOT NULL," +
+                "status TEXT NOT NULL,script TEXT,error_message TEXT)",
+            )
+            db.execSQL(
+              "CREATE TABLE podcast_episode_articles(" +
+                "episode_id TEXT NOT NULL,position INTEGER NOT NULL,article_id TEXT NOT NULL,feed_id TEXT NOT NULL," +
+                "title TEXT NOT NULL,source_title TEXT,published_at INTEGER,feed_content TEXT NOT NULL," +
+                "PRIMARY KEY(episode_id,position))",
+            )
+            db.execSQL(
+              "CREATE TABLE podcast_consumed_articles(" +
+                "program_id TEXT NOT NULL,article_id TEXT NOT NULL,episode_id TEXT NOT NULL,consumed_at INTEGER NOT NULL," +
+                "PRIMARY KEY(program_id,article_id))",
+            )
+          },
+        ),
+      ),
+    )
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    val db = legacy.writableDatabase
+    db.insertOrThrow(
+      "feeds",
+      null,
+      ContentValues().apply {
+        put("id", "feed-1")
+        put("title", "ニュース")
+        put("feed_url", "https://example.invalid/feed.xml")
+      },
+    )
+    db.insertOrThrow(
+      "articles",
+      null,
+      ContentValues().apply {
+        put("id", "article-1")
+        put("feed_id", "feed-1")
+        put("identity_key", "entry-1")
+      },
+    )
+    db.insertOrThrow(
+      "podcast_programs",
+      null,
+      ContentValues().apply {
+        put("id", "program-1")
+        put("name", "朝のニュース")
+        put("feed_ids", "feed-1")
+        put("provider", "LOCAL")
+        put("schedule_enabled", 0)
+        put("schedule_hour", 7)
+        put("schedule_minute", 0)
+        put("max_articles", 12)
+      },
+    )
+    db.insertOrThrow(
+      "podcast_episodes",
+      null,
+      ContentValues().apply {
+        put("id", "episode-1")
+        put("program_id", "program-1")
+        put("title", "朝のニュース")
+        put("created_at", 100L)
+        put("status", "READY")
+      },
+    )
+    db.insertOrThrow(
+      "podcast_episode_articles",
+      null,
+      ContentValues().apply {
+        put("episode_id", "episode-1")
+        put("position", 0)
+        put("article_id", "article-1")
+        put("feed_id", "feed-1")
+        put("title", "記事")
+        put("feed_content", "本文")
+      },
+    )
+    db.insertOrThrow(
+      "podcast_consumed_articles",
+      null,
+      ContentValues().apply {
+        put("program_id", "program-1")
+        put("article_id", "article-1")
+        put("episode_id", "episode-1")
+        put("consumed_at", 100L)
+      },
+    )
+    legacy.close()
+
+    val migrated = openDatabase().writableDatabase
+
+    assertEquals(34, migrated.version)
+    assertEquals(
+      "ニュース",
+      singleString(migrated, "SELECT name FROM podcast_sources WHERE id=?", arrayOf("feed-1")),
+    )
+    assertEquals(
+      "https://example.invalid/feed.xml",
+      singleString(migrated, "SELECT feed_url FROM podcast_sources WHERE id=?", arrayOf("feed-1")),
+    )
+    assertEquals(
+      "feed-1",
+      singleString(migrated, "SELECT source_ids FROM podcast_programs WHERE id=?", arrayOf("program-1")),
+    )
+    assertFalse("feed_ids" in columnNames(migrated, "podcast_programs"))
+    assertEquals(
+      "feed-1:entry-1",
+      singleString(migrated, "SELECT article_id FROM podcast_episode_articles WHERE episode_id=?", arrayOf("episode-1")),
+    )
+    assertEquals(
+      "feed-1:entry-1",
+      singleString(migrated, "SELECT article_id FROM podcast_consumed_articles WHERE program_id=?", arrayOf("program-1")),
+    )
   }
 
   @Test
