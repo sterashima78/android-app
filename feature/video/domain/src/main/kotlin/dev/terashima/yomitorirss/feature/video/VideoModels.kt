@@ -60,6 +60,7 @@ data class WebVideoExtractorRule(
   val timeoutSeconds: Int = 15,
   val updatedAtEpochMillis: Long,
   val shareCookiesForPlayback: Boolean = false,
+  val shareReferrerPathForPlayback: Boolean = false,
 )
 
 /**

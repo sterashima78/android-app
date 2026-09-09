@@ -111,8 +111,9 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
 - Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
 - Web URL登録は1件を明示的に追加する単発操作であり、購読・未読・background refreshの対象にはしない。
-- URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。再生URL抽出では任意のreferrer URLも返せ、WebViewで実stream requestを観測できない場合の再生元originとして利用する。referrer URLのpath / query / fragmentはMedia3へ送らない。
+- URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。再生URL抽出では任意のreferrer URLも返せ、WebViewで実stream requestを観測できない場合の再生元として利用する。referrer URLは既定ではoriginだけをMedia3へ渡し、ルールの「再生時にRefererのパスを共有する」がONの場合だけ、そのexplicit referrer URLのpathをRefererへ含める。query / fragment / userinfoは送らず、Originは常にorigin-onlyとする。
 - Web抽出ルールでは「再生時にWebViewのCookieを共有する」をルールごとに設定でき、既定はOFFとする。有効な場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用し、Cookie値自体は保存・backup・logへ残さない。
+- Web抽出ルールでは「再生時にRefererのパスを共有する」をルールごとに設定でき、既定はOFFとする。この設定は再生URL抽出が明示したreferrer URLが採用された場合だけ有効で、WebView実request由来のRefererと元page fallbackはorigin-onlyを維持する。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - 動画設定では購読型Providerを追加・有効化 / 無効化できる。Providerを無効化しても設定・subscription・取得済み動画は削除せず、background refresh対象からだけ外す。
 - custom Providerは名前とJavaScript functionを設定して複数追加・編集できる。functionはsubscribe時の入力またはrefresh時のsource IDを受け取り、source ID、タイトル、source URL、動画一覧を返す。

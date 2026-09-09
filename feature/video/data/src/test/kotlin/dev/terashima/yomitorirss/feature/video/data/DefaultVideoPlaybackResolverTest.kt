@@ -37,14 +37,60 @@ class DefaultVideoPlaybackResolverTest {
   }
 
   @Test
-  fun `WebストリームのRefererは元ページのoriginだけに制限する`() {
+  fun `WebストリームのRefererは既定で元ページのoriginだけに制限する`() {
     assertEquals(
       "https://example.com/",
-      webStreamReferrerUrl("https://example.com/watch/1?token=secret#player"),
+      webStreamReferrerUrl("https://example.com/watch/1?token=fixture#player"),
     )
     assertEquals(
       "https://example.com:8443/",
       webStreamReferrerUrl("https://example.com:8443/watch/1"),
+    )
+  }
+
+  @Test
+  fun `opt-in時はextractor指定Refererのpathだけを追加共有する`() {
+    assertEquals(
+      "https://player.example.net/embed/123",
+      webStreamReferrerUrl(
+        pageUrl = "https://page.example.com/watch/1",
+        preferredReferrerUrl = "https://player.example.net/embed/123?token=fixture#player",
+        shareReferrerPath = true,
+      ),
+    )
+  }
+
+  @Test
+  fun `opt-in時はpercent encoded pathを変更せず共有する`() {
+    assertEquals(
+      "https://player.example.net/embed/a%2Fb%20c",
+      webVideoPlaybackReferrerUrl(
+        referrerUrl = "https://player.example.net/embed/a%2Fb%20c?token=fixture#player",
+        shareReferrerPath = true,
+      ),
+    )
+  }
+
+  @Test
+  fun `opt-in時もRefererからuserinfo query fragmentを除去する`() {
+    assertEquals(
+      "https://player.example.net:8443/embed/123",
+      webVideoPlaybackReferrerUrl(
+        referrerUrl = "https://user:pass@player.example.net:8443/embed/123?token=fixture#player",
+        shareReferrerPath = true,
+      ),
+    )
+  }
+
+  @Test
+  fun `path共有OFFならextractor指定Refererもoriginだけにする`() {
+    assertEquals(
+      "https://player.example.net/",
+      webStreamReferrerUrl(
+        pageUrl = "https://page.example.com/watch/1",
+        preferredReferrerUrl = "https://player.example.net/embed/123?token=fixture",
+        shareReferrerPath = false,
+      ),
     )
   }
 
