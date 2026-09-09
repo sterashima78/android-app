@@ -116,7 +116,9 @@ fun PodcastRoute(
     PodcastProgramEditorDialog(
       program = editorProgram,
       sources = state.sources,
+      sourceIdsInUse = state.programs.flatMapTo(mutableSetOf(), PodcastProgram::sourceIds),
       onAddSource = viewModel::saveSource,
+      onDeleteSource = viewModel::deleteSource,
       onDismiss = { editorVisible = false },
       onSave = { id, name, sourceIds, provider, scheduleEnabled, hour, minute, maxArticles ->
         viewModel.saveProgram(id, name, sourceIds, provider, scheduleEnabled, hour, minute, maxArticles)
@@ -298,7 +300,9 @@ private fun EpisodeCard(
 private fun PodcastProgramEditorDialog(
   program: PodcastProgram?,
   sources: List<PodcastSource>,
+  sourceIdsInUse: Set<String>,
   onAddSource: (String, String) -> Unit,
+  onDeleteSource: (String) -> Unit,
   onDismiss: () -> Unit,
   onSave: (String?, String, Set<String>, PodcastGenerationProvider, Boolean, Int, Int, Int) -> Unit,
 ) {
@@ -392,7 +396,19 @@ private fun PodcastProgramEditorDialog(
                 Text(source.name)
                 Text(source.feedUrl, style = MaterialTheme.typography.bodySmall)
               }
+              IconButton(
+                enabled = source.id !in sourceIdsInUse,
+                onClick = {
+                  selectedSourceIds -= source.id
+                  onDeleteSource(source.id)
+                },
+              ) {
+                Icon(Icons.Default.Delete, contentDescription = "ソースを削除")
+              }
             }
+          }
+          if (sourceIdsInUse.isNotEmpty()) {
+            Text("番組で利用中のソースは、番組から外して保存した後に削除できます。", style = MaterialTheme.typography.bodySmall)
           }
         }
 
