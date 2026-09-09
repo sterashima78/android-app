@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
 import dev.terashima.yomitorirss.feature.audio.AudioQueueItem
-import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,15 +13,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class PodcastFeedOption(
-  val id: String,
-  val title: String,
-)
-
 data class PodcastUiState(
   val initialized: Boolean = false,
   val programs: List<PodcastProgram> = emptyList(),
-  val feeds: List<PodcastFeedOption> = emptyList(),
+  val sources: List<PodcastSource> = emptyList(),
   val selectedProgramId: String? = null,
   val episodes: List<PodcastEpisode> = emptyList(),
   val busyProgramIds: Set<String> = emptySet(),
@@ -35,7 +29,6 @@ data class PodcastUiState(
 
 class PodcastViewModel(
   private val repository: PodcastRepository,
-  private val feedRepository: FeedRepository,
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
   private val scheduleController: PodcastScheduleController,
   private val audioPlaybackController: AudioPlaybackController,
@@ -51,18 +44,18 @@ class PodcastViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
         val programs = repository.listPrograms()
-        val feeds = feedRepository.listFeeds().map { PodcastFeedOption(it.id, it.title) }
+        val sources = repository.listSources()
         val selectedId = _state.value.selectedProgramId
           ?.takeIf { id -> programs.any { it.id == id } }
           ?: programs.firstOrNull()?.id
         val episodes = selectedId?.let { repository.listEpisodes(it) }.orEmpty()
-        Triple(programs, feeds, selectedId to episodes)
-      }.onSuccess { (programs, feeds, selection) ->
+        Triple(programs, sources, selectedId to episodes)
+      }.onSuccess { (programs, sources, selection) ->
         _state.update {
           it.copy(
             initialized = true,
             programs = programs,
-            feeds = feeds,
+            sources = sources,
             selectedProgramId = selection.first,
             episodes = selection.second,
             message = null,
@@ -81,10 +74,38 @@ class PodcastViewModel(
     }
   }
 
+  fun saveSource(name: String, feedUrl: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching {
+        repository.saveSource(
+          PodcastSource(
+            id = UUID.randomUUID().toString(),
+            name = name.trim(),
+            feedUrl = feedUrl.trim(),
+          ),
+        )
+      }.onSuccess {
+        _state.update { it.copy(message = "ソースを追加しました") }
+        reload()
+      }.onFailure(::showError)
+    }
+  }
+
+  fun deleteSource(sourceId: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.deleteSource(sourceId) }
+        .onSuccess {
+          _state.update { it.copy(message = "ソースを削除しました") }
+          reload()
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun saveProgram(
     id: String?,
     name: String,
-    feedIds: Set<String>,
+    sourceIds: Set<String>,
     provider: PodcastGenerationProvider,
     scheduleEnabled: Boolean,
     scheduleHour: Int,
@@ -96,7 +117,7 @@ class PodcastViewModel(
         val program = PodcastProgram(
           id = id ?: UUID.randomUUID().toString(),
           name = name.trim(),
-          feedIds = feedIds,
+          sourceIds = sourceIds,
           provider = provider,
           schedule = PodcastSchedule(scheduleEnabled, scheduleHour, scheduleMinute),
           maxArticlesPerEpisode = maxArticles,
@@ -204,7 +225,6 @@ class PodcastViewModel(
 
   class Factory(
     private val repository: PodcastRepository,
-    private val feedRepository: FeedRepository,
     private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
     private val scheduleController: PodcastScheduleController,
     private val audioPlaybackController: AudioPlaybackController,
@@ -214,7 +234,6 @@ class PodcastViewModel(
       @Suppress("UNCHECKED_CAST")
       return PodcastViewModel(
         repository,
-        feedRepository,
         generatePodcastEpisode,
         scheduleController,
         audioPlaybackController,

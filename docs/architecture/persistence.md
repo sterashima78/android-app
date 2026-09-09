@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は ADR-0249 により 33 である。version 32 を version 33 への更新元 baseline とし、version 32 database を version 33 で開くとPodcast-owned tableを追加する。version 31 -> 32 のVideo custom provider code、version 30 -> 31 のVideo provider移行、version 28 -> 29 の SMB connection profile / Video SMB source migration、version 29 -> 30のVideo保存状態追加は引き続き適用される。ADR-0241のWeb再生Cookie共有opt-inは既存Video rule tableへのadditive column refinementであり、このrefinement単独ではdatabase versionを進めない。
+現在の application database version は ADR-0250 により 34 である。version 33 を version 34 への更新元 baseline とし、version 33 database を version 34 で開くとPodcastのfeed selectionをPodcast-owned sourceへ移す。version 32 -> 33 のPodcast table追加、version 31 -> 32 のVideo custom provider code、version 30 -> 31 のVideo provider移行、version 28 -> 29 の SMB connection profile / Video SMB source migration、version 29 -> 30のVideo保存状態追加は引き続き適用される。ADR-0241のWeb再生Cookie共有opt-inは既存Video rule tableへのadditive column refinementであり、このrefinement単独ではdatabase versionを進めない。
 
-バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 33 アプリでは version 33 snapshot を受理し、version 32 以下の snapshot は復元処理へ進む前に拒否する。Podcast-owned durable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 34 アプリでは version 34 snapshot を受理し、version 33 以下の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceを含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -145,18 +145,21 @@ version 28由来のSMB Video itemはshareを含まない旧source IDを持つ。
 
 Podcast Context の fresh DB schema は `PodcastDatabaseSchema.kt` を正本とし、次のtableを作成する。
 
+- `podcast_sources`
 - `podcast_programs`
 - `podcast_episodes`
 - `podcast_episode_articles`
 - `podcast_consumed_articles`
 
-`podcast_programs` は番組定義、対象feed群、生成provider、1エピソードの最大記事数、毎日の生成時刻を保持する。`podcast_episodes` は生成単位と状態・生成原稿を保持し、`podcast_episode_articles` はAI入力として予約した記事identity、title、feed-carried contentのsnapshotを保持する。`podcast_consumed_articles` は番組ごとに一度予約した記事を再利用しないためのdurable stateである。
+`podcast_sources` はPodcast専用sourceの表示名とRSS / Atom feed URLを保持する。`podcast_programs` は番組定義、対象Podcast source ID群、生成provider、1エピソードの最大記事数、毎日の生成時刻を保持する。`podcast_episodes` は生成単位と状態・生成原稿を保持し、`podcast_episode_articles` はAI入力として予約したentry identity、title、feed-carried contentのsnapshotを保持する。`podcast_consumed_articles` は番組ごとに一度予約したentryを再利用しないためのdurable stateである。
 
-version 32 -> 33では ADR-0249 によりこれら4 tableを追加する。既存Contextからのdata migrationは行わず、Podcast stateは空から開始する。Podcast DataはContent / RSS tableを直接readせず、owner Domain APIから取得した未読identityとfeed contentをPodcast-owned snapshotへ保存する。
+version 32 -> 33では ADR-0249 により番組・episode・snapshot・consumed stateの4 tableを追加し、Podcast stateは空から開始した。version 33 -> 34では ADR-0250 により `podcast_sources` を追加し、既存 `podcast_programs.feed_ids` をPodcast-owned source IDとして維持しながら `source_ids` へ移す。選択済みsourceの表示名とfeed URLは旧RSS `feeds` から一度だけコピーし、旧Content article IDで保存済みのconsumed identityは `articles` のfeed identityを使ってPodcast source ID + entry identityへ可能な範囲で変換する。このmigrationだけ `feeds` / `articles` のreadをforeign-table allowlistで許可し、runtimeでは両tableへ依存しない。
+
+Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed stateだけで番組内の未消費entryを判定する。
 
 生成開始時はepisode row、article snapshot、consumed article stateを同一transactionで予約する。最大記事数を超えた候補も `QUEUED` episodeとしてその時点の本文をsnapshot化し、通常の生成失敗では `FAILED` とsnapshotを保持する。process中断で残る `GENERATING` episodeと `QUEUED` episodeは後続実行で同じsnapshotから再開する。
 
-Podcast-owned stateは通常のdatabase snapshot backup対象である。restore後の定刻生成scheduleは別のdurable source of truthを持たず、application compositionが復元された `podcast_programs` と現在のscheduler状態をreconcileする。
+Podcast-owned sourceを含むstateは通常のdatabase snapshot backup対象である。restore後の定刻生成scheduleは別のdurable source of truthを持たず、application compositionが復元された `podcast_programs` と現在のscheduler状態をreconcileする。
 
 ## Access ownership rule
 
@@ -193,7 +196,7 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `mail_*` | `:feature:mail:data` |
 | `library_*`, `web_library_metadata_extractors`, `hidden_library_items`, `smb_*` | `:feature:library:data` |
 | `video_items`, `video_playback_state`, `video_smb_sources`, `video_folders`, `video_saved_items`, `video_web_extractor_rules`, `video_providers`, `video_subscriptions`, `video_provider_items` | `:feature:video:data` |
-| `podcast_programs`, `podcast_episodes`, `podcast_episode_articles`, `podcast_consumed_articles` | `:feature:podcast:data` |
+| `podcast_sources`, `podcast_programs`, `podcast_episodes`, `podcast_episode_articles`, `podcast_consumed_articles` | `:feature:podcast:data` |
 | `knowledge_*` | `:feature:knowledge:data` |
 | `asset_*` | `:feature:asset:data` |
 | `tasks` | `:feature:task:data` |
@@ -226,7 +229,7 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - Bookmark read model は Article metadata を `ArticleRepository.findArticle(s)` から取得する。
 - Summary は Article metadata を `ArticleRepository`、Bookmark / Read Later membership を `BookmarkContentQuery` から取得する。
 - RSS ingestion は Content table を直接 write せず `ContentSourceGateway` を利用する。
-- Podcast は対象feedの未読identityをContent-owned `ArticleRepository`、feed-carried contentをRSS-owned `RssFeedContentReader` から取得し、両Contextのtableを直接参照しない。
+- Podcast はPodcast-owned source URLを `RssFeedContentReader` へ渡してfeed-carried contentを取得し、RSS購読tableやContent read stateをruntimeで参照しない。
 - AI task queue は SMB 書誌正規化 table を直接参照せず、Library-owned `SmbMetadataNormalizationRepository` を通じて task projection と再試行を行う。
 - 全体設定とVideoは `smb_connection_profiles` やcredential storageを直接参照せず、Library-owned `SmbConnectionProfileRepository` を利用する。
 - Video はSMB file accessでLibrary tableを直接参照せず、Library-owned `SmbMediaFileAccess` にVideo-owned share / root pathを明示してlisting / random-access readを取得する。
@@ -245,8 +248,9 @@ owner API の合成で実測上の性能問題がある read path に限り read
 
 - ADR-0239: version 28 -> 29で旧 `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ取り込む。
 - ADR-0242: version 30 -> 31で旧専用subscription/video tableの状態をVideo-owned provider stateへ取り込む。
+- ADR-0250: version 33 -> 34で旧Podcast feed selectionの表示名・URLとconsumed identityをPodcast-owned source stateへ取り込むため、`feeds` / `articles` を一度だけreadする。
 
-これらはruntime pathではない。version 28 / version 30 upgrade baselineがそれぞれ不要になった時点で対応するallowlist entryとmigration compatibilityを削除する。
+これらはruntime pathではない。各upgrade baselineが不要になった時点で対応するallowlist entryとmigration compatibilityを削除する。
 
 allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
 
@@ -295,3 +299,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
 - [ADR-0246](../adr/0246-video-custom-provider-code.md)
 - [ADR-0249](../adr/0249-news-podcast-context.md)
+- [ADR-0250](../adr/0250-podcast-owned-feed-sources.md)

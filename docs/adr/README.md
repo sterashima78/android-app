@@ -70,6 +70,8 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 - [ADR-0138: database version 27 を更新・バックアップ互換性の基準とする](0138-database-v27-compatibility-baseline.md)
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
+- [ADR-0249: ニュースポッドキャストを独立Contextとして所有する](0249-news-podcast-context.md)
+- [ADR-0250: ニュースポッドキャストのfeed sourceをPodcast Contextで所有する](0250-podcast-owned-feed-sources.md)
 
 ### Documentation / repository governance
 
@@ -227,3 +229,5 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0214](0214-gradle-architecture-metadata-verification.md)
 - [ADR-0228](0228-human-architecture-control-plane.md)
 - [ADR-0235](0235-summary-audio-playback.md)
+- [ADR-0249](0249-news-podcast-context.md)
+- [ADR-0250](0250-podcast-owned-feed-sources.md)

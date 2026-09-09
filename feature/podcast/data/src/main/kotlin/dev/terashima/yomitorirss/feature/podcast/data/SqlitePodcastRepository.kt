@@ -12,11 +12,53 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
+import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import java.util.UUID
 
 class SqlitePodcastRepository(
   private val database: DatabaseConnection,
 ) : PodcastRepository {
+  override suspend fun listSources(): List<PodcastSource> = database.readable.rawQuery(
+    "SELECT * FROM podcast_sources ORDER BY name COLLATE NOCASE",
+    null,
+  ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.source()) } }
+
+  override suspend fun findSource(sourceId: String): PodcastSource? = database.readable.rawQuery(
+    "SELECT * FROM podcast_sources WHERE id=? LIMIT 1",
+    arrayOf(sourceId),
+  ).use { cursor -> if (cursor.moveToFirst()) cursor.source() else null }
+
+  override suspend fun saveSource(source: PodcastSource) {
+    database.write {
+      val updated = update(
+        "podcast_sources",
+        source.values(),
+        "id=?",
+        arrayOf(source.id),
+      )
+      if (updated == 0) {
+        insertOrThrow("podcast_sources", null, source.values())
+      }
+    }
+  }
+
+  override suspend fun deleteSource(sourceId: String) {
+    database.transaction {
+      val referenced = rawQuery(
+        "SELECT source_ids FROM podcast_programs",
+        null,
+      ).use { cursor ->
+        var found = false
+        while (!found && cursor.moveToNext()) {
+          found = sourceId in cursor.getString(0).lineSequence().filter(String::isNotBlank).toSet()
+        }
+        found
+      }
+      require(!referenced) { "番組で利用中のソースは削除できません" }
+      delete("podcast_sources", "id=?", arrayOf(sourceId))
+    }
+  }
+
   override suspend fun listPrograms(): List<PodcastProgram> = database.readable.rawQuery(
     "SELECT * FROM podcast_programs ORDER BY name COLLATE NOCASE",
     null,
@@ -28,7 +70,8 @@ class SqlitePodcastRepository(
   ).use { cursor -> cursor.programOrNull() }
 
   override suspend fun saveProgram(program: PodcastProgram) {
-    database.write {
+    database.transaction {
+      require(allSourcesExist(this, program.sourceIds)) { "利用できないソースが含まれています" }
       val updated = update(
         "podcast_programs",
         program.values(),
@@ -185,10 +228,16 @@ class SqlitePodcastRepository(
   }
 }
 
+private fun PodcastSource.values(): ContentValues = ContentValues().apply {
+  put("id", id)
+  put("name", name)
+  put("feed_url", feedUrl)
+}
+
 private fun PodcastProgram.values(): ContentValues = ContentValues().apply {
   put("id", id)
   put("name", name)
-  put("feed_ids", feedIds.sorted().joinToString("\n"))
+  put("source_ids", sourceIds.sorted().joinToString("\n"))
   put("provider", provider.name)
   put("schedule_enabled", if (schedule.enabled) 1 else 0)
   put("schedule_hour", schedule.hour)
@@ -196,12 +245,18 @@ private fun PodcastProgram.values(): ContentValues = ContentValues().apply {
   put("max_articles", maxArticlesPerEpisode)
 }
 
+private fun Cursor.source(): PodcastSource = PodcastSource(
+  id = string("id"),
+  name = string("name"),
+  feedUrl = string("feed_url"),
+)
+
 private fun Cursor.programOrNull(): PodcastProgram? = if (moveToFirst()) program() else null
 
 private fun Cursor.program(): PodcastProgram = PodcastProgram(
   id = string("id"),
   name = string("name"),
-  feedIds = string("feed_ids").lineSequence().filter(String::isNotBlank).toSet(),
+  sourceIds = string("source_ids").lineSequence().filter(String::isNotBlank).toSet(),
   provider = PodcastGenerationProvider.valueOf(string("provider")),
   schedule = PodcastSchedule(
     enabled = int("schedule_enabled") != 0,
@@ -251,6 +306,16 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
   publishedAtEpochMillis = publishedAtEpochMillis,
   feedContent = feedContent,
 )
+
+private fun allSourcesExist(db: SQLiteDatabase, sourceIds: Set<String>): Boolean {
+  val ids = sourceIds.toList()
+  val placeholders = ids.joinToString(",") { "?" }
+  val found = db.rawQuery(
+    "SELECT id FROM podcast_sources WHERE id IN($placeholders)",
+    ids.toTypedArray(),
+  ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
+  return found.size == ids.size
+}
 
 private fun isConsumed(db: SQLiteDatabase, programId: String, articleId: String): Boolean = db.rawQuery(
   "SELECT 1 FROM podcast_consumed_articles WHERE program_id=? AND article_id=? LIMIT 1",

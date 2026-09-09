@@ -21,10 +21,22 @@ data class PodcastSchedule(
   }
 }
 
+data class PodcastSource(
+  val id: String,
+  val name: String,
+  val feedUrl: String,
+) {
+  init {
+    require(id.isNotBlank()) { "source id must not be blank" }
+    require(name.isNotBlank()) { "source name must not be blank" }
+    require(feedUrl.isNotBlank()) { "source feedUrl must not be blank" }
+  }
+}
+
 data class PodcastProgram(
   val id: String,
   val name: String,
-  val feedIds: Set<String>,
+  val sourceIds: Set<String>,
   val provider: PodcastGenerationProvider,
   val schedule: PodcastSchedule = PodcastSchedule(),
   val maxArticlesPerEpisode: Int = 12,
@@ -32,7 +44,7 @@ data class PodcastProgram(
   init {
     require(id.isNotBlank()) { "program id must not be blank" }
     require(name.isNotBlank()) { "program name must not be blank" }
-    require(feedIds.isNotEmpty()) { "program must contain at least one feed" }
+    require(sourceIds.isNotEmpty()) { "program must contain at least one source" }
     require(maxArticlesPerEpisode in 1..50) { "maxArticlesPerEpisode must be between 1 and 50" }
   }
 }
@@ -47,7 +59,7 @@ data class PodcastFeedEntry(
 ) {
   init {
     require(articleId.isNotBlank()) { "article id must not be blank" }
-    require(feedId.isNotBlank()) { "feed id must not be blank" }
+    require(feedId.isNotBlank()) { "source id must not be blank" }
     require(title.isNotBlank()) { "article title must not be blank" }
     require(feedContent.isNotBlank()) { "feed content must not be blank" }
   }
@@ -81,10 +93,14 @@ data class PodcastEpisode(
 )
 
 interface PodcastFeedContentSource {
-  suspend fun latestEntries(feedIds: Set<String>, limit: Int): List<PodcastFeedEntry>
+  suspend fun latestEntries(sources: List<PodcastSource>, limit: Int): List<PodcastFeedEntry>
 }
 
 interface PodcastRepository {
+  suspend fun listSources(): List<PodcastSource>
+  suspend fun findSource(sourceId: String): PodcastSource?
+  suspend fun saveSource(source: PodcastSource)
+  suspend fun deleteSource(sourceId: String)
   suspend fun listPrograms(): List<PodcastProgram>
   suspend fun findProgram(programId: String): PodcastProgram?
   suspend fun saveProgram(program: PodcastProgram)
@@ -101,8 +117,8 @@ interface PodcastRepository {
   /**
    * Atomically excludes articles already consumed by this program and snapshots every currently
    * eligible candidate in max-sized episode chunks. The first chunk is GENERATING and later chunks
-   * are QUEUED so feed rotation cannot discard already observed unread content. Returns the first
-   * episode, or null when there is nothing to consume.
+   * are QUEUED so feed rotation cannot discard already observed content. Returns the first episode,
+   * or null when there is nothing to consume.
    */
   suspend fun reserveEpisode(
     program: PodcastProgram,
@@ -139,8 +155,12 @@ class GeneratePodcastEpisodeUseCase(
     repository.claimPendingEpisode(programId)?.let { pending ->
       return@withProgramGeneration generateReserved(program, pending)
     }
+    val sources = repository.listSources().filter { it.id in program.sourceIds }
+    require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
+      "番組に利用できないソースがあります。番組設定を確認してください"
+    }
     val candidates = feedContentSource.latestEntries(
-      feedIds = program.feedIds,
+      sources = sources,
       limit = Int.MAX_VALUE,
     )
     val reserved = repository.reserveEpisode(program, candidates, nowEpochMillis())

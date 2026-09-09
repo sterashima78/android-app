@@ -77,8 +77,6 @@ class AppContainer(
       application = application,
       database = databaseConnection,
       httpClient = httpClient,
-      contentArticles = articleRepository,
-      feedRepository = contentRuntime.feedRepository,
       localTextInference = aiCoreRuntime.textInference,
       cloudTextInference = aiCoreRuntime.cloudTextInference,
       audioPlaybackController = audioRuntime.playbackController,

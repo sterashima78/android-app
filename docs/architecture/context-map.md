@@ -42,11 +42,17 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
           | media session|
           +--------------+
 
-RSS feed content -----------+
-Content unread state -------+--> Podcast context --> Audio
-                                  programs / episodes
-                                  article snapshots
-                                  generated scripts
+Podcast-owned RSS / Atom source URLs
+              |
+              v
+      RSS / Atom content reader
+              |
+              v
+      Podcast context -----------> Audio
+      sources / programs
+      episodes / snapshots
+      consumed entry state
+      generated scripts
 
 +----------------------+        +----------------------+
 | Library context      |        | Video context        |
@@ -130,11 +136,12 @@ Content を入力として generated summary と task lifecycle / priority の S
 
 ### Podcast
 
-現在の主要な実装 module は `:feature:podcast:{domain,data,ui}`。Podcast は複数のRSS / Atomフィードを束ねる番組、生成単位のエピソード、生成に利用した記事スナップショット、生成原稿、番組別の記事消費履歴、定刻生成設定を所有する。
+現在の主要な実装 module は `:feature:podcast:{domain,data,ui}`。Podcast はRSS / Atom URLを持つPodcast専用source、複数sourceを束ねる番組、生成単位のエピソード、生成に利用したentryスナップショット、生成原稿、番組別のentry消費履歴、定刻生成設定を所有する。
 
-- RSS Context からは `FeedRepository` と feed body専用の `RssFeedContentReader` を利用し、リンク先ページの取得処理には依存しない。
-- Content Context からは `ArticleRepository` の対象feed別未読read modelを利用して予約時点の対象を選ぶ。Podcast は Content table を直接readせず、生成や再生でContentのreading stateを変更しない。
-- 未読候補とRSS feed contentを source identity で照合し、Podcastへ保存する記事identityには Content-owned article ID を利用する。
+- Podcast sourceはRSS readerの購読とは別のdurable stateであり、RSS購読の追加・削除・既読化と同期しない。同じPodcast sourceは複数番組から再利用できる。
+- RSS ContextからはURLを入力にfeed-carried title / bodyを返す `RssFeedContentReader` capabilityだけを利用する。`FeedRepository`、RSS-owned table、Content Contextの `ArticleRepository` にはruntimeで依存しない。
+- Podcast生成候補はRSS readerのread / unread stateではなく、選択したPodcast sourceから現在取得でき、かつ対象番組で未消費のentryで決まる。
+- Podcastへ保存するentry identityはPodcast source IDとfeed entry identityから作り、Content-owned article IDを利用しない。生成や再生によってContentのreading stateを変更しない。
 - 番組ごとの消費履歴で重複を除外した後に候補を `maxArticlesPerEpisode` ごとに分割し、現在取得できた未消費候補を記事スナップショットとしてまとめて予約する。最初のエピソードを `GENERATING`、上限を超えた後続エピソードを `QUEUED` として保持する。
 - AI推論前にエピソード、記事スナップショット、consumed stateをatomicに予約する。次回生成は既存の `GENERATING`、次に最古の `QUEUED` を新しいfeed取得より優先する。通常失敗時は `FAILED` として保持し、明示再生成では同じ記事スナップショットを再利用する。中断時は `GENERATING` のまま保持し、次回生成で同じスナップショットから再開する。
 - 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。選択modelのprompt/input上限へ収まるよう入力を制限する。local推論は共通AI実行ゲートを利用し、定刻生成はprovider別のbackground pauseを尊重する。
@@ -241,7 +248,7 @@ Content retention では Curation の `BookmarkContentQuery.bookmarkedContentIds
 - `ContentRetentionProtectionQuery`
 - Calendar の `TaskReader` / `WorkoutReader` 合成 read model
 - Audio の `SummaryReader` / `SummaryRequester` 利用
-- Podcast の `ArticleRepository` / `RssFeedContentReader` 利用
+- Podcast の `RssFeedContentReader` によるURL-based feed content capability利用
 - Video の Library-owned `SmbMediaFileAccess` 利用
 - 統合未読表示の Video-owned `VideoProviderRepository` 利用
 
@@ -257,7 +264,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0249 によりPodcast-owned durable stateを追加した。application database versionは33で、version 32を更新元baselineとする。旧subscription/video tableへのforeign readはversion 30 -> 31 migrationだけに限定し、current runtimeでは参照しない。
+ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0249 によりPodcast-owned durable stateを追加し、ADR-0250 によりPodcast feed sourceをRSS reader購読から分離した。application database versionは34で、version 33を更新元baselineとする。Podcastの旧source設定を移すためのRSS / Content table foreign readはversion 33 -> 34 migrationだけに限定し、current runtimeでは参照しない。旧subscription/video tableへのforeign readもversion 30 -> 31 migrationだけに限定する。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
@@ -287,3 +294,4 @@ ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider
 - [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
 - [ADR-0249](../adr/0249-news-podcast-context.md)
+- [ADR-0250](../adr/0250-podcast-owned-feed-sources.md)

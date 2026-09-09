@@ -20,9 +20,10 @@ dependencies {
   implementation(project(":core:ai-inference"))
   implementation(project(":core:background"))
   implementation(project(":core:database"))
-  implementation(project(":feature:article:domain"))
   implementation(project(":feature:podcast:domain"))
   implementation(project(":feature:rss:domain"))
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   testImplementation(libs.junit4)
+  testImplementation("androidx.test:core-ktx:1.7.0")
+  testImplementation("org.robolectric:robolectric:4.16.1")
 }

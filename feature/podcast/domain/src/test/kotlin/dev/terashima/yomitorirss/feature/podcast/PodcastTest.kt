@@ -12,7 +12,7 @@ import org.junit.Test
 
 class PodcastTest {
   @Test
-  fun `生成開始時に記事を予約し原稿を保存する`() = runSuspend {
+  fun `生成開始時にPodcast所有ソースの記事を予約し原稿を保存する`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
@@ -23,10 +23,25 @@ class PodcastTest {
 
     assertEquals(PodcastEpisodeStatus.READY, result.episode.status)
     assertEquals(listOf("a1", "a2"), result.episode.articles.map { it.articleId })
+    assertEquals(listOf("source-1"), source.requestedSources.map { it.id })
     assertEquals("生成された原稿", result.episode.script)
     assertEquals(PodcastGenerationProvider.LOCAL, generator.provider)
     assertTrue(generator.prompt.orEmpty().contains("フィード内のタイトルと本文だけ"))
     assertFalse(generator.prompt.orEmpty().contains("https://"))
+  }
+
+  @Test
+  fun `番組が参照するソース定義が欠落している場合は設定エラーにする`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program).apply { sources.clear() }
+    val source = FakeFeedContentSource(listOf(entry("a1")))
+    val useCase = GeneratePodcastEpisodeUseCase(repository, source, RecordingGenerator("原稿")) { 1234L }
+
+    val error = runCatching { useCase.generate(program.id) }.exceptionOrNull()
+
+    assertTrue(error is IllegalArgumentException)
+    assertTrue(error?.message.orEmpty().contains("番組設定を確認"))
+    assertTrue(source.requestedSources.isEmpty())
   }
 
   @Test
@@ -135,14 +150,20 @@ class PodcastTest {
 private fun program(maxArticlesPerEpisode: Int = 12) = PodcastProgram(
   id = "program-1",
   name = "朝のニュース",
-  feedIds = setOf("feed-1"),
+  sourceIds = setOf("source-1"),
   provider = PodcastGenerationProvider.LOCAL,
   maxArticlesPerEpisode = maxArticlesPerEpisode,
 )
 
+private fun source() = PodcastSource(
+  id = "source-1",
+  name = "情報源",
+  feedUrl = "https://example.com/feed.xml",
+)
+
 private fun entry(id: String) = PodcastFeedEntry(
   articleId = id,
-  feedId = "feed-1",
+  feedId = "source-1",
   title = "タイトル $id",
   sourceTitle = "情報源",
   publishedAtEpochMillis = 100L,
@@ -161,8 +182,13 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
 private class FakeFeedContentSource(
   var entries: List<PodcastFeedEntry>,
 ) : PodcastFeedContentSource {
-  override suspend fun latestEntries(feedIds: Set<String>, limit: Int): List<PodcastFeedEntry> =
-    entries.filter { it.feedId in feedIds }.take(limit)
+  var requestedSources: List<PodcastSource> = emptyList()
+
+  override suspend fun latestEntries(sources: List<PodcastSource>, limit: Int): List<PodcastFeedEntry> {
+    requestedSources = sources
+    val sourceIds = sources.mapTo(mutableSetOf(), PodcastSource::id)
+    return entries.filter { it.feedId in sourceIds }.take(limit)
+  }
 }
 
 private class RecordingGenerator(
@@ -199,8 +225,16 @@ private class FakePodcastRepository(
   private val program: PodcastProgram,
 ) : PodcastRepository {
   val episodes = mutableListOf<PodcastEpisode>()
+  val sources = mutableListOf(source())
   private val consumed = mutableSetOf<String>()
 
+  override suspend fun listSources(): List<PodcastSource> = sources.toList()
+  override suspend fun findSource(sourceId: String): PodcastSource? = sources.find { it.id == sourceId }
+  override suspend fun saveSource(source: PodcastSource) {
+    sources.removeAll { it.id == source.id }
+    sources += source
+  }
+  override suspend fun deleteSource(sourceId: String) { sources.removeAll { it.id == sourceId } }
   override suspend fun listPrograms(): List<PodcastProgram> = listOf(program)
   override suspend fun findProgram(programId: String): PodcastProgram? = program.takeIf { it.id == programId }
   override suspend fun saveProgram(program: PodcastProgram) = Unit
