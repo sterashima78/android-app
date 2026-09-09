@@ -1,6 +1,6 @@
 # ADR-0114: ソリティアは盤面優先表示と合法手フィードバックを持つ
 
-- Status: Accepted
+- Status: Accepted; Klondike Compose / domain integration superseded by [ADR-0251](0251-godot-klondike.md)
 - Date: 2026-08-17
 - Updated: 2026-08-24
 
@@ -56,3 +56,5 @@ Android 16では targetSdk 36 以上のアプリについて smallest width が6
 ## Relationship
 
 ADR-0082 の「タップ操作を基本とし、合法手判定はdomainが所有する」方針を維持する。ADR-0083 の「盤面レイアウトをゲーム間で無理に共通化しない」方針も維持する一方、2ゲームで重複が安定したカード視覚プリミティブについてのみ共有するため、そのDecisionを限定的に発展させる。加えて、app shellがplatform wiringとアプリ共通chromeを所有する現行アーキテクチャ原則に従い、feature側は向きとchromeの表示意図だけを公開する。
+
+ADR-0251 により、クロンダイクについては Compose / `GameOrientationPreference` / Kotlin domain を接続する部分を Godot Activity + GDScript ownership へ置き換える。盤面優先、`sensorLandscape`、タップ選択、合法手強調という interaction 方針は維持する。スパイダーについては本 ADR の Decision をそのまま維持する。
