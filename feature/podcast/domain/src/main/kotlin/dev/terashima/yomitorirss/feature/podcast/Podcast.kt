@@ -63,6 +63,7 @@ data class PodcastEpisodeArticle(
 )
 
 enum class PodcastEpisodeStatus {
+  QUEUED,
   GENERATING,
   READY,
   FAILED,
@@ -90,11 +91,18 @@ interface PodcastRepository {
   suspend fun deleteProgram(programId: String)
   suspend fun listEpisodes(programId: String): List<PodcastEpisode>
   suspend fun findEpisode(episodeId: String): PodcastEpisode?
-  suspend fun findGeneratingEpisode(programId: String): PodcastEpisode?
 
   /**
-   * Atomically excludes articles already consumed by this program, creates an episode snapshot,
-   * and marks the selected article ids as consumed. Returns null when there is nothing to consume.
+   * Returns the interrupted GENERATING episode first, otherwise promotes the oldest QUEUED episode
+   * to GENERATING and returns it. Returns null when the program has no reserved work.
+   */
+  suspend fun claimPendingEpisode(programId: String): PodcastEpisode?
+
+  /**
+   * Atomically excludes articles already consumed by this program and snapshots every currently
+   * eligible candidate in max-sized episode chunks. The first chunk is GENERATING and later chunks
+   * are QUEUED so feed rotation cannot discard already observed unread content. Returns the first
+   * episode, or null when there is nothing to consume.
    */
   suspend fun reserveEpisode(
     program: PodcastProgram,
@@ -124,25 +132,30 @@ class GeneratePodcastEpisodeUseCase(
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
 ) {
-  suspend fun generate(programId: String): PodcastGenerationResult {
+  private val activeProgramIds = mutableSetOf<String>()
+
+  suspend fun generate(programId: String): PodcastGenerationResult = withProgramGeneration(programId) {
     val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
-    repository.findGeneratingEpisode(programId)?.let { interrupted ->
-      return generateReserved(program, interrupted)
+    repository.claimPendingEpisode(programId)?.let { pending ->
+      return@withProgramGeneration generateReserved(program, pending)
     }
     val candidates = feedContentSource.latestEntries(
       feedIds = program.feedIds,
       limit = Int.MAX_VALUE,
     )
     val reserved = repository.reserveEpisode(program, candidates, nowEpochMillis())
-      ?: return PodcastGenerationResult.NoNewArticles
-    return generateReserved(program, reserved)
+      ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    generateReserved(program, reserved)
   }
 
   suspend fun retry(episodeId: String): PodcastGenerationResult.Generated {
-    val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
-    require(episode.status == PodcastEpisodeStatus.FAILED) { "only failed episodes can be retried" }
-    val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
-    return generateReserved(program, episode)
+    val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(initial.programId) {
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(episode.status == PodcastEpisodeStatus.FAILED) { "only failed episodes can be retried" }
+      val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      generateReserved(program, episode)
+    }
   }
 
   private suspend fun generateReserved(
@@ -165,6 +178,17 @@ class GeneratePodcastEpisodeUseCase(
         message = error.message ?: error::class.simpleName ?: "generation failed",
       )
       throw error
+    }
+  }
+
+  private suspend fun <T> withProgramGeneration(programId: String, block: suspend () -> T): T {
+    check(synchronized(activeProgramIds) { activeProgramIds.add(programId) }) {
+      "podcast generation already in progress: $programId"
+    }
+    return try {
+      block()
+    } finally {
+      synchronized(activeProgramIds) { activeProgramIds.remove(programId) }
     }
   }
 }
