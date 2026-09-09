@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は ADR-0242 により 31 である。version 30 を version 31 への更新元 baseline とし、version 30 database を version 31 で開くと Video-owned provider設定・subscription・provider item stateを追加し、旧専用subscription/video tableが存在する場合だけその状態を一度取り込む。version 28 -> 29 の SMB connection profile / Video SMB source migrationとversion 29 -> 30のVideo保存状態追加は引き続き適用される。ADR-0241のWeb再生Cookie共有opt-inは既存Video rule tableへのadditive column refinementであり、このrefinement単独ではdatabase versionを進めない。
+現在の application database version は ADR-0245 により 32 である。version 31 を version 32 への更新元 baseline とし、version 31 database を version 32 で開くと既存Video provider状態を保持したまま `video_providers.function_code` を追加する。version 30 -> 31 のVideo provider移行、version 28 -> 29 の SMB connection profile / Video SMB source migration、version 29 -> 30のVideo保存状態追加は引き続き適用される。ADR-0241のWeb再生Cookie共有opt-inは既存Video rule tableへのadditive column refinementであり、このrefinement単独ではdatabase versionを進めない。
 
-バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 31 アプリでは version 31 snapshot を受理し、version 30 以下の snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 32 アプリでは version 32 snapshot を受理し、version 31 以下の snapshot は復元処理へ進む前に拒否する。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -121,7 +121,7 @@ Video Context の fresh DB schema は `VideoDatabaseSchema.kt` を正本とし�
 
 `video_items` は SMB / Web / provider由来のcatalog projection、`video_playback_state` は再生位置・duration・最終再生日時・completed state、`video_smb_sources` は connection profile ID / share / root pathからなるVideo専用SMB同期場所、`video_folders` と `video_saved_items` は保存済み動画と1件最大1folderの整理状態、`video_web_extractor_rules` は URL glob pattern、Promise ベースの title / thumbnail / playback extractor function code、再生時Cookie共有のboolean opt-inを保存する。Cookie値そのものはtableへ保存せず、backup / exportの対象にも含めない。
 
-`video_providers` は購読型providerのidentity / type / display name / enabled state、`video_subscriptions` はprovider内のsource identity / title / source URL、`video_provider_items` はprovider item identity、subscription membership、publish time、unread / watch-later stateを保存する。これらはVideo-owned durable user dataであり、通常のdatabase snapshot backupに含まれる。
+`video_providers` は購読型providerのidentity / type / display name / enabled stateに加え、custom providerではユーザー定義JavaScript function codeを `function_code` に保存する。`video_subscriptions` はprovider内のsource identity / title / source URL、`video_provider_items` はprovider item identity、subscription membership、publish time、unread / watch-later stateを保存する。これらはVideo-owned durable user dataであり、function codeを含め通常のdatabase snapshot backupに含まれる。credentialはfunction codeの責務にせず、custom provider用のcredential storeも追加しない。
 
 `video_saved_items` は `video_id` をprimary keyとし、rowの存在を保存済み状態のsource of truthとする。`folder_id` はnullableで、NULLは未分類を表す。folder削除時は保存rowを削除せず `folder_id` をNULLへ戻す。保存 / 保存解除 / folder移動は `video_playback_state` を変更しない。
 
@@ -136,6 +136,8 @@ version 29 -> 30では `schema.create` のidempotent contributionにより `vide
 ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
 
 version 30 -> 31では ADR-0242 によりprovider tableを追加し、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、provider item、publish time、read / watch-later stateをVideo-owned tableへ一度だけ取り込む。旧tableはfresh schemaで作成せず、current runtimeから参照しない。Video Dataから旧tableへのreadはこのmigrationだけを `foreign-table-access-allowlist.tsv` で許可する。
+
+version 31 -> 32では ADR-0245 により `video_providers.function_code` を追加する。migrationは既存provider、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みprovider rowのfunction codeはNULLのままとする。
 
 version 28由来のSMB Video itemはshareを含まない旧source IDを持つ。初回再同期時に同一server/pathから新identityが一意に決まる場合は、再生位置・duration・completed stateを新しいserver/share/path identityへ引き継いでから旧catalog rowを削除する。
 
@@ -272,3 +274,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
 - [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
 - [ADR-0242](../adr/0242-video-subscription-providers.md)
+- [ADR-0245](../adr/0245-video-custom-provider-code.md)
