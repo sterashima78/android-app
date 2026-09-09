@@ -4,6 +4,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.rss.RssFeedContentEntry
 import dev.terashima.yomitorirss.feature.rss.RssFeedContentReader
+import dev.terashima.yomitorirss.feature.rss.RssFeedContentSource
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
 import java.time.Instant
 
@@ -15,14 +16,24 @@ class DefaultRssFeedContentReader internal constructor(
 
   override suspend fun latestEntries(feedIds: Set<String>, limit: Int): List<RssFeedContentEntry> {
     if (feedIds.isEmpty() || limit <= 0) return emptyList()
-    val feeds = readFeeds(feedIds)
-    return feeds.flatMap { feed ->
-      val parsed = feedClient.fetchFeed(feed.feedUrl).feed ?: return@flatMap emptyList()
+    return latestEntriesFromSources(
+      sources = readFeeds(feedIds).map { RssFeedContentSource(it.id, it.feedUrl) },
+      limit = limit,
+    )
+  }
+
+  override suspend fun latestEntriesFromSources(
+    sources: List<RssFeedContentSource>,
+    limit: Int,
+  ): List<RssFeedContentEntry> {
+    if (sources.isEmpty() || limit <= 0) return emptyList()
+    return sources.flatMap { source ->
+      val parsed = feedClient.fetchFeed(source.feedUrl).feed ?: return@flatMap emptyList()
       parsed.articles.mapNotNull { article ->
         article.feedContent.takeIf(String::isNotBlank)?.let { content ->
           RssFeedContentEntry(
             identityKey = article.identityKey,
-            feedId = feed.id,
+            feedId = source.id,
             title = article.title,
             sourceTitle = parsed.title,
             publishedAtEpochMillis = runCatching { Instant.parse(article.publishedAt).toEpochMilli() }.getOrNull(),
