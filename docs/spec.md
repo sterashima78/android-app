@@ -69,6 +69,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - Reddit は source 固有の購読・表示・判定を自身のContextで扱う。
 - 動画チャンネル購読は Video Context が購読型Providerとして扱い、provider設定、subscription、更新、未読状態を共通のVideo lifecycleで管理する。
+- 動画Providerは組み込みProviderに加えて、ユーザーが任意のJavaScript functionを設定するcustom Providerを複数追加できる。custom Providerでもsubscription、未読、あとで見る、保存、再生状態は共通のVideo lifecycleを利用する。
 - 初期の組み込み動画Providerでは通常動画だけを更新対象とし、短尺専用形式とライブ配信は更新対象外とする。
 - 共通表示へ投影しても source の種類を失わない。
 - 自動AI処理の対象可否は source / content type の方針に従う。
@@ -113,7 +114,11 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - Web抽出ルールでは「再生時にWebViewのCookieを共有する」をルールごとに設定でき、既定はOFFとする。有効な場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用し、Cookie値自体は保存・backup・logへ残さない。
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - 動画設定では購読型Providerを追加・有効化 / 無効化できる。Providerを無効化しても設定・subscription・取得済み動画は削除せず、background refresh対象からだけ外す。
-- 有効なProviderへチャンネル等のsource URLをsubscriptionとして追加し、手動またはbackgroundで更新できる。
+- custom Providerは名前とJavaScript functionを設定して複数追加・編集できる。functionはsubscribe時の入力またはrefresh時のsource IDを受け取り、source ID、タイトル、source URL、動画一覧を返す。
+- custom Providerのfunctionから外部データを取得するときは `api.fetch` を利用する。requestはHTTPSに限定し、実行時間、request回数、request / response sizeを制限する。
+- custom Providerへ既存のCookie、token、SMB credential、他機能の認証情報を自動共有しない。初期contractではcredential headerも設定対象にせず、認証情報をfunction codeへ埋め込む用途を想定しない。
+- custom Providerは画面を開いていないbackground refreshでも同じfunctionを実行できる。functionの失敗や不正な戻り値はそのsubscriptionの更新失敗として扱い、他Provider / subscriptionの更新を継続する。
+- 有効なProviderへチャンネル等のsource URLまたはProvider固有の入力をsubscriptionとして追加し、手動またはbackgroundで更新できる。
 - Provider更新で新しく発見した動画はVideo catalogへ追加し、provider由来の未読として表示する。既存動画の更新では未読 / 既読、あとで見る、保存、再生位置を保持する。
 - provider由来の未読 / 既読状態と視聴済み状態は独立して扱う。既読化で視聴済みへ変更せず、再生完了で自動的に既読化しない。
 - subscription解除時、未保存かつ再生履歴のない取得済み動画は削除できる。保存済みまたは再生履歴を持つ動画はsubscription membershipだけを外してcatalogへ残す。
@@ -279,6 +284,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - durableなbackground処理にはWorkManagerを利用する。
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
 - 統合更新では通常feed、Reddit、Video購読Provider、メール等の更新を個別に分離して実行する。Video購読はprovider-specific repositoryではなくVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
+- custom Video Providerのfunction実行はforeground Activityに依存せず、Video-owned runtimeからbackground refreshでも実行する。
 - ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
@@ -301,6 +307,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - backup対象のSharedPreferencesはallowlist方式とし、将来追加される値を暗黙に外部backupへ含めない。
 - Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
 - AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
+- custom Video Provider codeには他Contextのcredentialやdatabase accessを公開せず、外部通信はboundedなHTTPS request capabilityに限定する。function code自体をcredential保存場所として扱わない。
 - ユーザーがコピーして共有できるクラッシュ診断は保存前にサニタイズし、URL の path/query、メールアドレス、credential-like 値、端末内 private path を伏せる。
 
 ## 16. 現在の非目標
@@ -310,6 +317,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - durable user dataを必須のremote backendへ保存する構成
 - Health ConnectとWorkoutの双方向同期
 - AIからの任意SQL、任意コード実行、無制限の書き込みtool
+- custom Video Provider functionからの既存credential / filesystem / databaseへの直接アクセス
 - credentialやmodel artifactをアプリ独自backupへ含めること
 
 feature追加・廃止に伴い非目標が変わる場合は、対応するADRまたは仕様変更と同じPRで更新する。
@@ -321,7 +329,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/context-map.md`: Domain ContextとContext間関係
 - `docs/architecture/module-map.md`: Gradle module構成
 - `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
-- `docs/architecture/video.md`: SMB / Web / 購読型Provider動画カタログ、抽出、更新、Media3再生境界
+- `docs/architecture/video.md`: SMB / Web / 購読型Provider動画カタログ、抽出、更新、custom Provider実行、Media3再生境界
 - `docs/architecture/game.md`: Game と Godot 数独の runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: testとarchitecture verification
