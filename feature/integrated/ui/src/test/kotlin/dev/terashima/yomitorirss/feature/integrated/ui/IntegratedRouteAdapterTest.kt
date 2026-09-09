@@ -9,9 +9,6 @@ import dev.terashima.yomitorirss.feature.reddit.RedditSubscription
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
-import dev.terashima.yomitorirss.feature.video.VideoItem
-import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
-import dev.terashima.yomitorirss.feature.video.VideoSource
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,13 +19,11 @@ class IntegratedRouteAdapterTest {
   fun `各機能の未処理アイテムを時刻の新しい順に統合する`() {
     val rss = article("rss", "2026-08-11T09:00:00Z")
     val reddit = article("reddit", "2026-08-11T10:00:00Z")
-    val video = providerVideo("video", "2026-08-11T11:00:00Z")
     val mail = mail("mail", "2026-08-11T12:00:00Z", isUnread = true)
 
     val entries = integratedEntries(
       rssState = RssUiState(initialized = true, unread = listOf(rss)),
       redditState = RedditUiState(initialized = true, unread = listOf(reddit)),
-      videoProviderState = IntegratedVideoProviderState(initialized = true, unread = listOf(video)),
       mailState = MailUiState(
         initialized = true,
         accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
@@ -37,7 +32,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf(IntegratedSource.MAIL, IntegratedSource.YOUTUBE, IntegratedSource.REDDIT, IntegratedSource.RSS),
+      listOf(IntegratedSource.MAIL, IntegratedSource.REDDIT, IntegratedSource.RSS),
       entries.map { it.item.source },
     )
     assertEquals("user@example.com · snippet", entries.first().item.subtitle)
@@ -47,7 +42,6 @@ class IntegratedRouteAdapterTest {
   fun `あとで読むアイテムを各機能から古い順に統合する`() {
     val rss = article("rss-later", "2026-08-11T09:00:00Z")
     val reddit = article("reddit-later", "2026-08-11T10:00:00Z")
-    val video = providerVideo("video-later", "2026-08-11T11:00:00Z", isWatchLater = true)
     val mail = mail(
       "mail-later",
       "2026-08-11T12:00:00Z",
@@ -64,7 +58,6 @@ class IntegratedRouteAdapterTest {
         initialized = true,
         readLater = listOf(BookmarkedArticle(article = reddit, savedAt = "2026-08-11T10:05:00Z")),
       ),
-      videoProviderState = IntegratedVideoProviderState(initialized = true, watchLater = listOf(video)),
       mailState = MailUiState(
         initialized = true,
         accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
@@ -74,7 +67,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf(IntegratedSource.RSS, IntegratedSource.REDDIT, IntegratedSource.YOUTUBE, IntegratedSource.MAIL),
+      listOf(IntegratedSource.RSS, IntegratedSource.REDDIT, IntegratedSource.MAIL),
       entries.map { it.item.source },
     )
     assertEquals(true, entries.last().item.isDeferred)
@@ -84,13 +77,11 @@ class IntegratedRouteAdapterTest {
   fun `履歴を各機能から新しい順に統合し記事は既読日時を優先する`() {
     val rss = article("rss-history", "2026-08-11T09:00:00Z").copy(readAt = "2026-08-11T17:00:00Z")
     val reddit = article("reddit-history", "2026-08-11T10:00:00Z").copy(readAt = "2026-08-11T14:00:00Z")
-    val video = providerVideo("video-history", "2026-08-11T15:00:00Z", isRead = true)
     val mail = mail("mail-history", "2026-08-11T16:00:00Z", isUnread = false)
 
     val entries = integratedEntries(
       rssState = RssUiState(initialized = true, history = listOf(rss)),
       redditState = RedditUiState(initialized = true, history = listOf(reddit)),
-      videoProviderState = IntegratedVideoProviderState(initialized = true, history = listOf(video)),
       mailState = MailUiState(
         initialized = true,
         accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
@@ -100,7 +91,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf(IntegratedSource.RSS, IntegratedSource.MAIL, IntegratedSource.YOUTUBE, IntegratedSource.REDDIT),
+      listOf(IntegratedSource.RSS, IntegratedSource.MAIL, IntegratedSource.REDDIT),
       entries.map { it.item.source },
     )
     assertEquals(Instant.parse("2026-08-11T17:00:00Z").toEpochMilli(), entries.first().item.timestamp)
@@ -114,7 +105,6 @@ class IntegratedRouteAdapterTest {
     val entries = integratedEntries(
       rssState = RssUiState(initialized = true),
       redditState = RedditUiState(initialized = true),
-      videoProviderState = IntegratedVideoProviderState(initialized = true),
       mailState = MailUiState(initialized = true, threads = listOf(unread, archivedRead)),
       tab = IntegratedTab.HISTORY,
     )
@@ -134,7 +124,6 @@ class IntegratedRouteAdapterTest {
         hiddenArticleIds = setOf(hidden.id),
       ),
       redditState = RedditUiState(initialized = true),
-      videoProviderState = IntegratedVideoProviderState(initialized = true),
       mailState = MailUiState(initialized = true, threads = listOf(archivedUnread)),
     )
 
@@ -147,7 +136,6 @@ class IntegratedRouteAdapterTest {
     val entry = integratedEntries(
       rssState = RssUiState(initialized = true, unread = listOf(rss)),
       redditState = RedditUiState(initialized = true),
-      videoProviderState = IntegratedVideoProviderState(initialized = true),
       mailState = MailUiState(initialized = true),
     ).single()
 
@@ -182,10 +170,6 @@ class IntegratedRouteAdapterTest {
     assertEquals(
       listOf("はてなブックマークコメントを見る", "要約", "スレッドの購読を解除"),
       actionLabels(IntegratedTarget.Reddit(redditArticle), redditState),
-    )
-    assertEquals(
-      emptyList<String>(),
-      actionLabels(IntegratedTarget.ProviderVideo(providerVideo("video", "2026-08-11T11:00:00Z")), redditState),
     )
   }
 
@@ -234,29 +218,6 @@ class IntegratedRouteAdapterTest {
     readAt = null,
     sourceTitle = id,
     sourceFeedUrl = "https://example.com/$id.xml",
-  )
-
-  private fun providerVideo(
-    id: String,
-    publishedAt: String,
-    isWatchLater: Boolean = false,
-    isRead: Boolean = false,
-  ) = VideoProviderVideo(
-    video = VideoItem(
-      id = "provider:youtube:$id",
-      source = VideoSource.SERVICE,
-      sourceId = "youtube:$id",
-      title = "Video",
-      pageUrl = "https://example.com/$id",
-      updatedAtEpochMillis = Instant.parse(publishedAt).toEpochMilli(),
-    ),
-    providerId = "youtube",
-    providerItemId = id,
-    subscriptionId = "youtube:channel",
-    subscriptionTitle = "Channel",
-    publishedAtEpochMillis = Instant.parse(publishedAt).toEpochMilli(),
-    isRead = isRead,
-    isWatchLater = isWatchLater,
   )
 
   private fun mail(

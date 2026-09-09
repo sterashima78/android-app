@@ -42,7 +42,7 @@ root `NavController` は `MainActivity.setContent` の Compose root で app-lock
 
 `AppSection` は drawer の presentation grouping として `:app:presentation` が所有するが、旧 `MainTab` / `AppViewModel.selectedTab` / `AppFeatureContent` による manual routing は使わない。active destination ごとの app-shell presentation capability は `AppNavigationSpec` に集約し、message / overlay / top bar host が route policy を重複して持たない。root destination の ViewModel は destination 内で取得し、active `NavBackStackEntry` を `ViewModelStoreOwner` とする。
 
-`Integrated` はこの原則の代表例であり、RSS / Reddit / Video Provider / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。購読動画は Video Domain の read/write contract を利用し、旧 source-specific UI/runtime へ依存しない。`:app:presentation` は source ViewModel / Domain contract の wiring、Mail route への遷移、Android 外部 URL 起動 callback の接続だけを担当する。詳細は ADR-0188、ADR-0202、ADR-0242 を参照する。
+`Integrated` はこの原則の代表例であり、RSS / Reddit / Mail の state projection、target dispatch、item action、Integrated Route を `:feature:integrated:ui` が所有する。購読型動画は統合ビューへ投影せず、Video UI 内で未読、あとで見る、履歴、保存、再生を完結させる。`:app:presentation` は source ViewModel / Domain contract の wiring と Mail route への遷移だけを担当する。詳細は ADR-0188、ADR-0202、ADR-0247 を参照する。
 
 `Settings` も同じ ownership 原則を適用する。Models / ChatGPT Debug / AI Execution Settings に加え、Summary Prompt / AI Task Queue / Drive Backup を Settings から開くための overlay selection と presentation policy は `:feature:settings:ui` が所有する。各 sibling feature は再利用可能 UI と task semantics を所有し続け、`:app:presentation` の `SettingsRoute` は Android Activity Result、backup restore 後の app-shell navigation、feature dependency wiring、platform callback の接続だけを担当する。詳細は ADR-0192 を参照する。
 

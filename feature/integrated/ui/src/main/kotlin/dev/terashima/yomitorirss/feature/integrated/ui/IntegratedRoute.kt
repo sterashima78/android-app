@@ -15,15 +15,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.Mailbox
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
-import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
-import dev.terashima.yomitorirss.feature.video.VideoRepository
 
 @Composable
 fun IntegratedRoute(
@@ -31,25 +28,15 @@ fun IntegratedRoute(
   redditViewModel: RedditViewModel,
   feedViewModel: FeedViewModel,
   mailViewModel: MailViewModel,
-  videoProviderRepository: VideoProviderRepository,
-  videoRepository: VideoRepository,
   onOpenArticle: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onNavigateToMail: () -> Unit,
-  onOpenExternalUrl: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val videoProviderViewModel: IntegratedVideoProviderViewModel = viewModel(
-    factory = IntegratedVideoProviderViewModel.Factory(
-      providers = videoProviderRepository,
-      videos = videoRepository,
-    ),
-  )
   val rssState by rssViewModel.state.collectAsState()
   val redditState by redditViewModel.state.collectAsState()
   val feedState by feedViewModel.state.collectAsState()
   val mailState by mailViewModel.state.collectAsState()
-  val videoProviderState by videoProviderViewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
   var selectedTabName by rememberSaveable { mutableStateOf(IntegratedTab.UNREAD.name) }
   val selectedTab = IntegratedTab.entries.firstOrNull { it.name == selectedTabName }
@@ -73,20 +60,13 @@ fun IntegratedRoute(
     snackbarHostState.showSnackbar(message)
     mailViewModel.dismissMessage()
   }
-  LaunchedEffect(videoProviderState.message) {
-    val message = videoProviderState.message ?: return@LaunchedEffect
-    snackbarHostState.showSnackbar(message)
-    videoProviderViewModel.dismissMessage()
-  }
 
   val initialized = rssState.initialized &&
     redditState.initialized &&
-    mailState.initialized &&
-    videoProviderState.initialized
+    mailState.initialized
   val entries = integratedEntries(
     rssState = rssState,
     redditState = redditState,
-    videoProviderState = videoProviderState,
     mailState = mailState,
     tab = selectedTab,
   )
@@ -94,15 +74,11 @@ fun IntegratedRoute(
   val dispatcher = integratedTargetDispatcher(
     rssViewModel = rssViewModel,
     redditViewModel = redditViewModel,
-    videoProviderViewModel = videoProviderViewModel,
     mailViewModel = mailViewModel,
     onOpenArticle = onOpenArticle,
     onOpenMail = { thread ->
       mailViewModel.openThread(thread)
       onNavigateToMail()
-    },
-    onOpenProviderVideo = { item ->
-      item.video.pageUrl?.takeIf(String::isNotBlank)?.let(onOpenExternalUrl)
     },
   )
 
@@ -116,13 +92,11 @@ fun IntegratedRoute(
         items = entries.map(IntegratedEntry::item),
         isRefreshing = feedState.refreshing ||
           redditState.refreshing ||
-          videoProviderState.refreshing ||
           mailState.loading,
         onSelectTab = { selectedTabName = it.name },
         onRefresh = {
           feedViewModel.refresh()
           redditViewModel.refresh()
-          videoProviderViewModel.refresh()
           mailViewModel.refresh()
         },
         onMarkProcessed = { item -> dispatcher.markProcessed(targetsByKey[item.key]) },

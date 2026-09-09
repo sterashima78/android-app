@@ -5,7 +5,6 @@ import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
-import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 
 internal data class IntegratedArticleTargetActions(
   val markRead: (Article) -> Unit,
@@ -14,13 +13,6 @@ internal data class IntegratedArticleTargetActions(
   val readLater: (Article) -> Unit,
   val unsave: (Article) -> Unit,
   val removeReadLater: (Article) -> Unit,
-)
-
-internal data class IntegratedProviderVideoTargetActions(
-  val markRead: (VideoProviderVideo) -> Unit,
-  val markUnread: (VideoProviderVideo) -> Unit,
-  val saveAndRead: (VideoProviderVideo) -> Unit,
-  val toggleWatchLater: (VideoProviderVideo) -> Unit,
 )
 
 internal data class IntegratedMailTargetActions(
@@ -33,17 +25,14 @@ internal data class IntegratedMailTargetActions(
 internal class IntegratedTargetDispatcher(
   private val rss: IntegratedArticleTargetActions,
   private val reddit: IntegratedArticleTargetActions,
-  private val providerVideo: IntegratedProviderVideoTargetActions,
   private val mail: IntegratedMailTargetActions,
   private val onOpenArticle: (Article) -> Unit,
   private val onOpenMail: (MailThread) -> Unit,
-  private val onOpenProviderVideo: (VideoProviderVideo) -> Unit,
 ) {
   fun markProcessed(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.markRead(target.article)
       is IntegratedTarget.Reddit -> reddit.markRead(target.article)
-      is IntegratedTarget.ProviderVideo -> providerVideo.markRead(target.video)
       is IntegratedTarget.Mail -> mail.toggleRead(target.thread)
       null -> Unit
     }
@@ -53,7 +42,6 @@ internal class IntegratedTargetDispatcher(
     when (target) {
       is IntegratedTarget.Rss -> rss.markUnread(target.article)
       is IntegratedTarget.Reddit -> reddit.markUnread(target.article)
-      is IntegratedTarget.ProviderVideo -> providerVideo.markUnread(target.video)
       is IntegratedTarget.Mail -> mail.toggleRead(target.thread)
       null -> Unit
     }
@@ -63,7 +51,6 @@ internal class IntegratedTargetDispatcher(
     when (target) {
       is IntegratedTarget.Rss -> rss.saveAndRead(target.article)
       is IntegratedTarget.Reddit -> reddit.saveAndRead(target.article)
-      is IntegratedTarget.ProviderVideo -> providerVideo.saveAndRead(target.video)
       is IntegratedTarget.Mail,
       null -> Unit
     }
@@ -73,7 +60,6 @@ internal class IntegratedTargetDispatcher(
     when (target) {
       is IntegratedTarget.Rss -> rss.readLater(target.article)
       is IntegratedTarget.Reddit -> reddit.readLater(target.article)
-      is IntegratedTarget.ProviderVideo -> providerVideo.toggleWatchLater(target.video)
       is IntegratedTarget.Mail -> mail.toggleReadLater(target.thread)
       null -> Unit
     }
@@ -83,7 +69,6 @@ internal class IntegratedTargetDispatcher(
     when (target) {
       is IntegratedTarget.Rss -> rss.unsave(target.article)
       is IntegratedTarget.Reddit -> reddit.unsave(target.article)
-      is IntegratedTarget.ProviderVideo,
       is IntegratedTarget.Mail,
       null -> Unit
     }
@@ -93,7 +78,6 @@ internal class IntegratedTargetDispatcher(
     when (target) {
       is IntegratedTarget.Rss -> rss.removeReadLater(target.article)
       is IntegratedTarget.Reddit -> reddit.removeReadLater(target.article)
-      is IntegratedTarget.ProviderVideo -> providerVideo.toggleWatchLater(target.video)
       is IntegratedTarget.Mail -> mail.toggleReadLater(target.thread)
       null -> Unit
     }
@@ -111,7 +95,6 @@ internal class IntegratedTargetDispatcher(
     when (target) {
       is IntegratedTarget.Rss -> onOpenArticle(target.article)
       is IntegratedTarget.Reddit -> onOpenArticle(target.article)
-      is IntegratedTarget.ProviderVideo -> onOpenProviderVideo(target.video)
       is IntegratedTarget.Mail -> onOpenMail(target.thread)
       null -> Unit
     }
@@ -121,11 +104,9 @@ internal class IntegratedTargetDispatcher(
 internal fun integratedTargetDispatcher(
   rssViewModel: RssViewModel,
   redditViewModel: RedditViewModel,
-  videoProviderViewModel: IntegratedVideoProviderViewModel,
   mailViewModel: MailViewModel,
   onOpenArticle: (Article) -> Unit,
   onOpenMail: (MailThread) -> Unit,
-  onOpenProviderVideo: (VideoProviderVideo) -> Unit,
 ): IntegratedTargetDispatcher = IntegratedTargetDispatcher(
   rss = IntegratedArticleTargetActions(
     markRead = rssViewModel::markRead,
@@ -143,12 +124,6 @@ internal fun integratedTargetDispatcher(
     unsave = redditViewModel::unsave,
     removeReadLater = redditViewModel::removeReadLater,
   ),
-  providerVideo = IntegratedProviderVideoTargetActions(
-    markRead = videoProviderViewModel::markRead,
-    markUnread = videoProviderViewModel::markUnread,
-    saveAndRead = videoProviderViewModel::saveAndRead,
-    toggleWatchLater = videoProviderViewModel::toggleWatchLater,
-  ),
   mail = IntegratedMailTargetActions(
     toggleRead = mailViewModel::toggleRead,
     toggleReadLater = mailViewModel::toggleReadLater,
@@ -157,5 +132,4 @@ internal fun integratedTargetDispatcher(
   ),
   onOpenArticle = onOpenArticle,
   onOpenMail = onOpenMail,
-  onOpenProviderVideo = onOpenProviderVideo,
 )

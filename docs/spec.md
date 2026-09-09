@@ -71,14 +71,14 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 動画チャンネル購読は Video Context が購読型Providerとして扱い、provider設定、subscription、更新、未読状態を共通のVideo lifecycleで管理する。
 - 動画Providerは組み込みProviderに加えて、ユーザーが任意のJavaScript functionを設定するcustom Providerを複数追加できる。custom Providerでもsubscription、未読、あとで見る、保存、再生状態は共通のVideo lifecycleを利用する。
 - 初期の組み込み動画Providerでは通常動画だけを更新対象とし、短尺専用形式とライブ配信は更新対象外とする。
-- 共通表示へ投影しても source の種類を失わない。
+- 購読型動画の未読、あとで見る、履歴、保存、再生は動画機能内で完結させ、統合ビューへ投影しない。
 - 自動AI処理の対象可否は source / content type の方針に従う。
 
 ### 4.4 統合ビューと履歴
 
 - 複数sourceのコンテンツを横断して閲覧するpresentationを提供する。
-- 統合ビュー上部の source フィルターには通常feed、Reddit、動画購読、メール等の未読件数を表示し、一覧領域を優先するため重複する全体件数サマリーは表示しない。
-- 動画購読sourceの未読 / 履歴は Video Context の公開APIから取得し、旧専用tableを直接参照しない。
+- 統合ビュー上部の source フィルターには通常feed、Reddit、メールの未読件数を表示し、一覧領域を優先するため重複する全体件数サマリーは表示しない。
+- 購読型動画は統合ビューの「未読 / あとで読む / 履歴」と source フィルターには表示しない。
 - 統合ビュー下部の「未読 / あとで読む / 履歴」タブは、app shell が確保済みの system navigation 領域を重複して確保しない。
 - 履歴や保存状態は owner Context の API を通して参照する。
 
@@ -122,6 +122,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 有効なProviderへチャンネル等のsource URLまたはProvider固有の入力をsubscriptionとして追加し、手動またはbackgroundで更新できる。
 - Provider更新で新しく発見した動画はVideo catalogへ追加し、provider由来の未読として表示する。既存動画の更新では未読 / 既読、あとで見る、保存、再生位置を保持する。
 - provider由来の未読 / 既読状態と視聴済み状態は独立して扱う。既読化で視聴済みへ変更せず、再生完了で自動的に既読化しない。
+- 購読型Provider由来の未読、あとで見る、履歴、保存、再生は動画機能内で確認・操作し、統合ビューには重複表示しない。
 - subscription解除時、未保存かつ再生履歴のない取得済み動画は削除できる。保存済みまたは再生履歴を持つ動画はsubscription membershipだけを外してcatalogへ残す。
 - 旧専用購読画面はトップレベル導線から廃止し、購読設定は「動画」画面へ集約する。既存インストールのsubscriptionと未読状態は更新時にVideo-owned stateへ移行する。
 - SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして登録・編集する。passwordは画面へ再表示しない。
@@ -284,7 +285,8 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 
 - durableなbackground処理にはWorkManagerを利用する。
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
-- 統合更新では通常feed、Reddit、Video購読Provider、メール等の更新を個別に分離して実行する。Video購読はprovider-specific repositoryではなくVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
+- application-scope の周期更新では通常feed、Reddit、購読型動画Provider、メール等の更新を個別に分離して実行する。購読型動画はVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
+- 統合ビューへ遷移する新着通知の件数には購読型動画を含めず、統合ビューで実際に確認できる未読件数と一致させる。
 - custom Video Providerのfunction実行はforeground Activityに依存せず、Video-owned runtimeからbackground refreshでも実行する。
 - ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。

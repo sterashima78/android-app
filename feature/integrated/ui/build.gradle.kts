@@ -29,7 +29,6 @@ dependencies {
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:reddit:ui"))
   implementation(project(":feature:rss:ui"))
-  implementation(project(":feature:video:domain"))
   implementation(project(":core:designsystem"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))

@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -68,7 +67,6 @@ enum class IntegratedSource(val label: String) {
   ALL("すべて"),
   RSS("RSS"),
   REDDIT("Reddit"),
-  YOUTUBE("YouTube"),
   MAIL("メール"),
 }
 
@@ -407,11 +405,6 @@ internal fun integratedSwipeActions(
       right = IntegratedSwipeActionSpec("ブックマーク", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.SAVE),
       farRight = IntegratedSwipeActionSpec("あとで読む", IntegratedSwipeTone.TERTIARY, true, IntegratedSwipeOperation.DEFER),
     )
-    IntegratedSource.YOUTUBE -> IntegratedSwipeActions(
-      left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, false, IntegratedSwipeOperation.MARK_PROCESSED),
-      right = IntegratedSwipeActionSpec("保存", IntegratedSwipeTone.TERTIARY, false, IntegratedSwipeOperation.SAVE),
-      farRight = IntegratedSwipeActionSpec("あとで見る", IntegratedSwipeTone.SECONDARY, false, IntegratedSwipeOperation.DEFER),
-    )
     IntegratedSource.MAIL -> IntegratedSwipeActions(
       left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, true, IntegratedSwipeOperation.MARK_PROCESSED),
       right = if (item.isDeferred) {
@@ -431,11 +424,6 @@ internal fun integratedSwipeActions(
       right = IntegratedSwipeActionSpec("未分類へ", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.REMOVE_DEFERRED),
       farRight = null,
     )
-    IntegratedSource.YOUTUBE -> IntegratedSwipeActions(
-      left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, false, IntegratedSwipeOperation.MARK_PROCESSED),
-      right = IntegratedSwipeActionSpec("保存", IntegratedSwipeTone.TERTIARY, false, IntegratedSwipeOperation.SAVE),
-      farRight = IntegratedSwipeActionSpec("未読へ戻す", IntegratedSwipeTone.SECONDARY, false, IntegratedSwipeOperation.REMOVE_DEFERRED),
-    )
     IntegratedSource.MAIL -> IntegratedSwipeActions(
       left = IntegratedSwipeActionSpec("あとで読む解除", IntegratedSwipeTone.PRIMARY, true, IntegratedSwipeOperation.REMOVE_DEFERRED),
       right = IntegratedSwipeActionSpec(
@@ -452,7 +440,6 @@ internal fun integratedSwipeActions(
   IntegratedTab.HISTORY -> when (item.source) {
     IntegratedSource.RSS,
     IntegratedSource.REDDIT,
-    IntegratedSource.YOUTUBE,
     IntegratedSource.MAIL -> IntegratedSwipeActions(
       left = null,
       right = IntegratedSwipeActionSpec("未読に戻す", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.MARK_UNREAD),
@@ -486,7 +473,6 @@ private fun IntegratedSource.icon(): ImageVector = when (this) {
   IntegratedSource.ALL,
   IntegratedSource.RSS -> Icons.Default.RssFeed
   IntegratedSource.REDDIT -> Icons.Default.Forum
-  IntegratedSource.YOUTUBE -> Icons.Default.PlayArrow
   IntegratedSource.MAIL -> Icons.Default.Email
 }
 
