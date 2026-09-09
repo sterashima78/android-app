@@ -91,6 +91,17 @@ class PodcastViewModel(
     }
   }
 
+  fun deleteSource(sourceId: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.deleteSource(sourceId) }
+        .onSuccess {
+          _state.update { it.copy(message = "ソースを削除しました") }
+          reload()
+        }
+        .onFailure(::showError)
+    }
+  }
+
   fun saveProgram(
     id: String?,
     name: String,
