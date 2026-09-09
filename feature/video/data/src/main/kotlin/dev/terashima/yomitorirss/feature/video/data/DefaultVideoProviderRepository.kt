@@ -162,9 +162,7 @@ private fun providerRefreshException(refreshed: Int, failures: List<Throwable>):
   return IOException(
     "動画プロバイダの一部を更新できませんでした（成功: $refreshed / 失敗: ${failures.size}）\n" +
       "失敗理由: $reasons",
-  ).also { aggregate ->
-    failures.forEach(aggregate::addSuppressed)
-  }
+  )
 }
 
 private fun providerRefreshFailureReason(error: Throwable): String = when (error) {
