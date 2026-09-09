@@ -70,6 +70,8 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0131: Workout を source of truth として Health Connect へ一方向 export する](0131-workout-health-connect-export.md)
 - [ADR-0138: database version 27 を更新・バックアップ互換性の基準とする](0138-database-v27-compatibility-baseline.md)
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
+- [ADR-0249: ニュースポッドキャストを独立Contextとして所有する](0249-news-podcast-context.md)
+- [ADR-0250: ニュースポッドキャストのfeed sourceをPodcast Contextで所有する](0250-podcast-owned-feed-sources.md)
 
 ### Documentation / repository governance
 
@@ -82,12 +84,12 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0157: Mosaic の外部識別子と互換識別子を区別する](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0162: current architecture cleanup の残存境界を guardrail 化する](0162-current-architecture-cleanup-guardrails.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
-- [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
+- [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-and-route-composition-responsibility-split.md)
 - [ADR-0167: 共通 dependency version を Gradle version catalog へ集約する](0167-gradle-version-catalog-baseline.md)
-- [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
-- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
+- [ADR-0168: cloud debug adapter を隔離して導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171: Summary の Local / Cloud routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
-- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0175: Knowledge Wiki の Local / Cloud 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0214: architecture metadata verification を Gradle/Kotlin に統合する](0214-gradle-architecture-metadata-verification.md)
 - [ADR-0228: AI主導開発に人間向け Architecture Control Plane を置く](0228-human-architecture-control-plane.md)
 
@@ -159,10 +161,10 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
-- [ADR-0168: ChatGPT OAuth と Codex Responses を隔離した cloud debug adapter として導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
-- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
+- [ADR-0168: cloud debug adapter を隔離して導入する](0168-chatgpt-codex-cloud-debug-adapter.md)
+- [ADR-0171: Summary の Local / Cloud routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
-- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0175: Knowledge Wiki の Local / Cloud 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 
 ### Content / summary / knowledge
 
@@ -174,9 +176,9 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0125: Application Service と capability interface を責務境界として使う](0125-application-service-and-capability-segregation.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
-- [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
+- [ADR-0171: Summary の Local / Cloud routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
-- [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0175: Knowledge Wiki の Local / Cloud 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 
 この索引は「現在の architecture source set」を優先した案内であり、全 ADR の機能別目録ではない。特定 feature の設計履歴は `docs/adr/` の番号順ファイルまたは repository search から辿る。
@@ -227,3 +229,5 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0214](0214-gradle-architecture-metadata-verification.md)
 - [ADR-0228](0228-human-architecture-control-plane.md)
 - [ADR-0235](0235-summary-audio-playback.md)
+- [ADR-0249](0249-news-podcast-context.md)
+- [ADR-0250](0250-podcast-owned-feed-sources.md)
