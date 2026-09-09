@@ -5,13 +5,11 @@ import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
-import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import java.time.Instant
 
 internal sealed interface IntegratedTarget {
   data class Rss(val article: Article) : IntegratedTarget
   data class Reddit(val article: Article) : IntegratedTarget
-  data class ProviderVideo(val video: VideoProviderVideo) : IntegratedTarget
   data class Mail(val thread: MailThread) : IntegratedTarget
 }
 
@@ -23,7 +21,6 @@ internal data class IntegratedEntry(
 internal fun integratedEntries(
   rssState: RssUiState,
   redditState: RedditUiState,
-  videoProviderState: IntegratedVideoProviderState,
   mailState: MailUiState,
   tab: IntegratedTab = IntegratedTab.UNREAD,
 ): List<IntegratedEntry> {
@@ -39,7 +36,6 @@ internal fun integratedEntries(
         redditState.unread
           .filterNot { it.id in redditState.hiddenArticleIds }
           .forEach { add(articleEntry(it, IntegratedSource.REDDIT, IntegratedTarget.Reddit(it))) }
-        videoProviderState.unread.forEach { video -> add(providerVideoEntry(video)) }
         mailState.threads
           .filter { it.isUnread && it.isInInbox }
           .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
@@ -52,7 +48,6 @@ internal fun integratedEntries(
         redditState.readLater
           .filterNot { it.article.id in redditState.hiddenArticleIds }
           .forEach { saved -> add(articleEntry(saved.article, IntegratedSource.REDDIT, IntegratedTarget.Reddit(saved.article))) }
-        videoProviderState.watchLater.forEach { video -> add(providerVideoEntry(video)) }
         mailState.threads
           .filter(MailThread::isReadLater)
           .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
@@ -69,7 +64,6 @@ internal fun integratedEntries(
           .forEach {
             add(articleEntry(it, IntegratedSource.REDDIT, IntegratedTarget.Reddit(it), it.historyTimeMillis()))
           }
-        videoProviderState.history.forEach { video -> add(providerVideoEntry(video)) }
         mailState.threads
           .filter { !it.isUnread && it.isInInbox }
           .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
@@ -97,18 +91,6 @@ private fun articleEntry(
     timestamp = timestamp,
   ),
   target = target,
-)
-
-private fun providerVideoEntry(video: VideoProviderVideo): IntegratedEntry = IntegratedEntry(
-  item = IntegratedItem(
-    key = "video-provider:${video.providerId}:${video.providerItemId}",
-    source = IntegratedSource.YOUTUBE,
-    title = video.video.title,
-    subtitle = video.subscriptionTitle.orEmpty(),
-    timestamp = video.publishedAtEpochMillis,
-    isDeferred = video.isWatchLater,
-  ),
-  target = IntegratedTarget.ProviderVideo(video),
 )
 
 private fun mailEntry(thread: MailThread, accountLabel: String): IntegratedEntry = IntegratedEntry(
