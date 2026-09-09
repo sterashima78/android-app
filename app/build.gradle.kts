@@ -166,7 +166,7 @@ val verifyAppCompositionBoundary by tasks.registering {
         buildString {
           appendLine(":app must not depend directly on feature data or UI modules:")
           forbidden.forEach { (configuration, target) -> appendLine("- $configuration -> $target") }
-          append("Use :app:composition for concrete wiring and :app:presentation for app-shell feature UI composition instead.")
+          append("Use :app:composition for concrete wiring and :app:presentation for app-shell feature UI composition.")
         },
       )
     }
