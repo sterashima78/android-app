@@ -98,12 +98,14 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
         thumbnail_function TEXT,
         playback_function TEXT,
         share_cookies_for_playback INTEGER NOT NULL DEFAULT 0,
+        share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0,
         timeout_seconds INTEGER NOT NULL DEFAULT 15,
         updated_at INTEGER NOT NULL
       )
     """.trimIndent(),
   )
   ensureVideoWebExtractorRuleCookieColumn(db)
+  ensureVideoWebExtractorRuleReferrerPathColumn(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS video_providers (
@@ -181,6 +183,15 @@ private fun ensureVideoWebExtractorRuleCookieColumn(db: SQLiteDatabase) {
     db.execSQL(
       "ALTER TABLE video_web_extractor_rules " +
         "ADD COLUMN share_cookies_for_playback INTEGER NOT NULL DEFAULT 0",
+    )
+  }
+}
+
+private fun ensureVideoWebExtractorRuleReferrerPathColumn(db: SQLiteDatabase) {
+  if (!db.hasColumn("video_web_extractor_rules", "share_referrer_path_for_playback")) {
+    db.execSQL(
+      "ALTER TABLE video_web_extractor_rules " +
+        "ADD COLUMN share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0",
     )
   }
 }

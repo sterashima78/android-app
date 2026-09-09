@@ -77,16 +77,22 @@ class DefaultVideoPlaybackResolver(
     return custom?.streamUrl
       ?.takeIf(String::isNotBlank)
       ?.let {
+        val referrerSource = webVideoPlaybackReferrerSource(
+          diagnostics = custom.playbackDiagnostics,
+          selectedReferrerUrl = custom.referrerUrl,
+        )
         VideoPlaybackTarget.Stream(
           url = it,
           mimeType = custom.mimeType,
-          referrerUrl = webStreamReferrerUrl(pageUrl, custom.referrerUrl),
+          referrerUrl = webStreamReferrerUrl(
+            pageUrl = pageUrl,
+            preferredReferrerUrl = custom.referrerUrl,
+            shareReferrerPath = rule?.shareReferrerPathForPlayback == true &&
+              referrerSource == WebVideoPlaybackReferrerSource.EXTRACTOR,
+          ),
           cookieProvider = custom.cookieProvider,
           playbackDiagnostics = custom.playbackDiagnostics?.copy(
-            playbackReferrerSource = webVideoPlaybackReferrerSource(
-              diagnostics = custom.playbackDiagnostics,
-              selectedReferrerUrl = custom.referrerUrl,
-            ),
+            playbackReferrerSource = referrerSource,
           ),
         )
       }
@@ -106,12 +112,21 @@ internal fun webVideoPlaybackReferrerSource(
 internal fun webStreamReferrerUrl(
   pageUrl: String,
   preferredReferrerUrl: String? = null,
+  shareReferrerPath: Boolean = false,
 ): String? {
-  preferredReferrerUrl?.let(::webVideoReferrerOrigin)?.let { return it }
-  return runCatching {
-    val uri = URI(pageUrl)
-    val scheme = uri.scheme?.lowercase()
-    require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
-    URI(scheme, null, uri.host, uri.port, "/", null, null).toString()
-  }.getOrNull()
+  preferredReferrerUrl
+    ?.let { webVideoPlaybackReferrerUrl(it, shareReferrerPath) }
+    ?.let { return it }
+  return webVideoPlaybackReferrerUrl(pageUrl, shareReferrerPath = false)
 }
+
+internal fun webVideoPlaybackReferrerUrl(
+  referrerUrl: String,
+  shareReferrerPath: Boolean,
+): String? = runCatching {
+  val uri = URI(referrerUrl)
+  val scheme = uri.scheme?.lowercase()
+  require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
+  val path = if (shareReferrerPath) uri.path?.takeIf(String::isNotBlank) ?: "/" else "/"
+  URI(scheme, null, uri.host, uri.port, path, null, null).toString()
+}.getOrNull()

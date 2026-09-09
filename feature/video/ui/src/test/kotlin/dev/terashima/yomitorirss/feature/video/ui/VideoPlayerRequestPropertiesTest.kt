@@ -28,6 +28,22 @@ class VideoPlayerRequestPropertiesTest {
   }
 
   @Test
+  fun `path付きRefererでもOriginはoriginだけを送る`() {
+    val target = VideoPlaybackTarget.Stream(
+      url = "https://cdn.example.com/video/master.m3u8",
+      referrerUrl = "https://player.example.net/embed/123",
+    )
+
+    assertEquals(
+      mapOf(
+        "Referer" to "https://player.example.net/embed/123",
+        "Origin" to "https://player.example.net",
+      ),
+      webStreamRequestProperties(target),
+    )
+  }
+
+  @Test
   fun `Originはpathやqueryを含めずportを保持する`() {
     assertEquals(
       "https://example.com:8443",

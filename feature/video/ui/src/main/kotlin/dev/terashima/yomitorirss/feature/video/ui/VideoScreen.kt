@@ -793,6 +793,13 @@ private fun VideoSettings(
               color = MaterialTheme.colorScheme.primary,
             )
           }
+          if (rule.shareReferrerPathForPlayback) {
+            Text(
+              "再生時Referer path共有: 有効",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.primary,
+            )
+          }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onEditRule(rule) }) { Text("編集") }
             TextButton(onClick = { onDeleteRule(rule.id) }) { Text("削除") }
@@ -883,6 +890,9 @@ private fun WebVideoExtractorRuleDialog(
   var shareCookiesForPlayback by remember(initial?.id) {
     mutableStateOf(initial?.shareCookiesForPlayback ?: false)
   }
+  var shareReferrerPathForPlayback by remember(initial?.id) {
+    mutableStateOf(initial?.shareReferrerPathForPlayback ?: false)
+  }
   var timeout by remember(initial?.id) { mutableStateOf((initial?.timeoutSeconds ?: 15).toString()) }
   val timeoutValue = timeout.toIntOrNull()
   val valid = pattern.startsWith("https://") &&
@@ -946,6 +956,22 @@ private fun WebVideoExtractorRuleDialog(
             )
           }
         }
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Checkbox(
+            checked = shareReferrerPathForPlayback,
+            onCheckedChange = { shareReferrerPathForPlayback = it },
+          )
+          Column(modifier = Modifier.padding(start = 4.dp)) {
+            Text("再生時にRefererのパスを共有する")
+            Text(
+              "再生URL抽出がreferrerUrlを返す場合だけ、そのパスをRefererへ含めます。queryとfragmentは送信しません。必要なstreamだけで有効にしてください。",
+              style = MaterialTheme.typography.labelSmall,
+            )
+          }
+        }
         OutlinedTextField(
           value = timeout,
           onValueChange = { timeout = it.filter(Char::isDigit) },
@@ -969,6 +995,7 @@ private fun WebVideoExtractorRuleDialog(
               timeoutSeconds = requireNotNull(timeoutValue),
               updatedAtEpochMillis = initial?.updatedAtEpochMillis ?: 0L,
               shareCookiesForPlayback = shareCookiesForPlayback,
+              shareReferrerPathForPlayback = shareReferrerPathForPlayback,
             ),
           )
         },
