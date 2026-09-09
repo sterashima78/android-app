@@ -84,4 +84,40 @@ class WebVideoRequestDiagnosticsTest {
     assertTrue(diagnostics.profileCookieAvailable)
     assertEquals(WebVideoSecFetchSite.CROSS_SITE, diagnostics.secFetchSite)
   }
+
+  @Test
+  fun `再生抽出でstream request未観測なら抽出後の観測待機を行う`() {
+    assertTrue(
+      shouldObserveWebVideoStreamRequestAfterExtraction(
+        observePlaybackRequest = true,
+        streamUrl = "https://media.example.com/video/master.m3u8",
+        observed = ObservedWebVideoRequestDiagnostics(streamRequestObserved = false),
+      ),
+    )
+  }
+
+  @Test
+  fun `実request観測済みまたは非再生抽出では追加観測を行わない`() {
+    assertFalse(
+      shouldObserveWebVideoStreamRequestAfterExtraction(
+        observePlaybackRequest = true,
+        streamUrl = "https://media.example.com/video/master.m3u8",
+        observed = ObservedWebVideoRequestDiagnostics(streamRequestObserved = true),
+      ),
+    )
+    assertFalse(
+      shouldObserveWebVideoStreamRequestAfterExtraction(
+        observePlaybackRequest = false,
+        streamUrl = "https://media.example.com/video/master.m3u8",
+        observed = ObservedWebVideoRequestDiagnostics(streamRequestObserved = false),
+      ),
+    )
+    assertFalse(
+      shouldObserveWebVideoStreamRequestAfterExtraction(
+        observePlaybackRequest = true,
+        streamUrl = null,
+        observed = ObservedWebVideoRequestDiagnostics(streamRequestObserved = false),
+      ),
+    )
+  }
 }
