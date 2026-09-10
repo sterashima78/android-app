@@ -37,7 +37,7 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 5. program-scoped `podcast_consumed_articles` に存在しないentryだけを候補にする。
 6. 最大記事数単位でepisodeへ分割し、候補の本文とentry URL metadataを `podcast_episode_articles` へsnapshotする。
 7. 最初のepisodeを生成し、残りはqueueへ保持する。
-8. 生成promptは入力記事1件を1チャプターとして同じ順序で扱い、各チャプター先頭へ `[[CHAPTER:n]]` markerを要求する。entry URLはpromptへ含めない。
+8. 生成promptは入力記事1件を1チャプターとして扱い、従来どおり重要度順に並べ替えてよい。各チャプター先頭へ元記事番号を持つ `[[CHAPTER:n]]` markerを要求し、entry URLはpromptへ含めない。
 9. 生成済み原稿はPodcast側でチャプターへ分割してAudio Contextへ再生委譲する。
 
 process終了やcoroutine cancellationによって `GENERATING` のまま残ったepisodeは、次のapplication background runtime起動時にも同じepisode IDと保存済みsnapshotから自動再開する。起動時再開は `QUEUED` をpromoteせず、新しいfeed候補も予約しない。定刻scheduleのreconciliationとは別のapplication-scope coroutineで実行し、新しいschedulerやdurable queueは追加しない。
@@ -97,4 +97,4 @@ application database version 35では `podcast_episode_articles.article_url` を
 - `docs/adr/0249-news-podcast-context.md`
 - `docs/adr/0250-podcast-owned-feed-sources.md`
 - `docs/adr/0253-resume-interrupted-podcast-generation.md`
-- `docs/adr/0254-podcast-playback-chapters.md`
+- `docs/adr/0255-podcast-playback-chapters.md`
