@@ -44,7 +44,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0152: Library Route と route runtime ownership を整理する](0152-library-route-and-route-runtime-ownership-cleanup.md)
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0156: active tab の message capability policy を navigation spec に集約する](0156-active-tab-message-capability-policy.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0162: current architecture cleanup の残存境界を guardrail 化する](0162-current-architecture-cleanup-guardrails.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
@@ -106,13 +106,14 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0157: Mosaic の外部識別子と互換識別子を区別する](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 - [ADR-0251: クロンダイクを Godot 実装へ移行する](0251-godot-klondike.md)
 - [ADR-0252: 埋め込みゲームの画面向きを Activity 境界で固定する](0252-lock-embedded-game-orientation.md)
+- [ADR-0254: 埋め込みゲームの scene 選択を bootstrap で行う](0254-bootstrap-embedded-game-scene-selection.md)
 
 ### Health
 
@@ -138,7 +139,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0154: Web Library metadata は静的 HTTP を優先し WebView を不足時の fallback とする](0154-web-library-rendered-metadata-fallback.md)
 - [ADR-0158: Book Reader の page geometry metadata cache を上限付きにする](0158-bounded-book-page-geometry-cache.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
 - [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 
 ### Background / AI runtime
@@ -159,7 +160,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0148: local model revision marker の互換 migration を終了する](0148-retire-local-model-revision-marker-migration.md)
 - [ADR-0155: HTTP transport を application scope で共有する](0155-application-scope-http-transport.md)
 - [ADR-0159: SMB 画像推論を短寿命の専用プロセスへ隔離する](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0160: Worker runtime ownership と Android 17 baseline を現行実装へ収束させる](0160-worker-runtime-and-android17-baseline-cleanup.md)
 - [ADR-0161: Android 17 の main-process memory limit を実行元と相関できる診断にする](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0164: owner boundary と main quality gate の残存 P1 を収束する](0164-p1-owner-boundary-and-main-quality-gate.md)
 - [ADR-0165: 単発テキスト推論を provider 非依存 capability として分離する](0165-provider-neutral-text-inference-contract.md)
@@ -216,7 +217,7 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0157](0157-mosaic-external-and-compatibility-identifiers.md)
 - [ADR-0158](0158-bounded-book-page-geometry-cache.md)
 - [ADR-0159](0159-isolate-smb-vision-inference-process.md)
-- [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
+- [ADR-0160](0160-worker-runtime-and-android17-baseline-cleanup.md)
 - [ADR-0161](0161-android17-main-process-memory-diagnostics.md)
 - [ADR-0162](0162-current-architecture-cleanup-guardrails.md)
 - [ADR-0163](0163-webview-renderer-exit-recovery.md)
@@ -235,3 +236,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0250](0250-podcast-owned-feed-sources.md)
 - [ADR-0251](0251-godot-klondike.md)
 - [ADR-0252](0252-lock-embedded-game-orientation.md)
+- [ADR-0254](0254-bootstrap-embedded-game-scene-selection.md)
