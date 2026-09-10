@@ -1,6 +1,6 @@
 # Game Architecture
 
-この文書は Game feature の current architecture を示す。設計判断の履歴は ADR-0080、ADR-0082、ADR-0083、ADR-0085、ADR-0088、ADR-0114、ADR-0234、ADR-0236、ADR-0238、ADR-0251 を参照する。
+この文書は Game feature の current architecture を示す。設計判断の履歴は ADR-0080、ADR-0082、ADR-0083、ADR-0085、ADR-0088、ADR-0114、ADR-0234、ADR-0236、ADR-0238、ADR-0251、ADR-0252 を参照する。
 
 ## Ownership
 
@@ -71,8 +71,10 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 
 ## Runtime and platform boundary
 
-- 数独 Activity は portrait 固定、クロンダイク Activity は `sensorLandscape` とする。
-- Godot Android sample が扱う Activity configuration change を manifest で処理対象として宣言し、Godot runtime 実行中の Activity recreation を避ける。
+- 数独 Activity は portrait 固定、クロンダイク Activity は landscape 固定とする。
+- 画面向きの ownership は Android Activity 境界に置く。manifest で固定向きを宣言し、クロンダイク Activity は共有 project 由来を含む runtime の向き要求を固定 landscape へ coerce する。GDScript から orientation は変更しない。
+- Activity configuration change を manifest で処理対象として宣言し、Godot runtime 実行中の Activity recreation を避ける。
+- クロンダイクは固定 landscape 前提で起動後に一度初期描画し、window resize を契機に盤面全体を再生成しない。
 - Godot runtime は専用 `:godot` process で実行し、engine / scene の異常終了や force quit が Mosaic の main process を巻き込まないよう隔離する。
 - process あたり Godot Engine instance が1つという Godot Android Library の制約を受け入れ、Godot game は独立 Activity として逐次起動する。
 - release build の R8 では Godot native JNI が名前解決する `org.godotengine.godot.**` の class/member 名を保持する。keep rule は Godot dependency と同じ `:feature:game:ui` が consumer rule として所有する。
@@ -83,9 +85,9 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 
 Godot 数独の変更では Gradle / architecture verification に加え、Android 17 実機で少なくとも起動、戻る、上段・中央・下段セルの number panel 配置、値の変更・消去、途中で採点されないこと、全盤面完成時の判定を確認する。
 
-Godot クロンダイクの変更では Gradle / architecture verification に加え、Godot 4.6.3 で scene / script が load できること、および Android 17 実機で少なくとも landscape 起動、戻る、新規ゲーム、山札1枚めくり、捨て札 recycle、場札の合法手、組札への移動、自動 flip、合法手強調、完成判定を確認する。
+Godot クロンダイクの変更では Gradle / architecture verification に加え、Godot 4.6.3 で scene / script が load でき、`klondike.tscn` が実際に起動して初期フレームを処理できること、および Android 17 実機で少なくとも固定 landscape で安定して起動すること、戻る、新規ゲーム、山札1枚めくり、捨て札 recycle、場札の合法手、組札への移動、自動 flip、合法手強調、完成判定を確認する。
 
-クロンダイクの GDScript parse / project load と pure game rule の headless regression は、Godot 4.6.3 executable を指定して次を実行する。テストは配札、山札 recycle、組札移動、場札移動と自動 flip、不正な場札列の拒否、完成判定を検証する。
+クロンダイクの GDScript parse / project load、実 scene 起動、および pure game rule の headless regression は、Godot 4.6.3 executable を指定して次を実行する。テストは配札、山札 recycle、組札移動、場札移動と自動 flip、不正な場札列の拒否、完成判定を検証する。
 
 ```bash
 bash scripts/test_godot_klondike.sh /path/to/Godot_v4.6.3-stable_linux.x86_64
@@ -100,5 +102,6 @@ bash scripts/test_godot_klondike.sh /path/to/Godot_v4.6.3-stable_linux.x86_64
 - [ADR-0236](../adr/0236-godot-android17-version-fallback.md)
 - [ADR-0238](../adr/0238-promote-godot-sudoku.md)
 - [ADR-0251](../adr/0251-godot-klondike.md)
+- [ADR-0252](../adr/0252-lock-embedded-game-orientation.md)
 - `feature/game/domain/`
 - `feature/game/ui/`

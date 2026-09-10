@@ -19,12 +19,10 @@ var surface: Control
 
 func _ready():
 	get_window().content_scale_size = Vector2i(1920, 1080)
-	DisplayServer.screen_set_orientation(DisplayServer.SCREEN_SENSOR_LANDSCAPE)
 	set_process_unhandled_key_input(true)
 	surface = Control.new()
 	surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(surface)
-	resized.connect(_render)
 	call_deferred("_render")
 
 func _notification(what):
@@ -40,7 +38,8 @@ func _render():
 	if surface == null:
 		return
 	for child in surface.get_children():
-		child.free()
+		surface.remove_child(child)
+		child.queue_free()
 
 	var viewport_size: Vector2 = size
 	if viewport_size.x < 100 or viewport_size.y < 100:

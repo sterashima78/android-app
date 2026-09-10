@@ -15,6 +15,8 @@ class GodotKlondikeActivity : GodotActivity() {
     klondikeGodotCommandLine(super.getCommandLine())
 
   override fun setRequestedOrientation(requestedOrientation: Int) {
-    super.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
+    // The shared project defaults to portrait for Sudoku. Coerce engine startup
+    // orientation requests so this Activity remains stable in fixed landscape.
+    super.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
   }
 }
