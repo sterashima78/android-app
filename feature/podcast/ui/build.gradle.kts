@@ -23,6 +23,7 @@ android {
 
 dependencies {
   implementation(project(":feature:audio:domain"))
+  implementation(project(":feature:audio:ui"))
   implementation(project(":feature:podcast:domain"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
