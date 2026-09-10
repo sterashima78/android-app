@@ -1,6 +1,6 @@
 # Mosaic 現行仕様
 
-- 更新日: 2026-09-09
+- 更新日: 2026-09-10
 - 対象: 現在の `main` 系列
 
 ## 1. 目的
@@ -36,7 +36,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - compile / target API は Android API 36 系とする。
 - 配布対象CPUは arm64-v8a とする。
 - Kotlin と Jetpack Compose を主要実装技術とする。
-- Game の数独では、既存 Android アプリへ組み込んだ Godot runtime を利用する。
+- Game の数独とクロンダイクでは、既存 Android アプリへ組み込んだ Godot runtime を利用する。
 - ユーザー向け名称は Mosaic とする。
 - 既存インストールとの互換性のため application id `dev.terashima.yomitorirss` と内部 database file 名 `yomitori-rss.db` は維持する。
 
@@ -270,6 +270,7 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - RSS未読やTask等をホーム画面widgetへ表示する。
 - Gameでは数独、2048、ノノグラム、マインスイーパー、クロンダイク、スパイダーソリティア等の端末内ゲームを提供する。
 - 数独は Godot Engine を既存 Android アプリへ組み込んだ正式実装とする。盤面を大きく表示し、編集可能なマスを選ぶとその近くに数字入力パネルを表示する。入力途中では正解・不正解を表示せず、全マス入力後にだけ完成判定する。進行状態は永続化しない。
+- クロンダイクは同じ Godot runtime 上の専用 scene で実装し、横向きの盤面優先表示とする。山札は1枚めくり、捨て札は回数制限なく再利用でき、タップで選択したカードから合法な場札・組札を強調する。場札の移動で露出した伏せ札は自動で表向きにし、進行状態は永続化しない。
 
 ## 11. 永続化
 
@@ -348,7 +349,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/module-map.md`: Gradle module構成
 - `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
 - `docs/architecture/video.md`: SMB / Web / 購読型Provider動画カタログ、抽出、更新、custom Provider実行、Media3再生境界
-- `docs/architecture/game.md`: Game と Godot 数独の runtime boundary
+- `docs/architecture/game.md`: Game と Godot 数独・クロンダイクの runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: testとarchitecture verification
 - `docs/architecture/platform.md`: Android platform基準

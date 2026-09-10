@@ -5,23 +5,21 @@ import org.junit.Test
 
 class GameOrientationTest {
   @Test
-  fun `クロンダイクとスパイダーは横向きかつ全画面を要求する`() {
-    listOf(GameScreen.KLONDIKE, GameScreen.SPIDER).forEach { screen ->
-      assertEquals(
-        GameOrientationPreference.SENSOR_LANDSCAPE,
-        orientationPreferenceFor(screen),
-      )
-      assertEquals(
-        GameChromePreference.FULLSCREEN,
-        chromePreferenceFor(screen),
-      )
-    }
+  fun `スパイダーはCompose内で横向きかつ全画面を要求する`() {
+    assertEquals(
+      GameOrientationPreference.SENSOR_LANDSCAPE,
+      orientationPreferenceFor(GameScreen.SPIDER),
+    )
+    assertEquals(
+      GameChromePreference.FULLSCREEN,
+      chromePreferenceFor(GameScreen.SPIDER),
+    )
   }
 
   @Test
-  fun `その他のゲーム画面は縦向きかつ標準表示を要求する`() {
+  fun `その他のComposeゲーム画面は縦向きかつ標準表示を要求する`() {
     GameScreen.entries
-      .filterNot { it == GameScreen.KLONDIKE || it == GameScreen.SPIDER }
+      .filterNot { it == GameScreen.SPIDER }
       .forEach { screen ->
         assertEquals(
           "$screen should stay portrait",
@@ -34,5 +32,13 @@ class GameOrientationTest {
           chromePreferenceFor(screen),
         )
       }
+  }
+
+  @Test
+  fun `クロンダイクは専用Godotシーンを起動する`() {
+    assertEquals(
+      listOf("--verbose", "--scene", "res://klondike.tscn"),
+      klondikeGodotCommandLine(listOf("--verbose")),
+    )
   }
 }

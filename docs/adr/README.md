@@ -111,6 +111,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0163: WebView renderer 終了を app process 障害と分離して復旧する](0163-webview-renderer-exit-recovery.md)
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
+- [ADR-0251: クロンダイクを Godot 実装へ移行する](0251-godot-klondike.md)
 
 ### Health
 
@@ -231,3 +232,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0235](0235-summary-audio-playback.md)
 - [ADR-0249](0249-news-podcast-context.md)
 - [ADR-0250](0250-podcast-owned-feed-sources.md)
+- [ADR-0251](0251-godot-klondike.md)

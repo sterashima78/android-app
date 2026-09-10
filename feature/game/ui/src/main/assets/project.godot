@@ -1,10 +1,10 @@
 ; Engine configuration file.
-; Godot Sudoku embedded in Mosaic.
+; Godot games embedded in Mosaic.
 config_version=5
 
 [application]
 
-config/name="Mosaic Godot Sudoku"
+config/name="Mosaic Godot Games"
 run/main_scene="res://sudoku.tscn"
 config/features=PackedStringArray("4.6")
 config/use_hidden_project_data_directory=false

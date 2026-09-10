@@ -1,6 +1,6 @@
 # ADR-0082: クロンダイクはルールを domain に置きタップ選択で操作する
 
-- Status: Accepted
+- Status: Accepted; Kotlin domain / ViewModel ownership superseded by [ADR-0251](0251-godot-klondike.md)
 - Date: 2026-08-16
 
 ## Context
@@ -39,3 +39,5 @@ ADR-0080 で一人用ゲームを `:feature:game:{domain,ui}` に分離し、ゲ
 ## Relationship
 
 ADR-0080 の Game feature の責務分離を継承する。将来スパイダーソリティアを追加する際は本 ADR を再確認し、共通化が実データに基づいて妥当になった時点で追記または新 ADR を作成する。
+
+ADR-0251 により、クロンダイクの Kotlin domain / `KlondikeViewModel` / Compose UI ownership は Godot project ownership へ置き換えられた。一方、1枚めくり、無制限 recycle、自動 flip、タップ選択という user-facing rule は引き続き有効である。
