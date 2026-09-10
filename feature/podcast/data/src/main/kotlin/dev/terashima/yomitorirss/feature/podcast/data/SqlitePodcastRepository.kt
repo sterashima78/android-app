@@ -98,6 +98,11 @@ class SqlitePodcastRepository(
     arrayOf(episodeId),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.episode(database) else null }
 
+  override suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? = database.readable.rawQuery(
+    "SELECT * FROM podcast_episodes WHERE program_id=? AND status=? ORDER BY created_at,id LIMIT 1",
+    arrayOf(programId, PodcastEpisodeStatus.GENERATING.name),
+  ).use { cursor -> if (cursor.moveToFirst()) cursor.episode(database) else null }
+
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
     val episodeId = database.transaction {
       val pending = rawQuery(
