@@ -34,6 +34,32 @@ func _unhandled_key_input(event):
 		get_tree().quit()
 		get_viewport().set_input_as_handled()
 
+static func safe_content_rect(viewport_size: Vector2, display_safe: Rect2i, screen_transform: Transform2D) -> Rect2:
+	var viewport_rect := Rect2(Vector2.ZERO, viewport_size)
+	if display_safe.size.x <= 0 or display_safe.size.y <= 0:
+		return viewport_rect
+	if is_zero_approx(screen_transform.determinant()):
+		return viewport_rect
+
+	var inverse := screen_transform.affine_inverse()
+	var first := inverse * Vector2(display_safe.position)
+	var second := inverse * Vector2(display_safe.end)
+	var mapped := Rect2(
+		Vector2(min(first.x, second.x), min(first.y, second.y)),
+		Vector2(abs(second.x - first.x), abs(second.y - first.y)),
+	)
+	var clipped := viewport_rect.intersection(mapped)
+	if clipped.size.x < 100.0 or clipped.size.y < 100.0:
+		return viewport_rect
+	return clipped
+
+func _current_safe_content_rect(viewport_size: Vector2) -> Rect2:
+	return safe_content_rect(
+		viewport_size,
+		DisplayServer.get_display_safe_area(),
+		get_viewport().get_screen_transform(),
+	)
+
 func _render():
 	if surface == null:
 		return
@@ -44,6 +70,7 @@ func _render():
 	var viewport_size: Vector2 = size
 	if viewport_size.x < 100 or viewport_size.y < 100:
 		return
+	var safe_rect := _current_safe_content_rect(viewport_size)
 
 	var background = ColorRect.new()
 	background.position = Vector2.ZERO
@@ -59,20 +86,23 @@ func _render():
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	surface.add_child(shade)
 
-	_build_top_row(viewport_size)
-	_build_tableau(viewport_size)
+	_build_top_row(safe_rect)
+	_build_tableau(safe_rect)
 	if game.is_won():
-		_build_win_overlay(viewport_size)
+		_build_win_overlay(viewport_size, safe_rect)
 
-func _build_top_row(viewport_size: Vector2):
-	var y := 20.0
+func _build_top_row(safe_rect: Rect2):
+	var safe_left := safe_rect.position.x
+	var safe_top := safe_rect.position.y
+	var safe_right := safe_rect.end.x
+	var y := safe_top + 20.0
 	var card_w := 104.0
 	var card_h := 144.0
 	var gap := 12.0
 
-	_add_action_button("‹ ゲーム", Rect2(24, 24, 116, 56), func(): get_tree().quit())
+	_add_action_button("‹ ゲーム", Rect2(safe_left + 24, safe_top + 24, 116, 56), func(): get_tree().quit())
 
-	var stock_rect := Rect2(164, y, card_w, card_h)
+	var stock_rect := Rect2(safe_left + 164, y, card_w, card_h)
 	if game.stock.is_empty():
 		var stock_label := "↻" if not game.waste.is_empty() else "山札"
 		_add_slot_button(stock_label, stock_rect, not game.waste.is_empty(), func():
@@ -95,7 +125,7 @@ func _build_top_row(viewport_size: Vector2):
 			_render()
 		)
 
-	var new_rect := Rect2(viewport_size.x - 144, 24, 120, 56)
+	var new_rect := Rect2(safe_right - 144, safe_top + 24, 120, 56)
 	_add_action_button("新しいゲーム", new_rect, func():
 		game.reset()
 		_render()
@@ -125,8 +155,8 @@ func _build_top_row(viewport_size: Vector2):
 	var title_left: float = waste_rect.end.x + 28
 	var title_right: float = foundation_start - 28
 	var title_width: float = max(160.0, title_right - title_left)
-	_add_label("クロンダイク", Rect2(title_left, 34, title_width, 44), 34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_add_label("%d 手" % game.moves, Rect2(title_left, 80, title_width, 34), 24, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_label("クロンダイク", Rect2(title_left, safe_top + 34, title_width, 44), 34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_label("%d 手" % game.moves, Rect2(title_left, safe_top + 80, title_width, 34), 24, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 
 	if game.selection != null:
 		var message := "%d 枚を選択" % game.selected_card_count()
@@ -136,16 +166,16 @@ func _build_top_row(viewport_size: Vector2):
 			message += " · 強調列へ"
 		else:
 			message += " · 移動先なし"
-		_add_label(message, Rect2(title_left, 116, title_width, 30), 19, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		_add_label(message, Rect2(title_left, safe_top + 116, title_width, 30), 19, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 
-func _build_tableau(viewport_size: Vector2):
-	var top := 184.0
-	var bottom: float = viewport_size.y - 18.0
-	var board_width: float = min(viewport_size.x - 80.0, 1500.0)
+func _build_tableau(safe_rect: Rect2):
+	var top := safe_rect.position.y + 184.0
+	var bottom: float = safe_rect.end.y - 18.0
+	var board_width: float = min(safe_rect.size.x - 80.0, 1500.0)
 	var gap := 14.0
 	var card_w: float = (board_width - gap * 6.0) / 7.0
 	var card_h: float = min(card_w * 1.38, 274.0)
-	var left: float = (viewport_size.x - board_width) * 0.5
+	var left: float = safe_rect.position.x + (safe_rect.size.x - board_width) * 0.5
 	var available_height: float = bottom - top
 	var valid_targets: Array = game.valid_tableau_targets()
 
@@ -218,7 +248,7 @@ func _add_slot_button(text_value: String, rect: Rect2, active: bool, callback: C
 	button.add_theme_stylebox_override("hover", _rounded_style(Color(1, 1, 1, 0.15), border, width, 12))
 	button.add_theme_stylebox_override("pressed", _rounded_style(Color(1, 1, 1, 0.20), border, width, 12))
 
-func _build_win_overlay(viewport_size: Vector2):
+func _build_win_overlay(viewport_size: Vector2, safe_rect: Rect2):
 	var shade = ColorRect.new()
 	shade.position = Vector2.ZERO
 	shade.size = viewport_size
@@ -226,17 +256,20 @@ func _build_win_overlay(viewport_size: Vector2):
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
 	surface.add_child(shade)
 
-	var card_rect := Rect2((viewport_size.x - 620.0) * 0.5, (viewport_size.y - 330.0) * 0.5, 620, 330)
+	var card_size := Vector2(min(620.0, safe_rect.size.x - 40.0), min(330.0, safe_rect.size.y - 40.0))
+	var card_rect := Rect2(safe_rect.position + (safe_rect.size - card_size) * 0.5, card_size)
 	var panel = PanelContainer.new()
 	panel.position = card_rect.position
 	panel.size = card_rect.size
 	panel.add_theme_stylebox_override("panel", _rounded_style(Color("17372f"), COLOR_TARGET, 3, 28))
 	surface.add_child(panel)
 
-	_add_label("クリア", Rect2(card_rect.position.x + 40, card_rect.position.y + 42, 540, 70), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_add_label("52枚すべてを組札へ移動しました", Rect2(card_rect.position.x + 40, card_rect.position.y + 120, 540, 50), 25, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	_add_label("%d 手" % game.moves, Rect2(card_rect.position.x + 40, card_rect.position.y + 166, 540, 40), 22, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	_add_action_button("次のゲーム", Rect2(card_rect.position.x + 180, card_rect.position.y + 230, 260, 64), func():
+	var content_left := card_rect.position.x + 40
+	var content_width := card_rect.size.x - 80
+	_add_label("クリア", Rect2(content_left, card_rect.position.y + 42, content_width, 70), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_label("52枚すべてを組札へ移動しました", Rect2(content_left, card_rect.position.y + 120, content_width, 50), 25, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_label("%d 手" % game.moves, Rect2(content_left, card_rect.position.y + 166, content_width, 40), 22, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_add_action_button("次のゲーム", Rect2(card_rect.position.x + (card_rect.size.x - 260) * 0.5, card_rect.position.y + 230, 260, 64), func():
 		game.reset()
 		_render()
 	)
