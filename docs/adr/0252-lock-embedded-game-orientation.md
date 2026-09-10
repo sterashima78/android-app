@@ -8,29 +8,29 @@
 
 ADR-0251 ではクロンダイクを横向きで表示するため、Activity manifest の `sensorLandscape`、Activity の `setRequestedOrientation` override、GDScript の `DisplayServer.screen_set_orientation()` を併用していた。
 
-埋め込み Android ライブラリでは automatic resize / orientation configuration event が安定した前提ではなく、実機でクロンダイク起動後に画面が連続して切り替わるようなちらつきが発生した。複数レイヤーから同じ orientation を変更すると、Android と game runtime の間で configuration change 要求が循環する余地がある。
+埋め込み Android ライブラリでは automatic resize / orientation configuration event が安定した前提ではなく、実機でクロンダイク起動後に画面が連続して切り替わるようなちらつきが発生した。加えて、共有 Godot project は数独向けに portrait を既定値としており、engine 起動時に project の orientation を Activity へ要求する。そのため manifest だけではクロンダイクの landscape を維持できない。
 
 ## Decision
 
-- 埋め込みゲーム Activity の orientation は Android manifest の `android:screenOrientation` を唯一の source of truth とする。
-- クロンダイクは `landscape` に固定し、センサーに応じた 180 度回転を行わない。
-- `GodotKlondikeActivity` は `setRequestedOrientation` を override しない。
+- 画面向きの ownership は Android Activity 境界に置き、ゲーム内 GDScript から orientation を変更しない。
+- クロンダイク manifest は `landscape` に固定し、センサーに応じた 180 度回転を行わない。
+- `GodotKlondikeActivity` は `setRequestedOrientation` を override し、共有 project 由来を含む runtime の orientation 要求を固定 `landscape` へ coerce する。
 - クロンダイク GDScript は `DisplayServer.screen_set_orientation()` を呼ばない。
-- クロンダイク scene は起動後に orientation を変更せず、既に確定した landscape window のサイズで layout する。
+- クロンダイク scene は固定 landscape 前提で起動後に一度初期描画し、window resize を契機に盤面全体を再生成しない。
 - Android の configuration change 処理と既存の `:godot` process isolation は維持する。
 
 ## Consequences
 
 ### Positive
 
-- Android と game runtime の orientation 要求競合をなくし、起動時の configuration churn を避けられる。
-- orientation ownership が Activity manifest に一本化され、数独の portrait 固定と同じ境界で理解できる。
-- runtime 内で画面向きを変更しないため、埋め込みライブラリの自動 orientation change 制約に沿う。
+- project の portrait 既定値がクロンダイク Activity を portrait に戻すことを防げる。
+- sensor orientation と runtime script の orientation 変更をなくし、起動時の configuration churn を避けられる。
+- orientation policy が Android Activity 境界に集約され、ゲームロジックから platform orientation 制御を除去できる。
 
 ### Negative
 
 - 端末を上下逆に持った場合でもクロンダイクは reverse landscape へ自動回転しない。
-- orientation を変更したい場合は runtime script ではなく Activity manifest / platform integration の変更として扱う必要がある。
+- 共有 project の portrait 既定値を維持するため、クロンダイク Activity には固定 landscape へ coerce する platform guard が必要になる。
 
 ## Relationship
 
