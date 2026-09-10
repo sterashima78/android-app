@@ -219,6 +219,22 @@ class GeneratePodcastEpisodeUseCase(
     }
   }
 
+  suspend fun regenerate(episodeId: String): PodcastGenerationResult.Generated {
+    val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(initial.programId) {
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(episode.status == PodcastEpisodeStatus.READY || episode.status == PodcastEpisodeStatus.FAILED) {
+        "only ready or failed episodes can be regenerated"
+      }
+      val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      generateReserved(
+        program = program,
+        episode = episode,
+        markFailedOnError = episode.status != PodcastEpisodeStatus.READY,
+      )
+    }
+  }
+
   /**
    * Resumes only a persisted GENERATING episode for [programId]. Unlike [generate], this never
    * promotes QUEUED work or reserves new feed entries when the interrupted episode has already
@@ -235,6 +251,7 @@ class GeneratePodcastEpisodeUseCase(
   private suspend fun generateReserved(
     program: PodcastProgram,
     episode: PodcastEpisode,
+    markFailedOnError: Boolean = true,
   ): PodcastGenerationResult.Generated {
     return try {
       val script = scriptGenerator.generate(
@@ -247,10 +264,12 @@ class GeneratePodcastEpisodeUseCase(
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
-      repository.failEpisode(
-        episodeId = episode.id,
-        message = error.message ?: error::class.simpleName ?: "generation failed",
-      )
+      if (markFailedOnError) {
+        repository.failEpisode(
+          episodeId = episode.id,
+          message = error.message ?: error::class.simpleName ?: "generation failed",
+        )
+      }
       throw error
     }
   }
@@ -289,6 +308,7 @@ fun buildPodcastPrompt(
     必須条件:
     - 外部ページ、リンク先、一般知識から情報を補わない。
     - 入力が外国語なら内容を日本語で自然に要約する。
+    - 入力記事は全${articles.size}件。重要度にかかわらず全記事を必ず原稿へ含め、省略しない。
     - 入力記事1件を1チャプターとして扱い、重要度の高い話題から並べる。
     - 各チャプターの先頭に、そのチャプターが扱う記事番号で `[[CHAPTER:n]]` を1行だけ出力する。
     - `[[CHAPTER:n]]` は入力記事数と同じ個数だけ出力し、各記事番号を1回ずつ使う。並び順は記事番号順でなくてよい。
@@ -298,7 +318,7 @@ fun buildPodcastPrompt(
     - 推測と入力に明記された事実を混同しない。
     - チャプターマーカー以外のMarkdown見出し、箇条書き、URLは使わず、読み上げやすい連続した文章にする。
     - 記号、略語、数字の羅列は、意味を変えない範囲で音声合成が自然に読める日本語表現へ言い換える。
-    - 音声合成で途中欠落しないよう、原稿全体は3000文字程度以内に収める。
+    - 全${articles.size}件を必ず含めたうえで原稿全体は3000文字程度以内に収める。記事数が多い場合は、一部の記事を落とすのではなく各チャプターを短くする。
 
     入力記事:
     $material

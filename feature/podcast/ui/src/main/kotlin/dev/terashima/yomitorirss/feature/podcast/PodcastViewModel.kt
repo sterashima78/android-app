@@ -185,7 +185,7 @@ class PodcastViewModel(
   fun retry(episodeId: String) {
     _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds + episodeId, message = null) }
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching { generatePodcastEpisode.retry(episodeId) }
+      runCatching { generatePodcastEpisode.regenerate(episodeId) }
         .onSuccess { generated ->
           _state.update {
             it.copy(

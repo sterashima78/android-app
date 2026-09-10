@@ -38,9 +38,12 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 6. 最大記事数単位でepisodeへ分割し、候補の本文とentry URL metadataを `podcast_episode_articles` へsnapshotする。
 7. 最初のepisodeを生成し、残りはqueueへ保持する。
 8. 生成promptは入力記事1件を1チャプターとして扱い、従来どおり重要度順に並べ替えてよい。各チャプター先頭へ元記事番号を持つ `[[CHAPTER:n]]` markerを要求し、entry URLはpromptへ含めない。
-9. 生成済み原稿はPodcast側でチャプターへ分割してAudio Contextへ再生委譲する。
+9. promptが選択モデルの入力上限を超える場合は、全記事の番号・title・source metadataを残し、記事本文へ予算を配分して各本文だけを短縮する。記事列の末尾をまとめて切り捨てない。
+10. 生成済み原稿はPodcast側でチャプターへ分割してAudio Contextへ再生委譲する。
 
 process終了やcoroutine cancellationによって `GENERATING` のまま残ったepisodeは、次のapplication background runtime起動時にも同じepisode IDと保存済みsnapshotから自動再開する。起動時再開は `QUEUED` をpromoteせず、新しいfeed候補も予約しない。定刻scheduleのreconciliationとは別のapplication-scope coroutineで実行し、新しいschedulerやdurable queueは追加しない。
+
+`READY` または `FAILED` の既存episodeは、保存済み `podcast_episode_articles` snapshotから明示的に再生成できる。再生成ではfeedを再取得せず、新しいcandidate reservationやconsumed state更新を行わない。`READY` episodeの再生成に失敗した場合は既存scriptとREADY状態を保持し、成功時だけ同じepisode IDのscriptを置き換える。
 
 Podcast生成や再生はreader側の記事を既読化しない。
 
@@ -87,7 +90,10 @@ application database version 35では `podcast_episode_articles.article_url` を
 - 同一番組では一度予約したstable entry identityを新規episodeへ再利用しない。
 - episodeへ予約したfeed bodyとentry URL metadataは生成時点でsnapshotし、後続のfeed rotationに依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
+- prompt入力上限の調整では予約済み記事自体を脱落させず、本文長だけを縮める。
 - 中断された `GENERATING` episodeの再開では同じsnapshotを利用し、新しいfeed候補を予約しない。
+- 既存episodeの明示的な再生成でも同じsnapshotを利用し、新しいfeed候補を予約しない。
+- READY episodeの再生成失敗では既存scriptを失わない。
 - chapter markerと記事snapshotの対応を検証できない場合は全文再生へfallbackし、誤った記事対応を作らない。
 - generation providerの自動fallbackを行わない。
 - Podcast runtimeはreaderの購読・既読stateへ依存しない。
