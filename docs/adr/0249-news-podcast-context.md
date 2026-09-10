@@ -4,6 +4,7 @@
 - Date: 2026-09-09
 - Refines: [ADR-0106](0106-domain-context-aggregate-and-persistence-ownership.md), [ADR-0235](0235-summary-audio-playback.md)
 - Amended by: [ADR-0250](0250-podcast-owned-feed-sources.md)
+- Refined by: [ADR-0256](0256-podcast-episode-archive-delete.md)
 
 ## Context
 
