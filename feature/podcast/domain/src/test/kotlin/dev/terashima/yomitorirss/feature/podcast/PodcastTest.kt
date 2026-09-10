@@ -294,6 +294,9 @@ private class FakePodcastRepository(
   override suspend fun deleteProgram(programId: String) = Unit
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> = episodes.filter { it.programId == programId }
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episodes.find { it.id == episodeId }
+  override suspend fun archiveEpisode(episodeId: String): PodcastEpisode = error("unused")
+  override suspend fun restoreEpisode(episodeId: String): PodcastEpisode = error("unused")
+  override suspend fun deleteEpisode(episodeId: String) = error("unused")
 
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
     val index = episodes.indexOfFirst {
