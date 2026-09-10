@@ -4,6 +4,7 @@
 - Date: 2026-09-10
 - Supersedes in part: [ADR-0082](0082-klondike-card-game-interaction.md), [ADR-0114](0114-solitaire-board-first-visual-feedback.md)
 - Refines: [ADR-0238](0238-promote-godot-sudoku.md)
+- Amended by: [ADR-0254](0254-bootstrap-embedded-game-scene-selection.md)
 
 ## Context
 
@@ -48,3 +49,5 @@ ADR-0082 のクロンダイクに関する「Kotlin domain が rule を所有す
 ADR-0114 のクロンダイクに関する Compose / domain 間の責務分担と `GameOrientationPreference` による向き通知は supersede する。盤面優先、横向き、合法手強調という user interaction 方針は Godot 実装でも維持する。スパイダーに関する ADR-0114 の判断は変更しない。
 
 ADR-0238 の Godot project ownership と遅延起動方針をクロンダイクへ拡張する。ADR-0236 の runtime baseline と process isolation は変更しない。
+
+ADR-0254 により、本 ADR の `--scene` によるクロンダイク scene 選択だけを bootstrap + user argument 方式へ置き換える。

@@ -35,9 +35,9 @@ class GameOrientationTest {
   }
 
   @Test
-  fun `クロンダイクは専用Godotシーンを起動する`() {
+  fun `クロンダイクはbootstrap選択をuser argumentとして渡す`() {
     assertEquals(
-      listOf("--verbose", "--scene", "res://klondike.tscn"),
+      listOf("--verbose", "--", "--game=klondike"),
       klondikeGodotCommandLine(listOf("--verbose")),
     )
   }

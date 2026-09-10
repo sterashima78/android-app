@@ -5,7 +5,7 @@ config_version=5
 [application]
 
 config/name="Mosaic Godot Games"
-run/main_scene="res://sudoku.tscn"
+run/main_scene="res://game_bootstrap.tscn"
 config/features=PackedStringArray("4.6")
 config/use_hidden_project_data_directory=false
 boot_splash/show_image=false

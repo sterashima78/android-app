@@ -5,8 +5,8 @@ import org.godotengine.godot.GodotActivity
 
 internal fun klondikeGodotCommandLine(base: List<String>): MutableList<String> =
   base.toMutableList().apply {
-    add("--scene")
-    add("res://klondike.tscn")
+    add("--")
+    add("--game=klondike")
   }
 
 /** Hosts the embedded Godot runtime used by the Klondike game. */
