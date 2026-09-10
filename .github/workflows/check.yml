@@ -42,7 +42,6 @@ jobs:
           set -euo pipefail
           archive="$RUNNER_TEMP/godot.zip"
           install_dir="$RUNNER_TEMP/godot"
-          project_dir="$GITHUB_WORKSPACE/feature/game/ui/src/main/assets"
 
           curl -fsSL --retry 3 \
             -o "$archive" \
@@ -53,10 +52,7 @@ jobs:
           godot="$install_dir/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
           chmod +x "$godot"
 
-          "$godot" --headless --path "$project_dir" --script res://sudoku.gd --check-only
-          "$godot" --headless --path "$project_dir" --script res://klondike_model.gd --check-only
-          "$godot" --headless --path "$project_dir" --script res://klondike.gd --check-only
-          "$godot" --headless --editor --path "$project_dir" --quit
+          bash scripts/test_godot_klondike.sh "$godot"
 
   checks:
     name: ${{ matrix.name }}
