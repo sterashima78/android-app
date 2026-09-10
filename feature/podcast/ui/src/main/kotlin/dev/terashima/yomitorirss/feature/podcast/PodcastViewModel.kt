@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
+import dev.terashima.yomitorirss.feature.audio.AudioPlaybackState
 import dev.terashima.yomitorirss.feature.audio.AudioQueueItem
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -19,12 +20,16 @@ data class PodcastUiState(
   val sources: List<PodcastSource> = emptyList(),
   val selectedProgramId: String? = null,
   val episodes: List<PodcastEpisode> = emptyList(),
+  val playbackEpisodeId: String? = null,
   val busyProgramIds: Set<String> = emptySet(),
   val busyEpisodeIds: Set<String> = emptySet(),
   val message: String? = null,
 ) {
   val selectedProgram: PodcastProgram?
     get() = programs.firstOrNull { it.id == selectedProgramId }
+
+  val playbackEpisode: PodcastEpisode?
+    get() = episodes.firstOrNull { it.id == playbackEpisodeId }
 }
 
 class PodcastViewModel(
@@ -35,6 +40,7 @@ class PodcastViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(PodcastUiState())
   val state: StateFlow<PodcastUiState> = _state.asStateFlow()
+  val audioState: StateFlow<AudioPlaybackState> = audioPlaybackController.state
 
   init {
     reload()
@@ -51,13 +57,14 @@ class PodcastViewModel(
         val episodes = selectedId?.let { repository.listEpisodes(it) }.orEmpty()
         Triple(programs, sources, selectedId to episodes)
       }.onSuccess { (programs, sources, selection) ->
-        _state.update {
-          it.copy(
+        _state.update { current ->
+          current.copy(
             initialized = true,
             programs = programs,
             sources = sources,
             selectedProgramId = selection.first,
             episodes = selection.second,
+            playbackEpisodeId = current.playbackEpisodeId?.takeIf { id -> selection.second.any { it.id == id } },
             message = null,
           )
         }
@@ -66,7 +73,14 @@ class PodcastViewModel(
   }
 
   fun selectProgram(programId: String) {
-    _state.update { it.copy(selectedProgramId = programId, episodes = emptyList(), message = null) }
+    _state.update {
+      it.copy(
+        selectedProgramId = programId,
+        episodes = emptyList(),
+        playbackEpisodeId = null,
+        message = null,
+      )
+    }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.listEpisodes(programId) }
         .onSuccess { episodes -> _state.update { it.copy(episodes = episodes) } }
@@ -138,7 +152,7 @@ class PodcastViewModel(
         scheduleController.cancel(programId)
         repository.deleteProgram(programId)
       }.onSuccess {
-        _state.update { it.copy(selectedProgramId = null, message = "番組を削除しました") }
+        _state.update { it.copy(selectedProgramId = null, playbackEpisodeId = null, message = "番組を削除しました") }
         reload()
       }.onFailure(::showError)
     }
@@ -189,18 +203,52 @@ class PodcastViewModel(
   }
 
   fun play(episode: PodcastEpisode) {
-    val script = episode.script?.takeIf(String::isNotBlank) ?: return
+    val chapters = episode.playbackChapters()
+    if (chapters.isEmpty()) return
     val programName = _state.value.programs.firstOrNull { it.id == episode.programId }?.name
-    audioPlaybackController.play(
+    val queue = if (chapters.all { it.article != null }) {
+      chapters.map { chapter ->
+        val article = requireNotNull(chapter.article)
+        AudioQueueItem(
+          contentId = podcastChapterContentId(episode.id, chapter.number),
+          title = article.title,
+          source = article.sourceTitle ?: programName,
+          speechText = chapter.speechText,
+        )
+      }
+    } else {
       listOf(
         AudioQueueItem(
-          contentId = "podcast:${episode.id}",
+          contentId = podcastEpisodeContentId(episode.id),
           title = episode.title,
           source = programName,
-          speechText = script,
+          speechText = episode.script,
         ),
-      ),
-    )
+      )
+    }
+    _state.update { it.copy(playbackEpisodeId = episode.id) }
+    audioPlaybackController.play(queue)
+  }
+
+  fun dismissPlayback() {
+    _state.update { it.copy(playbackEpisodeId = null) }
+  }
+
+  fun togglePlayPause() = audioPlaybackController.togglePlayPause()
+
+  fun skipPrevious() = audioPlaybackController.skipPrevious()
+
+  fun skipNext() = audioPlaybackController.skipNext()
+
+  fun seekBack() = audioPlaybackController.seekBy(-15_000L)
+
+  fun seekForward() = audioPlaybackController.seekBy(30_000L)
+
+  fun setPlaybackSpeed(speed: Float) = audioPlaybackController.setPlaybackSpeed(speed)
+
+  fun stopPlayback() {
+    audioPlaybackController.stop()
+    dismissPlayback()
   }
 
   fun clearMessage() {
@@ -241,3 +289,8 @@ class PodcastViewModel(
     }
   }
 }
+
+fun podcastEpisodeContentId(episodeId: String): String = "podcast:$episodeId"
+
+fun podcastChapterContentId(episodeId: String, chapterNumber: Int): String =
+  "${podcastEpisodeContentId(episodeId)}:chapter:$chapterNumber"
