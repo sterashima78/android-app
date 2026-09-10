@@ -178,6 +178,22 @@ class GeneratePodcastEpisodeUseCase(
     }
   }
 
+  /**
+   * Resumes only a persisted GENERATING episode for [programId]. Unlike [generate], this never
+   * promotes QUEUED work or reserves new feed entries when the interrupted episode has already
+   * completed elsewhere.
+   */
+  suspend fun resumeInterrupted(programId: String): PodcastGenerationResult.Generated? =
+    withProgramGeneration(programId) {
+      val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
+      val interrupted = repository.listEpisodes(programId)
+        .asSequence()
+        .filter { it.status == PodcastEpisodeStatus.GENERATING }
+        .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
+        ?: return@withProgramGeneration null
+      generateReserved(program, interrupted)
+    }
+
   private suspend fun generateReserved(
     program: PodcastProgram,
     episode: PodcastEpisode,
