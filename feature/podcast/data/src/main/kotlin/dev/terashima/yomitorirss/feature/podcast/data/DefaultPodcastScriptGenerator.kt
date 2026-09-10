@@ -30,7 +30,82 @@ internal fun limitPodcastPrompt(prompt: String, maxChars: Int): String {
   require(maxChars > 0) { "maxChars must be positive" }
   if (prompt.length <= maxChars) return prompt
 
-  val marker = "\n\n[入力記事はモデルの入力上限に合わせて末尾を省略しています]"
-  if (marker.length >= maxChars) return prompt.take(maxChars)
-  return prompt.take(maxChars - marker.length).trimEnd() + marker
+  val inputHeader = "\n\n入力記事:\n"
+  val inputHeaderIndex = prompt.indexOf(inputHeader)
+  if (inputHeaderIndex < 0) return prompt.take(maxChars)
+
+  val prefixEnd = inputHeaderIndex + inputHeader.length
+  val prefix = prompt.substring(0, prefixEnd)
+  val articleBlocks = prompt.substring(prefixEnd)
+    .split(Regex("""\n\n(?=---\n記事番号:)"""))
+    .mapNotNull(::parseArticlePromptBlock)
+  if (articleBlocks.size < 2) return prompt.take(maxChars)
+
+  val notice = "[入力上限に合わせ、全記事を残したまま各本文を均等に抜粋しています]\n"
+  val separator = "\n\n"
+  val fixedLength = prefix.length + notice.length +
+    articleBlocks.sumOf { it.prefix.length } + separator.length * (articleBlocks.size - 1)
+  if (fixedLength > maxChars) return prompt.take(maxChars)
+
+  val bodyBudget = maxChars - fixedLength
+  val bodyLimits = distributeBodyBudget(articleBlocks.map { it.body.length }, bodyBudget)
+  return buildString(maxChars) {
+    append(prefix)
+    append(notice)
+    articleBlocks.forEachIndexed { index, article ->
+      if (index > 0) append(separator)
+      append(article.prefix)
+      append(article.body.take(bodyLimits[index]))
+    }
+  }
+}
+
+private data class ArticlePromptBlock(
+  val prefix: String,
+  val body: String,
+)
+
+private fun parseArticlePromptBlock(block: String): ArticlePromptBlock? {
+  val bodyMarker = "\n本文:\n"
+  val bodyMarkerIndex = block.indexOf(bodyMarker)
+  if (bodyMarkerIndex < 0) return null
+  val bodyStart = bodyMarkerIndex + bodyMarker.length
+  return ArticlePromptBlock(
+    prefix = block.substring(0, bodyStart),
+    body = block.substring(bodyStart),
+  )
+}
+
+private fun distributeBodyBudget(bodyLengths: List<Int>, budget: Int): List<Int> {
+  if (bodyLengths.isEmpty() || budget <= 0) return List(bodyLengths.size) { 0 }
+
+  val limits = IntArray(bodyLengths.size)
+  val remaining = bodyLengths.indices.toMutableSet()
+  var available = budget
+  while (remaining.isNotEmpty() && available > 0) {
+    val share = available / remaining.size
+    if (share <= 0) {
+      remaining.take(available).forEach { limits[it] += 1 }
+      break
+    }
+
+    val completed = remaining.filter { index -> bodyLengths[index] <= share }
+    if (completed.isEmpty()) {
+      remaining.forEach { index -> limits[index] = share }
+      var remainder = available - share * remaining.size
+      remaining.forEach { index ->
+        if (remainder <= 0) return@forEach
+        limits[index] += 1
+        remainder -= 1
+      }
+      break
+    }
+
+    completed.forEach { index ->
+      limits[index] = bodyLengths[index]
+      available -= bodyLengths[index]
+      remaining.remove(index)
+    }
+  }
+  return limits.toList()
 }
