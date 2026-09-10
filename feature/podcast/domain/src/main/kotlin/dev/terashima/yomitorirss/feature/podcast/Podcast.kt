@@ -219,6 +219,22 @@ class GeneratePodcastEpisodeUseCase(
     }
   }
 
+  suspend fun regenerate(episodeId: String): PodcastGenerationResult.Generated {
+    val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(initial.programId) {
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(episode.status == PodcastEpisodeStatus.READY || episode.status == PodcastEpisodeStatus.FAILED) {
+        "only ready or failed episodes can be regenerated"
+      }
+      val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      generateReserved(
+        program = program,
+        episode = episode,
+        markFailedOnError = episode.status != PodcastEpisodeStatus.READY,
+      )
+    }
+  }
+
   /**
    * Resumes only a persisted GENERATING episode for [programId]. Unlike [generate], this never
    * promotes QUEUED work or reserves new feed entries when the interrupted episode has already
@@ -235,6 +251,7 @@ class GeneratePodcastEpisodeUseCase(
   private suspend fun generateReserved(
     program: PodcastProgram,
     episode: PodcastEpisode,
+    markFailedOnError: Boolean = true,
   ): PodcastGenerationResult.Generated {
     return try {
       val script = scriptGenerator.generate(
@@ -247,10 +264,12 @@ class GeneratePodcastEpisodeUseCase(
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
-      repository.failEpisode(
-        episodeId = episode.id,
-        message = error.message ?: error::class.simpleName ?: "generation failed",
-      )
+      if (markFailedOnError) {
+        repository.failEpisode(
+          episodeId = episode.id,
+          message = error.message ?: error::class.simpleName ?: "generation failed",
+        )
+      }
       throw error
     }
   }
