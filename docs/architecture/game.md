@@ -72,7 +72,7 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 ## Runtime and platform boundary
 
 - 数独 Activity は portrait 固定、クロンダイク Activity は landscape 固定とする。
-- Activity の画面向きは manifest を唯一の source of truth とし、Godot runtime / GDScript から orientation を変更しない。
+- 画面向きの ownership は Android Activity 境界に置く。manifest で固定向きを宣言し、クロンダイク Activity は共有 project 由来を含む runtime の向き要求を固定 landscape へ coerce する。GDScript から orientation は変更しない。
 - Activity configuration change を manifest で処理対象として宣言し、Godot runtime 実行中の Activity recreation を避ける。
 - クロンダイクは固定 landscape 前提で起動後に一度初期描画し、window resize を契機に盤面全体を再生成しない。
 - Godot runtime は専用 `:godot` process で実行し、engine / scene の異常終了や force quit が Mosaic の main process を巻き込まないよう隔離する。
