@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-10
 - Refines: [ADR-0236](0236-godot-android17-version-fallback.md), [ADR-0251](0251-godot-klondike.md)
+- Amended by: [ADR-0253](0253-ignore-klondike-runtime-orientation-requests.md)
 
 ## Context
 
@@ -37,3 +38,5 @@ ADR-0251 ではクロンダイクを横向きで表示するため、Activity ma
 ADR-0251 の「`sensorLandscape` とする」という判断を、本 ADR の固定 `landscape` で置き換える。クロンダイクを横向きの board-first UI とする方針自体は変更しない。
 
 ADR-0236 の runtime baseline と process isolation は変更しない。
+
+ADR-0253 により、本 ADR の runtime orientation request を固定 landscape へ coerce する部分だけを、runtime request を Android framework へ渡さず無視する方針へ置き換える。
