@@ -7,6 +7,7 @@ import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,6 +24,7 @@ class PodcastTest {
 
     assertEquals(PodcastEpisodeStatus.READY, result.episode.status)
     assertEquals(listOf("a1", "a2"), result.episode.articles.map { it.articleId })
+    assertEquals(listOf("https://example.invalid/articles/a1", "https://example.invalid/articles/a2"), result.episode.articles.map { it.articleUrl })
     assertEquals(listOf("source-1"), source.requestedSources.map { it.id })
     assertEquals("生成された原稿", result.episode.script)
     assertEquals(PodcastGenerationProvider.LOCAL, generator.provider)
@@ -135,15 +137,64 @@ class PodcastTest {
   }
 
   @Test
-  fun `プロンプトは入力本文のみを根拠にし読み上げ向け表現を要求する`() {
+  fun `プロンプトは記事順のチャプターマーカーと読み上げ向け表現を要求する`() {
     val prompt = buildPodcastPrompt(
       programName = "朝のニュース",
-      articles = listOf(entry("a1").toEpisodeArticle()),
+      articles = listOf(entry("a1").toEpisodeArticle(), entry("a2").toEpisodeArticle()),
     )
 
     assertTrue(prompt.contains("外部ページ、リンク先、一般知識から情報を補わない"))
+    assertTrue(prompt.contains("[[CHAPTER:n]]"))
+    assertTrue(prompt.contains("記事番号: 1"))
+    assertTrue(prompt.contains("記事番号: 2"))
     assertTrue(prompt.contains("音声合成が自然に読める日本語表現"))
     assertTrue(prompt.contains("本文 a1"))
+    assertFalse(prompt.contains("https://"))
+  }
+
+  @Test
+  fun `チャプターマーカーを記事スナップショットへ対応付ける`() {
+    val articles = listOf(entry("a1").toEpisodeArticle(), entry("a2").toEpisodeArticle())
+    val episode = PodcastEpisode(
+      id = "episode-1",
+      programId = "program-1",
+      title = "朝のニュース",
+      createdAtEpochMillis = 100L,
+      status = PodcastEpisodeStatus.READY,
+      articles = articles,
+      script = """
+        [[CHAPTER:1]]
+        1件目の読み上げ本文。
+        [[CHAPTER:2]]
+        2件目の読み上げ本文。
+      """.trimIndent(),
+    )
+
+    val chapters = episode.playbackChapters()
+
+    assertEquals(2, chapters.size)
+    assertEquals(listOf("a1", "a2"), chapters.map { it.article?.articleId })
+    assertEquals("1件目の読み上げ本文。", chapters[0].speechText)
+    assertEquals("2件目の読み上げ本文。", chapters[1].speechText)
+  }
+
+  @Test
+  fun `チャプター情報がない既存原稿は全文再生へフォールバックする`() {
+    val episode = PodcastEpisode(
+      id = "episode-1",
+      programId = "program-1",
+      title = "朝のニュース",
+      createdAtEpochMillis = 100L,
+      status = PodcastEpisodeStatus.READY,
+      articles = listOf(entry("a1").toEpisodeArticle()),
+      script = "既存の連続した原稿",
+    )
+
+    val chapters = episode.playbackChapters()
+
+    assertEquals(1, chapters.size)
+    assertNull(chapters.single().article)
+    assertEquals("既存の連続した原稿", chapters.single().speechText)
   }
 }
 
@@ -158,7 +209,7 @@ private fun program(maxArticlesPerEpisode: Int = 12) = PodcastProgram(
 private fun source() = PodcastSource(
   id = "source-1",
   name = "情報源",
-  feedUrl = "https://example.com/feed.xml",
+  feedUrl = "https://example.invalid/feed.xml",
 )
 
 private fun entry(id: String) = PodcastFeedEntry(
@@ -167,6 +218,7 @@ private fun entry(id: String) = PodcastFeedEntry(
   title = "タイトル $id",
   sourceTitle = "情報源",
   publishedAtEpochMillis = 100L,
+  articleUrl = "https://example.invalid/articles/$id",
   feedContent = "本文 $id",
 )
 
@@ -176,6 +228,7 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
   title = title,
   sourceTitle = sourceTitle,
   publishedAtEpochMillis = publishedAtEpochMillis,
+  articleUrl = articleUrl,
   feedContent = feedContent,
 )
 
