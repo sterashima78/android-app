@@ -38,12 +38,17 @@ Godot Android Library 4.6.3
         v
 assets/project.godot
         |
-        +--> sudoku.tscn + sudoku.gd
+        v
+game_bootstrap.tscn + game_bootstrap.gd
         |
-        +--> klondike.tscn + klondike.gd + klondike_model.gd
+        +--> no game arg ------> sudoku.tscn + sudoku.gd
+        |
+        +--> game=klondike ---> klondike.tscn + klondike.gd + klondike_model.gd
 ```
 
-Godot runtime は Game 一覧を表示しただけでは生成しない。ユーザーが対象ゲームを選択したときだけ専用 Activity / process を起動する。`project.godot` の default scene は数独とし、クロンダイク Activity は command line で `res://klondike.tscn` を明示する。
+Godot runtime は Game 一覧を表示しただけでは生成しない。ユーザーが対象ゲームを選択したときだけ専用 Activity / process を起動する。`project.godot` の main scene は bootstrap とし、引数なしでは数独を起動する。クロンダイク Activity は engine argument の `--scene` を使用せず、`--` 以降の user argument として `--game=klondike` を渡す。bootstrap は `OS.get_cmdline_user_args()` から game key を読み、対応する scene を instantiate する。
+
+packaged export template では project / scene path override を利用しない。新しい Godot game を追加する場合も custom runtime build や `--scene` に依存せず、bootstrap の明示的な game selection を拡張する。
 
 Godot project は `:feature:game:ui` の assets とし、各ゲームの盤面状態、入力、ルール判定、Control UI、animation を GDScript が所有する。Godot 化したゲーム専用の Kotlin Domain model / ViewModel / Compose Screen は持たない。
 
@@ -72,7 +77,7 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 ## Runtime and platform boundary
 
 - 数独 Activity は portrait 固定、クロンダイク Activity は landscape 固定とする。
-- 画面向きの ownership は Android Activity 境界に置く。manifest で固定向きを宣言し、クロンダイク Activity は共有 project 由来を含む runtime の `setRequestedOrientation()` を無視する。GDScript から orientation は変更しない。
+- 画面向きの ownership は Android Activity 境界に置く。manifest で固定向きを宣言し、クロンダイク Activity は共有 project 由来を含む runtime の向き要求を固定 landscape へ coerce する。GDScript から orientation は変更しない。
 - Activity configuration change を manifest で処理対象として宣言し、Godot runtime 実行中の Activity recreation を避ける。
 - クロンダイクは固定 landscape 前提で起動後に一度初期描画し、window resize を契機に盤面全体を再生成しない。
 - Godot runtime は専用 `:godot` process で実行し、engine / scene の異常終了や force quit が Mosaic の main process を巻き込まないよう隔離する。
@@ -85,9 +90,9 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 
 Godot 数独の変更では Gradle / architecture verification に加え、Android 17 実機で少なくとも起動、戻る、上段・中央・下段セルの number panel 配置、値の変更・消去、途中で採点されないこと、全盤面完成時の判定を確認する。
 
-Godot クロンダイクの変更では Gradle / architecture verification に加え、Godot 4.6.3 で scene / script が load でき、`klondike.tscn` が実際に起動して初期フレームを処理できること、Activity が runtime の orientation request を Android framework へ適用しないこと、および Android 17 実機で少なくとも固定 landscape で安定して起動すること、戻る、新規ゲーム、山札1枚めくり、捨て札 recycle、場札の合法手、組札への移動、自動 flip、合法手強調、完成判定を確認する。
+Godot クロンダイクの変更では Gradle / architecture verification に加え、Godot 4.6.3 で bootstrap / game scene / script が load できること、引数なしの bootstrap が数独を選択すること、`--` 以降の `--game=klondike` でクロンダイクを選択して初期フレームを処理できること、および Android 17 実機で少なくとも固定 landscape で安定して起動すること、戻る、新規ゲーム、山札1枚めくり、捨て札 recycle、場札の合法手、組札への移動、自動 flip、合法手強調、完成判定を確認する。
 
-クロンダイクの GDScript parse / project load、実 scene 起動、および pure game rule の headless regression は、Godot 4.6.3 executable を指定して次を実行する。テストは配札、山札 recycle、組札移動、場札移動と自動 flip、不正な場札列の拒否、完成判定を検証する。
+クロンダイクの GDScript parse / project load、bootstrap 経由の実 scene 起動、および pure game rule の headless regression は、Godot 4.6.3 executable を指定して次を実行する。テストは数独 default selection、クロンダイク user-argument selection、配札、山札 recycle、組札移動、場札移動と自動 flip、不正な場札列の拒否、完成判定を検証する。
 
 ```bash
 bash scripts/test_godot_klondike.sh /path/to/Godot_v4.6.3-stable_linux.x86_64
@@ -103,6 +108,6 @@ bash scripts/test_godot_klondike.sh /path/to/Godot_v4.6.3-stable_linux.x86_64
 - [ADR-0238](../adr/0238-promote-godot-sudoku.md)
 - [ADR-0251](../adr/0251-godot-klondike.md)
 - [ADR-0252](../adr/0252-lock-embedded-game-orientation.md)
-- [ADR-0253](../adr/0253-ignore-klondike-runtime-orientation-requests.md)
+- [ADR-0253](../adr/0253-bootstrap-embedded-game-scene-selection.md)
 - `feature/game/domain/`
 - `feature/game/ui/`
