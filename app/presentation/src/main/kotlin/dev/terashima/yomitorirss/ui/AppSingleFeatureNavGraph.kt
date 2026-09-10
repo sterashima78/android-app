@@ -21,7 +21,7 @@ import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRoute
 import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
 import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
-import dev.terashima.yomitoririss.feature.podcast.PODCAST_ROUTE
+import dev.terashima.yomitorirss.feature.podcast.PODCAST_ROUTE
 import dev.terashima.yomitorirss.feature.podcast.PodcastRouteWithPlayback
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
