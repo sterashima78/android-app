@@ -55,12 +55,14 @@ data class PodcastFeedEntry(
   val title: String,
   val sourceTitle: String?,
   val publishedAtEpochMillis: Long?,
+  val articleUrl: String,
   val feedContent: String,
 ) {
   init {
     require(articleId.isNotBlank()) { "article id must not be blank" }
     require(feedId.isNotBlank()) { "source id must not be blank" }
     require(title.isNotBlank()) { "article title must not be blank" }
+    require(articleUrl.isNotBlank()) { "article url must not be blank" }
     require(feedContent.isNotBlank()) { "feed content must not be blank" }
   }
 }
@@ -71,7 +73,14 @@ data class PodcastEpisodeArticle(
   val title: String,
   val sourceTitle: String?,
   val publishedAtEpochMillis: Long?,
+  val articleUrl: String?,
   val feedContent: String,
+)
+
+data class PodcastPlaybackChapter(
+  val number: Int,
+  val article: PodcastEpisodeArticle?,
+  val speechText: String,
 )
 
 enum class PodcastEpisodeStatus {
@@ -90,7 +99,31 @@ data class PodcastEpisode(
   val articles: List<PodcastEpisodeArticle>,
   val script: String? = null,
   val errorMessage: String? = null,
-)
+) {
+  fun playbackChapters(): List<PodcastPlaybackChapter> {
+    val speech = script?.trim().orEmpty()
+    if (speech.isBlank()) return emptyList()
+
+    val matches = PODCAST_CHAPTER_MARKER.findAll(speech).toList()
+    val expectedNumbers = articles.indices.map { it + 1 }
+    val actualNumbers = matches.mapNotNull { match -> match.groupValues.getOrNull(1)?.toIntOrNull() }
+    if (matches.size != articles.size || actualNumbers != expectedNumbers) {
+      return listOf(PodcastPlaybackChapter(number = 1, article = null, speechText = speech))
+    }
+
+    val chapters = matches.mapIndexed { index, match ->
+      val start = match.range.last + 1
+      val endExclusive = matches.getOrNull(index + 1)?.range?.first ?: speech.length
+      PodcastPlaybackChapter(
+        number = index + 1,
+        article = articles[index],
+        speechText = speech.substring(start, endExclusive).trim(),
+      )
+    }
+    return chapters.takeIf { it.none { chapter -> chapter.speechText.isBlank() } }
+      ?: listOf(PodcastPlaybackChapter(number = 1, article = null, speechText = speech))
+  }
+}
 
 interface PodcastFeedContentSource {
   suspend fun latestEntries(sources: List<PodcastSource>, limit: Int): List<PodcastFeedEntry>
@@ -238,15 +271,16 @@ fun buildPodcastPrompt(
   articles: List<PodcastEpisodeArticle>,
 ): String {
   require(articles.isNotEmpty()) { "articles must not be empty" }
-  val material = articles.joinToString(separator = "\n\n") { article ->
+  val material = articles.mapIndexed { index, article ->
     buildString {
       appendLine("---")
+      appendLine("記事番号: ${index + 1}")
       appendLine("タイトル: ${article.title}")
       article.sourceTitle?.takeIf(String::isNotBlank)?.let { appendLine("情報源: $it") }
       appendLine("本文:")
       append(article.feedContent.trim())
     }
-  }
+  }.joinToString(separator = "\n\n")
   return """
     あなたはニュース音声番組「$programName」の原稿編集者です。
     以下に渡すフィード内のタイトルと本文だけを根拠に、日本語の音声読み上げ用原稿を作成してください。
@@ -254,12 +288,14 @@ fun buildPodcastPrompt(
     必須条件:
     - 外部ページ、リンク先、一般知識から情報を補わない。
     - 入力が外国語なら内容を日本語で自然に要約する。
-    - 重要度の高い話題から並べ、話題同士のつながりが分かる構成にする。
-    - 各話題で、何が起きたか、なぜ重要かを簡潔に説明する。
+    - 入力記事1件を1チャプターとして、記事番号の順番を維持する。
+    - 各チャプターの先頭に、記事番号と同じ番号で `[[CHAPTER:n]]` を1行だけ出力する。nは1から始める。
+    - `[[CHAPTER:n]]` は入力記事数と同じ個数だけ出力し、欠番・重複・追加をしない。
+    - 各チャプターは対応する1件の記事だけを根拠にし、何が起きたか、なぜ重要かを簡潔に説明する。
+    - 冒頭の挨拶と番組名は最初のチャプター内、最後の短い締めは最後のチャプター内に含める。
     - 推測と入力に明記された事実を混同しない。
-    - Markdown の見出し、箇条書き、URL は使わず、読み上げやすい連続した文章にする。
+    - チャプターマーカー以外のMarkdown見出し、箇条書き、URLは使わず、読み上げやすい連続した文章にする。
     - 記号、略語、数字の羅列は、意味を変えない範囲で音声合成が自然に読める日本語表現へ言い換える。
-    - 冒頭の挨拶と番組名、最後の短い締めを含める。
     - 音声合成で途中欠落しないよう、原稿全体は3000文字程度以内に収める。
 
     入力記事:
@@ -270,4 +306,5 @@ fun buildPodcastPrompt(
 private fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
   "$programName / ${EPISODE_TITLE_FORMATTER.format(Instant.ofEpochMilli(createdAtEpochMillis).atZone(ZoneId.systemDefault()))}"
 
+private val PODCAST_CHAPTER_MARKER = Regex("""(?m)^\[\[CHAPTER:(\d+)\]\]\s*$""")
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
