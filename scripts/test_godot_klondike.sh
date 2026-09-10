@@ -19,9 +19,18 @@ trap cleanup EXIT
 
 cp "$test_source" "$test_target"
 
+"$godot" --headless --path "$project_dir" --script res://game_bootstrap.gd --check-only
 "$godot" --headless --path "$project_dir" --script res://sudoku.gd --check-only
 "$godot" --headless --path "$project_dir" --script res://klondike_model.gd --check-only
 "$godot" --headless --path "$project_dir" --script res://klondike.gd --check-only
 "$godot" --headless --editor --path "$project_dir" --quit
-"$godot" --headless --path "$project_dir" --scene res://klondike.tscn --quit-after 2
+
+sudoku_output="$("$godot" --headless --path "$project_dir" --quit-after 2 2>&1)"
+printf '%s\n' "$sudoku_output"
+grep -Fq "Embedded game bootstrap: sudoku" <<<"$sudoku_output"
+
+klondike_output="$("$godot" --headless --path "$project_dir" --quit-after 2 -- --game=klondike 2>&1)"
+printf '%s\n' "$klondike_output"
+grep -Fq "Embedded game bootstrap: klondike" <<<"$klondike_output"
+
 "$godot" --headless --path "$project_dir" --script res://.klondike_model_test.gd
