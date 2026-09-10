@@ -85,6 +85,12 @@ Godot 数独の変更では Gradle / architecture verification に加え、Andro
 
 Godot クロンダイクの変更では Gradle / architecture verification に加え、Godot 4.6.3 で scene / script が load できること、および Android 17 実機で少なくとも landscape 起動、戻る、新規ゲーム、山札1枚めくり、捨て札 recycle、場札の合法手、組札への移動、自動 flip、合法手強調、完成判定を確認する。
 
+クロンダイクの GDScript parse / project load と pure game rule の headless regression は、Godot 4.6.3 executable を指定して次を実行する。テストは配札、山札 recycle、組札移動、場札移動と自動 flip、不正な場札列の拒否、完成判定を検証する。
+
+```bash
+bash scripts/test_godot_klondike.sh /path/to/Godot_v4.6.3-stable_linux.x86_64
+```
+
 ## Sources
 
 - [ADR-0080](../adr/0080-game-section-and-sudoku.md)
