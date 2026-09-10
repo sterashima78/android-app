@@ -21,6 +21,7 @@ class RssPodcastFeedContentSource(
         title = entry.title,
         sourceTitle = entry.sourceTitle,
         publishedAtEpochMillis = entry.publishedAtEpochMillis,
+        articleUrl = entry.url,
         feedContent = entry.content,
       )
     }
