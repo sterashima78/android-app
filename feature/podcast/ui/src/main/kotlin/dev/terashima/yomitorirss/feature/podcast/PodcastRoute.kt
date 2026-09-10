@@ -73,6 +73,7 @@ fun PodcastRoute(
   var editorProgram by remember { mutableStateOf<PodcastProgram?>(null) }
   var editorVisible by remember { mutableStateOf(false) }
   var deletingProgram by remember { mutableStateOf<PodcastProgram?>(null) }
+  var deletingEpisode by remember { mutableStateOf<PodcastEpisode?>(null) }
 
   LaunchedEffect(state.message) {
     val message = state.message ?: return@LaunchedEffect
@@ -102,6 +103,7 @@ fun PodcastRoute(
       PodcastContent(
         state = state,
         onSelectProgram = viewModel::selectProgram,
+        onShowArchived = viewModel::setShowArchivedEpisodes,
         onGenerate = viewModel::generate,
         onEdit = { program ->
           editorProgram = program
@@ -110,6 +112,9 @@ fun PodcastRoute(
         onDelete = { deletingProgram = it },
         onPlay = viewModel::play,
         onRetry = viewModel::retry,
+        onArchiveEpisode = viewModel::archiveEpisode,
+        onRestoreEpisode = viewModel::restoreEpisode,
+        onDeleteEpisode = { deletingEpisode = it },
         modifier = Modifier.fillMaxSize().padding(padding),
       )
     }
@@ -148,17 +153,40 @@ fun PodcastRoute(
       },
     )
   }
+
+  deletingEpisode?.let { episode ->
+    AlertDialog(
+      onDismissRequest = { deletingEpisode = null },
+      title = { Text("エピソードを削除") },
+      text = { Text("「${episode.title}」を削除します。削除したエピソードは復元できません。") },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            viewModel.deleteEpisode(episode.id)
+            deletingEpisode = null
+          },
+        ) { Text("削除") }
+      },
+      dismissButton = {
+        TextButton(onClick = { deletingEpisode = null }) { Text("キャンセル") }
+      },
+    )
+  }
 }
 
 @Composable
 private fun PodcastContent(
   state: PodcastUiState,
   onSelectProgram: (String) -> Unit,
+  onShowArchived: (Boolean) -> Unit,
   onGenerate: (String) -> Unit,
   onEdit: (PodcastProgram) -> Unit,
   onDelete: (PodcastProgram) -> Unit,
   onPlay: (PodcastEpisode) -> Unit,
   onRetry: (String) -> Unit,
+  onArchiveEpisode: (String) -> Unit,
+  onRestoreEpisode: (String) -> Unit,
+  onDeleteEpisode: (PodcastEpisode) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Column(
@@ -195,15 +223,36 @@ private fun PodcastContent(
       )
 
       Text("エピソード", style = MaterialTheme.typography.titleMedium)
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+          selected = !state.showArchivedEpisodes,
+          onClick = { onShowArchived(false) },
+          label = { Text("現在") },
+        )
+        FilterChip(
+          selected = state.showArchivedEpisodes,
+          onClick = { onShowArchived(true) },
+          label = { Text("アーカイブ") },
+        )
+      }
       if (state.episodes.isEmpty()) {
-        Text("まだエピソードがありません。生成すると、この番組で未消費の記事だけが使われます。")
+        Text(
+          if (state.showArchivedEpisodes) {
+            "アーカイブ済みのエピソードはありません。"
+          } else {
+            "まだエピソードがありません。生成すると、この番組で未消費の記事だけが使われます。"
+          },
+        )
       } else {
         state.episodes.forEach { episode ->
           EpisodeCard(
             episode = episode,
-            retrying = episode.id in state.busyEpisodeIds,
+            busy = episode.id in state.busyEpisodeIds,
             onPlay = { onPlay(episode) },
             onRetry = { onRetry(episode.id) },
+            onArchive = { onArchiveEpisode(episode.id) },
+            onRestore = { onRestoreEpisode(episode.id) },
+            onDelete = { onDeleteEpisode(episode) },
           )
         }
       }
@@ -261,9 +310,12 @@ private fun ProgramCard(
 @Composable
 private fun EpisodeCard(
   episode: PodcastEpisode,
-  retrying: Boolean,
+  busy: Boolean,
   onPlay: () -> Unit,
   onRetry: () -> Unit,
+  onArchive: () -> Unit,
+  onRestore: () -> Unit,
+  onDelete: () -> Unit,
 ) {
   Card(modifier = Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -279,10 +331,17 @@ private fun EpisodeCard(
             Spacer(Modifier.width(8.dp))
             Text("再生")
           }
-          OutlinedButton(onClick = onRetry, enabled = !retrying, modifier = Modifier.fillMaxWidth()) {
+          OutlinedButton(onClick = onRetry, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (retrying) "再生成中" else "同じ記事で再生成")
+            Text(if (busy) "処理中" else "同じ記事で再生成")
+          }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+          ) {
+            TextButton(onClick = onArchive, enabled = !busy) { Text("アーカイブ") }
+            TextButton(onClick = onDelete, enabled = !busy) { Text("削除") }
           }
         }
         PodcastEpisodeStatus.QUEUED -> Text("生成待ち", style = MaterialTheme.typography.bodyMedium)
@@ -293,12 +352,33 @@ private fun EpisodeCard(
         }
         PodcastEpisodeStatus.FAILED -> {
           episode.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-          OutlinedButton(onClick = onRetry, enabled = !retrying, modifier = Modifier.fillMaxWidth()) {
+          OutlinedButton(onClick = onRetry, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (retrying) "再生成中" else "同じ記事で再生成")
+            Text(if (busy) "処理中" else "同じ記事で再生成")
+          }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+          ) {
+            TextButton(onClick = onDelete, enabled = !busy) { Text("削除") }
           }
         }
+        PodcastEpisodeStatus.ARCHIVED -> {
+          OutlinedButton(onClick = onPlay, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("再生")
+          }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+          ) {
+            TextButton(onClick = onRestore, enabled = !busy) { Text("復元") }
+            TextButton(onClick = onDelete, enabled = !busy) { Text("削除") }
+          }
+        }
+        PodcastEpisodeStatus.DELETED -> Unit
       }
     }
   }
