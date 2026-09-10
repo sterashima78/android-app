@@ -265,6 +265,7 @@ internal fun aiTaskProgressPresentation(item: AiTaskQueueItem): AiTaskProgressPr
     AiTaskQueueProgressStage.FINALIZING -> "最終要約を生成中"
     AiTaskQueueProgressStage.CLOUD_GENERATING -> "クラウドで記事を要約中"
     AiTaskQueueProgressStage.CLOUD_ENRICHING -> "クラウドでタグ・フォルダ候補を生成中"
+    AiTaskQueueProgressStage.GENERATING_CHAPTER -> "チャプターを生成中$numberedProgress"
     AiTaskQueueProgressStage.UNKNOWN,
     null -> if (determinate) "進捗$current/$total" else "AI処理中"
   }
@@ -306,6 +307,7 @@ private fun taskSource(item: AiTaskQueueItem): String {
     AiTaskQueueItemKind.LIBRARY_ORGANIZATION -> "蔵書整理 ・ ${item.source}"
     AiTaskQueueItemKind.SMB_METADATA_NORMALIZATION -> "書誌正規化 ・ ${item.source}"
     AiTaskQueueItemKind.KNOWLEDGE_WIKI -> "LLM Wiki ・ ${item.source}"
+    AiTaskQueueItemKind.PODCAST_EPISODE -> "ニュースポッドキャスト ・ ${item.source}"
   }
   return item.executionProviderLabel?.takeIf(String::isNotBlank)?.let { "$source ・ $it" } ?: source
 }

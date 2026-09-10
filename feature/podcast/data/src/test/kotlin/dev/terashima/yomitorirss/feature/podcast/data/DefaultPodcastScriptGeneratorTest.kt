@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeArticle
-import dev.terashima.yomitorirss.feature.podcast.buildPodcastPrompt
+import dev.terashima.yomitorirss.feature.podcast.buildPodcastChapterPrompt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,30 +25,24 @@ class DefaultPodcastScriptGeneratorTest {
   }
 
   @Test
-  fun `実際のPodcast promptが入力上限を超えても後半の記事を落とさない`() {
-    val articles = (1..5).map { number ->
-      PodcastEpisodeArticle(
-        articleId = "article-$number",
-        feedId = "feed-1",
-        title = "記事タイトル $number",
-        sourceTitle = "情報源 $number",
-        publishedAtEpochMillis = 100L + number,
-        articleUrl = null,
-        feedContent = "本文${number}。".repeat(300),
-      )
-    }
-    val prompt = buildPodcastPrompt("朝のニュース", articles)
+  fun `1記事のPodcast promptが入力上限を超えても記事metadataと本文先頭を残す`() {
+    val article = PodcastEpisodeArticle(
+      articleId = "article-1",
+      feedId = "feed-1",
+      title = "記事タイトル",
+      sourceTitle = "情報源",
+      publishedAtEpochMillis = 100L,
+      articleUrl = null,
+      feedContent = "本文。".repeat(3_000),
+    )
+    val prompt = buildPodcastChapterPrompt("朝のニュース", article, chapterNumber = 1, totalChapters = 1)
     assertTrue(prompt.length > 2_500)
 
     val bounded = limitPodcastPrompt(prompt, 2_500)
 
     assertTrue(bounded.length <= 2_500)
-    articles.indices.forEach { index ->
-      val number = index + 1
-      assertTrue(bounded.contains("記事番号: $number"))
-      assertTrue(bounded.contains("記事タイトル $number"))
-      assertTrue(bounded.contains("情報源 $number"))
-      assertTrue(bounded.contains("本文$number。"))
-    }
+    assertTrue(bounded.contains("記事タイトル"))
+    assertTrue(bounded.contains("情報源"))
+    assertTrue(bounded.contains("本文。"))
   }
 }

@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
 import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastScheduleController
 import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
@@ -34,6 +35,7 @@ internal class AppPodcastRuntimeDependencies(
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val repository = SqlitePodcastRepository(database)
+  val taskReader: PodcastGenerationTaskReader = repository
   private val generationUseCase = GeneratePodcastEpisodeUseCase(
     repository = repository,
     feedContentSource = RssPodcastFeedContentSource(
@@ -80,8 +82,8 @@ internal class AppPodcastRuntimeDependencies(
       } catch (error: CancellationException) {
         throw error
       } catch (_: Throwable) {
-        // Normal generation errors are persisted as FAILED by the generation use case. A concurrent
-        // active generation also wins through the program-level guard, so startup recovery can stop.
+        // Normal generation errors are persisted by the generation use case. A concurrent active
+        // generation also wins through the program-level guard, so startup recovery can stop.
       }
     }
   }

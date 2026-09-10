@@ -11,6 +11,7 @@ dependencies {
   implementation(project(":feature:summary:domain"))
   implementation(project(":feature:library:domain"))
   implementation(project(":feature:knowledge:domain"))
+  implementation(project(":feature:podcast:domain"))
 
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")

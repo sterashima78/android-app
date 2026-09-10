@@ -23,10 +23,31 @@ class PodcastInterruptedRecoveryTest {
     requireNotNull(resumed)
     assertEquals(repository.episodeId, resumed.episode.id)
     assertEquals(PodcastEpisodeStatus.READY, resumed.episode.status)
-    assertEquals("生成された原稿", resumed.episode.script)
+    assertTrue(resumed.episode.script.orEmpty().contains("生成された原稿"))
     assertEquals(0, feedSource.requestCount)
     assertTrue(generator.prompt.contains("保存済み本文"))
     assertTrue(!generator.prompt.contains("https://"))
+  }
+
+  @Test
+  fun `中断した再生成も既存原稿を保持したままcheckpointから再開する`() = runSuspend {
+    val repository = RecoveryPodcastRepository(
+      episodeStatus = PodcastEpisodeStatus.READY,
+      regenerationStatus = PodcastRegenerationStatus.RUNNING,
+      chapterStatus = PodcastChapterGenerationStatus.GENERATING,
+      existingScript = "既存原稿",
+    )
+    val feedSource = RecordingRecoveryFeedSource()
+    val generator = RecordingRecoveryGenerator()
+    val useCase = GeneratePodcastEpisodeUseCase(repository, feedSource, generator)
+
+    val resumed = useCase.resumeInterrupted(repository.program.id)
+
+    requireNotNull(resumed)
+    assertEquals(PodcastEpisodeStatus.READY, resumed.episode.status)
+    assertEquals(null, resumed.episode.regenerationStatus)
+    assertTrue(resumed.episode.script.orEmpty().contains("生成された原稿"))
+    assertEquals(0, feedSource.requestCount)
   }
 
   @Test
@@ -49,6 +70,9 @@ class PodcastInterruptedRecoveryTest {
 
 private class RecoveryPodcastRepository(
   episodeStatus: PodcastEpisodeStatus,
+  regenerationStatus: PodcastRegenerationStatus? = null,
+  chapterStatus: PodcastChapterGenerationStatus = PodcastChapterGenerationStatus.PENDING,
+  existingScript: String? = if (episodeStatus == PodcastEpisodeStatus.READY) "既存原稿" else null,
 ) : PodcastRepository {
   val program = PodcastProgram(
     id = "program-1",
@@ -73,9 +97,11 @@ private class RecoveryPodcastRepository(
           publishedAtEpochMillis = 10L,
           articleUrl = "https://example.invalid/article-1",
           feedContent = "保存済み本文",
+          chapterStatus = chapterStatus,
         ),
       ),
-      script = if (episodeStatus == PodcastEpisodeStatus.READY) "既存原稿" else null,
+      script = existingScript,
+      regenerationStatus = regenerationStatus,
     ),
   )
 
@@ -100,6 +126,36 @@ private class RecoveryPodcastRepository(
     createdAtEpochMillis: Long,
   ): PodcastEpisode? = error("not used")
 
+  override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode =
+    updateEpisode(episodeId) { it.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null) }
+
+  override suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode =
+    updateEpisode(episodeId) { it.copy(regenerationStatus = PodcastRegenerationStatus.RUNNING) }
+
+  override suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode =
+    updateArticle(episodeId, position) {
+      it.copy(chapterStatus = PodcastChapterGenerationStatus.GENERATING, chapterError = null)
+    }
+
+  override suspend fun completeChapter(episodeId: String, position: Int, script: String): PodcastEpisode =
+    updateArticle(episodeId, position) {
+      it.copy(
+        chapterStatus = PodcastChapterGenerationStatus.READY,
+        chapterScript = script,
+        chapterError = null,
+      )
+    }
+
+  override suspend fun failChapter(episodeId: String, position: Int, message: String): PodcastEpisode =
+    updateArticle(episodeId, position) {
+      it.copy(chapterStatus = PodcastChapterGenerationStatus.FAILED, chapterError = message)
+    }
+
+  override suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode =
+    updateEpisode(episodeId) {
+      it.copy(regenerationStatus = PodcastRegenerationStatus.FAILED, errorMessage = message)
+    }
+
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode =
     updateEpisode(episodeId) {
       it.copy(
@@ -107,13 +163,26 @@ private class RecoveryPodcastRepository(
         status = PodcastEpisodeStatus.READY,
         script = script,
         errorMessage = null,
+        regenerationStatus = null,
       )
     }
 
   override suspend fun failEpisode(episodeId: String, message: String): PodcastEpisode =
     updateEpisode(episodeId) {
-      it.copy(status = PodcastEpisodeStatus.FAILED, errorMessage = message)
+      it.copy(status = PodcastEpisodeStatus.FAILED, errorMessage = message, regenerationStatus = null)
     }
+
+  private fun updateArticle(
+    episodeId: String,
+    position: Int,
+    transform: (PodcastEpisodeArticle) -> PodcastEpisodeArticle,
+  ): PodcastEpisode = updateEpisode(episodeId) { episode ->
+    episode.copy(
+      articles = episode.articles.mapIndexed { index, article ->
+        if (index == position) transform(article) else article
+      },
+    )
+  }
 
   private fun updateEpisode(
     episodeId: String,

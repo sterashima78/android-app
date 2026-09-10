@@ -5,10 +5,13 @@ import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskState
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
+import dev.terashima.yomitorirss.feature.podcast.PodcastRegenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
@@ -36,7 +39,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 35, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 36, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -117,6 +120,7 @@ class PodcastRepositoryPersistenceTest {
     repository.saveSource(source)
     repository.saveProgram(program)
     val reserved = requireNotNull(repository.reserveEpisode(program, listOf(article), 100L))
+    repository.completeChapter(reserved.id, 0, "原稿")
     repository.completeEpisode(reserved.id, "朝のニュース / 1/1 07:00", "原稿")
 
     val archived = repository.archiveEpisode(reserved.id)
@@ -133,6 +137,85 @@ class PodcastRepositoryPersistenceTest {
     assertTrue(deleted.articles.isEmpty())
     assertNull(deleted.script)
     assertNull(repository.reserveEpisode(program, listOf(article), 200L))
+    assertTrue(repository.listGenerationTasks().isEmpty())
+  }
+
+  @Test
+  fun `チャプターcheckpointとAIタスク進捗を永続化する`() = runSuspend {
+    val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
+    repository.saveSource(source)
+    val program = PodcastProgram(
+      id = "program-1",
+      name = "朝のニュース",
+      sourceIds = setOf(source.id),
+      provider = PodcastGenerationProvider.CLOUD,
+    )
+    repository.saveProgram(program)
+    val episode = requireNotNull(
+      repository.reserveEpisode(
+        program = program,
+        candidates = listOf(
+          PodcastFeedEntry("article-1", source.id, "記事1", source.name, 1L, "https://example.invalid/1", "本文1"),
+          PodcastFeedEntry("article-2", source.id, "記事2", source.name, 2L, "https://example.invalid/2", "本文2"),
+        ),
+        createdAtEpochMillis = 100L,
+      ),
+    )
+
+    repository.markChapterGenerating(episode.id, 0)
+    repository.completeChapter(episode.id, 0, "1件目の原稿")
+
+    val persisted = requireNotNull(repository.findEpisode(episode.id))
+    assertEquals(PodcastChapterGenerationStatus.READY, persisted.articles[0].chapterStatus)
+    assertEquals("1件目の原稿", persisted.articles[0].chapterScript)
+    assertEquals(PodcastChapterGenerationStatus.PENDING, persisted.articles[1].chapterStatus)
+
+    val task = repository.listGenerationTasks().single()
+    assertEquals(PodcastGenerationTaskState.RUNNING, task.state)
+    assertEquals(1, task.completedChapters)
+    assertEquals(2, task.totalChapters)
+    assertEquals(PodcastGenerationProvider.CLOUD, task.provider)
+  }
+
+  @Test
+  fun `再生成中は重複再生成とアーカイブ削除を拒否し失敗後のアーカイブでタスクを閉じる`() = runSuspend {
+    val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
+    val program = PodcastProgram(
+      id = "program-1",
+      name = "朝のニュース",
+      sourceIds = setOf(source.id),
+      provider = PodcastGenerationProvider.CLOUD,
+    )
+    repository.saveSource(source)
+    repository.saveProgram(program)
+    val episode = requireNotNull(
+      repository.reserveEpisode(
+        program = program,
+        candidates = listOf(
+          PodcastFeedEntry("article-1", source.id, "記事1", source.name, 1L, "https://example.invalid/1", "本文1"),
+        ),
+        createdAtEpochMillis = 100L,
+      ),
+    )
+    repository.completeChapter(episode.id, 0, "既存原稿")
+    repository.completeEpisode(episode.id, "朝のニュース / 1/1 07:00", "既存原稿")
+
+    val regenerating = repository.prepareEpisodeRegeneration(episode.id)
+    assertEquals(PodcastRegenerationStatus.RUNNING, regenerating.regenerationStatus)
+    assertTrue(runCatching { repository.prepareEpisodeRegeneration(episode.id) }.exceptionOrNull() is IllegalArgumentException)
+    assertTrue(runCatching { repository.archiveEpisode(episode.id) }.exceptionOrNull() is IllegalArgumentException)
+    assertTrue(runCatching { repository.deleteEpisode(episode.id) }.exceptionOrNull() is IllegalArgumentException)
+    assertEquals(PodcastEpisodeStatus.READY, requireNotNull(repository.findEpisode(episode.id)).status)
+
+    repository.failRegeneration(episode.id, "再生成に失敗")
+    val failedTask = repository.listGenerationTasks().single()
+    assertEquals(PodcastGenerationTaskState.FAILED, failedTask.state)
+
+    val archived = repository.archiveEpisode(episode.id)
+    assertEquals(PodcastEpisodeStatus.ARCHIVED, archived.status)
+    assertNull(archived.regenerationStatus)
+    assertNull(archived.errorMessage)
+    assertTrue(repository.listGenerationTasks().isEmpty())
   }
 }
 

@@ -35,7 +35,7 @@ class PodcastArticleUrlMigrationTest {
   }
 
   @Test
-  fun `version 34 Podcast記事snapshotへURL列を追加して既存行を保持する`() {
+  fun `version 34 Podcast記事snapshotへURLとchapter列を追加して既存行を保持する`() {
     val previousSchema = DatabaseSchema(
       version = 34,
       contributions = listOf(
@@ -75,15 +75,19 @@ class PodcastArticleUrlMigrationTest {
 
     val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
 
-    assertEquals(35, migrated.version)
+    assertEquals(36, migrated.version)
     assertTrue("article_url" in columnNames(migrated, "podcast_episode_articles"))
+    assertTrue("chapter_status" in columnNames(migrated, "podcast_episode_articles"))
+    assertTrue("chapter_script" in columnNames(migrated, "podcast_episode_articles"))
+    assertTrue("chapter_error" in columnNames(migrated, "podcast_episode_articles"))
     migrated.rawQuery(
-      "SELECT article_id,article_url FROM podcast_episode_articles WHERE episode_id=?",
+      "SELECT article_id,article_url,chapter_status FROM podcast_episode_articles WHERE episode_id=?",
       arrayOf("episode-1"),
     ).use { cursor ->
       assertTrue(cursor.moveToFirst())
       assertEquals("article-1", cursor.getString(0))
       assertNull(if (cursor.isNull(1)) null else cursor.getString(1))
+      assertEquals("PENDING", cursor.getString(2))
     }
   }
 }

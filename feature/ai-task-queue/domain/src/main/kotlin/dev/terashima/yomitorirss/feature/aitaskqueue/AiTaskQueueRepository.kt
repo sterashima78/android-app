@@ -5,6 +5,7 @@ enum class AiTaskQueueItemKind {
   LIBRARY_ORGANIZATION,
   SMB_METADATA_NORMALIZATION,
   KNOWLEDGE_WIKI,
+  PODCAST_EPISODE,
 }
 
 enum class AiTaskQueueItemPriority {
@@ -33,6 +34,7 @@ enum class AiTaskQueueProgressStage {
   FINALIZING,
   CLOUD_GENERATING,
   CLOUD_ENRICHING,
+  GENERATING_CHAPTER,
   UNKNOWN,
 }
 

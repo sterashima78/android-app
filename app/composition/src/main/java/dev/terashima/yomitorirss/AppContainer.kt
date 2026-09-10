@@ -164,6 +164,7 @@ class AppContainer(
       knowledgeReader = knowledgeRuntime.knowledgeRepository,
       knowledgeBuildTaskController = knowledgeTaskRuntime.knowledgeBuildTaskController,
       knowledgeExecutionSettings = knowledgeTaskRuntime.knowledgeExecutionSettings,
+      podcastTaskReader = podcastRuntime.taskReader,
     )
   }
 

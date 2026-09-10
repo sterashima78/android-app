@@ -12,6 +12,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
     DatabaseMigration(targetVersion = 33) { db -> createPodcastSchema(db) },
     DatabaseMigration(targetVersion = 34) { db -> migratePodcastSources(db) },
     DatabaseMigration(targetVersion = 35) { db -> migratePodcastArticleUrls(db) },
+    DatabaseMigration(targetVersion = 36) { db -> migratePodcastChapterGeneration(db) },
   ),
 )
 
@@ -37,7 +38,8 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "created_at INTEGER NOT NULL," +
       "status TEXT NOT NULL," +
       "script TEXT," +
-      "error_message TEXT" +
+      "error_message TEXT," +
+      "regeneration_status TEXT" +
       ")",
   )
   db.execSQL("CREATE INDEX IF NOT EXISTS podcast_episodes_program_created ON podcast_episodes(program_id,created_at DESC)")
@@ -52,6 +54,9 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "published_at INTEGER," +
       "article_url TEXT," +
       "feed_content TEXT NOT NULL," +
+      "chapter_status TEXT NOT NULL DEFAULT 'PENDING'," +
+      "chapter_script TEXT," +
+      "chapter_error TEXT," +
       "PRIMARY KEY(episode_id,position)" +
       ")",
   )
@@ -116,6 +121,28 @@ private fun migratePodcastArticleUrls(db: SQLiteDatabase) {
   }
 }
 
+private fun migratePodcastChapterGeneration(db: SQLiteDatabase) {
+  if (db.hasTable("podcast_episodes") && !db.hasColumn("podcast_episodes", "regeneration_status")) {
+    db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN regeneration_status TEXT")
+  }
+  if (!db.hasTable("podcast_episode_articles")) return
+  if (!db.hasColumn("podcast_episode_articles", "chapter_status")) {
+    db.execSQL("ALTER TABLE podcast_episode_articles ADD COLUMN chapter_status TEXT NOT NULL DEFAULT 'PENDING'")
+  }
+  if (!db.hasColumn("podcast_episode_articles", "chapter_script")) {
+    db.execSQL("ALTER TABLE podcast_episode_articles ADD COLUMN chapter_script TEXT")
+  }
+  if (!db.hasColumn("podcast_episode_articles", "chapter_error")) {
+    db.execSQL("ALTER TABLE podcast_episode_articles ADD COLUMN chapter_error TEXT")
+  }
+  if (db.hasTable("podcast_episodes")) {
+    db.execSQL(
+      "UPDATE podcast_episode_articles SET chapter_status='READY' " +
+        "WHERE episode_id IN (SELECT id FROM podcast_episodes WHERE status='READY')",
+    )
+  }
+}
+
 private fun migrateLegacyConsumedIdentities(db: SQLiteDatabase) {
   val mappings = db.rawQuery(
     "SELECT id,feed_id,identity_key FROM articles " +
@@ -149,6 +176,12 @@ private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean =
     }
     false
   }
+
+private fun SQLiteDatabase.hasTable(table: String): Boolean =
+  rawQuery(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+    arrayOf(table),
+  ).use { cursor -> cursor.moveToFirst() }
 
 private data class LegacyArticleIdentity(
   val articleId: String,
