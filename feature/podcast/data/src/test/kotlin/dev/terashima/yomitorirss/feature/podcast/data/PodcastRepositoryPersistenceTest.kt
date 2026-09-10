@@ -5,6 +5,8 @@ import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
+import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
@@ -13,6 +15,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -87,6 +90,49 @@ class PodcastRepositoryPersistenceTest {
 
     assertTrue(error is IllegalArgumentException)
     assertTrue(repository.listPrograms().isEmpty())
+  }
+
+  @Test
+  fun `エピソードをアーカイブ復元削除しても消費済み記事は再利用しない`() = runSuspend {
+    val source = PodcastSource(
+      id = "source-1",
+      name = "ニュース",
+      feedUrl = "https://example.invalid/feed.xml",
+    )
+    val program = PodcastProgram(
+      id = "program-1",
+      name = "朝のニュース",
+      sourceIds = setOf(source.id),
+      provider = PodcastGenerationProvider.LOCAL,
+    )
+    val article = PodcastFeedEntry(
+      articleId = "source-1:article-1",
+      feedId = source.id,
+      title = "記事",
+      sourceTitle = source.name,
+      publishedAtEpochMillis = 10L,
+      articleUrl = "https://example.invalid/article-1",
+      feedContent = "本文",
+    )
+    repository.saveSource(source)
+    repository.saveProgram(program)
+    val reserved = requireNotNull(repository.reserveEpisode(program, listOf(article), 100L))
+    repository.completeEpisode(reserved.id, "朝のニュース / 1/1 07:00", "原稿")
+
+    val archived = repository.archiveEpisode(reserved.id)
+    assertEquals(PodcastEpisodeStatus.ARCHIVED, archived.status)
+    assertEquals("原稿", archived.script)
+    assertEquals(1, archived.articles.size)
+
+    val restored = repository.restoreEpisode(reserved.id)
+    assertEquals(PodcastEpisodeStatus.READY, restored.status)
+
+    repository.deleteEpisode(reserved.id)
+    val deleted = requireNotNull(repository.findEpisode(reserved.id))
+    assertEquals(PodcastEpisodeStatus.DELETED, deleted.status)
+    assertTrue(deleted.articles.isEmpty())
+    assertNull(deleted.script)
+    assertNull(repository.reserveEpisode(program, listOf(article), 200L))
   }
 }
 

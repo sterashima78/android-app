@@ -47,6 +47,14 @@ process終了やcoroutine cancellationによって `GENERATING` のまま残っ�
 
 Podcast生成や再生はreader側の記事を既読化しない。
 
+## Episode organization lifecycle
+
+`READY` episodeは通常一覧から `ARCHIVED` へ移動でき、`ARCHIVED` episodeは `READY` へ復元できる。アーカイブ中も生成原稿と記事snapshotを保持するため再生可能である。generation queueは `QUEUED` / `GENERATING` だけを対象にするため、アーカイブ状態は生成予約や中断再開へ影響しない。
+
+`READY` / `ARCHIVED` / `FAILED` episodeは削除できる。削除はepisode rowの物理削除ではなく `DELETED` tombstoneへの不可逆な遷移とする。削除時にはtitle、script、error message、`podcast_episode_articles` snapshotを消去するが、`podcast_consumed_articles` とその参照先として必要なepisode IDは保持する。これにより削除済みepisodeに由来するentryも未消費へ戻らず、新規episodeへ再利用されない。
+
+通常一覧は `ARCHIVED` / `DELETED` を除外し、アーカイブ一覧は `ARCHIVED` だけを表示する。`DELETED` はどの一覧にも表示せず、再生、再生成、復元の対象にしない。
+
 ## Playback projection
 
 新しく生成した原稿でchapter marker数、番号、記事数が一致する場合、Podcastは1記事分の原稿segmentを1つの `AudioQueueItem` へ投影する。queue itemには記事title、source title、読み上げ本文を渡し、marker自体は読み上げない。
@@ -63,9 +71,9 @@ Podcast-owned tablesは次のとおり。
 
 - `podcast_sources`: Podcast専用RSS / Atom source catalog
 - `podcast_programs`: 番組定義、source ID集合、生成provider、schedule、最大記事数
-- `podcast_episodes`: episode lifecycleと生成原稿
-- `podcast_episode_articles`: 生成に予約したentry metadata、feed body、entry URL snapshot
-- `podcast_consumed_articles`: 番組ごとの消費済みentry identity
+- `podcast_episodes`: episode generation / organization lifecycleと生成原稿。`ARCHIVED` / `DELETED` を含む
+- `podcast_episode_articles`: 生成に予約したentry metadata、feed body、entry URL snapshot。`DELETED` episodeでは消去する
+- `podcast_consumed_articles`: 番組ごとの消費済みentry identity。episode削除後も再利用防止のため保持する
 
 これらは通常のdatabase snapshot backup対象である。Audioが生成する再生成可能な音声cacheは対象外とする。
 
@@ -82,6 +90,8 @@ application database version 33ではPodcast番組がRSS readerのfeed IDを直�
 
 application database version 35では `podcast_episode_articles.article_url` をnullable columnとして追加する。version 34までに生成済みのepisodeはURLを持たないまま保持し、再取得で補完しない。新規episodeだけ生成予約時のfeed entry URLをsnapshotする。
 
+Episode archive/deleteでは既存 `podcast_episodes.status` のTEXT値だけを拡張するためschema migrationは追加しない。
+
 ## Invariants
 
 - 番組には1つ以上のPodcast sourceが必要である。
@@ -94,6 +104,9 @@ application database version 35では `podcast_episode_articles.article_url` を
 - 中断された `GENERATING` episodeの再開では同じsnapshotを利用し、新しいfeed候補を予約しない。
 - 既存episodeの明示的な再生成でも同じsnapshotを利用し、新しいfeed候補を予約しない。
 - READY episodeの再生成失敗では既存scriptを失わない。
+- `ARCHIVED` episodeは再生可能な原稿とsnapshotを保持し、復元時は同じepisode IDで `READY` へ戻る。
+- `DELETED` episodeは原稿と記事snapshotを保持しないが、消費済みentry identityは保持する。
+- episode削除によって一度予約したentryを未消費へ戻さない。
 - chapter markerと記事snapshotの対応を検証できない場合は全文再生へfallbackし、誤った記事対応を作らない。
 - generation providerの自動fallbackを行わない。
 - Podcast runtimeはreaderの購読・既読stateへ依存しない。
@@ -104,3 +117,4 @@ application database version 35では `podcast_episode_articles.article_url` を
 - `docs/adr/0250-podcast-owned-feed-sources.md`
 - `docs/adr/0253-resume-interrupted-podcast-generation.md`
 - `docs/adr/0255-podcast-playback-chapters.md`
+- `docs/adr/0256-podcast-episode-archive-delete.md`

@@ -90,6 +90,9 @@ private class RecoveryPodcastRepository(
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> =
     episodes.filter { it.programId == programId }
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episodes.find { it.id == episodeId }
+  override suspend fun archiveEpisode(episodeId: String): PodcastEpisode = error("not used")
+  override suspend fun restoreEpisode(episodeId: String): PodcastEpisode = error("not used")
+  override suspend fun deleteEpisode(episodeId: String) = error("not used")
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? = error("not used")
   override suspend fun reserveEpisode(
     program: PodcastProgram,
