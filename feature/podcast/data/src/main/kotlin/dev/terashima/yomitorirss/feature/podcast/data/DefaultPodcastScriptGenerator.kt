@@ -30,14 +30,13 @@ internal fun limitPodcastPrompt(prompt: String, maxChars: Int): String {
   require(maxChars > 0) { "maxChars must be positive" }
   if (prompt.length <= maxChars) return prompt
 
-  val inputHeader = "\n\n入力記事:\n"
-  val inputHeaderIndex = prompt.indexOf(inputHeader)
-  if (inputHeaderIndex < 0) return prompt.take(maxChars)
-
-  val prefixEnd = inputHeaderIndex + inputHeader.length
+  val inputHeaderMatch = Regex("""(?m)^[ \t]*入力記事:[ \t]*$""").find(prompt)
+    ?: return prompt.take(maxChars)
+  val inputHeaderLineEnd = prompt.indexOf('\n', inputHeaderMatch.range.last + 1)
+  val prefixEnd = if (inputHeaderLineEnd >= 0) inputHeaderLineEnd + 1 else inputHeaderMatch.range.last + 1
   val prefix = prompt.substring(0, prefixEnd)
   val rawArticleBlocks = prompt.substring(prefixEnd)
-    .split(Regex("""\n\n(?=---\n記事番号:)"""))
+    .split(Regex("""\n\n(?=[ \t]*---\n記事番号:)"""))
   val articleBlocks = rawArticleBlocks.mapNotNull(::parseArticlePromptBlock)
   if (articleBlocks.size < 2 || articleBlocks.size != rawArticleBlocks.size) return prompt.take(maxChars)
 
