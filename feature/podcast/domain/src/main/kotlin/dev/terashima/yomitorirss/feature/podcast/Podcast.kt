@@ -105,18 +105,19 @@ data class PodcastEpisode(
     if (speech.isBlank()) return emptyList()
 
     val matches = PODCAST_CHAPTER_MARKER.findAll(speech).toList()
+    val articleNumbers = matches.mapNotNull { match -> match.groupValues.getOrNull(1)?.toIntOrNull() }
     val expectedNumbers = articles.indices.map { it + 1 }
-    val actualNumbers = matches.mapNotNull { match -> match.groupValues.getOrNull(1)?.toIntOrNull() }
-    if (matches.size != articles.size || actualNumbers != expectedNumbers) {
+    if (matches.size != articles.size || articleNumbers.sorted() != expectedNumbers) {
       return listOf(PodcastPlaybackChapter(number = 1, article = null, speechText = speech))
     }
 
     val chapters = matches.mapIndexed { index, match ->
       val start = match.range.last + 1
       val endExclusive = matches.getOrNull(index + 1)?.range?.first ?: speech.length
+      val articleNumber = articleNumbers[index]
       PodcastPlaybackChapter(
         number = index + 1,
-        article = articles[index],
+        article = articles[articleNumber - 1],
         speechText = speech.substring(start, endExclusive).trim(),
       )
     }
@@ -288,10 +289,11 @@ fun buildPodcastPrompt(
     必須条件:
     - 外部ページ、リンク先、一般知識から情報を補わない。
     - 入力が外国語なら内容を日本語で自然に要約する。
-    - 入力記事1件を1チャプターとして、記事番号の順番を維持する。
-    - 各チャプターの先頭に、記事番号と同じ番号で `[[CHAPTER:n]]` を1行だけ出力する。nは1から始める。
-    - `[[CHAPTER:n]]` は入力記事数と同じ個数だけ出力し、欠番・重複・追加をしない。
+    - 入力記事1件を1チャプターとして扱い、重要度の高い話題から並べる。
+    - 各チャプターの先頭に、そのチャプターが扱う記事番号で `[[CHAPTER:n]]` を1行だけ出力する。
+    - `[[CHAPTER:n]]` は入力記事数と同じ個数だけ出力し、各記事番号を1回ずつ使う。並び順は記事番号順でなくてよい。
     - 各チャプターは対応する1件の記事だけを根拠にし、何が起きたか、なぜ重要かを簡潔に説明する。
+    - 話題同士のつながりが分かる構成にする。
     - 冒頭の挨拶と番組名は最初のチャプター内、最後の短い締めは最後のチャプター内に含める。
     - 推測と入力に明記された事実を混同しない。
     - チャプターマーカー以外のMarkdown見出し、箇条書き、URLは使わず、読み上げやすい連続した文章にする。
