@@ -48,6 +48,7 @@ class DefaultPodcastScriptGeneratorTest {
       assertTrue(bounded.contains("記事番号: $number"))
       assertTrue(bounded.contains("記事タイトル $number"))
       assertTrue(bounded.contains("情報源 $number"))
+      assertTrue(bounded.contains("本文$number。"))
     }
   }
 }
