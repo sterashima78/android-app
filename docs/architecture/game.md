@@ -1,6 +1,6 @@
 # Game Architecture
 
-この文書は Game feature の current architecture を示す。設計判断の履歴は ADR-0080、ADR-0082、ADR-0083、ADR-0085、ADR-0088、ADR-0114、ADR-0234、ADR-0236、ADR-0238、ADR-0251、ADR-0252、ADR-0253 を参照する。
+この文書は Game feature の current architecture を示す。設計判断の履歴は ADR-0080、ADR-0082、ADR-0083、ADR-0085、ADR-0088、ADR-0114、ADR-0234、ADR-0236、ADR-0238、ADR-0251、ADR-0252、ADR-0254 を参照する。
 
 ## Ownership
 
@@ -108,6 +108,6 @@ bash scripts/test_godot_klondike.sh /path/to/Godot_v4.6.3-stable_linux.x86_64
 - [ADR-0238](../adr/0238-promote-godot-sudoku.md)
 - [ADR-0251](../adr/0251-godot-klondike.md)
 - [ADR-0252](../adr/0252-lock-embedded-game-orientation.md)
-- [ADR-0253](../adr/0253-bootstrap-embedded-game-scene-selection.md)
+- [ADR-0254](../adr/0254-bootstrap-embedded-game-scene-selection.md)
 - `feature/game/domain/`
 - `feature/game/ui/`
