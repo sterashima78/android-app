@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.game
 
-import android.content.pm.ActivityInfo
 import org.godotengine.godot.GodotActivity
 
 internal fun klondikeGodotCommandLine(base: List<String>): MutableList<String> =
@@ -15,8 +14,7 @@ class GodotKlondikeActivity : GodotActivity() {
     klondikeGodotCommandLine(super.getCommandLine())
 
   override fun setRequestedOrientation(requestedOrientation: Int) {
-    // The shared project defaults to portrait for Sudoku. Coerce engine startup
-    // orientation requests so this Activity remains stable in fixed landscape.
-    super.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+    // The manifest owns this Activity's fixed landscape orientation. Godot's
+    // shared project is portrait for Sudoku, so ignore runtime orientation requests.
   }
 }
