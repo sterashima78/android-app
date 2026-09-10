@@ -42,6 +42,23 @@ fun PodcastPlaybackDialog(
   val chapters = episode.playbackChapters()
   val hasMappedChapters = chapters.isNotEmpty() && chapters.all { it.article != null }
   val uriHandler = LocalUriHandler.current
+  val displayItems = if (hasMappedChapters) {
+    chapters.map { chapter ->
+      PodcastArticleDisplayItem(
+        label = "チャプター ${chapter.number}",
+        article = requireNotNull(chapter.article),
+        active = audioState.currentItem?.contentId == podcastChapterContentId(episode.id, chapter.number),
+      )
+    }
+  } else {
+    episode.articles.mapIndexed { index, article ->
+      PodcastArticleDisplayItem(
+        label = "記事 ${index + 1}",
+        article = article,
+        active = false,
+      )
+    }
+  }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -102,28 +119,26 @@ fun PodcastPlaybackDialog(
               )
             }
 
-            episode.articles.forEachIndexed { index, article ->
-              val chapterNumber = index + 1
-              val active = hasMappedChapters &&
-                audioState.currentItem?.contentId == podcastChapterContentId(episode.id, chapterNumber)
+            displayItems.forEach { item ->
+              val article = item.article
               Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
-                tonalElevation = if (active) 6.dp else 1.dp,
+                tonalElevation = if (item.active) 6.dp else 1.dp,
               ) {
                 Column(
                   modifier = Modifier.fillMaxWidth().padding(12.dp),
                   verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                   Text(
-                    if (hasMappedChapters) "チャプター $chapterNumber" else "記事 $chapterNumber",
+                    item.label,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (item.active) FontWeight.Bold else FontWeight.Normal,
                   )
                   Text(
                     article.title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (item.active) FontWeight.Bold else FontWeight.Normal,
                   )
                   article.sourceTitle?.takeIf(String::isNotBlank)?.let { source ->
                     Text(source, style = MaterialTheme.typography.bodySmall)
@@ -142,3 +157,9 @@ fun PodcastPlaybackDialog(
     }
   }
 }
+
+private data class PodcastArticleDisplayItem(
+  val label: String,
+  val article: PodcastEpisodeArticle,
+  val active: Boolean,
+)
