@@ -26,6 +26,7 @@ class PodcastInterruptedRecoveryTest {
     assertEquals("生成された原稿", resumed.episode.script)
     assertEquals(0, feedSource.requestCount)
     assertTrue(generator.prompt.contains("保存済み本文"))
+    assertTrue(!generator.prompt.contains("https://"))
   }
 
   @Test
@@ -70,6 +71,7 @@ private class RecoveryPodcastRepository(
           title = "保存済み記事",
           sourceTitle = "情報源",
           publishedAtEpochMillis = 10L,
+          articleUrl = "https://example.invalid/article-1",
           feedContent = "保存済み本文",
         ),
       ),
