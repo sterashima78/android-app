@@ -20,6 +20,7 @@ data class PodcastUiState(
   val sources: List<PodcastSource> = emptyList(),
   val selectedProgramId: String? = null,
   val episodes: List<PodcastEpisode> = emptyList(),
+  val showArchivedEpisodes: Boolean = false,
   val playbackEpisodeId: String? = null,
   val busyProgramIds: Set<String> = emptySet(),
   val busyEpisodeIds: Set<String> = emptySet(),
@@ -54,7 +55,8 @@ class PodcastViewModel(
         val selectedId = _state.value.selectedProgramId
           ?.takeIf { id -> programs.any { it.id == id } }
           ?: programs.firstOrNull()?.id
-        val episodes = selectedId?.let { repository.listEpisodes(it) }.orEmpty()
+        val showArchived = _state.value.showArchivedEpisodes
+        val episodes = selectedId?.let { loadEpisodes(it, showArchived) }.orEmpty()
         Triple(programs, sources, selectedId to episodes)
       }.onSuccess { (programs, sources, selection) ->
         _state.update { current ->
@@ -82,9 +84,37 @@ class PodcastViewModel(
       )
     }
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching { repository.listEpisodes(programId) }
+      runCatching { loadEpisodes(programId, _state.value.showArchivedEpisodes) }
         .onSuccess { episodes -> _state.update { it.copy(episodes = episodes) } }
         .onFailure(::showError)
+    }
+  }
+
+  fun setShowArchivedEpisodes(showArchived: Boolean) {
+    if (_state.value.showArchivedEpisodes == showArchived) return
+    val programId = _state.value.selectedProgramId
+    _state.update {
+      it.copy(
+        showArchivedEpisodes = showArchived,
+        episodes = emptyList(),
+        playbackEpisodeId = null,
+        message = null,
+      )
+    }
+    if (programId != null) {
+      viewModelScope.launch(Dispatchers.IO) {
+        runCatching { loadEpisodes(programId, showArchived) }
+          .onSuccess { episodes ->
+            _state.update { current ->
+              if (current.selectedProgramId == programId && current.showArchivedEpisodes == showArchived) {
+                current.copy(episodes = episodes)
+              } else {
+                current
+              }
+            }
+          }
+          .onFailure(::showError)
+      }
     }
   }
 
@@ -202,6 +232,78 @@ class PodcastViewModel(
     }
   }
 
+  fun archiveEpisode(episodeId: String) {
+    _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds + episodeId, message = null) }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.archiveEpisode(episodeId) }
+        .onSuccess { episode ->
+          _state.update {
+            it.copy(
+              busyEpisodeIds = it.busyEpisodeIds - episodeId,
+              message = "エピソードをアーカイブしました",
+            )
+          }
+          refreshEpisodes(episode.programId)
+        }
+        .onFailure { error ->
+          _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds - episodeId) }
+          showError(error)
+        }
+    }
+  }
+
+  fun restoreEpisode(episodeId: String) {
+    _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds + episodeId, message = null) }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.restoreEpisode(episodeId) }
+        .onSuccess { episode ->
+          _state.update {
+            it.copy(
+              busyEpisodeIds = it.busyEpisodeIds - episodeId,
+              message = "エピソードを復元しました",
+            )
+          }
+          refreshEpisodes(episode.programId)
+        }
+        .onFailure { error ->
+          _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds - episodeId) }
+          showError(error)
+        }
+    }
+  }
+
+  fun deleteEpisode(episodeId: String) {
+    val programId = _state.value.episodes.firstOrNull { it.id == episodeId }?.programId
+      ?: _state.value.selectedProgramId
+      ?: return
+    if (audioPlaybackController.state.value.currentItem?.contentId?.startsWith(podcastEpisodeContentId(episodeId)) == true) {
+      audioPlaybackController.stop()
+    }
+    _state.update {
+      it.copy(
+        busyEpisodeIds = it.busyEpisodeIds + episodeId,
+        playbackEpisodeId = it.playbackEpisodeId?.takeUnless { id -> id == episodeId },
+        message = null,
+      )
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.deleteEpisode(episodeId) }
+        .onSuccess {
+          _state.update {
+            it.copy(
+              busyEpisodeIds = it.busyEpisodeIds - episodeId,
+              message = "エピソードを削除しました",
+            )
+          }
+          refreshEpisodes(programId)
+        }
+        .onFailure { error ->
+          _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds - episodeId) }
+          showError(error)
+        }
+    }
+  }
+
   fun play(episode: PodcastEpisode) {
     val chapters = episode.playbackChapters()
     if (chapters.isEmpty()) return
@@ -256,11 +358,25 @@ class PodcastViewModel(
   }
 
   private suspend fun refreshEpisodes(programId: String) {
-    val episodes = repository.listEpisodes(programId)
+    val showArchived = _state.value.showArchivedEpisodes
+    val episodes = loadEpisodes(programId, showArchived)
     _state.update { current ->
-      if (current.selectedProgramId == programId) current.copy(episodes = episodes) else current
+      if (current.selectedProgramId == programId && current.showArchivedEpisodes == showArchived) {
+        current.copy(episodes = episodes)
+      } else {
+        current
+      }
     }
   }
+
+  private suspend fun loadEpisodes(programId: String, showArchived: Boolean): List<PodcastEpisode> =
+    repository.listEpisodes(programId).filter { episode ->
+      if (showArchived) {
+        episode.status == PodcastEpisodeStatus.ARCHIVED
+      } else {
+        episode.status != PodcastEpisodeStatus.ARCHIVED && episode.status != PodcastEpisodeStatus.DELETED
+      }
+    }
 
   private fun showError(error: Throwable) {
     _state.update {
