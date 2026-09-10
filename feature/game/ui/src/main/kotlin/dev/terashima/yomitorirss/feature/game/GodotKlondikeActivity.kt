@@ -1,11 +1,12 @@
 package dev.terashima.yomitorirss.feature.game
 
+import android.content.pm.ActivityInfo
 import org.godotengine.godot.GodotActivity
 
 internal fun klondikeGodotCommandLine(base: List<String>): MutableList<String> =
   base.toMutableList().apply {
-    add("--scene")
-    add("res://klondike.tscn")
+    add("--")
+    add("--game=klondike")
   }
 
 /** Hosts the embedded Godot runtime used by the Klondike game. */
@@ -14,7 +15,8 @@ class GodotKlondikeActivity : GodotActivity() {
     klondikeGodotCommandLine(super.getCommandLine())
 
   override fun setRequestedOrientation(requestedOrientation: Int) {
-    // The manifest owns this Activity's fixed landscape orientation. Godot's
-    // shared project is portrait for Sudoku, so ignore runtime orientation requests.
+    // The shared project defaults to portrait for Sudoku. Coerce engine startup
+    // orientation requests so this Activity remains stable in fixed landscape.
+    super.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
   }
 }
