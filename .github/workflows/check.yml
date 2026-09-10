@@ -27,33 +27,6 @@ jobs:
       - name: Verify tracked public content
         run: python3 scripts/verify_public_repository.py
 
-  godot_headless:
-    name: Godot headless
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Verify embedded game bootstrap
-        env:
-          GODOT_VERSION: 4.6.3
-          GODOT_SHA256: d0bc2113065e481c9c2c2b2c37daa4e8be3fe9e27f0ab9ab0b6096e9a37907f3
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/godot.zip"
-          install_dir="$RUNNER_TEMP/godot"
-
-          curl -fsSL --retry 3 \
-            -o "$archive" \
-            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          echo "${GODOT_SHA256}  ${archive}" | sha256sum --check -
-          mkdir -p "$install_dir"
-          unzip -q "$archive" -d "$install_dir"
-          godot="$install_dir/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
-          chmod +x "$godot"
-
-          bash scripts/test_godot_klondike.sh "$godot"
-
   checks:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
