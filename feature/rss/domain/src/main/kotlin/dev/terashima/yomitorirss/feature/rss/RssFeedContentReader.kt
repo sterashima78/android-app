@@ -6,6 +6,7 @@ data class RssFeedContentEntry(
   val title: String,
   val sourceTitle: String,
   val publishedAtEpochMillis: Long?,
+  val url: String,
   val content: String,
 )
 

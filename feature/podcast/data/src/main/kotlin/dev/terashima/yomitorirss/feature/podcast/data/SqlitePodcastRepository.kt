@@ -171,6 +171,7 @@ class SqlitePodcastRepository(
             put("title", article.title)
             if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
             if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
+            put("article_url", article.articleUrl)
             put("feed_content", article.feedContent)
           },
         )
@@ -292,6 +293,7 @@ private fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
               title = articleCursor.string("title"),
               sourceTitle = articleCursor.nullableString("source_title"),
               publishedAtEpochMillis = articleCursor.nullableLong("published_at"),
+              articleUrl = articleCursor.nullableString("article_url"),
               feedContent = articleCursor.string("feed_content"),
             ),
           )
@@ -309,6 +311,7 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
   title = title,
   sourceTitle = sourceTitle,
   publishedAtEpochMillis = publishedAtEpochMillis,
+  articleUrl = articleUrl,
   feedContent = feedContent,
 )
 

@@ -11,6 +11,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
   migrations = listOf(
     DatabaseMigration(targetVersion = 33) { db -> createPodcastSchema(db) },
     DatabaseMigration(targetVersion = 34) { db -> migratePodcastSources(db) },
+    DatabaseMigration(targetVersion = 35) { db -> migratePodcastArticleUrls(db) },
   ),
 )
 
@@ -49,6 +50,7 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "title TEXT NOT NULL," +
       "source_title TEXT," +
       "published_at INTEGER," +
+      "article_url TEXT," +
       "feed_content TEXT NOT NULL," +
       "PRIMARY KEY(episode_id,position)" +
       ")",
@@ -106,6 +108,12 @@ private fun migratePodcastSources(db: SQLiteDatabase) {
 
   migrateLegacyConsumedIdentities(db)
   db.execSQL("ALTER TABLE podcast_programs RENAME COLUMN feed_ids TO source_ids")
+}
+
+private fun migratePodcastArticleUrls(db: SQLiteDatabase) {
+  if (!db.hasColumn("podcast_episode_articles", "article_url")) {
+    db.execSQL("ALTER TABLE podcast_episode_articles ADD COLUMN article_url TEXT")
+  }
 }
 
 private fun migrateLegacyConsumedIdentities(db: SQLiteDatabase) {

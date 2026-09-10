@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(34, db.version)
+    assertEquals(35, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -48,6 +48,7 @@ class AppDatabaseSchemaTest {
     assertFalse("saved_at" in columnNames(db, "articles"))
     assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
     assertTrue("function_code" in columnNames(db, "video_providers"))
+    assertTrue("article_url" in columnNames(db, "podcast_episode_articles"))
     assertEquals(
       setOf(
         "feed_folders",
@@ -202,7 +203,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(34, db.version)
+    assertEquals(35, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -262,7 +263,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(34, db.version)
+    assertEquals(35, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
@@ -344,7 +345,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(34, db.version)
+    assertEquals(35, db.version)
     assertEquals(1, countRows(db, "video_providers", "provider_type=?", arrayOf("YOUTUBE")))
     assertEquals(1, countRows(db, "video_subscriptions", "source_id=?", arrayOf("channel-1")))
     assertEquals(2, countRows(db, "video_provider_items", "provider_id=?", arrayOf("youtube")))
@@ -365,7 +366,7 @@ class AppDatabaseSchemaTest {
             db.execSQL(
               """
                 CREATE TABLE video_providers(
-                  id TEXT PRIMARY KEY NOT NULL,
+                  id TEXT PRIMARY KEY NOT NULL UNIQUE,
                   provider_type TEXT NOT NULL UNIQUE,
                   name TEXT NOT NULL,
                   enabled INTEGER NOT NULL DEFAULT 1,
@@ -395,7 +396,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(34, db.version)
+    assertEquals(35, db.version)
     assertTrue("function_code" in columnNames(db, "video_providers"))
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("builtin-provider")))
     assertEquals(
@@ -415,7 +416,7 @@ class AppDatabaseSchemaTest {
             db.execSQL(
               """
                 CREATE TABLE video_providers(
-                  id TEXT PRIMARY KEY NOT NULL,
+                  id TEXT PRIMARY KEY NOT NULL UNIQUE,
                   provider_type TEXT NOT NULL UNIQUE,
                   name TEXT NOT NULL,
                   enabled INTEGER NOT NULL DEFAULT 1,
@@ -447,7 +448,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(34, db.version)
+    assertEquals(35, db.version)
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("custom-provider")))
     assertEquals(
       "return null",
@@ -458,6 +459,7 @@ class AppDatabaseSchemaTest {
     assertTrue("podcast_episodes" in tableNames(db))
     assertTrue("podcast_episode_articles" in tableNames(db))
     assertTrue("podcast_consumed_articles" in tableNames(db))
+    assertTrue("article_url" in columnNames(db, "podcast_episode_articles"))
   }
 
   @Test
@@ -620,7 +622,8 @@ class AppDatabaseSchemaTest {
 
     val migrated = openDatabase().writableDatabase
 
-    assertEquals(34, migrated.version)
+    assertEquals(35, migrated.version)
+    assertTrue("article_url" in columnNames(migrated, "podcast_episode_articles"))
     assertEquals(
       "カスタムニュース",
       singleString(migrated, "SELECT name FROM podcast_sources WHERE id=?", arrayOf("feed-1")),

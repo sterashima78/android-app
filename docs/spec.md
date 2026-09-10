@@ -105,7 +105,11 @@ Mosaic は、RSSを起点に、ブックマーク、外部コンテンツ、メ�
 - 番組ごとに一度生成対象として予約したentryは次回の新規エピソードでは再利用しない。Podcast生成・再生によってRSS reader側の記事の既読 / 未読状態は変更しない。
 - 1回の最大記事数を超える未消費候補は生成時点の本文を後続エピソード用に保存し、フィード更新で元entryが消えても後続生成に利用できる。
 - 生成中断時は同じ記事スナップショットから次回実行で再開する。通常の生成失敗は失敗状態として表示し、「同じ記事で再生成」から同じ記事内容を使って再試行できる。
-- 生成済みエピソードは既存の音声再生機能で再生し、バックグラウンド、通知、lock screen、Bluetooth等の標準media controlを利用できる。
+- 新しく生成する原稿では入力記事1件を1チャプターとして扱い、重要度に応じて並び替えられた場合も各チャプターを元記事へ対応付ける。再生時にはチャプター一覧、現在チャプター、各チャプターに対応する記事リンクをフルスクリーンの再生詳細画面へ表示する。
+- 記事リンクには生成予約時にRSS / Atom feedへ含まれていたentry URLを保存して利用する。リンク先本文をPodcast生成のために取得せず、記事URL自体もAI生成promptへ含めない。
+- 構造化されたチャプターは1チャプターを1つの音声再生itemとして扱う。「前 / 次」は前後チャプターへ移動し、再生 / 一時停止、15秒戻し、30秒送り、再生速度変更はRSS要約の音声再生と同じ共通操作を利用する。
+- 再生詳細画面を閉じてもmedia playbackを継続し、通知、lock screen、Bluetooth等の標準media controlを利用できる。明示的な「終了」で再生を停止する。
+- 既存episodeや生成結果に正しいチャプター境界がない場合は、誤った記事対応を作らずエピソード全文を1つのitemとして再生し、記事一覧は関連記事として表示する。既存episodeで記事URLが保存されていない場合は記事リンク操作を表示しない。
 - Podcast source、番組とエピソード、生成に利用した記事スナップショット、番組別の記事消費状態、生成原稿、定刻設定はdurable user stateとして保存し、通常のdatabase snapshot backup対象とする。
 
 ### 4.7 動画
@@ -348,6 +352,7 @@ feature追加・廃止に伴い非目標が変わる場合は、対応するADR�
 - `docs/architecture/context-map.md`: Domain ContextとContext間関係
 - `docs/architecture/module-map.md`: Gradle module構成
 - `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
+- `docs/architecture/podcast.md`: ニュースポッドキャスト生成、記事snapshot、チャプター再生境界
 - `docs/architecture/video.md`: SMB / Web / 購読型Provider動画カタログ、抽出、更新、custom Provider実行、Media3再生境界
 - `docs/architecture/game.md`: Game と Godot 数独・クロンダイクの runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
