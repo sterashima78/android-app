@@ -75,6 +75,7 @@ class PodcastViewModel(
   }
 
   fun selectProgram(programId: String) {
+    val showArchived = _state.value.showArchivedEpisodes
     _state.update {
       it.copy(
         selectedProgramId = programId,
@@ -84,8 +85,16 @@ class PodcastViewModel(
       )
     }
     viewModelScope.launch(Dispatchers.IO) {
-      runCatching { loadEpisodes(programId, _state.value.showArchivedEpisodes) }
-        .onSuccess { episodes -> _state.update { it.copy(episodes = episodes) } }
+      runCatching { loadEpisodes(programId, showArchived) }
+        .onSuccess { episodes ->
+          _state.update { current ->
+            if (current.selectedProgramId == programId && current.showArchivedEpisodes == showArchived) {
+              current.copy(episodes = episodes)
+            } else {
+              current
+            }
+          }
+        }
         .onFailure(::showError)
     }
   }
@@ -291,20 +300,22 @@ class PodcastViewModel(
         .onSuccess {
           _state.update {
             it.copy(
+              episodes = it.episodes.filterNot { episode -> episode.id == episodeId },
               busyEpisodeIds = it.busyEpisodeIds - episodeId,
               message = "エピソードを削除しました",
             )
           }
-          refreshEpisodes(programId)
         }
         .onFailure { error ->
           _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds - episodeId) }
           showError(error)
+          refreshEpisodes(programId)
         }
     }
   }
 
   fun play(episode: PodcastEpisode) {
+    if (episode.id in _state.value.busyEpisodeIds) return
     val chapters = episode.playbackChapters()
     if (chapters.isEmpty()) return
     val programName = _state.value.programs.firstOrNull { it.id == episode.programId }?.name
