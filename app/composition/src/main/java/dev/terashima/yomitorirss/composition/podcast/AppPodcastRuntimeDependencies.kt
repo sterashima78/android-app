@@ -16,6 +16,7 @@ import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSourc
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastScheduleController
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssFeedContentReader
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,6 +53,7 @@ internal class AppPodcastRuntimeDependencies(
   val workerFactory = PodcastGenerationWorkerFactory(repository, generationUseCase, scheduleController)
 
   fun restoreSchedules() {
+    scope.launch { resumeInterruptedGenerations() }
     scope.launch {
       var previousPrograms = emptyMap<String, PodcastProgram>()
       persistenceChanges.version.collect {
@@ -60,6 +62,26 @@ internal class AppPodcastRuntimeDependencies(
             reconcilePodcastSchedules(previousPrograms, currentPrograms, scheduleController)
             previousPrograms = currentPrograms
           }
+      }
+    }
+  }
+
+  private suspend fun resumeInterruptedGenerations() {
+    val programs = try {
+      repository.listPrograms()
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      return
+    }
+    programs.forEach { program ->
+      try {
+        generationUseCase.resumeInterrupted(program.id)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (_: Throwable) {
+        // Normal generation errors are persisted as FAILED by the generation use case. A concurrent
+        // active generation also wins through the program-level guard, so startup recovery can stop.
       }
     }
   }
