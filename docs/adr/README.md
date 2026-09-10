@@ -112,6 +112,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0166: LAN Web と Route composition の責務を分割する](0166-lan-web-and-route-composition-responsibility-split.md)
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 - [ADR-0251: クロンダイクを Godot 実装へ移行する](0251-godot-klondike.md)
+- [ADR-0252: 埋め込みゲームの画面向きを Activity 境界で固定する](0252-lock-embedded-game-orientation.md)
 
 ### Health
 
@@ -233,3 +234,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0249](0249-news-podcast-context.md)
 - [ADR-0250](0250-podcast-owned-feed-sources.md)
 - [ADR-0251](0251-godot-klondike.md)
+- [ADR-0252](0252-lock-embedded-game-orientation.md)
