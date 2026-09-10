@@ -1,5 +1,7 @@
 extends Control
 
+const KlondikeModel = preload("res://klondike_model.gd")
+
 const COLOR_TABLE = Color("123f35")
 const COLOR_TABLE_DARK = Color("0b2c25")
 const COLOR_CARD = Color("f7f3ea")
@@ -12,7 +14,7 @@ const COLOR_SELECTED = Color("f7c948")
 const COLOR_TARGET = Color("63d7c5")
 const COLOR_MUTED = Color(1, 1, 1, 0.72)
 
-var game := KlondikeModel.new()
+var game = KlondikeModel.new()
 var surface: Control
 
 func _ready():
@@ -40,7 +42,7 @@ func _render():
 	for child in surface.get_children():
 		child.free()
 
-	var viewport_size := size
+	var viewport_size: Vector2 = size
 	if viewport_size.x < 100 or viewport_size.y < 100:
 		return
 
@@ -88,7 +90,7 @@ func _build_top_row(viewport_size: Vector2):
 	if game.waste.is_empty():
 		_add_slot_button("捨て札", waste_rect, false, Callable())
 	else:
-		var waste_selected := _selection_is("waste")
+		var waste_selected: bool = _selection_is("waste")
 		_add_card_button(game.waste.back(), waste_rect, waste_selected, false, func():
 			game.select_waste()
 			_render()
@@ -100,8 +102,8 @@ func _build_top_row(viewport_size: Vector2):
 		_render()
 	)
 
-	var foundation_start := new_rect.position.x - (card_w + gap) * 4
-	var valid_foundations := game.valid_foundation_targets()
+	var foundation_start: float = new_rect.position.x - (card_w + gap) * 4
+	var valid_foundations: Array = game.valid_foundation_targets()
 	for suit in KlondikeModel.SUITS:
 		var foundation_rect := Rect2(foundation_start + suit * (card_w + gap), y, card_w, card_h)
 		var foundation: Array = game.foundations[suit]
@@ -112,7 +114,7 @@ func _build_top_row(viewport_size: Vector2):
 				_render()
 			)
 		else:
-			var is_selected := _selection_is_foundation(suit)
+			var is_selected: bool = _selection_is_foundation(suit)
 			_add_card_button(foundation.back(), foundation_rect, is_selected, is_target, func(target_suit = suit):
 				if target_suit in game.valid_foundation_targets():
 					game.move_selected_to_foundation(target_suit)
@@ -121,9 +123,9 @@ func _build_top_row(viewport_size: Vector2):
 				_render()
 			)
 
-	var title_left := waste_rect.end.x + 28
-	var title_right := foundation_start - 28
-	var title_width := max(160.0, title_right - title_left)
+	var title_left: float = waste_rect.end.x + 28
+	var title_right: float = foundation_start - 28
+	var title_width: float = max(160.0, title_right - title_left)
 	_add_label("クロンダイク", Rect2(title_left, 34, title_width, 44), 34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_add_label("%d 手" % game.moves, Rect2(title_left, 80, title_width, 34), 24, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 
@@ -139,18 +141,18 @@ func _build_top_row(viewport_size: Vector2):
 
 func _build_tableau(viewport_size: Vector2):
 	var top := 184.0
-	var bottom := viewport_size.y - 18.0
-	var board_width := min(viewport_size.x - 80.0, 1500.0)
+	var bottom: float = viewport_size.y - 18.0
+	var board_width: float = min(viewport_size.x - 80.0, 1500.0)
 	var gap := 14.0
-	var card_w := (board_width - gap * 6.0) / 7.0
-	var card_h := min(card_w * 1.38, 274.0)
-	var left := (viewport_size.x - board_width) * 0.5
-	var available_height := bottom - top
-	var valid_targets := game.valid_tableau_targets()
+	var card_w: float = (board_width - gap * 6.0) / 7.0
+	var card_h: float = min(card_w * 1.38, 274.0)
+	var left: float = (viewport_size.x - board_width) * 0.5
+	var available_height: float = bottom - top
+	var valid_targets: Array = game.valid_tableau_targets()
 
 	for pile_index in range(7):
 		var pile: Array = game.tableau[pile_index]
-		var x := left + pile_index * (card_w + gap)
+		var x: float = left + pile_index * (card_w + gap)
 		if pile.is_empty():
 			var is_target: bool = pile_index in valid_targets
 			_add_slot_button("K", Rect2(x, top, card_w, card_h), is_target, func(target_pile = pile_index):
@@ -166,10 +168,10 @@ func _build_tableau(viewport_size: Vector2):
 		for card_index in range(pile.size()):
 			var tableau_card: Dictionary = pile[card_index]
 			var rect := Rect2(x, top + step * card_index, card_w, card_h)
-			var is_top := card_index == pile.size() - 1
+			var is_top: bool = card_index == pile.size() - 1
 			if tableau_card["face_up"]:
-				var is_selected := _selection_contains_tableau_card(pile_index, card_index)
-				var is_target := is_top and pile_index in valid_targets
+				var is_selected: bool = _selection_contains_tableau_card(pile_index, card_index)
+				var is_target: bool = is_top and pile_index in valid_targets
 				_add_card_button(tableau_card["card"], rect, is_selected, is_target, func(target_pile = pile_index, target_card = card_index):
 					if target_pile in game.valid_tableau_targets():
 						game.move_selected_to_tableau(target_pile)
@@ -188,9 +190,9 @@ func _build_tableau(viewport_size: Vector2):
 func _add_card_button(card: Dictionary, rect: Rect2, selected: bool, target: bool, callback: Callable):
 	var label := "%s %s" % [KlondikeModel.rank_label(card["rank"]), KlondikeModel.suit_symbol(card["suit"])]
 	var button := _base_button(label, rect, callback)
-	var foreground := COLOR_RED if KlondikeModel.suit_is_red(card["suit"]) else COLOR_CARD_TEXT
-	var border := COLOR_SELECTED if selected else (COLOR_TARGET if target else Color(0, 0, 0, 0.22))
-	var width := 5 if selected or target else 1
+	var foreground: Color = COLOR_RED if KlondikeModel.suit_is_red(card["suit"]) else COLOR_CARD_TEXT
+	var border: Color = COLOR_SELECTED if selected else (COLOR_TARGET if target else Color(0, 0, 0, 0.22))
+	var width: int = 5 if selected or target else 1
 	button.add_theme_font_size_override("font_size", int(clamp(rect.size.x * 0.19, 23.0, 36.0)))
 	button.add_theme_color_override("font_color", foreground)
 	button.add_theme_color_override("font_hover_color", foreground)
@@ -209,8 +211,8 @@ func _add_back_button(text_value: String, rect: Rect2, callback: Callable):
 
 func _add_slot_button(text_value: String, rect: Rect2, active: bool, callback: Callable):
 	var button := _base_button(text_value, rect, callback if active else Callable())
-	var border := COLOR_TARGET if active else Color(1, 1, 1, 0.28)
-	var width := 4 if active else 2
+	var border: Color = COLOR_TARGET if active else Color(1, 1, 1, 0.28)
+	var width: int = 4 if active else 2
 	button.add_theme_font_size_override("font_size", int(clamp(rect.size.x * 0.16, 18.0, 30.0)))
 	button.add_theme_color_override("font_color", Color(1, 1, 1, 0.58))
 	button.add_theme_stylebox_override("normal", _rounded_style(COLOR_SLOT, border, width, 12))
