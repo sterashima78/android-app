@@ -108,6 +108,13 @@ interface PodcastRepository {
   suspend fun listEpisodes(programId: String): List<PodcastEpisode>
   suspend fun findEpisode(episodeId: String): PodcastEpisode?
 
+  /** Returns the oldest persisted GENERATING episode without promoting other queued work. */
+  suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? =
+    listEpisodes(programId)
+      .asSequence()
+      .filter { it.status == PodcastEpisodeStatus.GENERATING }
+      .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
+
   /**
    * Returns the interrupted GENERATING episode first, otherwise promotes the oldest QUEUED episode
    * to GENERATING and returns it. Returns null when the program has no reserved work.
@@ -186,10 +193,7 @@ class GeneratePodcastEpisodeUseCase(
   suspend fun resumeInterrupted(programId: String): PodcastGenerationResult.Generated? =
     withProgramGeneration(programId) {
       val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
-      val interrupted = repository.listEpisodes(programId)
-        .asSequence()
-        .filter { it.status == PodcastEpisodeStatus.GENERATING }
-        .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
+      val interrupted = repository.findGeneratingEpisode(programId)
         ?: return@withProgramGeneration null
       generateReserved(program, interrupted)
     }
