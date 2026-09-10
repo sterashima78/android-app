@@ -98,6 +98,62 @@ class SqlitePodcastRepository(
     arrayOf(episodeId),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.episode(database) else null }
 
+  override suspend fun archiveEpisode(episodeId: String): PodcastEpisode {
+    database.write {
+      val updated = update(
+        "podcast_episodes",
+        ContentValues().apply { put("status", PodcastEpisodeStatus.ARCHIVED.name) },
+        "id=? AND status=?",
+        arrayOf(episodeId, PodcastEpisodeStatus.READY.name),
+      )
+      require(updated == 1) { "再生可能なエピソードだけアーカイブできます" }
+    }
+    return requireNotNull(findEpisode(episodeId))
+  }
+
+  override suspend fun restoreEpisode(episodeId: String): PodcastEpisode {
+    database.write {
+      val updated = update(
+        "podcast_episodes",
+        ContentValues().apply { put("status", PodcastEpisodeStatus.READY.name) },
+        "id=? AND status=?",
+        arrayOf(episodeId, PodcastEpisodeStatus.ARCHIVED.name),
+      )
+      require(updated == 1) { "アーカイブ済みエピソードだけ復元できます" }
+    }
+    return requireNotNull(findEpisode(episodeId))
+  }
+
+  override suspend fun deleteEpisode(episodeId: String) {
+    database.transaction {
+      val status = rawQuery(
+        "SELECT status FROM podcast_episodes WHERE id=? LIMIT 1",
+        arrayOf(episodeId),
+      ).use { cursor ->
+        if (!cursor.moveToFirst()) null else PodcastEpisodeStatus.valueOf(cursor.getString(0))
+      } ?: error("episode not found: $episodeId")
+      require(
+        status == PodcastEpisodeStatus.READY ||
+          status == PodcastEpisodeStatus.ARCHIVED ||
+          status == PodcastEpisodeStatus.FAILED,
+      ) { "生成待ちまたは生成中のエピソードは削除できません" }
+
+      val updated = update(
+        "podcast_episodes",
+        ContentValues().apply {
+          put("title", "")
+          put("status", PodcastEpisodeStatus.DELETED.name)
+          putNull("script")
+          putNull("error_message")
+        },
+        "id=?",
+        arrayOf(episodeId),
+      )
+      check(updated == 1) { "episode could not be deleted: $episodeId" }
+      delete("podcast_episode_articles", "episode_id=?", arrayOf(episodeId))
+    }
+  }
+
   override suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? = database.readable.rawQuery(
     "SELECT * FROM podcast_episodes WHERE program_id=? AND status=? ORDER BY created_at,id LIMIT 1",
     arrayOf(programId, PodcastEpisodeStatus.GENERATING.name),
