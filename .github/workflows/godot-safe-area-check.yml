@@ -1,0 +1,29 @@
+name: Temporary game headless check
+
+on:
+  pull_request:
+    paths:
+      - 'feature/game/ui/src/main/assets/**'
+      - 'scripts/godot/**'
+      - 'scripts/test_godot_klondike.sh'
+      - '.github/workflows/godot-safe-area-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  game-headless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download runtime executable
+        shell: bash
+        run: |
+          curl -L --fail --retry 3 \
+            https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip \
+            -o /tmp/runtime.zip
+          echo 'd0bc2113065e481c9c2c2b2c37daa4e8be3fe9e27f0ab9ab0b6096e9a37907f3  /tmp/runtime.zip' | sha256sum -c -
+          unzip -q /tmp/runtime.zip -d /tmp/runtime
+          chmod +x /tmp/runtime/Godot_v4.6.3-stable_linux.x86_64
+      - name: Run game regression
+        run: bash scripts/test_godot_klondike.sh /tmp/runtime/Godot_v4.6.3-stable_linux.x86_64
