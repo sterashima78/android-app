@@ -143,16 +143,9 @@ interface PodcastRepository {
   suspend fun deleteProgram(programId: String)
   suspend fun listEpisodes(programId: String): List<PodcastEpisode>
   suspend fun findEpisode(episodeId: String): PodcastEpisode?
-
-  suspend fun archiveEpisode(episodeId: String): PodcastEpisode =
-    error("archiveEpisode is not implemented")
-
-  suspend fun restoreEpisode(episodeId: String): PodcastEpisode =
-    error("restoreEpisode is not implemented")
-
-  suspend fun deleteEpisode(episodeId: String) {
-    error("deleteEpisode is not implemented")
-  }
+  suspend fun archiveEpisode(episodeId: String): PodcastEpisode
+  suspend fun restoreEpisode(episodeId: String): PodcastEpisode
+  suspend fun deleteEpisode(episodeId: String)
 
   /** Returns the oldest persisted GENERATING episode without promoting other queued work. */
   suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? =
