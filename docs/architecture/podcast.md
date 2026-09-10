@@ -39,6 +39,8 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 7. 最初のepisodeを生成し、残りはqueueへ保持する。
 8. 生成済み原稿はAudio Contextへ再生委譲する。
 
+process終了やcoroutine cancellationによって `GENERATING` のまま残ったepisodeは、次のapplication background runtime起動時にも同じepisode IDと保存済みsnapshotから自動再開する。起動時再開は `QUEUED` をpromoteせず、新しいfeed候補も予約しない。定刻scheduleのreconciliationとは別のapplication-scope coroutineで実行し、新しいschedulerやdurable queueは追加しない。
+
 Podcast生成や再生はreader側の記事を既読化しない。
 
 ## Durable state
@@ -71,6 +73,7 @@ application database version 33ではPodcast番組がRSS readerのfeed IDを直�
 - source URLはPodcast Contextのdurable stateとして保持する。
 - 同一番組では一度予約したstable entry identityを新規episodeへ再利用しない。
 - episodeへ予約したfeed bodyは生成時点でsnapshotし、後続のfeed rotationに依存しない。
+- 中断された `GENERATING` episodeの再開では同じsnapshotを利用し、新しいfeed候補を予約しない。
 - linked page本文や一般知識をPodcast inputへ自動追加しない。
 - generation providerの自動fallbackを行わない。
 - Podcast runtimeはreaderの購読・既読stateへ依存しない。
@@ -79,3 +82,4 @@ application database version 33ではPodcast番組がRSS readerのfeed IDを直�
 
 - `docs/adr/0249-news-podcast-context.md`
 - `docs/adr/0250-podcast-owned-feed-sources.md`
+- `docs/adr/0253-resume-interrupted-podcast-generation.md`
