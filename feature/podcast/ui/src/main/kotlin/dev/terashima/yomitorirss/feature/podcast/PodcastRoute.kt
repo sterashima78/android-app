@@ -279,6 +279,11 @@ private fun EpisodeCard(
             Spacer(Modifier.width(8.dp))
             Text("再生")
           }
+          OutlinedButton(onClick = onRetry, enabled = !retrying, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Refresh, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(if (retrying) "再生成中" else "同じ記事で再生成")
+          }
         }
         PodcastEpisodeStatus.QUEUED -> Text("生成待ち", style = MaterialTheme.typography.bodyMedium)
         PodcastEpisodeStatus.GENERATING -> Row(verticalAlignment = Alignment.CenterVertically) {
