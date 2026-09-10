@@ -24,11 +24,11 @@ RSS / Atomのfeed parserが既に取得しているentry URLを `RssFeedContentE
 
 ### 生成原稿に記事境界markerを要求する
 
-Podcast生成promptは、入力記事1件につき1チャプターを同じ順序で出力し、各チャプター先頭へ `[[CHAPTER:n]]` markerを出力する契約とする。
+Podcast生成promptは、入力記事1件につき1チャプターを出力し、各チャプター先頭へ元記事番号を持つ `[[CHAPTER:n]]` markerを出力する契約とする。従来どおり重要度の高い話題から並べてよく、記事番号は生成順ではなく元記事との対応キーとして扱う。
 
-markerは読み上げ対象ではなくPodcastが再生queueへ投影するための構造metadataとして扱う。Podcastは生成済みscriptをmarkerで分割し、各segmentを同じ位置の記事snapshotへ対応付ける。
+markerは読み上げ対象ではなくPodcastが再生queueへ投影するための構造metadataとして扱う。Podcastは生成済みscriptをmarkerで分割し、markerの記事番号から対応する記事snapshotを解決する。
 
-marker数、番号、記事数が一致しない原稿は誤った記事対応を作らず、エピソード全体を1つの読み上げitemとして扱う。既存episodeもこのfallbackによって従来どおり再生できる。
+marker数、記事番号の重複・欠落、記事数が一致しない原稿は誤った記事対応を作らず、エピソード全体を1つの読み上げitemとして扱う。既存episodeもこのfallbackによって従来どおり再生できる。
 
 ### Podcastは1チャプターを1 Audio queue itemとして投影する
 
@@ -36,13 +36,14 @@ marker数、番号、記事数が一致しない原稿は誤った記事対応�
 
 これによりAudioの既存「前 / 次」はチャプター移動として機能し、15秒戻し、30秒送り、再生速度変更、停止、background playback、MediaSessionはAudio Contextの既存実装を再利用する。
 
-Podcast UIは `:feature:audio:ui` の共通再生controlsを利用し、Podcast固有の再生詳細画面ではepisodeの記事一覧、現在チャプター、feed記事を開く操作を表示する。記事URLを持たない既存snapshotでは記事リンク操作を表示しない。
+Podcast UIは `:feature:audio:ui` の共通再生controlsを利用し、Podcast固有の再生詳細画面では生成されたチャプター順の記事一覧、現在チャプター、feed記事を開く操作を表示する。記事URLを持たない既存snapshotでは記事リンク操作を表示しない。
 
 再生詳細画面を閉じる操作は再生停止とは分離し、background playbackを維持する。明示的な「終了」はAudio playbackを停止する。
 
 ## Consequences
 
-- 生成時点の記事URLと記事順をepisode snapshotと一緒に保持でき、live feedの更新に依存せず記事リンクを表示できる。
+- 生成時点の記事URLと記事snapshotを保持でき、live feedの更新に依存せず記事リンクを表示できる。
+- 原稿の重要度順構成を維持したまま、各チャプターを正しい元記事へ対応付けられる。
 - 新しく生成された構造化episodeは記事単位で前後移動でき、RSS読み上げと同じAudio controlsと速度変更を利用できる。
 - Podcast固有のplayer runtimeやMediaSessionを追加せず、Audio ownershipを維持できる。
 - AIがmarker contractを満たさない場合や既存episodeでは、誤った対応を表示せず従来の全文再生へfallbackする。
@@ -53,7 +54,7 @@ Podcast UIは `:feature:audio:ui` の共通再生controlsを利用し、Podcast�
 
 - feed readerがfeed entryのURLをPodcast adapterへ渡すことをtestする。
 - Podcast生成promptへ記事URLが含まれないことをtestする。
-- 正しいchapter marker列が記事snapshotの順序へ対応付くことをunit testする。
-- marker不正またはmarkerなしのscriptが全文再生へfallbackすることをunit testする。
+- 重要度順に並び替えられたchapter marker列を元記事番号から正しいsnapshotへ対応付けることをunit testする。
+- marker重複・欠落またはmarkerなしのscriptが全文再生へfallbackすることをunit testする。
 - version 34から35へのmigrationで既存episode article rowを保持し、`article_url` がnullableで追加されることをtestする。
 - Podcast UIが共通Audio controlsを利用し、チャプターごとの記事リンクを表示できることをbuild / reviewで確認する。
