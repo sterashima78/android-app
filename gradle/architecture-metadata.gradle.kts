@@ -342,6 +342,13 @@ private fun currentArchitectureDocuments(root: Project): Map<String, String> {
     ?.sortedBy { it.name }
     ?.let(files::addAll)
   root.file("docs/spec.md").takeIf(java.io.File::isFile)?.let(files::add)
+  root.file("docs/spec")
+    .takeIf(java.io.File::isDirectory)
+    ?.walkTopDown()
+    ?.filter { it.isFile && it.extension == "md" }
+    ?.sortedBy { it.path }
+    ?.toList()
+    ?.let(files::addAll)
   return files.associate { file ->
     file.relativeTo(root.rootDir).invariantSeparatorsPath to file.readText()
   }
