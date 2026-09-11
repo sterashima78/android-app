@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.terashima.yomitorirss.feature.audio.AudioPlaybackState
 
 @Composable
 fun PodcastRouteWithPlayback(
@@ -30,8 +31,30 @@ fun PodcastRouteWithPlayback(
       onSeekBack = viewModel::seekBack,
       onSeekForward = viewModel::seekForward,
       onSetSpeed = viewModel::setPlaybackSpeed,
+      onSelectChapter = { chapterNumber ->
+        when (val distance = podcastChapterJumpDistance(audioState, episode.id, chapterNumber)) {
+          null, 0 -> Unit
+          else -> if (distance > 0) {
+            repeat(distance) { viewModel.skipNext() }
+          } else {
+            repeat(-distance) { viewModel.skipPrevious() }
+          }
+        }
+      },
       onStop = viewModel::stopPlayback,
       onDismiss = viewModel::dismissPlayback,
     )
   }
+}
+
+internal fun podcastChapterJumpDistance(
+  audioState: AudioPlaybackState,
+  episodeId: String,
+  chapterNumber: Int,
+): Int? {
+  if (audioState.currentIndex !in audioState.items.indices) return null
+  val targetContentId = podcastChapterContentId(episodeId, chapterNumber)
+  val targetIndex = audioState.items.indexOfFirst { it.contentId == targetContentId }
+  if (targetIndex < 0) return null
+  return targetIndex - audioState.currentIndex
 }
