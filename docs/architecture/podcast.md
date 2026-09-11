@@ -38,7 +38,7 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 6. 最大記事数単位でepisodeへ分割し、候補の本文とentry URL metadataを `podcast_episode_articles` へsnapshotする。新規記事checkpointは `PENDING` とする。
 7. 最初のepisodeを生成し、残りはqueueへ保持する。
 8. episode内の記事をsnapshot position順に処理する。`READY` checkpointは再利用し、未完了記事だけを1記事1回のAI推論へ渡す。
-9. 記事生成開始前にcheckpointを `GENERATING`、成功時に `READY` と `chapter_script`、失敗時に `FAILED` と `chapter_error` へ更新する。promptへentry URLや他の記事本文を含めない。
+9. 記事生成promptでは元記事のtitle / feed bodyだけを根拠に、音声ニュース向けの短い日本語見出しと本文を生成するよう要求する。新形式では見出しを `[[TITLE:...]]` markerとして `chapter_script` 内へ保持する。記事生成開始前にcheckpointを `GENERATING`、成功時に `READY` と `chapter_script`、失敗時に `FAILED` と `chapter_error` へ更新する。promptへentry URLや他の記事本文を含めない。
 10. 全記事checkpointが `READY` になったら、Podcast Contextがposition順に `chapter_script` を連結する。`[[CHAPTER:n]]` markerと番組の冒頭・締めはアプリ側で決定的に付与し、episode全体を対象とする追加AI推論は行わない。
 11. 完成したepisode原稿をAudio Contextへ再生委譲する。
 
@@ -76,7 +76,9 @@ Podcastのdurable generation stateはPodcast Contextに残し、`:feature:ai-tas
 
 ## Playback projection
 
-新しく生成するepisodeではPodcast Contextが記事positionと同じ番号のchapter markerを付与するため、1記事分の原稿segmentを1つの `AudioQueueItem` へ投影する。queue itemには記事title、source title、読み上げ本文を渡し、marker自体は読み上げない。
+新しく生成するepisodeではPodcast Contextが記事positionと同じ番号のchapter markerを付与するため、1記事分の原稿segmentを1つの `AudioQueueItem` へ投影する。`[[TITLE:...]]` markerがあるsegmentではそのmarkerから日本語見出しを抽出し、marker自体を読み上げ本文から除外する。1件目は抽出した日本語見出しをqueue titleとして使い、2件目以降は短い音声キュー「続いて。」を先頭へ付けた日本語見出しをqueue titleとして渡す。source titleと本文は従来どおり渡す。
+
+`[[TITLE:...]]` markerがない旧形式chapterは保存済み記事titleをqueue titleとして使う。見出しmarkerの有無は新しいdurable columnを追加せず、既存 `chapter_script` / episode script内の生成形式で表現する。
 
 Podcast UIは `:feature:audio:ui` の共通再生controlsを再利用する。このため再生 / 一時停止、前後チャプター移動、15秒戻し、30秒送り、再生速度変更、停止、background playback、通知・lock screen等のMediaSession操作はAudio Contextの既存挙動を利用する。
 
@@ -124,6 +126,8 @@ application database version 36では `podcast_episode_articles` に `chapter_st
 - 1回のAI推論は1記事だけを生成材料とし、別記事の本文を混在させない。
 - checkpointが `READY` の記事はretry / interrupted recoveryで再生成しない。
 - episode scriptは全checkpoint完成後にposition順で決定的に組み立てる。
+- 日本語見出しは記事ごとのAI生成結果から再生時に抽出し、新しい独立したdurable source of truthを追加しない。
+- 日本語見出しを抽出できない旧形式chapterは保存済み記事titleへfallbackする。
 - 中断された初回生成または再生成は同じsnapshotとcheckpointを利用し、新しいfeed候補を予約しない。
 - `READY` episodeの再生成失敗では既存scriptを失わない。
 - `regeneration_status=RUNNING` のepisodeへ重複再生成、archive、deleteを行わない。
