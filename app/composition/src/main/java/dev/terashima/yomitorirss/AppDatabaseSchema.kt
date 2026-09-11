@@ -15,7 +15,7 @@ import dev.terashima.yomitorirss.feature.task.data.taskDatabaseSchema
 import dev.terashima.yomitorirss.feature.video.data.videoDatabaseSchema
 
 val appDatabaseSchema = DatabaseSchema(
-  version = 35,
+  version = 36,
   contributions = listOf(
     rssDatabaseSchema,
     articleDatabaseSchema,

@@ -67,6 +67,18 @@ data class PodcastFeedEntry(
   }
 }
 
+enum class PodcastChapterGenerationStatus {
+  PENDING,
+  GENERATING,
+  READY,
+  FAILED,
+}
+
+enum class PodcastRegenerationStatus {
+  RUNNING,
+  FAILED,
+}
+
 data class PodcastEpisodeArticle(
   val articleId: String,
   val feedId: String,
@@ -75,6 +87,9 @@ data class PodcastEpisodeArticle(
   val publishedAtEpochMillis: Long?,
   val articleUrl: String?,
   val feedContent: String,
+  val chapterStatus: PodcastChapterGenerationStatus = PodcastChapterGenerationStatus.PENDING,
+  val chapterScript: String? = null,
+  val chapterError: String? = null,
 )
 
 data class PodcastPlaybackChapter(
@@ -101,6 +116,7 @@ data class PodcastEpisode(
   val articles: List<PodcastEpisodeArticle>,
   val script: String? = null,
   val errorMessage: String? = null,
+  val regenerationStatus: PodcastRegenerationStatus? = null,
 ) {
   fun playbackChapters(): List<PodcastPlaybackChapter> {
     val speech = script?.trim().orEmpty()
@@ -128,6 +144,28 @@ data class PodcastEpisode(
   }
 }
 
+enum class PodcastGenerationTaskState {
+  QUEUED,
+  RUNNING,
+  FAILED,
+}
+
+data class PodcastGenerationTask(
+  val episodeId: String,
+  val title: String,
+  val programName: String,
+  val provider: PodcastGenerationProvider,
+  val state: PodcastGenerationTaskState,
+  val completedChapters: Int,
+  val totalChapters: Int,
+  val error: String?,
+  val createdAtEpochMillis: Long,
+)
+
+interface PodcastGenerationTaskReader {
+  suspend fun listGenerationTasks(): List<PodcastGenerationTask>
+}
+
 interface PodcastFeedContentSource {
   suspend fun latestEntries(sources: List<PodcastSource>, limit: Int): List<PodcastFeedEntry>
 }
@@ -147,16 +185,19 @@ interface PodcastRepository {
   suspend fun restoreEpisode(episodeId: String): PodcastEpisode
   suspend fun deleteEpisode(episodeId: String)
 
-  /** Returns the oldest persisted GENERATING episode without promoting other queued work. */
-  suspend fun findGeneratingEpisode(programId: String): PodcastEpisode? =
+  /** Returns the oldest persisted initial generation or regeneration interrupted by process loss. */
+  suspend fun findInterruptedGenerationEpisode(programId: String): PodcastEpisode? =
     listEpisodes(programId)
       .asSequence()
-      .filter { it.status == PodcastEpisodeStatus.GENERATING }
+      .filter {
+        it.status == PodcastEpisodeStatus.GENERATING ||
+          it.regenerationStatus == PodcastRegenerationStatus.RUNNING
+      }
       .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
 
   /**
-   * Returns the interrupted GENERATING episode first, otherwise promotes the oldest QUEUED episode
-   * to GENERATING and returns it. Returns null when the program has no reserved work.
+   * Returns interrupted generation first, otherwise promotes the oldest QUEUED episode to
+   * GENERATING and returns it. Returns null when the program has no reserved work.
    */
   suspend fun claimPendingEpisode(programId: String): PodcastEpisode?
 
@@ -172,6 +213,12 @@ interface PodcastRepository {
     createdAtEpochMillis: Long,
   ): PodcastEpisode?
 
+  suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode
+  suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode
+  suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode
+  suspend fun completeChapter(episodeId: String, position: Int, script: String): PodcastEpisode
+  suspend fun failChapter(episodeId: String, position: Int, message: String): PodcastEpisode
+  suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode
   suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode
   suspend fun failEpisode(episodeId: String, message: String): PodcastEpisode
 }
@@ -220,7 +267,7 @@ class GeneratePodcastEpisodeUseCase(
       val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
       require(episode.status == PodcastEpisodeStatus.FAILED) { "only failed episodes can be retried" }
       val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
-      generateReserved(program, episode)
+      generateReserved(program, repository.prepareEpisodeRetry(episode.id))
     }
   }
 
@@ -232,48 +279,73 @@ class GeneratePodcastEpisodeUseCase(
         "only ready or failed episodes can be regenerated"
       }
       val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
-      generateReserved(
-        program = program,
-        episode = episode,
-        markFailedOnError = episode.status != PodcastEpisodeStatus.READY,
-      )
+      val prepared = if (episode.status == PodcastEpisodeStatus.READY) {
+        repository.prepareEpisodeRegeneration(episode.id)
+      } else {
+        repository.prepareEpisodeRetry(episode.id)
+      }
+      generateReserved(program, prepared)
     }
   }
 
   /**
-   * Resumes only a persisted GENERATING episode for [programId]. Unlike [generate], this never
-   * promotes QUEUED work or reserves new feed entries when the interrupted episode has already
-   * completed elsewhere.
+   * Resumes only a persisted initial generation or regeneration for [programId]. Unlike [generate],
+   * this never promotes unrelated QUEUED work or reserves new feed entries.
    */
   suspend fun resumeInterrupted(programId: String): PodcastGenerationResult.Generated? =
     withProgramGeneration(programId) {
       val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
-      val interrupted = repository.findGeneratingEpisode(programId)
+      val interrupted = repository.findInterruptedGenerationEpisode(programId)
         ?: return@withProgramGeneration null
       generateReserved(program, interrupted)
     }
 
   private suspend fun generateReserved(
     program: PodcastProgram,
-    episode: PodcastEpisode,
-    markFailedOnError: Boolean = true,
+    initialEpisode: PodcastEpisode,
   ): PodcastGenerationResult.Generated {
+    var episode = initialEpisode
+    val regenerating = episode.regenerationStatus == PodcastRegenerationStatus.RUNNING
+    var activePosition: Int? = null
     return try {
-      val script = scriptGenerator.generate(
-        provider = program.provider,
-        prompt = buildPodcastPrompt(program.name, episode.articles),
-      ).trim()
-      require(script.isNotBlank()) { "generated podcast script is blank" }
+      episode.articles.indices.forEach { position ->
+        val current = episode.articles[position]
+        if (current.chapterStatus == PodcastChapterGenerationStatus.READY && !current.chapterScript.isNullOrBlank()) {
+          return@forEach
+        }
+
+        activePosition = position
+        episode = repository.markChapterGenerating(episode.id, position)
+        val article = episode.articles[position]
+        val chapterScript = scriptGenerator.generate(
+          provider = program.provider,
+          prompt = buildPodcastChapterPrompt(
+            programName = program.name,
+            article = article,
+            chapterNumber = position + 1,
+            totalChapters = episode.articles.size,
+          ),
+        ).trim()
+        require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
+        episode = repository.completeChapter(episode.id, position, chapterScript)
+        activePosition = null
+      }
+
+      episode = requireNotNull(repository.findEpisode(episode.id)) { "episode not found: ${episode.id}" }
+      val script = buildPodcastEpisodeScript(program.name, episode.articles)
       val title = buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
       PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
-      if (markFailedOnError) {
-        repository.failEpisode(
-          episodeId = episode.id,
-          message = error.message ?: error::class.simpleName ?: "generation failed",
-        )
+      val message = error.message ?: error::class.simpleName ?: "generation failed"
+      activePosition?.let { position ->
+        runCatching { repository.failChapter(episode.id, position, message) }
+      }
+      if (regenerating) {
+        runCatching { repository.failRegeneration(episode.id, message) }
+      } else {
+        runCatching { repository.failEpisode(episode.id, message) }
       }
       throw error
     }
@@ -291,43 +363,55 @@ class GeneratePodcastEpisodeUseCase(
   }
 }
 
-fun buildPodcastPrompt(
+fun buildPodcastChapterPrompt(
   programName: String,
-  articles: List<PodcastEpisodeArticle>,
+  article: PodcastEpisodeArticle,
+  chapterNumber: Int,
+  totalChapters: Int,
 ): String {
-  require(articles.isNotEmpty()) { "articles must not be empty" }
-  val material = articles.mapIndexed { index, article ->
-    buildString {
-      appendLine("---")
-      appendLine("記事番号: ${index + 1}")
-      appendLine("タイトル: ${article.title}")
-      article.sourceTitle?.takeIf(String::isNotBlank)?.let { appendLine("情報源: $it") }
-      appendLine("本文:")
-      append(article.feedContent.trim())
-    }
-  }.joinToString(separator = "\n\n")
+  require(chapterNumber in 1..totalChapters) { "chapterNumber must be within totalChapters" }
+  val targetChars = (PODCAST_TARGET_SCRIPT_CHARS / totalChapters).coerceIn(60, 500)
   return """
     あなたはニュース音声番組「$programName」の原稿編集者です。
-    以下に渡すフィード内のタイトルと本文だけを根拠に、日本語の音声読み上げ用原稿を作成してください。
+    以下の1件の記事だけを根拠に、日本語の音声読み上げ用チャプター本文を作成してください。
 
     必須条件:
     - 外部ページ、リンク先、一般知識から情報を補わない。
     - 入力が外国語なら内容を日本語で自然に要約する。
-    - 入力記事は全${articles.size}件。重要度にかかわらず全記事を必ず原稿へ含め、省略しない。
-    - 入力記事1件を1チャプターとして扱い、重要度の高い話題から並べる。
-    - 各チャプターの先頭に、そのチャプターが扱う記事番号で `[[CHAPTER:n]]` を1行だけ出力する。
-    - `[[CHAPTER:n]]` は入力記事数と同じ個数だけ出力し、各記事番号を1回ずつ使う。並び順は記事番号順でなくてよい。
-    - 各チャプターは対応する1件の記事だけを根拠にし、何が起きたか、なぜ重要かを簡潔に説明する。
-    - 話題同士のつながりが分かる構成にする。
-    - 冒頭の挨拶と番組名は最初のチャプター内、最後の短い締めは最後のチャプター内に含める。
+    - 何が起きたか、なぜ重要かを簡潔に説明する。
     - 推測と入力に明記された事実を混同しない。
-    - チャプターマーカー以外のMarkdown見出し、箇条書き、URLは使わず、読み上げやすい連続した文章にする。
+    - Markdown見出し、箇条書き、URL、チャプターマーカーは出力しない。
+    - 番組全体の冒頭挨拶や締めの挨拶は出力しない。
     - 記号、略語、数字の羅列は、意味を変えない範囲で音声合成が自然に読める日本語表現へ言い換える。
-    - 全${articles.size}件を必ず含めたうえで原稿全体は3000文字程度以内に収める。記事数が多い場合は、一部の記事を落とすのではなく各チャプターを短くする。
+    - ${targetChars}文字程度を目安に、重要な内容を優先して簡潔にまとめる。
 
+    チャプター: $chapterNumber / $totalChapters
     入力記事:
-    $material
+    ---
+    タイトル: ${article.title}
+    ${article.sourceTitle?.takeIf(String::isNotBlank)?.let { "情報源: $it" }.orEmpty()}
+    本文:
+    ${article.feedContent.trim()}
   """.trimIndent()
+}
+
+fun buildPodcastEpisodeScript(
+  programName: String,
+  articles: List<PodcastEpisodeArticle>,
+): String {
+  require(articles.isNotEmpty()) { "articles must not be empty" }
+  require(articles.all {
+    it.chapterStatus == PodcastChapterGenerationStatus.READY && !it.chapterScript.isNullOrBlank()
+  }) { "all podcast chapters must be ready" }
+
+  return articles.mapIndexed { index, article ->
+    val speech = buildString {
+      if (index == 0) append("${programName}です。今回のニュースをお伝えします。 ")
+      append(requireNotNull(article.chapterScript).trim())
+      if (index == articles.lastIndex) append(" 以上、今回のニュースでした。")
+    }
+    "[[CHAPTER:${index + 1}]]\n$speech"
+  }.joinToString(separator = "\n\n")
 }
 
 private fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
@@ -335,3 +419,4 @@ private fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): 
 
 private val PODCAST_CHAPTER_MARKER = Regex("""(?m)^\[\[CHAPTER:(\d+)\]\]\s*$""")
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
+private const val PODCAST_TARGET_SCRIPT_CHARS = 3_000

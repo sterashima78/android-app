@@ -13,7 +13,7 @@ import org.junit.Test
 
 class PodcastTest {
   @Test
-  fun `生成開始時にPodcast所有ソースの記事を予約し原稿を保存する`() = runSuspend {
+  fun `生成開始時に1記事ずつ原稿を生成してcheckpointする`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
@@ -24,12 +24,42 @@ class PodcastTest {
 
     assertEquals(PodcastEpisodeStatus.READY, result.episode.status)
     assertEquals(listOf("a1", "a2"), result.episode.articles.map { it.articleId })
-    assertEquals(listOf("https://example.invalid/articles/a1", "https://example.invalid/articles/a2"), result.episode.articles.map { it.articleUrl })
+    assertEquals(2, generator.prompts.size)
+    assertTrue(generator.prompts[0].contains("本文 a1"))
+    assertFalse(generator.prompts[0].contains("本文 a2"))
+    assertTrue(generator.prompts[1].contains("本文 a2"))
+    assertFalse(generator.prompts[1].contains("本文 a1"))
+    assertTrue(result.episode.articles.all { it.chapterStatus == PodcastChapterGenerationStatus.READY })
+    assertTrue(result.episode.script.orEmpty().contains("[[CHAPTER:1]]"))
+    assertTrue(result.episode.script.orEmpty().contains("[[CHAPTER:2]]"))
     assertEquals(listOf("source-1"), source.requestedSources.map { it.id })
-    assertEquals("生成された原稿", result.episode.script)
     assertEquals(PodcastGenerationProvider.LOCAL, generator.provider)
-    assertTrue(generator.prompt.orEmpty().contains("フィード内のタイトルと本文だけ"))
-    assertFalse(generator.prompt.orEmpty().contains("https://"))
+    assertFalse(generator.prompts.any { it.contains("https://") })
+  }
+
+  @Test
+  fun `途中失敗後は完成済みチャプターを再生成しない`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
+    val firstGenerator = SequencedGenerator(listOf("1件目の原稿", null))
+    val firstUseCase = GeneratePodcastEpisodeUseCase(repository, source, firstGenerator) { 1234L }
+
+    runCatching { firstUseCase.generate(program.id) }
+    val failed = repository.episodes.single()
+    assertEquals(PodcastEpisodeStatus.FAILED, failed.status)
+    assertEquals(PodcastChapterGenerationStatus.READY, failed.articles[0].chapterStatus)
+    assertEquals(PodcastChapterGenerationStatus.FAILED, failed.articles[1].chapterStatus)
+
+    val retryGenerator = RecordingGenerator("2件目の再生成原稿")
+    val retried = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator) { 9999L }
+      .retry(failed.id).episode
+
+    assertEquals(1, retryGenerator.prompts.size)
+    assertFalse(retryGenerator.prompts.single().contains("本文 a1"))
+    assertTrue(retryGenerator.prompts.single().contains("本文 a2"))
+    assertTrue(retried.script.orEmpty().contains("1件目の原稿"))
+    assertTrue(retried.script.orEmpty().contains("2件目の再生成原稿"))
   }
 
   @Test
@@ -94,7 +124,7 @@ class PodcastTest {
     val retried = retryUseCase.retry(failed.id).episode
 
     assertEquals(listOf("a1"), retried.articles.map { it.articleId })
-    assertFalse(retryGenerator.prompt.orEmpty().contains("a2"))
+    assertFalse(retryGenerator.prompts.single().contains("a2"))
   }
 
   @Test
@@ -107,6 +137,7 @@ class PodcastTest {
     runCatching { interruptedUseCase.generate(program.id) }
     val interrupted = repository.episodes.single()
     assertEquals(PodcastEpisodeStatus.GENERATING, interrupted.status)
+    assertEquals(PodcastChapterGenerationStatus.GENERATING, interrupted.articles.single().chapterStatus)
 
     source.entries = listOf(entry("a2"))
     val resumeGenerator = RecordingGenerator("再開原稿")
@@ -116,7 +147,7 @@ class PodcastTest {
     assertEquals(interrupted.id, resumed.episode.id)
     assertEquals(listOf("a1"), resumed.episode.articles.map { it.articleId })
     assertEquals(1, repository.episodes.size)
-    assertFalse(resumeGenerator.prompt.orEmpty().contains("a2"))
+    assertFalse(resumeGenerator.prompts.single().contains("a2"))
   }
 
   @Test
@@ -137,19 +168,40 @@ class PodcastTest {
   }
 
   @Test
-  fun `プロンプトは記事順のチャプターマーカーと読み上げ向け表現を要求する`() {
-    val prompt = buildPodcastPrompt(
+  fun `記事単位promptは1記事だけを根拠に読み上げ原稿を要求する`() {
+    val prompt = buildPodcastChapterPrompt(
       programName = "朝のニュース",
-      articles = listOf(entry("a1").toEpisodeArticle(), entry("a2").toEpisodeArticle()),
+      article = entry("a1").toEpisodeArticle(),
+      chapterNumber = 1,
+      totalChapters = 2,
     )
 
     assertTrue(prompt.contains("外部ページ、リンク先、一般知識から情報を補わない"))
-    assertTrue(prompt.contains("[[CHAPTER:n]]"))
-    assertTrue(prompt.contains("記事番号: 1"))
-    assertTrue(prompt.contains("記事番号: 2"))
-    assertTrue(prompt.contains("音声合成が自然に読める日本語表現"))
     assertTrue(prompt.contains("本文 a1"))
+    assertTrue(prompt.contains("1 / 2"))
+    assertTrue(prompt.contains("音声合成が自然に読める日本語表現"))
     assertFalse(prompt.contains("https://"))
+  }
+
+  @Test
+  fun `完成チャプターを記事順に決定的なエピソード原稿へ組み立てる`() {
+    val articles = listOf(
+      entry("a1").toEpisodeArticle().copy(
+        chapterStatus = PodcastChapterGenerationStatus.READY,
+        chapterScript = "1件目の読み上げ本文。",
+      ),
+      entry("a2").toEpisodeArticle().copy(
+        chapterStatus = PodcastChapterGenerationStatus.READY,
+        chapterScript = "2件目の読み上げ本文。",
+      ),
+    )
+
+    val script = buildPodcastEpisodeScript("朝のニュース", articles)
+
+    assertTrue(script.startsWith("[[CHAPTER:1]]"))
+    assertTrue(script.indexOf("1件目の読み上げ本文。") < script.indexOf("[[CHAPTER:2]]"))
+    assertTrue(script.contains("朝のニュースです。今回のニュースをお伝えします。"))
+    assertTrue(script.endsWith("以上、今回のニュースでした。"))
   }
 
   @Test
@@ -248,12 +300,23 @@ private class RecordingGenerator(
   private val result: String?,
 ) : PodcastScriptGenerator {
   var provider: PodcastGenerationProvider? = null
-  var prompt: String? = null
+  val prompts = mutableListOf<String>()
 
   override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
     this.provider = provider
-    this.prompt = prompt
+    prompts += prompt
     return result ?: error("generation failed")
+  }
+}
+
+private class SequencedGenerator(
+  private val results: List<String?>,
+) : PodcastScriptGenerator {
+  private var index = 0
+
+  override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
+    val result = results.getOrNull(index++) ?: error("generation failed")
+    return result
   }
 }
 
@@ -300,7 +363,9 @@ private class FakePodcastRepository(
 
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
     val index = episodes.indexOfFirst {
-      it.programId == programId && it.status == PodcastEpisodeStatus.GENERATING
+      it.programId == programId && (
+        it.status == PodcastEpisodeStatus.GENERATING || it.regenerationStatus == PodcastRegenerationStatus.RUNNING
+      )
     }.takeIf { it >= 0 } ?: episodes.indexOfFirst {
       it.programId == programId && it.status == PodcastEpisodeStatus.QUEUED
     }
@@ -336,11 +401,80 @@ private class FakePodcastRepository(
     return first
   }
 
+  override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode =
+    update(episodeId) { it.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null, regenerationStatus = null) }
+
+  override suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode =
+    update(episodeId) { episode ->
+      val articles = if (episode.regenerationStatus == null) {
+        episode.articles.map {
+          it.copy(
+            chapterStatus = PodcastChapterGenerationStatus.PENDING,
+            chapterScript = null,
+            chapterError = null,
+          )
+        }
+      } else {
+        episode.articles
+      }
+      episode.copy(
+        articles = articles,
+        regenerationStatus = PodcastRegenerationStatus.RUNNING,
+        errorMessage = null,
+      )
+    }
+
+  override suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode =
+    updateArticle(episodeId, position) {
+      it.copy(chapterStatus = PodcastChapterGenerationStatus.GENERATING, chapterError = null)
+    }
+
+  override suspend fun completeChapter(episodeId: String, position: Int, script: String): PodcastEpisode =
+    updateArticle(episodeId, position) {
+      it.copy(
+        chapterStatus = PodcastChapterGenerationStatus.READY,
+        chapterScript = script,
+        chapterError = null,
+      )
+    }
+
+  override suspend fun failChapter(episodeId: String, position: Int, message: String): PodcastEpisode =
+    updateArticle(episodeId, position) {
+      it.copy(chapterStatus = PodcastChapterGenerationStatus.FAILED, chapterError = message)
+    }
+
+  override suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode =
+    update(episodeId) {
+      it.copy(regenerationStatus = PodcastRegenerationStatus.FAILED, errorMessage = message)
+    }
+
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode =
-    update(episodeId) { it.copy(title = title, script = script, errorMessage = null, status = PodcastEpisodeStatus.READY) }
+    update(episodeId) {
+      it.copy(
+        title = title,
+        script = script,
+        errorMessage = null,
+        status = PodcastEpisodeStatus.READY,
+        regenerationStatus = null,
+      )
+    }
 
   override suspend fun failEpisode(episodeId: String, message: String): PodcastEpisode =
-    update(episodeId) { it.copy(errorMessage = message, status = PodcastEpisodeStatus.FAILED) }
+    update(episodeId) {
+      it.copy(errorMessage = message, status = PodcastEpisodeStatus.FAILED, regenerationStatus = null)
+    }
+
+  private fun updateArticle(
+    episodeId: String,
+    position: Int,
+    transform: (PodcastEpisodeArticle) -> PodcastEpisodeArticle,
+  ): PodcastEpisode = update(episodeId) { episode ->
+    episode.copy(
+      articles = episode.articles.mapIndexed { index, article ->
+        if (index == position) transform(article) else article
+      },
+    )
+  }
 
   private fun update(episodeId: String, transform: (PodcastEpisode) -> PodcastEpisode): PodcastEpisode {
     val index = episodes.indexOfFirst { it.id == episodeId }

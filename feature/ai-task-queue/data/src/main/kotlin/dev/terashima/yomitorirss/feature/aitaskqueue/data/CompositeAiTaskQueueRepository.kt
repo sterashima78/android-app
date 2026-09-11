@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 
 class CompositeAiTaskQueueRepository(
@@ -21,6 +22,7 @@ class CompositeAiTaskQueueRepository(
   knowledgeExecutionSettings: KnowledgeExecutionSettings? = null,
   smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
   smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
+  podcastTaskReader: PodcastGenerationTaskReader? = null,
 ) : AiTaskQueueRepository {
   private val summary = SummaryTaskQueueAdapter(summaryRepository)
   private val library = LibraryTaskQueueAdapter(
@@ -43,13 +45,15 @@ class CompositeAiTaskQueueRepository(
   } else {
     null
   }
+  private val podcast = podcastTaskReader?.let(::PodcastTaskQueueAdapter)
 
   override suspend fun listTasks(): List<AiTaskQueueItem> {
     val localPaused = summary.executionState().localPaused
     return library.tasks(localPaused) +
       smbMetadata.orEmptyTasks(localPaused) +
       summary.tasks() +
-      knowledge.orEmptyTasks()
+      knowledge.orEmptyTasks() +
+      podcast.orEmptyTasks()
   }
 
   override suspend fun executionState(): AiTaskQueueExecutionState =
@@ -187,4 +191,7 @@ class CompositeAiTaskQueueRepository(
   private suspend fun SmbMetadataNormalizationTaskQueueAdapter?.orEmptyTasks(
     globalPaused: Boolean,
   ): List<AiTaskQueueItem> = this?.tasks(globalPaused).orEmpty()
+
+  private suspend fun PodcastTaskQueueAdapter?.orEmptyTasks(): List<AiTaskQueueItem> =
+    this?.tasks().orEmpty()
 }

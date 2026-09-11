@@ -36,11 +36,15 @@ internal fun limitPodcastPrompt(prompt: String, maxChars: Int): String {
   val prefixEnd = if (inputHeaderLineEnd >= 0) inputHeaderLineEnd + 1 else inputHeaderMatch.range.last + 1
   val prefix = prompt.substring(0, prefixEnd)
   val rawArticleBlocks = prompt.substring(prefixEnd)
-    .split(Regex("""\n\n(?=[ \t]*---\n記事番号:)"""))
+    .split(Regex("""\n\n(?=[ \t]*---\n(?:記事番号:|タイトル:))"""))
   val articleBlocks = rawArticleBlocks.mapNotNull(::parseArticlePromptBlock)
-  if (articleBlocks.size < 2 || articleBlocks.size != rawArticleBlocks.size) return prompt.take(maxChars)
+  if (articleBlocks.isEmpty() || articleBlocks.size != rawArticleBlocks.size) return prompt.take(maxChars)
 
-  val notice = "[入力上限に合わせ、全記事を残したまま各本文を均等に抜粋しています]\n"
+  val notice = if (articleBlocks.size == 1) {
+    "[入力上限に合わせ、記事本文を抜粋しています]\n"
+  } else {
+    "[入力上限に合わせ、全記事を残したまま各本文を均等に抜粋しています]\n"
+  }
   val separator = "\n\n"
   val fixedLength = prefix.length + notice.length +
     articleBlocks.sumOf { it.prefix.length } + separator.length * (articleBlocks.size - 1)

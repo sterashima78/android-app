@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(35, db.version)
+    assertEquals(36, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -203,7 +203,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(35, db.version)
+    assertEquals(36, db.version)
     assertEquals(1, countRows(db, "smb_connection_profiles", "id=?", arrayOf("legacy-server")))
     assertEquals(1, countRows(db, "video_smb_sources", "server_id=?", arrayOf("legacy-server")))
     assertEquals(
@@ -263,7 +263,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(35, db.version)
+    assertEquals(36, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
@@ -345,7 +345,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(35, db.version)
+    assertEquals(36, db.version)
     assertEquals(1, countRows(db, "video_providers", "provider_type=?", arrayOf("YOUTUBE")))
     assertEquals(1, countRows(db, "video_subscriptions", "source_id=?", arrayOf("channel-1")))
     assertEquals(2, countRows(db, "video_provider_items", "provider_id=?", arrayOf("youtube")))
@@ -396,7 +396,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(35, db.version)
+    assertEquals(36, db.version)
     assertTrue("function_code" in columnNames(db, "video_providers"))
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("builtin-provider")))
     assertEquals(
@@ -448,7 +448,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(35, db.version)
+    assertEquals(36, db.version)
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("custom-provider")))
     assertEquals(
       "return null",
@@ -622,7 +622,7 @@ class AppDatabaseSchemaTest {
 
     val migrated = openDatabase().writableDatabase
 
-    assertEquals(35, migrated.version)
+    assertEquals(36, migrated.version)
     assertTrue("article_url" in columnNames(migrated, "podcast_episode_articles"))
     assertEquals(
       "カスタムニュース",
