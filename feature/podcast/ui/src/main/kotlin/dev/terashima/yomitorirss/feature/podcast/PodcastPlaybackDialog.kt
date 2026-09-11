@@ -41,6 +41,7 @@ fun PodcastPlaybackDialog(
   onSeekBack: () -> Unit,
   onSeekForward: () -> Unit,
   onSetSpeed: (Float) -> Unit,
+  onSelectChapter: (Int) -> Unit,
   onStop: () -> Unit,
   onDismiss: () -> Unit,
 ) {
@@ -54,10 +55,13 @@ fun PodcastPlaybackDialog(
   )
   val displayItems = if (hasMappedChapters) {
     chapters.map { chapter ->
+      val contentId = podcastChapterContentId(episode.id, chapter.number)
       PodcastArticleDisplayItem(
         label = "チャプター ${chapter.number}",
         article = requireNotNull(chapter.article),
-        active = audioState.currentItem?.contentId == podcastChapterContentId(episode.id, chapter.number),
+        active = audioState.currentItem?.contentId == contentId,
+        chapterNumber = chapter.number,
+        available = audioState.items.any { it.contentId == contentId },
       )
     }
   } else {
@@ -66,6 +70,8 @@ fun PodcastPlaybackDialog(
         label = "記事 ${index + 1}",
         article = article,
         active = false,
+        chapterNumber = null,
+        available = false,
       )
     }
   }
@@ -132,6 +138,10 @@ fun PodcastPlaybackDialog(
             displayItems.forEach { item ->
               val article = item.article
               Surface(
+                onClick = {
+                  item.chapterNumber?.let(onSelectChapter)
+                },
+                enabled = item.chapterNumber != null && item.available,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = if (item.active) 6.dp else 1.dp,
@@ -172,4 +182,6 @@ private data class PodcastArticleDisplayItem(
   val label: String,
   val article: PodcastEpisodeArticle,
   val active: Boolean,
+  val chapterNumber: Int?,
+  val available: Boolean,
 )
