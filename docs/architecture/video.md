@@ -31,7 +31,7 @@ Video は SMB / Web / 購読型provider由来動画を同じ catalog へ投影�
 
 `:feature:video:data` は Video-owned database schema、Video用SMB同期場所、明示保存状態・フォルダ、Web metadata取得、WebView extractor、SMB catalog projection、組み込みprovider adapter / custom provider runtime / feed validation / refresh、playback target resolution、SMB動画のthumbnail cache生成を所有する。
 
-`:feature:video:ui` は一覧、source filter、「続き」「保存済み」「視聴済み」、保存済み動画のfile browser、整理フォルダ管理、provider / subscription設定、custom provider function editor、provider未読確認、設定、Media3 foreground playerを所有する。一覧へ入ったSMB動画カードだけthumbnail resolutionを要求し、同期時に全動画を事前生成しない。
+`:feature:video:ui` は一覧、source filter、「未視聴」「保存済み」「視聴済み」、保存済み動画のfile browser、整理フォルダ管理、provider / subscription設定、custom provider function editor、provider未読確認、設定、Media3 foreground playerを所有する。一覧へ入ったSMB動画カードだけthumbnail resolutionを要求し、同期時に全動画を事前生成しない。
 
 ## Shared SMB connection boundary
 
@@ -254,7 +254,7 @@ ADR-0246でapplication database versionを32へ進め、`video_providers.functio
 - durationが利用可能な場合、再生位置が95%以上になるとcompletedを自動設定する。
 - completedはUIから手動変更できる。
 - 手動で未視聴へ戻しても保存済みposition / durationは維持する。
-- 「続き」はpositionが0より大きくcompletedでないitemを対象とする。
+- positionが保存されているitemは、次回再生時にその位置から再開する。
 - 保存済み判定 / 明示保存 / folder移動では再生状態を変更しない。
 
 Video再生はRSS/Contentの既読状態、Bookmark / Read Later membership、Library book stateを書き換えない。
