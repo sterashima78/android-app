@@ -46,17 +46,6 @@ interface AudioPlaybackController {
 
   fun skipPrevious()
 
-  fun skipTo(index: Int) {
-    val playbackState = state.value
-    if (index !in playbackState.items.indices) return
-
-    when {
-      index > playbackState.currentIndex -> repeat(index - playbackState.currentIndex) { skipNext() }
-      index < playbackState.currentIndex -> repeat(playbackState.currentIndex - index) { skipPrevious() }
-      playbackState.positionMs > 0L -> seekBy(-playbackState.positionMs)
-    }
-  }
-
   fun seekBy(deltaMs: Long)
 
   fun setPlaybackSpeed(speed: Float)
