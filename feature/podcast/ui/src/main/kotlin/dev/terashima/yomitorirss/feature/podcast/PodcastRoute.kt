@@ -213,9 +213,17 @@ private fun PodcastContent(
     }
 
     state.selectedProgram?.let { program ->
+      val generating = program.id in state.busyProgramIds
+      val oldestQueuedEpisodeId = state.episodes
+        .asSequence()
+        .filter { it.status == PodcastEpisodeStatus.QUEUED }
+        .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
+        ?.id
+
       ProgramCard(
         program = program,
-        generating = program.id in state.busyProgramIds,
+        generating = generating,
+        hasQueuedEpisode = oldestQueuedEpisodeId != null,
         sourceCount = program.sourceIds.size,
         onGenerate = { onGenerate(program.id) },
         onEdit = { onEdit(program) },
@@ -248,6 +256,9 @@ private fun PodcastContent(
           EpisodeCard(
             episode = episode,
             busy = episode.id in state.busyEpisodeIds,
+            queuedStartEnabled = episode.id == oldestQueuedEpisodeId && !generating,
+            queuedStarting = episode.id == oldestQueuedEpisodeId && generating,
+            onStartQueued = { onGenerate(program.id) },
             onPlay = { onPlay(episode) },
             onRetry = { onRetry(episode.id) },
             onArchive = { onArchiveEpisode(episode.id) },
@@ -266,6 +277,7 @@ private fun PodcastContent(
 private fun ProgramCard(
   program: PodcastProgram,
   generating: Boolean,
+  hasQueuedEpisode: Boolean,
   sourceCount: Int,
   onGenerate: () -> Unit,
   onEdit: () -> Unit,
@@ -300,7 +312,7 @@ private fun ProgramCard(
         } else {
           Icon(Icons.Default.Refresh, contentDescription = null)
           Spacer(Modifier.width(8.dp))
-          Text("新しいエピソードを生成")
+          Text(if (hasQueuedEpisode) "生成待ちのエピソードを開始" else "新しいエピソードを生成")
         }
       }
     }
@@ -311,6 +323,9 @@ private fun ProgramCard(
 private fun EpisodeCard(
   episode: PodcastEpisode,
   busy: Boolean,
+  queuedStartEnabled: Boolean,
+  queuedStarting: Boolean,
+  onStartQueued: () -> Unit,
   onPlay: () -> Unit,
   onRetry: () -> Unit,
   onArchive: () -> Unit,
@@ -344,7 +359,26 @@ private fun EpisodeCard(
             TextButton(onClick = onDelete, enabled = !busy) { Text("削除") }
           }
         }
-        PodcastEpisodeStatus.QUEUED -> Text("生成待ち", style = MaterialTheme.typography.bodyMedium)
+        PodcastEpisodeStatus.QUEUED -> {
+          if (queuedStarting) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
+              Spacer(Modifier.width(8.dp))
+              Text("生成を開始中")
+            }
+          } else {
+            Text("生成待ち", style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(
+              onClick = onStartQueued,
+              enabled = queuedStartEnabled,
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Icon(Icons.Default.Refresh, contentDescription = null)
+              Spacer(Modifier.width(8.dp))
+              Text(if (queuedStartEnabled) "生成を開始" else "前の生成待ちを先に処理")
+            }
+          }
+        }
         PodcastEpisodeStatus.GENERATING -> Row(verticalAlignment = Alignment.CenterVertically) {
           CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
           Spacer(Modifier.width(8.dp))
