@@ -30,6 +30,17 @@ fun PodcastRouteWithPlayback(
       onSeekBack = viewModel::seekBack,
       onSeekForward = viewModel::seekForward,
       onSetSpeed = viewModel::setPlaybackSpeed,
+      onSelectChapter = { chapterNumber ->
+        val targetContentId = podcastChapterContentId(episode.id, chapterNumber)
+        val targetIndex = audioState.items.indexOfFirst { it.contentId == targetContentId }
+        val currentIndex = audioState.currentIndex
+        if (targetIndex >= 0 && currentIndex >= 0) {
+          when {
+            targetIndex > currentIndex -> repeat(targetIndex - currentIndex) { viewModel.skipNext() }
+            targetIndex < currentIndex -> repeat(currentIndex - targetIndex) { viewModel.skipPrevious() }
+          }
+        }
+      },
       onStop = viewModel::stopPlayback,
       onDismiss = viewModel::dismissPlayback,
     )
