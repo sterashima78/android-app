@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -69,7 +68,6 @@ import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
 
 private enum class VideoTab(val label: String) {
   ALL("未視聴"),
-  CONTINUE("続き"),
   SAVED("保存済み"),
   COMPLETED("視聴済み"),
   SETTINGS("設定"),
@@ -103,7 +101,7 @@ fun VideoScreen(
   var newRuleVisible by remember { mutableStateOf(false) }
   var editingFolder by remember { mutableStateOf<VideoFolder?>(null) }
   var newFolderVisible by remember { mutableStateOf(false) }
-  val tab = VideoTab.valueOf(tabName)
+  val tab = VideoTab.entries.firstOrNull { it.name == tabName } ?: VideoTab.ALL
   val source = sourceName?.let { selected -> VideoSource.entries.firstOrNull { it.name == selected } }
   val unwatchedLayout = VideoUnwatchedLayout.valueOf(unwatchedLayoutName)
 
@@ -181,7 +179,6 @@ fun VideoScreen(
               Icon(
                 imageVector = when (item) {
                   VideoTab.ALL -> Icons.Default.List
-                  VideoTab.CONTINUE -> Icons.Default.PlayCircle
                   VideoTab.SAVED -> Icons.Default.Folder
                   VideoTab.COMPLETED -> Icons.Default.CheckCircle
                   VideoTab.SETTINGS -> Icons.Default.Settings
@@ -243,7 +240,6 @@ fun VideoScreen(
               state.items.filter { item ->
                 val tabMatches = when (tab) {
                   VideoTab.ALL -> item.isUnwatched()
-                  VideoTab.CONTINUE -> item.playbackState?.let { it.positionMs > 0L && !it.completed } == true
                   VideoTab.SAVED -> false
                   VideoTab.COMPLETED -> item.playbackState?.completed == true
                   VideoTab.SETTINGS -> false
@@ -255,7 +251,6 @@ fun VideoScreen(
               Text(
                 when (tab) {
                   VideoTab.ALL -> "未視聴の動画はありません。"
-                  VideoTab.CONTINUE -> "再生途中の動画はありません。"
                   VideoTab.SAVED -> ""
                   VideoTab.COMPLETED -> "視聴済みの動画はありません。"
                   VideoTab.SETTINGS -> ""
