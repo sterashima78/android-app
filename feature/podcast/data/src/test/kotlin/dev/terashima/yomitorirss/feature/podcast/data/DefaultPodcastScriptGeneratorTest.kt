@@ -36,13 +36,14 @@ class DefaultPodcastScriptGeneratorTest {
       feedContent = "本文。".repeat(3_000),
     )
     val prompt = buildPodcastChapterPrompt("朝のニュース", article, chapterNumber = 1, totalChapters = 1)
-    assertTrue(prompt.length > 2_500)
+    assertTrue(prompt.length > 1_200)
 
-    val bounded = limitPodcastPrompt(prompt, 2_500)
+    val bounded = limitPodcastPrompt(prompt, 1_200)
 
-    assertTrue(bounded.length <= 2_500)
+    assertTrue(bounded.length <= 1_200)
     assertTrue(bounded.contains("記事タイトル"))
     assertTrue(bounded.contains("情報源"))
+    assertTrue(bounded.contains("[入力上限に合わせ、記事本文を抜粋しています]"))
     assertTrue(bounded.contains("本文。"))
   }
 }
