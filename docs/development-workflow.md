@@ -1,8 +1,8 @@
 # Development Workflow
 
-この文書は、このリポジトリで AI agent に開発を依頼するときの共通入口である。
+この文書は、このリポジトリで AI agent が作業するときの開発手順の正本である。作業時の共通入口はルートの `AGENTS.md` とする。
 
-依頼時にこのファイルを参照するよう指示された agent は、個別の実装指示だけでなく、この文書に定めた調査・設計判断・Draft PR・実装・検証・レビュー・PR・マージ・APK共有までの流れを適用する。
+`AGENTS.md` からこのファイルを参照した agent は、個別の実装指示だけでなく、この文書に定めた調査・設計判断・Draft PR・実装・検証・レビュー・PR・マージ・APK共有までの流れを適用する。
 
 詳細なアーキテクチャ判断や current state はこの文書へ複製せず、`docs/architecture/`、`docs/adr/`、machine-readable architecture rule、production code、test を正本とする。
 
@@ -76,18 +76,17 @@ APK共有
 
 要求が十分明確なら、不要な確認質問をせず調査へ進む。
 
-### 3.2 この文書から current architecture へ降りる
+### 3.2 current architecture へ降りる
 
-調査の入口は次の順序とする。
+`AGENTS.md` からこの文書へ到達した後、調査は次の順序で進める。
 
-1. `docs/development-workflow.md` — 開発手順
-2. `docs/spec.md` — 現在のユーザー仕様
-3. `docs/architecture/system-overview.md` — system 全体像、capability、主要 data flow
-4. `docs/architecture/principles.md` — invariant、dependency / ownership rule
-5. `docs/architecture/context-map.md` — Domain Context と関係
-6. 対象に応じた `docs/architecture/*.md`
-7. 関連 ADR — 判断理由、却下案、compatibility condition
-8. production code / tests / machine-readable manifests — 実装との照合
+1. `docs/spec.md` — 現在のユーザー仕様の目次。対象に応じた `docs/spec/*.md` を確認する
+2. `docs/architecture/system-overview.md` — system 全体像、capability、主要 data flow
+3. `docs/architecture/principles.md` — invariant、dependency / ownership rule
+4. `docs/architecture/context-map.md` — Domain Context と関係
+5. 対象に応じた `docs/architecture/*.md`
+6. 関連 ADR — 判断理由、却下案、compatibility condition
+7. production code / tests / machine-readable manifests — 実装との照合
 
 関連 ADR は最新のものだけでなく、対象判断に至る古い ADR、`Superseded` / `Amended by` / `Refines` 等で接続された ADR も必要に応じて確認する。
 
@@ -272,7 +271,7 @@ Tests proving the change:
 
 ### 9.4 Documentation
 
-- user-visible behavior が変わるなら `docs/spec.md`
+- user-visible behavior が変わるなら対応する `docs/spec/*.md`。仕様書の構成や目次が変わるなら `docs/spec.md` も更新
 - current architecture が変わるなら `docs/architecture/`
 - design decision があるなら ADR
 - 既存 ADR の判断を変更・補足・廃止するなら、関連する古い ADR の status / relationship / reference
@@ -325,8 +324,20 @@ production code を変更していない documentation-only PR であっても�
 この文書は「開発をどう進めるか」の正本であり、system の現在形そのものの正本ではない。
 
 ```text
+AGENTS.md
+  作業時の共通入口
+
+        |
+        v
+
 docs/development-workflow.md
   開発の進め方 / decision gate / Draft PR / PR / merge / delivery
+
+        |
+        v
+
+docs/spec.md -> docs/spec/*.md
+  ユーザーから見た現行仕様
 
         |
         v
@@ -361,13 +372,14 @@ machine-readable rules / production code / tests
 
 ```text
 この変更を実施してください。
-docs/development-workflow.md に従って進めてください。
+AGENTS.md を参照して進めてください。
 ```
 
-この指示を受けた agent は、この文書を入口として必要な current architecture / ADR / code / test を調査し、必要な場合だけ Change Impact Brief と人間の判断を挟み、Draft PR 作成から実装、APK 共有までを一連の作業として扱う。
+この指示を受けた agent は、`AGENTS.md` からこの開発手順と必要な current spec / architecture / ADR / code / test を調査し、必要な場合だけ Change Impact Brief と人間の判断を挟み、Draft PR 作成から実装、APK 共有までを一連の作業として扱う。
 
 ## Related documents
 
+- [`../AGENTS.md`](../AGENTS.md)
 - [`spec.md`](spec.md)
 - [`architecture/system-overview.md`](architecture/system-overview.md)
 - [`architecture/change-impact-review.md`](architecture/change-impact-review.md)
