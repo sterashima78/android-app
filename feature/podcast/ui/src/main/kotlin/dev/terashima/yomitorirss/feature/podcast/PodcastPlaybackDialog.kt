@@ -26,6 +26,11 @@ import androidx.compose.ui.window.DialogProperties
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackState
 import dev.terashima.yomitorirss.feature.audio.ui.AudioPlayerControls
 
+private const val PODCAST_TRANSITION_DISPLAY_PREFIX = "続いて。"
+
+internal fun podcastDisplayTitle(title: String): String =
+  title.removePrefix(PODCAST_TRANSITION_DISPLAY_PREFIX)
+
 @Composable
 fun PodcastPlaybackDialog(
   episode: PodcastEpisode,
@@ -42,6 +47,11 @@ fun PodcastPlaybackDialog(
   val chapters = episode.playbackChapters()
   val hasMappedChapters = chapters.isNotEmpty() && chapters.all { it.article != null }
   val uriHandler = LocalUriHandler.current
+  val displayAudioState = audioState.copy(
+    items = audioState.items.map { item ->
+      item.copy(title = podcastDisplayTitle(item.title))
+    },
+  )
   val displayItems = if (hasMappedChapters) {
     chapters.map { chapter ->
       PodcastArticleDisplayItem(
@@ -94,7 +104,7 @@ fun PodcastPlaybackDialog(
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
           AudioPlayerControls(
-            state = audioState,
+            state = displayAudioState,
             onTogglePlayPause = onTogglePlayPause,
             onPrevious = onPrevious,
             onNext = onNext,
@@ -136,7 +146,7 @@ fun PodcastPlaybackDialog(
                     fontWeight = if (item.active) FontWeight.Bold else FontWeight.Normal,
                   )
                   Text(
-                    article.title,
+                    podcastDisplayTitle(article.title),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (item.active) FontWeight.Bold else FontWeight.Normal,
                   )
