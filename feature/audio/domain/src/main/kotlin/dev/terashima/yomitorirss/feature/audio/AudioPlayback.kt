@@ -46,6 +46,8 @@ interface AudioPlaybackController {
 
   fun skipPrevious()
 
+  fun skipTo(index: Int)
+
   fun seekBy(deltaMs: Long)
 
   fun setPlaybackSpeed(speed: Float)
