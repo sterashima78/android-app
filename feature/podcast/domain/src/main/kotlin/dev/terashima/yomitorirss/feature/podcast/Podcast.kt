@@ -133,10 +133,23 @@ data class PodcastEpisode(
       val start = match.range.last + 1
       val endExclusive = matches.getOrNull(index + 1)?.range?.first ?: speech.length
       val articleNumber = articleNumbers[index]
+      val segment = speech.substring(start, endExclusive).trim()
+      val titleMatch = PODCAST_SPOKEN_TITLE_MARKER.find(segment)
+      val spokenTitle = titleMatch
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+      val playbackArticle = articles[articleNumber - 1].let { article ->
+        spokenTitle?.let { title ->
+          article.copy(title = if (index == 0) title else "$PODCAST_TRANSITION_CUE$title")
+        } ?: article
+      }
+      val chapterSpeech = titleMatch?.let { segment.removeRange(it.range).trim() } ?: segment
       PodcastPlaybackChapter(
         number = index + 1,
-        article = articles[articleNumber - 1],
-        speechText = speech.substring(start, endExclusive).trim(),
+        article = playbackArticle,
+        speechText = chapterSpeech,
       )
     }
     return chapters.takeIf { it.none { chapter -> chapter.speechText.isBlank() } }
@@ -327,6 +340,9 @@ class GeneratePodcastEpisodeUseCase(
           ),
         ).trim()
         require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
+        require(PODCAST_SPOKEN_TITLE_MARKER.containsMatchIn(chapterScript)) {
+          "generated podcast chapter is missing Japanese title"
+        }
         episode = repository.completeChapter(episode.id, position, chapterScript)
         activePosition = null
       }
@@ -373,14 +389,20 @@ fun buildPodcastChapterPrompt(
   val targetChars = (PODCAST_TARGET_SCRIPT_CHARS / totalChapters).coerceIn(60, 500)
   return """
     あなたはニュース音声番組「$programName」の原稿編集者です。
-    以下の1件の記事だけを根拠に、日本語の音声読み上げ用チャプター本文を作成してください。
+    以下の1件の記事だけを根拠に、日本語の音声読み上げ用チャプターを作成してください。
+
+    出力形式:
+    - 1行目は必ず [[TITLE:日本語の見出し]] とする。
+    - 2行目以降に読み上げ本文だけを書く。
+    - 見出しは元記事のタイトルをそのまま複製せず、入力内容だけを根拠に音声ニュースとして自然な日本語へ翻訳・言い換える。
+    - 見出しは40文字程度までを目安に簡潔にし、入力にない事実を追加しない。
 
     必須条件:
     - 外部ページ、リンク先、一般知識から情報を補わない。
     - 入力が外国語なら内容を日本語で自然に要約する。
     - 何が起きたか、なぜ重要かを簡潔に説明する。
     - 推測と入力に明記された事実を混同しない。
-    - Markdown見出し、箇条書き、URL、チャプターマーカーは出力しない。
+    - TITLEマーカー以外のMarkdown見出し、箇条書き、URL、チャプターマーカーは出力しない。
     - 番組全体の冒頭挨拶や締めの挨拶は出力しない。
     - 記号、略語、数字の羅列は、意味を変えない範囲で音声合成が自然に読める日本語表現へ言い換える。
     - ${targetChars}文字程度を目安に、重要な内容を優先して簡潔にまとめる。
@@ -418,5 +440,7 @@ private fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): 
   "$programName / ${EPISODE_TITLE_FORMATTER.format(Instant.ofEpochMilli(createdAtEpochMillis).atZone(ZoneId.systemDefault()))}"
 
 private val PODCAST_CHAPTER_MARKER = Regex("""(?m)^\[\[CHAPTER:(\d+)\]\]\s*$""")
+private val PODCAST_SPOKEN_TITLE_MARKER = Regex("""\[\[TITLE:([^\]\r\n]+)\]\]""")
+private const val PODCAST_TRANSITION_CUE = "続いて。"
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
 private const val PODCAST_TARGET_SCRIPT_CHARS = 3_000
