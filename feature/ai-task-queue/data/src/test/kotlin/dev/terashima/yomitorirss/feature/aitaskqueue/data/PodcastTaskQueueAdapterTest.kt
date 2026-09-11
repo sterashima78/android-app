@@ -15,8 +15,8 @@ class PodcastTaskQueueAdapterTest {
   @Test
   fun `Podcast episodeをチャプター進捗付きAIタスクへ投影する`() = runBlocking {
     val adapter = PodcastTaskQueueAdapter(
-      reader = PodcastGenerationTaskReader {
-        listOf(
+      reader = object : PodcastGenerationTaskReader {
+        override suspend fun listGenerationTasks(): List<PodcastGenerationTask> = listOf(
           PodcastGenerationTask(
             episodeId = "episode-1",
             title = "朝のニュース",
