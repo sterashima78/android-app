@@ -340,9 +340,6 @@ class GeneratePodcastEpisodeUseCase(
           ),
         ).trim()
         require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
-        require(PODCAST_SPOKEN_TITLE_MARKER.containsMatchIn(chapterScript)) {
-          "generated podcast chapter is missing Japanese title"
-        }
         episode = repository.completeChapter(episode.id, position, chapterScript)
         activePosition = null
       }
