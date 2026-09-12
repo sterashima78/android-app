@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -56,13 +57,24 @@ internal fun XViewerMediaDiagnosticsButton(
         }
       },
       dismissButton = {
-        TextButton(
-          onClick = {
-            context.getSystemService(ClipboardManager::class.java)
-              ?.setPrimaryClip(ClipData.newPlainText("media diagnostics", text))
-          },
-        ) {
-          Text("コピー")
+        Row {
+          TextButton(
+            onClick = {
+              val webView = rootView.findHostedWebView() ?: return@TextButton
+              webView.evaluateJavascript(MEDIA_FRAME_PROBE_SCRIPT, null)
+              diagnostics = null
+            },
+          ) {
+            Text("フレーム表示")
+          }
+          TextButton(
+            onClick = {
+              context.getSystemService(ClipboardManager::class.java)
+                ?.setPrimaryClip(ClipData.newPlainText("media diagnostics", text))
+            },
+          ) {
+            Text("コピー")
+          }
         }
       },
       title = { Text("動画診断") },
@@ -95,6 +107,73 @@ internal fun prettyMediaDiagnostics(result: String?): String {
   }
   return runCatching { JSONObject(result).toString(2) }.getOrElse { result }
 }
+
+private val MEDIA_FRAME_PROBE_SCRIPT =
+  """
+    (() => {
+      const probeAttribute = 'data-media-frame-probe';
+      const existing = document.querySelector('canvas[' + probeAttribute + ']');
+      if (existing) {
+        existing.remove();
+        return { active: false, reason: 'removed' };
+      }
+
+      const videos = Array.from(document.querySelectorAll('video'));
+      const video =
+        videos.find((item) => !item.paused && item.readyState >= 2 && item.videoWidth > 0) ||
+        videos.find((item) => item.readyState >= 2 && item.videoWidth > 0);
+      if (!video) return { active: false, reason: 'no-ready-video' };
+
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute(probeAttribute, '');
+      const ratio = video.videoHeight / video.videoWidth;
+      const cssWidth = window.innerWidth;
+      const cssHeight = Math.min(window.innerHeight, cssWidth * ratio);
+      const density = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(cssWidth * density));
+      canvas.height = Math.max(1, Math.round(cssHeight * density));
+      canvas.style.cssText = [
+        'position:fixed',
+        'left:0',
+        'top:0',
+        'width:' + cssWidth + 'px',
+        'height:' + cssHeight + 'px',
+        'z-index:2147483647',
+        'background:#000',
+        'pointer-events:none',
+        'object-fit:contain',
+      ].join(';');
+      document.documentElement.appendChild(canvas);
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        canvas.remove();
+        return { active: false, reason: 'no-context' };
+      }
+
+      const draw = () => {
+        if (!canvas.isConnected) return;
+        try {
+          context.fillStyle = '#000';
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch (_) {
+          canvas.remove();
+          return;
+        }
+        requestAnimationFrame(draw);
+      };
+      draw();
+
+      return {
+        active: true,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        cssWidth,
+        cssHeight,
+      };
+    })();
+  """.trimIndent()
 
 private val MEDIA_DIAGNOSTICS_SCRIPT =
   """
