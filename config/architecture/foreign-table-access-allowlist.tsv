@@ -1,6 +1,3 @@
 # repository path	table	reason
-feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/VideoDatabaseSchema.kt	smb_library_servers	version 29 migration imports the former implicit Video SMB locations; remove when the version 28 upgrade baseline retires
-feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/VideoDatabaseSchema.kt	channels	version 31 migration imports the former source-specific subscriptions into Video provider state; remove when the version 30 upgrade baseline retires
-feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/VideoDatabaseSchema.kt	videos	version 31 migration imports the former source-specific unread/watch-later state into Video provider items; remove when the version 30 upgrade baseline retires
 feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastDatabaseSchema.kt	feeds	version 34 migration copies former reader-owned feed metadata into Podcast-owned sources; remove when the version 33 upgrade baseline retires
 feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastDatabaseSchema.kt	articles	version 34 migration preserves consumed feed-entry identities while detaching Podcast from Content state; remove when the version 33 upgrade baseline retires
