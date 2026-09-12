@@ -1,20 +1,11 @@
 package dev.terashima.yomitorirss.feature.video.data
 
 import android.database.sqlite.SQLiteDatabase
-import dev.terashima.yomitorirss.core.database.DatabaseMigration
-import dev.terashima.yomitorirss.core.database.DatabaseMigrationPhase
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val videoDatabaseSchema = DatabaseSchemaContribution(
   owner = "video",
   createSchema = ::ensureVideoSchema,
-  migrations = listOf(
-    DatabaseMigration(
-      targetVersion = 32,
-      phase = DatabaseMigrationPhase.BEFORE_SCHEMA,
-      migrate = ::migrateCustomVideoProviderCode,
-    ),
-  ),
 )
 
 internal fun ensureVideoSchema(db: SQLiteDatabase) {
@@ -192,10 +183,6 @@ private fun ensureVideoProviderFunctionCodeColumn(db: SQLiteDatabase) {
   if (db.tableExists("video_providers") && !db.hasColumn("video_providers", "function_code")) {
     db.execSQL("ALTER TABLE video_providers ADD COLUMN function_code TEXT")
   }
-}
-
-private fun migrateCustomVideoProviderCode(db: SQLiteDatabase) {
-  ensureVideoProviderFunctionCodeColumn(db)
 }
 
 private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean = rawQuery(
