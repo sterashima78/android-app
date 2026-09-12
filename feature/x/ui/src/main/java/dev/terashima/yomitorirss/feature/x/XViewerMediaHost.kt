@@ -4,7 +4,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -56,7 +55,7 @@ internal fun XViewerMediaHost(
   }
 
   LaunchedEffect(rootView, chromeClient) {
-    repeat(10) {
+    repeat(60) {
       withFrameNanos { }
       val webView = rootView.findDescendantWebView()
       if (webView != null) {
@@ -75,10 +74,6 @@ internal fun XViewerMediaHost(
       fullscreenView = null
       onFullscreenChanged(false)
     }
-  }
-
-  BackHandler(enabled = fullscreenView != null) {
-    hideFullscreenMedia()
   }
 
   Box(modifier = modifier) {
