@@ -97,7 +97,7 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - 同じ SQLite database を共有していることや foreign key の存在は共同 ownership の根拠にならない。
 - feature schema は owner の `DatabaseSchemaContribution` / explicit initializer を正本とし、Repository の read method や `snapshot()` の副作用を schema 初期化として利用しない。
 - durable table はすべて `config/architecture/table-ownership.tsv` に owner を登録する。
-- 移行中の例外は `config/architecture/foreign-table-access-allowlist.tsv` に path、table、ADR に基づく理由を明示し、不要になったら削除する。現在の allowlist に例外 entry はない。
+- 移行中の例外は `config/architecture/foreign-table-access-allowlist.tsv` に path、table、ADR に基づく理由を明示し、不要になったら削除する。現在有効な例外は allowlist 自体を正本とし、各 entry に終了条件を記録する。
 
 ## Composition and framework boundaries
 
