@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -119,6 +120,10 @@ fun XViewerScreen(
       settings.loadWithOverviewMode = false
 
       settings.userAgentString = settings.userAgentString.toBrowserCompatibleUserAgent()
+
+      // HTML5 media rendering relies on WebChromeClient callbacks even when the
+      // page keeps playback inline instead of opening a separate native player.
+      webChromeClient = WebChromeClient()
 
       // AndroidView does not clip the hosted View to Compose layout bounds by default.
       outlineProvider = ViewOutlineProvider.BOUNDS
@@ -443,7 +448,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const pickerStyle = document.createElement('style');
         pickerStyle.id = styleId;
         pickerStyle.textContent =
-          '[' + selectedAttribute + '="true"] {' +
+          '[' + selectedAttribute + '=\"true\"] {' +
           ' outline: 3px solid #ff9800 !important;' +
           ' outline-offset: 2px !important;' +
           '}';
@@ -460,12 +465,12 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
 
         const escapeAttributeValue = (value) => String(value)
           .replace(/\\/g, '\\\\')
-          .replace(/"/g, '\\"');
+          .replace(/\"/g, '\\\"');
 
         const attributeSelector = (element, name) => {
           const value = element.getAttribute(name);
           if (!value) return null;
-          return '[' + name + '="' + escapeAttributeValue(value) + '"]';
+          return '[' + name + '=\"' + escapeAttributeValue(value) + '\"]';
         };
 
         const directCandidates = (element) => {
@@ -513,12 +518,12 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
         const uniquelySelects = (selector, element) => uniqueMatchFor(selector) === element;
 
         const isRepeatableBoundary = (element) => element.matches(
-          'article[data-testid="tweet"], [data-testid="cellInnerDiv"], [data-testid="UserCell"]'
+          'article[data-testid=\"tweet\"], [data-testid=\"cellInnerDiv\"], [data-testid=\"UserCell\"]'
         );
 
         const closestSemanticBoundary = (element) => element.closest(
-          'article[data-testid="tweet"], [data-testid="cellInnerDiv"], [data-testid="UserCell"], ' +
-          '[data-testid="sidebarColumn"], nav, header, aside'
+          'article[data-testid=\"tweet\"], [data-testid=\"cellInnerDiv\"], [data-testid=\"UserCell\"], ' +
+          '[data-testid=\"sidebarColumn\"], nav, header, aside'
         );
 
         const hrefStrength = (href) => {
@@ -637,7 +642,7 @@ private fun WebView.startElementPicker(onResult: (Boolean) -> Unit) {
           event.stopImmediatePropagation();
 
           const preferredTarget = event.target.closest(
-            'a[href], button, [role="button"], [data-testid], article, section, nav, aside, img, video'
+            'a[href], button, [role=\"button\"], [data-testid], article, section, nav, aside, img, video'
           );
           const target = preferredTarget || event.target.closest('span, div');
           if (!target || target === document.body || target === document.documentElement) return;
