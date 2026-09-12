@@ -12,6 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ fun VideoFeatureRoute(
   playbackResolver: VideoPlaybackResolver,
   byteSourceFactory: VideoByteSourceFactory,
   onOpenWebUrl: (String) -> Unit,
+  onPlaybackFullscreenPresentationChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val viewModel: VideoViewModel = viewModel(factory = viewModelFactory)
@@ -44,6 +46,10 @@ fun VideoFeatureRoute(
   var smbSettingsVisible by remember { mutableStateOf(false) }
   var providerSettingsVisible by remember { mutableStateOf(false) }
   var providerInboxVisible by remember { mutableStateOf(false) }
+
+  LaunchedEffect(playbackSession?.isFullscreen) {
+    onPlaybackFullscreenPresentationChange(playbackSession?.isFullscreen == true)
+  }
 
   fun play(item: VideoItem) {
     if (resolving) return
