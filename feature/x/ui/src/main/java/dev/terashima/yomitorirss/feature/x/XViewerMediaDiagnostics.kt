@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -56,13 +57,27 @@ internal fun XViewerMediaDiagnosticsButton(
         }
       },
       dismissButton = {
-        TextButton(
-          onClick = {
-            context.getSystemService(ClipboardManager::class.java)
-              ?.setPrimaryClip(ClipData.newPlainText("media diagnostics", text))
-          },
-        ) {
-          Text("コピー")
+        Row {
+          TextButton(
+            onClick = {
+              val webView = rootView.findHostedWebView() ?: return@TextButton
+              webView.evaluateJavascript(MEDIA_LAYOUT_RECOVERY_SCRIPT) {
+                webView.evaluateJavascript(MEDIA_DIAGNOSTICS_SCRIPT) { result ->
+                  diagnostics = prettyMediaDiagnostics(result)
+                }
+              }
+            },
+          ) {
+            Text("表示を補正")
+          }
+          TextButton(
+            onClick = {
+              context.getSystemService(ClipboardManager::class.java)
+                ?.setPrimaryClip(ClipData.newPlainText("media diagnostics", text))
+            },
+          ) {
+            Text("コピー")
+          }
         }
       },
       title = { Text("動画診断") },
@@ -95,6 +110,57 @@ internal fun prettyMediaDiagnostics(result: String?): String {
   }
   return runCatching { JSONObject(result).toString(2) }.getOrElse { result }
 }
+
+private val MEDIA_LAYOUT_RECOVERY_SCRIPT =
+  """
+    (() => {
+      const viewportWidth = window.visualViewport?.width || window.innerWidth;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const minHeightByElement = new Map();
+      let candidateVideos = 0;
+
+      for (const video of document.querySelectorAll('video')) {
+        const rect = video.getBoundingClientRect();
+        if (
+          video.readyState < 2 ||
+          video.videoWidth <= 0 ||
+          video.videoHeight <= 0 ||
+          rect.height > 1 ||
+          rect.width < viewportWidth * 0.8 ||
+          Math.abs(rect.left) > viewportWidth * 0.1
+        ) {
+          continue;
+        }
+
+        candidateVideos += 1;
+        const targetHeight = Math.min(
+          viewportHeight,
+          rect.width * video.videoHeight / video.videoWidth,
+        );
+
+        let current = video;
+        for (let depth = 0; current instanceof Element && depth < 12; depth += 1) {
+          const currentRect = current.getBoundingClientRect();
+          if (currentRect.height > 1 || currentRect.width < viewportWidth * 0.7) break;
+          const previous = minHeightByElement.get(current) || 0;
+          minHeightByElement.set(current, Math.max(previous, targetHeight));
+          current = current.parentElement;
+        }
+      }
+
+      for (const [element, targetHeight] of minHeightByElement) {
+        element.style.setProperty('min-height', targetHeight + 'px', 'important');
+        if (element.tagName === 'VIDEO') {
+          element.style.setProperty('object-fit', 'contain', 'important');
+        }
+      }
+
+      return {
+        candidateVideos,
+        repairedElements: minHeightByElement.size,
+      };
+    })();
+  """.trimIndent()
 
 private val MEDIA_DIAGNOSTICS_SCRIPT =
   """
