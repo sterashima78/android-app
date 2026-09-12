@@ -10,14 +10,6 @@ val videoDatabaseSchema = DatabaseSchemaContribution(
   createSchema = ::ensureVideoSchema,
   migrations = listOf(
     DatabaseMigration(
-      targetVersion = 29,
-      migrate = ::migrateLegacyVideoSmbSources,
-    ),
-    DatabaseMigration(
-      targetVersion = 31,
-      migrate = ::migrateLegacyVideoSubscriptions,
-    ),
-    DatabaseMigration(
       targetVersion = 32,
       phase = DatabaseMigrationPhase.BEFORE_SCHEMA,
       migrate = ::migrateCustomVideoProviderCode,
@@ -204,96 +196,6 @@ private fun ensureVideoProviderFunctionCodeColumn(db: SQLiteDatabase) {
 
 private fun migrateCustomVideoProviderCode(db: SQLiteDatabase) {
   ensureVideoProviderFunctionCodeColumn(db)
-}
-
-private fun migrateLegacyVideoSmbSources(db: SQLiteDatabase) {
-  db.execSQL(
-    """
-      INSERT OR IGNORE INTO video_smb_sources(
-        id, server_id, share_name, root_path, updated_at
-      )
-      SELECT
-        'legacy-library:' || id,
-        id,
-        share_name,
-        root_path,
-        updated_at
-      FROM smb_library_servers
-      WHERE TRIM(share_name) <> ''
-    """.trimIndent(),
-  )
-}
-
-private fun migrateLegacyVideoSubscriptions(db: SQLiteDatabase) {
-  if (!db.tableExists("channels") || !db.tableExists("videos")) return
-
-  val now = System.currentTimeMillis()
-  db.execSQL(
-    """
-      INSERT OR IGNORE INTO video_providers(
-        id, provider_type, name, enabled, created_at, updated_at
-      )
-      SELECT
-        'youtube', 'YOUTUBE', 'YouTube', 1,
-        COALESCE(MIN(added_at), ?), COALESCE(MAX(added_at), ?)
-      FROM channels
-      HAVING COUNT(*) > 0
-    """.trimIndent(),
-    arrayOf(now, now),
-  )
-  db.execSQL(
-    """
-      INSERT OR IGNORE INTO video_subscriptions(
-        id, provider_id, source_id, title, source_url, created_at, updated_at
-      )
-      SELECT
-        'youtube:' || channel_id,
-        'youtube',
-        channel_id,
-        title,
-        channel_url,
-        added_at,
-        added_at
-      FROM channels
-    """.trimIndent(),
-  )
-  db.execSQL(
-    """
-      INSERT OR IGNORE INTO video_items(
-        id, source, source_id, title, page_url, thumbnail_url,
-        duration_ms, size_bytes, mime_type, updated_at
-      )
-      SELECT
-        'provider:youtube:' || video_id,
-        'SERVICE',
-        'youtube:' || video_id,
-        title,
-        video_url,
-        'https://i.ytimg.com/vi/' || video_id || '/hqdefault.jpg',
-        NULL, NULL, NULL, published_at
-      FROM videos
-    """.trimIndent(),
-  )
-  db.execSQL(
-    """
-      INSERT OR IGNORE INTO video_provider_items(
-        video_id, provider_id, subscription_id, provider_item_id,
-        published_at, is_read, is_watch_later
-      )
-      SELECT
-        'provider:youtube:' || video_id,
-        'youtube',
-        'youtube:' || channel_id,
-        video_id,
-        published_at,
-        is_read,
-        is_watch_later
-      FROM videos
-    """.trimIndent(),
-  )
-
-  db.execSQL("DROP TABLE IF EXISTS videos")
-  db.execSQL("DROP TABLE IF EXISTS channels")
 }
 
 private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean = rawQuery(
