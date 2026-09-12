@@ -66,7 +66,10 @@ internal fun XViewerMediaHost(
     }
   }
 
-  DisposableEffect(boundWebView) {
+  // Keep cleanup tied to the host lifecycle. Keying this effect by boundWebView
+  // disposed the previous effect immediately after binding and reset the exact
+  // WebChromeClient that had just been installed.
+  DisposableEffect(Unit) {
     onDispose {
       boundWebView?.webChromeClient = WebChromeClient()
       fullscreenCallback?.onCustomViewHidden()
