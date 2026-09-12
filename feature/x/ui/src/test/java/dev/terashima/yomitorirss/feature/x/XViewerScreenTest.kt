@@ -161,4 +161,17 @@ class XViewerScreenTest {
   fun `touch 継続中は親のジェスチャーインターセプト状態を変更しない`() {
     assertNull(parentTouchInterceptionRequest(MotionEvent.ACTION_MOVE))
   }
+
+  @Test
+  fun `動画診断結果は読みやすい JSON に整形する`() {
+    val result = prettyMediaDiagnostics("{\"videoCount\":1,\"documentVisibility\":\"visible\"}")
+
+    assertTrue(result.contains("\"videoCount\": 1"))
+    assertTrue(result.contains("\"documentVisibility\": \"visible\""))
+  }
+
+  @Test
+  fun `動画診断結果がない場合は明示する`() {
+    assertEquals("No diagnostic result", prettyMediaDiagnostics("null"))
+  }
 }
