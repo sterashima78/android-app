@@ -1,13 +1,7 @@
 package dev.terashima.yomitorirss.feature.video.ui
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.content.pm.ActivityInfo
 import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.webkit.WebSettings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,42 +31,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
-import dev.terashima.yomitorirss.feature.video.VideoPlaybackCookieProvider
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
-import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackDiagnostics
-import dev.terashima.yomitorirss.feature.video.WebVideoPlaybackReferrerSource
-import dev.terashima.yomitorirss.feature.video.WebVideoSecFetchSite
-import java.net.URI
 import kotlinx.coroutines.delay
-
-internal const val VIDEO_PLAYER_SLOW_LOADING_MS = 10_000L
-internal const val VIDEO_PLAYER_STALLED_LOADING_MS = 30_000L
-internal const val VIDEO_PLAYER_DOUBLE_TAP_SEEK_MS = 15_000L
-
-internal data class VideoPlayerStatusUi(
-  val message: String,
-  val showProgress: Boolean,
-  val canRetry: Boolean,
-  val errorCodeName: String? = null,
-  val httpStatusCode: Int? = null,
-)
 
 @Composable
 internal fun VideoPlayerDialog(
@@ -219,7 +193,6 @@ internal fun VideoPlayerDialog(
       dismissOnClickOutside = false,
     ),
   ) {
-    FullscreenOrientationEffect(isFullscreen)
     FullscreenSystemBarsEffect(isFullscreen)
     Surface(
       modifier = Modifier.fillMaxSize(),
@@ -329,197 +302,4 @@ internal fun VideoPlayerDialog(
       }
     }
   }
-}
-
-internal fun videoPlayerDoubleTapSeekPositionMs(
-  currentPositionMs: Long,
-  durationMs: Long,
-  tapX: Float,
-  playerWidth: Float,
-): Long {
-  val current = currentPositionMs.coerceAtLeast(0L)
-  if (playerWidth <= 0f) return current
-  val deltaMs = if (tapX < playerWidth / 2f) {
-    -VIDEO_PLAYER_DOUBLE_TAP_SEEK_MS
-  } else {
-    VIDEO_PLAYER_DOUBLE_TAP_SEEK_MS
-  }
-  val target = (current + deltaMs).coerceAtLeast(0L)
-  return if (durationMs > 0L) target.coerceAtMost(durationMs) else target
-}
-
-internal fun videoPlayerStatusUi(
-  playbackState: Int,
-  loadingElapsedMs: Long,
-  errorCodeName: String?,
-  httpStatusCode: Int? = null,
-): VideoPlayerStatusUi? {
-  if (!errorCodeName.isNullOrBlank()) {
-    return VideoPlayerStatusUi(
-      message = "再生できません。",
-      showProgress = false,
-      canRetry = true,
-      errorCodeName = errorCodeName,
-      httpStatusCode = httpStatusCode,
-    )
-  }
-
-  val isLoading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
-  if (!isLoading) return null
-
-  return when {
-    loadingElapsedMs >= VIDEO_PLAYER_STALLED_LOADING_MS -> VideoPlayerStatusUi(
-      message = "30秒以上読み込みが続いています。再生エラーはまだ検出されていません。",
-      showProgress = true,
-      canRetry = true,
-    )
-    loadingElapsedMs >= VIDEO_PLAYER_SLOW_LOADING_MS -> VideoPlayerStatusUi(
-      message = "再生開始を待っています（${loadingElapsedMs / 1_000}秒）。通常より時間がかかっています。",
-      showProgress = true,
-      canRetry = false,
-    )
-    playbackState == Player.STATE_IDLE -> VideoPlayerStatusUi(
-      message = "再生を準備しています…",
-      showProgress = true,
-      canRetry = false,
-    )
-    else -> VideoPlayerStatusUi(
-      message = "動画を読み込んでいます…",
-      showProgress = true,
-      canRetry = false,
-    )
-  }
-}
-
-internal fun webVideoPlaybackDiagnosticLines(
-  diagnostics: WebVideoPlaybackDiagnostics?,
-  nativeRequestProperties: Map<String, String> = emptyMap(),
-): List<String> {
-  if (diagnostics == null) return listOf("Web診断: 情報なし")
-
-  val cookieSource = when {
-    !diagnostics.cookieSharingEnabled -> "共有OFF"
-    diagnostics.streamRequestCookieObserved -> "実request"
-    diagnostics.profileCookieAvailable -> "profile fallback"
-    else -> "なし"
-  }
-  val referrer = when {
-    !diagnostics.streamRequestRefererObserved -> "なし"
-    diagnostics.streamRequestRefererHasPathOrQuery -> "あり（path/queryあり）"
-    else -> "あり（originのみ）"
-  }
-  val origin = when {
-    !diagnostics.streamRequestOriginObserved -> "なし"
-    diagnostics.streamRequestOriginMatchesReferrerOrigin == true -> "あり（Referer originと一致）"
-    diagnostics.streamRequestOriginMatchesReferrerOrigin == false -> "あり（Referer originと不一致）"
-    else -> "あり（比較不可）"
-  }
-  val secFetchSite = when (diagnostics.secFetchSite) {
-    WebVideoSecFetchSite.SAME_ORIGIN -> "same-origin"
-    WebVideoSecFetchSite.SAME_SITE -> "same-site"
-    WebVideoSecFetchSite.CROSS_SITE -> "cross-site"
-    WebVideoSecFetchSite.NONE -> "none"
-    WebVideoSecFetchSite.OTHER -> "other"
-    null -> "なし"
-  }
-  val playbackReferrerSource = when (diagnostics.playbackReferrerSource) {
-    WebVideoPlaybackReferrerSource.OBSERVED_REQUEST -> "WebView実request"
-    WebVideoPlaybackReferrerSource.EXTRACTOR -> "extractor指定"
-    WebVideoPlaybackReferrerSource.PAGE -> "元ページ"
-    null -> "不明"
-  }
-
-  return listOf(
-    "WebView stream request: ${if (diagnostics.streamRequestObserved) "観測" else "未観測"}",
-    "Cookie intercept: ${if (diagnostics.cookieInterceptSupported) "対応" else "非対応"}",
-    "Cookie: $cookieSource",
-    "WebView Referer: $referrer",
-    "WebView Origin: $origin",
-    "Sec-Fetch-Site: $secFetchSite",
-    "再生参照元: $playbackReferrerSource",
-    "Native Referer: ${if (nativeRequestProperties.containsKey("Referer")) "あり" else "なし"}",
-    "Native Origin: ${if (nativeRequestProperties.containsKey("Origin")) "あり" else "なし"}",
-  )
-}
-
-internal fun findHttpStatusCode(error: Throwable?): Int? {
-  var current = error
-  while (current != null) {
-    if (current is HttpDataSource.InvalidResponseCodeException) return current.responseCode
-    current = current.cause
-  }
-  return null
-}
-
-internal fun webStreamRequestProperties(target: VideoPlaybackTarget.Stream): Map<String, String> = buildMap {
-  val referrerUrl = target.referrerUrl?.takeIf(String::isNotBlank) ?: return@buildMap
-  put("Referer", referrerUrl)
-  webStreamOriginHeaderValue(referrerUrl)?.let { put("Origin", it) }
-}
-
-internal fun webStreamCookieRequestProperties(
-  requestUrl: String,
-  cookieProvider: VideoPlaybackCookieProvider,
-): Map<String, String> {
-  val cookie = runCatching { cookieProvider.cookieHeaderFor(requestUrl) }
-    .getOrNull()
-    ?.takeIf(String::isNotBlank)
-    ?: return emptyMap()
-  return mapOf("Cookie" to cookie)
-}
-
-internal fun webStreamOriginHeaderValue(referrerUrl: String): String? = runCatching {
-  val uri = URI(referrerUrl)
-  val scheme = uri.scheme?.lowercase()
-  require((scheme == "https" || scheme == "http") && !uri.host.isNullOrBlank())
-  URI(scheme, null, uri.host, uri.port, null, null, null).toString()
-}.getOrNull()
-
-@Composable
-private fun FullscreenOrientationEffect(isFullscreen: Boolean) {
-  val activity = LocalContext.current.findActivity()
-
-  LaunchedEffect(activity, isFullscreen) {
-    activity?.requestedOrientation = videoPlayerRequestedOrientation(isFullscreen)
-  }
-
-  DisposableEffect(activity) {
-    onDispose {
-      if (activity?.isChangingConfigurations != true) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-      }
-    }
-  }
-}
-
-internal fun videoPlayerRequestedOrientation(isFullscreen: Boolean): Int = if (isFullscreen) {
-  ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-} else {
-  ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-}
-
-@Composable
-private fun FullscreenSystemBarsEffect(isFullscreen: Boolean) {
-  val view = LocalView.current
-  DisposableEffect(view, isFullscreen) {
-    val parent = view.parent
-    val window = if (parent is DialogWindowProvider) parent.window else null
-    val controller = window?.insetsController
-    if (isFullscreen) {
-      controller?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-      controller?.hide(WindowInsets.Type.systemBars())
-    } else {
-      controller?.show(WindowInsets.Type.systemBars())
-    }
-
-    onDispose {
-      if (isFullscreen) controller?.show(WindowInsets.Type.systemBars())
-    }
-  }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-  is Activity -> this
-  is ContextWrapper -> baseContext.findActivity()
-  else -> null
 }
