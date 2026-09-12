@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は ADR-0250 により 34 である。version 33 を version 34 への更新元 baseline とし、version 33 database を version 34 で開くとPodcastのfeed selectionをPodcast-owned sourceへ移す。version 33より前の一度限りmigrationは現在のsupport対象upgrade pathから外れており、current runtimeへ互換処理として保持しない。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
+現在の application database version は 36 である。現行 compatibility chain では version 33 -> 34 でPodcastのfeed selectionをPodcast-owned sourceへ移し、version 34 -> 35 でPodcast記事snapshotへentry URLを追加し、version 35 -> 36 で記事単位の生成checkpointと再生成状態を追加する。version 33より前の一度限りmigrationは現在のsupport対象upgrade pathから外れており、current runtimeへ互換処理として保持しない。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
-バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 34 アプリでは version 34 snapshot を受理し、version 33 以下の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceを含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事checkpointを含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -97,7 +97,9 @@ Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達�
 
 SMB connection profile は `smb_connection_profiles` に name / host / port / username / domain を保存し、password は従来と同じ backup 対象外の app-private encrypted credential storeへ保存する。`smb_library_servers` はLibrary用share / root pathと既存Library runtime向けのconnection projectionとして維持する。全体設定でprofileを作成してもLibrary locationが未設定なら `smb_library_servers` rowは不要であり、Library設定でshare / root pathを保存したときだけLibrary同期対象になる。
 
-`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由としたdatabase version bump は行わない。
+version 28以前の `smb_library_servers` rowはschema初期化時に同じIDで `smb_connection_profiles` へ取り込む。credential keyはIDを維持するためpasswordの再暗号化や再入力は不要である。
+
+`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由としたdatabase version bumpは行わない。
 
 `DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
 
@@ -146,6 +148,10 @@ Podcast Context の fresh DB schema は `PodcastDatabaseSchema.kt` を正本と�
 `podcast_sources` はPodcast専用sourceの表示名とRSS / Atom feed URLを保持する。`podcast_programs` は番組定義、対象Podcast source ID群、生成provider、1エピソードの最大記事数、毎日の生成時刻を保持する。`podcast_episodes` は生成単位と状態・生成原稿を保持し、`podcast_episode_articles` はAI入力として予約したentry identity、title、feed-carried contentのsnapshotを保持する。`podcast_consumed_articles` は番組ごとに一度予約したentryを再利用しないためのdurable stateである。
 
 version 32 -> 33では ADR-0249 により番組・episode・snapshot・consumed stateの4 tableを追加し、Podcast stateは空から開始した。version 33 -> 34では ADR-0250 により `podcast_sources` を追加し、既存 `podcast_programs.feed_ids` をPodcast-owned source IDとして維持しながら `source_ids` へ移す。選択済みsourceの表示名とfeed URLは旧RSS `feeds` から一度だけコピーし、旧Content article IDで保存済みのconsumed identityは `articles` のfeed identityを使ってPodcast source ID + entry identityへ可能な範囲で変換する。このmigrationだけ `feeds` / `articles` のreadをforeign-table allowlistで許可し、runtimeでは両tableへ依存しない。
+
+version 34 -> 35では ADR-0255 により `podcast_episode_articles.article_url` をnullable columnとして追加する。既存episodeはURLを補完せず保持し、新規episodeだけ生成予約時のfeed entry URLをsnapshotする。
+
+version 35 -> 36では ADR-0257 により `podcast_episode_articles` に `chapter_status` / `chapter_script` / `chapter_error`、`podcast_episodes` に `regeneration_status` を追加する。既存 `READY` episodeの記事checkpointは `READY`、その他は `PENDING` として移行し、既存episode scriptは正本として保持する。
 
 Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed stateだけで番組内の未消費entryを判定する。
 
@@ -287,3 +293,5 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0246](../adr/0246-video-custom-provider-code.md)
 - [ADR-0249](../adr/0249-news-podcast-context.md)
 - [ADR-0250](../adr/0250-podcast-owned-feed-sources.md)
+- [ADR-0255](../adr/0255-podcast-playback-chapters.md)
+- [ADR-0257](../adr/0257-podcast-chapter-generation-jobs.md)
