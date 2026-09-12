@@ -53,6 +53,20 @@ fun XViewerRoute(
           Icon(Icons.Default.Settings, contentDescription = "X 表示カスタマイズ設定")
         }
       }
+
+      Surface(
+        modifier = Modifier
+          .align(Alignment.BottomStart)
+          .windowInsetsPadding(
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start),
+          )
+          .padding(start = 12.dp, bottom = 76.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        tonalElevation = 6.dp,
+      ) {
+        XViewerMediaDiagnosticsButton()
+      }
     }
   }
 
