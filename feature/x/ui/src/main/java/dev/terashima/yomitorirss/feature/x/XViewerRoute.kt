@@ -29,30 +29,34 @@ fun XViewerRoute(
   modifier: Modifier = Modifier,
 ) {
   var showCustomizationSettings by remember { mutableStateOf(false) }
+  var fullscreenMediaVisible by remember { mutableStateOf(false) }
 
   Box(modifier = modifier) {
-    XViewerScreen(
+    XViewerMediaHost(
       repository = repository,
+      onFullscreenChanged = { fullscreenMediaVisible = it },
       modifier = Modifier.fillMaxSize(),
     )
-    Surface(
-      modifier = Modifier
-        .align(Alignment.TopEnd)
-        .windowInsetsPadding(
-          WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End),
-        )
-        .padding(8.dp),
-      shape = MaterialTheme.shapes.large,
-      color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
-      tonalElevation = 4.dp,
-    ) {
-      IconButton(onClick = { showCustomizationSettings = true }) {
-        Icon(Icons.Default.Settings, contentDescription = "X 表示カスタマイズ設定")
+    if (!fullscreenMediaVisible) {
+      Surface(
+        modifier = Modifier
+          .align(Alignment.TopEnd)
+          .windowInsetsPadding(
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End),
+          )
+          .padding(8.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+        tonalElevation = 4.dp,
+      ) {
+        IconButton(onClick = { showCustomizationSettings = true }) {
+          Icon(Icons.Default.Settings, contentDescription = "X 表示カスタマイズ設定")
+        }
       }
     }
   }
 
-  if (showCustomizationSettings) {
+  if (showCustomizationSettings && !fullscreenMediaVisible) {
     XViewerCustomizationDialog(
       repository = repository,
       onDismiss = { showCustomizationSettings = false },
