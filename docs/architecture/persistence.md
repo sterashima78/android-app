@@ -28,7 +28,7 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は ADR-0250 により 34 である。version 33 を version 34 への更新元 baseline とし、version 33 database を version 34 で開くとPodcastのfeed selectionをPodcast-owned sourceへ移す。version 32 -> 33 のPodcast table追加、version 31 -> 32 のVideo custom provider code、version 30 -> 31 のVideo provider移行、version 28 -> 29 の SMB connection profile / Video SMB source migration、version 29 -> 30のVideo保存状態追加は引き続き適用される。ADR-0241のWeb再生Cookie共有opt-inは既存Video rule tableへのadditive column refinementであり、このrefinement単独ではdatabase versionを進めない。
+現在の application database version は ADR-0250 により 34 である。version 33 を version 34 への更新元 baseline とし、version 33 database を version 34 で開くとPodcastのfeed selectionをPodcast-owned sourceへ移す。version 33より前の一度限りmigrationは現在のsupport対象upgrade pathから外れており、current runtimeへ互換処理として保持しない。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
 バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。version 34 アプリでは version 34 snapshot を受理し、version 33 以下の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceを含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
@@ -97,9 +97,7 @@ Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達�
 
 SMB connection profile は `smb_connection_profiles` に name / host / port / username / domain を保存し、password は従来と同じ backup 対象外の app-private encrypted credential storeへ保存する。`smb_library_servers` はLibrary用share / root pathと既存Library runtime向けのconnection projectionとして維持する。全体設定でprofileを作成してもLibrary locationが未設定なら `smb_library_servers` rowは不要であり、Library設定でshare / root pathを保存したときだけLibrary同期対象になる。
 
-version 28以前の `smb_library_servers` rowはschema初期化時に同じIDで `smb_connection_profiles` へ取り込む。credential keyはIDを維持するためpasswordの再暗号化や再入力は不要である。
-
-`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由とした database version bump は行わない。
+`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由としたdatabase version bump は行わない。
 
 `DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
 
@@ -129,17 +127,11 @@ provider itemは `video_items` へ `VideoSource.SERVICE` として投影し、pr
 
 stream URL、再生時のreferrer / origin / user agent / Cookie値、動画ファイル本体は保存しない。SMB connection profileとcredentialはLibrary ownershipを維持し、Video tableへ複製しない。VideoがSMB fileへアクセスする場合はLibrary Domainの `SmbConnectionProfileRepository` と `SmbMediaFileAccess` capabilityを利用し、caller-owned share / root pathを `SmbMediaLocation` として明示する。
 
-version 28 -> 29 migrationでは従来Videoが暗黙利用していた `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ1回だけ取り込む。このmigrationに限りVideo DataからLibrary-owned `smb_library_servers` をreadするため、`foreign-table-access-allowlist.tsv` にversion 28 compatibility限定の例外を登録する。
-
-version 29 -> 30では `schema.create` のidempotent contributionにより `video_folders` と `video_saved_items` を追加する。既存VideoItemを自動保存せず、新しい保存状態は空から開始する。
+旧SMB source移行や旧subscription/video tableからprovider stateへの移行は、それぞれのupgrade baseline退役に伴いcurrent runtimeから削除済みである。これらの履歴的判断と旧schemaの意味はADR-0239 / ADR-0242を参照する。現行Video schemaはfresh schemaとidempotent initializerを正本とし、旧tableを互換入力として参照しない。
 
 ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
 
-version 30 -> 31では ADR-0242 によりprovider tableを追加し、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、provider item、publish time、read / watch-later stateをVideo-owned tableへ一度だけ取り込む。旧tableはfresh schemaで作成せず、current runtimeから参照しない。Video Dataから旧tableへのreadはこのmigrationだけを `foreign-table-access-allowlist.tsv` で許可する。
-
-version 31 -> 32では ADR-0246 により `video_providers.function_code` を追加する。migrationは既存provider、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みprovider rowのfunction codeはNULLのままとする。
-
-version 28由来のSMB Video itemはshareを含まない旧source IDを持つ。初回再同期時に同一server/pathから新identityが一意に決まる場合は、再生位置・duration・completed stateを新しいserver/share/path identityへ引き継いでから旧catalog rowを削除する。
+`video_providers.function_code` を含む現行provider schemaはfresh schemaとidempotent initializerで保証する。旧versionからの一度限りmigration詳細はADR-0246に履歴として保持し、現行compatibility baselineのruntime pathとしては扱わない。
 
 ### Podcast schema
 
@@ -201,7 +193,6 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | `asset_*` | `:feature:asset:data` |
 | `tasks` | `:feature:task:data` |
 | `chat_*` | `:feature:chat:data` |
-| legacy subscription/video tables | migration input only; owner manifest retained until v30 upgrade baseline retires |
 
 `gradle/table-ownership.gradle.kts` は owner data source 内の `CREATE TABLE IF NOT EXISTS` を抽出し、次を失敗させる。
 
@@ -244,13 +235,9 @@ owner API の合成で実測上の性能問題がある read path に限り read
 
 通常 runtime の Content / Curation / Summary / RSS / Library / Video / Podcast 間 foreign table accessはowner Domain capabilityへ収束している。
 
-現在の `foreign-table-access-allowlist.tsv` にはmigration限定のread-only例外だけを登録する。
+現在の `foreign-table-access-allowlist.tsv` にはmigration限定のread-only例外だけを登録する。現時点の例外はADR-0250のversion 33 -> 34 migrationで、旧Podcast feed selectionの表示名・URLとconsumed identityをPodcast-owned source stateへ取り込むため `feeds` / `articles` を一度だけreadするものだけである。
 
-- ADR-0239: version 28 -> 29で旧 `smb_library_servers` のshare / root pathを初期 `video_smb_sources` へ取り込む。
-- ADR-0242: version 30 -> 31で旧専用subscription/video tableの状態をVideo-owned provider stateへ取り込む。
-- ADR-0250: version 33 -> 34で旧Podcast feed selectionの表示名・URLとconsumed identityをPodcast-owned source stateへ取り込むため、`feeds` / `articles` を一度だけreadする。
-
-これらはruntime pathではない。各upgrade baselineが不要になった時点で対応するallowlist entryとmigration compatibilityを削除する。
+この例外はruntime pathではない。version 33 upgrade baselineが不要になった時点で対応するallowlist entryとmigration compatibilityを削除する。
 
 allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
 
