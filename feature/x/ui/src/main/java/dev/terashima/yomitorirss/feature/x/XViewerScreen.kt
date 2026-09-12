@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -119,6 +120,10 @@ fun XViewerScreen(
       settings.loadWithOverviewMode = false
 
       settings.userAgentString = settings.userAgentString.toBrowserCompatibleUserAgent()
+
+      // HTML5 media rendering relies on WebChromeClient callbacks even when the
+      // page keeps playback inline instead of opening a separate native player.
+      webChromeClient = WebChromeClient()
 
       // AndroidView does not clip the hosted View to Compose layout bounds by default.
       outlineProvider = ViewOutlineProvider.BOUNDS

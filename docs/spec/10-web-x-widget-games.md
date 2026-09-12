@@ -2,6 +2,7 @@
 
 - X向けWebView表示とカスタムCSS / JavaScript設定を提供する。
 - X WebViewでは表示中ページを手動で再読み込みでき、再読み込み後は保存済みのカスタムCSS / JavaScriptを再適用する。
+- X WebView内の投稿に添付された動画はWeb UIのメディア表示を利用して再生できる。
 - 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
 - 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。
