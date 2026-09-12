@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set GRADLE_VERSION=9.5.0
+set GRADLE_VERSION=9.6.1
 if "%GRADLE_USER_HOME%"=="" set GRADLE_USER_HOME=%USERPROFILE%\.gradle
 set CACHE_DIR=%GRADLE_USER_HOME%\native-wrapper
 set GRADLE_HOME=%CACHE_DIR%\gradle-%GRADLE_VERSION%
