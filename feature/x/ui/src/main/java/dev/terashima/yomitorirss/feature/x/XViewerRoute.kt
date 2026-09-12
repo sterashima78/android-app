@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.x
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,7 +67,10 @@ fun XViewerRoute(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
         tonalElevation = 6.dp,
       ) {
-        XViewerMediaDiagnosticsButton()
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+          XViewerMediaDiagnosticsButton()
+          XViewerOutlineClipDiagnosticButton()
+        }
       }
     }
   }
