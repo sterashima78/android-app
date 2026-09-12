@@ -113,6 +113,53 @@ private val MEDIA_DIAGNOSTICS_SCRIPT =
         }
       };
 
+      const describeLayoutNode = (element, depth) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          depth,
+          tag: element.tagName.toLowerCase(),
+          rect: {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+          },
+          clientWidth: element.clientWidth,
+          clientHeight: element.clientHeight,
+          scrollWidth: element.scrollWidth,
+          scrollHeight: element.scrollHeight,
+          style: {
+            display: style.display,
+            position: style.position,
+            width: style.width,
+            height: style.height,
+            minHeight: style.minHeight,
+            maxHeight: style.maxHeight,
+            aspectRatio: style.aspectRatio,
+            overflow: style.overflow,
+            overflowX: style.overflowX,
+            overflowY: style.overflowY,
+            paddingTop: style.paddingTop,
+            paddingBottom: style.paddingBottom,
+            flex: style.flex,
+            flexBasis: style.flexBasis,
+            alignSelf: style.alignSelf,
+          },
+        };
+      };
+
+      const describeLayoutChain = (video) => {
+        const chain = [];
+        let current = video;
+        for (let depth = 0; current && depth < 8; depth += 1) {
+          if (!(current instanceof Element)) break;
+          chain.push(describeLayoutNode(current, depth));
+          current = current.parentElement;
+        }
+        return chain;
+      };
+
       const videos = Array.from(document.querySelectorAll('video'))
         .slice(0, 6)
         .map((video, index) => {
@@ -148,11 +195,18 @@ private val MEDIA_DIAGNOSTICS_SCRIPT =
               opacity: style.opacity,
             },
             source: describeSource(video.currentSrc || video.src),
+            layoutChain: describeLayoutChain(video),
           };
         });
 
       return {
         documentVisibility: document.visibilityState,
+        viewport: {
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+          visualViewportWidth: window.visualViewport?.width ?? null,
+          visualViewportHeight: window.visualViewport?.height ?? null,
+        },
         videoCount: document.querySelectorAll('video').length,
         videos,
       };
