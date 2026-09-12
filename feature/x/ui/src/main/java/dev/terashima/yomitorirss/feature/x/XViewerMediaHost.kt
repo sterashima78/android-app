@@ -4,6 +4,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -25,11 +27,13 @@ internal fun XViewerMediaHost(
   modifier: Modifier = Modifier,
 ) {
   val rootView = LocalView.current.rootView
+  val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
   var fullscreenView by remember { mutableStateOf<View?>(null) }
   var fullscreenCallback by remember {
     mutableStateOf<WebChromeClient.CustomViewCallback?>(null)
   }
   var boundWebView by remember { mutableStateOf<WebView?>(null) }
+  var passBackToParent by remember { mutableStateOf(false) }
 
   fun hideFullscreenMedia() {
     val callback = fullscreenCallback
@@ -64,6 +68,24 @@ internal fun XViewerMediaHost(
         return@LaunchedEffect
       }
     }
+  }
+
+  BackHandler(enabled = boundWebView != null && !passBackToParent) {
+    when {
+      fullscreenView != null -> hideFullscreenMedia()
+      boundWebView?.canGoBack() == true -> boundWebView?.goBack()
+      else -> passBackToParent = true
+    }
+  }
+
+  LaunchedEffect(passBackToParent, backDispatcher) {
+    if (!passBackToParent) return@LaunchedEffect
+
+    // Let Compose disable this inner handler before forwarding the same Back
+    // action so the application-level handler can apply its normal behavior.
+    withFrameNanos { }
+    backDispatcher?.onBackPressed()
+    passBackToParent = false
   }
 
   // Keep cleanup tied to the host lifecycle. Keying this effect by boundWebView
