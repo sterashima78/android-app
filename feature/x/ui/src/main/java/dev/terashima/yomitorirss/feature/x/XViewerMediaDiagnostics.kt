@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.x
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -16,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
@@ -24,6 +27,7 @@ import org.json.JSONObject
 internal fun XViewerMediaDiagnosticsButton(
   modifier: Modifier = Modifier,
 ) {
+  val context = LocalContext.current
   val rootView = LocalView.current.rootView
   var diagnostics by remember { mutableStateOf<String?>(null) }
 
@@ -49,6 +53,16 @@ internal fun XViewerMediaDiagnosticsButton(
       confirmButton = {
         TextButton(onClick = { diagnostics = null }) {
           Text("閉じる")
+        }
+      },
+      dismissButton = {
+        TextButton(
+          onClick = {
+            context.getSystemService(ClipboardManager::class.java)
+              ?.setPrimaryClip(ClipData.newPlainText("media diagnostics", text))
+          },
+        ) {
+          Text("コピー")
         }
       },
       title = { Text("動画診断") },
