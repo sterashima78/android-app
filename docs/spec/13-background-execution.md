@@ -6,6 +6,7 @@
 - 統合ビューへ遷移する新着通知の件数には購読型動画を含めず、統合ビューで実際に確認できる未読件数と一致させる。
 - custom Video Providerのfunction実行はforeground Activityに依存せず、Video-owned runtimeからbackground refreshでも実行する。
 - Podcastの定刻生成は番組ごとに次のローカル日時を再計算するone-shot work chainとして実行し、通常の生成失敗後も翌日のscheduleを維持する。
+- Podcast生成taskは記事単位の完了数をAIタスクキューへ投影し、生成中・再生成中または途中失敗したtaskでは全記事数と未完了記事数を確認できる。
 - ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
