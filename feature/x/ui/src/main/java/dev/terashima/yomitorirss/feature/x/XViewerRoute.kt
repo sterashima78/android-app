@@ -1,9 +1,6 @@
 package dev.terashima.yomitorirss.feature.x
 
-import android.webkit.WebView
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,12 +14,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,20 +30,14 @@ fun XViewerRoute(
 ) {
   var showCustomizationSettings by remember { mutableStateOf(false) }
   var fullscreenMediaVisible by remember { mutableStateOf(false) }
-  var webViewGeneration by remember { mutableIntStateOf(0) }
-  var hostedWebView by remember { mutableStateOf<WebView?>(null) }
-  var recreationRestoreUrl by remember { mutableStateOf<String?>(null) }
 
   Box(modifier = modifier) {
-    key(webViewGeneration) {
-      XViewerMediaHost(
-        repository = repository,
-        onFullscreenChanged = { fullscreenMediaVisible = it },
-        restoreUrl = recreationRestoreUrl,
-        onWebViewBound = { hostedWebView = it },
-        modifier = Modifier.fillMaxSize(),
-      )
-    }
+    XViewerMediaHost(
+      repository = repository,
+      onFullscreenChanged = { fullscreenMediaVisible = it },
+      modifier = Modifier.fillMaxSize(),
+    )
+
     if (!fullscreenMediaVisible) {
       Surface(
         modifier = Modifier
@@ -65,33 +52,6 @@ fun XViewerRoute(
       ) {
         IconButton(onClick = { showCustomizationSettings = true }) {
           Icon(Icons.Default.Settings, contentDescription = "X 表示カスタマイズ設定")
-        }
-      }
-
-      Surface(
-        modifier = Modifier
-          .align(Alignment.BottomStart)
-          .windowInsetsPadding(
-            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start),
-          )
-          .padding(start = 12.dp, bottom = 76.dp),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-        tonalElevation = 6.dp,
-      ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-          XViewerMediaDiagnosticsButton()
-          XViewerLayoutBoundaryDiagnosticsButton()
-          XViewerDvhRecoveryButton()
-          TextButton(
-            onClick = {
-              recreationRestoreUrl = hostedWebView?.url ?: recreationRestoreUrl
-              fullscreenMediaVisible = false
-              webViewGeneration += 1
-            },
-          ) {
-            Text("Web再作成")
-          }
         }
       }
     }
