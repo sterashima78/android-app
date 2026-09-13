@@ -67,6 +67,9 @@ internal fun XViewerMediaHost(
       val webView = rootView.findDescendantWebView()
       if (webView != null) {
         webView.webChromeClient = chromeClient
+        // Install once for an already-loaded document; future full navigations
+        // reinstall through XMediaWebChromeClient when page progress reaches 100.
+        webView.installMediaViewportHeightRecovery()
         boundWebView = webView
         onWebViewBound(webView)
         restoreUrl?.takeIf { it.isNotBlank() && webView.url != it }?.let(webView::loadUrl)
