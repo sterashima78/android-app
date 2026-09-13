@@ -7,7 +7,7 @@ import android.webkit.WebView
 internal class XMediaWebChromeClient(
   private val onShowFullscreenView: (View, CustomViewCallback) -> Unit,
   private val onHideFullscreenView: () -> Unit,
-  private val onPageReady: (WebView) -> Unit = {},
+  private val onPageReady: (WebView) -> Unit,
 ) : WebChromeClient() {
   override fun onShowCustomView(view: View, callback: CustomViewCallback) {
     onShowFullscreenView(view, callback)
