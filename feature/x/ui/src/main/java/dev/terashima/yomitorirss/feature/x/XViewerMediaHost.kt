@@ -24,8 +24,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 internal fun XViewerMediaHost(
   repository: XViewerCssRepository,
   onFullscreenChanged: (Boolean) -> Unit,
-  restoreUrl: String? = null,
-  onWebViewBound: (WebView?) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val rootView = LocalView.current.rootView
@@ -61,18 +59,16 @@ internal fun XViewerMediaHost(
     )
   }
 
-  LaunchedEffect(rootView, chromeClient, restoreUrl) {
+  LaunchedEffect(rootView, chromeClient) {
     repeat(60) {
       withFrameNanos { }
       val webView = rootView.findDescendantWebView()
       if (webView != null) {
         webView.webChromeClient = chromeClient
-        // Install once for an already-loaded document; future full navigations
-        // reinstall through XMediaWebChromeClient when page progress reaches 100.
+        // The page may already be complete before this host binds the custom client.
+        // Install once now and reinstall after later full-page loads via the client.
         webView.installMediaViewportHeightRecovery()
         boundWebView = webView
-        onWebViewBound(webView)
-        restoreUrl?.takeIf { it.isNotBlank() && webView.url != it }?.let(webView::loadUrl)
         return@LaunchedEffect
       }
     }
@@ -97,11 +93,10 @@ internal fun XViewerMediaHost(
   }
 
   // Keep cleanup tied to the host lifecycle. Keying this effect by boundWebView
-  // disposed the previous effect immediately after binding and reset the exact
-  // WebChromeClient that had just been installed.
+  // disposes the previous effect immediately after binding and resets the exact
+  // WebChromeClient that was just installed.
   DisposableEffect(Unit) {
     onDispose {
-      onWebViewBound(null)
       boundWebView?.webChromeClient = WebChromeClient()
       fullscreenCallback?.onCustomViewHidden()
       fullscreenCallback = null
