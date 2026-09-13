@@ -24,6 +24,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 internal fun XViewerMediaHost(
   repository: XViewerCssRepository,
   onFullscreenChanged: (Boolean) -> Unit,
+  restoreUrl: String? = null,
+  onWebViewBound: (WebView?) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val rootView = LocalView.current.rootView
@@ -58,7 +60,7 @@ internal fun XViewerMediaHost(
     )
   }
 
-  LaunchedEffect(rootView, chromeClient) {
+  LaunchedEffect(rootView, chromeClient, restoreUrl) {
     repeat(60) {
       withFrameNanos { }
       val webView = rootView.findDescendantWebView()
@@ -69,6 +71,8 @@ internal fun XViewerMediaHost(
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         webView.webChromeClient = chromeClient
         boundWebView = webView
+        onWebViewBound(webView)
+        restoreUrl?.takeIf { it.isNotBlank() && webView.url != it }?.let(webView::loadUrl)
         return@LaunchedEffect
       }
     }
@@ -97,6 +101,7 @@ internal fun XViewerMediaHost(
   // WebChromeClient that had just been installed.
   DisposableEffect(Unit) {
     onDispose {
+      onWebViewBound(null)
       boundWebView?.webChromeClient = WebChromeClient()
       fullscreenCallback?.onCustomViewHidden()
       fullscreenCallback = null
