@@ -3,6 +3,22 @@ package dev.terashima.yomitorirss.feature.x
 import android.webkit.WebView
 
 private const val X_MEDIA_VIEWPORT_RECOVERY_STATE_KEY = "__yomitoriMediaViewportRecovery"
+private const val X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS = 250L
+private const val X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES = 80
+
+internal fun WebView.installMediaViewportHeightRecoveryWhenReady(retryCount: Int = 0) {
+  evaluateJavascript("document.readyState") { readyState ->
+    if (readyState == "\"interactive\"" || readyState == "\"complete\"") {
+      installMediaViewportHeightRecovery()
+      return@evaluateJavascript
+    }
+    if (retryCount >= X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES) return@evaluateJavascript
+    postDelayed(
+      { installMediaViewportHeightRecoveryWhenReady(retryCount + 1) },
+      X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS,
+    )
+  }
+}
 
 internal fun WebView.installMediaViewportHeightRecovery() {
   evaluateJavascript(MEDIA_DVH_RECOVERY_SCRIPT, null)
