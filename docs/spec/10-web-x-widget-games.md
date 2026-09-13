@@ -3,7 +3,7 @@
 - X向けWebView表示とカスタムCSS / JavaScript設定を提供する。
 - X WebViewでは表示中ページを手動で再読み込みでき、再読み込み後は保存済みのカスタムCSS / JavaScriptを再適用する。
 - X WebView内に戻れるWeb履歴がある場合、システムBackはアプリ共通のBack処理より先にWebView内の履歴を1段戻す。Web履歴がない場合はアプリ共通のBack処理へ委譲する。
-- X WebView内の投稿に添付された動画はWeb UIのメディア表示を利用して再生できる。動画を含む祖先要素でinline styleのdynamic viewport heightが0pxへ誤って解決された場合は、その要素に限って実測viewport高へ自動補正し、media viewerの0-height collapseを回避する。
+- X WebView内の投稿に添付された動画はWeb UIのメディア表示を利用して再生できる。WebViewでmedia viewerのviewport高さが0へ誤解決される場合は、実際のviewport高を使って表示崩れを自動復旧する。
 - 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
 - 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。

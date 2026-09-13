@@ -2,23 +2,29 @@ package dev.terashima.yomitorirss.feature.x
 
 import android.webkit.WebView
 
-private const val X_MEDIA_VIEWPORT_RECOVERY_STATE_KEY = "__yomitoriMediaViewportRecovery"
+private const val MEDIA_VIEWPORT_RECOVERY_STATE_KEY = "__yomitoriMediaViewportRecovery"
 
+/**
+ * Installs a page-local workaround for media containers whose inline `dvh` size resolves to zero.
+ *
+ * Recovery is limited to ancestors of video elements, follows viewport changes, and stops owning a
+ * property as soon as the page writes a different value.
+ */
 internal fun WebView.installMediaViewportHeightRecovery() {
-  evaluateJavascript(MEDIA_DVH_RECOVERY_SCRIPT, null)
+  evaluateJavascript(MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT, null)
 }
 
-private val MEDIA_DVH_RECOVERY_SCRIPT =
+private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
   """
     (() => {
-      const stateKey = '$X_MEDIA_VIEWPORT_RECOVERY_STATE_KEY';
+      const stateKey = '$MEDIA_VIEWPORT_RECOVERY_STATE_KEY';
       const existing = window[stateKey];
       if (existing && typeof existing.repair === 'function') {
         existing.repair();
         return;
       }
 
-      const originals = new WeakMap();
+      const tracked = new WeakMap();
       let scheduled = false;
       let applying = false;
 
@@ -55,7 +61,7 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
           }
 
           for (const element of candidates) {
-            let saved = originals.get(element);
+            let saved = tracked.get(element);
             const inlineHeight = element.style.height;
             const inlineMaxHeight = element.style.maxHeight;
             const inlineHeightPixels = parseDvh(inlineHeight, height);
@@ -69,7 +75,7 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
                   appliedHeight: null,
                   appliedMaxHeight: null,
                 };
-                originals.set(element, saved);
+                tracked.set(element, saved);
               } else {
                 if (inlineHeightPixels != null) saved.height = inlineHeight;
                 if (inlineMaxHeightPixels != null) saved.maxHeight = inlineMaxHeight;
