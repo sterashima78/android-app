@@ -55,7 +55,6 @@ internal fun XViewerMediaHost(
         }
       },
       onHideFullscreenView = ::hideFullscreenMedia,
-      onPageReady = { webView -> webView.installMediaViewportHeightRecovery() },
     )
   }
 
@@ -66,7 +65,7 @@ internal fun XViewerMediaHost(
       if (webView != null) {
         webView.webChromeClient = chromeClient
         // The page may already be complete before this host binds the custom client.
-        // Install once now and reinstall after later full-page loads via the client.
+        // Install once now; later full-page loads reinstall from XMediaWebChromeClient.
         webView.installMediaViewportHeightRecovery()
         boundWebView = webView
         return@LaunchedEffect
