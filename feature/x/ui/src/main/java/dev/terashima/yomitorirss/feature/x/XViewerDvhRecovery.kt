@@ -90,7 +90,11 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
             if (heightPixels != null) {
               const target = heightPixels + 'px';
               const stillOwned = saved.appliedHeight != null && inlineHeight === saved.appliedHeight;
-              if (collapsedHeight || (stillOwned && saved.appliedHeight !== target)) {
+              const pageStillRequestsDvh = inlineHeightPixels != null;
+              if (
+                (pageStillRequestsDvh && collapsedHeight) ||
+                (stillOwned && saved.appliedHeight !== target)
+              ) {
                 if (inlineHeight !== target || element.style.getPropertyPriority('height') !== 'important') {
                   element.style.setProperty('height', target, 'important');
                 }
@@ -101,7 +105,11 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
             if (maxHeightPixels != null) {
               const target = maxHeightPixels + 'px';
               const stillOwned = saved.appliedMaxHeight != null && inlineMaxHeight === saved.appliedMaxHeight;
-              if (collapsedHeight || collapsedMaxHeight || (stillOwned && saved.appliedMaxHeight !== target)) {
+              const pageStillRequestsDvh = inlineMaxHeightPixels != null;
+              if (
+                (pageStillRequestsDvh && (collapsedHeight || collapsedMaxHeight)) ||
+                (stillOwned && saved.appliedMaxHeight !== target)
+              ) {
                 if (
                   inlineMaxHeight !== target ||
                   element.style.getPropertyPriority('max-height') !== 'important'
