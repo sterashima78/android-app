@@ -3,33 +3,6 @@ package dev.terashima.yomitorirss.feature.x
 import android.webkit.WebView
 
 private const val X_MEDIA_VIEWPORT_RECOVERY_STATE_KEY = "__yomitoriMediaViewportRecovery"
-private const val X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS = 250L
-private const val X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES = 80
-
-internal fun WebView.installMediaViewportHeightRecoveryWhenReady(retryCount: Int = 0) {
-  val currentUrl = url
-  if (currentUrl.isNullOrBlank() || currentUrl == "about:blank") {
-    if (retryCount < X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES) {
-      postDelayed(
-        { installMediaViewportHeightRecoveryWhenReady(retryCount + 1) },
-        X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS,
-      )
-    }
-    return
-  }
-
-  evaluateJavascript("document.readyState") { readyState ->
-    if (readyState == "\"interactive\"" || readyState == "\"complete\"") {
-      installMediaViewportHeightRecovery()
-      return@evaluateJavascript
-    }
-    if (retryCount >= X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES) return@evaluateJavascript
-    postDelayed(
-      { installMediaViewportHeightRecoveryWhenReady(retryCount + 1) },
-      X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS,
-    )
-  }
-}
 
 internal fun WebView.installMediaViewportHeightRecovery() {
   evaluateJavascript(MEDIA_DVH_RECOVERY_SCRIPT, null)
@@ -62,17 +35,6 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
         return height * amount / 100;
       };
 
-      const setPixelsIfNeeded = (element, property, pixels) => {
-        const value = pixels + 'px';
-        if (
-          element.style.getPropertyValue(property) === value &&
-          element.style.getPropertyPriority(property) === 'important'
-        ) {
-          return;
-        }
-        element.style.setProperty(property, value, 'important');
-      };
-
       const repair = () => {
         scheduled = false;
         if (applying) return;
@@ -93,31 +55,61 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
           }
 
           for (const element of candidates) {
-            const saved = originals.get(element);
-            const sourceHeight = saved?.height ?? element.style.height;
-            const sourceMaxHeight = saved?.maxHeight ?? element.style.maxHeight;
-            const heightPixels = parseDvh(sourceHeight, height);
-            const maxHeightPixels = parseDvh(sourceMaxHeight, height);
+            let saved = originals.get(element);
+            const inlineHeight = element.style.height;
+            const inlineMaxHeight = element.style.maxHeight;
+            const inlineHeightPixels = parseDvh(inlineHeight, height);
+            const inlineMaxHeightPixels = parseDvh(inlineMaxHeight, height);
+
+            if (inlineHeightPixels != null || inlineMaxHeightPixels != null) {
+              if (!saved) {
+                saved = {
+                  height: inlineHeight,
+                  maxHeight: inlineMaxHeight,
+                  appliedHeight: null,
+                  appliedMaxHeight: null,
+                };
+                originals.set(element, saved);
+              } else {
+                if (inlineHeightPixels != null) saved.height = inlineHeight;
+                if (inlineMaxHeightPixels != null) saved.maxHeight = inlineMaxHeight;
+              }
+            }
+
+            if (!saved) continue;
+
+            const heightPixels = parseDvh(saved.height, height);
+            const maxHeightPixels = parseDvh(saved.maxHeight, height);
             if (heightPixels == null && maxHeightPixels == null) continue;
 
             const rect = element.getBoundingClientRect();
             const style = getComputedStyle(element);
             const collapsedHeight = rect.height <= 1;
             const collapsedMaxHeight = style.maxHeight === '0px';
-            if (!collapsedHeight && !collapsedMaxHeight && !saved) continue;
 
-            if (!saved) {
-              originals.set(element, {
-                height: element.style.height,
-                maxHeight: element.style.maxHeight,
-              });
+            if (heightPixels != null) {
+              const target = heightPixels + 'px';
+              const stillOwned = saved.appliedHeight != null && inlineHeight === saved.appliedHeight;
+              if (collapsedHeight || (stillOwned && saved.appliedHeight !== target)) {
+                if (inlineHeight !== target || element.style.getPropertyPriority('height') !== 'important') {
+                  element.style.setProperty('height', target, 'important');
+                }
+                saved.appliedHeight = target;
+              }
             }
 
-            if (heightPixels != null && (collapsedHeight || saved)) {
-              setPixelsIfNeeded(element, 'height', heightPixels);
-            }
-            if (maxHeightPixels != null && (collapsedHeight || collapsedMaxHeight || saved)) {
-              setPixelsIfNeeded(element, 'max-height', maxHeightPixels);
+            if (maxHeightPixels != null) {
+              const target = maxHeightPixels + 'px';
+              const stillOwned = saved.appliedMaxHeight != null && inlineMaxHeight === saved.appliedMaxHeight;
+              if (collapsedHeight || collapsedMaxHeight || (stillOwned && saved.appliedMaxHeight !== target)) {
+                if (
+                  inlineMaxHeight !== target ||
+                  element.style.getPropertyPriority('max-height') !== 'important'
+                ) {
+                  element.style.setProperty('max-height', target, 'important');
+                }
+                saved.appliedMaxHeight = target;
+              }
             }
           }
         } finally {
