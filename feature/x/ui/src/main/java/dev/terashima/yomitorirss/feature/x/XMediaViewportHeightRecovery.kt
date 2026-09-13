@@ -27,16 +27,20 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
         window.innerHeight ||
         document.documentElement.clientHeight;
 
-      const resolveDvh = (value, viewportHeight) => {
+      const dvhAmount = (value) => {
         const match = /^([0-9]+(?:\.[0-9]+)?)dvh$/i.exec((value || '').trim());
         if (!match) return null;
         const amount = Number(match[1]);
-        if (!Number.isFinite(amount)) return null;
-        return viewportHeight * amount / 100;
+        return Number.isFinite(amount) ? amount : null;
       };
 
-      const trackPageValue = (state, key, appliedKey, currentValue, viewportHeight) => {
-        if (resolveDvh(currentValue, viewportHeight) != null) {
+      const resolveDvh = (value, viewportHeight) => {
+        const amount = dvhAmount(value);
+        return amount == null ? null : viewportHeight * amount / 100;
+      };
+
+      const trackPageValue = (state, key, appliedKey, currentValue) => {
+        if (dvhAmount(currentValue) != null) {
           state[key] = currentValue;
           return;
         }
@@ -68,7 +72,11 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
           for (const element of candidates) {
             const inlineHeight = element.style.height;
             const inlineMaxHeight = element.style.maxHeight;
+            const inlineHeightPixels = resolveDvh(inlineHeight, viewportHeight);
+            const inlineMaxHeightPixels = resolveDvh(inlineMaxHeight, viewportHeight);
             let state = tracked.get(element);
+            if (!state && inlineHeightPixels == null && inlineMaxHeightPixels == null) continue;
+
             if (!state) {
               state = {
                 requestedHeight: null,
@@ -79,8 +87,8 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
               tracked.set(element, state);
             }
 
-            trackPageValue(state, 'requestedHeight', 'appliedHeight', inlineHeight, viewportHeight);
-            trackPageValue(state, 'requestedMaxHeight', 'appliedMaxHeight', inlineMaxHeight, viewportHeight);
+            trackPageValue(state, 'requestedHeight', 'appliedHeight', inlineHeight);
+            trackPageValue(state, 'requestedMaxHeight', 'appliedMaxHeight', inlineMaxHeight);
 
             const heightPixels = resolveDvh(state.requestedHeight, viewportHeight);
             const maxHeightPixels = resolveDvh(state.requestedMaxHeight, viewportHeight);
@@ -93,7 +101,7 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
 
             if (heightPixels != null) {
               const target = heightPixels + 'px';
-              const pageStillRequestsDvh = resolveDvh(inlineHeight, viewportHeight) != null;
+              const pageStillRequestsDvh = inlineHeightPixels != null;
               const recoveryOwnsValue = state.appliedHeight != null && inlineHeight === state.appliedHeight;
               if ((pageStillRequestsDvh && collapsedHeight) || (recoveryOwnsValue && state.appliedHeight !== target)) {
                 element.style.setProperty('height', target, 'important');
@@ -103,7 +111,7 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
 
             if (maxHeightPixels != null) {
               const target = maxHeightPixels + 'px';
-              const pageStillRequestsDvh = resolveDvh(inlineMaxHeight, viewportHeight) != null;
+              const pageStillRequestsDvh = inlineMaxHeightPixels != null;
               const recoveryOwnsValue = state.appliedMaxHeight != null && inlineMaxHeight === state.appliedMaxHeight;
               if (
                 (pageStillRequestsDvh && (collapsedHeight || collapsedMaxHeight)) ||
@@ -125,7 +133,28 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
         requestAnimationFrame(repair);
       };
 
-      const observer = new MutationObserver(schedule);
+      const containsVideo = (node) =>
+        node instanceof HTMLVideoElement ||
+        (node instanceof Element && node.querySelector('video') != null);
+
+      const mutationNeedsRepair = (mutation) => {
+        if (mutation.type === 'childList') {
+          return Array.from(mutation.addedNodes).some(containsVideo);
+        }
+        if (mutation.type !== 'attributes' || !(mutation.target instanceof HTMLElement)) {
+          return false;
+        }
+
+        const element = mutation.target;
+        return tracked.has(element) ||
+          dvhAmount(element.style.height) != null ||
+          dvhAmount(element.style.maxHeight) != null ||
+          element.querySelector('video') != null;
+      };
+
+      const observer = new MutationObserver((mutations) => {
+        if (mutations.some(mutationNeedsRepair)) schedule();
+      });
       observer.observe(document.documentElement, {
         subtree: true,
         childList: true,
