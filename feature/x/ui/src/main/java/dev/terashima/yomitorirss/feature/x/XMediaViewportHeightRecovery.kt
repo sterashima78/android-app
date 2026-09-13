@@ -4,6 +4,12 @@ import android.webkit.WebView
 
 private const val MEDIA_VIEWPORT_RECOVERY_STATE_KEY = "__yomitoriMediaViewportRecovery"
 
+/**
+ * Installs a page-local workaround for media containers whose inline `dvh` size resolves to zero.
+ *
+ * Recovery is limited to ancestors of video elements, follows viewport changes, and stops owning a
+ * property as soon as the page writes a different value.
+ */
 internal fun WebView.installMediaViewportHeightRecovery() {
   evaluateJavascript(MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT, null)
 }
