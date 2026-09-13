@@ -7,6 +7,17 @@ private const val X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS = 250L
 private const val X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES = 80
 
 internal fun WebView.installMediaViewportHeightRecoveryWhenReady(retryCount: Int = 0) {
+  val currentUrl = url
+  if (currentUrl.isNullOrBlank() || currentUrl == "about:blank") {
+    if (retryCount < X_MEDIA_VIEWPORT_RECOVERY_MAX_RETRIES) {
+      postDelayed(
+        { installMediaViewportHeightRecoveryWhenReady(retryCount + 1) },
+        X_MEDIA_VIEWPORT_RECOVERY_RETRY_DELAY_MS,
+      )
+    }
+    return
+  }
+
   evaluateJavascript("document.readyState") { readyState ->
     if (readyState == "\"interactive\"" || readyState == "\"complete\"") {
       installMediaViewportHeightRecovery()
@@ -51,6 +62,17 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
         return height * amount / 100;
       };
 
+      const setPixelsIfNeeded = (element, property, pixels) => {
+        const value = pixels + 'px';
+        if (
+          element.style.getPropertyValue(property) === value &&
+          element.style.getPropertyPriority(property) === 'important'
+        ) {
+          return;
+        }
+        element.style.setProperty(property, value, 'important');
+      };
+
       const repair = () => {
         scheduled = false;
         if (applying) return;
@@ -92,10 +114,10 @@ private val MEDIA_DVH_RECOVERY_SCRIPT =
             }
 
             if (heightPixels != null && (collapsedHeight || saved)) {
-              element.style.setProperty('height', heightPixels + 'px', 'important');
+              setPixelsIfNeeded(element, 'height', heightPixels);
             }
             if (maxHeightPixels != null && (collapsedHeight || collapsedMaxHeight || saved)) {
-              element.style.setProperty('max-height', maxHeightPixels + 'px', 'important');
+              setPixelsIfNeeded(element, 'max-height', maxHeightPixels);
             }
           }
         } finally {
