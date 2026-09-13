@@ -57,6 +57,7 @@ internal fun XViewerMediaHost(
         }
       },
       onHideFullscreenView = ::hideFullscreenMedia,
+      onPageReady = { webView -> webView.installMediaViewportHeightRecovery() },
     )
   }
 
@@ -66,7 +67,6 @@ internal fun XViewerMediaHost(
       val webView = rootView.findDescendantWebView()
       if (webView != null) {
         webView.webChromeClient = chromeClient
-        webView.installMediaViewportHeightRecoveryWhenReady()
         boundWebView = webView
         onWebViewBound(webView)
         restoreUrl?.takeIf { it.isNotBlank() && webView.url != it }?.let(webView::loadUrl)
