@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.x
 
+import android.webkit.WebView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -37,12 +38,16 @@ fun XViewerRoute(
   var showCustomizationSettings by remember { mutableStateOf(false) }
   var fullscreenMediaVisible by remember { mutableStateOf(false) }
   var webViewGeneration by remember { mutableIntStateOf(0) }
+  var hostedWebView by remember { mutableStateOf<WebView?>(null) }
+  var recreationRestoreUrl by remember { mutableStateOf<String?>(null) }
 
   Box(modifier = modifier) {
     key(webViewGeneration) {
       XViewerMediaHost(
         repository = repository,
         onFullscreenChanged = { fullscreenMediaVisible = it },
+        restoreUrl = recreationRestoreUrl,
+        onWebViewBound = { hostedWebView = it },
         modifier = Modifier.fillMaxSize(),
       )
     }
@@ -78,6 +83,7 @@ fun XViewerRoute(
           XViewerMediaDiagnosticsButton()
           TextButton(
             onClick = {
+              recreationRestoreUrl = hostedWebView?.url ?: recreationRestoreUrl
               fullscreenMediaVisible = false
               webViewGeneration += 1
             },
