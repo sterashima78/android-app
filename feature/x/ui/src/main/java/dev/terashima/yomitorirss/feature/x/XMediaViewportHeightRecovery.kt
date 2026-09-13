@@ -19,8 +19,8 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
     (() => {
       const stateKey = '$MEDIA_VIEWPORT_RECOVERY_STATE_KEY';
       const existing = window[stateKey];
-      if (existing && typeof existing.schedule === 'function') {
-        existing.schedule();
+      if (existing && typeof existing.repair === 'function') {
+        existing.repair();
         return;
       }
 
@@ -28,40 +28,25 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
       let scheduled = false;
       let applying = false;
 
-      const currentViewportHeight = () =>
+      const viewportHeight = () =>
         window.visualViewport?.height ||
         window.innerHeight ||
         document.documentElement.clientHeight;
 
-      const dvhAmount = (value) => {
+      const parseDvh = (value, height) => {
         const match = /^([0-9]+(?:\.[0-9]+)?)dvh$/i.exec((value || '').trim());
         if (!match) return null;
         const amount = Number(match[1]);
-        return Number.isFinite(amount) ? amount : null;
-      };
-
-      const resolveDvh = (value, viewportHeight) => {
-        const amount = dvhAmount(value);
-        return amount == null ? null : viewportHeight * amount / 100;
-      };
-
-      const trackPageValue = (state, key, appliedKey, currentValue) => {
-        if (dvhAmount(currentValue) != null) {
-          state[key] = currentValue;
-          return;
-        }
-        if (state[appliedKey] == null || currentValue !== state[appliedKey]) {
-          state[key] = null;
-          state[appliedKey] = null;
-        }
+        if (!Number.isFinite(amount)) return null;
+        return height * amount / 100;
       };
 
       const repair = () => {
         scheduled = false;
         if (applying) return;
 
-        const viewportHeight = currentViewportHeight();
-        if (!Number.isFinite(viewportHeight) || viewportHeight <= 1) return;
+        const height = viewportHeight();
+        if (!Number.isFinite(height) || height <= 1) return;
 
         applying = true;
         try {
@@ -76,55 +61,68 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
           }
 
           for (const element of candidates) {
+            let saved = tracked.get(element);
             const inlineHeight = element.style.height;
             const inlineMaxHeight = element.style.maxHeight;
-            const inlineHeightPixels = resolveDvh(inlineHeight, viewportHeight);
-            const inlineMaxHeightPixels = resolveDvh(inlineMaxHeight, viewportHeight);
-            let state = tracked.get(element);
-            if (!state && inlineHeightPixels == null && inlineMaxHeightPixels == null) continue;
+            const inlineHeightPixels = parseDvh(inlineHeight, height);
+            const inlineMaxHeightPixels = parseDvh(inlineMaxHeight, height);
 
-            if (!state) {
-              state = {
-                requestedHeight: null,
-                requestedMaxHeight: null,
-                appliedHeight: null,
-                appliedMaxHeight: null,
-              };
-              tracked.set(element, state);
+            if (inlineHeightPixels != null || inlineMaxHeightPixels != null) {
+              if (!saved) {
+                saved = {
+                  height: inlineHeight,
+                  maxHeight: inlineMaxHeight,
+                  appliedHeight: null,
+                  appliedMaxHeight: null,
+                };
+                tracked.set(element, saved);
+              } else {
+                if (inlineHeightPixels != null) saved.height = inlineHeight;
+                if (inlineMaxHeightPixels != null) saved.maxHeight = inlineMaxHeight;
+              }
             }
 
-            trackPageValue(state, 'requestedHeight', 'appliedHeight', inlineHeight);
-            trackPageValue(state, 'requestedMaxHeight', 'appliedMaxHeight', inlineMaxHeight);
+            if (!saved) continue;
 
-            const heightPixels = resolveDvh(state.requestedHeight, viewportHeight);
-            const maxHeightPixels = resolveDvh(state.requestedMaxHeight, viewportHeight);
+            const heightPixels = parseDvh(saved.height, height);
+            const maxHeightPixels = parseDvh(saved.maxHeight, height);
             if (heightPixels == null && maxHeightPixels == null) continue;
 
             const rect = element.getBoundingClientRect();
-            const computed = getComputedStyle(element);
+            const style = getComputedStyle(element);
             const collapsedHeight = rect.height <= 1;
-            const collapsedMaxHeight = computed.maxHeight === '0px';
+            const collapsedMaxHeight = style.maxHeight === '0px';
 
             if (heightPixels != null) {
               const target = heightPixels + 'px';
+              const stillOwned = saved.appliedHeight != null && inlineHeight === saved.appliedHeight;
               const pageStillRequestsDvh = inlineHeightPixels != null;
-              const recoveryOwnsValue = state.appliedHeight != null && inlineHeight === state.appliedHeight;
-              if ((pageStillRequestsDvh && collapsedHeight) || (recoveryOwnsValue && state.appliedHeight !== target)) {
-                element.style.setProperty('height', target, 'important');
-                state.appliedHeight = target;
+              if (
+                (pageStillRequestsDvh && collapsedHeight) ||
+                (stillOwned && saved.appliedHeight !== target)
+              ) {
+                if (inlineHeight !== target || element.style.getPropertyPriority('height') !== 'important') {
+                  element.style.setProperty('height', target, 'important');
+                }
+                saved.appliedHeight = target;
               }
             }
 
             if (maxHeightPixels != null) {
               const target = maxHeightPixels + 'px';
+              const stillOwned = saved.appliedMaxHeight != null && inlineMaxHeight === saved.appliedMaxHeight;
               const pageStillRequestsDvh = inlineMaxHeightPixels != null;
-              const recoveryOwnsValue = state.appliedMaxHeight != null && inlineMaxHeight === state.appliedMaxHeight;
               if (
                 (pageStillRequestsDvh && (collapsedHeight || collapsedMaxHeight)) ||
-                (recoveryOwnsValue && state.appliedMaxHeight !== target)
+                (stillOwned && saved.appliedMaxHeight !== target)
               ) {
-                element.style.setProperty('max-height', target, 'important');
-                state.appliedMaxHeight = target;
+                if (
+                  inlineMaxHeight !== target ||
+                  element.style.getPropertyPriority('max-height') !== 'important'
+                ) {
+                  element.style.setProperty('max-height', target, 'important');
+                }
+                saved.appliedMaxHeight = target;
               }
             }
           }
@@ -133,44 +131,31 @@ private val MEDIA_VIEWPORT_HEIGHT_RECOVERY_SCRIPT =
         }
       };
 
-      const schedule = () => {
+      const scheduleRepair = () => {
         if (scheduled || applying) return;
         scheduled = true;
         requestAnimationFrame(repair);
       };
 
-      const containsVideo = (node) =>
-        node instanceof HTMLVideoElement ||
-        (node instanceof Element && node.querySelector('video') != null);
-
-      const mutationNeedsRepair = (mutation) => {
-        if (mutation.type === 'childList') {
-          return Array.from(mutation.addedNodes).some(containsVideo);
-        }
-        if (mutation.type !== 'attributes' || !(mutation.target instanceof HTMLElement)) {
-          return false;
-        }
-
-        const element = mutation.target;
-        return tracked.has(element) ||
-          dvhAmount(element.style.height) != null ||
-          dvhAmount(element.style.maxHeight) != null ||
-          element.querySelector('video') != null;
-      };
-
-      const observer = new MutationObserver((mutations) => {
-        if (mutations.some(mutationNeedsRepair)) schedule();
-      });
+      const observer = new MutationObserver(scheduleRepair);
       observer.observe(document.documentElement, {
         subtree: true,
         childList: true,
         attributes: true,
         attributeFilter: ['style'],
       });
-      window.visualViewport?.addEventListener('resize', schedule);
-      window.addEventListener('resize', schedule);
-      window[stateKey] = { schedule };
+      window.visualViewport?.addEventListener('resize', scheduleRepair);
+      window.addEventListener('resize', scheduleRepair);
 
-      schedule();
+      window[stateKey] = {
+        repair: scheduleRepair,
+        stop: () => {
+          observer.disconnect();
+          window.visualViewport?.removeEventListener('resize', scheduleRepair);
+          window.removeEventListener('resize', scheduleRepair);
+        },
+      };
+
+      scheduleRepair();
     })();
   """.trimIndent()
