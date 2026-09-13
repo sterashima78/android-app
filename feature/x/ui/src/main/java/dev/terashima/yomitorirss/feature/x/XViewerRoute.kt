@@ -82,6 +82,7 @@ fun XViewerRoute(
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
           XViewerMediaDiagnosticsButton()
           XViewerLayoutBoundaryDiagnosticsButton()
+          XViewerDvhRecoveryButton()
           TextButton(
             onClick = {
               recreationRestoreUrl = hostedWebView?.url ?: recreationRestoreUrl
