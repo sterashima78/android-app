@@ -65,11 +65,8 @@ internal fun XViewerMediaHost(
       withFrameNanos { }
       val webView = rootView.findDescendantWebView()
       if (webView != null) {
-        // Keep the hosted WebView on a hardware-backed layer explicitly. The app
-        // is hardware accelerated already, but inline video uses a distinct
-        // compositing path that can fail when hosted through AndroidView.
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         webView.webChromeClient = chromeClient
+        webView.installMediaViewportHeightRecoveryWhenReady()
         boundWebView = webView
         onWebViewBound(webView)
         restoreUrl?.takeIf { it.isNotBlank() && webView.url != it }?.let(webView::loadUrl)
