@@ -4,7 +4,7 @@
 - X WebViewでは表示中ページを手動で再読み込みでき、再読み込み後は保存済みのカスタムCSS / JavaScriptを再適用する。
 - X WebView内に戻れるWeb履歴がある場合、システムBackはアプリ共通のBack処理より先にWebView内の履歴を1段戻す。Web履歴がない場合はアプリ共通のBack処理へ委譲する。
 - X WebView内の投稿に添付された動画はWeb UIのメディア表示を利用して再生できる。
-- X WebViewでは表示中のvideo要素について、再生準備状態、network状態、media error、再生状態、描画サイズ、source種別、親要素のレイアウト状態、重なり順・描画関連style、現在フレームの簡易サンプルを端末上で診断表示し、診断結果をクリップボードへコピーできる。診断画面からデコード済みvideo frameを一時canvasへ継続描画してvideo描画レイヤー固有の問題かを確認でき、native outline clippingを現在のWebViewインスタンスだけ一時解除して描画影響を切り分けられる。
+- X WebViewでは表示中のvideo要素について、再生準備状態、network状態、media error、再生状態、描画サイズ、source種別、親要素のレイアウト状態、重なり順・描画関連style、現在フレームの簡易サンプルを端末上で診断表示し、診断結果をクリップボードへコピーできる。診断画面からデコード済みvideo frameを一時canvasへ継続描画してvideo描画レイヤー固有の問題かを確認できる。また、hosted WebView subtreeを一時的に再作成して、単純なreloadでは解消しないrenderer / compositor状態を切り分けられる。
 - 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
 - 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。

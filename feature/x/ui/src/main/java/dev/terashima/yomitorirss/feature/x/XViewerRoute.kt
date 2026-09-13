@@ -16,8 +16,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,13 +36,16 @@ fun XViewerRoute(
 ) {
   var showCustomizationSettings by remember { mutableStateOf(false) }
   var fullscreenMediaVisible by remember { mutableStateOf(false) }
+  var webViewGeneration by remember { mutableIntStateOf(0) }
 
   Box(modifier = modifier) {
-    XViewerMediaHost(
-      repository = repository,
-      onFullscreenChanged = { fullscreenMediaVisible = it },
-      modifier = Modifier.fillMaxSize(),
-    )
+    key(webViewGeneration) {
+      XViewerMediaHost(
+        repository = repository,
+        onFullscreenChanged = { fullscreenMediaVisible = it },
+        modifier = Modifier.fillMaxSize(),
+      )
+    }
     if (!fullscreenMediaVisible) {
       Surface(
         modifier = Modifier
@@ -69,7 +76,14 @@ fun XViewerRoute(
       ) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
           XViewerMediaDiagnosticsButton()
-          XViewerOutlineClipDiagnosticButton()
+          TextButton(
+            onClick = {
+              fullscreenMediaVisible = false
+              webViewGeneration += 1
+            },
+          ) {
+            Text("Web再作成")
+          }
         }
       }
     }
