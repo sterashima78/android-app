@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.bookmark
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,8 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +41,23 @@ enum class BookmarkTab(val label: String) {
   FOLDERS("フォルダ"),
   TAGS("タグ"),
   IMPORT("インポート"),
+}
+
+internal enum class BookmarkSortOption(val label: String) {
+  BOOKMARKED_NEWEST("ブックマーク日・新しい順"),
+  BOOKMARKED_OLDEST("ブックマーク日・古い順"),
+  PUBLISHED_NEWEST("記事公開日・新しい順"),
+  PUBLISHED_OLDEST("記事公開日・古い順"),
+}
+
+internal fun sortBookmarks(
+  bookmarks: List<BookmarkedArticle>,
+  option: BookmarkSortOption,
+): List<BookmarkedArticle> = when (option) {
+  BookmarkSortOption.BOOKMARKED_NEWEST -> bookmarks.sortedByDescending(BookmarkedArticle::savedAt)
+  BookmarkSortOption.BOOKMARKED_OLDEST -> bookmarks.sortedBy(BookmarkedArticle::savedAt)
+  BookmarkSortOption.PUBLISHED_NEWEST -> bookmarks.sortedByDescending { it.article.publishedAt }
+  BookmarkSortOption.PUBLISHED_OLDEST -> bookmarks.sortedBy { it.article.publishedAt }
 }
 
 @Composable
@@ -133,12 +154,35 @@ private fun BookmarkSavedScreen(
   isReprocessingEnrichment: Boolean,
 ) {
   var confirmingReprocess by remember { mutableStateOf(false) }
+  var sortMenuOpen by remember { mutableStateOf(false) }
+  var sortOption by remember { mutableStateOf(BookmarkSortOption.BOOKMARKED_NEWEST) }
 
   Column(modifier.fillMaxSize()) {
     Row(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-      horizontalArrangement = Arrangement.End,
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
     ) {
+      Box {
+        TextButton(onClick = { sortMenuOpen = true }) {
+          Text(sortOption.label)
+          Icon(Icons.Default.ArrowDropDown, contentDescription = "並び順を変更")
+        }
+        DropdownMenu(
+          expanded = sortMenuOpen,
+          onDismissRequest = { sortMenuOpen = false },
+        ) {
+          BookmarkSortOption.entries.forEach { option ->
+            DropdownMenuItem(
+              text = { Text(option.label) },
+              onClick = {
+                sortOption = option
+                sortMenuOpen = false
+              },
+            )
+          }
+        }
+      }
       TextButton(
         onClick = { confirmingReprocess = true },
         enabled = state.bookmarkDetails.isNotEmpty() && !isReprocessingEnrichment,
@@ -201,11 +245,24 @@ private fun BookmarkSavedScreen(
       }
     }
 
-    val visible = state.saved.filterNot { it.article.id in state.hiddenArticleIds }
+    val visible = sortBookmarks(
+      state.saved.filterNot { it.article.id in state.hiddenArticleIds },
+      sortOption,
+    )
+    val displayedAtByArticleId = when (sortOption) {
+      BookmarkSortOption.BOOKMARKED_NEWEST,
+      BookmarkSortOption.BOOKMARKED_OLDEST,
+      -> visible.associate { it.article.id to it.savedAt }
+
+      BookmarkSortOption.PUBLISHED_NEWEST,
+      BookmarkSortOption.PUBLISHED_OLDEST,
+      -> emptyMap()
+    }
     ArticleList(
       modifier = Modifier.weight(1f),
       articles = visible.map(BookmarkedArticle::article),
       bookmarkDetails = visible.associateBy { it.article.id },
+      displayedAtByArticleId = displayedAtByArticleId,
       emptyText = "ブックマークはありません",
       left = SwipeChoice("ブックマーク解除", MaterialTheme.colorScheme.error, onUnsave),
       onOpen = onOpen,
