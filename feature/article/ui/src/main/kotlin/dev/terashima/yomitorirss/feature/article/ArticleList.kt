@@ -62,6 +62,7 @@ fun ArticleList(
   articles: List<Article>,
   emptyText: String,
   bookmarkDetails: Map<String, BookmarkedArticle> = emptyMap(),
+  displayedAtByArticleId: Map<String, String> = emptyMap(),
   left: SwipeChoice? = null,
   right: SwipeChoice? = null,
   farRight: SwipeChoice? = null,
@@ -72,7 +73,9 @@ fun ArticleList(
   onSetContentType: ((Article, ContentType?) -> Unit)? = null,
   extraMenuActions: (Article) -> List<ArticleMenuAction> = { emptyList() },
 ) {
-  val groups = articles.groupBy(::dateLabel)
+  val groups = articles.groupBy { article ->
+    dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
+  }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
     if (articles.isEmpty()) {
       item {
@@ -95,6 +98,7 @@ fun ArticleList(
       items(values, key = Article::id) { article ->
         SwipeArticleItem(
           article = article,
+          displayedAt = displayedAtByArticleId[article.id] ?: article.publishedAt,
           bookmarkDetails = bookmarkDetails[article.id],
           left = left,
           right = right,
@@ -114,6 +118,7 @@ fun ArticleList(
 @Composable
 private fun LazyItemScope.SwipeArticleItem(
   article: Article,
+  displayedAt: String,
   bookmarkDetails: BookmarkedArticle?,
   left: SwipeChoice?,
   right: SwipeChoice?,
@@ -133,6 +138,7 @@ private fun LazyItemScope.SwipeArticleItem(
   ) {
     ArticleContent(
       article = article,
+      displayedAt = displayedAt,
       bookmarkDetails = bookmarkDetails,
       onOpen = onOpen,
       onSummarize = onSummarize,
@@ -153,6 +159,7 @@ private fun SwipeChoice.toSwipeAction(article: Article): SwipeAction = SwipeActi
 @Composable
 private fun ArticleContent(
   article: Article,
+  displayedAt: String,
   bookmarkDetails: BookmarkedArticle?,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
@@ -189,7 +196,7 @@ private fun ArticleContent(
             modifier = Modifier.weight(1f),
           )
           Text(
-            timeLabel(article.publishedAt),
+            timeLabel(displayedAt),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -292,8 +299,8 @@ private fun ArticleContent(
   }
 }
 
-private fun dateLabel(article: Article): String = runCatching {
-  val date = Instant.parse(article.publishedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+private fun dateLabel(value: String): String = runCatching {
+  val date = Instant.parse(value).atZone(ZoneId.systemDefault()).toLocalDate()
   when (date) {
     LocalDate.now() -> "今日"
     LocalDate.now().minusDays(1) -> "昨日"
