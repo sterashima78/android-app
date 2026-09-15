@@ -145,7 +145,10 @@ data class PodcastEpisode(
           article.copy(title = if (index == 0) title else "$PODCAST_TRANSITION_CUE$title")
         } ?: article
       }
-      val chapterSpeech = titleMatch?.let { segment.removeRange(it.range).trim() } ?: segment
+      val chapterSpeech = titleMatch
+        ?.let { segment.removeRange(it.range).trim() }
+        ?.let { stripRepeatedSpokenTitle(it, spokenTitle) }
+        ?: segment
       PodcastPlaybackChapter(
         number = index + 1,
         article = playbackArticle,
@@ -391,6 +394,7 @@ fun buildPodcastChapterPrompt(
     出力形式:
     - 1行目は必ず [[TITLE:日本語の見出し]] とする。
     - 2行目以降に読み上げ本文だけを書く。
+    - 2行目以降では見出しを繰り返さず、「タイトル」「見出し」などのラベルも付けない。
     - 見出しは元記事のタイトルをそのまま複製せず、入力内容だけを根拠に音声ニュースとして自然な日本語へ翻訳・言い換える。
     - 見出しは40文字程度までを目安に簡潔にし、入力にない事実を追加しない。
 
@@ -431,6 +435,15 @@ fun buildPodcastEpisodeScript(
     }
     "[[CHAPTER:${index + 1}]]\n$speech"
   }.joinToString(separator = "\n\n")
+}
+
+private fun stripRepeatedSpokenTitle(speech: String, spokenTitle: String?): String {
+  val title = spokenTitle?.trim()?.takeIf(String::isNotBlank) ?: return speech
+  val escapedTitle = Regex.escape(title)
+  val repeatedTitle = Regex(
+    pattern = """^\s*(?:タイトル|見出し)\s*[、,:：]\s*$escapedTitle\s*(?:[。.!！?？]\s*)?""",
+  )
+  return speech.replaceFirst(repeatedTitle, "").trimStart()
 }
 
 private fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
