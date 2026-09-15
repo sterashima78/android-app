@@ -14,22 +14,25 @@ internal class PodcastTaskQueueAdapter(
 ) {
   suspend fun tasks(): List<AiTaskQueueItem> = reader.listGenerationTasks().map(::toAiTaskQueueItem)
 
-  private fun toAiTaskQueueItem(task: PodcastGenerationTask): AiTaskQueueItem = AiTaskQueueItem(
-    id = "$PREFIX${task.episodeId}",
-    kind = AiTaskQueueItemKind.PODCAST_EPISODE,
-    title = task.title,
-    source = "${task.totalChapters}記事",
-    state = task.state.toAiTaskState(),
-    progressStage = if (task.state == PodcastGenerationTaskState.RUNNING) {
-      AiTaskQueueProgressStage.GENERATING_CHAPTER
-    } else {
-      null
-    },
-    progressCurrent = task.completedChapters,
-    progressTotal = task.totalChapters,
-    error = task.error,
-    executionProviderLabel = task.provider.displayLabel(),
-  )
+  private fun toAiTaskQueueItem(task: PodcastGenerationTask): AiTaskQueueItem {
+    val remainingChapters = (task.totalChapters - task.completedChapters).coerceAtLeast(0)
+    return AiTaskQueueItem(
+      id = "$PREFIX${task.episodeId}",
+      kind = AiTaskQueueItemKind.PODCAST_EPISODE,
+      title = task.title,
+      source = "${task.totalChapters}記事・未完了 ${remainingChapters}記事",
+      state = task.state.toAiTaskState(),
+      progressStage = if (task.state == PodcastGenerationTaskState.RUNNING) {
+        AiTaskQueueProgressStage.GENERATING_CHAPTER
+      } else {
+        null
+      },
+      progressCurrent = task.completedChapters,
+      progressTotal = task.totalChapters,
+      error = task.error,
+      executionProviderLabel = task.provider.displayLabel(),
+    )
+  }
 
   private fun PodcastGenerationTaskState.toAiTaskState(): AiTaskQueueItemState = when (this) {
     PodcastGenerationTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
