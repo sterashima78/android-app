@@ -96,7 +96,7 @@ dependencies {
   implementation(project(":feature:x:data"))
   implementation(project(":feature:x:ui"))
 
-  implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
+  implementation(libs.androidx.lifecycle.viewmodel.ktx)
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation(libs.kotlinx.coroutines.android)
 }
