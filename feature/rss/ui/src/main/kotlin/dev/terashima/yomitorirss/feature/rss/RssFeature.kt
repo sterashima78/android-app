@@ -30,6 +30,12 @@ enum class RssTab(val label: String) {
   SETTINGS("設定"),
 }
 
+internal fun readLaterDisplayedAtByArticleId(
+  bookmarks: List<BookmarkedArticle>,
+): Map<String, String> = bookmarks.associate { bookmark ->
+  bookmark.article.id to bookmark.savedAt
+}
+
 @Composable
 fun RssScreen(
   modifier: Modifier,
@@ -127,6 +133,7 @@ fun RssScreen(
             modifier = Modifier.weight(1f),
             articles = articles,
             bookmarkDetails = bookmarkedArticles.associateBy { it.article.id },
+            displayedAtByArticleId = readLaterDisplayedAtByArticleId(bookmarkedArticles),
             emptyText = "あとで読む記事はありません",
             left = SwipeChoice("ブックマーク解除", MaterialTheme.colorScheme.error, onUnsave),
             right = SwipeChoice("未分類へ", MaterialTheme.colorScheme.secondary, onRemoveReadLater),
