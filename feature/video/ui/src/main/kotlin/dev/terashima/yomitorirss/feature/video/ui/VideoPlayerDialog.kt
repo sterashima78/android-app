@@ -18,8 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,12 +30,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import dev.terashima.yomitorirss.feature.video.VideoByteSourceFactory
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
-import kotlinx.coroutines.delay
 
 @Composable
 internal fun VideoPlayerDialog(
@@ -66,10 +62,19 @@ internal fun VideoPlayerDialog(
   var playbackHttpStatusCode by remember(player) { mutableStateOf<Int?>(null) }
   var loadingElapsedMs by remember(player) { mutableStateOf(0L) }
 
-  fun savePosition() {
-    val duration = player.duration.takeIf { it > 0L } ?: item.playbackState?.durationMs ?: 0L
-    onSavePlayback(player.currentPosition.coerceAtLeast(0L), duration)
-  }
+  VideoPlayerLifecycleEffects(
+    item = item,
+    media = media,
+    playbackState = playbackState,
+    playbackErrorCodeName = playbackErrorCodeName,
+    onPlaybackStateChanged = { playbackState = it },
+    onPlaybackErrorChanged = { errorCodeName, httpStatusCode ->
+      playbackErrorCodeName = errorCodeName
+      playbackHttpStatusCode = httpStatusCode
+    },
+    onLoadingElapsedChanged = { loadingElapsedMs = it },
+    onSavePlayback = onSavePlayback,
+  )
 
   fun retryPlayback() {
     playbackErrorCodeName = null
@@ -79,49 +84,6 @@ internal fun VideoPlayerDialog(
     player.stop()
     player.prepare()
     player.playWhenReady = true
-  }
-
-  DisposableEffect(player, media.smbDataSourceFactory) {
-    val listener = object : Player.Listener {
-      override fun onPlaybackStateChanged(newPlaybackState: Int) {
-        playbackState = newPlaybackState
-        if (newPlaybackState == Player.STATE_READY) {
-          playbackErrorCodeName = null
-          playbackHttpStatusCode = null
-        }
-        if (newPlaybackState == Player.STATE_ENDED) savePosition()
-      }
-
-      override fun onPlayerError(error: PlaybackException) {
-        playbackErrorCodeName = error.errorCodeName
-        playbackHttpStatusCode = findHttpStatusCode(error)
-      }
-    }
-    player.addListener(listener)
-    onDispose {
-      savePosition()
-      player.removeListener(listener)
-      player.release()
-      media.smbDataSourceFactory?.close()
-    }
-  }
-
-  LaunchedEffect(player, playbackState, playbackErrorCodeName) {
-    loadingElapsedMs = 0L
-    val isLoading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
-    if (isLoading && playbackErrorCodeName == null) {
-      while (true) {
-        delay(1_000)
-        loadingElapsedMs += 1_000L
-      }
-    }
-  }
-
-  LaunchedEffect(player) {
-    while (true) {
-      delay(2_000)
-      if (player.playbackState != Player.STATE_IDLE) savePosition()
-    }
   }
 
   val statusUi = videoPlayerStatusUi(
