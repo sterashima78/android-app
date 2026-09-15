@@ -5,6 +5,8 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import dev.terashima.yomitorirss.feature.rss.RssFeedContentReader
 import dev.terashima.yomitorirss.feature.rss.RssFeedContentSource
+import java.text.Normalizer
+import java.util.Locale
 
 class RssPodcastFeedContentSource(
   private val reader: RssFeedContentReader,
@@ -24,6 +26,12 @@ class RssPodcastFeedContentSource(
         articleUrl = entry.url,
         feedContent = entry.content,
       )
-    }
+    }.distinctBy { entry -> normalizeTitleForDeduplication(entry.title) }
   }
 }
+
+private fun normalizeTitleForDeduplication(title: String): String =
+  Normalizer.normalize(title, Normalizer.Form.NFKC)
+    .trim()
+    .replace(Regex("\\s+"), " ")
+    .lowercase(Locale.ROOT)
