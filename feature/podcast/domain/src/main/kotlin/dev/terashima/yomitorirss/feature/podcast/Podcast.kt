@@ -145,10 +145,15 @@ data class PodcastEpisode(
           article.copy(title = if (index == 0) title else "$PODCAST_TRANSITION_CUE$title")
         } ?: article
       }
-      val chapterSpeech = titleMatch
-        ?.let { segment.removeRange(it.range).trim() }
-        ?.let { stripRepeatedSpokenTitle(it, spokenTitle) }
-        ?: segment
+      val chapterSpeech = titleMatch?.let { marker ->
+        val beforeTitle = segment.substring(0, marker.range.first).trimEnd()
+        val afterTitle = segment.substring(marker.range.last + 1).trimStart()
+        val sanitizedAfterTitle = stripRepeatedSpokenTitle(afterTitle, spokenTitle)
+        listOf(beforeTitle, sanitizedAfterTitle)
+          .filter(String::isNotBlank)
+          .joinToString(separator = " ")
+          .trim()
+      } ?: segment
       PodcastPlaybackChapter(
         number = index + 1,
         article = playbackArticle,
