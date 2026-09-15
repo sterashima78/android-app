@@ -48,7 +48,7 @@ internal fun VideoPlayerDialog(
 ) {
   require(target is VideoPlaybackTarget.Stream || target is VideoPlaybackTarget.Smb)
   val context = LocalContext.current
-  val media = remember(item.id, target, resumePositionMs, byteSourceFactory) {
+  val media = remember(item.id, target, byteSourceFactory) {
     createVideoPlayerMedia(
       context = context,
       target = target,
