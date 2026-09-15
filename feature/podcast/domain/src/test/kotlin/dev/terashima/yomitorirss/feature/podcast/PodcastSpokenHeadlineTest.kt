@@ -18,6 +18,7 @@ class PodcastSpokenHeadlineTest {
     assertTrue(prompt.contains("[[TITLE:日本語の見出し]]"))
     assertTrue(prompt.contains("自然な日本語へ翻訳・言い換える"))
     assertTrue(prompt.contains("元記事のタイトルをそのまま複製せず"))
+    assertTrue(prompt.contains("2行目以降では見出しを繰り返さず"))
   }
 
   @Test
@@ -49,6 +50,38 @@ class PodcastSpokenHeadlineTest {
     assertEquals("続いて。新しい開発ツールが登場", chapters[1].article?.title)
     assertFalse(chapters[0].speechText.contains("[[TITLE:"))
     assertFalse(chapters[1].speechText.contains("[[TITLE:"))
+    assertTrue(chapters[0].speechText.contains("1件目の本文です。"))
+    assertTrue(chapters[1].speechText.contains("2件目の本文です。"))
+  }
+
+  @Test
+  fun `見出し直後に同じタイトルラベルが生成されても本文では読み上げない`() {
+    val episode = PodcastEpisode(
+      id = "episode-duplicate-title",
+      programId = "program-1",
+      title = "朝のニュース",
+      createdAtEpochMillis = 1L,
+      status = PodcastEpisodeStatus.READY,
+      articles = listOf(
+        article(title = "First original title"),
+        article(id = "article-2", title = "Second original title"),
+      ),
+      script = """
+        [[CHAPTER:1]]
+        朝のニュースです。今回のニュースをお伝えします。 [[TITLE:端末内AIの新APIを公開]]
+        タイトル、端末内AIの新APIを公開。1件目の本文です。
+
+        [[CHAPTER:2]]
+        [[TITLE:新しい開発ツールが登場]]
+        見出し：新しい開発ツールが登場。2件目の本文です。 以上、今回のニュースでした。
+      """.trimIndent(),
+    )
+
+    val chapters = episode.playbackChapters()
+
+    assertFalse(chapters[0].speechText.contains("タイトル、端末内AIの新APIを公開"))
+    assertFalse(chapters[1].speechText.contains("見出し：新しい開発ツールが登場"))
+    assertTrue(chapters[0].speechText.contains("朝のニュースです。今回のニュースをお伝えします。"))
     assertTrue(chapters[0].speechText.contains("1件目の本文です。"))
     assertTrue(chapters[1].speechText.contains("2件目の本文です。"))
   }
