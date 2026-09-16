@@ -39,7 +39,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(36, db.version)
+    assertEquals(37, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -49,6 +49,7 @@ class AppDatabaseSchemaTest {
     assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
     assertTrue("function_code" in columnNames(db, "video_providers"))
     assertTrue("article_url" in columnNames(db, "podcast_episode_articles"))
+    assertTrue("chapter_position" in columnNames(db, "podcast_episode_articles"))
     assertEquals(
       setOf(
         "feed_folders",
@@ -161,7 +162,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(36, db.version)
+    assertEquals(37, db.version)
     assertEquals(1, countRows(db, "video_items", "id=?", arrayOf("legacy-video")))
     assertEquals(0, countRows(db, "video_folders", "1=1", emptyArray()))
     assertEquals(0, countRows(db, "video_saved_items", "1=1", emptyArray()))
@@ -208,7 +209,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(36, db.version)
+    assertEquals(37, db.version)
     assertTrue("function_code" in columnNames(db, "video_providers"))
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("builtin-provider")))
     assertEquals(
@@ -260,7 +261,7 @@ class AppDatabaseSchemaTest {
 
     val db = openDatabase().writableDatabase
 
-    assertEquals(36, db.version)
+    assertEquals(37, db.version)
     assertEquals(1, countRows(db, "video_providers", "id=?", arrayOf("custom-provider")))
     assertEquals(
       "return null",
@@ -272,6 +273,7 @@ class AppDatabaseSchemaTest {
     assertTrue("podcast_episode_articles" in tableNames(db))
     assertTrue("podcast_consumed_articles" in tableNames(db))
     assertTrue("article_url" in columnNames(db, "podcast_episode_articles"))
+    assertTrue("chapter_position" in columnNames(db, "podcast_episode_articles"))
   }
 
   @Test
@@ -434,8 +436,9 @@ class AppDatabaseSchemaTest {
 
     val migrated = openDatabase().writableDatabase
 
-    assertEquals(36, migrated.version)
+    assertEquals(37, migrated.version)
     assertTrue("article_url" in columnNames(migrated, "podcast_episode_articles"))
+    assertTrue("chapter_position" in columnNames(migrated, "podcast_episode_articles"))
     assertEquals(
       "カスタムニュース",
       singleString(migrated, "SELECT name FROM podcast_sources WHERE id=?", arrayOf("feed-1")),
