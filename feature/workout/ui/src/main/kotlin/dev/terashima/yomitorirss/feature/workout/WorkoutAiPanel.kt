@@ -26,6 +26,8 @@ import dev.terashima.yomitorirss.core.designsystem.ChatMessageBubble
 @Composable
 fun WorkoutAiChatScreen(
   viewModel: WorkoutAiViewModel,
+  onApplyMenu: (String) -> Unit,
+  onSaveMenu: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
@@ -40,7 +42,7 @@ fun WorkoutAiChatScreen(
   ) {
     Text("ワークアウトチャット", style = MaterialTheme.typography.titleLarge)
     Text(
-      "現在のトレーニングメニュー、直近14日間の履歴、今日の記録とメモを使って回答します。",
+      "現在のプリセット、直近14日間の履歴、今日の記録とメモを使って回答します。メニュー提案はそのまま今日のメニューへ適用できます。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -70,15 +72,24 @@ fun WorkoutAiChatScreen(
       }
       state.lastRequestType?.let { requestType ->
         item(key = "request") {
-          ChatMessageBubble(
-            isUser = true,
-            content = requestType.userMessage(),
-          )
+          ChatMessageBubble(isUser = true, content = requestType.userMessage())
         }
       }
       state.response?.let { response ->
         item(key = "response") {
           ChatMessageBubble(isUser = false, content = response)
+        }
+        if (state.lastRequestType == WorkoutAiRequestType.MENU_SUGGESTION) {
+          item(key = "menu-actions") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              Button(onClick = { onApplyMenu(response) }, modifier = Modifier.weight(1f)) {
+                Text("今日使う")
+              }
+              OutlinedButton(onClick = { onSaveMenu(response) }, modifier = Modifier.weight(1f)) {
+                Text("保存して使う")
+              }
+            }
+          }
         }
       }
       if (state.loading) {
@@ -86,7 +97,7 @@ fun WorkoutAiChatScreen(
           Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(
-              if (state.settings.provider == WorkoutAiProvider.LOCAL) "Local AIで生成中…" else "ChatGPTで生成中…",
+              if (state.settings.provider == WorkoutAiProvider.LOCAL) "Local AIで生成中…" else "クラウドAIで生成中…",
               style = MaterialTheme.typography.bodySmall,
             )
           }
@@ -141,12 +152,12 @@ fun WorkoutAiSettingsSection(
         FilterChip(
           selected = state.settings.provider == WorkoutAiProvider.CHATGPT,
           onClick = { viewModel.setProvider(WorkoutAiProvider.CHATGPT) },
-          label = { Text("ChatGPT") },
+          label = { Text("Cloud") },
         )
       }
       if (state.settings.provider == WorkoutAiProvider.CHATGPT) {
         Text(
-          "直近14日間のワークアウト記録、メモ、方針、設定済みトレーニングメニューがクラウドへ送信されます。自動でLocalへ切り替えません。",
+          "直近14日間のワークアウト記録、メモ、方針、設定済みメニューがクラウドへ送信されます。自動でLocalへ切り替えません。",
           style = MaterialTheme.typography.bodySmall,
         )
       }
@@ -155,12 +166,12 @@ fun WorkoutAiSettingsSection(
         onValueChange = viewModel::updateWorkoutPolicy,
         modifier = Modifier.fillMaxWidth(),
         label = { Text("ワークアウト方針") },
-        placeholder = { Text("例: 継続を優先し、前回より少しだけ負荷を上げる") },
+        placeholder = { Text("例: 継続を優先し、当日の状態に合わせて負荷を調整する") },
         minLines = 2,
         maxLines = 4,
       )
       Text(
-        "候補種目はこの設定画面の「登録済み種目」をそのままチャットへ渡すため、別途入力する必要はありません。",
+        "登録済み種目とメニューを候補として使います。メニュー提案は構造化形式で生成し、そのまま実行できます。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
