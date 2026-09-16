@@ -41,7 +41,7 @@ android {
   defaultConfig {
     applicationId = "dev.terashima.yomitorirss"
     minSdk = 35
-    targetSdk = 36
+    targetSdk = 37
     versionCode = appVersionCode
     versionName = "0.2.0"
     buildConfigField("String", "GIT_COMMIT_SHA", "\"$gitCommitSha\"")
