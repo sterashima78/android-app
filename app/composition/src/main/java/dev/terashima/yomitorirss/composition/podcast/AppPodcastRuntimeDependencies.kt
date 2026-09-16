@@ -15,6 +15,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFactory
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
+import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastCandidateFilter
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastScheduleController
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssFeedContentReader
@@ -45,6 +46,7 @@ internal class AppPodcastRuntimeDependencies(
     ),
     scriptGenerator = scriptGenerator,
     newsClusterer = AiPodcastNewsClusterer(scriptGenerator),
+    candidateFilter = SqlitePodcastCandidateFilter(database),
   )
   private val scheduleController = WorkManagerPodcastScheduleController(application)
 
