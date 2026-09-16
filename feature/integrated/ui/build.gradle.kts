@@ -5,7 +5,7 @@ plugins {
 
 android {
   namespace = "dev.terashima.yomitorirss.feature.integrated.ui"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     minSdk = 35
@@ -32,7 +32,7 @@ dependencies {
   implementation(project(":core:designsystem"))
 
   implementation(platform("androidx.compose:compose-bom:2026.06.00"))
-  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.foundation:foundation")
   implementation("androidx.compose.material3:material3")
