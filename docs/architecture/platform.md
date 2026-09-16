@@ -32,12 +32,12 @@ app だけを API 35 にして library module に古い baseline を残すと、
 - `ACCESS_LOCAL_NETWORK` permissionをmanifestへ宣言する。
 - local-network permissionは`:app:presentation`がActivity Result launcherを所有し、feature Domain / DataへAndroid permission APIを持ち込まない。
 - LAN Web Serverはユーザーが起動を要求した時点でpermissionを確認し、未付与なら要求する。拒否時はserverを起動しない。
-- SMBは既存のSMB接続設定を持つLibraryを利用する時点でpermissionを要求する。許可後は同期、reader、cover prefetch、metadata normalization、file operation等の既存LAN処理が同じOS permissionを利用する。
-- permission拒否時にSMB設定・credential・durable stateを削除しない。
+- SMBはLAN通信を行うユーザー操作の直前にpermissionを確認し、未付与なら要求する。許可後は同期、reader、cover prefetch、metadata normalization、file operation等の既存LAN処理が同じOS permissionを利用する。
+- permission拒否時にSMB設定・credential・durable stateを削除せず、次のLAN操作で再要求できる状態を維持する。
 - 大画面ではorientation / resizability / aspect ratio制約が無視されることを前提とし、portrait指定やorientation requestを機能成立条件にしない。
 - Android 17 target-specific behavior changesは新規platform API導入時だけでなくUI/Window挙動の変更としても継続確認する。
 
-compileSdk 37の先行採用はADR-0258、targetSdk 37とlocal-network permission boundaryはADR-0259を正とする。
+compileSdk 37の先行採用はADR-0258、targetSdk 37とlocal-network permission boundaryはADR-0260を正とする。
 
 ## Implementation guidance
 
@@ -156,4 +156,4 @@ API 37 compile / target baseline は採用済みであり、local-network permis
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0235](../adr/0235-summary-audio-playback.md)
 - [ADR-0258](../adr/0258-android17-compile-sdk-baseline.md)
-- [ADR-0259](../adr/0259-android17-target-sdk-and-local-network-permission.md)
+- [ADR-0260](../adr/0260-android17-target-sdk-and-local-network-permission.md)
