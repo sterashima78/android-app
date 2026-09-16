@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.podcast
 
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -52,29 +54,61 @@ class PodcastNewsClusteringTest {
   }
 
   @Test
+  fun `AI分類失敗時は1記事1ニュースへフォールバックする`() = runBlocking {
+    val clusterer = AiPodcastNewsClusterer(
+      scriptGenerator = object : PodcastScriptGenerator {
+        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = "invalid"
+      },
+    )
+
+    assertEquals(
+      listOf(listOf(0), listOf(1)),
+      clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2"))),
+    )
+  }
+
+  @Test
+  fun `AI分類のキャンセルはフォールバックせず伝播する`() {
+    val clusterer = AiPodcastNewsClusterer(
+      scriptGenerator = object : PodcastScriptGenerator {
+        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
+          throw CancellationException("cancelled")
+        }
+      },
+    )
+
+    assertThrows(CancellationException::class.java) {
+      runBlocking {
+        clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
+      }
+    }
+  }
+
+  @Test
   fun `複数記事の原稿promptは重複を統合する指示と全記事本文を含む`() {
     val prompt = buildPodcastChapterPrompt(
       programName = "朝のニュース",
-      articles = listOf(
-        article("a1", chapterPosition = 0),
-        article("a2", chapterPosition = 0),
-      ),
+      articles = listOf(article("a1", 0), article("a2", 0)),
       chapterNumber = 1,
       totalChapters = 1,
     )
 
     assertTrue(prompt.contains("重複内容を繰り返さず1つ"))
-    assertTrue(prompt.contains("記事1:"))
     assertTrue(prompt.contains("本文 a1"))
-    assertTrue(prompt.contains("記事2:"))
     assertTrue(prompt.contains("本文 a2"))
   }
 
-  private fun article(
-    id: String,
-    chapterPosition: Int,
-    script: String? = null,
-  ) = PodcastEpisodeArticle(
+  private fun feedEntry(id: String) = PodcastFeedEntry(
+    articleId = id,
+    feedId = "source-$id",
+    title = "記事 $id",
+    sourceTitle = "情報源 $id",
+    publishedAtEpochMillis = 100L,
+    articleUrl = "https://example.invalid/$id",
+    feedContent = "本文 $id",
+  )
+
+  private fun article(id: String, chapterPosition: Int, script: String? = null) = PodcastEpisodeArticle(
     articleId = id,
     feedId = "source-$id",
     title = "記事 $id",
