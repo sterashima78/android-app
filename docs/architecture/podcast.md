@@ -149,4 +149,4 @@ application database version 37では `podcast_episode_articles.chapter_position
 - `docs/adr/0255-podcast-playback-chapters.md`
 - `docs/adr/0256-podcast-episode-archive-delete.md`
 - `docs/adr/0257-podcast-chapter-generation-jobs.md`
-- `docs/adr/0258-podcast-news-clustering.md`
+- `docs/adr/0259-podcast-news-clustering.md`
