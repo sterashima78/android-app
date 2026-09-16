@@ -64,8 +64,8 @@ data class WorkoutSet(
 data class WorkoutDay(
   val date: String,
   val startedAt: String? = null,
-  val menu: WorkoutMenu? = null,
   val sets: List<WorkoutSet> = emptyList(),
+  val menu: WorkoutMenu? = null,
 )
 
 data class WorkoutHistory(
