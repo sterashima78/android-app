@@ -170,6 +170,17 @@ interface PodcastFeedContentSource {
   suspend fun latestEntries(sources: List<PodcastSource>, limit: Int): List<PodcastFeedEntry>
 }
 
+interface PodcastCandidateFilter {
+  suspend fun unconsumedEntries(programId: String, candidates: List<PodcastFeedEntry>): List<PodcastFeedEntry>
+}
+
+object AllPodcastCandidates : PodcastCandidateFilter {
+  override suspend fun unconsumedEntries(
+    programId: String,
+    candidates: List<PodcastFeedEntry>,
+  ): List<PodcastFeedEntry> = candidates
+}
+
 interface PodcastRepository {
   suspend fun listSources(): List<PodcastSource>
   suspend fun findSource(sourceId: String): PodcastSource?
@@ -250,6 +261,7 @@ class GeneratePodcastEpisodeUseCase(
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
   private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
+  private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
 ) {
   private val activeProgramIds = mutableSetOf<String>()
 
@@ -261,7 +273,9 @@ class GeneratePodcastEpisodeUseCase(
       "番組に利用できないソースがあります。番組設定を確認してください"
     }
     val candidates = feedContentSource.latestEntries(sources, Int.MAX_VALUE)
-    val reserved = repository.reserveEpisode(program, clusterCandidates(program, candidates), nowEpochMillis())
+    val unconsumedCandidates = candidateFilter.unconsumedEntries(program.id, candidates)
+    if (unconsumedCandidates.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val reserved = repository.reserveEpisode(program, clusterCandidates(program, unconsumedCandidates), nowEpochMillis())
       ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
     generateReserved(program, reserved)
   }
