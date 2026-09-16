@@ -13,6 +13,7 @@
 - SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして管理する。
 - 蔵書設定では登録済みSMB接続を選び、蔵書として同期するshareとパスだけを個別に設定する。動画設定とは独立しているため、同じ接続先でも異なるshare / pathを指定できる。
 - SMB server上のZIP / CBZ / PDF書籍を蔵書へ取り込む。
+- Android 17 / API 37 targetでは、既存のSMB接続設定がある蔵書画面を利用する際にローカルネットワーク権限を要求する。拒否した場合はSMB同期・reader・表紙取得等のLANアクセスを利用できない。
 - 蔵書の同期場所を解除しても全体設定のSMB接続とpasswordは削除しない。
 - 表紙画像は再生成可能なcacheとして扱い、backgroundで先読みできる。既存の表紙先読みキューの進捗・失敗・待機理由を確認し、必要に応じて再試行できる。
 - SMB credentialはAndroid Keystoreを利用して保護し、画面へ再表示せず、アプリ独自backupへ含めない。

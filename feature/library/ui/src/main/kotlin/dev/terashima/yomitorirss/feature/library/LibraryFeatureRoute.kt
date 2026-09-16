@@ -47,6 +47,7 @@ fun LibraryFeatureRoute(
   onRefreshWebBook: suspend (LibraryBook) -> WebLibraryMetadataRefreshResult,
   onDeleteWebBook: suspend (LibraryBook) -> Unit,
   onOpenWebUrl: (String) -> Unit,
+  withLocalNetworkAccess: ((() -> Unit) -> Unit) = { action -> action() },
   smbRepository: SmbLibraryRepository,
   pageSourceFactory: BookPageSourceFactory,
   readingPositionStore: ReadingPositionStore,
@@ -66,29 +67,41 @@ fun LibraryFeatureRoute(
   val webLibraryImportHandler = remember(viewModel) {
     { source: LibrarySource, json: String -> viewModel.importAmazonLibraryJson(source, json) }
   }
-  val smbBinding = remember(state, viewModel) {
+  val smbBinding = remember(state, viewModel, withLocalNetworkAccess) {
     SmbLibraryUiBinding(
       state = state,
-      onSync = viewModel::syncSmbLibrary,
+      onSync = { withLocalNetworkAccess(viewModel::syncSmbLibrary) },
       onSave = viewModel::saveSmbServer,
       onDelete = viewModel::deleteSmbServer,
-      onEnqueueCovers = viewModel::enqueueMissingSmbCovers,
-      onRetryFailedCovers = viewModel::retryFailedSmbCovers,
-      onRescheduleCovers = viewModel::rescheduleSmbCoverPrefetch,
+      onEnqueueCovers = { withLocalNetworkAccess(viewModel::enqueueMissingSmbCovers) },
+      onRetryFailedCovers = { withLocalNetworkAccess(viewModel::retryFailedSmbCovers) },
+      onRescheduleCovers = { withLocalNetworkAccess(viewModel::rescheduleSmbCoverPrefetch) },
       onSaveMetadataNormalizationPrompt = viewModel::saveSmbMetadataNormalizationPrompt,
       onResetMetadataNormalizationPrompt = viewModel::resetSmbMetadataNormalizationPrompt,
-      onStartMetadataNormalization = viewModel::startSmbMetadataNormalization,
-      onApplyMetadataCandidate = viewModel::applySmbMetadataCandidate,
+      onStartMetadataNormalization = { withLocalNetworkAccess(viewModel::startSmbMetadataNormalization) },
+      onApplyMetadataCandidate = { sourceId, proposedFileName, proposal ->
+        withLocalNetworkAccess {
+          viewModel.applySmbMetadataCandidate(sourceId, proposedFileName, proposal)
+        }
+      },
       onDeferMetadataCandidate = viewModel::deferSmbMetadataCandidate,
       onRejectMetadataCandidate = viewModel::rejectSmbMetadataCandidate,
       onReopenMetadataCandidate = viewModel::reopenSmbMetadataCandidate,
-      onRetryMetadataCandidate = viewModel::retrySmbMetadataCandidate,
+      onRetryMetadataCandidate = { sourceId, supplementalContext ->
+        withLocalNetworkAccess {
+          viewModel.retrySmbMetadataCandidate(sourceId, supplementalContext)
+        }
+      },
     )
   }
-  val smbBookFileActionBinding = remember(viewModel) {
+  val smbBookFileActionBinding = remember(viewModel, withLocalNetworkAccess) {
     SmbBookFileActionBinding(
-      onRename = viewModel::renameSmbBook,
-      onDelete = viewModel::deleteSmbBook,
+      onRename = { book, newFileName ->
+        withLocalNetworkAccess { viewModel.renameSmbBook(book, newFileName) }
+      },
+      onDelete = { book ->
+        withLocalNetworkAccess { viewModel.deleteSmbBook(book) }
+      },
     )
   }
   val closeSmbBook: () -> Unit = {
@@ -189,7 +202,9 @@ fun LibraryFeatureRoute(
         modifier = Modifier.fillMaxSize(),
         state = state,
         onSyncGooglePlayBooks = onSyncGooglePlayBooks,
-        onOpenSmbBook = { openedSmbBook = it },
+        onOpenSmbBook = { book ->
+          withLocalNetworkAccess { openedSmbBook = book }
+        },
         onHideBook = viewModel::hideBook,
         onRestoreBook = viewModel::restoreBook,
         onSetBookSeries = viewModel::setBookSeries,

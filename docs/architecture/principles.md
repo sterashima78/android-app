@@ -111,7 +111,7 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - Activity-scoped ViewModel sharing を利用する場合でも、Summary / Bookmark overlay、TopBar、message bridge 等の共通 host は capability が必要な destination だけ mount / observe する。
 - `MainActivity` は Android lifecycle、external Intent、app lock、root `NavController` lifetime、crash diagnostics、executable-only platform callback に限定し、feature ViewModel / feature UI を直接所有しない。
 - root `NavController` は `MainActivity.setContent` で app-lock conditional UI より上に保持し、`:app:presentation` の `YomitoriApp` へ渡す。root `NavHost` と graph registration は `:app:presentation` が所有する。
-- feature authorization、Calendar permission、backup document picker、LAN Web Server notification permission/dialog 等、Composable Route/Host と一体の Activity Result launcher は `:app:presentation` が所有できる。Custom Tab、app lock transition 等、Activity/component lifecycle や executable-only state と一体の integration は `:app` が所有する。
+- feature authorization、Calendar permission、backup document picker、LAN Web Server の local-network / notification permission と dialog 等、Composable Route/Host と一体の Activity Result launcher は `:app:presentation` が所有できる。Custom Tab、app lock transition 等、Activity/component lifecycle や executable-only state と一体の integration は `:app` が所有する。
 - external Intent / widget launch から app-shell navigation を要求する executable code は feature UI route constant を直接参照せず、`:app:presentation` の semantic `AppNavigationTarget` を利用する。feature route identity への解決は presentation boundary 内で行う。
 - widget-to-app Intent action/extra は `:feature:widget:domain` の contract を共有し、framework widget が Application から `TaskRepository` を得る provider contract は `:feature:task:domain` が所有する。`:app` は AppWidgetProvider implementation class を routing contract として参照しない。
 - `MainActivity` が feature runtime を操作する場合、framework lookup は `MainActivityDependenciesProvider` 1つに限定し、app-shell route wiring は `MainActivityPresentationDependencies`、LAN Web host wiring は `MainActivityLanWebDependencies`、share / external Intent mutation は `entry.IncomingIntentDependencies` の narrow contract を利用する。`feature.*.data.*` implementation を直接 import しない。
@@ -122,7 +122,7 @@ Projection は read-only とし、参照 Context/table を明示し、generic �
 - framework entry point 用 Provider は既存 application scope graph への接続に限定し、任意の dependency を取得する service locator として拡張しない。
 - `YomitoriApplication` implementation type への直接 cast は行わない。
 
-LAN Web Server では `:app:presentation` の `LanWebServerDialogHost` が notification permission と dialog presentation を所有し、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。`MainActivity` は dialog visibility と controller 接続だけを担当する。
+LAN Web Server では `:app:presentation` の `LanWebServerDialogHost` が local-network permission、notification permission、dialog presentation を所有し、起動・停止・状態取得は `LanWebServerController` 契約を利用する。mutable server state と concrete Android Service は `feature:web:data` が所有する。`MainActivity` は dialog visibility と controller 接続だけを担当する。
 
 Mail Worker は `MailWorkerFactory` から application scope の `MailRepository` を constructor injection される。Worker 内で database / Repository graph を別構築しない。
 
@@ -144,7 +144,9 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 - 全 Android application/library module は `minSdk = 35` 以上を宣言する。
 - API 35 未満だけを支える `SDK_INT` fallback は持たない。
 - API 36/37 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
-- Android 17 / API 37 は現行の実行環境として扱う。現在の build baseline は `compileSdk = 37` / `targetSdk = 36` とし、`targetSdk = 37` は SMB / LAN Web Server の `ACCESS_LOCAL_NETWORK` runtime permission UX と integration test を含む独立した platform migration として行う。
+- Android 17 / API 37 は現行の実行環境として扱う。現在の build baseline は `compileSdk = 37` / `targetSdk = 37` / `minSdk = 35` とする。
+- local-network accessはapp presentationのruntime permission boundaryで扱い、SMB / LAN Web Serverのfeature Domain/DataへAndroid permission APIを持ち込まない。
+- 大画面ではorientation / resizability / aspect-ratio制約が無視されても主要機能が成立することをplatform contractとする。
 
 ## Architecture enforcement
 
@@ -213,3 +215,4 @@ App composition / presentation の source ownership と active-destination ViewM
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0258](../adr/0258-android17-compile-sdk-baseline.md)
+- [ADR-0260](../adr/0260-android17-target-sdk-and-local-network-permission.md)

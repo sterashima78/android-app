@@ -1,7 +1,9 @@
 package dev.terashima.yomitorirss.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -26,14 +28,15 @@ fun LanWebServerDialogHost(
   val context = LocalContext.current
   var permissionError by remember { mutableStateOf<String?>(null) }
   val serverState by controller.state.collectAsState()
-  val notificationPermissionLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.RequestPermission(),
-  ) { granted ->
-    if (granted) {
+  val permissionLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions(),
+  ) {
+    val error = webServerPermissionError(context)
+    if (error == null) {
       permissionError = null
       controller.start()
     } else {
-      permissionError = "通知を許可しないとWebサーバを起動できません。"
+      permissionError = error
     }
   }
 
@@ -44,15 +47,11 @@ fun LanWebServerDialogHost(
     onDismiss = onDismiss,
     onStart = {
       permissionError = null
-      if (
-        ContextCompat.checkSelfPermission(
-          context,
-          Manifest.permission.POST_NOTIFICATIONS,
-        ) != PackageManager.PERMISSION_GRANTED
-      ) {
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-      } else {
+      val missingPermissions = webServerMissingPermissions(context)
+      if (missingPermissions.isEmpty()) {
         controller.start()
+      } else {
+        permissionLauncher.launch(missingPermissions.toTypedArray())
       }
     },
     onStop = {
@@ -60,4 +59,35 @@ fun LanWebServerDialogHost(
       controller.stop()
     },
   )
+}
+
+private fun webServerMissingPermissions(context: Context): List<String> = buildList {
+  if (
+    ContextCompat.checkSelfPermission(
+      context,
+      Manifest.permission.POST_NOTIFICATIONS,
+    ) != PackageManager.PERMISSION_GRANTED
+  ) {
+    add(Manifest.permission.POST_NOTIFICATIONS)
+  }
+  if (
+    Build.VERSION.SDK_INT >= 37 &&
+    ContextCompat.checkSelfPermission(
+      context,
+      Manifest.permission.ACCESS_LOCAL_NETWORK,
+    ) != PackageManager.PERMISSION_GRANTED
+  ) {
+    add(Manifest.permission.ACCESS_LOCAL_NETWORK)
+  }
+}
+
+private fun webServerPermissionError(context: Context): String? {
+  val missingPermissions = webServerMissingPermissions(context)
+  return when {
+    Manifest.permission.ACCESS_LOCAL_NETWORK in missingPermissions ->
+      "Webサーバの起動にはローカルネットワークへのアクセス許可が必要です。"
+    Manifest.permission.POST_NOTIFICATIONS in missingPermissions ->
+      "通知を許可しないとWebサーバを起動できません。"
+    else -> null
+  }
 }
