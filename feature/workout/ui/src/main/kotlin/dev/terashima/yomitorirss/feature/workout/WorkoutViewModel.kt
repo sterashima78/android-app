@@ -344,7 +344,8 @@ class WorkoutViewModel(
     val menus = current.menus.map { menu -> menu.copy(items = menu.items.filterNot { it.exerciseId == id }) }
       .filter { it.items.isNotEmpty() }
       .ifEmpty { listOf(defaultWorkoutMenu(exercises)) }
-    val todayMenu = current.today.menu?.copy(items = current.today.menu.items.filterNot { it.exerciseId == id })
+    val currentTodayMenu = current.today.menu
+    val todayMenu = currentTodayMenu?.copy(items = currentTodayMenu.items.filterNot { it.exerciseId == id })
       ?.takeIf { it.items.isNotEmpty() }
     val snapshot = current.copy(
       exercises = exercises,
