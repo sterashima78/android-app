@@ -21,6 +21,9 @@ class Android17TargetSourceTest {
     val libraryRoute = source(
       "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/LibraryRoute.kt",
     )
+    val libraryFeatureRoute = source(
+      "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryFeatureRoute.kt",
+    )
 
     assertTrue("app must target API 37", "targetSdk = 37" in appBuild)
     assertTrue(
@@ -33,9 +36,17 @@ class Android17TargetSourceTest {
         "Build.VERSION.SDK_INT >= 37" in webServerHost,
     )
     assertTrue(
-      "SMB library entry must request local-network permission on API 37+",
+      "app presentation must own the SMB local-network permission launcher",
       "Manifest.permission.ACCESS_LOCAL_NETWORK" in libraryRoute &&
-        "Build.VERSION.SDK_INT >= 37" in libraryRoute,
+        "withLocalNetworkAccess" in libraryRoute &&
+        "localNetworkPermissionLauncher.launch" in libraryRoute,
+    )
+    assertTrue(
+      "library UI must gate SMB network operations without importing Android permission APIs",
+      "withLocalNetworkAccess" in libraryFeatureRoute &&
+        "withLocalNetworkAccess(viewModel::syncSmbLibrary)" in libraryFeatureRoute &&
+        "withLocalNetworkAccess { openedSmbBook = book }" in libraryFeatureRoute &&
+        "Manifest.permission.ACCESS_LOCAL_NETWORK" !in libraryFeatureRoute,
     )
   }
 
