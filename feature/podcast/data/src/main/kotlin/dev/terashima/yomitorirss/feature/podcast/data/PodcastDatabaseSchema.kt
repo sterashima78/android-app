@@ -13,6 +13,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
     DatabaseMigration(targetVersion = 34) { db -> migratePodcastSources(db) },
     DatabaseMigration(targetVersion = 35) { db -> migratePodcastArticleUrls(db) },
     DatabaseMigration(targetVersion = 36) { db -> migratePodcastChapterGeneration(db) },
+    DatabaseMigration(targetVersion = 37) { db -> migratePodcastNewsClusters(db) },
   ),
 )
 
@@ -47,6 +48,7 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
     "CREATE TABLE IF NOT EXISTS podcast_episode_articles(" +
       "episode_id TEXT NOT NULL REFERENCES podcast_episodes(id) ON DELETE CASCADE," +
       "position INTEGER NOT NULL," +
+      "chapter_position INTEGER," +
       "article_id TEXT NOT NULL," +
       "feed_id TEXT NOT NULL," +
       "title TEXT NOT NULL," +
@@ -141,6 +143,14 @@ private fun migratePodcastChapterGeneration(db: SQLiteDatabase) {
         "WHERE episode_id IN (SELECT id FROM podcast_episodes WHERE status='READY')",
     )
   }
+}
+
+private fun migratePodcastNewsClusters(db: SQLiteDatabase) {
+  if (!db.hasTable("podcast_episode_articles")) return
+  if (!db.hasColumn("podcast_episode_articles", "chapter_position")) {
+    db.execSQL("ALTER TABLE podcast_episode_articles ADD COLUMN chapter_position INTEGER")
+  }
+  db.execSQL("UPDATE podcast_episode_articles SET chapter_position=position WHERE chapter_position IS NULL")
 }
 
 private fun migrateLegacyConsumedIdentities(db: SQLiteDatabase) {
