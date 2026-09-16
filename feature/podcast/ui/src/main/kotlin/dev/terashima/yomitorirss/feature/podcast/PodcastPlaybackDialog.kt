@@ -105,21 +105,23 @@ fun PodcastPlaybackDialog(
         }
         HorizontalDivider()
 
+        AudioPlayerControls(
+          state = displayAudioState,
+          onTogglePlayPause = onTogglePlayPause,
+          onPrevious = onPrevious,
+          onNext = onNext,
+          onSeekBack = onSeekBack,
+          onSeekForward = onSeekForward,
+          onSetSpeed = onSetSpeed,
+          onStop = onStop,
+        )
+
+        HorizontalDivider()
+
         Column(
           modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          AudioPlayerControls(
-            state = displayAudioState,
-            onTogglePlayPause = onTogglePlayPause,
-            onPrevious = onPrevious,
-            onNext = onNext,
-            onSeekBack = onSeekBack,
-            onSeekForward = onSeekForward,
-            onSetSpeed = onSetSpeed,
-            onStop = onStop,
-          )
-
           Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
