@@ -12,7 +12,7 @@ Podcast生成は記事snapshot、chapter checkpoint、消費済みentry identity
 
 ## Decision
 
-feed取得時の正規化title完全一致による確実な重複除外は維持する。その後、今回の未消費候補だけを対象に `PodcastNewsClusterer` で「同じ具体的な出来事」を表すentryをclusterへ分類する。
+feed取得時の正規化title完全一致による確実な重複除外は維持する。その後、今回取得した候補を `PodcastNewsClusterer` で「同じ具体的な出来事」を表すentryのclusterへ分類する。予約時にはrepositoryが番組ごとの消費済みentry identityを再度除外し、消費済みentryを新規episodeへ再利用しない。
 
 分類にはtitle、source title、published timeを利用する。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。過去episodeとの意味的な比較は行わない。
 
@@ -28,11 +28,14 @@ chapter checkpoint、script、errorは同一 `chapter_position` の全rowsへ同
 
 番組の既存 `maxArticlesPerEpisode` / DB `max_articles` は互換性のため直ちにrenameせず、実行意味論をcluster後の最大ニュース数として扱う。
 
+消費済みentryを分類前に除外するためだけの新しいrepository query APIは追加しない。消費判定の正本は予約transaction内に維持する。分類入力の追加コストが実測上問題になった場合は、その時点で専用のread capability追加を別判断とする。
+
 ## Consequences
 
 - 異なるsourceが同じ出来事を報じても1チャプターとして聞ける。
 - 同一ニュース内の複数sourceを失わず、再生詳細から各元記事を参照できる。
 - cluster境界がdurable snapshotになるため、中断再開・再生成でもchapter対応が変わらない。
 - AI分類が不安定または利用不能でも、従来の1記事1チャプターへ安全に退化する。
+- 消費済みentryがfeed候補に残っている場合、分類入力には含まれる可能性があるが、予約時に再利用されることはない。
 - `podcast_episode_articles` のcheckpoint列はcluster単位の同値を複数rowへ保持するため正規化されていない。ただし既存schemaとmigrationを小さく保ち、Podcast-owned snapshot tableだけで完結できる。
 - 将来cluster固有metadataが増えて重複保持が問題になった場合は、独立したchapter tableへの移行を再検討する。
