@@ -16,32 +16,35 @@
 現在の build baseline は次の通り。
 
 - `compileSdk`: API 37
-- `targetSdk`: API 36
+- `targetSdk`: API 37
 - `minSdk`: API 35
 
-Android 17 / API 37 SDK は現在利用可能であり、preview SDK とは扱わない。compile baseline は API 37 へ更新したが、Mosaic は SMB と LAN Web Server によりローカルネットワーク通信を行うため、`targetSdk = 37` は単純な version bump として実施しない。Android 17 を target するアプリでは `ACCESS_LOCAL_NETWORK` runtime permission が必要になるため、permission UX と SMB / LAN Web Server の動作確認を含む独立した platform migration として採用する。
+Android 17 / API 37 SDK はstable platformとして利用し、compile / target baselineをともにAPI 37とする。targetSdk 37ではローカルネットワーク通信がruntime permissionの対象になるため、SMBとLAN Web Serverは `ACCESS_LOCAL_NETWORK` の許可後だけLAN通信を開始する。
 
-現時点では `compileSdk = 37` / `targetSdk = 36` としつつ、Android 17 端末上の all-app behavior changes は現在の互換性対象として検証する。特に app memory limits は `targetSdkVersion` に関係なく Android 17 上で適用されるため、local AI / native memory の診断と process isolation の前提に含める。
+Android 17端末上のall-app behavior changesも現在の互換性対象として検証する。特にapp memory limitsはtargetSdkVersionに関係なくAndroid 17上で適用されるため、local AI / native memoryの診断とprocess isolationの前提に含める。
 
 app だけを API 35 にして library module に古い baseline を残すと、到達不能な compatibility branch が module 内へ残りやすい。このため current architecture では Android application/library module の `minSdk` を API 35 以上へ統一し、architecture verification で API 34 以下への退行を禁止する。compileSdk は application/library module とも API 37 に統一する。
 
-## Android 17 target migration
+## Android 17 target baseline
 
-`targetSdk = 37` へ移行する変更では、少なくとも次を同じ PR で確認する。
+`targetSdk = 37` では次をcurrent contractとする。
 
-- `ACCESS_LOCAL_NETWORK` permission を manifest へ宣言し、SMB / LAN Web Server を利用する直前に必要な runtime permission UX を提供する。
-- permission 未付与・拒否時に、SMB 接続、表紙先読み、LAN Web Server が不明な通信失敗ではなく利用不可理由を表示する。
-- SMB server discovery / connection、cover prefetch、LAN Web Server の integration / 実端末確認を行う。
-- Android 17 target-specific behavior changes を確認する。
-- 大画面では orientation / resizability / aspect ratio 制約が無視される契約を前提に、現在の portrait 指定に依存した UI が破綻しないことを確認する。
+- `ACCESS_LOCAL_NETWORK` permissionをmanifestへ宣言する。
+- local-network permissionは`:app:presentation`がActivity Result launcherを所有し、feature Domain / DataへAndroid permission APIを持ち込まない。
+- LAN Web Serverはユーザーが起動を要求した時点でpermissionを確認し、未付与なら要求する。拒否時はserverを起動しない。
+- SMBは既存のSMB接続設定を持つLibraryを利用する時点でpermissionを要求する。許可後は同期、reader、cover prefetch、metadata normalization、file operation等の既存LAN処理が同じOS permissionを利用する。
+- permission拒否時にSMB設定・credential・durable stateを削除しない。
+- 大画面ではorientation / resizability / aspect ratio制約が無視されることを前提とし、portrait指定やorientation requestを機能成立条件にしない。
+- Android 17 target-specific behavior changesは新規platform API導入時だけでなくUI/Window挙動の変更としても継続確認する。
 
-compileSdk 37 は ADR-0258 により先行採用済みである。targetSdk 37 は上記 runtime behavior migration として独立して扱う。
+compileSdk 37の先行採用はADR-0258、targetSdk 37とlocal-network permission boundaryはADR-0259を正とする。
 
 ## Implementation guidance
 
 API 35 以上で常に成立する framework 契約は直接表現する。代表例は次の通り。
 
 - `POST_NOTIFICATIONS` の runtime permission は API 35 実行を前提として扱う。
+- `ACCESS_LOCAL_NETWORK` はAPI 37 targetのapp-wide platform permissionとし、LAN featureの利用開始時に`:app:presentation`で要求する。
 - Widget の fill-in intent 用 `PendingIntent` は mutability を明示する。
 - API 34 の foreground service type を利用する background worker では、API 34 未満へフォールバックする `SDK_INT` 分岐を持たない。
 - API 34 から利用できる User-Initiated Data Transfer Job 等を current runtime の正規経路として利用する場合、API 34 以下専用 fallback を併設しない。
@@ -114,7 +117,7 @@ HTTP は暗号化されないため、LAN Web は信頼できる LAN でのみ�
 - Android が process を終了したケースは `ApplicationExitInfo` から未確認の終了理由を取得し、low-memory / MemoryLimiter 系の終了を起動時診断へ取り込む。短寿命 vision process の正常終了で障害記録が押し出されないよう、固定件数ではなく Android が保持する履歴全体を確認する。
 - process-exit report の障害候補は application package name と一致する main process、または `applicationPackageName:` で始まる Mosaic 所有 subprocess に限定する。WebView sandbox renderer 等の別 package process の low-memory exit は Mosaic の process-exit report として表示しない。
 - Android 17 の app memory limits は targetSdk に関係なく実行環境の制約として扱い、app-owned process の `MemoryLimiter` を含む終了はこの診断経路で追跡する。
-- Android 17 / API 37 では `ProfilingManager` の anomaly trigger を登録し、memory limit 到達時に system profiling artifact を app-private storage へ残せるようにする。現行 `compileSdk = 37` / `targetSdk = 36` では API 37 runtime guard 内だけで anomaly trigger を有効にする。
+- Android 17 / API 37 では `ProfilingManager` の anomaly trigger を登録し、memory limit 到達時に system profiling artifact を app-private storage へ残せるようにする。API 37 runtime guard 内だけで anomaly trigger を有効にする。
 - process-exit report は対象 exit の pid と process name を記録する。local AI memory diagnostics は同じ pid・process name かつ exit timestamp 以下のサンプルだけを補足し、別 process generation や終了後のサンプルを混在させない。
 - MemoryLimiter exit 前10分以内に system profiling artifact が生成されている場合、共有 report には安全な artifact file name を最大3件だけ記録する。heap dump 本体、app-private path、heap 内容は report へコピーしない。
 - local AI の診断には raw user content、画像 payload、表紙 path、prompt、AI 出力を保存しない。
@@ -133,7 +136,7 @@ CI は現在の compile baseline である Android API 37 platform を利用し�
 
 Android platform baseline は `gradle/table-ownership.gradle.kts` を併用する Architecture job で検査する。module を追加した場合も `minSdk` が 35 未満または未宣言なら CI を失敗させる。
 
-API 37 compile baseline は採用済みであり、`targetSdk = 37` の behavior change 検証は独立した platform migration で追加する。
+API 37 compile / target baseline は採用済みであり、local-network permission宣言とtargetSdk 37はsource-level governance testでも固定する。
 
 ## Sources
 
@@ -153,3 +156,4 @@ API 37 compile baseline は採用済みであり、`targetSdk = 37` の behavior
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0235](../adr/0235-summary-audio-playback.md)
 - [ADR-0258](../adr/0258-android17-compile-sdk-baseline.md)
+- [ADR-0259](../adr/0259-android17-target-sdk-and-local-network-permission.md)
