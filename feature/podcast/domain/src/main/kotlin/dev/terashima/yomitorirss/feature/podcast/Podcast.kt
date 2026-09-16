@@ -5,10 +5,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CancellationException
 
-enum class PodcastGenerationProvider {
-  LOCAL,
-  CLOUD,
-}
+enum class PodcastGenerationProvider { LOCAL, CLOUD }
 
 data class PodcastSchedule(
   val enabled: Boolean = false,
@@ -69,17 +66,8 @@ data class PodcastFeedEntry(
   }
 }
 
-enum class PodcastChapterGenerationStatus {
-  PENDING,
-  GENERATING,
-  READY,
-  FAILED,
-}
-
-enum class PodcastRegenerationStatus {
-  RUNNING,
-  FAILED,
-}
+enum class PodcastChapterGenerationStatus { PENDING, GENERATING, READY, FAILED }
+enum class PodcastRegenerationStatus { RUNNING, FAILED }
 
 data class PodcastEpisodeArticle(
   val articleId: String,
@@ -99,17 +87,10 @@ data class PodcastPlaybackChapter(
   val number: Int,
   val article: PodcastEpisodeArticle?,
   val speechText: String,
-  val articles: List<PodcastEpisodeArticle> = article?.let(::listOf).orEmpty(),
+  val articles: List<PodcastEpisodeArticle> = article?.let { listOf(it) }.orEmpty(),
 )
 
-enum class PodcastEpisodeStatus {
-  QUEUED,
-  GENERATING,
-  READY,
-  FAILED,
-  ARCHIVED,
-  DELETED,
-}
+enum class PodcastEpisodeStatus { QUEUED, GENERATING, READY, FAILED, ARCHIVED, DELETED }
 
 data class PodcastEpisode(
   val id: String,
@@ -135,10 +116,10 @@ data class PodcastEpisode(
 
     val groups = chapterGroups()
     val matches = PODCAST_CHAPTER_MARKER.findAll(speech).toList()
-    val chapterNumbers = matches.mapNotNull { match -> match.groupValues.getOrNull(1)?.toIntOrNull() }
+    val chapterNumbers = matches.mapNotNull { it.groupValues.getOrNull(1)?.toIntOrNull() }
     val expectedNumbers = groups.indices.map { it + 1 }
     if (matches.size != groups.size || chapterNumbers.sorted() != expectedNumbers) {
-      return listOf(PodcastPlaybackChapter(number = 1, article = null, speechText = speech, articles = emptyList()))
+      return listOf(PodcastPlaybackChapter(1, null, speech, emptyList()))
     }
 
     val chapters = matches.mapIndexed { index, match ->
@@ -155,26 +136,19 @@ data class PodcastEpisode(
       val chapterSpeech = titleMatch?.let { marker ->
         val beforeTitle = segment.substring(0, marker.range.first).trimEnd()
         val afterTitle = segment.substring(marker.range.last + 1).trimStart()
-        val sanitizedAfterTitle = stripRepeatedSpokenTitle(afterTitle, spokenTitle)
-        listOf(beforeTitle, sanitizedAfterTitle).filter(String::isNotBlank).joinToString(separator = " ").trim()
+        listOf(beforeTitle, stripRepeatedSpokenTitle(afterTitle, spokenTitle))
+          .filter(String::isNotBlank)
+          .joinToString(" ")
+          .trim()
       } ?: segment
-      PodcastPlaybackChapter(
-        number = index + 1,
-        article = playbackArticle,
-        speechText = chapterSpeech,
-        articles = chapterArticles,
-      )
+      PodcastPlaybackChapter(index + 1, playbackArticle, chapterSpeech, chapterArticles)
     }
     return chapters.takeIf { it.none { chapter -> chapter.speechText.isBlank() } }
-      ?: listOf(PodcastPlaybackChapter(number = 1, article = null, speechText = speech, articles = emptyList()))
+      ?: listOf(PodcastPlaybackChapter(1, null, speech, emptyList()))
   }
 }
 
-enum class PodcastGenerationTaskState {
-  QUEUED,
-  RUNNING,
-  FAILED,
-}
+enum class PodcastGenerationTaskState { QUEUED, RUNNING, FAILED }
 
 data class PodcastGenerationTask(
   val episodeId: String,
@@ -217,13 +191,7 @@ interface PodcastRepository {
       .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
 
   suspend fun claimPendingEpisode(programId: String): PodcastEpisode?
-
-  suspend fun reserveEpisode(
-    program: PodcastProgram,
-    candidates: List<PodcastFeedEntry>,
-    createdAtEpochMillis: Long,
-  ): PodcastEpisode?
-
+  suspend fun reserveEpisode(program: PodcastProgram, candidates: List<PodcastFeedEntry>, createdAtEpochMillis: Long): PodcastEpisode?
   suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode
   suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode
   suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode
@@ -253,14 +221,13 @@ class GeneratePodcastEpisodeUseCase(
 
   suspend fun generate(programId: String): PodcastGenerationResult = withProgramGeneration(programId) {
     val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
-    repository.claimPendingEpisode(programId)?.let { pending -> return@withProgramGeneration generateReserved(program, pending) }
+    repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it) }
     val sources = repository.listSources().filter { it.id in program.sourceIds }
     require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
       "番組に利用できないソースがあります。番組設定を確認してください"
     }
-    val candidates = feedContentSource.latestEntries(sources = sources, limit = Int.MAX_VALUE)
-    val clusteredCandidates = clusterCandidates(program, candidates)
-    val reserved = repository.reserveEpisode(program, clusteredCandidates, nowEpochMillis())
+    val candidates = feedContentSource.latestEntries(sources, Int.MAX_VALUE)
+    val reserved = repository.reserveEpisode(program, clusterCandidates(program, candidates), nowEpochMillis())
       ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
     generateReserved(program, reserved)
   }
@@ -297,21 +264,19 @@ class GeneratePodcastEpisodeUseCase(
 
   private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): List<PodcastFeedEntry> {
     if (candidates.size <= 1) return candidates.mapIndexed { index, entry -> entry.copy(chapterPosition = index) }
-    return runCatching {
+    return try {
       val response = scriptGenerator.generate(program.provider, buildPodcastClusteringPrompt(candidates))
-      val groups = parsePodcastClusters(response, candidates.size)
-      groups.flatMapIndexed { chapterPosition, indexes ->
+      parsePodcastClusters(response, candidates.size).flatMapIndexed { chapterPosition, indexes ->
         indexes.map { index -> candidates[index].copy(chapterPosition = chapterPosition) }
       }
-    }.getOrElse {
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
       candidates.mapIndexed { index, entry -> entry.copy(chapterPosition = index) }
     }
   }
 
-  private suspend fun generateReserved(
-    program: PodcastProgram,
-    initialEpisode: PodcastEpisode,
-  ): PodcastGenerationResult.Generated {
+  private suspend fun generateReserved(program: PodcastProgram, initialEpisode: PodcastEpisode): PodcastGenerationResult.Generated {
     var episode = initialEpisode
     val regenerating = episode.regenerationStatus == PodcastRegenerationStatus.RUNNING
     var activePosition: Int? = null
@@ -326,13 +291,8 @@ class GeneratePodcastEpisodeUseCase(
         episode = repository.markChapterGenerating(episode.id, position)
         group = episode.chapterGroups()[position]
         val chapterScript = scriptGenerator.generate(
-          provider = program.provider,
-          prompt = buildPodcastChapterPrompt(
-            programName = program.name,
-            articles = group,
-            chapterNumber = position + 1,
-            totalChapters = totalChapters,
-          ),
+          program.provider,
+          buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters),
         ).trim()
         require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
         episode = repository.completeChapter(episode.id, position, chapterScript)
@@ -340,14 +300,14 @@ class GeneratePodcastEpisodeUseCase(
       }
 
       episode = requireNotNull(repository.findEpisode(episode.id)) { "episode not found: ${episode.id}" }
-      val script = buildPodcastEpisodeScript(program.name, episode.chapterGroups())
+      val script = buildPodcastEpisodeScriptFromChapters(program.name, episode.chapterGroups())
       val title = buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
       PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
       val message = error.message ?: error::class.simpleName ?: "generation failed"
-      activePosition?.let { position -> runCatching { repository.failChapter(episode.id, position, message) } }
+      activePosition?.let { runCatching { repository.failChapter(episode.id, it, message) } }
       if (regenerating) runCatching { repository.failRegeneration(episode.id, message) }
       else runCatching { repository.failEpisode(episode.id, message) }
       throw error
@@ -377,7 +337,7 @@ fun parsePodcastClusters(response: String, entryCount: Int): List<List<Int>> {
   require(entryCount > 0) { "entryCount must be positive" }
   val groups = response.lineSequence().map(String::trim).filter(String::isNotBlank).map { line ->
     require(line.startsWith("GROUP:", ignoreCase = true)) { "invalid clustering response" }
-    line.substringAfter(':').split(',').map { token -> token.trim().toInt() - 1 }
+    line.substringAfter(':').split(',').map { it.trim().toInt() - 1 }
       .also { indexes -> require(indexes.isNotEmpty()) { "empty cluster" } }
   }.toList()
   require(groups.isNotEmpty()) { "clustering response is empty" }
@@ -412,6 +372,7 @@ fun buildPodcastChapterPrompt(
       append(article.feedContent.trim())
     }
   }.joinToString("\n---\n")
+
   return """
     あなたはニュース音声番組「$programName」の原稿編集者です。
     以下は同じ具体的なニュースを報じた記事です。入力記事だけを根拠に、重複内容を繰り返さず1つの日本語音声チャプターへ統合してください。
@@ -444,13 +405,18 @@ fun buildPodcastChapterPrompt(
 }
 
 fun buildPodcastEpisodeScript(programName: String, articles: List<PodcastEpisodeArticle>): String =
-  buildPodcastEpisodeScript(programName, articles.map(::listOf))
+  buildPodcastEpisodeScriptFromChapters(programName, articles.map { listOf(it) })
 
-fun buildPodcastEpisodeScript(programName: String, chapters: List<List<PodcastEpisodeArticle>>): String {
+private fun buildPodcastEpisodeScriptFromChapters(
+  programName: String,
+  chapters: List<List<PodcastEpisodeArticle>>,
+): String {
   require(chapters.isNotEmpty()) { "chapters must not be empty" }
-  require(chapters.all { chapter -> chapter.isNotEmpty() && chapter.all {
-    it.chapterStatus == PodcastChapterGenerationStatus.READY && !it.chapterScript.isNullOrBlank()
-  } }) { "all podcast chapters must be ready" }
+  require(chapters.all { chapter ->
+    chapter.isNotEmpty() && chapter.all {
+      it.chapterStatus == PodcastChapterGenerationStatus.READY && !it.chapterScript.isNullOrBlank()
+    }
+  }) { "all podcast chapters must be ready" }
 
   return chapters.mapIndexed { index, chapter ->
     val script = requireNotNull(chapter.first().chapterScript).trim()
@@ -461,13 +427,12 @@ fun buildPodcastEpisodeScript(programName: String, chapters: List<List<PodcastEp
       if (index == chapters.lastIndex) append(" 以上、今回のニュースでした。")
     }
     "[[CHAPTER:${index + 1}]]\n$speech"
-  }.joinToString(separator = "\n\n")
+  }.joinToString("\n\n")
 }
 
 private fun stripRepeatedSpokenTitle(speech: String, spokenTitle: String?): String {
   val title = spokenTitle?.trim()?.takeIf(String::isNotBlank) ?: return speech
-  val escapedTitle = Regex.escape(title)
-  val repeatedTitle = Regex(pattern = """^\s*(?:タイトル|見出し)\s*[、,:：]\s*$escapedTitle\s*(?:[。.!！?？]\s*)?""")
+  val repeatedTitle = Regex("""^\s*(?:タイトル|見出し)\s*[、,:：]\s*${Regex.escape(title)}\s*(?:[。.!！?？]\s*)?""")
   return speech.replaceFirst(repeatedTitle, "").trimStart()
 }
 
