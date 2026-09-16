@@ -472,7 +472,7 @@ class SqlitePodcastRepository(
       val updated = update(
         "podcast_episode_articles",
         values,
-        "episode_id=? AND COALESCE(chapter_position,position)=?",
+        "episode_id=? AND COALESCE(chapter_position,position)=CAST(? AS INTEGER)",
         arrayOf(episodeId, position.toString()),
       )
       require(updated >= 1) { "episode chapter not found: $episodeId/$position" }
