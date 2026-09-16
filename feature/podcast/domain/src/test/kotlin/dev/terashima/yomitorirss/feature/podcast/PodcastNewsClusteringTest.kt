@@ -1,7 +1,9 @@
 package dev.terashima.yomitorirss.feature.podcast
 
 import java.util.concurrent.CancellationException
-import kotlinx.coroutines.runBlocking
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -54,7 +56,7 @@ class PodcastNewsClusteringTest {
   }
 
   @Test
-  fun `AI分類失敗時は1記事1ニュースへフォールバックする`() = runBlocking {
+  fun `AI分類失敗時は1記事1ニュースへフォールバックする`() = runSuspendForClustering {
     val clusterer = AiPodcastNewsClusterer(
       scriptGenerator = object : PodcastScriptGenerator {
         override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = "invalid"
@@ -78,7 +80,7 @@ class PodcastNewsClusteringTest {
     )
 
     assertThrows(CancellationException::class.java) {
-      runBlocking {
+      runSuspendForClustering {
         clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
       }
     }
@@ -120,4 +122,17 @@ class PodcastNewsClusteringTest {
     chapterStatus = if (script == null) PodcastChapterGenerationStatus.PENDING else PodcastChapterGenerationStatus.READY,
     chapterScript = script,
   )
+}
+
+private fun <T> runSuspendForClustering(block: suspend () -> T): T {
+  var value: Result<T>? = null
+  block.startCoroutine(
+    object : Continuation<T> {
+      override val context = EmptyCoroutineContext
+      override fun resumeWith(result: Result<T>) {
+        value = result
+      }
+    },
+  )
+  return requireNotNull(value) { "suspend block did not complete synchronously" }.getOrThrow()
 }
