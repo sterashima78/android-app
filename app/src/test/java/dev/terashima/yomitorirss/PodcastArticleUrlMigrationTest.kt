@@ -75,19 +75,21 @@ class PodcastArticleUrlMigrationTest {
 
     val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
 
-    assertEquals(36, migrated.version)
+    assertEquals(37, migrated.version)
     assertTrue("article_url" in columnNames(migrated, "podcast_episode_articles"))
     assertTrue("chapter_status" in columnNames(migrated, "podcast_episode_articles"))
     assertTrue("chapter_script" in columnNames(migrated, "podcast_episode_articles"))
     assertTrue("chapter_error" in columnNames(migrated, "podcast_episode_articles"))
+    assertTrue("chapter_position" in columnNames(migrated, "podcast_episode_articles"))
     migrated.rawQuery(
-      "SELECT article_id,article_url,chapter_status FROM podcast_episode_articles WHERE episode_id=?",
+      "SELECT article_id,article_url,chapter_status,chapter_position FROM podcast_episode_articles WHERE episode_id=?",
       arrayOf("episode-1"),
     ).use { cursor ->
       assertTrue(cursor.moveToFirst())
       assertEquals("article-1", cursor.getString(0))
       assertNull(if (cursor.isNull(1)) null else cursor.getString(1))
       assertEquals("PENDING", cursor.getString(2))
+      assertEquals(0, cursor.getInt(3))
     }
   }
 
@@ -155,7 +157,7 @@ class PodcastArticleUrlMigrationTest {
 
     val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
 
-    assertEquals(36, migrated.version)
+    assertEquals(37, migrated.version)
     migrated.rawQuery(
       "SELECT script,regeneration_status FROM podcast_episodes WHERE id=?",
       arrayOf("episode-ready"),
@@ -165,13 +167,14 @@ class PodcastArticleUrlMigrationTest {
       assertTrue(cursor.isNull(1))
     }
     migrated.rawQuery(
-      "SELECT chapter_status,chapter_script,chapter_error FROM podcast_episode_articles WHERE episode_id=?",
+      "SELECT chapter_status,chapter_script,chapter_error,chapter_position FROM podcast_episode_articles WHERE episode_id=?",
       arrayOf("episode-ready"),
     ).use { cursor ->
       assertTrue(cursor.moveToFirst())
       assertEquals("READY", cursor.getString(0))
       assertTrue(cursor.isNull(1))
       assertTrue(cursor.isNull(2))
+      assertEquals(0, cursor.getInt(3))
     }
   }
 }
