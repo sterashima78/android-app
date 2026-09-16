@@ -1,7 +1,8 @@
 # 3. 対象環境
 
 - Android 15（API 35）以降を対象とする。
-- compile / target API は Android API 36 系とする。
+- compile / target API は Android API 37 とする。
+- API 37 targetではローカルネットワークアクセスに実行時許可が必要であり、LAN機能は利用時に許可を要求する。
 - 配布対象CPUは arm64-v8a とする。
 - Kotlin と Jetpack Compose を主要実装技術とする。
 - Game の数独とクロンダイクでは、既存 Android アプリへ組み込んだ Godot runtime を利用する。
