@@ -1,14 +1,21 @@
 package dev.terashima.yomitorirss.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.composition.route.LibraryRouteDependencies
 import dev.terashima.yomitorirss.feature.library.LibraryFeatureRoute
@@ -27,11 +34,37 @@ internal fun LibraryRoute(
   val authorization = dependencies.authorization
   val context = LocalContext.current
   val libraryViewModel: LibraryViewModel = viewModel(factory = dependencies.libraryViewModelFactory)
+  val libraryState by libraryViewModel.state.collectAsState()
   val organizationViewModel: LibraryOrganizationViewModel = viewModel(
     key = "library-organization",
     factory = dependencies.organizationViewModelFactory,
   )
   val scope = rememberCoroutineScope()
+
+  val localNetworkPermissionLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.RequestPermission(),
+  ) { granted ->
+    if (!granted) {
+      Toast.makeText(
+        context,
+        "ファイルサーバへのアクセスにはローカルネットワークの許可が必要です。",
+        Toast.LENGTH_LONG,
+      ).show()
+    }
+  }
+
+  LaunchedEffect(libraryState.smbServers.isNotEmpty()) {
+    if (
+      libraryState.smbServers.isNotEmpty() &&
+      Build.VERSION.SDK_INT >= 37 &&
+      ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_LOCAL_NETWORK,
+      ) != PackageManager.PERMISSION_GRANTED
+    ) {
+      localNetworkPermissionLauncher.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+    }
+  }
 
   fun acceptAuthorizationResult(data: Intent) {
     runCatching { authorization.resultFromIntent(data) }
@@ -44,7 +77,7 @@ internal fun LibraryRoute(
   ) { result ->
     val data = result.data
     if (data == null) {
-      libraryViewModel.reportError(IllegalStateException("Google Books の認証結果を取得できませんでした"))
+      libraryViewModel.reportError(IllegalStateException("書籍同期の認証結果を取得できませんでした"))
     } else {
       acceptAuthorizationResult(data)
     }
