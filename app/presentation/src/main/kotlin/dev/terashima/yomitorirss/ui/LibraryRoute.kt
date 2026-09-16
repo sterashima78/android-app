@@ -9,10 +9,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -34,17 +35,21 @@ internal fun LibraryRoute(
   val authorization = dependencies.authorization
   val context = LocalContext.current
   val libraryViewModel: LibraryViewModel = viewModel(factory = dependencies.libraryViewModelFactory)
-  val libraryState by libraryViewModel.state.collectAsState()
   val organizationViewModel: LibraryOrganizationViewModel = viewModel(
     key = "library-organization",
     factory = dependencies.organizationViewModelFactory,
   )
   val scope = rememberCoroutineScope()
+  var pendingLocalNetworkAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
   val localNetworkPermissionLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission(),
   ) { granted ->
-    if (!granted) {
+    val action = pendingLocalNetworkAction
+    pendingLocalNetworkAction = null
+    if (granted) {
+      action?.invoke()
+    } else {
       Toast.makeText(
         context,
         "ファイルサーバへのアクセスにはローカルネットワークの許可が必要です。",
@@ -53,15 +58,17 @@ internal fun LibraryRoute(
     }
   }
 
-  LaunchedEffect(libraryState.smbServers.isNotEmpty()) {
+  val withLocalNetworkAccess: (() -> Unit) -> Unit = { action ->
     if (
-      libraryState.smbServers.isNotEmpty() &&
-      Build.VERSION.SDK_INT >= 37 &&
+      Build.VERSION.SDK_INT < 37 ||
       ContextCompat.checkSelfPermission(
         context,
         Manifest.permission.ACCESS_LOCAL_NETWORK,
-      ) != PackageManager.PERMISSION_GRANTED
+      ) == PackageManager.PERMISSION_GRANTED
     ) {
+      action()
+    } else {
+      pendingLocalNetworkAction = action
       localNetworkPermissionLauncher.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
     }
   }
@@ -121,6 +128,7 @@ internal fun LibraryRoute(
           Toast.makeText(context, "Webページを開けませんでした", Toast.LENGTH_LONG).show()
         }
       },
+      withLocalNetworkAccess = withLocalNetworkAccess,
       smbRepository = dependencies.smbRepository,
       pageSourceFactory = dependencies.bookReader.pageSourceFactory,
       readingPositionStore = dependencies.bookReader.readingPositionStore,
