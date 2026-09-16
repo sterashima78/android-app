@@ -1,0 +1,42 @@
+# ADR-0259: ニュースポッドキャストの同一ニュース統合
+
+## Status
+
+Accepted
+
+## Context
+
+複数のPodcast sourceから同じ出来事を報じるentryを取得すると、タイトル表現が異なるため既存の正規化title完全一致では除外できず、同じニュースが複数チャプターとして読み上げられる。
+
+Podcast生成は記事snapshot、chapter checkpoint、消費済みentry identityをdurable stateとして保持し、中断再開・失敗再試行・再生成で同じsnapshotを利用する。そのため同一ニュース判定を毎回やり直すと、同じepisodeでも実行ごとにchapter境界が変わり、checkpointや再生記事対応が不安定になる。
+
+## Decision
+
+feed取得時の正規化title完全一致による確実な重複除外は維持する。その後、`PodcastCandidateFilter` が番組単位の消費済みentry identityを除外し、未消費候補だけを `PodcastNewsClusterer` で「同じ具体的な出来事」を表すentryのclusterへ分類する。予約transactionでも消費済みentryを再度除外し、並行実行や状態変化があっても新規episodeへ再利用しない。
+
+分類にはtitle、source title、published timeを利用する。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。過去episodeとの意味的な比較は行わない。
+
+`PodcastNewsClusterer` は原稿生成の `PodcastScriptGenerator` とdomain capabilityを分離する。production compositionでは同じAI推論基盤を利用できるが、生成use caseの既存の原稿生成回数・checkpoint contractへ分類推論を混在させない。
+
+分類結果は全候補をちょうど1回含むpartitionであることを検証する。分類推論またはparseに失敗した場合は1記事1clusterへfallbackし、ニュース生成全体を失敗させない。coroutine cancellationはfallbackせず伝播する。
+
+cluster境界はepisode予約時にsnapshotする。新しいtableは追加せず、`podcast_episode_articles.chapter_position` を追加し、同一clusterの記事rowsへ同じpositionを保存する。既存episodeはmigrationで `chapter_position=position` とし、従来の1記事1chapterを維持する。
+
+chapter checkpoint、script、errorは同一 `chapter_position` の全rowsへ同じ値を更新する。retry、interrupted recovery、regenerationでは保存済みcluster境界を再利用し、再クラスタリングしない。
+
+1つのclusterに含まれる全entryを消費済みにし、chapter生成ではcluster内の全feed-carried title/bodyを入力する。重複内容を一度だけ説明し、矛盾しない追加情報を統合する。linked page本文やentry URLはAI入力へ含めない。
+
+番組の既存 `maxArticlesPerEpisode` / DB `max_articles` は互換性のため直ちにrenameせず、実行意味論をcluster後の最大ニュース数として扱う。
+
+入力上限を超えるcluster promptでは記事blockを個別認識し、全記事のmetadataを残したまま本文budgetを分配する。長い先行記事によって後続記事全体を切り捨てない。
+
+## Consequences
+
+- 異なるsourceが同じ出来事を報じても1チャプターとして聞ける。
+- 同一ニュース内の複数sourceを失わず、再生詳細から各元記事を参照できる。
+- cluster境界がdurable snapshotになるため、中断再開・再生成でもchapter対応が変わらない。
+- AI分類が不安定または利用不能でも、従来の1記事1チャプターへ安全に退化する。
+- 消費済みentryは分類推論へ送られず、新規entryのcluster境界へ影響しない。予約transactionでの再確認も維持する。
+- 長い複数記事clusterでも各記事をpromptへ残すため、1記事だけが入力budgetを占有しない。
+- `podcast_episode_articles` のcheckpoint列はcluster単位の同値を複数rowへ保持するため正規化されていない。ただし既存schemaとmigrationを小さく保ち、Podcast-owned snapshot tableだけで完結できる。
+- 将来cluster固有metadataが増えて重複保持が問題になった場合は、独立したchapter tableへの移行を再検討する。
