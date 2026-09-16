@@ -215,4 +215,4 @@ App composition / presentation の source ownership と active-destination ViewM
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0258](../adr/0258-android17-compile-sdk-baseline.md)
-- [ADR-0259](../adr/0259-android17-target-sdk-and-local-network-permission.md)
+- [ADR-0260](../adr/0260-android17-target-sdk-and-local-network-permission.md)
