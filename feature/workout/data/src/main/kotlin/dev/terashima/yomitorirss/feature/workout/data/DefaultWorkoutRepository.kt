@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss.feature.workout.data
 
 import android.content.Context
 import dev.terashima.yomitorirss.feature.workout.WorkoutDay
-import dev.terashima.yomitoririss.feature.workout.WorkoutExercise
+import dev.terashima.yomitorirss.feature.workout.WorkoutExercise
 import dev.terashima.yomitorirss.feature.workout.WorkoutExerciseType
 import dev.terashima.yomitorirss.feature.workout.WorkoutHistory
 import dev.terashima.yomitorirss.feature.workout.WorkoutMenu
