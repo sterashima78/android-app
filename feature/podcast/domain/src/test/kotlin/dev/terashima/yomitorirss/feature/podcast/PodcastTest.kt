@@ -18,7 +18,7 @@ class PodcastTest {
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
     val generator = RecordingGenerator("生成された原稿")
-    val useCase = GeneratePodcastEpisodeUseCase(repository, source, generator) { 1234L }
+    val useCase = GeneratePodcastEpisodeUseCase(repository, source, generator, nowEpochMillis = { 1234L })
 
     val result = useCase.generate(program.id) as PodcastGenerationResult.Generated
 
@@ -43,7 +43,7 @@ class PodcastTest {
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
     val firstGenerator = SequencedGenerator(listOf("1件目の原稿", null))
-    val firstUseCase = GeneratePodcastEpisodeUseCase(repository, source, firstGenerator) { 1234L }
+    val firstUseCase = GeneratePodcastEpisodeUseCase(repository, source, firstGenerator, nowEpochMillis = { 1234L })
 
     runCatching { firstUseCase.generate(program.id) }
     val failed = repository.episodes.single()
@@ -52,7 +52,7 @@ class PodcastTest {
     assertEquals(PodcastChapterGenerationStatus.FAILED, failed.articles[1].chapterStatus)
 
     val retryGenerator = RecordingGenerator("2件目の再生成原稿")
-    val retried = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator) { 9999L }
+    val retried = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator, nowEpochMillis = { 9999L })
       .retry(failed.id).episode
 
     assertEquals(1, retryGenerator.prompts.size)
@@ -67,7 +67,12 @@ class PodcastTest {
     val program = program()
     val repository = FakePodcastRepository(program).apply { sources.clear() }
     val source = FakeFeedContentSource(listOf(entry("a1")))
-    val useCase = GeneratePodcastEpisodeUseCase(repository, source, RecordingGenerator("原稿")) { 1234L }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("原稿"),
+      nowEpochMillis = { 1234L },
+    )
 
     val error = runCatching { useCase.generate(program.id) }.exceptionOrNull()
 
@@ -81,7 +86,12 @@ class PodcastTest {
     val program = program()
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1")))
-    val useCase = GeneratePodcastEpisodeUseCase(repository, source, RecordingGenerator("原稿")) { 1234L }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("原稿"),
+      nowEpochMillis = { 1234L },
+    )
 
     useCase.generate(program.id)
     val second = useCase.generate(program.id)
@@ -94,7 +104,12 @@ class PodcastTest {
     val program = program(maxArticlesPerEpisode = 1)
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
-    val useCase = GeneratePodcastEpisodeUseCase(repository, source, RecordingGenerator("原稿")) { 1234L }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("原稿"),
+      nowEpochMillis = { 1234L },
+    )
 
     val first = useCase.generate(program.id) as PodcastGenerationResult.Generated
     assertEquals(PodcastEpisodeStatus.QUEUED, repository.episodes.single { it.articles.single().articleId == "a2" }.status)
@@ -112,7 +127,7 @@ class PodcastTest {
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1")))
     val failing = RecordingGenerator(result = null)
-    val firstUseCase = GeneratePodcastEpisodeUseCase(repository, source, failing) { 1234L }
+    val firstUseCase = GeneratePodcastEpisodeUseCase(repository, source, failing, nowEpochMillis = { 1234L })
 
     runCatching { firstUseCase.generate(program.id) }
     val failed = repository.episodes.single()
@@ -120,7 +135,7 @@ class PodcastTest {
 
     source.entries = listOf(entry("a2"))
     val retryGenerator = RecordingGenerator("再生成原稿")
-    val retryUseCase = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator) { 9999L }
+    val retryUseCase = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator, nowEpochMillis = { 9999L })
     val retried = retryUseCase.retry(failed.id).episode
 
     assertEquals(listOf("a1"), retried.articles.map { it.articleId })
@@ -132,7 +147,12 @@ class PodcastTest {
     val program = program()
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1")))
-    val interruptedUseCase = GeneratePodcastEpisodeUseCase(repository, source, CancellingGenerator()) { 1234L }
+    val interruptedUseCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      CancellingGenerator(),
+      nowEpochMillis = { 1234L },
+    )
 
     runCatching { interruptedUseCase.generate(program.id) }
     val interrupted = repository.episodes.single()
@@ -141,8 +161,12 @@ class PodcastTest {
 
     source.entries = listOf(entry("a2"))
     val resumeGenerator = RecordingGenerator("再開原稿")
-    val resumed = GeneratePodcastEpisodeUseCase(repository, source, resumeGenerator) { 9999L }
-      .generate(program.id) as PodcastGenerationResult.Generated
+    val resumed = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      resumeGenerator,
+      nowEpochMillis = { 9999L },
+    ).generate(program.id) as PodcastGenerationResult.Generated
 
     assertEquals(interrupted.id, resumed.episode.id)
     assertEquals(listOf("a1"), resumed.episode.articles.map { it.articleId })
@@ -157,7 +181,7 @@ class PodcastTest {
     val source = FakeFeedContentSource(listOf(entry("a1")))
     lateinit var useCase: GeneratePodcastEpisodeUseCase
     val generator = ReentrantGenerator { useCase.generate(program.id) }
-    useCase = GeneratePodcastEpisodeUseCase(repository, source, generator) { 1234L }
+    useCase = GeneratePodcastEpisodeUseCase(repository, source, generator, nowEpochMillis = { 1234L })
 
     val generated = useCase.generate(program.id) as PodcastGenerationResult.Generated
 
