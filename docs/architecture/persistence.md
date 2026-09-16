@@ -153,7 +153,7 @@ version 34 -> 35では ADR-0255 により `podcast_episode_articles.article_url`
 
 version 35 -> 36では ADR-0257 により `podcast_episode_articles` に `chapter_status` / `chapter_script` / `chapter_error`、`podcast_episodes` に `regeneration_status` を追加する。既存 `READY` episodeの記事checkpointは `READY`、その他は `PENDING` として移行し、既存episode scriptは正本として保持する。
 
-version 36 -> 37では ADR-0258 により `podcast_episode_articles.chapter_position` を追加する。既存rowは `chapter_position=position` としてbackfillし、既存episodeの1記事1chapterを維持する。新規episodeでは同一ニュースの複数entryが同じ `chapter_position` を共有し、checkpoint / script / errorもcluster単位で同じ値を保持する。
+version 36 -> 37では ADR-0259 により `podcast_episode_articles.chapter_position` を追加する。既存rowは `chapter_position=position` としてbackfillし、既存episodeの1記事1chapterを維持する。新規episodeでは同一ニュースの複数entryが同じ `chapter_position` を共有し、checkpoint / script / errorもcluster単位で同じ値を保持する。
 
 Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed stateだけで番組内の未消費entryを判定する。正規化title完全一致の確実な重複除外後、Podcast domainの `PodcastNewsClusterer` が今回候補だけを同一ニュースclusterへ分類する。分類失敗時は1記事1clusterへfallbackし、過去episodeとの意味的な重複判定は行わない。
 
@@ -297,4 +297,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0250](../adr/0250-podcast-owned-feed-sources.md)
 - [ADR-0255](../adr/0255-podcast-playback-chapters.md)
 - [ADR-0257](../adr/0257-podcast-chapter-generation-jobs.md)
-- [ADR-0258](../adr/0258-podcast-news-clustering.md)
+- [ADR-0259](../adr/0259-podcast-news-clustering.md)
