@@ -46,4 +46,40 @@ class DefaultPodcastScriptGeneratorTest {
     assertTrue(bounded.contains("[入力上限に合わせ、記事本文を抜粋しています]"))
     assertTrue(bounded.contains("本文。"))
   }
+
+  @Test
+  fun `複数記事のPodcast promptを短縮しても全記事metadataと本文を残す`() {
+    val articles = listOf(
+      PodcastEpisodeArticle(
+        articleId = "article-1",
+        feedId = "feed-1",
+        title = "一つ目の記事",
+        sourceTitle = "情報源A",
+        publishedAtEpochMillis = 100L,
+        articleUrl = null,
+        feedContent = "一つ目本文。".repeat(2_000),
+      ),
+      PodcastEpisodeArticle(
+        articleId = "article-2",
+        feedId = "feed-2",
+        title = "二つ目の記事",
+        sourceTitle = "情報源B",
+        publishedAtEpochMillis = 200L,
+        articleUrl = null,
+        feedContent = "二つ目本文。".repeat(2_000),
+      ),
+    )
+    val prompt = buildPodcastChapterPrompt("朝のニュース", articles, chapterNumber = 1, totalChapters = 1)
+
+    val bounded = limitPodcastPrompt(prompt, 1_600)
+
+    assertTrue(bounded.length <= 1_600)
+    assertTrue(bounded.contains("[入力上限に合わせ、全記事を残したまま各本文を均等に抜粋しています]"))
+    assertTrue(bounded.contains("一つ目の記事"))
+    assertTrue(bounded.contains("情報源A"))
+    assertTrue(bounded.contains("一つ目本文。"))
+    assertTrue(bounded.contains("二つ目の記事"))
+    assertTrue(bounded.contains("情報源B"))
+    assertTrue(bounded.contains("二つ目本文。"))
+  }
 }
