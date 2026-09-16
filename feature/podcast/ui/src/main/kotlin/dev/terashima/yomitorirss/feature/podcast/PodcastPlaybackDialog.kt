@@ -49,9 +49,7 @@ fun PodcastPlaybackDialog(
   val hasMappedChapters = chapters.isNotEmpty() && chapters.all { it.article != null }
   val uriHandler = LocalUriHandler.current
   val displayAudioState = audioState.copy(
-    items = audioState.items.map { item ->
-      item.copy(title = podcastDisplayTitle(item.title))
-    },
+    items = audioState.items.map { item -> item.copy(title = podcastDisplayTitle(item.title)) },
   )
   val displayItems = if (hasMappedChapters) {
     chapters.map { chapter ->
@@ -59,6 +57,7 @@ fun PodcastPlaybackDialog(
       PodcastArticleDisplayItem(
         label = "チャプター ${chapter.number}",
         article = requireNotNull(chapter.article),
+        articles = chapter.articles,
         active = audioState.currentItem?.contentId == contentId,
         chapterNumber = chapter.number,
         available = audioState.items.any { it.contentId == contentId },
@@ -69,6 +68,7 @@ fun PodcastPlaybackDialog(
       PodcastArticleDisplayItem(
         label = "記事 ${index + 1}",
         article = article,
+        articles = listOf(article),
         active = false,
         chapterNumber = null,
         available = false,
@@ -97,7 +97,7 @@ fun PodcastPlaybackDialog(
               overflow = TextOverflow.Ellipsis,
             )
             Text(
-              "${episode.articles.size}記事",
+              if (hasMappedChapters) "${chapters.size}ニュース / ${episode.articles.size}記事" else "${episode.articles.size}記事",
               style = MaterialTheme.typography.bodySmall,
             )
           }
@@ -138,11 +138,8 @@ fun PodcastPlaybackDialog(
             }
 
             displayItems.forEach { item ->
-              val article = item.article
               Surface(
-                onClick = {
-                  item.chapterNumber?.let(onSelectChapter)
-                },
+                onClick = { item.chapterNumber?.let(onSelectChapter) },
                 enabled = item.chapterNumber != null && item.available,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -158,16 +155,26 @@ fun PodcastPlaybackDialog(
                     fontWeight = if (item.active) FontWeight.Bold else FontWeight.Normal,
                   )
                   Text(
-                    podcastDisplayTitle(article.title),
+                    podcastDisplayTitle(item.article.title),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (item.active) FontWeight.Bold else FontWeight.Normal,
                   )
-                  article.sourceTitle?.takeIf(String::isNotBlank)?.let { source ->
-                    Text(source, style = MaterialTheme.typography.bodySmall)
+                  if (item.articles.size > 1) {
+                    Text("${item.articles.size}件の関連記事", style = MaterialTheme.typography.bodySmall)
                   }
-                  article.articleUrl?.takeIf(String::isNotBlank)?.let { url ->
-                    OutlinedButton(onClick = { uriHandler.openUri(url) }) {
-                      Text("記事を開く")
+                  item.articles.forEach { article ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                      if (item.articles.size > 1) {
+                        Text(article.title, style = MaterialTheme.typography.bodySmall)
+                      }
+                      article.sourceTitle?.takeIf(String::isNotBlank)?.let { source ->
+                        Text(source, style = MaterialTheme.typography.bodySmall)
+                      }
+                      article.articleUrl?.takeIf(String::isNotBlank)?.let { url ->
+                        OutlinedButton(onClick = { uriHandler.openUri(url) }) {
+                          Text(if (item.articles.size > 1) "この記事を開く" else "記事を開く")
+                        }
+                      }
                     }
                   }
                 }
@@ -183,6 +190,7 @@ fun PodcastPlaybackDialog(
 private data class PodcastArticleDisplayItem(
   val label: String,
   val article: PodcastEpisodeArticle,
+  val articles: List<PodcastEpisodeArticle>,
   val active: Boolean,
   val chapterNumber: Int?,
   val available: Boolean,

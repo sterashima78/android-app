@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
+import dev.terashima.yomitorirss.feature.podcast.AiPodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
@@ -14,6 +15,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFactory
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
+import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastCandidateFilter
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastScheduleController
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssFeedContentReader
@@ -36,12 +38,15 @@ internal class AppPodcastRuntimeDependencies(
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val repository = SqlitePodcastRepository(database)
   val taskReader: PodcastGenerationTaskReader = repository
+  private val scriptGenerator = DefaultPodcastScriptGenerator(localTextInference, cloudTextInference)
   private val generationUseCase = GeneratePodcastEpisodeUseCase(
     repository = repository,
     feedContentSource = RssPodcastFeedContentSource(
       reader = DefaultRssFeedContentReader(database, httpClient),
     ),
-    scriptGenerator = DefaultPodcastScriptGenerator(localTextInference, cloudTextInference),
+    scriptGenerator = scriptGenerator,
+    newsClusterer = AiPodcastNewsClusterer(scriptGenerator),
+    candidateFilter = SqlitePodcastCandidateFilter(database),
   )
   private val scheduleController = WorkManagerPodcastScheduleController(application)
 
