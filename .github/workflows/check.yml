@@ -56,7 +56,7 @@ jobs:
         with:
           packages: platform-tools
       - name: Install Android SDK 37
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Run ${{ matrix.name }}
