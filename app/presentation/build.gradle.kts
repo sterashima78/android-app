@@ -8,7 +8,7 @@ plugins {
 
 android {
   namespace = "dev.terashima.yomitorirss.presentation"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     minSdk = 35

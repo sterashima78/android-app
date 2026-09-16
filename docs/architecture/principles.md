@@ -144,7 +144,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 - 全 Android application/library module は `minSdk = 35` 以上を宣言する。
 - API 35 未満だけを支える `SDK_INT` fallback は持たない。
 - API 36/37 や extension capability など、現在の supported runtime 内で実際に差がある判定は維持する。
-- Android 17 / API 37 は現行の実行環境として扱う。現在の build baseline は `compileSdk = 36` / `targetSdk = 36` とし、`targetSdk = 37` は SMB / LAN Web Server の `ACCESS_LOCAL_NETWORK` runtime permission UX と integration test を含む独立した platform migration として行う。
+- Android 17 / API 37 は現行の実行環境として扱う。現在の build baseline は `compileSdk = 37` / `targetSdk = 36` とし、`targetSdk = 37` は SMB / LAN Web Server の `ACCESS_LOCAL_NETWORK` runtime permission UX と integration test を含む独立した platform migration として行う。
 
 ## Architecture enforcement
 
@@ -212,3 +212,4 @@ App composition / presentation の source ownership と active-destination ViewM
 - [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
+- [ADR-0258](../adr/0258-android17-compile-sdk-baseline.md)

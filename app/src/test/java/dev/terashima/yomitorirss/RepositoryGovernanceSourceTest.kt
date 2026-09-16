@@ -36,9 +36,10 @@ class RepositoryGovernanceSourceTest {
     val settingsData = source("feature/settings/data/build.gradle.kts")
     val chatData = source("feature/chat/data/build.gradle.kts")
 
-    assertTrue("catalog must own the AndroidX Core version", "androidx-core = \"1.17.0\"" in catalog)
+    assertTrue("catalog must own the AndroidX Core version", "androidx-core = \"1.19.0\"" in catalog)
     assertTrue("catalog must own the AndroidX Activity version", "androidx-activity = \"1.13.0\"" in catalog)
-    assertTrue("catalog must own the AndroidX Navigation version", "androidx-navigation = \"2.9.8\"" in catalog)
+    assertTrue("catalog must own the AndroidX Lifecycle version", "androidx-lifecycle = \"2.11.0\"" in catalog)
+    assertTrue("catalog must own the AndroidX Navigation version", "androidx-navigation = \"2.10.1\"" in catalog)
     assertTrue("catalog must own the AndroidX WebKit version", "androidx-webkit = \"1.17.0\"" in catalog)
     assertTrue("catalog must own the coroutines version", "kotlinx-coroutines = \"1.11.0\"" in catalog)
     assertTrue("catalog must own the serialization version", "kotlinx-serialization = \"1.11.0\"" in catalog)
