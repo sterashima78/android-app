@@ -206,6 +206,39 @@ interface PodcastScriptGenerator {
   suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String
 }
 
+interface PodcastNewsClusterer {
+  suspend fun cluster(
+    provider: PodcastGenerationProvider,
+    candidates: List<PodcastFeedEntry>,
+  ): List<List<Int>>
+}
+
+object SingletonPodcastNewsClusterer : PodcastNewsClusterer {
+  override suspend fun cluster(
+    provider: PodcastGenerationProvider,
+    candidates: List<PodcastFeedEntry>,
+  ): List<List<Int>> = candidates.indices.map { listOf(it) }
+}
+
+class AiPodcastNewsClusterer(
+  private val scriptGenerator: PodcastScriptGenerator,
+) : PodcastNewsClusterer {
+  override suspend fun cluster(
+    provider: PodcastGenerationProvider,
+    candidates: List<PodcastFeedEntry>,
+  ): List<List<Int>> {
+    if (candidates.size <= 1) return candidates.indices.map { listOf(it) }
+    return try {
+      val response = scriptGenerator.generate(provider, buildPodcastClusteringPrompt(candidates))
+      parsePodcastClusters(response, candidates.size)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      candidates.indices.map { listOf(it) }
+    }
+  }
+}
+
 sealed interface PodcastGenerationResult {
   data class Generated(val episode: PodcastEpisode) : PodcastGenerationResult
   data object NoNewArticles : PodcastGenerationResult
@@ -216,6 +249,7 @@ class GeneratePodcastEpisodeUseCase(
   private val feedContentSource: PodcastFeedContentSource,
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
+  private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
 ) {
   private val activeProgramIds = mutableSetOf<String>()
 
@@ -263,16 +297,12 @@ class GeneratePodcastEpisodeUseCase(
   }
 
   private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): List<PodcastFeedEntry> {
-    if (candidates.size <= 1) return candidates.mapIndexed { index, entry -> entry.copy(chapterPosition = index) }
-    return try {
-      val response = scriptGenerator.generate(program.provider, buildPodcastClusteringPrompt(candidates))
-      parsePodcastClusters(response, candidates.size).flatMapIndexed { chapterPosition, indexes ->
-        indexes.map { index -> candidates[index].copy(chapterPosition = chapterPosition) }
-      }
-    } catch (error: CancellationException) {
-      throw error
-    } catch (_: Throwable) {
-      candidates.mapIndexed { index, entry -> entry.copy(chapterPosition = index) }
+    val groups = newsClusterer.cluster(program.provider, candidates)
+    require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
+      "news clusterer must contain every candidate exactly once"
+    }
+    return groups.flatMapIndexed { chapterPosition, indexes ->
+      indexes.map { index -> candidates[index].copy(chapterPosition = chapterPosition) }
     }
   }
 
