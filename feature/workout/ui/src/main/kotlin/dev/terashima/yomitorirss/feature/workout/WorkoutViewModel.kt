@@ -136,7 +136,9 @@ class WorkoutViewModel(
     }
     val current = _state.value.snapshot
     val exercises = current.exercises.toMutableList()
-    val items = draft.exercises.map { imported ->
+    val items = mutableListOf<WorkoutMenuItem>()
+    val seenExerciseIds = mutableSetOf<String>()
+    for (imported in draft.exercises) {
       val exercise = exercises.firstOrNull { candidate ->
         imported.id?.let { it == candidate.id } == true || candidate.name.equals(imported.name, ignoreCase = true)
       } ?: WorkoutExercise(
@@ -146,7 +148,11 @@ class WorkoutViewModel(
         unit = imported.unit,
         type = imported.type,
       ).also(exercises::add)
-      WorkoutMenuItem(
+      if (!seenExerciseIds.add(exercise.id)) {
+        _state.update { it.copy(menuMessage = "同じ種目がメニュー内に重複しています: ${exercise.name}") }
+        return
+      }
+      items += WorkoutMenuItem(
         exerciseId = exercise.id,
         targetSets = imported.targetSets,
         targets = imported.targets,
@@ -334,8 +340,26 @@ class WorkoutViewModel(
       type = inferWorkoutExerciseType(trimmed, unit),
     )
     val current = _state.value.snapshot
-    updateSnapshot(current.copy(exercises = current.exercises + exercise))
-    _state.update { it.copy(menuMessage = "種目「${exercise.name}」を登録しました。メニューへはインポートまたはプリセット保存で追加できます。") }
+    val sourceMenu = current.today.menu ?: current.effectiveMenu()
+    val todayMenu = sourceMenu.copy(
+      items = sourceMenu.items + WorkoutMenuItem(
+        exerciseId = exercise.id,
+        targetSets = exercise.targetSets,
+      ),
+    )
+    val snapshot = current.copy(
+      exercises = current.exercises + exercise,
+      today = current.today.copy(menu = todayMenu),
+    )
+    updateSnapshot(snapshot)
+    _state.update {
+      it.copy(
+        selectedExerciseId = exercise.id,
+        amount = initialAmount(snapshot, exercise.id),
+        stepCount = snapshot.lastStepCounts[exercise.id]?.toString().orEmpty(),
+        menuMessage = "種目「${exercise.name}」を登録し、今日のメニューに追加しました。",
+      )
+    }
   }
 
   fun removeExercise(id: String) {
