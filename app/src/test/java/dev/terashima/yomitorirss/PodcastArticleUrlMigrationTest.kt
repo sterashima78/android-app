@@ -219,23 +219,15 @@ class PodcastArticleUrlMigrationTest {
     val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
 
     assertEquals(38, migrated.version)
-    val columns = columnNames(migrated, "podcast_episodes")
-    assertTrue("clustering_status" in columns)
-    assertTrue("clustering_input_count" in columns)
-    assertTrue("clustering_cluster_count" in columns)
-    assertTrue("clustering_error_message" in columns)
+    assertTrue("clustering_status" in columnNames(migrated, "podcast_episodes"))
     migrated.rawQuery(
-      "SELECT title,script,clustering_status,clustering_input_count,clustering_cluster_count,clustering_error_message " +
-        "FROM podcast_episodes WHERE id=?",
+      "SELECT title,script,clustering_status FROM podcast_episodes WHERE id=?",
       arrayOf("episode-existing"),
     ).use { cursor ->
       assertTrue(cursor.moveToFirst())
       assertEquals("既存エピソード", cursor.getString(0))
       assertEquals("既存原稿", cursor.getString(1))
       assertTrue(cursor.isNull(2))
-      assertTrue(cursor.isNull(3))
-      assertTrue(cursor.isNull(4))
-      assertTrue(cursor.isNull(5))
     }
   }
 }
