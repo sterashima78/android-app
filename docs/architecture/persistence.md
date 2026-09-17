@@ -28,9 +28,9 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は 37 である。現行 compatibility chain では version 33 -> 34 でPodcastのfeed selectionをPodcast-owned sourceへ移し、version 34 -> 35 でPodcast記事snapshotへentry URLを追加し、version 35 -> 36 でchapter生成checkpointと再生成状態を追加し、version 36 -> 37 でPodcast記事snapshotへニュースclusterの `chapter_position` を追加する。version 33より前の一度限りmigrationは現在のsupport対象upgrade pathから外れており、current runtimeへ互換処理として保持しない。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
+現在の application database version は 38 である。現行 compatibility chain では version 33 -> 34 でPodcastのfeed selectionをPodcast-owned sourceへ移し、version 34 -> 35 でPodcast記事snapshotへentry URLを追加し、version 35 -> 36 でchapter生成checkpointと再生成状態を追加し、version 36 -> 37 でPodcast記事snapshotへニュースclusterの `chapter_position` を追加し、version 37 -> 38 でPodcast episodeへニュース分類の診断状態 `clustering_status` を追加する。version 33より前の一度限りmigrationは現在のsupport対象upgrade pathから外れており、current runtimeへ互換処理として保持しない。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
-バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpointを含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
+バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpoint、分類診断状態を含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
 ## Durable change notification and backup scheduling
 
@@ -145,7 +145,7 @@ Podcast Context の fresh DB schema は `PodcastDatabaseSchema.kt` を正本と�
 - `podcast_episode_articles`
 - `podcast_consumed_articles`
 
-`podcast_sources` はPodcast専用sourceの表示名とRSS / Atom feed URLを保持する。`podcast_programs` は番組定義、対象Podcast source ID群、生成provider、1エピソードの最大ニュース数、毎日の生成時刻を保持する。DB column `max_articles` とdomain property `maxArticlesPerEpisode` は互換上維持するが、実行意味論はcluster後のニュース数である。`podcast_episodes` は生成単位と状態・生成原稿を保持する。`podcast_episode_articles` はAI入力として予約したentry identity、title、feed-carried content、entry URLに加えて `chapter_position` をsnapshotし、同じpositionを持つ複数rowを1ニュースclusterとして扱う。`podcast_consumed_articles` は番組ごとに一度予約したentryを再利用しないためのdurable stateであり、cluster内の全entryを記録する。
+`podcast_sources` はPodcast専用sourceの表示名とRSS / Atom feed URLを保持する。`podcast_programs` は番組定義、対象Podcast source ID群、生成provider、1エピソードの最大ニュース数、毎日の生成時刻を保持する。DB column `max_articles` とdomain property `maxArticlesPerEpisode` は互換上維持するが、実行意味論はcluster後のニュース数である。`podcast_episodes` は生成単位と状態・生成原稿・ニュース分類の診断状態 `clustering_status` を保持する。`podcast_episode_articles` はAI入力として予約したentry identity、title、feed-carried content、entry URLに加えて `chapter_position` をsnapshotし、同じpositionを持つ複数rowを1ニュースclusterとして扱う。`podcast_consumed_articles` は番組ごとに一度予約したentryを再利用しないためのdurable stateであり、cluster内の全entryを記録する。
 
 version 32 -> 33では ADR-0249 により番組・episode・snapshot・consumed stateの4 tableを追加し、Podcast stateは空から開始した。version 33 -> 34では ADR-0250 により `podcast_sources` を追加し、既存 `podcast_programs.feed_ids` をPodcast-owned source IDとして維持しながら `source_ids` へ移す。選択済みsourceの表示名とfeed URLは旧RSS `feeds` から一度だけコピーし、旧Content article IDで保存済みのconsumed identityは `articles` のfeed identityを使ってPodcast source ID + entry identityへ可能な範囲で変換する。このmigrationだけ `feeds` / `articles` のreadをforeign-table allowlistで許可し、runtimeでは両tableへ依存しない。
 
@@ -155,7 +155,9 @@ version 35 -> 36では ADR-0257 により `podcast_episode_articles` に `chapte
 
 version 36 -> 37では ADR-0259 により `podcast_episode_articles.chapter_position` を追加する。既存rowは `chapter_position=position` としてbackfillし、既存episodeの1記事1chapterを維持する。新規episodeでは同一ニュースの複数entryが同じ `chapter_position` を共有し、checkpoint / script / errorもcluster単位で同じ値を保持する。
 
-Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed stateだけで番組内の未消費entryを判定する。正規化title完全一致の確実な重複除外後、Podcast domainの `PodcastNewsClusterer` が今回候補だけを同一ニュースclusterへ分類する。分類失敗時は1記事1clusterへfallbackし、過去episodeとの意味的な重複判定は行わない。
+version 37 -> 38では ADR-0259 の分類診断拡張により `podcast_episodes.clustering_status` をnullable columnとして追加する。既存episodeは分類時の実行状態を復元できないためNULLを維持する。新規episodeは正常分類、推論失敗fallback、分類出力不正fallback、分類不要を区別して保存し、記事数とニュース数は `podcast_episode_articles` と `chapter_position` から復元する。
+
+Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed stateだけで番組内の未消費entryを判定する。正規化title完全一致の確実な重複除外後、Podcast domainの `PodcastNewsClusterer` が今回候補だけを同一ニュースclusterへ分類する。分類失敗時は1記事1clusterへfallbackし、fallback種別をepisodeの分類診断状態へsnapshotする。過去episodeとの意味的な重複判定は行わない。
 
 生成開始時はepisode row、article / cluster snapshot、consumed article stateを同一transactionで予約する。最大ニュース数を超えたclusterも `QUEUED` episodeとしてその時点の記事本文とcluster境界をsnapshot化し、通常の生成失敗では `FAILED` とsnapshotを保持する。process中断で残る `GENERATING` episodeと `QUEUED` episodeは後続実行で同じsnapshotから再開し、再分類しない。
 
@@ -278,23 +280,3 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0117](../adr/0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
-- [ADR-0123](../adr/0123-content-curation-persistence-phase2.md)
-- [ADR-0133](../adr/0133-smb-cover-prefetch-queue.md)
-- [ADR-0134](../adr/0134-smb-multimodal-metadata-normalization.md)
-- [ADR-0135](../adr/0135-smb-cover-cache-backup-restore.md)
-- [ADR-0138](../adr/0138-database-v27-compatibility-baseline.md)
-- [ADR-0173](../adr/0173-web-library-custom-metadata-extractors.md)
-- [ADR-0177](../adr/0177-web-library-early-custom-extraction-and-rule-timeout.md)
-- [ADR-0180](../adr/0180-rss-custom-web-scraping-rules.md)
-- [ADR-0195](../adr/0195-trigger-backup-from-persistence-commit-boundary.md)
-- [ADR-0237](../adr/0237-video-library-and-web-extraction.md)
-- [ADR-0239](../adr/0239-shared-smb-connection-profiles-and-feature-locations.md)
-- [ADR-0240](../adr/0240-video-saved-items-and-folders.md)
-- [ADR-0241](../adr/0241-video-web-stream-cookie-opt-in.md)
-- [ADR-0242](../adr/0242-video-subscription-providers.md)
-- [ADR-0246](../adr/0246-video-custom-provider-code.md)
-- [ADR-0249](../adr/0249-news-podcast-context.md)
-- [ADR-0250](../adr/0250-podcast-owned-feed-sources.md)
-- [ADR-0255](../adr/0255-podcast-playback-chapters.md)
-- [ADR-0257](../adr/0257-podcast-chapter-generation-jobs.md)
-- [ADR-0259](../adr/0259-podcast-news-clustering.md)
