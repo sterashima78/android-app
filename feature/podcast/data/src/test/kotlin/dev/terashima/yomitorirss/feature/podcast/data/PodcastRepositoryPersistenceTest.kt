@@ -6,12 +6,11 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskState
-import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusteringSnapshot
-import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastRegenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
@@ -143,7 +142,7 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `ニュース分類の診断情報をエピソードへ永続化する`() = runSuspend {
+  fun `ニュース分類の診断状態をエピソードへ永続化する`() = runSuspend {
     val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
     val program = PodcastProgram(
       id = "program-1",
@@ -163,21 +162,15 @@ class PodcastRepositoryPersistenceTest {
           PodcastFeedEntry("article-3", source.id, "記事3", source.name, 3L, "https://example.invalid/3", "本文3", chapterPosition = 1),
         ),
         createdAtEpochMillis = 100L,
-        clustering = PodcastNewsClusteringSnapshot(
-          status = PodcastNewsClusteringStatus.SUCCESS,
-          inputCount = 3,
-          clusterCount = 2,
-          errorMessage = null,
-        ),
+        clusteringStatus = PodcastClusteringStatus.SUCCESS,
       ),
     )
 
     val persisted = requireNotNull(repository.findEpisode(episode.id))
-    assertEquals(PodcastNewsClusteringStatus.SUCCESS, persisted.clusteringStatus)
-    assertEquals(3, persisted.clusteringInputCount)
-    assertEquals(2, persisted.clusteringClusterCount)
-    assertNull(persisted.clusteringErrorMessage)
-    assertEquals(listOf(2, 1), persisted.chapterGroups().map(List<*>::size))
+    assertEquals(PodcastClusteringStatus.SUCCESS, persisted.clusteringStatus)
+    assertEquals(3, persisted.articles.size)
+    assertEquals(2, persisted.chapterGroups().size)
+    assertEquals(listOf(2, 1), persisted.chapterGroups().map { it.size })
   }
 
   @Test
