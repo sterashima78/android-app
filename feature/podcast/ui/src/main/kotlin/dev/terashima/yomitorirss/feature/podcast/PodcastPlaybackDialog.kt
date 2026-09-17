@@ -31,6 +31,17 @@ private const val PODCAST_TRANSITION_DISPLAY_PREFIX = "続いて。"
 internal fun podcastDisplayTitle(title: String): String =
   title.removePrefix(PODCAST_TRANSITION_DISPLAY_PREFIX)
 
+internal fun podcastClusteringSummary(episode: PodcastEpisode): String {
+  val state = when (episode.clusteringStatus) {
+    PodcastClusteringStatus.SUCCESS -> "ニュース分類: 成功"
+    PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR -> "ニュース分類: フォールバック（分類処理に失敗）"
+    PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT -> "ニュース分類: フォールバック（分類結果を解釈できませんでした）"
+    PodcastClusteringStatus.SKIPPED -> "ニュース分類: 省略"
+    null -> "ニュース分類: 記録なし"
+  }
+  return "$state ・ ${episode.articles.size}記事 → ${episode.chapterGroups().size}ニュース"
+}
+
 @Composable
 fun PodcastPlaybackDialog(
   episode: PodcastEpisode,
@@ -98,6 +109,10 @@ fun PodcastPlaybackDialog(
             )
             Text(
               if (hasMappedChapters) "${chapters.size}ニュース / ${episode.articles.size}記事" else "${episode.articles.size}記事",
+              style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+              podcastClusteringSummary(episode),
               style = MaterialTheme.typography.bodySmall,
             )
           }
