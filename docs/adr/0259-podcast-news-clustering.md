@@ -10,6 +10,8 @@ Accepted
 
 Podcast生成は記事snapshot、chapter checkpoint、消費済みentry identityをdurable stateとして保持し、中断再開・失敗再試行・再生成で同じsnapshotを利用する。そのため同一ニュース判定を毎回やり直すと、同じepisodeでも実行ごとにchapter境界が変わり、checkpointや再生記事対応が不安定になる。
 
+分類失敗時は安全側へ1記事1clusterへfallbackするため、最終的なchapter境界だけでは「分類が正常に完了して記事を分離した」のか、「推論または分類出力の解析に失敗してfallbackした」のかを後から判別できない。
+
 ## Decision
 
 feed取得時の正規化title完全一致による確実な重複除外は維持する。その後、`PodcastCandidateFilter` が番組単位の消費済みentry identityを除外し、未消費候補だけを `PodcastNewsClusterer` で「同じ具体的な出来事」を表すentryのclusterへ分類する。予約transactionでも消費済みentryを再度除外し、並行実行や状態変化があっても新規episodeへ再利用しない。
@@ -19,6 +21,10 @@ feed取得時の正規化title完全一致による確実な重複除外は維�
 `PodcastNewsClusterer` は原稿生成の `PodcastScriptGenerator` とdomain capabilityを分離する。production compositionでは同じAI推論基盤を利用できるが、生成use caseの既存の原稿生成回数・checkpoint contractへ分類推論を混在させない。
 
 分類結果は全候補をちょうど1回含むpartitionであることを検証する。分類推論またはparseに失敗した場合は1記事1clusterへfallbackし、ニュース生成全体を失敗させない。coroutine cancellationはfallbackせず伝播する。
+
+新規episodeには分類処理の結果を `podcast_episodes.clustering_status` としてsnapshotする。値は正常分類、推論失敗fallback、分類出力不正fallback、分類不要の4状態を区別する。候補記事数と最終ニュース数は保存済みepisode article snapshotと`chapter_position`から復元し、重複するcount columnは追加しない。既存episodeは値を持たず、分類状態不明として扱う。
+
+分類診断にはprompt、feed本文、AIのraw response、例外本文を保存しない。原因の分類と最終cluster境界だけをdurable stateとし、再生詳細画面からユーザーが確認できるようにする。
 
 cluster境界はepisode予約時にsnapshotする。新しいtableは追加せず、`podcast_episode_articles.chapter_position` を追加し、同一clusterの記事rowsへ同じpositionを保存する。既存episodeはmigrationで `chapter_position=position` とし、従来の1記事1chapterを維持する。
 
@@ -36,6 +42,8 @@ chapter checkpoint、script、errorは同一 `chapter_position` の全rowsへ同
 - 同一ニュース内の複数sourceを失わず、再生詳細から各元記事を参照できる。
 - cluster境界がdurable snapshotになるため、中断再開・再生成でもchapter対応が変わらない。
 - AI分類が不安定または利用不能でも、従来の1記事1チャプターへ安全に退化する。
+- 分類が正常終了したのかfallbackしたのか、fallbackなら推論失敗か分類出力不正かをepisode単位で後から確認できる。
+- raw promptやraw AI responseを新しい診断データとして保存しないため、観測性のためにユーザーコンテンツの複製を増やさない。
 - 消費済みentryは分類推論へ送られず、新規entryのcluster境界へ影響しない。予約transactionでの再確認も維持する。
 - 長い複数記事clusterでも各記事をpromptへ残すため、1記事だけが入力budgetを占有しない。
 - `podcast_episode_articles` のcheckpoint列はcluster単位の同値を複数rowへ保持するため正規化されていない。ただし既存schemaとmigrationを小さく保ち、Podcast-owned snapshot tableだけで完結できる。
