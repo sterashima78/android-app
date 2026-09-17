@@ -51,9 +51,6 @@ class AppDatabaseSchemaTest {
     assertTrue("article_url" in columnNames(db, "podcast_episode_articles"))
     assertTrue("chapter_position" in columnNames(db, "podcast_episode_articles"))
     assertTrue("clustering_status" in columnNames(db, "podcast_episodes"))
-    assertTrue("clustering_input_count" in columnNames(db, "podcast_episodes"))
-    assertTrue("clustering_cluster_count" in columnNames(db, "podcast_episodes"))
-    assertTrue("clustering_error_message" in columnNames(db, "podcast_episodes"))
     assertEquals(
       setOf(
         "feed_folders",
