@@ -5,11 +5,15 @@ import dev.terashima.yomitorirss.feature.workout.WorkoutDay
 import dev.terashima.yomitorirss.feature.workout.WorkoutExercise
 import dev.terashima.yomitorirss.feature.workout.WorkoutExerciseType
 import dev.terashima.yomitorirss.feature.workout.WorkoutHistory
+import dev.terashima.yomitorirss.feature.workout.WorkoutMenu
+import dev.terashima.yomitorirss.feature.workout.WorkoutMenuItem
+import dev.terashima.yomitorirss.feature.workout.WorkoutMenuSource
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutSet
 import dev.terashima.yomitorirss.feature.workout.WorkoutSnapshot
 import dev.terashima.yomitorirss.feature.workout.WorkoutUnit
 import dev.terashima.yomitorirss.feature.workout.defaultWorkoutExercises
+import dev.terashima.yomitorirss.feature.workout.defaultWorkoutMenu
 import dev.terashima.yomitorirss.feature.workout.inferWorkoutExerciseType
 import dev.terashima.yomitorirss.feature.workout.newWorkoutSnapshot
 import java.time.LocalDate
@@ -30,8 +34,9 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   }
 
   private fun encode(snapshot: WorkoutSnapshot): JSONObject = JSONObject().apply {
-    put("version", snapshot.version)
+    put("version", CURRENT_VERSION)
     put("exercises", JSONArray().apply { snapshot.exercises.forEach { put(encodeExercise(it)) } })
+    put("menus", JSONArray().apply { snapshot.menus.forEach { put(encodeMenu(it)) } })
     put("today", encodeDay(snapshot.today))
     put("history", JSONArray().apply { snapshot.history.forEach { put(encodeHistory(it)) } })
     put("lastAmounts", encodeIntMap(snapshot.lastAmounts))
@@ -40,9 +45,14 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private fun decode(json: JSONObject): WorkoutSnapshot {
     val exercises = json.optJSONArray("exercises")?.objects()?.map(::decodeExercise).orEmpty()
+      .ifEmpty { defaultWorkoutExercises() }
+    val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
+      .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
+      .ifEmpty { listOf(defaultWorkoutMenu(exercises)) }
     return WorkoutSnapshot(
-      version = json.optInt("version", 1),
-      exercises = exercises.ifEmpty { defaultWorkoutExercises() },
+      version = CURRENT_VERSION,
+      exercises = exercises,
+      menus = menus,
       today = json.optJSONObject("today")?.let(::decodeDay) ?: WorkoutDay(LocalDate.now().toString()),
       history = json.optJSONArray("history")?.objects()?.map(::decodeHistory).orEmpty().take(50),
       lastAmounts = json.optJSONObject("lastAmounts").toIntMap(),
@@ -72,6 +82,42 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
       unit = unit,
       type = enumOrNull<WorkoutExerciseType>(json.optString("type")) ?: inferWorkoutExerciseType(name, unit),
     )
+  }
+
+  private fun encodeMenu(value: WorkoutMenu) = JSONObject().apply {
+    put("id", value.id)
+    put("name", value.name)
+    put("source", value.source.name)
+    put("items", JSONArray().apply { value.items.forEach { put(encodeMenuItem(it)) } })
+  }
+
+  private fun decodeMenu(json: JSONObject): WorkoutMenu = WorkoutMenu(
+    id = json.optString("id"),
+    name = json.optString("name", "メニュー"),
+    source = enumOrDefault(json.optString("source"), WorkoutMenuSource.PRESET),
+    items = json.optJSONArray("items")?.objects()?.mapNotNull(::decodeMenuItem).orEmpty(),
+  )
+
+  private fun encodeMenuItem(value: WorkoutMenuItem) = JSONObject().apply {
+    put("exerciseId", value.exerciseId)
+    put("targetSets", value.targetSets)
+    if (value.targets.isNotEmpty()) {
+      put("targets", JSONArray().apply { value.targets.forEach(::put) })
+    }
+  }
+
+  private fun decodeMenuItem(json: JSONObject): WorkoutMenuItem? {
+    val exerciseId = json.optString("exerciseId")
+    if (exerciseId.isBlank()) return null
+    val targetSets = json.optInt("targetSets", 1).coerceAtLeast(1)
+    val targets = json.optJSONArray("targets")?.ints().orEmpty().filter { it > 0 }
+    return runCatching {
+      WorkoutMenuItem(
+        exerciseId = exerciseId,
+        targetSets = targetSets,
+        targets = targets.takeIf { it.size == targetSets }.orEmpty(),
+      )
+    }.getOrNull()
   }
 
   private fun encodeSet(value: WorkoutSet) = JSONObject().apply {
@@ -109,12 +155,14 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private fun encodeDay(value: WorkoutDay) = JSONObject().apply {
     put("date", value.date)
     put("startedAt", value.startedAt ?: JSONObject.NULL)
+    value.menu?.let { put("menu", encodeMenu(it)) }
     put("sets", JSONArray().apply { value.sets.forEach { put(encodeSet(it)) } })
   }
 
   private fun decodeDay(json: JSONObject) = WorkoutDay(
     date = json.optString("date", LocalDate.now().toString()),
     startedAt = json.nullableString("startedAt"),
+    menu = json.optJSONObject("menu")?.let(::decodeMenu),
     sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet)
       ?: json.optJSONArray("logs")?.objects()?.map(::decodeSet).orEmpty(),
   )
@@ -147,6 +195,10 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
 
+  private fun JSONArray.ints(): List<Int> = (0 until length()).mapNotNull { index ->
+    optInt(index).takeIf { it > 0 }
+  }
+
   private fun JSONObject.nullableString(name: String): String? =
     if (!has(name) || isNull(name)) null else optString(name).takeIf(String::isNotBlank)
 
@@ -158,5 +210,6 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private companion object {
     const val KEY_STATE = "state_v1"
+    const val CURRENT_VERSION = 2
   }
 }

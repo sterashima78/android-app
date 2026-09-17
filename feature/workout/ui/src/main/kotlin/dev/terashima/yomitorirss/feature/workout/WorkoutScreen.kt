@@ -107,15 +107,15 @@ fun WorkoutScreen(
   ) { padding ->
     val contentModifier = Modifier.fillMaxSize().padding(padding)
     when (state.selectedTab) {
-      WorkoutTab.WORKOUT -> WorkoutLogScreen(
-        state = state,
-        viewModel = viewModel,
-        onRequestExportPermission = onRequestExportPermission,
-        modifier = contentModifier,
-      )
+      WorkoutTab.WORKOUT -> WorkoutLogScreen(state, viewModel, onRequestExportPermission, contentModifier)
       WorkoutTab.TIMER -> WorkoutTimerScreen(state, viewModel, contentModifier)
       WorkoutTab.HISTORY -> WorkoutHistoryScreen(state, contentModifier)
-      WorkoutTab.CHAT -> WorkoutAiChatScreen(aiViewModel, contentModifier)
+      WorkoutTab.CHAT -> WorkoutAiChatScreen(
+        viewModel = aiViewModel,
+        onApplyMenu = { viewModel.importMenu(it, source = WorkoutMenuSource.GENERATED) },
+        onSaveMenu = { viewModel.importMenu(it, saveAsPreset = true, source = WorkoutMenuSource.GENERATED) },
+        modifier = contentModifier,
+      )
       WorkoutTab.SETTINGS -> WorkoutSettingsScreen(state, viewModel, aiViewModel, contentModifier)
     }
   }
@@ -149,13 +149,9 @@ private fun WorkoutLogScreen(
             OutlinedButton(onClick = viewModel::finishWorkout, enabled = state.snapshot.today.sets.isNotEmpty()) { Text("終了して保存") }
             TextButton(onClick = viewModel::resetToday) { Text("リセット") }
           }
-          state.exportMessage?.let { message ->
-            Text(message, style = MaterialTheme.typography.bodySmall)
-          }
+          state.exportMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
           if (state.exportPermissionRequired) {
-            TextButton(onClick = onRequestExportPermission) {
-              Text("Health Connect の書き込みを許可")
-            }
+            TextButton(onClick = onRequestExportPermission) { Text("Health Connect の書き込みを許可") }
           }
         }
       }
@@ -179,9 +175,22 @@ private fun WorkoutLogScreen(
     }
     item {
       Text("今日のメニュー", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+      Text(state.activeMenu.name, style = MaterialTheme.typography.bodyMedium)
       Spacer(Modifier.height(8.dp))
+      if (state.snapshot.menus.size > 1) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          items(state.snapshot.menus, key = { it.id }) { menu ->
+            FilterChip(
+              selected = state.activeMenu.id == menu.id,
+              onClick = { viewModel.selectMenu(menu.id) },
+              label = { Text(menu.name) },
+            )
+          }
+        }
+        Spacer(Modifier.height(8.dp))
+      }
       LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(state.snapshot.exercises, key = { it.id }) { exercise ->
+        items(state.menuExercises, key = { it.id }) { exercise ->
           FilterChip(
             selected = active?.id == exercise.id,
             onClick = { viewModel.selectExercise(exercise.id) },
@@ -192,6 +201,7 @@ private fun WorkoutLogScreen(
           )
         }
       }
+      state.menuMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
     }
     if (active != null) {
       item {
@@ -207,6 +217,9 @@ private fun WorkoutLogScreen(
                 if (steps > 0) append(" · ${steps}段")
               },
             )
+            state.nextTarget?.let { target ->
+              Text("次の目標: $target${active.unit.label}", style = MaterialTheme.typography.labelLarge)
+            }
             when (active.type) {
               WorkoutExerciseType.PLANK -> StopwatchControls(
                 seconds = state.plankSeconds,
@@ -320,9 +333,7 @@ private fun WorkoutTimerScreen(state: WorkoutUiState, viewModel: WorkoutViewMode
         }
       }
     }
-    item {
-      Text("プランク・踏み台昇降は「記録」タブで種目を選択すると、専用ストップウォッチからそのままセットとして保存できます。")
-    }
+    item { Text("プランク・踏み台昇降は「記録」タブで種目を選択すると、専用ストップウォッチからそのままセットとして保存できます。") }
   }
 }
 
@@ -335,46 +346,26 @@ private fun WorkoutHistoryScreen(state: WorkoutUiState, modifier: Modifier) {
     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    if (state.snapshot.history.isEmpty()) {
-      item { Text("保存済みのワークアウトはありません。") }
-    }
+    if (state.snapshot.history.isEmpty()) item { Text("保存済みのワークアウトはありません。") }
     items(state.snapshot.history, key = { it.id }) { history ->
       Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-          ) {
-            Text(
-              history.date,
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.titleMedium,
-              fontWeight = FontWeight.Bold,
-            )
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(history.date, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             IconButton(
               onClick = {
                 coroutineScope.launch {
                   clipboard.setClipEntry(
-                    ClipEntry(
-                      ClipData.newPlainText(
-                        "ワークアウト ${history.date}",
-                        formatWorkoutHistoryForCopy(history),
-                      ),
-                    ),
+                    ClipEntry(ClipData.newPlainText("ワークアウト ${history.date}", formatWorkoutHistoryForCopy(history))),
                   )
                 }
               },
             ) {
-              Icon(
-                imageVector = Icons.Default.ContentCopy,
-                contentDescription = "${history.date}のワークアウト履歴をコピー",
-              )
+              Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "${history.date}のワークアウト履歴をコピー")
             }
           }
           Text("${history.sets.size} セット", style = MaterialTheme.typography.bodySmall)
-          history.sets.groupBy { it.exerciseId }.values.forEach { sets ->
-            Text(formatWorkoutHistoryExercise(sets))
-          }
+          history.sets.groupBy { it.exerciseId }.values.forEach { sets -> Text(formatWorkoutHistoryExercise(sets)) }
         }
       }
     }
@@ -389,8 +380,9 @@ private fun WorkoutSettingsScreen(
   modifier: Modifier,
 ) {
   var name by remember { mutableStateOf("") }
-  var targetSets by remember { mutableStateOf("3") }
   var unit by remember { mutableStateOf(WorkoutUnit.REPS) }
+  var importText by remember { mutableStateOf("") }
+  var presetName by remember { mutableStateOf("") }
   LazyColumn(
     modifier = modifier,
     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -400,39 +392,92 @@ private fun WorkoutSettingsScreen(
     item {
       Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text("メニューをインポート", style = MaterialTheme.typography.titleLarge)
+          Text(
+            "構造化されたメニューJSONを貼り付けます。未登録の種目は種目マスタへ自動追加されます。",
+            style = MaterialTheme.typography.bodySmall,
+          )
+          OutlinedTextField(
+            value = importText,
+            onValueChange = { importText = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("メニューJSON") },
+            minLines = 5,
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+              onClick = { viewModel.importMenu(importText); importText = "" },
+              enabled = importText.isNotBlank(),
+            ) { Text("今日使う") }
+            OutlinedButton(
+              onClick = { viewModel.importMenu(importText, saveAsPreset = true); importText = "" },
+              enabled = importText.isNotBlank(),
+            ) { Text("保存して使う") }
+          }
+          state.menuMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+      }
+    }
+    item {
+      Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text("プリセット", style = MaterialTheme.typography.titleLarge)
+          state.snapshot.menus.forEach { menu ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+              Column(Modifier.weight(1f)) {
+                Text(menu.name, fontWeight = FontWeight.SemiBold)
+                Text("${menu.items.size} 種目", style = MaterialTheme.typography.bodySmall)
+              }
+              TextButton(onClick = { viewModel.selectMenu(menu.id) }) { Text("使う") }
+              if (state.snapshot.menus.size > 1) {
+                TextButton(onClick = { viewModel.removeMenu(menu.id) }) { Text("削除") }
+              }
+            }
+          }
+          HorizontalDivider()
+          OutlinedTextField(
+            value = presetName,
+            onValueChange = { presetName = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("現在のメニューを保存する名前") },
+            singleLine = true,
+          )
+          OutlinedButton(
+            onClick = { viewModel.saveTodayMenuAsPreset(presetName); presetName = "" },
+            modifier = Modifier.fillMaxWidth(),
+          ) { Text("現在のメニューをプリセット保存") }
+        }
+      }
+    }
+    item {
+      Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text("種目を追加", style = MaterialTheme.typography.titleLarge)
           OutlinedTextField(value = name, onValueChange = { name = it }, modifier = Modifier.fillMaxWidth(), label = { Text("種目名") })
-          OutlinedTextField(value = targetSets, onValueChange = { targetSets = it.filter(Char::isDigit).take(2) }, modifier = Modifier.fillMaxWidth(), label = { Text("目標セット数") }, singleLine = true)
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             WorkoutUnit.entries.forEach { candidate ->
               FilterChip(selected = unit == candidate, onClick = { unit = candidate }, label = { Text(candidate.label) })
             }
           }
           Button(
-            onClick = {
-              viewModel.addExercise(name, targetSets.toIntOrNull() ?: 1, unit)
-              name = ""
-            },
+            onClick = { viewModel.addExercise(name, 3, unit); name = "" },
             enabled = name.isNotBlank(),
-          ) { Text("追加") }
+          ) { Text("種目として追加") }
         }
       }
     }
     item {
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text("登録済み種目", style = MaterialTheme.typography.titleLarge)
-        TextButton(onClick = viewModel::restoreDefaultExercises) { Text("初期メニューに戻す") }
+        TextButton(onClick = viewModel::restoreDefaultExercises) { Text("初期状態に戻す") }
       }
     }
     items(state.snapshot.exercises, key = { it.id }) { exercise ->
       Card(Modifier.fillMaxWidth()) {
-        Row(
-          Modifier.fillMaxWidth().padding(14.dp),
-          horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
           Column(Modifier.weight(1f)) {
             Text(exercise.name, fontWeight = FontWeight.SemiBold)
-            Text("目標 ${exercise.targetSets}セット · ${exercise.unit.label}", style = MaterialTheme.typography.bodySmall)
+            Text(exercise.unit.label, style = MaterialTheme.typography.bodySmall)
           }
           Spacer(Modifier.width(8.dp))
           TextButton(onClick = { viewModel.removeExercise(exercise.id) }) { Text("削除") }

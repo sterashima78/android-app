@@ -9,7 +9,7 @@ class WorkoutAiPromptBuilderTest {
   private val today = LocalDate.of(2026, 8, 27)
 
   @Test
-  fun `メニュー提案には直近14日と方針と設定済みメニューとメモを含める`() {
+  fun `メニュー提案には直近14日と方針とプリセットとメモを含める`() {
     val snapshot = snapshotWithHistory()
     val prompt = WorkoutAiPromptBuilder.build(
       type = WorkoutAiRequestType.MENU_SUGGESTION,
@@ -24,12 +24,14 @@ class WorkoutAiPromptBuilderTest {
     )
 
     assertTrue(prompt.contains("継続を優先する"))
-    assertTrue(prompt.contains("設定済みトレーニングメニュー"))
-    assertTrue(prompt.contains("腕立て伏せ: 目標 3セット / 単位 回"))
+    assertTrue(prompt.contains("プリセットメニュー"))
+    assertTrue(prompt.contains("基本メニュー"))
+    assertTrue(prompt.contains("腕立て伏せ: 3セット 回"))
     assertTrue(prompt.contains("今日は少し疲れている"))
     assertTrue(prompt.contains("2026-08-14"))
     assertFalse(prompt.contains("2026-08-13"))
-    assertTrue(prompt.contains("セット数と1セットあたりの回数または秒数"))
+    assertTrue(prompt.contains("JSONだけで返してください"))
+    assertTrue(prompt.contains("\"sets\":[10,10,8]"))
   }
 
   @Test
