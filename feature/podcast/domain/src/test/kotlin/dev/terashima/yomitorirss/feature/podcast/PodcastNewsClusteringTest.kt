@@ -56,17 +56,63 @@ class PodcastNewsClusteringTest {
   }
 
   @Test
-  fun `AI分類失敗時は1記事1ニュースへフォールバックする`() = runSuspendForClustering {
+  fun `AI分類成功時は成功状態とclusterを返す`() = runSuspendForClustering {
+    val clusterer = AiPodcastNewsClusterer(
+      scriptGenerator = object : PodcastScriptGenerator {
+        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String =
+          "GROUP: 1,2\nGROUP: 3"
+      },
+    )
+
+    val result = clusterer.cluster(
+      PodcastGenerationProvider.LOCAL,
+      listOf(feedEntry("a1"), feedEntry("a2"), feedEntry("a3")),
+    )
+
+    assertEquals(PodcastClusteringStatus.SUCCESS, result.status)
+    assertEquals(listOf(listOf(0, 1), listOf(2)), result.groups)
+  }
+
+  @Test
+  fun `AI推論失敗時は原因を記録して1記事1ニュースへフォールバックする`() = runSuspendForClustering {
+    val clusterer = AiPodcastNewsClusterer(
+      scriptGenerator = object : PodcastScriptGenerator {
+        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = error("inference failed")
+      },
+    )
+
+    val result = clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
+
+    assertEquals(PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR, result.status)
+    assertEquals(listOf(listOf(0), listOf(1)), result.groups)
+  }
+
+  @Test
+  fun `AI分類出力が不正な場合は原因を記録して1記事1ニュースへフォールバックする`() = runSuspendForClustering {
     val clusterer = AiPodcastNewsClusterer(
       scriptGenerator = object : PodcastScriptGenerator {
         override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = "invalid"
       },
     )
 
-    assertEquals(
-      listOf(listOf(0), listOf(1)),
-      clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2"))),
+    val result = clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
+
+    assertEquals(PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT, result.status)
+    assertEquals(listOf(listOf(0), listOf(1)), result.groups)
+  }
+
+  @Test
+  fun `1記事だけなら分類を省略する`() = runSuspendForClustering {
+    val clusterer = AiPodcastNewsClusterer(
+      scriptGenerator = object : PodcastScriptGenerator {
+        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = error("呼ばれない")
+      },
     )
+
+    val result = clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1")))
+
+    assertEquals(PodcastClusteringStatus.SKIPPED, result.status)
+    assertEquals(listOf(listOf(0)), result.groups)
   }
 
   @Test
