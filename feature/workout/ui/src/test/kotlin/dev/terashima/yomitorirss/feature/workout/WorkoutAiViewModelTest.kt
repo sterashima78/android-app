@@ -49,7 +49,7 @@ class WorkoutAiViewModelTest {
     advanceUntilIdle()
 
     assertEquals(listOf(WorkoutAiProvider.CHATGPT), advisor.providers)
-    assertTrue(advisor.prompts.single().contains("今日行うメニューを提案"))
+    assertTrue(advisor.prompts.single().contains("次のJSONだけで返してください"))
     assertEquals("回答", viewModel.state.value.response)
   }
 
