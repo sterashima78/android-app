@@ -93,7 +93,8 @@ object WorkoutAiPromptBuilder {
           appendLine("## 依頼")
           appendLine("今日行うメニューを、次のJSONだけで返してください。Markdownコードフェンスや説明文は付けないでください。")
           appendLine("種目は登録済み種目を優先し、必要なら新しい種目も提案できます。今日のメモに合わせてセット数や各セットの目標値を調整してください。")
-          appendLine("""{"version":1,"name":"今日のメニュー","exercises":[{"id":"既存なら種目id","name":"種目名","unit":"reps または seconds","type":"reps/timed/plank/step_up","sets":[10,10,8]}]}""")
+          appendLine("""{"version":1,"name":"今日のメニュー","exercises":[{"id":"既存なら種目id","name":"種目名","unit":"reps","type":"reps","sets":[10,10,8]}]}""")
+          appendLine("unit は reps または seconds、type は reps / timed / plank / step_up のいずれかを指定してください。")
           appendLine("sets は各セットの回数または秒数の配列です。配列の長さがセット数になります。")
         }
         WorkoutAiRequestType.POST_WORKOUT_REVIEW -> {
