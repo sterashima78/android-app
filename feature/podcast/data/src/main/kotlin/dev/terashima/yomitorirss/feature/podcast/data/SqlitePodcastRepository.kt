@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisode
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeArticle
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
@@ -142,6 +143,7 @@ class SqlitePodcastRepository(
           putNull("script")
           putNull("error_message")
           putNull("regeneration_status")
+          putNull("clustering_status")
         },
         "id=?",
         arrayOf(episodeId),
@@ -245,6 +247,13 @@ class SqlitePodcastRepository(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
     createdAtEpochMillis: Long,
+  ): PodcastEpisode? = reserveEpisode(program, candidates, createdAtEpochMillis, null)
+
+  override suspend fun reserveEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? = database.transaction {
     val pendingCandidates = candidates
       .distinctBy(PodcastFeedEntry::articleId)
@@ -272,6 +281,7 @@ class SqlitePodcastRepository(
           put("title", program.name)
           put("created_at", episodeCreatedAt)
           put("status", status.name)
+          if (clusteringStatus == null) putNull("clustering_status") else put("clustering_status", clusteringStatus.name)
         },
       )
 
@@ -318,6 +328,7 @@ class SqlitePodcastRepository(
         createdAtEpochMillis = episodeCreatedAt,
         status = status,
         articles = episodeArticles,
+        clusteringStatus = clusteringStatus,
       )
       if (firstEpisode == null) firstEpisode = episode
     }
@@ -554,6 +565,7 @@ private fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
     script = nullableString("script"),
     errorMessage = nullableString("error_message"),
     regenerationStatus = nullableString("regeneration_status")?.let(PodcastRegenerationStatus::valueOf),
+    clusteringStatus = nullableString("clustering_status")?.let(PodcastClusteringStatus::valueOf),
   )
 }
 
