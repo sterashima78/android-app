@@ -14,6 +14,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
     DatabaseMigration(targetVersion = 35) { db -> migratePodcastArticleUrls(db) },
     DatabaseMigration(targetVersion = 36) { db -> migratePodcastChapterGeneration(db) },
     DatabaseMigration(targetVersion = 37) { db -> migratePodcastNewsClusters(db) },
+    DatabaseMigration(targetVersion = 38) { db -> migratePodcastClusteringDiagnostics(db) },
   ),
 )
 
@@ -40,7 +41,8 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "status TEXT NOT NULL," +
       "script TEXT," +
       "error_message TEXT," +
-      "regeneration_status TEXT" +
+      "regeneration_status TEXT," +
+      "clustering_status TEXT" +
       ")",
   )
   db.execSQL("CREATE INDEX IF NOT EXISTS podcast_episodes_program_created ON podcast_episodes(program_id,created_at DESC)")
@@ -151,6 +153,13 @@ private fun migratePodcastNewsClusters(db: SQLiteDatabase) {
     db.execSQL("ALTER TABLE podcast_episode_articles ADD COLUMN chapter_position INTEGER")
   }
   db.execSQL("UPDATE podcast_episode_articles SET chapter_position=position WHERE chapter_position IS NULL")
+}
+
+private fun migratePodcastClusteringDiagnostics(db: SQLiteDatabase) {
+  if (!db.hasTable("podcast_episodes")) return
+  if (!db.hasColumn("podcast_episodes", "clustering_status")) {
+    db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN clustering_status TEXT")
+  }
 }
 
 private fun migrateLegacyConsumedIdentities(db: SQLiteDatabase) {

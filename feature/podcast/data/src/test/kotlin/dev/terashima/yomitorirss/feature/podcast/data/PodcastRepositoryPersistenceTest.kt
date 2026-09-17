@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
@@ -39,7 +40,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 37, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 38, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -138,6 +139,38 @@ class PodcastRepositoryPersistenceTest {
     assertNull(deleted.script)
     assertNull(repository.reserveEpisode(program, listOf(article), 200L))
     assertTrue(repository.listGenerationTasks().isEmpty())
+  }
+
+  @Test
+  fun `ニュース分類の診断状態をエピソードへ永続化する`() = runSuspend {
+    val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
+    val program = PodcastProgram(
+      id = "program-1",
+      name = "朝のニュース",
+      sourceIds = setOf(source.id),
+      provider = PodcastGenerationProvider.LOCAL,
+    )
+    repository.saveSource(source)
+    repository.saveProgram(program)
+
+    val episode = requireNotNull(
+      repository.reserveEpisode(
+        program = program,
+        candidates = listOf(
+          PodcastFeedEntry("article-1", source.id, "記事1", source.name, 1L, "https://example.invalid/1", "本文1", chapterPosition = 0),
+          PodcastFeedEntry("article-2", source.id, "記事2", source.name, 2L, "https://example.invalid/2", "本文2", chapterPosition = 0),
+          PodcastFeedEntry("article-3", source.id, "記事3", source.name, 3L, "https://example.invalid/3", "本文3", chapterPosition = 1),
+        ),
+        createdAtEpochMillis = 100L,
+        clusteringStatus = PodcastClusteringStatus.SUCCESS,
+      ),
+    )
+
+    val persisted = requireNotNull(repository.findEpisode(episode.id))
+    assertEquals(PodcastClusteringStatus.SUCCESS, persisted.clusteringStatus)
+    assertEquals(3, persisted.articles.size)
+    assertEquals(2, persisted.chapterGroups().size)
+    assertEquals(listOf(2, 1), persisted.chapterGroups().map { it.size })
   }
 
   @Test

@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Podcast Contextはニュースポッドキャストの番組、入力source、episode生成queue、生成時の記事・ニュースクラスタsnapshot、ニュースチャプター単位の生成checkpoint、番組単位のentry消費状態、生成原稿、定刻設定を所有する。
+Podcast Contextはニュースポッドキャストの番組、入力source、episode生成queue、生成時の記事・ニュースクラスタsnapshot、ニュース分類の診断状態、ニュースチャプター単位の生成checkpoint、番組単位のentry消費状態、生成原稿、定刻設定を所有する。
 
 RSS readerの購読状態やContentのread / unread stateはPodcastのsource of truthではない。Podcastで利用するRSS / Atom URLは `PodcastSource` としてPodcast Contextへ登録する。
 
@@ -28,7 +28,7 @@ RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する�
 
 Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。Unicode表記、空白、大文字小文字を正規化したtitleが一致するentryはRSS boundaryで確実な重複として1件へ縮約する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
 
-`PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群を返す。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類出力は全候補をちょうど1回含むことを検証し、分類推論またはparseに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。
+`PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類出力は全候補をちょうど1回含むことを検証し、分類推論またはparseに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw responseは診断状態へ保持しない。
 
 Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository`、`feeds` table、`articles` tableを参照しない。
 
@@ -39,8 +39,8 @@ Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository
 3. 番組の `sourceIds` に対応するPodcast-owned source定義を取得し、欠落があれば設定エラーとする。
 4. source URLからRSS / Atom entryのtitle / body / published time / entry URL metadataを取得する。
 5. program-scoped `podcast_consumed_articles` に存在しないentryだけを候補にする。
-6. 完全一致重複除外後の今回候補を `PodcastNewsClusterer` へ渡し、同一ニュースclusterを確定する。過去episodeとの意味的重複判定は行わない。
-7. 最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。
+6. 完全一致重複除外後の今回候補を `PodcastNewsClusterer` へ渡し、同一ニュースclusterと分類状態を確定する。過去episodeとの意味的重複判定は行わない。
+7. 最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。
 8. 最初のepisodeを生成し、残りはqueueへ保持する。
 9. episode内のclusterを `chapter_position` 順に処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論へ渡す。
 10. chapter生成promptではcluster内の全記事のtitle / feed bodyだけを根拠に、重複内容を繰り返さず、矛盾しない追加情報を統合した音声ニュース向けの短い日本語見出しと本文を生成する。entry URLはpromptへ含めない。見出しを `[[TITLE:...]]` markerとして `chapter_script` 内へ保持する。同じclusterの全rowへ同一のcheckpoint、script、errorを保存する。
@@ -75,7 +75,7 @@ Podcastのdurable generation stateはPodcast Contextに残し、`:feature:ai-tas
 
 `READY` episodeは、再生成中でなければ通常一覧から `ARCHIVED` へ移動でき、`ARCHIVED` episodeは `READY` へ復元できる。再生成失敗後にarchiveした場合は失敗したattempt状態を閉じ、既存の生成原稿と記事・cluster snapshotを保持する。generation queueは `QUEUED` / `GENERATING` と明示的な再生成状態だけを対象にするため、アーカイブ状態は生成予約や中断再開へ影響しない。
 
-`READY` / `ARCHIVED` / `FAILED` episodeは、再生成中でなければ削除できる。削除はepisode rowの物理削除ではなく `DELETED` tombstoneへの不可逆な遷移とする。削除時にはtitle、script、error message、再生成状態、`podcast_episode_articles` snapshotを消去するが、`podcast_consumed_articles` とその参照先として必要なepisode IDは保持する。これにより削除済みepisodeに由来するentryも未消費へ戻らず、新規episodeへ再利用されない。
+`READY` / `ARCHIVED` / `FAILED` episodeは、再生成中でなければ削除できる。削除はepisode rowの物理削除ではなく `DELETED` tombstoneへの不可逆な遷移とする。削除時にはtitle、script、error message、再生成状態、分類診断状態、`podcast_episode_articles` snapshotを消去するが、`podcast_consumed_articles` とその参照先として必要なepisode IDは保持する。これにより削除済みepisodeに由来するentryも未消費へ戻らず、新規episodeへ再利用されない。
 
 通常一覧は `ARCHIVED` / `DELETED` を除外し、アーカイブ一覧は `ARCHIVED` だけを表示する。`DELETED` はどの一覧にも表示せず、再生、再生成、復元の対象にしない。
 
@@ -83,7 +83,7 @@ Podcastのdurable generation stateはPodcast Contextに残し、`:feature:ai-tas
 
 新しく生成するepisodeでは1つのnews clusterを1つのchapter markerへ対応付け、1ニュース分の原稿segmentを1つの `AudioQueueItem` へ投影する。`[[TITLE:...]]` markerがあるsegmentではそのmarkerから日本語見出しを抽出し、marker自体を読み上げ本文から除外する。1件目は抽出した日本語見出しをqueue titleとして使い、2件目以降は短い音声キュー「続いて。」を先頭へ付けた日本語見出しをqueue titleとして渡す。
 
-`PodcastPlaybackChapter` は互換用の代表articleに加えてcluster内の全articlesを保持する。再生詳細画面にはchapter順でnews clusterを表示し、複数記事を含むchapterでは関連記事件数と各source articleを表示する。保存済み `article_url` がある各記事には個別にリンクを開く操作を表示する。再生詳細画面を閉じてもAudio playbackは停止しない。
+`PodcastPlaybackChapter` は互換用の代表articleに加えてcluster内の全articlesを保持する。再生詳細画面にはchapter順でnews clusterを表示し、複数記事を含むchapterでは関連記事件数と各source articleを表示する。保存済み `article_url` がある各記事には個別にリンクを開く操作を表示する。再生詳細画面では `clustering_status` と保存済みarticle / `chapter_position` から、分類成功・fallback理由・分類省略・旧episodeの記録なしと、記事数からニュース数への集約結果を表示する。再生詳細画面を閉じてもAudio playbackは停止しない。
 
 `[[TITLE:...]]` markerがない旧形式chapterは保存済み記事titleをqueue titleとして使う。見出しmarkerの有無は新しいdurable columnを追加せず、既存 `chapter_script` / episode script内の生成形式で表現する。
 
@@ -97,7 +97,7 @@ Podcast-owned tablesは次のとおり。
 
 - `podcast_sources`: Podcast専用RSS / Atom source catalog
 - `podcast_programs`: 番組定義、source ID集合、生成provider、schedule、最大ニュース数（DB columnは互換上 `max_articles` を継続利用）
-- `podcast_episodes`: episode generation / organization lifecycleと生成原稿。再生成中断状態、`ARCHIVED` / `DELETED` を含む
+- `podcast_episodes`: episode generation / organization lifecycleと生成原稿。再生成中断状態、分類診断状態 `clustering_status`、`ARCHIVED` / `DELETED` を含む
 - `podcast_episode_articles`: 生成に予約したentry metadata、feed body、entry URL、`chapter_position` snapshotとchapter checkpoint。同一 `chapter_position` のrowsが1ニュースを構成する。`DELETED` episodeでは消去する
 - `podcast_consumed_articles`: 番組ごとの消費済みentry identity。cluster内の全entryを記録し、episode削除後も再利用防止のため保持する
 
@@ -115,16 +115,19 @@ application database version 36では `podcast_episode_articles` に `chapter_st
 
 application database version 37では `podcast_episode_articles.chapter_position` をnullable columnとして追加し、既存rowは `chapter_position=position` として移行する。これにより既存episodeは従来どおり1記事1chapterのまま保持される。新規episodeだけ複数rowが同じ `chapter_position` を共有できる。
 
+application database version 38では `podcast_episodes.clustering_status` をnullable columnとして追加する。version 37以前のepisodeは分類実行時の状態を復元できないためNULLのまま保持し、再生詳細では「記録なし」として扱う。新規episodeでは分類結果の状態だけを保存し、候補記事数とニュース数は記事snapshotと `chapter_position` から復元する。
+
 ## Invariants
 
 - 番組には1つ以上のPodcast sourceが必要である。
 - 番組が参照するPodcast sourceは保存時点で存在しなければならない。
 - source URLはPodcast Contextのdurable stateとして保持する。
 - 同一番組では一度予約したstable entry identityを新規episodeへ再利用しない。
-- episodeへ予約したfeed body、entry URL、cluster境界は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
+- episodeへ予約したfeed body、entry URL、cluster境界、分類診断状態は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
 - 意味的な同一ニュース判定は現在の未消費候補内だけで行い、過去episodeを意味比較して続報を抑止しない。
-- clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackする。
+- clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackし、fallback原因の分類状態を保存する。
+- 分類診断のためにraw prompt、raw AI response、例外本文を新たに永続化しない。
 - 1回のchapter生成AI推論は1つのnews clusterだけを生成材料とし、そのcluster外の記事本文を混在させない。
 - 同一clusterの全article rowは同じcheckpoint、chapter script、errorを共有する。
 - checkpointが `READY` のchapterはretry / interrupted recoveryで再生成しない。

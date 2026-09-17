@@ -68,6 +68,7 @@ data class PodcastFeedEntry(
 
 enum class PodcastChapterGenerationStatus { PENDING, GENERATING, READY, FAILED }
 enum class PodcastRegenerationStatus { RUNNING, FAILED }
+enum class PodcastClusteringStatus { SUCCESS, FALLBACK_INFERENCE_ERROR, FALLBACK_INVALID_OUTPUT, SKIPPED }
 
 data class PodcastEpisodeArticle(
   val articleId: String,
@@ -102,6 +103,7 @@ data class PodcastEpisode(
   val script: String? = null,
   val errorMessage: String? = null,
   val regenerationStatus: PodcastRegenerationStatus? = null,
+  val clusteringStatus: PodcastClusteringStatus? = null,
 ) {
   fun chapterGroups(): List<List<PodcastEpisodeArticle>> = articles
     .mapIndexed { index, article -> (article.chapterPosition ?: index) to article }
@@ -203,6 +205,12 @@ interface PodcastRepository {
 
   suspend fun claimPendingEpisode(programId: String): PodcastEpisode?
   suspend fun reserveEpisode(program: PodcastProgram, candidates: List<PodcastFeedEntry>, createdAtEpochMillis: Long): PodcastEpisode?
+  suspend fun reserveEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus?,
+  ): PodcastEpisode? = reserveEpisode(program, candidates, createdAtEpochMillis)
   suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode
   suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode
   suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode
@@ -217,18 +225,26 @@ interface PodcastScriptGenerator {
   suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String
 }
 
+data class PodcastNewsClusteringResult(
+  val groups: List<List<Int>>,
+  val status: PodcastClusteringStatus,
+)
+
 interface PodcastNewsClusterer {
   suspend fun cluster(
     provider: PodcastGenerationProvider,
     candidates: List<PodcastFeedEntry>,
-  ): List<List<Int>>
+  ): PodcastNewsClusteringResult
 }
 
 object SingletonPodcastNewsClusterer : PodcastNewsClusterer {
   override suspend fun cluster(
     provider: PodcastGenerationProvider,
     candidates: List<PodcastFeedEntry>,
-  ): List<List<Int>> = candidates.indices.map { listOf(it) }
+  ): PodcastNewsClusteringResult = PodcastNewsClusteringResult(
+    groups = candidates.indices.map { listOf(it) },
+    status = PodcastClusteringStatus.SKIPPED,
+  )
 }
 
 class AiPodcastNewsClusterer(
@@ -237,15 +253,35 @@ class AiPodcastNewsClusterer(
   override suspend fun cluster(
     provider: PodcastGenerationProvider,
     candidates: List<PodcastFeedEntry>,
-  ): List<List<Int>> {
-    if (candidates.size <= 1) return candidates.indices.map { listOf(it) }
-    return try {
-      val response = scriptGenerator.generate(provider, buildPodcastClusteringPrompt(candidates))
-      parsePodcastClusters(response, candidates.size)
+  ): PodcastNewsClusteringResult {
+    if (candidates.size <= 1) {
+      return PodcastNewsClusteringResult(
+        groups = candidates.indices.map { listOf(it) },
+        status = PodcastClusteringStatus.SKIPPED,
+      )
+    }
+    val response = try {
+      scriptGenerator.generate(provider, buildPodcastClusteringPrompt(candidates))
     } catch (error: CancellationException) {
       throw error
     } catch (_: Throwable) {
-      candidates.indices.map { listOf(it) }
+      return PodcastNewsClusteringResult(
+        groups = candidates.indices.map { listOf(it) },
+        status = PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR,
+      )
+    }
+    return try {
+      PodcastNewsClusteringResult(
+        groups = parsePodcastClusters(response, candidates.size),
+        status = PodcastClusteringStatus.SUCCESS,
+      )
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      PodcastNewsClusteringResult(
+        groups = candidates.indices.map { listOf(it) },
+        status = PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT,
+      )
     }
   }
 }
@@ -254,6 +290,11 @@ sealed interface PodcastGenerationResult {
   data class Generated(val episode: PodcastEpisode) : PodcastGenerationResult
   data object NoNewArticles : PodcastGenerationResult
 }
+
+private data class PodcastClusteredCandidates(
+  val entries: List<PodcastFeedEntry>,
+  val status: PodcastClusteringStatus,
+)
 
 class GeneratePodcastEpisodeUseCase(
   private val repository: PodcastRepository,
@@ -275,8 +316,13 @@ class GeneratePodcastEpisodeUseCase(
     val candidates = feedContentSource.latestEntries(sources, Int.MAX_VALUE)
     val unconsumedCandidates = candidateFilter.unconsumedEntries(program.id, candidates)
     if (unconsumedCandidates.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
-    val reserved = repository.reserveEpisode(program, clusterCandidates(program, unconsumedCandidates), nowEpochMillis())
-      ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val clustered = clusterCandidates(program, unconsumedCandidates)
+    val reserved = repository.reserveEpisode(
+      program = program,
+      candidates = clustered.entries,
+      createdAtEpochMillis = nowEpochMillis(),
+      clusteringStatus = clustered.status,
+    ) ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
     generateReserved(program, reserved)
   }
 
@@ -310,14 +356,18 @@ class GeneratePodcastEpisodeUseCase(
     generateReserved(program, interrupted)
   }
 
-  private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): List<PodcastFeedEntry> {
-    val groups = newsClusterer.cluster(program.provider, candidates)
+  private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): PodcastClusteredCandidates {
+    val result = newsClusterer.cluster(program.provider, candidates)
+    val groups = result.groups
     require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
       "news clusterer must contain every candidate exactly once"
     }
-    return groups.flatMapIndexed { chapterPosition, indexes ->
-      indexes.map { index -> candidates[index].copy(chapterPosition = chapterPosition) }
-    }
+    return PodcastClusteredCandidates(
+      entries = groups.flatMapIndexed { chapterPosition, indexes ->
+        indexes.map { index -> candidates[index].copy(chapterPosition = chapterPosition) }
+      },
+      status = result.status,
+    )
   }
 
   private suspend fun generateReserved(program: PodcastProgram, initialEpisode: PodcastEpisode): PodcastGenerationResult.Generated {
