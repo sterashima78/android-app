@@ -75,7 +75,7 @@ class PodcastArticleUrlMigrationTest {
 
     val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
 
-    assertEquals(37, migrated.version)
+    assertEquals(38, migrated.version)
     assertTrue("article_url" in columnNames(migrated, "podcast_episode_articles"))
     assertTrue("chapter_status" in columnNames(migrated, "podcast_episode_articles"))
     assertTrue("chapter_script" in columnNames(migrated, "podcast_episode_articles"))
@@ -157,7 +157,7 @@ class PodcastArticleUrlMigrationTest {
 
     val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
 
-    assertEquals(37, migrated.version)
+    assertEquals(38, migrated.version)
     migrated.rawQuery(
       "SELECT script,regeneration_status FROM podcast_episodes WHERE id=?",
       arrayOf("episode-ready"),
@@ -175,6 +175,67 @@ class PodcastArticleUrlMigrationTest {
       assertTrue(cursor.isNull(1))
       assertTrue(cursor.isNull(2))
       assertEquals(0, cursor.getInt(3))
+    }
+  }
+
+  @Test
+  fun `version 37 Podcast episodeへ分類診断列を追加して既存行は未記録として保持する`() {
+    val previousSchema = DatabaseSchema(
+      version = 37,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "legacy-v37-podcast",
+          createSchema = { db ->
+            db.execSQL(
+              "CREATE TABLE podcast_episodes(" +
+                "id TEXT PRIMARY KEY NOT NULL," +
+                "program_id TEXT NOT NULL," +
+                "title TEXT NOT NULL," +
+                "created_at INTEGER NOT NULL," +
+                "status TEXT NOT NULL," +
+                "script TEXT," +
+                "error_message TEXT," +
+                "regeneration_status TEXT)",
+            )
+          },
+        ),
+      ),
+    )
+    val legacy = YomitoriDatabase.create(context, previousSchema)
+    legacy.writableDatabase.insertOrThrow(
+      "podcast_episodes",
+      null,
+      ContentValues().apply {
+        put("id", "episode-existing")
+        put("program_id", "program-1")
+        put("title", "既存エピソード")
+        put("created_at", 1_000L)
+        put("status", "READY")
+        put("script", "既存原稿")
+      },
+    )
+    legacy.close()
+
+    val migrated = YomitoriDatabase.create(context, appDatabaseSchema).also { database = it }.writableDatabase
+
+    assertEquals(38, migrated.version)
+    val columns = columnNames(migrated, "podcast_episodes")
+    assertTrue("clustering_status" in columns)
+    assertTrue("clustering_input_count" in columns)
+    assertTrue("clustering_cluster_count" in columns)
+    assertTrue("clustering_error_message" in columns)
+    migrated.rawQuery(
+      "SELECT title,script,clustering_status,clustering_input_count,clustering_cluster_count,clustering_error_message " +
+        "FROM podcast_episodes WHERE id=?",
+      arrayOf("episode-existing"),
+    ).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals("既存エピソード", cursor.getString(0))
+      assertEquals("既存原稿", cursor.getString(1))
+      assertTrue(cursor.isNull(2))
+      assertTrue(cursor.isNull(3))
+      assertTrue(cursor.isNull(4))
+      assertTrue(cursor.isNull(5))
     }
   }
 }
