@@ -387,15 +387,36 @@ val verifyBehavioralTestCoverage by tasks.registering {
       val verificationPattern = Regex(
         """(?:\bassert[A-Za-z0-9_]*\s*\(|\bfail\s*\(|\bverify\s*\(|\bcoVerify\s*\(|\bcheck\s*\(|\brequire\s*\(|@Test\s*\(\s*expected\s*=)""",
       )
+      val productionFiles = listOf("src/main/java", "src/main/kotlin")
+        .flatMap { sourceRootPath ->
+          val sourceRoot = project.file(sourceRootPath)
+          if (!sourceRoot.isDirectory) {
+            emptyList()
+          } else {
+            project.fileTree(sourceRoot) {
+              include("**/*.kt")
+              include("**/*.java")
+            }.files.toList()
+          }
+        }
 
-      listOf("src/main/java", "src/main/kotlin").forEach { sourceRootPath ->
-        val sourceRoot = project.file(sourceRootPath)
-        if (!sourceRoot.isDirectory) return@forEach
+      if (testFiles.isEmpty() && productionFiles.any { it.name.endsWith("ViewModel.kt") }) {
+        violations +=
+          "${project.path} contains ViewModel state/orchestration but has no JVM regression tests"
+      }
 
-        project.fileTree(sourceRoot) {
-          include("**/*.kt")
-          include("**/*.java")
-        }.files
+      val concreteRepositoryWithoutModuleTests = testFiles.isEmpty() &&
+        productionFiles
+          .filter { it.name.endsWith("Repository.kt") }
+          .any { sourceFile ->
+            Regex("""\bclass\s+[A-Za-z0-9_]*Repository\b""").containsMatchIn(sourceFile.readText())
+          }
+      if (concreteRepositoryWithoutModuleTests) {
+        violations +=
+          "${project.path} contains a concrete Repository implementation but has no JVM contract tests"
+      }
+
+      productionFiles
           .filter { sourceFile ->
             behavioralContractSourceSuffixes.any(sourceFile.name::endsWith)
           }
