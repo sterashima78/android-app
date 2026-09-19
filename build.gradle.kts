@@ -371,7 +371,7 @@ val verifyBehavioralTestCoverage by tasks.registering {
     val violations = mutableListOf<String>()
 
     subprojects.forEach { project ->
-      val testFileNames = listOf("src/test/java", "src/test/kotlin")
+      val testFiles = listOf("src/test/java", "src/test/kotlin")
         .flatMap { sourceRootPath ->
           val sourceRoot = project.file(sourceRootPath)
           if (!sourceRoot.isDirectory) {
@@ -380,10 +380,13 @@ val verifyBehavioralTestCoverage by tasks.registering {
             project.fileTree(sourceRoot) {
               include("**/*.kt")
               include("**/*.java")
-            }.files.map { it.nameWithoutExtension }
+            }.files.toList()
           }
         }
-        .toSet()
+      val testFilesByName = testFiles.associateBy { it.nameWithoutExtension }
+      val verificationPattern = Regex(
+        """(?:\bassert[A-Za-z0-9_]*\s*\(|\bfail\s*\(|\bverify\s*\(|\bcoVerify\s*\(|\bcheck\s*\(|\brequire\s*\(|@Test\s*\(\s*expected\s*=)""",
+      )
 
       listOf("src/main/java", "src/main/kotlin").forEach { sourceRootPath ->
         val sourceRoot = project.file(sourceRootPath)
@@ -398,10 +401,15 @@ val verifyBehavioralTestCoverage by tasks.registering {
           }
           .forEach { sourceFile ->
             val expectedTestName = sourceFile.nameWithoutExtension + "Test"
-            if (expectedTestName !in testFileNames) {
+            val testFile = testFilesByName[expectedTestName]
+            if (testFile == null) {
               violations +=
                 "${project.path}:${sourceFile.relativeTo(project.projectDir)} requires ${expectedTestName}.kt " +
                   "because behavioral UseCase/Adapter/Policy/Normalizer changes must have a direct regression test"
+            } else if (!verificationPattern.containsMatchIn(testFile.readText())) {
+              violations +=
+                "${project.path}:${testFile.relativeTo(project.projectDir)} must verify an observable contract " +
+                  "instead of acting as an assertion-free placeholder"
             }
           }
       }
