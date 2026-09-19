@@ -32,6 +32,7 @@
 - 動画Providerは組み込みProviderに加えて、ユーザーが任意のJavaScript functionを設定するcustom Providerを複数追加できる。custom Providerでもsubscription、未読、あとで見る、保存、再生状態は共通のVideo lifecycleを利用する。
 - 初期の組み込み動画Providerでは通常動画だけを更新対象とし、短尺専用形式とライブ配信は更新対象外とする。
 - 購読型動画の未読、あとで見る、履歴、保存、再生は動画機能内で完結させ、統合ビューへ投影しない。
+- 端末の共有メニューから http/https URL を「動画へ追加」へ共有すると、Web動画として動画機能へ追加し、動画画面へ遷移する。
 - 自動AI処理の対象可否は source / content type の方針に従う。
 
 ## 4.4 統合ビューと履歴
