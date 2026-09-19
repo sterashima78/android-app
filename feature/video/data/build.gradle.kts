@@ -32,5 +32,5 @@ dependencies {
   implementation("org.jsoup:jsoup:1.22.2")
   testImplementation(libs.junit4)
   testImplementation("androidx.test:core-ktx:1.7.0")
-  testImplementation("org.robolectric:robolectric:4.16.1")
+  testImplementation("org.robolectric:robolectric:4.17")
 }
