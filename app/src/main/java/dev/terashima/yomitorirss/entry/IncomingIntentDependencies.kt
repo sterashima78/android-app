@@ -17,4 +17,6 @@ class IncomingIntentDependencies internal constructor(
     url: String,
     title: String,
   ): AddedSharedWebBook = sharedContentEntry.addWebBook(url, title)
+
+  suspend fun addSharedWebVideo(url: String) = sharedContentEntry.addWebVideo(url)
 }
