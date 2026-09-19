@@ -24,7 +24,7 @@ android {
 dependencies {
   implementation(project(":feature:health:domain"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation(libs.androidx.activity.compose)
   implementation("androidx.health.connect:connect-client:1.1.0")
   implementation(libs.androidx.lifecycle.viewmodel.ktx)

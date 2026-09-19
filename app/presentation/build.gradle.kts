@@ -167,7 +167,7 @@ dependencies {
   implementation(project(":feature:x:domain"))
   implementation(project(":feature:x:ui"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.navigation.compose)

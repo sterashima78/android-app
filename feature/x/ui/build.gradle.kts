@@ -24,7 +24,7 @@ android {
 dependencies {
   implementation(project(":feature:x:domain"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation(libs.androidx.activity.compose)
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.foundation:foundation")
@@ -32,5 +32,5 @@ dependencies {
   implementation("androidx.compose.material:material-icons-extended")
 
   testImplementation("junit:junit:4.13.2")
-  testImplementation("org.robolectric:robolectric:4.16.1")
+  testImplementation("org.robolectric:robolectric:4.17")
 }

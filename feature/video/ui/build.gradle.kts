@@ -26,7 +26,7 @@ dependencies {
   implementation(project(":feature:library:domain"))
   implementation(project(":core:designsystem"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.ui:ui-viewbinding")
   implementation("androidx.compose.foundation:foundation")
@@ -37,7 +37,7 @@ dependencies {
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.exoplayer.hls)
   implementation(libs.androidx.media3.ui)
-  implementation("io.coil-kt.coil3:coil-compose:3.5.0")
+  implementation("io.coil-kt.coil3:coil-compose:3.6.3")
   implementation(libs.kotlinx.coroutines.android)
 
   testImplementation(libs.junit4)

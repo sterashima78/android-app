@@ -22,5 +22,5 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
   testImplementation("junit:junit:4.13.2")
-  testImplementation("org.robolectric:robolectric:4.16.1")
+  testImplementation("org.robolectric:robolectric:4.17")
 }

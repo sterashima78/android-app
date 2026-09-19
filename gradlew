@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 set -eu
-GRADLE_VERSION=9.6.1
+GRADLE_VERSION=9.7.1
 CACHE_DIR="${GRADLE_USER_HOME:-$HOME/.gradle}/native-wrapper"
 GRADLE_HOME="$CACHE_DIR/gradle-$GRADLE_VERSION"
 if [ ! -x "$GRADLE_HOME/bin/gradle" ]; then
