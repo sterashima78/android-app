@@ -99,6 +99,8 @@ UseCase / Adapter / Policy / Normalizer のように、分岐・状態変換・o
 
 production file と別名の統合テストだけで十分な場合は、安易に placeholder test を追加せず、命名または rule の対象設計を見直す。source text を文字列検索する test は architecture / compatibility invariant のように source structure 自体が contract である場合に限定する。
 
+加えて、ViewModel を含む module、または concrete Repository implementation を含む module が JVM test を1件も持たない状態を禁止する。これらは UI state / orchestration または persistence / adapter semantics の所有場所であり、module 全体が未検証になることを防ぐための最低限の guardrail とする。
+
 ## Architecture verification
 
 ### `verifyArchitecture`
