@@ -356,6 +356,74 @@ val verifyArchitectureRuleTests by tasks.registering {
   }
 }
 
+val behavioralContractSourceSuffixes = listOf(
+  "UseCase.kt",
+  "Adapter.kt",
+  "Policy.kt",
+  "Normalizer.kt",
+)
+
+val verifyBehavioralTestCoverage by tasks.registering {
+  group = "verification"
+  description = "Requires direct regression tests for production files that own behavioral contracts."
+
+  doLast {
+    val violations = mutableListOf<String>()
+
+    subprojects.forEach { project ->
+      val testFileNames = listOf("src/test/java", "src/test/kotlin")
+        .flatMap { sourceRootPath ->
+          val sourceRoot = project.file(sourceRootPath)
+          if (!sourceRoot.isDirectory) {
+            emptyList()
+          } else {
+            project.fileTree(sourceRoot) {
+              include("**/*.kt")
+              include("**/*.java")
+            }.files.map { it.nameWithoutExtension }
+          }
+        }
+        .toSet()
+
+      listOf("src/main/java", "src/main/kotlin").forEach { sourceRootPath ->
+        val sourceRoot = project.file(sourceRootPath)
+        if (!sourceRoot.isDirectory) return@forEach
+
+        project.fileTree(sourceRoot) {
+          include("**/*.kt")
+          include("**/*.java")
+        }.files
+          .filter { sourceFile ->
+            behavioralContractSourceSuffixes.any(sourceFile.name::endsWith)
+          }
+          .forEach { sourceFile ->
+            val expectedTestName = sourceFile.nameWithoutExtension + "Test"
+            if (expectedTestName !in testFileNames) {
+              violations +=
+                "${project.path}:${sourceFile.relativeTo(project.projectDir)} requires ${expectedTestName}.kt " +
+                  "because behavioral UseCase/Adapter/Policy/Normalizer changes must have a direct regression test"
+            }
+          }
+      }
+    }
+
+    if (violations.isNotEmpty()) {
+      throw GradleException(
+        buildString {
+          appendLine("Behavioral test coverage verification failed (${violations.size} violation(s)):")
+          violations.sorted().forEach { violation -> appendLine("- $violation") }
+          append(
+            "Add a contract-focused test. Do not add a placeholder test only to satisfy this rule; " +
+              "interfaces, DTOs, and passive UI shells are intentionally outside this filename-based requirement.",
+          )
+        },
+      )
+    }
+
+    logger.lifecycle("Behavioral test coverage verification passed.")
+  }
+}
+
 val verifyArchitecture by tasks.registering {
   group = "verification"
   description = "Verifies Gradle dependency rules and production source ownership/layout defined by the architecture ADRs."
