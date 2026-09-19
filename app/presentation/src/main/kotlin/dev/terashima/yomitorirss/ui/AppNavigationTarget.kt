@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
+import dev.terashima.yomitorirss.feature.video.ui.VIDEO_ROUTE
 
 /** Semantic app destinations requested by executable entry points. */
 enum class AppNavigationTarget {
@@ -12,6 +13,7 @@ enum class AppNavigationTarget {
   BOOKMARKS,
   LIBRARY,
   TASKS,
+  VIDEO,
   WEB_SERVER,
 }
 
@@ -20,5 +22,6 @@ internal fun AppNavigationTarget.appRoute(): String = when (this) {
   AppNavigationTarget.BOOKMARKS -> BOOKMARKS_ROUTE
   AppNavigationTarget.LIBRARY -> LIBRARY_ROUTE
   AppNavigationTarget.TASKS -> TASKS_ROUTE
+  AppNavigationTarget.VIDEO -> VIDEO_ROUTE
   AppNavigationTarget.WEB_SERVER -> SETTINGS_ROUTE
 }
