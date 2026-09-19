@@ -26,7 +26,7 @@ dependencies {
   implementation(project(":feature:library:domain"))
   implementation(project(":core:designsystem"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.ui:ui-viewbinding")
   implementation("androidx.compose.foundation:foundation")
