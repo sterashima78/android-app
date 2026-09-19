@@ -32,5 +32,5 @@ dependencies {
   implementation("androidx.compose.material:material-icons-extended")
 
   testImplementation("junit:junit:4.13.2")
-  testImplementation("org.robolectric:robolectric:4.16.1")
+  testImplementation("org.robolectric:robolectric:4.17")
 }
