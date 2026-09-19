@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.feature.library.LibraryBook
 class SharedContentEntryCapability internal constructor(
   private val saveSharedBookmark: SaveSharedBookmarkUseCase,
   private val addSharedWebBook: suspend (String, String?) -> LibraryBook,
+  private val addSharedWebVideo: suspend (String) -> Unit,
 ) {
   suspend fun saveBookmark(
     url: String,
@@ -23,6 +24,10 @@ class SharedContentEntryCapability internal constructor(
   ): AddedSharedWebBook = AddedSharedWebBook(
     title = addSharedWebBook(url, title).title,
   )
+
+  suspend fun addWebVideo(url: String) {
+    addSharedWebVideo(url)
+  }
 }
 
 enum class SharedBookmarkSaveOutcome {
