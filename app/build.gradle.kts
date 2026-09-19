@@ -205,7 +205,7 @@ dependencies {
   implementation(project(":core:database"))
   implementation(project(":core:ai-runtime"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation(libs.androidx.activity.compose)
   implementation("androidx.browser:browser:1.10.0")
   implementation(libs.androidx.navigation.compose)
