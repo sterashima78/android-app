@@ -122,6 +122,10 @@ class MainActivityDependenciesSourceArchitectureTest {
       "executable incoming Intent facade must not expose Library domain types",
       "feature.library" in incomingDependencies,
     )
+    assertFalse(
+      "executable incoming Intent facade must not expose Video domain types",
+      "feature.video" in incomingDependencies,
+    )
     assertTrue(
       "Application composition must wire the neutral shared-content capability",
       "sharedContentEntry = container.sharedContentEntryCapability" in application,
@@ -133,6 +137,10 @@ class MainActivityDependenciesSourceArchitectureTest {
     assertTrue(
       "composition must narrow Library mutation output to the added title",
       "AddedSharedWebBook(" in capability,
+    )
+    assertTrue(
+      "composition must expose shared Video mutation without Video domain types",
+      "suspend fun addWebVideo(url: String)" in capability && "feature.video" !in capability,
     )
   }
 

@@ -116,6 +116,8 @@ custom title / thumbnail extractionが失敗した場合は静的metadataを維�
 
 Web URL登録は1件のVideo itemを明示的に追加する操作であり、購読、未読、background refresh semanticsを持たない。購読型providerとは別のlifecycleとして扱う。catalogへ明示登録されたWeb itemはsourceの性質として保存済みであり、`video_saved_items` rowがなくても保存済み画面へ表示する。
 
+端末の `ACTION_SEND` / `text/plain` 共有では、`:app` が「動画へ追加」の専用Activityをexternal Intent entry pointとして公開する。専用Activityはpayloadを監査済みの `MainActivity` external Intent routingへ転送し、URL解析後に `:app:composition` のfeature-neutral shared-content capabilityを経由して既存 `VideoRepository.addWeb` を呼ぶ。登録成功後の動画画面遷移は `:app:presentation` のsemantic `AppNavigationTarget.VIDEO` で要求し、`:app` からfeature route文字列を直接参照しない。共有経路専用のVideo persistenceや第二のWeb登録実装は持たない。
+
 ## Subscription providers
 
 購読型providerは、provider設定・subscription・取得済みitem stateをVideo Context内で共通化する。組み込みadapterとユーザー定義custom providerはいずれも外部source固有の入力正規化、endpoint解決、response parsing、item projectionだけを担当し、subscription / unread / refresh lifecycleを独自実装しない。

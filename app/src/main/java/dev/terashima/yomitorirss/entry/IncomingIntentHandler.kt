@@ -21,6 +21,7 @@ internal class IncomingIntentHandler(
 ) {
   fun consume(incoming: Intent) {
     consumeSharedLibrary(incoming)
+    consumeSharedVideo(incoming)
     consumeSharedBookmark(incoming)
     consumeNotificationNavigation(incoming)
     consumeTaskWidget(incoming)
@@ -86,6 +87,35 @@ internal class IncomingIntentHandler(
     }
   }
 
+  private fun consumeSharedVideo(incoming: Intent) {
+    if (incoming.action != ACTION_ADD_SHARED_URL_TO_VIDEO) return
+
+    val shared = parseSharedBookmark(
+      text = incoming.getCharSequenceExtra(Intent.EXTRA_TEXT),
+      subject = incoming.getCharSequenceExtra(Intent.EXTRA_SUBJECT),
+    )
+    clearSharePayload(incoming)
+
+    if (shared == null) {
+      Toast.makeText(activity, "共有内容に http/https の URL がありません", Toast.LENGTH_LONG).show()
+      return
+    }
+
+    activity.lifecycleScope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) {
+          dependencies.addSharedWebVideo(shared.url)
+        }
+      }.onSuccess {
+        onNavigate(AppNavigationTarget.VIDEO)
+        Toast.makeText(activity, "動画へ追加しました", Toast.LENGTH_SHORT).show()
+      }.onFailure { error ->
+        val message = error.message?.takeIf(String::isNotBlank) ?: "動画を追加できませんでした"
+        Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+      }
+    }
+  }
+
   private fun consumeSharedBookmark(incoming: Intent) {
     if (incoming.action != Intent.ACTION_SEND || incoming.type != "text/plain") return
 
@@ -128,6 +158,8 @@ internal class IncomingIntentHandler(
   companion object {
     const val ACTION_ADD_SHARED_URL_TO_LIBRARY =
       "dev.terashima.yomitorirss.action.ADD_SHARED_URL_TO_LIBRARY"
+    const val ACTION_ADD_SHARED_URL_TO_VIDEO =
+      "dev.terashima.yomitorirss.action.ADD_SHARED_URL_TO_VIDEO"
   }
 }
 

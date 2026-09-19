@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
 import dev.terashima.yomitorirss.feature.settings.SETTINGS_ROUTE
 import dev.terashima.yomitorirss.feature.task.TASKS_ROUTE
+import dev.terashima.yomitorirss.feature.video.ui.VIDEO_ROUTE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -17,6 +18,7 @@ class AppNavigationTargetTest {
     assertEquals(BOOKMARKS_ROUTE, AppNavigationTarget.BOOKMARKS.appRoute())
     assertEquals(LIBRARY_ROUTE, AppNavigationTarget.LIBRARY.appRoute())
     assertEquals(TASKS_ROUTE, AppNavigationTarget.TASKS.appRoute())
+    assertEquals(VIDEO_ROUTE, AppNavigationTarget.VIDEO.appRoute())
     assertEquals(SETTINGS_ROUTE, AppNavigationTarget.WEB_SERVER.appRoute())
   }
 

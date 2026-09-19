@@ -77,6 +77,21 @@
       </intent-filter>
     </activity>
 
+    <activity
+      android:name=".VideoShareActivity"
+      android:excludeFromRecents="true"
+      android:exported="true"
+      android:label="@string/share_to_video"
+      android:noHistory="true"
+      android:screenOrientation="portrait"
+      android:theme="@style/Theme.Yomitori">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/plain" />
+      </intent-filter>
+    </activity>
+
     <service
       android:name="androidx.work.impl.foreground.SystemForegroundService"
       android:foregroundServiceType="specialUse|dataSync"
