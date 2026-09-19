@@ -43,7 +43,8 @@ class RepositoryGovernanceSourceTest {
     assertTrue("catalog must own the AndroidX WebKit version", "androidx-webkit = \"1.17.0\"" in catalog)
     assertTrue("catalog must own the coroutines version", "kotlinx-coroutines = \"1.11.0\"" in catalog)
     assertTrue("catalog must own the serialization version", "kotlinx-serialization = \"1.11.0\"" in catalog)
-    assertTrue("catalog must own the JUnit4 version", "junit4 = \"4.13.2\"" in catalog)
+    assertTrue("catalog must own the JUnit4 compatibility version", "junit4 = \"4.13.2\"" in catalog)
+    assertTrue("catalog must own the JUnit Platform version", "junit6 = \"6.1.2\"" in catalog)
 
     val expectedAliases = mapOf(
       "app/build.gradle.kts" to listOf(
@@ -104,6 +105,22 @@ class RepositoryGovernanceSourceTest {
     assertTrue("Chat data must use the JUnit catalog alias", "libs.junit4" in chatData)
     assertFalse("Chat data must not hardcode migrated dependency versions", ":1.11.0\"" in chatData)
     assertFalse("Chat data must not hardcode JUnit4 version", "junit:junit:4.13.2" in chatData)
+  }
+
+  @Test
+  fun `ローカルテストはJUnit Platformで実行し端末テストはJUnit4 runnerを維持する`() {
+    val rootBuild = source("build.gradle.kts")
+    assertTrue("local tests must use JUnit Platform", "useJUnitPlatform()" in rootBuild)
+    assertTrue("local tests must support Jupiter", "libs.junit.jupiter" in rootBuild)
+    assertTrue("existing JUnit4 tests must run through Vintage", "libs.junit.vintage.engine" in rootBuild)
+    assertTrue(
+      "instrumented tests must keep the Android JUnit4 runner",
+      "testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"" in rootBuild,
+    )
+    assertTrue(
+      "Compose instrumented tests must keep the JUnit4 integration",
+      "androidx.compose.ui:ui-test-junit4" in rootBuild,
+    )
   }
 
   @Test
