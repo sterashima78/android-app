@@ -25,7 +25,7 @@ dependencies {
   implementation(project(":core:web-collector"))
   implementation(project(":feature:asset:domain"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.lifecycle.viewmodel.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
