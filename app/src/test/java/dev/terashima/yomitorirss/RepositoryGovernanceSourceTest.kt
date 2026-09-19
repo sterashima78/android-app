@@ -109,7 +109,7 @@ class RepositoryGovernanceSourceTest {
   @Test
   fun `Gradle wrapper versionは検証済みbaselineを使う`() {
     val wrapper = source("gradle/wrapper/gradle-wrapper.properties")
-    assertTrue("Gradle wrapper must use 9.6.1", "gradle-9.6.1-bin.zip" in wrapper)
+    assertTrue("Gradle wrapper must use 9.7.1", "gradle-9.7.1-bin.zip" in wrapper)
   }
 
   @Test
