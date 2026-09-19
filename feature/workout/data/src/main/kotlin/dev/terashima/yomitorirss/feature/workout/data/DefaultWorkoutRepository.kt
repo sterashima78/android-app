@@ -73,11 +73,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     val unit = enumOrDefault(json.optString("unit"), WorkoutUnit.REPS)
     return WorkoutExercise(
       id = json.optString("id"),
-      name = when (name) {
-        "腹筋" -> "リバースクランチ"
-        "スクワット" -> "ランジ"
-        else -> name
-      },
+      name = name,
       targetSets = json.optInt("targetSets", 3).coerceAtLeast(1),
       unit = unit,
       type = enumOrNull<WorkoutExerciseType>(json.optString("type")) ?: inferWorkoutExerciseType(name, unit),
@@ -136,7 +132,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private fun decodeSet(json: JSONObject): WorkoutSet {
     val unit = enumOrDefault(json.optString("unit"), WorkoutUnit.REPS)
-    val name = json.optString("exerciseName", json.optString("name"))
+    val name = json.optString("exerciseName")
     return WorkoutSet(
       id = json.optString("id"),
       exerciseId = json.optString("exerciseId"),
@@ -146,7 +142,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
       amount = json.optInt("amount"),
       steps = if (json.has("steps") && !json.isNull("steps")) json.optInt("steps") else null,
       memo = json.optString("memo"),
-      recordedAt = json.optString("recordedAt", json.optString("at")),
+      recordedAt = json.optString("recordedAt"),
       startedAt = json.nullableString("startedAt"),
       finishedAt = json.nullableString("finishedAt"),
     )
@@ -163,8 +159,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     date = json.optString("date", LocalDate.now().toString()),
     startedAt = json.nullableString("startedAt"),
     menu = json.optJSONObject("menu")?.let(::decodeMenu),
-    sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet)
-      ?: json.optJSONArray("logs")?.objects()?.map(::decodeSet).orEmpty(),
+    sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet).orEmpty(),
   )
 
   private fun encodeHistory(value: WorkoutHistory) = JSONObject().apply {
@@ -180,8 +175,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     date = json.optString("date"),
     startedAt = json.nullableString("startedAt"),
     finishedAt = json.optString("finishedAt"),
-    sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet)
-      ?: json.optJSONArray("logs")?.objects()?.map(::decodeSet).orEmpty(),
+    sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet).orEmpty(),
   )
 
   private fun encodeIntMap(values: Map<String, Int>) = JSONObject().apply {
