@@ -433,7 +433,6 @@ val verifyBehavioralTestCoverage by tasks.registering {
                   "instead of acting as an assertion-free placeholder"
             }
           }
-      }
     }
 
     if (violations.isNotEmpty()) {
