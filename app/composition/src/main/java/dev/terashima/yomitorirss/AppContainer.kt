@@ -234,7 +234,10 @@ class AppContainer(
     SharedContentEntryCapability(
       saveSharedBookmark = contentRuntime.saveSharedBookmarkUseCase,
       addSharedWebBook = libraryRuntime.webLibraryMutator::addWebBook,
-      addSharedWebVideo = { url -> videoRuntime.repository.addWeb(url); Unit },
+      addSharedWebVideo = { url ->
+        videoRuntime.repository.addWeb(url)
+        Unit
+      },
     )
   }
 
