@@ -425,6 +425,8 @@ val verifyBehavioralTestCoverage by tasks.registering {
 }
 
 val verifyArchitecture by tasks.registering {
+  dependsOn(verifyBehavioralTestCoverage)
+
   group = "verification"
   description = "Verifies Gradle dependency rules and production source ownership/layout defined by the architecture ADRs."
   dependsOn(verifyArchitectureRuleTests)
