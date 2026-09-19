@@ -1,6 +1,7 @@
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.tasks.testing.Test
 
 plugins {
   id("com.android.application") version "9.4.0" apply false
@@ -505,14 +506,24 @@ val verifyArchitecture by tasks.registering {
 }
 
 subprojects {
+  tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+  }
+
+  fun configureLocalTestPlatform() {
+    dependencies.add("testImplementation", libs.junit4)
+    dependencies.add("testImplementation", libs.junit.jupiter)
+    dependencies.add("testRuntimeOnly", libs.junit.vintage.engine)
+  }
+
   pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
-    dependencies.add("testImplementation", "junit:junit:4.13.2")
+    configureLocalTestPlatform()
   }
   pluginManager.withPlugin("com.android.library") {
-    dependencies.add("testImplementation", "junit:junit:4.13.2")
+    configureLocalTestPlatform()
   }
   pluginManager.withPlugin("com.android.application") {
-    dependencies.add("testImplementation", "junit:junit:4.13.2")
+    configureLocalTestPlatform()
 
     extensions.configure<ApplicationExtension> {
       defaultConfig {
