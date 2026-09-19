@@ -356,7 +356,105 @@ val verifyArchitectureRuleTests by tasks.registering {
   }
 }
 
+val behavioralContractSourceSuffixes = listOf(
+  "UseCase.kt",
+  "Adapter.kt",
+  "Policy.kt",
+  "Normalizer.kt",
+)
+
+val verifyBehavioralTestCoverage by tasks.registering {
+  group = "verification"
+  description = "Requires direct regression tests for production files that own behavioral contracts."
+
+  doLast {
+    val violations = mutableListOf<String>()
+
+    subprojects.forEach { project ->
+      val testFiles = listOf("src/test/java", "src/test/kotlin")
+        .flatMap { sourceRootPath ->
+          val sourceRoot = project.file(sourceRootPath)
+          if (!sourceRoot.isDirectory) {
+            emptyList()
+          } else {
+            project.fileTree(sourceRoot) {
+              include("**/*.kt")
+              include("**/*.java")
+            }.files.toList()
+          }
+        }
+      val testFilesByName = testFiles.associateBy { it.nameWithoutExtension }
+      val verificationPattern = Regex(
+        """(?:\bassert[A-Za-z0-9_]*\s*\(|\bfail\s*\(|\bverify\s*\(|\bcoVerify\s*\(|\bcheck\s*\(|\brequire\s*\(|@Test\s*\(\s*expected\s*=)""",
+      )
+      val productionFiles = listOf("src/main/java", "src/main/kotlin")
+        .flatMap { sourceRootPath ->
+          val sourceRoot = project.file(sourceRootPath)
+          if (!sourceRoot.isDirectory) {
+            emptyList()
+          } else {
+            project.fileTree(sourceRoot) {
+              include("**/*.kt")
+              include("**/*.java")
+            }.files.toList()
+          }
+        }
+
+      if (testFiles.isEmpty() && productionFiles.any { it.name.endsWith("ViewModel.kt") }) {
+        violations +=
+          "${project.path} contains ViewModel state/orchestration but has no JVM regression tests"
+      }
+
+      val concreteRepositoryWithoutModuleTests = testFiles.isEmpty() &&
+        productionFiles
+          .filter { it.name.endsWith("Repository.kt") }
+          .any { sourceFile ->
+            Regex("""\bclass\s+[A-Za-z0-9_]*Repository\b""").containsMatchIn(sourceFile.readText())
+          }
+      if (concreteRepositoryWithoutModuleTests) {
+        violations +=
+          "${project.path} contains a concrete Repository implementation but has no JVM contract tests"
+      }
+
+      productionFiles
+          .filter { sourceFile ->
+            behavioralContractSourceSuffixes.any(sourceFile.name::endsWith)
+          }
+          .forEach { sourceFile ->
+            val expectedTestName = sourceFile.nameWithoutExtension + "Test"
+            val testFile = testFilesByName[expectedTestName]
+            if (testFile == null) {
+              violations +=
+                "${project.path}:${sourceFile.relativeTo(project.projectDir)} requires ${expectedTestName}.kt " +
+                  "because behavioral UseCase/Adapter/Policy/Normalizer changes must have a direct regression test"
+            } else if (!verificationPattern.containsMatchIn(testFile.readText())) {
+              violations +=
+                "${project.path}:${testFile.relativeTo(project.projectDir)} must verify an observable contract " +
+                  "instead of acting as an assertion-free placeholder"
+            }
+          }
+    }
+
+    if (violations.isNotEmpty()) {
+      throw GradleException(
+        buildString {
+          appendLine("Behavioral test coverage verification failed (${violations.size} violation(s)):")
+          violations.sorted().forEach { violation -> appendLine("- $violation") }
+          append(
+            "Add a contract-focused test. Do not add a placeholder test only to satisfy this rule; " +
+              "interfaces, DTOs, and passive UI shells are intentionally outside this filename-based requirement.",
+          )
+        },
+      )
+    }
+
+    logger.lifecycle("Behavioral test coverage verification passed.")
+  }
+}
+
 val verifyArchitecture by tasks.registering {
+  dependsOn(verifyBehavioralTestCoverage)
+
   group = "verification"
   description = "Verifies Gradle dependency rules and production source ownership/layout defined by the architecture ADRs."
   dependsOn(verifyArchitectureRuleTests)
