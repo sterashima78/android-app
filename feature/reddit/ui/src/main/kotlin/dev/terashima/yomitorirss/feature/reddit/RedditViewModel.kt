@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,23 +33,24 @@ class RedditViewModel(
   private val redditRepository: RedditRepository,
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
+  private val backgroundDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
   private val _state = MutableStateFlow(RedditUiState())
   val state: StateFlow<RedditUiState> = _state.asStateFlow()
   private val reloadMutex = Mutex()
 
   init {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       reload()
       if (_state.value.subscriptions.isNotEmpty()) refreshInternal(showCompletionMessage = false)
     }
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       articleRepository.changes.collect { reload() }
     }
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       bookmarkRepository.changes.collect { reload() }
     }
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       redditRepository.changes.collect { reload() }
     }
   }
@@ -58,7 +60,7 @@ class RedditViewModel(
   }
 
   fun refresh() {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       refreshInternal(showCompletionMessage = true)
     }
   }
@@ -101,7 +103,7 @@ class RedditViewModel(
   }
 
   fun addCommunity(input: String) {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       runCatching { redditRepository.addCommunity(input) }
         .onSuccess {
           reload()
@@ -112,7 +114,7 @@ class RedditViewModel(
   }
 
   fun deleteSubscription(subscription: RedditSubscription) {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       runCatching { redditRepository.deleteSubscription(subscription.id) }
         .onSuccess {
           reload()
@@ -123,7 +125,7 @@ class RedditViewModel(
   }
 
   fun subscribeThread(article: Article) {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       runCatching { redditRepository.subscribeThread(article.url) }
         .onSuccess {
           reload()
@@ -136,7 +138,7 @@ class RedditViewModel(
   }
 
   fun unsubscribeThread(article: Article) {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       runCatching { redditRepository.unsubscribeThread(article.url) }
         .onSuccess {
           reload()
@@ -174,7 +176,7 @@ class RedditViewModel(
     val visible = _state.value.unread.filterNot { it.id in _state.value.hiddenArticleIds }
     if (visible.isEmpty()) return
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + visible.map(Article::id)) }
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       runCatching {
         visible.forEach { article -> articleRepository.markArticleRead(article.id) }
       }.onSuccess {
@@ -202,7 +204,7 @@ class RedditViewModel(
     action: suspend () -> Unit,
   ) {
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(backgroundDispatcher) {
       runCatching { action() }
         .onSuccess {
           reload()
@@ -254,6 +256,7 @@ class RedditViewModel(
     private val redditRepository: RedditRepository,
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val backgroundDispatcher: CoroutineDispatcher = Dispatchers.IO,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(RedditViewModel::class.java))
@@ -262,6 +265,7 @@ class RedditViewModel(
         redditRepository,
         articleRepository,
         bookmarkRepository,
+        backgroundDispatcher,
       ) as T
     }
   }
