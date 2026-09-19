@@ -84,6 +84,21 @@ cross-context Projection を導入する場合は integration test を必須と�
 
 Integrated のように application composition で複数 feature の state を表示モデルへ写像する場合、pure projection と Android/Compose host を分離し、projection semantics は通常の JVM unit test で固定する。platform action は app adapter に残す。
 
+## Behavioral contract coverage
+
+UseCase / Adapter / Policy / Normalizer のように、分岐・状態変換・orchestration・入力正規化を所有する production file は、その behavior を直接固定する regression test を同一 module に置く。
+
+`verifyBehavioralTestCoverage` は production file 名と direct test 名を照合し、次の suffix を持つ production file に `<ProductionName>Test` がない場合は Architecture verification を失敗させる。
+
+- `UseCase.kt`
+- `Adapter.kt`
+- `Policy.kt`
+- `Normalizer.kt`
+
+この rule はテスト数を増やすためのものではない。interface、DTO、enum、passive UI shell は filename-based requirement の対象にしない。対象 file の test も、存在確認や getter の再記述だけではなく、少なくともその file が所有する分岐、state transition、failure handling、concurrency limit、mapping invariant のいずれかを検証する。
+
+production file と別名の統合テストだけで十分な場合は、安易に placeholder test を追加せず、命名または rule の対象設計を見直す。source text を文字列検索する test は architecture / compatibility invariant のように source structure 自体が contract である場合に限定する。
+
 ## Architecture verification
 
 ### `verifyArchitecture`
