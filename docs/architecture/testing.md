@@ -95,7 +95,7 @@ UseCase / Adapter / Policy / Normalizer のように、分岐・状態変換・o
 - `Policy.kt`
 - `Normalizer.kt`
 
-この rule はテスト数を増やすためのものではない。interface、DTO、enum、passive UI shell は filename-based requirement の対象にしない。対象 file の test も、存在確認や getter の再記述だけではなく、少なくともその file が所有する分岐、state transition、failure handling、concurrency limit、mapping invariant のいずれかを検証する。
+この rule はテスト数を増やすためのものではない。interface、DTO、enum、passive UI shell は filename-based requirement の対象にしない。対象 file の test も、存在確認や getter の再記述だけではなく、少なくともその file が所有する分岐、state transition、failure handling、concurrency limit、mapping invariant のいずれかを検証する。direct test に assertion / expected exception / verification primitive が1つもない場合も placeholder とみなし Architecture verification を失敗させる。
 
 production file と別名の統合テストだけで十分な場合は、安易に placeholder test を追加せず、命名または rule の対象設計を見直す。source text を文字列検索する test は architecture / compatibility invariant のように source structure 自体が contract である場合に限定する。
 
