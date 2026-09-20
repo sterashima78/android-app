@@ -107,7 +107,7 @@ Podcast-owned tablesは次のとおり。
 
 application database version 38をcurrent baselineとする。Podcast-owned source、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsはfresh version 38 schemaに直接含まれる。
 
-version 33〜37からversion 38へ到達するための一度限りmigrationと、旧RSS / Content tableへのforeign read例外はADR-0263で退役済みである。current Podcast runtimeは旧column / 旧tableをcompatibility inputとして参照しない。過去migrationの設計理由はADR-0250 / ADR-0255 / ADR-0257 / ADR-0259に履歴として残す。
+version 33〜37からversion 38へ到達するための一度限りmigrationと、旧RSS / Content tableへのforeign read例外はADR-0264で退役済みである。current Podcast runtimeは旧column / 旧tableをcompatibility inputとして参照しない。過去migrationの設計理由はADR-0250 / ADR-0255 / ADR-0257 / ADR-0259に履歴として残す。
 
 次にPodcastのschema変更でapplication database versionを上げる場合は、version 38から次versionへのmigrationだけを追加する。
 
@@ -147,4 +147,4 @@ version 33〜37からversion 38へ到達するための一度限りmigrationと�
 - `docs/adr/0256-podcast-episode-archive-delete.md`
 - `docs/adr/0257-podcast-chapter-generation-jobs.md`
 - `docs/adr/0259-podcast-news-clustering.md`
-- `docs/adr/0263-database-v38-compatibility-baseline.md`
+- `docs/adr/0264-database-v38-compatibility-baseline.md`
