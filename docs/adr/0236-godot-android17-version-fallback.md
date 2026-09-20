@@ -1,6 +1,6 @@
 # ADR-0236: Android 17 向け Godot POC は 4.6.3 stable を使用する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0262](0262-restore-current-game-runtime-baseline.md)
 - Date: 2026-09-07
 - Amends: [ADR-0234](0234-godot-sudoku-poc.md)
 
