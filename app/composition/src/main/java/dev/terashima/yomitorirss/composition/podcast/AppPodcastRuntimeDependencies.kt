@@ -1,17 +1,18 @@
 package dev.terashima.yomitorirss.composition.podcast
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.audio.AudioPlaybackController
-import dev.terashima.yomitorirss.feature.podcast.AiPodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastScheduleController
 import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
+import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFactory
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
@@ -32,6 +33,8 @@ internal class AppPodcastRuntimeDependencies(
   httpClient: HttpClient,
   localTextInference: AiTextInference,
   cloudTextInference: AiTextInference,
+  localStructuredTextInference: AiStructuredTextInference,
+  cloudStructuredTextInference: AiStructuredTextInference,
   audioPlaybackController: AudioPlaybackController,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
@@ -45,7 +48,12 @@ internal class AppPodcastRuntimeDependencies(
       reader = DefaultRssFeedContentReader(database, httpClient),
     ),
     scriptGenerator = scriptGenerator,
-    newsClusterer = AiPodcastNewsClusterer(scriptGenerator),
+    newsClusterer = DefaultPodcastNewsClusterer(
+      localTextInference = localTextInference,
+      cloudTextInference = cloudTextInference,
+      localStructuredInference = localStructuredTextInference,
+      cloudStructuredInference = cloudStructuredTextInference,
+    ),
     candidateFilter = SqlitePodcastCandidateFilter(database),
   )
   private val scheduleController = WorkManagerPodcastScheduleController(application)
