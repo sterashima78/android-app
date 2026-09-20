@@ -28,7 +28,7 @@ RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する�
 
 Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。Unicode表記、空白、大文字小文字を正規化したtitleが一致するentryはRSS boundaryで確実な重複として1件へ縮約する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
 
-`PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類出力は全候補をちょうど1回含むことを検証し、分類推論またはparseに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw responseは診断状態へ保持しない。
+`PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `AiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。
 
 Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository`、`feeds` table、`articles` tableを参照しない。
 
