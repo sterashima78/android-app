@@ -1,5 +1,8 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
@@ -67,6 +70,51 @@ data: {"type":"response.completed","response":{"status":"completed"}}
     assertTrue(body.contains("\"text\":\"ping\""))
     assertTrue(body.contains("\"store\":false"))
     assertFalse(body.contains("\"tools\""))
+  }
+
+  @Test
+  fun `structured generation sends required function tool and reads arguments`() = runBlocking {
+    val store = connectedStore()
+    val http = RecordingHttpClient(
+      response(
+        200,
+        """data: {"type":"response.output_item.done","item":{"type":"function_call","name":"submit_result","arguments":"{\\\"labels\\\":[\\\"a\\\",\\\"b\\\"]}"}}
+
+data: {"type":"response.completed","response":{"status":"completed"}}
+
+""",
+      ),
+    )
+    val client = client(http, store)
+    val tool = AiStructuredTool(
+      name = "submit_result",
+      description = "結果を提出する",
+      arguments = listOf(
+        AiStructuredToolArgument(
+          name = "labels",
+          description = "ラベル配列",
+          required = true,
+          type = AiStructuredToolArgumentType.STRING_ARRAY,
+        ),
+      ),
+    )
+
+    val call = client.generateToolCall(
+      modelId = "gpt-test",
+      systemInstruction = "toolだけを呼ぶ",
+      userMessage = "分類してください",
+      tool = tool,
+    )
+
+    assertEquals("submit_result", call?.name)
+    assertEquals("""["a","b"]""", call?.arguments?.get("labels"))
+    val body = (http.requests.single().body ?: byteArrayOf()).toString(StandardCharsets.UTF_8)
+    assertTrue(body.contains("\\"type\\":\\"function\\""))
+    assertTrue(body.contains("\\"name\\":\\"submit_result\\""))
+    assertTrue(body.contains("\\"tool_choice\\":\\"required\\""))
+    assertTrue(body.contains("\\"strict\\":true"))
+    assertTrue(body.contains("\\"items\\":{\\"type\\":\\"string\\"}"))
+    assertTrue(body.contains("\\"instructions\\":\\"toolだけを呼ぶ\\""))
   }
 
   @Test
