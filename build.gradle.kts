@@ -514,6 +514,7 @@ subprojects {
     dependencies.add("testImplementation", libs.junit4)
     dependencies.add("testImplementation", libs.junit.jupiter)
     dependencies.add("testRuntimeOnly", libs.junit.vintage.engine)
+    dependencies.add("testRuntimeOnly", libs.junit.platform.launcher)
   }
 
   pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
