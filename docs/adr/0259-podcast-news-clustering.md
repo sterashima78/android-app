@@ -48,3 +48,7 @@ chapter checkpoint、script、errorは同一 `chapter_position` の全rowsへ同
 - 長い複数記事clusterでも各記事をpromptへ残すため、1記事だけが入力budgetを占有しない。
 - `podcast_episode_articles` のcheckpoint列はcluster単位の同値を複数rowへ保持するため正規化されていない。ただし既存schemaとmigrationを小さく保ち、Podcast-owned snapshot tableだけで完結できる。
 - 将来cluster固有metadataが増えて重複保持が問題になった場合は、独立したchapter tableへの移行を再検討する。
+
+## Relations
+
+- Refined by: ADR-0260
