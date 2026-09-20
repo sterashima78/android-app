@@ -29,7 +29,7 @@ dependencies {
   implementation(libs.androidx.media3.inspector.frame)
   implementation(libs.androidx.webkit)
   implementation(libs.kotlinx.coroutines.android)
-  implementation("org.jsoup:jsoup:1.22.2")
+  implementation(libs.jsoup)
   testImplementation(libs.junit4)
   testImplementation("androidx.test:core-ktx:1.7.0")
   testImplementation("org.robolectric:robolectric:4.17")
