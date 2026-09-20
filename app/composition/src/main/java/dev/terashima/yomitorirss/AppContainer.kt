@@ -79,6 +79,8 @@ class AppContainer(
       httpClient = httpClient,
       localTextInference = aiCoreRuntime.textInference,
       cloudTextInference = aiCoreRuntime.cloudTextInference,
+      localStructuredTextInference = aiCoreRuntime.structuredTextInference,
+      cloudStructuredTextInference = aiCoreRuntime.cloudStructuredTextInference,
       audioPlaybackController = audioRuntime.playbackController,
     )
   }

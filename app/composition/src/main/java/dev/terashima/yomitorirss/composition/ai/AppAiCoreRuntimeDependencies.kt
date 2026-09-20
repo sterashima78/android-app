@@ -4,6 +4,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptOpenAiClient
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptStructuredTextInference
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
@@ -60,6 +61,10 @@ internal class AppAiCoreRuntimeDependencies(
 
   val cloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptTextInference(chatGptInferenceClient, chatGptModelPreferences)
+  }
+
+  val cloudStructuredTextInference: AiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    ChatGptStructuredTextInference(chatGptInferenceClient, chatGptModelPreferences)
   }
 
   val knowledgeCloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

@@ -22,6 +22,7 @@ dependencies {
   implementation(project(":core:database"))
   implementation(project(":feature:podcast:domain"))
   implementation(project(":feature:rss:domain"))
+  implementation(libs.kotlinx.serialization.json)
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   testImplementation(libs.junit4)
   testImplementation("androidx.test:core-ktx:1.7.0")

@@ -247,45 +247,6 @@ object SingletonPodcastNewsClusterer : PodcastNewsClusterer {
   )
 }
 
-class AiPodcastNewsClusterer(
-  private val scriptGenerator: PodcastScriptGenerator,
-) : PodcastNewsClusterer {
-  override suspend fun cluster(
-    provider: PodcastGenerationProvider,
-    candidates: List<PodcastFeedEntry>,
-  ): PodcastNewsClusteringResult {
-    if (candidates.size <= 1) {
-      return PodcastNewsClusteringResult(
-        groups = candidates.indices.map { listOf(it) },
-        status = PodcastClusteringStatus.SKIPPED,
-      )
-    }
-    val response = try {
-      scriptGenerator.generate(provider, buildPodcastClusteringPrompt(candidates))
-    } catch (error: CancellationException) {
-      throw error
-    } catch (_: Throwable) {
-      return PodcastNewsClusteringResult(
-        groups = candidates.indices.map { listOf(it) },
-        status = PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR,
-      )
-    }
-    return try {
-      PodcastNewsClusteringResult(
-        groups = parsePodcastClusters(response, candidates.size),
-        status = PodcastClusteringStatus.SUCCESS,
-      )
-    } catch (error: CancellationException) {
-      throw error
-    } catch (_: Throwable) {
-      PodcastNewsClusteringResult(
-        groups = candidates.indices.map { listOf(it) },
-        status = PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT,
-      )
-    }
-  }
-}
-
 sealed interface PodcastGenerationResult {
   data class Generated(val episode: PodcastEpisode) : PodcastGenerationResult
   data object NoNewArticles : PodcastGenerationResult
@@ -412,33 +373,6 @@ class GeneratePodcastEpisodeUseCase(
     check(synchronized(activeProgramIds) { activeProgramIds.add(programId) }) { "podcast generation already in progress: $programId" }
     return try { block() } finally { synchronized(activeProgramIds) { activeProgramIds.remove(programId) } }
   }
-}
-
-fun buildPodcastClusteringPrompt(entries: List<PodcastFeedEntry>): String = buildString {
-  appendLine("以下の記事を、同じ具体的な出来事を報じているものだけ同じグループにまとめてください。")
-  appendLine("同じ企業・人物・製品についての記事でも、出来事が異なる場合は別グループにしてください。")
-  appendLine("判断が曖昧な場合は別グループにしてください。")
-  appendLine("すべての記事を必ず1回だけ含め、GROUP: 1,3 の形式だけを1行ずつ出力してください。説明やMarkdownは不要です。")
-  entries.forEachIndexed { index, entry ->
-    append(index + 1).append(". ").append(entry.title.trim())
-    entry.sourceTitle?.takeIf(String::isNotBlank)?.let { append(" / 情報源: ").append(it.trim()) }
-    entry.publishedAtEpochMillis?.let { append(" / 公開時刻: ").append(it) }
-    appendLine()
-  }
-}.trim()
-
-fun parsePodcastClusters(response: String, entryCount: Int): List<List<Int>> {
-  require(entryCount > 0) { "entryCount must be positive" }
-  val groups = response.lineSequence().map(String::trim).filter(String::isNotBlank).map { line ->
-    require(line.startsWith("GROUP:", ignoreCase = true)) { "invalid clustering response" }
-    line.substringAfter(':').split(',').map { it.trim().toInt() - 1 }
-      .also { indexes -> require(indexes.isNotEmpty()) { "empty cluster" } }
-  }.toList()
-  require(groups.isNotEmpty()) { "clustering response is empty" }
-  val flattened = groups.flatten()
-  require(flattened.size == entryCount) { "clustering response must contain every entry once" }
-  require(flattened.toSet() == (0 until entryCount).toSet()) { "clustering response contains invalid or duplicate indexes" }
-  return groups
 }
 
 fun buildPodcastChapterPrompt(

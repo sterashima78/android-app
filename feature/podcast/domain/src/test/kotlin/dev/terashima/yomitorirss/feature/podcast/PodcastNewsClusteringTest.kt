@@ -1,11 +1,6 @@
 package dev.terashima.yomitorirss.feature.podcast
 
-import java.util.concurrent.CancellationException
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,98 +36,6 @@ class PodcastNewsClusteringTest {
   }
 
   @Test
-  fun `分類結果は全記事を1回ずつ含む場合だけ受理する`() {
-    assertEquals(
-      listOf(listOf(0, 2), listOf(1)),
-      parsePodcastClusters("GROUP: 1,3\nGROUP: 2", 3),
-    )
-
-    assertThrows(IllegalArgumentException::class.java) {
-      parsePodcastClusters("GROUP: 1,2\nGROUP: 2", 3)
-    }
-    assertThrows(IllegalArgumentException::class.java) {
-      parsePodcastClusters("説明です\nGROUP: 1,2,3", 3)
-    }
-  }
-
-  @Test
-  fun `AI分類成功時は成功状態とclusterを返す`() = runSuspendForClustering {
-    val clusterer = AiPodcastNewsClusterer(
-      scriptGenerator = object : PodcastScriptGenerator {
-        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String =
-          "GROUP: 1,2\nGROUP: 3"
-      },
-    )
-
-    val result = clusterer.cluster(
-      PodcastGenerationProvider.LOCAL,
-      listOf(feedEntry("a1"), feedEntry("a2"), feedEntry("a3")),
-    )
-
-    assertEquals(PodcastClusteringStatus.SUCCESS, result.status)
-    assertEquals(listOf(listOf(0, 1), listOf(2)), result.groups)
-  }
-
-  @Test
-  fun `AI推論失敗時は原因を記録して1記事1ニュースへフォールバックする`() = runSuspendForClustering {
-    val clusterer = AiPodcastNewsClusterer(
-      scriptGenerator = object : PodcastScriptGenerator {
-        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = error("inference failed")
-      },
-    )
-
-    val result = clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
-
-    assertEquals(PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR, result.status)
-    assertEquals(listOf(listOf(0), listOf(1)), result.groups)
-  }
-
-  @Test
-  fun `AI分類出力が不正な場合は原因を記録して1記事1ニュースへフォールバックする`() = runSuspendForClustering {
-    val clusterer = AiPodcastNewsClusterer(
-      scriptGenerator = object : PodcastScriptGenerator {
-        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = "invalid"
-      },
-    )
-
-    val result = clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
-
-    assertEquals(PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT, result.status)
-    assertEquals(listOf(listOf(0), listOf(1)), result.groups)
-  }
-
-  @Test
-  fun `1記事だけなら分類を省略する`() = runSuspendForClustering {
-    val clusterer = AiPodcastNewsClusterer(
-      scriptGenerator = object : PodcastScriptGenerator {
-        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = error("呼ばれない")
-      },
-    )
-
-    val result = clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1")))
-
-    assertEquals(PodcastClusteringStatus.SKIPPED, result.status)
-    assertEquals(listOf(listOf(0)), result.groups)
-  }
-
-  @Test
-  fun `AI分類のキャンセルはフォールバックせず伝播する`() {
-    val clusterer = AiPodcastNewsClusterer(
-      scriptGenerator = object : PodcastScriptGenerator {
-        override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
-          throw CancellationException("cancelled")
-        }
-      },
-    )
-
-    assertThrows(CancellationException::class.java) {
-      runSuspendForClustering {
-        clusterer.cluster(PodcastGenerationProvider.LOCAL, listOf(feedEntry("a1"), feedEntry("a2")))
-      }
-    }
-  }
-
-  @Test
   fun `複数記事の原稿promptは重複を統合する指示と全記事本文を含む`() {
     val prompt = buildPodcastChapterPrompt(
       programName = "朝のニュース",
@@ -146,16 +49,6 @@ class PodcastNewsClusteringTest {
     assertTrue(prompt.contains("本文 a2"))
   }
 
-  private fun feedEntry(id: String) = PodcastFeedEntry(
-    articleId = id,
-    feedId = "source-$id",
-    title = "記事 $id",
-    sourceTitle = "情報源 $id",
-    publishedAtEpochMillis = 100L,
-    articleUrl = "https://example.invalid/$id",
-    feedContent = "本文 $id",
-  )
-
   private fun article(id: String, chapterPosition: Int, script: String? = null) = PodcastEpisodeArticle(
     articleId = id,
     feedId = "source-$id",
@@ -168,17 +61,4 @@ class PodcastNewsClusteringTest {
     chapterStatus = if (script == null) PodcastChapterGenerationStatus.PENDING else PodcastChapterGenerationStatus.READY,
     chapterScript = script,
   )
-}
-
-private fun <T> runSuspendForClustering(block: suspend () -> T): T {
-  var value: Result<T>? = null
-  block.startCoroutine(
-    object : Continuation<T> {
-      override val context = EmptyCoroutineContext
-      override fun resumeWith(result: Result<T>) {
-        value = result
-      }
-    },
-  )
-  return requireNotNull(value) { "suspend block did not complete synchronously" }.getOrThrow()
 }
