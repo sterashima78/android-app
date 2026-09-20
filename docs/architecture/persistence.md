@@ -28,7 +28,7 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は 38 である。現行 compatibility chain では version 33 -> 34 でPodcastのfeed selectionをPodcast-owned sourceへ移し、version 34 -> 35 でPodcast記事snapshotへentry URLを追加し、version 35 -> 36 でchapter生成checkpointと再生成状態を追加し、version 36 -> 37 でPodcast記事snapshotへニュースclusterの `chapter_position` を追加し、version 37 -> 38 でPodcast episodeへニュース分類の診断状態 `clustering_status` を追加する。version 33より前の一度限りmigrationは現在のsupport対象upgrade pathから外れており、current runtimeへ互換処理として保持しない。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
+現在の application database version は 38 であり、ADR-0263 により version 38 自体を次版への更新互換性 baseline とする。version 38 へ到達するためだけの一度限りmigrationはcurrent runtimeから退役済みである。次にdatabase versionを上げる変更ではversion 38から次versionへのmigrationだけを追加する。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
 バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpoint、分類診断状態を含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
@@ -147,15 +147,7 @@ Podcast Context の fresh DB schema は `PodcastDatabaseSchema.kt` を正本と�
 
 `podcast_sources` はPodcast専用sourceの表示名とRSS / Atom feed URLを保持する。`podcast_programs` は番組定義、対象Podcast source ID群、生成provider、1エピソードの最大ニュース数、毎日の生成時刻を保持する。DB column `max_articles` とdomain property `maxArticlesPerEpisode` は互換上維持するが、実行意味論はcluster後のニュース数である。`podcast_episodes` は生成単位と状態・生成原稿・ニュース分類の診断状態 `clustering_status` を保持する。`podcast_episode_articles` はAI入力として予約したentry identity、title、feed-carried content、entry URLに加えて `chapter_position` をsnapshotし、同じpositionを持つ複数rowを1ニュースclusterとして扱う。`podcast_consumed_articles` は番組ごとに一度予約したentryを再利用しないためのdurable stateであり、cluster内の全entryを記録する。
 
-version 32 -> 33では ADR-0249 により番組・episode・snapshot・consumed stateの4 tableを追加し、Podcast stateは空から開始した。version 33 -> 34では ADR-0250 により `podcast_sources` を追加し、既存 `podcast_programs.feed_ids` をPodcast-owned source IDとして維持しながら `source_ids` へ移す。選択済みsourceの表示名とfeed URLは旧RSS `feeds` から一度だけコピーし、旧Content article IDで保存済みのconsumed identityは `articles` のfeed identityを使ってPodcast source ID + entry identityへ可能な範囲で変換する。このmigrationだけ `feeds` / `articles` のreadをforeign-table allowlistで許可し、runtimeでは両tableへ依存しない。
-
-version 34 -> 35では ADR-0255 により `podcast_episode_articles.article_url` をnullable columnとして追加する。既存episodeはURLを補完せず保持し、新規episodeだけ生成予約時のfeed entry URLをsnapshotする。
-
-version 35 -> 36では ADR-0257 により `podcast_episode_articles` に `chapter_status` / `chapter_script` / `chapter_error`、`podcast_episodes` に `regeneration_status` を追加する。既存 `READY` episodeの記事checkpointは `READY`、その他は `PENDING` として移行し、既存episode scriptは正本として保持する。
-
-version 36 -> 37では ADR-0259 により `podcast_episode_articles.chapter_position` を追加する。既存rowは `chapter_position=position` としてbackfillし、既存episodeの1記事1chapterを維持する。新規episodeでは同一ニュースの複数entryが同じ `chapter_position` を共有し、checkpoint / script / errorもcluster単位で同じ値を保持する。
-
-version 37 -> 38では ADR-0259 の分類診断拡張により `podcast_episodes.clustering_status` をnullable columnとして追加する。既存episodeは分類時の実行状態を復元できないためNULLを維持する。新規episodeは正常分類、推論失敗fallback、分類出力不正fallback、分類不要を区別して保存し、記事数とニュース数は `podcast_episode_articles` と `chapter_position` から復元する。
+version 38 のcurrent schemaは上記5 tableと現在のcolumnをfresh databaseへ直接作成する。version 32〜37からversion 38へ到達するために使用したPodcast migrationはADR-0263で退役済みであり、migrationの歴史的な意味はADR-0249 / ADR-0250 / ADR-0255 / ADR-0257 / ADR-0259を参照する。current runtimeは旧RSS / Content tableや旧Podcast columnをcompatibility inputとして参照しない。
 
 Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed stateだけで番組内の未消費entryを判定する。正規化title完全一致の確実な重複除外後、Podcast domainの `PodcastNewsClusterer` が今回候補だけを同一ニュースclusterへ分類する。分類失敗時は1記事1clusterへfallbackし、fallback種別をepisodeの分類診断状態へsnapshotする。過去episodeとの意味的な重複判定は行わない。
 
@@ -245,11 +237,9 @@ owner API の合成で実測上の性能問題がある read path に限り read
 
 通常 runtime の Content / Curation / Summary / RSS / Library / Video / Podcast 間 foreign table accessはowner Domain capabilityへ収束している。
 
-現在の `foreign-table-access-allowlist.tsv` にはmigration限定のread-only例外だけを登録する。現時点の例外はADR-0250のversion 33 -> 34 migrationで、旧Podcast feed selectionの表示名・URLとconsumed identityをPodcast-owned source stateへ取り込むため `feeds` / `articles` を一度だけreadするものだけである。
+現在の `foreign-table-access-allowlist.tsv` に例外entryはない。ADR-0250のversion 33 -> 34 migrationに必要だった `feeds` / `articles` のread-only例外は、ADR-0263でversion 38をcurrent baselineとしたためmigration本体と同時に退役した。
 
-この例外はruntime pathではない。version 33 upgrade baselineが不要になった時点で対応するallowlist entryとmigration compatibilityを削除する。
-
-allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
+allowlist は恒久的な例外集ではない。新たな移行で一時的な foreign access が不可避な場合だけ ADR に根拠と終了条件を記録して追加し、移行 baseline から外れた時点で削除する。file/table が消えた entry は stale として verification を失敗させる。
 
 ## Persistence change checklist
 
@@ -280,3 +270,4 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0106](../adr/0106-domain-context-aggregate-and-persistence-ownership.md)
 - [ADR-0117](../adr/0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
+- [ADR-0263](../adr/0263-database-v38-compatibility-baseline.md)
