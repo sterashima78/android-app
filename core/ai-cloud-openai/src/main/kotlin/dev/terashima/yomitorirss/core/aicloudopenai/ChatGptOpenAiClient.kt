@@ -1,6 +1,9 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
 import android.content.Context
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpMethod
 import dev.terashima.yomitorirss.core.network.HttpRequest
@@ -210,6 +213,25 @@ class ChatGptOpenAiClient internal constructor(
     return ChatGptGenerationResult(modelId, parsed.text)
   }
 
+  suspend fun generateToolCall(
+    modelId: String,
+    systemInstruction: String,
+    userMessage: String,
+    tool: AiStructuredTool,
+  ): AiStructuredToolCall? {
+    require(modelId.isNotBlank()) { "ChatGPT model id must not be blank" }
+    require(systemInstruction.isNotBlank()) { "System instruction must not be blank" }
+    require(userMessage.isNotBlank()) { "User message must not be blank" }
+    var credentials = ensureFreshCredentials(false)
+    var response = executeStructuredGeneration(credentials, modelId, systemInstruction, userMessage, tool)
+    if (response.statusCode == 401) {
+      credentials = ensureFreshCredentials(true)
+      response = executeStructuredGeneration(credentials, modelId, systemInstruction, userMessage, tool)
+    }
+    if (!response.isSuccessful) throw IllegalStateException(providerFailureMessage(response))
+    return parseStructuredGenerationResponse(response)
+  }
+
   suspend fun generateWithWebSearch(
     modelId: String,
     prompt: String,
@@ -348,6 +370,48 @@ class ChatGptOpenAiClient internal constructor(
     )
   }
 
+  private suspend fun executeStructuredGeneration(
+    credentials: ChatGptCredentials,
+    modelId: String,
+    systemInstruction: String,
+    userMessage: String,
+    tool: AiStructuredTool,
+  ): HttpResponse {
+    val requestBody = buildJsonObject {
+      put("model", JsonPrimitive(modelId))
+      put("store", JsonPrimitive(false))
+      put("stream", JsonPrimitive(true))
+      put("instructions", JsonPrimitive(systemInstruction))
+      put("input", buildJsonArray {
+        add(buildJsonObject {
+          put("role", JsonPrimitive("user"))
+          put("content", buildJsonArray {
+            add(buildJsonObject {
+              put("type", JsonPrimitive("input_text"))
+              put("text", JsonPrimitive(userMessage))
+            })
+          })
+        })
+      })
+      put("tools", buildJsonArray { add(structuredToolJson(tool)) })
+      put("tool_choice", JsonPrimitive("required"))
+      put("parallel_tool_calls", JsonPrimitive(false))
+      put("text", buildJsonObject { put("verbosity", JsonPrimitive("low")) })
+      put("include", buildJsonArray { add(JsonPrimitive("reasoning.encrypted_content")) })
+    }
+    return httpClient.execute(
+      HttpRequest(
+        url = resolveCodexResponsesUrl(config.codexBaseUrl),
+        headers = authenticatedHeaders(credentials) + mapOf("Accept" to "text/event-stream"),
+        method = HttpMethod.POST,
+        body = requestBody.toString().toByteArray(StandardCharsets.UTF_8),
+        contentType = "application/json",
+        maxResponseBytes = MAX_SUCCESS_BODY_BYTES.toLong(),
+        maxErrorResponseBytes = MAX_ERROR_BODY_BYTES.toLong(),
+      ),
+    )
+  }
+
   private fun authenticatedHeaders(credentials: ChatGptCredentials): Map<String, String> = mapOf(
     "Authorization" to "Bearer ${credentials.accessToken}",
     "chatgpt-account-id" to credentials.accountId,
@@ -385,6 +449,87 @@ class ChatGptOpenAiClient internal constructor(
     }
     check(text.isNotBlank()) { "ChatGPT/Codex response did not contain text" }
     return ParsedGeneration(text, openedUrls.toList())
+  }
+
+  private fun parseStructuredGenerationResponse(response: HttpResponse): AiStructuredToolCall? {
+    if (response.body.size > MAX_SUCCESS_BODY_BYTES) error("ChatGPT/Codex response exceeded the allowed response size")
+    val raw = response.body.toString(StandardCharsets.UTF_8)
+    var streamedCall: AiStructuredToolCall? = null
+    var completedResponse: JsonObject? = null
+    raw.split(Regex("(?:\\r\\n|\\n|\\r){2}")).forEach { block ->
+      val data = block.lineSequence()
+        .filter { it.startsWith("data:") }
+        .joinToString("\n") { it.removePrefix("data:").trim() }
+        .trim()
+      if (data.isBlank() || data == "[DONE]") return@forEach
+      val event = runCatching { json.parseToJsonElement(data).jsonObject }
+        .getOrElse { error("ChatGPT/Codex returned malformed streaming data") }
+      when (event.string("type")) {
+        "response.output_item.done" -> {
+          parseStructuredToolCall(event["item"] as? JsonObject)?.let { call ->
+            check(streamedCall == null) { "ChatGPT/Codex returned multiple structured tool calls" }
+            streamedCall = call
+          }
+        }
+        "response.completed", "response.done" -> completedResponse = event["response"] as? JsonObject
+        "response.failed" -> error((event["response"] as? JsonObject)?.let(::extractResponseError) ?: "ChatGPT/Codex response failed")
+        "error" -> error(event.string("message") ?: "ChatGPT/Codex returned an error")
+      }
+    }
+    streamedCall?.let { return it }
+    val calls = completedResponse
+      ?.get("output")
+      ?.let { it as? JsonArray }
+      ?.mapNotNull { parseStructuredToolCall(it as? JsonObject) }
+      .orEmpty()
+    check(calls.size <= 1) { "ChatGPT/Codex returned multiple structured tool calls" }
+    return calls.singleOrNull()
+  }
+
+  private fun parseStructuredToolCall(item: JsonObject?): AiStructuredToolCall? {
+    if (item?.string("type") != "function_call") return null
+    val name = item.string("name") ?: return null
+    val rawArguments = item.string("arguments") ?: return null
+    val arguments = runCatching { json.parseToJsonElement(rawArguments).jsonObject }
+      .getOrElse { error("ChatGPT/Codex returned malformed tool arguments") }
+      .mapValues { (_, value) ->
+        if (value is JsonPrimitive) value.content else value.toString()
+      }
+    return AiStructuredToolCall(name = name, arguments = arguments)
+  }
+
+  private fun structuredToolJson(tool: AiStructuredTool): JsonObject = buildJsonObject {
+    put("type", JsonPrimitive("function"))
+    put("name", JsonPrimitive(tool.name))
+    put("description", JsonPrimitive(tool.description))
+    put("parameters", buildJsonObject {
+      put("type", JsonPrimitive("object"))
+      put("additionalProperties", JsonPrimitive(tool.allowAdditionalArguments))
+      put("properties", buildJsonObject {
+        tool.arguments.forEach { argument ->
+          put(argument.name, buildJsonObject {
+            when (argument.type) {
+              AiStructuredToolArgumentType.STRING -> put("type", JsonPrimitive("string"))
+              AiStructuredToolArgumentType.INTEGER -> put("type", JsonPrimitive("integer"))
+              AiStructuredToolArgumentType.NUMBER -> put("type", JsonPrimitive("number"))
+              AiStructuredToolArgumentType.BOOLEAN -> put("type", JsonPrimitive("boolean"))
+              AiStructuredToolArgumentType.STRING_ARRAY -> {
+                put("type", JsonPrimitive("array"))
+                put("items", buildJsonObject { put("type", JsonPrimitive("string")) })
+              }
+            }
+            put("description", JsonPrimitive(argument.description))
+          })
+        }
+      })
+      val required = tool.arguments.filter { it.required }
+      if (required.isNotEmpty()) {
+        put("required", buildJsonArray {
+          required.forEach { add(JsonPrimitive(it.name)) }
+        })
+      }
+    })
+    put("strict", JsonPrimitive(true))
   }
 
   private fun collectOpenedUrls(item: JsonObject?, destination: MutableSet<String>) {
