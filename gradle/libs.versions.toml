@@ -7,6 +7,7 @@ androidx-navigation = "2.10.1"
 androidx-webkit = "1.17.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
+jsoup = "1.23.2"
 media3 = "1.11.1"
 junit4 = "4.13.2"
 godot = "4.7.2.stable"
@@ -30,5 +31,6 @@ androidx-media3-session = { module = "androidx.media3:media3-session", version.r
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 godot-android = { module = "org.godotengine:godot", version.ref = "godot" }
