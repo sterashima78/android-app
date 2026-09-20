@@ -15,11 +15,12 @@ Accepted
 テストを次の4層に分ける。
 
 1. Unit Test
-   - JUnit 4 を `src/test` で利用する。
+   - `src/test` は JUnit Platform を実行基盤とし、新規テストは Jupiter を利用する。
+   - 既存の JUnit 4 テストは Vintage engine で同じ Platform 上に載せ、段階的に移行する。
    - 純粋関数、UseCase、ViewModel、Repository の契約を主対象とする。
 
 2. Robolectric Test
-   - JUnit 4 + Robolectric + AndroidX Test を `src/test` で利用する。
+   - Robolectric + AndroidX Test を `src/test` で利用し、JUnit 4 runner を必要とする既存テストは Vintage engine 経由で実行する。
    - Activity 起動や Android API を含む軽量な統合を検証する。
    - 既存の `StartupSmokeTest` はこの層として維持する。
 
@@ -36,6 +37,12 @@ Accepted
 Gradle Managed Devices の基準環境は Pixel 6 / API 35 / Google system image とし、`testedAbi = "arm64-v8a"` を指定する。これにより配布 APK の ABI と AI ランタイム構成を変更しない。
 
 E2E は主要フローに限定する。Unit Test または Robolectric Test で十分に表現できる挙動は、より高速な層で検証する。
+
+### 2026-09-20 local test runtime update
+
+ローカル JVM テストの実行基盤を JUnit Platform 6.1.2 へ更新する。Java 17 baseline を維持し、既存 JUnit 4 テストは Vintage engine で継続実行する。新規の `src/test` は Jupiter を標準とし、JUnit 4 API への新規依存を増やさない。
+
+一方、`src/androidTest` は AndroidX Test の `AndroidJUnitRunner`、Compose UI Test の JUnit 4 integration、UI Automator を利用する現在の構成を維持する。したがって JUnit 4 compatibility は instrumented test と既存 local test の移行期間に限定して残す。
 
 ## Public repository policy
 
