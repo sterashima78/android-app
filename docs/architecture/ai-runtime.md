@@ -9,7 +9,7 @@ Summary、Knowledge、Library organization 等の feature は provider protocol 
 - 単発の自由形式テキスト生成は `:core:ai-inference` の `AiTextInference` を利用する。
 - tool call を構造化出力として要求する単発生成は、同 module の sibling capability `AiStructuredTextInference` を利用する。自由形式生成しか必要としない consumer に tool calling を強制しない。
 - Local 実装は `:core:ai-runtime` の local model runtime へ接続する。
-- ChatGPT / Codex の HTTP、OAuth、Responses protocol と provider-neutral `ChatGptTextInference` implementation は `:core:ai-cloud-openai` に閉じる。
+- Cloud provider の HTTP、OAuth、Responses protocol と provider-neutral text / structured inference implementation は `:core:ai-cloud-openai` に閉じる。
 - Summary / Knowledge feature module は `ChatGptOpenAiClient` や OpenAI endpoint を直接参照しない。
 - app composition は provider adapter instance と feature contract を接続するが、provider technical adapter や feature 固有 prompt、task lifecycle、retry policy を再実装しない。
 
