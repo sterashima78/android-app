@@ -529,7 +529,7 @@ class ChatGptOpenAiClient internal constructor(
         })
       }
     })
-    put("strict", JsonPrimitive(true))
+    put("strict", JsonPrimitive(!tool.allowAdditionalArguments && tool.arguments.all { it.required }))
   }
 
   private fun collectOpenedUrls(item: JsonObject?, destination: MutableSet<String>) {
