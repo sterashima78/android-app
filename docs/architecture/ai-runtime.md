@@ -15,6 +15,8 @@ Summary、Knowledge、Library organization 等の feature は provider protocol 
 
 Library organization は `AiTextInference.selectedModel()` から model / prompt budget を取得し、実際の分類結果は `AiStructuredTextInference` の `submit_library_organization` tool call で受け取る。分類 prompt、tool schema、引数 validation、bounded repair は Library feature が所有する。
 
+Podcast の同一ニュース分類も同じ provider-neutral `AiStructuredTextInference` を利用する。Podcast は `submit_podcast_news_clusters(group_ids)` の tool arguments だけを分類結果として利用し、候補記事数と同じ長さの group ID 配列から cluster を復元する。Local / Cloud のどちらでも structured inference adapter を利用し、通常テキストの分類結果は解析しない。
+
 ## Execution routing
 
 Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択する。provider 設定と task runtime control は別責務とする。
@@ -53,12 +55,12 @@ Android の `SharedPreferences` は複数 process 間の整合性保証を持た
 
 ## Local structured text inference boundary
 
-Library organization の構造化結果は通常テキストの JSON として生成せず、`AiStructuredTextInference` を通じて tool call arguments として受け取る。
+Library organization と Podcast news clustering の構造化結果は通常テキストの JSON として生成せず、`AiStructuredTextInference` を通じて tool call arguments として受け取る。
 
 - Local adapter は `ProcessIsolatedLocalAiStructuredTextInference` とし、非公開 `LocalStructuredTextInferenceService` を同じ `:local_ai_text` process で起動する。
 - main process で selected model、backend、speculative decoding、effective context token count、model revision を snapshot 化し、child 専用 preference へ適用する。main process の preference を child の同期ストアにはしない。
 - provider-neutral `AiStructuredTool` を runtime 内で LiteRT-LM の `LocalInferenceTool` / OpenAPI tool definition へ変換する。feature は LiteRT-LM API を直接参照しない。
-- Library organization では `submit_library_organization(tags, collections, reason)` の tool arguments だけを分類結果として利用し、通常の model text は採用しない。
+- Library organization では `submit_library_organization(tags, collections, reason)`、Podcast では `submit_podcast_news_clusters(group_ids)` の tool arguments だけを構造化結果として利用し、通常の model text は採用しない。
 - tool schema で型を限定した後も Library feature が件数、長さ、空値、重複等を再検証する。検証失敗時の repair は1回だけとする。
 - structured request は1 bound-service lifetime で完結させ、終了時に child process を recycle して native resource を回収する。
 - structured request の Binder transport が `RemoteException` / `DeadObjectException` で失敗した場合だけ、同じ immutable execution snapshot を使って新しい process で1回再試行する。model / tool / validation error は transport retry せず、Library feature の bounded repair と分離する。
