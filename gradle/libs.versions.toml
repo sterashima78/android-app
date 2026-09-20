@@ -9,6 +9,7 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 media3 = "1.11.1"
 junit4 = "4.13.2"
+junit6 = "6.1.2"
 godot = "4.7.2.stable"
 
 [libraries]
@@ -31,4 +32,7 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit6" }
+junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit6" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit6" }
 godot-android = { module = "org.godotengine:godot", version.ref = "godot" }
