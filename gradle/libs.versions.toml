@@ -34,4 +34,5 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit6" }
 junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit6" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit6" }
 godot-android = { module = "org.godotengine:godot", version.ref = "godot" }
