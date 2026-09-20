@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 
@@ -39,6 +41,15 @@ class ChatGptInferenceClient(
     targetUrl: String,
   ): ChatGptWebGenerationResult = normalizeFailure {
     delegate.generateWithWebSearch(modelId, prompt, targetUrl)
+  }
+
+  suspend fun generateToolCall(
+    modelId: String,
+    systemInstruction: String,
+    userMessage: String,
+    tool: AiStructuredTool,
+  ): AiStructuredToolCall? = normalizeFailure {
+    delegate.generateToolCall(modelId, systemInstruction, userMessage, tool)
   }
 
   private suspend fun <T> normalizeFailure(block: suspend () -> T): T = try {
