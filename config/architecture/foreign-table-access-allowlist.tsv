@@ -1,3 +1,1 @@
 # repository path	table	reason
-feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastDatabaseSchema.kt	feeds	version 34 migration copies former reader-owned feed metadata into Podcast-owned sources; remove when the version 33 upgrade baseline retires
-feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastDatabaseSchema.kt	articles	version 34 migration preserves consumed feed-entry identities while detaching Podcast from Content state; remove when the version 33 upgrade baseline retires
