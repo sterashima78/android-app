@@ -235,3 +235,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0250](0250-podcast-owned-feed-sources.md)
 - [ADR-0251](0251-godot-klondike.md)
 - [ADR-0252](0252-lock-embedded-game-orientation.md)
+- [ADR-0263](0263-database-v38-compatibility-baseline.md)
