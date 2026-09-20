@@ -31,7 +31,7 @@ dependencies {
   implementation(project(":feature:ai-task-queue:ui"))
   implementation(project(":feature:backup:ui"))
 
-  implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+  implementation(platform("androidx.compose:compose-bom:2026.09.00"))
   implementation(libs.androidx.lifecycle.viewmodel.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation("androidx.compose.ui:ui")

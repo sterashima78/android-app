@@ -632,7 +632,7 @@ subprojects {
       }
     }
 
-    dependencies.add("androidTestImplementation", dependencies.platform("androidx.compose:compose-bom:2026.06.00"))
+    dependencies.add("androidTestImplementation", dependencies.platform("androidx.compose:compose-bom:2026.09.00"))
     dependencies.add("androidTestImplementation", "androidx.compose.ui:ui-test-junit4")
     dependencies.add("androidTestImplementation", "androidx.test:core-ktx:1.7.0")
     dependencies.add("androidTestImplementation", "androidx.test:runner:1.7.0")
