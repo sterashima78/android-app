@@ -21,7 +21,7 @@ dependencies {
   implementation(project(":feature:article:domain"))
   implementation(project(":core:database"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-  implementation("org.jsoup:jsoup:1.22.2")
+  implementation(libs.jsoup)
 
   testImplementation("junit:junit:4.13.2")
   testImplementation("androidx.test:core-ktx:1.7.0")

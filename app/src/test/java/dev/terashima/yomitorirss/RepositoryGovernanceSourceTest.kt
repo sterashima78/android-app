@@ -43,6 +43,7 @@ class RepositoryGovernanceSourceTest {
     assertTrue("catalog must own the AndroidX WebKit version", "androidx-webkit = \"1.17.0\"" in catalog)
     assertTrue("catalog must own the coroutines version", "kotlinx-coroutines = \"1.11.0\"" in catalog)
     assertTrue("catalog must own the serialization version", "kotlinx-serialization = \"1.11.0\"" in catalog)
+    assertTrue("catalog must own the jsoup version", "jsoup = \"1.23.2\"" in catalog)
     assertTrue("catalog must own the JUnit4 compatibility version", "junit4 = \"4.13.2\"" in catalog)
     assertTrue("catalog must own the JUnit Platform version", "junit6 = \"6.1.2\"" in catalog)
 
@@ -81,6 +82,7 @@ class RepositoryGovernanceSourceTest {
       "androidx.activity:activity-compose:",
       "androidx.navigation:navigation-compose:",
       "androidx.webkit:webkit:",
+      "org.jsoup:jsoup:",
     )
     val buildScripts = repositoryRoot.walkTopDown()
       .onEnter { directory -> directory.name !in setOf(".git", ".gradle", "build") }
