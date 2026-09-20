@@ -103,19 +103,13 @@ Podcast-owned tablesは次のとおり。
 
 これらは通常のdatabase snapshot backup対象である。Audioが生成する再生成可能な音声cacheは対象外とする。
 
-## Compatibility migration
+## Compatibility baseline
 
-application database version 33ではPodcast番組がRSS readerのfeed IDを直接保持していた。version 34 migrationは `podcast_sources` を作成し、旧 `podcast_programs.feed_ids` が指すRSS-owned metadataを一度だけコピーし、消費済みentry identityをPodcast-owned stable identityへ変換して `feed_ids` を `source_ids` へrenameする。このmigrationだけは `feeds` と `articles` のforeign-table readをarchitecture allowlistで許可する。
+application database version 38をcurrent baselineとする。Podcast-owned source、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsはfresh version 38 schemaに直接含まれる。
 
-application database version 35では `podcast_episode_articles.article_url` をnullable columnとして追加する。version 34までに生成済みのepisodeはURLを持たないまま保持し、再取得で補完しない。
+version 33〜37からversion 38へ到達するための一度限りmigrationと、旧RSS / Content tableへのforeign read例外はADR-0264で退役済みである。current Podcast runtimeは旧column / 旧tableをcompatibility inputとして参照しない。過去migrationの設計理由はADR-0250 / ADR-0255 / ADR-0257 / ADR-0259に履歴として残す。
 
-Episode archive/deleteでは既存 `podcast_episodes.status` のTEXT値だけを拡張するためschema migrationは追加しない。
-
-application database version 36では `podcast_episode_articles` に `chapter_status` / `chapter_script` / `chapter_error`、`podcast_episodes` に `regeneration_status` を追加する。既存 `READY` episodeの記事checkpointは `READY` として移行し、既存episode scriptを正本として保持する。その他の既存記事checkpointは `PENDING` とする。
-
-application database version 37では `podcast_episode_articles.chapter_position` をnullable columnとして追加し、既存rowは `chapter_position=position` として移行する。これにより既存episodeは従来どおり1記事1chapterのまま保持される。新規episodeだけ複数rowが同じ `chapter_position` を共有できる。
-
-application database version 38では `podcast_episodes.clustering_status` をnullable columnとして追加する。version 37以前のepisodeは分類実行時の状態を復元できないためNULLのまま保持し、再生詳細では「記録なし」として扱う。新規episodeでは分類結果の状態だけを保存し、候補記事数とニュース数は記事snapshotと `chapter_position` から復元する。
+次にPodcastのschema変更でapplication database versionを上げる場合は、version 38から次versionへのmigrationだけを追加する。
 
 ## Invariants
 
@@ -153,3 +147,4 @@ application database version 38では `podcast_episodes.clustering_status` をnu
 - `docs/adr/0256-podcast-episode-archive-delete.md`
 - `docs/adr/0257-podcast-chapter-generation-jobs.md`
 - `docs/adr/0259-podcast-news-clustering.md`
+- `docs/adr/0264-database-v38-compatibility-baseline.md`
