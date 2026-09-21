@@ -39,7 +39,7 @@ Podcast生成worker、application-scope recovery、program単位の重複実行g
 
 ### 5. 失敗範囲をchapter checkpointへ閉じ込める
 
-通常の生成エラーが発生したchapterは `FAILED` とし、そのepisode attemptを失敗へ遷移させる。同時実行中だった他chapterは、すでに `READY` へ保存済みなら再利用し、未完了なら次回実行で再開する。
+通常の生成エラーが発生したchapterは `FAILED` とするが、同時実行中の独立chapterはキャンセルせず可能な限り生成を続け、成功したchapterを `READY` として保存する。全並列処理が完了した後、1件以上の通常エラーがあればepisode attemptを失敗へ遷移させる。次回実行では `FAILED` / 未完了chapterだけを続行する。
 
 coroutine cancellationではepisodeを通常失敗へ確定せず、完了済みcheckpointだけを保持したまま既存の中断復旧経路へ委ねる。
 
@@ -67,13 +67,14 @@ coroutine cancellationではepisodeを通常失敗へ確定せず、完了済み
 ### Negative
 
 - 同一episodeから複数のクラウド推論requestが同時に発生するため、逐次実行より短時間のrequest集中が増える。
-- 1つのchapterが失敗した時点で、同時実行中のchapterには `READY`、未完了、失敗が混在し得る。ただし既存checkpointから再開可能である。
+- 1つのchapterが失敗しても他の独立chapterは継続するため、失敗episode内に複数の `READY` checkpointが残り得る。次回は失敗・未完了chapterだけを再開する。
 - runtime policyとして並列数の上限管理が必要になる。
 
 ## Verification
 
 - 中断前に `READY` になったchapterが再開時に再生成されないことをunit testする。
 - クラウド生成で設定した上限までchapterが同時実行されることをunit testする。
+- 1chapterの通常失敗が他の並列chapterをキャンセルせず、成功checkpointを再試行時に再利用することをunit testする。
 - ローカル生成が従来どおり順次処理される既存testを維持する。
 - 全chapter完了後のepisode scriptがchapter順に決定的に組み立てられる既存testを維持する。
 - architecture verificationと公開リポジトリ検査を実行する。
