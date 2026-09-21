@@ -7,7 +7,6 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -134,17 +133,18 @@ class PodcastTest {
     assertEquals(PodcastEpisodeStatus.FAILED, failed.status)
     assertEquals(PodcastChapterGenerationStatus.READY, failed.articles[0].chapterStatus)
     assertEquals(PodcastChapterGenerationStatus.FAILED, failed.articles[1].chapterStatus)
-    assertEquals(PodcastChapterGenerationStatus.GENERATING, failed.articles[2].chapterStatus)
+    assertEquals(PodcastChapterGenerationStatus.READY, failed.articles[2].chapterStatus)
 
     val retryGenerator = RecordingGenerator("再開原稿")
     val retried = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator, nowEpochMillis = { 9999L })
       .retry(failed.id).episode
 
-    assertEquals(2, retryGenerator.prompts.size)
+    assertEquals(1, retryGenerator.prompts.size)
     assertFalse(retryGenerator.prompts.any { it.contains("本文 a1") })
-    assertTrue(retryGenerator.prompts.any { it.contains("本文 a2") })
-    assertTrue(retryGenerator.prompts.any { it.contains("本文 a3") })
+    assertTrue(retryGenerator.prompts.single().contains("本文 a2"))
+    assertFalse(retryGenerator.prompts.any { it.contains("本文 a3") })
     assertTrue(retried.script.orEmpty().contains("1件目の並列原稿"))
+    assertTrue(retried.script.orEmpty().contains("3件目の並列原稿"))
   }
 
   @Test
@@ -480,7 +480,7 @@ private class PartialParallelFailureGenerator : PodcastScriptGenerator {
     }
     else -> {
       firstCompleted.await()
-      awaitCancellation()
+      "3件目の並列原稿"
     }
   }
 }
