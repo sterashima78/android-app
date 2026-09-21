@@ -26,7 +26,10 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   override suspend fun load(): WorkoutSnapshot {
     val date = LocalDate.now().toString()
     val raw = preferences.getString(KEY_STATE, null) ?: return newWorkoutSnapshot(date)
-    return runCatching { decode(JSONObject(raw)) }.getOrElse { newWorkoutSnapshot(date) }
+    return runCatching { decode(JSONObject(raw)) }.getOrElse { error ->
+      if (error is UnsupportedWorkoutStateVersionException) throw error
+      newWorkoutSnapshot(date)
+    }
   }
 
   override suspend fun save(snapshot: WorkoutSnapshot) {
@@ -43,22 +46,47 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     put("lastStepCounts", encodeIntMap(snapshot.lastStepCounts))
   }
 
-  private fun decode(json: JSONObject): WorkoutSnapshot {
-    val exercises = json.optJSONArray("exercises")?.objects()?.map(::decodeExercise).orEmpty()
-      .ifEmpty { defaultWorkoutExercises() }
+  private fun decode(json: JSONObject): WorkoutSnapshot =
+    when (val version = json.optInt("version", LEGACY_VERSION)) {
+      LEGACY_VERSION -> decodeV1(json)
+      CURRENT_VERSION -> decodeV2(json)
+      else -> throw UnsupportedWorkoutStateVersionException(version)
+    }
+
+  private fun decodeV1(json: JSONObject): WorkoutSnapshot {
+    val exercises = decodeExercises(json)
+    return decodeSnapshot(
+      json = json,
+      exercises = exercises,
+      menus = listOf(defaultWorkoutMenu(exercises)),
+    )
+  }
+
+  private fun decodeV2(json: JSONObject): WorkoutSnapshot {
+    val exercises = decodeExercises(json)
     val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
       .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
       .ifEmpty { listOf(defaultWorkoutMenu(exercises)) }
-    return WorkoutSnapshot(
-      version = CURRENT_VERSION,
-      exercises = exercises,
-      menus = menus,
-      today = json.optJSONObject("today")?.let(::decodeDay) ?: WorkoutDay(LocalDate.now().toString()),
-      history = json.optJSONArray("history")?.objects()?.map(::decodeHistory).orEmpty().take(50),
-      lastAmounts = json.optJSONObject("lastAmounts").toIntMap(),
-      lastStepCounts = json.optJSONObject("lastStepCounts").toIntMap(),
-    )
+    return decodeSnapshot(json = json, exercises = exercises, menus = menus)
   }
+
+  private fun decodeExercises(json: JSONObject): List<WorkoutExercise> =
+    json.optJSONArray("exercises")?.objects()?.map(::decodeExercise).orEmpty()
+      .ifEmpty { defaultWorkoutExercises() }
+
+  private fun decodeSnapshot(
+    json: JSONObject,
+    exercises: List<WorkoutExercise>,
+    menus: List<WorkoutMenu>,
+  ): WorkoutSnapshot = WorkoutSnapshot(
+    version = CURRENT_VERSION,
+    exercises = exercises,
+    menus = menus,
+    today = json.optJSONObject("today")?.let(::decodeDay) ?: WorkoutDay(LocalDate.now().toString()),
+    history = json.optJSONArray("history")?.objects()?.map(::decodeHistory).orEmpty().take(50),
+    lastAmounts = json.optJSONObject("lastAmounts").toIntMap(),
+    lastStepCounts = json.optJSONObject("lastStepCounts").toIntMap(),
+  )
 
   private fun encodeExercise(value: WorkoutExercise) = JSONObject().apply {
     put("id", value.id)
@@ -204,6 +232,11 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private companion object {
     const val KEY_STATE = "state_v1"
+    const val LEGACY_VERSION = 1
     const val CURRENT_VERSION = 2
   }
 }
+
+internal class UnsupportedWorkoutStateVersionException(
+  val version: Int,
+) : IllegalStateException("Unsupported workout state version: $version")
