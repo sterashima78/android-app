@@ -350,16 +350,24 @@ class GeneratePodcastEpisodeUseCase(
       }
 
       if (program.provider == PodcastGenerationProvider.CLOUD && pendingPositions.size > 1) {
-        coroutineScope {
+        val failures = coroutineScope {
           val semaphore = Semaphore(CLOUD_CHAPTER_PARALLELISM)
           pendingPositions.map { position ->
             async {
               semaphore.withPermit {
-                generateChapter(program, episodeId, position, totalChapters)
+                try {
+                  generateChapter(program, episodeId, position, totalChapters)
+                  null
+                } catch (error: CancellationException) {
+                  throw error
+                } catch (error: Throwable) {
+                  error
+                }
               }
             }
           }.awaitAll()
         }
+        failures.filterNotNull().firstOrNull()?.let { throw it }
       } else {
         pendingPositions.forEach { position ->
           generateChapter(program, episodeId, position, totalChapters)
