@@ -51,6 +51,8 @@ process終了やcoroutine cancellationによって初回生成の `GENERATING` �
 
 クラウドの有界並列生成でも各chapterは生成成功直後に `READY` と原稿をdurable checkpointへ保存する。中断時点で `READY` のchapterは再開時に再推論せず、`PENDING` / `GENERATING` / `FAILED` の未完了chapterだけを続行する。並列完了順は最終原稿の順序へ影響せず、全checkpoint完成後に `chapter_position` 順で組み立てる。
 
+クラウドchapterの通常生成エラーは他の独立chapterをキャンセルせず、同じ並列batch内で成功可能なchapterを最後まで処理してcheckpointする。外部からのcoroutine cancellationだけは並列batch全体へ伝播させる。
+
 `FAILED` episodeの再試行は同じ記事・cluster snapshotを使い、`READY` checkpointを再利用して失敗・未完了chapterだけを続行する。
 
 `READY` episodeの明示的な再生成では、既存のepisode scriptと `READY` 状態を再生可能な正本として保持しながら `regeneration_status=RUNNING` とchapter checkpointを使って新しい原稿を構築する。最初の再生成開始時だけcheckpointを新しいattemptの `PENDING` へ戻す。途中で失敗した場合は `regeneration_status=FAILED` とし、既存scriptを保持する。再実行では完成済みcheckpointを再利用し、全chapter完成時だけ同じepisode IDのscriptを置き換えて `regeneration_status` を消去する。再生成時にもcluster境界は変更しない。
