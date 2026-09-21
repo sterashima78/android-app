@@ -4,6 +4,11 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 enum class PodcastGenerationProvider { LOCAL, CLOUD }
 
@@ -332,29 +337,44 @@ class GeneratePodcastEpisodeUseCase(
   }
 
   private suspend fun generateReserved(program: PodcastProgram, initialEpisode: PodcastEpisode): PodcastGenerationResult.Generated {
-    var episode = initialEpisode
-    val regenerating = episode.regenerationStatus == PodcastRegenerationStatus.RUNNING
-    var activePosition: Int? = null
+    val episodeId = initialEpisode.id
+    val regenerating = initialEpisode.regenerationStatus == PodcastRegenerationStatus.RUNNING
     return try {
-      val totalChapters = episode.chapterGroups().size
-      (0 until totalChapters).forEach { position ->
-        var group = episode.chapterGroups()[position]
+      val groups = initialEpisode.chapterGroups()
+      val totalChapters = groups.size
+      val pendingPositions = groups.mapIndexedNotNull { position, group ->
         val current = group.first()
-        if (current.chapterStatus == PodcastChapterGenerationStatus.READY && !current.chapterScript.isNullOrBlank()) return@forEach
-
-        activePosition = position
-        episode = repository.markChapterGenerating(episode.id, position)
-        group = episode.chapterGroups()[position]
-        val chapterScript = scriptGenerator.generate(
-          program.provider,
-          buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters),
-        ).trim()
-        require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
-        episode = repository.completeChapter(episode.id, position, chapterScript)
-        activePosition = null
+        position.takeUnless {
+          current.chapterStatus == PodcastChapterGenerationStatus.READY && !current.chapterScript.isNullOrBlank()
+        }
       }
 
-      episode = requireNotNull(repository.findEpisode(episode.id)) { "episode not found: ${episode.id}" }
+      if (program.provider == PodcastGenerationProvider.CLOUD && pendingPositions.size > 1) {
+        val failures = coroutineScope {
+          val semaphore = Semaphore(CLOUD_CHAPTER_PARALLELISM)
+          pendingPositions.map { position ->
+            async {
+              semaphore.withPermit {
+                try {
+                  generateChapter(program, episodeId, position, totalChapters)
+                  null
+                } catch (error: CancellationException) {
+                  throw error
+                } catch (error: Throwable) {
+                  error
+                }
+              }
+            }
+          }.awaitAll()
+        }
+        failures.filterNotNull().firstOrNull()?.let { throw it }
+      } else {
+        pendingPositions.forEach { position ->
+          generateChapter(program, episodeId, position, totalChapters)
+        }
+      }
+
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
       val script = buildPodcastEpisodeScriptFromChapters(program.name, episode.chapterGroups())
       val title = buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
       PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
@@ -362,9 +382,32 @@ class GeneratePodcastEpisodeUseCase(
       throw error
     } catch (error: Throwable) {
       val message = error.message ?: error::class.simpleName ?: "generation failed"
-      activePosition?.let { runCatching { repository.failChapter(episode.id, it, message) } }
-      if (regenerating) runCatching { repository.failRegeneration(episode.id, message) }
-      else runCatching { repository.failEpisode(episode.id, message) }
+      if (regenerating) runCatching { repository.failRegeneration(episodeId, message) }
+      else runCatching { repository.failEpisode(episodeId, message) }
+      throw error
+    }
+  }
+
+  private suspend fun generateChapter(
+    program: PodcastProgram,
+    episodeId: String,
+    position: Int,
+    totalChapters: Int,
+  ) {
+    try {
+      val episode = repository.markChapterGenerating(episodeId, position)
+      val group = episode.chapterGroups()[position]
+      val chapterScript = scriptGenerator.generate(
+        program.provider,
+        buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters),
+      ).trim()
+      require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
+      repository.completeChapter(episodeId, position, chapterScript)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (error: Throwable) {
+      val message = error.message ?: error::class.simpleName ?: "generation failed"
+      runCatching { repository.failChapter(episodeId, position, message) }
       throw error
     }
   }
@@ -472,3 +515,4 @@ private val PODCAST_SPOKEN_TITLE_MARKER = Regex("""\[\[TITLE:([^\]\r\n]+)\]\]"""
 private const val PODCAST_TRANSITION_CUE = "続いて。"
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
 private const val PODCAST_TARGET_SCRIPT_CHARS = 3_000
+private const val CLOUD_CHAPTER_PARALLELISM = 3

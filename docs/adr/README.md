@@ -167,6 +167,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0171: Summary の Local / ChatGPT routing と URL 起点の cloud Web 取得を分離する](0171-summary-local-chatgpt-routing-and-web-fetch.md)
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
+- [ADR-0265: ニュースポッドキャストのクラウドチャプター生成を有界並列化する](0265-podcast-cloud-chapter-parallelism.md)
 
 ### Content / summary / knowledge
 
@@ -236,3 +237,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0251](0251-godot-klondike.md)
 - [ADR-0252](0252-lock-embedded-game-orientation.md)
 - [ADR-0264](0264-database-v38-compatibility-baseline.md)
+- [ADR-0265](0265-podcast-cloud-chapter-parallelism.md)
