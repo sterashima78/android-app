@@ -51,6 +51,7 @@ coroutine cancellationではepisodeを通常失敗へ確定せず、完了済み
 - Changed background execution: episode内のクラウドchapterを順次実行から有界並列実行へ変更
 - Changed external communication: 送信内容・送信先は変更せず、同一episode内で複数の独立requestを同時実行可能にする
 - New durable state: none
+- New dependency: 新規外部ライブラリは追加せず、既存の coroutine libraryをPodcast domainから直接利用する
 - New scheduler / queue: none
 - Local inference concurrency: unchanged
 
