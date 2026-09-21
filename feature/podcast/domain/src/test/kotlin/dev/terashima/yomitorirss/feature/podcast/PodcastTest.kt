@@ -1,9 +1,13 @@
 package dev.terashima.yomitorirss.feature.podcast
 
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -60,6 +64,55 @@ class PodcastTest {
     assertTrue(retryGenerator.prompts.single().contains("本文 a2"))
     assertTrue(retried.script.orEmpty().contains("1件目の原稿"))
     assertTrue(retried.script.orEmpty().contains("2件目の再生成原稿"))
+  }
+
+  @Test
+  fun `中断後の再開は完成済みチャプターを再生成しない`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
+    val interruptedUseCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      CompleteThenCancelGenerator(),
+      nowEpochMillis = { 1234L },
+    )
+
+    runCatching { interruptedUseCase.generate(program.id) }
+    val interrupted = repository.episodes.single()
+    assertEquals(PodcastEpisodeStatus.GENERATING, interrupted.status)
+    assertEquals(PodcastChapterGenerationStatus.READY, interrupted.articles[0].chapterStatus)
+    assertEquals(PodcastChapterGenerationStatus.GENERATING, interrupted.articles[1].chapterStatus)
+
+    val resumeGenerator = RecordingGenerator("2件目の再開原稿")
+    val resumed = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      resumeGenerator,
+      nowEpochMillis = { 9999L },
+    ).generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(1, resumeGenerator.prompts.size)
+    assertFalse(resumeGenerator.prompts.single().contains("本文 a1"))
+    assertTrue(resumeGenerator.prompts.single().contains("本文 a2"))
+    assertTrue(resumed.episode.script.orEmpty().contains("1件目の原稿"))
+    assertTrue(resumed.episode.script.orEmpty().contains("2件目の再開原稿"))
+  }
+
+  @Test
+  fun `クラウド生成はチャプターを最大3件並列で生成する`() = runBlocking {
+    val program = program(provider = PodcastGenerationProvider.CLOUD)
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2"), entry("a3"), entry("a4")))
+    val generator = ParallelRecordingGenerator(expectedConcurrent = 3)
+    val useCase = GeneratePodcastEpisodeUseCase(repository, source, generator, nowEpochMillis = { 1234L })
+
+    val result = useCase.generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(PodcastEpisodeStatus.READY, result.episode.status)
+    assertEquals(3, generator.maxConcurrent)
+    assertEquals(4, generator.prompts.size)
+    assertTrue(result.episode.articles.all { it.chapterStatus == PodcastChapterGenerationStatus.READY })
   }
 
   @Test
@@ -274,11 +327,14 @@ class PodcastTest {
   }
 }
 
-private fun program(maxArticlesPerEpisode: Int = 12) = PodcastProgram(
+private fun program(
+  maxArticlesPerEpisode: Int = 12,
+  provider: PodcastGenerationProvider = PodcastGenerationProvider.LOCAL,
+) = PodcastProgram(
   id = "program-1",
   name = "朝のニュース",
   sourceIds = setOf("source-1"),
-  provider = PodcastGenerationProvider.LOCAL,
+  provider = provider,
   maxArticlesPerEpisode = maxArticlesPerEpisode,
 )
 
@@ -344,6 +400,40 @@ private class SequencedGenerator(
   }
 }
 
+private class CompleteThenCancelGenerator : PodcastScriptGenerator {
+  private var requestCount = 0
+
+  override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
+    requestCount += 1
+    if (requestCount == 1) return "1件目の原稿"
+    throw CancellationException("interrupted")
+  }
+}
+
+private class ParallelRecordingGenerator(
+  private val expectedConcurrent: Int,
+) : PodcastScriptGenerator {
+  private val active = AtomicInteger()
+  private val observedMax = AtomicInteger()
+  private val started = AtomicInteger()
+  private val release = CompletableDeferred<Unit>()
+  val prompts = ConcurrentLinkedQueue<String>()
+  val maxConcurrent: Int get() = observedMax.get()
+
+  override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
+    val current = active.incrementAndGet()
+    observedMax.updateAndGet { previous -> maxOf(previous, current) }
+    try {
+      if (started.incrementAndGet() == expectedConcurrent) release.complete(Unit)
+      release.await()
+      prompts.add(prompt)
+      return "並列生成原稿"
+    } finally {
+      active.decrementAndGet()
+    }
+  }
+}
+
 private class CancellingGenerator : PodcastScriptGenerator {
   override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String {
     throw CancellationException("interrupted")
@@ -380,7 +470,8 @@ private class FakePodcastRepository(
   override suspend fun saveProgram(program: PodcastProgram) = Unit
   override suspend fun deleteProgram(programId: String) = Unit
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> = episodes.filter { it.programId == programId }
-  override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episodes.find { it.id == episodeId }
+  override suspend fun findEpisode(episodeId: String): PodcastEpisode? =
+    synchronized(episodes) { episodes.find { it.id == episodeId } }
   override suspend fun archiveEpisode(episodeId: String): PodcastEpisode = error("unused")
   override suspend fun restoreEpisode(episodeId: String): PodcastEpisode = error("unused")
   override suspend fun deleteEpisode(episodeId: String) = error("unused")
@@ -500,11 +591,12 @@ private class FakePodcastRepository(
     )
   }
 
-  private fun update(episodeId: String, transform: (PodcastEpisode) -> PodcastEpisode): PodcastEpisode {
-    val index = episodes.indexOfFirst { it.id == episodeId }
-    check(index >= 0)
-    return transform(episodes[index]).also { episodes[index] = it }
-  }
+  private fun update(episodeId: String, transform: (PodcastEpisode) -> PodcastEpisode): PodcastEpisode =
+    synchronized(episodes) {
+      val index = episodes.indexOfFirst { it.id == episodeId }
+      check(index >= 0)
+      transform(episodes[index]).also { episodes[index] = it }
+    }
 }
 
 private fun runSuspend(block: suspend () -> Unit) {
