@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-16
+- Amended: 2026-09-22
 - Refines: [ADR-0016](0016-workout-tracking.md), [ADR-0194](0194-workout-ai-advisor.md)
 
 ## Context
@@ -18,7 +19,10 @@ Workout の永続状態と履歴は引き続き Workout Context の source of tr
 - 当日の `WorkoutDay` は、実行時に選択・生成・インポートされたメニューの snapshot を保持できる。これによりプリセット編集が進行中の当日プランを暗黙変更しない。
 - AIによるメニュー提案と構造化テキストからのインポートは同じ `WorkoutMenu` へ変換する。AI専用の第二メニュー形式は作らない。
 - 既存 state から `menus` が読めない場合は、既存種目の `targetSets` から「基本メニュー」を生成する。旧 `targetSets` は互換読み込みと新規種目の既定値として残し、実行時の正本はメニュー項目とする。
-- SharedPreferences の既存キーを維持し、payload version を 2 とする。
+- SharedPreferences の既存キーを維持し、payload version を 2 とする。キー名の `state_v1` は保存slotの識別子として維持し、payload version の判定には使わない。
+- 読み込みは payload の `version` を明示的な dispatch point とする。version field がない既存stateは v1 として扱い、`targetSets` から基本メニューを生成して v2 snapshot へ収束させる。v2 は現行形式として読む。
+- 未知の payload version は現行形式として推測解釈しない。自動的な load -> save で将来形式のstateを上書きしないため、unsupported version として読み込みを失敗させる。
+- v1 decode path は一時的な互換処理であり、v2 payload を含むリリースが current compatibility baseline から外れた時点で削除する。
 
 ## Consequences
 
@@ -26,4 +30,5 @@ Workout の永続状態と履歴は引き続き Workout Context の source of tr
 - `[8, 8, 6]` のようなセット単位の目標を当日の入力初期値として利用できる。
 - AI生成、インポート、手動プリセットが同一の実行パスを通る。
 - 旧データは明示的な破棄や別migration stateを必要とせず読み込み時に基本メニューへ投影される。
+- 保存形式を将来更新するときは、新しいversionを追加してdecode pathを明示し、未知versionを既存decoderへfall throughさせない。
 - 将来、メニュー編集UIを拡張する場合も種目マスタ自体を複製せずに済む。
