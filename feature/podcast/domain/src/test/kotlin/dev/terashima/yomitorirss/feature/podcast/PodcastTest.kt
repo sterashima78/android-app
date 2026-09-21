@@ -7,6 +7,7 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -113,6 +114,37 @@ class PodcastTest {
     assertEquals(3, generator.maxConcurrent)
     assertEquals(4, generator.prompts.size)
     assertTrue(result.episode.articles.all { it.chapterStatus == PodcastChapterGenerationStatus.READY })
+  }
+
+  @Test
+  fun `クラウド並列生成の途中失敗後は完成済みチャプターだけを再利用する`() = runBlocking {
+    val program = program(provider = PodcastGenerationProvider.CLOUD)
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2"), entry("a3")))
+    val firstUseCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      PartialParallelFailureGenerator(),
+      nowEpochMillis = { 1234L },
+    )
+
+    runCatching { firstUseCase.generate(program.id) }
+
+    val failed = repository.episodes.single()
+    assertEquals(PodcastEpisodeStatus.FAILED, failed.status)
+    assertEquals(PodcastChapterGenerationStatus.READY, failed.articles[0].chapterStatus)
+    assertEquals(PodcastChapterGenerationStatus.FAILED, failed.articles[1].chapterStatus)
+    assertEquals(PodcastChapterGenerationStatus.GENERATING, failed.articles[2].chapterStatus)
+
+    val retryGenerator = RecordingGenerator("再開原稿")
+    val retried = GeneratePodcastEpisodeUseCase(repository, source, retryGenerator, nowEpochMillis = { 9999L })
+      .retry(failed.id).episode
+
+    assertEquals(2, retryGenerator.prompts.size)
+    assertFalse(retryGenerator.prompts.any { it.contains("本文 a1") })
+    assertTrue(retryGenerator.prompts.any { it.contains("本文 a2") })
+    assertTrue(retryGenerator.prompts.any { it.contains("本文 a3") })
+    assertTrue(retried.script.orEmpty().contains("1件目の並列原稿"))
   }
 
   @Test
@@ -430,6 +462,25 @@ private class ParallelRecordingGenerator(
       return "並列生成原稿"
     } finally {
       active.decrementAndGet()
+    }
+  }
+}
+
+private class PartialParallelFailureGenerator : PodcastScriptGenerator {
+  private val firstCompleted = CompletableDeferred<Unit>()
+
+  override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = when {
+    prompt.contains("本文 a1") -> {
+      firstCompleted.complete(Unit)
+      "1件目の並列原稿"
+    }
+    prompt.contains("本文 a2") -> {
+      firstCompleted.await()
+      error("2件目の生成に失敗")
+    }
+    else -> {
+      firstCompleted.await()
+      awaitCancellation()
     }
   }
 }
