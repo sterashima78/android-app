@@ -146,11 +146,11 @@ internal fun textInferenceRequestTimeoutMillis(snapshot: TextInferenceExecutionS
   val maxMeasuredDurationMillis =
     (TEXT_INFERENCE_MAX_REQUEST_TIMEOUT_MILLIS - TEXT_INFERENCE_REQUEST_TIMEOUT_GRACE_MILLIS) /
       TEXT_INFERENCE_REQUEST_TIMEOUT_MULTIPLIER
-  return (
+  val paddedDurationMillis =
     measuredDurationMillis.coerceAtMost(maxMeasuredDurationMillis) *
       TEXT_INFERENCE_REQUEST_TIMEOUT_MULTIPLIER +
       TEXT_INFERENCE_REQUEST_TIMEOUT_GRACE_MILLIS
-    ).coerceIn(
+  return paddedDurationMillis.coerceIn(
     TEXT_INFERENCE_MIN_REQUEST_TIMEOUT_MILLIS,
     TEXT_INFERENCE_MAX_REQUEST_TIMEOUT_MILLIS,
   )
