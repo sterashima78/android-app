@@ -168,6 +168,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0172: AI provider 設定・task routing・Local / Cloud runtime control を分離する](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0265: ニュースポッドキャストのクラウドチャプター生成を有界並列化する](0265-podcast-cloud-chapter-parallelism.md)
+- [ADR-0266: ローカル単発推論の subprocess 待機を有界化する](0266-local-text-inference-watchdog.md)
 
 ### Content / summary / knowledge
 

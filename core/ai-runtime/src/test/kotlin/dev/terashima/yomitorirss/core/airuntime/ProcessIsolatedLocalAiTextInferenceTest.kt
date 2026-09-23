@@ -43,4 +43,52 @@ class ProcessIsolatedLocalAiTextInferenceTest {
   fun `未対応の context token 数は subprocess snapshot に渡さない`() {
     isolatedContextSizeMode(12_345)
   }
+
+  @Test
+  fun `実測時間がない text inference は十分長い既定 watchdog を使う`() {
+    assertEquals(
+      TEXT_INFERENCE_DEFAULT_REQUEST_TIMEOUT_MILLIS,
+      textInferenceRequestTimeoutMillis(textInferenceSnapshot()),
+    )
+  }
+
+  @Test
+  fun `text inference watchdog は実測時間に余裕を持たせて上下限へ収める`() {
+    assertEquals(
+      TEXT_INFERENCE_MIN_REQUEST_TIMEOUT_MILLIS,
+      textInferenceRequestTimeoutMillis(
+        textInferenceSnapshot(preparingDurationMillis = 20_000L, generatingDurationMillis = 30_000L),
+      ),
+    )
+    assertEquals(
+      660_000L,
+      textInferenceRequestTimeoutMillis(
+        textInferenceSnapshot(preparingDurationMillis = 60_000L, generatingDurationMillis = 90_000L),
+      ),
+    )
+    assertEquals(
+      TEXT_INFERENCE_MAX_REQUEST_TIMEOUT_MILLIS,
+      textInferenceRequestTimeoutMillis(
+        textInferenceSnapshot(preparingDurationMillis = 10 * 60_000L, generatingDurationMillis = 10 * 60_000L),
+      ),
+    )
+  }
+
+  @Test
+  fun `subprocess 接続待ちは生成 watchdog より短く制限する`() {
+    assertTrue(TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS < TEXT_INFERENCE_MIN_REQUEST_TIMEOUT_MILLIS)
+  }
+
+  private fun textInferenceSnapshot(
+    preparingDurationMillis: Long? = null,
+    generatingDurationMillis: Long? = null,
+  ) = TextInferenceExecutionSnapshot(
+    modelId = "model",
+    backend = LocalInferenceBackend.CPU,
+    speculativeDecodingEnabled = false,
+    contextTokens = 4_096,
+    modelRevisions = mapOf("model" to "revision"),
+    preparingDurationMillis = preparingDurationMillis,
+    generatingDurationMillis = generatingDurationMillis,
+  )
 }

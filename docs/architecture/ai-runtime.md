@@ -100,6 +100,8 @@ application composition は Local / ChatGPT adapter の concrete instance を選
 
 application-scope で再利用するのは adapter / manager ownership であり、重い Local text generation Engine を main process に常駐させることを意味しない。`ProcessIsolatedLocalAiTextInference` と `ProcessIsolatedLocalAiStructuredTextInference` は application-scope capability として共有しつつ、実 Engine は短寿命 `:local_ai_text` process 内で構築・破棄する。
 
+Local text inference の subprocess 接続待機と生成 response 待機は runtime 自身が有界化する。生成 response の watchdog は保存済み stage-duration を基準に十分な余裕と上下限を持たせ、期限超過時は active subprocess を破棄して通常の推論失敗へ変換する。呼び出し元 coroutine の cancellation は watchdog と区別して従来どおり伝播する。feature はこの timeout cleanup を重複実装せず、既存の durable failure / retry semantics を利用する。
+
 ## Sources
 
 - [ADR-0161](../adr/0161-android17-main-process-memory-diagnostics.md)
@@ -113,3 +115,4 @@ application-scope で再利用するのは adapter / manager ownership であり
 - [ADR-0196](../adr/0196-app-boundary-ownership-cleanup.md)
 - [ADR-0199](../adr/0199-library-organization-structured-tool-output.md)
 - [ADR-0219](../adr/0219-local-ai-subprocess-exit-diagnostics-and-recovery.md)
+- [ADR-0266](../adr/0266-local-text-inference-watchdog.md)

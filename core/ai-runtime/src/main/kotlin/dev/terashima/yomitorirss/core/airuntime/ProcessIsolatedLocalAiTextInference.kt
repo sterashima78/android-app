@@ -45,6 +45,12 @@ internal const val TEXT_INFERENCE_IPC_MAX_CHARS = 128 * 1024
 internal const val TEXT_INFERENCE_CHILD_MODEL_PREFERENCES_NAME = "local_ai_text_model_snapshot"
 internal const val TEXT_INFERENCE_CHILD_BENCHMARK_PREFERENCES_NAME = "local_ai_text_context_snapshot"
 private const val TEXT_INFERENCE_PROCESS_IDLE_MILLIS = 30_000L
+internal const val TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS = 30_000L
+internal const val TEXT_INFERENCE_DEFAULT_REQUEST_TIMEOUT_MILLIS = 10 * 60_000L
+internal const val TEXT_INFERENCE_MIN_REQUEST_TIMEOUT_MILLIS = 5 * 60_000L
+internal const val TEXT_INFERENCE_MAX_REQUEST_TIMEOUT_MILLIS = 20 * 60_000L
+private const val TEXT_INFERENCE_REQUEST_TIMEOUT_MULTIPLIER = 4L
+private const val TEXT_INFERENCE_REQUEST_TIMEOUT_GRACE_MILLIS = 60_000L
 private const val PROCESS_DEATH_WAIT_MILLIS = 10_000L
 private const val MAX_ERROR_CHARS = 500
 
@@ -128,6 +134,26 @@ internal data class TextInferenceExecutionSnapshot(
   val generatingDurationMillis: Long?,
 )
 
+internal fun textInferenceRequestTimeoutMillis(snapshot: TextInferenceExecutionSnapshot): Long {
+  val measuredDurationMillis = listOfNotNull(
+    snapshot.preparingDurationMillis,
+    snapshot.generatingDurationMillis,
+  ).sum()
+  if (measuredDurationMillis <= 0L) return TEXT_INFERENCE_DEFAULT_REQUEST_TIMEOUT_MILLIS
+
+  val maxMeasuredDurationMillis =
+    (TEXT_INFERENCE_MAX_REQUEST_TIMEOUT_MILLIS - TEXT_INFERENCE_REQUEST_TIMEOUT_GRACE_MILLIS) /
+      TEXT_INFERENCE_REQUEST_TIMEOUT_MULTIPLIER
+  val paddedDurationMillis =
+    measuredDurationMillis.coerceAtMost(maxMeasuredDurationMillis) *
+      TEXT_INFERENCE_REQUEST_TIMEOUT_MULTIPLIER +
+      TEXT_INFERENCE_REQUEST_TIMEOUT_GRACE_MILLIS
+  return paddedDurationMillis.coerceIn(
+    TEXT_INFERENCE_MIN_REQUEST_TIMEOUT_MILLIS,
+    TEXT_INFERENCE_MAX_REQUEST_TIMEOUT_MILLIS,
+  )
+}
+
 internal fun isolatedContextSizeMode(contextTokens: Int): LocalContextSizeMode = when (contextTokens) {
   4_096 -> LocalContextSizeMode.CONTEXT_4K
   8_192 -> LocalContextSizeMode.CONTEXT_8K
@@ -204,11 +230,23 @@ private class RemoteLocalTextInferenceClient(
     for (attempt in 0..1) {
       var active: RemoteTextInferenceSession? = null
       try {
-        active = session ?: RemoteTextInferenceSession(appContext, onProgress).also { created ->
-          created.connect()
+        val current = session ?: RemoteTextInferenceSession(appContext, onProgress).also { created ->
+          val connected = withTimeoutOrNull(TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS) {
+            created.connect()
+            true
+          } ?: false
+          if (!connected) {
+            throw IllegalStateException("ローカルAI推論プロセスへの接続がタイムアウトしました")
+          }
           session = created
         }
-        val response = active.generate(prompt, snapshot)
+        active = current
+        val response = withTimeoutOrNull(textInferenceRequestTimeoutMillis(snapshot)) {
+          current.generate(prompt, snapshot)
+        } ?: run {
+          retire(current)
+          throw IllegalStateException("ローカルAI推論がタイムアウトしました")
+        }
         persistStageDurations(appContext, snapshot, response)
         if (response.retireAfterResponse) {
           retire(active)
