@@ -126,12 +126,12 @@ data: {"type":"response.completed","response":{"status":"completed"}}
         """{
           "models": [
             {
-              "slug": "gpt-5.6-luna",
-              "display_name": "GPT-5.6-Luna",
+              "slug": "gpt-6-luna",
+              "display_name": "GPT-6-Luna",
               "description": "Fast model",
               "context_window": 272000,
-              "max_context_window": 1000000,
-              "web_search_tool_type": "text",
+              "max_context_window": 872000,
+              "web_search_tool_type": "text_and_image",
               "supports_search_tool": false,
               "supported_in_api": true,
               "visibility": "list",
@@ -154,13 +154,13 @@ data: {"type":"response.completed","response":{"status":"completed"}}
 
     val models = client.listModels()
 
-    assertEquals(listOf("gpt-5.6-luna", "hidden-model"), models.map(ChatGptModelInfo::id))
+    assertEquals(listOf("gpt-6-luna", "hidden-model"), models.map(ChatGptModelInfo::id))
     assertTrue(models.first().supportsWebSearch)
     assertFalse(models.last().supportsWebSearch)
     assertTrue(models.first().visibleInPicker)
     assertEquals(272000, models.first().contextWindowTokens)
     val request = http.requests.single()
-    assertTrue(request.url.startsWith("https://codex.test/codex/models?client_version="))
+    assertEquals("https://codex.test/codex/models?client_version=0.156.0", request.url)
     assertEquals("Bearer ${store.read()!!.accessToken}", request.headers["Authorization"])
     assertEquals("acct-test-abcdef", request.headers["chatgpt-account-id"])
     assertEquals(4L * 1024 * 1024, request.maxResponseBytes)
