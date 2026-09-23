@@ -27,7 +27,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -39,7 +38,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal const val TEXT_INFERENCE_PROCESS_BATCH_SIZE = 2
@@ -233,19 +231,19 @@ private class RemoteLocalTextInferenceClient(
       var active: RemoteTextInferenceSession? = null
       try {
         val current = session ?: RemoteTextInferenceSession(appContext, onProgress).also { created ->
-          try {
-            withTimeout(TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS) { created.connect() }
-          } catch (_: TimeoutCancellationException) {
+          val connected = withTimeoutOrNull(TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS) {
+            created.connect()
+            true
+          } ?: false
+          if (!connected) {
             throw IllegalStateException("ローカルAI推論プロセスへの接続がタイムアウトしました")
           }
           session = created
         }
         active = current
-        val response = try {
-          withTimeout(textInferenceRequestTimeoutMillis(snapshot)) {
-            current.generate(prompt, snapshot)
-          }
-        } catch (_: TimeoutCancellationException) {
+        val response = withTimeoutOrNull(textInferenceRequestTimeoutMillis(snapshot)) {
+          current.generate(prompt, snapshot)
+        } ?: run {
           retire(current)
           throw IllegalStateException("ローカルAI推論がタイムアウトしました")
         }
