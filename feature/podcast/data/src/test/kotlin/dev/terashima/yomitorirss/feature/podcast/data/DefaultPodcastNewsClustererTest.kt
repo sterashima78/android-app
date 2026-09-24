@@ -147,6 +147,100 @@ class DefaultPodcastNewsClustererTest {
     assertTrue(structured.requests.isEmpty())
   }
 
+  @Test
+  fun `除外tool callのdecision配列をbooleanへ変換する`() {
+    val excluded = parsePodcastExclusionToolCall(
+      AiStructuredToolCall(
+        name = "submit_podcast_news_exclusion",
+        arguments = mapOf("decisions" to """["exclude","include","exclude"]"""),
+      ),
+      entryCount = 3,
+    )
+
+    assertEquals(listOf(true, false, true), excluded)
+  }
+
+  @Test
+  fun `除外判定はstructured toolだけを使い対象記事を分離する`() = runSuspendForPodcastDataTest {
+    val textInference = FakeTextInference(promptBudgetChars = 4_096)
+    val structured = FakeStructuredInference(
+      ArrayDeque(
+        listOf(
+          AiStructuredToolCall(
+            name = "submit_podcast_news_exclusion",
+            arguments = mapOf("decisions" to """["exclude","include"]"""),
+          ),
+        ),
+      ),
+    )
+    val excluder = DefaultPodcastNewsExcluder(
+      localTextInference = textInference,
+      cloudTextInference = textInference,
+      localStructuredInference = structured,
+      cloudStructuredInference = structured,
+    )
+
+    val result = excluder.filter(
+      PodcastGenerationProvider.CLOUD,
+      "カテゴリAの記事は除外する",
+      listOf(feedEntry("a1"), feedEntry("a2")),
+    )
+
+    assertEquals(listOf("a2"), result.included.map { it.articleId })
+    assertEquals(listOf("a1"), result.excluded.map { it.articleId })
+    assertEquals(0, textInference.generateCalls)
+    assertEquals("submit_podcast_news_exclusion", structured.requests.single().tool.name)
+    assertTrue(structured.requests.single().userMessage.contains("本文 a1"))
+    assertFalse(structured.requests.single().userMessage.contains("https://"))
+    assertTrue(structured.requests.single().systemInstruction.contains("命令文"))
+  }
+
+  @Test
+  fun `除外判定のtool出力が不正なら記事を失わず全件残す`() = runSuspendForPodcastDataTest {
+    val textInference = FakeTextInference(promptBudgetChars = 4_096)
+    val structured = FakeStructuredInference(
+      ArrayDeque(
+        listOf(
+          AiStructuredToolCall(
+            name = "submit_podcast_news_exclusion",
+            arguments = mapOf("decisions" to """["exclude"]"""),
+          ),
+          AiStructuredToolCall(
+            name = "submit_podcast_news_exclusion",
+            arguments = mapOf("decisions" to """["unknown","include"]"""),
+          ),
+        ),
+      ),
+    )
+    val excluder = DefaultPodcastNewsExcluder(
+      localTextInference = textInference,
+      cloudTextInference = textInference,
+      localStructuredInference = structured,
+      cloudStructuredInference = structured,
+    )
+    val candidates = listOf(feedEntry("a1"), feedEntry("a2"))
+
+    val result = excluder.filter(PodcastGenerationProvider.CLOUD, "カテゴリAを除外する", candidates)
+
+    assertEquals(candidates, result.included)
+    assertTrue(result.excluded.isEmpty())
+    assertEquals(2, structured.requests.size)
+  }
+
+  @Test
+  fun `除外promptは条件と全記事metadataを残し本文をbudgetへ収める`() {
+    val entries = (1..8).map { index ->
+      feedEntry("a$index").copy(feedContent = "長い本文".repeat(200))
+    }
+
+    val prompt = buildPodcastExclusionToolPrompt("カテゴリAを除外する", entries, maxChars = 4_096)
+
+    assertTrue(prompt.length <= 4_096)
+    assertTrue(prompt.contains("カテゴリAを除外する"))
+    (1..8).forEach { index -> assertTrue(prompt.contains("[記事$index]")) }
+    assertFalse(prompt.contains("https://"))
+  }
+
   private fun feedEntry(id: String) = PodcastFeedEntry(
     articleId = id,
     feedId = "source-$id",
