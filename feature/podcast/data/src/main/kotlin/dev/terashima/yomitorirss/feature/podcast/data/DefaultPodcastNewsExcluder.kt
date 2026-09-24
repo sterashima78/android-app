@@ -42,8 +42,23 @@ class DefaultPodcastNewsExcluder(
     } catch (_: Throwable) {
       return includeAll(candidates)
     }
+    val results = candidates.chunked(PODCAST_EXCLUSION_MAX_BATCH_SIZE).map { batch ->
+      filterBatch(route, exclusionPrompt, batch, model.promptBudgetChars)
+    }
+    return PodcastNewsExclusionResult(
+      included = results.flatMap(PodcastNewsExclusionResult::included),
+      excluded = results.flatMap(PodcastNewsExclusionResult::excluded),
+    )
+  }
+
+  private suspend fun filterBatch(
+    route: InferenceRoute,
+    exclusionPrompt: String,
+    candidates: List<PodcastFeedEntry>,
+    promptBudgetChars: Int,
+  ): PodcastNewsExclusionResult {
     val prompt = try {
-      buildPodcastExclusionToolPrompt(exclusionPrompt, candidates, model.promptBudgetChars)
+      buildPodcastExclusionToolPrompt(exclusionPrompt, candidates, promptBudgetChars)
     } catch (_: Throwable) {
       return includeAll(candidates)
     }
@@ -59,7 +74,7 @@ class DefaultPodcastNewsExcluder(
       }
       val excluded = runCatching { parsePodcastExclusionToolCall(call, candidates.size) }.getOrElse { error ->
         if (attempt == PODCAST_EXCLUSION_MAX_ATTEMPTS - 1) return includeAll(candidates)
-        request = buildRepairPrompt(prompt, error.message.orEmpty(), model.promptBudgetChars)
+        request = buildRepairPrompt(prompt, error.message.orEmpty(), promptBudgetChars)
         return@repeat
       }
 
@@ -166,6 +181,7 @@ private const val PODCAST_EXCLUSION_DECISIONS_ARGUMENT = "decisions"
 private const val PODCAST_EXCLUSION_INCLUDE = "include"
 private const val PODCAST_EXCLUSION_EXCLUDE = "exclude"
 private const val PODCAST_EXCLUSION_MAX_ATTEMPTS = 2
+private const val PODCAST_EXCLUSION_MAX_BATCH_SIZE = 12
 private val PODCAST_EXCLUSION_JSON = Json { isLenient = false }
 
 private const val PODCAST_EXCLUSION_SYSTEM_INSTRUCTION =
