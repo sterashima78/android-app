@@ -309,7 +309,10 @@ class GeneratePodcastEpisodeUseCase(
     val exclusion = if (program.exclusionPrompt.isBlank()) {
       PodcastNewsExclusionResult(availableCandidates, emptyList())
     } else {
-      newsExcluder.filter(program.provider, program.exclusionPrompt, availableCandidates)
+      validateExclusionResult(
+        availableCandidates,
+        newsExcluder.filter(program.provider, program.exclusionPrompt, availableCandidates),
+      )
     }
     if (exclusion.excluded.isNotEmpty()) {
       repository.recordExcludedEntries(program.id, exclusion.excluded, nowEpochMillis())
@@ -353,6 +356,20 @@ class GeneratePodcastEpisodeUseCase(
     val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
     val interrupted = repository.findInterruptedGenerationEpisode(programId) ?: return@withProgramGeneration null
     generateReserved(program, interrupted)
+  }
+
+  private fun validateExclusionResult(
+    candidates: List<PodcastFeedEntry>,
+    result: PodcastNewsExclusionResult,
+  ): PodcastNewsExclusionResult {
+    val expected = candidates.groupingBy { it }.eachCount()
+    val classified = (result.included + result.excluded).groupingBy { it }.eachCount()
+    val overlap = result.included.toSet().intersect(result.excluded.toSet())
+    return if (classified == expected && overlap.isEmpty()) {
+      result
+    } else {
+      PodcastNewsExclusionResult(candidates, emptyList())
+    }
   }
 
   private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): PodcastClusteredCandidates {
