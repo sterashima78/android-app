@@ -1,11 +1,15 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
 import android.database.sqlite.SQLiteDatabase
+import dev.terashima.yomitorirss.core.database.DatabaseMigration
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 
 val podcastDatabaseSchema = DatabaseSchemaContribution(
   owner = "podcast",
   createSchema = ::createPodcastSchema,
+  migrations = listOf(
+    DatabaseMigration(targetVersion = 39, migrate = ::migratePodcastTo39),
+  ),
 )
 
 private fun createPodcastSchema(db: SQLiteDatabase) {
@@ -19,7 +23,8 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "schedule_enabled INTEGER NOT NULL DEFAULT 0," +
       "schedule_hour INTEGER NOT NULL DEFAULT 7," +
       "schedule_minute INTEGER NOT NULL DEFAULT 0," +
-      "max_articles INTEGER NOT NULL DEFAULT 12" +
+      "max_articles INTEGER NOT NULL DEFAULT 12," +
+      "exclusion_prompt TEXT NOT NULL DEFAULT ''" +
       ")",
   )
   db.execSQL(
@@ -66,6 +71,23 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "PRIMARY KEY(program_id,article_id)" +
       ")",
   )
+  createPodcastExcludedArticlesTable(db)
+}
+
+private fun createPodcastExcludedArticlesTable(db: SQLiteDatabase) {
+  db.execSQL(
+    "CREATE TABLE IF NOT EXISTS podcast_excluded_articles(" +
+      "program_id TEXT NOT NULL REFERENCES podcast_programs(id) ON DELETE CASCADE," +
+      "article_id TEXT NOT NULL," +
+      "excluded_at INTEGER NOT NULL," +
+      "PRIMARY KEY(program_id,article_id)" +
+      ")",
+  )
+}
+
+private fun migratePodcastTo39(db: SQLiteDatabase) {
+  db.execSQL("ALTER TABLE podcast_programs ADD COLUMN exclusion_prompt TEXT NOT NULL DEFAULT ''")
+  createPodcastExcludedArticlesTable(db)
 }
 
 private fun createPodcastSourcesTable(db: SQLiteDatabase) {
