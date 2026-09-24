@@ -128,8 +128,8 @@ fun PodcastRoute(
       onAddSource = viewModel::saveSource,
       onDeleteSource = viewModel::deleteSource,
       onDismiss = { editorVisible = false },
-      onSave = { id, name, sourceIds, provider, scheduleEnabled, hour, minute, maxArticles ->
-        viewModel.saveProgram(id, name, sourceIds, provider, scheduleEnabled, hour, minute, maxArticles)
+      onSave = { id, name, sourceIds, provider, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles ->
+        viewModel.saveProgram(id, name, sourceIds, provider, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles)
         editorVisible = false
       },
     )
@@ -292,6 +292,9 @@ private fun ProgramCard(
             "${sourceCount}ソース・${if (program.provider == PodcastGenerationProvider.LOCAL) "ローカルAI" else "クラウドAI"}",
             style = MaterialTheme.typography.bodyMedium,
           )
+          if (program.exclusionPrompt.isNotBlank()) {
+            Text("除外条件あり", style = MaterialTheme.typography.bodySmall)
+          }
           Text(
             if (program.schedule.enabled) {
               "毎日 ${"%02d:%02d".format(program.schedule.hour, program.schedule.minute)} に生成"
@@ -426,7 +429,7 @@ private fun PodcastProgramEditorDialog(
   onAddSource: (String, String) -> Unit,
   onDeleteSource: (String) -> Unit,
   onDismiss: () -> Unit,
-  onSave: (String?, String, Set<String>, PodcastGenerationProvider, Boolean, Int, Int, Int) -> Unit,
+  onSave: (String?, String, Set<String>, PodcastGenerationProvider, String, Boolean, Int, Int, Int) -> Unit,
 ) {
   var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
   var selectedSourceIds by remember(program?.id) {
@@ -439,6 +442,7 @@ private fun PodcastProgramEditorDialog(
   var newSourceName by remember(program?.id) { mutableStateOf("") }
   var newSourceUrl by remember(program?.id) { mutableStateOf("") }
   var provider by remember(program?.id) { mutableStateOf(program?.provider ?: PodcastGenerationProvider.LOCAL) }
+  var exclusionPrompt by remember(program?.id) { mutableStateOf(program?.exclusionPrompt.orEmpty()) }
   var scheduleEnabled by remember(program?.id) { mutableStateOf(program?.schedule?.enabled ?: false) }
   var hour by remember(program?.id) { mutableStateOf((program?.schedule?.hour ?: 7).toString()) }
   var minute by remember(program?.id) { mutableStateOf((program?.schedule?.minute ?: 0).toString()) }
@@ -483,6 +487,17 @@ private fun PodcastProgramEditorDialog(
           Text("生成AI", style = MaterialTheme.typography.titleSmall)
           ProviderOption("ローカルAI", PodcastGenerationProvider.LOCAL, provider) { provider = it }
           ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
+
+          OutlinedTextField(
+            value = exclusionPrompt,
+            onValueChange = { exclusionPrompt = it },
+            label = { Text("除外条件") },
+            placeholder = { Text("例: 特定カテゴリのニュースは除外する") },
+            supportingText = { Text("聞かなくてよいニュースの条件を自然文で指定します。空欄ならすべて候補にします。") },
+            minLines = 3,
+            maxLines = 6,
+            modifier = Modifier.fillMaxWidth(),
+          )
 
           HorizontalDivider()
           Text("利用するソース", style = MaterialTheme.typography.titleSmall)
@@ -604,6 +619,7 @@ private fun PodcastProgramEditorDialog(
                 name,
                 selectedSourceIds,
                 provider,
+                exclusionPrompt,
                 scheduleEnabled,
                 requireNotNull(parsedHour),
                 requireNotNull(parsedMinute),
