@@ -113,6 +113,11 @@ private class RecoveryPodcastRepository(
   override suspend fun findProgram(programId: String): PodcastProgram? = program.takeIf { it.id == programId }
   override suspend fun saveProgram(program: PodcastProgram) = Unit
   override suspend fun deleteProgram(programId: String) = Unit
+  override suspend fun recordExcludedEntries(
+    programId: String,
+    entries: List<PodcastFeedEntry>,
+    excludedAtEpochMillis: Long,
+  ) = Unit
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> =
     episodes.filter { it.programId == programId }
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episodes.find { it.id == episodeId }
