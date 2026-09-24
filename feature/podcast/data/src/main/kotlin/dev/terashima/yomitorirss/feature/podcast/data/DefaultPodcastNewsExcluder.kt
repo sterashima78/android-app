@@ -32,8 +32,8 @@ class DefaultPodcastNewsExcluder(
     if (candidates.isEmpty() || exclusionPrompt.isBlank()) return includeAll(candidates)
 
     val route = when (provider) {
-      PodcastGenerationProvider.LOCAL -> InferenceRoute(localTextInference, localStructuredInference, true)
-      PodcastGenerationProvider.CLOUD -> InferenceRoute(cloudTextInference, cloudStructuredInference, false)
+      PodcastGenerationProvider.LOCAL -> ExclusionInferenceRoute(localTextInference, localStructuredInference, true)
+      PodcastGenerationProvider.CLOUD -> ExclusionInferenceRoute(cloudTextInference, cloudStructuredInference, false)
     }
     val model = try {
       checkNotNull(route.text.selectedModel()) { "利用するAIモデルを選択してください" }
@@ -52,7 +52,7 @@ class DefaultPodcastNewsExcluder(
   }
 
   private suspend fun filterBatch(
-    route: InferenceRoute,
+    route: ExclusionInferenceRoute,
     exclusionPrompt: String,
     candidates: List<PodcastFeedEntry>,
     promptBudgetChars: Int,
@@ -88,7 +88,7 @@ class DefaultPodcastNewsExcluder(
   }
 
   private suspend fun generateToolCall(
-    route: InferenceRoute,
+    route: ExclusionInferenceRoute,
     request: String,
   ): AiStructuredToolCall? = if (route.local) {
     LocalAiBackgroundTaskGate.withPermit(priority = LocalAiBackgroundTaskPriority.NORMAL) {
@@ -171,7 +171,7 @@ private fun buildRepairPrompt(original: String, message: String, maxChars: Int):
 private fun includeAll(candidates: List<PodcastFeedEntry>) =
   PodcastNewsExclusionResult(included = candidates, excluded = emptyList())
 
-private data class InferenceRoute(
+private data class ExclusionInferenceRoute(
   val text: AiTextInference,
   val structured: AiStructuredTextInference,
   val local: Boolean,
