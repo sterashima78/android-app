@@ -234,6 +234,36 @@ class PodcastTest {
   }
 
   @Test
+  fun `除外結果が候補の完全な分割でなければ全候補を残す`() = runSuspend {
+    val program = program(exclusionPrompt = "特定カテゴリを除外する")
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
+    val generator = RecordingGenerator("原稿")
+    val malformed = object : PodcastNewsExcluder {
+      override suspend fun filter(
+        provider: PodcastGenerationProvider,
+        exclusionPrompt: String,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsExclusionResult = PodcastNewsExclusionResult(
+        included = listOf(candidates.first()),
+        excluded = emptyList(),
+      )
+    }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      generator,
+      nowEpochMillis = { 1234L },
+      newsExcluder = malformed,
+    )
+
+    val result = useCase.generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("a1", "a2"), result.episode.articles.map { it.articleId })
+    assertTrue(repository.excluded.isEmpty())
+  }
+
+  @Test
   fun `同じ番組で消費済みの記事は次のエピソードに含めない`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
