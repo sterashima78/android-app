@@ -77,6 +77,22 @@ class SqlitePodcastRepository(
     database.write { delete("podcast_programs", "id=?", arrayOf(programId)) }
   }
 
+  override suspend fun recordExcludedEntries(
+    programId: String,
+    entries: List<PodcastFeedEntry>,
+    excludedAtEpochMillis: Long,
+  ) {
+    if (entries.isEmpty()) return
+    database.transaction {
+      entries.distinctBy(PodcastFeedEntry::articleId).forEach { entry ->
+        execSQL(
+          "INSERT OR IGNORE INTO podcast_excluded_articles(program_id,article_id,excluded_at) VALUES(?,?,?)",
+          arrayOf(programId, entry.articleId, excludedAtEpochMillis),
+        )
+      }
+    }
+  }
+
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> = database.readable.rawQuery(
     "SELECT * FROM podcast_episodes WHERE program_id=? ORDER BY created_at DESC",
     arrayOf(programId),
@@ -257,7 +273,7 @@ class SqlitePodcastRepository(
   ): PodcastEpisode? = database.transaction {
     val pendingCandidates = candidates
       .distinctBy(PodcastFeedEntry::articleId)
-      .filterNot { candidate -> isConsumed(this, program.id, candidate.articleId) }
+      .filterNot { candidate -> isProcessed(this, program.id, candidate.articleId) }
     if (pendingCandidates.isEmpty()) return@transaction null
 
     val clusteredCandidates = pendingCandidates
@@ -507,6 +523,7 @@ private fun PodcastProgram.values(): ContentValues = ContentValues().apply {
   put("schedule_hour", schedule.hour)
   put("schedule_minute", schedule.minute)
   put("max_articles", maxArticlesPerEpisode)
+  put("exclusion_prompt", exclusionPrompt)
 }
 
 private fun Cursor.source(): PodcastSource = PodcastSource(
@@ -528,6 +545,7 @@ private fun Cursor.program(): PodcastProgram = PodcastProgram(
     minute = int("schedule_minute"),
   ),
   maxArticlesPerEpisode = int("max_articles"),
+  exclusionPrompt = string("exclusion_prompt"),
 )
 
 private fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
@@ -590,9 +608,10 @@ private fun allSourcesExist(db: SQLiteDatabase, sourceIds: Set<String>): Boolean
   return found.size == ids.size
 }
 
-private fun isConsumed(db: SQLiteDatabase, programId: String, articleId: String): Boolean = db.rawQuery(
-  "SELECT 1 FROM podcast_consumed_articles WHERE program_id=? AND article_id=? LIMIT 1",
-  arrayOf(programId, articleId),
+private fun isProcessed(db: SQLiteDatabase, programId: String, articleId: String): Boolean = db.rawQuery(
+  "SELECT 1 FROM podcast_consumed_articles WHERE program_id=? AND article_id=? " +
+    "UNION SELECT 1 FROM podcast_excluded_articles WHERE program_id=? AND article_id=? LIMIT 1",
+  arrayOf(programId, articleId, programId, articleId),
 ).use(Cursor::moveToFirst)
 
 private fun Cursor.string(column: String): String = getString(getColumnIndexOrThrow(column))
