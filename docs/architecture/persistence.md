@@ -28,7 +28,7 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は 39 である。version 38 を直前の更新互換性 baseline とし、Podcastの除外条件と除外済みentry identityを追加するversion 38 -> 39 migrationを保持する。version 38へ到達するためだけの一度限りmigrationはcurrent runtimeから退役済みである。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
+現在の application database version は 39 である。version 38 を更新互換性 baseline として維持し、Podcastの除外条件と除外済みentry identityを追加するversion 38 -> 39 migrationを保持する。version 38へ到達するためだけの一度限りmigrationはcurrent runtimeから退役済みである。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
 バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpoint、分類診断状態を含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
