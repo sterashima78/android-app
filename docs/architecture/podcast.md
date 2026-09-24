@@ -113,7 +113,7 @@ Podcast-owned tablesは次のとおり。
 
 ## Compatibility baseline
 
-application database version 39をcurrent baselineとする。fresh version 39 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsを直接含む。
+application database versionは39で、更新互換性baselineはversion 38とする。fresh version 39 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsを直接含む。
 
 version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_excluded_articles` を追加する。version 33〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
 
