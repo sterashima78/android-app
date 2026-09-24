@@ -143,7 +143,7 @@ Content を入力として generated summary と task lifecycle / priority の S
 - Podcast生成候補はRSS readerのread / unread stateではなく、選択したPodcast sourceから現在取得でき、かつ対象番組で生成済みでも除外済みでもないentryで決まる。番組の除外条件がある場合は同じ生成providerの構造化推論で候補を判定し、失敗時は全候補を残す。
 - Podcastへ保存するentry identityはPodcast source IDとfeed entry identityから作り、Content-owned article IDを利用しない。生成や再生によってContentのreading stateを変更しない。
 - 番組ごとの消費・除外履歴で処理済みentryを除いた後、除外条件を適用して残った候補を `maxArticlesPerEpisode` ごとに分割し、現在取得できた未消費候補を記事スナップショットとしてまとめて予約する。最初のエピソードを `GENERATING`、上限を超えた後続エピソードを `QUEUED` として保持する。
-- AI推論前にエピソード、記事スナップショット、consumed stateをatomicに予約する。次回生成は既存の `GENERATING`、次に最古の `QUEUED` を新しいfeed取得より優先する。通常失敗時は `FAILED` として保持し、明示再生成では同じ記事スナップショットを再利用する。中断時は `GENERATING` のまま保持し、次回生成で同じスナップショットから再開する。
+- 除外判定とクラスタリング後、原稿生成AI推論前にエピソード、記事スナップショット、consumed stateをatomicに予約する。次回生成は既存の `GENERATING`、次に最古の `QUEUED` を新しいfeed取得より優先する。通常失敗時は `FAILED` として保持し、明示再生成では同じ記事スナップショットを再利用する。中断時は `GENERATING` のまま保持し、次回生成で同じスナップショットから再開する。
 - 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。選択modelのprompt/input上限へ収まるよう入力を制限する。local推論は共通AI実行ゲートを利用し、定刻生成はprovider別のbackground pauseを尊重する。
 - 定刻実行はPodcast-owned scheduler adapterが次回ローカル日時を再計算するone-shot workを担当する。`:app:composition` はapplication起動時とdurable persistence置換後のschedule reconciliation、WorkerFactory wiringだけを行う。
 - 生成済み原稿の再生はAudioの `AudioPlaybackController` を利用する。PodcastはTTS、media session、音声cacheを共同所有しない。
@@ -264,7 +264,7 @@ ADR-0123 により、次の移行は完了した。
 4. RSS ingestion の Content write の Content-owned command port 化。
 5. これら runtime path に対する foreign-table allowlist の削除。
 
-ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0249 によりPodcast-owned durable stateを追加し、ADR-0250 によりPodcast feed sourceをRSS reader購読から分離した。application database versionは34で、version 33を更新元baselineとする。Podcastの旧source設定を移すためのRSS / Content table foreign readはversion 33 -> 34 migrationだけに限定し、current runtimeでは参照しない。旧subscription/video tableへのforeign readもversion 30 -> 31 migrationだけに限定する。
+ADR-0242 により、既存の動画チャンネル購読はVideo-owned provider lifecycleへ移行した。ADR-0249 によりPodcast-owned durable stateを追加し、ADR-0250 によりPodcast feed sourceをRSS reader購読から分離した。現在のapplication database versionは39で、version 38を直前の更新元baselineとする。pre-38へ到達するための過去migrationと、それらだけが必要としていたRSS / Content tableへのforeign read例外はcurrent runtimeから退役済みである。
 
 `Article` -> `ContentItem` rename / module restructuring は ubiquitous language が安定した後に再評価する。
 
