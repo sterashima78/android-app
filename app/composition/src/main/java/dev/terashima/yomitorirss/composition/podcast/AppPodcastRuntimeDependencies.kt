@@ -12,7 +12,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastScheduleController
 import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
-import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer
+import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer\nimport dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsExcluder
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFactory
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
@@ -49,6 +49,12 @@ internal class AppPodcastRuntimeDependencies(
     ),
     scriptGenerator = scriptGenerator,
     newsClusterer = DefaultPodcastNewsClusterer(
+      localTextInference = localTextInference,
+      cloudTextInference = cloudTextInference,
+      localStructuredInference = localStructuredTextInference,
+      cloudStructuredInference = cloudStructuredTextInference,
+    ),
+    newsExcluder = DefaultPodcastNewsExcluder(
       localTextInference = localTextInference,
       cloudTextInference = cloudTextInference,
       localStructuredInference = localStructuredTextInference,
