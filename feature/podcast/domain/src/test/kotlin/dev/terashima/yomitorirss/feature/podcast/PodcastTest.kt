@@ -167,6 +167,73 @@ class PodcastTest {
   }
 
   @Test
+  fun `除外条件に該当した記事を記録して原稿生成対象から外す`() = runSuspend {
+    val program = program(exclusionPrompt = "特定カテゴリを除外する")
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
+    val generator = RecordingGenerator("原稿")
+    val excluder = RecordingNewsExcluder(excludedIds = setOf("a1"))
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      generator,
+      nowEpochMillis = { 1234L },
+      newsExcluder = excluder,
+    )
+
+    val result = useCase.generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("a2"), result.episode.articles.map { it.articleId })
+    assertEquals(setOf("a1"), repository.excluded)
+    assertEquals(listOf("a1", "a2"), excluder.candidateIds)
+    assertEquals(1, generator.prompts.size)
+    assertTrue(generator.prompts.single().contains("本文 a2"))
+    assertFalse(generator.prompts.single().contains("本文 a1"))
+  }
+
+  @Test
+  fun `全候補が除外された場合はエピソードを作らない`() = runSuspend {
+    val program = program(exclusionPrompt = "特定カテゴリを除外する")
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1")))
+    val generator = RecordingGenerator("原稿")
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      generator,
+      nowEpochMillis = { 1234L },
+      newsExcluder = RecordingNewsExcluder(excludedIds = setOf("a1")),
+    )
+
+    val result = useCase.generate(program.id)
+
+    assertEquals(PodcastGenerationResult.NoNewArticles, result)
+    assertEquals(setOf("a1"), repository.excluded)
+    assertTrue(repository.episodes.isEmpty())
+    assertTrue(generator.prompts.isEmpty())
+  }
+
+  @Test
+  fun `除外条件が空ならAI除外判定を呼ばない`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1")))
+    val excluder = RecordingNewsExcluder(excludedIds = setOf("a1"))
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("原稿"),
+      nowEpochMillis = { 1234L },
+      newsExcluder = excluder,
+    )
+
+    val result = useCase.generate(program.id)
+
+    assertTrue(result is PodcastGenerationResult.Generated)
+    assertTrue(excluder.candidateIds.isEmpty())
+  }
+
+  @Test
   fun `同じ番組で消費済みの記事は次のエピソードに含めない`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
@@ -362,12 +429,14 @@ class PodcastTest {
 private fun program(
   maxArticlesPerEpisode: Int = 12,
   provider: PodcastGenerationProvider = PodcastGenerationProvider.LOCAL,
+  exclusionPrompt: String = "",
 ) = PodcastProgram(
   id = "program-1",
   name = "朝のニュース",
   sourceIds = setOf("source-1"),
   provider = provider,
   maxArticlesPerEpisode = maxArticlesPerEpisode,
+  exclusionPrompt = exclusionPrompt,
 )
 
 private fun source() = PodcastSource(
@@ -405,6 +474,24 @@ private class FakeFeedContentSource(
     requestedSources = sources
     val sourceIds = sources.mapTo(mutableSetOf(), PodcastSource::id)
     return entries.filter { it.feedId in sourceIds }.take(limit)
+  }
+}
+
+private class RecordingNewsExcluder(
+  private val excludedIds: Set<String>,
+) : PodcastNewsExcluder {
+  var candidateIds: List<String> = emptyList()
+
+  override suspend fun filter(
+    provider: PodcastGenerationProvider,
+    exclusionPrompt: String,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastNewsExclusionResult {
+    candidateIds = candidates.map(PodcastFeedEntry::articleId)
+    return PodcastNewsExclusionResult(
+      included = candidates.filterNot { it.articleId in excludedIds },
+      excluded = candidates.filter { it.articleId in excludedIds },
+    )
   }
 }
 
@@ -507,6 +594,7 @@ private class FakePodcastRepository(
 ) : PodcastRepository {
   val episodes = mutableListOf<PodcastEpisode>()
   val sources = mutableListOf(source())
+  val excluded = mutableSetOf<String>()
   private val consumed = mutableSetOf<String>()
 
   override suspend fun listSources(): List<PodcastSource> = sources.toList()
@@ -524,7 +612,9 @@ private class FakePodcastRepository(
     programId: String,
     entries: List<PodcastFeedEntry>,
     excludedAtEpochMillis: Long,
-  ) = Unit
+  ) {
+    excluded += entries.map(PodcastFeedEntry::articleId)
+  }
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> = episodes.filter { it.programId == programId }
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? =
     synchronized(episodes) { episodes.find { it.id == episodeId } }
