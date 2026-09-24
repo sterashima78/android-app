@@ -87,7 +87,7 @@ class SqlitePodcastRepository(
       entries.distinctBy(PodcastFeedEntry::articleId).forEach { entry ->
         execSQL(
           "INSERT OR IGNORE INTO podcast_excluded_articles(program_id,article_id,excluded_at) VALUES(?,?,?)",
-          arrayOf(programId, entry.articleId, excludedAtEpochMillis),
+          arrayOf<Any>(programId, entry.articleId, excludedAtEpochMillis),
         )
       }
     }
