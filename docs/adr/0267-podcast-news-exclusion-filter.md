@@ -2,7 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-09-25
-- Refines: [ADR-0249](0249-news-podcast-context.md), [ADR-0259](0259-podcast-news-clustering.md), [ADR-0263](0263-podcast-structured-clustering-output.md), [ADR-0264](0264-database-v38-compatibility-baseline.md)
+- Amends: [ADR-0264](0264-database-v38-compatibility-baseline.md)
+- Refines: [ADR-0249](0249-news-podcast-context.md), [ADR-0259](0259-podcast-news-clustering.md), [ADR-0263](0263-podcast-structured-clustering-output.md)
 
 ## Context
 
@@ -46,7 +47,7 @@ structured inference、tool call、arguments decode、validationのいずれか�
 
 ### database versionを39へ進める
 
-version 38を直前baselineとし、version 38 -> 39 migrationで次を追加する。
+version 38を更新元baselineとして維持し、version 38 -> 39 migrationで次を追加する。
 
 - `podcast_programs.exclusion_prompt TEXT NOT NULL DEFAULT ''`
 - `podcast_excluded_articles(program_id, article_id, excluded_at)`
