@@ -301,7 +301,7 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `再生成中は重複再生成とアーカイブ削除を拒否し失敗後のアーカイブでタスクを閉じる`() = runSuspend {
+  fun `エピソード作り直しは同じIDで記事snapshotとclusterを置き換える`() = runSuspend {
     val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
     val program = PodcastProgram(
       id = "program-1",
@@ -316,29 +316,43 @@ class PodcastRepositoryPersistenceTest {
         program = program,
         candidates = listOf(
           PodcastFeedEntry("article-1", source.id, "記事1", source.name, 1L, "https://example.invalid/1", "本文1"),
+          PodcastFeedEntry("article-2", source.id, "記事2", source.name, 2L, "https://example.invalid/2", "本文2"),
         ),
         createdAtEpochMillis = 100L,
       ),
     )
-    repository.completeChapter(episode.id, 0, "既存原稿")
+    repository.completeChapter(episode.id, 0, "既存原稿1")
+    repository.completeChapter(episode.id, 1, "既存原稿2")
     repository.completeEpisode(episode.id, "朝のニュース / 1/1 07:00", "既存原稿")
 
-    val regenerating = repository.prepareEpisodeRegeneration(episode.id)
-    assertEquals(PodcastRegenerationStatus.RUNNING, regenerating.regenerationStatus)
-    assertTrue(runCatching { repository.prepareEpisodeRegeneration(episode.id) }.exceptionOrNull() is IllegalArgumentException)
+    val rebuilding = repository.prepareEpisodeRebuild(
+      episodeId = episode.id,
+      candidates = listOf(
+        PodcastFeedEntry(
+          articleId = "article-2",
+          feedId = source.id,
+          title = "記事2",
+          sourceTitle = source.name,
+          publishedAtEpochMillis = 2L,
+          articleUrl = null,
+          feedContent = "本文2",
+          chapterPosition = 0,
+        ),
+      ),
+      clusteringStatus = PodcastClusteringStatus.SUCCESS,
+    )
+
+    assertEquals(episode.id, rebuilding.id)
+    assertEquals(PodcastEpisodeStatus.GENERATING, rebuilding.status)
+    assertNull(rebuilding.script)
+    assertNull(rebuilding.regenerationStatus)
+    assertEquals(PodcastClusteringStatus.SUCCESS, rebuilding.clusteringStatus)
+    assertEquals(listOf("article-2"), rebuilding.articles.map { it.articleId })
+    assertEquals(0, rebuilding.articles.single().chapterPosition)
+    assertNull(rebuilding.articles.single().articleUrl)
+    assertEquals(PodcastChapterGenerationStatus.PENDING, rebuilding.articles.single().chapterStatus)
     assertTrue(runCatching { repository.archiveEpisode(episode.id) }.exceptionOrNull() is IllegalArgumentException)
     assertTrue(runCatching { repository.deleteEpisode(episode.id) }.exceptionOrNull() is IllegalArgumentException)
-    assertEquals(PodcastEpisodeStatus.READY, requireNotNull(repository.findEpisode(episode.id)).status)
-
-    repository.failRegeneration(episode.id, "再生成に失敗")
-    val failedTask = repository.listGenerationTasks().single()
-    assertEquals(PodcastGenerationTaskState.FAILED, failedTask.state)
-
-    val archived = repository.archiveEpisode(episode.id)
-    assertEquals(PodcastEpisodeStatus.ARCHIVED, archived.status)
-    assertNull(archived.regenerationStatus)
-    assertNull(archived.errorMessage)
-    assertTrue(repository.listGenerationTasks().isEmpty())
   }
 }
 
