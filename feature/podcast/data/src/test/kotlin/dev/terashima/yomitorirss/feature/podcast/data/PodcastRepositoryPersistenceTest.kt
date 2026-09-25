@@ -136,7 +136,7 @@ class PodcastRepositoryPersistenceTest {
             )
             db.execSQL(
               "INSERT INTO podcast_programs(id,name,source_ids,provider,max_articles) VALUES(?,?,?,?,?)",
-              arrayOf("program-1", "番組", "source-1", PodcastGenerationProvider.LOCAL.name, 12),
+              arrayOf<Any>("program-1", "番組", "source-1", PodcastGenerationProvider.LOCAL.name, 12),
             )
           },
         ),
