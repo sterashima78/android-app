@@ -148,6 +148,25 @@ class RssRecommendationRepositoryTest {
   }
 
   @Test
+  fun `バックアップ復元後は推薦評価を残して一時キューだけ破棄する`() {
+    repository.saveAssessments(
+      mapOf(
+        "a1" to RssRecommendationAssessment.Scored(
+          score = 7,
+          revision = 2L,
+          assessedAt = 100L,
+        ),
+      ),
+    )
+    repository.enqueueTasks(listOf(article("a1", "記事1")), revision = 2L)
+
+    RssRecommendationBackupRestoreInitializer(DatabaseConnection(helper)).initialize()
+
+    assertEquals(emptyList<Any>(), repository.listTasks())
+    assertEquals(7, (repository.loadAssessments(listOf("a1"))["a1"] as RssRecommendationAssessment.Scored).score)
+  }
+
+  @Test
   fun `feedbackを取り消すとpendingから削除する`() {
     val feedback = repository.addFeedback(
       articleId = "a1",
