@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Podcast Contextはニュースポッドキャストの番組、入力source、episode生成queue、生成時の記事・ニュースクラスタsnapshot、ニュース分類の診断状態、ニュースチャプター単位の生成checkpoint、番組単位のentry消費状態、生成原稿、定刻設定を所有する。
+Podcast Contextはニュースポッドキャストの番組、入力source、episode生成queue、生成時の記事・ニュースクラスタsnapshot、ニュース分類の診断状態、ニュースチャプター単位の生成checkpoint、番組単位のentry消費状態と除外済みentry identity、自然文の除外条件、生成原稿、定刻設定を所有する。
 
 RSS readerの購読状態やContentのread / unread stateはPodcastのsource of truthではない。Podcastで利用するRSS / Atom URLは `PodcastSource` としてPodcast Contextへ登録する。
 
@@ -30,6 +30,8 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 
 `PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `AiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。
 
+`PodcastNewsExcluder` は番組の除外条件が空でない場合だけ、候補のtitle、source title、feed bodyを使って各entryをinclude / excludeへ分類する。番組で選択された生成providerと同じprovider-neutral `AiStructuredTextInference` を利用し、`submit_podcast_news_exclusion(decisions)` のtool argumentsだけを結果として採用する。候補本文はuntrusted dataとして扱い、本文内の命令へ従わないことをsystem instructionで固定する。推論、tool call、decode、validationに失敗した場合は全候補をincludeへfallbackし、記事を欠落させない。除外されたentry identityは `podcast_excluded_articles` へ保存し、後続生成で再判定しない。
+
 Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository`、`feeds` table、`articles` tableを参照しない。
 
 ## Generation lifecycle
@@ -38,14 +40,16 @@ Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository
 2. 中断済みまたは予約済みepisodeがあれば、そのsnapshotとchapter checkpointを優先して再開する。この経路では再クラスタリングしない。
 3. 番組の `sourceIds` に対応するPodcast-owned source定義を取得し、欠落があれば設定エラーとする。
 4. source URLからRSS / Atom entryのtitle / body / published time / entry URL metadataを取得する。
-5. program-scoped `podcast_consumed_articles` に存在しないentryだけを候補にする。
-6. 完全一致重複除外後の今回候補を `PodcastNewsClusterer` へ渡し、同一ニュースclusterと分類状態を確定する。過去episodeとの意味的重複判定は行わない。
-7. 最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。
-8. 最初のepisodeを生成し、残りはqueueへ保持する。
-9. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論へ渡す。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
-10. chapter生成promptではcluster内の全記事のtitle / feed bodyだけを根拠に、重複内容を繰り返さず、矛盾しない追加情報を統合した音声ニュース向けの短い日本語見出しと本文を生成する。entry URLはpromptへ含めない。見出しを `[[TITLE:...]]` markerとして `chapter_script` 内へ保持する。同じclusterの全rowへ同一のcheckpoint、script、errorを保存する。
-11. 全cluster checkpointが `READY` になったら、Podcast Contextがchapter順に `chapter_script` を連結する。`[[CHAPTER:n]]` markerと番組の冒頭・締めはアプリ側で決定的に付与し、episode全体を対象とする追加AI推論は行わない。
-12. 完成したepisode原稿をAudio Contextへ再生委譲する。
+5. program-scoped `podcast_consumed_articles` と `podcast_excluded_articles` のどちらにも存在しないentryだけを候補にする。
+6. 番組の除外条件が空でなければ `PodcastNewsExcluder` で候補を判定する。除外判定に成功してexcludeになったentry identityは番組単位でdurable stateへ記録する。判定失敗時は全候補を残す。
+7. 除外後の候補が0件なら新しいepisodeを作らず終了する。
+8. 完全一致重複除外後の今回候補を `PodcastNewsClusterer` へ渡し、同一ニュースclusterと分類状態を確定する。過去episodeとの意味的重複判定は行わない。
+9. 最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。
+10. 最初のepisodeを生成し、残りはqueueへ保持する。
+11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論へ渡す。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
+12. chapter生成promptではcluster内の全記事のtitle / feed bodyだけを根拠に、重複内容を繰り返さず、矛盾しない追加情報を統合した音声ニュース向けの短い日本語見出しと本文を生成する。entry URLはpromptへ含めない。見出しを `[[TITLE:...]]` markerとして `chapter_script` 内へ保持する。同じclusterの全rowへ同一のcheckpoint、script、errorを保存する。
+13. 全cluster checkpointが `READY` になったら、Podcast Contextがchapter順に `chapter_script` を連結する。`[[CHAPTER:n]]` markerと番組の冒頭・締めはアプリ側で決定的に付与し、episode全体を対象とする追加AI推論は行わない。
+14. 完成したepisode原稿をAudio Contextへ再生委譲する。
 
 process終了やcoroutine cancellationによって初回生成の `GENERATING` または再生成の `regeneration_status=RUNNING` が残ったepisodeは、次のapplication background runtime起動時にも同じepisode ID、保存済み記事・cluster snapshot、checkpointから自動再開する。起動時再開は無関係な `QUEUED` をpromoteせず、新しいfeed候補も予約しない。定刻scheduleのreconciliationとは別のapplication-scope coroutineで実行し、新しいschedulerやdurable queueは追加しない。
 
@@ -109,18 +113,17 @@ Podcast-owned tablesは次のとおり。
 
 ## Compatibility baseline
 
-application database version 38をcurrent baselineとする。Podcast-owned source、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsはfresh version 38 schemaに直接含まれる。
+application database versionは39で、更新互換性baselineはversion 38とする。fresh version 39 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsを直接含む。
 
-version 33〜37からversion 38へ到達するための一度限りmigrationと、旧RSS / Content tableへのforeign read例外はADR-0264で退役済みである。current Podcast runtimeは旧column / 旧tableをcompatibility inputとして参照しない。過去migrationの設計理由はADR-0250 / ADR-0255 / ADR-0257 / ADR-0259に履歴として残す。
-
-次にPodcastのschema変更でapplication database versionを上げる場合は、version 38から次versionへのmigrationだけを追加する。
+version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_excluded_articles` を追加する。version 33〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
 
 ## Invariants
 
 - 番組には1つ以上のPodcast sourceが必要である。
 - 番組が参照するPodcast sourceは保存時点で存在しなければならない。
 - source URLはPodcast Contextのdurable stateとして保持する。
-- 同一番組では一度予約したstable entry identityを新規episodeへ再利用しない。
+- 同一番組では一度予約または除外したstable entry identityを新規episodeへ再利用せず、除外条件変更時にも過去の除外済みentryを自動再評価しない。
+- 除外判定が失敗した場合は候補を捨てず全件includeへfallbackする。
 - episodeへ予約したfeed body、entry URL、cluster境界、分類診断状態は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
 - 意味的な同一ニュース判定は現在の未消費候補内だけで行い、過去episodeを意味比較して続報を抑止しない。
@@ -155,3 +158,4 @@ version 33〜37からversion 38へ到達するための一度限りmigrationと�
 - `docs/adr/0259-podcast-news-clustering.md`
 - `docs/adr/0264-database-v38-compatibility-baseline.md`
 - `docs/adr/0265-podcast-cloud-chapter-parallelism.md`
+- `docs/adr/0267-podcast-news-exclusion-filter.md`

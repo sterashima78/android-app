@@ -160,6 +160,7 @@ class PodcastViewModel(
     name: String,
     sourceIds: Set<String>,
     provider: PodcastGenerationProvider,
+    exclusionPrompt: String,
     scheduleEnabled: Boolean,
     scheduleHour: Int,
     scheduleMinute: Int,
@@ -174,6 +175,7 @@ class PodcastViewModel(
           provider = provider,
           schedule = PodcastSchedule(scheduleEnabled, scheduleHour, scheduleMinute),
           maxArticlesPerEpisode = maxArticles,
+          exclusionPrompt = exclusionPrompt.trim(),
         )
         repository.saveProgram(program)
         scheduleController.sync(program)

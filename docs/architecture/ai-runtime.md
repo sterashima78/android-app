@@ -15,7 +15,7 @@ Summary、Knowledge、Library organization 等の feature は provider protocol 
 
 Library organization は `AiTextInference.selectedModel()` から model / prompt budget を取得し、実際の分類結果は `AiStructuredTextInference` の `submit_library_organization` tool call で受け取る。分類 prompt、tool schema、引数 validation、bounded repair は Library feature が所有する。
 
-Podcast の同一ニュース分類も同じ provider-neutral `AiStructuredTextInference` を利用する。Podcast は `submit_podcast_news_clusters(group_ids)` の tool arguments だけを分類結果として利用し、候補記事数と同じ長さの group ID 配列から cluster を復元する。Local / Cloud のどちらでも structured inference adapter を利用し、通常テキストの分類結果は解析しない。
+Podcast のニュース候補除外と同一ニュース分類も同じ provider-neutral `AiStructuredTextInference` を利用する。除外判定は `submit_podcast_news_exclusion(decisions)`、同一ニュース分類は `submit_podcast_news_clusters(group_ids)` の tool arguments だけを結果として利用する。どちらも候補記事数と同じ長さの配列をfeature側で検証し、Local / Cloud の両方でstructured inference adapterを利用して通常テキストの分類結果は解析しない。
 
 ## Execution routing
 
@@ -55,7 +55,7 @@ Android の `SharedPreferences` は複数 process 間の整合性保証を持た
 
 ## Local structured text inference boundary
 
-Library organization と Podcast news clustering の構造化結果は通常テキストの JSON として生成せず、`AiStructuredTextInference` を通じて tool call arguments として受け取る。
+Library organization と Podcast news exclusion / clustering の構造化結果は通常テキストの JSON として生成せず、`AiStructuredTextInference` を通じて tool call arguments として受け取る。
 
 - Local adapter は `ProcessIsolatedLocalAiStructuredTextInference` とし、非公開 `LocalStructuredTextInferenceService` を同じ `:local_ai_text` process で起動する。
 - main process で selected model、backend、speculative decoding、effective context token count、model revision を snapshot 化し、child 専用 preference へ適用する。main process の preference を child の同期ストアにはしない。

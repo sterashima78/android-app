@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-20
+- Amended by: [ADR-0267](0267-podcast-news-exclusion-filter.md)
 - Refines: [ADR-0059](0059-current-version-compatibility-baseline.md), [ADR-0060](0060-converge-to-current-persisted-data-formats.md), [ADR-0250](0250-podcast-owned-feed-sources.md), [ADR-0255](0255-podcast-playback-chapters.md), [ADR-0257](0257-podcast-chapter-generation-jobs.md), [ADR-0259](0259-podcast-news-clustering.md)
 
 ## Context

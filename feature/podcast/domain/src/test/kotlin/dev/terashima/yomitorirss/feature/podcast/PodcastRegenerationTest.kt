@@ -175,6 +175,11 @@ private class RegenerationRepository(
   override suspend fun listPrograms(): List<PodcastProgram> = listOf(program)
   override suspend fun saveProgram(program: PodcastProgram) = error("unused")
   override suspend fun deleteProgram(programId: String) = error("unused")
+  override suspend fun recordExcludedEntries(
+    programId: String,
+    entries: List<PodcastFeedEntry>,
+    excludedAtEpochMillis: Long,
+  ) = Unit
   override suspend fun listEpisodes(programId: String): List<PodcastEpisode> = listOf(episode)
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? = null
   override suspend fun reserveEpisode(

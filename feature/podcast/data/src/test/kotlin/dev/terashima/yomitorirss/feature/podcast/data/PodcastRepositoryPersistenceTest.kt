@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.DatabaseSchema
+import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
@@ -40,7 +41,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 38, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 39, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -77,6 +78,95 @@ class PodcastRepositoryPersistenceTest {
     repository.deleteProgram("program-1")
     repository.deleteSource(source.id)
     assertTrue(repository.listSources().isEmpty())
+  }
+
+  @Test
+  fun `番組の除外条件と除外済みentryを永続化する`() = runSuspend {
+    val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
+    val program = PodcastProgram(
+      id = "program-1",
+      name = "朝のニュース",
+      sourceIds = setOf(source.id),
+      provider = PodcastGenerationProvider.LOCAL,
+      exclusionPrompt = "カテゴリAの記事は除外する",
+    )
+    val entry = PodcastFeedEntry(
+      articleId = "source-1:article-1",
+      feedId = source.id,
+      title = "記事",
+      sourceTitle = source.name,
+      publishedAtEpochMillis = 10L,
+      articleUrl = "https://example.invalid/article-1",
+      feedContent = "本文",
+    )
+    repository.saveSource(source)
+    repository.saveProgram(program)
+    val candidateFilter = SqlitePodcastCandidateFilter(DatabaseConnection(database))
+
+    assertEquals(program, repository.listPrograms().single())
+    assertEquals(listOf(entry), candidateFilter.availableEntries(program.id, listOf(entry)))
+
+    repository.recordExcludedEntries(program.id, listOf(entry), 100L)
+
+    assertTrue(candidateFilter.availableEntries(program.id, listOf(entry)).isEmpty())
+    assertNull(repository.reserveEpisode(program, listOf(entry), 200L))
+  }
+
+  @Test
+  fun `database version 38から39へ除外設定schemaを移行する`() = runSuspend {
+    database.close()
+    context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    val legacySchema = DatabaseSchema(
+      version = 38,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "podcast",
+          createSchema = { db ->
+            db.execSQL(
+              "CREATE TABLE podcast_programs(" +
+                "id TEXT PRIMARY KEY NOT NULL," +
+                "name TEXT NOT NULL," +
+                "source_ids TEXT NOT NULL," +
+                "provider TEXT NOT NULL," +
+                "schedule_enabled INTEGER NOT NULL DEFAULT 0," +
+                "schedule_hour INTEGER NOT NULL DEFAULT 7," +
+                "schedule_minute INTEGER NOT NULL DEFAULT 0," +
+                "max_articles INTEGER NOT NULL DEFAULT 12" +
+                ")",
+            )
+            db.execSQL(
+              "INSERT INTO podcast_programs(id,name,source_ids,provider,max_articles) VALUES(?,?,?,?,?)",
+              arrayOf<Any>("program-1", "番組", "source-1", PodcastGenerationProvider.LOCAL.name, 12),
+            )
+          },
+        ),
+      ),
+    )
+    YomitoriDatabase.create(context, legacySchema).close()
+
+    database = YomitoriDatabase.create(
+      context,
+      DatabaseSchema(version = 39, contributions = listOf(podcastDatabaseSchema)),
+    )
+    repository = SqlitePodcastRepository(DatabaseConnection(database))
+
+    val migrated = repository.listPrograms().single()
+    assertEquals("", migrated.exclusionPrompt)
+    repository.recordExcludedEntries(
+      migrated.id,
+      listOf(
+        PodcastFeedEntry(
+          articleId = "source-1:article-1",
+          feedId = "source-1",
+          title = "記事",
+          sourceTitle = null,
+          publishedAtEpochMillis = null,
+          articleUrl = "https://example.invalid/article-1",
+          feedContent = "本文",
+        ),
+      ),
+      100L,
+    )
   }
 
   @Test

@@ -42,6 +42,7 @@ data class PodcastProgram(
   val provider: PodcastGenerationProvider,
   val schedule: PodcastSchedule = PodcastSchedule(),
   val maxArticlesPerEpisode: Int = 12,
+  val exclusionPrompt: String = "",
 ) {
   init {
     require(id.isNotBlank()) { "program id must not be blank" }
@@ -178,11 +179,11 @@ interface PodcastFeedContentSource {
 }
 
 interface PodcastCandidateFilter {
-  suspend fun unconsumedEntries(programId: String, candidates: List<PodcastFeedEntry>): List<PodcastFeedEntry>
+  suspend fun availableEntries(programId: String, candidates: List<PodcastFeedEntry>): List<PodcastFeedEntry>
 }
 
 object AllPodcastCandidates : PodcastCandidateFilter {
-  override suspend fun unconsumedEntries(
+  override suspend fun availableEntries(
     programId: String,
     candidates: List<PodcastFeedEntry>,
   ): List<PodcastFeedEntry> = candidates
@@ -197,6 +198,7 @@ interface PodcastRepository {
   suspend fun findProgram(programId: String): PodcastProgram?
   suspend fun saveProgram(program: PodcastProgram)
   suspend fun deleteProgram(programId: String)
+  suspend fun recordExcludedEntries(programId: String, entries: List<PodcastFeedEntry>, excludedAtEpochMillis: Long)
   suspend fun listEpisodes(programId: String): List<PodcastEpisode>
   suspend fun findEpisode(episodeId: String): PodcastEpisode?
   suspend fun archiveEpisode(episodeId: String): PodcastEpisode
@@ -228,6 +230,27 @@ interface PodcastRepository {
 
 interface PodcastScriptGenerator {
   suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String
+}
+
+data class PodcastNewsExclusionResult(
+  val included: List<PodcastFeedEntry>,
+  val excluded: List<PodcastFeedEntry>,
+)
+
+interface PodcastNewsExcluder {
+  suspend fun filter(
+    provider: PodcastGenerationProvider,
+    exclusionPrompt: String,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastNewsExclusionResult
+}
+
+object IncludeAllPodcastNews : PodcastNewsExcluder {
+  override suspend fun filter(
+    provider: PodcastGenerationProvider,
+    exclusionPrompt: String,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastNewsExclusionResult = PodcastNewsExclusionResult(candidates, emptyList())
 }
 
 data class PodcastNewsClusteringResult(
@@ -268,6 +291,7 @@ class GeneratePodcastEpisodeUseCase(
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
   private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
+  private val newsExcluder: PodcastNewsExcluder = IncludeAllPodcastNews,
   private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
 ) {
   private val activeProgramIds = mutableSetOf<String>()
@@ -280,9 +304,21 @@ class GeneratePodcastEpisodeUseCase(
       "番組に利用できないソースがあります。番組設定を確認してください"
     }
     val candidates = feedContentSource.latestEntries(sources, Int.MAX_VALUE)
-    val unconsumedCandidates = candidateFilter.unconsumedEntries(program.id, candidates)
-    if (unconsumedCandidates.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
-    val clustered = clusterCandidates(program, unconsumedCandidates)
+    val availableCandidates = candidateFilter.availableEntries(program.id, candidates)
+    if (availableCandidates.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val exclusion = if (program.exclusionPrompt.isBlank()) {
+      PodcastNewsExclusionResult(availableCandidates, emptyList())
+    } else {
+      validateExclusionResult(
+        availableCandidates,
+        newsExcluder.filter(program.provider, program.exclusionPrompt, availableCandidates),
+      )
+    }
+    if (exclusion.excluded.isNotEmpty()) {
+      repository.recordExcludedEntries(program.id, exclusion.excluded, nowEpochMillis())
+    }
+    if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val clustered = clusterCandidates(program, exclusion.included)
     val reserved = repository.reserveEpisode(
       program = program,
       candidates = clustered.entries,
@@ -320,6 +356,20 @@ class GeneratePodcastEpisodeUseCase(
     val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
     val interrupted = repository.findInterruptedGenerationEpisode(programId) ?: return@withProgramGeneration null
     generateReserved(program, interrupted)
+  }
+
+  private fun validateExclusionResult(
+    candidates: List<PodcastFeedEntry>,
+    result: PodcastNewsExclusionResult,
+  ): PodcastNewsExclusionResult {
+    val expected = candidates.groupingBy { it }.eachCount()
+    val classified = (result.included + result.excluded).groupingBy { it }.eachCount()
+    val overlap = result.included.toSet().intersect(result.excluded.toSet())
+    return if (classified == expected && overlap.isEmpty()) {
+      result
+    } else {
+      PodcastNewsExclusionResult(candidates, emptyList())
+    }
   }
 
   private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): PodcastClusteredCandidates {

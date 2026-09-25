@@ -169,6 +169,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0265: ニュースポッドキャストのクラウドチャプター生成を有界並列化する](0265-podcast-cloud-chapter-parallelism.md)
 - [ADR-0266: ローカル単発推論の subprocess 待機を有界化する](0266-local-text-inference-watchdog.md)
+- [ADR-0267: ニュースポッドキャストで番組単位の除外条件を適用する](0267-podcast-news-exclusion-filter.md)
 
 ### Content / summary / knowledge
 
@@ -239,3 +240,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0252](0252-lock-embedded-game-orientation.md)
 - [ADR-0264](0264-database-v38-compatibility-baseline.md)
 - [ADR-0265](0265-podcast-cloud-chapter-parallelism.md)
+- [ADR-0267](0267-podcast-news-exclusion-filter.md)
