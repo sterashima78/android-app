@@ -170,6 +170,14 @@ class RssRecommendationService(
   ): RssRecommendationAssessment? = inferenceMutex.withLock {
     val policy = repository.loadPolicy()
     if (!policy.enabled || policy.revision != revision) return@withLock null
+    val existing = repository.loadAssessments(listOf(article.id))[article.id]
+    if (
+      existing?.revision == revision &&
+      !(existing is RssRecommendationAssessment.Unscored &&
+        existing.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
+    ) {
+      return@withLock existing
+    }
 
     val assessedAt = nowMillis()
     val assessment = try {
