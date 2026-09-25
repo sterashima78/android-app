@@ -455,11 +455,11 @@ class GeneratePodcastEpisodeUseCase(
 
       val progressMutex = Mutex()
       var completedChapters = totalChapters - pendingPositions.size
-      onProgress(PodcastGenerationProgress(completedChapters, totalChapters))
+      reportProgress(onProgress, PodcastGenerationProgress(completedChapters, totalChapters))
       val chapterCompleted: suspend () -> Unit = {
         progressMutex.withLock {
           completedChapters += 1
-          onProgress(PodcastGenerationProgress(completedChapters, totalChapters))
+          reportProgress(onProgress, PodcastGenerationProgress(completedChapters, totalChapters))
         }
       }
 
@@ -525,6 +525,19 @@ class GeneratePodcastEpisodeUseCase(
       val message = error.message ?: error::class.simpleName ?: "generation failed"
       runCatching { repository.failChapter(episodeId, position, message) }
       throw error
+    }
+  }
+
+  private suspend fun reportProgress(
+    onProgress: suspend (PodcastGenerationProgress) -> Unit,
+    progress: PodcastGenerationProgress,
+  ) {
+    try {
+      onProgress(progress)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      // Progress is an observational projection. Failure to publish it must not corrupt chapter state.
     }
   }
 
