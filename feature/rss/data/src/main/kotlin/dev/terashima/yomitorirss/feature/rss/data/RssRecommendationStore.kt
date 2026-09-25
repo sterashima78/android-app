@@ -3,17 +3,24 @@ package dev.terashima.yomitorirss.feature.rss.data
 import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedback
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationRepository
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTask
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import java.util.UUID
+import kotlinx.coroutines.flow.StateFlow
 
 class DefaultRssRecommendationRepository(
   private val database: DatabaseConnection,
+  private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
 ) : RssRecommendationRepository {
+  override val changes: StateFlow<Long> = dataChanges.version
   override fun loadPolicy(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
@@ -38,14 +45,20 @@ class DefaultRssRecommendationRepository(
     require(normalized.length <= MAX_RECOMMENDATION_CONDITION_LENGTH) { "除外条件が長すぎます" }
     val current = loadPolicy()
     if (current.manualCondition == normalized) return current
-    return current.copy(manualCondition = normalized, revision = current.revision + 1).also(::savePolicy)
+    return current.copy(manualCondition = normalized, revision = current.revision + 1).also { policy ->
+      savePolicy(policy)
+      dataChanges.notifyChanged()
+    }
   }
 
   override fun resetLearnedCondition(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     val current = loadPolicy()
     if (current.learnedCondition.isBlank()) return current
-    return current.copy(learnedCondition = "", revision = current.revision + 1).also(::savePolicy)
+    return current.copy(learnedCondition = "", revision = current.revision + 1).also { policy ->
+      savePolicy(policy)
+      dataChanges.notifyChanged()
+    }
   }
 
   override fun loadAssessments(articleIds: Collection<String>): Map<String, RssRecommendationAssessment> {
@@ -93,6 +106,7 @@ class DefaultRssRecommendationRepository(
         insertWithOnConflict("rss_recommendation_assessments", null, values, SQLiteDatabase.CONFLICT_REPLACE)
       }
     }
+    dataChanges.notifyChanged()
   }
 
   override fun addFeedback(
@@ -135,12 +149,14 @@ class DefaultRssRecommendationRepository(
     database.write {
       insertWithOnConflict("rss_recommendation_feedback", null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
+    dataChanges.notifyChanged()
     return RssRecommendationFeedback(id, articleId, title, previousAssessment, createdAt)
   }
 
   override fun removeFeedback(feedbackId: String) {
     ensureRssRecommendationSchema(database.writable)
     database.write { delete("rss_recommendation_feedback", "id=?", arrayOf(feedbackId)) }
+    dataChanges.notifyChanged()
   }
 
   override fun listPendingFeedback(): List<RssRecommendationFeedback> {
@@ -180,7 +196,118 @@ class DefaultRssRecommendationRepository(
         }
       }
     }
+    dataChanges.notifyChanged()
     return updated
+  }
+
+  override fun enqueueTasks(articles: List<Article>, revision: Long) {
+    ensureRssRecommendationSchema(database.writable)
+    val queuedAt = System.currentTimeMillis()
+    database.transaction {
+      delete("rss_recommendation_tasks", "revision<>?", arrayOf(revision.toString()))
+      articles.distinctBy(Article::id).forEach { article ->
+        insertWithOnConflict(
+          "rss_recommendation_tasks",
+          null,
+          ContentValues().apply {
+            put("article_id", article.id)
+            put("title", article.title)
+            put("revision", revision)
+            put("state", TASK_QUEUED)
+            put("queued_at", queuedAt)
+            putNull("started_at")
+          },
+          SQLiteDatabase.CONFLICT_IGNORE,
+        )
+      }
+    }
+  }
+
+  override fun listTasks(): List<RssRecommendationTask> {
+    ensureRssRecommendationSchema(database.writable)
+    return database.readable.rawQuery(
+      """
+        SELECT article_id, title, revision, state, queued_at, started_at
+        FROM rss_recommendation_tasks
+        ORDER BY queued_at, article_id
+      """.trimIndent(),
+      emptyArray<String>(),
+    ).use { cursor ->
+      buildList { while (cursor.moveToNext()) add(cursor.recommendationTask()) }
+    }
+  }
+
+  override fun claimNextTask(): RssRecommendationTask? {
+    ensureRssRecommendationSchema(database.writable)
+    val startedAt = System.currentTimeMillis()
+    return database.transaction {
+      val queued = rawQuery(
+        """
+          SELECT article_id, title, revision, state, queued_at, started_at
+          FROM rss_recommendation_tasks
+          WHERE state=?
+          ORDER BY queued_at, article_id
+          LIMIT 1
+        """.trimIndent(),
+        arrayOf(TASK_QUEUED),
+      ).use { cursor ->
+        if (cursor.moveToFirst()) cursor.recommendationTask() else null
+      } ?: return@transaction null
+      val updated = update(
+        "rss_recommendation_tasks",
+        ContentValues().apply {
+          put("state", TASK_RUNNING)
+          put("started_at", startedAt)
+        },
+        "article_id=? AND revision=? AND state=?",
+        arrayOf(queued.articleId, queued.revision.toString(), TASK_QUEUED),
+      )
+      if (updated == 1) {
+        queued.copy(state = RssRecommendationTaskState.RUNNING, startedAt = startedAt)
+      } else {
+        null
+      }
+    }
+  }
+
+  override fun completeTask(articleId: String, revision: Long) {
+    ensureRssRecommendationSchema(database.writable)
+    database.writable.delete(
+      "rss_recommendation_tasks",
+      "article_id=? AND revision=?",
+      arrayOf(articleId, revision.toString()),
+    )
+  }
+
+  override fun requeueTask(articleId: String, revision: Long) {
+    ensureRssRecommendationSchema(database.writable)
+    database.writable.update(
+      "rss_recommendation_tasks",
+      ContentValues().apply {
+        put("state", TASK_QUEUED)
+        putNull("started_at")
+      },
+      "article_id=? AND revision=?",
+      arrayOf(articleId, revision.toString()),
+    )
+  }
+
+  override fun requeueInterruptedTasks() {
+    ensureRssRecommendationSchema(database.writable)
+    database.writable.update(
+      "rss_recommendation_tasks",
+      ContentValues().apply {
+        put("state", TASK_QUEUED)
+        putNull("started_at")
+      },
+      "state=?",
+      arrayOf(TASK_RUNNING),
+    )
+  }
+
+  override fun clearTasks() {
+    ensureRssRecommendationSchema(database.writable)
+    database.writable.delete("rss_recommendation_tasks", null, null)
   }
 
   private fun savePolicy(policy: RssRecommendationPolicy) {
@@ -228,6 +355,19 @@ internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
     """.trimIndent(),
   )
   db.execSQL("CREATE INDEX IF NOT EXISTS rss_recommendation_feedback_created_at ON rss_recommendation_feedback(created_at,id)")
+  db.execSQL(
+    """
+      CREATE TABLE IF NOT EXISTS rss_recommendation_tasks(
+        article_id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        revision INTEGER NOT NULL,
+        state TEXT NOT NULL,
+        queued_at INTEGER NOT NULL,
+        started_at INTEGER
+      )
+    """.trimIndent(),
+  )
+  db.execSQL("CREATE INDEX IF NOT EXISTS rss_recommendation_tasks_state ON rss_recommendation_tasks(state,queued_at)")
 }
 
 private fun savePolicyInTransaction(db: SQLiteDatabase, policy: RssRecommendationPolicy) {
@@ -258,6 +398,19 @@ private fun Cursor.assessment(offset: Int): RssRecommendationAssessment {
   }
 }
 
+private fun Cursor.recommendationTask(): RssRecommendationTask = RssRecommendationTask(
+  articleId = getString(0),
+  title = getString(1),
+  revision = getLong(2),
+  state = when (getString(3)) {
+    TASK_QUEUED -> RssRecommendationTaskState.QUEUED
+    TASK_RUNNING -> RssRecommendationTaskState.RUNNING
+    else -> error("Unknown RSS recommendation task state: ${getString(3)}")
+  },
+  queuedAt = getLong(4),
+  startedAt = if (isNull(5)) null else getLong(5),
+)
+
 private fun Cursor.feedback(): RssRecommendationFeedback {
   val previous = if (isNull(3)) {
     null
@@ -285,5 +438,7 @@ private fun Cursor.feedback(): RssRecommendationFeedback {
 
 private const val STATUS_SCORED = "SCORED"
 private const val STATUS_UNSCORED = "UNSCORED"
+private const val TASK_QUEUED = "QUEUED"
+private const val TASK_RUNNING = "RUNNING"
 private const val SQLITE_BIND_CHUNK = 500
 private const val MAX_RECOMMENDATION_CONDITION_LENGTH = 12_000
