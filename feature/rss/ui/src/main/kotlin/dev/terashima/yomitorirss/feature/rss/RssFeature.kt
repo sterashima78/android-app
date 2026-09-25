@@ -17,11 +17,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.terashima.yomitorirss.core.designsystem.SwipeBehavior
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
+
+internal val rssUnreadLeftSwipeBehavior = SwipeBehavior.DeliberateFarAction
 
 enum class RssTab(val label: String) {
   UNREAD("未読"),
@@ -78,6 +81,7 @@ fun RssScreen(
       farLeft = SwipeChoice("除外参考", MaterialTheme.colorScheme.error, onExclusionReference),
       right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
       farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
+      leftSwipeBehavior = rssUnreadLeftSwipeBehavior,
       onOpen = onOpen,
       onSummarize = onSummarize,
       onEditTags = onEditTags,
