@@ -1,13 +1,14 @@
 package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.Article
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RssRecommendationServiceTest {
   @Test
-  fun `除外条件がなければスコアリングを実行しない`() = kotlinx.coroutines.test.runTest {
+  fun `除外条件がなければスコアリングを実行しない`() = runBlocking {
     val repository = FakeRecommendationRepository()
     val engine = FakeRecommendationEngine()
     val service = RssRecommendationService(repository, engine, nowMillis = { 100L })
@@ -19,7 +20,7 @@ class RssRecommendationServiceTest {
   }
 
   @Test
-  fun `評価可能な記事だけ数値スコアとして保存する`() = kotlinx.coroutines.test.runTest {
+  fun `評価可能な記事だけ数値スコアとして保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 3L),
     )
@@ -50,7 +51,7 @@ class RssRecommendationServiceTest {
   }
 
   @Test
-  fun `推論失敗は10にせず未評価理由として保存する`() = kotlinx.coroutines.test.runTest {
+  fun `推論失敗は10にせず未評価理由として保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 1L),
     )
@@ -70,7 +71,7 @@ class RssRecommendationServiceTest {
   }
 
   @Test
-  fun `条件revisionが変わると古い評価を再利用しない`() = kotlinx.coroutines.test.runTest {
+  fun `条件revisionが変わると古い評価を再利用しない`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "条件", revision = 2L),
       assessments = mutableMapOf(
