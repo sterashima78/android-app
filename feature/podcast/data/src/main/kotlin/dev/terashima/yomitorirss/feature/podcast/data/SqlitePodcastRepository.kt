@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisode
@@ -20,10 +21,14 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class SqlitePodcastRepository(
   private val database: DatabaseConnection,
+  persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) : PodcastRepository, PodcastGenerationTaskReader {
+  override val changes: Flow<Unit> = persistenceChanges.version.map { Unit }
   override suspend fun listSources(): List<PodcastSource> = database.readable.rawQuery(
     "SELECT * FROM podcast_sources ORDER BY name COLLATE NOCASE",
     null,
