@@ -40,6 +40,7 @@ internal class RssRecommendationTaskQueueAdapter(
   }
 
   fun resumeFromGlobalGate() {
+    scheduler.setResumeOnChargingScheduled(false)
     scheduler.kick()
   }
 
