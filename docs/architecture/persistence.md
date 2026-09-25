@@ -96,8 +96,9 @@ RSS記事推薦では同じRSS schema initializerから次のRSS-owned tableを�
 - `rss_recommendation_policy`: 手動除外条件、学習された除外条件、条件revision
 - `rss_recommendation_assessments`: Content article IDに対するscored / unscored評価、scoreまたはunscored reason、評価revision、評価時刻
 - `rss_recommendation_feedback`: 「除外参考」として未処理のarticle ID、title、直前評価snapshot、追加時刻
+- `rss_recommendation_tasks`: 推薦評価待ちarticle ID、title snapshot、条件revision、QUEUED / RUNNING、queue時刻
 
-assessment / feedbackはContent article IDを参照するが、Content-owned tableへのforeign keyやdirect table accessは持たない。記事の既読化はContent capabilityへ委譲する。feedbackは学習成功時に対象snapshot分だけ消費し、処理中に追加されたfeedbackは後続処理へ残す。これらも通常のdatabase snapshot backup対象とし、既存のRSS idempotent initializerでadditiveに作成するため、この追加だけを理由としたapplication database version bumpは行わない。
+assessment / feedback / taskはContent article IDを参照するが、Content-owned tableへのforeign keyやdirect table accessは持たない。記事の既読化はContent capabilityへ委譲する。feedbackは学習成功時に対象snapshot分だけ消費し、処理中に追加されたfeedbackは後続処理へ残す。policy / assessment / feedbackは通常のdatabase snapshot backup対象とする。一方 `rss_recommendation_tasks` はprocess / device再起動を越えて処理を継続するためSQLiteへ保持するtransient processing stateであり、queue mutation自体はbackup schedulingの契機にしない。database snapshotにはtransient tableが含まれ得るため、restore後はRSS-owned `RssRecommendationBackupRestoreInitializer` が `localTransaction` でこのqueueを破棄し、復元前端末の処理途中状態を再開しない。fresh schemaとRSS idempotent initializerでadditiveに作成するため、この追加だけを理由としたapplication database version bumpは行わない。
 
 ### Library schema
 
@@ -193,7 +194,7 @@ foreign key の存在、同一 transaction の利用、同一 SQLite file の利
 | Table group | Owner module |
 | --- | --- |
 | `articles` | `:feature:article:data` |
-| `feeds`, `feed_folders`, `rss_web_scraping_rules` | `:feature:rss:data` |
+| `feeds`, `feed_folders`, `rss_web_scraping_rules`, `rss_recommendation_*` | `:feature:rss:data` |
 | `bookmarks`, tags/folders | `:feature:bookmark:data` |
 | `article_summaries`, `summary_*` | `:feature:summary:data` |
 | `mail_*` | `:feature:mail:data` |
@@ -237,6 +238,7 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - Video はSMB file accessでLibrary tableを直接参照せず、Library-owned `SmbMediaFileAccess` にVideo-owned share / root pathを明示してlisting / random-access readを取得する。
 - 統合未読表示とbackground refreshはprovider-specific tableを直接参照せず、Video-owned `VideoProviderRepository` を利用する。
 - Backup restore は Library の cache invalidation を `LibraryBackupRestoreInitializer` に委譲し、Library-owned table を直接変更しない。
+- Backup restore は RSS の transient recommendation queue invalidation も `RssRecommendationBackupRestoreInitializer` に委譲し、Backup Context からRSS tableを直接変更しない。
 
 ### Named Projection
 

@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.Article
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -70,7 +71,34 @@ data class RssRecommendationSnapshot(
   val latestPendingFeedbackAt: Long?,
 )
 
-interface RssRecommendationRepository {
+enum class RssRecommendationTaskState {
+  QUEUED,
+  RUNNING,
+}
+
+data class RssRecommendationTask(
+  val articleId: String,
+  val title: String,
+  val revision: Long,
+  val state: RssRecommendationTaskState,
+  val queuedAt: Long,
+  val startedAt: Long?,
+)
+
+interface RssRecommendationTaskReader {
+  fun listTasks(): List<RssRecommendationTask>
+}
+
+interface RssRecommendationTaskScheduler {
+  suspend fun enqueueForFeed(feedId: String)
+  suspend fun enqueueUnread()
+  fun kick()
+  suspend fun pauseForGlobalGate()
+  fun setResumeOnChargingScheduled(enabled: Boolean)
+}
+
+interface RssRecommendationRepository : RssRecommendationTaskReader {
+  val changes: StateFlow<Long>
   fun loadPolicy(): RssRecommendationPolicy
   fun saveManualCondition(condition: String): RssRecommendationPolicy
   fun resetLearnedCondition(): RssRecommendationPolicy
@@ -87,6 +115,13 @@ interface RssRecommendationRepository {
     feedbackIds: Set<String>,
     learnedCondition: String,
   ): RssRecommendationPolicy
+
+  fun enqueueTasks(articles: List<Article>, revision: Long)
+  fun claimNextTask(): RssRecommendationTask?
+  fun completeTask(articleId: String, revision: Long)
+  fun requeueTask(articleId: String, revision: Long)
+  fun requeueInterruptedTasks()
+  fun clearTasks()
 }
 
 interface RssRecommendationEngine {
@@ -109,6 +144,9 @@ class RssRecommendationService(
 ) {
   private val inferenceMutex = Mutex()
 
+  val changes: StateFlow<Long>
+    get() = repository.changes
+
   fun snapshot(articleIds: Collection<String>): RssRecommendationSnapshot {
     val policy = repository.loadPolicy()
     val currentAssessments = if (policy.enabled) {
@@ -126,63 +164,49 @@ class RssRecommendationService(
     )
   }
 
-  suspend fun refresh(articles: List<Article>): RssRecommendationSnapshot = inferenceMutex.withLock {
+  suspend fun scoreArticle(
+    article: Article,
+    revision: Long,
+  ): RssRecommendationAssessment? = inferenceMutex.withLock {
     val policy = repository.loadPolicy()
-    if (!policy.enabled || articles.isEmpty()) return snapshot(articles.map(Article::id))
-
-    val ids = articles.map(Article::id)
-    val existing = repository.loadAssessments(ids)
-    val candidates = articles.filter { article ->
-      val assessment = existing[article.id]
-      assessment == null ||
-        assessment.revision != policy.revision ||
-        (assessment is RssRecommendationAssessment.Unscored &&
-          assessment.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
+    if (!policy.enabled || policy.revision != revision) return@withLock null
+    val existing = repository.loadAssessments(listOf(article.id))[article.id]
+    if (
+      existing?.revision == revision &&
+      !(existing is RssRecommendationAssessment.Unscored &&
+        existing.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
+    ) {
+      return@withLock existing
     }
-    if (candidates.isNotEmpty()) {
-      val decisions = try {
-        engine.score(
-          condition = policy.effectiveCondition(),
-          titles = candidates.map(Article::title),
-        ).also {
-          require(it.size == candidates.size) { "recommendation decisions must match candidate count" }
-        }
-      } catch (error: CancellationException) {
-        throw error
-      } catch (_: Throwable) {
-        val failedAt = nowMillis()
-        repository.saveAssessments(
-          candidates.associate { article ->
-            article.id to RssRecommendationAssessment.Unscored(
-              reason = RssRecommendationUnscoredReason.INFERENCE_FAILED,
-              revision = policy.revision,
-              assessedAt = failedAt,
-            )
-          },
-        )
-        return snapshot(ids)
-      }
 
-      val assessedAt = nowMillis()
-      repository.saveAssessments(
-        candidates.mapIndexed { index, article ->
-          val assessment = when (val decision = decisions[index]) {
-            is RssRecommendationDecision.Scored -> RssRecommendationAssessment.Scored(
-              score = decision.score,
-              revision = policy.revision,
-              assessedAt = assessedAt,
-            )
-            RssRecommendationDecision.InsufficientInformation -> RssRecommendationAssessment.Unscored(
-              reason = RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION,
-              revision = policy.revision,
-              assessedAt = assessedAt,
-            )
-          }
-          article.id to assessment
-        }.toMap(),
+    val assessedAt = nowMillis()
+    val assessment = try {
+      when (val decision = engine.score(
+        condition = policy.effectiveCondition(),
+        titles = listOf(article.title),
+      ).single()) {
+        is RssRecommendationDecision.Scored -> RssRecommendationAssessment.Scored(
+          score = decision.score,
+          revision = revision,
+          assessedAt = assessedAt,
+        )
+        RssRecommendationDecision.InsufficientInformation -> RssRecommendationAssessment.Unscored(
+          reason = RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION,
+          revision = revision,
+          assessedAt = assessedAt,
+        )
+      }
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      RssRecommendationAssessment.Unscored(
+        reason = RssRecommendationUnscoredReason.INFERENCE_FAILED,
+        revision = revision,
+        assessedAt = assessedAt,
       )
     }
-    return snapshot(ids)
+    repository.saveAssessments(mapOf(article.id to assessment))
+    assessment
   }
 
   fun saveManualCondition(condition: String): RssRecommendationPolicy =

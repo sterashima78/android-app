@@ -11,6 +11,8 @@ import dev.terashima.yomitorirss.feature.library.LibraryRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationRepository
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskReader
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
 import dev.terashima.yomitorirss.feature.summary.SummaryTaskQueueRepository
 
 class CompositeAiTaskQueueRepository(
@@ -23,6 +25,8 @@ class CompositeAiTaskQueueRepository(
   smbMetadataNormalizationRepository: SmbMetadataNormalizationRepository? = null,
   smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler? = null,
   podcastTaskReader: PodcastGenerationTaskReader? = null,
+  rssRecommendationTaskReader: RssRecommendationTaskReader? = null,
+  rssRecommendationTaskScheduler: RssRecommendationTaskScheduler? = null,
 ) : AiTaskQueueRepository {
   private val summary = SummaryTaskQueueAdapter(summaryRepository)
   private val library = LibraryTaskQueueAdapter(
@@ -46,11 +50,22 @@ class CompositeAiTaskQueueRepository(
     null
   }
   private val podcast = podcastTaskReader?.let(::PodcastTaskQueueAdapter)
+  private val rssRecommendation = if (
+    rssRecommendationTaskReader != null && rssRecommendationTaskScheduler != null
+  ) {
+    RssRecommendationTaskQueueAdapter(
+      reader = rssRecommendationTaskReader,
+      scheduler = rssRecommendationTaskScheduler,
+    )
+  } else {
+    null
+  }
 
   override suspend fun listTasks(): List<AiTaskQueueItem> {
     val localPaused = summary.executionState().localPaused
     return library.tasks(localPaused) +
       smbMetadata.orEmptyTasks(localPaused) +
+      rssRecommendation.orEmptyTasks(localPaused) +
       summary.tasks() +
       knowledge.orEmptyTasks() +
       podcast.orEmptyTasks()
@@ -67,6 +82,7 @@ class CompositeAiTaskQueueRepository(
 
   override suspend fun kick() {
     summary.kick()
+    rssRecommendation?.kick()
     library.kickIfRunning()
     smbMetadata?.kickIfRunning()
     knowledge?.kick()
@@ -78,6 +94,7 @@ class CompositeAiTaskQueueRepository(
     if (paused) {
       summary.setLocalPaused(true)
       try {
+        rssRecommendation?.pauseForGlobalGate()
         library.pauseForGlobalGate(libraryStatus)
         smbMetadata?.pauseForGlobalGate()
         if (pauseKnowledge) {
@@ -86,6 +103,7 @@ class CompositeAiTaskQueueRepository(
         }
       } catch (error: Throwable) {
         runCatching { summary.setLocalPaused(false) }
+        runCatching { rssRecommendation?.resumeFromGlobalGate() }
         runCatching { library.restoreAfterPauseFailure(libraryStatus) }
         runCatching { smbMetadata?.resumeFromGlobalGate() }
         if (pauseKnowledge) {
@@ -101,6 +119,7 @@ class CompositeAiTaskQueueRepository(
 
     summary.setLocalPaused(false)
     try {
+      rssRecommendation?.resumeFromGlobalGate()
       library.resumeFromGlobalGate(libraryStatus)
       smbMetadata?.resumeFromGlobalGate()
       if (pauseKnowledge) {
@@ -109,6 +128,7 @@ class CompositeAiTaskQueueRepository(
       }
     } catch (error: Throwable) {
       runCatching { summary.setLocalPaused(true) }
+      runCatching { rssRecommendation?.pauseForGlobalGate() }
       runCatching { library.restorePauseAfterResumeFailure(libraryStatus) }
       runCatching { smbMetadata?.pauseForGlobalGate() }
       if (pauseKnowledge) {
@@ -151,6 +171,7 @@ class CompositeAiTaskQueueRepository(
     try {
       val localPaused = summary.executionState().localPaused
       library.setResumeOnChargingScheduled(enabled, localPaused)
+      rssRecommendation?.setResumeOnChargingScheduled(enabled, localPaused)
       smbMetadata?.setResumeOnChargingScheduled(enabled, localPaused)
       if (knowledge?.usesLocalProvider() == true) {
         knowledge.setResumeOnChargingScheduled(enabled && localPaused)
@@ -160,6 +181,7 @@ class CompositeAiTaskQueueRepository(
       runCatching {
         val localPaused = summary.executionState().localPaused
         library.setResumeOnChargingScheduled(previous, localPaused)
+        rssRecommendation?.setResumeOnChargingScheduled(previous, localPaused)
         smbMetadata?.setResumeOnChargingScheduled(previous, localPaused)
         if (knowledge?.usesLocalProvider() == true) {
           knowledge.setResumeOnChargingScheduled(previous && localPaused)
@@ -184,6 +206,10 @@ class CompositeAiTaskQueueRepository(
   }
 
   override suspend fun retryFailedBookmarkTasks(): Int = summary.retryFailedBookmarkTasks()
+
+  private fun RssRecommendationTaskQueueAdapter?.orEmptyTasks(
+    globalPaused: Boolean,
+  ): List<AiTaskQueueItem> = this?.tasks(globalPaused).orEmpty()
 
   private suspend fun KnowledgeTaskQueueAdapter?.orEmptyTasks(): List<AiTaskQueueItem> =
     this?.tasks().orEmpty()

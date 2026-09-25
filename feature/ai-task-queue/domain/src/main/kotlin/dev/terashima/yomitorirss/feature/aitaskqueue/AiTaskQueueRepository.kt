@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.aitaskqueue
 
 enum class AiTaskQueueItemKind {
   SUMMARY,
+  RSS_RECOMMENDATION,
   LIBRARY_ORGANIZATION,
   SMB_METADATA_NORMALIZATION,
   KNOWLEDGE_WIKI,

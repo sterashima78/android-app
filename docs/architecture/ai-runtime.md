@@ -17,7 +17,7 @@ Library organization は `AiTextInference.selectedModel()` から model / prompt
 
 Podcast のニュース候補除外と同一ニュース分類も同じ provider-neutral `AiStructuredTextInference` を利用する。除外判定は `submit_podcast_news_exclusion(decisions)`、同一ニュース分類は `submit_podcast_news_clusters(group_ids)` の tool arguments だけを結果として利用する。どちらも候補記事数と同じ長さの配列をfeature側で検証し、Local / Cloud の両方でstructured inference adapterを利用して通常テキストの分類結果は解析しない。
 
-RSSの記事推薦と除外参考からの条件改善も `AiStructuredTextInference` を利用する。RSS scoringは端末内structured inferenceだけへ接続し、候補記事のtitleだけを入力する。`submit_rss_recommendation_scores(statuses,scores)` のtool argumentsを候補順に検証し、数値評価不能は `insufficient_information`、tool call自体の失敗はfeature側の `INFERENCE_FAILED` として区別する。除外参考からの学習は `submit_rss_learned_exclusion_condition(condition)` を利用し、手動条件はAIに更新させない。通常テキストや自由形式JSONはどちらの結果としても解析しない。
+RSSの記事推薦と除外参考からの条件改善も `AiStructuredTextInference` を利用する。RSS scoringは端末内structured inferenceだけへ接続し、候補記事のtitleだけを入力する。RSS更新時に評価対象をRSS-owned article task queueへ投入し、RSS-owned Workerが1記事ずつclaimする。各記事のstructured inferenceごとに `LocalAiBackgroundTaskGate` のpermitを取得・返却するため、RSSの待機件数が多くても記事境界で他featureの高優先度taskへ実行機会を渡す。`submit_rss_recommendation_scores(statuses,scores)` のtool argumentsを候補順に検証し、数値評価不能は `insufficient_information`、tool call自体の失敗はfeature側の `INFERENCE_FAILED` として区別する。除外参考からの学習は `submit_rss_learned_exclusion_condition(condition)` を利用し、手動条件はAIに更新させない。通常テキストや自由形式JSONはどちらの結果としても解析しない。
 
 ## Execution routing
 
@@ -27,7 +27,7 @@ Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択す�
 - Summary / Knowledge の Local / ChatGPT 選択は各 feature の execution setting とする。
 - Local AI pause と Cloud AI pause は独立した runtime control とし、片方の停止が他方の task を止めない。
 - provider が変わった場合、background task の gate、network constraint、実際の inference 先が同じ設定を参照する。
-- AI task queue は provider-specific domain type へ依存せず、表示用 execution provider label と provider-neutral progress / failure state を扱う。
+- AI task queue は provider-specific domain type へ依存せず、表示用 execution provider label と provider-neutral progress / failure state を扱う。RSS推薦についてもRSS-owned reader / scheduler contractからtaskを投影し、RSS persistenceを直接所有・参照しない。
 
 ## Local one-shot text inference process boundary
 

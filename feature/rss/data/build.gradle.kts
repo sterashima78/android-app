@@ -25,7 +25,9 @@ dependencies {
   implementation(project(":feature:rss:domain"))
 
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+  implementation(libs.androidx.core.ktx)
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+  implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation(libs.jsoup)
   implementation(libs.kotlinx.serialization.json)
 

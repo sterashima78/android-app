@@ -28,12 +28,15 @@ import dev.terashima.yomitorirss.feature.reddit.data.DefaultRedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationService
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssRecommendationEngine
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssRecommendationRepository
 import dev.terashima.yomitorirss.feature.rss.data.RssContentClassificationSourceQuery
+import dev.terashima.yomitorirss.feature.rss.data.WorkManagerRssRecommendationTaskScheduler
 import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.summary.data.SummaryContentRetentionProtectionQuery
@@ -115,20 +118,40 @@ internal class AppContentRuntimeDependencies(
     )
   }
 
+  val rssRecommendationRepository: RssRecommendationRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultRssRecommendationRepository(database)
+  }
+
+  val rssRecommendationService: RssRecommendationService by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    RssRecommendationService(
+      repository = rssRecommendationRepository,
+      engine = DefaultRssRecommendationEngine(structuredTextInference),
+    )
+  }
+
+  val rssRecommendationTaskScheduler: RssRecommendationTaskScheduler by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    WorkManagerRssRecommendationTaskScheduler(
+      context = application,
+      articleRepository = articleRepository,
+      repository = rssRecommendationRepository,
+      articleSelector = RedditSourceBoundary::isNonRedditArticle,
+    )
+  }
+
   val feedRepository: FeedRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultFeedRepository(
       database = database,
       contentSourceGateway = contentSourceGateway,
       dataChanges = dataChanges,
+      onFeedUpdated = { feed ->
+        if (RedditSourceBoundary.isNonRedditFeed(feed.feedUrl)) {
+          rssRecommendationTaskScheduler.enqueueForFeed(feed.id)
+        }
+      },
       applicationContext = application,
       httpClient = httpClient,
-    )
-  }
-
-  val rssRecommendationService: RssRecommendationService by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    RssRecommendationService(
-      repository = DefaultRssRecommendationRepository(database),
-      engine = DefaultRssRecommendationEngine(structuredTextInference),
     )
   }
 

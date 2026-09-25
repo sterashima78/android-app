@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.backup.data.BackupWorkerFactory
 import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeWorkerFactory
 import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerFactory
 import dev.terashima.yomitorirss.feature.mail.data.MailWorkerFactory
+import dev.terashima.yomitorirss.feature.rss.data.RssRecommendationWorkerFactory
 import dev.terashima.yomitorirss.feature.summary.SummaryRuntimeDependencies
 import dev.terashima.yomitorirss.feature.summary.data.SummaryWorkerFactory
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetUpdater
@@ -20,6 +21,14 @@ import dev.terashima.yomitorirss.feature.widget.data.WidgetWorkerFactory
 fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
   DelegatingWorkerFactory().apply {
     addFactory(IntegratedRefreshWorkerFactory(container))
+    addFactory(
+      RssRecommendationWorkerFactory(
+        articleRepositoryProvider = { container.articleRepository },
+        repositoryProvider = { container.rssRecommendationRepository },
+        serviceProvider = { container.rssRecommendationService },
+        schedulerProvider = { container.rssRecommendationTaskScheduler },
+      ),
+    )
     addFactory(container.podcastWorkerFactory)
     addFactory(BackupWorkerFactory { container.backupRepository })
     addFactory(KnowledgeWorkerFactory { container.knowledgeBuildRunner })
