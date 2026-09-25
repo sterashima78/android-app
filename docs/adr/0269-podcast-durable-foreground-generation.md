@@ -24,7 +24,7 @@ Workerは入力operationとして通常生成と既存episodeの作り直しを�
 
 Podcast生成Workerは実処理開始前にforegroundへ昇格し、低重要度のongoing notificationを表示する。
 
-episodeが予約済みになった後は、durable chapter checkpointの完了数と総数を通知へ反映する。通知は生成継続のためのforeground service lifetimeを提供するもので、Podcastの新しいsource of truthにはしない。
+episodeが予約済みになった後は、durable chapter checkpointの完了数と総数を通知へ反映する。通知は生成継続のためのforeground service lifetimeを提供するもので、Podcastの新しいsource of truthにはしない。進捗projectionの通常失敗はchapter / episodeをFAILEDへ変更せず、coroutine cancellationだけを生成処理へ伝播する。
 
 ### 3. retryable cloud failureはchapter内でbounded retryする
 
@@ -92,4 +92,5 @@ database schemaと保存形式は変更しない。
 - 手動生成と作り直しが即時WorkManager workへ変換されることをunit testする。
 - operation未指定のworker inputを通常生成として扱うcompatibilityをtestする。
 - foreground notificationの初期状態とchapter進捗表示をtest可能な純粋関数へ分離してunit testする。
+- 進捗projectionの通常失敗がchapter / episode failureへ波及しないことをunit testする。
 - architecture verification、unit tests、lint、public repository verificationを実行する。
