@@ -134,8 +134,11 @@ private class RecoveryPodcastRepository(
   override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode =
     updateEpisode(episodeId) { it.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null) }
 
-  override suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode =
-    updateEpisode(episodeId) { it.copy(regenerationStatus = PodcastRegenerationStatus.RUNNING) }
+  override suspend fun prepareEpisodeRebuild(
+    episodeId: String,
+    candidates: List<PodcastFeedEntry>,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode = error("not used")
 
   override suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode =
     updateArticle(episodeId, position) {

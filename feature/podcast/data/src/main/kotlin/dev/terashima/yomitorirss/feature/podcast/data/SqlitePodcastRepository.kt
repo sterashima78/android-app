@@ -368,36 +368,57 @@ class SqlitePodcastRepository(
     return requireNotNull(findEpisode(episodeId))
   }
 
-  override suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode {
+  override suspend fun prepareEpisodeRebuild(
+    episodeId: String,
+    candidates: List<PodcastFeedEntry>,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode {
+    require(candidates.isNotEmpty()) { "rebuild candidates must not be empty" }
     database.transaction {
-      val regeneration = rawQuery(
+      val state = rawQuery(
         "SELECT status,regeneration_status FROM podcast_episodes WHERE id=? LIMIT 1",
         arrayOf(episodeId),
       ).use { cursor ->
         require(cursor.moveToFirst()) { "episode not found: $episodeId" }
-        require(PodcastEpisodeStatus.valueOf(cursor.getString(0)) == PodcastEpisodeStatus.READY) {
-          "only ready episodes can be regenerated"
-        }
-        if (cursor.isNull(1)) null else PodcastRegenerationStatus.valueOf(cursor.getString(1))
+        PodcastEpisodeStatus.valueOf(cursor.getString(0)) to
+          (if (cursor.isNull(1)) null else PodcastRegenerationStatus.valueOf(cursor.getString(1)))
       }
-      require(regeneration != PodcastRegenerationStatus.RUNNING) { "episode regeneration already running: $episodeId" }
-      if (regeneration == null) {
-        update(
+      require(state.first == PodcastEpisodeStatus.READY || state.first == PodcastEpisodeStatus.FAILED) {
+        "only ready or failed episodes can be rebuilt"
+      }
+      require(state.second != PodcastRegenerationStatus.RUNNING) { "episode regeneration already running: $episodeId" }
+
+      delete("podcast_episode_articles", "episode_id=?", arrayOf(episodeId))
+      candidates.forEachIndexed { position, article ->
+        insertOrThrow(
           "podcast_episode_articles",
+          null,
           ContentValues().apply {
+            put("episode_id", episodeId)
+            put("position", position)
+            if (article.chapterPosition == null) putNull("chapter_position") else put("chapter_position", article.chapterPosition)
+            put("article_id", article.articleId)
+            put("feed_id", article.feedId)
+            put("title", article.title)
+            if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
+            if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
+            if (article.articleUrl == null) putNull("article_url") else put("article_url", article.articleUrl)
+            put("feed_content", article.feedContent)
             put("chapter_status", PodcastChapterGenerationStatus.PENDING.name)
             putNull("chapter_script")
             putNull("chapter_error")
           },
-          "episode_id=?",
-          arrayOf(episodeId),
         )
       }
+
       val updated = update(
         "podcast_episodes",
         ContentValues().apply {
-          put("regeneration_status", PodcastRegenerationStatus.RUNNING.name)
+          put("status", PodcastEpisodeStatus.GENERATING.name)
+          putNull("script")
           putNull("error_message")
+          putNull("regeneration_status")
+          put("clustering_status", clusteringStatus.name)
         },
         "id=?",
         arrayOf(episodeId),

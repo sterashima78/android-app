@@ -58,7 +58,7 @@ data class PodcastFeedEntry(
   val title: String,
   val sourceTitle: String?,
   val publishedAtEpochMillis: Long?,
-  val articleUrl: String,
+  val articleUrl: String?,
   val feedContent: String,
   val chapterPosition: Int? = null,
 ) {
@@ -66,7 +66,7 @@ data class PodcastFeedEntry(
     require(articleId.isNotBlank()) { "article id must not be blank" }
     require(feedId.isNotBlank()) { "source id must not be blank" }
     require(title.isNotBlank()) { "article title must not be blank" }
-    require(articleUrl.isNotBlank()) { "article url must not be blank" }
+    require(articleUrl == null || articleUrl.isNotBlank()) { "article url must not be blank" }
     require(feedContent.isNotBlank()) { "feed content must not be blank" }
     require(chapterPosition == null || chapterPosition >= 0) { "chapterPosition must not be negative" }
   }
@@ -219,7 +219,11 @@ interface PodcastRepository {
     clusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? = reserveEpisode(program, candidates, createdAtEpochMillis)
   suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode
-  suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode
+  suspend fun prepareEpisodeRebuild(
+    episodeId: String,
+    candidates: List<PodcastFeedEntry>,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode
   suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode
   suspend fun completeChapter(episodeId: String, position: Int, script: String): PodcastEpisode
   suspend fun failChapter(episodeId: String, position: Int, message: String): PodcastEpisode
@@ -346,8 +350,22 @@ class GeneratePodcastEpisodeUseCase(
         "only ready or failed episodes can be regenerated"
       }
       val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
-      val prepared = if (episode.status == PodcastEpisodeStatus.READY) repository.prepareEpisodeRegeneration(episode.id)
-      else repository.prepareEpisodeRetry(episode.id)
+      val candidates = episode.articles.map(PodcastEpisodeArticle::toFeedEntry)
+      val exclusion = if (program.exclusionPrompt.isBlank()) {
+        PodcastNewsExclusionResult(candidates, emptyList())
+      } else {
+        validateExclusionResult(
+          candidates,
+          newsExcluder.filter(program.provider, program.exclusionPrompt, candidates),
+        )
+      }
+      require(exclusion.included.isNotEmpty()) { "現在の除外条件では再生成対象の記事がありません" }
+      val clustered = clusterCandidates(program, exclusion.included)
+      val prepared = repository.prepareEpisodeRebuild(
+        episodeId = episode.id,
+        candidates = clustered.entries,
+        clusteringStatus = clustered.status,
+      )
       generateReserved(program, prepared)
     }
   }
@@ -556,6 +574,16 @@ private fun stripRepeatedSpokenTitle(speech: String, spokenTitle: String?): Stri
   val repeatedTitle = Regex("""^\s*(?:タイトル|見出し)\s*[、,:：]\s*${Regex.escape(title)}\s*(?:[。.!！?？]\s*)?""")
   return speech.replaceFirst(repeatedTitle, "").trimStart()
 }
+
+private fun PodcastEpisodeArticle.toFeedEntry(): PodcastFeedEntry = PodcastFeedEntry(
+  articleId = articleId,
+  feedId = feedId,
+  title = title,
+  sourceTitle = sourceTitle,
+  publishedAtEpochMillis = publishedAtEpochMillis,
+  articleUrl = articleUrl,
+  feedContent = feedContent,
+)
 
 private fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
   "$programName / ${EPISODE_TITLE_FORMATTER.format(Instant.ofEpochMilli(createdAtEpochMillis).atZone(ZoneId.systemDefault()))}"

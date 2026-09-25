@@ -170,6 +170,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0265: ニュースポッドキャストのクラウドチャプター生成を有界並列化する](0265-podcast-cloud-chapter-parallelism.md)
 - [ADR-0266: ローカル単発推論の subprocess 待機を有界化する](0266-local-text-inference-watchdog.md)
 - [ADR-0267: ニュースポッドキャストで番組単位の除外条件を適用する](0267-podcast-news-exclusion-filter.md)
+- [ADR-0268: ニュースポッドキャストの再生成を現在条件での再構築にする](0268-podcast-rebuild-regeneration.md)
 
 ### Content / summary / knowledge
 

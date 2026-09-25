@@ -57,11 +57,11 @@ process終了やcoroutine cancellationによって初回生成の `GENERATING` �
 
 クラウドchapterの通常生成エラーは他の独立chapterをキャンセルせず、同じ並列batch内で成功可能なchapterを最後まで処理してcheckpointする。外部からのcoroutine cancellationだけは並列batch全体へ伝播させる。
 
-`FAILED` episodeの再試行は同じ記事・cluster snapshotを使い、`READY` checkpointを再利用して失敗・未完了chapterだけを続行する。
+`retry()` と中断再開の内部経路は同じ記事・cluster snapshotを使い、`READY` checkpointを再利用して失敗・未完了chapterだけを続行する。
 
-`READY` episodeの明示的な再生成では、既存のepisode scriptと `READY` 状態を再生可能な正本として保持しながら `regeneration_status=RUNNING` とchapter checkpointを使って新しい原稿を構築する。最初の再生成開始時だけcheckpointを新しいattemptの `PENDING` へ戻す。途中で失敗した場合は `regeneration_status=FAILED` とし、既存scriptを保持する。再実行では完成済みcheckpointを再利用し、全chapter完成時だけ同じepisode IDのscriptを置き換えて `regeneration_status` を消去する。再生成時にもcluster境界は変更しない。
+利用者が `READY` または `FAILED` episodeを明示的に「現在の条件で作り直す」場合は別経路とする。保存済みarticle snapshotを `PodcastFeedEntry` へ戻し、現在の番組の除外条件を再適用した後、`PodcastNewsClusterer` でcluster境界を再計算する。全候補が除外された場合は既存episodeを変更せず終了する。候補が残る場合は同じepisode IDの `podcast_episode_articles` を新しいarticle / cluster snapshotへtransactionで置き換え、episode scriptを消去して `GENERATING` へ戻す。以降は通常生成と同じcheckpoint生成を行い、失敗時は `FAILED` とする。
 
-`regeneration_status=RUNNING` のepisodeでは、同じepisodeへの重複再生成、archive、deleteを拒否する。これらの操作とcheckpoint更新を同時に進めない。`regeneration_status=FAILED` は再試行可能なattemptとして保持するが、archiveまたはdeleteを選んだ場合はattempt状態を閉じる。archiveでは既存scriptを保持したまま `regeneration_status` と再生成errorを消去する。
+旧versionで開始済みの `regeneration_status=RUNNING` episodeは互換のため従来どおり同じsnapshotから再開する。新しい明示的な作り直しでは `regeneration_status` を新規作成しない。`regeneration_status=RUNNING` のepisodeでは重複操作、archive、deleteを引き続き拒否する。
 
 Podcast生成や再生はreader側の記事を既読化しない。
 
@@ -137,8 +137,8 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - episode scriptは全checkpoint完成後にchapter順で決定的に組み立てる。
 - 日本語見出しはchapterごとのAI生成結果から再生時に抽出し、新しい独立したdurable source of truthを追加しない。
 - 日本語見出しを抽出できない旧形式chapterは保存済み記事titleへfallbackする。
-- 中断された初回生成または再生成は同じ記事・cluster snapshotとcheckpointを利用し、新しいfeed候補を予約しない。
-- `READY` episodeの再生成失敗では既存scriptを失わない。
+- 中断された生成は同じ記事・cluster snapshotとcheckpointを利用し、新しいfeed候補を予約しない。
+- 明示的な作り直しはfeedを再取得せず保存済み記事へ現在の除外条件とクラスタリングを再適用し、開始後は旧scriptを保持しない。
 - `regeneration_status=RUNNING` のepisodeへ重複再生成、archive、deleteを行わない。
 - `ARCHIVED` episodeは再生可能な原稿とsnapshotを保持し、復元時は同じepisode IDで `READY` へ戻る。
 - `DELETED` episodeは原稿と記事snapshotを保持しないが、clusterに含まれていた全entryの消費済みidentityは保持する。
@@ -159,3 +159,4 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - `docs/adr/0264-database-v38-compatibility-baseline.md`
 - `docs/adr/0265-podcast-cloud-chapter-parallelism.md`
 - `docs/adr/0267-podcast-news-exclusion-filter.md`
+- `docs/adr/0268-podcast-rebuild-regeneration.md`
