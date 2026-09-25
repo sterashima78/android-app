@@ -4,6 +4,7 @@
 - Date: 2026-09-21
 - Amends: [ADR-0257](0257-podcast-chapter-generation-jobs.md)
 - Refines: [ADR-0253](0253-resume-interrupted-podcast-generation.md), [ADR-0259](0259-podcast-news-clustering.md)
+- Refined by: [ADR-0269](0269-podcast-durable-foreground-generation.md)
 
 ## Context
 
