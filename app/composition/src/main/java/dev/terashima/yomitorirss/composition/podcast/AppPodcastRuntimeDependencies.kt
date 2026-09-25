@@ -22,6 +22,7 @@ import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFac
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastCandidateFilter
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastRepository
+import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastGenerationController
 import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastScheduleController
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssFeedContentReader
 import kotlinx.coroutines.CancellationException
@@ -45,7 +46,7 @@ internal class AppPodcastRuntimeDependencies(
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-  private val repository = SqlitePodcastRepository(database)
+  private val repository = SqlitePodcastRepository(database, persistenceChanges)
   val taskReader: PodcastGenerationTaskReader = repository
   private val scriptGenerator = DefaultPodcastScriptGenerator(
     localInference = localTextInference,
@@ -72,10 +73,11 @@ internal class AppPodcastRuntimeDependencies(
     candidateFilter = SqlitePodcastCandidateFilter(database),
   )
   private val scheduleController = WorkManagerPodcastScheduleController(application)
+  private val generationController = WorkManagerPodcastGenerationController(application)
 
   val viewModelFactory = PodcastViewModel.Factory(
     repository = repository,
-    generatePodcastEpisode = generationUseCase,
+    generationController = generationController,
     scheduleController = scheduleController,
     audioPlaybackController = audioPlaybackController,
   )
