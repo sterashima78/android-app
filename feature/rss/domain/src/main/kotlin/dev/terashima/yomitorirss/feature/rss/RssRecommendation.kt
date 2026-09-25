@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.Article
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -70,7 +71,34 @@ data class RssRecommendationSnapshot(
   val latestPendingFeedbackAt: Long?,
 )
 
-interface RssRecommendationRepository {
+enum class RssRecommendationTaskState {
+  QUEUED,
+  RUNNING,
+}
+
+data class RssRecommendationTask(
+  val articleId: String,
+  val title: String,
+  val revision: Long,
+  val state: RssRecommendationTaskState,
+  val queuedAt: Long,
+  val startedAt: Long?,
+)
+
+interface RssRecommendationTaskReader {
+  fun listTasks(): List<RssRecommendationTask>
+}
+
+interface RssRecommendationTaskScheduler {
+  suspend fun enqueueForFeed(feedUrl: String)
+  suspend fun enqueueUnread()
+  fun kick()
+  suspend fun pauseForGlobalGate()
+  fun setResumeOnChargingScheduled(enabled: Boolean)
+}
+
+interface RssRecommendationRepository : RssRecommendationTaskReader {
+  val changes: StateFlow<Long>
   fun loadPolicy(): RssRecommendationPolicy
   fun saveManualCondition(condition: String): RssRecommendationPolicy
   fun resetLearnedCondition(): RssRecommendationPolicy
@@ -87,6 +115,13 @@ interface RssRecommendationRepository {
     feedbackIds: Set<String>,
     learnedCondition: String,
   ): RssRecommendationPolicy
+
+  fun enqueueTasks(articles: List<Article>, revision: Long)
+  fun claimNextTask(): RssRecommendationTask?
+  fun completeTask(articleId: String, revision: Long)
+  fun requeueTask(articleId: String, revision: Long)
+  fun requeueInterruptedTasks()
+  fun clearTasks()
 }
 
 interface RssRecommendationEngine {
@@ -109,6 +144,9 @@ class RssRecommendationService(
 ) {
   private val inferenceMutex = Mutex()
 
+  val changes: StateFlow<Long>
+    get() = repository.changes
+
   fun snapshot(articleIds: Collection<String>): RssRecommendationSnapshot {
     val policy = repository.loadPolicy()
     val currentAssessments = if (policy.enabled) {
@@ -124,6 +162,43 @@ class RssRecommendationService(
       pendingFeedbackCount = pending.size,
       latestPendingFeedbackAt = pending.maxOfOrNull(RssRecommendationFeedback::createdAt),
     )
+  }
+
+  suspend fun scoreArticle(
+    article: Article,
+    revision: Long,
+  ): RssRecommendationAssessment? = inferenceMutex.withLock {
+    val policy = repository.loadPolicy()
+    if (!policy.enabled || policy.revision != revision) return@withLock null
+
+    val assessedAt = nowMillis()
+    val assessment = try {
+      when (val decision = engine.score(
+        condition = policy.effectiveCondition(),
+        titles = listOf(article.title),
+      ).single()) {
+        is RssRecommendationDecision.Scored -> RssRecommendationAssessment.Scored(
+          score = decision.score,
+          revision = revision,
+          assessedAt = assessedAt,
+        )
+        RssRecommendationDecision.InsufficientInformation -> RssRecommendationAssessment.Unscored(
+          reason = RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION,
+          revision = revision,
+          assessedAt = assessedAt,
+        )
+      }
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      RssRecommendationAssessment.Unscored(
+        reason = RssRecommendationUnscoredReason.INFERENCE_FAILED,
+        revision = revision,
+        assessedAt = assessedAt,
+      )
+    }
+    repository.saveAssessments(mapOf(article.id to assessment))
+    assessment
   }
 
   suspend fun refresh(articles: List<Article>): RssRecommendationSnapshot = inferenceMutex.withLock {
