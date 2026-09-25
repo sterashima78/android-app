@@ -231,7 +231,7 @@ class PodcastViewModel(
           _state.update {
             it.copy(
               busyEpisodeIds = it.busyEpisodeIds - episodeId,
-              message = "エピソードを再生成しました",
+              message = "エピソードを現在の条件で作り直しました",
             )
           }
           refreshEpisodes(generated.episode.programId)
