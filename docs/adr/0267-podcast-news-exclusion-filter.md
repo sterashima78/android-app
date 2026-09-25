@@ -31,7 +31,7 @@ Podcast-owned `podcast_programs` に、番組単位の任意の除外条件を�
 4. 判定で残った候補だけを既存の同一ニュースクラスタリングへ渡す。
 5. episode予約と原稿生成を従来どおり行う。
 
-判定入力にはfeed-carried title、source title、feed bodyを使う。entry URLやリンク先本文は利用しない。feed本文は判定対象データであり、その中の命令文へ従わないことを固定instructionで明示する。
+判定入力にはfeed-carried title、source title、feed bodyを使う。entry URLやリンク先本文は利用しない。ローカル生成providerでは端末内推論だけを使い、クラウド生成providerでは保存された除外条件とこれらの判定入力を既存のクラウド推論境界へ送る。新しい送信先や自動provider fallbackは追加しない。feed本文は判定対象データであり、その中の命令文へ従わないことを固定instructionで明示する。
 
 ### 除外判定失敗時は候補を残す
 
