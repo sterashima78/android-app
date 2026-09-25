@@ -53,6 +53,7 @@ class WorkManagerRssRecommendationTaskScheduler(
     val policy = repository.loadPolicy()
     if (!policy.enabled) {
       repository.clearTasks()
+      setResumeOnChargingScheduled(false)
       workManager.cancelUniqueWork(WORK_NAME).await()
       return
     }
