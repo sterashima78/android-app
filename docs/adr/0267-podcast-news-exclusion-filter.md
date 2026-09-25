@@ -68,5 +68,5 @@ fresh schemaはversion 39の形を直接作る。Podcast-owned durable stateと�
 - Domain testで、条件なしでは判定を省略すること、除外後にクラスタリングすること、全件除外時はepisodeを作らないことを確認する。
 - structured inference adapter testで、有効なtool call、出力不正、推論失敗fallback、本文を含むprompt budgetを確認する。
 - repository / migration testで、除外条件と除外履歴の保存、version 38 -> 39 migration、再取得時の除外を確認する。
-- Compose / ViewModel testで番組設定の除外条件を保存・再編集できることを確認する。
+- 番組編集UIの入力・保存配線はcompile / lintで確認し、保存値のround-tripはrepository testで確認する。
 - architecture verification、unit test、lint、public repository verificationを実行する。
