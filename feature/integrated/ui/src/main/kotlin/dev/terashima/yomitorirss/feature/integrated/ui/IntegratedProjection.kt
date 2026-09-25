@@ -5,7 +5,7 @@ import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
-import dev.terashima.yomitorirss.feature.rss.recommendationAnnotation
+import dev.terashima.yomitorirss.feature.rss.recommendationAnnotationFor
 import java.time.Instant
 
 internal sealed interface IntegratedTarget {
@@ -39,8 +39,7 @@ internal fun integratedEntries(
                 article = article,
                 source = IntegratedSource.RSS,
                 target = IntegratedTarget.Rss(article),
-                annotation = rssState.recommendationAssessments[article.id]
-                  ?.let(::recommendationAnnotation),
+                annotation = rssState.recommendationAnnotationFor(article.id),
               ),
             )
           }
