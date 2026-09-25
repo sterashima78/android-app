@@ -80,6 +80,7 @@ interface RssRecommendationRepository {
     previousAssessment: RssRecommendationAssessment?,
   ): RssRecommendationFeedback
   fun listPendingFeedback(): List<RssRecommendationFeedback>
+  fun removeFeedback(feedbackId: String)
   fun applyLearnedConditionAndConsumeFeedback(
     feedbackIds: Set<String>,
     learnedCondition: String,
@@ -187,8 +188,12 @@ class RssRecommendationService(
     return repository.addFeedback(article.id, article.title, assessment)
   }
 
+  fun cancelExclusionFeedback(feedbackId: String) {
+    repository.removeFeedback(feedbackId)
+  }
+
   suspend fun improvePendingFeedback(): RssRecommendationPolicy? {
-    val pending = repository.listPendingFeedback()
+    val pending = repository.listPendingFeedback().take(MAX_RECOMMENDATION_LEARNING_FEEDBACK)
     if (pending.isEmpty()) return null
     val policy = repository.loadPolicy()
     val learned = try {
@@ -208,3 +213,5 @@ class RssRecommendationService(
     )
   }
 }
+
+private const val MAX_RECOMMENDATION_LEARNING_FEEDBACK = 50
