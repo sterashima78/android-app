@@ -30,13 +30,13 @@ feed URLへの再アクセスや新しいfeed entryの取り込みは行わな�
 
 再生成時に除外された記事は、すでにその番組で `podcast_consumed_articles` に記録済みである。新規episode候補へ再利用されないため、再生成で `podcast_excluded_articles` へ重複記録しない。
 
-### 再構築開始までは既存episodeを保持する
+### 再構築開始前までは既存episodeを保持する
 
 除外判定またはcluster判定がfallbackする場合は、新規生成と同じfail-open / fallback規則を適用する。
 
 現在の除外条件によって保存済み記事が全件除外された場合は、空episodeへ置き換えず再生成を開始しない。既存の再生可能なepisode内容を保持し、対象記事がないことを利用者へ返す。
 
-再構築後のchapter生成に失敗した場合は、既存episode scriptを保持する既存の再生成失敗契約を維持する。再生成attemptのarticle / cluster checkpointは再実行に利用する。
+候補が残って再構築を開始する場合は、Repository transactionで同じepisode IDの記事・cluster snapshotを置き換え、既存scriptを消去して `GENERATING` へ戻す。以降の失敗は通常生成と同じ `FAILED` として扱い、旧原稿へ戻さない。これにより古い原稿と新しい記事対応が混在しない。
 
 ## Consequences
 
@@ -51,5 +51,5 @@ feed URLへの再アクセスや新しいfeed entryの取り込みは行わな�
 - Domain testで、現在の除外条件が再生成へ適用されることを確認する。
 - Domain testで、再生成時にcluster境界を再計算することを確認する。
 - Domain testで、全記事除外時に既存episodeを保持して再生成を開始しないことを確認する。
-- Repository testで、同一episode IDの記事snapshotを再構築し既存scriptを保持することを確認する。
+- Repository testで、同一episode IDの記事snapshotを再構築し旧scriptを消去して `GENERATING` へ戻すことを確認する。
 - architecture verification、unit test、lint、public repository verificationを実行する。
