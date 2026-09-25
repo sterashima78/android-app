@@ -49,7 +49,7 @@ RSS-owned Workerはqueueから最古のQUEUED taskを1件だけclaimし、その
 
 記事ごとに `LocalAiBackgroundTaskGate` のpermitを取得・返却する。これによりRSSのqueue自体は順次処理しつつ、記事と記事の間で他featureの高優先度ローカルAI taskへ実行機会を渡す。
 
-Workerはowning featureのWorkerFactoryからapplication-scopeのArticle Repository、RSS Recommendation Repository / Serviceをconstructor injectionされる。Worker内で並行する第二repository graphを構築しない。
+Workerはowning featureのWorkerFactoryからapplication-scopeのArticle Repository、RSS Recommendation Repository / Serviceをconstructor injectionされる。Worker内で並行する第二repository graphを構築しない。複数記事の処理がAndroidの通常Worker実行時間を超えても継続できるよう、実行中は既存のlong-running AI workerと同じspecial-use foreground workとして低重要度通知を表示する。
 
 ### 共通ローカルAI実行制御へ参加する
 
