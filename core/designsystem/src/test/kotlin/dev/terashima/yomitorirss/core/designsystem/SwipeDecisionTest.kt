@@ -95,9 +95,9 @@ class SwipeDecisionTest {
   @Test
   fun `far境界手前では押し込み方向だけ抵抗を加える`() {
     assertEquals(
-      -8.4f,
+      -13f,
       applyFarTransitionResistance(
-        offset = -220f,
+        offset = -250f,
         delta = -20f,
         farThreshold = 260f,
         towardNegative = true,
@@ -108,7 +108,7 @@ class SwipeDecisionTest {
     assertEquals(
       20f,
       applyFarTransitionResistance(
-        offset = -220f,
+        offset = -250f,
         delta = 20f,
         farThreshold = 260f,
         towardNegative = true,
