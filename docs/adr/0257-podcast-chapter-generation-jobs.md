@@ -4,7 +4,7 @@
 - Date: 2026-09-10
 - Refines: [ADR-0249](0249-news-podcast-context.md), [ADR-0253](0253-resume-interrupted-podcast-generation.md), [ADR-0255](0255-podcast-playback-chapters.md)
 - Related: [ADR-0104](0104-ai-task-queue-feature-ownership.md), [ADR-0256](0256-podcast-episode-archive-delete.md)
-- Amended by: [ADR-0265](0265-podcast-cloud-chapter-parallelism.md), [ADR-0268](0268-podcast-rebuild-regeneration.md)
+- Amended by: [ADR-0265](0265-podcast-cloud-chapter-parallelism.md), [ADR-0268](0268-podcast-rebuild-regeneration.md), [ADR-0269](0269-podcast-durable-foreground-generation.md)
 
 ## Context
 
