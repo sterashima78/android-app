@@ -238,6 +238,7 @@ SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` 
 - Video はSMB file accessでLibrary tableを直接参照せず、Library-owned `SmbMediaFileAccess` にVideo-owned share / root pathを明示してlisting / random-access readを取得する。
 - 統合未読表示とbackground refreshはprovider-specific tableを直接参照せず、Video-owned `VideoProviderRepository` を利用する。
 - Backup restore は Library の cache invalidation を `LibraryBackupRestoreInitializer` に委譲し、Library-owned table を直接変更しない。
+- Backup restore は RSS の transient recommendation queue invalidation も `RssRecommendationBackupRestoreInitializer` に委譲し、Backup Context からRSS tableを直接変更しない。
 
 ### Named Projection
 
