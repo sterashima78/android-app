@@ -177,6 +177,10 @@ private class FakeRecommendationRepository(
 
   override fun listPendingFeedback(): List<RssRecommendationFeedback> = feedback.toList()
 
+  override fun removeFeedback(feedbackId: String) {
+    feedback.removeAll { it.id == feedbackId }
+  }
+
   override fun applyLearnedConditionAndConsumeFeedback(
     feedbackIds: Set<String>,
     learnedCondition: String,
