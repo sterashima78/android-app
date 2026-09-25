@@ -268,7 +268,7 @@ internal fun resolveFarThreshold(
   fraction: Float?,
 ): Float = fraction
   ?.coerceIn(0f, MAX_DRAG_FRACTION)
-  ?.let { rowWidth * it }
+  ?.let { maxOf(fixedThreshold, rowWidth * it) }
   ?: fixedThreshold
 
 internal fun applyFarTransitionResistance(
@@ -280,7 +280,8 @@ internal fun applyFarTransitionResistance(
 ): Float {
   if (!enabled || farThreshold <= 0f) return delta
   val movingTowardFar = if (towardNegative) delta < 0f else delta > 0f
-  if (!movingTowardFar) return delta
+  val onTargetSide = if (towardNegative) offset < 0f else offset > 0f
+  if (!movingTowardFar || !onTargetSide) return delta
 
   val distance = kotlin.math.abs(offset)
   val resistanceStart = farThreshold * FAR_RESISTANCE_START_FRACTION
