@@ -128,8 +128,9 @@ internal class RssRecommendationWorker(
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return Result.success()
-    setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     repository.requeueInterruptedTasks()
+    if (repository.listTasks().isEmpty()) return Result.success()
+    setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     var claimed: RssRecommendationTask? = null
 
     return try {
