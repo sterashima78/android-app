@@ -7,7 +7,9 @@ import java.util.concurrent.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 
 enum class PodcastGenerationProvider { LOCAL, CLOUD }
@@ -279,6 +281,19 @@ object SingletonPodcastNewsClusterer : PodcastNewsClusterer {
   )
 }
 
+data class PodcastGenerationProgress(
+  val completedChapters: Int,
+  val totalChapters: Int,
+) {
+  init {
+    require(totalChapters >= 0) { "totalChapters must not be negative" }
+    require(completedChapters in 0..totalChapters) { "completedChapters must be within totalChapters" }
+  }
+}
+
+class PodcastGenerationAlreadyRunningException(programId: String) :
+  IllegalStateException("podcast generation already in progress: $programId")
+
 sealed interface PodcastGenerationResult {
   data class Generated(val episode: PodcastEpisode) : PodcastGenerationResult
   data object NoNewArticles : PodcastGenerationResult
@@ -300,9 +315,12 @@ class GeneratePodcastEpisodeUseCase(
 ) {
   private val activeProgramIds = mutableSetOf<String>()
 
-  suspend fun generate(programId: String): PodcastGenerationResult = withProgramGeneration(programId) {
+  suspend fun generate(
+    programId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult = withProgramGeneration(programId) {
     val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
-    repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it) }
+    repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it, onProgress) }
     val sources = repository.listSources().filter { it.id in program.sourceIds }
     require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
       "番組に利用できないソースがあります。番組設定を確認してください"
@@ -329,20 +347,26 @@ class GeneratePodcastEpisodeUseCase(
       createdAtEpochMillis = nowEpochMillis(),
       clusteringStatus = clustered.status,
     ) ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
-    generateReserved(program, reserved)
+    generateReserved(program, reserved, onProgress)
   }
 
-  suspend fun retry(episodeId: String): PodcastGenerationResult.Generated {
+  suspend fun retry(
+    episodeId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated {
     val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
     return withProgramGeneration(initial.programId) {
       val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
       require(episode.status == PodcastEpisodeStatus.FAILED) { "only failed episodes can be retried" }
       val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
-      generateReserved(program, repository.prepareEpisodeRetry(episode.id))
+      generateReserved(program, repository.prepareEpisodeRetry(episode.id), onProgress)
     }
   }
 
-  suspend fun regenerate(episodeId: String): PodcastGenerationResult.Generated {
+  suspend fun regenerate(
+    episodeId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated {
     val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
     return withProgramGeneration(initial.programId) {
       val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
@@ -366,14 +390,17 @@ class GeneratePodcastEpisodeUseCase(
         candidates = clustered.entries,
         clusteringStatus = clustered.status,
       )
-      generateReserved(program, prepared)
+      generateReserved(program, prepared, onProgress)
     }
   }
 
-  suspend fun resumeInterrupted(programId: String): PodcastGenerationResult.Generated? = withProgramGeneration(programId) {
+  suspend fun resumeInterrupted(
+    programId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated? = withProgramGeneration(programId) {
     val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
     val interrupted = repository.findInterruptedGenerationEpisode(programId) ?: return@withProgramGeneration null
-    generateReserved(program, interrupted)
+    generateReserved(program, interrupted, onProgress)
   }
 
   private fun validateExclusionResult(
@@ -404,7 +431,11 @@ class GeneratePodcastEpisodeUseCase(
     )
   }
 
-  private suspend fun generateReserved(program: PodcastProgram, initialEpisode: PodcastEpisode): PodcastGenerationResult.Generated {
+  private suspend fun generateReserved(
+    program: PodcastProgram,
+    initialEpisode: PodcastEpisode,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit,
+  ): PodcastGenerationResult.Generated {
     val episodeId = initialEpisode.id
     val regenerating = initialEpisode.regenerationStatus == PodcastRegenerationStatus.RUNNING
     return try {
@@ -417,6 +448,16 @@ class GeneratePodcastEpisodeUseCase(
         }
       }
 
+      val progressMutex = Mutex()
+      var completedChapters = totalChapters - pendingPositions.size
+      onProgress(PodcastGenerationProgress(completedChapters, totalChapters))
+      val chapterCompleted: suspend () -> Unit = {
+        progressMutex.withLock {
+          completedChapters += 1
+          onProgress(PodcastGenerationProgress(completedChapters, totalChapters))
+        }
+      }
+
       if (program.provider == PodcastGenerationProvider.CLOUD && pendingPositions.size > 1) {
         val failures = coroutineScope {
           val semaphore = Semaphore(CLOUD_CHAPTER_PARALLELISM)
@@ -424,7 +465,7 @@ class GeneratePodcastEpisodeUseCase(
             async {
               semaphore.withPermit {
                 try {
-                  generateChapter(program, episodeId, position, totalChapters)
+                  generateChapter(program, episodeId, position, totalChapters, chapterCompleted)
                   null
                 } catch (error: CancellationException) {
                   throw error
@@ -438,7 +479,7 @@ class GeneratePodcastEpisodeUseCase(
         failures.filterNotNull().firstOrNull()?.let { throw it }
       } else {
         pendingPositions.forEach { position ->
-          generateChapter(program, episodeId, position, totalChapters)
+          generateChapter(program, episodeId, position, totalChapters, chapterCompleted)
         }
       }
 
@@ -461,6 +502,7 @@ class GeneratePodcastEpisodeUseCase(
     episodeId: String,
     position: Int,
     totalChapters: Int,
+    onCompleted: suspend () -> Unit = {},
   ) {
     try {
       val episode = repository.markChapterGenerating(episodeId, position)
@@ -471,6 +513,7 @@ class GeneratePodcastEpisodeUseCase(
       ).trim()
       require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
       repository.completeChapter(episodeId, position, chapterScript)
+      onCompleted()
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
@@ -481,7 +524,9 @@ class GeneratePodcastEpisodeUseCase(
   }
 
   private suspend fun <T> withProgramGeneration(programId: String, block: suspend () -> T): T {
-    check(synchronized(activeProgramIds) { activeProgramIds.add(programId) }) { "podcast generation already in progress: $programId" }
+    if (!synchronized(activeProgramIds) { activeProgramIds.add(programId) }) {
+      throw PodcastGenerationAlreadyRunningException(programId)
+    }
     return try { block() } finally { synchronized(activeProgramIds) { activeProgramIds.remove(programId) } }
   }
 }
