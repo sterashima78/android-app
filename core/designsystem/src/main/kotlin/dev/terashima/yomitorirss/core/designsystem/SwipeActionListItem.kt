@@ -51,6 +51,7 @@ data class SwipeAction(
 fun LazyItemScope.SwipeActionListItem(
   itemKey: Any,
   left: SwipeAction? = null,
+  farLeft: SwipeAction? = null,
   right: SwipeAction? = null,
   farRight: SwipeAction? = null,
   modifier: Modifier = Modifier,
@@ -61,6 +62,7 @@ fun LazyItemScope.SwipeActionListItem(
   var dragging by remember(itemKey) { mutableStateOf(false) }
   var committing by remember(itemKey) { mutableStateOf(false) }
   val currentLeft by rememberUpdatedState(left)
+  val currentFarLeft by rememberUpdatedState(farLeft)
   val currentRight by rememberUpdatedState(right)
   val currentFarRight by rememberUpdatedState(farRight)
   val density = LocalDensity.current
@@ -76,6 +78,7 @@ fun LazyItemScope.SwipeActionListItem(
   )
   val scope = rememberCoroutineScope()
   val visibleChoice = when {
+    farLeft != null && animatedOffset <= -farThreshold -> farLeft
     animatedOffset < 0 -> left
     farRight != null && animatedOffset >= farThreshold -> farRight
     animatedOffset > 0 -> right
@@ -104,7 +107,7 @@ fun LazyItemScope.SwipeActionListItem(
         .fillMaxWidth()
         .onSizeChanged { rowWidth = it.width.toFloat().coerceAtLeast(1f) }
         .offset { IntOffset(animatedOffset.roundToInt(), 0) }
-        .pointerInput(itemKey, left?.label, right?.label, farRight?.label) {
+        .pointerInput(itemKey, left?.label, farLeft?.label, right?.label, farRight?.label) {
           detectHorizontalDragGestures(
             onDragStart = { if (!committing) dragging = true },
             onDragCancel = {
@@ -116,7 +119,7 @@ fun LazyItemScope.SwipeActionListItem(
                 change.consume()
                 val next = dragOffset + amount
                 val canMove =
-                  (next < 0 && currentLeft != null) ||
+                  (next < 0 && (currentLeft != null || currentFarLeft != null)) ||
                     (next > 0 && (currentRight != null || currentFarRight != null))
                 dragOffset = if (canMove) {
                   next.coerceIn(-rowWidth * MAX_DRAG_FRACTION, rowWidth * MAX_DRAG_FRACTION)
@@ -133,11 +136,13 @@ fun LazyItemScope.SwipeActionListItem(
                   normalThreshold = normalThreshold,
                   farThreshold = farThreshold,
                   hasLeft = currentLeft != null,
+                  hasFarLeft = currentFarLeft != null,
                   hasRight = currentRight != null,
                   hasFarRight = currentFarRight != null,
                 )
               ) {
                 SwipeCommit.LEFT -> currentLeft
+                SwipeCommit.FAR_LEFT -> currentFarLeft
                 SwipeCommit.RIGHT -> currentRight
                 SwipeCommit.FAR_RIGHT -> currentFarRight
                 SwipeCommit.NONE -> null
@@ -168,7 +173,7 @@ fun LazyItemScope.SwipeActionListItem(
   }
 }
 
-internal enum class SwipeCommit { NONE, LEFT, RIGHT, FAR_RIGHT }
+internal enum class SwipeCommit { NONE, LEFT, FAR_LEFT, RIGHT, FAR_RIGHT }
 
 internal fun resolveSwipeCommit(
   offset: Float,
@@ -176,8 +181,10 @@ internal fun resolveSwipeCommit(
   farThreshold: Float,
   hasLeft: Boolean,
   hasRight: Boolean,
+  hasFarLeft: Boolean = false,
   hasFarRight: Boolean,
 ): SwipeCommit = when {
+  hasFarLeft && offset <= -farThreshold -> SwipeCommit.FAR_LEFT
   hasLeft && offset <= -normalThreshold -> SwipeCommit.LEFT
   hasFarRight && offset >= farThreshold -> SwipeCommit.FAR_RIGHT
   hasRight && offset >= normalThreshold -> SwipeCommit.RIGHT
