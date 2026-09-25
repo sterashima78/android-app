@@ -213,7 +213,7 @@ private fun PodcastContent(
     }
 
     state.selectedProgram?.let { program ->
-      val generating = program.id in state.busyProgramIds || state.episodes.any { episode ->
+      val generating = state.episodes.any { episode ->
         episode.status == PodcastEpisodeStatus.GENERATING ||
           episode.regenerationStatus == PodcastRegenerationStatus.RUNNING
       }
