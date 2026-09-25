@@ -52,14 +52,14 @@ class WorkManagerRssRecommendationTaskScheduler(
     }
 
     val assessments = repository.loadAssessments(articles.map(Article::id))
-    val candidates = articles.filter { article ->
-      val assessment = assessments[article.id]
-      assessment == null ||
-        assessment.revision != policy.revision ||
-        (assessment is RssRecommendationAssessment.Unscored &&
-          assessment.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
-    }
-    repository.enqueueTasks(candidates, policy.revision)
+    repository.enqueueTasks(
+      recommendationScoringCandidates(
+        articles = articles,
+        assessments = assessments,
+        revision = policy.revision,
+      ),
+      policy.revision,
+    )
     kick()
   }
 
@@ -195,4 +195,16 @@ class RssRecommendationWorkerFactory(
     )
     else -> null
   }
+}
+
+internal fun recommendationScoringCandidates(
+  articles: List<Article>,
+  assessments: Map<String, RssRecommendationAssessment>,
+  revision: Long,
+): List<Article> = articles.filter { article ->
+  val assessment = assessments[article.id]
+  assessment == null ||
+    assessment.revision != revision ||
+    (assessment is RssRecommendationAssessment.Unscored &&
+      assessment.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
 }
