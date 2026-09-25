@@ -24,6 +24,8 @@ import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 
+internal val rssUnreadLeftSwipeBehavior = SwipeBehavior.DeliberateFarAction
+
 enum class RssTab(val label: String) {
   UNREAD("未読"),
   READ_LATER("あとで読む"),
@@ -77,7 +79,7 @@ fun RssScreen(
       farLeft = SwipeChoice("除外参考", MaterialTheme.colorScheme.error, onExclusionReference),
       right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
       farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
-      leftSwipeBehavior = SwipeBehavior.DeliberateFarAction,
+      leftSwipeBehavior = rssUnreadLeftSwipeBehavior,
       onOpen = onOpen,
       onSummarize = onSummarize,
       onEditTags = onEditTags,
