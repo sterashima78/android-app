@@ -322,8 +322,12 @@ class RssViewModel(
         val updated = service.improvePendingFeedback()
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
         applyRecommendationSnapshot(snapshot)
-        if (updated != null) scheduleRecommendationRefresh(_state.value.unread)
-        scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
+        if (updated != null) {
+          scheduleRecommendationRefresh(_state.value.unread)
+          if (snapshot.latestPendingFeedbackAt != null) {
+            scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
+          }
+        }
       } catch (error: CancellationException) {
         throw error
       } finally {
