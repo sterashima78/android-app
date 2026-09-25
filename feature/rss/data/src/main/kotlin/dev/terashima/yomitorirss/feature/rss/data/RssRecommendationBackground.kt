@@ -17,7 +17,6 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationRepository
-import dev.terashima.yomitorirss.feature.rss.RssRecommendationScheduler
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationService
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTask
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
