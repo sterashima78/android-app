@@ -89,7 +89,7 @@ database schemaと保存形式は変更しない。
 - retry回数とbackoff sequenceをunit testする。
 - non-retryable failureとcancellationを再試行しないことをunit testする。
 - retry exhaustion後だけchapter / episodeがFAILEDになることをunit testする。
-- 手動生成と作り直しが即時WorkManager workへ変換されることをunit testする。
+- 手動生成と作り直しを区別するWorker operation mappingをunit testする。
 - operation未指定のworker inputを通常生成として扱うcompatibilityをtestする。
 - foreground notificationの初期状態とchapter進捗表示をtest可能な純粋関数へ分離してunit testする。
 - 進捗projectionの通常失敗がchapter / episode failureへ波及しないことをunit testする。
