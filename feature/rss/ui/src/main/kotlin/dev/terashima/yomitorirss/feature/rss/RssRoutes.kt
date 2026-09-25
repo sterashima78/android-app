@@ -71,6 +71,7 @@ fun RssRoute(
         tab = tab,
         state = rssState,
         onMarkRead = rssViewModel::markRead,
+        onExclusionReference = rssViewModel::markAsExclusionReference,
         onSaveAndRead = rssViewModel::saveAndRead,
         onReadLater = rssViewModel::readLater,
         onUnsave = rssViewModel::unsave,
@@ -188,14 +189,21 @@ fun FeedRoute(
 fun RssSettingsRoute(
   modifier: Modifier,
   feedViewModel: FeedViewModel,
+  rssViewModel: RssViewModel,
 ) {
   val state by feedViewModel.state.collectAsState()
+  val rssState by rssViewModel.state.collectAsState()
 
-  if (!state.initialized) {
+  if (!state.initialized || !rssState.initialized) {
     LoadingFeature(modifier)
   } else {
     RssWebScrapingRulesUi(
       modifier = modifier,
+      recommendationPolicy = rssState.recommendationPolicy,
+      recommendationPendingFeedbackCount = rssState.recommendationPendingFeedbackCount,
+      recommendationLearning = rssState.recommendationLearning,
+      onSaveRecommendationCondition = rssViewModel::saveRecommendationCondition,
+      onResetRecommendationLearning = rssViewModel::resetRecommendationLearning,
       rules = state.webScrapingRules,
       testState = state.webScrapingRuleTest,
       onSave = feedViewModel::saveWebScrapingRule,
