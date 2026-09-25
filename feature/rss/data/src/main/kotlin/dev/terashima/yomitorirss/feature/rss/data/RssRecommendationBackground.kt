@@ -74,7 +74,7 @@ class WorkManagerRssRecommendationTaskScheduler(
     val request = OneTimeWorkRequestBuilder<RssRecommendationWorker>().build()
     workManager.enqueueUniqueWork(
       WORK_NAME,
-      ExistingWorkPolicy.KEEP,
+      ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )
   }
