@@ -49,6 +49,7 @@ class RssViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { articleRepository.cleanupExpiredArticles() }
       reload()
+      recommendationTaskScheduler?.enqueueUnread()
     }
     viewModelScope.launch(Dispatchers.IO) {
       articleRepository.changes.collect { reload() }
@@ -305,7 +306,6 @@ class RssViewModel(
           val snapshot = service.snapshot(unread.map(Article::id))
           applyRecommendationSnapshot(snapshot)
           scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
-          recommendationTaskScheduler?.enqueueUnread()
         }
       }.onFailure { error ->
         _state.update { it.copy(initialized = true, message = "記事を読み込めませんでした: ${error.userMessage()}") }
