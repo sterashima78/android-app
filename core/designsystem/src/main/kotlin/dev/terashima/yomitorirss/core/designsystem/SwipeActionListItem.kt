@@ -293,8 +293,8 @@ internal fun applyFarTransitionResistance(
 }
 
 private const val MAX_DRAG_FRACTION = 0.95f
-private const val FAR_RESISTANCE_START_FRACTION = 0.82f
-private const val FAR_RESISTANCE_FACTOR = 0.42f
+private const val FAR_RESISTANCE_START_FRACTION = 0.94f
+private const val FAR_RESISTANCE_FACTOR = 0.65f
 private const val UNSUPPORTED_DIRECTION_RESISTANCE = 0.15f
 private const val DISMISS_OFFSET_FRACTION = 1.15f
 private const val ACTION_DELAY_MILLIS = 145L
