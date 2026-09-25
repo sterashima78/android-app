@@ -73,6 +73,50 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `記事単位評価は現在revisionの確定済み評価を再推論しない`() = runBlocking {
+    val existing = RssRecommendationAssessment.Scored(
+      score = 7,
+      revision = 2L,
+      assessedAt = 100L,
+    )
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(manualCondition = "条件", revision = 2L),
+      assessments = mutableMapOf("a1" to existing),
+    )
+    val engine = FakeRecommendationEngine(decisions = listOf(RssRecommendationDecision.Scored(9)))
+    val service = RssRecommendationService(repository, engine, nowMillis = { 400L })
+
+    val result = service.scoreArticle(article("a1", "記事"), revision = 2L)
+
+    assertEquals(existing, result)
+    assertEquals(0, engine.scoreCalls)
+  }
+
+  @Test
+  fun `記事単位評価は推論失敗だけを同じrevisionでも再評価する`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(manualCondition = "条件", revision = 2L),
+      assessments = mutableMapOf(
+        "a1" to RssRecommendationAssessment.Unscored(
+          reason = RssRecommendationUnscoredReason.INFERENCE_FAILED,
+          revision = 2L,
+          assessedAt = 100L,
+        ),
+      ),
+    )
+    val engine = FakeRecommendationEngine(decisions = listOf(RssRecommendationDecision.Scored(9)))
+    val service = RssRecommendationService(repository, engine, nowMillis = { 400L })
+
+    val result = service.scoreArticle(article("a1", "記事"), revision = 2L)
+
+    assertEquals(
+      RssRecommendationAssessment.Scored(9, revision = 2L, assessedAt = 400L),
+      result,
+    )
+    assertEquals(1, engine.scoreCalls)
+  }
+
+  @Test
   fun `同じrevisionの推論失敗は次回refreshで再評価する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "条件", revision = 2L),
