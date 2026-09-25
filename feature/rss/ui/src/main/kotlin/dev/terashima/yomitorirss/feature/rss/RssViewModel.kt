@@ -79,29 +79,46 @@ class RssViewModel(
     }
     _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
     viewModelScope.launch(Dispatchers.IO) {
-      try {
+      val feedback = try {
         service.recordExclusionFeedback(article)
-        articleRepository.markArticleRead(article.id)
-        reload()
-        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
-        applyRecommendationSnapshot(snapshot)
-        scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
-        _state.update {
-          it.copy(
-            hiddenArticleIds = it.hiddenArticleIds - article.id,
-            message = "除外参考に追加しました",
-          )
-        }
       } catch (error: CancellationException) {
         throw error
       } catch (error: Throwable) {
-        reload()
         _state.update {
           it.copy(
             hiddenArticleIds = it.hiddenArticleIds - article.id,
             message = "除外参考を登録できませんでした: ${error.userMessage()}",
           )
         }
+        return@launch
+      }
+
+      try {
+        articleRepository.markArticleRead(article.id)
+      } catch (error: CancellationException) {
+        service.cancelExclusionFeedback(feedback.id)
+        throw error
+      } catch (error: Throwable) {
+        service.cancelExclusionFeedback(feedback.id)
+        reload()
+        _state.update {
+          it.copy(
+            hiddenArticleIds = it.hiddenArticleIds - article.id,
+            message = "既読にできなかったため除外参考を元に戻しました: ${error.userMessage()}",
+          )
+        }
+        return@launch
+      }
+
+      reload()
+      val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+      applyRecommendationSnapshot(snapshot)
+      scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
+      _state.update {
+        it.copy(
+          hiddenArticleIds = it.hiddenArticleIds - article.id,
+          message = "除外参考に追加しました",
+        )
       }
     }
   }
