@@ -20,9 +20,9 @@ class DefaultFeedRepository(
   database: DatabaseConnection,
   private val contentSourceGateway: ContentSourceGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
-  private val onFeedUpdated: suspend (Feed) -> Unit = {},
   applicationContext: Context? = null,
   httpClient: HttpClient = HttpClient.create(),
+  private val onFeedUpdated: suspend (Feed) -> Unit = {},
 ) : FeedRepository {
   private val store = FeedStore(database, contentSourceGateway)
   private val webScrapingRules = RssWebScrapingRuleStore(database)
