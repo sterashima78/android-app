@@ -2,6 +2,8 @@ package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.Article
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class RssRecommendationPolicy(
   val manualCondition: String = "",
@@ -105,6 +107,8 @@ class RssRecommendationService(
   private val engine: RssRecommendationEngine,
   private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
+  private val inferenceMutex = Mutex()
+
   fun snapshot(articleIds: Collection<String>): RssRecommendationSnapshot {
     val policy = repository.loadPolicy()
     val currentAssessments = if (policy.enabled) {
@@ -122,7 +126,7 @@ class RssRecommendationService(
     )
   }
 
-  suspend fun refresh(articles: List<Article>): RssRecommendationSnapshot {
+  suspend fun refresh(articles: List<Article>): RssRecommendationSnapshot = inferenceMutex.withLock {
     val policy = repository.loadPolicy()
     if (!policy.enabled || articles.isEmpty()) return snapshot(articles.map(Article::id))
 
@@ -192,7 +196,7 @@ class RssRecommendationService(
     repository.removeFeedback(feedbackId)
   }
 
-  suspend fun improvePendingFeedback(): RssRecommendationPolicy? {
+  suspend fun improvePendingFeedback(): RssRecommendationPolicy? = inferenceMutex.withLock {
     val pending = repository.listPendingFeedback().take(MAX_RECOMMENDATION_LEARNING_FEEDBACK)
     if (pending.isEmpty()) return null
     val policy = repository.loadPolicy()
