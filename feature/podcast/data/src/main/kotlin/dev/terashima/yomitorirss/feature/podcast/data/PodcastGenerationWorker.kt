@@ -208,7 +208,10 @@ class PodcastGenerationWorkerFactory(
 class WorkManagerPodcastGenerationController(
   context: Context,
 ) : PodcastGenerationController {
-  private val workManager = WorkManager.getInstance(context.applicationContext)
+  private val appContext = context.applicationContext
+  private val workManager: WorkManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkManager.getInstance(appContext)
+  }
 
   override fun generate(programId: String) {
     enqueue(programId, PodcastGenerationOperation.GENERATE, episodeId = null)
