@@ -74,7 +74,7 @@ class WorkManagerRssRecommendationTaskScheduler(
     val request = OneTimeWorkRequestBuilder<RssRecommendationWorker>().build()
     workManager.enqueueUniqueWork(
       WORK_NAME,
-      ExistingWorkPolicy.APPEND_OR_REPLACE,
+      ExistingWorkPolicy.KEEP,
       request,
     )
   }
@@ -118,7 +118,6 @@ internal class RssRecommendationWorker(
   private val articleRepository: ArticleRepository,
   private val repository: RssRecommendationRepository,
   private val service: RssRecommendationService,
-  private val scheduler: RssRecommendationTaskScheduler,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return Result.success()
@@ -126,20 +125,26 @@ internal class RssRecommendationWorker(
     var claimed: RssRecommendationTask? = null
 
     return try {
-      LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
-        if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return@withPermit
-        claimed = repository.claimNextTask() ?: return@withPermit
-        val task = requireNotNull(claimed)
-        val article = articleRepository.findArticle(task.articleId)
-        if (article == null || article.readAt != null) {
-          repository.completeTask(task.articleId, task.revision)
-          return@withPermit
-        }
+      while (!LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
+        var processed = false
+        LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
+          if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return@withPermit
+          claimed = repository.claimNextTask() ?: return@withPermit
+          val task = requireNotNull(claimed)
+          processed = true
+          val article = articleRepository.findArticle(task.articleId)
+          if (article == null || article.readAt != null) {
+            repository.completeTask(task.articleId, task.revision)
+            claimed = null
+            return@withPermit
+          }
 
-        service.scoreArticle(article, task.revision)
-        repository.completeTask(task.articleId, task.revision)
+          service.scoreArticle(article, task.revision)
+          repository.completeTask(task.articleId, task.revision)
+          claimed = null
+        }
+        if (!processed) break
       }
-      scheduler.kick()
       Result.success()
     } catch (cancelled: CancellationException) {
       claimed?.let { repository.requeueTask(it.articleId, it.revision) }
@@ -182,7 +187,6 @@ class RssRecommendationWorkerFactory(
       articleRepository = articleRepositoryProvider(),
       repository = repositoryProvider(),
       service = serviceProvider(),
-      scheduler = schedulerProvider(),
     )
     RssRecommendationResumeOnChargingWorker::class.java.name -> RssRecommendationResumeOnChargingWorker(
       appContext = appContext,
