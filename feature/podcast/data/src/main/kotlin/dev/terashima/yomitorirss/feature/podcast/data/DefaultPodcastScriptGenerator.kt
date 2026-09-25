@@ -8,7 +8,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastScriptGenerator
 
 class DefaultPodcastScriptGenerator(
   private val localInference: AiTextInference,
-  private val cloudInference: AiTextInference,
+  private val cloudInference: PodcastCloudTextInference,
 ) : PodcastScriptGenerator {
   override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = when (provider) {
     PodcastGenerationProvider.LOCAL -> LocalAiBackgroundTaskGate.withPermit(
