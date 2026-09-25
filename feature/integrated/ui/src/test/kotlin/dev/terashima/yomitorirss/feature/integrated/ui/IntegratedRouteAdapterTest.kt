@@ -44,10 +44,15 @@ class IntegratedRouteAdapterTest {
   fun `RSS未読の推薦評価を統合表示へ投影する`() {
     val scored = article("rss-scored", "2026-08-11T09:00:00Z")
     val unscored = article("rss-unscored", "2026-08-11T10:00:00Z")
+    val pending = article("rss-pending", "2026-08-11T11:00:00Z")
     val entries = integratedEntries(
       rssState = RssUiState(
         initialized = true,
-        unread = listOf(scored, unscored),
+        unread = listOf(scored, unscored, pending),
+        recommendationPolicy = dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy(
+          manualCondition = "広告記事を低くする",
+          revision = 1L,
+        ),
         recommendationAssessments = mapOf(
           scored.id to RssRecommendationAssessment.Scored(
             score = 4,
@@ -71,6 +76,7 @@ class IntegratedRouteAdapterTest {
       "推薦: 未評価（タイトルだけでは判断できません）",
       byId[unscored.id]?.item?.annotation,
     )
+    assertEquals("推薦: 評価待ち", byId[pending.id]?.item?.annotation)
   }
 
   @Test
