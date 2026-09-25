@@ -69,9 +69,11 @@ fun RssScreen(
       modifier = modifier,
       articles = state.unread.filterNot { it.id in state.hiddenArticleIds },
       emptyText = "未読記事はありません",
-      annotationByArticleId = state.recommendationAssessments.mapValues { (_, assessment) ->
-        recommendationAnnotation(assessment)
-      },
+      annotationByArticleId = state.unread.mapNotNull { article ->
+        state.recommendationAnnotationFor(article.id)?.let { annotation ->
+          article.id to annotation
+        }
+      }.toMap(),
       left = SwipeChoice("既読", MaterialTheme.colorScheme.primary, onMarkRead),
       farLeft = SwipeChoice("除外参考", MaterialTheme.colorScheme.error, onExclusionReference),
       right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
@@ -159,6 +161,7 @@ fun RssScreen(
 
 fun RssUiState.recommendationAnnotationFor(articleId: String): String? =
   recommendationAssessments[articleId]?.let(::recommendationAnnotation)
+    ?: if (recommendationPolicy.enabled) "推薦: 評価待ち" else null
 
 internal fun recommendationAnnotation(assessment: RssRecommendationAssessment): String = when (assessment) {
   is RssRecommendationAssessment.Scored -> "推薦スコア: ${assessment.score}"
