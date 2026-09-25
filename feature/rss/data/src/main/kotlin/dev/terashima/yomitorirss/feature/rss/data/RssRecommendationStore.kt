@@ -203,7 +203,7 @@ class DefaultRssRecommendationRepository(
   override fun enqueueTasks(articles: List<Article>, revision: Long) {
     ensureRssRecommendationSchema(database.writable)
     val queuedAt = System.currentTimeMillis()
-    database.transaction {
+    database.localTransaction {
       delete("rss_recommendation_tasks", "revision<>?", arrayOf(revision.toString()))
       articles.distinctBy(Article::id).forEach { article ->
         insertWithOnConflict(
@@ -240,7 +240,7 @@ class DefaultRssRecommendationRepository(
   override fun claimNextTask(): RssRecommendationTask? {
     ensureRssRecommendationSchema(database.writable)
     val startedAt = System.currentTimeMillis()
-    return database.transaction {
+    return database.localTransaction {
       val queued = rawQuery(
         """
           SELECT article_id, title, revision, state, queued_at, started_at
@@ -272,42 +272,48 @@ class DefaultRssRecommendationRepository(
 
   override fun completeTask(articleId: String, revision: Long) {
     ensureRssRecommendationSchema(database.writable)
-    database.writable.delete(
-      "rss_recommendation_tasks",
+    database.localWrite {
+      delete(
+        "rss_recommendation_tasks",
       "article_id=? AND revision=?",
-      arrayOf(articleId, revision.toString()),
-    )
+        arrayOf(articleId, revision.toString()),
+      )
+    }
   }
 
   override fun requeueTask(articleId: String, revision: Long) {
     ensureRssRecommendationSchema(database.writable)
-    database.writable.update(
-      "rss_recommendation_tasks",
+    database.localWrite {
+      update(
+        "rss_recommendation_tasks",
       ContentValues().apply {
         put("state", TASK_QUEUED)
         putNull("started_at")
       },
       "article_id=? AND revision=?",
-      arrayOf(articleId, revision.toString()),
-    )
+        arrayOf(articleId, revision.toString()),
+      )
+    }
   }
 
   override fun requeueInterruptedTasks() {
     ensureRssRecommendationSchema(database.writable)
-    database.writable.update(
-      "rss_recommendation_tasks",
+    database.localWrite {
+      update(
+        "rss_recommendation_tasks",
       ContentValues().apply {
         put("state", TASK_QUEUED)
         putNull("started_at")
       },
       "state=?",
-      arrayOf(TASK_RUNNING),
-    )
+        arrayOf(TASK_RUNNING),
+      )
+    }
   }
 
   override fun clearTasks() {
     ensureRssRecommendationSchema(database.writable)
-    database.writable.delete("rss_recommendation_tasks", null, null)
+    database.localWrite { delete("rss_recommendation_tasks", null, null) }
   }
 
   private fun savePolicy(policy: RssRecommendationPolicy) {
