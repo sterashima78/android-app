@@ -32,11 +32,10 @@ class WorkManagerRssRecommendationTaskScheduler(
   private val appContext = context.applicationContext
   private val workManager = WorkManager.getInstance(appContext)
 
-  override suspend fun enqueueForFeed(feedUrl: String) {
+  override suspend fun enqueueForFeed(feedId: String) {
     enqueue(
-      articleRepository.listUnreadArticles()
-        .filter(articleSelector)
-        .filter { it.sourceFeedUrl == feedUrl },
+      articleRepository.listUnreadArticles(setOf(feedId))
+        .filter(articleSelector),
     )
   }
 
