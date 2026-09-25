@@ -7,6 +7,8 @@ import java.util.concurrent.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -192,6 +194,9 @@ object AllPodcastCandidates : PodcastCandidateFilter {
 }
 
 interface PodcastRepository {
+  val changes: Flow<Unit>
+    get() = emptyFlow()
+
   suspend fun listSources(): List<PodcastSource>
   suspend fun findSource(sourceId: String): PodcastSource?
   suspend fun saveSource(source: PodcastSource)
