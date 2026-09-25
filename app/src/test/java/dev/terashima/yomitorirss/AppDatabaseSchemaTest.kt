@@ -42,6 +42,9 @@ class AppDatabaseSchemaTest {
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
     assertTrue("timeout_seconds" in columnNames(db, "rss_web_scraping_rules"))
+    assertTrue("revision" in columnNames(db, "rss_recommendation_policy"))
+    assertTrue("unscored_reason" in columnNames(db, "rss_recommendation_assessments"))
+    assertTrue("previous_unscored_reason" in columnNames(db, "rss_recommendation_feedback"))
     assertTrue("content_type" in columnNames(db, "articles"))
     assertFalse("saved_at" in columnNames(db, "articles"))
     assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
@@ -55,6 +58,9 @@ class AppDatabaseSchemaTest {
         "feed_folders",
         "feeds",
         "rss_web_scraping_rules",
+        "rss_recommendation_policy",
+        "rss_recommendation_assessments",
+        "rss_recommendation_feedback",
         "articles",
         "bookmarks",
         "tags",

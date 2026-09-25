@@ -17,6 +17,38 @@ class SwipeDecisionTest {
   }
 
   @Test
+  fun `大きな左スワイプはfar leftを優先する`() {
+    assertEquals(
+      SwipeCommit.FAR_LEFT,
+      resolveSwipeCommit(
+        offset = -176f,
+        normalThreshold = 92f,
+        farThreshold = 176f,
+        hasLeft = true,
+        hasRight = true,
+        hasFarRight = true,
+        hasFarLeft = true,
+      ),
+    )
+  }
+
+  @Test
+  fun `far leftだけがある場合も大きな左スワイプを判定する`() {
+    assertEquals(
+      SwipeCommit.FAR_LEFT,
+      resolveSwipeCommit(
+        offset = -200f,
+        normalThreshold = 92f,
+        farThreshold = 176f,
+        hasLeft = false,
+        hasRight = false,
+        hasFarRight = false,
+        hasFarLeft = true,
+      ),
+    )
+  }
+
+  @Test
   fun `大きな右スワイプはfar rightを優先する`() {
     assertEquals(SwipeCommit.FAR_RIGHT, resolveSwipeCommit(176f, 92f, 176f, true, true, true))
   }

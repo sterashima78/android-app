@@ -91,6 +91,14 @@ RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`fe
 
 `rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時を保持する RSS-owned durable user data である。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
 
+RSS記事推薦では同じRSS schema initializerから次のRSS-owned tableを確保する。
+
+- `rss_recommendation_policy`: 手動除外条件、学習された除外条件、条件revision
+- `rss_recommendation_assessments`: Content article IDに対するscored / unscored評価、scoreまたはunscored reason、評価revision、評価時刻
+- `rss_recommendation_feedback`: 「除外参考」として未処理のarticle ID、title、直前評価snapshot、追加時刻
+
+assessment / feedbackはContent article IDを参照するが、Content-owned tableへのforeign keyやdirect table accessは持たない。記事の既読化はContent capabilityへ委譲する。feedbackは学習成功時に対象snapshot分だけ消費し、処理中に追加されたfeedbackは後続処理へ残す。これらも通常のdatabase snapshot backup対象とし、既存のRSS idempotent initializerでadditiveに作成するため、この追加だけを理由としたapplication database version bumpは行わない。
+
 ### Library schema
 
 Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達する initializer 群を正本とする。catalog (`library_items` / `library_sources` / hidden / series)、Web source の URL pattern 別 metadata extractor (`web_library_metadata_extractors`)、SMB connection profile / Library SMB location・表紙 queue・書誌正規化、organization/read status を同じ Library-owned schema composition で作成する。

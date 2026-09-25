@@ -107,6 +107,10 @@ Content の上流 Source Context として扱う。各 Source 固有の subscrip
 
 RSS から Content への ingestion は Content-owned `ContentSourceGateway` を利用し、RSS data は Content table を直接更新しない。
 
+RSSの記事推薦ポリシーもRSS Contextが所有する。手動の除外条件、除外参考から生成された学習条件、条件revision、記事IDごとの推薦評価、未処理の除外参考feedbackをRSS-owned durable stateとして保持する。推薦評価はContentのreading stateやCurationの保存状態ではなく、現在のRSS除外条件から導出されるprojectionである。
+
+推薦判定は端末内のprovider-neutral `AiStructuredTextInference` を利用し、初期実装ではContentから得られる記事タイトルだけを入力する。数値化できない情報不足と推論/tool検証失敗を10へ混在させず、数値スコアとは別のunscored reasonとして保持する。「除外参考」操作による既読化はRSS tableを直接更新せず、Content-owned `ArticleRepository` capabilityを通す。
+
 RSS は通常の RSS / Atom discovery に加え、RSS を公開していない Web ページから synthetic feed を生成する取得方法も所有する。user-defined Web scraping rule は `rss_web_scraping_rules` に URL glob pattern、Promise ベースの JavaScript function、timeout を保存し、RSS-owned `FeedRepository` 経由で管理・実行する。Library の custom metadata extractor と execution pattern は似ているが、RSS から Library Context の repository/client へ依存せず、それぞれの source semantics と durable state を各 Context 内に閉じる。
 
 組み込みの site-specific synthetic feed client は ADR-0184 で廃止済みであり、feed 取得は一致する user-defined rule を優先し、該当 rule がなければ通常の RSS / Atom discovery / fetch へ進む。特定 host を根拠に新規 feed を暗黙に `COMIC` へ分類する処理も持たず、必要な分類は feed / folder の設定で明示する。

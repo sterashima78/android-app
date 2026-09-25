@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.composition.content
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
@@ -27,8 +28,11 @@ import dev.terashima.yomitorirss.feature.reddit.data.DefaultRedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationService
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.data.DefaultFeedRepository
+import dev.terashima.yomitorirss.feature.rss.data.DefaultRssRecommendationEngine
+import dev.terashima.yomitorirss.feature.rss.data.DefaultRssRecommendationRepository
 import dev.terashima.yomitorirss.feature.rss.data.RssContentClassificationSourceQuery
 import dev.terashima.yomitorirss.feature.summary.BookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
@@ -43,6 +47,7 @@ internal class AppContentRuntimeDependencies(
   private val dataChanges: DataChangeNotifier,
   private val httpClient: HttpClient,
   private val summaryRepository: SummaryRepository,
+  private val structuredTextInference: AiStructuredTextInference,
 ) {
   val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkContentQuery(database)
@@ -117,6 +122,13 @@ internal class AppContentRuntimeDependencies(
       dataChanges = dataChanges,
       applicationContext = application,
       httpClient = httpClient,
+    )
+  }
+
+  val rssRecommendationService: RssRecommendationService by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    RssRecommendationService(
+      repository = DefaultRssRecommendationRepository(database),
+      engine = DefaultRssRecommendationEngine(structuredTextInference),
     )
   }
 

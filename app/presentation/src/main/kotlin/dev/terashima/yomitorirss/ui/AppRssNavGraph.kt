@@ -100,9 +100,11 @@ internal fun NavGraphBuilder.registerRssDestinations(
 
   composable(RSS_SETTINGS_ROUTE) {
     val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
+    val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
     RssSettingsRoute(
       modifier = Modifier.fillMaxSize(),
       feedViewModel = feedViewModel,
+      rssViewModel = rssViewModel,
     )
   }
 }

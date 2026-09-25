@@ -8,7 +8,10 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,17 +26,25 @@ data class RssUiState(
   val history: List<Article> = emptyList(),
   val readLater: List<BookmarkedArticle> = emptyList(),
   val hiddenArticleIds: Set<String> = emptySet(),
+  val recommendationPolicy: RssRecommendationPolicy = RssRecommendationPolicy(),
+  val recommendationAssessments: Map<String, RssRecommendationAssessment> = emptyMap(),
+  val recommendationPendingFeedbackCount: Int = 0,
+  val recommendationLearning: Boolean = false,
   val message: String? = null,
 )
 
 class RssViewModel(
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
+  private val recommendationService: RssRecommendationService? = null,
   private val articleSelector: (Article) -> Boolean = { true },
 ) : ViewModel() {
   private val _state = MutableStateFlow(RssUiState())
   val state: StateFlow<RssUiState> = _state.asStateFlow()
   private val reloadMutex = Mutex()
+  private val recommendationMutex = Mutex()
+  private var recommendationRefreshJob: Job? = null
+  private var recommendationLearningJob: Job? = null
 
   init {
     viewModelScope.launch(Dispatchers.IO) {
@@ -58,6 +69,92 @@ class RssViewModel(
 
   fun markRead(article: Article) = performArticleAction(article) {
     articleRepository.markArticleRead(article.id)
+  }
+
+  fun markAsExclusionReference(article: Article) {
+    val service = recommendationService
+    if (service == null) {
+      markRead(article)
+      return
+    }
+    _state.update { it.copy(hiddenArticleIds = it.hiddenArticleIds + article.id) }
+    viewModelScope.launch(Dispatchers.IO) {
+      val feedback = try {
+        service.recordExclusionFeedback(article)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update {
+          it.copy(
+            hiddenArticleIds = it.hiddenArticleIds - article.id,
+            message = "除外参考を登録できませんでした: ${error.userMessage()}",
+          )
+        }
+        return@launch
+      }
+
+      try {
+        articleRepository.markArticleRead(article.id)
+      } catch (error: CancellationException) {
+        service.cancelExclusionFeedback(feedback.id)
+        throw error
+      } catch (error: Throwable) {
+        service.cancelExclusionFeedback(feedback.id)
+        reload()
+        _state.update {
+          it.copy(
+            hiddenArticleIds = it.hiddenArticleIds - article.id,
+            message = "既読にできなかったため除外参考を元に戻しました: ${error.userMessage()}",
+          )
+        }
+        return@launch
+      }
+
+      reload()
+      val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+      applyRecommendationSnapshot(snapshot)
+      scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
+      _state.update {
+        it.copy(
+          hiddenArticleIds = it.hiddenArticleIds - article.id,
+          message = "除外参考に追加しました",
+        )
+      }
+    }
+  }
+
+  fun saveRecommendationCondition(condition: String) {
+    val service = recommendationService ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        service.saveManualCondition(condition)
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        scheduleRecommendationRefresh(_state.value.unread)
+        _state.update { it.copy(message = "推薦の除外条件を保存しました") }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(message = "除外条件を保存できませんでした: ${error.userMessage()}") }
+      }
+    }
+  }
+
+  fun resetRecommendationLearning() {
+    val service = recommendationService ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        service.resetLearnedCondition()
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        scheduleRecommendationRefresh(_state.value.unread)
+        _state.update { it.copy(message = "学習した除外条件をリセットしました") }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(message = "学習条件をリセットできませんでした: ${error.userMessage()}") }
+      }
+    }
   }
 
   fun markUnread(article: Article) = performArticleAction(article) {
@@ -197,15 +294,79 @@ class RssViewModel(
             readLater = readLater,
           )
         }
+        recommendationService?.let { service ->
+          val snapshot = service.snapshot(unread.map(Article::id))
+          applyRecommendationSnapshot(snapshot)
+          scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
+          scheduleRecommendationRefresh(unread)
+        }
       }.onFailure { error ->
         _state.update { it.copy(initialized = true, message = "記事を読み込めませんでした: ${error.userMessage()}") }
       }
     }
   }
 
+  private fun scheduleRecommendationRefresh(unread: List<Article>) {
+    val service = recommendationService ?: return
+    recommendationRefreshJob?.cancel()
+    recommendationRefreshJob = viewModelScope.launch(Dispatchers.IO) {
+      recommendationMutex.withLock {
+        try {
+          applyRecommendationSnapshot(service.refresh(unread))
+        } catch (error: CancellationException) {
+          throw error
+        } catch (_: Throwable) {
+          // Individual inference failures are persisted as Unscored by the service.
+        }
+      }
+    }
+  }
+
+  private fun scheduleFeedbackLearning(latestPendingAt: Long?) {
+    val service = recommendationService ?: return
+    if (latestPendingAt == null) {
+      recommendationLearningJob?.cancel()
+      recommendationLearningJob = null
+      return
+    }
+    recommendationLearningJob?.cancel()
+    val waitMillis = (latestPendingAt + RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS - System.currentTimeMillis())
+      .coerceAtLeast(0L)
+    recommendationLearningJob = viewModelScope.launch(Dispatchers.IO) {
+      delay(waitMillis)
+      _state.update { it.copy(recommendationLearning = true) }
+      try {
+        val updated = service.improvePendingFeedback()
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        if (updated != null) {
+          scheduleRecommendationRefresh(_state.value.unread)
+          if (snapshot.latestPendingFeedbackAt != null) {
+            scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
+          }
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } finally {
+        _state.update { it.copy(recommendationLearning = false) }
+      }
+    }
+  }
+
+  private fun applyRecommendationSnapshot(snapshot: RssRecommendationSnapshot) {
+    _state.update {
+      it.copy(
+        recommendationPolicy = snapshot.policy,
+        recommendationAssessments = snapshot.assessments,
+        recommendationPendingFeedbackCount = snapshot.pendingFeedbackCount,
+      )
+    }
+  }
+
   class Factory(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val recommendationService: RssRecommendationService? = null,
     private val articleSelector: (Article) -> Boolean = { true },
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -213,10 +374,17 @@ class RssViewModel(
         "Unknown ViewModel class: ${modelClass.name}"
       }
       @Suppress("UNCHECKED_CAST")
-      return RssViewModel(articleRepository, bookmarkRepository, articleSelector) as T
+      return RssViewModel(
+        articleRepository = articleRepository,
+        bookmarkRepository = bookmarkRepository,
+        recommendationService = recommendationService,
+        articleSelector = articleSelector,
+      ) as T
     }
   }
 }
+
+private const val RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS = 30_000L
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }

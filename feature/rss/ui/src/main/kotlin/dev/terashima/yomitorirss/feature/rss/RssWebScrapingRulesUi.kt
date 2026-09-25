@@ -42,6 +42,11 @@ import androidx.compose.ui.window.DialogProperties
 
 @Composable
 internal fun RssWebScrapingRulesUi(
+  recommendationPolicy: RssRecommendationPolicy,
+  recommendationPendingFeedbackCount: Int,
+  recommendationLearning: Boolean,
+  onSaveRecommendationCondition: (String) -> Unit,
+  onResetRecommendationLearning: () -> Unit,
   rules: List<RssWebScrapingRule>,
   testState: WebScrapingRuleTestUiState,
   onSave: (String?, String, String, Int) -> Unit,
@@ -52,12 +57,75 @@ internal fun RssWebScrapingRulesUi(
 ) {
   var editingRule by remember { mutableStateOf<RssWebScrapingRule?>(null) }
   var creatingRule by remember { mutableStateOf(false) }
+  var manualRecommendationCondition by remember(recommendationPolicy.revision) {
+    mutableStateOf(recommendationPolicy.manualCondition)
+  }
 
   LazyColumn(
     modifier = modifier.fillMaxSize(),
     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("記事推薦", style = MaterialTheme.typography.titleLarge)
+        Text(
+          "除外条件をもとに未読記事のタイトルだけを1〜10で評価します。10は正常に評価した結果として除外不要な記事です。" +
+            "タイトルだけでは判断できない場合や判定に失敗した場合は数値を付けず、理由を記事一覧に表示します。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+          value = manualRecommendationCondition,
+          onValueChange = { manualRecommendationCondition = it },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("手動の除外条件") },
+          placeholder = { Text("例: 単純なセール告知やキャンペーン記事は重要度を下げる") },
+          minLines = 3,
+          maxLines = 8,
+        )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+        ) {
+          TextButton(
+            onClick = { onSaveRecommendationCondition(manualRecommendationCondition) },
+            enabled = manualRecommendationCondition.trim() != recommendationPolicy.manualCondition,
+          ) {
+            Text("保存")
+          }
+        }
+        Text("学習された除外条件", style = MaterialTheme.typography.titleMedium)
+        Text(
+          recommendationPolicy.learnedCondition.ifBlank { "まだ学習された条件はありません。" },
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (recommendationPendingFeedbackCount > 0 || recommendationLearning) {
+          Text(
+            when {
+              recommendationLearning -> "除外参考から条件を更新中です"
+              else -> "除外参考を ${recommendationPendingFeedbackCount} 件待機中です"
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.secondary,
+          )
+        }
+        if (recommendationPolicy.learnedCondition.isNotBlank()) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+          ) {
+            TextButton(onClick = onResetRecommendationLearning) {
+              Text("学習条件をリセット")
+            }
+          }
+        }
+      }
+    }
+
+    item { HorizontalDivider() }
+
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Web 取得ルール", style = MaterialTheme.typography.titleLarge)

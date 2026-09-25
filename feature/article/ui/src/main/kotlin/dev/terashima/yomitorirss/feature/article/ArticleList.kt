@@ -63,7 +63,9 @@ fun ArticleList(
   emptyText: String,
   bookmarkDetails: Map<String, BookmarkedArticle> = emptyMap(),
   displayedAtByArticleId: Map<String, String> = emptyMap(),
+  annotationByArticleId: Map<String, String> = emptyMap(),
   left: SwipeChoice? = null,
+  farLeft: SwipeChoice? = null,
   right: SwipeChoice? = null,
   farRight: SwipeChoice? = null,
   onOpen: (Article) -> Unit,
@@ -100,7 +102,9 @@ fun ArticleList(
           article = article,
           displayedAt = displayedAtByArticleId[article.id] ?: article.publishedAt,
           bookmarkDetails = bookmarkDetails[article.id],
+          annotation = annotationByArticleId[article.id],
           left = left,
+          farLeft = farLeft,
           right = right,
           farRight = farRight,
           onOpen = onOpen,
@@ -120,7 +124,9 @@ private fun LazyItemScope.SwipeArticleItem(
   article: Article,
   displayedAt: String,
   bookmarkDetails: BookmarkedArticle?,
+  annotation: String?,
   left: SwipeChoice?,
+  farLeft: SwipeChoice?,
   right: SwipeChoice?,
   farRight: SwipeChoice?,
   onOpen: (Article) -> Unit,
@@ -133,6 +139,7 @@ private fun LazyItemScope.SwipeArticleItem(
   SwipeActionListItem(
     itemKey = article.id,
     left = left?.toSwipeAction(article),
+    farLeft = farLeft?.toSwipeAction(article),
     right = right?.toSwipeAction(article),
     farRight = farRight?.toSwipeAction(article),
   ) {
@@ -140,6 +147,7 @@ private fun LazyItemScope.SwipeArticleItem(
       article = article,
       displayedAt = displayedAt,
       bookmarkDetails = bookmarkDetails,
+      annotation = annotation,
       onOpen = onOpen,
       onSummarize = onSummarize,
       onEditTags = onEditTags,
@@ -161,6 +169,7 @@ private fun ArticleContent(
   article: Article,
   displayedAt: String,
   bookmarkDetails: BookmarkedArticle?,
+  annotation: String?,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
@@ -199,6 +208,16 @@ private fun ArticleContent(
             timeLabel(displayedAt),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        annotation?.let {
+          Spacer(Modifier.height(4.dp))
+          Text(
+            it,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.secondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
           )
         }
         if (article.effectiveContentType != ContentType.ARTICLE || article.contentTypeOverride != null) {

@@ -69,6 +69,7 @@ class AppContainer(
       dataChanges = dataChanges,
       httpClient = httpClient,
       summaryRepository = aiCoreRuntime.summaryRepository,
+      structuredTextInference = aiCoreRuntime.structuredTextInference,
     )
   }
 
@@ -198,6 +199,7 @@ class AppContainer(
   val bookmarkEnrichmentRepository get() = contentRuntime.bookmarkEnrichmentRepository
   val bookmarkImportRepository get() = contentRuntime.bookmarkImportRepository
   val feedRepository get() = contentRuntime.feedRepository
+  internal val rssRecommendationService get() = contentRuntime.rssRecommendationService
   val redditRepository get() = contentRuntime.redditRepository
   val videoProviderRepository get() = videoRuntime.providerRepository
   val feedImportRepository get() = contentRuntime.feedImportRepository

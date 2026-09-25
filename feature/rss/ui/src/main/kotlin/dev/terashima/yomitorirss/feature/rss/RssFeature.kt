@@ -42,6 +42,7 @@ fun RssScreen(
   tab: RssTab,
   state: RssUiState,
   onMarkRead: (Article) -> Unit,
+  onExclusionReference: (Article) -> Unit,
   onSaveAndRead: (Article) -> Unit,
   onReadLater: (Article) -> Unit,
   onUnsave: (Article) -> Unit,
@@ -68,7 +69,11 @@ fun RssScreen(
       modifier = modifier,
       articles = state.unread.filterNot { it.id in state.hiddenArticleIds },
       emptyText = "未読記事はありません",
+      annotationByArticleId = state.recommendationAssessments.mapValues { (_, assessment) ->
+        recommendationAnnotation(assessment)
+      },
       left = SwipeChoice("既読", MaterialTheme.colorScheme.primary, onMarkRead),
+      farLeft = SwipeChoice("除外参考", MaterialTheme.colorScheme.error, onExclusionReference),
       right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
       farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
       onOpen = onOpen,
@@ -149,5 +154,15 @@ fun RssScreen(
 
     RssTab.FEEDS,
     RssTab.SETTINGS -> Unit
+  }
+}
+
+internal fun recommendationAnnotation(assessment: RssRecommendationAssessment): String = when (assessment) {
+  is RssRecommendationAssessment.Scored -> "推薦スコア: ${assessment.score}"
+  is RssRecommendationAssessment.Unscored -> when (assessment.reason) {
+    RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION ->
+      "推薦: 未評価（タイトルだけでは判断できません）"
+    RssRecommendationUnscoredReason.INFERENCE_FAILED ->
+      "推薦: 未評価（判定に失敗しました）"
   }
 }
