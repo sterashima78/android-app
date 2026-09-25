@@ -26,6 +26,7 @@ dependencies {
 
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+  implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation(libs.jsoup)
   implementation(libs.kotlinx.serialization.json)
 
