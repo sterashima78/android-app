@@ -19,6 +19,8 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskReader
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
 import dev.terashima.yomitorirss.feature.summary.BackfillBookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.ReprocessBookmarkAutoEnrichmentUseCase
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
@@ -36,6 +38,8 @@ internal class AppCrossFeatureRuntimeDependencies(
   private val bookmarkRepository: BookmarkRepository,
   private val feedRepository: FeedRepository,
   private val redditRepository: RedditRepository,
+  private val rssRecommendationTaskReader: RssRecommendationTaskReader,
+  private val rssRecommendationTaskScheduler: RssRecommendationTaskScheduler,
   private val summaryRepository: SummaryRepository,
   private val taskRepository: TaskRepository,
   private val libraryRuntime: LibraryRuntimeDependencies,
@@ -99,6 +103,8 @@ internal class AppCrossFeatureRuntimeDependencies(
       smbMetadataNormalizationRepository = libraryRuntime.smbMetadataNormalizationRepository,
       smbMetadataNormalizationScheduler = libraryRuntime.smbMetadataNormalizationScheduler,
       podcastTaskReader = podcastTaskReader,
+      rssRecommendationTaskReader = rssRecommendationTaskReader,
+      rssRecommendationTaskScheduler = rssRecommendationTaskScheduler,
     )
   }
 }
