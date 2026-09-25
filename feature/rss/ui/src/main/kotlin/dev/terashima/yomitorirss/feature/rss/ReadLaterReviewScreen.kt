@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -107,114 +109,138 @@ internal fun ReadLaterReviewScreen(
     }
   }
 
-  Box(Modifier.fillMaxSize()) {
-    when {
-      currentIndex >= sessionIds.size -> ReviewCompleted(
-        remainingCount = currentReadLater.size,
-        onExit = onExit,
-      )
-
-      current == null -> Box(
-        Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-      ) {
-        LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 32.dp))
+  Scaffold(
+    modifier = Modifier.fillMaxSize(),
+    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    snackbarHost = { SnackbarHost(snackbarHostState) },
+    bottomBar = {
+      current?.let { reviewed ->
+        ReadLaterReviewActions(
+          article = reviewed,
+          onOpen = onOpen,
+          onMoveToUncategorized = {
+            advance()
+            onMoveToUncategorized(reviewed.article)
+            showUndo("未分類へ移動しました") { onRestoreReadLater(reviewed) }
+          },
+          onDelete = {
+            advance()
+            onDelete(reviewed.article)
+            showUndo("ブックマークを削除しました") { onRestoreReadLater(reviewed) }
+          },
+          onHold = ::advance,
+        )
       }
-
-      else -> Column(Modifier.fillMaxSize()) {
-        ReviewHeader(
-          current = currentIndex + 1,
-          total = sessionIds.size,
+    },
+  ) { contentPadding ->
+    Box(
+      modifier = Modifier.fillMaxSize().padding(contentPadding),
+    ) {
+      when {
+        currentIndex >= sessionIds.size -> ReviewCompleted(
+          remainingCount = currentReadLater.size,
           onExit = onExit,
         )
 
-        ArticleHeader(current.article)
-        HorizontalDivider()
-
-        LazyColumn(
-          modifier = Modifier.weight(1f).fillMaxWidth(),
+        current == null -> Box(
+          Modifier.fillMaxSize(),
+          contentAlignment = Alignment.Center,
         ) {
-          item {
-            SummaryContent(
-              articleId = current.article.id,
-              summaryArticleId = summaryArticleId,
-              summaryText = summaryText,
-              summaryLoading = summaryLoading,
-              summaryError = summaryError,
-              onRetry = { onRetrySummary(current.article) },
-            )
-          }
+          LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 32.dp))
         }
 
-        HorizontalDivider()
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          OutlinedButton(
-            onClick = { onOpen(current.article) },
-            modifier = Modifier.weight(1f),
+        else -> Column(Modifier.fillMaxSize()) {
+          ReviewHeader(
+            current = currentIndex + 1,
+            total = sessionIds.size,
+            onExit = onExit,
+          )
+
+          ArticleHeader(current.article)
+          HorizontalDivider()
+
+          LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
           ) {
-            Text("記事を開く")
-          }
-          OutlinedButton(
-            onClick = {
-              onOpen(
-                current.article.copy(
-                  url = "https://b.hatena.ne.jp/entry?url=${Uri.encode(current.article.url)}",
-                ),
+            item {
+              SummaryContent(
+                articleId = current.article.id,
+                summaryArticleId = summaryArticleId,
+                summaryText = summaryText,
+                summaryLoading = summaryLoading,
+                summaryError = summaryError,
+                onRetry = { onRetrySummary(current.article) },
               )
-            },
-            modifier = Modifier.weight(1f),
-          ) {
-            Text("はてブを見る")
-          }
-        }
-
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          OutlinedButton(
-            onClick = ::advance,
-            modifier = Modifier.weight(1f),
-          ) {
-            Text("保留")
-          }
-          Button(
-            onClick = {
-              val item = current
-              advance()
-              onMoveToUncategorized(item.article)
-              showUndo("未分類へ移動しました") { onRestoreReadLater(item) }
-            },
-            modifier = Modifier.weight(1f),
-          ) {
-            Text("未分類へ")
-          }
-          Button(
-            onClick = {
-              val item = current
-              advance()
-              onDelete(item.article)
-              showUndo("ブックマークを削除しました") { onRestoreReadLater(item) }
-            },
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(
-              containerColor = MaterialTheme.colorScheme.error,
-              contentColor = MaterialTheme.colorScheme.onError,
-            ),
-          ) {
-            Text("削除")
+            }
           }
         }
       }
     }
+  }
+}
 
-    SnackbarHost(
-      hostState = snackbarHostState,
-      modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 72.dp),
-    )
+
+@Composable
+private fun ReadLaterReviewActions(
+  article: BookmarkedArticle,
+  onOpen: (Article) -> Unit,
+  onMoveToUncategorized: () -> Unit,
+  onDelete: () -> Unit,
+  onHold: () -> Unit,
+) {
+  Column(Modifier.fillMaxWidth()) {
+    HorizontalDivider()
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      OutlinedButton(
+        onClick = { onOpen(article.article) },
+        modifier = Modifier.weight(1f),
+      ) {
+        Text("記事を開く")
+      }
+      OutlinedButton(
+        onClick = {
+          onOpen(
+            article.article.copy(
+              url = "https://b.hatena.ne.jp/entry?url=${Uri.encode(article.article.url)}",
+            ),
+          )
+        },
+        modifier = Modifier.weight(1f),
+      ) {
+        Text("はてブを見る")
+      }
+    }
+
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      OutlinedButton(
+        onClick = onHold,
+        modifier = Modifier.weight(1f),
+      ) {
+        Text("保留")
+      }
+      Button(
+        onClick = onMoveToUncategorized,
+        modifier = Modifier.weight(1f),
+      ) {
+        Text("未分類へ")
+      }
+      Button(
+        onClick = onDelete,
+        modifier = Modifier.weight(1f),
+        colors = ButtonDefaults.buttonColors(
+          containerColor = MaterialTheme.colorScheme.error,
+          contentColor = MaterialTheme.colorScheme.onError,
+        ),
+      ) {
+        Text("削除")
+      }
+    }
   }
 }
 
