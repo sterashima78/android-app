@@ -695,23 +695,19 @@ private class FakePodcastRepository(
   override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode =
     update(episodeId) { it.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null, regenerationStatus = null) }
 
-  override suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode =
+  override suspend fun prepareEpisodeRebuild(
+    episodeId: String,
+    candidates: List<PodcastFeedEntry>,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode =
     update(episodeId) { episode ->
-      val articles = if (episode.regenerationStatus == null) {
-        episode.articles.map {
-          it.copy(
-            chapterStatus = PodcastChapterGenerationStatus.PENDING,
-            chapterScript = null,
-            chapterError = null,
-          )
-        }
-      } else {
-        episode.articles
-      }
       episode.copy(
-        articles = articles,
-        regenerationStatus = PodcastRegenerationStatus.RUNNING,
+        status = PodcastEpisodeStatus.GENERATING,
+        articles = candidates.map { it.toEpisodeArticle() },
+        script = null,
         errorMessage = null,
+        regenerationStatus = null,
+        clusteringStatus = clusteringStatus,
       )
     }
 
