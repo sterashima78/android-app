@@ -138,6 +138,11 @@ class DefaultRssRecommendationRepository(
     return RssRecommendationFeedback(id, articleId, title, previousAssessment, createdAt)
   }
 
+  override fun removeFeedback(feedbackId: String) {
+    ensureRssRecommendationSchema(database.writable)
+    database.write { delete("rss_recommendation_feedback", "id=?", arrayOf(feedbackId)) }
+  }
+
   override fun listPendingFeedback(): List<RssRecommendationFeedback> {
     ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
