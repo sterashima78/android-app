@@ -58,6 +58,22 @@ class RssUiStateTest {
   }
 
   @Test
+  fun `推薦条件が有効で評価結果がない記事は評価待ちと表示する`() {
+    val state = RssUiState(
+      recommendationPolicy = RssRecommendationPolicy(manualCondition = "広告記事を低くする"),
+    )
+
+    assertEquals("推薦: 評価待ち", state.recommendationAnnotationFor("pending"))
+  }
+
+  @Test
+  fun `推薦条件が無効なら評価結果がない記事に注記を表示しない`() {
+    val state = RssUiState()
+
+    assertNull(state.recommendationAnnotationFor("pending"))
+  }
+
+  @Test
   fun `フィード追加中は更新件数より追加進捗を優先表示する`() {
     val state = FeedUiState(
       refreshing = true,
