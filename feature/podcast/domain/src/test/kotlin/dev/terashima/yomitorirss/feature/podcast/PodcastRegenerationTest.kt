@@ -5,78 +5,115 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PodcastRegenerationTest {
   @Test
-  fun `生成済みエピソードは保存済み記事から再生成する`() = runSuspend {
-    val repository = RegenerationRepository()
+  fun `再生成は保存済み記事へ現在の除外条件を適用して作り直す`() = runSuspend {
+    val repository = RegenerationRepository(
+      exclusionPrompt = "カテゴリAを除外する",
+      articles = listOf(
+        article("article-1", "除外する本文"),
+        article("article-2", "残す本文"),
+      ),
+    )
     val feedSource = RecordingFeedSource()
     val generator = RegenerationGenerator(result = "新しい原稿")
-    val useCase = GeneratePodcastEpisodeUseCase(repository, feedSource, generator)
+    val excluder = RecordingNewsExcluder(excludedIds = setOf("article-1"))
+    val clusterer = RecordingNewsClusterer(groups = listOf(listOf(0)))
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository = repository,
+      feedContentSource = feedSource,
+      scriptGenerator = generator,
+      newsClusterer = clusterer,
+      newsExcluder = excluder,
+    )
 
     val regenerated = useCase.regenerate(repository.episode.id).episode
 
     assertEquals(PodcastEpisodeStatus.READY, regenerated.status)
+    assertEquals(listOf("article-2"), regenerated.articles.map { it.articleId })
+    assertEquals(listOf("article-1", "article-2"), excluder.candidateIds)
+    assertEquals(listOf("article-2"), clusterer.candidateIds)
+    assertEquals(0, regenerated.articles.single().chapterPosition)
     assertTrue(regenerated.script.orEmpty().contains("新しい原稿"))
-    assertEquals(null, regenerated.regenerationStatus)
-    assertEquals(PodcastChapterGenerationStatus.READY, regenerated.articles.single().chapterStatus)
-    assertEquals(repository.episode.id, regenerated.id)
     assertEquals(0, feedSource.requestCount)
-    assertTrue(generator.prompt.contains("保存済み本文"))
+    assertTrue(generator.prompt.contains("残す本文"))
+    assertFalse(generator.prompt.contains("除外する本文"))
   }
 
   @Test
-  fun `生成済みエピソードの再生成に失敗しても既存原稿を保持する`() = runSuspend {
-    val repository = RegenerationRepository()
-    val feedSource = RecordingFeedSource()
+  fun `再生成は保存済み記事を現在の条件で再クラスタリングする`() = runSuspend {
+    val repository = RegenerationRepository(
+      articles = listOf(
+        article("article-1", "本文1"),
+        article("article-2", "本文2"),
+        article("article-3", "本文3"),
+      ),
+    )
+    val clusterer = RecordingNewsClusterer(groups = listOf(listOf(0, 2), listOf(1)))
     val useCase = GeneratePodcastEpisodeUseCase(
       repository = repository,
-      feedContentSource = feedSource,
+      feedContentSource = RecordingFeedSource(),
+      scriptGenerator = RegenerationGenerator(result = "新しい原稿"),
+      newsClusterer = clusterer,
+    )
+
+    val regenerated = useCase.regenerate(repository.episode.id).episode
+
+    assertEquals(listOf("article-1", "article-3", "article-2"), regenerated.articles.map { it.articleId })
+    assertEquals(listOf(0, 0, 1), regenerated.articles.map { it.chapterPosition })
+    assertEquals(PodcastClusteringStatus.SUCCESS, regenerated.clusteringStatus)
+  }
+
+  @Test
+  fun `現在の除外条件で全記事が除外される場合は既存エピソードを保持する`() = runSuspend {
+    val repository = RegenerationRepository(
+      exclusionPrompt = "カテゴリAを除外する",
+      articles = listOf(article("article-1", "保存済み本文")),
+    )
+    val original = repository.episode
+    val generator = RegenerationGenerator(result = "unused")
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository = repository,
+      feedContentSource = RecordingFeedSource(),
+      scriptGenerator = generator,
+      newsExcluder = RecordingNewsExcluder(excludedIds = setOf("article-1")),
+    )
+
+    val error = runCatching { useCase.regenerate(repository.episode.id) }.exceptionOrNull()
+
+    assertTrue(error is IllegalArgumentException)
+    assertTrue(error?.message.orEmpty().contains("再生成対象の記事がありません"))
+    assertEquals(original, repository.episode)
+    assertFalse(repository.rebuildCalled)
+    assertTrue(generator.prompt.isEmpty())
+  }
+
+  @Test
+  fun `作り直し開始後に原稿生成が失敗した場合は旧原稿へ戻さない`() = runSuspend {
+    val repository = RegenerationRepository()
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository = repository,
+      feedContentSource = RecordingFeedSource(),
       scriptGenerator = RegenerationGenerator(error = IllegalStateException("generation failed")),
     )
 
     val error = runCatching { useCase.regenerate(repository.episode.id) }.exceptionOrNull()
 
     assertTrue(error is IllegalStateException)
-    assertEquals(PodcastEpisodeStatus.READY, repository.episode.status)
-    assertEquals("既存原稿", repository.episode.script)
-    assertEquals(PodcastRegenerationStatus.FAILED, repository.episode.regenerationStatus)
-    assertEquals(PodcastChapterGenerationStatus.FAILED, repository.episode.articles.single().chapterStatus)
-    assertFalse(repository.failEpisodeCalled)
-    assertEquals(0, feedSource.requestCount)
-  }
-
-  @Test
-  fun `再生成失敗後の再実行は完成済みチャプターを保持する`() = runSuspend {
-    val repository = RegenerationRepository(
-      articles = listOf(
-        article("article-1", "本文1"),
-        article("article-2", "本文2"),
-      ),
-    )
-    val feedSource = RecordingFeedSource()
-    val firstGenerator = RegenerationSequenceGenerator(listOf("新1", null))
-    val useCase = GeneratePodcastEpisodeUseCase(repository, feedSource, firstGenerator)
-
-    runCatching { useCase.regenerate(repository.episode.id) }
-    assertEquals(PodcastChapterGenerationStatus.READY, repository.episode.articles[0].chapterStatus)
-    assertEquals(PodcastChapterGenerationStatus.FAILED, repository.episode.articles[1].chapterStatus)
-
-    val retryGenerator = RegenerationGenerator(result = "新2")
-    val retried = GeneratePodcastEpisodeUseCase(repository, feedSource, retryGenerator)
-      .regenerate(repository.episode.id).episode
-
-    assertFalse(retryGenerator.prompt.contains("本文1"))
-    assertTrue(retryGenerator.prompt.contains("本文2"))
-    assertTrue(retried.script.orEmpty().contains("新1"))
-    assertTrue(retried.script.orEmpty().contains("新2"))
-    assertEquals(null, retried.regenerationStatus)
+    assertTrue(repository.rebuildCalled)
+    assertEquals(PodcastEpisodeStatus.FAILED, repository.episode.status)
+    assertNull(repository.episode.script)
+    assertNull(repository.episode.regenerationStatus)
+    assertTrue(repository.failEpisodeCalled)
   }
 }
 
 private class RegenerationRepository(
+  exclusionPrompt: String = "",
   articles: List<PodcastEpisodeArticle> = listOf(article("article-1", "保存済み本文")),
 ) : PodcastRepository {
   private val program = PodcastProgram(
@@ -84,6 +121,7 @@ private class RegenerationRepository(
     name = "朝のニュース",
     sourceIds = setOf("source-1"),
     provider = PodcastGenerationProvider.LOCAL,
+    exclusionPrompt = exclusionPrompt,
   )
   var episode = PodcastEpisode(
     id = "episode-1",
@@ -95,6 +133,7 @@ private class RegenerationRepository(
     script = "既存原稿",
   )
   var failEpisodeCalled = false
+  var rebuildCalled = false
 
   override suspend fun findProgram(programId: String): PodcastProgram? = program.takeIf { it.id == programId }
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episode.takeIf { it.id == episodeId }
@@ -107,32 +146,29 @@ private class RegenerationRepository(
     return episode
   }
 
-  override suspend fun prepareEpisodeRegeneration(episodeId: String): PodcastEpisode {
+  override suspend fun prepareEpisodeRebuild(
+    episodeId: String,
+    candidates: List<PodcastFeedEntry>,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode {
     check(episode.id == episodeId)
-    val preparedArticles = if (episode.regenerationStatus == null) {
-      episode.articles.map {
-        it.copy(
-          chapterStatus = PodcastChapterGenerationStatus.PENDING,
-          chapterScript = null,
-          chapterError = null,
-        )
-      }
-    } else {
-      episode.articles
-    }
+    rebuildCalled = true
     episode = episode.copy(
-      articles = preparedArticles,
-      regenerationStatus = PodcastRegenerationStatus.RUNNING,
+      status = PodcastEpisodeStatus.GENERATING,
+      articles = candidates.map { it.toEpisodeArticle() },
+      script = null,
       errorMessage = null,
+      regenerationStatus = null,
+      clusteringStatus = clusteringStatus,
     )
     return episode
   }
 
   override suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode =
-    updateArticle(position) { it.copy(chapterStatus = PodcastChapterGenerationStatus.GENERATING, chapterError = null) }
+    updateChapter(position) { it.copy(chapterStatus = PodcastChapterGenerationStatus.GENERATING, chapterError = null) }
 
   override suspend fun completeChapter(episodeId: String, position: Int, script: String): PodcastEpisode =
-    updateArticle(position) {
+    updateChapter(position) {
       it.copy(
         chapterStatus = PodcastChapterGenerationStatus.READY,
         chapterScript = script,
@@ -141,7 +177,7 @@ private class RegenerationRepository(
     }
 
   override suspend fun failChapter(episodeId: String, position: Int, message: String): PodcastEpisode =
-    updateArticle(position) {
+    updateChapter(position) {
       it.copy(chapterStatus = PodcastChapterGenerationStatus.FAILED, chapterError = message)
     }
 
@@ -188,18 +224,29 @@ private class RegenerationRepository(
     createdAtEpochMillis: Long,
   ): PodcastEpisode? = error("unused")
 
-  private fun updateArticle(
+  private fun updateChapter(
     position: Int,
     transform: (PodcastEpisodeArticle) -> PodcastEpisodeArticle,
   ): PodcastEpisode {
     episode = episode.copy(
-      articles = episode.articles.mapIndexed { index, article ->
-        if (index == position) transform(article) else article
+      articles = episode.articles.map { article ->
+        if ((article.chapterPosition ?: 0) == position) transform(article) else article
       },
     )
     return episode
   }
 }
+
+private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
+  articleId = articleId,
+  feedId = feedId,
+  title = title,
+  sourceTitle = sourceTitle,
+  publishedAtEpochMillis = publishedAtEpochMillis,
+  articleUrl = articleUrl,
+  feedContent = feedContent,
+  chapterPosition = chapterPosition,
+)
 
 private fun article(id: String, body: String) = PodcastEpisodeArticle(
   articleId = id,
@@ -220,6 +267,38 @@ private class RecordingFeedSource : PodcastFeedContentSource {
   }
 }
 
+private class RecordingNewsExcluder(
+  private val excludedIds: Set<String>,
+) : PodcastNewsExcluder {
+  var candidateIds: List<String> = emptyList()
+
+  override suspend fun filter(
+    provider: PodcastGenerationProvider,
+    exclusionPrompt: String,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastNewsExclusionResult {
+    candidateIds = candidates.map(PodcastFeedEntry::articleId)
+    return PodcastNewsExclusionResult(
+      included = candidates.filterNot { it.articleId in excludedIds },
+      excluded = candidates.filter { it.articleId in excludedIds },
+    )
+  }
+}
+
+private class RecordingNewsClusterer(
+  private val groups: List<List<Int>>,
+) : PodcastNewsClusterer {
+  var candidateIds: List<String> = emptyList()
+
+  override suspend fun cluster(
+    provider: PodcastGenerationProvider,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastNewsClusteringResult {
+    candidateIds = candidates.map(PodcastFeedEntry::articleId)
+    return PodcastNewsClusteringResult(groups, PodcastClusteringStatus.SUCCESS)
+  }
+}
+
 private class RegenerationGenerator(
   private val result: String = "",
   private val error: Throwable? = null,
@@ -231,15 +310,6 @@ private class RegenerationGenerator(
     error?.let { throw it }
     return result
   }
-}
-
-private class RegenerationSequenceGenerator(
-  private val results: List<String?>,
-) : PodcastScriptGenerator {
-  private var index = 0
-
-  override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String =
-    results.getOrNull(index++) ?: error("generation failed")
 }
 
 private fun runSuspend(block: suspend () -> Unit) {
