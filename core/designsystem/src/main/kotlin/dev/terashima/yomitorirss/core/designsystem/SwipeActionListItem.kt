@@ -30,10 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -47,6 +50,32 @@ data class SwipeAction(
   val onCommit: () -> Unit,
 )
 
+class SwipeBehavior private constructor(
+  internal val normalThreshold: Dp,
+  internal val farThreshold: Dp,
+  internal val farThresholdFraction: Float?,
+  internal val hapticOnFarTransition: Boolean,
+  internal val resistFarTransition: Boolean,
+) {
+  companion object {
+    val Default = SwipeBehavior(
+      normalThreshold = 92.dp,
+      farThreshold = 176.dp,
+      farThresholdFraction = null,
+      hapticOnFarTransition = false,
+      resistFarTransition = false,
+    )
+
+    val DeliberateFarAction = SwipeBehavior(
+      normalThreshold = 76.dp,
+      farThreshold = 176.dp,
+      farThresholdFraction = 0.65f,
+      hapticOnFarTransition = true,
+      resistFarTransition = true,
+    )
+  }
+}
+
 @Composable
 fun LazyItemScope.SwipeActionListItem(
   itemKey: Any,
@@ -54,6 +83,8 @@ fun LazyItemScope.SwipeActionListItem(
   farLeft: SwipeAction? = null,
   right: SwipeAction? = null,
   farRight: SwipeAction? = null,
+  leftBehavior: SwipeBehavior = SwipeBehavior.Default,
+  rightBehavior: SwipeBehavior = SwipeBehavior.Default,
   modifier: Modifier = Modifier,
   content: @Composable () -> Unit,
 ) {
@@ -61,13 +92,26 @@ fun LazyItemScope.SwipeActionListItem(
   var dragOffset by remember(itemKey) { mutableFloatStateOf(0f) }
   var dragging by remember(itemKey) { mutableStateOf(false) }
   var committing by remember(itemKey) { mutableStateOf(false) }
+  var farLeftActive by remember(itemKey) { mutableStateOf(false) }
+  var farRightActive by remember(itemKey) { mutableStateOf(false) }
   val currentLeft by rememberUpdatedState(left)
   val currentFarLeft by rememberUpdatedState(farLeft)
   val currentRight by rememberUpdatedState(right)
   val currentFarRight by rememberUpdatedState(farRight)
   val density = LocalDensity.current
-  val normalThreshold = with(density) { NORMAL_THRESHOLD.toPx() }
-  val farThreshold = with(density) { FAR_THRESHOLD.toPx() }
+  val haptic = LocalHapticFeedback.current
+  val leftNormalThreshold = with(density) { leftBehavior.normalThreshold.toPx() }
+  val rightNormalThreshold = with(density) { rightBehavior.normalThreshold.toPx() }
+  val leftFarThreshold = resolveFarThreshold(
+    rowWidth = rowWidth,
+    fixedThreshold = with(density) { leftBehavior.farThreshold.toPx() },
+    fraction = leftBehavior.farThresholdFraction,
+  )
+  val rightFarThreshold = resolveFarThreshold(
+    rowWidth = rowWidth,
+    fixedThreshold = with(density) { rightBehavior.farThreshold.toPx() },
+    fraction = rightBehavior.farThresholdFraction,
+  )
   val animatedOffset by animateFloatAsState(
     targetValue = dragOffset,
     animationSpec = if (dragging) snap() else spring(
@@ -78,9 +122,9 @@ fun LazyItemScope.SwipeActionListItem(
   )
   val scope = rememberCoroutineScope()
   val visibleChoice = when {
-    farLeft != null && animatedOffset <= -farThreshold -> farLeft
+    farLeft != null && animatedOffset <= -leftFarThreshold -> farLeft
     animatedOffset < 0 -> left
-    farRight != null && animatedOffset >= farThreshold -> farRight
+    farRight != null && animatedOffset >= rightFarThreshold -> farRight
     animatedOffset > 0 -> right
     else -> null
   }
@@ -107,17 +151,38 @@ fun LazyItemScope.SwipeActionListItem(
         .fillMaxWidth()
         .onSizeChanged { rowWidth = it.width.toFloat().coerceAtLeast(1f) }
         .offset { IntOffset(animatedOffset.roundToInt(), 0) }
-        .pointerInput(itemKey, left?.label, farLeft?.label, right?.label, farRight?.label) {
+        .pointerInput(itemKey, left?.label, farLeft?.label, right?.label, farRight?.label, leftBehavior, rightBehavior) {
           detectHorizontalDragGestures(
-            onDragStart = { if (!committing) dragging = true },
+            onDragStart = {
+              if (!committing) {
+                dragging = true
+                farLeftActive = false
+                farRightActive = false
+              }
+            },
             onDragCancel = {
               dragging = false
+              farLeftActive = false
+              farRightActive = false
               dragOffset = 0f
             },
             onHorizontalDrag = { change, amount ->
               if (!committing) {
                 change.consume()
-                val next = dragOffset + amount
+                val rawNext = dragOffset + amount
+                val movingLeft = rawNext < 0f
+                val adjustedAmount = applyFarTransitionResistance(
+                  offset = dragOffset,
+                  delta = amount,
+                  farThreshold = if (movingLeft) leftFarThreshold else rightFarThreshold,
+                  towardNegative = movingLeft,
+                  enabled = if (movingLeft) {
+                    currentFarLeft != null && leftBehavior.resistFarTransition
+                  } else {
+                    currentFarRight != null && rightBehavior.resistFarTransition
+                  },
+                )
+                val next = dragOffset + adjustedAmount
                 val canMove =
                   (next < 0 && (currentLeft != null || currentFarLeft != null)) ||
                     (next > 0 && (currentRight != null || currentFarRight != null))
@@ -126,6 +191,17 @@ fun LazyItemScope.SwipeActionListItem(
                 } else {
                   next * UNSUPPORTED_DIRECTION_RESISTANCE
                 }
+
+                val nowFarLeft = currentFarLeft != null && dragOffset <= -leftFarThreshold
+                val nowFarRight = currentFarRight != null && dragOffset >= rightFarThreshold
+                if (!farLeftActive && nowFarLeft && leftBehavior.hapticOnFarTransition) {
+                  haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+                if (!farRightActive && nowFarRight && rightBehavior.hapticOnFarTransition) {
+                  haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+                farLeftActive = nowFarLeft
+                farRightActive = nowFarRight
               }
             },
             onDragEnd = {
@@ -133,8 +209,8 @@ fun LazyItemScope.SwipeActionListItem(
               val choice = when (
                 resolveSwipeCommit(
                   offset = dragOffset,
-                  normalThreshold = normalThreshold,
-                  farThreshold = farThreshold,
+                  normalThreshold = if (dragOffset < 0) leftNormalThreshold else rightNormalThreshold,
+                  farThreshold = if (dragOffset < 0) leftFarThreshold else rightFarThreshold,
                   hasLeft = currentLeft != null,
                   hasFarLeft = currentFarLeft != null,
                   hasRight = currentRight != null,
@@ -147,6 +223,8 @@ fun LazyItemScope.SwipeActionListItem(
                 SwipeCommit.FAR_RIGHT -> currentFarRight
                 SwipeCommit.NONE -> null
               }
+              farLeftActive = false
+              farRightActive = false
               if (choice == null) {
                 dragOffset = 0f
               } else {
@@ -191,9 +269,39 @@ internal fun resolveSwipeCommit(
   else -> SwipeCommit.NONE
 }
 
-private val NORMAL_THRESHOLD = 92.dp
-private val FAR_THRESHOLD = 176.dp
+internal fun resolveFarThreshold(
+  rowWidth: Float,
+  fixedThreshold: Float,
+  fraction: Float?,
+): Float = fraction
+  ?.coerceIn(0f, MAX_DRAG_FRACTION)
+  ?.let { maxOf(fixedThreshold, rowWidth * it) }
+  ?: fixedThreshold
+
+internal fun applyFarTransitionResistance(
+  offset: Float,
+  delta: Float,
+  farThreshold: Float,
+  towardNegative: Boolean,
+  enabled: Boolean,
+): Float {
+  if (!enabled || farThreshold <= 0f) return delta
+  val movingTowardFar = if (towardNegative) delta < 0f else delta > 0f
+  val onTargetSide = if (towardNegative) offset < 0f else offset > 0f
+  if (!movingTowardFar || !onTargetSide) return delta
+
+  val distance = kotlin.math.abs(offset)
+  val resistanceStart = farThreshold * FAR_RESISTANCE_START_FRACTION
+  return if (distance >= resistanceStart && distance < farThreshold) {
+    delta * FAR_RESISTANCE_FACTOR
+  } else {
+    delta
+  }
+}
+
 private const val MAX_DRAG_FRACTION = 0.95f
+private const val FAR_RESISTANCE_START_FRACTION = 0.94f
+private const val FAR_RESISTANCE_FACTOR = 0.65f
 private const val UNSUPPORTED_DIRECTION_RESISTANCE = 0.15f
 private const val DISMISS_OFFSET_FRACTION = 1.15f
 private const val ACTION_DELAY_MILLIS = 145L

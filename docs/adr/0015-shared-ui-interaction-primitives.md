@@ -61,6 +61,18 @@ feature 側は次だけを指定する。
 
 この interaction は Compose 標準 gesture API と `DropdownMenu` の単純な組み合わせで表現できるため、薄い wrapper を `:core:designsystem` に追加すること自体は目的としない。独自の gesture 判定、motion、共通 styling など共有すべきロジックが発生した時点で design system primitive へ切り出す。
 
+
+## 2026-09-25 refinement: 深い操作を意図的にする名前付きプロファイル
+
+通常操作と深い操作を同じ方向に持つ場合でも、深い操作が学習feedbackなど通常操作より意図性を要するケースでは、固定距離だけで両者を分けると誤操作が起きやすい。
+
+このため `SwipeActionListItem` は左右それぞれに design system 定義の名前付き behavior profile を選択できる。profile の具体的な距離、カード幅に対する割合、境界付近の抵抗、触覚フィードバックは引き続き design system が所有し、feature は任意の数値を指定しない。
+
+初期の `DeliberateFarAction` profile は、通常操作を従来より短い距離で確定し、深い操作をカード幅に対する十分大きな距離へ離す。深い操作の境界直前では軽い抵抗を加え、境界を越えた時点で触覚フィードバックを返す。既定profileは従来の固定距離を維持するため、明示的にprofileを選ばない既存consumerの操作感は変えない。
+
+feature 側が指定できる項目には、既存の action label / color / callback / dismiss behavior に加え、design system が公開する名前付き behavior profile の選択を含める。新しい数値調整が必要な場合は feature に閾値を追加せず、共有interactionとして妥当かを確認したうえで design system のprofileを変更または追加する。
+
+
 ## Consequences
 
 ### Positive

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.designsystem.SwipeAction
 import dev.terashima.yomitorirss.core.designsystem.SwipeActionListItem
+import dev.terashima.yomitorirss.core.designsystem.SwipeBehavior
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import java.time.Instant
 import java.time.LocalDate
@@ -68,6 +69,7 @@ fun ArticleList(
   farLeft: SwipeChoice? = null,
   right: SwipeChoice? = null,
   farRight: SwipeChoice? = null,
+  leftSwipeBehavior: SwipeBehavior = SwipeBehavior.Default,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
@@ -107,6 +109,7 @@ fun ArticleList(
           farLeft = farLeft,
           right = right,
           farRight = farRight,
+          leftSwipeBehavior = leftSwipeBehavior,
           onOpen = onOpen,
           onSummarize = onSummarize,
           onEditTags = onEditTags,
@@ -129,6 +132,7 @@ private fun LazyItemScope.SwipeArticleItem(
   farLeft: SwipeChoice?,
   right: SwipeChoice?,
   farRight: SwipeChoice?,
+  leftSwipeBehavior: SwipeBehavior,
   onOpen: (Article) -> Unit,
   onSummarize: (Article) -> Unit,
   onEditTags: (Article) -> Unit,
@@ -142,6 +146,7 @@ private fun LazyItemScope.SwipeArticleItem(
     farLeft = farLeft?.toSwipeAction(article),
     right = right?.toSwipeAction(article),
     farRight = farRight?.toSwipeAction(article),
+    leftBehavior = leftSwipeBehavior,
   ) {
     ArticleContent(
       article = article,

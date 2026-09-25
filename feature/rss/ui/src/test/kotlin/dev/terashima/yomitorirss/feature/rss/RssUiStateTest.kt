@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.rss
 
+import dev.terashima.yomitorirss.core.designsystem.SwipeBehavior
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -55,6 +56,11 @@ class RssUiStateTest {
     )
 
     assertEquals("推薦: 未評価（判定に失敗しました）", annotation)
+  }
+
+  @Test
+  fun `RSS未読は意図的な深い左スワイプ設定を使う`() {
+    assertEquals(SwipeBehavior.DeliberateFarAction, rssUnreadLeftSwipeBehavior)
   }
 
   @Test

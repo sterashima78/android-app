@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.designsystem.PullToRefreshContainer
 import dev.terashima.yomitorirss.core.designsystem.SwipeAction
 import dev.terashima.yomitorirss.core.designsystem.SwipeActionListItem
+import dev.terashima.yomitorirss.core.designsystem.SwipeBehavior
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -293,6 +294,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
     farLeft = actionSpecs.farLeft?.toSwipeAction(onOperation),
     right = actionSpecs.right?.toSwipeAction(onOperation),
     farRight = actionSpecs.farRight?.toSwipeAction(onOperation),
+    leftBehavior = integratedLeftSwipeBehavior(item, tab),
   ) {
     Box {
       Row(
@@ -470,6 +472,15 @@ internal fun integratedSwipeActions(
     )
     IntegratedSource.ALL -> noSwipeActions()
   }
+}
+
+internal fun integratedLeftSwipeBehavior(
+  item: IntegratedItem,
+  tab: IntegratedTab,
+): SwipeBehavior = if (item.source == IntegratedSource.RSS && tab == IntegratedTab.UNREAD) {
+  SwipeBehavior.DeliberateFarAction
+} else {
+  SwipeBehavior.Default
 }
 
 private fun noSwipeActions() = IntegratedSwipeActions(left = null, right = null, farRight = null)
