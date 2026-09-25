@@ -263,6 +263,52 @@ class DefaultPodcastNewsClustererTest {
   }
 
   @Test
+  fun `除外判定は後続batchが失敗した場合に前半の除外も確定しない`() = runSuspendForPodcastDataTest {
+    val textInference = FakeTextInference(promptBudgetChars = 4_096)
+    val firstBatchDecisions = listOf("exclude") + List(11) { "include" }
+    val structured = FakeStructuredInference(
+      ArrayDeque(
+        listOf(
+          AiStructuredToolCall(
+            name = "submit_podcast_news_exclusion",
+            arguments = mapOf(
+              "decisions" to firstBatchDecisions.joinToString(
+                prefix = "[",
+                postfix = "]",
+              ) { "\"$it\"" },
+            ),
+          ),
+          AiStructuredToolCall(
+            name = "submit_podcast_news_exclusion",
+            arguments = mapOf("decisions" to """["exclude","include"]"""),
+          ),
+          AiStructuredToolCall(
+            name = "submit_podcast_news_exclusion",
+            arguments = mapOf("decisions" to """["unknown"]"""),
+          ),
+        ),
+      ),
+    )
+    val excluder = DefaultPodcastNewsExcluder(
+      localTextInference = textInference,
+      cloudTextInference = textInference,
+      localStructuredInference = structured,
+      cloudStructuredInference = structured,
+    )
+    val candidates = (1..13).map { feedEntry("a$it") }
+
+    val result = excluder.filter(
+      PodcastGenerationProvider.CLOUD,
+      "カテゴリAを除外する",
+      candidates,
+    )
+
+    assertEquals(candidates, result.included)
+    assertTrue(result.excluded.isEmpty())
+    assertEquals(3, structured.requests.size)
+  }
+
+  @Test
   fun `除外promptは条件と全記事metadataを残し本文をbudgetへ収める`() {
     val entries = (1..8).map { index ->
       feedEntry("a$index").copy(feedContent = "長い本文".repeat(200))
