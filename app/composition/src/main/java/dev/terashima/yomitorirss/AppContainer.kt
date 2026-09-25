@@ -79,6 +79,8 @@ class AppContainer(
       httpClient = httpClient,
       localTextInference = aiCoreRuntime.textInference,
       cloudTextInference = aiCoreRuntime.cloudTextInference,
+      cloudInferenceClient = aiCoreRuntime.chatGptInferenceClient,
+      cloudModelPreferences = aiCoreRuntime.chatGptModelPreferences,
       localStructuredTextInference = aiCoreRuntime.structuredTextInference,
       cloudStructuredTextInference = aiCoreRuntime.cloudStructuredTextInference,
       audioPlaybackController = audioRuntime.playbackController,
