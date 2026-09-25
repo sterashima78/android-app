@@ -132,7 +132,13 @@ class RssRecommendationService(
 
     val ids = articles.map(Article::id)
     val existing = repository.loadAssessments(ids)
-    val candidates = articles.filter { existing[it.id]?.revision != policy.revision }
+    val candidates = articles.filter { article ->
+      val assessment = existing[article.id]
+      assessment == null ||
+        assessment.revision != policy.revision ||
+        (assessment is RssRecommendationAssessment.Unscored &&
+          assessment.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
+    }
     if (candidates.isNotEmpty()) {
       val decisions = try {
         engine.score(
