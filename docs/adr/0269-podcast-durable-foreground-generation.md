@@ -16,7 +16,7 @@
 
 画面からの新規生成と作り直しは、ViewModelから生成use caseを直接実行せず、Podcast Contextが所有するcontrollerを通じて即時WorkManager workとして登録する。
 
-定刻生成と手動生成は同じ番組単位のunique work identityを利用し、手動実行時は既存の将来予定を置き換えて即時実行し、完了後に現在の番組設定から次の定刻実行を再登録する。
+定刻生成と手動生成は同じWorker classとapplication-scope dependency graphを利用するが、番組ごとに定刻用と手動用の別unique work identityを持つ。これにより手動操作は将来の定刻workを置き換えず、同じ番組で実行時刻が重なった場合だけ既存のprogram単位generation guardとWorker retryで直列化する。
 
 Workerは入力operationとして通常生成と既存episodeの作り直しを区別する。episode / chapterのdurable state ownershipは従来どおりPodcast Contextに残す。
 
