@@ -157,7 +157,10 @@ fun RssScreen(
   }
 }
 
-fun recommendationAnnotation(assessment: RssRecommendationAssessment): String = when (assessment) {
+fun RssUiState.recommendationAnnotationFor(articleId: String): String? =
+  recommendationAssessments[articleId]?.let(::recommendationAnnotation)
+
+internal fun recommendationAnnotation(assessment: RssRecommendationAssessment): String = when (assessment) {
   is RssRecommendationAssessment.Scored -> "推薦スコア: ${assessment.score}"
   is RssRecommendationAssessment.Unscored -> when (assessment.reason) {
     RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION ->
