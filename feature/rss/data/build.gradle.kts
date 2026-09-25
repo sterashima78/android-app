@@ -17,6 +17,8 @@ android {
 }
 
 dependencies {
+  implementation(project(":core:ai-inference"))
+  implementation(project(":core:background"))
   implementation(project(":core:database"))
   implementation(project(":core:network"))
   implementation(project(":feature:article:domain"))
@@ -25,6 +27,7 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
   implementation(libs.jsoup)
+  implementation(libs.kotlinx.serialization.json)
 
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20260719")
