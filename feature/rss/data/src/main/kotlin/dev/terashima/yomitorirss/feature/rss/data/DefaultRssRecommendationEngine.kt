@@ -135,7 +135,7 @@ internal fun parseLearnedConditionToolCall(call: AiStructuredToolCall?): String 
   return requireNotNull(call.arguments[LEARNING_CONDITION_ARGUMENT]).trim()
 }
 
-private fun buildScoringPrompt(condition: String, titles: List<String>): String = buildString {
+internal fun buildScoringPrompt(condition: String, titles: List<String>): String = buildString {
   appendLine("除外条件:")
   appendLine(condition.trim().take(MAX_CONDITION_PROMPT_CHARS))
   appendLine()
@@ -145,7 +145,7 @@ private fun buildScoringPrompt(condition: String, titles: List<String>): String 
   }
 }
 
-private fun buildLearningPrompt(
+internal fun buildLearningPrompt(
   manualCondition: String,
   learnedCondition: String,
   feedback: List<RssRecommendationFeedback>,
