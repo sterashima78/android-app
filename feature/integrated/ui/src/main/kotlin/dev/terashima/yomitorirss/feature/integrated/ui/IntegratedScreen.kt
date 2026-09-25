@@ -75,6 +75,7 @@ data class IntegratedItem(
   val source: IntegratedSource,
   val title: String,
   val subtitle: String,
+  val annotation: String? = null,
   val timestamp: Long,
   val isDeferred: Boolean = false,
   val isStarred: Boolean = false,
@@ -87,6 +88,7 @@ data class IntegratedItemAction(
 
 internal enum class IntegratedSwipeOperation {
   MARK_PROCESSED,
+  EXCLUSION_REFERENCE,
   MARK_UNREAD,
   SAVE,
   DEFER,
@@ -112,6 +114,7 @@ internal data class IntegratedSwipeActionSpec(
 
 internal data class IntegratedSwipeActions(
   val left: IntegratedSwipeActionSpec?,
+  val farLeft: IntegratedSwipeActionSpec? = null,
   val right: IntegratedSwipeActionSpec?,
   val farRight: IntegratedSwipeActionSpec?,
 )
@@ -124,6 +127,7 @@ fun IntegratedScreen(
   onSelectTab: (IntegratedTab) -> Unit,
   onRefresh: () -> Unit,
   onMarkProcessed: (IntegratedItem) -> Unit,
+  onExclusionReference: (IntegratedItem) -> Unit,
   onMarkUnread: (IntegratedItem) -> Unit,
   onSave: (IntegratedItem) -> Unit,
   onDefer: (IntegratedItem) -> Unit,
@@ -177,6 +181,7 @@ fun IntegratedScreen(
               item = item,
               tab = selectedTab,
               onMarkProcessed = { onMarkProcessed(item) },
+              onExclusionReference = { onExclusionReference(item) },
               onMarkUnread = { onMarkUnread(item) },
               onSave = { onSave(item) },
               onDefer = { onDefer(item) },
@@ -255,6 +260,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   item: IntegratedItem,
   tab: IntegratedTab,
   onMarkProcessed: () -> Unit,
+  onExclusionReference: () -> Unit,
   onMarkUnread: () -> Unit,
   onSave: () -> Unit,
   onDefer: () -> Unit,
@@ -270,6 +276,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   val onOperation: (IntegratedSwipeOperation) -> Unit = { operation ->
     when (operation) {
       IntegratedSwipeOperation.MARK_PROCESSED -> onMarkProcessed()
+      IntegratedSwipeOperation.EXCLUSION_REFERENCE -> onExclusionReference()
       IntegratedSwipeOperation.MARK_UNREAD -> onMarkUnread()
       IntegratedSwipeOperation.SAVE -> onSave()
       IntegratedSwipeOperation.DEFER -> onDefer()
@@ -283,6 +290,7 @@ private fun LazyItemScope.IntegratedSwipeRow(
   SwipeActionListItem(
     itemKey = item.key,
     left = actionSpecs.left?.toSwipeAction(onOperation),
+    farLeft = actionSpecs.farLeft?.toSwipeAction(onOperation),
     right = actionSpecs.right?.toSwipeAction(onOperation),
     farRight = actionSpecs.farRight?.toSwipeAction(onOperation),
   ) {
@@ -331,6 +339,16 @@ private fun LazyItemScope.IntegratedSwipeRow(
               text = item.subtitle,
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+          item.annotation?.let { annotation ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+              text = annotation,
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.secondary,
               maxLines = 2,
               overflow = TextOverflow.Ellipsis,
             )
@@ -399,7 +417,12 @@ internal fun integratedSwipeActions(
   tab: IntegratedTab,
 ): IntegratedSwipeActions = when (tab) {
   IntegratedTab.UNREAD -> when (item.source) {
-    IntegratedSource.RSS,
+    IntegratedSource.RSS -> IntegratedSwipeActions(
+      left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, true, IntegratedSwipeOperation.MARK_PROCESSED),
+      farLeft = IntegratedSwipeActionSpec("除外参考", IntegratedSwipeTone.ERROR, true, IntegratedSwipeOperation.EXCLUSION_REFERENCE),
+      right = IntegratedSwipeActionSpec("ブックマーク", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.SAVE),
+      farRight = IntegratedSwipeActionSpec("あとで読む", IntegratedSwipeTone.TERTIARY, true, IntegratedSwipeOperation.DEFER),
+    )
     IntegratedSource.REDDIT -> IntegratedSwipeActions(
       left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, true, IntegratedSwipeOperation.MARK_PROCESSED),
       right = IntegratedSwipeActionSpec("ブックマーク", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.SAVE),
