@@ -37,13 +37,12 @@ class RssViewModel(
   private val articleRepository: ArticleRepository,
   private val bookmarkRepository: BookmarkRepository,
   private val recommendationService: RssRecommendationService? = null,
+  private val recommendationTaskScheduler: RssRecommendationTaskScheduler? = null,
   private val articleSelector: (Article) -> Boolean = { true },
 ) : ViewModel() {
   private val _state = MutableStateFlow(RssUiState())
   val state: StateFlow<RssUiState> = _state.asStateFlow()
   private val reloadMutex = Mutex()
-  private val recommendationMutex = Mutex()
-  private var recommendationRefreshJob: Job? = null
   private var recommendationLearningJob: Job? = null
 
   init {
@@ -56,6 +55,14 @@ class RssViewModel(
     }
     viewModelScope.launch(Dispatchers.IO) {
       bookmarkRepository.changes.collect { reload() }
+    }
+    recommendationService?.let { service ->
+      viewModelScope.launch(Dispatchers.IO) {
+        service.changes.collect {
+          val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+          applyRecommendationSnapshot(snapshot)
+        }
+      }
     }
   }
 
@@ -130,7 +137,7 @@ class RssViewModel(
         service.saveManualCondition(condition)
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
         applyRecommendationSnapshot(snapshot)
-        scheduleRecommendationRefresh(_state.value.unread)
+        recommendationTaskScheduler?.enqueueUnread()
         _state.update { it.copy(message = "推薦の除外条件を保存しました") }
       } catch (error: CancellationException) {
         throw error
@@ -147,7 +154,7 @@ class RssViewModel(
         service.resetLearnedCondition()
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
         applyRecommendationSnapshot(snapshot)
-        scheduleRecommendationRefresh(_state.value.unread)
+        recommendationTaskScheduler?.enqueueUnread()
         _state.update { it.copy(message = "学習した除外条件をリセットしました") }
       } catch (error: CancellationException) {
         throw error
@@ -298,26 +305,10 @@ class RssViewModel(
           val snapshot = service.snapshot(unread.map(Article::id))
           applyRecommendationSnapshot(snapshot)
           scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
-          scheduleRecommendationRefresh(unread)
+          recommendationTaskScheduler?.enqueueUnread()
         }
       }.onFailure { error ->
         _state.update { it.copy(initialized = true, message = "記事を読み込めませんでした: ${error.userMessage()}") }
-      }
-    }
-  }
-
-  private fun scheduleRecommendationRefresh(unread: List<Article>) {
-    val service = recommendationService ?: return
-    recommendationRefreshJob?.cancel()
-    recommendationRefreshJob = viewModelScope.launch(Dispatchers.IO) {
-      recommendationMutex.withLock {
-        try {
-          applyRecommendationSnapshot(service.refresh(unread))
-        } catch (error: CancellationException) {
-          throw error
-        } catch (_: Throwable) {
-          // Individual inference failures are persisted as Unscored by the service.
-        }
       }
     }
   }
@@ -340,7 +331,7 @@ class RssViewModel(
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
         applyRecommendationSnapshot(snapshot)
         if (updated != null) {
-          scheduleRecommendationRefresh(_state.value.unread)
+          recommendationTaskScheduler?.enqueueUnread()
           if (snapshot.latestPendingFeedbackAt != null) {
             scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
           }
@@ -367,6 +358,7 @@ class RssViewModel(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val recommendationService: RssRecommendationService? = null,
+    private val recommendationTaskScheduler: RssRecommendationTaskScheduler? = null,
     private val articleSelector: (Article) -> Boolean = { true },
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -378,6 +370,7 @@ class RssViewModel(
         articleRepository = articleRepository,
         bookmarkRepository = bookmarkRepository,
         recommendationService = recommendationService,
+        recommendationTaskScheduler = recommendationTaskScheduler,
         articleSelector = articleSelector,
       ) as T
     }
