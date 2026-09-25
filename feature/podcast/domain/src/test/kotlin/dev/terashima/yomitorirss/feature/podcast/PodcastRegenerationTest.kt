@@ -21,7 +21,7 @@ class PodcastRegenerationTest {
     )
     val feedSource = RecordingFeedSource()
     val generator = RegenerationGenerator(result = "新しい原稿")
-    val excluder = RecordingNewsExcluder(excludedIds = setOf("article-1"))
+    val excluder = RegenerationNewsExcluder(excludedIds = setOf("article-1"))
     val clusterer = RecordingNewsClusterer(groups = listOf(listOf(0)))
     val useCase = GeneratePodcastEpisodeUseCase(
       repository = repository,
@@ -80,7 +80,7 @@ class PodcastRegenerationTest {
       repository = repository,
       feedContentSource = RecordingFeedSource(),
       scriptGenerator = generator,
-      newsExcluder = RecordingNewsExcluder(excludedIds = setOf("article-1")),
+      newsExcluder = RegenerationNewsExcluder(excludedIds = setOf("article-1")),
     )
 
     val error = runCatching { useCase.regenerate(repository.episode.id) }.exceptionOrNull()
@@ -267,7 +267,7 @@ private class RecordingFeedSource : PodcastFeedContentSource {
   }
 }
 
-private class RecordingNewsExcluder(
+private class RegenerationNewsExcluder(
   private val excludedIds: Set<String>,
 ) : PodcastNewsExcluder {
   var candidateIds: List<String> = emptyList()
