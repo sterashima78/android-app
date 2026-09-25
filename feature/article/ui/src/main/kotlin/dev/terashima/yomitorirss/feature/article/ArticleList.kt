@@ -220,16 +220,6 @@ private fun ArticleContent(
             overflow = TextOverflow.Ellipsis,
           )
         }
-        annotation?.let {
-          Spacer(Modifier.height(4.dp))
-          Text(
-            it,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-          )
-        }
         if (article.effectiveContentType != ContentType.ARTICLE || article.contentTypeOverride != null) {
           Spacer(Modifier.height(4.dp))
           Text(
