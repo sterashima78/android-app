@@ -75,10 +75,10 @@ data class IntegratedItem(
   val source: IntegratedSource,
   val title: String,
   val subtitle: String,
-  val annotation: String? = null,
   val timestamp: Long,
   val isDeferred: Boolean = false,
   val isStarred: Boolean = false,
+  val annotation: String? = null,
 )
 
 data class IntegratedItemAction(
@@ -114,9 +114,9 @@ internal data class IntegratedSwipeActionSpec(
 
 internal data class IntegratedSwipeActions(
   val left: IntegratedSwipeActionSpec?,
-  val farLeft: IntegratedSwipeActionSpec? = null,
   val right: IntegratedSwipeActionSpec?,
   val farRight: IntegratedSwipeActionSpec?,
+  val farLeft: IntegratedSwipeActionSpec? = null,
 )
 
 @Composable
