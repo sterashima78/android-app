@@ -45,6 +45,7 @@ class AppDatabaseSchemaTest {
     assertTrue("revision" in columnNames(db, "rss_recommendation_policy"))
     assertTrue("unscored_reason" in columnNames(db, "rss_recommendation_assessments"))
     assertTrue("previous_unscored_reason" in columnNames(db, "rss_recommendation_feedback"))
+    assertTrue("state" in columnNames(db, "rss_recommendation_tasks"))
     assertTrue("content_type" in columnNames(db, "articles"))
     assertFalse("saved_at" in columnNames(db, "articles"))
     assertTrue("timeout_seconds" in columnNames(db, "web_library_metadata_extractors"))
@@ -61,6 +62,7 @@ class AppDatabaseSchemaTest {
         "rss_recommendation_policy",
         "rss_recommendation_assessments",
         "rss_recommendation_feedback",
+        "rss_recommendation_tasks",
         "articles",
         "bookmarks",
         "tags",
