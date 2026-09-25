@@ -50,18 +50,25 @@ data class SwipeAction(
   val onCommit: () -> Unit,
 )
 
-data class SwipeBehavior(
-  val normalThreshold: Dp = 92.dp,
-  val farThreshold: Dp = 176.dp,
-  val farThresholdFraction: Float? = null,
-  val hapticOnFarTransition: Boolean = false,
-  val resistFarTransition: Boolean = false,
+class SwipeBehavior private constructor(
+  internal val normalThreshold: Dp,
+  internal val farThreshold: Dp,
+  internal val farThresholdFraction: Float?,
+  internal val hapticOnFarTransition: Boolean,
+  internal val resistFarTransition: Boolean,
 ) {
   companion object {
-    val Default = SwipeBehavior()
+    val Default = SwipeBehavior(
+      normalThreshold = 92.dp,
+      farThreshold = 176.dp,
+      farThresholdFraction = null,
+      hapticOnFarTransition = false,
+      resistFarTransition = false,
+    )
 
     val DeliberateFarAction = SwipeBehavior(
       normalThreshold = 76.dp,
+      farThreshold = 176.dp,
       farThresholdFraction = 0.65f,
       hapticOnFarTransition = true,
       resistFarTransition = true,
