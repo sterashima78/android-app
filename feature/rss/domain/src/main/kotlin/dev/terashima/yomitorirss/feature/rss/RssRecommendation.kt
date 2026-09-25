@@ -90,7 +90,7 @@ interface RssRecommendationTaskReader {
 }
 
 interface RssRecommendationTaskScheduler {
-  suspend fun enqueueForFeed(feedUrl: String)
+  suspend fun enqueueForFeed(feedId: String)
   suspend fun enqueueUnread()
   fun kick()
   suspend fun pauseForGlobalGate()
