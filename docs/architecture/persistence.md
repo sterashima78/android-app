@@ -98,7 +98,7 @@ RSS記事推薦では同じRSS schema initializerから次のRSS-owned tableを�
 - `rss_recommendation_feedback`: 「除外参考」として未処理のarticle ID、title、直前評価snapshot、追加時刻
 - `rss_recommendation_tasks`: 推薦評価待ちarticle ID、title snapshot、条件revision、QUEUED / RUNNING、queue時刻
 
-assessment / feedback / taskはContent article IDを参照するが、Content-owned tableへのforeign keyやdirect table accessは持たない。記事の既読化はContent capabilityへ委譲する。feedbackは学習成功時に対象snapshot分だけ消費し、処理中に追加されたfeedbackは後続処理へ残す。policy / assessment / feedbackは通常のdatabase snapshot backup対象とする。一方 `rss_recommendation_tasks` はprocess / device再起動を越えて処理を継続するためSQLiteへ保持するtransient processing stateであり、queue mutation自体はbackup schedulingの契機にしない。fresh schemaとRSS idempotent initializerでadditiveに作成するため、この追加だけを理由としたapplication database version bumpは行わない。
+assessment / feedback / taskはContent article IDを参照するが、Content-owned tableへのforeign keyやdirect table accessは持たない。記事の既読化はContent capabilityへ委譲する。feedbackは学習成功時に対象snapshot分だけ消費し、処理中に追加されたfeedbackは後続処理へ残す。policy / assessment / feedbackは通常のdatabase snapshot backup対象とする。一方 `rss_recommendation_tasks` はprocess / device再起動を越えて処理を継続するためSQLiteへ保持するtransient processing stateであり、queue mutation自体はbackup schedulingの契機にしない。database snapshotにはtransient tableが含まれ得るため、restore後はRSS-owned `RssRecommendationBackupRestoreInitializer` が `localTransaction` でこのqueueを破棄し、復元前端末の処理途中状態を再開しない。fresh schemaとRSS idempotent initializerでadditiveに作成するため、この追加だけを理由としたapplication database version bumpは行わない。
 
 ### Library schema
 
