@@ -8,12 +8,12 @@ import dev.terashima.yomitorirss.feature.rss.RssViewModel
 
 internal data class IntegratedArticleTargetActions(
   val markRead: (Article) -> Unit,
-  val markAsExclusionReference: ((Article) -> Unit)? = null,
   val markUnread: (Article) -> Unit,
   val saveAndRead: (Article) -> Unit,
   val readLater: (Article) -> Unit,
   val unsave: (Article) -> Unit,
   val removeReadLater: (Article) -> Unit,
+  val markAsExclusionReference: ((Article) -> Unit)? = null,
 )
 
 internal data class IntegratedMailTargetActions(
