@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.integrated.ui
 
+import dev.terashima.yomitorirss.core.designsystem.SwipeBehavior
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -41,6 +42,18 @@ class IntegratedScreenTest {
     assertEquals(null, integratedSwipeActions(mail, IntegratedTab.UNREAD).farLeft)
     assertEquals(null, integratedSwipeActions(rss, IntegratedTab.READ_LATER).farLeft)
     assertEquals(null, integratedSwipeActions(rss, IntegratedTab.HISTORY).farLeft)
+  }
+
+  @Test
+  fun `RSS未読だけ意図的な深い左スワイプ設定を使う`() {
+    val rss = item(IntegratedSource.RSS)
+    val reddit = item(IntegratedSource.REDDIT)
+    val mail = item(IntegratedSource.MAIL)
+
+    assertEquals(SwipeBehavior.DeliberateFarAction, integratedLeftSwipeBehavior(rss, IntegratedTab.UNREAD))
+    assertEquals(SwipeBehavior.Default, integratedLeftSwipeBehavior(reddit, IntegratedTab.UNREAD))
+    assertEquals(SwipeBehavior.Default, integratedLeftSwipeBehavior(mail, IntegratedTab.UNREAD))
+    assertEquals(SwipeBehavior.Default, integratedLeftSwipeBehavior(rss, IntegratedTab.READ_LATER))
   }
 
   @Test
