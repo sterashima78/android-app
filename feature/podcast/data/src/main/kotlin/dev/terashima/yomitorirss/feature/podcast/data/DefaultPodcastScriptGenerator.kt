@@ -8,7 +8,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastScriptGenerator
 
 class DefaultPodcastScriptGenerator(
   private val localInference: AiTextInference,
-  private val cloudInference: AiTextInference,
+  private val cloudInference: PodcastCloudTextInference,
 ) : PodcastScriptGenerator {
   override suspend fun generate(provider: PodcastGenerationProvider, prompt: String): String = when (provider) {
     PodcastGenerationProvider.LOCAL -> LocalAiBackgroundTaskGate.withPermit(
@@ -20,6 +20,12 @@ class DefaultPodcastScriptGenerator(
   }
 
   private suspend fun generateWith(inference: AiTextInference, prompt: String): String {
+    val model = checkNotNull(inference.selectedModel()) { "利用するAIモデルを選択してください" }
+    val promptBudgetChars = minOf(model.promptBudgetChars, model.maxInputChars)
+    return inference.generate(limitPodcastPrompt(prompt, promptBudgetChars))
+  }
+
+  private suspend fun generateWith(inference: PodcastCloudTextInference, prompt: String): String {
     val model = checkNotNull(inference.selectedModel()) { "利用するAIモデルを選択してください" }
     val promptBudgetChars = minOf(model.promptBudgetChars, model.maxInputChars)
     return inference.generate(limitPodcastPrompt(prompt, promptBudgetChars))

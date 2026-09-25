@@ -42,6 +42,51 @@ class PodcastTest {
   }
 
   @Test
+  fun `生成進捗は保存済みcheckpoint数から完了まで単調に更新する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("生成された原稿"),
+      nowEpochMillis = { 1234L },
+    )
+    val progress = mutableListOf<PodcastGenerationProgress>()
+
+    useCase.generate(program.id) { progress += it }
+
+    assertEquals(
+      listOf(
+        PodcastGenerationProgress(0, 2),
+        PodcastGenerationProgress(1, 2),
+        PodcastGenerationProgress(2, 2),
+      ),
+      progress,
+    )
+  }
+
+  @Test
+  fun `進捗projectionの通常失敗は生成結果を失敗にしない`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1")))
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("生成された原稿"),
+      nowEpochMillis = { 1234L },
+    )
+
+    val result = useCase.generate(program.id) {
+      throw IllegalStateException("progress unavailable")
+    } as PodcastGenerationResult.Generated
+
+    assertEquals(PodcastEpisodeStatus.READY, result.episode.status)
+    assertEquals(PodcastChapterGenerationStatus.READY, result.episode.articles.single().chapterStatus)
+  }
+
+  @Test
   fun `途中失敗後は完成済みチャプターを再生成しない`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)

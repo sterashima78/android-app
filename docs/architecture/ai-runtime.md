@@ -88,6 +88,8 @@ HTTP status の解釈、OAuth refresh failure の判定、provider exception mes
 
 Summary / Knowledge の app adapter は typed failure を各 feature の failure kind と user-facing message へ写像する。WorkManager retry、durable queue state、再試行待ち表示等の application policy は owning feature が引き続き所有する。
 
+Podcast原稿生成ではPodcast Dataのcloud inference adapterが同じtyped failureの `retryable` だけを利用し、chapter単位のbounded retryを所有する。provider固有HTTP statusやraw messageはPodcastへ渡さず、retry exhaustion後だけ既存chapter failure lifecycleへ収束させる。
+
 Settings の login / model catalog / debug 操作は inference failure contract とは用途が異なるため、既存の provider client を利用する。
 
 ## Application-scope runtime ownership

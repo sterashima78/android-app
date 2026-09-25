@@ -34,6 +34,16 @@ Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstabl
 
 Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository`、`feeds` table、`articles` tableを参照しない。
 
+## Background execution boundary
+
+Podcast画面からの新規生成と作り直しは `PodcastGenerationController` へ依頼し、UIの `viewModelScope` では長時間生成を実行しない。controllerはPodcast-owned WorkManagerへ即時workを登録し、定刻生成と同じ `PodcastGenerationWorker` / application-scope dependency graphを利用する。手動workと定刻workは番組ごとの別unique identityで重複登録を抑え、同時に実行可能になった場合は既存のprogram単位generation guardで直列化する。
+
+`PodcastGenerationWorker` は生成処理開始時にforeground workへ昇格し、episodeが予約された後は `PodcastGenerationProgress` を使ってREADY checkpoint数 / 全chapter数をongoing notificationへ反映する。notificationとWorkManager progressは観測用projectionであり、新しいdurable source of truthではない。
+
+旧versionが永続化したWorker inputとの互換のため、operation指定がない `PodcastGenerationWorker` は従来の定刻生成として解釈する。定刻生成だけがLocal / Cloudのbackground pause設定を尊重し、利用者が画面から明示的に開始した生成は従来の手動操作と同様に実行する。
+
+Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Workerが更新したepisode / chapter stateを再読込する。UIはWorker stateそのものをPodcastのbusiness stateとして保持しない。
+
 ## Generation lifecycle
 
 1. `GeneratePodcastEpisodeUseCase` が番組を取得する。
@@ -46,7 +56,7 @@ Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository
 8. 完全一致重複除外後の今回候補を `PodcastNewsClusterer` へ渡し、同一ニュースclusterと分類状態を確定する。過去episodeとの意味的重複判定は行わない。
 9. 最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。
 10. 最初のepisodeを生成し、残りはqueueへ保持する。
-11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論へ渡す。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
+11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論単位として扱う。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、retryableな一時失敗は同じchapter内で2秒・5秒・15秒を基準とするjitter付きbackoffにより最大3回再試行する。再試行を使い切るまではchapterを `FAILED` へ確定しない。ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
 12. chapter生成promptではcluster内の全記事のtitle / feed bodyだけを根拠に、重複内容を繰り返さず、矛盾しない追加情報を統合した音声ニュース向けの短い日本語見出しと本文を生成する。entry URLはpromptへ含めない。見出しを `[[TITLE:...]]` markerとして `chapter_script` 内へ保持する。同じclusterの全rowへ同一のcheckpoint、script、errorを保存する。
 13. 全cluster checkpointが `READY` になったら、Podcast Contextがchapter順に `chapter_script` を連結する。`[[CHAPTER:n]]` markerと番組の冒頭・締めはアプリ側で決定的に付与し、episode全体を対象とする追加AI推論は行わない。
 14. 完成したepisode原稿をAudio Contextへ再生委譲する。
@@ -55,7 +65,7 @@ process終了やcoroutine cancellationによって初回生成の `GENERATING` �
 
 クラウドの有界並列生成でも各chapterは生成成功直後に `READY` と原稿をdurable checkpointへ保存する。中断時点で `READY` のchapterは再開時に再推論せず、`PENDING` / `GENERATING` / `FAILED` の未完了chapterだけを続行する。並列完了順は最終原稿の順序へ影響せず、全checkpoint完成後に `chapter_position` 順で組み立てる。
 
-クラウドchapterの通常生成エラーは他の独立chapterをキャンセルせず、同じ並列batch内で成功可能なchapterを最後まで処理してcheckpointする。外部からのcoroutine cancellationだけは並列batch全体へ伝播させる。
+クラウドchapterではprovider adapterが正規化した `retryable` failureだけをPodcast Dataのretry policyで再試行する。HTTP statusやprovider固有messageの解析はPodcastへ持ち込まない。retry exhaustionまたはnon-retryable errorになった時点で通常生成エラーとしてchapterを `FAILED` へ保存する。他の独立chapterはキャンセルせず、同じ並列batch内で成功可能なchapterを最後まで処理してcheckpointする。外部からのcoroutine cancellationだけはretryせず並列batch全体へ伝播させる。
 
 `retry()` と中断再開の内部経路は同じ記事・cluster snapshotを使い、`READY` checkpointを再利用して失敗・未完了chapterだけを続行する。
 
@@ -132,6 +142,9 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - 1回のchapter生成AI推論は1つのnews clusterだけを生成材料とし、そのcluster外の記事本文を混在させない。
 - 同一clusterの全article rowは同じcheckpoint、chapter script、errorを共有する。
 - checkpointが `READY` のchapterはretry / interrupted recoveryで再生成しない。
+- retryableなクラウドchapter failureはbounded retryを使い切るまで `FAILED` checkpointへ確定せず、non-retryable failureとretry exhaustionだけを既存failure lifecycleへ渡す。
+- foreground notificationとWorkManager progressはdurable generation stateのprojectionであり、Podcastのsource of truthにしない。
+- UIから開始する生成と作り直しはPodcast-owned WorkManagerへ登録し、ViewModel coroutine lifetimeへ生成処理を結び付けない。
 - クラウドchapter生成の並列化はepisode内の未完了checkpointに限定し、episode単位のbackground jobとprogram単位の重複実行guardを維持する。
 - ローカルchapter生成は同一episode内で並列実行しない。
 - episode scriptは全checkpoint完成後にchapter順で決定的に組み立てる。
@@ -160,3 +173,4 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - `docs/adr/0265-podcast-cloud-chapter-parallelism.md`
 - `docs/adr/0267-podcast-news-exclusion-filter.md`
 - `docs/adr/0268-podcast-rebuild-regeneration.md`
+- `docs/adr/0269-podcast-durable-foreground-generation.md`

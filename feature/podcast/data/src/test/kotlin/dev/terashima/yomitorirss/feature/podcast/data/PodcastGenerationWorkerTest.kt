@@ -1,5 +1,6 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProgress
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -21,6 +22,27 @@ class PodcastGenerationWorkerTest {
     val now = ZonedDateTime.of(2026, 9, 9, 7, 30, 0, 0, ZoneId.of("Asia/Tokyo"))
 
     assertEquals(23 * 60 * 60 * 1000L + 30 * 60 * 1000L, nextRunDelayMillis(now, 7, 0))
+  }
+
+  @Test
+  fun `operation未指定の既存workは定刻生成として扱う`() {
+    assertEquals(PodcastGenerationOperation.SCHEDULED_GENERATE, podcastGenerationOperation(null))
+    assertEquals(PodcastGenerationOperation.SCHEDULED_GENERATE, podcastGenerationOperation("unknown"))
+  }
+
+  @Test
+  fun `手動生成operationを判別する`() {
+    assertEquals(PodcastGenerationOperation.GENERATE, podcastGenerationOperation("GENERATE"))
+    assertEquals(PodcastGenerationOperation.REGENERATE, podcastGenerationOperation("REGENERATE"))
+  }
+
+  @Test
+  fun `foreground通知はチャプター進捗を表示する`() {
+    assertEquals("朝のニュース・準備中", podcastGenerationProgressText("朝のニュース", null))
+    assertEquals(
+      "朝のニュース・7/18 チャプター",
+      podcastGenerationProgressText("朝のニュース", PodcastGenerationProgress(7, 18)),
+    )
   }
 
   @Test

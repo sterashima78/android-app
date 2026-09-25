@@ -51,11 +51,11 @@ internal class AppAiCoreRuntimeDependencies(
     ChatGptOpenAiClient.create(application, httpClient)
   }
 
-  private val chatGptInferenceClient: ChatGptInferenceClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val chatGptInferenceClient: ChatGptInferenceClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptInferenceClient(chatGptClient)
   }
 
-  private val chatGptModelPreferences: ChatGptModelPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val chatGptModelPreferences: ChatGptModelPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptModelPreferences(application)
   }
 

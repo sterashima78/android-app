@@ -98,7 +98,7 @@
       tools:node="merge">
       <property
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-        android:value="ローカルAIモデルによる記事要約をユーザー操作後も継続するため" />
+        android:value="長時間のAI生成処理をユーザー操作後も継続するため" />
     </service>
   </application>
 </manifest>

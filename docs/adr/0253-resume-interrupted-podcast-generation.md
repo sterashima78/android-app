@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-10
 - Refines: [ADR-0249](0249-news-podcast-context.md)
+- Refined by: [ADR-0269](0269-podcast-durable-foreground-generation.md)
 
 ## Context
 

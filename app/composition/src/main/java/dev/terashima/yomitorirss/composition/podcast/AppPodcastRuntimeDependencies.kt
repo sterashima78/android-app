@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.composition.podcast
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
+import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
@@ -12,6 +14,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastScheduleController
 import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
+import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastCloudTextInference
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsExcluder
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
@@ -19,6 +22,7 @@ import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFac
 import dev.terashima.yomitorirss.feature.podcast.data.RssPodcastFeedContentSource
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastCandidateFilter
 import dev.terashima.yomitorirss.feature.podcast.data.SqlitePodcastRepository
+import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastGenerationController
 import dev.terashima.yomitorirss.feature.podcast.data.WorkManagerPodcastScheduleController
 import dev.terashima.yomitorirss.feature.rss.data.DefaultRssFeedContentReader
 import kotlinx.coroutines.CancellationException
@@ -34,15 +38,20 @@ internal class AppPodcastRuntimeDependencies(
   httpClient: HttpClient,
   localTextInference: AiTextInference,
   cloudTextInference: AiTextInference,
+  cloudInferenceClient: ChatGptInferenceClient,
+  cloudModelPreferences: ChatGptModelPreferences,
   localStructuredTextInference: AiStructuredTextInference,
   cloudStructuredTextInference: AiStructuredTextInference,
   audioPlaybackController: AudioPlaybackController,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-  private val repository = SqlitePodcastRepository(database)
+  private val repository = SqlitePodcastRepository(database, persistenceChanges)
   val taskReader: PodcastGenerationTaskReader = repository
-  private val scriptGenerator = DefaultPodcastScriptGenerator(localTextInference, cloudTextInference)
+  private val scriptGenerator = DefaultPodcastScriptGenerator(
+    localInference = localTextInference,
+    cloudInference = DefaultPodcastCloudTextInference(cloudInferenceClient, cloudModelPreferences),
+  )
   private val generationUseCase = GeneratePodcastEpisodeUseCase(
     repository = repository,
     feedContentSource = RssPodcastFeedContentSource(
@@ -64,10 +73,11 @@ internal class AppPodcastRuntimeDependencies(
     candidateFilter = SqlitePodcastCandidateFilter(database),
   )
   private val scheduleController = WorkManagerPodcastScheduleController(application)
+  private val generationController = WorkManagerPodcastGenerationController(application)
 
   val viewModelFactory = PodcastViewModel.Factory(
     repository = repository,
-    generatePodcastEpisode = generationUseCase,
+    generationController = generationController,
     scheduleController = scheduleController,
     audioPlaybackController = audioPlaybackController,
   )

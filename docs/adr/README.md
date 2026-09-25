@@ -171,6 +171,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0266: ローカル単発推論の subprocess 待機を有界化する](0266-local-text-inference-watchdog.md)
 - [ADR-0267: ニュースポッドキャストで番組単位の除外条件を適用する](0267-podcast-news-exclusion-filter.md)
 - [ADR-0268: ニュースポッドキャストの再生成を現在条件での再構築にする](0268-podcast-rebuild-regeneration.md)
+- [ADR-0269: ニュースポッドキャスト生成をdurable foreground workへ統一する](0269-podcast-durable-foreground-generation.md)
 
 ### Content / summary / knowledge
 
@@ -242,3 +243,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0264](0264-database-v38-compatibility-baseline.md)
 - [ADR-0265](0265-podcast-cloud-chapter-parallelism.md)
 - [ADR-0267](0267-podcast-news-exclusion-filter.md)
+- [ADR-0269](0269-podcast-durable-foreground-generation.md)
