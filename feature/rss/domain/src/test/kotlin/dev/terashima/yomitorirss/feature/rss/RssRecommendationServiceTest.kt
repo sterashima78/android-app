@@ -1,6 +1,8 @@
 package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.Article
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -156,6 +158,9 @@ private class FakeRecommendationRepository(
   val assessments: MutableMap<String, RssRecommendationAssessment> = mutableMapOf(),
 ) : RssRecommendationRepository {
   private val feedback = mutableListOf<RssRecommendationFeedback>()
+  private val tasks = mutableListOf<RssRecommendationTask>()
+  private val changeFlow = MutableStateFlow(0L)
+  override val changes: StateFlow<Long> = changeFlow
 
   override fun loadPolicy(): RssRecommendationPolicy = policy
 
@@ -214,5 +219,58 @@ private class FakeRecommendationRepository(
     }
     feedback.removeAll { it.id in feedbackIds }
     return policy
+  }
+
+  override fun enqueueTasks(articles: List<Article>, revision: Long) {
+    articles.forEach { article ->
+      if (tasks.none { it.articleId == article.id }) {
+        tasks += RssRecommendationTask(
+          articleId = article.id,
+          title = article.title,
+          revision = revision,
+          state = RssRecommendationTaskState.QUEUED,
+          queuedAt = 0L,
+          startedAt = null,
+        )
+      }
+    }
+  }
+
+  override fun listTasks(): List<RssRecommendationTask> = tasks.toList()
+
+  override fun claimNextTask(): RssRecommendationTask? {
+    val index = tasks.indexOfFirst { it.state == RssRecommendationTaskState.QUEUED }
+    if (index < 0) return null
+    return tasks[index].copy(
+      state = RssRecommendationTaskState.RUNNING,
+      startedAt = 1L,
+    ).also { tasks[index] = it }
+  }
+
+  override fun completeTask(articleId: String, revision: Long) {
+    tasks.removeAll { it.articleId == articleId && it.revision == revision }
+  }
+
+  override fun requeueTask(articleId: String, revision: Long) {
+    val index = tasks.indexOfFirst { it.articleId == articleId && it.revision == revision }
+    if (index >= 0) tasks[index] = tasks[index].copy(
+      state = RssRecommendationTaskState.QUEUED,
+      startedAt = null,
+    )
+  }
+
+  override fun requeueInterruptedTasks() {
+    tasks.indices.forEach { index ->
+      if (tasks[index].state == RssRecommendationTaskState.RUNNING) {
+        tasks[index] = tasks[index].copy(
+          state = RssRecommendationTaskState.QUEUED,
+          startedAt = null,
+        )
+      }
+    }
+  }
+
+  override fun clearTasks() {
+    tasks.clear()
   }
 }
