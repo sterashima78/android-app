@@ -32,6 +32,7 @@ internal class AppContentRouteDependencies(
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
       recommendationService = container.rssRecommendationService,
+      recommendationTaskScheduler = container.rssRecommendationTaskScheduler,
       articleSelector = RedditSourceBoundary::isNonRedditArticle,
     )
   }
