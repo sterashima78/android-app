@@ -27,6 +27,23 @@ class IntegratedScreenTest {
   }
 
   @Test
+  fun `RSS未読だけ深い左スワイプで除外参考を利用できる`() {
+    val rss = item(IntegratedSource.RSS)
+    val reddit = item(IntegratedSource.REDDIT)
+    val mail = item(IntegratedSource.MAIL)
+
+    assertEquals("除外参考", integratedSwipeActions(rss, IntegratedTab.UNREAD).farLeft?.label)
+    assertEquals(
+      IntegratedSwipeOperation.EXCLUSION_REFERENCE,
+      integratedSwipeActions(rss, IntegratedTab.UNREAD).farLeft?.operation,
+    )
+    assertEquals(null, integratedSwipeActions(reddit, IntegratedTab.UNREAD).farLeft)
+    assertEquals(null, integratedSwipeActions(mail, IntegratedTab.UNREAD).farLeft)
+    assertEquals(null, integratedSwipeActions(rss, IntegratedTab.READ_LATER).farLeft)
+    assertEquals(null, integratedSwipeActions(rss, IntegratedTab.HISTORY).farLeft)
+  }
+
+  @Test
   fun `メールの未読スワイプは保留状態に応じて切り替わる`() {
     val active = item(IntegratedSource.MAIL)
     val deferred = item(IntegratedSource.MAIL, isDeferred = true)
