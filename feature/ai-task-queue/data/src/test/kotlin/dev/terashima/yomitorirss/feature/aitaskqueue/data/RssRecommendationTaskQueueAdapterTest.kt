@@ -65,6 +65,7 @@ class RssRecommendationTaskQueueAdapterTest {
 
     adapter.setResumeOnChargingScheduled(enabled = true, globalPaused = false)
     assertFalse(scheduler.resumeOnChargingEnabled)
+    assertEquals(listOf(false, true, false), scheduler.resumeOnChargingChanges)
   }
 
   private fun task(id: String, state: RssRecommendationTaskState) = RssRecommendationTask(
@@ -87,6 +88,7 @@ private class RecordingScheduler : RssRecommendationTaskScheduler {
   var kickCount = 0
   var paused = false
   var resumeOnChargingEnabled = false
+  val resumeOnChargingChanges = mutableListOf<Boolean>()
 
   override suspend fun enqueueForFeed(feedId: String) = Unit
   override suspend fun enqueueUnread() = Unit
@@ -101,5 +103,6 @@ private class RecordingScheduler : RssRecommendationTaskScheduler {
 
   override fun setResumeOnChargingScheduled(enabled: Boolean) {
     resumeOnChargingEnabled = enabled
+    resumeOnChargingChanges += enabled
   }
 }
