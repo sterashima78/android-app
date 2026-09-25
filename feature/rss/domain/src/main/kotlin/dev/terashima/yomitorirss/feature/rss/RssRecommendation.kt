@@ -209,65 +209,6 @@ class RssRecommendationService(
     assessment
   }
 
-  suspend fun refresh(articles: List<Article>): RssRecommendationSnapshot = inferenceMutex.withLock {
-    val policy = repository.loadPolicy()
-    if (!policy.enabled || articles.isEmpty()) return snapshot(articles.map(Article::id))
-
-    val ids = articles.map(Article::id)
-    val existing = repository.loadAssessments(ids)
-    val candidates = articles.filter { article ->
-      val assessment = existing[article.id]
-      assessment == null ||
-        assessment.revision != policy.revision ||
-        (assessment is RssRecommendationAssessment.Unscored &&
-          assessment.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
-    }
-    if (candidates.isNotEmpty()) {
-      val decisions = try {
-        engine.score(
-          condition = policy.effectiveCondition(),
-          titles = candidates.map(Article::title),
-        ).also {
-          require(it.size == candidates.size) { "recommendation decisions must match candidate count" }
-        }
-      } catch (error: CancellationException) {
-        throw error
-      } catch (_: Throwable) {
-        val failedAt = nowMillis()
-        repository.saveAssessments(
-          candidates.associate { article ->
-            article.id to RssRecommendationAssessment.Unscored(
-              reason = RssRecommendationUnscoredReason.INFERENCE_FAILED,
-              revision = policy.revision,
-              assessedAt = failedAt,
-            )
-          },
-        )
-        return snapshot(ids)
-      }
-
-      val assessedAt = nowMillis()
-      repository.saveAssessments(
-        candidates.mapIndexed { index, article ->
-          val assessment = when (val decision = decisions[index]) {
-            is RssRecommendationDecision.Scored -> RssRecommendationAssessment.Scored(
-              score = decision.score,
-              revision = policy.revision,
-              assessedAt = assessedAt,
-            )
-            RssRecommendationDecision.InsufficientInformation -> RssRecommendationAssessment.Unscored(
-              reason = RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION,
-              revision = policy.revision,
-              assessedAt = assessedAt,
-            )
-          }
-          article.id to assessment
-        }.toMap(),
-      )
-    }
-    return snapshot(ids)
-  }
-
   fun saveManualCondition(condition: String): RssRecommendationPolicy =
     repository.saveManualCondition(condition.trim())
 
