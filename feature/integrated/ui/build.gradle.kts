@@ -28,7 +28,6 @@ dependencies {
   implementation(project(":feature:mail:ui"))
   implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:reddit:ui"))
-  implementation(project(":feature:rss:domain"))
   implementation(project(":feature:rss:ui"))
   implementation(project(":core:designsystem"))
 
@@ -39,5 +38,6 @@ dependencies {
   implementation("androidx.compose.material3:material3")
   implementation("androidx.compose.material:material-icons-extended")
 
+  testImplementation(project(":feature:rss:domain"))
   testImplementation("junit:junit:4.13.2")
 }
