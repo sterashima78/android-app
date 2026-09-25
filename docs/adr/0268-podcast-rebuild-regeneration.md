@@ -44,6 +44,7 @@ feed URLへの再アクセスや新しいfeed entryの取り込みは行わな�
 - 再生成時に同一ニュースclusterも現在のモデル判断で再計算される。
 - 原稿だけを固定入力で再生成する操作は廃止する。
 - feed再取得を行わないため、過去episodeへ後から新しい記事が混入しない。
+- 作り直しで除外された記事はepisode snapshotから外れ、後から条件を緩めても自動復帰しない。これは除外済みentryを自動復活させない既存方針と揃える。
 - database schema、durable table、backup format、provider boundaryは変更しない。
 
 ## Verification
