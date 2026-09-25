@@ -23,7 +23,6 @@ data class PodcastUiState(
   val episodes: List<PodcastEpisode> = emptyList(),
   val showArchivedEpisodes: Boolean = false,
   val playbackEpisodeId: String? = null,
-  val busyProgramIds: Set<String> = emptySet(),
   val busyEpisodeIds: Set<String> = emptySet(),
   val message: String? = null,
 ) {
