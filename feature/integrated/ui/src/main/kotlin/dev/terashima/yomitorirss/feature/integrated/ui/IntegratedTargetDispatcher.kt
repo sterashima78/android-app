@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.rss.RssViewModel
 
 internal data class IntegratedArticleTargetActions(
   val markRead: (Article) -> Unit,
+  val markAsExclusionReference: ((Article) -> Unit)? = null,
   val markUnread: (Article) -> Unit,
   val saveAndRead: (Article) -> Unit,
   val readLater: (Article) -> Unit,
@@ -36,6 +37,10 @@ internal class IntegratedTargetDispatcher(
       is IntegratedTarget.Mail -> mail.toggleRead(target.thread)
       null -> Unit
     }
+  }
+
+  fun markAsExclusionReference(target: IntegratedTarget?) {
+    (target as? IntegratedTarget.Rss)?.let { rss.markAsExclusionReference?.invoke(it.article) }
   }
 
   fun markUnread(target: IntegratedTarget?) {
@@ -110,6 +115,7 @@ internal fun integratedTargetDispatcher(
 ): IntegratedTargetDispatcher = IntegratedTargetDispatcher(
   rss = IntegratedArticleTargetActions(
     markRead = rssViewModel::markRead,
+    markAsExclusionReference = rssViewModel::markAsExclusionReference,
     markUnread = rssViewModel::markUnread,
     saveAndRead = rssViewModel::saveAndRead,
     readLater = rssViewModel::readLater,
