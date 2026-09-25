@@ -24,6 +24,12 @@ class DefaultPodcastScriptGenerator(
     val promptBudgetChars = minOf(model.promptBudgetChars, model.maxInputChars)
     return inference.generate(limitPodcastPrompt(prompt, promptBudgetChars))
   }
+
+  private suspend fun generateWith(inference: PodcastCloudTextInference, prompt: String): String {
+    val model = checkNotNull(inference.selectedModel()) { "利用するAIモデルを選択してください" }
+    val promptBudgetChars = minOf(model.promptBudgetChars, model.maxInputChars)
+    return inference.generate(limitPodcastPrompt(prompt, promptBudgetChars))
+  }
 }
 
 internal fun limitPodcastPrompt(prompt: String, maxChars: Int): String {
