@@ -143,7 +143,7 @@ Content を入力として generated summary と task lifecycle / priority の S
 - Podcast生成候補はRSS readerのread / unread stateではなく、選択したPodcast sourceから現在取得でき、かつ対象番組で生成済みでも除外済みでもないentryで決まる。番組の除外条件がある場合は同じ生成providerの構造化推論で候補を判定し、失敗時は全候補を残す。
 - Podcastへ保存するentry identityはPodcast source IDとfeed entry identityから作り、Content-owned article IDを利用しない。生成や再生によってContentのreading stateを変更しない。
 - 番組ごとの消費・除外履歴で処理済みentryを除いた後、除外条件を適用し、残った候補を同一ニュースへクラスタリングする。そのnews clusterを `maxArticlesPerEpisode` ごとに分割し、記事・clusterスナップショットとしてまとめて予約する。最初のエピソードを `GENERATING`、上限を超えた後続エピソードを `QUEUED` として保持する。
-- 除外判定とクラスタリング後、原稿生成AI推論前にエピソード、記事スナップショット、consumed stateをatomicに予約する。次回生成は既存の `GENERATING`、次に最古の `QUEUED` を新しいfeed取得より優先する。通常失敗時は `FAILED` として保持し、明示再生成では同じ記事スナップショットを再利用する。中断時は `GENERATING` のまま保持し、次回生成で同じスナップショットから再開する。
+- 除外判定とクラスタリング後、原稿生成AI推論前にエピソード、記事スナップショット、consumed stateをatomicに予約する。次回生成は既存の `GENERATING`、次に最古の `QUEUED` を新しいfeed取得より優先する。中断時は `GENERATING` のまま保持し、次回生成で同じスナップショットから再開する。利用者が既存episodeを明示的に作り直す場合はfeedを再取得せず、現在保存されている記事へ現在の除外条件を再適用して再クラスタリングし、同じepisode IDのsnapshotを置き換える。
 - 原稿生成先は番組設定に従ってlocal / cloud inference capabilityを選ぶ。自動fallbackを行わず、外部ページや一般知識を入力へ追加しない。選択modelのprompt/input上限へ収まるよう入力を制限する。local推論は共通AI実行ゲートを利用し、定刻生成はprovider別のbackground pauseを尊重する。
 - 定刻実行はPodcast-owned scheduler adapterが次回ローカル日時を再計算するone-shot workを担当する。`:app:composition` はapplication起動時とdurable persistence置換後のschedule reconciliation、WorkerFactory wiringだけを行う。
 - 生成済み原稿の再生はAudioの `AudioPlaybackController` を利用する。PodcastはTTS、media session、音声cacheを共同所有しない。
