@@ -31,6 +31,7 @@ internal class AppContentRouteDependencies(
     RssViewModel.Factory(
       articleRepository = container.articleRepository,
       bookmarkRepository = container.bookmarkRepository,
+      recommendationService = container.rssRecommendationService,
       articleSelector = RedditSourceBoundary::isNonRedditArticle,
     )
   }
