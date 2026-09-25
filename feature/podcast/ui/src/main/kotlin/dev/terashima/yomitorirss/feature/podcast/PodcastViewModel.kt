@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.audio.AudioQueueItem
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -35,7 +36,7 @@ data class PodcastUiState(
 
 class PodcastViewModel(
   private val repository: PodcastRepository,
-  private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
+  private val generationController: PodcastGenerationController,
   private val scheduleController: PodcastScheduleController,
   private val audioPlaybackController: AudioPlaybackController,
 ) : ViewModel() {
@@ -45,11 +46,17 @@ class PodcastViewModel(
 
   init {
     reload()
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.changes.drop(1).collect { reloadNow() }
+    }
   }
 
   fun reload() {
-    viewModelScope.launch(Dispatchers.IO) {
-      runCatching {
+    viewModelScope.launch(Dispatchers.IO) { reloadNow() }
+  }
+
+  private suspend fun reloadNow() {
+    runCatching {
         val programs = repository.listPrograms()
         val sources = repository.listSources()
         val selectedId = _state.value.selectedProgramId
@@ -58,20 +65,18 @@ class PodcastViewModel(
         val showArchived = _state.value.showArchivedEpisodes
         val episodes = selectedId?.let { loadEpisodes(it, showArchived) }.orEmpty()
         Triple(programs, sources, selectedId to episodes)
-      }.onSuccess { (programs, sources, selection) ->
-        _state.update { current ->
-          current.copy(
-            initialized = true,
-            programs = programs,
-            sources = sources,
-            selectedProgramId = selection.first,
-            episodes = selection.second,
-            playbackEpisodeId = current.playbackEpisodeId?.takeIf { id -> selection.second.any { it.id == id } },
-            message = null,
-          )
-        }
-      }.onFailure(::showError)
-    }
+    }.onSuccess { (programs, sources, selection) ->
+      _state.update { current ->
+        current.copy(
+          initialized = true,
+          programs = programs,
+          sources = sources,
+          selectedProgramId = selection.first,
+          episodes = selection.second,
+          playbackEpisodeId = current.playbackEpisodeId?.takeIf { id -> selection.second.any { it.id == id } },
+        )
+      }
+    }.onFailure(::showError)
   }
 
   fun selectProgram(programId: String) {
@@ -200,47 +205,26 @@ class PodcastViewModel(
   }
 
   fun generate(programId: String) {
-    _state.update { it.copy(busyProgramIds = it.busyProgramIds + programId, message = null) }
-    viewModelScope.launch(Dispatchers.IO) {
-      runCatching { generatePodcastEpisode.generate(programId) }
-        .onSuccess { result ->
-          _state.update {
-            it.copy(
-              busyProgramIds = it.busyProgramIds - programId,
-              message = when (result) {
-                is PodcastGenerationResult.Generated -> "エピソードを生成しました"
-                PodcastGenerationResult.NoNewArticles -> "新しい記事はありません"
-              },
-            )
-          }
-          refreshEpisodes(programId)
-        }
-        .onFailure { error ->
-          _state.update { it.copy(busyProgramIds = it.busyProgramIds - programId) }
-          showError(error)
-          refreshEpisodes(programId)
-        }
-    }
+    _state.update { it.copy(message = null) }
+    runCatching { generationController.generate(programId) }
+      .onSuccess {
+        _state.update { it.copy(message = "エピソード生成をバックグラウンドで開始しました") }
+      }
+      .onFailure(::showError)
   }
 
   fun retry(episodeId: String) {
-    _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds + episodeId, message = null) }
-    viewModelScope.launch(Dispatchers.IO) {
-      runCatching { generatePodcastEpisode.regenerate(episodeId) }
-        .onSuccess { generated ->
-          _state.update {
-            it.copy(
-              busyEpisodeIds = it.busyEpisodeIds - episodeId,
-              message = "エピソードを現在の条件で作り直しました",
-            )
-          }
-          refreshEpisodes(generated.episode.programId)
-        }
-        .onFailure { error ->
-          _state.update { it.copy(busyEpisodeIds = it.busyEpisodeIds - episodeId) }
-          showError(error)
-        }
+    val episode = _state.value.episodes.firstOrNull { it.id == episodeId }
+    if (episode == null) {
+      showError(IllegalStateException("エピソードが見つかりません"))
+      return
     }
+    _state.update { it.copy(message = null) }
+    runCatching { generationController.regenerate(episode.programId, episodeId) }
+      .onSuccess {
+        _state.update { it.copy(message = "エピソードの作り直しをバックグラウンドで開始しました") }
+      }
+      .onFailure(::showError)
   }
 
   fun archiveEpisode(episodeId: String) {
@@ -402,7 +386,7 @@ class PodcastViewModel(
 
   class Factory(
     private val repository: PodcastRepository,
-    private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
+    private val generationController: PodcastGenerationController,
     private val scheduleController: PodcastScheduleController,
     private val audioPlaybackController: AudioPlaybackController,
   ) : ViewModelProvider.Factory {
@@ -411,7 +395,7 @@ class PodcastViewModel(
       @Suppress("UNCHECKED_CAST")
       return PodcastViewModel(
         repository,
-        generatePodcastEpisode,
+        generationController,
         scheduleController,
         audioPlaybackController,
       ) as T
