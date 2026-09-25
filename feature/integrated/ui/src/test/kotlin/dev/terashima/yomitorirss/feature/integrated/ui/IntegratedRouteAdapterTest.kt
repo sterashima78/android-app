@@ -8,6 +8,8 @@ import dev.terashima.yomitorirss.feature.mail.MailUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscription
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import dev.terashima.yomitorirss.feature.rss.RssUiState
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -36,6 +38,39 @@ class IntegratedRouteAdapterTest {
       entries.map { it.item.source },
     )
     assertEquals("user@example.com · snippet", entries.first().item.subtitle)
+  }
+
+  @Test
+  fun `RSS未読の推薦評価を統合表示へ投影する`() {
+    val scored = article("rss-scored", "2026-08-11T09:00:00Z")
+    val unscored = article("rss-unscored", "2026-08-11T10:00:00Z")
+    val entries = integratedEntries(
+      rssState = RssUiState(
+        initialized = true,
+        unread = listOf(scored, unscored),
+        recommendationAssessments = mapOf(
+          scored.id to RssRecommendationAssessment.Scored(
+            score = 4,
+            revision = 1L,
+            assessedAt = 10L,
+          ),
+          unscored.id to RssRecommendationAssessment.Unscored(
+            reason = RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION,
+            revision = 1L,
+            assessedAt = 11L,
+          ),
+        ),
+      ),
+      redditState = RedditUiState(initialized = true),
+      mailState = MailUiState(initialized = true),
+    )
+
+    val byId = entries.associateBy { (it.target as IntegratedTarget.Rss).article.id }
+    assertEquals("推薦スコア: 4", byId[scored.id]?.item?.annotation)
+    assertEquals(
+      "推薦: 未評価（タイトルだけでは判断できません）",
+      byId[unscored.id]?.item?.annotation,
+    )
   }
 
   @Test

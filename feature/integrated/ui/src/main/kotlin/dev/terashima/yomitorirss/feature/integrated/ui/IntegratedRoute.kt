@@ -55,6 +55,11 @@ fun IntegratedRoute(
       },
     )
   }
+  LaunchedEffect(rssState.message) {
+    val message = rssState.message ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(message)
+    rssViewModel.dismissMessage()
+  }
   LaunchedEffect(mailState.message) {
     val message = mailState.message ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(message)
@@ -100,6 +105,9 @@ fun IntegratedRoute(
           mailViewModel.refresh()
         },
         onMarkProcessed = { item -> dispatcher.markProcessed(targetsByKey[item.key]) },
+        onExclusionReference = { item ->
+          dispatcher.markAsExclusionReference(targetsByKey[item.key])
+        },
         onMarkUnread = { item -> dispatcher.markUnread(targetsByKey[item.key]) },
         onSave = { item -> dispatcher.save(targetsByKey[item.key]) },
         onDefer = { item -> dispatcher.defer(targetsByKey[item.key]) },

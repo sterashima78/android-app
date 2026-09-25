@@ -36,6 +36,22 @@ class IntegratedTargetDispatcherTest {
   }
 
   @Test
+  fun `除外参考はRSSだけへ委譲する`() {
+    val calls = mutableListOf<String>()
+    val dispatcher = dispatcher(calls)
+    val rss = article("rss")
+    val reddit = article("reddit")
+    val mail = mail("mail")
+
+    dispatcher.markAsExclusionReference(IntegratedTarget.Rss(rss))
+    dispatcher.markAsExclusionReference(IntegratedTarget.Reddit(reddit))
+    dispatcher.markAsExclusionReference(IntegratedTarget.Mail(mail))
+    dispatcher.markAsExclusionReference(null)
+
+    assertEquals(listOf("rss:exclude:rss"), calls)
+  }
+
+  @Test
   fun `source固有でない操作は何もせずopenだけ正しいcallbackへ委譲する`() {
     val calls = mutableListOf<String>()
     val dispatcher = dispatcher(calls)
@@ -51,6 +67,7 @@ class IntegratedTargetDispatcherTest {
   private fun dispatcher(calls: MutableList<String>) = IntegratedTargetDispatcher(
     rss = IntegratedArticleTargetActions(
       markRead = { calls += "rss:read:${it.id}" },
+      markAsExclusionReference = { calls += "rss:exclude:${it.id}" },
       markUnread = { calls += "rss:unread:${it.id}" },
       saveAndRead = { calls += "rss:save:${it.id}" },
       readLater = { calls += "rss:later:${it.id}" },

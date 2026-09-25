@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
+import dev.terashima.yomitorirss.feature.rss.recommendationAnnotationFor
 import java.time.Instant
 
 internal sealed interface IntegratedTarget {
@@ -32,7 +33,16 @@ internal fun integratedEntries(
       IntegratedTab.UNREAD -> {
         rssState.unread
           .filterNot { it.id in rssState.hiddenArticleIds }
-          .forEach { add(articleEntry(it, IntegratedSource.RSS, IntegratedTarget.Rss(it))) }
+          .forEach { article ->
+            add(
+              articleEntry(
+                article = article,
+                source = IntegratedSource.RSS,
+                target = IntegratedTarget.Rss(article),
+                annotation = rssState.recommendationAnnotationFor(article.id),
+              ),
+            )
+          }
         redditState.unread
           .filterNot { it.id in redditState.hiddenArticleIds }
           .forEach { add(articleEntry(it, IntegratedSource.REDDIT, IntegratedTarget.Reddit(it))) }
@@ -82,12 +92,14 @@ private fun articleEntry(
   source: IntegratedSource,
   target: IntegratedTarget,
   timestamp: Long = article.eventTimeMillis(),
+  annotation: String? = null,
 ): IntegratedEntry = IntegratedEntry(
   item = IntegratedItem(
     key = "${source.name.lowercase()}:${article.id}",
     source = source,
     title = article.title,
     subtitle = article.sourceTitle,
+    annotation = annotation,
     timestamp = timestamp,
   ),
   target = target,
