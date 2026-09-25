@@ -39,12 +39,22 @@ class DefaultRssRecommendationEngine(
     feedback: List<RssRecommendationFeedback>,
   ): String {
     require(feedback.isNotEmpty()) { "feedback must not be empty" }
-    val call = generateToolCall(
-      systemInstruction = LEARNING_SYSTEM_INSTRUCTION,
-      userMessage = buildLearningPrompt(manualCondition, learnedCondition, feedback),
-      tool = LEARNING_TOOL,
-    )
-    return parseLearnedConditionToolCall(call)
+    val original = buildLearningPrompt(manualCondition, learnedCondition, feedback)
+    var request = original
+    repeat(RSS_RECOMMENDATION_MAX_ATTEMPTS) { attempt ->
+      val call = generateToolCall(
+        systemInstruction = LEARNING_SYSTEM_INSTRUCTION,
+        userMessage = request,
+        tool = LEARNING_TOOL,
+      )
+      val parsed = runCatching { parseLearnedConditionToolCall(call) }
+      if (parsed.isSuccess) return parsed.getOrThrow()
+      if (attempt < RSS_RECOMMENDATION_MAX_ATTEMPTS - 1) {
+        request = original +
+          "\n\n前回のtool callは検証に失敗しました。conditionだけを指定toolで1回返してください。"
+      }
+    }
+    error("RSS recommendation learning tool call validation failed")
   }
 
   private suspend fun scoreBatch(
