@@ -5,7 +5,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -105,6 +107,47 @@ class RssRecommendationRepositoryTest {
   }
 
   @Test
+  fun `推薦タスクは記事単位でFIFOにclaimして完了時に削除する`() {
+    val first = article("a1", "記事1")
+    val second = article("a2", "記事2")
+
+    repository.enqueueTasks(listOf(first, second), revision = 3L)
+
+    val claimed = repository.claimNextTask()
+    assertEquals("a1", claimed?.articleId)
+    assertEquals(RssRecommendationTaskState.RUNNING, claimed?.state)
+    assertEquals(
+      listOf(RssRecommendationTaskState.RUNNING, RssRecommendationTaskState.QUEUED),
+      repository.listTasks().map { it.state },
+    )
+
+    repository.completeTask("a1", revision = 3L)
+
+    assertEquals(listOf("a2"), repository.listTasks().map { it.articleId })
+  }
+
+  @Test
+  fun `中断中の推薦タスクは待機状態へ戻す`() {
+    repository.enqueueTasks(listOf(article("a1", "記事1")), revision = 2L)
+    repository.claimNextTask()
+
+    repository.requeueInterruptedTasks()
+
+    val task = repository.listTasks().single()
+    assertEquals(RssRecommendationTaskState.QUEUED, task.state)
+    assertNull(task.startedAt)
+  }
+
+  @Test
+  fun `revision変更時は古い推薦タスクを破棄する`() {
+    repository.enqueueTasks(listOf(article("old", "旧記事")), revision = 1L)
+
+    repository.enqueueTasks(listOf(article("new", "新記事")), revision = 2L)
+
+    assertEquals(listOf("new"), repository.listTasks().map { it.articleId })
+  }
+
+  @Test
   fun `feedbackを取り消すとpendingから削除する`() {
     val feedback = repository.addFeedback(
       articleId = "a1",
@@ -117,4 +160,18 @@ class RssRecommendationRepositoryTest {
     assertEquals(emptyList<Any>(), repository.listPendingFeedback())
     assertNull(repository.loadAssessments(listOf("a1"))["a1"])
   }
+
+  private fun article(id: String, title: String) = Article(
+    id = id,
+    feedId = "feed",
+    externalId = id,
+    identityKey = id,
+    url = "https://example.invalid/$id",
+    title = title,
+    publishedAt = "2026-09-25T00:00:00Z",
+    fetchedAt = "2026-09-25T00:00:00Z",
+    readAt = null,
+    sourceTitle = "test",
+    sourceFeedUrl = "https://example.invalid/feed",
+  )
 }
