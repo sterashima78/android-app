@@ -3,6 +3,9 @@ articles	:feature:article:data
 feeds	:feature:rss:data
 feed_folders	:feature:rss:data
 rss_web_scraping_rules	:feature:rss:data
+rss_recommendation_policy	:feature:rss:data
+rss_recommendation_assessments	:feature:rss:data
+rss_recommendation_feedback	:feature:rss:data
 bookmarks	:feature:bookmark:data
 tags	:feature:bookmark:data
 article_tags	:feature:bookmark:data
