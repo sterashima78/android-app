@@ -1,9 +1,15 @@
 package dev.terashima.yomitorirss.feature.rss.data
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.ServiceInfo
+import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ForegroundInfo
 import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -121,6 +127,7 @@ internal class RssRecommendationWorker(
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
     if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return Result.success()
+    setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     repository.requeueInterruptedTasks()
     var claimed: RssRecommendationTask? = null
 
@@ -139,6 +146,7 @@ internal class RssRecommendationWorker(
             return@withPermit
           }
 
+          setForeground(createForegroundInfo(article.title))
           service.scoreArticle(article, task.revision)
           repository.completeTask(task.articleId, task.revision)
           claimed = null
@@ -153,6 +161,50 @@ internal class RssRecommendationWorker(
       claimed?.let { repository.requeueTask(it.articleId, it.revision) }
       Result.retry()
     }
+  }
+
+  private fun createForegroundInfo(articleTitle: String): ForegroundInfo {
+    val notificationManager = applicationContext.getSystemService(NotificationManager::class.java)
+    notificationManager.createNotificationChannel(
+      NotificationChannel(
+        CHANNEL_ID,
+        "RSSの推薦評価",
+        NotificationManager.IMPORTANCE_LOW,
+      ).apply {
+        description = "端末内AIでRSS記事をバックグラウンド評価している間に表示します"
+        setShowBadge(false)
+      },
+    )
+    val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+      .setSmallIcon(android.R.drawable.stat_notify_sync)
+      .setContentTitle("RSS記事をAIで評価しています")
+      .setContentText(articleTitle)
+      .setStyle(NotificationCompat.BigTextStyle().bigText(articleTitle))
+      .setOngoing(true)
+      .setOnlyAlertOnce(true)
+      .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+      .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+    applicationContext.packageManager
+      .getLaunchIntentForPackage(applicationContext.packageName)
+      ?.let { launchIntent ->
+        PendingIntent.getActivity(
+          applicationContext,
+          0,
+          launchIntent,
+          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+      }
+      ?.let(builder::setContentIntent)
+    return ForegroundInfo(
+      NOTIFICATION_ID,
+      builder.build(),
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+    )
+  }
+
+  private companion object {
+    const val CHANNEL_ID = "rss_recommendation"
+    const val NOTIFICATION_ID = 8771
   }
 }
 
