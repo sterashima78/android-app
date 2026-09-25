@@ -352,7 +352,7 @@ private fun EpisodeCard(
           OutlinedButton(onClick = onRetry, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (busy) "処理中" else "同じ記事で再生成")
+            Text(if (busy) "処理中" else "現在の条件で作り直す")
           }
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -392,7 +392,7 @@ private fun EpisodeCard(
           OutlinedButton(onClick = onRetry, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (busy) "処理中" else "同じ記事で再生成")
+            Text(if (busy) "処理中" else "現在の条件で作り直す")
           }
           Row(
             modifier = Modifier.fillMaxWidth(),
