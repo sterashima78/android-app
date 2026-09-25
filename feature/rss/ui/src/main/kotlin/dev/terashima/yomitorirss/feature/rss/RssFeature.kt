@@ -157,7 +157,7 @@ fun RssScreen(
   }
 }
 
-internal fun recommendationAnnotation(assessment: RssRecommendationAssessment): String = when (assessment) {
+fun recommendationAnnotation(assessment: RssRecommendationAssessment): String = when (assessment) {
   is RssRecommendationAssessment.Scored -> "推薦スコア: ${assessment.score}"
   is RssRecommendationAssessment.Unscored -> when (assessment.reason) {
     RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION ->
