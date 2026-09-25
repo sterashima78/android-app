@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-25
 - Refines: [ADR-0257](0257-podcast-chapter-generation-jobs.md), [ADR-0259](0259-podcast-news-clustering.md), [ADR-0267](0267-podcast-news-exclusion-filter.md)
+- Refined by: [ADR-0269](0269-podcast-durable-foreground-generation.md)
 
 ## Context
 
