@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.reddit.RedditSubscription
 import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import dev.terashima.yomitorirss.feature.rss.RssUiState
 import java.time.Instant
@@ -49,7 +50,7 @@ class IntegratedRouteAdapterTest {
       rssState = RssUiState(
         initialized = true,
         unread = listOf(scored, unscored, pending),
-        recommendationPolicy = dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy(
+        recommendationPolicy = RssRecommendationPolicy(
           manualCondition = "広告記事を低くする",
           revision = 1L,
         ),
