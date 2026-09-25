@@ -252,7 +252,7 @@ class DefaultRssRecommendationRepository(
         arrayOf(TASK_QUEUED),
       ).use { cursor ->
         if (cursor.moveToFirst()) cursor.recommendationTask() else null
-      } ?: return@transaction null
+      } ?: return@localTransaction null
       val updated = update(
         "rss_recommendation_tasks",
         ContentValues().apply {
