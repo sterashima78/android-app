@@ -30,6 +30,21 @@ enum class RssTab(val label: String) {
   SETTINGS("設定"),
 }
 
+
+internal fun recommendationAnnotations(
+  assessments: Map<String, RssRecommendationAssessment>,
+): Map<String, String> = assessments.mapValues { (_, assessment) ->
+  when (assessment) {
+    is RssRecommendationAssessment.Scored -> "推薦スコア: ${assessment.score}"
+    is RssRecommendationAssessment.Unscored -> when (assessment.reason) {
+      RssRecommendationUnscoredReason.INSUFFICIENT_INFORMATION ->
+        "未評価: タイトルだけでは判断できません"
+      RssRecommendationUnscoredReason.INFERENCE_FAILED ->
+        "未評価: 判定に失敗しました"
+    }
+  }
+}
+
 internal fun readLaterDisplayedAtByArticleId(
   bookmarks: List<BookmarkedArticle>,
 ): Map<String, String> = bookmarks.associate { bookmark ->
