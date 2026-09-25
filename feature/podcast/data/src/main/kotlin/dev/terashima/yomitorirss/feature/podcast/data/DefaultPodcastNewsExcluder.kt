@@ -42,8 +42,11 @@ class DefaultPodcastNewsExcluder(
     } catch (_: Throwable) {
       return includeAll(candidates)
     }
-    val results = candidates.chunked(PODCAST_EXCLUSION_MAX_BATCH_SIZE).map { batch ->
-      filterBatch(route, exclusionPrompt, batch, model.promptBudgetChars)
+    val results = mutableListOf<PodcastNewsExclusionResult>()
+    for (batch in candidates.chunked(PODCAST_EXCLUSION_MAX_BATCH_SIZE)) {
+      val result = filterBatch(route, exclusionPrompt, batch, model.promptBudgetChars)
+        ?: return includeAll(candidates)
+      results += result
     }
     return PodcastNewsExclusionResult(
       included = results.flatMap(PodcastNewsExclusionResult::included),
@@ -56,11 +59,11 @@ class DefaultPodcastNewsExcluder(
     exclusionPrompt: String,
     candidates: List<PodcastFeedEntry>,
     promptBudgetChars: Int,
-  ): PodcastNewsExclusionResult {
+  ): PodcastNewsExclusionResult? {
     val prompt = try {
       buildPodcastExclusionToolPrompt(exclusionPrompt, candidates, promptBudgetChars)
     } catch (_: Throwable) {
-      return includeAll(candidates)
+      return null
     }
 
     var request = prompt
@@ -70,10 +73,10 @@ class DefaultPodcastNewsExcluder(
       } catch (error: CancellationException) {
         throw error
       } catch (_: Throwable) {
-        return includeAll(candidates)
+        return null
       }
       val excluded = runCatching { parsePodcastExclusionToolCall(call, candidates.size) }.getOrElse { error ->
-        if (attempt == PODCAST_EXCLUSION_MAX_ATTEMPTS - 1) return includeAll(candidates)
+        if (attempt == PODCAST_EXCLUSION_MAX_ATTEMPTS - 1) return null
         request = buildRepairPrompt(prompt, error.message.orEmpty(), promptBudgetChars)
         return@repeat
       }
@@ -84,7 +87,7 @@ class DefaultPodcastNewsExcluder(
         excluded = candidates.filterIndexed { index, _ -> index in excludedIndexes },
       )
     }
-    return includeAll(candidates)
+    return null
   }
 
   private suspend fun generateToolCall(
