@@ -25,7 +25,7 @@ taskには次を保存する。
 - QUEUED / RUNNING
 - queued / started timestamp
 
-taskは評価結果そのものではない。評価の正本は従来どおり `rss_recommendation_assessments` とし、task完了後はqueue rowを削除する。
+taskは評価結果そのものではない。評価の正本は従来どおり `rss_recommendation_assessments` とし、task完了後はqueue rowを削除する。queue mutationはbackup schedulingの契機にしない。database snapshotには一時tableが含まれ得るため、restore後はRSS-owned `RssRecommendationBackupRestoreInitializer` がqueueだけを破棄し、評価・条件・feedbackは維持する。
 
 条件revisionが変わった場合は旧revisionの待機taskを破棄し、現在未読の記事から必要なtaskを再構成する。推論中断時のRUNNING taskは次回起動時にQUEUEDへ戻す。
 
@@ -81,7 +81,7 @@ background taskが評価を保存するとRSS-owned change streamからpresentat
 
 ## Verification
 
-- repository testでenqueue、FIFO claim、中断taskのrequeue、revision変更時の旧task破棄を確認する。
+- repository testでenqueue、FIFO claim、中断taskのrequeue、revision変更時の旧task破棄、restore時のqueue破棄を確認する。
 - scheduler / Worker testで既評価記事を再投入しないこと、1記事ずつ順次処理すること、既読化された記事をskipすることを確認する。
 - UI / projection testで評価待ち、scored、情報不足、推論失敗表示を確認する。
 - 共通AIタスクキューadapter testでRSS taskの状態とglobal pause projectionを確認する。
