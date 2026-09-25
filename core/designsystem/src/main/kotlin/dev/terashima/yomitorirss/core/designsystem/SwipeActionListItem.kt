@@ -181,8 +181,8 @@ internal fun resolveSwipeCommit(
   farThreshold: Float,
   hasLeft: Boolean,
   hasRight: Boolean,
-  hasFarLeft: Boolean = false,
   hasFarRight: Boolean,
+  hasFarLeft: Boolean = false,
 ): SwipeCommit = when {
   hasFarLeft && offset <= -farThreshold -> SwipeCommit.FAR_LEFT
   hasLeft && offset <= -normalThreshold -> SwipeCommit.LEFT
