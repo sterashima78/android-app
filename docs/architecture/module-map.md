@@ -69,7 +69,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:core:ai-inference` は provider 非依存の単発テキスト推論 contract とモデル能力・進捗を所有する。`:core:ai-runtime` は Gemma / LiteRT-LM、tokenizer、Engine lifecycle、benchmark、Vision / Conversation などローカル実装固有の capability を所有し、`LocalAiTextInference` から共通 contract へ投影する。Summary / Knowledge / Library 等の prompt や生成ポリシーは owning feature に残す。
 
-`:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離する。Summary / Knowledge の Domain / UI はこの module へ依存せず、provider-specific infrastructure adapter を実装する各 feature Data のみが必要に応じて依存する。Summary は provider 選択、要約 prompt、metadata policy を、Knowledge は prompt budget / cache variant / feature failure semantics をそれぞれ所有する。
+`:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離する。Summary / Knowledge / Podcast の Domain / UI はこの module へ依存せず、provider-specific infrastructure adapterを実装する各feature Dataのみが必要に応じて依存する。Summary は provider 選択、要約 prompt、metadata policy を、Knowledge は prompt budget / cache variant / feature failure semantics を、Podcast はchapter単位のretry / checkpoint policyをそれぞれ所有する。
 
 `:core:background` は background execution の共有技術 policy を所有する。端末内推論を使う task の global pause / charging resume は `LocalAiBackgroundExecutionPreferences`、cloud provider を使う task の global pause は `CloudAiBackgroundExecutionPreferences` に分離する。Cloud pause に charging resume semantics は持たせない。
 
@@ -114,7 +114,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `:feature:audio` は保存済み要約または呼び出し元が渡した読み上げ原稿の音声再生 capability を所有する。Domain は process-local の再生キューと操作 contract、Data は Android TTS / Media3 / `MediaSessionService`、UI は再生コントロールを所有する。Content / Curation / Summary / Podcast の durable state は所有せず、読み上げ対象の意味は呼び出し元 feature が所有する。詳細は ADR-0235 を参照する。
 
-`:feature:podcast` は複数フィードを束ねる番組定義、番組ごとの記事消費状態、生成済みエピソードと原稿、生成provider・定刻生成設定を所有する。RSS からはRSS / Atomに含まれる本文だけを narrow read contract で受け取り、リンク先本文を取得しない。未読判定はContentの公開read APIを利用し、Content / RSS tableを直接参照しない。原稿生成は既存の local/cloud text inference capability を利用し、音声化と MediaSession 操作は `:feature:audio` を再利用する。定刻生成は同じ生成 UseCase を Worker から呼び出し、別の生成経路を持たない。詳細は ADR-0249 を参照する。
+`:feature:podcast` は複数フィードを束ねる番組定義、番組ごとの記事消費状態、生成済みエピソードと原稿、生成provider・定刻生成設定を所有する。RSS からはRSS / Atomに含まれる本文だけを narrow read contract で受け取り、リンク先本文を取得しない。原稿生成は既存の local/cloud text inference capability を利用し、cloud chapterのretryabilityはData layerがtyped provider failureから解釈する。音声化と MediaSession 操作は `:feature:audio` を再利用する。定刻生成と画面からの生成・作り直しは同じ生成UseCaseとPodcast-owned Workerを利用し、UI lifetimeに結び付く第二の生成経路を持たない。詳細は ADR-0249、ADR-0269 を参照する。
 
 `:feature:video` は SMB / Web / 購読型 provider 由来動画を同じ catalog に投影し、Web extractor rule、provider設定・subscription・provider itemの未読/あとで見る状態・refresh lifecycle、再生位置、視聴済み状態、Video保存状態と foreground video playback UI を所有する。Web URL の単発登録は購読型 provider と分離する。SMB server / credential は Library ownership を維持し、Video は Library Domain の read-only media capability だけを利用する。詳細は ADR-0237 と ADR-0242 を参照する。
 
