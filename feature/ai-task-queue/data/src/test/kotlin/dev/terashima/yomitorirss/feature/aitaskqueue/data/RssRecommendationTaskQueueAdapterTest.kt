@@ -65,7 +65,7 @@ class RssRecommendationTaskQueueAdapterTest {
 
     adapter.setResumeOnChargingScheduled(enabled = true, globalPaused = false)
     assertFalse(scheduler.resumeOnChargingEnabled)
-    assertEquals(listOf(false, true, false), scheduler.resumeOnChargingChanges)
+    assertEquals(listOf(true, false, true, false), scheduler.resumeOnChargingChanges)
   }
 
   private fun task(id: String, state: RssRecommendationTaskState) = RssRecommendationTask(
