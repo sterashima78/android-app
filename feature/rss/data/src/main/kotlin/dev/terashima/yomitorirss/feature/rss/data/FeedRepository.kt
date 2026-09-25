@@ -20,6 +20,7 @@ class DefaultFeedRepository(
   database: DatabaseConnection,
   private val contentSourceGateway: ContentSourceGateway,
   private val dataChanges: DataChangeNotifier = DataChangeNotifier(),
+  private val onFeedUpdated: suspend (Feed) -> Unit = {},
   applicationContext: Context? = null,
   httpClient: HttpClient = HttpClient.create(),
 ) : FeedRepository {
@@ -51,13 +52,14 @@ class DefaultFeedRepository(
     } else {
       client.fetchFeed(normalized)
     }
-    store.addFeed(
+    val feed = store.addFeed(
       parsed = requireNotNull(result.feed),
       etag = result.etag,
       modified = result.lastModified,
       markExistingArticlesRead = markExistingArticlesRead,
     )
     dataChanges.notifyChanged()
+    runCatching { onFeedUpdated(feed) }
   }
 
   override suspend fun renameFeed(feedId: String, name: String) {
@@ -114,6 +116,7 @@ class DefaultFeedRepository(
         store.updateFeedSuccess(feed, requireNotNull(result.feed), result.etag, result.lastModified)
       }
       dataChanges.notifyChanged()
+      runCatching { onFeedUpdated(feed) }
     } catch (error: Throwable) {
       store.updateFeedError(feed.id, error.userMessage())
       dataChanges.notifyChanged()
