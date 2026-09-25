@@ -71,6 +71,30 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `同じrevisionの推論失敗は次回refreshで再評価する`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(manualCondition = "条件", revision = 2L),
+      assessments = mutableMapOf(
+        "a1" to RssRecommendationAssessment.Unscored(
+          reason = RssRecommendationUnscoredReason.INFERENCE_FAILED,
+          revision = 2L,
+          assessedAt = 50L,
+        ),
+      ),
+    )
+    val engine = FakeRecommendationEngine(decisions = listOf(RssRecommendationDecision.Scored(9)))
+    val service = RssRecommendationService(repository, engine, nowMillis = { 400L })
+
+    val result = service.refresh(listOf(article("a1", "記事")))
+
+    assertEquals(1, engine.scoreCalls)
+    assertEquals(
+      RssRecommendationAssessment.Scored(9, revision = 2L, assessedAt = 400L),
+      result.assessments["a1"],
+    )
+  }
+
+  @Test
   fun `条件revisionが変わると古い評価を再利用しない`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "条件", revision = 2L),
