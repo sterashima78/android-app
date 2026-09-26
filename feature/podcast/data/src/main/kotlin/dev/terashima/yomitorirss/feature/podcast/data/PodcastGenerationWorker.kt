@@ -44,10 +44,13 @@ class PodcastGenerationWorker(
     val programId = inputData.getString(KEY_PROGRAM_ID) ?: return Result.failure()
     val program = repository.findProgram(programId) ?: return Result.success()
     val operation = podcastGenerationOperation(inputData.getString(KEY_OPERATION))
+    val useForeground = shouldUsePodcastGenerationForeground(operation)
     var scheduleNext = false
 
     return try {
-      setForeground(createForegroundInfo(program.name, null))
+      if (useForeground) {
+        setForeground(createForegroundInfo(program.name, null))
+      }
       if (
         operation == PodcastGenerationOperation.SCHEDULED_GENERATE &&
         shouldSkipPodcastGeneration(
@@ -67,7 +70,9 @@ class PodcastGenerationWorker(
             .putInt(KEY_TOTAL_CHAPTERS, progress.totalChapters)
             .build(),
         )
-        setForeground(createForegroundInfo(program.name, progress))
+        if (useForeground) {
+          setForeground(createForegroundInfo(program.name, progress))
+        }
       }
 
       try {
@@ -174,6 +179,9 @@ enum class PodcastGenerationOperation {
 internal fun podcastGenerationOperation(raw: String?): PodcastGenerationOperation =
   raw?.let { value -> runCatching { PodcastGenerationOperation.valueOf(value) }.getOrNull() }
     ?: PodcastGenerationOperation.SCHEDULED_GENERATE
+
+internal fun shouldUsePodcastGenerationForeground(operation: PodcastGenerationOperation): Boolean =
+  operation != PodcastGenerationOperation.SCHEDULED_GENERATE
 
 internal fun podcastGenerationProgressText(
   programName: String,

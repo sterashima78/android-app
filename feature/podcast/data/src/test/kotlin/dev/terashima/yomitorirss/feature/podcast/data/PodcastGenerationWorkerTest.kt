@@ -37,6 +37,17 @@ class PodcastGenerationWorkerTest {
   }
 
   @Test
+  fun `定時生成はforegroundへ昇格しない`() {
+    assertFalse(shouldUsePodcastGenerationForeground(PodcastGenerationOperation.SCHEDULED_GENERATE))
+  }
+
+  @Test
+  fun `手動生成と作り直しはforegroundへ昇格する`() {
+    assertTrue(shouldUsePodcastGenerationForeground(PodcastGenerationOperation.GENERATE))
+    assertTrue(shouldUsePodcastGenerationForeground(PodcastGenerationOperation.REGENERATE))
+  }
+
+  @Test
   fun `foreground通知はチャプター進捗を表示する`() {
     assertEquals("朝のニュース・準備中", podcastGenerationProgressText("朝のニュース", null))
     assertEquals(
