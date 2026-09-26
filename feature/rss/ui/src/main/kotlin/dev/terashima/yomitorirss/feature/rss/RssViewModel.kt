@@ -148,6 +148,31 @@ class RssViewModel(
     }
   }
 
+  fun setRecommendationExecutionProvider(provider: RssRecommendationExecutionProvider) {
+    val service = recommendationService ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        service.setExecutionProvider(provider)
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        recommendationTaskScheduler?.enqueueUnread()
+        _state.update {
+          it.copy(
+            message = if (provider == RssRecommendationExecutionProvider.LOCAL) {
+              "RSS推薦を端末内AIで実行します"
+            } else {
+              "RSS推薦をクラウドAIで実行します"
+            },
+          )
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(message = "RSS推薦の実行先を変更できませんでした: ${error.userMessage()}") }
+      }
+    }
+  }
+
   fun resetRecommendationLearning() {
     val service = recommendationService ?: return
     viewModelScope.launch(Dispatchers.IO) {
