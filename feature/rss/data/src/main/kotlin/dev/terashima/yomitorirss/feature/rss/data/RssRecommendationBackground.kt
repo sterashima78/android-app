@@ -96,6 +96,9 @@ class WorkManagerRssRecommendationTaskScheduler(
     )
   }
 
+  override fun isExecutionPaused(provider: RssRecommendationExecutionProvider): Boolean =
+    isRssRecommendationProviderPaused(appContext, provider)
+
   override suspend fun pauseForGlobalGate() {
     workManager.cancelUniqueWork(WORK_NAME).await()
     repository.requeueInterruptedTasks()
