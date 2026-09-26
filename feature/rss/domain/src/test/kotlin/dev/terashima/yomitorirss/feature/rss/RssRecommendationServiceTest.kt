@@ -22,6 +22,17 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `実行先変更はrevisionを進める`() {
+    val repository = FakeRecommendationRepository()
+    val service = RssRecommendationService(repository, FakeRecommendationEngine())
+
+    val updated = service.setExecutionProvider(RssRecommendationExecutionProvider.CLOUD)
+
+    assertEquals(RssRecommendationExecutionProvider.CLOUD, updated.executionProvider)
+    assertEquals(1L, updated.revision)
+  }
+
+  @Test
   fun `記事単位評価は数値スコアを保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 3L),
@@ -148,6 +159,7 @@ private class FakeRecommendationEngine(
   var scoreCalls = 0
 
   override suspend fun score(
+    provider: RssRecommendationExecutionProvider,
     condition: String,
     titles: List<String>,
   ): List<RssRecommendationDecision> {
@@ -157,6 +169,7 @@ private class FakeRecommendationEngine(
   }
 
   override suspend fun improveLearnedCondition(
+    provider: RssRecommendationExecutionProvider,
     manualCondition: String,
     learnedCondition: String,
     feedback: List<RssRecommendationFeedback>,
@@ -177,6 +190,15 @@ private class FakeRecommendationRepository(
   override fun saveManualCondition(condition: String): RssRecommendationPolicy {
     if (policy.manualCondition != condition) {
       policy = policy.copy(manualCondition = condition, revision = policy.revision + 1)
+    }
+    return policy
+  }
+
+  override fun setExecutionProvider(
+    provider: RssRecommendationExecutionProvider,
+  ): RssRecommendationPolicy {
+    if (policy.executionProvider != provider) {
+      policy = policy.copy(executionProvider = provider, revision = policy.revision + 1)
     }
     return policy
   }
