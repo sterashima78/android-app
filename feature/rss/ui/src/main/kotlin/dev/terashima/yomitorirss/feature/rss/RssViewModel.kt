@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -153,8 +154,13 @@ class RssViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         val previousProvider = service.currentExecutionProvider()
+        val previousLearningJob = recommendationLearningJob
         service.setExecutionProvider(provider)
         if (previousProvider != provider) {
+          previousLearningJob?.cancelAndJoin()
+          if (recommendationLearningJob === previousLearningJob) {
+            recommendationLearningJob = null
+          }
           recommendationTaskScheduler?.pauseForGlobalGate()
         }
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
@@ -354,6 +360,11 @@ class RssViewModel(
       .coerceAtLeast(0L)
     recommendationLearningJob = viewModelScope.launch(Dispatchers.IO) {
       delay(waitMillis)
+      while (
+        recommendationTaskScheduler?.isExecutionPaused(service.currentExecutionProvider()) == true
+      ) {
+        delay(RECOMMENDATION_FEEDBACK_PAUSE_RECHECK_MILLIS)
+      }
       _state.update { it.copy(recommendationLearning = true) }
       try {
         val updated = service.improvePendingFeedback()
@@ -407,6 +418,7 @@ class RssViewModel(
 }
 
 private const val RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS = 30_000L
+private const val RECOMMENDATION_FEEDBACK_PAUSE_RECHECK_MILLIS = 30_000L
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
