@@ -118,6 +118,8 @@ private class RecordingScheduler : RssRecommendationTaskScheduler {
     kickCount += 1
   }
 
+  override fun isExecutionPaused(provider: RssRecommendationExecutionProvider): Boolean = paused
+
   override suspend fun pauseForGlobalGate() {
     paused = true
   }
