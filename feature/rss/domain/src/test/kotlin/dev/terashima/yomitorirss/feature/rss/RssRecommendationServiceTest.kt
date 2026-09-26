@@ -33,6 +33,30 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `学習中にproviderが変わった場合は古い学習結果を反映しない`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        manualCondition = "広告は低くする",
+        executionProvider = RssRecommendationExecutionProvider.CLOUD,
+        revision = 2L,
+      ),
+    )
+    repository.addFeedback("a1", "除外した記事", null)
+    val engine = FakeRecommendationEngine(
+      improveResult = "新しい学習条件",
+      onImprove = { repository.setExecutionProvider(RssRecommendationExecutionProvider.LOCAL) },
+    )
+    val service = RssRecommendationService(repository, engine)
+
+    val result = service.improvePendingFeedback()
+
+    assertNull(result)
+    assertEquals("", repository.policy.learnedCondition)
+    assertEquals(RssRecommendationExecutionProvider.LOCAL, repository.policy.executionProvider)
+    assertEquals(1, repository.listPendingFeedback().size)
+  }
+
+  @Test
   fun `記事単位評価は数値スコアを保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 3L),
@@ -155,6 +179,8 @@ class RssRecommendationServiceTest {
 private class FakeRecommendationEngine(
   private val decisions: List<RssRecommendationDecision> = emptyList(),
   private val failScoring: Boolean = false,
+  private val improveResult: String = "",
+  private val onImprove: () -> Unit = {},
 ) : RssRecommendationEngine {
   var scoreCalls = 0
 
@@ -173,7 +199,10 @@ private class FakeRecommendationEngine(
     manualCondition: String,
     learnedCondition: String,
     feedback: List<RssRecommendationFeedback>,
-  ): String = learnedCondition
+  ): String {
+    onImprove()
+    return improveResult.ifBlank { learnedCondition }
+  }
 }
 
 private class FakeRecommendationRepository(
