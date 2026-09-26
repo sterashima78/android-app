@@ -20,26 +20,26 @@ internal class RssRecommendationTaskQueueAdapter(
       RssRecommendationExecutionProvider.CLOUD -> cloudPaused
     }
     return reader.listTasks().map { task ->
-    AiTaskQueueItem(
-      id = "$PREFIX${task.articleId}:${task.revision}",
-      kind = AiTaskQueueItemKind.RSS_RECOMMENDATION,
-      title = task.title,
-      source = "未読記事",
-      state = if (globalPaused) {
-        AiTaskQueueItemState.PAUSED
-      } else {
-        when (task.state) {
-          RssRecommendationTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
-          RssRecommendationTaskState.RUNNING -> AiTaskQueueItemState.RUNNING
-        }
-      },
-      priority = AiTaskQueueItemPriority.NORMAL,
-      executionProviderLabel = when (provider) {
-        RssRecommendationExecutionProvider.LOCAL -> "ローカル"
-        RssRecommendationExecutionProvider.CLOUD -> "クラウド"
-      },
-    )
-  }
+      AiTaskQueueItem(
+        id = "$PREFIX${task.articleId}:${task.revision}",
+        kind = AiTaskQueueItemKind.RSS_RECOMMENDATION,
+        title = task.title,
+        source = "未読記事",
+        state = if (globalPaused) {
+          AiTaskQueueItemState.PAUSED
+        } else {
+          when (task.state) {
+            RssRecommendationTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
+            RssRecommendationTaskState.RUNNING -> AiTaskQueueItemState.RUNNING
+          }
+        },
+        priority = AiTaskQueueItemPriority.NORMAL,
+        executionProviderLabel = when (provider) {
+          RssRecommendationExecutionProvider.LOCAL -> "ローカル"
+          RssRecommendationExecutionProvider.CLOUD -> "クラウド"
+        },
+      )
+    }
   }
 
   fun usesLocalProvider(): Boolean =
