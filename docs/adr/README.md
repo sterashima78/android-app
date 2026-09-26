@@ -174,6 +174,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0269: ニュースポッドキャスト生成をdurable foreground workへ統一する](0269-podcast-durable-foreground-generation.md)
 - [ADR-0270: RSS記事を除外条件から推薦スコアリングする](0270-rss-recommendation-scoring.md)
 - [ADR-0271: RSS推薦スコアリングを記事単位のバックグラウンドキューで実行する](0271-rss-recommendation-background-queue.md)
+- [ADR-0272: RSS推薦の実行先を端末内AIとクラウドAIから明示選択する](0272-rss-recommendation-local-cloud-routing.md)
 
 ### Content / summary / knowledge
 
