@@ -268,6 +268,8 @@ private class FakeRecommendationRepository(
     }
   }
 
+  override fun executionProvider(): RssRecommendationExecutionProvider = policy.executionProvider
+
   override fun listTasks(): List<RssRecommendationTask> = tasks.toList()
 
   override fun claimNextTask(): RssRecommendationTask? {
