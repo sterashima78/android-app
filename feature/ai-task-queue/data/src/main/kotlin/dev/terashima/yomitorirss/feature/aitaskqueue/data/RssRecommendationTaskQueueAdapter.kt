@@ -4,6 +4,7 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItem
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemPriority
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskReader
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
@@ -12,7 +13,13 @@ internal class RssRecommendationTaskQueueAdapter(
   private val reader: RssRecommendationTaskReader,
   private val scheduler: RssRecommendationTaskScheduler,
 ) {
-  fun tasks(globalPaused: Boolean): List<AiTaskQueueItem> = reader.listTasks().map { task ->
+  fun tasks(localPaused: Boolean, cloudPaused: Boolean): List<AiTaskQueueItem> {
+    val provider = reader.executionProvider()
+    val globalPaused = when (provider) {
+      RssRecommendationExecutionProvider.LOCAL -> localPaused
+      RssRecommendationExecutionProvider.CLOUD -> cloudPaused
+    }
+    return reader.listTasks().map { task ->
     AiTaskQueueItem(
       id = "$PREFIX${task.articleId}:${task.revision}",
       kind = AiTaskQueueItemKind.RSS_RECOMMENDATION,
@@ -27,9 +34,19 @@ internal class RssRecommendationTaskQueueAdapter(
         }
       },
       priority = AiTaskQueueItemPriority.NORMAL,
-      executionProviderLabel = "ローカル",
+      executionProviderLabel = when (provider) {
+        RssRecommendationExecutionProvider.LOCAL -> "ローカル"
+        RssRecommendationExecutionProvider.CLOUD -> "クラウド"
+      },
     )
   }
+  }
+
+  fun usesLocalProvider(): Boolean =
+    reader.executionProvider() == RssRecommendationExecutionProvider.LOCAL
+
+  fun usesCloudProvider(): Boolean =
+    reader.executionProvider() == RssRecommendationExecutionProvider.CLOUD
 
   fun kick() {
     scheduler.kick()
