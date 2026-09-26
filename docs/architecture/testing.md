@@ -210,14 +210,15 @@ verifier は private key、代表的 credential literal、keystore / OAuth secre
 
 ## CI baseline
 
-Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の4 checkを独立して並列実行する。
+Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の5 checkを独立して実行する。repository ruleset の required status checks は先頭4つとし、R8 は release shrinker とサイズ回帰を早期検出する追加検証として実行する。
 
 - `Public repository`: public repository verifier の unit test と tracked content scan
 - `Architecture`: Gradle metadata verifier、table/ownership verifier、Gradle `verifyArchitecture`
 - `Test`: `./gradlew --no-daemon test`
 - `Lint`: `./gradlew --no-daemon :app:lintRelease`
+- `R8`: `./gradlew --no-daemon :app:minifyReleaseWithR8`。base branch と minified DEX 合計を比較し、10%以上の増加は warning として可視化する
 
-Android の3検証は matrix で `fail-fast: false` とし、1つが失敗しても他の結果を取得する。従来の `quality` 集約 job は置かず、GitHub repository ruleset から4 checkを直接 required status checks とする。ADR integrity は path filter 付きの独立 workflow にせず、常時実行される `Architecture` check に含める。
+Android の4検証は matrix で `fail-fast: false` とし、1つが失敗しても他の結果を取得する。従来の `quality` 集約 job は置かず、GitHub repository ruleset から4 checkを直接 required status checks とする。ADR integrity は path filter 付きの独立 workflow にせず、常時実行される `Architecture` check に含める。
 
 ```bash
 python3 scripts/test_verify_public_repository.py
@@ -225,6 +226,7 @@ python3 scripts/verify_public_repository.py
 ./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
+./gradlew --no-daemon :app:minifyReleaseWithR8
 ```
 
 `main` push と手動実行の signed release APK は `.github/workflows/build.yml` が所有する。PR gate を通過した commit を ruleset により `main` へ取り込む前提とし、main build では Architecture / Test / Lint を重複実行しない。repository scan は release keystore を runner へ復元する前に再実行し、その後 APK build / signature verification / artifact upload を行う。commit status publication は ADR-0201 で廃止した。
