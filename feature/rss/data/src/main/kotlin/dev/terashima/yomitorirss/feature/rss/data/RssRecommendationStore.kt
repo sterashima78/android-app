@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedback
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationRepository
@@ -24,7 +25,7 @@ class DefaultRssRecommendationRepository(
   override fun loadPolicy(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
-      "SELECT manual_condition, learned_condition, revision FROM rss_recommendation_policy WHERE id=1",
+      "SELECT manual_condition, learned_condition, execution_provider, revision FROM rss_recommendation_policy WHERE id=1",
       emptyArray<String>(),
     ).use { cursor ->
       if (!cursor.moveToFirst()) {
@@ -33,7 +34,10 @@ class DefaultRssRecommendationRepository(
         RssRecommendationPolicy(
           manualCondition = cursor.getString(0),
           learnedCondition = cursor.getString(1),
-          revision = cursor.getLong(2),
+          executionProvider = runCatching {
+            RssRecommendationExecutionProvider.valueOf(cursor.getString(2))
+          }.getOrDefault(RssRecommendationExecutionProvider.LOCAL),
+          revision = cursor.getLong(3),
         )
       }
     }
@@ -46,6 +50,18 @@ class DefaultRssRecommendationRepository(
     val current = loadPolicy()
     if (current.manualCondition == normalized) return current
     return current.copy(manualCondition = normalized, revision = current.revision + 1).also { policy ->
+      savePolicy(policy)
+      dataChanges.notifyChanged()
+    }
+  }
+
+  override fun setExecutionProvider(
+    provider: RssRecommendationExecutionProvider,
+  ): RssRecommendationPolicy {
+    ensureRssRecommendationSchema(database.writable)
+    val current = loadPolicy()
+    if (current.executionProvider == provider) return current
+    return current.copy(executionProvider = provider, revision = current.revision + 1).also { policy ->
       savePolicy(policy)
       dataChanges.notifyChanged()
     }
@@ -328,11 +344,21 @@ internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
         id INTEGER PRIMARY KEY NOT NULL CHECK(id=1),
         manual_condition TEXT NOT NULL DEFAULT '',
         learned_condition TEXT NOT NULL DEFAULT '',
+        execution_provider TEXT NOT NULL DEFAULT 'LOCAL',
         revision INTEGER NOT NULL DEFAULT 0
       )
     """.trimIndent(),
   )
-  db.execSQL("INSERT OR IGNORE INTO rss_recommendation_policy(id,manual_condition,learned_condition,revision) VALUES(1,'','',0)")
+  if (!db.hasColumn("rss_recommendation_policy", "execution_provider")) {
+    db.execSQL(
+      "ALTER TABLE rss_recommendation_policy ADD COLUMN execution_provider TEXT NOT NULL DEFAULT 'LOCAL'",
+    )
+  }
+  db.execSQL(
+    "INSERT OR IGNORE INTO rss_recommendation_policy(" +
+      "id,manual_condition,learned_condition,execution_provider,revision" +
+      ") VALUES(1,'','','LOCAL',0)",
+  )
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS rss_recommendation_assessments(
@@ -382,6 +408,7 @@ private fun savePolicyInTransaction(db: SQLiteDatabase, policy: RssRecommendatio
     ContentValues().apply {
       put("manual_condition", policy.manualCondition)
       put("learned_condition", policy.learnedCondition)
+      put("execution_provider", policy.executionProvider.name)
       put("revision", policy.revision)
     },
     "id=1",
@@ -448,3 +475,11 @@ private const val TASK_QUEUED = "QUEUED"
 private const val TASK_RUNNING = "RUNNING"
 private const val SQLITE_BIND_CHUNK = 500
 private const val MAX_RECOMMENDATION_CONDITION_LENGTH = 12_000
+
+
+private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean =
+  rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    generateSequence { if (cursor.moveToNext()) cursor.getString(nameIndex) else null }
+      .any { it == column }
+  }
