@@ -4,6 +4,7 @@
 - Date: 2026-09-25
 - Amends: [ADR-0270](0270-rss-recommendation-scoring.md)
 - Applies: [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0071](0071-prioritized-background-ai-task-scheduling.md), [ADR-0099](0099-database-snapshot-backup.md), [ADR-0101](0101-feature-route-and-background-runtime-ownership.md), [ADR-0146](0146-workmanager-worker-factory-injection.md), [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
+- Amended by: [ADR-0272](0272-rss-recommendation-local-cloud-routing.md)
 
 ## Context
 
