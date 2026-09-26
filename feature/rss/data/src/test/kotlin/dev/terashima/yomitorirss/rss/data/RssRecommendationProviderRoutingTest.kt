@@ -12,7 +12,7 @@ import org.junit.Test
 class RssRecommendationProviderRoutingTest {
   @Test
   fun `クラウド選択時はcloud structured inferenceだけを使う`() = runBlocking {
-    val local = RecordingStructuredInference(error("local inference must not be used"))
+    val local = RecordingStructuredInference(IllegalStateException("local inference must not be used"))
     val cloud = RecordingStructuredInference(
       AiStructuredToolCall(
         name = "submit_rss_recommendation_scores",
