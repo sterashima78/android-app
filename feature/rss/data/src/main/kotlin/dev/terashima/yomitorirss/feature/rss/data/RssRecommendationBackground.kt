@@ -19,8 +19,6 @@ import androidx.work.WorkerParameters
 import androidx.work.await
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
-import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
-import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
@@ -170,13 +168,7 @@ internal class RssRecommendationWorker(
           repository.completeTask(task.articleId, task.revision)
           claimed = null
         }
-        if (provider == RssRecommendationExecutionProvider.LOCAL) {
-          LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
-            if (!isRssRecommendationProviderPaused(applicationContext, provider)) processNext()
-          }
-        } else {
-          processNext()
-        }
+        processNext()
         if (!processed) break
       }
       Result.success()
