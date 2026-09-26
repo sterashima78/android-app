@@ -11,6 +11,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,6 +145,40 @@ class RssViewModel(
         throw error
       } catch (error: Throwable) {
         _state.update { it.copy(message = "除外条件を保存できませんでした: ${error.userMessage()}") }
+      }
+    }
+  }
+
+  fun setRecommendationExecutionProvider(provider: RssRecommendationExecutionProvider) {
+    val service = recommendationService ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val previousProvider = service.currentExecutionProvider()
+        val previousLearningJob = recommendationLearningJob
+        service.setExecutionProvider(provider)
+        if (previousProvider != provider) {
+          previousLearningJob?.cancelAndJoin()
+          if (recommendationLearningJob === previousLearningJob) {
+            recommendationLearningJob = null
+          }
+          recommendationTaskScheduler?.pauseForGlobalGate()
+        }
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        recommendationTaskScheduler?.enqueueUnread()
+        _state.update {
+          it.copy(
+            message = if (provider == RssRecommendationExecutionProvider.LOCAL) {
+              "RSS推薦を端末内AIで実行します"
+            } else {
+              "RSS推薦をクラウドAIで実行します"
+            },
+          )
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(message = "RSS推薦の実行先を変更できませんでした: ${error.userMessage()}") }
       }
     }
   }
@@ -325,6 +360,11 @@ class RssViewModel(
       .coerceAtLeast(0L)
     recommendationLearningJob = viewModelScope.launch(Dispatchers.IO) {
       delay(waitMillis)
+      while (
+        recommendationTaskScheduler?.isExecutionPaused(service.currentExecutionProvider()) == true
+      ) {
+        delay(RECOMMENDATION_FEEDBACK_PAUSE_RECHECK_MILLIS)
+      }
       _state.update { it.copy(recommendationLearning = true) }
       try {
         val updated = service.improvePendingFeedback()
@@ -378,6 +418,7 @@ class RssViewModel(
 }
 
 private const val RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS = 30_000L
+private const val RECOMMENDATION_FEEDBACK_PAUSE_RECHECK_MILLIS = 30_000L
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }

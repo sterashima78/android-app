@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,6 +47,7 @@ internal fun RssWebScrapingRulesUi(
   recommendationPendingFeedbackCount: Int,
   recommendationLearning: Boolean,
   onSaveRecommendationCondition: (String) -> Unit,
+  onRecommendationProviderChange: (RssRecommendationExecutionProvider) -> Unit,
   onResetRecommendationLearning: () -> Unit,
   rules: List<RssWebScrapingRule>,
   testState: WebScrapingRuleTestUiState,
@@ -72,6 +74,36 @@ internal fun RssWebScrapingRulesUi(
         Text(
           "除外条件をもとに未読記事のタイトルだけを1〜10で評価します。10は正常に評価した結果として除外不要な記事です。" +
             "タイトルだけでは判断できない場合や判定に失敗した場合は数値を付けず、理由を記事一覧に表示します。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text("実行先", style = MaterialTheme.typography.titleMedium)
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+              selected = recommendationPolicy.executionProvider == RssRecommendationExecutionProvider.LOCAL,
+              onClick = { onRecommendationProviderChange(RssRecommendationExecutionProvider.LOCAL) },
+            )
+            Text("端末内AI")
+          }
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+              selected = recommendationPolicy.executionProvider == RssRecommendationExecutionProvider.CLOUD,
+              onClick = { onRecommendationProviderChange(RssRecommendationExecutionProvider.CLOUD) },
+            )
+            Text("クラウドAI")
+          }
+        }
+        Text(
+          if (recommendationPolicy.executionProvider == RssRecommendationExecutionProvider.CLOUD) {
+            "クラウド実行では除外条件、学習条件、評価対象の記事タイトル、除外参考のタイトルと直前評価をクラウドAIへ送信します。クラウドAI設定で事前に接続と利用モデルの選択が必要です。"
+          } else {
+            "端末内AIで評価します。記事タイトルや除外条件は端末外へ送信しません。"
+          },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

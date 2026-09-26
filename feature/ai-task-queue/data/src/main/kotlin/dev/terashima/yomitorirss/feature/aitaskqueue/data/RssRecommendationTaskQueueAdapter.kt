@@ -4,6 +4,7 @@ import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItem
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemPriority
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskReader
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
@@ -12,32 +13,48 @@ internal class RssRecommendationTaskQueueAdapter(
   private val reader: RssRecommendationTaskReader,
   private val scheduler: RssRecommendationTaskScheduler,
 ) {
-  fun tasks(globalPaused: Boolean): List<AiTaskQueueItem> = reader.listTasks().map { task ->
-    AiTaskQueueItem(
-      id = "$PREFIX${task.articleId}:${task.revision}",
-      kind = AiTaskQueueItemKind.RSS_RECOMMENDATION,
-      title = task.title,
-      source = "未読記事",
-      state = if (globalPaused) {
-        AiTaskQueueItemState.PAUSED
-      } else {
-        when (task.state) {
-          RssRecommendationTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
-          RssRecommendationTaskState.RUNNING -> AiTaskQueueItemState.RUNNING
-        }
-      },
-      priority = AiTaskQueueItemPriority.NORMAL,
-      executionProviderLabel = "ローカル",
-    )
+  fun tasks(localPaused: Boolean, cloudPaused: Boolean): List<AiTaskQueueItem> {
+    val provider = reader.executionProvider()
+    val globalPaused = when (provider) {
+      RssRecommendationExecutionProvider.LOCAL -> localPaused
+      RssRecommendationExecutionProvider.CLOUD -> cloudPaused
+    }
+    return reader.listTasks().map { task ->
+      AiTaskQueueItem(
+        id = "$PREFIX${task.articleId}:${task.revision}",
+        kind = AiTaskQueueItemKind.RSS_RECOMMENDATION,
+        title = task.title,
+        source = "未読記事",
+        state = if (globalPaused) {
+          AiTaskQueueItemState.PAUSED
+        } else {
+          when (task.state) {
+            RssRecommendationTaskState.QUEUED -> AiTaskQueueItemState.QUEUED
+            RssRecommendationTaskState.RUNNING -> AiTaskQueueItemState.RUNNING
+          }
+        },
+        priority = AiTaskQueueItemPriority.NORMAL,
+        executionProviderLabel = when (provider) {
+          RssRecommendationExecutionProvider.LOCAL -> "ローカル"
+          RssRecommendationExecutionProvider.CLOUD -> "クラウド"
+        },
+      )
+    }
   }
+
+  fun usesLocalProvider(): Boolean =
+    reader.executionProvider() == RssRecommendationExecutionProvider.LOCAL
+
+  fun usesCloudProvider(): Boolean =
+    reader.executionProvider() == RssRecommendationExecutionProvider.CLOUD
 
   fun kick() {
     scheduler.kick()
   }
 
-  suspend fun pauseForGlobalGate() {
+  suspend fun pauseForGlobalGate(resumeOnCharging: Boolean) {
     scheduler.pauseForGlobalGate()
-    scheduler.setResumeOnChargingScheduled(true)
+    scheduler.setResumeOnChargingScheduled(resumeOnCharging)
   }
 
   fun resumeFromGlobalGate() {

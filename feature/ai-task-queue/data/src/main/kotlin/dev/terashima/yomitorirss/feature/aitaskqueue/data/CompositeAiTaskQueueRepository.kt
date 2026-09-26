@@ -62,10 +62,12 @@ class CompositeAiTaskQueueRepository(
   }
 
   override suspend fun listTasks(): List<AiTaskQueueItem> {
-    val localPaused = summary.executionState().localPaused
+    val executionState = summary.executionState()
+    val localPaused = executionState.localPaused
+    val cloudPaused = executionState.cloudPaused
     return library.tasks(localPaused) +
       smbMetadata.orEmptyTasks(localPaused) +
-      rssRecommendation.orEmptyTasks(localPaused) +
+      rssRecommendation.orEmptyTasks(localPaused, cloudPaused) +
       summary.tasks() +
       knowledge.orEmptyTasks() +
       podcast.orEmptyTasks()
@@ -91,10 +93,11 @@ class CompositeAiTaskQueueRepository(
   override suspend fun setLocalPaused(paused: Boolean) {
     val libraryStatus = library.batchStatus()
     val pauseKnowledge = knowledge?.usesLocalProvider() == true
+    val pauseRss = rssRecommendation?.usesLocalProvider() == true
     if (paused) {
       summary.setLocalPaused(true)
       try {
-        rssRecommendation?.pauseForGlobalGate()
+        if (pauseRss) rssRecommendation?.pauseForGlobalGate(resumeOnCharging = true)
         library.pauseForGlobalGate(libraryStatus)
         smbMetadata?.pauseForGlobalGate()
         if (pauseKnowledge) {
@@ -103,7 +106,7 @@ class CompositeAiTaskQueueRepository(
         }
       } catch (error: Throwable) {
         runCatching { summary.setLocalPaused(false) }
-        runCatching { rssRecommendation?.resumeFromGlobalGate() }
+        if (pauseRss) runCatching { rssRecommendation?.resumeFromGlobalGate() }
         runCatching { library.restoreAfterPauseFailure(libraryStatus) }
         runCatching { smbMetadata?.resumeFromGlobalGate() }
         if (pauseKnowledge) {
@@ -119,7 +122,7 @@ class CompositeAiTaskQueueRepository(
 
     summary.setLocalPaused(false)
     try {
-      rssRecommendation?.resumeFromGlobalGate()
+      if (pauseRss) rssRecommendation?.resumeFromGlobalGate()
       library.resumeFromGlobalGate(libraryStatus)
       smbMetadata?.resumeFromGlobalGate()
       if (pauseKnowledge) {
@@ -128,7 +131,7 @@ class CompositeAiTaskQueueRepository(
       }
     } catch (error: Throwable) {
       runCatching { summary.setLocalPaused(true) }
-      runCatching { rssRecommendation?.pauseForGlobalGate() }
+      if (pauseRss) runCatching { rssRecommendation?.pauseForGlobalGate(resumeOnCharging = true) }
       runCatching { library.restorePauseAfterResumeFailure(libraryStatus) }
       runCatching { smbMetadata?.pauseForGlobalGate() }
       if (pauseKnowledge) {
@@ -143,13 +146,16 @@ class CompositeAiTaskQueueRepository(
 
   override suspend fun setCloudPaused(paused: Boolean) {
     val pauseKnowledge = knowledge?.usesCloudProvider() == true
+    val pauseRss = rssRecommendation?.usesCloudProvider() == true
     if (paused) {
       summary.setCloudPaused(true)
       try {
         if (pauseKnowledge) knowledge?.pauseForGlobalGate()
+        if (pauseRss) rssRecommendation?.pauseForGlobalGate(resumeOnCharging = false)
       } catch (error: Throwable) {
         runCatching { summary.setCloudPaused(false) }
         if (pauseKnowledge) runCatching { knowledge?.kick() }
+        if (pauseRss) runCatching { rssRecommendation?.resumeFromGlobalGate() }
         throw error
       }
       return
@@ -158,9 +164,11 @@ class CompositeAiTaskQueueRepository(
     summary.setCloudPaused(false)
     try {
       if (pauseKnowledge) knowledge?.kick()
+      if (pauseRss) rssRecommendation?.resumeFromGlobalGate()
     } catch (error: Throwable) {
       runCatching { summary.setCloudPaused(true) }
       if (pauseKnowledge) runCatching { knowledge?.pauseForGlobalGate() }
+      if (pauseRss) runCatching { rssRecommendation?.pauseForGlobalGate(resumeOnCharging = false) }
       throw error
     }
   }
@@ -208,8 +216,9 @@ class CompositeAiTaskQueueRepository(
   override suspend fun retryFailedBookmarkTasks(): Int = summary.retryFailedBookmarkTasks()
 
   private fun RssRecommendationTaskQueueAdapter?.orEmptyTasks(
-    globalPaused: Boolean,
-  ): List<AiTaskQueueItem> = this?.tasks(globalPaused).orEmpty()
+    localPaused: Boolean,
+    cloudPaused: Boolean,
+  ): List<AiTaskQueueItem> = this?.tasks(localPaused, cloudPaused).orEmpty()
 
   private suspend fun KnowledgeTaskQueueAdapter?.orEmptyTasks(): List<AiTaskQueueItem> =
     this?.tasks().orEmpty()

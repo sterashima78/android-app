@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import org.junit.After
@@ -46,6 +47,16 @@ class RssRecommendationRepositoryTest {
     assertEquals(0L, initial.revision)
     assertEquals(1L, updated.revision)
     assertEquals("広告記事は低くする", repository.loadPolicy().manualCondition)
+  }
+
+  @Test
+  fun `実行先は既定でLOCALで変更時にrevisionを進めて永続化する`() {
+    assertEquals(RssRecommendationExecutionProvider.LOCAL, repository.loadPolicy().executionProvider)
+
+    val updated = repository.setExecutionProvider(RssRecommendationExecutionProvider.CLOUD)
+
+    assertEquals(1L, updated.revision)
+    assertEquals(RssRecommendationExecutionProvider.CLOUD, repository.loadPolicy().executionProvider)
   }
 
   @Test

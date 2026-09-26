@@ -4,7 +4,7 @@
 - Date: 2026-09-25
 - Refines: [ADR-0119](0119-content-classification-retention-and-table-ownership-enforcement.md), [ADR-0183](0183-rss-settings-tab.md)
 - Related: [ADR-0263](0263-podcast-structured-clustering-output.md), [ADR-0267](0267-podcast-news-exclusion-filter.md)
-- Amended by: [ADR-0271](0271-rss-recommendation-background-queue.md)
+- Amended by: [ADR-0271](0271-rss-recommendation-background-queue.md), [ADR-0272](0272-rss-recommendation-local-cloud-routing.md)
 
 ## Context
 

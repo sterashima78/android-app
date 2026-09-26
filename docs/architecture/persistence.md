@@ -93,7 +93,7 @@ RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`fe
 
 RSS記事推薦では同じRSS schema initializerから次のRSS-owned tableを確保する。
 
-- `rss_recommendation_policy`: 手動除外条件、学習された除外条件、条件revision
+- `rss_recommendation_policy`: 手動除外条件、学習された除外条件、実行provider、条件revision
 - `rss_recommendation_assessments`: Content article IDに対するscored / unscored評価、scoreまたはunscored reason、評価revision、評価時刻
 - `rss_recommendation_feedback`: 「除外参考」として未処理のarticle ID、title、直前評価snapshot、追加時刻
 - `rss_recommendation_tasks`: 推薦評価待ちarticle ID、title snapshot、条件revision、QUEUED / RUNNING、queue時刻

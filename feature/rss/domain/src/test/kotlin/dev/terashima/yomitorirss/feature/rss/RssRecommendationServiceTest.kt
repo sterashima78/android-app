@@ -22,6 +22,41 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `実行先変更はrevisionを進める`() {
+    val repository = FakeRecommendationRepository()
+    val service = RssRecommendationService(repository, FakeRecommendationEngine())
+
+    val updated = service.setExecutionProvider(RssRecommendationExecutionProvider.CLOUD)
+
+    assertEquals(RssRecommendationExecutionProvider.CLOUD, updated.executionProvider)
+    assertEquals(1L, updated.revision)
+  }
+
+  @Test
+  fun `学習中にproviderが変わった場合は古い学習結果を反映しない`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        manualCondition = "広告は低くする",
+        executionProvider = RssRecommendationExecutionProvider.CLOUD,
+        revision = 2L,
+      ),
+    )
+    repository.addFeedback("a1", "除外した記事", null)
+    val engine = FakeRecommendationEngine(
+      improveResult = "新しい学習条件",
+      onImprove = { repository.setExecutionProvider(RssRecommendationExecutionProvider.LOCAL) },
+    )
+    val service = RssRecommendationService(repository, engine)
+
+    val result = service.improvePendingFeedback()
+
+    assertNull(result)
+    assertEquals("", repository.policy.learnedCondition)
+    assertEquals(RssRecommendationExecutionProvider.LOCAL, repository.policy.executionProvider)
+    assertEquals(1, repository.listPendingFeedback().size)
+  }
+
+  @Test
   fun `記事単位評価は数値スコアを保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 3L),
@@ -144,10 +179,13 @@ class RssRecommendationServiceTest {
 private class FakeRecommendationEngine(
   private val decisions: List<RssRecommendationDecision> = emptyList(),
   private val failScoring: Boolean = false,
+  private val improveResult: String = "",
+  private val onImprove: () -> Unit = {},
 ) : RssRecommendationEngine {
   var scoreCalls = 0
 
   override suspend fun score(
+    provider: RssRecommendationExecutionProvider,
     condition: String,
     titles: List<String>,
   ): List<RssRecommendationDecision> {
@@ -157,10 +195,14 @@ private class FakeRecommendationEngine(
   }
 
   override suspend fun improveLearnedCondition(
+    provider: RssRecommendationExecutionProvider,
     manualCondition: String,
     learnedCondition: String,
     feedback: List<RssRecommendationFeedback>,
-  ): String = learnedCondition
+  ): String {
+    onImprove()
+    return improveResult.ifBlank { learnedCondition }
+  }
 }
 
 private class FakeRecommendationRepository(
@@ -177,6 +219,15 @@ private class FakeRecommendationRepository(
   override fun saveManualCondition(condition: String): RssRecommendationPolicy {
     if (policy.manualCondition != condition) {
       policy = policy.copy(manualCondition = condition, revision = policy.revision + 1)
+    }
+    return policy
+  }
+
+  override fun setExecutionProvider(
+    provider: RssRecommendationExecutionProvider,
+  ): RssRecommendationPolicy {
+    if (policy.executionProvider != provider) {
+      policy = policy.copy(executionProvider = provider, revision = policy.revision + 1)
     }
     return policy
   }
@@ -245,6 +296,8 @@ private class FakeRecommendationRepository(
       }
     }
   }
+
+  override fun executionProvider(): RssRecommendationExecutionProvider = policy.executionProvider
 
   override fun listTasks(): List<RssRecommendationTask> = tasks.toList()
 

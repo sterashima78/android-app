@@ -4,6 +4,7 @@
 - Date: 2026-09-25
 - Amends: [ADR-0270](0270-rss-recommendation-scoring.md)
 - Applies: [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0071](0071-prioritized-background-ai-task-scheduling.md), [ADR-0099](0099-database-snapshot-backup.md), [ADR-0101](0101-feature-route-and-background-runtime-ownership.md), [ADR-0146](0146-workmanager-worker-factory-injection.md), [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
+- Amended by: [ADR-0272](0272-rss-recommendation-local-cloud-routing.md)
 
 ## Context
 
@@ -47,7 +48,7 @@ taskは評価結果そのものではない。評価の正本は従来どおり 
 
 RSS-owned Workerはqueueから最古のQUEUED taskを1件だけclaimし、その記事を現在も評価可能か確認してから1件分のstructured inferenceを実行する。完了後に次taskをclaimする。
 
-記事ごとに `LocalAiBackgroundTaskGate` のpermitを取得・返却する。これによりRSSのqueue自体は順次処理しつつ、記事と記事の間で他featureの高優先度ローカルAI taskへ実行機会を渡す。
+LOCAL providerのstructured inference adapter呼び出しごとにRSS recommendation engineが `LocalAiBackgroundTaskGate` のpermitを取得・返却する。Worker自身は同じpermitを二重取得しない。これによりRSSのqueue自体は順次処理しつつ、記事と記事の間で他featureの高優先度ローカルAI taskへ実行機会を渡す。
 
 Workerはowning featureのWorkerFactoryからapplication-scopeのArticle Repository、RSS Recommendation Repository / Serviceをconstructor injectionされる。Worker内で並行する第二repository graphを構築しない。複数記事の処理がAndroidの通常Worker実行時間を超えても継続できるよう、実行中は既存のlong-running AI workerと同じspecial-use foreground workとして低重要度通知を表示する。
 

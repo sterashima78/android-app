@@ -107,11 +107,11 @@ Content の上流 Source Context として扱う。各 Source 固有の subscrip
 
 RSS から Content への ingestion は Content-owned `ContentSourceGateway` を利用し、RSS data は Content table を直接更新しない。
 
-RSSの記事推薦ポリシーもRSS Contextが所有する。手動の除外条件、除外参考から生成された学習条件、条件revision、記事IDごとの推薦評価、未処理の除外参考feedbackをRSS-owned durable stateとして保持する。推薦評価はContentのreading stateやCurationの保存状態ではなく、現在のRSS除外条件から導出されるprojectionである。
+RSSの記事推薦ポリシーもRSS Contextが所有する。手動の除外条件、除外参考から生成された学習条件、明示選択した実行provider、条件revision、記事IDごとの推薦評価、未処理の除外参考feedbackをRSS-owned durable stateとして保持する。推薦評価はContentのreading stateやCurationの保存状態ではなく、現在のRSS除外条件と実行providerから導出されるprojectionである。
 
-推薦判定は端末内のprovider-neutral `AiStructuredTextInference` を利用し、Contentから得られる記事タイトルだけを入力する。数値化できない情報不足と推論/tool検証失敗を10へ混在させず、数値スコアとは別のunscored reasonとして保持する。「除外参考」操作による既読化はRSS tableを直接更新せず、Content-owned `ArticleRepository` capabilityを通す。
+推薦判定と除外参考からの条件学習はprovider-neutral `AiStructuredTextInference` を利用し、RSS policyでLOCAL / CLOUDを明示選択する。既定はLOCALで自動fallbackしない。scoringにはContentから得られる記事タイトルだけを入力し、CLOUD選択時もURL、feed本文、リンク先本文、保存済み要約は送信しない。数値化できない情報不足と推論/tool検証失敗を10へ混在させず、数値スコアとは別のunscored reasonとして保持する。「除外参考」操作による既読化はRSS tableを直接更新せず、Content-owned `ArticleRepository` capabilityを通す。
 
-RSS更新完了時は、現在revisionで評価が必要な未読記事をRSS-owned transient queueへ記事単位で追加する。RSS-owned Workerがこのqueueを順次claimし、各記事の推論ごとに共通ローカルAI実行ゲートのpermitを取得・返却する。共通AIタスク一覧はRSS Domainのreader / scheduler contractを通じてこの状態を投影するだけで、RSS tableやtask lifecycleを所有しない。
+RSS更新完了時は、現在revisionで評価が必要な未読記事をRSS-owned transient queueへ記事単位で追加する。RSS-owned Workerがこのqueueを順次claimする。LOCALではrecommendation engineが各structured inferenceごとに共通ローカルAI実行ゲートのpermitを取得・返却し、Workerは同じpermitを二重取得しない。CLOUDではnetwork constraintとcloud background pauseを利用する。共通AIタスク一覧はRSS Domainのreader / scheduler contractを通じてtaskと現在providerを投影するだけで、RSS tableやtask lifecycleを所有しない。
 
 RSS は通常の RSS / Atom discovery に加え、RSS を公開していない Web ページから synthetic feed を生成する取得方法も所有する。user-defined Web scraping rule は `rss_web_scraping_rules` に URL glob pattern、Promise ベースの JavaScript function、timeout を保存し、RSS-owned `FeedRepository` 経由で管理・実行する。Library の custom metadata extractor と execution pattern は似ているが、RSS から Library Context の repository/client へ依存せず、それぞれの source semantics と durable state を各 Context 内に閉じる。
 

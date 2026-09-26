@@ -11,17 +11,18 @@ import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.ListenableWorker
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.await
+import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
-import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
-import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationService
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTask
@@ -72,19 +73,31 @@ class WorkManagerRssRecommendationTaskScheduler(
 
   override fun kick() {
     if (repository.listTasks().isEmpty()) return
-    val execution = LocalAiBackgroundExecutionPreferences(appContext)
-    if (execution.paused) {
-      setResumeOnChargingScheduled(execution.resumeWhenCharging)
+    val provider = repository.loadPolicy().executionProvider
+    if (isRssRecommendationProviderPaused(appContext, provider)) {
+      if (provider == RssRecommendationExecutionProvider.LOCAL) {
+        val execution = LocalAiBackgroundExecutionPreferences(appContext)
+        setResumeOnChargingScheduled(execution.resumeWhenCharging)
+      }
       return
     }
 
-    val request = OneTimeWorkRequestBuilder<RssRecommendationWorker>().build()
+    val requestBuilder = OneTimeWorkRequestBuilder<RssRecommendationWorker>()
+    if (provider == RssRecommendationExecutionProvider.CLOUD) {
+      requestBuilder.setConstraints(
+        Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+      )
+    }
+    val request = requestBuilder.build()
     workManager.enqueueUniqueWork(
       WORK_NAME,
       ExistingWorkPolicy.APPEND_OR_REPLACE,
       request,
     )
   }
+
+  override fun isExecutionPaused(provider: RssRecommendationExecutionProvider): Boolean =
+    isRssRecommendationProviderPaused(appContext, provider)
 
   override suspend fun pauseForGlobalGate() {
     workManager.cancelUniqueWork(WORK_NAME).await()
@@ -96,6 +109,7 @@ class WorkManagerRssRecommendationTaskScheduler(
       workManager.cancelUniqueWork(RESUME_ON_CHARGING_WORK_NAME)
       return
     }
+    if (repository.loadPolicy().executionProvider != RssRecommendationExecutionProvider.LOCAL) return
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
     if (!execution.paused || !execution.resumeWhenCharging || repository.listTasks().isEmpty()) return
 
@@ -127,25 +141,29 @@ internal class RssRecommendationWorker(
   private val service: RssRecommendationService,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return Result.success()
+    if (isRssRecommendationProviderPaused(
+        applicationContext,
+        repository.loadPolicy().executionProvider,
+      )) return Result.success()
     repository.requeueInterruptedTasks()
     if (repository.listTasks().isEmpty()) return Result.success()
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     var claimed: RssRecommendationTask? = null
 
     return try {
-      while (!LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
+      while (true) {
+        val provider = repository.loadPolicy().executionProvider
+        if (isRssRecommendationProviderPaused(applicationContext, provider)) break
         var processed = false
-        LocalAiBackgroundTaskGate.withPermit(LocalAiBackgroundTaskPriority.NORMAL) {
-          if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) return@withPermit
-          claimed = repository.claimNextTask() ?: return@withPermit
+        suspend fun processNext() {
+          claimed = repository.claimNextTask() ?: return
           val task = requireNotNull(claimed)
           processed = true
           val article = articleRepository.findArticle(task.articleId)
           if (article == null || article.readAt != null) {
             repository.completeTask(task.articleId, task.revision)
             claimed = null
-            return@withPermit
+            return
           }
 
           setForeground(createForegroundInfo(article.title))
@@ -153,6 +171,7 @@ internal class RssRecommendationWorker(
           repository.completeTask(task.articleId, task.revision)
           claimed = null
         }
+        processNext()
         if (!processed) break
       }
       Result.success()
@@ -173,7 +192,7 @@ internal class RssRecommendationWorker(
         "RSSの推薦評価",
         NotificationManager.IMPORTANCE_LOW,
       ).apply {
-        description = "端末内AIでRSS記事をバックグラウンド評価している間に表示します"
+        description = "AIでRSS記事をバックグラウンド評価している間に表示します"
         setShowBadge(false)
       },
     )
@@ -261,4 +280,13 @@ internal fun recommendationScoringCandidates(
     assessment.revision != revision ||
     (assessment is RssRecommendationAssessment.Unscored &&
       assessment.reason == RssRecommendationUnscoredReason.INFERENCE_FAILED)
+}
+
+
+internal fun isRssRecommendationProviderPaused(
+  context: Context,
+  provider: RssRecommendationExecutionProvider,
+): Boolean = when (provider) {
+  RssRecommendationExecutionProvider.LOCAL -> LocalAiBackgroundExecutionPreferences(context).paused
+  RssRecommendationExecutionProvider.CLOUD -> CloudAiBackgroundExecutionPreferences(context).paused
 }

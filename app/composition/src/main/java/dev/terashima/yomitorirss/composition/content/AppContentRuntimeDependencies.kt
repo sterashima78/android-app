@@ -50,7 +50,8 @@ internal class AppContentRuntimeDependencies(
   private val dataChanges: DataChangeNotifier,
   private val httpClient: HttpClient,
   private val summaryRepository: SummaryRepository,
-  private val structuredTextInference: AiStructuredTextInference,
+  private val localStructuredTextInference: AiStructuredTextInference,
+  private val cloudStructuredTextInference: AiStructuredTextInference,
 ) {
   val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkContentQuery(database)
@@ -125,7 +126,10 @@ internal class AppContentRuntimeDependencies(
   val rssRecommendationService: RssRecommendationService by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     RssRecommendationService(
       repository = rssRecommendationRepository,
-      engine = DefaultRssRecommendationEngine(structuredTextInference),
+      engine = DefaultRssRecommendationEngine(
+        localStructuredInference = localStructuredTextInference,
+        cloudStructuredInference = cloudStructuredTextInference,
+      ),
     )
   }
 
