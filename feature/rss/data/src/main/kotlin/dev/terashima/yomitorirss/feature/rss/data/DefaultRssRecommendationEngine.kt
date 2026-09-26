@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationDecision
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationEngine
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedback
 import java.util.concurrent.CancellationException
 import kotlinx.serialization.json.Json
@@ -18,9 +19,11 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 class DefaultRssRecommendationEngine(
-  private val structuredInference: AiStructuredTextInference,
+  private val localStructuredInference: AiStructuredTextInference,
+  private val cloudStructuredInference: AiStructuredTextInference,
 ) : RssRecommendationEngine {
   override suspend fun score(
+    provider: RssRecommendationExecutionProvider,
     condition: String,
     titles: List<String>,
   ): List<RssRecommendationDecision> {
@@ -28,12 +31,13 @@ class DefaultRssRecommendationEngine(
     if (titles.isEmpty()) return emptyList()
     return buildList {
       titles.chunked(RSS_RECOMMENDATION_MAX_BATCH_SIZE).forEach { batch ->
-        addAll(scoreBatch(condition, batch))
+        addAll(scoreBatch(provider, condition, batch))
       }
     }
   }
 
   override suspend fun improveLearnedCondition(
+    provider: RssRecommendationExecutionProvider,
     manualCondition: String,
     learnedCondition: String,
     feedback: List<RssRecommendationFeedback>,
@@ -43,6 +47,7 @@ class DefaultRssRecommendationEngine(
     var request = original
     repeat(RSS_RECOMMENDATION_MAX_ATTEMPTS) { attempt ->
       val call = generateToolCall(
+        provider = provider,
         systemInstruction = LEARNING_SYSTEM_INSTRUCTION,
         userMessage = request,
         tool = LEARNING_TOOL,
@@ -58,6 +63,7 @@ class DefaultRssRecommendationEngine(
   }
 
   private suspend fun scoreBatch(
+    provider: RssRecommendationExecutionProvider,
     condition: String,
     titles: List<String>,
   ): List<RssRecommendationDecision> {
@@ -65,6 +71,7 @@ class DefaultRssRecommendationEngine(
     var request = original
     repeat(RSS_RECOMMENDATION_MAX_ATTEMPTS) { attempt ->
       val call = generateToolCall(
+        provider = provider,
         systemInstruction = SCORING_SYSTEM_INSTRUCTION,
         userMessage = request,
         tool = SCORING_TOOL,
@@ -80,13 +87,19 @@ class DefaultRssRecommendationEngine(
   }
 
   private suspend fun generateToolCall(
+    provider: RssRecommendationExecutionProvider,
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
   ): AiStructuredToolCall? =
     try {
-      LocalAiBackgroundTaskGate.withPermit(priority = LocalAiBackgroundTaskPriority.NORMAL) {
-        structuredInference.generateToolCall(systemInstruction, userMessage, tool)
+      when (provider) {
+        RssRecommendationExecutionProvider.LOCAL ->
+          LocalAiBackgroundTaskGate.withPermit(priority = LocalAiBackgroundTaskPriority.NORMAL) {
+            localStructuredInference.generateToolCall(systemInstruction, userMessage, tool)
+          }
+        RssRecommendationExecutionProvider.CLOUD ->
+          cloudStructuredInference.generateToolCall(systemInstruction, userMessage, tool)
       }
     } catch (error: CancellationException) {
       throw error
