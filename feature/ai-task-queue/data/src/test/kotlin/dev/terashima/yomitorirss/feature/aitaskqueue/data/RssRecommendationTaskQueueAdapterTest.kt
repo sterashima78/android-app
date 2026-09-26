@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.aitaskqueue.data
 
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemKind
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueItemState
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTask
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskReader
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
@@ -26,7 +27,7 @@ class RssRecommendationTaskQueueAdapterTest {
       scheduler = scheduler,
     )
 
-    val tasks = adapter.tasks(globalPaused = false)
+    val tasks = adapter.tasks(localPaused = false, cloudPaused = false)
 
     assertEquals(2, tasks.size)
     assertEquals(AiTaskQueueItemKind.RSS_RECOMMENDATION, tasks[0].kind)
@@ -41,9 +42,27 @@ class RssRecommendationTaskQueueAdapterTest {
       scheduler = RecordingScheduler(),
     )
 
-    val item = adapter.tasks(globalPaused = true).single()
+    val item = adapter.tasks(localPaused = true, cloudPaused = false).single()
 
     assertEquals(AiTaskQueueItemState.PAUSED, item.state)
+  }
+
+  @Test
+  fun `クラウドproviderはcloud pauseと表示ラベルを使う`() {
+    val adapter = RssRecommendationTaskQueueAdapter(
+      reader = FakeReader(
+        tasks = listOf(task("a1", RssRecommendationTaskState.QUEUED)),
+        provider = RssRecommendationExecutionProvider.CLOUD,
+      ),
+      scheduler = RecordingScheduler(),
+    )
+
+    val item = adapter.tasks(localPaused = false, cloudPaused = true).single()
+
+    assertEquals(AiTaskQueueItemState.PAUSED, item.state)
+    assertEquals("クラウド", item.executionProviderLabel)
+    assertTrue(adapter.usesCloudProvider())
+    assertFalse(adapter.usesLocalProvider())
   }
 
   @Test
@@ -55,7 +74,7 @@ class RssRecommendationTaskQueueAdapterTest {
     )
 
     adapter.kick()
-    adapter.pauseForGlobalGate()
+    adapter.pauseForGlobalGate(resumeOnCharging = true)
     adapter.resumeFromGlobalGate()
     adapter.setResumeOnChargingScheduled(enabled = true, globalPaused = true)
 
@@ -80,8 +99,10 @@ class RssRecommendationTaskQueueAdapterTest {
 
 private class FakeReader(
   private val tasks: List<RssRecommendationTask>,
+  private val provider: RssRecommendationExecutionProvider = RssRecommendationExecutionProvider.LOCAL,
 ) : RssRecommendationTaskReader {
   override fun listTasks(): List<RssRecommendationTask> = tasks
+  override fun executionProvider(): RssRecommendationExecutionProvider = provider
 }
 
 private class RecordingScheduler : RssRecommendationTaskScheduler {
