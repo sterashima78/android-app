@@ -223,6 +223,9 @@ class RssRecommendationService(
   fun saveManualCondition(condition: String): RssRecommendationPolicy =
     repository.saveManualCondition(condition.trim())
 
+  fun currentExecutionProvider(): RssRecommendationExecutionProvider =
+    repository.loadPolicy().executionProvider
+
   fun setExecutionProvider(provider: RssRecommendationExecutionProvider): RssRecommendationPolicy =
     repository.setExecutionProvider(provider)
 
