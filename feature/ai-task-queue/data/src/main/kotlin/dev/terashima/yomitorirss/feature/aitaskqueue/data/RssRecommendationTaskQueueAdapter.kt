@@ -52,9 +52,9 @@ internal class RssRecommendationTaskQueueAdapter(
     scheduler.kick()
   }
 
-  suspend fun pauseForGlobalGate() {
+  suspend fun pauseForGlobalGate(resumeOnCharging: Boolean) {
     scheduler.pauseForGlobalGate()
-    scheduler.setResumeOnChargingScheduled(true)
+    scheduler.setResumeOnChargingScheduled(resumeOnCharging)
   }
 
   fun resumeFromGlobalGate() {
