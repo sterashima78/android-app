@@ -203,6 +203,7 @@ fun RssSettingsRoute(
       recommendationPendingFeedbackCount = rssState.recommendationPendingFeedbackCount,
       recommendationLearning = rssState.recommendationLearning,
       onSaveRecommendationCondition = rssViewModel::saveRecommendationCondition,
+      onRecommendationProviderChange = rssViewModel::setRecommendationExecutionProvider,
       onResetRecommendationLearning = rssViewModel::resetRecommendationLearning,
       rules = state.webScrapingRules,
       testState = state.webScrapingRuleTest,
