@@ -6,9 +6,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+enum class RssRecommendationExecutionProvider {
+  LOCAL,
+  CLOUD,
+}
+
 data class RssRecommendationPolicy(
   val manualCondition: String = "",
   val learnedCondition: String = "",
+  val executionProvider: RssRecommendationExecutionProvider = RssRecommendationExecutionProvider.LOCAL,
   val revision: Long = 0L,
 ) {
   val enabled: Boolean
@@ -101,6 +107,7 @@ interface RssRecommendationRepository : RssRecommendationTaskReader {
   val changes: StateFlow<Long>
   fun loadPolicy(): RssRecommendationPolicy
   fun saveManualCondition(condition: String): RssRecommendationPolicy
+  fun setExecutionProvider(provider: RssRecommendationExecutionProvider): RssRecommendationPolicy
   fun resetLearnedCondition(): RssRecommendationPolicy
   fun loadAssessments(articleIds: Collection<String>): Map<String, RssRecommendationAssessment>
   fun saveAssessments(assessments: Map<String, RssRecommendationAssessment>)
@@ -126,11 +133,13 @@ interface RssRecommendationRepository : RssRecommendationTaskReader {
 
 interface RssRecommendationEngine {
   suspend fun score(
+    provider: RssRecommendationExecutionProvider,
     condition: String,
     titles: List<String>,
   ): List<RssRecommendationDecision>
 
   suspend fun improveLearnedCondition(
+    provider: RssRecommendationExecutionProvider,
     manualCondition: String,
     learnedCondition: String,
     feedback: List<RssRecommendationFeedback>,
@@ -182,6 +191,7 @@ class RssRecommendationService(
     val assessedAt = nowMillis()
     val assessment = try {
       when (val decision = engine.score(
+        provider = policy.executionProvider,
         condition = policy.effectiveCondition(),
         titles = listOf(article.title),
       ).single()) {
@@ -212,6 +222,9 @@ class RssRecommendationService(
   fun saveManualCondition(condition: String): RssRecommendationPolicy =
     repository.saveManualCondition(condition.trim())
 
+  fun setExecutionProvider(provider: RssRecommendationExecutionProvider): RssRecommendationPolicy =
+    repository.setExecutionProvider(provider)
+
   fun resetLearnedCondition(): RssRecommendationPolicy =
     repository.resetLearnedCondition()
 
@@ -232,6 +245,7 @@ class RssRecommendationService(
     val policy = repository.loadPolicy()
     val learned = try {
       engine.improveLearnedCondition(
+        provider = policy.executionProvider,
         manualCondition = policy.manualCondition,
         learnedCondition = policy.learnedCondition,
         feedback = pending,
