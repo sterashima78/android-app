@@ -69,7 +69,8 @@ class AppContainer(
       dataChanges = dataChanges,
       httpClient = httpClient,
       summaryRepository = aiCoreRuntime.summaryRepository,
-      structuredTextInference = aiCoreRuntime.structuredTextInference,
+      localStructuredTextInference = aiCoreRuntime.structuredTextInference,
+      cloudStructuredTextInference = aiCoreRuntime.cloudStructuredTextInference,
     )
   }
 
