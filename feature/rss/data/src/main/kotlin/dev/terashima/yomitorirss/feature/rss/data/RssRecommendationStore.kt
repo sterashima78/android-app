@@ -239,6 +239,9 @@ class DefaultRssRecommendationRepository(
     }
   }
 
+  override fun executionProvider(): RssRecommendationExecutionProvider =
+    loadPolicy().executionProvider
+
   override fun listTasks(): List<RssRecommendationTask> {
     ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
