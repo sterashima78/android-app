@@ -152,7 +152,11 @@ class RssViewModel(
     val service = recommendationService ?: return
     viewModelScope.launch(Dispatchers.IO) {
       try {
+        val previousProvider = service.snapshot(emptyList()).policy.executionProvider
         service.setExecutionProvider(provider)
+        if (previousProvider != provider) {
+          recommendationTaskScheduler?.pauseForGlobalGate()
+        }
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
         applyRecommendationSnapshot(snapshot)
         recommendationTaskScheduler?.enqueueUnread()
