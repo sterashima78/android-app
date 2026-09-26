@@ -100,6 +100,7 @@ interface RssRecommendationTaskScheduler {
   suspend fun enqueueForFeed(feedId: String)
   suspend fun enqueueUnread()
   fun kick()
+  fun isExecutionPaused(provider: RssRecommendationExecutionProvider): Boolean
   suspend fun pauseForGlobalGate()
   fun setResumeOnChargingScheduled(enabled: Boolean)
 }
@@ -257,6 +258,13 @@ class RssRecommendationService(
     } catch (error: CancellationException) {
       throw error
     } catch (_: Throwable) {
+      return null
+    }
+    val currentPolicy = repository.loadPolicy()
+    if (
+      currentPolicy.revision != policy.revision ||
+      currentPolicy.executionProvider != policy.executionProvider
+    ) {
       return null
     }
     return repository.applyLearnedConditionAndConsumeFeedback(
