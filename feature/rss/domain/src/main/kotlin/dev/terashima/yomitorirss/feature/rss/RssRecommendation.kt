@@ -93,6 +93,7 @@ data class RssRecommendationTask(
 
 interface RssRecommendationTaskReader {
   fun listTasks(): List<RssRecommendationTask>
+  fun executionProvider(): RssRecommendationExecutionProvider
 }
 
 interface RssRecommendationTaskScheduler {
