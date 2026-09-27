@@ -29,6 +29,25 @@ interface WorkoutAiAdvisor {
   suspend fun generate(provider: WorkoutAiProvider, prompt: String): String
 }
 
+enum class WorkoutAiTaskState {
+  QUEUED,
+  RUNNING,
+  SUCCEEDED,
+  FAILED,
+  CANCELLED,
+}
+
+data class WorkoutAiTaskSnapshot(
+  val state: WorkoutAiTaskState,
+  val response: String? = null,
+  val error: String? = null,
+)
+
+interface WorkoutAiTaskController {
+  suspend fun enqueue(type: WorkoutAiRequestType): String
+  suspend fun snapshot(requestId: String): WorkoutAiTaskSnapshot
+}
+
 object WorkoutAiPromptBuilder {
   private const val HISTORY_DAYS = 14L
 
