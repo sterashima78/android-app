@@ -47,8 +47,12 @@ interface AiTextInferenceModelReader {
  */
 abstract class BackgroundAiTextInference : AiTextInferenceModelReader {
   suspend fun generate(prompt: String): String {
-    requireAiBackgroundInferenceExecution()
+    validateBackgroundExecution()
     return generateInBackground(prompt)
+  }
+
+  protected open suspend fun validateBackgroundExecution() {
+    requireAiBackgroundInferenceExecution()
   }
 
   protected abstract suspend fun generateInBackground(prompt: String): String
