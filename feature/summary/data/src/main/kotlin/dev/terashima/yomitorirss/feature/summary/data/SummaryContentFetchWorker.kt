@@ -3,7 +3,7 @@ package dev.terashima.yomitorirss.feature.summary.data
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
@@ -21,7 +21,7 @@ class SummaryContentFetchWorker(
   private val runtime: SummaryRuntimeDependencies,
   private val articleContentClient: ArticleContentClient,
   private val database: YomitoriDatabase,
-  private val textInference: AiTextInference,
+  private val textInference: BackgroundAiTextInference,
   private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
