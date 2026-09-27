@@ -10,6 +10,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
+import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
@@ -42,7 +43,9 @@ class SummaryWorker(
   private val cloudInference: SummaryCloudInference,
   private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runBackgroundWork() }
+
+  private suspend fun runBackgroundWork(): Result {
     if (isProviderPaused(executionSettings.currentProvider())) return Result.success()
     setForeground(createForegroundInfo("AIタスクの実行を待っています"))
     return withContext(Dispatchers.IO) {
