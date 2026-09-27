@@ -89,9 +89,7 @@ internal class AppContentRouteDependencies(
     val buildScheduler = container.knowledgeBuildScheduler
     KnowledgeViewModel.Factory(
       repository = container.knowledgeRepository,
-      builder = container.knowledgeBuilder,
-      creator = container.knowledgePageCreator,
-      editor = container.knowledgePageEditor,
+      pageAiTasks = container.knowledgePageAiTaskController,
       scheduleRebuild = buildScheduler::enqueue,
     )
   }
