@@ -33,6 +33,8 @@ import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class WorkManagerKnowledgePageAiTaskController(
@@ -75,12 +77,12 @@ class WorkManagerKnowledgePageAiTaskController(
   }
 
   override suspend fun snapshot(requestId: String): KnowledgePageAiTaskSnapshot {
-    val uuid = runCatching(UUID::fromString).getOrNull(requestId)
+    val uuid = runCatching { UUID.fromString(requestId) }.getOrNull()
       ?: return KnowledgePageAiTaskSnapshot(
         state = KnowledgePageAiTaskState.FAILED,
         error = "Knowledge AIタスクIDが不正です",
       )
-    val info = workManager.getWorkInfoById(uuid).await()
+    val info = withContext(Dispatchers.IO) { workManager.getWorkInfoById(uuid).get() }
       ?: return KnowledgePageAiTaskSnapshot(
         state = KnowledgePageAiTaskState.FAILED,
         error = "Knowledge AIタスクが見つかりません",
