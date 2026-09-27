@@ -155,6 +155,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 機械的に検査できる規則はレビューだけに依存しない。
 
 - Gradle dependency / source ownership: `verifyArchitecture`
+- feature UIのbackground inference capability非依存とnon-interactive Worker execution scope: `AppBoundaryOwnershipArchitectureTest`
 - module map / ADR identifier-link integrity / current architecture documentation compatibility: `gradle/architecture-metadata.gradle.kts`
 - durable table ownership / created-table registration / app presentation composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
 - durable table manifest: `config/architecture/table-ownership.tsv`
