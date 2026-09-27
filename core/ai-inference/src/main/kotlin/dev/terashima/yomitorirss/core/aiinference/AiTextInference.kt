@@ -45,6 +45,11 @@ interface AiTextInferenceModelReader {
  * Production implementations reject generation unless the coroutine is running inside the
  * background-AI execution context established by the owning WorkManager worker.
  */
-interface BackgroundAiTextInference : AiTextInferenceModelReader {
-  suspend fun generate(prompt: String): String
+abstract class BackgroundAiTextInference : AiTextInferenceModelReader {
+  suspend fun generate(prompt: String): String {
+    requireAiBackgroundInferenceExecution()
+    return generateInBackground(prompt)
+  }
+
+  protected abstract suspend fun generateInBackground(prompt: String): String
 }
