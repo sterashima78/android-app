@@ -42,7 +42,7 @@ class DefaultWorkoutAiAdvisorTest {
 
   private class RecordingInference(
     private val promptBudgetChars: Int = 16_000,
-  ) : BackgroundAiTextInference {
+  ) : BackgroundAiTextInference() {
     val prompts = mutableListOf<String>()
 
     override val progress: Flow<AiTextInferenceProgress?> = emptyFlow()
@@ -58,7 +58,9 @@ class DefaultWorkoutAiAdvisorTest {
 
     override fun countTokens(text: String): Int = text.length
 
-    override suspend fun generate(prompt: String): String {
+    protected override suspend fun validateBackgroundExecution() = Unit
+
+  protected override suspend fun generateInBackground(prompt: String): String {
       prompts += prompt
       return "response"
     }
