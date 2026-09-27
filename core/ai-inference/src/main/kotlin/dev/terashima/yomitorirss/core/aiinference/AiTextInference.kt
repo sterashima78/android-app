@@ -46,8 +46,5 @@ interface AiTextInferenceModelReader {
  * background-AI execution context established by the owning WorkManager worker.
  */
 interface BackgroundAiTextInference : AiTextInferenceModelReader {
-  suspend fun generate(
-    scope: AiBackgroundInferenceScope,
-    prompt: String,
-  ): String
+  suspend fun generate(prompt: String): String
 }
