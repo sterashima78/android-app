@@ -15,8 +15,8 @@ import android.os.Message
 import android.os.Messenger
 import android.os.Process
 import android.os.RemoteException
-import dev.terashima.yomitorirss.core.aiinference.AiBackgroundInferenceScope
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
@@ -77,12 +77,11 @@ class ProcessIsolatedLocalAiStructuredTextInference(
   private val appContext = context.applicationContext
 
   override suspend fun generateToolCall(
-    scope: AiBackgroundInferenceScope,
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
   ): AiStructuredToolCall? {
-    scope.requireActive()
+    requireAiBackgroundInferenceExecution()
     require(systemInstruction.isNotBlank()) { "System instruction must not be blank" }
     require(userMessage.isNotBlank()) { "User message must not be blank" }
     require(systemInstruction.length + userMessage.length <= STRUCTURED_TEXT_IPC_MAX_CHARS) {
