@@ -45,7 +45,6 @@ import androidx.compose.ui.window.DialogProperties
 internal fun RssWebScrapingRulesUi(
   recommendationPolicy: RssRecommendationPolicy,
   recommendationPendingFeedbackCount: Int,
-  recommendationLearning: Boolean,
   onSaveRecommendationCondition: (String) -> Unit,
   onRecommendationProviderChange: (RssRecommendationExecutionProvider) -> Unit,
   onResetRecommendationLearning: () -> Unit,
@@ -133,12 +132,9 @@ internal fun RssWebScrapingRulesUi(
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (recommendationPendingFeedbackCount > 0 || recommendationLearning) {
+        if (recommendationPendingFeedbackCount > 0) {
           Text(
-            when {
-              recommendationLearning -> "除外参考から条件を更新中です"
-              else -> "除外参考を ${recommendationPendingFeedbackCount} 件待機中です"
-            },
+            "除外参考を ${recommendationPendingFeedbackCount} 件、バックグラウンド学習待ちです",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.secondary,
           )
