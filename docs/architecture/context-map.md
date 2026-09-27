@@ -109,7 +109,7 @@ RSS から Content への ingestion は Content-owned `ContentSourceGateway` を
 
 RSSの記事推薦ポリシーもRSS Contextが所有する。手動の除外条件、除外参考から生成された学習条件、明示選択した実行provider、条件revision、記事IDごとの推薦評価、未処理の除外参考feedbackをRSS-owned durable stateとして保持する。推薦評価はContentのreading stateやCurationの保存状態ではなく、現在のRSS除外条件と実行providerから導出されるprojectionである。
 
-推薦判定と除外参考からの条件学習はprovider-neutral `AiStructuredTextInference` を利用し、RSS policyでLOCAL / CLOUDを明示選択する。既定はLOCALで自動fallbackしない。scoringにはContentから得られる記事タイトルだけを入力し、CLOUD選択時もURL、feed本文、リンク先本文、保存済み要約は送信しない。数値化できない情報不足と推論/tool検証失敗を10へ混在させず、数値スコアとは別のunscored reasonとして保持する。「除外参考」操作による既読化はRSS tableを直接更新せず、Content-owned `ArticleRepository` capabilityを通す。
+推薦判定と除外参考からの条件学習はprovider-neutral `BackgroundAiStructuredTextInference` を利用し、RSS policyでLOCAL / CLOUDを明示選択する。既定はLOCALで自動fallbackしない。scoringにはContentから得られる記事タイトルだけを入力し、CLOUD選択時もURL、feed本文、リンク先本文、保存済み要約は送信しない。数値化できない情報不足と推論/tool検証失敗を10へ混在させず、数値スコアとは別のunscored reasonとして保持する。「除外参考」操作による既読化はRSS tableを直接更新せず、Content-owned `ArticleRepository` capabilityを通す。
 
 RSS更新完了時は、現在revisionで評価が必要な未読記事をRSS-owned transient queueへ記事単位で追加する。RSS-owned Workerがこのqueueを順次claimする。LOCALではrecommendation engineが各structured inferenceごとに共通ローカルAI実行ゲートのpermitを取得・返却し、Workerは同じpermitを二重取得しない。CLOUDではnetwork constraintとcloud background pauseを利用する。共通AIタスク一覧はRSS Domainのreader / scheduler contractを通じてtaskと現在providerを投影するだけで、RSS tableやtask lifecycleを所有しない。
 
