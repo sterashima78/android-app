@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.knowledge.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildPlan
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildResult
@@ -19,7 +19,7 @@ class DefaultKnowledgeGenerationService(
   private val store: SqlKnowledgePageStore,
   private val bookmarks: BookmarkReader,
   private val summaries: SummaryReader,
-  private val textInference: AiTextInference,
+  private val textInference: BackgroundAiTextInference,
 ) : KnowledgeBuilder, KnowledgePageCreator, KnowledgePageEditor {
   override suspend fun rebuild(): KnowledgeBuildResult = rebuild(MAX_SOURCES_PER_TOPIC)
 
