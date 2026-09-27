@@ -1,12 +1,12 @@
 package dev.terashima.yomitorirss.feature.workout.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiAdvisor
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiProvider
 
 class DefaultWorkoutAiAdvisor(
-  private val localInference: AiTextInference,
-  private val cloudInference: AiTextInference,
+  private val localInference: BackgroundAiTextInference,
+  private val cloudInference: BackgroundAiTextInference,
 ) : WorkoutAiAdvisor {
   override suspend fun generate(provider: WorkoutAiProvider, prompt: String): String {
     val inference = when (provider) {
