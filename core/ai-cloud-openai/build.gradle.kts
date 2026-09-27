@@ -18,7 +18,6 @@ android {
 
 dependencies {
   implementation(project(":core:ai-inference"))
-  implementation(project(":core:background"))
   implementation(project(":core:network"))
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.serialization.json)
