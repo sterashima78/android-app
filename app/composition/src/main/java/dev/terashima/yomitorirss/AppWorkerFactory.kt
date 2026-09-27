@@ -32,7 +32,12 @@ fun createAppWorkerFactory(container: AppContainer): WorkerFactory =
     addFactory(container.podcastWorkerFactory)
     addFactory(container.workoutAiWorkerFactory)
     addFactory(BackupWorkerFactory { container.backupRepository })
-    addFactory(KnowledgeWorkerFactory { container.knowledgeBuildRunner })
+    addFactory(
+      KnowledgeWorkerFactory(
+        knowledgeBuilderProvider = { container.knowledgeBuildRunner },
+        pageAiRunnerProvider = { container.knowledgePageAiRunner },
+      ),
+    )
     addFactory(MailWorkerFactory { container.mailRepository })
     addFactory(LibraryWorkerFactory { container.libraryWorkerRuntime })
     addFactory(
