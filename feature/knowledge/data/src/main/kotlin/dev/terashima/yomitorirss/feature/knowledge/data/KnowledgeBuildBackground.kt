@@ -21,6 +21,7 @@ import androidx.work.WorkerParameters
 import androidx.work.await
 import androidx.work.workDataOf
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
+import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildRunner
@@ -266,7 +267,9 @@ internal class KnowledgeTopicBuildWorker(
   params: WorkerParameters,
   private val knowledgeBuilder: KnowledgeBuildRunner,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runBackgroundWork() }
+
+  private suspend fun runBackgroundWork(): Result {
     val state = KnowledgeBuildQueueStateStore(applicationContext)
     val requestId = inputData.getString(KNOWLEDGE_REQUEST_ID_KEY) ?: return Result.failure()
     val topicId = inputData.getString(KNOWLEDGE_TOPIC_ID_KEY) ?: return Result.failure()
