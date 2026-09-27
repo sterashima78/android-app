@@ -109,7 +109,7 @@ internal class AppContentRouteDependencies(
       ),
       organizationViewModelFactory = LibraryOrganizationViewModel.Factory(
         repository = runtime.organizationRepository,
-        suggester = runtime.organizationSuggester,
+        aiTaskController = runtime.organizationAiTaskController,
         batchScheduler = runtime.organizationBatchScheduler,
       ),
       smbRepository = runtime.smbRepository,
