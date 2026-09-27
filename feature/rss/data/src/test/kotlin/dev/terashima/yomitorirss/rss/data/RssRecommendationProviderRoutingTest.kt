@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.rss.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationDecision
@@ -69,7 +69,7 @@ class RssRecommendationProviderRoutingTest {
 
 private class RecordingStructuredInference(
   private val result: Any,
-) : AiStructuredTextInference {
+) : BackgroundAiStructuredTextInference {
   var calls: Int = 0
 
   override suspend fun generateToolCall(
