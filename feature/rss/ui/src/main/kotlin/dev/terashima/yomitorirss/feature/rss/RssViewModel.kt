@@ -10,9 +10,6 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +27,6 @@ data class RssUiState(
   val recommendationPolicy: RssRecommendationPolicy = RssRecommendationPolicy(),
   val recommendationAssessments: Map<String, RssRecommendationAssessment> = emptyMap(),
   val recommendationPendingFeedbackCount: Int = 0,
-  val recommendationLearning: Boolean = false,
   val message: String? = null,
 )
 
@@ -44,7 +40,6 @@ class RssViewModel(
   private val _state = MutableStateFlow(RssUiState())
   val state: StateFlow<RssUiState> = _state.asStateFlow()
   private val reloadMutex = Mutex()
-  private var recommendationLearningJob: Job? = null
 
   init {
     viewModelScope.launch(Dispatchers.IO) {
@@ -102,6 +97,8 @@ class RssViewModel(
         return@launch
       }
 
+      runCatching { recommendationTaskScheduler?.scheduleFeedbackLearning() }
+
       try {
         articleRepository.markArticleRead(article.id)
       } catch (error: CancellationException) {
@@ -122,7 +119,6 @@ class RssViewModel(
       reload()
       val snapshot = service.snapshot(_state.value.unread.map(Article::id))
       applyRecommendationSnapshot(snapshot)
-      scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
       _state.update {
         it.copy(
           hiddenArticleIds = it.hiddenArticleIds - article.id,
@@ -154,13 +150,8 @@ class RssViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         val previousProvider = service.currentExecutionProvider()
-        val previousLearningJob = recommendationLearningJob
         service.setExecutionProvider(provider)
         if (previousProvider != provider) {
-          previousLearningJob?.cancelAndJoin()
-          if (recommendationLearningJob === previousLearningJob) {
-            recommendationLearningJob = null
-          }
           recommendationTaskScheduler?.pauseForGlobalGate()
         }
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
@@ -340,46 +331,9 @@ class RssViewModel(
         recommendationService?.let { service ->
           val snapshot = service.snapshot(unread.map(Article::id))
           applyRecommendationSnapshot(snapshot)
-          scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
         }
       }.onFailure { error ->
         _state.update { it.copy(initialized = true, message = "記事を読み込めませんでした: ${error.userMessage()}") }
-      }
-    }
-  }
-
-  private fun scheduleFeedbackLearning(latestPendingAt: Long?) {
-    val service = recommendationService ?: return
-    if (latestPendingAt == null) {
-      recommendationLearningJob?.cancel()
-      recommendationLearningJob = null
-      return
-    }
-    recommendationLearningJob?.cancel()
-    val waitMillis = (latestPendingAt + RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS - System.currentTimeMillis())
-      .coerceAtLeast(0L)
-    recommendationLearningJob = viewModelScope.launch(Dispatchers.IO) {
-      delay(waitMillis)
-      while (
-        recommendationTaskScheduler?.isExecutionPaused(service.currentExecutionProvider()) == true
-      ) {
-        delay(RECOMMENDATION_FEEDBACK_PAUSE_RECHECK_MILLIS)
-      }
-      _state.update { it.copy(recommendationLearning = true) }
-      try {
-        val updated = service.improvePendingFeedback()
-        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
-        applyRecommendationSnapshot(snapshot)
-        if (updated != null) {
-          recommendationTaskScheduler?.enqueueUnread()
-          if (snapshot.latestPendingFeedbackAt != null) {
-            scheduleFeedbackLearning(snapshot.latestPendingFeedbackAt)
-          }
-        }
-      } catch (error: CancellationException) {
-        throw error
-      } finally {
-        _state.update { it.copy(recommendationLearning = false) }
       }
     }
   }
@@ -417,8 +371,6 @@ class RssViewModel(
   }
 }
 
-private const val RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS = 30_000L
-private const val RECOMMENDATION_FEEDBACK_PAUSE_RECHECK_MILLIS = 30_000L
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
