@@ -76,7 +76,7 @@ internal fun RssWebScrapingRulesUi(
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text("実行先", style = MaterialTheme.typography.titleMedium)
+        Text("記事評価・除外条件学習の実行先", style = MaterialTheme.typography.titleMedium)
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -101,7 +101,7 @@ internal fun RssWebScrapingRulesUi(
           if (recommendationPolicy.executionProvider == RssRecommendationExecutionProvider.CLOUD) {
             "クラウド実行では除外条件、学習条件、評価対象の記事タイトル、除外参考のタイトルと直前評価をクラウドAIへ送信します。クラウドAI設定で事前に接続と利用モデルの選択が必要です。"
           } else {
-            "端末内AIで評価します。記事タイトルや除外条件は端末外へ送信しません。"
+            "端末内AIで記事評価と除外条件学習を実行します。記事タイトルや除外条件は端末外へ送信しません。"
           },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
