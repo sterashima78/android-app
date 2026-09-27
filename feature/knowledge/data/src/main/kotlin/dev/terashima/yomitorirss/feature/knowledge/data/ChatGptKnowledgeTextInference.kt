@@ -5,7 +5,6 @@ import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderException
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderFailureKind
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
-import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeCloudFailureKind
@@ -14,12 +13,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-class ChatGptKnowledgeTextInference(private val client: ChatGptInferenceClient, private val modelPreferences: ChatGptModelPreferences) : BackgroundAiTextInference {
+class ChatGptKnowledgeTextInference(private val client: ChatGptInferenceClient, private val modelPreferences: ChatGptModelPreferences) : BackgroundAiTextInference() {
   override val progress: Flow<AiTextInferenceProgress?> = emptyFlow()
   override fun selectedModel(): AiTextInferenceModel? = modelPreferences.selectedModelId()?.let { modelId -> AiTextInferenceModel("chatgpt:$modelId", modelId, CLOUD_KNOWLEDGE_PROMPT_BUDGET_CHARS, CLOUD_KNOWLEDGE_PROMPT_BUDGET_CHARS, CLOUD_KNOWLEDGE_PROMPT_BUDGET_CHARS, "chatgpt-knowledge-v1:$modelId") }
   override fun countTokens(text: String): Int = text.toByteArray(Charsets.UTF_8).size
-  override suspend fun generate(prompt: String): String {
-    requireAiBackgroundInferenceExecution()
+  protected override suspend fun generateInBackground(prompt: String): String {
     return try {
     val modelId = modelPreferences.selectedModelId() ?: error("ChatGPT / Codex の利用モデルを選択してください")
     client.generate(modelId, prompt).text
