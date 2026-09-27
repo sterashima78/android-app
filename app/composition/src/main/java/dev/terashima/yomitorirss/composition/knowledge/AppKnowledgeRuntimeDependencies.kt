@@ -7,8 +7,7 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildRunner
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageCreator
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageEditor
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiRunner
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeGenerationService
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
@@ -63,6 +62,5 @@ internal class AppKnowledgeRuntimeDependencies(
 
   val knowledgeBuilder: KnowledgeBuilder get() = generationService
   val knowledgeBuildRunner: KnowledgeBuildRunner get() = generationService
-  val knowledgePageCreator: KnowledgePageCreator get() = generationService
-  val knowledgePageEditor: KnowledgePageEditor get() = generationService
+  val knowledgePageAiRunner: KnowledgePageAiRunner get() = generationService
 }
