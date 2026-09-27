@@ -335,7 +335,7 @@ class DefaultPodcastNewsClustererTest {
 
 private class FakeTextInference(
   promptBudgetChars: Int,
-) : BackgroundAiTextInference {
+) : BackgroundAiTextInference() {
   override val progress: Flow<AiTextInferenceProgress?> = flowOf(null)
   var generateCalls = 0
 
@@ -350,7 +350,9 @@ private class FakeTextInference(
 
   override fun selectedModel(): AiTextInferenceModel = model
   override fun countTokens(text: String): Int = text.length
-  override suspend fun generate(prompt: String): String {
+  protected override suspend fun validateBackgroundExecution() = Unit
+
+  protected override suspend fun generateInBackground(prompt: String): String {
     generateCalls += 1
     error("free-form generation must not be used")
   }
@@ -358,7 +360,7 @@ private class FakeTextInference(
 
 private class FakeStructuredInference(
   private val outputs: ArrayDeque<AiStructuredToolCall?>,
-) : BackgroundAiStructuredTextInference {
+) : BackgroundAiStructuredTextInference() {
   data class Request(
     val systemInstruction: String,
     val userMessage: String,
@@ -367,7 +369,9 @@ private class FakeStructuredInference(
 
   val requests = mutableListOf<Request>()
 
-  override suspend fun generateToolCall(
+  protected override suspend fun validateBackgroundExecution() = Unit
+
+  protected override suspend fun generateToolCallInBackground(
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
