@@ -31,12 +31,20 @@ data class AiTextInferenceModel(
   }
 }
 
-interface AiTextInference {
+interface AiTextInferenceModelReader {
   val progress: Flow<AiTextInferenceProgress?>
 
   fun selectedModel(): AiTextInferenceModel?
 
   fun countTokens(text: String): Int
+}
 
+/**
+ * One-shot text inference that may only execute from a durable background worker.
+ *
+ * Production implementations reject generation unless the coroutine is running inside the
+ * background-AI execution context established by the owning WorkManager worker.
+ */
+interface BackgroundAiTextInference : AiTextInferenceModelReader {
   suspend fun generate(prompt: String): String
 }
