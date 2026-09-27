@@ -25,6 +25,7 @@
 - 直近14日間のWorkout実績、当日メモ、事前設定した方針、登録済み種目、プリセットメニューを使い、「メニュー提案」と「完了後レビュー」の2種類のAI支援を実行できる。
 - AIによるメニュー提案は通常のWorkoutメニューと同じ構造で生成し、当日だけ使うかプリセットとして保存できる。
 - AI支援の実行先は Local / cloud を明示選択し、既定はLocalとする。cloud選択時はWorkout記録・メモ・方針・メニュー候補をクラウドへ送信することを画面上で明示し、自動fallbackは行わない。
+- メニュー提案と完了後レビューはWorkout-owned background taskへ登録し、Workerが実行直前のWorkout記録・メモ・設定から入力を構築する。画面はtask stateと結果を表示し、推論実行をViewModel lifetimeへ依存させない。
 - AI支援へHealth Connect由来のread dataを入力しない。
 - 完了したWorkoutは、許可されている場合にHealth Connectへ一方向exportできる。
 - Workoutから活動消費カロリーや心拍数を推定して保存・書き込みしない。
