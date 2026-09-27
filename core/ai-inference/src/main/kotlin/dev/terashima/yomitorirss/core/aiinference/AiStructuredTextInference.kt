@@ -51,7 +51,6 @@ data class AiStructuredToolCall(
  */
 interface BackgroundAiStructuredTextInference {
   suspend fun generateToolCall(
-    scope: AiBackgroundInferenceScope,
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
