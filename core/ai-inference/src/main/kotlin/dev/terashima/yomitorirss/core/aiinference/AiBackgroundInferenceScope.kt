@@ -7,32 +7,21 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 
 /**
- * Capability token for one-shot AI inference owned by a durable WorkManager execution.
+ * Establishes the execution boundary required by production one-shot AI inference.
  *
- * The constructor is private. Production callers can obtain a token only while executing a
- * [CoroutineWorker] through [withAiBackgroundInference].
+ * A caller needs a real [CoroutineWorker] receiver to establish this context. Inference adapters
+ * reject generation outside this scope, so UI/ViewModel coroutines cannot execute one-shot
+ * inference even when a feature wrapper accidentally exposes it.
  */
-class AiBackgroundInferenceScope private constructor(
-  private val workerId: String,
-) {
-  suspend fun requireActive() {
-    check(currentCoroutineContext()[AiBackgroundInferenceExecution]?.workerId == workerId) {
-      "One-shot AI inference must run inside its durable background worker"
-    }
-  }
-
-  internal companion object {
-    fun forWorker(workerId: String): AiBackgroundInferenceScope =
-      AiBackgroundInferenceScope(workerId)
-  }
+suspend fun <T> CoroutineWorker.withAiBackgroundInference(
+  block: suspend () -> T,
+): T = withContext(AiBackgroundInferenceExecution(id.toString())) {
+  block()
 }
 
-suspend fun <T> CoroutineWorker.withAiBackgroundInference(
-  block: suspend (AiBackgroundInferenceScope) -> T,
-): T {
-  val workerId = id.toString()
-  return withContext(AiBackgroundInferenceExecution(workerId)) {
-    block(AiBackgroundInferenceScope.forWorker(workerId))
+suspend fun requireAiBackgroundInferenceExecution() {
+  check(currentCoroutineContext()[AiBackgroundInferenceExecution] != null) {
+    "One-shot AI inference must run inside a durable background worker"
   }
 }
 
