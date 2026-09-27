@@ -19,6 +19,7 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.await
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
+import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
@@ -195,7 +196,9 @@ internal class RssRecommendationWorker(
   private val repository: RssRecommendationRepository,
   private val service: RssRecommendationService,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runScoringWork() }
+
+  private suspend fun runScoringWork(): Result {
     if (isRssRecommendationProviderPaused(
         applicationContext,
         repository.loadPolicy().executionProvider,
@@ -291,7 +294,9 @@ internal class RssRecommendationLearningWorker(
   private val service: RssRecommendationService,
   private val scheduler: RssRecommendationTaskScheduler,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runLearningWork() }
+
+  private suspend fun runLearningWork(): Result {
     if (repository.listPendingFeedback().isEmpty()) return Result.success()
     val provider = repository.loadPolicy().executionProvider
     if (isRssRecommendationProviderPaused(applicationContext, provider)) {
