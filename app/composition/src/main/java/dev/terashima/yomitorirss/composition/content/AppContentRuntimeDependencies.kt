@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.composition.content
 
 import android.app.Application
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
@@ -50,8 +50,8 @@ internal class AppContentRuntimeDependencies(
   private val dataChanges: DataChangeNotifier,
   private val httpClient: HttpClient,
   private val summaryRepository: SummaryRepository,
-  private val localStructuredTextInference: AiStructuredTextInference,
-  private val cloudStructuredTextInference: AiStructuredTextInference,
+  private val localStructuredTextInference: BackgroundAiStructuredTextInference,
+  private val cloudStructuredTextInference: BackgroundAiStructuredTextInference,
 ) {
   val bookmarkContentQuery: BookmarkContentQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultBookmarkContentQuery(database)
