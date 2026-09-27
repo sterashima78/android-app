@@ -36,6 +36,8 @@ import dev.terashima.yomitorirss.feature.workout.WorkoutReader
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class WorkManagerWorkoutAiTaskController(
   context: Context,
@@ -71,12 +73,12 @@ class WorkManagerWorkoutAiTaskController(
   }
 
   override suspend fun snapshot(requestId: String): WorkoutAiTaskSnapshot {
-    val id = runCatching(UUID::fromString).getOrNull(requestId)
+    val id = runCatching { UUID.fromString(requestId) }.getOrNull()
       ?: return WorkoutAiTaskSnapshot(
         state = WorkoutAiTaskState.FAILED,
         error = "AIタスクIDが不正です",
       )
-    val info = workManager.getWorkInfoById(id).await()
+    val info = withContext(Dispatchers.IO) { workManager.getWorkInfoById(id).get() }
       ?: return WorkoutAiTaskSnapshot(
         state = WorkoutAiTaskState.FAILED,
         error = "AIタスクが見つかりません",
