@@ -101,6 +101,22 @@ class AppBoundaryOwnershipArchitectureTest {
     listOf(workoutWorker, knowledgeWorker, libraryWorker).forEach { source ->
       assertTrue("non-interactive AI worker must enter the inference scope", "withAiBackgroundInference" in source)
     }
+
+    val productionGuardOverrides = repositoryRoot.walkTopDown()
+      .onEnter { directory -> directory.name !in setOf(".git", ".gradle", "build") }
+      .filter { file ->
+        file.isFile &&
+          file.extension == "kt" &&
+          "/src/main/" in file.invariantSeparatorsPath &&
+          "override suspend fun validateBackgroundExecution" in file.readText()
+      }
+      .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
+      .sorted()
+      .toList()
+    assertTrue(
+      "production inference adapters must not bypass the base background guard: $productionGuardOverrides",
+      productionGuardOverrides.isEmpty(),
+    )
   }
 
   @Test
