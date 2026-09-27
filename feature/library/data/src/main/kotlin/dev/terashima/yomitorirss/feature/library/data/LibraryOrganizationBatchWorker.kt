@@ -15,6 +15,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.await
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
+import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
@@ -142,7 +143,9 @@ class LibraryOrganizationBatchWorker(
   private val suggester: LibraryOrganizationSuggester,
   private val scheduler: WorkManagerLibraryOrganizationBatchScheduler,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runBackgroundWork() }
+
+  private suspend fun runBackgroundWork(): Result {
     val execution = LocalAiBackgroundExecutionPreferences(applicationContext)
     if (execution.paused) {
       scheduler.kick()
