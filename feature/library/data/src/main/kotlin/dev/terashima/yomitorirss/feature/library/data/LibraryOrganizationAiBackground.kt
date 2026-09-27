@@ -101,7 +101,7 @@ class WorkManagerLibraryOrganizationAiTaskController(
     return LibraryOrganizationSuggestion(
       tagNames = JSONArray(tags).toStringList(),
       collectionNames = JSONArray(collections).toStringList(),
-      reason = info.outputData.getString(KEY_REASON),
+      reason = info.outputData.getString(KEY_REASON)?.takeIf(String::isNotBlank),
     )
   }
 
@@ -175,7 +175,7 @@ class LibraryOrganizationAiWorker(
       workDataOf(
         KEY_TAGS to JSONArray(suggestion.tagNames).toString(),
         KEY_COLLECTIONS to JSONArray(suggestion.collectionNames).toString(),
-        KEY_REASON to suggestion.reason,
+        KEY_REASON to suggestion.reason.orEmpty(),
       ),
     )
   }
