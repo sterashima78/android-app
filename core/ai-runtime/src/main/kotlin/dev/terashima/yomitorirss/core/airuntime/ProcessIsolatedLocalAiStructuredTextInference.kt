@@ -15,11 +15,12 @@ import android.os.Message
 import android.os.Messenger
 import android.os.Process
 import android.os.RemoteException
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
+import dev.terashima.yomitorirss.core.background.requireAiBackgroundInferenceExecution
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -72,7 +73,7 @@ private const val KEY_CALL_ARGUMENT_VALUES = "call_argument_values"
 class ProcessIsolatedLocalAiStructuredTextInference(
   context: Context,
   private val manager: LocalModelManager,
-) : AiStructuredTextInference {
+) : BackgroundAiStructuredTextInference {
   private val appContext = context.applicationContext
 
   override suspend fun generateToolCall(
@@ -80,6 +81,7 @@ class ProcessIsolatedLocalAiStructuredTextInference(
     userMessage: String,
     tool: AiStructuredTool,
   ): AiStructuredToolCall? {
+    requireAiBackgroundInferenceExecution()
     require(systemInstruction.isNotBlank()) { "System instruction must not be blank" }
     require(userMessage.isNotBlank()) { "User message must not be blank" }
     require(systemInstruction.length + userMessage.length <= STRUCTURED_TEXT_IPC_MAX_CHARS) {
