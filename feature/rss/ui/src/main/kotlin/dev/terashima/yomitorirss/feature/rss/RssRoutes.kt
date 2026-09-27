@@ -201,7 +201,6 @@ fun RssSettingsRoute(
       modifier = modifier,
       recommendationPolicy = rssState.recommendationPolicy,
       recommendationPendingFeedbackCount = rssState.recommendationPendingFeedbackCount,
-      recommendationLearning = rssState.recommendationLearning,
       onSaveRecommendationCondition = rssViewModel::saveRecommendationCondition,
       onRecommendationProviderChange = rssViewModel::setRecommendationExecutionProvider,
       onResetRecommendationLearning = rssViewModel::resetRecommendationLearning,
