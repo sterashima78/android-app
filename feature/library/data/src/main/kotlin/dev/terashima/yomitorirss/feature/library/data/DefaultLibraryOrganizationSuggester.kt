@@ -1,11 +1,11 @@
 package dev.terashima.yomitorirss.feature.library.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSeriesContext
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
@@ -19,8 +19,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class DefaultLibraryOrganizationSuggester(
-  private val textInference: AiTextInference,
-  private val structuredInference: AiStructuredTextInference,
+  private val textInference: BackgroundAiTextInference,
+  private val structuredInference: BackgroundAiStructuredTextInference,
 ) : LibraryOrganizationSuggester {
   override suspend fun suggest(
     book: LibraryBook,
