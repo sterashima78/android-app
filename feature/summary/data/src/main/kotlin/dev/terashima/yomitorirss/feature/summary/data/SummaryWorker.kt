@@ -9,7 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
@@ -38,7 +38,7 @@ class SummaryWorker(
   params: WorkerParameters,
   private val runtime: SummaryRuntimeDependencies,
   private val database: YomitoriDatabase,
-  private val textInference: AiTextInference,
+  private val textInference: BackgroundAiTextInference,
   private val cloudInference: SummaryCloudInference,
   private val executionSettings: SummaryExecutionSettings,
 ) : CoroutineWorker(appContext, params) {
@@ -215,7 +215,7 @@ class SummaryWorker(
 
   private suspend fun summarizeWithProgress(
     database: YomitoriDatabase,
-    textInference: AiTextInference,
+    textInference: BackgroundAiTextInference,
     articleId: String,
     articleText: String,
     prompt: String,
