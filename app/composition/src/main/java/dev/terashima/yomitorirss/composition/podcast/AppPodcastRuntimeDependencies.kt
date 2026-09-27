@@ -3,8 +3,8 @@ package dev.terashima.yomitorirss.composition.podcast
 import android.app.Application
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.network.HttpClient
@@ -36,12 +36,12 @@ internal class AppPodcastRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   httpClient: HttpClient,
-  localTextInference: AiTextInference,
-  cloudTextInference: AiTextInference,
+  localTextInference: BackgroundAiTextInference,
+  cloudTextInference: BackgroundAiTextInference,
   cloudInferenceClient: ChatGptInferenceClient,
   cloudModelPreferences: ChatGptModelPreferences,
-  localStructuredTextInference: AiStructuredTextInference,
-  cloudStructuredTextInference: AiStructuredTextInference,
+  localStructuredTextInference: BackgroundAiStructuredTextInference,
+  cloudStructuredTextInference: BackgroundAiStructuredTextInference,
   audioPlaybackController: AudioPlaybackController,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
