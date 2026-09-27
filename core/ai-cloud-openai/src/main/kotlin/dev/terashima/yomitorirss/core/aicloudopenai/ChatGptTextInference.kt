@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
-import dev.terashima.yomitorirss.core.aiinference.AiBackgroundInferenceScope
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
+import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import kotlinx.coroutines.CancellationException
@@ -28,11 +28,8 @@ class ChatGptTextInference(
 
   override fun countTokens(text: String): Int = text.toByteArray(Charsets.UTF_8).size
 
-  override suspend fun generate(
-    scope: AiBackgroundInferenceScope,
-    prompt: String,
-  ): String {
-    scope.requireActive()
+  override suspend fun generate(prompt: String): String {
+    requireAiBackgroundInferenceExecution()
     return try {
       val modelId = modelPreferences.selectedModelId()
       ?: error("ChatGPT / Codex の利用モデルを選択してください")
