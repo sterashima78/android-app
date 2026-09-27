@@ -1,9 +1,9 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
+import dev.terashima.yomitorirss.core.aiinference.AiBackgroundInferenceScope
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
-import dev.terashima.yomitorirss.core.background.requireAiBackgroundInferenceExecution
 import kotlinx.coroutines.CancellationException
 
 class ChatGptStructuredTextInference(
@@ -11,11 +11,12 @@ class ChatGptStructuredTextInference(
   private val modelPreferences: ChatGptModelPreferences,
 ) : BackgroundAiStructuredTextInference {
   override suspend fun generateToolCall(
+    scope: AiBackgroundInferenceScope,
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
   ): AiStructuredToolCall? {
-    requireAiBackgroundInferenceExecution()
+    scope.requireActive()
     return try {
       val modelId = modelPreferences.selectedModelId()
       ?: error("クラウドAIの利用モデルを選択してください")
