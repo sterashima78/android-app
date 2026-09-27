@@ -15,8 +15,6 @@ import dev.terashima.yomitorirss.feature.task.TaskViewModel
 import dev.terashima.yomitorirss.feature.widget.TaskWidgetUpdater
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiViewModel
 import dev.terashima.yomitorirss.feature.workout.WorkoutViewModel
-import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiAdvisor
-import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 
@@ -26,10 +24,6 @@ internal class AppSupportingRouteDependencies(
 ) {
   private val backgroundDataFetchPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     BackgroundDataFetchPreferences(application)
-  }
-
-  private val workoutAiSettingsRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultWorkoutAiSettingsRepository(application)
   }
 
   val backupViewModelFactory: BackupViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -81,12 +75,8 @@ internal class AppSupportingRouteDependencies(
         historyExporter = container.workoutHistoryExporter,
       ),
       aiViewModelFactory = WorkoutAiViewModel.Factory(
-        workoutReader = container.workoutRepository,
-        settingsRepository = workoutAiSettingsRepository,
-        advisor = DefaultWorkoutAiAdvisor(
-          localInference = container.textInference,
-          cloudInference = container.cloudTextInference,
-        ),
+        settingsRepository = container.workoutAiSettingsRepository,
+        taskController = container.workoutAiTaskController,
       ),
       writePermissions = HealthConnectWorkoutHistoryExporter.WRITE_PERMISSIONS,
     )
