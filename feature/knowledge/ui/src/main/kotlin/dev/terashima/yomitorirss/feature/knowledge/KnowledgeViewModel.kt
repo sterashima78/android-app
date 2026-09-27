@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.knowledge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,10 +32,8 @@ data class KnowledgeUiState(
 
 class KnowledgeViewModel(
   private val repository: KnowledgeRepository,
-  private val builder: KnowledgeBuilder,
-  private val creator: KnowledgePageCreator,
-  private val editor: KnowledgePageEditor,
-  private val scheduleRebuild: (() -> Unit)? = null,
+  private val pageAiTasks: KnowledgePageAiTaskController,
+  private val scheduleRebuild: () -> Unit,
 ) : ViewModel() {
   private val _state = MutableStateFlow(KnowledgeUiState())
   val state: StateFlow<KnowledgeUiState> = _state.asStateFlow()
@@ -125,23 +124,8 @@ class KnowledgeViewModel(
     }
     _state.update { it.copy(working = true, message = null) }
     viewModelScope.launch {
-      runCatching { creator.createPage(request, current.composerSourcePageId) }
-        .onSuccess { page ->
-          val pages = repository.listPages(_state.value.query)
-          _state.update {
-            it.copy(
-              initialized = true,
-              pages = pages,
-              selectedPage = page,
-              working = false,
-              composerOpen = false,
-              composerRequest = "",
-              composerSourcePageId = null,
-              editInstruction = "",
-              message = null,
-            )
-          }
-        }
+      runCatching { pageAiTasks.enqueueCreate(request, current.composerSourcePageId) }
+        .onSuccess { requestId -> observePageAiTask(requestId, closeComposer = true) }
         .onFailure { error ->
           _state.update { it.copy(working = false) }
           reportError(error)
@@ -164,20 +148,8 @@ class KnowledgeViewModel(
     }
     _state.update { it.copy(working = true, message = null) }
     viewModelScope.launch {
-      runCatching { editor.editPage(page.id, instruction) }
-        .onSuccess { updatedPage ->
-          val pages = repository.listPages(_state.value.query)
-          _state.update {
-            it.copy(
-              initialized = true,
-              pages = pages,
-              selectedPage = updatedPage,
-              working = false,
-              editInstruction = "",
-              message = null,
-            )
-          }
-        }
+      runCatching { pageAiTasks.enqueueEdit(page.id, instruction) }
+        .onSuccess { requestId -> observePageAiTask(requestId, closeComposer = false) }
         .onFailure { error ->
           _state.update { it.copy(working = false) }
           reportError(error)
@@ -319,38 +291,64 @@ class KnowledgeViewModel(
 
   fun rebuild() {
     if (_state.value.building || _state.value.working) return
-    val scheduler = scheduleRebuild
-    if (scheduler != null) {
-      _state.update { it.copy(message = null) }
-      runCatching(scheduler).onFailure(::reportError)
-      return
-    }
+    _state.update { it.copy(message = null) }
+    runCatching(scheduleRebuild).onFailure(::reportError)
+  }
 
-    _state.update { it.copy(building = true, message = null) }
-    viewModelScope.launch {
-      runCatching { builder.rebuild() }
-        .onSuccess { result ->
+  fun dismissMessage() {
+    _state.update { it.copy(message = null) }
+  }
+
+  private suspend fun observePageAiTask(
+    requestId: String,
+    closeComposer: Boolean,
+  ) {
+    while (true) {
+      val snapshot = runCatching { pageAiTasks.snapshot(requestId) }
+        .getOrElse { error ->
+          _state.update { it.copy(working = false) }
+          reportError(error)
+          return
+        }
+      when (snapshot.state) {
+        KnowledgePageAiTaskState.QUEUED,
+        KnowledgePageAiTaskState.RUNNING -> delay(PAGE_AI_TASK_REFRESH_INTERVAL_MS)
+        KnowledgePageAiTaskState.SUCCEEDED -> {
+          val pageId = snapshot.pageId
+          val page = pageId?.let { repository.findPage(it) }
+          if (page == null) {
+            _state.update { it.copy(working = false) }
+            reportError(IllegalStateException("生成したナレッジページを読み込めませんでした"))
+            return
+          }
           val pages = repository.listPages(_state.value.query)
           _state.update {
             it.copy(
               initialized = true,
               pages = pages,
-              selectedPage = null,
-              building = false,
-              lastBuild = result,
+              selectedPage = page,
+              working = false,
+              composerOpen = if (closeComposer) false else it.composerOpen,
+              composerRequest = if (closeComposer) "" else it.composerRequest,
+              composerSourcePageId = if (closeComposer) null else it.composerSourcePageId,
+              editInstruction = "",
               message = null,
             )
           }
+          return
         }
-        .onFailure { error ->
-          _state.update { it.copy(building = false) }
-          reportError(error)
+        KnowledgePageAiTaskState.FAILED,
+        KnowledgePageAiTaskState.CANCELLED -> {
+          _state.update {
+            it.copy(
+              working = false,
+              message = snapshot.error?.takeIf(String::isNotBlank) ?: "ナレッジのAI処理に失敗しました",
+            )
+          }
+          return
         }
+      }
     }
-  }
-
-  fun dismissMessage() {
-    _state.update { it.copy(message = null) }
   }
 
   private fun refresh() {
@@ -401,21 +399,21 @@ class KnowledgeViewModel(
 
   class Factory(
     private val repository: KnowledgeRepository,
-    private val builder: KnowledgeBuilder,
-    private val creator: KnowledgePageCreator,
-    private val editor: KnowledgePageEditor,
-    private val scheduleRebuild: (() -> Unit)? = null,
+    private val pageAiTasks: KnowledgePageAiTaskController,
+    private val scheduleRebuild: () -> Unit,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(KnowledgeViewModel::class.java))
       return KnowledgeViewModel(
         repository = repository,
-        builder = builder,
-        creator = creator,
-        editor = editor,
+        pageAiTasks = pageAiTasks,
         scheduleRebuild = scheduleRebuild,
       ) as T
     }
+  }
+
+  private companion object {
+    const val PAGE_AI_TASK_REFRESH_INTERVAL_MS = 500L
   }
 }
