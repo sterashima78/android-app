@@ -21,6 +21,10 @@ RSSの記事推薦と除外参考からの条件改善も `AiStructuredTextInfer
 
 ## Execution routing
 
+非対話型AI推論はfeature UI / ViewModelから直接実行せず、owning featureのdurable background taskから実行する。UIはtask登録とstate projectionだけを行う。Chat、streaming conversation、保存前の明示的推論テストのように対話session自体が処理単位である場合だけ、このbackground-only境界の例外とする。
+
+RSSでは記事スコアリングと除外参考からの条件学習の両方がRSS-owned background runtimeから `AiStructuredTextInference` を呼び出す。両者は同じ `RssRecommendationPolicy.executionProvider` を共有し、LOCAL / CLOUDを明示選択する。除外参考学習は `rss_recommendation_feedback` をdurable入力として約30秒debounceしたunique workから実行し、CLOUDではnetwork constraint、LOCALではlocal background pause / charging resumeへ従う。学習失敗時はfeedbackを消費しない。
+
 Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択する。provider 設定と task runtime control は別責務とする。
 
 - ChatGPT の login、model selection 等は provider 設定として管理する。
@@ -120,3 +124,4 @@ Local text inference の subprocess 接続待機と生成 response 待機は run
 - [ADR-0199](../adr/0199-library-organization-structured-tool-output.md)
 - [ADR-0219](../adr/0219-local-ai-subprocess-exit-diagnostics-and-recovery.md)
 - [ADR-0266](../adr/0266-local-text-inference-watchdog.md)
+- [ADR-0273](../adr/0273-background-only-non-interactive-ai-inference.md)
