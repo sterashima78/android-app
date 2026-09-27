@@ -78,6 +78,13 @@ class LibraryWorkerFactory(
         suggester = runtime.organizationSuggester,
         scheduler = runtime.organizationBatchScheduler,
       )
+      LibraryOrganizationAiWorker::class.java.name -> LibraryOrganizationAiWorker(
+        appContext = appContext,
+        params = workerParameters,
+        organizationRepository = runtime.organizationRepository,
+        libraryRepository = runtime.organizationLibraryRepository,
+        suggester = runtime.organizationSuggester,
+      )
       else -> null
     }
   }
@@ -89,6 +96,7 @@ class LibraryWorkerFactory(
       SmbMetadataNormalizationWorker::class.java.name,
       LibraryOrganizationResumeOnChargingWorker::class.java.name,
       LibraryOrganizationBatchWorker::class.java.name,
+      LibraryOrganizationAiWorker::class.java.name,
     )
   }
 }
