@@ -100,6 +100,9 @@ interface RssRecommendationTaskScheduler {
   suspend fun enqueueForFeed(feedId: String)
   suspend fun enqueueUnread()
   fun kick()
+  fun scheduleFeedbackLearning() {
+    kick()
+  }
   fun isExecutionPaused(provider: RssRecommendationExecutionProvider): Boolean
   suspend fun pauseForGlobalGate()
   fun setResumeOnChargingScheduled(enabled: Boolean)
