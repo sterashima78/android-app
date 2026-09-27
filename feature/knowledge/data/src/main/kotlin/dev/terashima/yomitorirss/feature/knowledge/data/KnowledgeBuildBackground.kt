@@ -31,6 +31,7 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskState
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeCloudInferenceException
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiRunner
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -400,6 +401,7 @@ private fun createKnowledgeBuildForegroundInfo(
 
 class KnowledgeWorkerFactory(
   private val knowledgeBuilderProvider: () -> KnowledgeBuildRunner,
+  private val pageAiRunnerProvider: () -> KnowledgePageAiRunner,
 ) : WorkerFactory() {
   override fun createWorker(
     appContext: Context,
@@ -410,6 +412,8 @@ class KnowledgeWorkerFactory(
       KnowledgeBuildWorker(appContext, workerParameters, knowledgeBuilderProvider())
     KnowledgeTopicBuildWorker::class.java.name ->
       KnowledgeTopicBuildWorker(appContext, workerParameters, knowledgeBuilderProvider())
+    KnowledgePageAiWorker::class.java.name ->
+      KnowledgePageAiWorker(appContext, workerParameters, pageAiRunnerProvider())
     else -> null
   }
 }
