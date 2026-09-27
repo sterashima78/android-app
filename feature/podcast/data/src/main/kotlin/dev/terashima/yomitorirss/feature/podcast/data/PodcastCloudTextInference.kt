@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderException
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderFailureKind
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
+import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -26,6 +27,7 @@ class DefaultPodcastCloudTextInference(
   override fun selectedModel(): AiTextInferenceModel? = modelProjection.selectedModel()
 
   override suspend fun generate(prompt: String): String {
+    requireAiBackgroundInferenceExecution()
     val modelId = modelPreferences.selectedModelId()
       ?: error("利用するクラウドAIモデルを選択してください")
     return try {
