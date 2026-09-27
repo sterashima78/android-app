@@ -18,6 +18,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
+import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
@@ -40,7 +41,9 @@ class PodcastGenerationWorker(
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
   private val scheduleController: PodcastScheduleController,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runBackgroundWork() }
+
+  private suspend fun runBackgroundWork(): Result {
     val programId = inputData.getString(KEY_PROGRAM_ID) ?: return Result.failure()
     val program = repository.findProgram(programId) ?: return Result.success()
     val operation = podcastGenerationOperation(inputData.getString(KEY_OPERATION))
