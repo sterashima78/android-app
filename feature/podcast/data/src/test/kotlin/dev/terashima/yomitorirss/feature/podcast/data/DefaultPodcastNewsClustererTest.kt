@@ -1,9 +1,9 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
@@ -335,7 +335,7 @@ class DefaultPodcastNewsClustererTest {
 
 private class FakeTextInference(
   promptBudgetChars: Int,
-) : AiTextInference {
+) : BackgroundAiTextInference {
   override val progress: Flow<AiTextInferenceProgress?> = flowOf(null)
   var generateCalls = 0
 
@@ -358,7 +358,7 @@ private class FakeTextInference(
 
 private class FakeStructuredInference(
   private val outputs: ArrayDeque<AiStructuredToolCall?>,
-) : AiStructuredTextInference {
+) : BackgroundAiStructuredTextInference {
   data class Request(
     val systemInstruction: String,
     val userMessage: String,
