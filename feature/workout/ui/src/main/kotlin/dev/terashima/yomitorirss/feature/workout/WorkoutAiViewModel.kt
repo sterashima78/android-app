@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import java.time.LocalDate
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,9 +23,8 @@ data class WorkoutAiUiState(
 )
 
 class WorkoutAiViewModel(
-  private val workoutReader: WorkoutReader,
   private val settingsRepository: WorkoutAiSettingsRepository,
-  private val advisor: WorkoutAiAdvisor,
+  private val taskController: WorkoutAiTaskController,
 ) : ViewModel() {
   private val _state = MutableStateFlow(WorkoutAiUiState())
   val state: StateFlow<WorkoutAiUiState> = _state.asStateFlow()
@@ -79,32 +78,47 @@ class WorkoutAiViewModel(
       )
     }
     viewModelScope.launch {
-      try {
-        val snapshot = workoutReader.load()
-        val settings = _state.value.settings
-        val dates = WorkoutAiPromptBuilder.recentDates(snapshot)
-        val memos = settingsRepository.loadMemos(dates) + (_state.value.date to _state.value.memo)
-        val prompt = WorkoutAiPromptBuilder.build(
-          type = type,
-          snapshot = snapshot,
-          settings = settings,
-          memos = memos,
-        )
-        val response = advisor.generate(settings.provider, prompt).trim()
-        _state.update {
-          it.copy(
-            loading = false,
-            response = response.ifBlank { "応答が空でした" },
-          )
+      runCatching { taskController.enqueue(type) }
+        .onSuccess { requestId -> observeTask(requestId) }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              loading = false,
+              errorMessage = safeErrorMessage(error),
+            )
+          }
         }
-      } catch (error: CancellationException) {
-        throw error
-      } catch (error: Throwable) {
-        _state.update {
-          it.copy(
-            loading = false,
-            errorMessage = safeErrorMessage(error),
-          )
+    }
+  }
+
+  private suspend fun observeTask(requestId: String) {
+    while (true) {
+      val snapshot = runCatching { taskController.snapshot(requestId) }
+        .getOrElse { error ->
+          _state.update { it.copy(loading = false, errorMessage = safeErrorMessage(error)) }
+          return
+        }
+      when (snapshot.state) {
+        WorkoutAiTaskState.QUEUED,
+        WorkoutAiTaskState.RUNNING -> delay(TASK_REFRESH_INTERVAL_MS)
+        WorkoutAiTaskState.SUCCEEDED -> {
+          _state.update {
+            it.copy(
+              loading = false,
+              response = snapshot.response.orEmpty().ifBlank { "応答が空でした" },
+            )
+          }
+          return
+        }
+        WorkoutAiTaskState.FAILED,
+        WorkoutAiTaskState.CANCELLED -> {
+          _state.update {
+            it.copy(
+              loading = false,
+              errorMessage = snapshot.error?.takeIf(String::isNotBlank) ?: "AIの応答生成に失敗しました",
+            )
+          }
+          return
         }
       }
     }
@@ -128,17 +142,17 @@ class WorkoutAiViewModel(
   }
 
   class Factory(
-    private val workoutReader: WorkoutReader,
     private val settingsRepository: WorkoutAiSettingsRepository,
-    private val advisor: WorkoutAiAdvisor,
+    private val taskController: WorkoutAiTaskController,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-      WorkoutAiViewModel(workoutReader, settingsRepository, advisor) as T
+      WorkoutAiViewModel(settingsRepository, taskController) as T
   }
 
   private companion object {
     const val MAX_MEMO_CHARS = 2_000
     const val MAX_POLICY_CHARS = 4_000
+    const val TASK_REFRESH_INTERVAL_MS = 500L
   }
 }
