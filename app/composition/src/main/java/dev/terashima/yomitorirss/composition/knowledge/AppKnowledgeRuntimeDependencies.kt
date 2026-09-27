@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.composition.knowledge
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
@@ -23,8 +23,8 @@ internal class AppKnowledgeRuntimeDependencies(
   dataChanges: DataChangeNotifier,
   bookmarks: BookmarkRepository,
   summaries: SummaryRepository,
-  localTextInference: AiTextInference,
-  cloudTextInference: AiTextInference,
+  localTextInference: BackgroundAiTextInference,
+  cloudTextInference: BackgroundAiTextInference,
   executionSettings: KnowledgeExecutionSettings,
 ) {
   private val knowledgePageStore: SqlKnowledgePageStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
