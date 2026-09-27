@@ -1,11 +1,11 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
@@ -20,10 +20,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 class DefaultPodcastNewsClusterer(
-  private val localTextInference: AiTextInference,
-  private val cloudTextInference: AiTextInference,
-  private val localStructuredInference: AiStructuredTextInference,
-  private val cloudStructuredInference: AiStructuredTextInference,
+  private val localTextInference: BackgroundAiTextInference,
+  private val cloudTextInference: BackgroundAiTextInference,
+  private val localStructuredInference: BackgroundAiStructuredTextInference,
+  private val cloudStructuredInference: BackgroundAiStructuredTextInference,
 ) : PodcastNewsClusterer {
   override suspend fun cluster(
     provider: PodcastGenerationProvider,
@@ -170,8 +170,8 @@ private fun fallback(
 )
 
 private data class InferenceRoute(
-  val text: AiTextInference,
-  val structured: AiStructuredTextInference,
+  val text: BackgroundAiTextInference,
+  val structured: BackgroundAiStructuredTextInference,
   val local: Boolean,
 )
 
