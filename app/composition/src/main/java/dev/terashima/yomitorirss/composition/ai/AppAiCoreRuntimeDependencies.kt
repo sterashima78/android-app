@@ -6,8 +6,8 @@ import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptOpenAiClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptStructuredTextInference
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptTextInference
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiStructuredTextInference
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiTextInference
@@ -39,11 +39,11 @@ internal class AppAiCoreRuntimeDependencies(
     LocalModelManager.shared(application)
   }
 
-  val textInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val textInference: BackgroundAiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ProcessIsolatedLocalAiTextInference(application, modelManager)
   }
 
-  val structuredTextInference: AiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val structuredTextInference: BackgroundAiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ProcessIsolatedLocalAiStructuredTextInference(application, modelManager)
   }
 
@@ -59,15 +59,15 @@ internal class AppAiCoreRuntimeDependencies(
     ChatGptModelPreferences(application)
   }
 
-  val cloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val cloudTextInference: BackgroundAiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptTextInference(chatGptInferenceClient, chatGptModelPreferences)
   }
 
-  val cloudStructuredTextInference: AiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val cloudStructuredTextInference: BackgroundAiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptStructuredTextInference(chatGptInferenceClient, chatGptModelPreferences)
   }
 
-  val knowledgeCloudTextInference: AiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+  val knowledgeCloudTextInference: BackgroundAiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ChatGptKnowledgeTextInference(chatGptInferenceClient, chatGptModelPreferences)
   }
 
