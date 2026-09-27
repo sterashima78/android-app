@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-27
-- Amends: [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0071](0071-prioritized-background-ai-task-scheduling.md), [ADR-0101](0101-feature-route-and-background-runtime-ownership.md), [ADR-0271](0271-rss-recommendation-background-queue.md)
+- Amends: [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0071](0071-prioritized-background-ai-task-scheduling.md), [ADR-0074](0074-library-metadata-management-and-series-reorganization.md), [ADR-0101](0101-feature-route-and-background-runtime-ownership.md), [ADR-0194](0194-workout-ai-advisor.md), [ADR-0271](0271-rss-recommendation-background-queue.md)
 - Refines: [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md), [ADR-0269](0269-podcast-durable-foreground-generation.md)
 
 ## Context
@@ -35,6 +35,19 @@ Chat、streaming conversation、保存前の明示的な推論テストなど、
 
 ただし、対話型処理を理由に非対話型の生成・分類・学習をViewModelへ戻してはならない。
 
+### 推論packageの公開APIでbackground executionを強制する
+
+設計文書だけに依存せず、`:core:ai-inference` の公開contract自体をbackground用途へ限定する。
+
+- model選択、token count、progress等のread-only capabilityは `AiTextInferenceModelReader` として生成権限から分離する。
+- one-shot text生成は `BackgroundAiTextInference`、structured tool outputは `BackgroundAiStructuredTextInference` として公開する。
+- production adapterは生成開始時にbackground inference execution contextを検証し、通常のUI coroutine等から呼ばれた場合は推論を開始しない。
+- background inference execution contextは `CoroutineWorker.withAiBackgroundInference` からだけ開始する。Worker内で `withContext` 等へ移ってもcoroutine contextとして引き継ぐ。
+- feature UI / ViewModelには上記background inference capabilityを注入せず、feature-owned task controller / schedulerとstate projectionだけを渡す。
+- architecture testでfeature UIからbackground inference capabilityまたはexecution scopeへの依存を禁止する。
+
+これにより、誤ってViewModelからfeature serviceを経由して推論adapterを呼ぶ実装もproduction実行時に拒否され、通常のcompositionではそもそもUIへ生成capabilityが到達しない。
+
 ### RSS推薦の除外参考学習をbackground workへ移す
 
 RSS推薦では `rss_recommendation_feedback` を学習入力のdurable source of truthとして維持する。学習専用の第二task tableは追加しない。
@@ -52,6 +65,9 @@ Workerは現在policyの `executionProvider` を利用する。
 
 ## Consequences
 
+- Workout のメニュー提案・完了後レビューはWorkout-owned task controllerからWorkManagerへ登録し、結果をtask stateからUIへ投影する。
+- Knowledge のユーザー指定ページ作成・AI編集はKnowledge-owned background taskから実行し、入力本文はWorker再実行に耐えるfeature-owned request stateとして保持する。
+- Library の単冊整理候補生成・シリーズ再整理もLibrary-owned background taskへ移し、既存の一括整理workerと同じlocal inference gateへ参加する。
 - RSS画面を離れても除外参考からの条件学習が継続できる。
 - ViewModelはAI実行lifetimeを所有せず、RSS stateの表示とtask登録だけを担当する。
 - RSS scoringとlearningでLocal / Cloud provider、pause、network policyが同じbackground boundaryへ揃う。
@@ -60,6 +76,8 @@ Workerは現在policyの `executionProvider` を利用する。
 
 ## Verification
 
+- feature UI source testでbackground inference capabilityとexecution scopeへの依存がないことを確認する。
+- Workout / Knowledge / Library のViewModel testでAI処理が直接生成ではなくtask登録へ委譲されることを確認する。
 - RSS domain testで学習成功時だけfeedbackを消費し、provider変更や失敗時は保持することを確認する。
 - RSS background testで30秒debounce計算とbackground scheduling helperを確認する。
 - UIから学習推論を実行するcoroutineが残っていないことをレビューする。
