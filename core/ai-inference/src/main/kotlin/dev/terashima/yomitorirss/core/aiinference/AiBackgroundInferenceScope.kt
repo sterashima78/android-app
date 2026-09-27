@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
 class AiBackgroundInferenceScope private constructor(
   private val workerId: String,
 ) {
-  internal suspend fun requireActive() {
+  suspend fun requireActive() {
     check(currentCoroutineContext()[AiBackgroundInferenceExecution]?.workerId == workerId) {
       "One-shot AI inference must run inside its durable background worker"
     }
