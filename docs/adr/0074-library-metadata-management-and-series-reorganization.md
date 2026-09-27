@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-16
 - Amended: 2026-08-16
+- Amended by: [ADR-0273](0273-background-only-non-interactive-ai-inference.md)
 
 ## Context
 
@@ -101,3 +102,10 @@ ADR-0070 のバックグラウンドAI worker直列化は変更しない。シ�
 ## Numbering note
 
 このADRは最初に `ADR-0073` として追加されたが、同時進行の変更ですでに `ADR-0073` が使用されていたため、内容を変更せず `ADR-0074` へ改番した。
+## 2026-09-27 amendment
+
+ADR-0273により、section 5の「シリーズ再整理をViewModel scopeで実行する」という判断を変更する。
+
+シリーズ再整理と単冊のAI整理候補生成はLibrary-owned durable background taskへ登録し、実際の推論はWorkerからだけ実行する。UIはrequest stateを監視し、完了後に既存のLibrary organization stateを再読込する。
+
+既存の一括整理batch、Library-owned永続状態、シリーズ一致規則、成功した書籍だけを更新する規則、読書状態を維持する規則は変更しない。
