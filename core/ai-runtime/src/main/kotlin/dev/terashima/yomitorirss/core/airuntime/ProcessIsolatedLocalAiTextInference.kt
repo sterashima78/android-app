@@ -15,8 +15,8 @@ import android.os.Message
 import android.os.Messenger
 import android.os.Process
 import android.os.RemoteException
-import dev.terashima.yomitorirss.core.aiinference.AiBackgroundInferenceScope
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
+import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
@@ -112,11 +112,8 @@ class ProcessIsolatedLocalAiTextInference(
 
   override fun countTokens(text: String): Int = manager.countTokens(text)
 
-  override suspend fun generate(
-    scope: AiBackgroundInferenceScope,
-    prompt: String,
-  ): String {
-    scope.requireActive()
+  override suspend fun generate(prompt: String): String {
+    requireAiBackgroundInferenceExecution()
     require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
     require(prompt.length <= TEXT_INFERENCE_IPC_MAX_CHARS) { "推論プロンプトが長すぎます" }
     return try {
