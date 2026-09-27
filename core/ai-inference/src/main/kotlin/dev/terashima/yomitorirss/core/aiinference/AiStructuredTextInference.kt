@@ -55,8 +55,12 @@ abstract class BackgroundAiStructuredTextInference {
     userMessage: String,
     tool: AiStructuredTool,
   ): AiStructuredToolCall? {
-    requireAiBackgroundInferenceExecution()
+    validateBackgroundExecution()
     return generateToolCallInBackground(systemInstruction, userMessage, tool)
+  }
+
+  protected open suspend fun validateBackgroundExecution() {
+    requireAiBackgroundInferenceExecution()
   }
 
   protected abstract suspend fun generateToolCallInBackground(
