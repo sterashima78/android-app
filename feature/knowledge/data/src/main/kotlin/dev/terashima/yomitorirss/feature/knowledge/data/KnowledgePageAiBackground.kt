@@ -22,6 +22,7 @@ import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgeCloudInferenceException
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiRunner
@@ -268,7 +269,7 @@ private class KnowledgePageAiRequestStore(context: Context) {
       request.instruction?.let { put("instruction", it) }
       put("createdAt", System.currentTimeMillis())
     }
-    require(file(id).writeText(json.toString())) { "Knowledge AIタスクを保存できません" }
+    file(id).writeText(json.toString())
   }
 
   fun read(id: String): KnowledgePageAiRequest? = runCatching {
