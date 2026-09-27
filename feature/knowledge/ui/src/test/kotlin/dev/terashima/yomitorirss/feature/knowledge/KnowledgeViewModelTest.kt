@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.feature.knowledge
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -30,13 +30,12 @@ class KnowledgeViewModelTest {
   }
 
   @Test
-  fun `空の作成要求はAI処理を開始せず入力エラーを表示する`() = runTest(dispatcher) {
-    val creator = RecordingCreator()
+  fun `空の作成要求はAI taskを登録せず入力エラーを表示する`() = runTest(dispatcher) {
+    val tasks = RecordingPageAiTasks()
     val viewModel = KnowledgeViewModel(
       repository = FakeKnowledgeRepository(),
-      builder = FakeBuilder(),
-      creator = creator,
-      editor = FakeEditor(),
+      pageAiTasks = tasks,
+      scheduleRebuild = {},
     )
     advanceUntilIdle()
 
@@ -44,18 +43,15 @@ class KnowledgeViewModelTest {
 
     assertEquals("作成したい記事の内容を入力してください", viewModel.state.value.message)
     assertFalse(viewModel.state.value.working)
-    assertEquals(0, creator.callCount)
+    assertEquals(0, tasks.createCount)
   }
 
   @Test
-  fun `scheduleRebuildがある場合はbuilderを直接実行しない`() = runTest(dispatcher) {
-    val builder = FakeBuilder()
+  fun `再構築はbuilderを直接実行せずschedulerへ登録する`() = runTest(dispatcher) {
     var scheduled = 0
     val viewModel = KnowledgeViewModel(
       repository = FakeKnowledgeRepository(),
-      builder = builder,
-      creator = RecordingCreator(),
-      editor = FakeEditor(),
+      pageAiTasks = RecordingPageAiTasks(),
       scheduleRebuild = { scheduled += 1 },
     )
     advanceUntilIdle()
@@ -64,7 +60,6 @@ class KnowledgeViewModelTest {
     advanceUntilIdle()
 
     assertEquals(1, scheduled)
-    assertEquals(0, builder.callCount)
     assertFalse(viewModel.state.value.building)
   }
 }
@@ -88,23 +83,16 @@ private class FakeKnowledgeRepository : KnowledgeRepository {
   )
 }
 
-private class FakeBuilder : KnowledgeBuilder {
-  var callCount = 0
-  override suspend fun rebuild(): KnowledgeBuildResult {
-    callCount += 1
-    return KnowledgeBuildResult(0, 0, 0, 0)
-  }
-}
+private class RecordingPageAiTasks : KnowledgePageAiTaskController {
+  var createCount = 0
 
-private class RecordingCreator : KnowledgePageCreator {
-  var callCount = 0
-  override suspend fun createPage(request: String, sourcePageId: String?): KnowledgePage {
-    callCount += 1
-    error("not expected")
+  override suspend fun enqueueCreate(request: String, sourcePageId: String?): String {
+    createCount += 1
+    return "request-1"
   }
-}
 
-private class FakeEditor : KnowledgePageEditor {
-  override suspend fun editPage(id: String, instruction: String): KnowledgePage =
-    error("not expected")
+  override suspend fun enqueueEdit(pageId: String, instruction: String): String = "request-2"
+
+  override suspend fun snapshot(requestId: String): KnowledgePageAiTaskSnapshot =
+    KnowledgePageAiTaskSnapshot(KnowledgePageAiTaskState.FAILED, error = "not expected")
 }
