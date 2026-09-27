@@ -72,6 +72,17 @@ Knowledgeの実行先はユーザーが `LOCAL` / `CHATGPT` を明示選択す�
 
 Cloud topic worker同士をKnowledge独自のgateでは直列化しない。各topicは独立したWorkManager taskとして実行し、providerの一時的なrate limitやnetwork failureは各taskのretry/backoffで処理する。複数のforeground topic workerが同時に動作しても通知が競合しないよう、workerごとにnotification IDを分ける。
 
+## User-requested page generation and editing
+
+ユーザーがKnowledge画面から開始する新規ページ生成とAI編集も非対話型one-shot推論として扱い、ViewModel coroutineでは実行しない。
+
+- ViewModelは `KnowledgePageAiTaskController` へ作成または編集requestを登録する。
+- request本文はWorkManager input dataへ直接詰めず、Knowledge-owned app-private request stateへ保存する。Worker再実行中だけ保持し、成功または非retry failureで削除する。
+- Workerはenqueue時のprovider snapshotを使い、Localではlocal background pauseと共通AI gate、Cloudではcloud pause、network constraint、retryable failure policyへ従う。
+- 実際のページ生成・編集は `KnowledgePageAiRunner` を通じて既存Knowledge generation policyへ接続する。
+- 完了時は生成したpage IDだけをtask resultとして返し、UIはKnowledge repositoryから最新pageを再読込する。
+- 自動Wiki rebuildとユーザー指定生成は別task identityを持つが、生成policyとprovider adapterを重複実装しない。
+
 ## Persistence and editor ownership
 
 自動生成ページは `editor_managed = false` とし、現在のトピック集合から消えた場合は削除できる。ユーザー依頼による新規作成またはLLM編集を受けたページは `editor_managed = true` とし、自動Wiki再構築で上書き・削除しない。
