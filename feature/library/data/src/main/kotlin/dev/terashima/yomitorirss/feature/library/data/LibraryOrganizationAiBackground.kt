@@ -36,6 +36,8 @@ import dev.terashima.yomitorirss.feature.library.organizationKey
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
 class WorkManagerLibraryOrganizationAiTaskController(
@@ -50,12 +52,12 @@ class WorkManagerLibraryOrganizationAiTaskController(
     enqueue(LibraryOrganizationAiOperation.REORGANIZE_SERIES, book.organizationKey())
 
   override suspend fun snapshot(requestId: String): LibraryOrganizationAiTaskSnapshot {
-    val id = runCatching(UUID::fromString).getOrNull(requestId)
+    val id = runCatching { UUID.fromString(requestId) }.getOrNull()
       ?: return LibraryOrganizationAiTaskSnapshot(
         state = LibraryOrganizationAiTaskState.FAILED,
         error = "蔵書AIタスクIDが不正です",
       )
-    val info = workManager.getWorkInfoById(id).await()
+    val info = withContext(Dispatchers.IO) { workManager.getWorkInfoById(id).get() }
       ?: return LibraryOrganizationAiTaskSnapshot(
         state = LibraryOrganizationAiTaskState.FAILED,
         error = "蔵書AIタスクが見つかりません",
