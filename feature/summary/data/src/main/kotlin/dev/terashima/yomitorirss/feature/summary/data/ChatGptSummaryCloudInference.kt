@@ -4,6 +4,7 @@ import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderException
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptProviderFailureKind
+import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudFailureKind
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudGenerationResult
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
@@ -19,21 +20,27 @@ class ChatGptSummaryCloudInference(
 
   override fun selectedModelId(): String? = modelPreferences.selectedModelId()
 
-  override suspend fun generate(prompt: String): SummaryCloudGenerationResult = mapProviderFailure {
+  override suspend fun generate(prompt: String): SummaryCloudGenerationResult {
+    requireAiBackgroundInferenceExecution()
+    return mapProviderFailure {
     val modelId = requireSelectedModel()
     val result = client.generate(modelId, prompt)
-    SummaryCloudGenerationResult(result.modelId, result.text)
+      SummaryCloudGenerationResult(result.modelId, result.text)
+    }
   }
 
-  override suspend fun generateFromUrl(url: String, prompt: String): SummaryCloudGenerationResult = mapProviderFailure {
-    val modelId = requireSelectedModel()
+  override suspend fun generateFromUrl(url: String, prompt: String): SummaryCloudGenerationResult {
+    requireAiBackgroundInferenceExecution()
+    return mapProviderFailure {
+      val modelId = requireSelectedModel()
     val guardedPrompt = webFetchGuardedPrompt(prompt)
     val result = retryWebTargetOpen {
       val generated = client.generateWithWebSearch(modelId, guardedPrompt, url)
       if (isLikelyWebFetchFailureText(generated.text)) throw SummaryWebFetchUnavailableException()
       generated
     }
-    SummaryCloudGenerationResult(result.modelId, result.text)
+      SummaryCloudGenerationResult(result.modelId, result.text)
+    }
   }
 
   private fun requireSelectedModel(): String = modelPreferences.selectedModelId()
