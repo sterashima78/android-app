@@ -2,8 +2,8 @@ package dev.terashima.yomitorirss.composition.library
 
 import android.app.Activity
 import android.app.Application
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
@@ -53,8 +53,8 @@ internal class AppLibraryRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   httpClient: HttpClient,
-  textInferenceProvider: () -> AiTextInference,
-  structuredTextInferenceProvider: () -> AiStructuredTextInference,
+  textInferenceProvider: () -> BackgroundAiTextInference,
+  structuredTextInferenceProvider: () -> BackgroundAiStructuredTextInference,
   resumedActivityProvider: () -> Activity?,
 ) {
   val runtime: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
