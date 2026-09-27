@@ -43,11 +43,13 @@ data class AiStructuredToolCall(
 /**
  * Provider-neutral one-shot structured text output.
  *
- * This is intentionally separate from [AiTextInference]: callers that only need free-form text do
+ * This is intentionally separate from [BackgroundAiTextInference]: callers that only need free-form text do
  * not depend on tool-calling support, while structured-output tasks can require an explicit tool
  * call instead of parsing model prose as JSON.
+ *
+ * Production implementations may only execute from a durable background worker.
  */
-interface AiStructuredTextInference {
+interface BackgroundAiStructuredTextInference {
   suspend fun generateToolCall(
     systemInstruction: String,
     userMessage: String,
