@@ -25,10 +25,9 @@ data class LibraryOrganizationUiState(
 
 class LibraryOrganizationViewModel(
   private val repository: LibraryOrganizationRepository,
-  private val suggester: LibraryOrganizationSuggester,
+  private val aiTaskController: LibraryOrganizationAiTaskController,
   private val batchScheduler: LibraryOrganizationBatchScheduler,
 ) : ViewModel() {
-  private val metadataOrganizer = LibraryMetadataOrganizer(repository, suggester)
   private val _state = MutableStateFlow(LibraryOrganizationUiState())
   val state: StateFlow<LibraryOrganizationUiState> = _state.asStateFlow()
 
@@ -119,27 +118,16 @@ class LibraryOrganizationViewModel(
     val key = book.organizationKey()
     viewModelScope.launch {
       _state.update { it.copy(suggestingBook = key) }
-      runCatching {
-        suggester.suggest(
-          book = book,
-          existingTags = _state.value.snapshot.tags.map(LibraryOrganizationTag::name),
-          existingCollections = _state.value.snapshot.collections.map(LibraryCollection::name),
-        )
-      }.onSuccess { suggestion ->
-        _state.update {
-          it.copy(
-            suggestingBook = null,
-            suggestions = it.suggestions + (key to suggestion),
-          )
+      runCatching { aiTaskController.enqueueSuggestion(book) }
+        .onSuccess { requestId -> observeSuggestionTask(requestId, key) }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              suggestingBook = null,
+              message = error.message ?: "AIの整理候補を生成できませんでした",
+            )
+          }
         }
-      }.onFailure { error ->
-        _state.update {
-          it.copy(
-            suggestingBook = null,
-            message = error.message ?: "AIの整理候補を生成できませんでした",
-          )
-        }
-      }
     }
   }
 
@@ -193,8 +181,99 @@ class LibraryOrganizationViewModel(
 
     viewModelScope.launch {
       _state.update { it.copy(reorganizingSeriesBook = firstBook.organizationKey()) }
-      runCatching { metadataOrganizer.reorganizeSeries(books) }
-        .onSuccess { result ->
+      runCatching { aiTaskController.enqueueSeriesReorganization(firstBook) }
+        .onSuccess { requestId -> observeSeriesTask(requestId, seriesName) }
+        .onFailure { error ->
+          _state.update {
+            it.copy(
+              reorganizingSeriesBook = null,
+              message = error.message ?: "シリーズを再整理できませんでした",
+            )
+          }
+        }
+    }
+  }
+
+  private suspend fun observeSuggestionTask(
+    requestId: String,
+    key: LibraryBookKey,
+  ) {
+    while (true) {
+      val snapshot = runCatching { aiTaskController.snapshot(requestId) }
+        .getOrElse { error ->
+          _state.update {
+            it.copy(
+              suggestingBook = null,
+              message = error.message ?: "AIの整理候補を生成できませんでした",
+            )
+          }
+          return
+        }
+      when (snapshot.state) {
+        LibraryOrganizationAiTaskState.QUEUED,
+        LibraryOrganizationAiTaskState.RUNNING -> delay(AI_TASK_REFRESH_INTERVAL_MS)
+        LibraryOrganizationAiTaskState.SUCCEEDED -> {
+          val suggestion = snapshot.suggestion
+          if (suggestion == null) {
+            _state.update {
+              it.copy(
+                suggestingBook = null,
+                message = "AIの整理候補を読み込めませんでした",
+              )
+            }
+          } else {
+            _state.update {
+              it.copy(
+                suggestingBook = null,
+                suggestions = it.suggestions + (key to suggestion),
+              )
+            }
+          }
+          return
+        }
+        LibraryOrganizationAiTaskState.FAILED,
+        LibraryOrganizationAiTaskState.CANCELLED -> {
+          _state.update {
+            it.copy(
+              suggestingBook = null,
+              message = snapshot.error?.takeIf(String::isNotBlank) ?: "AIの整理候補を生成できませんでした",
+            )
+          }
+          return
+        }
+      }
+    }
+  }
+
+  private suspend fun observeSeriesTask(
+    requestId: String,
+    seriesName: String,
+  ) {
+    while (true) {
+      val snapshot = runCatching { aiTaskController.snapshot(requestId) }
+        .getOrElse { error ->
+          _state.update {
+            it.copy(
+              reorganizingSeriesBook = null,
+              message = error.message ?: "シリーズを再整理できませんでした",
+            )
+          }
+          return
+        }
+      when (snapshot.state) {
+        LibraryOrganizationAiTaskState.QUEUED,
+        LibraryOrganizationAiTaskState.RUNNING -> delay(AI_TASK_REFRESH_INTERVAL_MS)
+        LibraryOrganizationAiTaskState.SUCCEEDED -> {
+          val result = snapshot.seriesResult
+          if (result == null) {
+            _state.update {
+              it.copy(
+                reorganizingSeriesBook = null,
+                message = "シリーズ再整理の結果を読み込めませんでした",
+              )
+            }
+            return
+          }
           val refreshedSnapshot = runCatching { repository.snapshot() }.getOrNull()
           val message = buildSeriesReorganizationMessage(
             seriesName = seriesName,
@@ -208,15 +287,19 @@ class LibraryOrganizationViewModel(
               message = message,
             )
           }
+          return
         }
-        .onFailure { error ->
+        LibraryOrganizationAiTaskState.FAILED,
+        LibraryOrganizationAiTaskState.CANCELLED -> {
           _state.update {
             it.copy(
               reorganizingSeriesBook = null,
-              message = error.message ?: "シリーズを再整理できませんでした",
+              message = snapshot.error?.takeIf(String::isNotBlank) ?: "シリーズを再整理できませんでした",
             )
           }
+          return
         }
+      }
     }
   }
 
@@ -276,14 +359,17 @@ class LibraryOrganizationViewModel(
 
   class Factory(
     private val repository: LibraryOrganizationRepository,
-    private val suggester: LibraryOrganizationSuggester,
+    private val aiTaskController: LibraryOrganizationAiTaskController,
     private val batchScheduler: LibraryOrganizationBatchScheduler,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-      LibraryOrganizationViewModel(repository, suggester, batchScheduler) as T
+      LibraryOrganizationViewModel(repository, aiTaskController, batchScheduler) as T
   }
 }
+
+private const val AI_TASK_REFRESH_INTERVAL_MS = 500L
+
 
 private fun buildSeriesReorganizationMessage(
   seriesName: String,
