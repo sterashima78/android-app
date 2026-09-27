@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.core.airuntime
 
-import dev.terashima.yomitorirss.core.aiinference.AiBackgroundInferenceScope
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
+import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
@@ -26,11 +26,8 @@ class LocalAiTextInference(
 
   override fun countTokens(text: String): Int = manager.countTokens(text)
 
-  override suspend fun generate(
-    scope: AiBackgroundInferenceScope,
-    prompt: String,
-  ): String {
-    scope.requireActive()
+  override suspend fun generate(prompt: String): String {
+    requireAiBackgroundInferenceExecution()
     return withContext(Dispatchers.IO) {
       manager.generate(prompt)
     }
