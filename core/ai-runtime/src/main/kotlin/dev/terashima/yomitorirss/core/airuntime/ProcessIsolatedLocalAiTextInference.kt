@@ -16,7 +16,6 @@ import android.os.Messenger
 import android.os.Process
 import android.os.RemoteException
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
-import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
@@ -94,7 +93,7 @@ private const val KEY_GENERATING_DURATION_MILLIS = "generating_duration_millis"
 class ProcessIsolatedLocalAiTextInference(
   context: Context,
   private val manager: LocalModelManager,
-) : BackgroundAiTextInference {
+) : BackgroundAiTextInference() {
   private val appContext = context.applicationContext
   private val _progress = MutableStateFlow<AiTextInferenceProgress?>(null)
   private val remote = RemoteLocalTextInferenceClient(appContext) { progress ->
@@ -112,8 +111,7 @@ class ProcessIsolatedLocalAiTextInference(
 
   override fun countTokens(text: String): Int = manager.countTokens(text)
 
-  override suspend fun generate(prompt: String): String {
-    requireAiBackgroundInferenceExecution()
+  protected override suspend fun generateInBackground(prompt: String): String {
     require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
     require(prompt.length <= TEXT_INFERENCE_IPC_MAX_CHARS) { "推論プロンプトが長すぎます" }
     return try {
