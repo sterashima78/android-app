@@ -4,7 +4,9 @@ import android.app.Application
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildScheduler
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiTaskController
 import dev.terashima.yomitorirss.feature.knowledge.data.KnowledgeExecutionPreferences
+import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgePageAiTaskController
 import dev.terashima.yomitorirss.feature.knowledge.data.WorkManagerKnowledgeBuildTaskController
 
 /** Knowledge execution preferences and background task control at application scope. */
@@ -26,5 +28,11 @@ internal class AppKnowledgeTaskRuntimeDependencies(
 
   val knowledgeBuildScheduler: KnowledgeBuildScheduler = KnowledgeBuildScheduler {
     knowledgeBuildRuntime.enqueue()
+  }
+
+  val knowledgePageAiTaskController: KnowledgePageAiTaskController by lazy(
+    LazyThreadSafetyMode.SYNCHRONIZED,
+  ) {
+    WorkManagerKnowledgePageAiTaskController(application, knowledgeExecutionSettings)
   }
 }
