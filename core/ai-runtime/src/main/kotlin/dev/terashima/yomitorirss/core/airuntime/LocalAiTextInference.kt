@@ -1,7 +1,6 @@
 package dev.terashima.yomitorirss.core.airuntime
 
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
-import dev.terashima.yomitorirss.core.aiinference.requireAiBackgroundInferenceExecution
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
@@ -12,7 +11,7 @@ import kotlinx.coroutines.withContext
 
 class LocalAiTextInference(
   private val manager: LocalModelManager,
-) : BackgroundAiTextInference {
+) : BackgroundAiTextInference() {
   override val progress: Flow<AiTextInferenceProgress?> = manager.inferenceProgress.map { progress ->
     progress?.toAiTextInferenceProgress()
   }
@@ -26,8 +25,7 @@ class LocalAiTextInference(
 
   override fun countTokens(text: String): Int = manager.countTokens(text)
 
-  override suspend fun generate(prompt: String): String {
-    requireAiBackgroundInferenceExecution()
+  protected override suspend fun generateInBackground(prompt: String): String {
     return withContext(Dispatchers.IO) {
       manager.generate(prompt)
     }
