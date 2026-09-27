@@ -175,6 +175,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0270: RSS記事を除外条件から推薦スコアリングする](0270-rss-recommendation-scoring.md)
 - [ADR-0271: RSS推薦スコアリングを記事単位のバックグラウンドキューで実行する](0271-rss-recommendation-background-queue.md)
 - [ADR-0272: RSS推薦の実行先を端末内AIとクラウドAIから明示選択する](0272-rss-recommendation-local-cloud-routing.md)
+- [ADR-0273: 非対話型AI推論をfeature-owned durable background workから実行する](0273-background-only-non-interactive-ai-inference.md)
 
 ### Content / summary / knowledge
 
