@@ -6,24 +6,27 @@
 
 Summary、Knowledge、Library organization 等の feature は provider protocol を直接扱わず、用途に応じた inference capability を利用する。
 
-- 単発の自由形式テキスト生成は `:core:ai-inference` の `AiTextInference` を利用する。
-- tool call を構造化出力として要求する単発生成は、同 module の sibling capability `AiStructuredTextInference` を利用する。自由形式生成しか必要としない consumer に tool calling を強制しない。
+- model選択、token count、progress等のread-only参照は `:core:ai-inference` の `AiTextInferenceModelReader` を利用する。
+- 非対話型の単発自由形式テキスト生成は同moduleの `BackgroundAiTextInference` を利用する。
+- tool call を構造化出力として要求する非対話型単発生成は sibling capability `BackgroundAiStructuredTextInference` を利用する。自由形式生成しか必要としない consumer に tool calling を強制しない。
 - Local 実装は `:core:ai-runtime` の local model runtime へ接続する。
 - Cloud provider の HTTP、OAuth、Responses protocol と provider-neutral text / structured inference implementation は `:core:ai-cloud-openai` に閉じる。
 - Summary / Knowledge feature module は `ChatGptOpenAiClient` や OpenAI endpoint を直接参照しない。
 - app composition は provider adapter instance と feature contract を接続するが、provider technical adapter や feature 固有 prompt、task lifecycle、retry policy を再実装しない。
 
-Library organization は `AiTextInference.selectedModel()` から model / prompt budget を取得し、実際の分類結果は `AiStructuredTextInference` の `submit_library_organization` tool call で受け取る。分類 prompt、tool schema、引数 validation、bounded repair は Library feature が所有する。
+Library organization は `AiTextInferenceModelReader.selectedModel()` から model / prompt budget を取得し、実際の分類結果は `BackgroundAiStructuredTextInference` の `submit_library_organization` tool call で受け取る。分類 prompt、tool schema、引数 validation、bounded repair は Library feature が所有する。
 
-Podcast のニュース候補除外と同一ニュース分類も同じ provider-neutral `AiStructuredTextInference` を利用する。除外判定は `submit_podcast_news_exclusion(decisions)`、同一ニュース分類は `submit_podcast_news_clusters(group_ids)` の tool arguments だけを結果として利用する。どちらも候補記事数と同じ長さの配列をfeature側で検証し、Local / Cloud の両方でstructured inference adapterを利用して通常テキストの分類結果は解析しない。
+Podcast のニュース候補除外と同一ニュース分類も同じ provider-neutral `BackgroundAiStructuredTextInference` を利用する。除外判定は `submit_podcast_news_exclusion(decisions)`、同一ニュース分類は `submit_podcast_news_clusters(group_ids)` の tool arguments だけを結果として利用する。どちらも候補記事数と同じ長さの配列をfeature側で検証し、Local / Cloud の両方でstructured inference adapterを利用して通常テキストの分類結果は解析しない。
 
-RSSの記事推薦と除外参考からの条件改善も `AiStructuredTextInference` を利用する。RSS policyがLOCAL / CLOUDを明示選択し、既定はLOCAL、自動fallbackは行わない。scoringは候補記事のtitleだけを入力し、CLOUDでもURL、feed本文、リンク先本文、保存済み要約を追加しない。除外参考からの学習では手動条件、現在の学習条件、feedbackのtitleと直前評価だけを利用する。RSS更新時に評価対象をRSS-owned article task queueへ投入し、RSS-owned Workerが1記事ずつclaimする。LOCALでは各記事のstructured inferenceごとに `LocalAiBackgroundTaskGate` のpermitを取得・返却し、CLOUDではnetwork connectivity constraintとcloud background pauseを適用する。`submit_rss_recommendation_scores(statuses,scores)` のtool argumentsを候補順に検証し、数値評価不能は `insufficient_information`、tool call自体の失敗はfeature側の `INFERENCE_FAILED` として区別する。除外参考からの学習は `submit_rss_learned_exclusion_condition(condition)` を利用し、手動条件はAIに更新させない。通常テキストや自由形式JSONはどちらの結果としても解析しない。
+RSSの記事推薦と除外参考からの条件改善も `BackgroundAiStructuredTextInference` を利用する。RSS policyがLOCAL / CLOUDを明示選択し、既定はLOCAL、自動fallbackは行わない。scoringは候補記事のtitleだけを入力し、CLOUDでもURL、feed本文、リンク先本文、保存済み要約を追加しない。除外参考からの学習では手動条件、現在の学習条件、feedbackのtitleと直前評価だけを利用する。RSS更新時に評価対象をRSS-owned article task queueへ投入し、RSS-owned Workerが1記事ずつclaimする。LOCALでは各記事のstructured inferenceごとに `LocalAiBackgroundTaskGate` のpermitを取得・返却し、CLOUDではnetwork connectivity constraintとcloud background pauseを適用する。`submit_rss_recommendation_scores(statuses,scores)` のtool argumentsを候補順に検証し、数値評価不能は `insufficient_information`、tool call自体の失敗はfeature側の `INFERENCE_FAILED` として区別する。除外参考からの学習は `submit_rss_learned_exclusion_condition(condition)` を利用し、手動条件はAIに更新させない。通常テキストや自由形式JSONはどちらの結果としても解析しない。
 
 ## Execution routing
 
+`:core:ai-inference` はこの境界をAPIとしても強制する。productionの `BackgroundAiTextInference` / `BackgroundAiStructuredTextInference` adapterは、`CoroutineWorker.withAiBackgroundInference` が設定したcoroutine context内でのみ生成を開始する。通常のUI coroutineから呼ばれた場合は生成前に失敗する。feature UIにはbackground inference capabilityを渡さず、task controller / schedulerとstate projectionだけを渡す。read-onlyのmodel情報が必要なconsumerには `AiTextInferenceModelReader` だけを渡す。
+
 非対話型AI推論はfeature UI / ViewModelから直接実行せず、owning featureのdurable background taskから実行する。UIはtask登録とstate projectionだけを行う。Chat、streaming conversation、保存前の明示的推論テストのように対話session自体が処理単位である場合だけ、このbackground-only境界の例外とする。
 
-RSSでは記事スコアリングと除外参考からの条件学習の両方がRSS-owned background runtimeから `AiStructuredTextInference` を呼び出す。両者は同じ `RssRecommendationPolicy.executionProvider` を共有し、LOCAL / CLOUDを明示選択する。除外参考学習は `rss_recommendation_feedback` をdurable入力として約30秒debounceしたunique workから実行し、CLOUDではnetwork constraint、LOCALではlocal background pause / charging resumeへ従う。学習失敗時はfeedbackを消費しない。
+RSSでは記事スコアリングと除外参考からの条件学習の両方がRSS-owned background runtimeから `BackgroundAiStructuredTextInference` を呼び出す。両者は同じ `RssRecommendationPolicy.executionProvider` を共有し、LOCAL / CLOUDを明示選択する。除外参考学習は `rss_recommendation_feedback` をdurable入力として約30秒debounceしたunique workから実行し、CLOUDではnetwork constraint、LOCALではlocal background pause / charging resumeへ従う。学習失敗時はfeedbackを消費しない。
 
 Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択する。provider 設定と task runtime control は別責務とする。
 
@@ -35,7 +38,7 @@ Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択す�
 
 ## Local one-shot text inference process boundary
 
-Summary、Knowledge 等が利用する Local `AiTextInference.generate()` は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
+Summary、Knowledge 等が利用する Local `BackgroundAiTextInference.generate()` は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
 
 - main process は WorkManager、durable queue、DB、feature policy、`LocalAiBackgroundTaskGate` を所有し続ける。
 - child process は prompt と immutable execution snapshot を受け取り単発 text generation を返すだけで、Repository や Worker graph を構築しない。
@@ -61,7 +64,7 @@ Android の `SharedPreferences` は複数 process 間の整合性保証を持た
 
 ## Local structured text inference boundary
 
-Library organization と Podcast news exclusion / clustering の構造化結果は通常テキストの JSON として生成せず、`AiStructuredTextInference` を通じて tool call arguments として受け取る。
+Library organization と Podcast news exclusion / clustering の構造化結果は通常テキストの JSON として生成せず、`BackgroundAiStructuredTextInference` を通じて tool call arguments として受け取る。
 
 - Local adapter は `ProcessIsolatedLocalAiStructuredTextInference` とし、非公開 `LocalStructuredTextInferenceService` を同じ `:local_ai_text` process で起動する。
 - main process で selected model、backend、speculative decoding、effective context token count、model revision を snapshot 化し、child 専用 preference へ適用する。main process の preference を child の同期ストアにはしない。
@@ -90,7 +93,7 @@ ChatGPT / Codex の inference 経路では、provider の raw failure を featur
 
 HTTP status の解釈、OAuth refresh failure の判定、provider exception message format の解析は `:core:ai-cloud-openai` 内だけで行う。typed failure には kind、retryable、必要な場合の HTTP status だけを残し、provider response body、prompt、token、account id、対象 URL 等の raw detail を保持しない。
 
-`ChatGptTextInference` も同じ `:core:ai-cloud-openai` が所有し、normalized client と model preferences を provider-neutral `AiTextInference` へ投影する。これは technical adapter であり Workout 等の feature-specific provider routing や prompt budget policy は持たない。
+`ChatGptTextInference` も同じ `:core:ai-cloud-openai` が所有し、normalized client と model preferences を provider-neutral `BackgroundAiTextInference` へ投影する。これは technical adapter であり Workout 等の feature-specific provider routing や prompt budget policy は持たない。
 
 Summary / Knowledge の app adapter は typed failure を各 feature の failure kind と user-facing message へ写像する。WorkManager retry、durable queue state、再試行待ち表示等の application policy は owning feature が引き続き所有する。
 
@@ -102,7 +105,7 @@ Settings の login / model catalog / debug 操作は inference failure contract 
 
 Local model manager、ChatGPT client、inference adapter、feature repository 等の application-scope instance は `AppContainer` 配下の runtime dependency group が一度だけ構築し再利用する。
 
-runtime group は construction detail であり、Route、Screen、Worker へ group 型そのものを渡さない。consumer には ViewModel factory、Repository contract、scheduler、inference capability 等の narrow dependency へ投影してから渡す。Worker は owning feature の WorkerFactory を通じて application-scope graph へ接続し、parallel graph を再構築しない。
+runtime group は construction detail であり、Route、Screen、Worker へ group 型そのものを渡さない。UI consumerにはViewModel factory、Repository contract、scheduler / task controller等のnarrow dependencyへ投影してから渡し、非対話型background inference capability自体は渡さない。Workerはowning featureのWorkerFactoryを通じてapplication-scope graphへ接続し、そのWorker内でだけinference capabilityを利用する。parallel graphは再構築しない。
 
 application composition は Local / ChatGPT adapter の concrete instance を選択・共有するが、adapter implementation の source ownership は各 technical core / owning feature に置く。Workout の provider routing と prompt budget 処理は `:feature:workout:data` の `DefaultWorkoutAiAdvisor` が所有する。
 
