@@ -99,6 +99,8 @@ class AppContainer(
       dataChanges = dataChanges,
       persistenceChanges = persistenceChanges,
       httpClient = httpClient,
+      localTextInference = aiCoreRuntime.textInference,
+      cloudTextInference = aiCoreRuntime.cloudTextInference,
     )
   }
 
@@ -192,6 +194,9 @@ class AppContainer(
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
   internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings
   internal val podcastWorkerFactory get() = podcastRuntime.workerFactory
+  internal val workoutAiWorkerFactory get() = supportingRuntime.workoutAiWorkerFactory
+  internal val workoutAiSettingsRepository get() = supportingRuntime.workoutAiSettingsRepository
+  internal val workoutAiTaskController get() = supportingRuntime.workoutAiTaskController
 
   val audioPlaybackController get() = audioRuntime.playbackController
   val podcastViewModelFactory get() = podcastRuntime.viewModelFactory
