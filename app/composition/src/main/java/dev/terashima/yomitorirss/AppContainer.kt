@@ -188,6 +188,8 @@ class AppContainer(
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
   internal val knowledgeBuildScheduler get() = knowledgeTaskRuntime.knowledgeBuildScheduler
   internal val knowledgeBuildRunner get() = knowledgeRuntime.knowledgeBuildRunner
+  internal val knowledgePageAiRunner get() = knowledgeRuntime.knowledgePageAiRunner
+  internal val knowledgePageAiTaskController get() = knowledgeTaskRuntime.knowledgePageAiTaskController
   internal val knowledgeExecutionSettings get() = knowledgeTaskRuntime.knowledgeExecutionSettings
   internal val textInference get() = aiCoreRuntime.textInference
   internal val cloudTextInference get() = aiCoreRuntime.cloudTextInference
@@ -239,8 +241,6 @@ class AppContainer(
   val summaryTaskQueueRepository get() = crossFeatureRuntime.summaryTaskQueueRepository
   val knowledgeRepository get() = knowledgeRuntime.knowledgeRepository
   val knowledgeBuilder get() = knowledgeRuntime.knowledgeBuilder
-  val knowledgePageCreator get() = knowledgeRuntime.knowledgePageCreator
-  val knowledgePageEditor get() = knowledgeRuntime.knowledgePageEditor
   val aiTaskQueueRepository get() = crossFeatureRuntime.aiTaskQueueRepository
   val smbConnectionProfileRepository get() = libraryRuntime.smbConnectionProfileRepository
 
