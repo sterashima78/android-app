@@ -69,10 +69,12 @@ class RssRecommendationProviderRoutingTest {
 
 private class RecordingStructuredInference(
   private val result: Any,
-) : BackgroundAiStructuredTextInference {
+) : BackgroundAiStructuredTextInference() {
   var calls: Int = 0
 
-  override suspend fun generateToolCall(
+  protected override suspend fun validateBackgroundExecution() = Unit
+
+  protected override suspend fun generateToolCallInBackground(
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
