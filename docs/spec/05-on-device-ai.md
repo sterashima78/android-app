@@ -4,7 +4,7 @@
 
 - LiteRT-LM を利用する端末内AI runtime を共有する。
 - モデルのダウンロード、選択、削除、推論設定、端末上のベンチマークを管理できる。
-- 長時間処理は foreground UI へ閉じず、feature 所有の background runtime または task queue へ委譲する。
+- 非対話型のAI生成・分類・学習は foreground UI へ閉じず、feature 所有の durable background runtime または task queue へ委譲する。UIはtask登録と状態表示だけを行う。
 - RSS推薦評価はRSSが所有する記事単位キューで順次実行する。端末内AI選択時は共通のローカルAI一時停止・充電時自動再開・推論直列化に参加し、クラウドAI選択時はクラウドAI一時停止とnetwork constraintに従う。
 
 ## 5.2 要約
@@ -24,3 +24,4 @@
 
 - 保存済みコンテンツや要約を資料としてKnowledge pageを生成・更新できる。
 - 自動生成は永続background taskとして実行し、既存pageの拡張と追加page作成を扱う。
+- ユーザーが開始するKnowledge pageの新規生成とAI編集もbackground taskとして実行し、画面を離れても推論実行をViewModel lifetimeへ依存させない。
