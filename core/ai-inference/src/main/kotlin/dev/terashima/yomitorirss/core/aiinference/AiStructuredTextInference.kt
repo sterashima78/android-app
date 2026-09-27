@@ -49,8 +49,17 @@ data class AiStructuredToolCall(
  *
  * Production implementations may only execute from a durable background worker.
  */
-interface BackgroundAiStructuredTextInference {
+abstract class BackgroundAiStructuredTextInference {
   suspend fun generateToolCall(
+    systemInstruction: String,
+    userMessage: String,
+    tool: AiStructuredTool,
+  ): AiStructuredToolCall? {
+    requireAiBackgroundInferenceExecution()
+    return generateToolCallInBackground(systemInstruction, userMessage, tool)
+  }
+
+  protected abstract suspend fun generateToolCallInBackground(
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
