@@ -425,8 +425,9 @@ private class LibraryOrganizationAiTaskStore(context: Context) {
     parsed.optJSONArray("tasks")?.let { tasks ->
       return JSONObject().put("tasks", tasks)
     }
-    val requestId = parsed.optString("requestId").takeIf(String::isNotBlank)
-      ?: return JSONObject().put("tasks", JSONArray())
+    if (parsed.optString("requestId").isBlank()) {
+      return JSONObject().put("tasks", JSONArray())
+    }
     return JSONObject().put(
       "tasks",
       JSONArray().put(parsed),
@@ -447,6 +448,7 @@ private class LibraryOrganizationAiTaskStore(context: Context) {
     const val FILE_NAME = "library-organization-ai-task.json"
   }
 }
+
 private enum class LibraryOrganizationAiOperation {
   SUGGEST,
   REORGANIZE_SERIES,
