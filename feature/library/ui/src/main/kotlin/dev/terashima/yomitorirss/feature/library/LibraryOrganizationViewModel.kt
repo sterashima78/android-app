@@ -34,8 +34,10 @@ class LibraryOrganizationViewModel(
   private var seriesRequestId: String? = null
 
   init {
-    refresh()
-    viewModelScope.launch { resumeRecoverableAiTask() }
+    viewModelScope.launch {
+      resumeRecoverableAiTask()
+      refresh()
+    }
     viewModelScope.launch {
       while (isActive) {
         delay(BATCH_REFRESH_INTERVAL_MS)
