@@ -30,9 +30,12 @@ class LibraryOrganizationViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(LibraryOrganizationUiState())
   val state: StateFlow<LibraryOrganizationUiState> = _state.asStateFlow()
+  private var suggestionRequestId: String? = null
+  private var seriesRequestId: String? = null
 
   init {
     refresh()
+    viewModelScope.launch { resumeRecoverableAiTask() }
     viewModelScope.launch {
       while (isActive) {
         delay(BATCH_REFRESH_INTERVAL_MS)
@@ -76,10 +79,17 @@ class LibraryOrganizationViewModel(
       return
     }
     val key = book.organizationKey()
+    val consumesAiSuggestion = _state.value.suggestions.containsKey(key)
     viewModelScope.launch {
       _state.update { it.copy(savingBook = key) }
       runCatching { repository.save(book, draft) }
         .onSuccess {
+          if (consumesAiSuggestion) {
+            suggestionRequestId?.let { requestId ->
+              viewModelScope.launch { runCatching { aiTaskController.dismiss(requestId) } }
+            }
+            suggestionRequestId = null
+          }
           val refreshed = runCatching { repository.snapshot() to repository.batchSnapshot() }.getOrNull()
           _state.update {
             it.copy(
@@ -119,7 +129,10 @@ class LibraryOrganizationViewModel(
     viewModelScope.launch {
       _state.update { it.copy(suggestingBook = key) }
       runCatching { aiTaskController.enqueueSuggestion(book) }
-        .onSuccess { requestId -> observeSuggestionTask(requestId, key) }
+        .onSuccess { requestId ->
+          suggestionRequestId = requestId
+          observeSuggestionTask(requestId, key)
+        }
         .onFailure { error ->
           _state.update {
             it.copy(
@@ -182,7 +195,10 @@ class LibraryOrganizationViewModel(
     viewModelScope.launch {
       _state.update { it.copy(reorganizingSeriesBook = firstBook.organizationKey()) }
       runCatching { aiTaskController.enqueueSeriesReorganization(firstBook) }
-        .onSuccess { requestId -> observeSeriesTask(requestId, seriesName) }
+        .onSuccess { requestId ->
+          seriesRequestId = requestId
+          observeSeriesTask(requestId, seriesName)
+        }
         .onFailure { error ->
           _state.update {
             it.copy(
@@ -191,6 +207,31 @@ class LibraryOrganizationViewModel(
             )
           }
         }
+    }
+  }
+
+  private suspend fun resumeRecoverableAiTask() {
+    val reference = runCatching { aiTaskController.recoverableTask() }
+      .getOrElse { error ->
+        _state.update { it.copy(message = error.message ?: "AIタスクの状態を読み込めませんでした") }
+        return
+      }
+      ?: return
+
+    when (reference.kind) {
+      LibraryOrganizationAiTaskKind.SUGGESTION -> {
+        suggestionRequestId = reference.requestId
+        _state.update { it.copy(suggestingBook = reference.bookKey) }
+        observeSuggestionTask(reference.requestId, reference.bookKey)
+      }
+      LibraryOrganizationAiTaskKind.SERIES_REORGANIZATION -> {
+        seriesRequestId = reference.requestId
+        _state.update { it.copy(reorganizingSeriesBook = reference.bookKey) }
+        observeSeriesTask(
+          requestId = reference.requestId,
+          seriesName = reference.seriesName ?: "対象シリーズ",
+        )
+      }
     }
   }
 
@@ -233,6 +274,8 @@ class LibraryOrganizationViewModel(
         }
         LibraryOrganizationAiTaskState.FAILED,
         LibraryOrganizationAiTaskState.CANCELLED -> {
+          aiTaskController.dismiss(requestId)
+          if (suggestionRequestId == requestId) suggestionRequestId = null
           _state.update {
             it.copy(
               suggestingBook = null,
@@ -287,10 +330,14 @@ class LibraryOrganizationViewModel(
               message = message,
             )
           }
+          aiTaskController.dismiss(requestId)
+          if (seriesRequestId == requestId) seriesRequestId = null
           return
         }
         LibraryOrganizationAiTaskState.FAILED,
         LibraryOrganizationAiTaskState.CANCELLED -> {
+          aiTaskController.dismiss(requestId)
+          if (seriesRequestId == requestId) seriesRequestId = null
           _state.update {
             it.copy(
               reorganizingSeriesBook = null,
