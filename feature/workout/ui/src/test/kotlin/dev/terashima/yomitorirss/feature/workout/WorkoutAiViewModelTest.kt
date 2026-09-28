@@ -66,6 +66,7 @@ class WorkoutAiViewModelTest {
     advanceUntilIdle()
 
     assertEquals("生成に失敗しました", viewModel.state.value.errorMessage)
+    assertEquals(listOf("request-1"), tasks.dismissedRequestIds)
     assertFalse(viewModel.state.value.loading)
   }
 
