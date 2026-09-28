@@ -129,6 +129,7 @@ class WorkManagerKnowledgePageAiTaskController(
   override suspend fun dismiss(requestId: String) {
     taskStore.deleteIfMatches(requestId)
   }
+
   private suspend fun enqueue(
     operation: KnowledgePageAiOperation,
     payload: KnowledgePageAiRequest,
@@ -352,6 +353,7 @@ private class KnowledgePageAiTaskStore(context: Context) {
     const val FILE_NAME = "knowledge-page-ai-task.json"
   }
 }
+
 private class KnowledgePageAiRequestStore(context: Context) {
   private val directory = File(context.noBackupFilesDir, DIRECTORY_NAME).apply { mkdirs() }
 
