@@ -15,8 +15,22 @@ data class LibraryOrganizationAiTaskSnapshot(
   val error: String? = null,
 )
 
+enum class LibraryOrganizationAiTaskKind {
+  SUGGESTION,
+  SERIES_REORGANIZATION,
+}
+
+data class LibraryOrganizationAiTaskReference(
+  val requestId: String,
+  val kind: LibraryOrganizationAiTaskKind,
+  val bookKey: LibraryBookKey,
+  val seriesName: String? = null,
+)
+
 interface LibraryOrganizationAiTaskController {
   suspend fun enqueueSuggestion(book: LibraryBook): String
   suspend fun enqueueSeriesReorganization(book: LibraryBook): String
   suspend fun snapshot(requestId: String): LibraryOrganizationAiTaskSnapshot
+  suspend fun recoverableTask(): LibraryOrganizationAiTaskReference?
+  suspend fun dismiss(requestId: String)
 }
