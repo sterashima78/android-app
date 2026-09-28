@@ -41,6 +41,9 @@ class KnowledgeViewModel(
   init {
     refresh()
     viewModelScope.launch {
+      resumeRecoverableTask()
+    }
+    viewModelScope.launch {
       repository.changes.drop(1).collect {
         refreshAfterDataChange()
       }
@@ -299,6 +302,18 @@ class KnowledgeViewModel(
     _state.update { it.copy(message = null) }
   }
 
+  private suspend fun resumeRecoverableTask() {
+    val reference = runCatching { pageAiTasks.recoverableTask() }
+      .getOrElse { error ->
+        reportError(error)
+        return
+      } ?: return
+    _state.update { it.copy(working = true, message = null) }
+    observePageAiTask(
+      requestId = reference.requestId,
+      closeComposer = reference.kind == KnowledgePageAiTaskKind.CREATE,
+    )
+  }
   private suspend fun observePageAiTask(
     requestId: String,
     closeComposer: Boolean,
@@ -317,6 +332,7 @@ class KnowledgeViewModel(
           val pageId = snapshot.pageId
           val page = pageId?.let { repository.findPage(it) }
           if (page == null) {
+            runCatching { pageAiTasks.dismiss(requestId) }
             _state.update { it.copy(working = false) }
             reportError(IllegalStateException("生成したナレッジページを読み込めませんでした"))
             return
@@ -335,10 +351,12 @@ class KnowledgeViewModel(
               message = null,
             )
           }
+          runCatching { pageAiTasks.dismiss(requestId) }
           return
         }
         KnowledgePageAiTaskState.FAILED,
         KnowledgePageAiTaskState.CANCELLED -> {
+          runCatching { pageAiTasks.dismiss(requestId) }
           _state.update {
             it.copy(
               working = false,
