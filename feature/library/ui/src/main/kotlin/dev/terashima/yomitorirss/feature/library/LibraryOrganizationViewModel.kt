@@ -224,15 +224,19 @@ class LibraryOrganizationViewModel(
       LibraryOrganizationAiTaskKind.SUGGESTION -> {
         suggestionRequestId = reference.requestId
         _state.update { it.copy(suggestingBook = reference.bookKey) }
-        observeSuggestionTask(reference.requestId, reference.bookKey)
+        viewModelScope.launch {
+          observeSuggestionTask(reference.requestId, reference.bookKey)
+        }
       }
       LibraryOrganizationAiTaskKind.SERIES_REORGANIZATION -> {
         seriesRequestId = reference.requestId
         _state.update { it.copy(reorganizingSeriesBook = reference.bookKey) }
-        observeSeriesTask(
-          requestId = reference.requestId,
-          seriesName = reference.seriesName ?: "対象シリーズ",
-        )
+        viewModelScope.launch {
+          observeSeriesTask(
+            requestId = reference.requestId,
+            seriesName = reference.seriesName ?: "対象シリーズ",
+          )
+        }
       }
     }
   }
