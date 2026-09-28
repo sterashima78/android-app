@@ -26,6 +26,8 @@ RSSの記事推薦と除外参考からの条件改善も `BackgroundAiStructure
 
 非対話型AI推論はfeature UI / ViewModelから直接実行せず、owning featureのdurable background taskから実行する。UIはtask登録とstate projectionだけを行う。Chat、streaming conversation、保存前の明示的推論テストのように対話session自体が処理単位である場合だけ、このbackground-only境界の例外とする。
 
+WorkManager `Data` はdurable content storeとして扱わず、ID・provider・operation等のbounded metadataだけを渡す。サイズが入力依存のprompt / response / structured resultはowning featureのapp-private stateへ保持する。Workoutのone-shot responseとLibraryの未消費organization resultはno-backup task stateへ保存してcontrollerから再発見し、Knowledgeのpage request bodyもapp-private request fileとしてWorker retryを跨いで保持する。これらはprocess / UI recreationに対するtransient durabilityであり、user backupのsource of truthではない。期限cleanupは対応Workのterminal stateまたはabsenceを確認してから行い、pause / retry中のactive inputを経過時間だけで削除しない。
+
 RSSでは記事スコアリングと除外参考からの条件学習の両方がRSS-owned background runtimeから `BackgroundAiStructuredTextInference` を呼び出す。両者は同じ `RssRecommendationPolicy.executionProvider` を共有し、LOCAL / CLOUDを明示選択する。除外参考学習は `rss_recommendation_feedback` をdurable入力として約30秒debounceしたunique workから実行し、CLOUDではnetwork constraint、LOCALではlocal background pause / charging resumeへ従う。学習失敗時はfeedbackを消費しない。
 
 Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択する。provider 設定と task runtime control は別責務とする。
