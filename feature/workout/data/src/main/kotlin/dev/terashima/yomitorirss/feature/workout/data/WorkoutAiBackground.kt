@@ -30,14 +30,17 @@ import dev.terashima.yomitorirss.feature.workout.WorkoutAiProvider
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiRequestType
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskController
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskReference
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskSnapshot
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskState
 import dev.terashima.yomitorirss.feature.workout.WorkoutReader
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 class WorkManagerWorkoutAiTaskController(
   context: Context,
@@ -45,6 +48,7 @@ class WorkManagerWorkoutAiTaskController(
 ) : WorkoutAiTaskController {
   private val appContext = context.applicationContext
   private val workManager = WorkManager.getInstance(appContext)
+  private val taskStore = WorkoutAiTaskStore(appContext)
 
   override suspend fun enqueue(type: WorkoutAiRequestType): String {
     val provider = settingsRepository.loadSettings().provider
@@ -64,12 +68,19 @@ class WorkManagerWorkoutAiTaskController(
       )
     }
     val request = builder.build()
-    workManager.enqueueUniqueWork(
-      "$WORK_NAME_PREFIX${type.name.lowercase()}",
-      ExistingWorkPolicy.REPLACE,
-      request,
-    ).await()
-    return request.id.toString()
+    val requestId = request.id.toString()
+    taskStore.replace(requestId, type)
+    try {
+      workManager.enqueueUniqueWork(
+        "$WORK_NAME_PREFIX${type.name.lowercase()}",
+        ExistingWorkPolicy.REPLACE,
+        request,
+      ).await()
+    } catch (error: Throwable) {
+      taskStore.deleteIfMatches(requestId)
+      throw error
+    }
+    return requestId
   }
 
   override suspend fun snapshot(requestId: String): WorkoutAiTaskSnapshot {
@@ -87,16 +98,49 @@ class WorkManagerWorkoutAiTaskController(
       WorkInfo.State.ENQUEUED,
       WorkInfo.State.BLOCKED -> WorkoutAiTaskSnapshot(WorkoutAiTaskState.QUEUED)
       WorkInfo.State.RUNNING -> WorkoutAiTaskSnapshot(WorkoutAiTaskState.RUNNING)
-      WorkInfo.State.SUCCEEDED -> WorkoutAiTaskSnapshot(
-        state = WorkoutAiTaskState.SUCCEEDED,
-        response = info.outputData.getString(KEY_RESPONSE),
-      )
+      WorkInfo.State.SUCCEEDED -> {
+        val response = taskStore.response(requestId)
+          ?: info.outputData.getString(KEY_RESPONSE)
+        if (response == null) {
+          WorkoutAiTaskSnapshot(
+            state = WorkoutAiTaskState.FAILED,
+            error = "AIタスクの結果が見つかりません",
+          )
+        } else {
+          WorkoutAiTaskSnapshot(
+            state = WorkoutAiTaskState.SUCCEEDED,
+            response = response,
+          )
+        }
+      }
       WorkInfo.State.CANCELLED -> WorkoutAiTaskSnapshot(WorkoutAiTaskState.CANCELLED)
       WorkInfo.State.FAILED -> WorkoutAiTaskSnapshot(
         state = WorkoutAiTaskState.FAILED,
         error = info.outputData.getString(KEY_ERROR),
       )
     }
+  }
+
+  override suspend fun recoverableTask(): WorkoutAiTaskReference? {
+    val reference = taskStore.reference() ?: return null
+    val uuid = runCatching { UUID.fromString(reference.requestId) }.getOrNull()
+    if (uuid == null) {
+      taskStore.deleteIfMatches(reference.requestId)
+      return null
+    }
+    val lookup = runCatching {
+      withContext(Dispatchers.IO) { workManager.getWorkInfoById(uuid).get() }
+    }
+    if (lookup.isFailure) return reference
+    if (lookup.getOrNull() == null) {
+      taskStore.deleteIfMatches(reference.requestId)
+      return null
+    }
+    return reference
+  }
+
+  override suspend fun dismiss(requestId: String) {
+    taskStore.deleteIfMatches(requestId)
   }
 }
 
@@ -107,6 +151,8 @@ class WorkoutAiWorker(
   private val settingsRepository: WorkoutAiSettingsRepository,
   private val advisor: WorkoutAiAdvisor,
 ) : CoroutineWorker(appContext, params) {
+  private val taskStore = WorkoutAiTaskStore(appContext)
+
   override suspend fun doWork(): Result = withAiBackgroundInference {
     val type = inputData.getString(KEY_REQUEST_TYPE)
       ?.let { value -> WorkoutAiRequestType.entries.firstOrNull { it.name == value } }
@@ -129,7 +175,8 @@ class WorkoutAiWorker(
           generate(type, provider)
         }
       }
-      Result.success(workDataOf(KEY_RESPONSE to response.take(MAX_RESPONSE_CHARS)))
+      taskStore.writeResponse(id.toString(), response)
+      Result.success()
     } catch (cancelled: CancellationException) {
       throw cancelled
     } catch (error: Throwable) {
@@ -229,10 +276,71 @@ class WorkoutAiWorkerFactory(
   }
 }
 
+private class WorkoutAiTaskStore(context: Context) {
+  private val file = File(context.noBackupFilesDir, FILE_NAME)
+
+  fun replace(
+    requestId: String,
+    type: WorkoutAiRequestType,
+  ) = synchronized(WorkoutAiTaskStore::class.java) {
+    write(
+      JSONObject()
+        .put("requestId", requestId)
+        .put("type", type.name),
+    )
+  }
+
+  fun writeResponse(
+    requestId: String,
+    response: String,
+  ) = synchronized(WorkoutAiTaskStore::class.java) {
+    val json = readJson() ?: return@synchronized
+    if (json.optString("requestId") != requestId) return@synchronized
+    json.put("response", response)
+    write(json)
+  }
+
+  fun reference(): WorkoutAiTaskReference? = synchronized(WorkoutAiTaskStore::class.java) {
+    val json = readJson() ?: return@synchronized null
+    val requestId = json.optString("requestId").takeIf(String::isNotBlank)
+      ?: return@synchronized null
+    val type = json.optString("type")
+      .let { saved -> WorkoutAiRequestType.entries.firstOrNull { it.name == saved } }
+      ?: return@synchronized null
+    WorkoutAiTaskReference(requestId = requestId, type = type)
+  }
+
+  fun response(requestId: String): String? = synchronized(WorkoutAiTaskStore::class.java) {
+    val json = readJson() ?: return@synchronized null
+    if (json.optString("requestId") != requestId) return@synchronized null
+    json.optString("response").takeIf(String::isNotBlank)
+  }
+
+  fun deleteIfMatches(requestId: String) = synchronized(WorkoutAiTaskStore::class.java) {
+    val json = readJson()
+    if (json == null || json.optString("requestId") == requestId) file.delete()
+  }
+
+  private fun readJson(): JSONObject? = runCatching { JSONObject(file.readText()) }.getOrNull()
+
+  private fun write(json: JSONObject) {
+    file.parentFile?.mkdirs()
+    val temporary = File(file.parentFile, "${file.name}.tmp")
+    temporary.writeText(json.toString())
+    if (!temporary.renameTo(file)) {
+      file.writeText(json.toString())
+      temporary.delete()
+    }
+  }
+
+  private companion object {
+    const val FILE_NAME = "workout-ai-task.json"
+  }
+}
+
 private const val WORK_NAME_PREFIX = "workout-ai-"
 private const val KEY_REQUEST_TYPE = "workout_ai_request_type"
 private const val KEY_PROVIDER = "workout_ai_provider"
 private const val KEY_RESPONSE = "workout_ai_response"
 private const val KEY_ERROR = "workout_ai_error"
-private const val MAX_RESPONSE_CHARS = 8_000
 private const val MAX_ERROR_CHARS = 500
