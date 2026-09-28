@@ -252,6 +252,7 @@ class LibraryOrganizationViewModel(
       }
     }
   }
+
   private suspend fun observeSuggestionTask(
     requestId: String,
     key: LibraryBookKey,
@@ -261,7 +262,7 @@ class LibraryOrganizationViewModel(
         .getOrElse { error ->
           _state.update {
             it.copy(
-              suggestingBook = null,
+              suggestingBook = if (it.suggestingBook == key) null else it.suggestingBook,
               message = error.message ?: "AIの整理候補を生成できませんでした",
             )
           }
