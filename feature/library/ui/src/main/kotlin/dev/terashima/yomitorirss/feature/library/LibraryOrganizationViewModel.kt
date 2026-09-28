@@ -256,6 +256,8 @@ class LibraryOrganizationViewModel(
         LibraryOrganizationAiTaskState.SUCCEEDED -> {
           val suggestion = snapshot.suggestion
           if (suggestion == null) {
+            aiTaskController.dismiss(requestId)
+            if (suggestionRequestId == requestId) suggestionRequestId = null
             _state.update {
               it.copy(
                 suggestingBook = null,
@@ -309,6 +311,8 @@ class LibraryOrganizationViewModel(
         LibraryOrganizationAiTaskState.SUCCEEDED -> {
           val result = snapshot.seriesResult
           if (result == null) {
+            aiTaskController.dismiss(requestId)
+            if (seriesRequestId == requestId) seriesRequestId = null
             _state.update {
               it.copy(
                 reorganizingSeriesBook = null,
