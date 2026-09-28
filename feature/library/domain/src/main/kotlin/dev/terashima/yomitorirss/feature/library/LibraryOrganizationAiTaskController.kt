@@ -31,6 +31,6 @@ interface LibraryOrganizationAiTaskController {
   suspend fun enqueueSuggestion(book: LibraryBook): String
   suspend fun enqueueSeriesReorganization(book: LibraryBook): String
   suspend fun snapshot(requestId: String): LibraryOrganizationAiTaskSnapshot
-  suspend fun recoverableTask(): LibraryOrganizationAiTaskReference?
+  suspend fun recoverableTasks(): List<LibraryOrganizationAiTaskReference>
   suspend fun dismiss(requestId: String)
 }
