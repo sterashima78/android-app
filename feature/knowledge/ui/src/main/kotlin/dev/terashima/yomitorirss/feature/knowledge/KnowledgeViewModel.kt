@@ -35,7 +35,7 @@ class KnowledgeViewModel(
   private val pageAiTasks: KnowledgePageAiTaskController,
   private val scheduleRebuild: () -> Unit,
 ) : ViewModel() {
-  private val _state = MutableStateFlow(KnowledgeUiState())
+  private val _state = MutableStateFlow(KnowledgeUiState(working = true))
   val state: StateFlow<KnowledgeUiState> = _state.asStateFlow()
 
   init {
@@ -305,10 +305,15 @@ class KnowledgeViewModel(
   private suspend fun resumeRecoverableTask() {
     val reference = runCatching { pageAiTasks.recoverableTask() }
       .getOrElse { error ->
+        _state.update { it.copy(working = false) }
         reportError(error)
         return
-      } ?: return
-    _state.update { it.copy(working = true, message = null) }
+      }
+    if (reference == null) {
+      _state.update { it.copy(working = false) }
+      return
+    }
+    _state.update { it.copy(message = null) }
     observePageAiTask(
       requestId = reference.requestId,
       closeComposer = reference.kind == KnowledgePageAiTaskKind.CREATE,
