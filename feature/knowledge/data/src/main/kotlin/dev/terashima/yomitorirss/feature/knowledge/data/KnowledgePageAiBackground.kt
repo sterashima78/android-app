@@ -107,7 +107,7 @@ class WorkManagerKnowledgePageAiTaskController(
     operation: KnowledgePageAiOperation,
     payload: KnowledgePageAiRequest,
   ): String {
-    requestStore.deleteExpired()
+    cleanupExpiredRequests()
     val provider = executionSettings.currentProvider()
     val builder = OneTimeWorkRequestBuilder<KnowledgePageAiWorker>()
       .setInputData(
@@ -137,6 +137,24 @@ class WorkManagerKnowledgePageAiTaskController(
       throw error
     }
     return request.id.toString()
+  }
+
+  private suspend fun cleanupExpiredRequests() {
+    requestStore.expiredRequestIds().forEach { requestId ->
+      val uuid = runCatching { UUID.fromString(requestId) }.getOrNull()
+      if (uuid == null) {
+        requestStore.delete(requestId)
+        return@forEach
+      }
+      val lookup = runCatching {
+        withContext(Dispatchers.IO) { workManager.getWorkInfoById(uuid).get() }
+      }
+      if (lookup.isFailure) return@forEach
+      val state = lookup.getOrNull()?.state
+      if (shouldDeleteKnowledgePageAiRequest(expired = true, state = state)) {
+        requestStore.delete(requestId)
+      }
+    }
   }
 }
 
@@ -288,19 +306,37 @@ private class KnowledgePageAiRequestStore(context: Context) {
     file(id).delete()
   }
 
-  fun deleteExpired(nowMillis: Long = System.currentTimeMillis()) {
-    directory.listFiles()?.forEach { candidate ->
-      if (nowMillis - candidate.lastModified() > REQUEST_RETENTION_MILLIS) candidate.delete()
-    }
-  }
+  fun expiredRequestIds(nowMillis: Long = System.currentTimeMillis()): List<String> =
+    directory.listFiles()
+      .orEmpty()
+      .asSequence()
+      .filter { candidate -> nowMillis - candidate.lastModified() > REQUEST_RETENTION_MILLIS }
+      .mapNotNull { candidate ->
+        candidate.name
+          .takeIf { it.endsWith(FILE_SUFFIX) }
+          ?.removeSuffix(FILE_SUFFIX)
+          ?.takeIf(String::isNotBlank)
+      }
+      .toList()
 
-  private fun file(id: String): File = File(directory, "$id.json")
+  private fun file(id: String): File = File(directory, "$id$FILE_SUFFIX")
 
   private companion object {
     const val DIRECTORY_NAME = "knowledge-page-ai-requests"
+    const val FILE_SUFFIX = ".json"
     const val REQUEST_RETENTION_MILLIS = 7L * 24 * 60 * 60 * 1_000
   }
 }
+
+internal fun shouldDeleteKnowledgePageAiRequest(
+  expired: Boolean,
+  state: WorkInfo.State?,
+): Boolean = expired && (
+  state == null ||
+    state == WorkInfo.State.SUCCEEDED ||
+    state == WorkInfo.State.FAILED ||
+    state == WorkInfo.State.CANCELLED
+  )
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
