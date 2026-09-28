@@ -296,7 +296,12 @@ private class LibraryOrganizationAiTaskStore(context: Context) {
     val updated = JSONArray()
     for (index in 0 until tasks.length()) {
       val existing = tasks.optJSONObject(index) ?: continue
-      if (existing.optString("requestId") != requestId) updated.put(existing)
+      val sameRequest = existing.optString("requestId") == requestId
+      val sameSlot =
+        existing.optString("operation") == operation.name &&
+          existing.optString("source") == key.source.name &&
+          existing.optString("sourceId") == key.sourceId
+      if (!sameRequest && !sameSlot) updated.put(existing)
     }
     updated.put(
       JSONObject()
