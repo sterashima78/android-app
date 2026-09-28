@@ -30,7 +30,7 @@ class LibraryOrganizationViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(LibraryOrganizationUiState())
   val state: StateFlow<LibraryOrganizationUiState> = _state.asStateFlow()
-  private var suggestionRequestId: String? = null
+  private val suggestionRequestIds = mutableMapOf<LibraryBookKey, String>()
   private var seriesRequestId: String? = null
 
   init {
@@ -87,10 +87,9 @@ class LibraryOrganizationViewModel(
       runCatching { repository.save(book, draft) }
         .onSuccess {
           if (consumesAiSuggestion) {
-            suggestionRequestId?.let { requestId ->
+            suggestionRequestIds.remove(key)?.let { requestId ->
               viewModelScope.launch { runCatching { aiTaskController.dismiss(requestId) } }
             }
-            suggestionRequestId = null
           }
           val refreshed = runCatching { repository.snapshot() to repository.batchSnapshot() }.getOrNull()
           _state.update {
@@ -127,18 +126,30 @@ class LibraryOrganizationViewModel(
       _state.update { it.copy(message = "シリーズの再整理中は個別のAI候補を生成できません") }
       return
     }
+    if (_state.value.suggestingBook != null) {
+      _state.update { it.copy(message = "個別のAI候補生成が完了してから次の候補を生成してください") }
+      return
+    }
     val key = book.organizationKey()
     viewModelScope.launch {
-      _state.update { it.copy(suggestingBook = key) }
+      suggestionRequestIds.remove(key)?.let { previousRequestId ->
+        runCatching { aiTaskController.dismiss(previousRequestId) }
+      }
+      _state.update {
+        it.copy(
+          suggestingBook = key,
+          suggestions = it.suggestions - key,
+        )
+      }
       runCatching { aiTaskController.enqueueSuggestion(book) }
         .onSuccess { requestId ->
-          suggestionRequestId = requestId
+          suggestionRequestIds[key] = requestId
           observeSuggestionTask(requestId, key)
         }
         .onFailure { error ->
           _state.update {
             it.copy(
-              suggestingBook = null,
+              suggestingBook = if (it.suggestingBook == key) null else it.suggestingBook,
               message = error.message ?: "AIの整理候補を生成できませんでした",
             )
           }
@@ -213,34 +224,34 @@ class LibraryOrganizationViewModel(
   }
 
   private suspend fun resumeRecoverableAiTask() {
-    val reference = runCatching { aiTaskController.recoverableTask() }
+    val references = runCatching { aiTaskController.recoverableTasks() }
       .getOrElse { error ->
         _state.update { it.copy(message = error.message ?: "AIタスクの状態を読み込めませんでした") }
         return
       }
-      ?: return
 
-    when (reference.kind) {
-      LibraryOrganizationAiTaskKind.SUGGESTION -> {
-        suggestionRequestId = reference.requestId
-        _state.update { it.copy(suggestingBook = reference.bookKey) }
-        viewModelScope.launch {
-          observeSuggestionTask(reference.requestId, reference.bookKey)
+    references.forEach { reference ->
+      when (reference.kind) {
+        LibraryOrganizationAiTaskKind.SUGGESTION -> {
+          suggestionRequestIds[reference.bookKey] = reference.requestId
+          _state.update { it.copy(suggestingBook = reference.bookKey) }
+          viewModelScope.launch {
+            observeSuggestionTask(reference.requestId, reference.bookKey)
+          }
         }
-      }
-      LibraryOrganizationAiTaskKind.SERIES_REORGANIZATION -> {
-        seriesRequestId = reference.requestId
-        _state.update { it.copy(reorganizingSeriesBook = reference.bookKey) }
-        viewModelScope.launch {
-          observeSeriesTask(
-            requestId = reference.requestId,
-            seriesName = reference.seriesName ?: "対象シリーズ",
-          )
+        LibraryOrganizationAiTaskKind.SERIES_REORGANIZATION -> {
+          seriesRequestId = reference.requestId
+          _state.update { it.copy(reorganizingSeriesBook = reference.bookKey) }
+          viewModelScope.launch {
+            observeSeriesTask(
+              requestId = reference.requestId,
+              seriesName = reference.seriesName ?: "対象シリーズ",
+            )
+          }
         }
       }
     }
   }
-
   private suspend fun observeSuggestionTask(
     requestId: String,
     key: LibraryBookKey,
@@ -258,22 +269,25 @@ class LibraryOrganizationViewModel(
         }
       when (snapshot.state) {
         LibraryOrganizationAiTaskState.QUEUED,
-        LibraryOrganizationAiTaskState.RUNNING -> delay(AI_TASK_REFRESH_INTERVAL_MS)
+        LibraryOrganizationAiTaskState.RUNNING -> {
+          _state.update { it.copy(suggestingBook = key) }
+          delay(AI_TASK_REFRESH_INTERVAL_MS)
+        }
         LibraryOrganizationAiTaskState.SUCCEEDED -> {
           val suggestion = snapshot.suggestion
           if (suggestion == null) {
             aiTaskController.dismiss(requestId)
-            if (suggestionRequestId == requestId) suggestionRequestId = null
+            if (suggestionRequestIds[key] == requestId) suggestionRequestIds.remove(key)
             _state.update {
               it.copy(
-                suggestingBook = null,
+                suggestingBook = if (it.suggestingBook == key) null else it.suggestingBook,
                 message = "AIの整理候補を読み込めませんでした",
               )
             }
           } else {
             _state.update {
               it.copy(
-                suggestingBook = null,
+                suggestingBook = if (it.suggestingBook == key) null else it.suggestingBook,
                 suggestions = it.suggestions + (key to suggestion),
               )
             }
@@ -283,10 +297,10 @@ class LibraryOrganizationViewModel(
         LibraryOrganizationAiTaskState.FAILED,
         LibraryOrganizationAiTaskState.CANCELLED -> {
           aiTaskController.dismiss(requestId)
-          if (suggestionRequestId == requestId) suggestionRequestId = null
+          if (suggestionRequestIds[key] == requestId) suggestionRequestIds.remove(key)
           _state.update {
             it.copy(
-              suggestingBook = null,
+              suggestingBook = if (it.suggestingBook == key) null else it.suggestingBook,
               message = snapshot.error?.takeIf(String::isNotBlank) ?: "AIの整理候補を生成できませんでした",
             )
           }
