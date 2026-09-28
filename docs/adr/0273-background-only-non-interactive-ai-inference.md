@@ -67,8 +67,8 @@ Workerは現在policyの `executionProvider` を利用する。
 ## Consequences
 
 - Workout のメニュー提案・完了後レビューはWorkout-owned task controllerからWorkManagerへ登録する。生成本文はWorkManager `Data` に載せずapp-private no-backup task stateへ保存し、ViewModel / process再生成後も未消費taskを再発見して結果へ接続する。
-- Knowledge のユーザー指定ページ作成・AI編集はKnowledge-owned background taskから実行し、入力本文はWorker再実行に耐えるfeature-owned request stateとして保持する。期限による掃除は対応Workが終了済みまたは存在しない入力だけを対象とし、pause / retry中の入力は保持する。
-- Library の単冊整理候補生成・シリーズ再整理もLibrary-owned background taskへ移し、既存の一括整理workerと同じlocal inference gateへ参加する。単発taskの参照と未消費結果はapp-private no-backup stateへ保持し、ViewModel / process再生成後に再接続する。
+- Knowledge のユーザー指定ページ作成・AI編集はKnowledge-owned background taskから実行し、入力本文はWorker再実行に耐えるfeature-owned request stateとして保持する。期限による掃除は対応Workが終了済みまたは存在しない入力だけを対象とし、pause / retry中の入力は保持する。未消費task参照もapp-private no-backup stateへ保持し、ViewModel / process再生成後に実行中または完了済みtaskへ再接続する。
+- Library の単冊整理候補生成・シリーズ再整理もLibrary-owned background taskへ移し、既存の一括整理workerと同じlocal inference gateへ参加する。単発taskの参照と未消費結果はapp-private no-backup stateへ保持し、ViewModel / process再生成後に再接続する。単冊整理候補は複数冊分の未消費結果を独立して保持し、保存時に対応するtaskだけを消費する。
 - RSS画面を離れても除外参考からの条件学習が継続できる。
 - ViewModelはAI実行lifetimeを所有せず、RSS stateの表示とtask登録だけを担当する。
 - RSS scoringとlearningでLocal / Cloud provider、pause、network policyが同じbackground boundaryへ揃う。
@@ -79,7 +79,7 @@ Workerは現在policyの `executionProvider` を利用する。
 
 - feature UI source testでbackground inference capabilityとexecution scopeへの依存がないことを確認する。
 - Workout / Knowledge / Library のViewModel testでAI処理が直接生成ではなくtask登録へ委譲されることを確認する。
-- Workout / Library の未消費task再接続と、Knowledge のactive request retentionを検証する。
+- Workout / Knowledge / Library の未消費task再接続、Knowledge のactive request retention、Library の複数未消費候補の独立消費を検証する。
 - RSS domain testで学習成功時だけfeedbackを消費し、provider変更や失敗時は保持することを確認する。
 - RSS background testで30秒debounce計算とbackground scheduling helperを確認する。
 - UIから学習推論を実行するcoroutineが残っていないことをレビューする。
