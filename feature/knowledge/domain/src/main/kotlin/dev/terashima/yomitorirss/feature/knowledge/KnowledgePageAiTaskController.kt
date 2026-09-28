@@ -14,6 +14,16 @@ data class KnowledgePageAiTaskSnapshot(
   val error: String? = null,
 )
 
+enum class KnowledgePageAiTaskKind {
+  CREATE,
+  EDIT,
+}
+
+data class KnowledgePageAiTaskReference(
+  val requestId: String,
+  val kind: KnowledgePageAiTaskKind,
+)
+
 interface KnowledgePageAiTaskController {
   suspend fun enqueueCreate(
     request: String,
@@ -26,6 +36,10 @@ interface KnowledgePageAiTaskController {
   ): String
 
   suspend fun snapshot(requestId: String): KnowledgePageAiTaskSnapshot
+
+  suspend fun recoverableTask(): KnowledgePageAiTaskReference?
+
+  suspend fun dismiss(requestId: String)
 }
 
 interface KnowledgePageAiRunner {
