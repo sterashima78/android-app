@@ -27,6 +27,8 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiRunner
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiTaskController
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiTaskKind
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiTaskReference
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiTaskSnapshot
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiTaskState
 import java.io.File
@@ -44,6 +46,7 @@ class WorkManagerKnowledgePageAiTaskController(
   private val appContext = context.applicationContext
   private val workManager = WorkManager.getInstance(appContext)
   private val requestStore = KnowledgePageAiRequestStore(appContext)
+  private val taskStore = KnowledgePageAiTaskStore(appContext)
 
   override suspend fun enqueueCreate(
     request: String,
@@ -103,6 +106,29 @@ class WorkManagerKnowledgePageAiTaskController(
     }
   }
 
+  override suspend fun recoverableTask(): KnowledgePageAiTaskReference? {
+    val reference = taskStore.reference() ?: return null
+    val uuid = runCatching { UUID.fromString(reference.requestId) }.getOrNull()
+    if (uuid == null) {
+      taskStore.deleteIfMatches(reference.requestId)
+      requestStore.delete(reference.requestId)
+      return null
+    }
+    val lookup = runCatching {
+      withContext(Dispatchers.IO) { workManager.getWorkInfoById(uuid).get() }
+    }
+    if (lookup.isFailure) return reference
+    if (lookup.getOrNull() == null) {
+      taskStore.deleteIfMatches(reference.requestId)
+      requestStore.delete(reference.requestId)
+      return null
+    }
+    return reference
+  }
+
+  override suspend fun dismiss(requestId: String) {
+    taskStore.deleteIfMatches(requestId)
+  }
   private suspend fun enqueue(
     operation: KnowledgePageAiOperation,
     payload: KnowledgePageAiRequest,
@@ -125,18 +151,21 @@ class WorkManagerKnowledgePageAiTaskController(
       )
     }
     val request = builder.build()
-    requestStore.write(request.id.toString(), payload)
+    val requestId = request.id.toString()
     try {
+      requestStore.write(requestId, payload)
+      taskStore.replace(requestId, operation.toTaskKind())
       workManager.enqueueUniqueWork(
-        "$WORK_NAME_PREFIX${request.id}",
+        "$WORK_NAME_PREFIX$requestId",
         ExistingWorkPolicy.KEEP,
         request,
       ).await()
     } catch (error: Throwable) {
-      requestStore.delete(request.id.toString())
+      requestStore.delete(requestId)
+      taskStore.deleteIfMatches(requestId)
       throw error
     }
-    return request.id.toString()
+    return requestId
   }
 
   private suspend fun cleanupExpiredRequests() {
@@ -278,6 +307,51 @@ private data class KnowledgePageAiRequest(
   val instruction: String? = null,
 )
 
+private class KnowledgePageAiTaskStore(context: Context) {
+  private val file = File(context.noBackupFilesDir, FILE_NAME)
+
+  fun replace(
+    requestId: String,
+    kind: KnowledgePageAiTaskKind,
+  ) = synchronized(KnowledgePageAiTaskStore::class.java) {
+    write(
+      JSONObject()
+        .put("requestId", requestId)
+        .put("kind", kind.name),
+    )
+  }
+
+  fun reference(): KnowledgePageAiTaskReference? = synchronized(KnowledgePageAiTaskStore::class.java) {
+    val json = readJson() ?: return@synchronized null
+    val requestId = json.optString("requestId").takeIf(String::isNotBlank)
+      ?: return@synchronized null
+    val kind = json.optString("kind")
+      .let { saved -> KnowledgePageAiTaskKind.entries.firstOrNull { it.name == saved } }
+      ?: return@synchronized null
+    KnowledgePageAiTaskReference(requestId = requestId, kind = kind)
+  }
+
+  fun deleteIfMatches(requestId: String) = synchronized(KnowledgePageAiTaskStore::class.java) {
+    val json = readJson()
+    if (json == null || json.optString("requestId") == requestId) file.delete()
+  }
+
+  private fun readJson(): JSONObject? = runCatching { JSONObject(file.readText()) }.getOrNull()
+
+  private fun write(json: JSONObject) {
+    file.parentFile?.mkdirs()
+    val temporary = File(file.parentFile, "${file.name}.tmp")
+    temporary.writeText(json.toString())
+    if (!temporary.renameTo(file)) {
+      file.writeText(json.toString())
+      temporary.delete()
+    }
+  }
+
+  private companion object {
+    const val FILE_NAME = "knowledge-page-ai-task.json"
+  }
+}
 private class KnowledgePageAiRequestStore(context: Context) {
   private val directory = File(context.noBackupFilesDir, DIRECTORY_NAME).apply { mkdirs() }
 
@@ -338,6 +412,10 @@ internal fun shouldDeleteKnowledgePageAiRequest(
     state == WorkInfo.State.CANCELLED
   )
 
+private fun KnowledgePageAiOperation.toTaskKind(): KnowledgePageAiTaskKind = when (this) {
+  KnowledgePageAiOperation.CREATE -> KnowledgePageAiTaskKind.CREATE
+  KnowledgePageAiOperation.EDIT -> KnowledgePageAiTaskKind.EDIT
+}
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
     .mapNotNull(Throwable::message)
