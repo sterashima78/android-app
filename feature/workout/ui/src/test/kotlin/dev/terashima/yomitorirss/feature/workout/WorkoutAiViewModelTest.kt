@@ -69,13 +69,40 @@ class WorkoutAiViewModelTest {
     assertFalse(viewModel.state.value.loading)
   }
 
+  @Test
+  fun `画面再生成時に未消費のbackground taskへ再接続する`() = runTest(dispatcher) {
+    val tasks = RecordingTaskController(
+      result = WorkoutAiTaskSnapshot(
+        state = WorkoutAiTaskState.SUCCEEDED,
+        response = "再接続した回答",
+      ),
+      recoverableReference = WorkoutAiTaskReference(
+        requestId = "request-recovered",
+        type = WorkoutAiRequestType.POST_WORKOUT_REVIEW,
+      ),
+    )
+
+    val viewModel = WorkoutAiViewModel(
+      settingsRepository = FakeSettingsRepository(),
+      taskController = tasks,
+    )
+    advanceUntilIdle()
+
+    assertEquals(WorkoutAiRequestType.POST_WORKOUT_REVIEW, viewModel.state.value.lastRequestType)
+    assertEquals("再接続した回答", viewModel.state.value.response)
+    assertEquals(emptyList<WorkoutAiRequestType>(), tasks.requestTypes)
+    assertFalse(viewModel.state.value.loading)
+  }
+
   private class RecordingTaskController(
     private val result: WorkoutAiTaskSnapshot = WorkoutAiTaskSnapshot(
       state = WorkoutAiTaskState.SUCCEEDED,
       response = "回答",
     ),
+    private val recoverableReference: WorkoutAiTaskReference? = null,
   ) : WorkoutAiTaskController {
     val requestTypes = mutableListOf<WorkoutAiRequestType>()
+    val dismissedRequestIds = mutableListOf<String>()
 
     override suspend fun enqueue(type: WorkoutAiRequestType): String {
       requestTypes += type
@@ -83,6 +110,12 @@ class WorkoutAiViewModelTest {
     }
 
     override suspend fun snapshot(requestId: String): WorkoutAiTaskSnapshot = result
+
+    override suspend fun recoverableTask(): WorkoutAiTaskReference? = recoverableReference
+
+    override suspend fun dismiss(requestId: String) {
+      dismissedRequestIds += requestId
+    }
   }
 
   private class FakeSettingsRepository : WorkoutAiSettingsRepository {
