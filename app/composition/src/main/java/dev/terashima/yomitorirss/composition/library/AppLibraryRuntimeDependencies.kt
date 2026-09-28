@@ -2,14 +2,15 @@ package dev.terashima.yomitorirss.composition.library
 
 import android.app.Activity
 import android.app.Application
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.feature.bookreader.BookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.ReadingPositionStore
 import dev.terashima.yomitorirss.feature.bookreader.data.DefaultBookPageSourceFactory
 import dev.terashima.yomitorirss.feature.bookreader.data.SharedPreferencesReadingPositionStore
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationAiTaskController
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationSuggester
@@ -41,6 +42,7 @@ import dev.terashima.yomitorirss.feature.library.data.LibraryWorkerRuntimeDepend
 import dev.terashima.yomitorirss.feature.library.data.SharedPreferencesSmbMetadataNormalizationPromptRepository
 import dev.terashima.yomitorirss.feature.library.data.SmbMetadataAwareLibraryRepository
 import dev.terashima.yomitorirss.feature.library.data.WebLibraryMetadataClient
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationAiTaskController
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerLibraryOrganizationBatchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
@@ -53,8 +55,8 @@ internal class AppLibraryRuntimeDependencies(
   application: Application,
   database: DatabaseConnection,
   httpClient: HttpClient,
-  textInferenceProvider: () -> AiTextInference,
-  structuredTextInferenceProvider: () -> AiStructuredTextInference,
+  textInferenceProvider: () -> BackgroundAiTextInference,
+  structuredTextInferenceProvider: () -> BackgroundAiStructuredTextInference,
   resumedActivityProvider: () -> Activity?,
 ) {
   val runtime: LibraryRuntimeDependencies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -68,6 +70,7 @@ internal class AppLibraryRuntimeDependencies(
       structuredInference = structuredTextInferenceProvider(),
     )
     val organizationBatchScheduler = WorkManagerLibraryOrganizationBatchScheduler(application)
+    val organizationAiTaskController = WorkManagerLibraryOrganizationAiTaskController(application)
     val smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application)
     val smbMetadataNormalizationRepository = DefaultSmbMetadataNormalizationRepository(database, smbRepository)
     val smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application)
@@ -117,6 +120,7 @@ internal class AppLibraryRuntimeDependencies(
       webMetadataExtractorTester = webMetadataExtractorTester,
       organizationRepository = organizationRepository,
       organizationSuggester = organizationSuggester,
+      organizationAiTaskController = organizationAiTaskController,
       organizationBatchScheduler = organizationBatchScheduler,
       smbRepository = smbRepository,
       smbConnectionProfileRepository = smbConnectionProfileRepository,
@@ -151,6 +155,7 @@ internal data class LibraryRuntimeDependencies(
   val webMetadataExtractorTester: WebLibraryMetadataExtractorTester,
   val organizationRepository: LibraryOrganizationRepository,
   val organizationSuggester: LibraryOrganizationSuggester,
+  val organizationAiTaskController: LibraryOrganizationAiTaskController,
   val organizationBatchScheduler: LibraryOrganizationBatchScheduler,
   val smbRepository: SmbLibraryRepository,
   val smbConnectionProfileRepository: SmbConnectionProfileRepository,

@@ -7,14 +7,13 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionProvider
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgePage
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageCreator
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageEditor
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiRunner
 
 class RoutingKnowledgeGenerationService(
   private val local: DefaultKnowledgeGenerationService,
   private val cloud: DefaultKnowledgeGenerationService,
   private val executionSettings: KnowledgeExecutionSettings,
-) : KnowledgeBuilder, KnowledgeBuildRunner, KnowledgePageCreator, KnowledgePageEditor {
+) : KnowledgeBuilder, KnowledgeBuildRunner, KnowledgePageAiRunner {
   override suspend fun rebuild(): KnowledgeBuildResult =
     rebuild(executionSettings.currentProvider())
 
@@ -29,11 +28,17 @@ class RoutingKnowledgeGenerationService(
     topicId: String,
   ): Boolean = delegate(provider).rebuildTopic(topicId, autoWikiSourceLimit(provider))
 
-  override suspend fun createPage(request: String, sourcePageId: String?): KnowledgePage =
-    delegate(executionSettings.currentProvider()).createPage(request, sourcePageId)
+  override suspend fun createPage(
+    provider: KnowledgeExecutionProvider,
+    request: String,
+    sourcePageId: String?,
+  ): KnowledgePage = delegate(provider).createPage(request, sourcePageId)
 
-  override suspend fun editPage(id: String, instruction: String): KnowledgePage =
-    delegate(executionSettings.currentProvider()).editPage(id, instruction)
+  override suspend fun editPage(
+    provider: KnowledgeExecutionProvider,
+    pageId: String,
+    instruction: String,
+  ): KnowledgePage = delegate(provider).editPage(pageId, instruction)
 
   private fun delegate(provider: KnowledgeExecutionProvider): DefaultKnowledgeGenerationService = when (provider) {
     KnowledgeExecutionProvider.LOCAL -> local

@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
 import android.content.Context
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModelReader
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
 import dev.terashima.yomitorirss.feature.summary.SummaryExecutionProvider
@@ -12,7 +12,7 @@ import dev.terashima.yomitorirss.feature.summary.SummaryRequestResult
 class DefaultSummaryRepository(
   context: Context,
   private val database: YomitoriDatabase,
-  private val textInference: AiTextInference,
+  private val textInference: AiTextInferenceModelReader,
   private val executionSettings: SummaryExecutionSettings,
   private val cloudInference: SummaryCloudInference,
 ) : SummaryRepository {

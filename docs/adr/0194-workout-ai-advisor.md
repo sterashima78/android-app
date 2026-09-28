@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-27
 - Refines: [ADR-0016](0016-workout-tracking.md), [ADR-0165](0165-provider-neutral-text-inference-contract.md), [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md)
+- Amended by: [ADR-0273](0273-background-only-non-interactive-ai-inference.md)
 
 ## Context
 
@@ -104,3 +105,11 @@ Local / ChatGPT のどちらでも同じ budget 処理を適用し、provider �
 - [ADR-0165](0165-provider-neutral-text-inference-contract.md)
 - [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md)
 - [ADR-0190](0190-isolate-local-text-inference-process.md)
+## 2026-09-27 amendment
+
+ADR-0273により、section 5の「WorkoutAiViewModelがone-shot request stateを所有する」という判断のうち、推論実行lifetimeをViewModelに置く部分を変更する。
+
+- ViewModelは設定・メモ・表示状態を所有するが、AI生成自体はWorkout-owned durable background taskへ登録する。
+- Workerが実行直前にWorkout記録・メモ・設定を読み直し、promptを構築する。
+- UIはtask stateと生成結果を投影し、provider-neutral inference capabilityを直接保持しない。
+- Local / Cloudの明示選択、自動fallbackなし、Health由来read dataを入力しないという判断は維持する。

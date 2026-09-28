@@ -16,10 +16,11 @@ class AppBoundaryOwnershipArchitectureTest {
   private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
-  fun `Workout AI advisorはWorkout dataが所有する`() {
+  fun `Workout AI advisorはWorkout dataが所有しUIにはtask controllerだけを渡す`() {
     val advisorPath = "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutAiAdvisor.kt"
     val advisor = source(advisorPath)
     val workoutBuild = source("feature/workout/data/build.gradle.kts")
+    val supportingRuntime = source("$compositionSourceRoot/composition/supporting/AppSupportingRuntimeDependencies.kt")
     val routeComposition = source("$compositionSourceRoot/composition/route/AppSupportingRouteDependencies.kt")
 
     assertTrue("Workout data must own the AI advisor", File(repositoryRoot, advisorPath).isFile)
@@ -29,7 +30,9 @@ class AppBoundaryOwnershipArchitectureTest {
     )
     assertTrue("Workout data must depend on provider-neutral inference", ":core:ai-inference" in workoutBuild)
     assertTrue("Workout advisor must implement the feature contract", "WorkoutAiAdvisor" in advisor)
-    assertTrue("app composition must only compose the Workout-owned advisor", "DefaultWorkoutAiAdvisor(" in routeComposition)
+    assertTrue("composition runtime must compose the Workout-owned advisor", "DefaultWorkoutAiAdvisor(" in supportingRuntime)
+    assertTrue("route composition must pass only the durable task controller", "taskController = container.workoutAiTaskController" in routeComposition)
+    assertFalse("route composition must not receive raw inference", "container.textInference" in routeComposition)
   }
 
   @Test
@@ -49,6 +52,70 @@ class AppBoundaryOwnershipArchitectureTest {
     assertTrue(
       "app composition must consume the provider-owned adapter",
       "dev.terashima.yomitorirss.core.aicloudopenai.ChatGptTextInference" in aiComposition,
+    )
+  }
+
+  @Test
+  fun `feature UIは非対話型AI推論capabilityを参照しない`() {
+    val uiSources = File(repositoryRoot, "feature")
+      .walkTopDown()
+      .onEnter { directory -> directory.name !in setOf("build", ".gradle") }
+      .filter { file ->
+        file.isFile &&
+          file.extension == "kt" &&
+          "/ui/src/" in file.invariantSeparatorsPath
+      }
+      .toList()
+
+    val forbidden = listOf(
+      "BackgroundAiTextInference",
+      "BackgroundAiStructuredTextInference",
+      "requireAiBackgroundInferenceExecution",
+      "withAiBackgroundInference",
+    )
+    val offenders = uiSources.flatMap { file ->
+      val source = file.readText()
+      forbidden.filter { symbol -> symbol in source }
+        .map { symbol -> "${file.relativeTo(repositoryRoot).invariantSeparatorsPath}: $symbol" }
+    }
+
+    assertTrue("feature UI must not depend on background inference capabilities: $offenders", offenders.isEmpty())
+  }
+
+  @Test
+  fun `非対話型AI実行はWorker execution scopeでのみ開始する`() {
+    val inferenceScope = source(
+      "core/ai-inference/src/main/kotlin/dev/terashima/yomitorirss/core/aiinference/AiBackgroundInferenceScope.kt",
+    )
+    val workoutWorker = source(
+      "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt",
+    )
+    val knowledgeWorker = source(
+      "feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgePageAiBackground.kt",
+    )
+    val libraryWorker = source(
+      "feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/LibraryOrganizationAiBackground.kt",
+    )
+
+    assertTrue("AI execution scope must require a CoroutineWorker receiver", "CoroutineWorker.withAiBackgroundInference" in inferenceScope)
+    listOf(workoutWorker, knowledgeWorker, libraryWorker).forEach { source ->
+      assertTrue("non-interactive AI worker must enter the inference scope", "withAiBackgroundInference" in source)
+    }
+
+    val productionGuardOverrides = repositoryRoot.walkTopDown()
+      .onEnter { directory -> directory.name !in setOf(".git", ".gradle", "build") }
+      .filter { file ->
+        file.isFile &&
+          file.extension == "kt" &&
+          "/src/main/" in file.invariantSeparatorsPath &&
+          "override suspend fun validateBackgroundExecution" in file.readText()
+      }
+      .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
+      .sorted()
+      .toList()
+    assertTrue(
+      "production inference adapters must not bypass the base background guard: $productionGuardOverrides",
+      productionGuardOverrides.isEmpty(),
     )
   }
 

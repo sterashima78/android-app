@@ -15,7 +15,7 @@ import android.os.Message
 import android.os.Messenger
 import android.os.Process
 import android.os.RemoteException
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
@@ -88,12 +88,12 @@ private const val KEY_GENERATING_DURATION_MILLIS = "generating_duration_millis"
  * Local one-shot text inference whose generation engine lives in a short-lived app subprocess.
  *
  * Model metadata and token counting stay in the main process. Only generation crosses the Binder
- * boundary so Summary, Knowledge and Library keep the provider-neutral [AiTextInference] contract.
+ * boundary so Summary, Knowledge and Library keep the provider-neutral [BackgroundAiTextInference] contract.
  */
 class ProcessIsolatedLocalAiTextInference(
   context: Context,
   private val manager: LocalModelManager,
-) : AiTextInference {
+) : BackgroundAiTextInference() {
   private val appContext = context.applicationContext
   private val _progress = MutableStateFlow<AiTextInferenceProgress?>(null)
   private val remote = RemoteLocalTextInferenceClient(appContext) { progress ->
@@ -111,7 +111,7 @@ class ProcessIsolatedLocalAiTextInference(
 
   override fun countTokens(text: String): Int = manager.countTokens(text)
 
-  override suspend fun generate(prompt: String): String {
+  protected override suspend fun generateInBackground(prompt: String): String {
     require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
     require(prompt.length <= TEXT_INFERENCE_IPC_MAX_CHARS) { "推論プロンプトが長すぎます" }
     return try {

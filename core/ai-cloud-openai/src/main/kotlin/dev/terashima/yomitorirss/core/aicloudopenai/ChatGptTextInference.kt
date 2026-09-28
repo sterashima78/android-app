@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import kotlinx.coroutines.CancellationException
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.emptyFlow
 class ChatGptTextInference(
   private val client: ChatGptInferenceClient,
   private val modelPreferences: ChatGptModelPreferences,
-) : AiTextInference {
+) : BackgroundAiTextInference() {
   override val progress: Flow<AiTextInferenceProgress?> = emptyFlow()
 
   override fun selectedModel(): AiTextInferenceModel? = modelPreferences.selectedModelId()?.let { modelId ->
@@ -27,8 +27,9 @@ class ChatGptTextInference(
 
   override fun countTokens(text: String): Int = text.toByteArray(Charsets.UTF_8).size
 
-  override suspend fun generate(prompt: String): String = try {
-    val modelId = modelPreferences.selectedModelId()
+  protected override suspend fun generateInBackground(prompt: String): String {
+    return try {
+      val modelId = modelPreferences.selectedModelId()
       ?: error("ChatGPT / Codex の利用モデルを選択してください")
     client.generate(modelId, prompt).text
   } catch (error: CancellationException) {
@@ -38,8 +39,9 @@ class ChatGptTextInference(
   } catch (error: IllegalStateException) {
     if (error.message.orEmpty().contains("利用モデルを選択")) throw error
     throw IllegalStateException("ChatGPT / Codex のテキスト生成に失敗しました")
-  } catch (_: Throwable) {
-    throw IllegalStateException("ChatGPT / Codex のテキスト生成に失敗しました")
+    } catch (_: Throwable) {
+      throw IllegalStateException("ChatGPT / Codex のテキスト生成に失敗しました")
+    }
   }
 
   private fun safeProviderMessage(error: ChatGptProviderException): String = when (error.kind) {

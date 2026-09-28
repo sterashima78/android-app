@@ -128,6 +128,8 @@ Mail Worker は `MailWorkerFactory` から application scope の `MailRepository
 
 ## Background runtime ownership
 
+非対話型AI推論はUI / ViewModelのcoroutine lifetimeから直接実行しない。結果を開始画面のlifetimeに依存せず後から利用できる生成・分類・学習は、owning featureのscheduler / controllerを通じてdurable background workへ登録し、実際のinference callはfeature-owned background runtimeから行う。Chatやstreaming conversation、保存前の明示的な推論テストなど、画面上の対話session自体が処理単位のものは例外とする。provider選択、network constraint、Local / Cloud pause、charging resumeもbackground runtime側で解決する。
+
 feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state interpretation は owning feature の data/runtime 側に置く。`:app` には feature 固有 background business logic や compatibility Worker を置かず、`:app:composition` の application worker factory / startup runtime は feature factory、observer、scheduler と application-scope dependency graph の接続だけを行う。
 
 現在の互換性基準は最新版アプリからの更新であり、過去の app package FQCN を参照する WorkManager request のための shim は維持しない。将来 Worker class を移動し互換性対応が必要になった場合は、対象期間と終了条件を ADR で明示する。依存注入方式だけを変更する場合も enqueue 済み request が参照する Worker FQCN は維持する。
@@ -153,6 +155,7 @@ feature 固有の Worker、WorkerFactory、scheduler/controller、queue-state in
 機械的に検査できる規則はレビューだけに依存しない。
 
 - Gradle dependency / source ownership: `verifyArchitecture`
+- feature UIのbackground inference capability非依存とnon-interactive Worker execution scope: `AppBoundaryOwnershipArchitectureTest`
 - module map / ADR identifier-link integrity / current architecture documentation compatibility: `gradle/architecture-metadata.gradle.kts`
 - durable table ownership / created-table registration / app presentation composition / Android platform baseline: `gradle/table-ownership.gradle.kts`
 - durable table manifest: `config/architecture/table-ownership.tsv`

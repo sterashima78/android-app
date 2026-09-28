@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.workout.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiProvider
@@ -42,7 +42,7 @@ class DefaultWorkoutAiAdvisorTest {
 
   private class RecordingInference(
     private val promptBudgetChars: Int = 16_000,
-  ) : AiTextInference {
+  ) : BackgroundAiTextInference() {
     val prompts = mutableListOf<String>()
 
     override val progress: Flow<AiTextInferenceProgress?> = emptyFlow()
@@ -58,7 +58,9 @@ class DefaultWorkoutAiAdvisorTest {
 
     override fun countTokens(text: String): Int = text.length
 
-    override suspend fun generate(prompt: String): String {
+    protected override suspend fun validateBackgroundExecution() = Unit
+
+  protected override suspend fun generateInBackground(prompt: String): String {
       prompts += prompt
       return "response"
     }

@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.ServiceInfo
+import java.util.concurrent.TimeUnit
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -18,6 +19,7 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.await
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
+import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
@@ -54,8 +56,12 @@ class WorkManagerRssRecommendationTaskScheduler(
     val policy = repository.loadPolicy()
     if (!policy.enabled) {
       repository.clearTasks()
-      setResumeOnChargingScheduled(false)
       workManager.cancelUniqueWork(WORK_NAME).await()
+      if (repository.listPendingFeedback().isEmpty()) {
+        setResumeOnChargingScheduled(false)
+      } else {
+        kick()
+      }
       return
     }
 
@@ -72,7 +78,10 @@ class WorkManagerRssRecommendationTaskScheduler(
   }
 
   override fun kick() {
-    if (repository.listTasks().isEmpty()) return
+    val hasScoringTasks = repository.listTasks().isNotEmpty()
+    val hasPendingFeedback = repository.listPendingFeedback().isNotEmpty()
+    if (!hasScoringTasks && !hasPendingFeedback) return
+
     val provider = repository.loadPolicy().executionProvider
     if (isRssRecommendationProviderPaused(appContext, provider)) {
       if (provider == RssRecommendationExecutionProvider.LOCAL) {
@@ -81,6 +90,12 @@ class WorkManagerRssRecommendationTaskScheduler(
       }
       return
     }
+
+    setResumeOnChargingScheduled(false)
+    if (hasPendingFeedback) {
+      enqueueFeedbackLearning(ExistingWorkPolicy.KEEP)
+    }
+    if (!hasScoringTasks) return
 
     val requestBuilder = OneTimeWorkRequestBuilder<RssRecommendationWorker>()
     if (provider == RssRecommendationExecutionProvider.CLOUD) {
@@ -96,11 +111,49 @@ class WorkManagerRssRecommendationTaskScheduler(
     )
   }
 
+  override fun scheduleFeedbackLearning() {
+    if (repository.listPendingFeedback().isEmpty()) {
+      workManager.cancelUniqueWork(LEARNING_WORK_NAME)
+      return
+    }
+    val provider = repository.loadPolicy().executionProvider
+    if (isRssRecommendationProviderPaused(appContext, provider)) {
+      if (provider == RssRecommendationExecutionProvider.LOCAL) {
+        val execution = LocalAiBackgroundExecutionPreferences(appContext)
+        setResumeOnChargingScheduled(execution.resumeWhenCharging)
+      }
+      return
+    }
+    setResumeOnChargingScheduled(false)
+    enqueueFeedbackLearning(ExistingWorkPolicy.REPLACE)
+  }
+
+  private fun enqueueFeedbackLearning(policy: ExistingWorkPolicy) {
+    val latestPendingAt = repository.listPendingFeedback().maxOfOrNull { it.createdAt } ?: return
+    val provider = repository.loadPolicy().executionProvider
+    val requestBuilder = OneTimeWorkRequestBuilder<RssRecommendationLearningWorker>()
+      .setInitialDelay(
+        feedbackLearningDelayMillis(latestPendingAt, System.currentTimeMillis()),
+        TimeUnit.MILLISECONDS,
+      )
+    if (provider == RssRecommendationExecutionProvider.CLOUD) {
+      requestBuilder.setConstraints(
+        Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+      )
+    }
+    workManager.enqueueUniqueWork(
+      LEARNING_WORK_NAME,
+      policy,
+      requestBuilder.build(),
+    )
+  }
+
   override fun isExecutionPaused(provider: RssRecommendationExecutionProvider): Boolean =
     isRssRecommendationProviderPaused(appContext, provider)
 
   override suspend fun pauseForGlobalGate() {
     workManager.cancelUniqueWork(WORK_NAME).await()
+    workManager.cancelUniqueWork(LEARNING_WORK_NAME).await()
     repository.requeueInterruptedTasks()
   }
 
@@ -111,7 +164,9 @@ class WorkManagerRssRecommendationTaskScheduler(
     }
     if (repository.loadPolicy().executionProvider != RssRecommendationExecutionProvider.LOCAL) return
     val execution = LocalAiBackgroundExecutionPreferences(appContext)
-    if (!execution.paused || !execution.resumeWhenCharging || repository.listTasks().isEmpty()) return
+    val hasPendingWork =
+      repository.listTasks().isNotEmpty() || repository.listPendingFeedback().isNotEmpty()
+    if (!execution.paused || !execution.resumeWhenCharging || !hasPendingWork) return
 
     val request = OneTimeWorkRequestBuilder<RssRecommendationResumeOnChargingWorker>()
       .setConstraints(
@@ -129,6 +184,7 @@ class WorkManagerRssRecommendationTaskScheduler(
 
   internal companion object {
     const val WORK_NAME = "rss-recommendation-scoring"
+    const val LEARNING_WORK_NAME = "rss-recommendation-learning"
     const val RESUME_ON_CHARGING_WORK_NAME = "rss-recommendation-resume-on-charging"
   }
 }
@@ -140,7 +196,9 @@ internal class RssRecommendationWorker(
   private val repository: RssRecommendationRepository,
   private val service: RssRecommendationService,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runScoringWork() }
+
+  private suspend fun runScoringWork(): Result {
     if (isRssRecommendationProviderPaused(
         applicationContext,
         repository.loadPolicy().executionProvider,
@@ -229,6 +287,38 @@ internal class RssRecommendationWorker(
   }
 }
 
+internal class RssRecommendationLearningWorker(
+  appContext: Context,
+  params: WorkerParameters,
+  private val repository: RssRecommendationRepository,
+  private val service: RssRecommendationService,
+  private val scheduler: RssRecommendationTaskScheduler,
+) : CoroutineWorker(appContext, params) {
+  override suspend fun doWork(): Result = withAiBackgroundInference { runLearningWork() }
+
+  private suspend fun runLearningWork(): Result {
+    if (repository.listPendingFeedback().isEmpty()) return Result.success()
+    val provider = repository.loadPolicy().executionProvider
+    if (isRssRecommendationProviderPaused(applicationContext, provider)) {
+      return Result.success()
+    }
+
+    return try {
+      val updated = service.improvePendingFeedback()
+      if (updated == null) {
+        Result.retry()
+      } else {
+        scheduler.enqueueUnread()
+        Result.success()
+      }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Throwable) {
+      Result.retry()
+    }
+  }
+}
+
 internal class RssRecommendationResumeOnChargingWorker(
   appContext: Context,
   params: WorkerParameters,
@@ -261,6 +351,13 @@ class RssRecommendationWorkerFactory(
       repository = repositoryProvider(),
       service = serviceProvider(),
     )
+    RssRecommendationLearningWorker::class.java.name -> RssRecommendationLearningWorker(
+      appContext = appContext,
+      params = workerParameters,
+      repository = repositoryProvider(),
+      service = serviceProvider(),
+      scheduler = schedulerProvider(),
+    )
     RssRecommendationResumeOnChargingWorker::class.java.name -> RssRecommendationResumeOnChargingWorker(
       appContext = appContext,
       params = workerParameters,
@@ -269,6 +366,12 @@ class RssRecommendationWorkerFactory(
     else -> null
   }
 }
+
+internal fun feedbackLearningDelayMillis(
+  latestPendingAt: Long,
+  nowMillis: Long,
+): Long =
+  (latestPendingAt + RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS - nowMillis).coerceAtLeast(0L)
 
 internal fun recommendationScoringCandidates(
   articles: List<Article>,
@@ -290,3 +393,5 @@ internal fun isRssRecommendationProviderPaused(
   RssRecommendationExecutionProvider.LOCAL -> LocalAiBackgroundExecutionPreferences(context).paused
   RssRecommendationExecutionProvider.CLOUD -> CloudAiBackgroundExecutionPreferences(context).paused
 }
+
+private const val RECOMMENDATION_FEEDBACK_DEBOUNCE_MILLIS = 30_000L

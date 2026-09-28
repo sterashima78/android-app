@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.workout
 
-import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -10,7 +9,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 
@@ -29,17 +28,12 @@ class WorkoutAiViewModelTest {
   }
 
   @Test
-  fun `ChatGPTを選択すると明示したproviderだけでメニュー提案する`() = runTest(dispatcher) {
+  fun `メニュー提案はAIを直接実行せずbackground taskへ登録する`() = runTest(dispatcher) {
     val settingsRepository = FakeSettingsRepository()
-    val advisor = RecordingAdvisor()
-    val today = LocalDate.now().toString()
-    val reader = object : WorkoutReader {
-      override suspend fun load(): WorkoutSnapshot = newWorkoutSnapshot(today)
-    }
+    val tasks = RecordingTaskController()
     val viewModel = WorkoutAiViewModel(
-      workoutReader = reader,
       settingsRepository = settingsRepository,
-      advisor = advisor,
+      taskController = tasks,
     )
     advanceUntilIdle()
 
@@ -48,55 +42,80 @@ class WorkoutAiViewModelTest {
     viewModel.requestMenuSuggestion()
     advanceUntilIdle()
 
-    assertEquals(listOf(WorkoutAiProvider.CHATGPT), advisor.providers)
-    assertTrue(advisor.prompts.single().contains("次のJSONだけで返してください"))
+    assertEquals(WorkoutAiProvider.CHATGPT, settingsRepository.loadSettings().provider)
+    assertEquals(listOf(WorkoutAiRequestType.MENU_SUGGESTION), tasks.requestTypes)
     assertEquals("回答", viewModel.state.value.response)
+    assertFalse(viewModel.state.value.loading)
   }
 
   @Test
-  fun `要求時にWorkoutReaderを再読込して最新セットを使う`() = runTest(dispatcher) {
-    var loads = 0
-    val today = LocalDate.now().toString()
-    val reader = object : WorkoutReader {
-      override suspend fun load(): WorkoutSnapshot {
-        loads += 1
-        return newWorkoutSnapshot(today).copy(
-          today = WorkoutDay(
-            date = today,
-            sets = listOf(
-              WorkoutSet(
-                id = "latest",
-                exerciseId = "push-up",
-                exerciseName = "腕立て伏せ",
-                unit = WorkoutUnit.REPS,
-                type = WorkoutExerciseType.REPS,
-                amount = 15,
-                recordedAt = "${today}T08:00:00+09:00",
-              ),
-            ),
-          ),
-        )
-      }
-    }
-    val advisor = RecordingAdvisor()
-    val viewModel = WorkoutAiViewModel(reader, FakeSettingsRepository(), advisor)
+  fun `background taskの失敗を画面状態へ投影する`() = runTest(dispatcher) {
+    val tasks = RecordingTaskController(
+      result = WorkoutAiTaskSnapshot(
+        state = WorkoutAiTaskState.FAILED,
+        error = "生成に失敗しました",
+      ),
+    )
+    val viewModel = WorkoutAiViewModel(
+      settingsRepository = FakeSettingsRepository(),
+      taskController = tasks,
+    )
     advanceUntilIdle()
 
     viewModel.requestPostWorkoutReview()
     advanceUntilIdle()
 
-    assertEquals(1, loads)
-    assertTrue(advisor.prompts.single().contains("腕立て伏せ: 15回"))
+    assertEquals("生成に失敗しました", viewModel.state.value.errorMessage)
+    assertEquals(listOf("request-1"), tasks.dismissedRequestIds)
+    assertFalse(viewModel.state.value.loading)
   }
 
-  private class RecordingAdvisor : WorkoutAiAdvisor {
-    val providers = mutableListOf<WorkoutAiProvider>()
-    val prompts = mutableListOf<String>()
+  @Test
+  fun `画面再生成時に未消費のbackground taskへ再接続する`() = runTest(dispatcher) {
+    val tasks = RecordingTaskController(
+      result = WorkoutAiTaskSnapshot(
+        state = WorkoutAiTaskState.SUCCEEDED,
+        response = "再接続した回答",
+      ),
+      recoverableReference = WorkoutAiTaskReference(
+        requestId = "request-recovered",
+        type = WorkoutAiRequestType.POST_WORKOUT_REVIEW,
+      ),
+    )
 
-    override suspend fun generate(provider: WorkoutAiProvider, prompt: String): String {
-      providers += provider
-      prompts += prompt
-      return "回答"
+    val viewModel = WorkoutAiViewModel(
+      settingsRepository = FakeSettingsRepository(),
+      taskController = tasks,
+    )
+    advanceUntilIdle()
+
+    assertEquals(WorkoutAiRequestType.POST_WORKOUT_REVIEW, viewModel.state.value.lastRequestType)
+    assertEquals("再接続した回答", viewModel.state.value.response)
+    assertEquals(emptyList<WorkoutAiRequestType>(), tasks.requestTypes)
+    assertFalse(viewModel.state.value.loading)
+  }
+
+  private class RecordingTaskController(
+    private val result: WorkoutAiTaskSnapshot = WorkoutAiTaskSnapshot(
+      state = WorkoutAiTaskState.SUCCEEDED,
+      response = "回答",
+    ),
+    private val recoverableReference: WorkoutAiTaskReference? = null,
+  ) : WorkoutAiTaskController {
+    val requestTypes = mutableListOf<WorkoutAiRequestType>()
+    val dismissedRequestIds = mutableListOf<String>()
+
+    override suspend fun enqueue(type: WorkoutAiRequestType): String {
+      requestTypes += type
+      return "request-1"
+    }
+
+    override suspend fun snapshot(requestId: String): WorkoutAiTaskSnapshot = result
+
+    override suspend fun recoverableTask(): WorkoutAiTaskReference? = recoverableReference
+
+    override suspend fun dismiss(requestId: String) {
+      dismissedRequestIds += requestId
     }
   }
 

@@ -15,7 +15,7 @@ import android.os.Message
 import android.os.Messenger
 import android.os.Process
 import android.os.RemoteException
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
@@ -72,10 +72,10 @@ private const val KEY_CALL_ARGUMENT_VALUES = "call_argument_values"
 class ProcessIsolatedLocalAiStructuredTextInference(
   context: Context,
   private val manager: LocalModelManager,
-) : AiStructuredTextInference {
+) : BackgroundAiStructuredTextInference() {
   private val appContext = context.applicationContext
 
-  override suspend fun generateToolCall(
+  protected override suspend fun generateToolCallInBackground(
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,

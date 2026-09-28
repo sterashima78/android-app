@@ -1,12 +1,23 @@
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  id("com.android.library")
 }
 
-kotlin {
-  jvmToolchain(17)
+android {
+  namespace = "dev.terashima.yomitorirss.core.aiinference"
+  compileSdk = 37
+
+  defaultConfig {
+    minSdk = 35
+  }
+
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
 }
 
 dependencies {
+  implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 
   testImplementation("junit:junit:4.13.2")

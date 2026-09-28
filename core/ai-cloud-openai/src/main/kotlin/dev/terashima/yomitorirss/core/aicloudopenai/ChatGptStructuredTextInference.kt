@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.core.aicloudopenai
 
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
 import kotlinx.coroutines.CancellationException
@@ -8,13 +8,14 @@ import kotlinx.coroutines.CancellationException
 class ChatGptStructuredTextInference(
   private val client: ChatGptInferenceClient,
   private val modelPreferences: ChatGptModelPreferences,
-) : AiStructuredTextInference {
-  override suspend fun generateToolCall(
+) : BackgroundAiStructuredTextInference() {
+  protected override suspend fun generateToolCallInBackground(
     systemInstruction: String,
     userMessage: String,
     tool: AiStructuredTool,
-  ): AiStructuredToolCall? = try {
-    val modelId = modelPreferences.selectedModelId()
+  ): AiStructuredToolCall? {
+    return try {
+      val modelId = modelPreferences.selectedModelId()
       ?: error("クラウドAIの利用モデルを選択してください")
     client.generateToolCall(
       modelId = modelId,
@@ -29,8 +30,9 @@ class ChatGptStructuredTextInference(
   } catch (error: IllegalStateException) {
     if (error.message.orEmpty().contains("利用モデルを選択")) throw error
     throw IllegalStateException("クラウドAIの構造化生成に失敗しました")
-  } catch (_: Throwable) {
-    throw IllegalStateException("クラウドAIの構造化生成に失敗しました")
+    } catch (_: Throwable) {
+      throw IllegalStateException("クラウドAIの構造化生成に失敗しました")
+    }
   }
 
   private fun safeStructuredProviderMessage(error: ChatGptProviderException): String = when (error.kind) {

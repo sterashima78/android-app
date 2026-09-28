@@ -18,7 +18,11 @@ android {
 
 dependencies {
   implementation(project(":core:ai-inference"))
+  implementation(project(":core:background"))
   implementation(project(":feature:workout:domain"))
+  implementation(libs.androidx.core.ktx)
+  implementation("androidx.work:work-runtime-ktx:2.11.2")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
   implementation("androidx.health.connect:connect-client:1.1.0")
 
   testImplementation(libs.junit4)

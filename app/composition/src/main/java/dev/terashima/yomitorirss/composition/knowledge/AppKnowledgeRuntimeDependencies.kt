@@ -1,14 +1,13 @@
 package dev.terashima.yomitorirss.composition.knowledge
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildRunner
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuilder
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageCreator
-import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageEditor
+import dev.terashima.yomitorirss.feature.knowledge.KnowledgePageAiRunner
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeRepository
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeGenerationService
 import dev.terashima.yomitorirss.feature.knowledge.data.DefaultKnowledgeRepository
@@ -23,8 +22,8 @@ internal class AppKnowledgeRuntimeDependencies(
   dataChanges: DataChangeNotifier,
   bookmarks: BookmarkRepository,
   summaries: SummaryRepository,
-  localTextInference: AiTextInference,
-  cloudTextInference: AiTextInference,
+  localTextInference: BackgroundAiTextInference,
+  cloudTextInference: BackgroundAiTextInference,
   executionSettings: KnowledgeExecutionSettings,
 ) {
   private val knowledgePageStore: SqlKnowledgePageStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -63,6 +62,5 @@ internal class AppKnowledgeRuntimeDependencies(
 
   val knowledgeBuilder: KnowledgeBuilder get() = generationService
   val knowledgeBuildRunner: KnowledgeBuildRunner get() = generationService
-  val knowledgePageCreator: KnowledgePageCreator get() = generationService
-  val knowledgePageEditor: KnowledgePageEditor get() = generationService
+  val knowledgePageAiRunner: KnowledgePageAiRunner get() = generationService
 }

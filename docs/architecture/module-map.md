@@ -67,7 +67,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 `core` は複数 feature が共有する技術 capability を提供し、アプリ固有 Domain concept や feature-specific use case を所有しない。
 
-`:core:ai-inference` は provider 非依存の単発テキスト推論 contract とモデル能力・進捗を所有する。`:core:ai-runtime` は Gemma / LiteRT-LM、tokenizer、Engine lifecycle、benchmark、Vision / Conversation などローカル実装固有の capability を所有し、`LocalAiTextInference` から共通 contract へ投影する。Summary / Knowledge / Library 等の prompt や生成ポリシーは owning feature に残す。
+`:core:ai-inference` は provider 非依存のmodel read capabilityとbackground-only one-shot text / structured inference contract、およびWorker execution scopeを所有する。production one-shot adapterはWorker scope外の生成を拒否し、feature UIへ生成capabilityを渡さない。`:core:ai-runtime` は local model runtime、tokenizer、Engine lifecycle、benchmark、Vision / Conversation などローカル実装固有の capability を所有し、共通background inference contractへ投影する。Summary / Knowledge / Library 等の prompt や生成ポリシーは owning feature に残す。
 
 `:core:ai-cloud-openai` は ChatGPT OAuth、credential refresh、ChatGPT account identity、Codex model catalog、Codex Responses transport、native Web search request / response mapping など OpenAI/ChatGPT 固有の cloud protocol adapter を所有する。endpoint、OAuth field、model catalog field、stream event type、Web search wire format はこの module に隔離する。Summary / Knowledge / Podcast の Domain / UI はこの module へ依存せず、provider-specific infrastructure adapterを実装する各feature Dataのみが必要に応じて依存する。Summary は provider 選択、要約 prompt、metadata policy を、Knowledge は prompt budget / cache variant / feature failure semantics を、Podcast はchapter単位のretry / checkpoint policyをそれぞれ所有する。
 
@@ -120,7 +120,7 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 
 Summary の Local / ChatGPT provider 選択、URL 起点の cloud 要約可否、cloud metadata generation policy は `:feature:summary` が所有する。Local provider は prepared article content と `LocalAiBackgroundTaskGate` を利用し、ChatGPT provider は本文 prefetch を行わず URL と prompt を cloud capability へ渡す。Cloud path の task progress は local pipeline の `FETCHING_ARTICLE` を流用せず、cloud summary / metadata generation の semantic stage を記録する。
 
-Knowledge の Local / ChatGPT provider 選択は `:feature:knowledge` が所有する。自動Wiki再構築、新規ページ生成、LLM編集はいずれもユーザーが明示選択したproviderを利用し、入力内容によるcloud eligibilityや自動routingは行わない。Local background buildだけ `LocalAiBackgroundTaskGate` とLocal pause / charging resumeを利用し、ChatGPT background buildはCloud pauseとnetwork constraintを利用する。enqueue済みbuildはprovider snapshotをWorkManager inputへ保持し、provider変更時は新providerのworkへ置き換える。
+Knowledge の Local / Cloud provider 選択は `:feature:knowledge` が所有する。自動Wiki再構築、新規ページ生成、AI編集はいずれもユーザーが明示選択したproviderを利用し、入力内容によるcloud eligibilityや自動routingは行わない。これらの非対話型生成はすべてKnowledge-owned background taskから実行する。Local executionは `LocalAiBackgroundTaskGate` とLocal pause / charging resumeを利用し、Cloud executionはCloud pauseとnetwork constraintを利用する。enqueue済みworkはprovider snapshotを保持する。
 
 `:feature:settings` は provider connection/model setting と task routing setting を別 presentation surface として表示する。`ChatGPT / Codex` は login・model catalog・model選択・接続テストを扱い、`AI実行設定` は各 owning feature の provider routing settingを操作する。Settings 自身は routing decision を所有しない。Settings から起動する Summary Prompt / AI Task Queue / Drive Backup については、各 feature の public UI contract を利用しつつ、どの overlay を表示するかという Settings 固有の presentation state を `:feature:settings:ui` が所有する。
 

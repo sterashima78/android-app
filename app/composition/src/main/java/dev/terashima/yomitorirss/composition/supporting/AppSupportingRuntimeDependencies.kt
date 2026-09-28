@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.composition.supporting
 
 import android.app.Application
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
@@ -24,8 +25,15 @@ import dev.terashima.yomitorirss.feature.web.LanWebServerController
 import dev.terashima.yomitorirss.feature.web.data.AndroidLanWebServerController
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.widget.data.WorkManagerWidgetRefreshScheduler
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiAdvisor
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiSettingsRepository
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskController
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
+import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiAdvisor
+import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutRepository
+import dev.terashima.yomitorirss.feature.workout.data.WorkManagerWorkoutAiTaskController
+import dev.terashima.yomitorirss.feature.workout.data.WorkoutAiWorkerFactory
 import dev.terashima.yomitorirss.feature.workout.data.HealthConnectWorkoutHistoryExporter
 import dev.terashima.yomitorirss.feature.x.XViewerCssRepository
 import dev.terashima.yomitorirss.feature.x.data.SharedPreferencesXViewerCssRepository
@@ -41,6 +49,8 @@ internal class AppSupportingRuntimeDependencies(
   private val dataChanges: DataChangeNotifier,
   private val persistenceChanges: PersistenceChangeNotifier,
   private val httpClient: HttpClient,
+  private val localTextInference: BackgroundAiTextInference,
+  private val cloudTextInference: BackgroundAiTextInference,
 ) {
   val assetRepository: AssetRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultAssetRepository(application, databaseConnection)
@@ -60,6 +70,29 @@ internal class AppSupportingRuntimeDependencies(
 
   val workoutHistoryExporter: HealthConnectWorkoutHistoryExporter by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     HealthConnectWorkoutHistoryExporter(application)
+  }
+
+  val workoutAiSettingsRepository: WorkoutAiSettingsRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultWorkoutAiSettingsRepository(application)
+  }
+
+  val workoutAiAdvisor: WorkoutAiAdvisor by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultWorkoutAiAdvisor(
+      localInference = localTextInference,
+      cloudInference = cloudTextInference,
+    )
+  }
+
+  val workoutAiTaskController: WorkoutAiTaskController by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkManagerWorkoutAiTaskController(application, workoutAiSettingsRepository)
+  }
+
+  val workoutAiWorkerFactory: WorkoutAiWorkerFactory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    WorkoutAiWorkerFactory(
+      workoutReaderProvider = { workoutRepository },
+      settingsRepositoryProvider = { workoutAiSettingsRepository },
+      advisorProvider = { workoutAiAdvisor },
+    )
   }
 
   val calendarRepository: CalendarRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

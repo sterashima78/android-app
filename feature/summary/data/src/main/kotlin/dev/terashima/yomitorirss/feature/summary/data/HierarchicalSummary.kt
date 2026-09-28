@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.summary.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.feature.summary.renderSummaryPrompt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -20,7 +20,7 @@ data class HierarchicalSummaryProgress(
   val total: Int? = null,
 )
 
-suspend fun AiTextInference.summarizeHierarchically(
+suspend fun BackgroundAiTextInference.summarizeHierarchically(
   text: String,
   prompt: String,
   promptSuffix: String = "",
@@ -112,7 +112,7 @@ suspend fun AiTextInference.summarizeHierarchically(
   return summarizeText(finalContext, prompt, promptSuffix)
 }
 
-suspend fun AiTextInference.summarizeText(
+suspend fun BackgroundAiTextInference.summarizeText(
   text: String,
   prompt: String,
   promptSuffix: String = "",

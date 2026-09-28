@@ -99,6 +99,8 @@ class AppContainer(
       dataChanges = dataChanges,
       persistenceChanges = persistenceChanges,
       httpClient = httpClient,
+      localTextInference = aiCoreRuntime.textInference,
+      cloudTextInference = aiCoreRuntime.cloudTextInference,
     )
   }
 
@@ -186,12 +188,17 @@ class AppContainer(
   internal val libraryWorkerRuntime get() = libraryRuntime.workerRuntime
   internal val knowledgeBuildScheduler get() = knowledgeTaskRuntime.knowledgeBuildScheduler
   internal val knowledgeBuildRunner get() = knowledgeRuntime.knowledgeBuildRunner
+  internal val knowledgePageAiRunner get() = knowledgeRuntime.knowledgePageAiRunner
+  internal val knowledgePageAiTaskController get() = knowledgeTaskRuntime.knowledgePageAiTaskController
   internal val knowledgeExecutionSettings get() = knowledgeTaskRuntime.knowledgeExecutionSettings
   internal val textInference get() = aiCoreRuntime.textInference
   internal val cloudTextInference get() = aiCoreRuntime.cloudTextInference
   internal val summaryCloudInference get() = aiCoreRuntime.summaryCloudInference
   internal val summaryExecutionSettings get() = aiCoreRuntime.summaryExecutionSettings
   internal val podcastWorkerFactory get() = podcastRuntime.workerFactory
+  internal val workoutAiWorkerFactory get() = supportingRuntime.workoutAiWorkerFactory
+  internal val workoutAiSettingsRepository get() = supportingRuntime.workoutAiSettingsRepository
+  internal val workoutAiTaskController get() = supportingRuntime.workoutAiTaskController
 
   val audioPlaybackController get() = audioRuntime.playbackController
   val podcastViewModelFactory get() = podcastRuntime.viewModelFactory
@@ -234,8 +241,6 @@ class AppContainer(
   val summaryTaskQueueRepository get() = crossFeatureRuntime.summaryTaskQueueRepository
   val knowledgeRepository get() = knowledgeRuntime.knowledgeRepository
   val knowledgeBuilder get() = knowledgeRuntime.knowledgeBuilder
-  val knowledgePageCreator get() = knowledgeRuntime.knowledgePageCreator
-  val knowledgePageEditor get() = knowledgeRuntime.knowledgePageEditor
   val aiTaskQueueRepository get() = crossFeatureRuntime.aiTaskQueueRepository
   val smbConnectionProfileRepository get() = libraryRuntime.smbConnectionProfileRepository
 

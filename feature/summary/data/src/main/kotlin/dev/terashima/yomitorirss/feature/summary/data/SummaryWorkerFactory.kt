@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
-import dev.terashima.yomitorirss.core.aiinference.AiTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.summary.SummaryCloudInference
@@ -15,7 +15,7 @@ class SummaryWorkerFactory(
   private val runtimeProvider: () -> SummaryRuntimeDependencies,
   private val articleContentClientProvider: () -> ArticleContentClient,
   private val databaseProvider: () -> YomitoriDatabase,
-  private val textInferenceProvider: () -> AiTextInference,
+  private val textInferenceProvider: () -> BackgroundAiTextInference,
   private val cloudInferenceProvider: () -> SummaryCloudInference,
   private val executionSettingsProvider: () -> SummaryExecutionSettings,
   private val runBookmarkAutoEnrichmentBackfill: suspend () -> Unit,
@@ -32,7 +32,7 @@ class SummaryWorkerFactory(
     LazyThreadSafetyMode.SYNCHRONIZED,
     databaseProvider,
   )
-  private val textInference: AiTextInference by lazy(
+  private val textInference: BackgroundAiTextInference by lazy(
     LazyThreadSafetyMode.SYNCHRONIZED,
     textInferenceProvider,
   )

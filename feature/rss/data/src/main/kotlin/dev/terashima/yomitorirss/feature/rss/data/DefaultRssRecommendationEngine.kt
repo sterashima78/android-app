@@ -1,6 +1,6 @@
 package dev.terashima.yomitorirss.feature.rss.data
 
-import dev.terashima.yomitorirss.core.aiinference.AiStructuredTextInference
+import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredTool
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgument
 import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolArgumentType
@@ -19,8 +19,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 class DefaultRssRecommendationEngine(
-  private val localStructuredInference: AiStructuredTextInference,
-  private val cloudStructuredInference: AiStructuredTextInference,
+  private val localStructuredInference: BackgroundAiStructuredTextInference,
+  private val cloudStructuredInference: BackgroundAiStructuredTextInference,
 ) : RssRecommendationEngine {
   override suspend fun score(
     provider: RssRecommendationExecutionProvider,
