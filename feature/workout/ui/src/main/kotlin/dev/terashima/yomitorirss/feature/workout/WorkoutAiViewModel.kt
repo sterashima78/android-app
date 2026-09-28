@@ -143,6 +143,8 @@ class WorkoutAiViewModel(
         }
         WorkoutAiTaskState.FAILED,
         WorkoutAiTaskState.CANCELLED -> {
+          runCatching { taskController.dismiss(requestId) }
+          if (activeRequestId == requestId) activeRequestId = null
           _state.update {
             it.copy(
               loading = false,
