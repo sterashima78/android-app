@@ -24,6 +24,7 @@ Summary、Knowledge、Library、Podcastなど既存の長時間AI処理もfeatur
 - Screen / Route / ViewModelは推論adapterを直接実行せず、owning featureのscheduler / controller / application capabilityへtask登録を依頼する。
 - 実際のinference callはfeature-owned background runtimeからだけ行う。
 - process deathや画面離脱後も再構成できるdurable input / task stateをowning featureが保持する。
+- WorkManager `Data` はboundedなID・enum・小さいmetadataだけに使い、サイズが入力依存のprompt / response / structured resultはfeature-owned app-private stateへ保存する。これらのtransient task stateは端末backupの正本にはしない。
 - 既存のdurable domain stateだけで再構成できる場合は、task tableを重複して追加しない。
 - provider選択、network constraint、Local / Cloud pause、charging resume等のruntime条件はscheduler / Worker側で解決し、UI coroutineへ持ち込まない。
 - provider変更時は古い実行を停止し、同じdurable inputから新provider向けworkを再構成する。
@@ -65,9 +66,9 @@ Workerは現在policyの `executionProvider` を利用する。
 
 ## Consequences
 
-- Workout のメニュー提案・完了後レビューはWorkout-owned task controllerからWorkManagerへ登録し、結果をtask stateからUIへ投影する。
-- Knowledge のユーザー指定ページ作成・AI編集はKnowledge-owned background taskから実行し、入力本文はWorker再実行に耐えるfeature-owned request stateとして保持する。
-- Library の単冊整理候補生成・シリーズ再整理もLibrary-owned background taskへ移し、既存の一括整理workerと同じlocal inference gateへ参加する。
+- Workout のメニュー提案・完了後レビューはWorkout-owned task controllerからWorkManagerへ登録する。生成本文はWorkManager `Data` に載せずapp-private no-backup task stateへ保存し、ViewModel / process再生成後も未消費taskを再発見して結果へ接続する。
+- Knowledge のユーザー指定ページ作成・AI編集はKnowledge-owned background taskから実行し、入力本文はWorker再実行に耐えるfeature-owned request stateとして保持する。期限による掃除は対応Workが終了済みまたは存在しない入力だけを対象とし、pause / retry中の入力は保持する。
+- Library の単冊整理候補生成・シリーズ再整理もLibrary-owned background taskへ移し、既存の一括整理workerと同じlocal inference gateへ参加する。単発taskの参照と未消費結果はapp-private no-backup stateへ保持し、ViewModel / process再生成後に再接続する。
 - RSS画面を離れても除外参考からの条件学習が継続できる。
 - ViewModelはAI実行lifetimeを所有せず、RSS stateの表示とtask登録だけを担当する。
 - RSS scoringとlearningでLocal / Cloud provider、pause、network policyが同じbackground boundaryへ揃う。
@@ -78,6 +79,7 @@ Workerは現在policyの `executionProvider` を利用する。
 
 - feature UI source testでbackground inference capabilityとexecution scopeへの依存がないことを確認する。
 - Workout / Knowledge / Library のViewModel testでAI処理が直接生成ではなくtask登録へ委譲されることを確認する。
+- Workout / Library の未消費task再接続と、Knowledge のactive request retentionを検証する。
 - RSS domain testで学習成功時だけfeedbackを消費し、provider変更や失敗時は保持することを確認する。
 - RSS background testで30秒debounce計算とbackground scheduling helperを確認する。
 - UIから学習推論を実行するcoroutineが残っていないことをレビューする。
