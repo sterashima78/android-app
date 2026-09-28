@@ -43,9 +43,16 @@ data class WorkoutAiTaskSnapshot(
   val error: String? = null,
 )
 
+data class WorkoutAiTaskReference(
+  val requestId: String,
+  val type: WorkoutAiRequestType,
+)
+
 interface WorkoutAiTaskController {
   suspend fun enqueue(type: WorkoutAiRequestType): String
   suspend fun snapshot(requestId: String): WorkoutAiTaskSnapshot
+  suspend fun recoverableTask(): WorkoutAiTaskReference?
+  suspend fun dismiss(requestId: String)
 }
 
 object WorkoutAiPromptBuilder {
