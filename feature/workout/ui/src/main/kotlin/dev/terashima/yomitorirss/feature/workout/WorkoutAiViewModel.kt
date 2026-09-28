@@ -40,6 +40,7 @@ class WorkoutAiViewModel(
         date = date,
         memo = memo,
         settings = settings,
+        loading = true,
       )
       resumeRecoverableTask()
     }
@@ -106,10 +107,18 @@ class WorkoutAiViewModel(
   private suspend fun resumeRecoverableTask() {
     val reference = runCatching { taskController.recoverableTask() }
       .getOrElse { error ->
-        _state.update { it.copy(errorMessage = safeErrorMessage(error)) }
+        _state.update {
+          it.copy(
+            loading = false,
+            errorMessage = safeErrorMessage(error),
+          )
+        }
         return
       }
-      ?: return
+    if (reference == null) {
+      _state.update { it.copy(loading = false) }
+      return
+    }
     activeRequestId = reference.requestId
     _state.update {
       it.copy(
