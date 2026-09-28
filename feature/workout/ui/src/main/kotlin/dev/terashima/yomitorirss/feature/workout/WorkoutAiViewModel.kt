@@ -28,6 +28,7 @@ class WorkoutAiViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(WorkoutAiUiState())
   val state: StateFlow<WorkoutAiUiState> = _state.asStateFlow()
+  private var activeRequestId: String? = null
 
   init {
     viewModelScope.launch {
@@ -40,6 +41,7 @@ class WorkoutAiViewModel(
         memo = memo,
         settings = settings,
       )
+      resumeRecoverableTask()
     }
   }
 
@@ -59,7 +61,14 @@ class WorkoutAiViewModel(
 
   fun requestPostWorkoutReview() = request(WorkoutAiRequestType.POST_WORKOUT_REVIEW)
 
-  fun clearResponse() = _state.update { it.copy(lastRequestType = null, response = null, errorMessage = null) }
+  fun clearResponse() {
+    val requestId = activeRequestId
+    activeRequestId = null
+    _state.update { it.copy(lastRequestType = null, response = null, errorMessage = null) }
+    if (requestId != null) {
+      viewModelScope.launch { runCatching { taskController.dismiss(requestId) } }
+    }
+  }
 
   private fun updateSettings(transform: (WorkoutAiSettings) -> WorkoutAiSettings) {
     val settings = transform(_state.value.settings)
@@ -79,7 +88,10 @@ class WorkoutAiViewModel(
     }
     viewModelScope.launch {
       runCatching { taskController.enqueue(type) }
-        .onSuccess { requestId -> observeTask(requestId) }
+        .onSuccess { requestId ->
+          activeRequestId = requestId
+          observeTask(requestId)
+        }
         .onFailure { error ->
           _state.update {
             it.copy(
@@ -89,6 +101,25 @@ class WorkoutAiViewModel(
           }
         }
     }
+  }
+
+  private suspend fun resumeRecoverableTask() {
+    val reference = runCatching { taskController.recoverableTask() }
+      .getOrElse { error ->
+        _state.update { it.copy(errorMessage = safeErrorMessage(error)) }
+        return
+      }
+      ?: return
+    activeRequestId = reference.requestId
+    _state.update {
+      it.copy(
+        loading = true,
+        lastRequestType = reference.type,
+        response = null,
+        errorMessage = null,
+      )
+    }
+    observeTask(reference.requestId)
   }
 
   private suspend fun observeTask(requestId: String) {
