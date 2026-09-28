@@ -47,6 +47,31 @@ class KnowledgeViewModelTest {
   }
 
   @Test
+  fun `画面再生成時は未消費のKnowledge AI taskへ再接続する`() = runTest(dispatcher) {
+    val generatedPage = knowledgePage("generated-1")
+    val tasks = RecordingPageAiTasks().apply {
+      recoverable = KnowledgePageAiTaskReference(
+        requestId = "request-1",
+        kind = KnowledgePageAiTaskKind.CREATE,
+      )
+      snapshotResult = KnowledgePageAiTaskSnapshot(
+        state = KnowledgePageAiTaskState.SUCCEEDED,
+        pageId = generatedPage.id,
+      )
+    }
+    val viewModel = KnowledgeViewModel(
+      repository = FakeKnowledgeRepository(mapOf(generatedPage.id to generatedPage)),
+      pageAiTasks = tasks,
+      scheduleRebuild = {},
+    )
+
+    advanceUntilIdle()
+
+    assertFalse(viewModel.state.value.working)
+    assertEquals(generatedPage.id, viewModel.state.value.selectedPage?.id)
+    assertEquals(listOf("request-1"), tasks.dismissedRequestIds)
+  }
+  @Test
   fun `再構築はbuilderを直接実行せずschedulerへ登録する`() = runTest(dispatcher) {
     var scheduled = 0
     val viewModel = KnowledgeViewModel(
@@ -64,27 +89,25 @@ class KnowledgeViewModelTest {
   }
 }
 
-private class FakeKnowledgeRepository : KnowledgeRepository {
+private class FakeKnowledgeRepository(
+  private val pagesById: Map<String, KnowledgePage> = emptyMap(),
+) : KnowledgeRepository {
   override val changes: StateFlow<Long> = MutableStateFlow(0)
   override suspend fun listPages(query: String): List<KnowledgePageSummary> = emptyList()
-  override suspend fun findPage(id: String): KnowledgePage? = null
+  override suspend fun findPage(id: String): KnowledgePage? = pagesById[id]
   override suspend fun deletePage(id: String) = Unit
-  override suspend fun splitPage(id: String, heading: String): KnowledgePage = page(id)
-  override suspend fun mergePages(primaryId: String, secondaryId: String): KnowledgePage = page(primaryId)
-
-  private fun page(id: String) = KnowledgePage(
-    id = id,
-    title = id,
-    bodyMarkdown = "",
-    sourceCount = 0,
-    generatedAt = "2026-01-01T00:00:00Z",
-    editorManaged = true,
-    sources = emptyList(),
-  )
+  override suspend fun splitPage(id: String, heading: String): KnowledgePage = knowledgePage(id)
+  override suspend fun mergePages(primaryId: String, secondaryId: String): KnowledgePage = knowledgePage(primaryId)
 }
 
 private class RecordingPageAiTasks : KnowledgePageAiTaskController {
   var createCount = 0
+  var recoverable: KnowledgePageAiTaskReference? = null
+  var snapshotResult = KnowledgePageAiTaskSnapshot(
+    state = KnowledgePageAiTaskState.FAILED,
+    error = "not expected",
+  )
+  val dismissedRequestIds = mutableListOf<String>()
 
   override suspend fun enqueueCreate(request: String, sourcePageId: String?): String {
     createCount += 1
@@ -93,6 +116,21 @@ private class RecordingPageAiTasks : KnowledgePageAiTaskController {
 
   override suspend fun enqueueEdit(pageId: String, instruction: String): String = "request-2"
 
-  override suspend fun snapshot(requestId: String): KnowledgePageAiTaskSnapshot =
-    KnowledgePageAiTaskSnapshot(KnowledgePageAiTaskState.FAILED, error = "not expected")
+  override suspend fun snapshot(requestId: String): KnowledgePageAiTaskSnapshot = snapshotResult
+
+  override suspend fun recoverableTask(): KnowledgePageAiTaskReference? = recoverable
+
+  override suspend fun dismiss(requestId: String) {
+    dismissedRequestIds += requestId
+  }
 }
+
+private fun knowledgePage(id: String) = KnowledgePage(
+  id = id,
+  title = id,
+  bodyMarkdown = "",
+  sourceCount = 0,
+  generatedAt = "2026-01-01T00:00:00Z",
+  editorManaged = true,
+  sources = emptyList(),
+)
