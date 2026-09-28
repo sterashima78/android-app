@@ -23,6 +23,8 @@ import dev.terashima.yomitorirss.feature.library.LibraryBook
 import dev.terashima.yomitorirss.feature.library.LibraryBookKey
 import dev.terashima.yomitorirss.feature.library.LibraryMetadataOrganizer
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationAiTaskController
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationAiTaskKind
+import dev.terashima.yomitorirss.feature.library.LibraryOrganizationAiTaskReference
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationAiTaskSnapshot
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationAiTaskState
 import dev.terashima.yomitorirss.feature.library.LibraryOrganizationRepository
@@ -33,23 +35,35 @@ import dev.terashima.yomitorirss.feature.library.LibrarySeries
 import dev.terashima.yomitorirss.feature.library.LibrarySeriesReorganizationResult
 import dev.terashima.yomitorirss.feature.library.LibrarySource
 import dev.terashima.yomitorirss.feature.library.organizationKey
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONObject
 
 class WorkManagerLibraryOrganizationAiTaskController(
   context: Context,
 ) : LibraryOrganizationAiTaskController {
-  private val workManager = WorkManager.getInstance(context.applicationContext)
+  private val appContext = context.applicationContext
+  private val workManager = WorkManager.getInstance(appContext)
+  private val taskStore = LibraryOrganizationAiTaskStore(appContext)
 
   override suspend fun enqueueSuggestion(book: LibraryBook): String =
-    enqueue(LibraryOrganizationAiOperation.SUGGEST, book.organizationKey())
+    enqueue(
+      operation = LibraryOrganizationAiOperation.SUGGEST,
+      key = book.organizationKey(),
+      seriesName = null,
+    )
 
   override suspend fun enqueueSeriesReorganization(book: LibraryBook): String =
-    enqueue(LibraryOrganizationAiOperation.REORGANIZE_SERIES, book.organizationKey())
+    enqueue(
+      operation = LibraryOrganizationAiOperation.REORGANIZE_SERIES,
+      key = book.organizationKey(),
+      seriesName = book.series?.name?.trim()?.takeIf(String::isNotBlank),
+    )
 
   override suspend fun snapshot(requestId: String): LibraryOrganizationAiTaskSnapshot {
     val id = runCatching { UUID.fromString(requestId) }.getOrNull()
@@ -68,8 +82,8 @@ class WorkManagerLibraryOrganizationAiTaskController(
       WorkInfo.State.RUNNING -> LibraryOrganizationAiTaskSnapshot(LibraryOrganizationAiTaskState.RUNNING)
       WorkInfo.State.SUCCEEDED -> LibraryOrganizationAiTaskSnapshot(
         state = LibraryOrganizationAiTaskState.SUCCEEDED,
-        suggestion = decodeSuggestion(info),
-        seriesResult = decodeSeriesResult(info),
+        suggestion = taskStore.suggestion(requestId) ?: decodeSuggestion(info),
+        seriesResult = taskStore.seriesResult(requestId) ?: decodeSeriesResult(info),
       )
       WorkInfo.State.FAILED -> LibraryOrganizationAiTaskSnapshot(
         state = LibraryOrganizationAiTaskState.FAILED,
@@ -79,9 +93,32 @@ class WorkManagerLibraryOrganizationAiTaskController(
     }
   }
 
+  override suspend fun recoverableTask(): LibraryOrganizationAiTaskReference? {
+    val reference = taskStore.reference() ?: return null
+    val uuid = runCatching { UUID.fromString(reference.requestId) }.getOrNull()
+    if (uuid == null) {
+      taskStore.deleteIfMatches(reference.requestId)
+      return null
+    }
+    val lookup = runCatching {
+      withContext(Dispatchers.IO) { workManager.getWorkInfoById(uuid).get() }
+    }
+    if (lookup.isFailure) return reference
+    if (lookup.getOrNull() == null) {
+      taskStore.deleteIfMatches(reference.requestId)
+      return null
+    }
+    return reference
+  }
+
+  override suspend fun dismiss(requestId: String) {
+    taskStore.deleteIfMatches(requestId)
+  }
+
   private suspend fun enqueue(
     operation: LibraryOrganizationAiOperation,
     key: LibraryBookKey,
+    seriesName: String?,
   ): String {
     val request = OneTimeWorkRequestBuilder<LibraryOrganizationAiWorker>()
       .setInputData(
@@ -93,8 +130,20 @@ class WorkManagerLibraryOrganizationAiTaskController(
       )
       .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
       .build()
-    workManager.enqueue(request).await()
-    return request.id.toString()
+    val requestId = request.id.toString()
+    taskStore.replace(
+      requestId = requestId,
+      operation = operation,
+      key = key,
+      seriesName = seriesName,
+    )
+    try {
+      workManager.enqueue(request).await()
+    } catch (error: Throwable) {
+      taskStore.deleteIfMatches(requestId)
+      throw error
+    }
+    return requestId
   }
 
   private fun decodeSuggestion(info: WorkInfo): LibraryOrganizationSuggestion? {
@@ -125,6 +174,8 @@ class LibraryOrganizationAiWorker(
   private val libraryRepository: LibraryRepository,
   private val suggester: LibraryOrganizationSuggester,
 ) : CoroutineWorker(appContext, params) {
+  private val taskStore = LibraryOrganizationAiTaskStore(appContext)
+
   override suspend fun doWork(): Result = withAiBackgroundInference {
     if (LocalAiBackgroundExecutionPreferences(applicationContext).paused) {
       return@withAiBackgroundInference Result.retry()
@@ -173,13 +224,8 @@ class LibraryOrganizationAiWorker(
         organizationSnapshot = snapshot,
       ),
     )
-    return Result.success(
-      workDataOf(
-        KEY_TAGS to JSONArray(suggestion.tagNames).toString(),
-        KEY_COLLECTIONS to JSONArray(suggestion.collectionNames).toString(),
-        KEY_REASON to suggestion.reason.orEmpty(),
-      ),
-    )
+    taskStore.writeSuggestion(id.toString(), suggestion)
+    return Result.success()
   }
 
   private suspend fun reorganizeSeries(key: LibraryBookKey): Result {
@@ -192,13 +238,8 @@ class LibraryOrganizationAiWorker(
     val targets = allBooks.filter { sameSeriesForBackground(series, it.series) }
     val result = LibraryMetadataOrganizer(organizationRepository, suggester)
       .reorganizeSeries(targets)
-    return Result.success(
-      workDataOf(
-        KEY_TOTAL to result.total,
-        KEY_UPDATED to result.updated,
-        KEY_FAILED to result.failed,
-      ),
-    )
+    taskStore.writeSeriesResult(id.toString(), result)
+    return Result.success()
   }
 
   private fun createForegroundInfo(operation: LibraryOrganizationAiOperation): ForegroundInfo {
@@ -234,6 +275,121 @@ class LibraryOrganizationAiWorker(
       builder.build(),
       ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
     )
+  }
+}
+
+private class LibraryOrganizationAiTaskStore(context: Context) {
+  private val file = File(context.noBackupFilesDir, FILE_NAME)
+
+  fun replace(
+    requestId: String,
+    operation: LibraryOrganizationAiOperation,
+    key: LibraryBookKey,
+    seriesName: String?,
+  ) = synchronized(LibraryOrganizationAiTaskStore::class.java) {
+    write(
+      JSONObject()
+        .put("requestId", requestId)
+        .put("operation", operation.name)
+        .put("source", key.source.name)
+        .put("sourceId", key.sourceId)
+        .apply { seriesName?.let { put("seriesName", it) } },
+    )
+  }
+
+  fun writeSuggestion(
+    requestId: String,
+    suggestion: LibraryOrganizationSuggestion,
+  ) = synchronized(LibraryOrganizationAiTaskStore::class.java) {
+    val json = readJsonFor(requestId) ?: return@synchronized
+    json
+      .put("tags", JSONArray(suggestion.tagNames))
+      .put("collections", JSONArray(suggestion.collectionNames))
+      .apply { suggestion.reason?.let { put("reason", it) } }
+    write(json)
+  }
+
+  fun writeSeriesResult(
+    requestId: String,
+    result: LibrarySeriesReorganizationResult,
+  ) = synchronized(LibraryOrganizationAiTaskStore::class.java) {
+    val json = readJsonFor(requestId) ?: return@synchronized
+    json
+      .put("total", result.total)
+      .put("updated", result.updated)
+      .put("failed", result.failed)
+    write(json)
+  }
+
+  fun reference(): LibraryOrganizationAiTaskReference? = synchronized(LibraryOrganizationAiTaskStore::class.java) {
+    val json = readJson() ?: return@synchronized null
+    val requestId = json.optString("requestId").takeIf(String::isNotBlank)
+      ?: return@synchronized null
+    val operation = json.optString("operation")
+      .let { saved -> LibraryOrganizationAiOperation.entries.firstOrNull { it.name == saved } }
+      ?: return@synchronized null
+    val source = json.optString("source")
+      .let { saved -> LibrarySource.entries.firstOrNull { it.name == saved } }
+      ?: return@synchronized null
+    val sourceId = json.optString("sourceId").takeIf(String::isNotBlank)
+      ?: return@synchronized null
+    LibraryOrganizationAiTaskReference(
+      requestId = requestId,
+      kind = when (operation) {
+        LibraryOrganizationAiOperation.SUGGEST -> LibraryOrganizationAiTaskKind.SUGGESTION
+        LibraryOrganizationAiOperation.REORGANIZE_SERIES -> LibraryOrganizationAiTaskKind.SERIES_REORGANIZATION
+      },
+      bookKey = LibraryBookKey(source, sourceId),
+      seriesName = json.optString("seriesName").takeIf(String::isNotBlank),
+    )
+  }
+
+  fun suggestion(requestId: String): LibraryOrganizationSuggestion? =
+    synchronized(LibraryOrganizationAiTaskStore::class.java) {
+      val json = readJsonFor(requestId) ?: return@synchronized null
+      if (!json.has("tags") || !json.has("collections")) return@synchronized null
+      LibraryOrganizationSuggestion(
+        tagNames = json.getJSONArray("tags").toStringList(),
+        collectionNames = json.getJSONArray("collections").toStringList(),
+        reason = json.optString("reason").takeIf(String::isNotBlank),
+      )
+    }
+
+  fun seriesResult(requestId: String): LibrarySeriesReorganizationResult? =
+    synchronized(LibraryOrganizationAiTaskStore::class.java) {
+      val json = readJsonFor(requestId) ?: return@synchronized null
+      if (!json.has("total")) return@synchronized null
+      LibrarySeriesReorganizationResult(
+        total = json.optInt("total", 0),
+        updated = json.optInt("updated", 0),
+        failed = json.optInt("failed", 0),
+      )
+    }
+
+  fun deleteIfMatches(requestId: String) = synchronized(LibraryOrganizationAiTaskStore::class.java) {
+    val json = readJson()
+    if (json == null || json.optString("requestId") == requestId) file.delete()
+  }
+
+  private fun readJsonFor(requestId: String): JSONObject? {
+    val json = readJson() ?: return null
+    return json.takeIf { it.optString("requestId") == requestId }
+  }
+
+  private fun readJson(): JSONObject? = runCatching { JSONObject(file.readText()) }.getOrNull()
+
+  private fun write(json: JSONObject) {
+    file.parentFile?.mkdirs()
+    val temporary = File(file.parentFile, "${file.name}.tmp")
+    temporary.writeText(json.toString())
+    if (!temporary.renameTo(file)) {
+      file.writeText(json.toString())
+      temporary.delete()
+    }
+  }
+
+  private companion object {
+    const val FILE_NAME = "library-organization-ai-task.json"
   }
 }
 
