@@ -143,7 +143,7 @@ internal object StartupCrashStore {
         )?.let { diagnostics ->
           appendLine()
           appendLine("localAiMemoryDiagnostics:")
-          append(diagnostics)
+          appendLine(diagnostics)
         }
         if (isLocalAiTextProcessName(application.packageName, processName)) {
           LocalAiTextProcessDiagnostics.recentProcessReport(
