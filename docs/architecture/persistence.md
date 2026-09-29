@@ -38,6 +38,12 @@ Single physical SQLite database
 
 同じ SQLite database に存在していても、ADR-0099 が backup 対象外とする transient queue、download state、device/cache-only state は durable user data と同じ意味を持たない。これらは `DatabaseConnection.localWrite` / `DatabaseConnection.localTransaction` を使用し、atomic な commit / rollback を維持したまま `PersistenceChangeNotifier` を発火させない。database の durable/local mutation boundary は backup scheduling から独立して維持する。
 
+`localTransaction` 内に durable `write` / `transaction` が nested した場合は外側 transaction を durable change に昇格させる。SQLite transaction は `DatabaseConnection` wrapper 単位ではなく thread / SQLite connection 側の状態を共有するため、同じ physical database を複数 wrapper が利用する場合も durable mutation を隠さない。
+
+`DatabaseConnection.writable` の直接利用は schema 初期化・migration 等の maintenance write に限定する。runtime mutation で raw writable を通知やownership boundaryの抜け道として使わない。
+
+`PersistenceChangeNotifier` は durable persistence change の signal として維持し、画面や read model の再読込に使う `DataChangeNotifier` とは意味を分離する。ADR-0274以降はこのsignalを自動backup triggerとしては利用しない。
+
 ADR-0274以降、自動backupは `PersistenceChangeNotifier` を購読しない。backup対象データのmutation回数ではなく、Backup Contextが所有するユーザー設定のローカル時刻によってWorkManager jobを予約する。
 
 Backup Contextは複数の `BackupScheduleTime` をSharedPreferencesに保持し、各時刻について次回実行までのdelayを持つone-shot schedule workを登録する。schedule workは実バックアップworkをenqueueした後、同じローカル時刻の次回workを再予約する。実バックアップworkだけがnetwork constraintを持つため、指定時刻にnetworkが利用できなくても次回scheduleを失わない。
@@ -66,6 +72,8 @@ WorkManagerはexact alarmではないため、指定時刻は実行可能にな�
 ADR-0099 が backup archive に含める SharedPreferences は `BackupPreferences.BACKUP_RULES` を単一 allowlist とする。自動backup時刻とWi-Fi限定設定はbackup対象に含めるが、保存先URI・表示名・実行履歴はbackup対象外とする。restore後はBackup Contextがscheduleを明示的に再登録する。
 
 従来の変更後one-shot workと1日1回periodic workは新scheduleを適用するときにcancelする。scheduleが空の場合、自動backupは行わず手動backupのみ利用できる。詳細は ADR-0274 を参照する。
+
+新しい durable DB write は引き続き `write` / `transaction` を経由し、backup対象外 state は根拠をADR / architecture ruleで確認したうえで `localWrite` / `localTransaction` を使用する。SharedPreferencesをbackup対象へ追加する場合は `BackupPreferences.BACKUP_RULES` を更新し、archive scopeを明示する。
 
 ### RSS schema
 
