@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.backup.BackupRepository
+import dev.terashima.yomitorirss.feature.backup.BackupScheduleTime
 import dev.terashima.yomitorirss.feature.backup.ConfigureGoogleDriveResult
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupStatus
 import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkDatabaseInitializer
@@ -60,6 +61,7 @@ class DefaultBackupRepository(
     BookmarkDatabaseInitializer.initialize(connection)
     persistenceChanges.notifyChanged()
     dataChanges.notifyChanged()
+    GoogleDriveBackupScheduler.reschedule(appContext)
   }
 
   override suspend fun configureGoogleDrive(folderUri: String): ConfigureGoogleDriveResult {
@@ -70,7 +72,7 @@ class DefaultBackupRepository(
       Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
     )
     preferences.configure(treeUri, folderDisplayName(treeUri))
-    GoogleDriveBackupScheduler.schedulePeriodic(appContext)
+    GoogleDriveBackupScheduler.reschedule(appContext)
     if (previousUri != null && previousUri != treeUri) {
       runCatching {
         appContext.contentResolver.releasePersistableUriPermission(
@@ -95,9 +97,12 @@ class DefaultBackupRepository(
 
   override fun setGoogleDriveWifiOnly(enabled: Boolean) {
     preferences.setWifiOnly(enabled)
-    if (preferences.isConfigured()) {
-      GoogleDriveBackupScheduler.schedulePeriodic(appContext)
-    }
+    GoogleDriveBackupScheduler.reschedule(appContext)
+  }
+
+  override fun setGoogleDriveScheduleTimes(times: List<BackupScheduleTime>) {
+    preferences.setScheduleTimes(times)
+    GoogleDriveBackupScheduler.reschedule(appContext)
   }
 
   override fun disableGoogleDrive() {
