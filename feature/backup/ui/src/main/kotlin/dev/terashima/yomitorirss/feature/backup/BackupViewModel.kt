@@ -69,7 +69,7 @@ class BackupViewModel(
       runCatching { repository.configureGoogleDrive(folderUri) }
         .onSuccess { result ->
           val message = when (result) {
-            ConfigureGoogleDriveResult.Enabled -> "Google Driveへの自動バックアップを有効にしました"
+            ConfigureGoogleDriveResult.Enabled -> "バックアップ先を設定し、初回バックアップを保存しました"
             is ConfigureGoogleDriveResult.EnabledWithInitialBackupFailure ->
               "保存先を設定しましたが、初回バックアップに失敗しました: ${result.message}"
           }
@@ -131,7 +131,7 @@ class BackupViewModel(
   fun disableGoogleDrive() {
     runCatching { repository.disableGoogleDrive() }
       .onSuccess {
-        updateStatus(running = false, message = "Google Driveへの自動バックアップを無効にしました")
+        updateStatus(running = false, message = "バックアップ先の設定を解除しました")
       }
       .onFailure(::showError)
   }
