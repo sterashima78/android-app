@@ -96,7 +96,7 @@ fun GoogleDriveBackupDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
               ) {
-                Text(time.encoded)
+                Text(time.label)
                 TextButton(
                   onClick = { onRemoveScheduleTime(time.hour, time.minute) },
                   enabled = !state.running,
