@@ -143,6 +143,7 @@ class BackupSchedulingArchitectureTest {
     assertFalse(backgroundRuntime.contains("PersistenceBackupChangeObserver"))
     assertFalse(backgroundRuntime.contains("BackupPreferenceChangeObserver"))
     assertFalse(backgroundRuntime.contains("BackupChangeScheduler"))
+    assertTrue(backgroundRuntime.contains("GoogleDriveBackupScheduler.ensureScheduled(application)"))
     assertTrue(application.contains("container.startBackgroundRuntime()"))
     assertFalse(application.contains("feature.backup.data"))
   }
