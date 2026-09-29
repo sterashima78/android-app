@@ -39,7 +39,7 @@ fun GoogleDriveBackupDialog(
   onBackupNow: () -> Unit,
   onWifiOnlyChange: (Boolean) -> Unit,
   onAddScheduleTime: (Int, Int) -> Unit,
-  onRemoveScheduleTime: (BackupScheduleTime) -> Unit,
+  onRemoveScheduleTime: (Int, Int) -> Unit,
   onDisable: () -> Unit,
 ) {
   var showTimePicker by remember { mutableStateOf(false) }
@@ -98,7 +98,7 @@ fun GoogleDriveBackupDialog(
               ) {
                 Text(time.encoded)
                 TextButton(
-                  onClick = { onRemoveScheduleTime(time) },
+                  onClick = { onRemoveScheduleTime(time.hour, time.minute) },
                   enabled = !state.running,
                 ) {
                   Text("削除")
