@@ -2,6 +2,10 @@ package dev.terashima.yomitorirss.feature.backup.data
 
 import android.net.NetworkCapabilities
 import androidx.work.NetworkType
+import dev.terashima.yomitorirss.feature.backup.BackupScheduleTime
+import java.time.Duration
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -29,5 +33,29 @@ class GoogleDriveBackupSchedulerTest {
 
     assertEquals(NetworkType.CONNECTED, constraints.requiredNetworkType)
     assertNull(constraints.requiredNetworkRequest)
+  }
+
+  @Test
+  fun `当日の未来時刻までのdelayを計算する`() {
+    val now = ZonedDateTime.of(2026, 9, 29, 10, 15, 0, 0, ZoneId.of("Asia/Tokyo"))
+
+    val delay = GoogleDriveBackupScheduler.nextBackupDelayMillis(
+      now = now,
+      time = BackupScheduleTime(18, 30),
+    )
+
+    assertEquals(Duration.ofHours(8).plusMinutes(15).toMillis(), delay)
+  }
+
+  @Test
+  fun `経過済み時刻は翌日に予約する`() {
+    val now = ZonedDateTime.of(2026, 9, 29, 21, 0, 0, 0, ZoneId.of("Asia/Tokyo"))
+
+    val delay = GoogleDriveBackupScheduler.nextBackupDelayMillis(
+      now = now,
+      time = BackupScheduleTime(8, 0),
+    )
+
+    assertEquals(Duration.ofHours(11).toMillis(), delay)
   }
 }
