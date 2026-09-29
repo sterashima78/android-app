@@ -121,10 +121,9 @@ class BackupViewModel(
 
   fun addGoogleDriveScheduleTime(hour: Int, minute: Int) {
     runCatching {
-      val updated = (
-        _state.value.scheduleTimes.map { BackupScheduleTime(it.hour, it.minute) } +
-          BackupScheduleTime(hour, minute)
-        )
+      val updated = _state.value.scheduleTimes
+        .map { BackupScheduleTime(it.hour, it.minute) }
+        .plus(BackupScheduleTime(hour, minute))
         .distinct()
         .sorted()
       repository.setGoogleDriveScheduleTimes(updated)
