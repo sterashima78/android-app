@@ -4,59 +4,138 @@ import android.content.Context
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.Worker
+import androidx.work.WorkerParameters
+import androidx.work.workDataOf
+import dev.terashima.yomitorirss.feature.backup.BackupScheduleTime
+import java.time.Duration
+import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 object GoogleDriveBackupScheduler {
-  private const val PERIODIC_WORK_NAME = "google-drive-backup-periodic"
-  private const val CHANGE_WORK_NAME = "google-drive-backup-after-change"
+  private const val LEGACY_PERIODIC_WORK_NAME = "google-drive-backup-periodic"
+  private const val LEGACY_CHANGE_WORK_NAME = "google-drive-backup-after-change"
+  private const val SCHEDULE_WORK_PREFIX = "google-drive-backup-schedule"
+  private const val SCHEDULE_WORK_TAG = "google-drive-backup-schedule"
+  private const val BACKUP_WORK_NAME = "google-drive-backup-scheduled-run"
+  internal const val KEY_SCHEDULE_HOUR = "schedule_hour"
+  internal const val KEY_SCHEDULE_MINUTE = "schedule_minute"
 
   fun ensureScheduled(context: Context) {
-    if (GoogleDriveBackupPreferences(context).isConfigured()) {
-      schedulePeriodic(context)
-    } else {
-      cancel(context)
+    reschedule(context)
+  }
+
+  fun reschedule(context: Context) {
+    val appContext = context.applicationContext
+    val workManager = WorkManager.getInstance(appContext)
+    workManager.cancelUniqueWork(LEGACY_PERIODIC_WORK_NAME)
+    workManager.cancelUniqueWork(LEGACY_CHANGE_WORK_NAME)
+    workManager.cancelAllWorkByTag(SCHEDULE_WORK_TAG)
+
+    val preferences = GoogleDriveBackupPreferences(appContext)
+    if (!preferences.isConfigured()) return
+
+    preferences.scheduleTimes().forEach { time ->
+      scheduleTime(appContext, time, ExistingWorkPolicy.REPLACE)
     }
   }
 
-  fun schedulePeriodic(context: Context) {
-    val constraints = googleDriveBackupNetworkConstraints(
-      wifiOnly = GoogleDriveBackupPreferences(context).isWifiOnly(),
-    )
-    val request = PeriodicWorkRequestBuilder<GoogleDriveBackupWorker>(1, TimeUnit.DAYS)
-      .setConstraints(constraints)
-      .build()
-    WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
-      PERIODIC_WORK_NAME,
-      ExistingPeriodicWorkPolicy.UPDATE,
-      request,
-    )
+  internal fun scheduleNext(context: Context, time: BackupScheduleTime) {
+    scheduleTime(context.applicationContext, time, ExistingWorkPolicy.APPEND)
   }
 
-  fun scheduleAfterChange(context: Context) {
-    val preferences = GoogleDriveBackupPreferences(context)
+  internal fun enqueueBackup(context: Context) {
+    val appContext = context.applicationContext
+    val preferences = GoogleDriveBackupPreferences(appContext)
     if (!preferences.isConfigured()) return
+
     val request = OneTimeWorkRequestBuilder<GoogleDriveBackupWorker>()
-      .setInitialDelay(15, TimeUnit.MINUTES)
       .setConstraints(googleDriveBackupNetworkConstraints(preferences.isWifiOnly()))
       .build()
-    WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
-      CHANGE_WORK_NAME,
-      ExistingWorkPolicy.REPLACE,
+    WorkManager.getInstance(appContext).enqueueUniqueWork(
+      BACKUP_WORK_NAME,
+      ExistingWorkPolicy.KEEP,
       request,
     )
   }
 
   fun cancel(context: Context) {
     WorkManager.getInstance(context.applicationContext).apply {
-      cancelUniqueWork(PERIODIC_WORK_NAME)
-      cancelUniqueWork(CHANGE_WORK_NAME)
+      cancelUniqueWork(LEGACY_PERIODIC_WORK_NAME)
+      cancelUniqueWork(LEGACY_CHANGE_WORK_NAME)
+      cancelUniqueWork(BACKUP_WORK_NAME)
+      cancelAllWorkByTag(SCHEDULE_WORK_TAG)
     }
+  }
+
+  private fun scheduleTime(
+    context: Context,
+    time: BackupScheduleTime,
+    policy: ExistingWorkPolicy,
+  ) {
+    val preferences = GoogleDriveBackupPreferences(context)
+    if (!preferences.isConfigured() || time !in preferences.scheduleTimes()) return
+
+    val request = OneTimeWorkRequestBuilder<GoogleDriveBackupScheduleWorker>()
+      .setInitialDelay(nextBackupDelayMillis(ZonedDateTime.now(), time), TimeUnit.MILLISECONDS)
+      .setInputData(
+        workDataOf(
+          KEY_SCHEDULE_HOUR to time.hour,
+          KEY_SCHEDULE_MINUTE to time.minute,
+        ),
+      )
+      .addTag(SCHEDULE_WORK_TAG)
+      .build()
+    WorkManager.getInstance(context).enqueueUniqueWork(
+      scheduleWorkName(time),
+      policy,
+      request,
+    )
+  }
+
+  private fun scheduleWorkName(time: BackupScheduleTime): String =
+    "$SCHEDULE_WORK_PREFIX-${time.encoded.replace(':', '-')}"
+
+  internal fun nextBackupDelayMillis(
+    now: ZonedDateTime,
+    time: BackupScheduleTime,
+  ): Long {
+    var next = now
+      .withHour(time.hour)
+      .withMinute(time.minute)
+      .withSecond(0)
+      .withNano(0)
+    if (!next.isAfter(now)) {
+      next = next.plusDays(1)
+    }
+    return Duration.between(now, next).toMillis()
+  }
+}
+
+class GoogleDriveBackupScheduleWorker(
+  appContext: Context,
+  parameters: WorkerParameters,
+) : Worker(appContext, parameters) {
+  override fun doWork(): Result {
+    val time = runCatching {
+      BackupScheduleTime(
+        hour = inputData.getInt(GoogleDriveBackupScheduler.KEY_SCHEDULE_HOUR, -1),
+        minute = inputData.getInt(GoogleDriveBackupScheduler.KEY_SCHEDULE_MINUTE, -1),
+      )
+    }.getOrNull() ?: return Result.failure()
+
+    val preferences = GoogleDriveBackupPreferences(applicationContext)
+    if (!preferences.isConfigured() || time !in preferences.scheduleTimes()) {
+      return Result.success()
+    }
+
+    GoogleDriveBackupScheduler.enqueueBackup(applicationContext)
+    GoogleDriveBackupScheduler.scheduleNext(applicationContext, time)
+    return Result.success()
   }
 }
 
