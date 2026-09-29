@@ -32,58 +32,40 @@ Single physical SQLite database
 
 バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpoint、分類診断状態を含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
-## Durable change notification and backup scheduling
+## Durable mutation signaling and backup scheduling
 
-通常 runtime の backup 対象 durable database mutation は `DatabaseConnection.write` / `DatabaseConnection.transaction` を共通境界とする。成功した mutation が commit された後、`:core:database` の `PersistenceChangeNotifier` が durable change を通知する。失敗・rollback した mutation は通知しない。
+通常 runtime の durable database mutation は `DatabaseConnection.write` / `DatabaseConnection.transaction` を共通境界とする。成功した mutation が commit された後、`:core:database` の `PersistenceChangeNotifier` が durable change を通知する。失敗・rollback した mutation は通知しない。
 
-同じ SQLite database に存在していても、ADR-0099 が backup 対象外とする transient queue、download state、device/cache-only state は durable user data と同じ意味を持たない。これらは `DatabaseConnection.localWrite` / `DatabaseConnection.localTransaction` を使用し、atomic な commit / rollback を維持したまま `PersistenceChangeNotifier` を発火させない。`localTransaction` 内に durable `write` / `transaction` が nested した場合は外側 transaction を durable change に昇格させ、通知の取りこぼしを防ぐ。
+同じ SQLite database に存在していても、ADR-0099 が backup 対象外とする transient queue、download state、device/cache-only state は durable user data と同じ意味を持たない。これらは `DatabaseConnection.localWrite` / `DatabaseConnection.localTransaction` を使用し、atomic な commit / rollback を維持したまま `PersistenceChangeNotifier` を発火させない。database の durable/local mutation boundary は backup scheduling から独立して維持する。
 
-SQLite transaction は `DatabaseConnection` instance ではなく thread / SQLite connection 側の状態なので、同じ physical database を複数の `DatabaseConnection` wrapper が利用しても active transaction scope を共有する。別 wrapper からの durable write も local transaction の外側 commit を昇格させる。
+ADR-0274以降、自動backupは `PersistenceChangeNotifier` を購読しない。backup対象データのmutation回数ではなく、Backup Contextが所有するユーザー設定のローカル時刻によってWorkManager jobを予約する。
 
-`DatabaseConnection.writable` の直接利用は schema 初期化・migration 等の maintenance write に限定する。runtime mutation で raw writable を「通知しない抜け道」として使わない。
-
-ADR-0099 が backup archive に含める SharedPreferences は `BackupPreferences.BACKUP_RULES` を単一 allowlist とする。Backup Context の `BackupPreferenceChangeObserver` が同じ rule を変更検知にも利用し、対象 file / key の変更を `PersistenceChangeNotifier` へ合流させる。allowlist 外の credential、device state、model revision 等は通知しない。restore 中は preference listener を抑制し、restore 全体が成功した後の明示的な persistence change だけを利用する。
-
-`PersistenceChangeNotifier` は backup scheduling のための persistence-level signal であり、画面や read model の再読込に使う既存 `DataChangeNotifier` とは分離する。`DataChangeNotifier` を backup trigger として流用すると、Task / Chat 等の変更が RSS 等の無関係な UI refresh に波及するため、両者の意味を混在させない。
-
-`:app` composition root が `PersistenceChangeNotifier` を1か所で購読して `BackupChangeScheduler` に接続する。通常 feature の ViewModel / Repository / mutator はバックアップ予約を直接呼ばず、Backup Context への依存を持たない。
+Backup Contextは複数の `BackupScheduleTime` をSharedPreferencesに保持し、各時刻について次回実行までのdelayを持つone-shot schedule workを登録する。schedule workは実バックアップworkをenqueueした後、同じローカル時刻の次回workを再予約する。実バックアップworkだけがnetwork constraintを持つため、指定時刻にnetworkが利用できなくても次回scheduleを失わない。
 
 ```text
-feature / worker / import
+Backup schedule preferences
         |
         v
-repository / store
+GoogleDriveBackupScheduler
         |
-        +--> backup対象 durable DB data
-        |      DatabaseConnection.write / transaction
-        |                 |
-        |                 v
-        |      PersistenceChangeNotifier
-        |
-        +--> backup対象外 local/cache/transient state
-        |      DatabaseConnection.localWrite / localTransaction
-        |                 |
-        |                 +-- no persistence notification
-        |
-        +--> ADR-0099 backed-up SharedPreferences
-               BackupPreferenceChangeObserver
-                         |
-                         v
-              PersistenceChangeNotifier
-
-PersistenceChangeNotifier
+        +--> one-shot schedule work @ local time
+        |             |
+        |             +--> enqueue backup work
+        |             |
+        |             +--> schedule next local occurrence
         |
         v
-:app composition root
+GoogleDriveBackupWorker
         |
         v
-PersistenceBackupChangeObserver
-        |
-        v
-BackupChangeScheduler
+database snapshot archive -> configured external folder
 ```
 
-新しい durable DB write は `write` / `transaction` を経由し、backup 対象外 state はその根拠を ADR / architecture rule で確認したうえで `localWrite` / `localTransaction` を使用する。新しい SharedPreferences を backup 対象へ追加する場合は `BackupPreferences.BACKUP_RULES` を更新し、archive scope と変更検知 scope を同時に変更する。詳細は ADR-0195 を参照する。
+WorkManagerはexact alarmではないため、指定時刻は実行可能になる目標時刻として扱い、Doze、OS scheduler、network constraint等により遅延し得る。exact alarm permissionは追加しない。
+
+ADR-0099 が backup archive に含める SharedPreferences は `BackupPreferences.BACKUP_RULES` を単一 allowlist とする。自動backup時刻とWi-Fi限定設定はbackup対象に含めるが、保存先URI・表示名・実行履歴はbackup対象外とする。restore後はBackup Contextがscheduleを明示的に再登録する。
+
+従来の変更後one-shot workと1日1回periodic workは新scheduleを適用するときにcancelする。scheduleが空の場合、自動backupは行わず手動backupのみ利用できる。詳細は ADR-0274 を参照する。
 
 ### RSS schema
 
