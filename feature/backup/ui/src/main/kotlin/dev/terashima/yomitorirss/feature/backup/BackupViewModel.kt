@@ -18,6 +18,7 @@ data class BackupUiState(
   val lastFileName: String? = null,
   val lastError: String? = null,
   val wifiOnly: Boolean = false,
+  val scheduleTimes: List<BackupScheduleTime> = emptyList(),
   val running: Boolean = false,
   val message: String? = null,
   val restoreCompleted: Boolean = false,
@@ -110,6 +111,23 @@ class BackupViewModel(
     }.onFailure(::showError)
   }
 
+  fun addGoogleDriveScheduleTime(hour: Int, minute: Int) {
+    runCatching {
+      val updated = (_state.value.scheduleTimes + BackupScheduleTime(hour, minute))
+        .distinct()
+        .sorted()
+      repository.setGoogleDriveScheduleTimes(updated)
+      updateStatus(running = _state.value.running)
+    }.onFailure(::showError)
+  }
+
+  fun removeGoogleDriveScheduleTime(time: BackupScheduleTime) {
+    runCatching {
+      repository.setGoogleDriveScheduleTimes(_state.value.scheduleTimes - time)
+      updateStatus(running = _state.value.running)
+    }.onFailure(::showError)
+  }
+
   fun disableGoogleDrive() {
     runCatching { repository.disableGoogleDrive() }
       .onSuccess {
@@ -141,6 +159,7 @@ class BackupViewModel(
         lastFileName = status.lastFileName,
         lastError = status.lastError,
         wifiOnly = status.wifiOnly,
+        scheduleTimes = status.scheduleTimes,
         running = running,
         message = message ?: it.message,
         restoreCompleted = restoreCompleted,
