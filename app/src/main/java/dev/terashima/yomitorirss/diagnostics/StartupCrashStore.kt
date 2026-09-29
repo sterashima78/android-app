@@ -12,6 +12,9 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 internal const val ANDROID_17_REASON_MEMORY_LIMITER = 17
+internal const val PROCESS_EXIT_REPORT_SCHEMA_VERSION = 2
+
+private const val UNDELIVERED_BROADCAST_DESCRIPTION_PREFIX = "[UNDELIVERED BROADCAST]"
 
 internal object StartupCrashStore {
   private const val PREFERENCES_NAME = "startup_crash_diagnostics"
@@ -95,6 +98,8 @@ internal object StartupCrashStore {
     val report = sanitizeCrashDetails(
       buildString {
         appendLine("Mosaic process exit report")
+        appendLine("reportSchemaVersion=$PROCESS_EXIT_REPORT_SCHEMA_VERSION")
+        appendLine("reportGeneratedAt=${Instant.now()}")
         appendLine("timestamp=${Instant.ofEpochMilli(reportableExit.timestamp)}")
         appendLine("version=${BuildConfig.VERSION_NAME}")
         appendLine("versionCode=${BuildConfig.VERSION_CODE}")
@@ -107,6 +112,9 @@ internal object StartupCrashStore {
         appendLine("process=$processName")
         appendLine("reason=${reportableExit.reason}")
         appendLine("reasonName=${processExitReasonName(reportableExit.reason)}")
+        processExitReasonContext(reportableExit.reason, reportableExit.description)?.let { context ->
+          appendLine("reasonContext=$context")
+        }
         appendLine("status=${reportableExit.status}")
         appendLine("importance=${reportableExit.importance}")
         appendLine("importanceName=${processImportanceName(reportableExit.importance)}")
@@ -145,9 +153,10 @@ internal object StartupCrashStore {
           )?.let { diagnostics ->
             appendLine()
             appendLine("localAiTextProcessDiagnostics:")
-            append(diagnostics)
+            appendLine(diagnostics)
           }
         }
+        appendLine("reportComplete=true")
       },
     )
     preferences.edit().putString(REPORT_KEY, report).commit()
@@ -171,6 +180,16 @@ internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Bool
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
     reason == ANDROID_17_REASON_MEMORY_LIMITER ||
     description?.contains("MemoryLimiter", ignoreCase = true) == true
+
+internal fun processExitReasonContext(reason: Int, description: String?): String? =
+  if (
+    reason == ApplicationExitInfo.REASON_LOW_MEMORY &&
+    description?.startsWith(UNDELIVERED_BROADCAST_DESCRIPTION_PREFIX, ignoreCase = true) == true
+  ) {
+    "LOW_MEMORY_WITH_RETAINED_SYSTEM_SUBREASON"
+  } else {
+    null
+  }
 
 internal fun shouldReportMemoryProcessExit(
   reason: Int,
