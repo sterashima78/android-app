@@ -142,7 +142,7 @@ fun GoogleDriveBackupDialog(
             enabled = !state.running,
             modifier = Modifier.fillMaxWidth(),
           ) {
-            Text("自動バックアップを無効にする")
+            Text("バックアップ先設定を解除")
           }
         }
       }
