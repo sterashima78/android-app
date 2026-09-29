@@ -24,14 +24,13 @@ Workout の永続状態と履歴は引き続き Workout Context の source of tr
 - 未知の payload version は現行形式として推測解釈しない。自動的な load -> save で将来形式のstateを上書きしないため、unsupported version として読み込みを失敗させる。
 - v1 decode path は一時的な互換処理であり、v2 payload を含むリリースが current compatibility baseline から外れた時点で削除する。
 
-
 ## Amendment (2026-09-29): v1 payload compatibility の退役
 
 current compatibility baseline から v1 payload を含む配布版が外れたため、Decision に記録した一時的な v1 decode path は終了する。
 
 - version field がない payload と version 1 payload は、現行形式へ暗黙変換せず unsupported version として扱う。
 - unsupported payload は読み込み失敗時に保存内容を書き換えず、そのまま保持する。
-- `decodeV1` と v1 専用 regression fixture/test は削除し、現行 decoder は version 2 だけを受け付ける。
+- `decodeV1` と v1→v2 変換専用の regression fixture/test は削除し、現行 decoder は version 2 だけを受け付ける。v1 を再び受理しないことを確認する rejection test は残す。
 - SharedPreferences key `state_v1` は payload version ではなく既存保存slotの identity なので変更しない。名前だけを理由に移行して現在データを失うリスクを増やさない。
 - `WorkoutExercise.targetSets` は新規種目の既定値として現行用途が残るため、この amendment では削除しない。
 
