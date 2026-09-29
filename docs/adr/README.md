@@ -72,6 +72,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0235: 保存済み要約を端末内TTSでポッドキャスト形式に連続再生する](0235-summary-audio-playback.md)
 - [ADR-0249: ニュースポッドキャストを独立Contextとして所有する](0249-news-podcast-context.md)
 - [ADR-0250: ニュースポッドキャストのfeed sourceをPodcast Contextで所有する](0250-podcast-owned-feed-sources.md)
+- [ADR-0274: 自動バックアップをユーザー設定の時刻スケジュールで実行する](0274-configurable-backup-schedule.md)
 
 ### Documentation / repository governance
 
