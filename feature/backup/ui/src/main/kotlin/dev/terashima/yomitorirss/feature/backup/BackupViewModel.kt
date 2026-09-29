@@ -121,8 +121,9 @@ class BackupViewModel(
     }.onFailure(::showError)
   }
 
-  fun removeGoogleDriveScheduleTime(time: BackupScheduleTime) {
+  fun removeGoogleDriveScheduleTime(hour: Int, minute: Int) {
     runCatching {
+      val time = BackupScheduleTime(hour, minute)
       repository.setGoogleDriveScheduleTimes(_state.value.scheduleTimes - time)
       updateStatus(running = _state.value.running)
     }.onFailure(::showError)
