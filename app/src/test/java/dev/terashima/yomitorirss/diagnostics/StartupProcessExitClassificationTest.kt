@@ -44,6 +44,34 @@ class StartupProcessExitClassificationTest {
     assertEquals("REASON_999", processExitReasonName(999))
   }
 
+
+  @Test
+  fun `low memory と undelivered broadcast の併記を保持された system subreason として分類する`() {
+    assertEquals(
+      "LOW_MEMORY_WITH_RETAINED_SYSTEM_SUBREASON",
+      processExitReasonContext(
+        reason = android.app.ApplicationExitInfo.REASON_LOW_MEMORY,
+        description = "[UNDELIVERED BROADCAST] Can't deliver broadcast",
+      ),
+    )
+  }
+
+  @Test
+  fun `undelivered broadcast 単独では low memory の保持 subreason と分類しない`() {
+    assertEquals(
+      null,
+      processExitReasonContext(
+        reason = android.app.ApplicationExitInfo.REASON_OTHER,
+        description = "[UNDELIVERED BROADCAST] Can't deliver broadcast",
+      ),
+    )
+  }
+
+  @Test
+  fun `process exit report schema version を固定する`() {
+    assertEquals(2, PROCESS_EXIT_REPORT_SCHEMA_VERSION)
+  }
+
   @Test
   fun `service importanceを共有レポート向けの名前へ変換する`() {
     assertEquals(
