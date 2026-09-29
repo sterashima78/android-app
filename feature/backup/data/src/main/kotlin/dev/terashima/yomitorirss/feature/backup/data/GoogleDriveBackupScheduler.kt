@@ -40,12 +40,32 @@ object GoogleDriveBackupScheduler {
     if (!preferences.isConfigured()) return
 
     preferences.scheduleTimes().forEach { time ->
-      scheduleTime(appContext, time, ExistingWorkPolicy.REPLACE)
+      scheduleNext(appContext, time)
     }
   }
 
   internal fun scheduleNext(context: Context, time: BackupScheduleTime) {
-    scheduleTime(context.applicationContext, time, ExistingWorkPolicy.APPEND)
+    val appContext = context.applicationContext
+    val preferences = GoogleDriveBackupPreferences(appContext)
+    if (!preferences.isConfigured() || time !in preferences.scheduleTimes()) return
+
+    val now = ZonedDateTime.now()
+    val next = nextBackupOccurrence(now, time)
+    val request = OneTimeWorkRequestBuilder<GoogleDriveBackupScheduleWorker>()
+      .setInitialDelay(Duration.between(now, next).toMillis(), TimeUnit.MILLISECONDS)
+      .setInputData(
+        workDataOf(
+          KEY_SCHEDULE_HOUR to time.hour,
+          KEY_SCHEDULE_MINUTE to time.minute,
+        ),
+      )
+      .addTag(SCHEDULE_WORK_TAG)
+      .build()
+    WorkManager.getInstance(appContext).enqueueUniqueWork(
+      scheduleWorkName(time, next),
+      ExistingWorkPolicy.KEEP,
+      request,
+    )
   }
 
   internal fun enqueueBackup(context: Context) {
@@ -72,38 +92,16 @@ object GoogleDriveBackupScheduler {
     }
   }
 
-  private fun scheduleTime(
-    context: Context,
+  private fun scheduleWorkName(
     time: BackupScheduleTime,
-    policy: ExistingWorkPolicy,
-  ) {
-    val preferences = GoogleDriveBackupPreferences(context)
-    if (!preferences.isConfigured() || time !in preferences.scheduleTimes()) return
+    occurrence: ZonedDateTime,
+  ): String =
+    "$SCHEDULE_WORK_PREFIX-${occurrence.toLocalDate()}-${time.encoded.replace(':', '-')}"
 
-    val request = OneTimeWorkRequestBuilder<GoogleDriveBackupScheduleWorker>()
-      .setInitialDelay(nextBackupDelayMillis(ZonedDateTime.now(), time), TimeUnit.MILLISECONDS)
-      .setInputData(
-        workDataOf(
-          KEY_SCHEDULE_HOUR to time.hour,
-          KEY_SCHEDULE_MINUTE to time.minute,
-        ),
-      )
-      .addTag(SCHEDULE_WORK_TAG)
-      .build()
-    WorkManager.getInstance(context).enqueueUniqueWork(
-      scheduleWorkName(time),
-      policy,
-      request,
-    )
-  }
-
-  private fun scheduleWorkName(time: BackupScheduleTime): String =
-    "$SCHEDULE_WORK_PREFIX-${time.encoded.replace(':', '-')}"
-
-  internal fun nextBackupDelayMillis(
+  internal fun nextBackupOccurrence(
     now: ZonedDateTime,
     time: BackupScheduleTime,
-  ): Long {
+  ): ZonedDateTime {
     var next = now
       .withHour(time.hour)
       .withMinute(time.minute)
@@ -112,8 +110,13 @@ object GoogleDriveBackupScheduler {
     if (!next.isAfter(now)) {
       next = next.plusDays(1)
     }
-    return Duration.between(now, next).toMillis()
+    return next
   }
+
+  internal fun nextBackupDelayMillis(
+    now: ZonedDateTime,
+    time: BackupScheduleTime,
+  ): Long = Duration.between(now, nextBackupOccurrence(now, time)).toMillis()
 }
 
 class GoogleDriveBackupScheduleWorker(
