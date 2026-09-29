@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-16
-- Amended: 2026-09-22
+- Amended: 2026-09-22, 2026-09-29
 - Refines: [ADR-0016](0016-workout-tracking.md), [ADR-0194](0194-workout-ai-advisor.md)
 
 ## Context
@@ -23,6 +23,19 @@ Workout の永続状態と履歴は引き続き Workout Context の source of tr
 - 読み込みは payload の `version` を明示的な dispatch point とする。version field がない既存stateは v1 として扱い、`targetSets` から基本メニューを生成して v2 snapshot へ収束させる。v2 は現行形式として読む。
 - 未知の payload version は現行形式として推測解釈しない。自動的な load -> save で将来形式のstateを上書きしないため、unsupported version として読み込みを失敗させる。
 - v1 decode path は一時的な互換処理であり、v2 payload を含むリリースが current compatibility baseline から外れた時点で削除する。
+
+
+## Amendment (2026-09-29): v1 payload compatibility の退役
+
+current compatibility baseline から v1 payload を含む配布版が外れたため、Decision に記録した一時的な v1 decode path は終了する。
+
+- version field がない payload と version 1 payload は、現行形式へ暗黙変換せず unsupported version として扱う。
+- unsupported payload は読み込み失敗時に保存内容を書き換えず、そのまま保持する。
+- `decodeV1` と v1 専用 regression fixture/test は削除し、現行 decoder は version 2 だけを受け付ける。
+- SharedPreferences key `state_v1` は payload version ではなく既存保存slotの identity なので変更しない。名前だけを理由に移行して現在データを失うリスクを増やさない。
+- `WorkoutExercise.targetSets` は新規種目の既定値として現行用途が残るため、この amendment では削除しない。
+
+この amendment は Decision 内の v1 互換読み込みに関する箇条書きを current state として supersede する。種目とメニューを分離する判断、payload version 2、未知versionを推測解釈しない方針は引き続き有効とする。
 
 ## Consequences
 
