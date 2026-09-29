@@ -46,20 +46,12 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     put("lastStepCounts", encodeIntMap(snapshot.lastStepCounts))
   }
 
-  private fun decode(json: JSONObject): WorkoutSnapshot =
-    when (val version = json.optInt("version", LEGACY_VERSION)) {
-      LEGACY_VERSION -> decodeV1(json)
-      CURRENT_VERSION -> decodeV2(json)
-      else -> throw UnsupportedWorkoutStateVersionException(version)
+  private fun decode(json: JSONObject): WorkoutSnapshot {
+    val version = json.optInt("version", MISSING_VERSION)
+    if (version != CURRENT_VERSION) {
+      throw UnsupportedWorkoutStateVersionException(version)
     }
-
-  private fun decodeV1(json: JSONObject): WorkoutSnapshot {
-    val exercises = decodeExercises(json)
-    return decodeSnapshot(
-      json = json,
-      exercises = exercises,
-      menus = listOf(defaultWorkoutMenu(exercises)),
-    )
+    return decodeV2(json)
   }
 
   private fun decodeV2(json: JSONObject): WorkoutSnapshot {
@@ -232,7 +224,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private companion object {
     const val KEY_STATE = "state_v1"
-    const val LEGACY_VERSION = 1
+    const val MISSING_VERSION = 0
     const val CURRENT_VERSION = 2
   }
 }
