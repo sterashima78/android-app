@@ -29,32 +29,38 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
-  fun `versionなしの旧stateはv1として読み込みv2へ収束する`() = runTest {
+  fun `versionなしの旧stateはunsupportedとして保持する`() = runTest {
     val raw = JSONObject().apply {
-      put(
-        "exercises",
-        JSONArray().put(
-          JSONObject().apply {
-            put("id", "push-up")
-            put("name", "Push-up")
-            put("targetSets", 4)
-            put("unit", "REPS")
-          },
-        ),
-      )
+      put("exercises", JSONArray())
     }.toString()
     preferences().edit().putString(STATE_KEY, raw).commit()
 
-    val snapshot = DefaultWorkoutRepository(context).load()
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("UnsupportedWorkoutStateVersionException was expected")
+    } catch (error: UnsupportedWorkoutStateVersionException) {
+      assertEquals(0, error.version)
+    }
 
-    assertEquals(2, snapshot.version)
-    assertEquals(1, snapshot.exercises.size)
-    assertEquals("push-up", snapshot.exercises.single().id)
-    assertEquals(1, snapshot.menus.size)
-    assertEquals(
-      4,
-      snapshot.menus.single().items.single { it.exerciseId == "push-up" }.targetSets,
-    )
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
+  }
+
+  @Test
+  fun `version1の旧stateはunsupportedとして保持する`() = runTest {
+    val raw = JSONObject().apply {
+      put("version", 1)
+      put("exercises", JSONArray())
+    }.toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("UnsupportedWorkoutStateVersionException was expected")
+    } catch (error: UnsupportedWorkoutStateVersionException) {
+      assertEquals(1, error.version)
+    }
+
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
   }
 
   @Test
