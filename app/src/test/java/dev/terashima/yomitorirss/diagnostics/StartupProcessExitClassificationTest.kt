@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.diagnostics
 
 import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -44,13 +45,12 @@ class StartupProcessExitClassificationTest {
     assertEquals("REASON_999", processExitReasonName(999))
   }
 
-
   @Test
   fun `low memory と undelivered broadcast の併記を保持された system subreason として分類する`() {
     assertEquals(
       "LOW_MEMORY_WITH_RETAINED_SYSTEM_SUBREASON",
       processExitReasonContext(
-        reason = android.app.ApplicationExitInfo.REASON_LOW_MEMORY,
+        reason = ApplicationExitInfo.REASON_LOW_MEMORY,
         description = "[UNDELIVERED BROADCAST] Can't deliver broadcast",
       ),
     )
@@ -61,7 +61,7 @@ class StartupProcessExitClassificationTest {
     assertEquals(
       null,
       processExitReasonContext(
-        reason = android.app.ApplicationExitInfo.REASON_OTHER,
+        reason = ApplicationExitInfo.REASON_OTHER,
         description = "[UNDELIVERED BROADCAST] Can't deliver broadcast",
       ),
     )
