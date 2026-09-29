@@ -29,18 +29,16 @@ internal class BackupPreferences(context: Context) {
 
   fun restore(bytes: ByteArray) {
     val decoded = decode(bytes)
-    BackupPreferenceChangeSuppression.suppress {
-      BACKUP_RULES.forEach { rule ->
-        val values = decoded[rule.name].orEmpty()
-        val editor = appContext.getSharedPreferences(rule.name, Context.MODE_PRIVATE).edit()
-        if (rule.allowedKeys == null) {
-          editor.clear()
-        } else {
-          rule.allowedKeys.forEach { key -> editor.remove(key) }
-        }
-        values.forEach { (key, value) -> editor.putValue(key, value) }
-        check(editor.commit()) { "設定を復元できませんでした: ${rule.name}" }
+    BACKUP_RULES.forEach { rule ->
+      val values = decoded[rule.name].orEmpty()
+      val editor = appContext.getSharedPreferences(rule.name, Context.MODE_PRIVATE).edit()
+      if (rule.allowedKeys == null) {
+        editor.clear()
+      } else {
+        rule.allowedKeys.forEach { key -> editor.remove(key) }
       }
+      values.forEach { (key, value) -> editor.putValue(key, value) }
+      check(editor.commit()) { "設定を復元できませんでした: ${rule.name}" }
     }
   }
 
@@ -156,7 +154,10 @@ internal class BackupPreferences(context: Context) {
       PreferenceBackupRule("book_reader_position"),
       PreferenceBackupRule(
         name = GoogleDriveBackupPreferences.FILE_NAME,
-        allowedKeys = setOf(GoogleDriveBackupPreferences.KEY_WIFI_ONLY),
+        allowedKeys = setOf(
+          GoogleDriveBackupPreferences.KEY_WIFI_ONLY,
+          GoogleDriveBackupPreferences.KEY_SCHEDULE_TIMES,
+        ),
       ),
       PreferenceBackupRule(
         name = "library_ai_preferences",
