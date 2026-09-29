@@ -10,6 +10,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class BackupScheduleTimeUi(
+  val hour: Int,
+  val minute: Int,
+) {
+  val label: String
+    get() = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+}
+
 data class BackupUiState(
   val configured: Boolean = false,
   val folderUri: String? = null,
@@ -18,7 +26,7 @@ data class BackupUiState(
   val lastFileName: String? = null,
   val lastError: String? = null,
   val wifiOnly: Boolean = false,
-  val scheduleTimes: List<BackupScheduleTime> = emptyList(),
+  val scheduleTimes: List<BackupScheduleTimeUi> = emptyList(),
   val running: Boolean = false,
   val message: String? = null,
   val restoreCompleted: Boolean = false,
@@ -113,7 +121,10 @@ class BackupViewModel(
 
   fun addGoogleDriveScheduleTime(hour: Int, minute: Int) {
     runCatching {
-      val updated = (_state.value.scheduleTimes + BackupScheduleTime(hour, minute))
+      val updated = (
+        _state.value.scheduleTimes.map { BackupScheduleTime(it.hour, it.minute) } +
+          BackupScheduleTime(hour, minute)
+        )
         .distinct()
         .sorted()
       repository.setGoogleDriveScheduleTimes(updated)
@@ -124,7 +135,10 @@ class BackupViewModel(
   fun removeGoogleDriveScheduleTime(hour: Int, minute: Int) {
     runCatching {
       val time = BackupScheduleTime(hour, minute)
-      repository.setGoogleDriveScheduleTimes(_state.value.scheduleTimes - time)
+      val updated = _state.value.scheduleTimes
+        .map { BackupScheduleTime(it.hour, it.minute) }
+        .filterNot { it == time }
+      repository.setGoogleDriveScheduleTimes(updated)
       updateStatus(running = _state.value.running)
     }.onFailure(::showError)
   }
@@ -160,7 +174,7 @@ class BackupViewModel(
         lastFileName = status.lastFileName,
         lastError = status.lastError,
         wifiOnly = status.wifiOnly,
-        scheduleTimes = status.scheduleTimes,
+        scheduleTimes = status.scheduleTimes.map { BackupScheduleTimeUi(it.hour, it.minute) },
         running = running,
         message = message ?: it.message,
         restoreCompleted = restoreCompleted,
