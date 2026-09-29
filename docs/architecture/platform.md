@@ -119,6 +119,8 @@ HTTP は暗号化されないため、LAN Web は信頼できる LAN でのみ�
 - Android 17 の app memory limits は targetSdk に関係なく実行環境の制約として扱い、app-owned process の `MemoryLimiter` を含む終了はこの診断経路で追跡する。
 - Android 17 / API 37 では `ProfilingManager` の anomaly trigger を登録し、memory limit 到達時に system profiling artifact を app-private storage へ残せるようにする。API 37 runtime guard 内だけで anomaly trigger を有効にする。
 - process-exit report は対象 exit の pid と process name を記録する。local AI memory diagnostics は同じ pid・process name かつ exit timestamp 以下のサンプルだけを補足し、別 process generation や終了後のサンプルを混在させない。
+- framework が LMKD の情報で既存 exit record の reason を `LOW_MEMORY` へ更新した場合、以前の system kill subreason に由来する description が残ることがある。`LOW_MEMORY` と `[UNDELIVERED BROADCAST]` が併記された場合は broadcast failure を単独の根本原因と断定せず、共有 report に `reasonContext=LOW_MEMORY_WITH_RETAINED_SYSTEM_SUBREASON` を付ける。
+- process-exit report は `reportSchemaVersion` と末尾の `reportComplete=true` を持つ。schema marker がない report は旧形式、completion marker がない report は途中までのコピーまたは旧形式の可能性があるものとして扱う。
 - MemoryLimiter exit 前10分以内に system profiling artifact が生成されている場合、共有 report には安全な artifact file name を最大3件だけ記録する。heap dump 本体、app-private path、heap 内容は report へコピーしない。
 - local AI の診断には raw user content、画像 payload、表紙 path、prompt、AI 出力を保存しない。
 - ユーザーが共有できる crash / process-exit report は最終 report 全体を保存前にサニタイズする。HTTP(S) URL は authority/path/query/fragment を伏せて scheme だけを残し、メールアドレス、credential-like value、Bearer token、Android private path 等も伏せる。version、commit、SDK、device、PSS/RSS、pid、process name 等の高レベル診断値は維持する。

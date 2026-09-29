@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-24
-- Updated: 2026-09-06
+- Updated: 2026-09-29
 - Refines: [ADR-0059](0059-current-version-compatibility-baseline.md), [ADR-0060](0060-converge-to-current-persisted-data-formats.md), [ADR-0079](0079-process-wide-local-ai-inference-sessions.md), [ADR-0145](0145-bound-vision-inference-memory-lifetime.md), [ADR-0149](0149-sanitize-shareable-crash-diagnostics.md), [ADR-0159](0159-isolate-smb-vision-inference-process.md), [ADR-0160](0160-worker-runtime-and-android-17-baseline-cleanup.md)
 
 ## Context
@@ -65,7 +65,15 @@ system-generated profiling result は app private `files/profiling` 以下に残
 
 推論 engine の強制 release や task ごとの process recycle は性能コストが大きいため、diagnostics で原因を切り分けた後の変更とする。
 
-### 5. cached process の通常 low-memory reclaim は startup diagnostics から除外する
+### 5. LMKD による reason 更新と既存 system subreason を区別して表示する
+
+framework は process death の確定時に LMKD の記録が見つかると、既存の exit record の reason を `REASON_LOW_MEMORY` へ更新する。この更新では、それ以前に記録された system kill subreason に由来する description が残る場合がある。
+
+このため `REASON_LOW_MEMORY` と `[UNDELIVERED BROADCAST]` description が併記された場合、broadcast delivery failure を単独の根本原因とは解釈しない。共有 report に `reasonContext=LOW_MEMORY_WITH_RETAINED_SYSTEM_SUBREASON` を追加し、reason と description が異なる診断段階に由来し得ることを明示する。
+
+また process-exit report に `reportSchemaVersion` と末尾の `reportComplete=true` を追加する。これにより、旧形式の report と途中までしかコピーされていない report を次回調査時に区別しやすくする。
+
+### 6. cached process の通常 low-memory reclaim は startup diagnostics から除外する
 
 `ApplicationExitInfo.REASON_LOW_MEMORY` でも exit 時の importance が `ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED` の場合は、Android が expendable な cached process を memory pressure に応じて回収した通常 lifecycle と扱い、起動時の process-exit diagnostics を表示しない。
 
@@ -85,6 +93,8 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - Android 17 の system anomaly heap dump を compileSdk/targetSdk 変更なしで取得できる。
 - shareable crash report に user content や heap dump 本体を含めない。
 - cached process の通常 low-memory reclaim をユーザー向け障害として表示しない。
+- LMKD による low-memory reason と保持された system subreason を同一原因として誤読しにくくなる。
+- report schema / completion marker により、旧形式や不完全なコピーを判別しやすくなる。
 - 現行診断storeだけをruntimeが理解し、退役済みkeyの互換分岐を維持しない。
 
 ### Negative
@@ -117,6 +127,7 @@ system-generated profiling result は app private `files/profiling` 以下に残
 - Android 17 memory limit の診断方法として本 ADR を current platform documentation の根拠にする。
 - 2026-08-28 の追記では cached process の通常 low-memory reclaim をユーザー向け診断対象から除外する境界を明文化した。
 - 2026-09-06 の追記では ADR-0059 / ADR-0060 の current-version compatibility baseline に従い、統合済みdiagnostics storeの旧read compatibilityを退役させた。
+- 2026-09-29 の追記では LMKD による reason 更新後も以前の system subreason description が残り得る framework semantics を診断表示へ反映し、report schema / completion marker を追加した。
 
 ## Public repository review
 

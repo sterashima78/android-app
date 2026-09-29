@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.diagnostics
 
 import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -42,6 +43,33 @@ class StartupProcessExitClassificationTest {
   fun `process exit reasonを共有レポート向けの名前へ変換する`() {
     assertEquals("MEMORY_LIMITER", processExitReasonName(ANDROID_17_REASON_MEMORY_LIMITER))
     assertEquals("REASON_999", processExitReasonName(999))
+  }
+
+  @Test
+  fun `low memory と undelivered broadcast の併記を保持された system subreason として分類する`() {
+    assertEquals(
+      "LOW_MEMORY_WITH_RETAINED_SYSTEM_SUBREASON",
+      processExitReasonContext(
+        reason = ApplicationExitInfo.REASON_LOW_MEMORY,
+        description = "[UNDELIVERED BROADCAST] Can't deliver broadcast",
+      ),
+    )
+  }
+
+  @Test
+  fun `undelivered broadcast 単独では low memory の保持 subreason と分類しない`() {
+    assertEquals(
+      null,
+      processExitReasonContext(
+        reason = ApplicationExitInfo.REASON_OTHER,
+        description = "[UNDELIVERED BROADCAST] Can't deliver broadcast",
+      ),
+    )
+  }
+
+  @Test
+  fun `process exit report schema version を固定する`() {
+    assertEquals(2, PROCESS_EXIT_REPORT_SCHEMA_VERSION)
   }
 
   @Test
