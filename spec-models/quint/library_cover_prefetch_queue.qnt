@@ -2,12 +2,13 @@
 // - docs/spec/07-library-reader.md
 //
 // Covers:
-// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:75a6395c68a184dae5ee14f818c08710e86fbee8644147b10cd2fe5cd28ebd8d -> claimPending
-// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:75a6395c68a184dae5ee14f818c08710e86fbee8644147b10cd2fe5cd28ebd8d -> recoverInterrupted
-// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:75a6395c68a184dae5ee14f818c08710e86fbee8644147b10cd2fe5cd28ebd8d -> retryFailed
-// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:75a6395c68a184dae5ee14f818c08710e86fbee8644147b10cd2fe5cd28ebd8d -> retrySkipped
-// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:75a6395c68a184dae5ee14f818c08710e86fbee8644147b10cd2fe5cd28ebd8d -> schedulerWaitKeepsPending
-// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:75a6395c68a184dae5ee14f818c08710e86fbee8644147b10cd2fe5cd28ebd8d -> waitReasonRequiresPending
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> claimPending
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> recoverInterrupted
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> retryFailed
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> retrySkipped
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> cacheEvictedAfterCompletion
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> schedulerWaitKeepsPending
+// - LIBRARY-COVER-PREFETCH-QUEUE-001@sha256:4f18cd7fde6f96c80884a661dd4c30e7bd96b3a1a951a64e439b91eb7a9c36ff -> waitReasonRequiresPending
 //
 // Abstraction:
 // One Library-owned cover-prefetch queue item is modeled. Durable queue state
@@ -100,6 +101,12 @@ module library_cover_prefetch_queue {
     waitReason' = NO_WAIT,
   }
 
+  action cacheEvictedAfterCompletion = all {
+    status == COMPLETED,
+    status' = SKIPPED,
+    waitReason' = NO_WAIT,
+  }
+
   action idle = all {
     status' = status,
     waitReason' = waitReason,
@@ -117,6 +124,7 @@ module library_cover_prefetch_queue {
     recoverInterrupted,
     retryFailed,
     retrySkipped,
+    cacheEvictedAfterCompletion,
     idle,
   }
 
