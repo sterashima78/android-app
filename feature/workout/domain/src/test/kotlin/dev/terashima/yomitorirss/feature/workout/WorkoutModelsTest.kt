@@ -32,6 +32,7 @@ class WorkoutModelsTest {
     assertTrue(rolled.today.sets.isEmpty())
     assertEquals(1, rolled.history.size)
     assertEquals(10, rolled.history.first().sets.first().amount)
+    assertEquals("基本メニュー", rolled.history.first().menu?.name)
   }
 
   @Test
