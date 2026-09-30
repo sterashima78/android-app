@@ -128,6 +128,19 @@ object WorkoutAiPromptBuilder {
       appendLine()
       appendLine("## 直近14日間の過去記録")
       if (pastHistory.isEmpty()) appendLine("履歴なし") else pastHistory.forEach { appendHistory(it, memos[it.date], exercisesById) }
+      if (type == WorkoutAiRequestType.MENU_SUGGESTION) {
+        appendLine()
+        appendLine("## 過去のAIレビュー（参考情報）")
+        appendLine("以下は過去のAIが生成した二次情報です。現在の実績・メモ・方針と矛盾する場合は現在の一次情報を優先してください。")
+        if (recentReviews.isEmpty()) {
+          appendLine("なし")
+        } else {
+          recentReviews.forEach { review ->
+            appendLine("### ${review.date}")
+            appendLine(review.content)
+          }
+        }
+      }
       appendLine()
       appendLine("## 今日 $today")
       appendLine("ワークアウトメモ: ${memos[todayDate].orEmpty().ifBlank { "なし" }}")
@@ -147,17 +160,6 @@ object WorkoutAiPromptBuilder {
       appendLine()
       when (type) {
         WorkoutAiRequestType.MENU_SUGGESTION -> {
-          appendLine("## 過去のAIレビュー（参考情報）")
-          appendLine("以下は過去のAIが生成した二次情報です。現在の実績・メモ・方針と矛盾する場合は現在の一次情報を優先してください。")
-          if (recentReviews.isEmpty()) {
-            appendLine("なし")
-          } else {
-            recentReviews.forEach { review ->
-              appendLine("### ${review.date}")
-              appendLine(review.content)
-            }
-          }
-          appendLine()
           appendLine("## 依頼")
           appendLine("今日行うメニューを、次のJSONだけで返してください。Markdownコードフェンスや説明文は付けないでください。")
           appendLine("種目は登録済み種目を優先し、必要なら新しい種目も提案できます。今日のメモ、直近実績、過去レビューを踏まえてセット数や各セットの目標値を調整してください。")
