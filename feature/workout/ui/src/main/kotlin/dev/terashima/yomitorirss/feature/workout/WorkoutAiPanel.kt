@@ -48,7 +48,7 @@ fun WorkoutAiChatScreen(
   ) {
     Text("ワークアウトチャット", style = MaterialTheme.typography.titleLarge)
     Text(
-      "現在のプリセット、直近14日間の履歴、今日の記録とメモを使って回答します。メニュー提案はそのまま今日のメニューへ適用できます。",
+      "現在のプリセット、直近14日間の履歴、今日の記録とメモを使って回答します。保存済みレビューは次回のメニュー提案にも参考情報として使います。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
