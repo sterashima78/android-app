@@ -32,9 +32,6 @@ class DefaultWorkoutAiReviewRepository(context: Context) : WorkoutAiReviewReposi
       .toList()
   }
 
-  override suspend fun loadByDates(dates: Set<String>): List<WorkoutAiReview> =
-    loadAll().filter { it.date in dates }
-
   private fun readRoot(): JSONObject =
     preferences.getString(KEY_REVIEWS, null)
       ?.let { raw -> runCatching { JSONObject(raw) }.getOrNull() }
