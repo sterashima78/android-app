@@ -43,7 +43,7 @@ for model in sorted(model_files):
     model_path = ROOT / model
     model_content = model_path.read_text(encoding="utf-8")
     declared_specs = re.findall(
-        r"^// - (docs/spec/[^\\s]+\\.md)$",
+        r"^// - (docs/spec/[A-Za-z0-9._/-]+[.]md)$",
         model_content,
         flags=re.MULTILINE,
     )
