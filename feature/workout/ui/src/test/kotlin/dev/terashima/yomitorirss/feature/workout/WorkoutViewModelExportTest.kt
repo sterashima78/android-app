@@ -48,6 +48,7 @@ class WorkoutViewModelExportTest {
       runCurrent()
 
       val historyId = exporter.exported.single().id
+      assertEquals("基本メニュー", exporter.exported.single().menu?.name)
       assertEquals(listOf("save:$historyId", "export:$historyId"), events)
       assertTrue(viewModel.state.value.exportPermissionRequired)
       assertTrue(viewModel.state.value.exportMessage.orEmpty().contains("書き込み権限が必要"))
