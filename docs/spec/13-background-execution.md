@@ -23,6 +23,13 @@ models:
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
 - application-scope の周期更新では通常feed、Reddit、購読型動画Provider、メール等の更新を個別に分離して実行する。購読型動画はVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
 - 通常feedの更新完了時は、推薦条件が有効なら対象feedの未読記事から評価が必要な記事をRSS-owned queueへ追加する。推薦評価はRSS-owned Workerが記事単位で順次claimし、画面のlifecycleに依存せず処理する。長時間の評価中は低重要度のforeground通知を表示する。
+<!-- formal-requirement
+id: RSS-RECOMMENDATION-QUEUE-001
+models:
+  - spec-models/quint/rss_recommendation_queue.qnt
+-->
+- RSS推薦キューを現在revisionへ再構成するときは、旧revisionのtaskを破棄し、現在revisionで評価対象の記事だけを再投入する。処理中に中断したtaskは同じrevisionの処理待ち状態へ戻して再開する。
+<!-- /formal-requirement -->
 - 統合ビューへ遷移する新着通知の件数には購読型動画を含めず、統合ビューで実際に確認できる未読件数と一致させる。
 - custom Video Providerのfunction実行はforeground Activityに依存せず、Video-owned runtimeからbackground refreshでも実行する。
 - Podcastの定刻生成は番組ごとに次のローカル日時を再計算するone-shot work chainとして実行し、通常の生成失敗後も翌日のscheduleを維持する。
@@ -42,4 +49,5 @@ models:
 
 - [Quint: `backup_schedule.qnt`](../../spec-models/quint/backup_schedule.qnt) — scheduleの状態遷移と再予約safety。
 - [Quint: `background_request_cleanup.qnt`](../../spec-models/quint/background_request_cleanup.qnt) — active workに対応するdurable request inputを期限だけで削除しないことを検査する。
+- [Quint: `rss_recommendation_queue.qnt`](../../spec-models/quint/rss_recommendation_queue.qnt) — recommendation taskのrevision reconciliationと中断復旧を検査する。
 - [Alloy: `backup_schedule.als`](../../spec-models/alloy/backup_schedule.als) — configured timeとscheduled work / automatic jobの構造制約。
