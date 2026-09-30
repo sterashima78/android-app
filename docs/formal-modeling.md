@@ -22,7 +22,7 @@ spec-models/quint/*.qnt
 spec-models/alloy/*.als    |
   構造・関係・cardinality |
                            v
-scripts/verify_formal_models.sh
+bash scripts/verify_formal_models.sh
   model + traceability verification
 ```
 
@@ -125,7 +125,7 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 3. 自然言語変更がmodelのabstractionに影響するか判断する。
 4. 影響する場合は同じPRでmodelを変更する。
 5. 影響しない場合も、modelが依然として同じ性質を表していることをreviewする。
-6. `scripts/verify_formal_models.sh` を実行する。
+6. `bash scripts/verify_formal_models.sh` を実行する。
 
 自然言語だけ、またはmodelだけを更新して意味がずれた状態でmergeしない。
 
@@ -164,7 +164,7 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 共通entry point:
 
 ```bash
-scripts/verify_formal_models.sh
+bash scripts/verify_formal_models.sh
 ```
 
 このscriptは次を行う。
@@ -188,7 +188,7 @@ CIではArchitecture checkの一部として同じscriptを実行する。
 - Alloy 6.2.0
 - formal verification用JVM: 21
 
-versionは `scripts/verify_formal_models.sh` で固定する。更新時はrelease noteを確認し、model syntax / solver behavior / required runtimeの変更を確認したうえでchecksumとこの文書を同時に更新する。
+versionは `bash scripts/verify_formal_models.sh` で固定する。更新時はrelease noteを確認し、model syntax / solver behavior / required runtimeの変更を確認したうえでchecksumとこの文書を同時に更新する。
 
 ## 9. review checklist
 
