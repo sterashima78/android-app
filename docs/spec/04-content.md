@@ -146,8 +146,14 @@ models:
 - SMB動画は同期元のディレクトリ階層に沿って表示する。保存済み画面のrootではSMB同期場所ごとのrootフォルダを表示し、その内部では元ファイルサーバー上の階層を順に辿れる。SMB動画をVideo専用フォルダへ移動しない。
 - Web動画は追加した時点で保存済み画面へ入り、未分類またはVideo専用フォルダ1つへ整理できる。Web動画をフォルダから外しても保存済み状態は維持して未分類へ戻す。
 - 明示保存した購読型Provider動画は未分類またはVideo専用フォルダ1つへ整理でき、保存解除すると保存済み画面から外れる。
+<!-- formal-requirement
+id: VIDEO-SAVED-LIFECYCLE-001
+models:
+  - spec-models/quint/video_saved_folder_lifecycle.qnt
+-->
 - Video専用フォルダは設定画面から作成、名称変更、削除できる。フォルダを削除しても所属していたWeb動画と明示保存済みProvider動画は未分類へ戻し、再生状態は変更しない。
 - 保存済み判定 / 保存 / 保存解除 / 保存先変更 / フォルダ操作では、再生位置や視聴済み状態を変更しない。
+<!-- /formal-requirement -->
 - Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
 - Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
 - Web URL登録は1件を明示的に追加する単発操作であり、購読・未読・background refreshの対象にはしない。
@@ -164,7 +170,13 @@ models:
 - Provider更新で新しく発見した動画はVideo catalogへ追加し、provider由来の未読として表示する。既存動画の更新では未読 / 既読、あとで見る、保存、再生位置を保持する。
 - provider由来の未読 / 既読状態と視聴済み状態は独立して扱う。既読化で視聴済みへ変更せず、再生完了で自動的に既読化しない。
 - 購読型Provider由来の未読、あとで見る、履歴、保存、再生は動画機能内で確認・操作し、統合ビューには重複表示しない。
+<!-- formal-requirement
+id: VIDEO-SUBSCRIPTION-RETENTION-001
+models:
+  - spec-models/quint/video_subscription_retention.qnt
+-->
 - subscription解除時、未保存かつ再生履歴のない取得済み動画は削除できる。保存済みまたは再生履歴を持つ動画はsubscription membershipだけを外してcatalogへ残す。
+<!-- /formal-requirement -->
 - 旧専用購読画面はトップレベル導線から廃止し、購読設定は「動画」画面へ集約する。既存インストールのsubscriptionと未読状態は更新時にVideo-owned stateへ移行する。
 - SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして登録・編集する。passwordは画面へ再表示しない。
 - 動画設定では全体設定のSMB接続プロファイルを選び、動画として同期するshareとパスを個別に登録する。蔵書とは異なるshare / pathを指定でき、同じ接続プロファイルへ複数の動画同期場所を登録できる。
@@ -178,3 +190,8 @@ models:
 - 動画ごとに再生位置、duration、最終再生日時、視聴済み状態を保存し、次回再生時に保存位置から再開する。既存版で保存済みのSMB動画は、同じserver/pathの対応が一意に決まる場合、shareを含む新しい動画identityへ初回再同期時に再生状態を引き継ぐ。
 - durationが取得できる動画は95%以上再生すると視聴済みとし、一覧から手動で視聴済み / 未視聴を変更できる。
 - 初期実装の動画再生はforeground画面内で行う。画面を閉じた後のbackground音声継続、Cast、動画download、transcodingは提供しない。
+
+### 形式モデル
+
+- [Quint: `video_saved_folder_lifecycle.qnt`](../../spec-models/quint/video_saved_folder_lifecycle.qnt) — 保存・フォルダ割当・フォルダ削除・保存解除と再生状態の独立性を検査する。
+- [Quint: `video_subscription_retention.qnt`](../../spec-models/quint/video_subscription_retention.qnt) — subscription解除時に保存済みまたは再生履歴ありの動画をcatalogへ保持し、それ以外を削除する状態遷移を検査する。
