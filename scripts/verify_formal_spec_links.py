@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
 import re
-import subprocess
 import sys
 
 MODEL_SUFFIXES = {".qnt", ".als"}
@@ -15,8 +14,12 @@ REQUIREMENT_BLOCK_PATTERN = re.compile(
 )
 REQUIREMENT_ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9-]*$")
 COVERAGE_PATTERN = re.compile(
-    r"^// - (?P<id>[A-Z][A-Z0-9-]*)@(?P<revision>[1-9][0-9]*)"
+    r"^// - (?P<id>[A-Z][A-Z0-9-]*)@sha256:(?P<hash>[0-9a-f]{64})"
     r" -> (?P<symbol>[A-Za-z_][A-Za-z0-9_]*)$",
+    flags=re.MULTILINE,
+)
+COVERAGE_CANDIDATE_PATTERN = re.compile(
+    r"^// - [A-Z][A-Z0-9-]*@.* -> [A-Za-z_][A-Za-z0-9_]*$",
     flags=re.MULTILINE,
 )
 DECLARED_SPEC_PATTERN = re.compile(
@@ -31,14 +34,25 @@ MODEL_LINK_PATTERN = re.compile(
 @dataclass(frozen=True)
 class Requirement:
     requirement_id: str
-    revision: int
     models: tuple[str, ...]
     body: str
+    body_hash: str
     spec_path: str
 
 
 def normalize_requirement_body(body: str) -> str:
-    return "\n".join(line.rstrip() for line in body.strip().splitlines())
+    normalized_newlines = body.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.rstrip() for line in normalized_newlines.split("\n")]
+    while lines and lines[0] == "":
+        lines.pop(0)
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines)
+
+
+def requirement_hash(body: str) -> str:
+    normalized = normalize_requirement_body(body)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def parse_requirements(
@@ -58,7 +72,6 @@ def parse_requirements(
         meta = match.group("meta")
         body = normalize_requirement_body(match.group("body"))
         requirement_id: str | None = None
-        revision: int | None = None
         models: list[str] = []
         reading_models = False
 
@@ -68,15 +81,6 @@ def parse_requirements(
                 continue
             if line.startswith("id:"):
                 requirement_id = line.removeprefix("id:").strip()
-                reading_models = False
-            elif line.startswith("revision:"):
-                raw_revision = line.removeprefix("revision:").strip()
-                try:
-                    revision = int(raw_revision)
-                except ValueError:
-                    errors.append(
-                        f"{spec_path}: invalid formal requirement revision: {raw_revision}"
-                    )
                 reading_models = False
             elif line == "models:":
                 reading_models = True
@@ -89,11 +93,6 @@ def parse_requirements(
 
         if not requirement_id or not REQUIREMENT_ID_PATTERN.fullmatch(requirement_id):
             errors.append(f"{spec_path}: invalid or missing formal requirement id")
-            continue
-        if revision is None or revision < 1:
-            errors.append(
-                f"{spec_path}: {requirement_id}: revision must be an integer >= 1"
-            )
             continue
         if not models:
             errors.append(f"{spec_path}: {requirement_id}: models must not be empty")
@@ -108,47 +107,11 @@ def parse_requirements(
         requirements.append(
             Requirement(
                 requirement_id=requirement_id,
-                revision=revision,
                 models=tuple(models),
                 body=body,
+                body_hash=requirement_hash(body),
                 spec_path=spec_path,
             )
-        )
-
-    return requirements
-
-
-def git_text(root: Path, args: list[str]) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(root), *args],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "git command failed")
-    return result.stdout
-
-
-def requirements_at_ref(root: Path, ref: str) -> dict[str, Requirement]:
-    paths = [
-        line
-        for line in git_text(
-            root, ["ls-tree", "-r", "--name-only", ref, "--", "docs/spec"]
-        ).splitlines()
-        if line.endswith(".md")
-    ]
-    requirements: dict[str, Requirement] = {}
-    parse_errors: list[str] = []
-
-    for path in paths:
-        content = git_text(root, ["show", f"{ref}:{path}"])
-        for requirement in parse_requirements(content, path, parse_errors):
-            requirements[requirement.requirement_id] = requirement
-
-    if parse_errors:
-        raise RuntimeError(
-            "base formal requirement metadata is invalid: " + "; ".join(parse_errors)
         )
 
     return requirements
@@ -165,7 +128,7 @@ def symbol_exists(model_content: str, symbol: str) -> bool:
     )
 
 
-def verify(root: Path, base_ref: str | None = None) -> list[str]:
+def verify(root: Path) -> list[str]:
     spec_dir = root / "docs" / "spec"
     model_root = root / "spec-models"
     errors: list[str] = []
@@ -213,7 +176,7 @@ def verify(root: Path, base_ref: str | None = None) -> list[str]:
             requirements[requirement.requirement_id] = requirement
 
     model_declared_specs: dict[str, set[str]] = {}
-    model_coverages: dict[str, list[tuple[str, int, str]]] = {}
+    model_coverages: dict[str, list[tuple[str, str, str]]] = {}
 
     for model in sorted(model_files):
         if model not in referenced_models:
@@ -239,8 +202,13 @@ def verify(root: Path, base_ref: str | None = None) -> list[str]:
                     f"{declared_spec}"
                 )
 
+        valid_coverage_lines = {match.group(0) for match in COVERAGE_PATTERN.finditer(model_content)}
+        for candidate in COVERAGE_CANDIDATE_PATTERN.findall(model_content):
+            if candidate not in valid_coverage_lines:
+                errors.append(f"{model}: malformed formal requirement coverage: {candidate}")
+
         coverages = [
-            (match.group("id"), int(match.group("revision")), match.group("symbol"))
+            (match.group("id"), match.group("hash"), match.group("symbol"))
             for match in COVERAGE_PATTERN.finditer(model_content)
         ]
         model_coverages[model] = coverages
@@ -248,12 +216,12 @@ def verify(root: Path, base_ref: str | None = None) -> list[str]:
         if not coverages:
             errors.append(f"{model}: missing formal requirement coverage declaration")
 
-        for requirement_id, revision, symbol in coverages:
+        for requirement_id, acknowledged_hash, symbol in coverages:
             requirement = requirements.get(requirement_id)
             if requirement is None:
                 errors.append(
                     f"{model}: coverage references unknown requirement: "
-                    f"{requirement_id}@{revision}"
+                    f"{requirement_id}@sha256:{acknowledged_hash}"
                 )
                 continue
             if model not in requirement.models:
@@ -261,10 +229,11 @@ def verify(root: Path, base_ref: str | None = None) -> list[str]:
                     f"{model}: coverage for {requirement_id} is not listed by "
                     f"{requirement.spec_path}"
                 )
-            if revision != requirement.revision:
+            if acknowledged_hash != requirement.body_hash:
                 errors.append(
-                    f"{model}: stale requirement revision {requirement_id}@{revision}; "
-                    f"current revision is {requirement.revision}"
+                    f"{model}: stale requirement hash for {requirement_id}; "
+                    f"expected sha256:{requirement.body_hash}, "
+                    f"found sha256:{acknowledged_hash}"
                 )
             if requirement.spec_path not in declared_specs:
                 errors.append(
@@ -274,7 +243,7 @@ def verify(root: Path, base_ref: str | None = None) -> list[str]:
             if not symbol_exists(model_content, symbol):
                 errors.append(
                     f"{model}: coverage target does not exist: "
-                    f"{requirement_id}@{revision} -> {symbol}"
+                    f"{requirement_id}@sha256:{acknowledged_hash} -> {symbol}"
                 )
 
     for requirement in requirements.values():
@@ -300,48 +269,20 @@ def verify(root: Path, base_ref: str | None = None) -> list[str]:
                 coverage
                 for coverage in model_coverages.get(model, [])
                 if coverage[0] == requirement.requirement_id
-                and coverage[1] == requirement.revision
+                and coverage[1] == requirement.body_hash
             ]
             if not matching:
                 errors.append(
                     f"{model}: does not acknowledge current requirement "
-                    f"{requirement.requirement_id}@{requirement.revision}"
+                    f"{requirement.requirement_id}@sha256:{requirement.body_hash}"
                 )
-
-    if base_ref:
-        try:
-            base_requirements = requirements_at_ref(root, base_ref)
-        except RuntimeError as exc:
-            errors.append(f"cannot read formal requirements from base {base_ref}: {exc}")
-        else:
-            for requirement_id, current in requirements.items():
-                previous = base_requirements.get(requirement_id)
-                if previous is None:
-                    continue
-                if current.revision < previous.revision:
-                    errors.append(
-                        f"{current.spec_path}: {requirement_id}: revision decreased "
-                        f"from {previous.revision} to {current.revision}"
-                    )
-                if current.body != previous.body and current.revision <= previous.revision:
-                    errors.append(
-                        f"{current.spec_path}: {requirement_id}: requirement body changed "
-                        f"without increasing revision above {previous.revision}"
-                    )
 
     return errors
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--base-ref",
-        help="Compare requirement bodies with this git ref and require revision bumps.",
-    )
-    args = parser.parse_args()
-
     root = Path(__file__).resolve().parents[1]
-    errors = verify(root, args.base_ref)
+    errors = verify(root)
 
     if errors:
         print("Formal specification traceability verification failed:", file=sys.stderr)

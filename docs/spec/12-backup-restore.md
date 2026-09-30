@@ -7,7 +7,6 @@
 - Google Driveでは、保存先設定後に自動バックアップ時刻を複数登録できる。
 <!-- formal-requirement
 id: BACKUP-SCHEDULE-001
-revision: 1
 models:
   - spec-models/quint/backup_schedule.qnt
   - spec-models/alloy/backup_schedule.als

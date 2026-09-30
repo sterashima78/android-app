@@ -3,10 +3,10 @@
 // - docs/spec/13-background-execution.md
 //
 // Covers:
-// - BACKUP-SCHEDULE-001@1 -> NoConfiguredTimeMeansNoScheduledWork
-// - BACKUP-SCHEDULE-001@1 -> ExactlyOneScheduledWorkPerConfiguredTime
-// - BACKUP-SCHEDULE-001@1 -> AutomaticJobsUseConfiguredTimes
-// - BACKUP-SCHEDULE-001@1 -> ManualBackupWithoutAutomaticSchedule
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> NoConfiguredTimeMeansNoScheduledWork
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> ExactlyOneScheduledWorkPerConfiguredTime
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> AutomaticJobsUseConfiguredTimes
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> ManualBackupWithoutAutomaticSchedule
 //
 // Scope:
 // This model focuses on structural constraints: configured local times map

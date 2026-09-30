@@ -3,11 +3,11 @@
 // - docs/spec/13-background-execution.md
 //
 // Covers:
-// - BACKUP-SCHEDULE-001@1 -> scheduleMatchesArmedWork
-// - BACKUP-SCHEDULE-001@1 -> noAutomaticWorkWithoutConfiguredTime
-// - BACKUP-SCHEDULE-001@1 -> manualBackup
-// - BACKUP-SCHEDULE-002@1 -> fireMorning
-// - BACKUP-SCHEDULE-002@1 -> fireEvening
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> scheduleMatchesArmedWork
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> noAutomaticWorkWithoutConfiguredTime
+// - BACKUP-SCHEDULE-001@sha256:0d16ab7971e74f9b8f8fd71a6fbe3913562def892a03e026621655cb37ac5de6 -> manualBackup
+// - BACKUP-SCHEDULE-002@sha256:d1a0e0c976b0d8b93d60b3802f6506ebf81c06f639b5ddd658b58c24b5b94983 -> fireMorning
+// - BACKUP-SCHEDULE-002@sha256:d1a0e0c976b0d8b93d60b3802f6506ebf81c06f639b5ddd658b58c24b5b94983 -> fireEvening
 //
 // Abstraction:
 // Two independent slots represent arbitrary distinct configured local times.
