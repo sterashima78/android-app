@@ -23,6 +23,7 @@
 | Knowledge page AI task lifecycle | [`quint/knowledge_page_ai_task_lifecycle.qnt`](quint/knowledge_page_ai_task_lifecycle.qnt) | — |
 | RSS recommendation revision queue | [`quint/rss_recommendation_queue.qnt`](quint/rss_recommendation_queue.qnt) | — |
 | RSS exclusion-feedback learning | [`quint/rss_feedback_learning.qnt`](quint/rss_feedback_learning.qnt) | — |
+| RSS cloud inference data boundary | — | [`alloy/rss_cloud_data_boundary.als`](alloy/rss_cloud_data_boundary.als) |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
 | Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
 | Video saved/folder lifecycle | [`quint/video_saved_folder_lifecycle.qnt`](quint/video_saved_folder_lifecycle.qnt) | — |
