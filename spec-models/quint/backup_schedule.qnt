@@ -2,7 +2,13 @@
 // - docs/spec/12-backup-restore.md
 // - docs/spec/13-background-execution.md
 //
-// Abstraction:
+// Covers:
+// - BACKUP-SCHEDULE-001@1 -> scheduleMatchesArmedWork
+// - BACKUP-SCHEDULE-001@1 -> noAutomaticWorkWithoutConfiguredTime
+// - BACKUP-SCHEDULE-001@1 -> manualBackup
+// - BACKUP-SCHEDULE-002@1 -> fireMorning
+// - BACKUP-SCHEDULE-002@1 -> fireEvening
+//// Abstraction:
 // Two independent slots represent arbitrary distinct configured local times.
 // The model verifies per-slot scheduling semantics, not the number of times a
 // user may configure in production. Cardinality/uniqueness across configured
