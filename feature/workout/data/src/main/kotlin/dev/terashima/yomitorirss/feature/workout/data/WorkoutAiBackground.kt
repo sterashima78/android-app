@@ -198,7 +198,7 @@ class WorkoutAiWorker(
     val today = LocalDate.now()
     val dates = WorkoutAiPromptBuilder.recentDates(snapshot, today)
     val memos = settingsRepository.loadMemos(dates)
-    val reviews = reviewRepository.loadByDates(dates)
+    val reviews = reviewRepository.loadAll()
     val prompt = WorkoutAiPromptBuilder.build(
       type = type,
       snapshot = snapshot,
