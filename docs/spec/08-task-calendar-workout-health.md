@@ -61,3 +61,7 @@ models:
 - Health ConnectからWorkoutへのimport / 双方向同期は行わない。
 - アプリ内Workoutのexport以外の健康データを書き込まない。
 <!-- /formal-requirement -->
+
+### 形式モデル
+
+- [Alloy: `workout_health_data_boundary.als`](../../spec-models/alloy/workout_health_data_boundary.als) — Health由来read dataをHealth read modelだけへ限定し、WorkoutへのimportやAI入力、app databaseへの複製を禁止する。
