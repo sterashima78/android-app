@@ -183,8 +183,15 @@ models:
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - 動画設定では購読型Providerを追加・有効化 / 無効化できる。Providerを無効化しても設定・subscription・取得済み動画は削除せず、background refresh対象からだけ外す。
 - custom Providerは名前とJavaScript functionを設定して複数追加・編集できる。functionはsubscribe時の入力またはrefresh時のsource IDを受け取り、source ID、タイトル、source URL、動画一覧を返す。
-- custom Providerのfunctionから外部データを取得するときは `api.fetch` を利用する。requestはHTTPSに限定し、実行時間、request回数、request / response sizeを制限する。
-- custom Providerへ既存のCookie、token、SMB credential、他機能の認証情報を自動共有しない。初期contractではcredential headerも設定対象にせず、認証情報をfunction codeへ埋め込む用途を想定しない。
+<!-- formal-requirement
+id: VIDEO-CUSTOM-PROVIDER-SECURITY-001
+models:
+  - spec-models/alloy/video_custom_provider_security.als
+-->
+- custom Provider runtimeはdatabase、filesystem、Android object、他Context repositoryを公開せず、WebView自身のdirect network loadも無効化し、外部通信はhostが検証する`api.fetch`だけを利用する。
+- `api.fetch` requestはuserinfoを含まないHTTPS URLに限定し、`Authorization` / `Cookie` / `Proxy-Authorization` / API key系credential headerを拒否する。request回数、body size、response size、function size、実行時間をboundedにする。
+- 既存WebView Cookie、mail credential、SMB credential、cloud token等をcustom Providerへ暗黙に共有しない。認証付きProviderが必要な場合はfunction codeと分離したprotected credential capabilityとして別途設計する。
+<!-- /formal-requirement -->
 - custom Providerは画面を開いていないbackground refreshでも同じfunctionを実行できる。functionの失敗や不正な戻り値はそのsubscriptionの更新失敗として扱い、他Provider / subscriptionの更新を継続する。
 - 有効なProviderへチャンネル等のsource URLまたはProvider固有の入力をsubscriptionとして追加し、手動またはbackgroundで更新できる。
 - Provider更新で新しく発見した動画はVideo catalogへ追加し、provider由来の未読として表示する。既存動画の更新では未読 / 既読、あとで見る、保存、再生位置を保持する。
@@ -216,3 +223,4 @@ models:
 - [Quint: `video_saved_folder_lifecycle.qnt`](../../spec-models/quint/video_saved_folder_lifecycle.qnt) — 保存・フォルダ割当・フォルダ削除・保存解除と再生状態の独立性を検査する。
 - [Quint: `video_subscription_retention.qnt`](../../spec-models/quint/video_subscription_retention.qnt) — subscription解除後も保存・再生履歴がある間だけProvider動画をcatalogへ保持する状態遷移を検査する。
 - [Alloy: `video_web_playback_privacy.als`](../../spec-models/alloy/video_web_playback_privacy.als) — Cookie共有opt-in、Referer path共有条件、query / fragment / userinfoとOriginの共有境界を検査する。
+- [Alloy: `video_custom_provider_security.als`](../../spec-models/alloy/video_custom_provider_security.als) — custom Providerのcapability、credential継承、HTTPS request、credential header境界を検査する。

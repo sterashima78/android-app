@@ -28,6 +28,7 @@
 | Video saved/folder lifecycle | [`quint/video_saved_folder_lifecycle.qnt`](quint/video_saved_folder_lifecycle.qnt) | — |
 | Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
 | Web video playback privacy boundary | — | [`alloy/video_web_playback_privacy.als`](alloy/video_web_playback_privacy.als) |
+| Custom video provider security boundary | — | [`alloy/video_custom_provider_security.als`](alloy/video_custom_provider_security.als) |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
 
