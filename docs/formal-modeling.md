@@ -213,7 +213,7 @@ bash scripts/verify_formal_models.sh
 
 このscriptは次を行う。
 
-1. specとmodelのlink整合性検査
+1. specとmodelのlink、requirement ID / revision / coverage整合性検査。PR CIではbaseとのrequirement本文差分も検査
 2. pinned Quintの取得とchecksum検証
 3. Quint typecheck
 4. Quintのfinite-state safety verification
