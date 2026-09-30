@@ -33,6 +33,7 @@ class WorkoutAiViewModelTest {
     val tasks = RecordingTaskController()
     val viewModel = WorkoutAiViewModel(
       settingsRepository = settingsRepository,
+      reviewRepository = FakeReviewRepository(),
       taskController = tasks,
     )
     advanceUntilIdle()
@@ -58,6 +59,7 @@ class WorkoutAiViewModelTest {
     )
     val viewModel = WorkoutAiViewModel(
       settingsRepository = FakeSettingsRepository(),
+      reviewRepository = FakeReviewRepository(),
       taskController = tasks,
     )
     advanceUntilIdle()
@@ -85,6 +87,7 @@ class WorkoutAiViewModelTest {
 
     val viewModel = WorkoutAiViewModel(
       settingsRepository = FakeSettingsRepository(),
+      reviewRepository = FakeReviewRepository(),
       taskController = tasks,
     )
     advanceUntilIdle()
@@ -117,6 +120,20 @@ class WorkoutAiViewModelTest {
     override suspend fun dismiss(requestId: String) {
       dismissedRequestIds += requestId
     }
+  }
+
+  private class FakeReviewRepository(
+    private val reviews: MutableList<WorkoutAiReview> = mutableListOf(),
+  ) : WorkoutAiReviewRepository {
+    override suspend fun save(review: WorkoutAiReview) {
+      reviews.removeAll { it.date == review.date }
+      reviews += review
+    }
+
+    override suspend fun loadAll(): List<WorkoutAiReview> = reviews.sortedByDescending { it.date }
+
+    override suspend fun loadByDates(dates: Set<String>): List<WorkoutAiReview> =
+      loadAll().filter { it.date in dates }
   }
 
   private class FakeSettingsRepository : WorkoutAiSettingsRepository {
