@@ -82,6 +82,88 @@ class WorkoutAiPromptBuilderTest {
   }
 
   @Test
+  fun `完了後レビューは保存された当日メニューだけを予定として扱う`() {
+    val base = newWorkoutSnapshot(today.toString())
+    val pushUp = base.exercises.first { it.id == "push-up" }
+    val plannedMenu = WorkoutMenu(
+      id = "light-day",
+      name = "軽め",
+      items = listOf(WorkoutMenuItem(pushUp.id, targetSets = 2, targets = listOf(8, 8))),
+    )
+    val snapshot = base.copy(
+      history = listOf(
+        WorkoutHistory(
+          id = "today",
+          date = today.toString(),
+          startedAt = null,
+          finishedAt = "2026-08-27T08:30:00+09:00",
+          sets = listOf(workoutSet("push", "腕立て伏せ", 8)),
+          menu = plannedMenu,
+        ),
+      ),
+      today = WorkoutDay(date = today.toString()),
+    )
+
+    val prompt = WorkoutAiPromptBuilder.build(
+      type = WorkoutAiRequestType.POST_WORKOUT_REVIEW,
+      snapshot = snapshot,
+      settings = WorkoutAiSettings(),
+      memos = emptyMap(),
+      today = today,
+    )
+
+    val todaySection = prompt.substringAfter("## 今日 2026-08-27").substringBefore("## 依頼")
+    assertTrue(todaySection.contains("軽め"))
+    assertTrue(todaySection.contains("腕立て伏せ: [8, 8] 回"))
+    assertFalse(todaySection.contains("ランジ"))
+    assertTrue(prompt.contains("他のプリセットにあるだけの種目を未実施扱いしない"))
+  }
+
+  @Test
+  fun `メニュー提案は直近レビューを二次情報として含める`() {
+    val prompt = WorkoutAiPromptBuilder.build(
+      type = WorkoutAiRequestType.MENU_SUGGESTION,
+      snapshot = snapshotWithHistory(),
+      settings = WorkoutAiSettings(),
+      memos = emptyMap(),
+      reviews = listOf(
+        WorkoutAiReview(
+          date = "2026-08-26",
+          generatedAt = "2026-08-26T09:00:00+09:00",
+          provider = WorkoutAiProvider.LOCAL,
+          content = "次回は回数を維持する",
+        ),
+      ),
+      today = today,
+    )
+
+    assertTrue(prompt.contains("過去のAIレビュー（参考情報）"))
+    assertTrue(prompt.contains("二次情報"))
+    assertTrue(prompt.contains("次回は回数を維持する"))
+  }
+
+  @Test
+  fun `完了後レビューには過去AIレビューを混入させない`() {
+    val prompt = WorkoutAiPromptBuilder.build(
+      type = WorkoutAiRequestType.POST_WORKOUT_REVIEW,
+      snapshot = snapshotWithHistory(),
+      settings = WorkoutAiSettings(),
+      memos = emptyMap(),
+      reviews = listOf(
+        WorkoutAiReview(
+          date = "2026-08-26",
+          generatedAt = "2026-08-26T09:00:00+09:00",
+          provider = WorkoutAiProvider.LOCAL,
+          content = "過去レビュー本文",
+        ),
+      ),
+      today = today,
+    )
+
+    assertFalse(prompt.contains("過去レビュー本文"))
+  }
+
+  @Test
   fun `recentDates は今日と直近14日だけを返す`() {
     val dates = WorkoutAiPromptBuilder.recentDates(snapshotWithHistory(), today)
 
