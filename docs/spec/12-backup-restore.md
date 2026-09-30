@@ -4,7 +4,17 @@
 - backupにはmanifest、database snapshot、allowlistされたuser preferencesを含む。
 - checksum、SQLite application id、integrity check等を利用して復元前にarchiveを検証する。
 - database snapshotは現在のapplication schema versionと一致する場合だけ復元対象とし、異なるschema versionのbackupは復元前に拒否する。
-- Google Driveでは、保存先設定後に自動バックアップ時刻を複数登録でき、登録した各ローカル時刻にバックアップjobを予約する。時刻未登録では自動バックアップを行わず、手動実行は常に提供する。指定時刻はWorkManagerのbackground制約により遅延し得る。
+- Google Driveでは、保存先設定後に自動バックアップ時刻を複数登録できる。
+<!-- formal-requirement
+id: BACKUP-SCHEDULE-001
+revision: 1
+models:
+  - spec-models/quint/backup_schedule.qnt
+  - spec-models/alloy/backup_schedule.als
+-->
+- 登録した各ローカル時刻にバックアップjobを1つ予約する。時刻未登録では自動バックアップ用のscheduled workを持たず、手動実行はscheduleなしでも利用できる。
+<!-- /formal-requirement -->
+- 指定時刻はWorkManagerのbackground制約により遅延し得る。
 - 「Wi-Fi接続時のみバックアップ」を有効にした場合、Google Driveへの自動・手動・初回バックアップはインターネット接続可能なWi-Fiが利用できる場合だけ実行する。既定はOFFとする。
 - Wi-Fi限定設定と自動バックアップ時刻はallowlistされたuser preferenceとしてbackup対象とするが、Google Drive保存先URI・表示名・実行履歴はbackup対象外とする。
 - credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
