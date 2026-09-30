@@ -208,12 +208,26 @@ verifier は private key、代表的 credential literal、keystore / OAuth secre
 
 実ユーザーのメールアドレス・URL・書籍情報・健康データ等は文字列形式だけでは private かを判定できないため、自動検査を通過しても PR 作成前の意味的な公開情報レビューを必須とする。
 
+## Formal specification verification
+
+自然言語仕様から形式化したstate / relation invariantは、Quint / Alloy modelとして `spec-models/` に置き、次でtraceabilityとmodel expectationを検査する。
+
+```bash
+bash scripts/verify_formal_models.sh
+```
+
+検査対象は、spec documentからmodelへのlink整合性、Quint typecheck + finite-state safety verification、Alloy run / check expectationである。形式modelはimplementation testの代替ではなく、仕様自体の状態空間・構造制約を検査する層として扱う。
+
+Quint / Alloyの役割分担、abstraction、変更時の同期ルールは [`../formal-modeling.md`](../formal-modeling.md) を正本とする。CIでは既存の `Architecture` check内でこの検証も実行し、形式仕様のdriftをrequired architecture gateへ含める。
+
+Sources: [ADR-0275](../adr/0275-formal-specification-with-quint-and-alloy.md)
+
 ## CI baseline
 
 Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の5 checkを独立して実行する。repository ruleset の required status checks は先頭4つとし、R8 は release shrinker とサイズ回帰を早期検出する追加検証として実行する。
 
 - `Public repository`: public repository verifier の unit test と tracked content scan
-- `Architecture`: Gradle metadata verifier、table/ownership verifier、Gradle `verifyArchitecture`
+- `Architecture`: Gradle metadata verifier、table/ownership verifier、Gradle `verifyArchitecture`、Quint / Alloy formal specification verification
 - `Test`: `./gradlew --no-daemon test`
 - `Lint`: `./gradlew --no-daemon :app:lintRelease`
 - `R8`: `./gradlew --no-daemon :app:minifyReleaseWithR8`。base branch と minified DEX 合計を比較し、10%以上の増加は warning として可視化する
@@ -224,6 +238,7 @@ Android の4検証は matrix で `fail-fast: false` とし、1つが失敗して
 python3 scripts/test_verify_public_repository.py
 python3 scripts/verify_public_repository.py
 ./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
+bash scripts/verify_formal_models.sh
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
 ./gradlew --no-daemon :app:minifyReleaseWithR8
@@ -244,6 +259,7 @@ Sources: [ADR-0038](../adr/0038-android-test-layers-and-e2e.md), [ADR-0093](../a
 | Change | Expected validation |
 | --- | --- |
 | pure Domain rule | unit test |
+| stateful / relational specification change | linked Quint / Alloy model when applicable + affected production test |
 | multi-port orchestration | UseCase/Application Service unit test |
 | SQL / migration | Repository/integration + migration-related test |
 | explicit schema initializer | empty/minimal schema integration test + architecture table registration |
@@ -295,3 +311,4 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0214](../adr/0214-gradle-architecture-metadata-verification.md)
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
+- [ADR-0275](../adr/0275-formal-specification-with-quint-and-alloy.md)
