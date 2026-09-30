@@ -300,6 +300,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - custom provider function codeをcredential storeとして扱わない。
 - provider refreshで既存itemのread / playback / saved stateを上書きしない。
 - subscription解除で保存済みまたは再生履歴を持つVideo itemを暗黙に削除しない。
+- subscription membershipを失ったSERVICE itemは、明示保存または再生履歴のどちらかがある間だけcatalogへ保持し、両方なくなった時点でcatalogから削除する。
 - migration完了後のcurrent runtimeで旧provider専用tableを参照しない。
 - foreground video playbackをAudioのbackground media sessionへ暗黙に統合しない。
 - user-authored Web extractor function、custom provider function、実URLをpublic repositoryのfixture/documentへ保存しない。
@@ -320,6 +321,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - custom provider runtimeのHTTPS制約、credential header拒否、request / response size、request回数、timeout、戻り値validationをruntime boundary testの対象とする。
 - provider refreshで既存item stateを保持し、新規itemだけを未読として追加することをrepository testする。
 - subscription解除時のretention ruleをrepository testする。
+- subscription解除で保存だけを理由に残ったSERVICE itemは保存解除でcatalogから削除し、再生履歴がある場合は保持することをrepository testする。
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。
