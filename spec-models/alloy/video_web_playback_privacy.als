@@ -2,20 +2,21 @@
 // - docs/spec/04-content.md
 //
 // Covers:
-// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:9d97a143be15096227d9832c04b9ddfb9679a78504f9d4f2a71a2beb7f6f18e8 -> CookieSharingRequiresOptIn
-// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:9d97a143be15096227d9832c04b9ddfb9679a78504f9d4f2a71a2beb7f6f18e8 -> CookieValueIsEphemeral
-// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:9d97a143be15096227d9832c04b9ddfb9679a78504f9d4f2a71a2beb7f6f18e8 -> ReferrerPathRequiresExtractorOptIn
-// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:9d97a143be15096227d9832c04b9ddfb9679a78504f9d4f2a71a2beb7f6f18e8 -> NonExtractorReferrerIsOriginOnly
-// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:9d97a143be15096227d9832c04b9ddfb9679a78504f9d4f2a71a2beb7f6f18e8 -> SensitiveReferrerComponentsNotShared
-// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:9d97a143be15096227d9832c04b9ddfb9679a78504f9d4f2a71a2beb7f6f18e8 -> OriginIsOriginOnly
+// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:23b17cbbb284dab2dc35a442f3d6a11280ed013b7f6e17aa7c575484fdb9f741 -> CookieSharingRequiresOptIn
+// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:23b17cbbb284dab2dc35a442f3d6a11280ed013b7f6e17aa7c575484fdb9f741 -> CookieValueIsNotCopiedByVideo
+// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:23b17cbbb284dab2dc35a442f3d6a11280ed013b7f6e17aa7c575484fdb9f741 -> ReferrerPathRequiresExtractorOptIn
+// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:23b17cbbb284dab2dc35a442f3d6a11280ed013b7f6e17aa7c575484fdb9f741 -> NonExtractorReferrerIsOriginOnly
+// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:23b17cbbb284dab2dc35a442f3d6a11280ed013b7f6e17aa7c575484fdb9f741 -> SensitiveReferrerComponentsNotShared
+// - VIDEO-WEB-PLAYBACK-PRIVACY-001@sha256:23b17cbbb284dab2dc35a442f3d6a11280ed013b7f6e17aa7c575484fdb9f741 -> OriginIsOriginOnly
 //
 // Scope:
 // A PlaybackRequest represents the metadata policy applied to one resolved Web
 // stream request. Cookie availability and concrete URL strings are abstracted;
 // the model checks whether each class of metadata is permitted to cross the
 // playback boundary. "Path shared" means a non-origin path may be sent.
-// Cookie persistence/log/backup fields express the specification contract;
-// concrete WebView/profile storage behavior remains outside this model.
+// App-owned persistence/log/backup/export/error-UI fields express the
+// specification contract. WebView profile storage is browser-managed session
+// state and remains outside this model.
 
 module video_web_playback_privacy
 
@@ -28,9 +29,11 @@ one sig PageFallback, ExtractorReferrer, ObservedRequest extends ReferrerSource 
 sig PlaybackRequest {
   cookieOptIn: one Toggle,
   cookieShared: one Toggle,
-  cookiePersisted: one Toggle,
+  cookieCopiedToVideoDurableState: one Toggle,
   cookieBackedUp: one Toggle,
+  cookieExported: one Toggle,
   cookieLogged: one Toggle,
+  cookieShownInErrorUi: one Toggle,
 
   referrerPathOptIn: one Toggle,
   referrerSource: one ReferrerSource,
@@ -46,9 +49,11 @@ fact PlaybackPrivacyPolicy {
     request.cookieOptIn = Off implies request.cookieShared = Off
 
   all request: PlaybackRequest |
-    request.cookiePersisted = Off and
+    request.cookieCopiedToVideoDurableState = Off and
     request.cookieBackedUp = Off and
-    request.cookieLogged = Off
+    request.cookieExported = Off and
+    request.cookieLogged = Off and
+    request.cookieShownInErrorUi = Off
 
   all request: PlaybackRequest |
     request.referrerPathShared = On implies (
@@ -72,11 +77,13 @@ assert CookieSharingRequiresOptIn {
     request.cookieShared = On implies request.cookieOptIn = On
 }
 
-assert CookieValueIsEphemeral {
+assert CookieValueIsNotCopiedByVideo {
   all request: PlaybackRequest |
-    request.cookiePersisted = Off and
+    request.cookieCopiedToVideoDurableState = Off and
     request.cookieBackedUp = Off and
-    request.cookieLogged = Off
+    request.cookieExported = Off and
+    request.cookieLogged = Off and
+    request.cookieShownInErrorUi = Off
 }
 
 assert ReferrerPathRequiresExtractorOptIn {
@@ -106,7 +113,7 @@ assert OriginIsOriginOnly {
 }
 
 check CookieSharingRequiresOptIn for 6 expect 0
-check CookieValueIsEphemeral for 6 expect 0
+check CookieValueIsNotCopiedByVideo for 6 expect 0
 check ReferrerPathRequiresExtractorOptIn for 6 expect 0
 check NonExtractorReferrerIsOriginOnly for 6 expect 0
 check SensitiveReferrerComponentsNotShared for 6 expect 0
