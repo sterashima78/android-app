@@ -39,6 +39,7 @@ class BackupPreferencesTest {
       .putString("provider", "CHATGPT")
       .putString("workout_policy", "keep-going")
       .putString("memo:2026-08-27", "synthetic-workout-memo")
+      .putString("reviews", """{"2026-08-27":{"content":"synthetic-workout-review"}}""")
       .commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().putString("summary_prompt", "custom-prompt").commit()
@@ -75,6 +76,7 @@ class BackupPreferencesTest {
     assertTrue(encoded.contains("selected_model_id"))
     assertTrue(encoded.contains("custom-library-prompt"))
     assertTrue(encoded.contains("synthetic-workout-memo"))
+    assertTrue(encoded.contains("synthetic-workout-review"))
     assertTrue(encoded.contains("wifi_only"))
     assertTrue(encoded.contains("schedule_times"))
     assertTrue(encoded.contains("20:30"))
@@ -109,6 +111,7 @@ class BackupPreferencesTest {
     assertEquals("CHATGPT", workoutAi.getString("provider", null))
     assertEquals("keep-going", workoutAi.getString("workout_policy", null))
     assertEquals("synthetic-workout-memo", workoutAi.getString("memo:2026-08-27", null))
+    assertTrue(workoutAi.getString("reviews", null).orEmpty().contains("synthetic-workout-review"))
     assertEquals(
       "custom-prompt",
       context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE).getString("summary_prompt", null),
