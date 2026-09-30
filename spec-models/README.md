@@ -20,6 +20,7 @@
 | Library cover prefetch lifecycle | [`quint/library_cover_prefetch_queue.qnt`](quint/library_cover_prefetch_queue.qnt) | — |
 | Library metadata normalization lifecycle | [`quint/library_metadata_normalization_lifecycle.qnt`](quint/library_metadata_normalization_lifecycle.qnt) | — |
 | Summary task lifecycle / duplicate prevention | [`quint/summary_task_lifecycle.qnt`](quint/summary_task_lifecycle.qnt) | [`alloy/summary_task_uniqueness.als`](alloy/summary_task_uniqueness.als) |
+| Knowledge page AI task lifecycle | [`quint/knowledge_page_ai_task_lifecycle.qnt`](quint/knowledge_page_ai_task_lifecycle.qnt) | — |
 | RSS recommendation revision queue | [`quint/rss_recommendation_queue.qnt`](quint/rss_recommendation_queue.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
 | Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
