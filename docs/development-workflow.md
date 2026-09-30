@@ -4,7 +4,7 @@
 
 `AGENTS.md` からこのファイルを参照した agent は、個別の実装指示だけでなく、この文書に定めた調査・設計判断・Draft PR・実装・検証・レビュー・PR・マージ・APK共有までの流れを適用する。
 
-詳細なアーキテクチャ判断や current state はこの文書へ複製せず、`docs/architecture/`、`docs/adr/`、machine-readable architecture rule、production code、test を正本とする。
+詳細なアーキテクチャ判断や current state はこの文書へ複製せず、`docs/architecture/`、`docs/adr/`、machine-readable architecture rule、production code、test を正本とする。ユーザー仕様のうち形式化された性質は `docs/spec/*.md` から参照される `spec-models/` と `docs/formal-modeling.md` の運用ルールも確認する。
 
 ## 1. 基本方針
 
@@ -81,12 +81,13 @@ APK共有
 `AGENTS.md` からこの文書へ到達した後、調査は次の順序で進める。
 
 1. `docs/spec.md` — 現在のユーザー仕様の目次。対象に応じた `docs/spec/*.md` を確認する
-2. `docs/architecture/system-overview.md` — system 全体像、capability、主要 data flow
-3. `docs/architecture/principles.md` — invariant、dependency / ownership rule
-4. `docs/architecture/context-map.md` — Domain Context と関係
-5. 対象に応じた `docs/architecture/*.md`
-6. 関連 ADR — 判断理由、却下案、compatibility condition
-7. production code / tests / machine-readable manifests — 実装との照合
+2. `docs/formal-modeling.md` と対象specから参照される `spec-models/` — 形式化されたstate / relation invariantを確認する
+3. `docs/architecture/system-overview.md` — system 全体像、capability、主要 data flow
+4. `docs/architecture/principles.md` — invariant、dependency / ownership rule
+5. `docs/architecture/context-map.md` — Domain Context と関係
+6. 対象に応じた `docs/architecture/*.md`
+7. 関連 ADR — 判断理由、却下案、compatibility condition
+8. production code / tests / machine-readable manifests — 実装との照合
 
 関連 ADR は最新のものだけでなく、対象判断に至る古い ADR、`Superseded` / `Amended by` / `Refines` 等で接続された ADR も必要に応じて確認する。
 
@@ -176,6 +177,9 @@ UI behavior
 
 Architecture boundary
   -> verifyArchitecture / lint / machine-readable rule
+
+Formalized specification
+  -> bash scripts/verify_formal_models.sh
 
 Android component / permission / platform integration
   -> instrumented / integration test を検討
@@ -272,6 +276,7 @@ Tests proving the change:
 ### 9.4 Documentation
 
 - user-visible behavior が変わるなら対応する `docs/spec/*.md`。仕様書の構成や目次が変わるなら `docs/spec.md` も更新
+- 対象specから形式modelが参照されているなら `spec-models/` との意味的一致。新しい形式化対象の判断は `docs/formal-modeling.md`
 - current architecture が変わるなら `docs/architecture/`
 - design decision があるなら ADR
 - 既存 ADR の判断を変更・補足・廃止するなら、関連する古い ADR の status / relationship / reference
@@ -338,7 +343,9 @@ docs/development-workflow.md
 
 docs/spec.md -> docs/spec/*.md
   ユーザーから見た現行仕様
-
+        |
+        +--> spec-models/quint/*.qnt / spec-models/alloy/*.als
+        |      選択したstate / relation invariantの機械検査可能なprojection
         |
         v
 
@@ -381,6 +388,8 @@ AGENTS.md を参照して進めてください。
 
 - [`../AGENTS.md`](../AGENTS.md)
 - [`spec.md`](spec.md)
+- [`formal-modeling.md`](formal-modeling.md)
+- [`../spec-models/README.md`](../spec-models/README.md)
 - [`architecture/system-overview.md`](architecture/system-overview.md)
 - [`architecture/change-impact-review.md`](architecture/change-impact-review.md)
 - [`architecture/principles.md`](architecture/principles.md)
