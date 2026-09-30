@@ -49,7 +49,11 @@ download_verified   "https://github.com/AlloyTools/org.alloytools.alloy/releases
 
 cd "$ROOT"
 
-python3 scripts/verify_formal_spec_links.py
+formal_link_args=()
+if [[ -n "${FORMAL_SPEC_BASE_REF:-}" ]]; then
+  formal_link_args+=(--base-ref "$FORMAL_SPEC_BASE_REF")
+fi
+python3 scripts/verify_formal_spec_links.py "${formal_link_args[@]}"
 
 mapfile -t quint_models < <(find spec-models/quint -type f -name '*.qnt' | sort)
 if [[ "${#quint_models[@]}" -eq 0 ]]; then
