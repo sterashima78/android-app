@@ -78,6 +78,47 @@ model側にも先頭commentで対応する自然言語仕様fileを記載する�
 
 1つのmodelが複数spec fileに対応してもよい。逆に、1つのspec sectionを複数modelへ分割してもよい。
 
+## 4. requirement単位のtraceability
+
+形式化する自然言語要求は、仕様書内でstableなrequirement IDとrevisionを持つ。
+
+```markdown
+<!-- formal-requirement
+id: BACKUP-SCHEDULE-001
+revision: 1
+models:
+  - spec-models/quint/backup_schedule.qnt
+  - spec-models/alloy/backup_schedule.als
+-->
+- 設定済み時刻とscheduled workの対応に関する要求本文。
+<!-- /formal-requirement -->
+```
+
+- `id` はrepository全体で一意かつ変更しない。
+- `revision` は1以上の整数とし、requirement本文を変更したときに増加させる。
+- `models` には、そのrequirementを検査する全modelをrepository-relative pathで列挙する。
+- wording修正であってもrequirement block内の本文を変更した場合はrevisionを増加させる。これによりmodel側で再確認した事実を明示的に残す。
+- requirementを削除・分割・統合する場合は、model側のcoverage宣言も同じ変更で整理する。
+
+model側では、現在確認済みのrequirement revisionと、そのmodel内で直接検査するdefinition / assertionを宣言する。
+
+```text
+// Covers:
+// - BACKUP-SCHEDULE-001@1 -> scheduleMatchesArmedWork
+```
+
+Quintでは`val` / `action` / `def`等、Alloyでは`assert` / `pred` / `fun`等の実在するsymbolを指定する。1つのrequirementを複数のpropertyで検査する場合はcoverage行を複数記載してよい。
+
+CIは次を検査する。
+
+1. requirement IDが一意であること
+2. `models` の参照先が存在すること
+3. 各listed modelが現在の`ID@revision`をacknowledgeしていること
+4. coverageで指定したsymbolがmodel内に存在すること
+5. model側のcoverageが存在するrequirementと相互に対応していること
+6. PRのbaseと比較してrequirement本文が変更された場合、revisionが増加していること
+
+revision更新はmodel codeの変更を必須にはしない。仕様の明確化等でmodelのabstractionが変わらない場合でも、model側の`ID@revision`を更新することで、そのrevisionを再確認済みであることを明示する。
 ## 4. modelの書き方
 
 ### 4.1 production codeを写経しない
