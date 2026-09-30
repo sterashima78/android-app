@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -21,12 +20,14 @@ SPEC.loader.exec_module(MODULE)
 def write_fixture(
     root: Path,
     *,
-    revision: int = 1,
     body: str = "- Requirement body.",
-    model_revision: int | None = None,
+    acknowledged_hash: str | None = None,
     quint_symbol: str = "safety",
+    malformed_coverage: bool = False,
 ) -> None:
-    model_revision = revision if model_revision is None else model_revision
+    if acknowledged_hash is None:
+        acknowledged_hash = MODULE.requirement_hash(body)
+
     (root / "docs/spec").mkdir(parents=True, exist_ok=True)
     (root / "spec-models/quint").mkdir(parents=True, exist_ok=True)
     (root / "spec-models/alloy").mkdir(parents=True, exist_ok=True)
@@ -36,7 +37,6 @@ def write_fixture(
 
 <!-- formal-requirement
 id: EXAMPLE-001
-revision: {revision}
 models:
   - spec-models/quint/example.qnt
   - spec-models/alloy/example.als
@@ -49,11 +49,16 @@ models:
 """,
         encoding="utf-8",
     )
+
+    quint_hash = acknowledged_hash
+    if malformed_coverage:
+        quint_hash = "not-a-sha256"
+
     (root / "spec-models/quint/example.qnt").write_text(
         f"""// Natural-language specifications:
 // - docs/spec/example.md
 // Covers:
-// - EXAMPLE-001@{model_revision} -> {quint_symbol}
+// - EXAMPLE-001@sha256:{quint_hash} -> {quint_symbol}
 
 module example {{
   val safety = true
@@ -65,7 +70,7 @@ module example {{
         f"""// Natural-language specifications:
 // - docs/spec/example.md
 // Covers:
-// - EXAMPLE-001@{model_revision} -> Good
+// - EXAMPLE-001@sha256:{acknowledged_hash} -> Good
 
 module example
 
@@ -76,32 +81,6 @@ check Good expect 0
     )
 
 
-def commit_fixture(root: Path) -> str:
-    subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "config", "user.email", "formal-test.invalid"],
-        cwd=root,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Formal Test"],
-        cwd=root,
-        check=True,
-    )
-    subprocess.run(["git", "add", "."], cwd=root, check=True)
-    subprocess.run(
-        ["git", "commit", "-m", "base"],
-        cwd=root,
-        check=True,
-        capture_output=True,
-    )
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"],
-        cwd=root,
-        text=True,
-    ).strip()
-
-
 class FormalSpecTraceabilityTest(unittest.TestCase):
     def test_valid_requirement_and_model_coverage_pass(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -110,36 +89,20 @@ class FormalSpecTraceabilityTest(unittest.TestCase):
 
             self.assertEqual([], MODULE.verify(root))
 
-    def test_requirement_body_change_requires_revision_bump(self) -> None:
+    def test_requirement_body_change_invalidates_model_acknowledgement(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_fixture(root)
-            base = commit_fixture(root)
-
-            write_fixture(root, body="- Changed requirement body.")
-
-            errors = MODULE.verify(root, base)
-            self.assertTrue(
-                any("without increasing revision" in error for error in errors),
-                errors,
-            )
-
-    def test_revision_bump_requires_model_acknowledgement(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_fixture(root)
-            base = commit_fixture(root)
-
+            original_body = "- Requirement body."
+            original_hash = MODULE.requirement_hash(original_body)
             write_fixture(
                 root,
-                revision=2,
                 body="- Changed requirement body.",
-                model_revision=1,
+                acknowledged_hash=original_hash,
             )
 
-            errors = MODULE.verify(root, base)
+            errors = MODULE.verify(root)
             self.assertTrue(
-                any("stale requirement revision" in error for error in errors),
+                any("stale requirement hash" in error for error in errors),
                 errors,
             )
             self.assertTrue(
@@ -147,20 +110,13 @@ class FormalSpecTraceabilityTest(unittest.TestCase):
                 errors,
             )
 
-    def test_revision_bump_with_model_acknowledgement_passes(self) -> None:
+    def test_changed_body_with_current_hash_passes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_fixture(root)
-            base = commit_fixture(root)
+            changed_body = "- Changed requirement body."
+            write_fixture(root, body=changed_body)
 
-            write_fixture(
-                root,
-                revision=2,
-                body="- Changed requirement body.",
-                model_revision=2,
-            )
-
-            self.assertEqual([], MODULE.verify(root, base))
+            self.assertEqual([], MODULE.verify(root))
 
     def test_coverage_target_must_exist(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -191,6 +147,26 @@ class FormalSpecTraceabilityTest(unittest.TestCase):
                 any("malformed formal requirement block" in error for error in errors),
                 errors,
             )
+
+    def test_malformed_coverage_hash_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture(root, malformed_coverage=True)
+
+            errors = MODULE.verify(root)
+            self.assertTrue(
+                any("malformed formal requirement coverage" in error for error in errors),
+                errors,
+            )
+
+    def test_hash_normalization_ignores_newline_style_and_trailing_space(self) -> None:
+        unix = "- First line\n- Second line"
+        windows_with_trailing_space = "\r\n- First line   \r\n- Second line\t\r\n"
+
+        self.assertEqual(
+            MODULE.requirement_hash(unix),
+            MODULE.requirement_hash(windows_with_trailing_space),
+        )
 
 
 if __name__ == "__main__":
