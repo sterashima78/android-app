@@ -21,5 +21,8 @@
 | RSS recommendation revision queue | [`quint/rss_recommendation_queue.qnt`](quint/rss_recommendation_queue.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
 | Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
+| Video saved/folder lifecycle | [`quint/video_saved_folder_lifecycle.qnt`](quint/video_saved_folder_lifecycle.qnt) | — |
+| Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
+| Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。
