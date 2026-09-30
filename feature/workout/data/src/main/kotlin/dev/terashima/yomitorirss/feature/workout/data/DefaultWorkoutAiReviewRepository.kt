@@ -22,13 +22,15 @@ class DefaultWorkoutAiReviewRepository(context: Context) : WorkoutAiReviewReposi
     preferences.edit().putString(KEY_REVIEWS, reviews.toString()).apply()
   }
 
-  override suspend fun loadAll(): List<WorkoutAiReview> =
-    readRoot()
+  override suspend fun loadAll(): List<WorkoutAiReview> {
+    val root = readRoot()
+    return root
       .keys()
       .asSequence()
-      .mapNotNull { key -> readRoot().optJSONObject(key)?.toReview() }
+      .mapNotNull { key -> root.optJSONObject(key)?.toReview() }
       .sortedWith(compareByDescending<WorkoutAiReview> { it.date }.thenByDescending { it.generatedAt })
       .toList()
+  }
 
   override suspend fun loadByDates(dates: Set<String>): List<WorkoutAiReview> =
     loadAll().filter { it.date in dates }
