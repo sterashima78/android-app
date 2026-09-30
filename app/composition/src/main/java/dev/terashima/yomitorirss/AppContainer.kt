@@ -198,6 +198,7 @@ class AppContainer(
   internal val podcastWorkerFactory get() = podcastRuntime.workerFactory
   internal val workoutAiWorkerFactory get() = supportingRuntime.workoutAiWorkerFactory
   internal val workoutAiSettingsRepository get() = supportingRuntime.workoutAiSettingsRepository
+  internal val workoutAiReviewRepository get() = supportingRuntime.workoutAiReviewRepository
   internal val workoutAiTaskController get() = supportingRuntime.workoutAiTaskController
 
   val audioPlaybackController get() = audioRuntime.playbackController

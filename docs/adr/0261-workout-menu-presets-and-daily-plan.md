@@ -2,7 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-09-16
-- Amended: 2026-09-22, 2026-09-29
+- Amended: 2026-09-22, 2026-09-29, 2026-09-30
+- Amended by: [ADR-0276](0276-workout-ai-review-history.md)
 - Refines: [ADR-0016](0016-workout-tracking.md), [ADR-0194](0194-workout-ai-advisor.md)
 
 ## Context
@@ -44,3 +45,15 @@ current compatibility baseline から v1 payload を含む配布版が外れた�
 - 旧データは明示的な破棄や別migration stateを必要とせず読み込み時に基本メニューへ投影される。
 - 保存形式を将来更新するときは、新しいversionを追加してdecode pathを明示し、未知versionを既存decoderへfall throughさせない。
 - 将来、メニュー編集UIを拡張する場合も種目マスタ自体を複製せずに済む。
+
+
+## Amendment (2026-09-30): 完了履歴へ当日メニューsnapshotを保持する
+
+[ADR-0276](0276-workout-ai-review-history.md) により、完了後レビューで「登録済み候補」と「その日に予定していたメニュー」を区別できるよう、`WorkoutHistory` に完了時点の `WorkoutMenu` snapshot を保持する。
+
+- current payload version は 3 とする。
+- version 2 payload は current compatibility baseline として読み込み、既存履歴の menu を未設定として version 3 へ投影する。
+- version 3 では history ごとの menu snapshot を保存・復元する。
+- 未知 version を推測解釈せず拒否する方針は維持する。
+
+この amendment は本 ADR の payload version 2 を current format とする記述を更新する。種目マスタとメニューの分離、当日 `WorkoutDay.menu` をsnapshotとして扱う判断は維持する。

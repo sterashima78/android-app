@@ -26,10 +26,12 @@ import dev.terashima.yomitorirss.feature.web.data.AndroidLanWebServerController
 import dev.terashima.yomitorirss.feature.widget.WidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.widget.data.WorkManagerWidgetRefreshScheduler
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiAdvisor
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiReviewRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskController
 import dev.terashima.yomitorirss.feature.workout.WorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiAdvisor
+import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiReviewRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.data.DefaultWorkoutRepository
 import dev.terashima.yomitorirss.feature.workout.data.WorkManagerWorkoutAiTaskController
@@ -76,6 +78,10 @@ internal class AppSupportingRuntimeDependencies(
     DefaultWorkoutAiSettingsRepository(application)
   }
 
+  val workoutAiReviewRepository: WorkoutAiReviewRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    DefaultWorkoutAiReviewRepository(application)
+  }
+
   val workoutAiAdvisor: WorkoutAiAdvisor by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     DefaultWorkoutAiAdvisor(
       localInference = localTextInference,
@@ -91,6 +97,7 @@ internal class AppSupportingRuntimeDependencies(
     WorkoutAiWorkerFactory(
       workoutReaderProvider = { workoutRepository },
       settingsRepositoryProvider = { workoutAiSettingsRepository },
+      reviewRepositoryProvider = { workoutAiReviewRepository },
       advisorProvider = { workoutAiAdvisor },
     )
   }

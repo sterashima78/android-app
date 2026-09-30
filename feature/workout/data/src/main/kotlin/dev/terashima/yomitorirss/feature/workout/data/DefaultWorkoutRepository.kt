@@ -48,13 +48,13 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private fun decode(json: JSONObject): WorkoutSnapshot {
     val version = json.optInt("version", MISSING_VERSION)
-    if (version != CURRENT_VERSION) {
-      throw UnsupportedWorkoutStateVersionException(version)
+    return when (version) {
+      2, CURRENT_VERSION -> decodeCurrent(json)
+      else -> throw UnsupportedWorkoutStateVersionException(version)
     }
-    return decodeV2(json)
   }
 
-  private fun decodeV2(json: JSONObject): WorkoutSnapshot {
+  private fun decodeCurrent(json: JSONObject): WorkoutSnapshot {
     val exercises = decodeExercises(json)
     val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
       .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
@@ -188,6 +188,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     put("startedAt", value.startedAt ?: JSONObject.NULL)
     put("finishedAt", value.finishedAt)
     put("sets", JSONArray().apply { value.sets.forEach { put(encodeSet(it)) } })
+    value.menu?.let { put("menu", encodeMenu(it)) }
   }
 
   private fun decodeHistory(json: JSONObject) = WorkoutHistory(
@@ -196,6 +197,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     startedAt = json.nullableString("startedAt"),
     finishedAt = json.optString("finishedAt"),
     sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet).orEmpty(),
+    menu = json.optJSONObject("menu")?.let(::decodeMenu),
   )
 
   private fun encodeIntMap(values: Map<String, Int>) = JSONObject().apply {
@@ -225,7 +227,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private companion object {
     const val KEY_STATE = "state_v1"
     const val MISSING_VERSION = 0
-    const val CURRENT_VERSION = 2
+    const val CURRENT_VERSION = 3
   }
 }
 

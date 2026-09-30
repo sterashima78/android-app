@@ -31,6 +31,12 @@ fun WorkoutAiChatScreen(
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.state.collectAsState()
+  val visibleReviews = state.reviews.filterNot { review ->
+    state.lastRequestType == WorkoutAiRequestType.POST_WORKOUT_REVIEW &&
+      state.response != null &&
+      review.date == state.date &&
+      review.content == state.response
+  }
   if (!state.initialized) {
     Column(modifier.fillMaxSize().padding(24.dp)) { Text("ワークアウトチャットを読み込んでいます…") }
     return
@@ -42,7 +48,7 @@ fun WorkoutAiChatScreen(
   ) {
     Text("ワークアウトチャット", style = MaterialTheme.typography.titleLarge)
     Text(
-      "現在のプリセット、直近14日間の履歴、今日の記録とメモを使って回答します。メニュー提案はそのまま今日のメニューへ適用できます。",
+      "現在のプリセット、直近14日間の履歴、今日の記録とメモを使って回答します。保存済みレビューは次回のメニュー提案にも参考情報として使います。",
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -108,6 +114,27 @@ fun WorkoutAiChatScreen(
           Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
       }
+      if (visibleReviews.isNotEmpty()) {
+        item(key = "review-history-title") {
+          Text(
+            "保存済みレビュー",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 8.dp),
+          )
+        }
+        visibleReviews.forEach { review ->
+          item(key = "review-${review.date}") {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+              Text(
+                review.date,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              ChatMessageBubble(isUser = false, content = review.content)
+            }
+          }
+        }
+      }
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -123,7 +150,7 @@ fun WorkoutAiChatScreen(
       ) { Text("完了後レビュー") }
     }
     if (state.response != null || state.errorMessage != null) {
-      TextButton(onClick = viewModel::clearResponse, modifier = Modifier.fillMaxWidth()) { Text("会話をクリア") }
+      TextButton(onClick = viewModel::clearResponse, modifier = Modifier.fillMaxWidth()) { Text("今回の結果を閉じる") }
     }
   }
 }
@@ -157,7 +184,7 @@ fun WorkoutAiSettingsSection(
       }
       if (state.settings.provider == WorkoutAiProvider.CHATGPT) {
         Text(
-          "直近14日間のワークアウト記録、メモ、方針、設定済みメニューがクラウドへ送信されます。自動でLocalへ切り替えません。",
+          "直近14日間のワークアウト記録、メモ、方針、設定済みメニュー、保存済みレビューがクラウドへ送信されます。自動でLocalへ切り替えません。",
           style = MaterialTheme.typography.bodySmall,
         )
       }

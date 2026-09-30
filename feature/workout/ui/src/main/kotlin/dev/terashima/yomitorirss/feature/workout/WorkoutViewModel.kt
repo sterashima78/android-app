@@ -233,6 +233,7 @@ class WorkoutViewModel(
       startedAt = current.today.startedAt,
       finishedAt = finishedAt,
       sets = current.today.sets,
+      menu = current.today.menu ?: current.effectiveMenu(),
     )
     val nextSnapshot = current.copy(
       today = WorkoutDay(date = LocalDate.now().toString()),

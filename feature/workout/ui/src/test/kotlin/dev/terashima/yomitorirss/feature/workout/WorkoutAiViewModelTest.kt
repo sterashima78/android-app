@@ -33,6 +33,7 @@ class WorkoutAiViewModelTest {
     val tasks = RecordingTaskController()
     val viewModel = WorkoutAiViewModel(
       settingsRepository = settingsRepository,
+      reviewRepository = FakeReviewRepository(),
       taskController = tasks,
     )
     advanceUntilIdle()
@@ -49,6 +50,29 @@ class WorkoutAiViewModelTest {
   }
 
   @Test
+  fun `保存済みレビューを初期状態へ読み込む`() = runTest(dispatcher) {
+    val reviewRepository = FakeReviewRepository(
+      mutableListOf(
+        WorkoutAiReview(
+          date = "2026-09-29",
+          generatedAt = "2026-09-29T09:00:00+09:00",
+          provider = WorkoutAiProvider.LOCAL,
+          content = "保存済みレビュー",
+        ),
+      ),
+    )
+    val viewModel = WorkoutAiViewModel(
+      settingsRepository = FakeSettingsRepository(),
+      reviewRepository = reviewRepository,
+      taskController = RecordingTaskController(),
+    )
+    advanceUntilIdle()
+
+    assertEquals(listOf("保存済みレビュー"), viewModel.state.value.reviews.map { it.content })
+    assertFalse(viewModel.state.value.loading)
+  }
+
+  @Test
   fun `background taskの失敗を画面状態へ投影する`() = runTest(dispatcher) {
     val tasks = RecordingTaskController(
       result = WorkoutAiTaskSnapshot(
@@ -58,6 +82,7 @@ class WorkoutAiViewModelTest {
     )
     val viewModel = WorkoutAiViewModel(
       settingsRepository = FakeSettingsRepository(),
+      reviewRepository = FakeReviewRepository(),
       taskController = tasks,
     )
     advanceUntilIdle()
@@ -85,6 +110,7 @@ class WorkoutAiViewModelTest {
 
     val viewModel = WorkoutAiViewModel(
       settingsRepository = FakeSettingsRepository(),
+      reviewRepository = FakeReviewRepository(),
       taskController = tasks,
     )
     advanceUntilIdle()
@@ -117,6 +143,17 @@ class WorkoutAiViewModelTest {
     override suspend fun dismiss(requestId: String) {
       dismissedRequestIds += requestId
     }
+  }
+
+  private class FakeReviewRepository(
+    private val reviews: MutableList<WorkoutAiReview> = mutableListOf(),
+  ) : WorkoutAiReviewRepository {
+    override suspend fun save(review: WorkoutAiReview) {
+      reviews.removeAll { it.date == review.date }
+      reviews += review
+    }
+
+    override suspend fun loadAll(): List<WorkoutAiReview> = reviews.sortedByDescending { it.date }
   }
 
   private class FakeSettingsRepository : WorkoutAiSettingsRepository {
