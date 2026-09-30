@@ -63,6 +63,15 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Run ${{ matrix.name }}
         run: ${{ matrix.command }}
+      - name: Set up Java 21 for formal verification
+        if: matrix.name == 'Architecture'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Verify formal specifications
+        if: matrix.name == 'Architecture'
+        run: bash scripts/verify_formal_models.sh
       - name: Compare minified DEX size with base
         if: matrix.name == 'R8'
         env:
