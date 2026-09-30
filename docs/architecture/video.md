@@ -183,7 +183,7 @@ foreground playback extractionでは、playback extractorがstream URLを返し�
 
 実request Cookieを観測していないURL、manifestから派生したsegment、redirect先などでは、ADR-0241の既存profile CookieManager lookupへfallbackする。観測済みCookieをhostやdirectoryだけを根拠に別URLへ流用しない。`COOKIE_INTERCEPT` 非対応環境でも既存providerだけで再生を継続する。
 
-Cookie共有がOFFの場合はrequest Cookie captureを有効化せずproviderも作らない。Cookie値、Authorization、その他のcredentialをdatabase、backup、export、log、error UIへ保存・表示しない。request interceptionを `Authorization` 等の任意credential共有へ一般化しない。third-party Cookie acceptanceも暗黙に変更しない。
+Cookie共有がOFFの場合はrequest Cookie captureを有効化せずproviderも作らない。専用WebView profile内のCookieはWebViewが管理するbrowser session stateであり、Video-owned durable stateとはしない。Cookie値、Authorization、その他のcredentialをdatabase、SharedPreferences、backup、export、log、error UIへ複製・保存・表示しない。request interceptionを `Authorization` 等の任意credential共有へ一般化しない。third-party Cookie acceptanceも暗黙に変更しない。
 
 v1のVideo playerはforeground UI lifetimeとする。全画面表示では横向きへ切り替え、通常表示へ戻ると縦向きへ復帰する。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
 
@@ -300,6 +300,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - custom provider function codeをcredential storeとして扱わない。
 - provider refreshで既存itemのread / playback / saved stateを上書きしない。
 - subscription解除で保存済みまたは再生履歴を持つVideo itemを暗黙に削除しない。
+- subscription membershipを失ったSERVICE itemは、明示保存または再生履歴のどちらかがある間だけcatalogへ保持し、両方なくなった時点でcatalogから削除する。
 - migration完了後のcurrent runtimeで旧provider専用tableを参照しない。
 - foreground video playbackをAudioのbackground media sessionへ暗黙に統合しない。
 - user-authored Web extractor function、custom provider function、実URLをpublic repositoryのfixture/documentへ保存しない。
@@ -320,6 +321,7 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - custom provider runtimeのHTTPS制約、credential header拒否、request / response size、request回数、timeout、戻り値validationをruntime boundary testの対象とする。
 - provider refreshで既存item stateを保持し、新規itemだけを未読として追加することをrepository testする。
 - subscription解除時のretention ruleをrepository testする。
+- subscription解除で保存だけを理由に残ったSERVICE itemは保存解除でcatalogから削除し、再生履歴がある場合は保持することをrepository testする。
 - SMB source IDがserver/share/pathを区別し、旧shareなしIDも読み取れることをunit testする。
 - Web page fallbackとSMB byte sourceのoffset read委譲をunit testする。
 - SMB thumbnailは同じcache keyならSMBを再読込しないこと、表示時のresolution成功を一覧へ反映すること、生成失敗を一覧エラーへ昇格させないことをunit testする。

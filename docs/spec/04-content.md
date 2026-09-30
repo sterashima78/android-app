@@ -157,9 +157,15 @@ models:
 - Web URLを登録すると、通常はHTTP(S)ページのHTML / OGPからタイトルとサムネイルURLを取得する。
 - Web URLの追加処理中は、登録が完了または失敗するまで「Web動画を追加中…」の進行中表示を出し、処理中であることを明示する。
 - Web URL登録は1件を明示的に追加する単発操作であり、購読・未読・background refreshの対象にはしない。
-- URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。再生URL抽出では任意のreferrer URLも返せ、WebViewで実stream requestを観測できない場合の再生元として利用する。referrer URLは既定ではoriginだけをMedia3へ渡し、ルールの「再生時にRefererのパスを共有する」がONの場合だけ、そのexplicit referrer URLのpathをRefererへ含める。query / fragment / userinfoは送らず、Originは常にorigin-onlyとする。
-- Web抽出ルールでは「再生時にWebViewのCookieを共有する」をルールごとに設定でき、既定はOFFとする。有効な場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用し、Cookie値自体は保存・backup・logへ残さない。
-- Web抽出ルールでは「再生時にRefererのパスを共有する」をルールごとに設定でき、既定はOFFとする。この設定は再生URL抽出が明示したreferrer URLが採用された場合だけ有効で、WebView実request由来のRefererと元page fallbackはorigin-onlyを維持する。
+- URL patternごとのWeb抽出ルールを設定でき、Promiseを返すJavaScript関数でタイトル、サムネイルURL、再生用stream URLとMIME typeを個別に取得できる。再生URL抽出では任意のreferrer URLも返せ、WebViewで実stream requestを観測できない場合の再生元として利用する。
+<!-- formal-requirement
+id: VIDEO-WEB-PLAYBACK-PRIVACY-001
+models:
+  - spec-models/alloy/video_web_playback_privacy.als
+-->
+- Media3へ渡すRefererは既定でoriginだけとする。ルールの「再生時にRefererのパスを共有する」がONで、かつ再生URL抽出が明示したreferrer URLを採用した場合だけ、そのpathをRefererへ含める。WebView実request由来のRefererと元page fallbackはorigin-onlyを維持し、query / fragment / userinfoは送らない。Originは常にorigin-onlyとする。
+- Web抽出ルールの「再生時にWebViewのCookieを共有する」は既定OFFとし、ONの場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用する。Cookie値は専用WebView profile内でWebViewが管理し、Video-owned durable state、backup、export、log、error UIへ複製・保存しない。
+<!-- /formal-requirement -->
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - 動画設定では購読型Providerを追加・有効化 / 無効化できる。Providerを無効化しても設定・subscription・取得済み動画は削除せず、background refresh対象からだけ外す。
 - custom Providerは名前とJavaScript functionを設定して複数追加・編集できる。functionはsubscribe時の入力またはrefresh時のsource IDを受け取り、source ID、タイトル、source URL、動画一覧を返す。
@@ -175,7 +181,7 @@ id: VIDEO-SUBSCRIPTION-RETENTION-001
 models:
   - spec-models/quint/video_subscription_retention.qnt
 -->
-- subscription解除時、未保存かつ再生履歴のない取得済み動画は削除できる。保存済みまたは再生履歴を持つ動画はsubscription membershipだけを外してcatalogへ残す。
+- subscription解除時、未保存かつ再生履歴のない取得済み動画は削除できる。保存済みまたは再生履歴を持つ動画はsubscription membershipだけを外してcatalogへ残す。subscription membershipを失ったProvider動画は、保存済みまたは再生履歴のいずれかがある間だけcatalogへ保持し、両方なくなった時点でcatalogから削除する。
 <!-- /formal-requirement -->
 - 旧専用購読画面はトップレベル導線から廃止し、購読設定は「動画」画面へ集約する。既存インストールのsubscriptionと未読状態は更新時にVideo-owned stateへ移行する。
 - SMB接続の表示名、host、port、username、domain、passwordはアプリの全体設定から接続プロファイルとして登録・編集する。passwordは画面へ再表示しない。
@@ -194,4 +200,5 @@ models:
 ### 形式モデル
 
 - [Quint: `video_saved_folder_lifecycle.qnt`](../../spec-models/quint/video_saved_folder_lifecycle.qnt) — 保存・フォルダ割当・フォルダ削除・保存解除と再生状態の独立性を検査する。
-- [Quint: `video_subscription_retention.qnt`](../../spec-models/quint/video_subscription_retention.qnt) — subscription解除時に保存済みまたは再生履歴ありの動画をcatalogへ保持し、それ以外を削除する状態遷移を検査する。
+- [Quint: `video_subscription_retention.qnt`](../../spec-models/quint/video_subscription_retention.qnt) — subscription解除後も保存・再生履歴がある間だけProvider動画をcatalogへ保持する状態遷移を検査する。
+- [Alloy: `video_web_playback_privacy.als`](../../spec-models/alloy/video_web_playback_privacy.als) — Cookie共有opt-in、Referer path共有条件、query / fragment / userinfoとOriginの共有境界を検査する。

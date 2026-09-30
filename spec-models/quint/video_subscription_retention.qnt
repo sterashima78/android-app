@@ -2,9 +2,11 @@
 // - docs/spec/04-content.md
 //
 // Covers:
-// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:33d83599a90fbf02fd9dbd95a0dbcb5846fc2263e5b830ad43e8086900f69f17 -> unsubscribeWithoutRetainedState
-// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:33d83599a90fbf02fd9dbd95a0dbcb5846fc2263e5b830ad43e8086900f69f17 -> unsubscribeWithRetainedState
-// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:33d83599a90fbf02fd9dbd95a0dbcb5846fc2263e5b830ad43e8086900f69f17 -> retainedStateRequiresCatalog
+// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:fc91d27e5977f5d06144cacefe4b7b7ff09568591d0eea55c15c087ebf3c5316 -> unsubscribeWithoutRetainedState
+// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:fc91d27e5977f5d06144cacefe4b7b7ff09568591d0eea55c15c087ebf3c5316 -> unsubscribeWithRetainedState
+// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:fc91d27e5977f5d06144cacefe4b7b7ff09568591d0eea55c15c087ebf3c5316 -> retainedStateRequiresCatalog
+// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:fc91d27e5977f5d06144cacefe4b7b7ff09568591d0eea55c15c087ebf3c5316 -> removeSaved
+// - VIDEO-SUBSCRIPTION-RETENTION-001@sha256:fc91d27e5977f5d06144cacefe4b7b7ff09568591d0eea55c15c087ebf3c5316 -> catalogHasRetentionReason
 //
 // Abstraction:
 // One provider video is modeled. "Playback history" is reduced to a durable
@@ -40,6 +42,14 @@ module video_subscription_retention {
     playbackHistory' = true,
   }
 
+  action removeSaved = all {
+    saved,
+    membership' = membership,
+    catalog' = if (membership) true else playbackHistory,
+    saved' = false,
+    playbackHistory' = playbackHistory,
+  }
+
   action unsubscribeWithoutRetainedState = all {
     membership,
     not(saved),
@@ -69,6 +79,7 @@ module video_subscription_retention {
   action step = any {
     saveVideo,
     recordPlayback,
+    removeSaved,
     unsubscribeWithoutRetainedState,
     unsubscribeWithRetainedState,
     idle,
@@ -80,7 +91,11 @@ module video_subscription_retention {
   val retainedStateRequiresCatalog =
     not(saved or playbackHistory) or catalog
 
+  val catalogHasRetentionReason =
+    not(catalog) or membership or saved or playbackHistory
+
   val safety =
     membershipRequiresCatalog and
-    retainedStateRequiresCatalog
+    retainedStateRequiresCatalog and
+    catalogHasRetentionReason
 }

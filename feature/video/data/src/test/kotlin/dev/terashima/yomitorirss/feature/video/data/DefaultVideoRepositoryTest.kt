@@ -17,6 +17,8 @@ import dev.terashima.yomitorirss.feature.library.SmbMediaFileAccess
 import dev.terashima.yomitorirss.feature.library.SmbMediaLocation
 import dev.terashima.yomitorirss.feature.library.SmbMediaReadHandle
 import dev.terashima.yomitorirss.feature.video.VideoFolder
+import dev.terashima.yomitorirss.feature.video.VideoProvider
+import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import dev.terashima.yomitorirss.feature.video.VideoSmbSource
 import dev.terashima.yomitorirss.feature.video.VideoSource
 import dev.terashima.yomitorirss.feature.video.WebVideoExtractorRule
@@ -227,6 +229,26 @@ class DefaultVideoRepositoryTest {
   }
 
   @Test
+  fun `購読解除後に保存だけで残ったProvider動画は保存解除でcatalogから削除する`() = runBlocking {
+    val videoId = createDetachedSavedProviderVideo(playback = false)
+
+    repository.removeSavedVideo(videoId)
+
+    assertTrue(repository.items().none { it.id == videoId })
+  }
+
+  @Test
+  fun `購読解除後のProvider動画は再生履歴があれば保存解除してもcatalogへ残す`() = runBlocking {
+    val videoId = createDetachedSavedProviderVideo(playback = true)
+
+    repository.removeSavedVideo(videoId)
+
+    val retained = repository.items().single { it.id == videoId }
+    assertNull(retained.savedState)
+    assertEquals(12_000L, retained.playbackState?.positionMs)
+  }
+
+  @Test
   fun `保存動画はフォルダへ移動できフォルダ削除後は未分類へ戻る`() = runBlocking {
     repository.refreshSmb()
     val item = repository.items().single()
@@ -321,6 +343,42 @@ class DefaultVideoRepositoryTest {
       cursor.getInt(0)
     }
     assertEquals(0, value)
+  }
+
+  private suspend fun createDetachedSavedProviderVideo(playback: Boolean): String {
+    val providerDatabase = VideoProviderDatabase(DatabaseConnection(helper))
+    val provider = providerDatabase.saveProvider(
+      VideoProvider(
+        id = "provider-1",
+        type = VideoProviderType.YOUTUBE,
+        name = "Provider",
+        enabled = true,
+      ),
+    )
+    val (subscription, _) = providerDatabase.upsertProviderFeed(
+      provider,
+      VideoProviderFeed(
+        sourceId = "channel-1",
+        title = "Channel",
+        sourceUrl = "https://example.invalid/channel-1",
+        videos = listOf(
+          VideoProviderFeedItem(
+            id = "video-1",
+            title = "provider video",
+            url = "https://example.invalid/video-1",
+            thumbnailUrl = null,
+            publishedAtEpochMillis = 1_000L,
+          ),
+        ),
+      ),
+    )
+    val videoId = providerDatabase.unreadVideos().single().video.id
+    repository.saveVideo(videoId)
+    if (playback) {
+      repository.updatePlayback(videoId, positionMs = 12_000L, durationMs = 60_000L)
+    }
+    providerDatabase.unsubscribe(subscription.id)
+    return videoId
   }
 
   @Test
