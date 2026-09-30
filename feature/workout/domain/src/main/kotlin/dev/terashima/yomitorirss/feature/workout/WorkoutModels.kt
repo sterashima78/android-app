@@ -74,10 +74,11 @@ data class WorkoutHistory(
   val startedAt: String?,
   val finishedAt: String,
   val sets: List<WorkoutSet>,
+  val menu: WorkoutMenu? = null,
 )
 
 data class WorkoutSnapshot(
-  val version: Int = 2,
+  val version: Int = 3,
   val exercises: List<WorkoutExercise>,
   val menus: List<WorkoutMenu> = emptyList(),
   val today: WorkoutDay,
@@ -141,6 +142,7 @@ fun WorkoutSnapshot.rolloverTo(date: String, finishedAt: String): WorkoutSnapsho
         startedAt = today.startedAt,
         finishedAt = finishedAt,
         sets = today.sets,
+        menu = today.menu ?: effectiveMenu(),
       ),
     ) + history
   }
