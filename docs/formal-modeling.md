@@ -119,6 +119,7 @@ CIは次を検査する。
 6. PRのbaseと比較してrequirement本文が変更された場合、revisionが増加していること
 
 revision更新はmodel codeの変更を必須にはしない。仕様の明確化等でmodelのabstractionが変わらない場合でも、model側の`ID@revision`を更新することで、そのrevisionを再確認済みであることを明示する。
+
 ## 5. modelの書き方
 
 ### 5.1 production codeを写経しない
@@ -163,10 +164,12 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 
 1. 対象の `docs/spec/*.md` を読む。
 2. 仕様節からlinkされたQuint / Alloy modelを読む。
-3. 自然言語変更がmodelのabstractionに影響するか判断する。
-4. 影響する場合は同じPRでmodelを変更する。
-5. 影響しない場合も、modelが依然として同じ性質を表していることをreviewする。
-6. `bash scripts/verify_formal_models.sh` を実行する。
+3. `formal-requirement` blockの本文を変更する場合はrequirement revisionを増加させる。
+4. `models` に列挙された全modelのcoverageを新しい `ID@revision` へ更新し、そのrevisionを再確認したことを明示する。
+5. 自然言語変更がmodelのabstractionに影響するか判断する。
+6. 影響する場合は同じPRでmodel本体も変更する。
+7. 影響しない場合も、modelが依然として同じ性質を表していることをreviewする。
+8. `bash scripts/verify_formal_models.sh` を実行する。
 
 自然言語だけ、またはmodelだけを更新して意味がずれた状態でmergeしない。
 
@@ -237,6 +240,7 @@ versionは `bash scripts/verify_formal_models.sh` で固定する。更新時は
 
 - 自然言語仕様は単独でも意味が分かるか
 - specから対応modelへ直接辿れるか
+- formal requirementのID / revisionとmodel coverageが一致しているか
 - model commentから元specへ戻れるか
 - Quint / Alloyの役割分担が適切か
 - modelがimplementation detailを過剰に複製していないか
