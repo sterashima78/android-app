@@ -76,6 +76,7 @@ internal class AppSupportingRouteDependencies(
       ),
       aiViewModelFactory = WorkoutAiViewModel.Factory(
         settingsRepository = container.workoutAiSettingsRepository,
+        reviewRepository = container.workoutAiReviewRepository,
         taskController = container.workoutAiTaskController,
       ),
       writePermissions = HealthConnectWorkoutHistoryExporter.WRITE_PERMISSIONS,
