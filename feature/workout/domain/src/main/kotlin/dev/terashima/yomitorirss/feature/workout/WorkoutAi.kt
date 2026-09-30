@@ -35,7 +35,6 @@ interface WorkoutAiSettingsRepository {
 interface WorkoutAiReviewRepository {
   suspend fun save(review: WorkoutAiReview)
   suspend fun loadAll(): List<WorkoutAiReview>
-  suspend fun loadByDates(dates: Set<String>): List<WorkoutAiReview>
 }
 
 interface WorkoutAiAdvisor {
