@@ -17,12 +17,25 @@ data class WorkoutAiSettings(
   val workoutPolicy: String = "",
 )
 
+data class WorkoutAiReview(
+  val date: String,
+  val generatedAt: String,
+  val provider: WorkoutAiProvider,
+  val content: String,
+)
+
 interface WorkoutAiSettingsRepository {
   suspend fun loadSettings(): WorkoutAiSettings
   suspend fun saveSettings(settings: WorkoutAiSettings)
   suspend fun loadMemo(date: String): String
   suspend fun saveMemo(date: String, memo: String)
   suspend fun loadMemos(dates: Set<String>): Map<String, String>
+}
+
+interface WorkoutAiReviewRepository {
+  suspend fun save(review: WorkoutAiReview)
+  suspend fun loadAll(): List<WorkoutAiReview>
+  suspend fun loadByDates(dates: Set<String>): List<WorkoutAiReview>
 }
 
 interface WorkoutAiAdvisor {
@@ -63,6 +76,7 @@ object WorkoutAiPromptBuilder {
     snapshot: WorkoutSnapshot,
     settings: WorkoutAiSettings,
     memos: Map<String, String>,
+    reviews: List<WorkoutAiReview> = emptyList(),
     today: LocalDate = LocalDate.now(),
   ): String {
     val since = today.minusDays(HISTORY_DAYS - 1)
@@ -70,17 +84,29 @@ object WorkoutAiPromptBuilder {
       .filter { history -> history.date.toLocalDateOrNull()?.let { !it.isBefore(since) && !it.isAfter(today) } == true }
       .sortedBy { it.date }
     val todayDate = today.toString()
+    val todayHistory = recentHistory.filter { it.date == todayDate }
     val pastHistory = recentHistory.filterNot { it.date == todayDate }
     val todaySets = buildList {
-      recentHistory.filter { it.date == todayDate }.forEach { addAll(it.sets) }
+      todayHistory.forEach { addAll(it.sets) }
       if (snapshot.today.date == todayDate) addAll(snapshot.today.sets)
     }.distinctBy { it.id }
+    val todayMenus = buildList {
+      todayHistory.mapNotNullTo(this) { it.menu }
+      if (snapshot.today.date == todayDate) snapshot.today.menu?.let(::add)
+    }.distinctBy { it.id to it.items }
     val exercisesById = snapshot.exercises.associateBy { it.id }
+    val recentReviews = reviews
+      .filter { review ->
+        review.date.toLocalDateOrNull()?.let { !it.isBefore(since) && !it.isAfter(today) } == true
+      }
+      .sortedByDescending { it.date }
 
     return buildString {
       appendLine("あなたは筋力トレーニングの記録を読み、実行可能な提案を返すアシスタントです。")
       appendLine("医療診断は行わず、痛み・強い不調・異常が記載されている場合は無理な運動を勧めないでください。")
-      appendLine("入力にない重量・回数・体調を事実として補完しないでください。")
+      appendLine("入力にない重量・回数・体調・RPE・休憩時間などを事実として補完しないでください。")
+      appendLine("登録済み種目やプリセットは候補です。今日の予定として扱ってよいのは「今日の予定メニュー」に示された内容だけです。")
+      appendLine("ワークアウトメモは利用者の主観的な所感です。客観的な負荷測定値と同一視しないでください。")
       appendLine()
       appendLine("## ワークアウト方針")
       appendLine(settings.workoutPolicy.ifBlank { "未設定" })
@@ -90,25 +116,30 @@ object WorkoutAiPromptBuilder {
         appendLine("- id=${exercise.id} / ${exercise.name} / unit=${exercise.unit.name.lowercase()} / type=${exercise.type.name.lowercase()}")
       }
       appendLine()
-      appendLine("## プリセットメニュー")
+      appendLine("## プリセットメニュー（候補）")
       if (snapshot.menus.isEmpty()) {
         appendLine("未設定")
       } else {
         snapshot.menus.forEach { menu ->
           appendLine("### ${menu.name}")
-          menu.items.forEach { item ->
-            val exercise = exercisesById[item.exerciseId] ?: return@forEach
-            val targetText = if (item.targets.isEmpty()) "${item.targetSets}セット" else item.targets.joinToString(prefix = "[", postfix = "]")
-            appendLine("- ${exercise.name}: $targetText ${exercise.unit.label}")
-          }
+          appendMenu(menu, exercisesById)
         }
       }
       appendLine()
       appendLine("## 直近14日間の過去記録")
-      if (pastHistory.isEmpty()) appendLine("履歴なし") else pastHistory.forEach { appendHistory(it, memos[it.date]) }
+      if (pastHistory.isEmpty()) appendLine("履歴なし") else pastHistory.forEach { appendHistory(it, memos[it.date], exercisesById) }
       appendLine()
       appendLine("## 今日 $today")
       appendLine("ワークアウトメモ: ${memos[todayDate].orEmpty().ifBlank { "なし" }}")
+      appendLine("今日の予定メニュー:")
+      if (todayMenus.isEmpty()) {
+        appendLine("不明")
+      } else {
+        todayMenus.forEach { menu ->
+          appendLine("### ${menu.name}")
+          appendMenu(menu, exercisesById)
+        }
+      }
       if (todaySets.isEmpty()) appendLine("記録済みセット: なし") else {
         appendLine("記録済みセット:")
         todaySets.forEach { appendLine("- ${formatSetForAi(it)}") }
@@ -116,16 +147,31 @@ object WorkoutAiPromptBuilder {
       appendLine()
       when (type) {
         WorkoutAiRequestType.MENU_SUGGESTION -> {
+          appendLine("## 過去のAIレビュー（参考情報）")
+          appendLine("以下は過去のAIが生成した二次情報です。現在の実績・メモ・方針と矛盾する場合は現在の一次情報を優先してください。")
+          if (recentReviews.isEmpty()) {
+            appendLine("なし")
+          } else {
+            recentReviews.forEach { review ->
+              appendLine("### ${review.date}")
+              appendLine(review.content)
+            }
+          }
+          appendLine()
           appendLine("## 依頼")
           appendLine("今日行うメニューを、次のJSONだけで返してください。Markdownコードフェンスや説明文は付けないでください。")
-          appendLine("種目は登録済み種目を優先し、必要なら新しい種目も提案できます。今日のメモに合わせてセット数や各セットの目標値を調整してください。")
+          appendLine("種目は登録済み種目を優先し、必要なら新しい種目も提案できます。今日のメモ、直近実績、過去レビューを踏まえてセット数や各セットの目標値を調整してください。")
           appendLine("""{"version":1,"name":"今日のメニュー","exercises":[{"id":"既存なら種目id","name":"種目名","unit":"reps","type":"reps","sets":[10,10,8]}]}""")
           appendLine("unit は reps または seconds、type は reps / timed / plank / step_up のいずれかを指定してください。")
           appendLine("sets は各セットの回数または秒数の配列です。配列の長さがセット数になります。")
         }
         WorkoutAiRequestType.POST_WORKOUT_REVIEW -> {
           appendLine("## 依頼")
-          appendLine("今日のワークアウトをレビューしてください。実績とメモを根拠に、良かった点、負荷の評価、次回の調整案を返してください。")
+          appendLine("今日のワークアウトをレビューしてください。")
+          appendLine("「今日の予定メニュー」と「記録済みセット」を比較し、予定との差分は予定メニューに存在する項目だけについて述べてください。登録済み種目や他のプリセットにあるだけの種目を未実施扱いしないでください。")
+          appendLine("負荷の評価は、記録されたセット数・回数・時間と直近14日間の同種目実績から確認できる範囲に限定してください。重量、RPE、休憩時間等がない場合は全体負荷を断定しないでください。")
+          appendLine("メモの疲労感や筋肉への負荷感は主観的所感として扱い、客観的な運動強度と同一視しないでください。")
+          appendLine("出力は「実績」「予定との差分」「最近の実績との比較」「所感の読み取り」「次回の調整案」「判断できない点」の順で簡潔にまとめてください。")
           appendLine("今日の記録が不足している場合は、不足していることを明示し、断定的な評価を避けてください。")
         }
       }
@@ -143,10 +189,33 @@ object WorkoutAiPromptBuilder {
     }
   }
 
-  private fun StringBuilder.appendHistory(history: WorkoutHistory, memo: String?) {
+  private fun StringBuilder.appendHistory(
+    history: WorkoutHistory,
+    memo: String?,
+    exercisesById: Map<String, WorkoutExercise>,
+  ) {
     appendLine("### ${history.date}")
     appendLine("メモ: ${memo.orEmpty().ifBlank { "なし" }}")
+    history.menu?.let { menu ->
+      appendLine("実施時メニュー: ${menu.name}")
+      appendMenu(menu, exercisesById)
+    }
     history.sets.forEach { appendLine("- ${formatSetForAi(it)}") }
+  }
+
+  private fun StringBuilder.appendMenu(
+    menu: WorkoutMenu,
+    exercisesById: Map<String, WorkoutExercise>,
+  ) {
+    menu.items.forEach { item ->
+      val exercise = exercisesById[item.exerciseId] ?: return@forEach
+      val targetText = if (item.targets.isEmpty()) {
+        "${item.targetSets}セット"
+      } else {
+        item.targets.joinToString(prefix = "[", postfix = "]")
+      }
+      appendLine("- ${exercise.name}: $targetText ${exercise.unit.label}")
+    }
   }
 
   private fun formatSetForAi(set: WorkoutSet): String = buildString {
