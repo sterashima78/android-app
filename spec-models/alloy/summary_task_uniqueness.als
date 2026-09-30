@@ -21,13 +21,13 @@ sig SummaryTask {
 }
 
 fact OneDurableTaskPerArticle {
-  all article: Article |
-    lone { task: SummaryTask | task.article = article }
+  all target: Article |
+    lone { task: SummaryTask | task.article = target }
 }
 
 assert AtMostOneDurableTaskPerArticle {
-  all article: Article |
-    lone { task: SummaryTask | task.article = article }
+  all target: Article |
+    lone { task: SummaryTask | task.article = target }
 }
 
 check AtMostOneDurableTaskPerArticle for 6 expect 0
