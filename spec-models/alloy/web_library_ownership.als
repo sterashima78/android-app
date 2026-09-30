@@ -25,8 +25,8 @@ fact StableOwnership {
 }
 
 assert NoDuplicateDurableOwnership {
-  no content: Content |
-    content in BookmarkRecord.content and content in WebLibraryRecord.content
+  no target: Content |
+    target in BookmarkRecord.content and target in WebLibraryRecord.content
 }
 
 check NoDuplicateDurableOwnership for 4 expect 0
