@@ -20,5 +20,6 @@
 | Summary task lifecycle / duplicate prevention | [`quint/summary_task_lifecycle.qnt`](quint/summary_task_lifecycle.qnt) | [`alloy/summary_task_uniqueness.als`](alloy/summary_task_uniqueness.als) |
 | RSS recommendation revision queue | [`quint/rss_recommendation_queue.qnt`](quint/rss_recommendation_queue.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
+| Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。
