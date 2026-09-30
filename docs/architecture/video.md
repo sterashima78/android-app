@@ -183,7 +183,7 @@ foreground playback extractionでは、playback extractorがstream URLを返し�
 
 実request Cookieを観測していないURL、manifestから派生したsegment、redirect先などでは、ADR-0241の既存profile CookieManager lookupへfallbackする。観測済みCookieをhostやdirectoryだけを根拠に別URLへ流用しない。`COOKIE_INTERCEPT` 非対応環境でも既存providerだけで再生を継続する。
 
-Cookie共有がOFFの場合はrequest Cookie captureを有効化せずproviderも作らない。Cookie値、Authorization、その他のcredentialをdatabase、backup、export、log、error UIへ保存・表示しない。request interceptionを `Authorization` 等の任意credential共有へ一般化しない。third-party Cookie acceptanceも暗黙に変更しない。
+Cookie共有がOFFの場合はrequest Cookie captureを有効化せずproviderも作らない。専用WebView profile内のCookieはWebViewが管理するbrowser session stateであり、Video-owned durable stateとはしない。Cookie値、Authorization、その他のcredentialをdatabase、SharedPreferences、backup、export、log、error UIへ複製・保存・表示しない。request interceptionを `Authorization` 等の任意credential共有へ一般化しない。third-party Cookie acceptanceも暗黙に変更しない。
 
 v1のVideo playerはforeground UI lifetimeとする。全画面表示では横向きへ切り替え、通常表示へ戻ると縦向きへ復帰する。Audio featureの `MediaSessionService` を再利用または複製せず、background audio continuation、Cast、download、transcodingは対象外とする。
 
