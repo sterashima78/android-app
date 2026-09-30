@@ -164,7 +164,7 @@ models:
   - spec-models/alloy/video_web_playback_privacy.als
 -->
 - Media3へ渡すRefererは既定でoriginだけとする。ルールの「再生時にRefererのパスを共有する」がONで、かつ再生URL抽出が明示したreferrer URLを採用した場合だけ、そのpathをRefererへ含める。WebView実request由来のRefererと元page fallbackはorigin-onlyを維持し、query / fragment / userinfoは送らない。Originは常にorigin-onlyとする。
-- Web抽出ルールの「再生時にWebViewのCookieを共有する」は既定OFFとし、ONの場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用する。Cookie値自体は保存・backup・logへ残さない。
+- Web抽出ルールの「再生時にWebViewのCookieを共有する」は既定OFFとし、ONの場合だけ専用WebView profileのCookieを再生中のMedia3 HTTP requestへ一時的に利用する。Cookie値は専用WebView profile内でWebViewが管理し、Video-owned durable state、backup、export、log、error UIへ複製・保存しない。
 <!-- /formal-requirement -->
 - Web抽出ルールは端末内の専用WebViewで実行し、再生用stream URLは保存せず再生時に取得する。stream URLを取得できない場合はWebページ表示へfallbackする。
 - 動画設定では購読型Providerを追加・有効化 / 無効化できる。Providerを無効化しても設定・subscription・取得済み動画は削除せず、background refresh対象からだけ外す。
