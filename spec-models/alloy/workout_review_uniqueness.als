@@ -7,8 +7,10 @@
 //
 // Scope:
 // Review atoms represent conceptual generation attempts. The ordering is the
-// generation order. The durable store exposes at most one review per day and,
-// when attempts exist, points to the latest attempt for that day.
+// generation order. Because util/ordering makes the Review scope exact, example
+// instances declare an explicit Review scope. The durable store exposes at most
+// one review per day and, when attempts exist, points to the latest attempt for
+// that day.
 
 module workout_review_uniqueness
 
