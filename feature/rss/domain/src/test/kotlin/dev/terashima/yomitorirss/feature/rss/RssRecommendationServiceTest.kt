@@ -57,6 +57,49 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `学習推論に失敗した場合は既存条件とfeedbackを保持する`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        manualCondition = "広告は低くする",
+        learnedCondition = "既存の学習条件",
+        revision = 2L,
+      ),
+    )
+    repository.addFeedback("a1", "除外した記事", null)
+    val service = RssRecommendationService(
+      repository,
+      FakeRecommendationEngine(failImprove = true),
+    )
+
+    val result = service.improvePendingFeedback()
+
+    assertNull(result)
+    assertEquals("既存の学習条件", repository.policy.learnedCondition)
+    assertEquals(listOf("a1"), repository.listPendingFeedback().map { it.articleId })
+  }
+
+  @Test
+  fun `学習中に追加されたfeedbackは成功時も次回学習へ残す`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        manualCondition = "広告は低くする",
+        revision = 2L,
+      ),
+    )
+    repository.addFeedback("a1", "先のfeedback", null)
+    val engine = FakeRecommendationEngine(
+      improveResult = "更新した学習条件",
+      onImprove = { repository.addFeedback("a2", "学習中に追加したfeedback", null) },
+    )
+    val service = RssRecommendationService(repository, engine)
+
+    val result = service.improvePendingFeedback()
+
+    assertEquals("更新した学習条件", result?.learnedCondition)
+    assertEquals(listOf("a2"), repository.listPendingFeedback().map { it.articleId })
+  }
+
+  @Test
   fun `記事単位評価は数値スコアを保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 3L),
@@ -179,6 +222,7 @@ class RssRecommendationServiceTest {
 private class FakeRecommendationEngine(
   private val decisions: List<RssRecommendationDecision> = emptyList(),
   private val failScoring: Boolean = false,
+  private val failImprove: Boolean = false,
   private val improveResult: String = "",
   private val onImprove: () -> Unit = {},
 ) : RssRecommendationEngine {
@@ -201,6 +245,7 @@ private class FakeRecommendationEngine(
     feedback: List<RssRecommendationFeedback>,
   ): String {
     onImprove()
+    if (failImprove) error("learning failed")
     return improveResult.ifBlank { learnedCondition }
   }
 }
