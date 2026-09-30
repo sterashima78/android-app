@@ -42,7 +42,7 @@ models:
   - spec-models/quint/knowledge_build_lifecycle.qnt
 -->
 - Knowledgeの自動buildはfeature-owned durable taskとして、実行要求がある間は`QUEUED` / `RUNNING` / `PAUSED` / `STOPPED` / `FAILED`の状態を投影し、要求が完了またはcancelされた場合はtask自体を残さない。
-- 新しいbuild要求は新しいattemptとして`QUEUED`から開始し、changed topicが計画されると`RUNNING`へ進む。対象topicがない場合または最後のtopicが完了した場合はbuild要求を完了して消去する。
+- 新しいbuild要求は新しいattemptとして、global pause中を除き`QUEUED`から開始し、changed topicが計画されると`RUNNING`へ進む。対象topicがない場合または最後のtopicが完了した場合はbuild要求を完了して消去する。
 - providerのglobal pauseではbuild要求自体を失わず`PAUSED`として扱い、実行中topic計画を解除して再開時に再計画する。retryable failureではbuild要求を`FAILED`へ確定せず同じattemptを再試行する。
 - `STOPPED`または`FAILED`は明示resumeで新しいattemptへ戻し、旧pending topicとerrorを持ち越さない。cancelは状態に関わらずbuild要求を消去する。
 <!-- /formal-requirement -->
