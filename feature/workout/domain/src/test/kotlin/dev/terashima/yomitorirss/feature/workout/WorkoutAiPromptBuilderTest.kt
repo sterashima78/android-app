@@ -53,7 +53,8 @@ class WorkoutAiPromptBuilderTest {
 
     assertTrue(prompt.contains("腕立て伏せ: 12回"))
     assertTrue(prompt.contains("最後のセットがきつかった"))
-    assertTrue(prompt.contains("良かった点、負荷の評価、次回の調整案"))
+    assertTrue(prompt.contains("予定との差分"))
+    assertTrue(prompt.contains("判断できない点"))
   }
 
   @Test
