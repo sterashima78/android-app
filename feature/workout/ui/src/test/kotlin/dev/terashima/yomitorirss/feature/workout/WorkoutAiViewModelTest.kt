@@ -50,6 +50,29 @@ class WorkoutAiViewModelTest {
   }
 
   @Test
+  fun `保存済みレビューを初期状態へ読み込む`() = runTest(dispatcher) {
+    val reviewRepository = FakeReviewRepository(
+      mutableListOf(
+        WorkoutAiReview(
+          date = "2026-09-29",
+          generatedAt = "2026-09-29T09:00:00+09:00",
+          provider = WorkoutAiProvider.LOCAL,
+          content = "保存済みレビュー",
+        ),
+      ),
+    )
+    val viewModel = WorkoutAiViewModel(
+      settingsRepository = FakeSettingsRepository(),
+      reviewRepository = reviewRepository,
+      taskController = RecordingTaskController(),
+    )
+    advanceUntilIdle()
+
+    assertEquals(listOf("保存済みレビュー"), viewModel.state.value.reviews.map { it.content })
+    assertFalse(viewModel.state.value.loading)
+  }
+
+  @Test
   fun `background taskの失敗を画面状態へ投影する`() = runTest(dispatcher) {
     val tasks = RecordingTaskController(
       result = WorkoutAiTaskSnapshot(
