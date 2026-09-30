@@ -59,6 +59,28 @@ class RssRecommendationToolCallTest {
   }
 
   @Test
+  fun `学習promptはfeedbackの内部identityとtimestampを含めない`() {
+    val prompt = buildLearningPrompt(
+      manualCondition = "広告を低くする",
+      learnedCondition = "",
+      feedback = listOf(
+        RssRecommendationFeedback(
+          id = "feedback-internal-id",
+          articleId = "https://private.invalid/article-id",
+          title = "除外参考の記事タイトル",
+          previousAssessment = null,
+          createdAt = 987654321L,
+        ),
+      ),
+    )
+
+    assertTrue(prompt.contains("除外参考の記事タイトル"))
+    assertTrue(!prompt.contains("feedback-internal-id"))
+    assertTrue(!prompt.contains("https://private.invalid/article-id"))
+    assertTrue(!prompt.contains("987654321"))
+  }
+
+  @Test
   fun `評価可能な記事は1から10のスコアとして受け取る`() {
     val result = parseScoringToolCall(
       AiStructuredToolCall(
