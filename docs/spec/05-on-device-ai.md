@@ -37,4 +37,18 @@ models:
 
 - 保存済みコンテンツや要約を資料としてKnowledge pageを生成・更新できる。
 - 自動生成は永続background taskとして実行し、既存pageの拡張と追加page作成を扱う。
-- ユーザーが開始するKnowledge pageの新規生成とAI編集もbackground taskとして実行し、画面を離れても推論実行をViewModel lifetimeへ依存させない。
+<!-- formal-requirement
+id: KNOWLEDGE-PAGE-AI-TASK-001
+models:
+  - spec-models/quint/knowledge_page_ai_task_lifecycle.qnt
+-->
+- ユーザーが開始するKnowledge pageの新規生成とAI編集はfeature-owned background taskとして実行し、`QUEUED` / `RUNNING` / `SUCCEEDED` / `FAILED` / `CANCELLED`の状態を投影する。
+- `QUEUED` / `RUNNING`のtaskでは入力requestを保持し、期限だけを理由に削除しない。provider一時停止やretryable failureで再試行する場合も同じrequestを保持して再度`QUEUED`へ戻す。
+- `SUCCEEDED`または非再試行の`FAILED`へ確定した後は入力requestを削除できるが、画面再生成後に結果を回収できるよう未消費task referenceは明示dismissまで保持する。
+- `CANCELLED`を含むterminal taskは画面再生成後に回収して終了状態を表示でき、消費後はtask referenceをdismissする。対応するWorkが存在しないstale referenceはrequestとともに破棄できる。
+<!-- /formal-requirement -->
+
+
+形式モデル:
+
+- [Quint: `knowledge_page_ai_task_lifecycle.qnt`](../../spec-models/quint/knowledge_page_ai_task_lifecycle.qnt) — Knowledge page AI taskのactive input保持、retry、terminal result回収、dismissの状態遷移を検査する。
