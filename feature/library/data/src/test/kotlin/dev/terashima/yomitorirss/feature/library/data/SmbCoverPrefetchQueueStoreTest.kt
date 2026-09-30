@@ -138,12 +138,17 @@ class SmbCoverPrefetchQueueStoreTest {
   }
 
   @Test
-  fun `LRU削除された表紙は対象外履歴として記録できる`() {
+  fun `完了済み表紙がLRU削除された場合は対象外履歴へ置き換える`() {
     insertBook("book-1", "Book 1", thumbnailUrl = null)
+    queue.enqueueMissing()
+    queue.claimNext()
+    queue.complete("book-1")
+    assertEquals(1, queue.snapshot().completedCount)
 
     queue.markSkipped("book-1", "Book 1", "表紙キャッシュ上限により削除")
 
     val snapshot = queue.snapshot()
+    assertEquals(0, snapshot.completedCount)
     assertEquals(1, snapshot.skippedCount)
     assertEquals(SmbCoverPrefetchStatus.SKIPPED, snapshot.items.first().status)
     assertEquals("表紙キャッシュ上限により削除", snapshot.items.first().message)
