@@ -134,6 +134,12 @@ class WorkoutAiPromptBuilderTest {
           provider = WorkoutAiProvider.LOCAL,
           content = "次回は回数を維持する",
         ),
+        WorkoutAiReview(
+          date = "2026-08-13",
+          generatedAt = "2026-08-13T09:00:00+09:00",
+          provider = WorkoutAiProvider.LOCAL,
+          content = "範囲外レビュー",
+        ),
       ),
       today = today,
     )
@@ -141,6 +147,7 @@ class WorkoutAiPromptBuilderTest {
     assertTrue(prompt.contains("過去のAIレビュー（参考情報）"))
     assertTrue(prompt.contains("二次情報"))
     assertTrue(prompt.contains("次回は回数を維持する"))
+    assertFalse(prompt.contains("範囲外レビュー"))
   }
 
   @Test
