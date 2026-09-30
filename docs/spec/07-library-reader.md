@@ -21,7 +21,16 @@ models:
 - SMB server上のZIP / CBZ / PDF書籍を蔵書へ取り込む。
 - Android 17 / API 37 targetでは、既存のSMB接続設定がある蔵書画面を利用する際にローカルネットワーク権限を要求する。拒否した場合はSMB同期・reader・表紙取得等のLANアクセスを利用できない。
 - 蔵書の同期場所を解除しても全体設定のSMB接続とpasswordは削除しない。
-- 表紙画像は再生成可能なcacheとして扱い、backgroundで先読みできる。既存の表紙先読みキューの進捗・失敗・待機理由を確認し、必要に応じて再試行できる。
+<!-- formal-requirement
+id: LIBRARY-COVER-PREFETCH-QUEUE-001
+models:
+  - spec-models/quint/library_cover_prefetch_queue.qnt
+-->
+- 表紙先読みキューはLibrary-ownedのbackup対象外処理状態として、`PENDING` / `RUNNING` / `FAILED` / `COMPLETED` / `SKIPPED`を保持する。
+- `PENDING`だけを実行対象としてclaimし`RUNNING`へ進める。実行結果は`COMPLETED` / `FAILED` / `SKIPPED`のいずれかとし、キャンセルやprocess interruptionで残った`RUNNING`は`PENDING`へ戻して再開可能にする。
+- `FAILED`は明示的な再試行で`PENDING`へ戻せる。`SKIPPED`は通常の自動投入では再試行せず、ユーザーが未取得表紙の再評価を明示した場合だけ`PENDING`へ戻せる。生成済み表紙がcache上限によってLRU削除された場合は、再生成対象として`SKIPPED`を記録できる。
+- WorkManagerの実行状態とWi-Fi / battery / schedulerの待機理由はdurable queue statusとは別のruntime observationとして扱い、scheduler待機だけでqueue statusを`RUNNING`や失敗状態へ変更しない。
+<!-- /formal-requirement -->
 - SMB credentialはAndroid Keystoreを利用して保護し、画面へ再表示せず、アプリ独自backupへ含めない。
 
 ## 7.3 書誌正規化
@@ -44,3 +53,4 @@ models:
 ## 形式モデル
 
 - [Alloy: `web_library_ownership.als`](../../spec-models/alloy/web_library_ownership.als) — Web蔵書とブックマークのstableな永続状態が同一contentを同時所有しないことを検査する。
+- [Quint: `library_cover_prefetch_queue.qnt`](../../spec-models/quint/library_cover_prefetch_queue.qnt) — 表紙先読みのdurable queue lifecycle、interrupt recovery、明示再試行、runtime waitとの分離を検査する。

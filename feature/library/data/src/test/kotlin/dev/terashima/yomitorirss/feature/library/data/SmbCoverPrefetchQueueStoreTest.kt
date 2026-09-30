@@ -99,6 +99,37 @@ class SmbCoverPrefetchQueueStoreTest {
   }
 
   @Test
+  fun `中断した実行中の表紙先読みは待機へ戻して再開できる`() {
+    insertBook("book-1", "Book 1", thumbnailUrl = null)
+    queue.enqueueMissing()
+    queue.claimNext()
+
+    queue.requeueInterrupted()
+
+    val recovered = queue.snapshot()
+    assertEquals(1, recovered.pendingCount)
+    assertEquals(0, recovered.runningCount)
+    assertEquals(SmbCoverPrefetchStatus.PENDING, recovered.items.first().status)
+  }
+
+  @Test
+  fun `対象外の表紙先読みは通常投入では維持し明示再評価で待機へ戻す`() {
+    insertBook("book-1", "Book 1", thumbnailUrl = null)
+    queue.markSkipped("book-1", "Book 1", "表紙候補なし")
+
+    assertEquals(0, queue.enqueueMissing())
+    assertEquals(1, queue.snapshot().skippedCount)
+
+    assertEquals(1, queue.enqueueMissing(retrySkipped = true))
+
+    val retried = queue.snapshot()
+    assertEquals(1, retried.pendingCount)
+    assertEquals(0, retried.skippedCount)
+    assertEquals(SmbCoverPrefetchStatus.PENDING, retried.items.first().status)
+    assertNull(retried.items.first().message)
+  }
+
+  @Test
   fun `表紙取得済みの書籍はキューへ追加しない`() {
     insertBook("book-1", "Book 1", thumbnailUrl = "file:///cover/book-1.jpg")
 
@@ -107,12 +138,17 @@ class SmbCoverPrefetchQueueStoreTest {
   }
 
   @Test
-  fun `LRU削除された表紙は対象外履歴として記録できる`() {
+  fun `完了済み表紙がLRU削除された場合は対象外履歴へ置き換える`() {
     insertBook("book-1", "Book 1", thumbnailUrl = null)
+    queue.enqueueMissing()
+    queue.claimNext()
+    queue.complete("book-1")
+    assertEquals(1, queue.snapshot().completedCount)
 
     queue.markSkipped("book-1", "Book 1", "表紙キャッシュ上限により削除")
 
     val snapshot = queue.snapshot()
+    assertEquals(0, snapshot.completedCount)
     assertEquals(1, snapshot.skippedCount)
     assertEquals(SmbCoverPrefetchStatus.SKIPPED, snapshot.items.first().status)
     assertEquals("表紙キャッシュ上限により削除", snapshot.items.first().message)
