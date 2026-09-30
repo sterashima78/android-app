@@ -24,13 +24,23 @@
 - 日付単位のメモへ当日の所感等を記録できる。
 - 直近14日間のWorkout実績、当日メモ、事前設定した方針、登録済み種目、プリセットメニューを使い、「メニュー提案」と「完了後レビュー」の2種類のAI支援を実行できる。
 - Workout完了時は当日に選択していたメニューを履歴へsnapshotとして残し、完了後レビューでは登録済みプリセット全体ではなく、その日の予定メニューと実績を区別して評価する。
+<!-- formal-requirement
+id: WORKOUT-REVIEW-UNIQUENESS-001
+models:
+  - spec-models/alloy/workout_review_uniqueness.als
+-->
 - 完了後レビューは日付単位で保存し、後からチャット画面で閲覧できる。同じ日のレビューを再実行した場合は最新レビューへ置き換える。
+<!-- /formal-requirement -->
 - AIによるメニュー提案は通常のWorkoutメニューと同じ構造で生成し、当日だけ使うかプリセットとして保存できる。直近14日間の保存済みレビューも二次情報として参照し、現在の実績・メモ・方針を優先する。
 - AI支援の実行先は Local / cloud を明示選択し、既定はLocalとする。cloud選択時はWorkout記録・メモ・方針・メニュー候補・保存済みレビューをクラウドへ送信することを画面上で明示し、自動fallbackは行わない。
 - メニュー提案と完了後レビューはWorkout-owned background taskへ登録し、Workerが実行直前のWorkout記録・メモ・設定から入力を構築する。画面はtask stateと結果を表示し、推論実行をViewModel lifetimeへ依存させない。
 - AI支援へHealth Connect由来のread dataを入力しない。
 - 完了したWorkoutは、許可されている場合にHealth Connectへ一方向exportできる。
 - Workoutから活動消費カロリーや心拍数を推定して保存・書き込みしない。
+
+### 形式モデル
+
+- [Alloy: `workout_review_uniqueness.als`](../../spec-models/alloy/workout_review_uniqueness.als) — 日付ごとの保存済みレビューを1件に限定し、同日の複数生成attemptがある場合は最新attemptだけを保存状態へ投影する。
 
 ## 8.4 Health
 
