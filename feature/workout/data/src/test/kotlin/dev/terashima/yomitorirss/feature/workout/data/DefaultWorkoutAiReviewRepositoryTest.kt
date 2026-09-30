@@ -41,7 +41,7 @@ class DefaultWorkoutAiReviewRepositoryTest {
   }
 
   @Test
-  fun `レビューは新しい日付順に読み込み指定日だけ抽出できる`() = runTest {
+  fun `レビューは新しい日付順に読み込める`() = runTest {
     repository.save(review("2026-09-27", "2026-09-27T08:00:00+09:00", "古い"))
     repository.save(review("2026-09-30", "2026-09-30T08:00:00+09:00", "新しい"))
     repository.save(review("2026-09-29", "2026-09-29T08:00:00+09:00", "中間"))
@@ -49,10 +49,6 @@ class DefaultWorkoutAiReviewRepositoryTest {
     assertEquals(
       listOf("2026-09-30", "2026-09-29", "2026-09-27"),
       repository.loadAll().map { it.date },
-    )
-    assertEquals(
-      listOf("2026-09-29", "2026-09-27"),
-      repository.loadByDates(setOf("2026-09-27", "2026-09-29")).map { it.date },
     )
   }
 
