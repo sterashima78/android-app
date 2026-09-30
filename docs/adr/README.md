@@ -93,6 +93,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0175: Knowledge Wiki の Local / ChatGPT 実行先を明示選択する](0175-knowledge-local-chatgpt-routing.md)
 - [ADR-0214: architecture metadata verification を Gradle/Kotlin に統合する](0214-gradle-architecture-metadata-verification.md)
 - [ADR-0228: AI主導開発に人間向け Architecture Control Plane を置く](0228-human-architecture-control-plane.md)
+- [ADR-0275: 自然言語仕様をQuintとAlloyの形式モデルで補完する](0275-formal-specification-with-quint-and-alloy.md)
 
 ## Supporting architecture areas
 
@@ -249,3 +250,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0265](0265-podcast-cloud-chapter-parallelism.md)
 - [ADR-0267](0267-podcast-news-exclusion-filter.md)
 - [ADR-0269](0269-podcast-durable-foreground-generation.md)
+- [ADR-0275](0275-formal-specification-with-quint-and-alloy.md)

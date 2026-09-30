@@ -2,6 +2,8 @@
 
 この仕様書一式はユーザーから見た現行機能と、互換性に影響する主要な振る舞いを説明する。
 
+状態遷移、ordering、cardinality、uniqueness等のうち形式化する価値がある性質は、`spec-models/quint/` / `spec-models/alloy/` のmodelで補完する。対応modelがある仕様節はmodel fileへ直接linkし、どの性質を検査しているかを記載する。形式modelは自然言語仕様の部分的なprojectionであり、仕様本文の代替ではない。運用は [`../formal-modeling.md`](../formal-modeling.md) を正本とする。
+
 アーキテクチャ上の依存方向、module ownership、table ownership、テスト戦略、Android platform 基準は `docs/architecture/` を正本とする。設計判断の理由と変更履歴は `docs/adr/` を正本とする。
 
 データベースの現在version、module一覧、table一覧、依存ライブラリversion、CIコマンドなどコードから一意に決まる値はこの仕様書へ複製しない。現在値は次を参照する。

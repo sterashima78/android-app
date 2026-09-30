@@ -20,3 +20,11 @@
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
 - WorkManager Worker は Provider lookup の例外に含めず、owning feature の `WorkerFactory` から constructor injection し、`:app` の WorkerFactory composition が application graph へ接続する。
 - frameworkが永続化した旧class nameとの互換が必要な場合だけ、ADRで根拠を持つcompatibility shimを残す。
+
+
+## 形式モデル
+
+自動バックアップのschedule / trigger部分は次のmodelで検査する。その他のbackground queue / AI lifecycleは、今後その仕様を変更する際に [`../formal-modeling.md`](../formal-modeling.md) の優先順で段階的に形式化する。
+
+- [Quint: `backup_schedule.qnt`](../../spec-models/quint/backup_schedule.qnt) — scheduleの状態遷移と再予約safety。
+- [Alloy: `backup_schedule.als`](../../spec-models/alloy/backup_schedule.als) — configured timeとscheduled work / automatic jobの構造制約。
