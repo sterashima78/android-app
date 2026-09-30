@@ -18,6 +18,7 @@
 | podcast episode lifecycle | [`quint/podcast_episode_lifecycle.qnt`](quint/podcast_episode_lifecycle.qnt) | — |
 | Web library / bookmark durable ownership | — | [`alloy/web_library_ownership.als`](alloy/web_library_ownership.als) |
 | Library cover prefetch lifecycle | [`quint/library_cover_prefetch_queue.qnt`](quint/library_cover_prefetch_queue.qnt) | — |
+| Library metadata normalization lifecycle | [`quint/library_metadata_normalization_lifecycle.qnt`](quint/library_metadata_normalization_lifecycle.qnt) | — |
 | Summary task lifecycle / duplicate prevention | [`quint/summary_task_lifecycle.qnt`](quint/summary_task_lifecycle.qnt) | [`alloy/summary_task_uniqueness.als`](alloy/summary_task_uniqueness.als) |
 | RSS recommendation revision queue | [`quint/rss_recommendation_queue.qnt`](quint/rss_recommendation_queue.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |

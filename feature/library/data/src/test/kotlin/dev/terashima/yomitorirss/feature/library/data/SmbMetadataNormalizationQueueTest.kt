@@ -139,6 +139,46 @@ class SmbMetadataNormalizationQueueTest {
   }
 
   @Test
+  fun `中断した解析中候補は次回開始前に解析待ちへ戻せる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "interrupted-book", fileName = "scan_interrupted.cbz")
+    repository.startBatch(listOf(book))
+    val claimed = repository.claimNext()!!
+    assertEquals(book.sourceId, claimed.sourceId)
+    assertEquals(
+      SmbMetadataNormalizationStatus.PROCESSING,
+      repository.batchSnapshot()!!.items.single().status,
+    )
+
+    repository.requeueInterrupted()
+
+    assertEquals(
+      SmbMetadataNormalizationStatus.QUEUED,
+      repository.batchSnapshot()!!.items.single().status,
+    )
+    assertEquals(book.sourceId, repository.claimNext()!!.sourceId)
+  }
+
+  @Test
+  fun `保留した候補は再解析せずレビューへ戻せる`() = runBlocking {
+    val book = insertSmbBook(sourceId = "deferred-book", fileName = "scan_deferred.cbz")
+    repository.startBatch(listOf(book))
+    val claimed = repository.claimNext()!!
+    repository.saveGeneratedCandidate(claimed, "架空保留本.cbz", proposal("架空保留本"))
+    repository.deferCandidate(book.sourceId)
+    assertEquals(
+      SmbMetadataNormalizationStatus.DEFERRED,
+      repository.batchSnapshot()!!.items.single().status,
+    )
+
+    repository.reopenCandidate(book.sourceId)
+
+    assertEquals(
+      SmbMetadataNormalizationStatus.PENDING_REVIEW,
+      repository.batchSnapshot()!!.items.single().status,
+    )
+  }
+
+  @Test
   fun `過去バッチで却下した書籍もレビューに残り最新バッチへ再解析できる`() = runBlocking {
     val rejectedBook = insertSmbBook(sourceId = "historical-rejected-book", fileName = "scan_old.cbz")
     repository.startBatch(listOf(rejectedBook))

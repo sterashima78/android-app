@@ -312,15 +312,17 @@ class DefaultSmbMetadataNormalizationRepository(
 
   internal fun requeueInterrupted() {
     ensureSmbMetadataNormalizationSchema(database.writable)
-    database.writable.update(
-      ITEM_TABLE,
-      ContentValues().apply {
-        put("status", SmbMetadataNormalizationStatus.QUEUED.name)
-        put("updated_at", System.currentTimeMillis())
-      },
-      "status = ?",
-      arrayOf(SmbMetadataNormalizationStatus.PROCESSING.name),
-    )
+    database.write {
+      update(
+        ITEM_TABLE,
+        ContentValues().apply {
+          put("status", SmbMetadataNormalizationStatus.QUEUED.name)
+          put("updated_at", System.currentTimeMillis())
+        },
+        "status = ?",
+        arrayOf(SmbMetadataNormalizationStatus.PROCESSING.name),
+      )
+    }
   }
 
   internal fun promoteCoverReadyItems() {
