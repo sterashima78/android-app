@@ -28,6 +28,8 @@ import dev.terashima.yomitorirss.feature.workout.WorkoutAiAdvisor
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiPromptBuilder
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiProvider
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiRequestType
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiReview
+import dev.terashima.yomitorirss.feature.workout.WorkoutAiReviewRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiSettingsRepository
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskController
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskReference
@@ -35,6 +37,8 @@ import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskSnapshot
 import dev.terashima.yomitorirss.feature.workout.WorkoutAiTaskState
 import dev.terashima.yomitorirss.feature.workout.WorkoutReader
 import java.io.File
+import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -149,6 +153,7 @@ class WorkoutAiWorker(
   params: WorkerParameters,
   private val workoutReader: WorkoutReader,
   private val settingsRepository: WorkoutAiSettingsRepository,
+  private val reviewRepository: WorkoutAiReviewRepository,
   private val advisor: WorkoutAiAdvisor,
 ) : CoroutineWorker(appContext, params) {
   private val taskStore = WorkoutAiTaskStore(appContext)
@@ -190,15 +195,30 @@ class WorkoutAiWorker(
   ): String {
     val snapshot = workoutReader.load()
     val settings = settingsRepository.loadSettings().copy(provider = provider)
-    val dates = WorkoutAiPromptBuilder.recentDates(snapshot)
+    val today = LocalDate.now()
+    val dates = WorkoutAiPromptBuilder.recentDates(snapshot, today)
     val memos = settingsRepository.loadMemos(dates)
+    val reviews = reviewRepository.loadByDates(dates)
     val prompt = WorkoutAiPromptBuilder.build(
       type = type,
       snapshot = snapshot,
       settings = settings,
       memos = memos,
+      reviews = reviews,
+      today = today,
     )
-    return advisor.generate(provider, prompt).trim().ifBlank { "応答が空でした" }
+    val response = advisor.generate(provider, prompt).trim().ifBlank { "応答が空でした" }
+    if (type == WorkoutAiRequestType.POST_WORKOUT_REVIEW) {
+      reviewRepository.save(
+        WorkoutAiReview(
+          date = today.toString(),
+          generatedAt = OffsetDateTime.now().toString(),
+          provider = provider,
+          content = response,
+        ),
+      )
+    }
+    return response
   }
 
   private fun isPaused(provider: WorkoutAiProvider): Boolean = when (provider) {
@@ -257,6 +277,7 @@ class WorkoutAiWorker(
 class WorkoutAiWorkerFactory(
   private val workoutReaderProvider: () -> WorkoutReader,
   private val settingsRepositoryProvider: () -> WorkoutAiSettingsRepository,
+  private val reviewRepositoryProvider: () -> WorkoutAiReviewRepository,
   private val advisorProvider: () -> WorkoutAiAdvisor,
 ) : WorkerFactory() {
   override fun createWorker(
@@ -269,6 +290,7 @@ class WorkoutAiWorkerFactory(
       params = workerParameters,
       workoutReader = workoutReaderProvider(),
       settingsRepository = settingsRepositoryProvider(),
+      reviewRepository = reviewRepositoryProvider(),
       advisor = advisorProvider(),
     )
   } else {
