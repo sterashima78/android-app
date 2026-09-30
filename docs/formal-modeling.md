@@ -119,27 +119,27 @@ CIは次を検査する。
 6. PRのbaseと比較してrequirement本文が変更された場合、revisionが増加していること
 
 revision更新はmodel codeの変更を必須にはしない。仕様の明確化等でmodelのabstractionが変わらない場合でも、model側の`ID@revision`を更新することで、そのrevisionを再確認済みであることを明示する。
-## 4. modelの書き方
+## 5. modelの書き方
 
-### 4.1 production codeを写経しない
+### 5.1 production codeを写経しない
 
 modelはimplementation modelではなくspecification modelとする。
 
 class名、framework API、database schema、UI state holder等をそのまま再現するのではなく、検査対象となるstate / relationだけを残す。
 
-### 4.2 abstractionをcommentへ残す
+### 5.2 abstractionをcommentへ残す
 
 有限化や縮約を行う場合、なぜそのabstractionで検査対象の性質を保てるかをcommentへ書く。
 
 例として、任意個の独立した時刻scheduleの状態遷移を2つの代表slotで検査する場合、slot数そのものではなく「各slotが独立に追加・削除・発火できること」を検査していると明記する。
 
-### 4.3 model外の性質を主張しない
+### 5.3 model外の性質を主張しない
 
 model checkerがpassしても、modelへ含めていないproduction behaviorまで証明されたことにはしない。
 
 UI、platform integration、persistence adapter、実際のWorker実装等は従来どおり適切なunit / integration / instrumented testで検証する。
 
-## 5. repository convention
+## 6. repository convention
 
 ### Quint
 
@@ -157,9 +157,9 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 - modelが意図せず空集合だけで成立していないことを確認するため、意味のあるinstanceには `run ... expect 1` を少なくとも1つ記載する
 - scopeは検査する構造を十分に表現できる最小値を選ぶ
 
-## 6. 変更時の運用
+## 7. 変更時の運用
 
-### 6.1 既にmodelがある仕様を変更する場合
+### 7.1 既にmodelがある仕様を変更する場合
 
 1. 対象の `docs/spec/*.md` を読む。
 2. 仕様節からlinkされたQuint / Alloy modelを読む。
@@ -170,7 +170,7 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 
 自然言語だけ、またはmodelだけを更新して意味がずれた状態でmergeしない。
 
-### 6.2 新しい仕様を追加する場合
+### 7.2 新しい仕様を追加する場合
 
 次のいずれかがある場合は形式化を優先して検討する。
 
@@ -187,7 +187,7 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 
 形式化しない場合に各仕様へ「modelなし」と定型記載する必要はない。ただし、上記の高リスクな性質を持つのに形式化しない判断をした場合は、Change Impact BriefまたはPR reviewで理由を確認する。
 
-### 6.3 既存仕様のmigration
+### 7.3 既存仕様のmigration
 
 既存仕様を一括で形式化しない。
 
@@ -200,7 +200,7 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 
 初期coverageはbackup scheduleとする。
 
-## 7. 検査
+## 8. 検査
 
 共通entry point:
 
@@ -221,7 +221,7 @@ toolはrepositoryへbinaryとしてcommitせず、cache directoryへ取得する
 
 CIではArchitecture checkの一部として同じscriptを実行する。
 
-## 8. tool version
+## 9. tool version
 
 現在のbaseline:
 
@@ -231,7 +231,7 @@ CIではArchitecture checkの一部として同じscriptを実行する。
 
 versionは `bash scripts/verify_formal_models.sh` で固定する。更新時はrelease noteを確認し、model syntax / solver behavior / required runtimeの変更を確認したうえでchecksumとこの文書を同時に更新する。
 
-## 9. review checklist
+## 10. review checklist
 
 形式仕様を含む変更では次を確認する。
 
