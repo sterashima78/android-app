@@ -14,6 +14,8 @@
 // stream request. Cookie availability and concrete URL strings are abstracted;
 // the model checks whether each class of metadata is permitted to cross the
 // playback boundary. "Path shared" means a non-origin path may be sent.
+// Cookie persistence/log/backup fields express the specification contract;
+// concrete WebView/profile storage behavior remains outside this model.
 
 module video_web_playback_privacy
 
