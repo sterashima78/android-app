@@ -67,6 +67,12 @@ class KnowledgeBuildBackgroundTest {
         state = WorkInfo.State.ENQUEUED,
       ),
     )
+    assertFalse(
+      shouldDeleteKnowledgePageAiRequest(
+        expired = true,
+        state = WorkInfo.State.BLOCKED,
+      ),
+    )
   }
 
   @Test
