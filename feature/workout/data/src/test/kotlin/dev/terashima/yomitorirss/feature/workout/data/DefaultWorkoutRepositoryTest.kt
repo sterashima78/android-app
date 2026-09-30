@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.workout.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.terashima.yomitorirss.feature.workout.WorkoutHistory
 import dev.terashima.yomitorirss.feature.workout.newWorkoutSnapshot
 import kotlinx.coroutines.test.runTest
 import org.json.JSONArray
@@ -64,14 +65,56 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
-  fun `version2のstateは保存後に同じ現行形式として読み込める`() = runTest {
+  fun `version2のstateはversion3へ読み込み履歴メニューを未設定として扱う`() = runTest {
+    val raw = JSONObject().apply {
+      put("version", 2)
+      put("exercises", JSONArray())
+      put("menus", JSONArray())
+      put("today", JSONObject().put("date", "2026-09-22").put("sets", JSONArray()))
+      put(
+        "history",
+        JSONArray().put(
+          JSONObject()
+            .put("id", "history-v2")
+            .put("date", "2026-09-21")
+            .put("startedAt", JSONObject.NULL)
+            .put("finishedAt", "2026-09-21T08:30:00+09:00")
+            .put("sets", JSONArray()),
+        ),
+      )
+    }.toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    val loaded = DefaultWorkoutRepository(context).load()
+
+    assertEquals(3, loaded.version)
+    assertEquals(1, loaded.history.size)
+    assertEquals(null, loaded.history.single().menu)
+  }
+
+  @Test
+  fun `version3は完了履歴のメニューsnapshotを保存して読み込める`() = runTest {
     val repository = DefaultWorkoutRepository(context)
-    val original = newWorkoutSnapshot("2026-09-22")
+    val base = newWorkoutSnapshot("2026-09-22")
+    val menu = base.menus.single()
+    val original = base.copy(
+      history = listOf(
+        WorkoutHistory(
+          id = "history-v3",
+          date = "2026-09-21",
+          startedAt = null,
+          finishedAt = "2026-09-21T08:30:00+09:00",
+          sets = emptyList(),
+          menu = menu,
+        ),
+      ),
+    )
 
     repository.save(original)
     val loaded = repository.load()
 
-    assertEquals(2, loaded.version)
+    assertEquals(3, loaded.version)
+    assertEquals(menu, loaded.history.single().menu)
     assertEquals(original.exercises, loaded.exercises)
     assertEquals(original.menus, loaded.menus)
     assertEquals(original.today, loaded.today)
