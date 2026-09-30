@@ -7,7 +7,8 @@
 // - BACKUP-SCHEDULE-001@1 -> ExactlyOneScheduledWorkPerConfiguredTime
 // - BACKUP-SCHEDULE-001@1 -> AutomaticJobsUseConfiguredTimes
 // - BACKUP-SCHEDULE-001@1 -> ManualBackupWithoutAutomaticSchedule
-//// Scope:
+//
+// Scope:
 // This model focuses on structural constraints: configured local times map
 // one-to-one to scheduled work, automatic jobs always originate from such
 // work, and manual jobs remain valid without an automatic schedule.
