@@ -1,6 +1,7 @@
 # 13. Background execution
 
 - durableなbackground処理にはWorkManagerを利用する。
+- 自動バックアップはbackup対象データの変更イベントでは起動せず、Backup Contextが保持する複数のローカル時刻ごとにone-shot workを予約する。schedule triggerは次回同時刻を再予約し、実バックアップjobは既存のnetwork constraintに従って実行する。
 - Chat等の対話sessionを除くone-shot AI生成・分類・学習はowning featureのdurable background taskから実行する。feature UI / ViewModelは推論adapterを直接実行せず、task controller / schedulerへの登録とstate projectionだけを行う。
 - Workoutのメニュー提案・完了後レビュー、Knowledgeのユーザー指定ページ生成・AI編集、Libraryの単冊整理候補生成・シリーズ再整理もこのbackground-only境界に従う。
 - WorkManager `Data` はID・enum等のbounded metadataに限定する。サイズが入力依存のAI入力・出力や、画面再生成後にも回収すべき未消費結果はowning featureのapp-private durable stateへ保持し、task controllerから再発見できるようにする。transient task stateは端末backupの正本にはしない。

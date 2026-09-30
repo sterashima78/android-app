@@ -7,6 +7,7 @@ data class GoogleDriveBackupStatus(
   val lastFileName: String? = null,
   val lastError: String? = null,
   val wifiOnly: Boolean = false,
+  val scheduleTimes: List<BackupScheduleTime> = emptyList(),
 ) {
   val configured: Boolean get() = folderUri != null
 }

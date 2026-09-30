@@ -1,8 +1,9 @@
 # ADR-0195: 自動バックアップの変更検知を persistence commit boundary に置く
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-27
 - Refines: [ADR-0099](0099-database-snapshot-backup.md)
+- Superseded by: [ADR-0274](0274-configurable-backup-schedule.md)
 
 ## Context
 

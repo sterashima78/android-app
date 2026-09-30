@@ -1,6 +1,7 @@
 # ADR-0217: Google DriveバックアップのWi-Fi実行ポリシーをユーザー設定にする
 
 - Status: Accepted
+- Refined by: [ADR-0274](0274-configurable-backup-schedule.md)
 - Date: 2026-08-29
 - Refines: [ADR-0099](0099-database-snapshot-backup.md), [ADR-0195](0195-trigger-backup-from-persistence-commit-boundary.md)
 

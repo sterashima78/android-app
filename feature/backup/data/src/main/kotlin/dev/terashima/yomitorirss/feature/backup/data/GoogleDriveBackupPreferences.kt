@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.backup.data
 
 import android.content.Context
 import android.net.Uri
+import dev.terashima.yomitorirss.feature.backup.BackupScheduleTime
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupStatus
 import java.time.Instant
 
@@ -15,11 +16,25 @@ class GoogleDriveBackupPreferences(context: Context) {
     lastFileName = preferences.getString(KEY_LAST_FILE_NAME, null),
     lastError = preferences.getString(KEY_LAST_ERROR, null),
     wifiOnly = isWifiOnly(),
+    scheduleTimes = scheduleTimes(),
   )
 
   fun isConfigured(): Boolean = preferences.contains(KEY_FOLDER_URI)
 
   fun isWifiOnly(): Boolean = preferences.getBoolean(KEY_WIFI_ONLY, false)
+
+  fun scheduleTimes(): List<BackupScheduleTime> =
+    preferences.getStringSet(KEY_SCHEDULE_TIMES, emptySet())
+      .orEmpty()
+      .mapNotNull(BackupScheduleTime::parse)
+      .distinct()
+      .sorted()
+
+  fun setScheduleTimes(times: List<BackupScheduleTime>) {
+    preferences.edit()
+      .putStringSet(KEY_SCHEDULE_TIMES, times.distinct().mapTo(linkedSetOf(), BackupScheduleTime::encoded))
+      .apply()
+  }
 
   fun configure(folderUri: Uri, folderName: String) {
     preferences.edit()
@@ -60,6 +75,7 @@ class GoogleDriveBackupPreferences(context: Context) {
   companion object {
     const val FILE_NAME = "google_drive_backup"
     internal const val KEY_WIFI_ONLY = "wifi_only"
+    internal const val KEY_SCHEDULE_TIMES = "schedule_times"
 
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val KEY_FOLDER_NAME = "folder_name"

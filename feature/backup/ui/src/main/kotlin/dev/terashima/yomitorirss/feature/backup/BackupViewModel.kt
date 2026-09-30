@@ -10,6 +10,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class BackupScheduleTimeUi(
+  val hour: Int,
+  val minute: Int,
+) {
+  val label: String
+    get() = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+}
+
 data class BackupUiState(
   val configured: Boolean = false,
   val folderUri: String? = null,
@@ -18,6 +26,7 @@ data class BackupUiState(
   val lastFileName: String? = null,
   val lastError: String? = null,
   val wifiOnly: Boolean = false,
+  val scheduleTimes: List<BackupScheduleTimeUi> = emptyList(),
   val running: Boolean = false,
   val message: String? = null,
   val restoreCompleted: Boolean = false,
@@ -68,7 +77,7 @@ class BackupViewModel(
       runCatching { repository.configureGoogleDrive(folderUri) }
         .onSuccess { result ->
           val message = when (result) {
-            ConfigureGoogleDriveResult.Enabled -> "Google Driveへの自動バックアップを有効にしました"
+            ConfigureGoogleDriveResult.Enabled -> "バックアップ先を設定し、初回バックアップを保存しました"
             is ConfigureGoogleDriveResult.EnabledWithInitialBackupFailure ->
               "保存先を設定しましたが、初回バックアップに失敗しました: ${result.message}"
           }
@@ -110,10 +119,33 @@ class BackupViewModel(
     }.onFailure(::showError)
   }
 
+  fun addGoogleDriveScheduleTime(hour: Int, minute: Int) {
+    runCatching {
+      val updated = _state.value.scheduleTimes
+        .map { BackupScheduleTime(it.hour, it.minute) }
+        .plus(BackupScheduleTime(hour, minute))
+        .distinct()
+        .sorted()
+      repository.setGoogleDriveScheduleTimes(updated)
+      updateStatus(running = _state.value.running)
+    }.onFailure(::showError)
+  }
+
+  fun removeGoogleDriveScheduleTime(hour: Int, minute: Int) {
+    runCatching {
+      val time = BackupScheduleTime(hour, minute)
+      val updated = _state.value.scheduleTimes
+        .map { BackupScheduleTime(it.hour, it.minute) }
+        .filterNot { it == time }
+      repository.setGoogleDriveScheduleTimes(updated)
+      updateStatus(running = _state.value.running)
+    }.onFailure(::showError)
+  }
+
   fun disableGoogleDrive() {
     runCatching { repository.disableGoogleDrive() }
       .onSuccess {
-        updateStatus(running = false, message = "Google Driveへの自動バックアップを無効にしました")
+        updateStatus(running = false, message = "バックアップ先の設定を解除しました")
       }
       .onFailure(::showError)
   }
@@ -141,6 +173,7 @@ class BackupViewModel(
         lastFileName = status.lastFileName,
         lastError = status.lastError,
         wifiOnly = status.wifiOnly,
+        scheduleTimes = status.scheduleTimes.map { BackupScheduleTimeUi(it.hour, it.minute) },
         running = running,
         message = message ?: it.message,
         restoreCompleted = restoreCompleted,

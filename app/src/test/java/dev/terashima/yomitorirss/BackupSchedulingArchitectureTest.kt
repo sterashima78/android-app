@@ -132,7 +132,7 @@ class BackupSchedulingArchitectureTest {
   }
 
   @Test
-  fun `application compositionはbackup対象の永続化変更をschedulerへbridgeする`() {
+  fun `application compositionは永続化変更をbackup schedulerへbridgeしない`() {
     val backgroundRuntime = repositoryFile(
       "app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/AppBackgroundRuntime.kt",
     ).readText()
@@ -140,12 +140,10 @@ class BackupSchedulingArchitectureTest {
       "app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt",
     ).readText()
 
-    assertTrue(backgroundRuntime.contains("PersistenceChangeNotifier.shared.version.filter { it > 0L }"))
-    assertFalse(backgroundRuntime.contains("PersistenceChangeNotifier.shared.version.drop(1)"))
-    assertTrue(backgroundRuntime.contains("PersistenceBackupChangeObserver"))
-    assertTrue(backgroundRuntime.contains("BackupPreferenceChangeObserver"))
-    assertTrue(backgroundRuntime.contains("backupPreferenceChangeObserver.start()"))
-    assertTrue(backgroundRuntime.contains("AndroidBackupChangeScheduler"))
+    assertFalse(backgroundRuntime.contains("PersistenceBackupChangeObserver"))
+    assertFalse(backgroundRuntime.contains("BackupPreferenceChangeObserver"))
+    assertFalse(backgroundRuntime.contains("BackupChangeScheduler"))
+    assertTrue(backgroundRuntime.contains("GoogleDriveBackupScheduler.ensureScheduled(application)"))
     assertTrue(application.contains("container.startBackgroundRuntime()"))
     assertFalse(application.contains("feature.backup.data"))
   }
@@ -158,6 +156,7 @@ class BackupSchedulingArchitectureTest {
 
     assertTrue(source.contains("private val persistenceChanges: PersistenceChangeNotifier"))
     assertTrue(source.contains("persistenceChanges.notifyChanged()"))
+    assertTrue(source.contains("GoogleDriveBackupScheduler.reschedule(appContext)"))
     assertFalse(source.contains("scheduleAfterChange()"))
   }
 

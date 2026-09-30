@@ -41,10 +41,11 @@ class BackupWorkerFactory(
     appContext: Context,
     workerClassName: String,
     workerParameters: WorkerParameters,
-  ): ListenableWorker? =
-    if (workerClassName == GoogleDriveBackupWorker::class.java.name) {
+  ): ListenableWorker? = when (workerClassName) {
+    GoogleDriveBackupWorker::class.java.name ->
       GoogleDriveBackupWorker(appContext, workerParameters, repositoryProvider())
-    } else {
-      null
-    }
+    GoogleDriveBackupScheduleWorker::class.java.name ->
+      GoogleDriveBackupScheduleWorker(appContext, workerParameters)
+    else -> null
+  }
 }

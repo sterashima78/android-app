@@ -13,5 +13,6 @@ interface BackupRepository {
   suspend fun configureGoogleDrive(folderUri: String): ConfigureGoogleDriveResult
   suspend fun backupToGoogleDriveNow(): String
   fun setGoogleDriveWifiOnly(enabled: Boolean)
+  fun setGoogleDriveScheduleTimes(times: List<BackupScheduleTime>)
   fun disableGoogleDrive()
 }

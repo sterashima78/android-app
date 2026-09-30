@@ -180,6 +180,8 @@ fun SettingsFeatureScreen(
       onSelectFolder = { onSelectBackupFolder(backupState.folderUri) },
       onBackupNow = backupViewModel::backupToGoogleDriveNow,
       onWifiOnlyChange = backupViewModel::setGoogleDriveWifiOnly,
+      onAddScheduleTime = backupViewModel::addGoogleDriveScheduleTime,
+      onRemoveScheduleTime = backupViewModel::removeGoogleDriveScheduleTime,
       onDisable = backupViewModel::disableGoogleDrive,
     )
 
