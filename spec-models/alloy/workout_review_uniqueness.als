@@ -6,11 +6,11 @@
 // - WORKOUT-REVIEW-UNIQUENESS-001@sha256:21c5e4c68d1159264b4979ed53d517b325de24c870ea8ea75273bf599839b0c2 -> LatestReviewIsSaved
 //
 // Scope:
-// Review atoms represent conceptual generation attempts. The ordering is the
-// generation order. Because util/ordering makes the Review scope exact, example
-// instances declare an explicit Review scope. The durable store exposes at most
-// one review per day and, when attempts exist, points to the latest attempt for
-// that day.
+// Review atoms represent successfully generated review results in durable save
+// order; failed/cancelled generation attempts are outside this model. Because
+// util/ordering makes the Review scope exact, example instances declare an
+// explicit Review scope. The durable store exposes at most one review per day
+// and points to the latest saved result for that day.
 
 module workout_review_uniqueness
 
