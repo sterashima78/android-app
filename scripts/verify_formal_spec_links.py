@@ -10,7 +10,7 @@ import sys
 
 MODEL_SUFFIXES = {".qnt", ".als"}
 REQUIREMENT_BLOCK_PATTERN = re.compile(
-    r"<!-- formal-requirement\\s*\\n(?P<meta>.*?)\\n-->\\s*\\n(?P<body>.*?)\\n<!-- /formal-requirement -->",
+    r"<!-- formal-requirement\s*\n(?P<meta>.*?)\n-->\s*\n(?P<body>.*?)\n<!-- /formal-requirement -->",
     flags=re.DOTALL,
 )
 REQUIREMENT_ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9-]*$")
@@ -24,7 +24,7 @@ DECLARED_SPEC_PATTERN = re.compile(
     flags=re.MULTILINE,
 )
 MODEL_LINK_PATTERN = re.compile(
-    r"\\]\\(([^)#]*spec-models/(?:quint|alloy)/[^)#]+)\\)"
+    r"\]\(([^)#]*spec-models/(?:quint|alloy)/[^)#]+)\)"
 )
 
 
@@ -38,7 +38,7 @@ class Requirement:
 
 
 def normalize_requirement_body(body: str) -> str:
-    return "\\n".join(line.rstrip() for line in body.strip().splitlines())
+    return "\n".join(line.rstrip() for line in body.strip().splitlines())
 
 
 def parse_requirements(
@@ -151,7 +151,7 @@ def requirements_at_ref(root: Path, ref: str) -> dict[str, Requirement]:
 def symbol_exists(model_content: str, symbol: str) -> bool:
     return (
         re.search(
-            rf"^\\s*(?:val|action|def|assert|pred|fun|fact)\\s+{re.escape(symbol)}\\b",
+            rf"^\s*(?:val|action|def|assert|pred|fun|fact)\s+{re.escape(symbol)}\b",
             model_content,
             flags=re.MULTILINE,
         )
