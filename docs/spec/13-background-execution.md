@@ -4,7 +4,6 @@
 - 自動バックアップはbackup対象データの変更イベントでは起動しない。
 <!-- formal-requirement
 id: BACKUP-SCHEDULE-002
-revision: 1
 models:
   - spec-models/quint/backup_schedule.qnt
 -->
