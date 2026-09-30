@@ -171,12 +171,14 @@ class SmbMetadataNormalizationWorker(
               val coverFile = localCoverFile(book.thumbnailUrl)
               if (coverFile == null) {
                 repository.fail(item, "表紙キャッシュが失われたため再取得します")
-                connection.writable.update(
-                  "library_items",
-                  ContentValues().apply { putNull("thumbnail_url") },
-                  "source = ? AND source_id = ?",
-                  arrayOf(LibrarySource.SMB.name, item.sourceId),
-                )
+                connection.localWrite {
+                  update(
+                    "library_items",
+                    ContentValues().apply { putNull("thumbnail_url") },
+                    "source = ? AND source_id = ?",
+                    arrayOf(LibrarySource.SMB.name, item.sourceId),
+                  )
+                }
                 repository.retryCandidate(item.sourceId, item.supplementalContext)
                 if (smbRepository.enqueueMissingCoverPrefetch() > 0) {
                   coverPrefetchScheduler.enqueue()
