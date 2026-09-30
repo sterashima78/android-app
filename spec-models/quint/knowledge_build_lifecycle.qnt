@@ -2,17 +2,17 @@
 // - docs/spec/05-on-device-ai.md
 //
 // Covers:
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> requestBuild
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> planTopics
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> completeWithoutTopics
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> completeLastTopic
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> pauseGlobal
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> retryableFailure
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> stopBuild
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> failBuild
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> resumeBuild
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> cancelBuild
-// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:de2262f3ecfefb117aa4bc24f2bd5a31ba574bdec0a63bae0541f996c22fe8aa -> projectedStateIsConsistent
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> requestBuild
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> planTopics
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> completeWithoutTopics
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> completeLastTopic
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> pauseGlobal
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> retryableFailure
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> stopBuild
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> failBuild
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> resumeBuild
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> cancelBuild
+// - KNOWLEDGE-BUILD-LIFECYCLE-001@sha256:14dc0303d926b0db74a87cdad73b5e0b07d1c5775d3907b8a00663cfeeb1f62c -> projectedStateIsConsistent
 //
 // Abstraction:
 // The durable Knowledge build store is modeled as requested/stopped/failed/
