@@ -72,6 +72,31 @@ class KnowledgeViewModelTest {
     assertEquals(listOf("request-1"), tasks.dismissedRequestIds)
   }
   @Test
+  fun `画面再生成時は失敗済みKnowledge AI taskを回収してdismissする`() = runTest(dispatcher) {
+    val tasks = RecordingPageAiTasks().apply {
+      recoverable = KnowledgePageAiTaskReference(
+        requestId = "request-failed",
+        kind = KnowledgePageAiTaskKind.EDIT,
+      )
+      snapshotResult = KnowledgePageAiTaskSnapshot(
+        state = KnowledgePageAiTaskState.FAILED,
+        error = "生成に失敗しました",
+      )
+    }
+    val viewModel = KnowledgeViewModel(
+      repository = FakeKnowledgeRepository(),
+      pageAiTasks = tasks,
+      scheduleRebuild = {},
+    )
+
+    advanceUntilIdle()
+
+    assertFalse(viewModel.state.value.working)
+    assertEquals("生成に失敗しました", viewModel.state.value.message)
+    assertEquals(listOf("request-failed"), tasks.dismissedRequestIds)
+  }
+
+  @Test
   fun `再構築はbuilderを直接実行せずschedulerへ登録する`() = runTest(dispatcher) {
     var scheduled = 0
     val viewModel = KnowledgeViewModel(
