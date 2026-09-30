@@ -47,11 +47,30 @@ class CustomVideoProviderRuntimePolicyTest {
 
   @Test
   fun `custom provider http requestはcredential headerを拒否する`() {
+    listOf(
+      "Authorization",
+      "Cookie",
+      "Proxy-Authorization",
+      "X-Api-Key",
+      "Api-Key",
+    ).forEach { headerName ->
+      val error = runCatching {
+        AndroidCustomVideoProviderRuntime.buildHttpRequest(
+          JSONObject()
+            .put("url", "https://example.invalid/feed")
+            .put("headers", JSONObject().put(headerName, "secret")),
+        )
+      }.exceptionOrNull()
+
+      assertTrue("$headerName should be rejected", error is IllegalArgumentException)
+    }
+  }
+
+  @Test
+  fun `custom provider http requestはuserinfoを含むURLを拒否する`() {
     val error = runCatching {
       AndroidCustomVideoProviderRuntime.buildHttpRequest(
-        JSONObject()
-          .put("url", "https://example.invalid/feed")
-          .put("headers", JSONObject().put("Authorization", "secret")),
+        JSONObject().put("url", "https://user:secret@example.invalid/feed"),
       )
     }.exceptionOrNull()
 
