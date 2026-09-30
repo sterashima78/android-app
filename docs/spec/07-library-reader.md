@@ -36,6 +36,16 @@ models:
 ## 7.3 書誌正規化
 
 - SMB書籍について、現在のファイル名と表紙画像を入力として書誌候補を端末内AIで生成できる。
+<!-- formal-requirement
+id: LIBRARY-METADATA-NORMALIZATION-LIFECYCLE-001
+models:
+  - spec-models/quint/library_metadata_normalization_lifecycle.qnt
+-->
+- SMB書誌正規化候補は`WAITING_FOR_COVER` / `QUEUED` / `PROCESSING` / `PENDING_REVIEW` / `DEFERRED` / `APPLIED` / `REJECTED` / `FAILED` / `SKIPPED`の状態を持つ。
+- 表紙が未取得なら`WAITING_FOR_COVER`とし、表紙が利用可能になった場合だけ`QUEUED`へ進める。`QUEUED`だけをclaimして`PROCESSING`へ進め、候補生成成功で`PENDING_REVIEW`、失敗または対象外で`FAILED` / `SKIPPED`へ進める。process interruptionで残った`PROCESSING`は`QUEUED`へ戻す。
+- `PENDING_REVIEW`は反映・保留・却下でき、`DEFERRED`はレビューへ戻せる。反映直前に入力revisionが候補生成時と一致しなければ外部ファイルを変更せず`SKIPPED`へ移して再解析可能にする。
+- `PENDING_REVIEW` / `DEFERRED` / `REJECTED` / `FAILED` / `SKIPPED`は明示的な再解析で現在の入力revisionを取り直し、表紙があれば`QUEUED`、なければ`WAITING_FOR_COVER`へ戻せる。`APPLIED`はAI再解析の対象にせず、確定書誌の編集は`APPLIED`のまま行う。
+<!-- /formal-requirement -->
 - 候補はレビュー画面で確認し、適用または却下する。
 - 確定済み判断を保持し、必要な状態では再解析できる。
 - 再解析では直前の書誌候補を比較対象として引き継ぎ、表紙・現在のファイル名と照合して各項目を独立に再評価する。同じ結果が妥当なら同じ候補を返してよい。
@@ -54,3 +64,4 @@ models:
 
 - [Alloy: `web_library_ownership.als`](../../spec-models/alloy/web_library_ownership.als) — Web蔵書とブックマークのstableな永続状態が同一contentを同時所有しないことを検査する。
 - [Quint: `library_cover_prefetch_queue.qnt`](../../spec-models/quint/library_cover_prefetch_queue.qnt) — 表紙先読みのdurable queue lifecycle、interrupt recovery、明示再試行、runtime waitとの分離を検査する。
+- [Quint: `library_metadata_normalization_lifecycle.qnt`](../../spec-models/quint/library_metadata_normalization_lifecycle.qnt) — 表紙待ち、解析、レビュー、確定、revision不一致、再解析の状態遷移を検査する。
