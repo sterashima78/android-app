@@ -154,9 +154,6 @@ class WorkoutAiViewModelTest {
     }
 
     override suspend fun loadAll(): List<WorkoutAiReview> = reviews.sortedByDescending { it.date }
-
-    override suspend fun loadByDates(dates: Set<String>): List<WorkoutAiReview> =
-      loadAll().filter { it.date in dates }
   }
 
   private class FakeSettingsRepository : WorkoutAiSettingsRepository {
