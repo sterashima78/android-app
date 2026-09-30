@@ -227,6 +227,26 @@ class DefaultVideoRepositoryTest {
   }
 
   @Test
+  fun `購読解除後に保存だけで残ったProvider動画は保存解除でcatalogから削除する`() = runBlocking {
+    val videoId = insertDetachedSavedProviderVideo(playback = false)
+
+    repository.removeSavedVideo(videoId)
+
+    assertTrue(repository.items().none { it.id == videoId })
+  }
+
+  @Test
+  fun `購読解除後のProvider動画は再生履歴があれば保存解除してもcatalogへ残す`() = runBlocking {
+    val videoId = insertDetachedSavedProviderVideo(playback = true)
+
+    repository.removeSavedVideo(videoId)
+
+    val retained = repository.items().single { it.id == videoId }
+    assertNull(retained.savedState)
+    assertEquals(12_000L, retained.playbackState?.positionMs)
+  }
+
+  @Test
   fun `保存動画はフォルダへ移動できフォルダ削除後は未分類へ戻る`() = runBlocking {
     repository.refreshSmb()
     val item = repository.items().single()
@@ -321,6 +341,49 @@ class DefaultVideoRepositoryTest {
       cursor.getInt(0)
     }
     assertEquals(0, value)
+  }
+
+  private fun insertDetachedSavedProviderVideo(playback: Boolean): String {
+    val videoId = "provider:detached:item-1"
+    helper.writableDatabase.insertOrThrow(
+      "video_items",
+      null,
+      ContentValues().apply {
+        put("id", videoId)
+        put("source", VideoSource.SERVICE.name)
+        put("source_id", "detached:item-1")
+        put("title", "detached provider video")
+        put("page_url", "https://example.invalid/video/1")
+        putNull("thumbnail_url")
+        putNull("duration_ms")
+        putNull("size_bytes")
+        putNull("mime_type")
+        put("updated_at", 1_000L)
+      },
+    )
+    helper.writableDatabase.insertOrThrow(
+      "video_saved_items",
+      null,
+      ContentValues().apply {
+        put("video_id", videoId)
+        putNull("folder_id")
+        put("saved_at", 2_000L)
+      },
+    )
+    if (playback) {
+      helper.writableDatabase.insertOrThrow(
+        "video_playback_state",
+        null,
+        ContentValues().apply {
+          put("video_id", videoId)
+          put("position_ms", 12_000L)
+          put("duration_ms", 60_000L)
+          put("last_played_at", 3_000L)
+          put("completed", 0)
+        },
+      )
+    }
+    return videoId
   }
 
   @Test
