@@ -16,6 +16,7 @@ data class WorkoutAiUiState(
   val date: String = LocalDate.now().toString(),
   val memo: String = "",
   val settings: WorkoutAiSettings = WorkoutAiSettings(),
+  val reviews: List<WorkoutAiReview> = emptyList(),
   val loading: Boolean = false,
   val lastRequestType: WorkoutAiRequestType? = null,
   val response: String? = null,
@@ -24,6 +25,7 @@ data class WorkoutAiUiState(
 
 class WorkoutAiViewModel(
   private val settingsRepository: WorkoutAiSettingsRepository,
+  private val reviewRepository: WorkoutAiReviewRepository,
   private val taskController: WorkoutAiTaskController,
 ) : ViewModel() {
   private val _state = MutableStateFlow(WorkoutAiUiState())
@@ -35,11 +37,13 @@ class WorkoutAiViewModel(
       val date = LocalDate.now().toString()
       val settings = settingsRepository.loadSettings()
       val memo = settingsRepository.loadMemo(date)
+      val reviews = runCatching { reviewRepository.loadAll() }.getOrDefault(emptyList())
       _state.value = WorkoutAiUiState(
         initialized = true,
         date = date,
         memo = memo,
         settings = settings,
+        reviews = reviews,
         loading = true,
       )
       resumeRecoverableTask()
@@ -142,10 +146,16 @@ class WorkoutAiViewModel(
         WorkoutAiTaskState.QUEUED,
         WorkoutAiTaskState.RUNNING -> delay(TASK_REFRESH_INTERVAL_MS)
         WorkoutAiTaskState.SUCCEEDED -> {
+          val reviews = if (_state.value.lastRequestType == WorkoutAiRequestType.POST_WORKOUT_REVIEW) {
+            runCatching { reviewRepository.loadAll() }.getOrDefault(_state.value.reviews)
+          } else {
+            _state.value.reviews
+          }
           _state.update {
             it.copy(
               loading = false,
               response = snapshot.response.orEmpty().ifBlank { "応答が空でした" },
+              reviews = reviews,
             )
           }
           return
@@ -185,11 +195,12 @@ class WorkoutAiViewModel(
 
   class Factory(
     private val settingsRepository: WorkoutAiSettingsRepository,
+    private val reviewRepository: WorkoutAiReviewRepository,
     private val taskController: WorkoutAiTaskController,
   ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-      WorkoutAiViewModel(settingsRepository, taskController) as T
+      WorkoutAiViewModel(settingsRepository, reviewRepository, taskController) as T
   }
 
   private companion object {
