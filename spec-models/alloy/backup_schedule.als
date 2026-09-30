@@ -2,7 +2,12 @@
 // - docs/spec/12-backup-restore.md
 // - docs/spec/13-background-execution.md
 //
-// Scope:
+// Covers:
+// - BACKUP-SCHEDULE-001@1 -> NoConfiguredTimeMeansNoScheduledWork
+// - BACKUP-SCHEDULE-001@1 -> ExactlyOneScheduledWorkPerConfiguredTime
+// - BACKUP-SCHEDULE-001@1 -> AutomaticJobsUseConfiguredTimes
+// - BACKUP-SCHEDULE-001@1 -> ManualBackupWithoutAutomaticSchedule
+//// Scope:
 // This model focuses on structural constraints: configured local times map
 // one-to-one to scheduled work, automatic jobs always originate from such
 // work, and manual jobs remain valid without an automatic schedule.
@@ -59,8 +64,10 @@ run TwoConfiguredTimes {
   some AutomaticJob
 } for 5 expect 1
 
-run ManualBackupWithoutAutomaticSchedule {
+pred ManualBackupWithoutAutomaticSchedule {
   no Preferences.configured
   some ManualJob
   no AutomaticJob
-} for 3 expect 1
+}
+
+run ManualBackupWithoutAutomaticSchedule for 3 expect 1
