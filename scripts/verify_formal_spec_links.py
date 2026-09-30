@@ -47,8 +47,14 @@ def parse_requirements(
     errors: list[str],
 ) -> list[Requirement]:
     requirements: list[Requirement] = []
+    matches = list(REQUIREMENT_BLOCK_PATTERN.finditer(content))
+    opening_markers = content.count("<!-- formal-requirement")
+    closing_markers = content.count("<!-- /formal-requirement -->")
 
-    for match in REQUIREMENT_BLOCK_PATTERN.finditer(content):
+    if opening_markers != closing_markers or len(matches) != opening_markers:
+        errors.append(f"{spec_path}: malformed formal requirement block")
+
+    for match in matches:
         meta = match.group("meta")
         body = normalize_requirement_body(match.group("body"))
         requirement_id: str | None = None
