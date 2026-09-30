@@ -8,7 +8,8 @@
 // - BACKUP-SCHEDULE-001@1 -> manualBackup
 // - BACKUP-SCHEDULE-002@1 -> fireMorning
 // - BACKUP-SCHEDULE-002@1 -> fireEvening
-//// Abstraction:
+//
+// Abstraction:
 // Two independent slots represent arbitrary distinct configured local times.
 // The model verifies per-slot scheduling semantics, not the number of times a
 // user may configure in production. Cardinality/uniqueness across configured
