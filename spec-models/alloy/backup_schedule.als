@@ -30,7 +30,10 @@ fact ScheduledWorkMatchesPreferences {
     work.at in Preferences.configured
 
   all time: Preferences.configured |
-    one work: ScheduledWork | work.at = time
+    some work: ScheduledWork | work.at = time
+
+  all disj left, right: ScheduledWork |
+    left.at != right.at
 }
 
 assert NoConfiguredTimeMeansNoScheduledWork {
