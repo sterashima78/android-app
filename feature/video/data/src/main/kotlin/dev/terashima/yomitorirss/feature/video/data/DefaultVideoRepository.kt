@@ -258,7 +258,10 @@ class DefaultVideoRepository(
 
   override fun removeSavedVideo(videoId: String) {
     ensureSchema()
-    database.write { delete("video_saved_items", "video_id = ?", arrayOf(videoId)) }
+    database.transaction {
+      delete("video_saved_items", "video_id = ?", arrayOf(videoId))
+      deleteDetachedProviderCatalogItemIfUnretained(videoId)
+    }
   }
 
   override suspend fun updatePlayback(
@@ -458,6 +461,26 @@ private fun SQLiteDatabase.existingSmbIds(): Set<String> = rawQuery(
   "SELECT id FROM video_items WHERE source = ?",
   arrayOf(VideoSource.SMB.name),
 ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
+
+private fun SQLiteDatabase.deleteDetachedProviderCatalogItemIfUnretained(videoId: String) {
+  val removable = rawQuery(
+    """
+      SELECT 1
+      FROM video_items i
+      WHERE i.id = ?
+        AND i.source = ?
+        AND NOT EXISTS(
+          SELECT 1 FROM video_provider_items p WHERE p.video_id = i.id
+        )
+        AND NOT EXISTS(
+          SELECT 1 FROM video_playback_state p WHERE p.video_id = i.id
+        )
+      LIMIT 1
+    """.trimIndent(),
+    arrayOf(videoId, VideoSource.SERVICE.name),
+  ).use { it.moveToFirst() }
+  if (removable) delete("video_items", "id = ?", arrayOf(videoId))
+}
 
 private fun SQLiteDatabase.upsertVideoItem(item: VideoItem) {
   val values = ContentValues().apply {
