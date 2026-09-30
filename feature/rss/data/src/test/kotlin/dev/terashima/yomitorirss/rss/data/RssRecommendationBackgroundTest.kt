@@ -48,6 +48,13 @@ class RssRecommendationBackgroundTest {
     assertEquals(listOf("missing", "stale", "failed"), result.map(Article::id))
   }
 
+  @Test
+  fun `feedback学習は最後の追加から30秒後まで待つ`() {
+    assertEquals(30_000L, feedbackLearningDelayMillis(latestPendingAt = 1_000L, nowMillis = 1_000L))
+    assertEquals(10_000L, feedbackLearningDelayMillis(latestPendingAt = 1_000L, nowMillis = 21_000L))
+    assertEquals(0L, feedbackLearningDelayMillis(latestPendingAt = 1_000L, nowMillis = 31_000L))
+  }
+
   private fun article(id: String) = Article(
     id = id,
     feedId = "feed",
