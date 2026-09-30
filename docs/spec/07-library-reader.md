@@ -28,7 +28,7 @@ models:
 -->
 - 表紙先読みキューはLibrary-ownedのbackup対象外処理状態として、`PENDING` / `RUNNING` / `FAILED` / `COMPLETED` / `SKIPPED`を保持する。
 - `PENDING`だけを実行対象としてclaimし`RUNNING`へ進める。実行結果は`COMPLETED` / `FAILED` / `SKIPPED`のいずれかとし、キャンセルやprocess interruptionで残った`RUNNING`は`PENDING`へ戻して再開可能にする。
-- `FAILED`は明示的な再試行で`PENDING`へ戻せる。`SKIPPED`は通常の自動投入では再試行せず、ユーザーが未取得表紙の再評価を明示した場合だけ`PENDING`へ戻せる。
+- `FAILED`は明示的な再試行で`PENDING`へ戻せる。`SKIPPED`は通常の自動投入では再試行せず、ユーザーが未取得表紙の再評価を明示した場合だけ`PENDING`へ戻せる。生成済み表紙がcache上限によってLRU削除された場合は、再生成対象として`SKIPPED`を記録できる。
 - WorkManagerの実行状態とWi-Fi / battery / schedulerの待機理由はdurable queue statusとは別のruntime observationとして扱い、scheduler待機だけでqueue statusを`RUNNING`や失敗状態へ変更しない。
 <!-- /formal-requirement -->
 - SMB credentialはAndroid Keystoreを利用して保護し、画面へ再表示せず、アプリ独自backupへ含めない。
