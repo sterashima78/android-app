@@ -150,7 +150,7 @@ fun WorkoutAiChatScreen(
       ) { Text("完了後レビュー") }
     }
     if (state.response != null || state.errorMessage != null) {
-      TextButton(onClick = viewModel::clearResponse, modifier = Modifier.fillMaxWidth()) { Text("会話をクリア") }
+      TextButton(onClick = viewModel::clearResponse, modifier = Modifier.fillMaxWidth()) { Text("今回の結果を閉じる") }
     }
   }
 }
