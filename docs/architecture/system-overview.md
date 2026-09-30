@@ -228,7 +228,8 @@ Health <---- read-only ------- Health Connect
 重要な境界:
 
 - Calendar は Task / Workout の durable state owner ではない。
-- Workout はアプリ内運動記録の source of truth。
+- Workout はアプリ内運動記録の source of truth。完了履歴は当日メニューのsnapshotを保持し、Workout AI の日付単位レビューもWorkout-owned user dataとして保持する。
+- Workout AI の保存済みレビューは次回メニュー提案の二次情報として同じContext内で再利用し、実績・メモ・方針を一次情報として優先する。
 - Health は Health Connect の read model を扱い、read data をアプリ DB へ複製しない。
 - Workout -> Health Connect は一方向 export とし、Health Connect -> Workout 同期へ拡張しない。
 
