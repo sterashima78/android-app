@@ -45,7 +45,7 @@ module video_subscription_retention {
   action removeSaved = all {
     saved,
     membership' = membership,
-    catalog' = membership or playbackHistory,
+    catalog' = if (membership) true else playbackHistory,
     saved' = false,
     playbackHistory' = playbackHistory,
   }
