@@ -76,6 +76,15 @@ module knowledge_page_ai_task_lifecycle {
     dismissed' = false,
   }
 
+  action failBeforePayloadExecution = all {
+    state == RUNNING,
+    state' = FAILED,
+    requestExists' = requestExists,
+    referenceExists' = true,
+    workExists' = true,
+    dismissed' = false,
+  }
+
   action cancel = all {
     (state == QUEUED or state == RUNNING),
     state' = CANCELLED,
@@ -85,10 +94,10 @@ module knowledge_page_ai_task_lifecycle {
     dismissed' = false,
   }
 
-  action cleanupCancelledRequest = all {
-    state == CANCELLED,
+  action cleanupTerminalRequest = all {
+    (state == FAILED or state == CANCELLED),
     requestExists,
-    state' = CANCELLED,
+    state' = state,
     requestExists' = false,
     referenceExists' = referenceExists,
     workExists' = workExists,
@@ -138,8 +147,9 @@ module knowledge_page_ai_task_lifecycle {
     retryActive,
     succeed,
     failTerminal,
+    failBeforePayloadExecution,
     cancel,
-    cleanupCancelledRequest,
+    cleanupTerminalRequest,
     dismissTerminal,
     terminalWorkRecordDisappears,
     reconcileMissingWork,
@@ -157,8 +167,8 @@ module knowledge_page_ai_task_lifecycle {
     not(state == QUEUED or state == RUNNING) or
     (workExists and requestExists and referenceExists and not(dismissed))
 
-  val successfulOrFailedTaskReleasedRequest =
-    not(state == SUCCEEDED or state == FAILED) or not(requestExists)
+  val successfulTaskReleasedRequest =
+    not(state == SUCCEEDED) or not(requestExists)
 
   val terminalResultRemainsRecoverable =
     not(
@@ -176,7 +186,7 @@ module knowledge_page_ai_task_lifecycle {
   val safety =
     knownState and
     activeTaskRetainsRequest and
-    successfulOrFailedTaskReleasedRequest and
+    successfulTaskReleasedRequest and
     terminalResultRemainsRecoverable and
     missingWorkIsNotActive and
     dismissedHasNoReference
