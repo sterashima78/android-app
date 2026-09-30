@@ -34,7 +34,7 @@ module knowledge_build_lifecycle {
   var pendingTopics: bool
   var providerPaused: bool
   var errorPresent: bool
-  var attempt: int
+  var attemptToken: bool
 
   val projectedState =
     if (not(requested)) NONE
@@ -51,7 +51,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = false,
     errorPresent' = false,
-    attempt' = 0,
+    attemptToken' = false,
   }
 
   action requestBuild = all {
@@ -61,7 +61,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt + 1,
+    attemptToken' = not(attemptToken),
   }
 
   action planTopics = all {
@@ -75,7 +75,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = true,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action completeWithoutTopics = all {
@@ -90,7 +90,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action completeLastTopic = all {
@@ -104,7 +104,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action pauseGlobal = all {
@@ -115,7 +115,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = true,
     errorPresent' = errorPresent,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action unpauseGlobal = all {
@@ -126,7 +126,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = pendingTopics,
     providerPaused' = false,
     errorPresent' = errorPresent,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action retryableFailure = all {
@@ -140,7 +140,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = pendingTopics,
     providerPaused' = providerPaused,
     errorPresent' = true,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action stopBuild = all {
@@ -152,7 +152,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = pendingTopics,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action failBuild = all {
@@ -163,7 +163,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = pendingTopics,
     providerPaused' = providerPaused,
     errorPresent' = true,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action resumeBuild = all {
@@ -175,7 +175,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt + 1,
+    attemptToken' = not(attemptToken),
   }
 
   action cancelBuild = all {
@@ -186,7 +186,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = false,
     providerPaused' = providerPaused,
     errorPresent' = false,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action idle = all {
@@ -196,7 +196,7 @@ module knowledge_build_lifecycle {
     pendingTopics' = pendingTopics,
     providerPaused' = providerPaused,
     errorPresent' = errorPresent,
-    attempt' = attempt,
+    attemptToken' = attemptToken,
   }
 
   action step = any {
@@ -219,9 +219,6 @@ module knowledge_build_lifecycle {
     (requested or (not(stopped) and not(failed) and not(pendingTopics) and not(errorPresent))) and
     (not(failed) or errorPresent)
 
-  val attemptIsValid =
-    attempt >= 0 and (not(requested) or attempt > 0)
-
   val projectedStateIsConsistent =
     (projectedState == NONE implies not(requested)) and
     (projectedState == PAUSED implies requested and providerPaused) and
@@ -232,6 +229,5 @@ module knowledge_build_lifecycle {
 
   val safety =
     durableFlagsAreConsistent and
-    attemptIsValid and
     projectedStateIsConsistent
 }
