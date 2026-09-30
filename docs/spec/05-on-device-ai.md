@@ -36,7 +36,16 @@ models:
 ## 5.4 Knowledge
 
 - 保存済みコンテンツや要約を資料としてKnowledge pageを生成・更新できる。
-- 自動生成は永続background taskとして実行し、既存pageの拡張と追加page作成を扱う。
+<!-- formal-requirement
+id: KNOWLEDGE-BUILD-LIFECYCLE-001
+models:
+  - spec-models/quint/knowledge_build_lifecycle.qnt
+-->
+- Knowledgeの自動buildはfeature-owned durable taskとして、実行要求がある間は`QUEUED` / `RUNNING` / `PAUSED` / `STOPPED` / `FAILED`の状態を投影し、要求が完了またはcancelされた場合はtask自体を残さない。
+- 新しいbuild要求は新しいattemptとして`QUEUED`から開始し、changed topicが計画されると`RUNNING`へ進む。対象topicがない場合または最後のtopicが完了した場合はbuild要求を完了して消去する。
+- providerのglobal pauseではbuild要求自体を失わず`PAUSED`として扱い、実行中topic計画を解除して再開時に再計画する。retryable failureではbuild要求を`FAILED`へ確定せず同じattemptを再試行する。
+- `STOPPED`または`FAILED`は明示resumeで新しいattemptへ戻し、旧pending topicとerrorを持ち越さない。cancelは状態に関わらずbuild要求を消去する。
+<!-- /formal-requirement -->
 <!-- formal-requirement
 id: KNOWLEDGE-PAGE-AI-TASK-001
 models:
@@ -51,4 +60,5 @@ models:
 
 形式モデル:
 
+- [Quint: `knowledge_build_lifecycle.qnt`](../../spec-models/quint/knowledge_build_lifecycle.qnt) — Knowledge自動buildのrequest、topic計画、global pause、stop / fail / resume、完了・cancelを検査する。
 - [Quint: `knowledge_page_ai_task_lifecycle.qnt`](../../spec-models/quint/knowledge_page_ai_task_lifecycle.qnt) — Knowledge page AI taskのactive input保持、retry、terminal result回収、dismissの状態遷移を検査する。
