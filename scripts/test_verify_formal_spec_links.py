@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -13,6 +14,7 @@ MODULE_PATH = ROOT / "scripts" / "verify_formal_spec_links.py"
 SPEC = importlib.util.spec_from_file_location("verify_formal_spec_links", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
@@ -77,7 +79,7 @@ check Good expect 0
 def commit_fixture(root: Path) -> str:
     subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
     subprocess.run(
-        ["git", "config", "user.email", "formal-test@example.invalid"],
+        ["git", "config", "user.email", "formal-test.invalid"],
         cwd=root,
         check=True,
     )
