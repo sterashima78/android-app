@@ -6,7 +6,13 @@
 - シリーズ、タイトル、著者、表紙などを表示・整理する。
 - タイトル検索、シリーズ表示、source別の操作を提供する。
 - `text/plain` の共有から HTTP / HTTPS URL を Web 蔵書として追加できる。
+<!-- formal-requirement
+id: WEB-LIBRARY-OWNERSHIP-001
+models:
+  - spec-models/alloy/web_library_ownership.als
+-->
 - Web 蔵書とブックマークは、重複する永続状態を残さず相互に移動できる。
+<!-- /formal-requirement -->
 
 ## 7.2 SMB / ファイルサーバー
 
@@ -33,3 +39,8 @@
 
 - 対応するローカル書籍をアプリ内readerで閲覧する。
 - 読書位置などユーザー所有のreader設定を保持する。
+
+
+## 形式モデル
+
+- [Alloy: `web_library_ownership.als`](../../spec-models/alloy/web_library_ownership.als) — Web蔵書とブックマークのstableな永続状態が同一contentを同時所有しないことを検査する。
