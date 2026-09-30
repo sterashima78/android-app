@@ -173,6 +173,25 @@ class FormalSpecTraceabilityTest(unittest.TestCase):
                 errors,
             )
 
+    def test_malformed_requirement_block_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture(root)
+            spec_path = root / "docs/spec/example.md"
+            spec_path.write_text(
+                spec_path.read_text(encoding="utf-8").replace(
+                    "<!-- /formal-requirement -->",
+                    "<!-- malformed-end -->",
+                ),
+                encoding="utf-8",
+            )
+
+            errors = MODULE.verify(root)
+            self.assertTrue(
+                any("malformed formal requirement block" in error for error in errors),
+                errors,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
