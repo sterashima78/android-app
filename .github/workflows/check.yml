@@ -71,18 +71,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Fetch formal specification base
-        if: matrix.name == 'Architecture'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          if ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            git fetch --no-tags --depth=1 origin "$BASE_SHA"
-          fi
       - name: Verify formal specifications
         if: matrix.name == 'Architecture'
-        env:
-          FORMAL_SPEC_BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: bash scripts/verify_formal_models.sh
       - name: Compare minified DEX size with base
         if: matrix.name == 'R8'
