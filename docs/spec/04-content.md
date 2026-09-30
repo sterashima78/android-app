@@ -91,9 +91,19 @@
 - AIタスク一覧の進捗は記事数ではなく完了ニュースチャプター数 / 全ニュースチャプター数で表示する。生成中は低重要度のforeground通知にも同じ完了チャプター数 / 全チャプター数を表示する。
 - 再生詳細画面を閉じてもmedia playbackを継続し、通知、lock screen、Bluetooth等の標準media controlを利用できる。明示的な「終了」で再生を停止する。
 - 既存episodeや生成結果に正しいチャプター境界がない場合は、誤った記事対応を作らずエピソード全文を1つのitemとして再生し、記事一覧は関連記事として表示する。既存episodeで記事URLが保存されていない場合は記事リンク操作を表示しない。
+<!-- formal-requirement
+id: PODCAST-EPISODE-LIFECYCLE-001
+models:
+  - spec-models/quint/podcast_episode_lifecycle.qnt
+-->
 - 生成済みの再生可能なエピソードは通常一覧からアーカイブできる。エピソード一覧は「現在 / アーカイブ」を切り替えられ、アーカイブ済みエピソードは再生または通常一覧へ復元できる。
 - 再生可能、アーカイブ済み、または生成失敗のエピソードは削除できる。生成待ち・生成中のエピソードは削除できない。削除したエピソードは一覧へ表示せず復元できないが、そこで消費済みとなったentryは未消費へ戻さず、後続の新規エピソードへ再利用しない。
+<!-- /formal-requirement -->
 - Podcast source、番組とエピソード、生成に利用した記事・クラスタスナップショット、番組別の記事消費状態と除外済みentry identity、除外条件、生成原稿、定刻設定はdurable user stateとして保存し、通常のdatabase snapshot backup対象とする。削除済みエピソードでは生成原稿と記事スナップショットを消去し、entry再利用を防ぐ最小限のepisode参照と消費状態だけを保持する。
+
+### 形式モデル
+
+- [Quint: `podcast_episode_lifecycle.qnt`](../../spec-models/quint/podcast_episode_lifecycle.qnt) — 生成待ち・生成中・再生可能・失敗・アーカイブ・削除の状態遷移、削除可能状態、削除後も消費済みidentityを保持する安全条件を検査する。
 
 ## 4.7 動画
 
