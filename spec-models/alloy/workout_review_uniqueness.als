@@ -65,4 +65,4 @@ run MultipleDaysAndReplacement {
   some disj earlier, later: Review |
     earlier.day = later.day and
     later in earlier.^next
-} for 6 expect 1
+} for 6 but exactly 3 Review, exactly 2 Day expect 1
