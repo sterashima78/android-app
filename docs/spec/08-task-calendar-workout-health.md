@@ -34,17 +34,30 @@ models:
 - AIによるメニュー提案は通常のWorkoutメニューと同じ構造で生成し、当日だけ使うかプリセットとして保存できる。直近14日間の保存済みレビューも二次情報として参照し、現在の実績・メモ・方針を優先する。
 - AI支援の実行先は Local / cloud を明示選択し、既定はLocalとする。cloud選択時はWorkout記録・メモ・方針・メニュー候補・保存済みレビューをクラウドへ送信することを画面上で明示し、自動fallbackは行わない。
 - メニュー提案と完了後レビューはWorkout-owned background taskへ登録し、Workerが実行直前のWorkout記録・メモ・設定から入力を構築する。画面はtask stateと結果を表示し、推論実行をViewModel lifetimeへ依存させない。
+<!-- formal-requirement
+id: WORKOUT-HEALTH-BOUNDARY-001
+models:
+  - spec-models/alloy/workout_health_data_boundary.als
+-->
 - AI支援へHealth Connect由来のread dataを入力しない。
 - 完了したWorkoutは、許可されている場合にHealth Connectへ一方向exportできる。
 - Workoutから活動消費カロリーや心拍数を推定して保存・書き込みしない。
+<!-- /formal-requirement -->
 
 ### 形式モデル
 
 - [Alloy: `workout_review_uniqueness.als`](../../spec-models/alloy/workout_review_uniqueness.als) — 日付ごとの保存済みレビューを1件に限定し、同日の複数生成attemptがある場合は最新attemptだけを保存状態へ投影する。
+- [Alloy: `workout_health_data_boundary.als`](../../spec-models/alloy/workout_health_data_boundary.als) — Health read dataをWorkout / AI / app databaseへ逆流させず、完了済みWorkoutだけを外部健康基盤へのwrite sourceとして許可する。
 
 ## 8.4 Health
 
 - Health Connectから歩数、活動消費カロリー、運動、心拍、睡眠、体重、体脂肪率、栄養情報等を読み取る。
+<!-- formal-requirement
+id: HEALTH-READ-OWNERSHIP-001
+models:
+  - spec-models/alloy/workout_health_data_boundary.als
+-->
 - Health Connect由来のread dataはアプリdatabaseへ複製せず、Health画面のread modelとして利用する。
 - Health ConnectからWorkoutへのimport / 双方向同期は行わない。
 - アプリ内Workoutのexport以外の健康データを書き込まない。
+<!-- /formal-requirement -->
