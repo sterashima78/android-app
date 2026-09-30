@@ -80,12 +80,11 @@ model側にも先頭commentで対応する自然言語仕様fileを記載する�
 
 ## 4. requirement単位のtraceability
 
-形式化する自然言語要求は、仕様書内でstableなrequirement IDとrevisionを持つ。
+形式化する自然言語要求は、仕様書内でstableなrequirement IDを持つ。要求本文のrevisionは手動管理せず、正規化した本文のSHA-256をmodel acknowledgementとして利用する。
 
 ```markdown
 <!-- formal-requirement
 id: BACKUP-SCHEDULE-001
-revision: 1
 models:
   - spec-models/quint/backup_schedule.qnt
   - spec-models/alloy/backup_schedule.als
@@ -95,16 +94,15 @@ models:
 ```
 
 - `id` はrepository全体で一意かつ変更しない。
-- `revision` は1以上の整数とし、requirement本文を変更したときに増加させる。
 - `models` には、そのrequirementを検査する全modelをrepository-relative pathで列挙する。
-- wording修正であってもrequirement block内の本文を変更した場合はrevisionを増加させる。これによりmodel側で再確認した事実を明示的に残す。
+- requirement本文はLFへ統一し、各行の末尾空白とblock先頭・末尾の空白行を除去したUTF-8文字列をSHA-256でhash化する。本文が変わればhashも変わるため、手動version更新は不要とする。
 - requirementを削除・分割・統合する場合は、model側のcoverage宣言も同じ変更で整理する。
 
-model側では、現在確認済みのrequirement revisionと、そのmodel内で直接検査するdefinition / assertionを宣言する。
+model側では、現在確認済みのrequirement本文hashと、そのmodel内で直接検査するdefinition / assertionを宣言する。
 
 ```text
 // Covers:
-// - BACKUP-SCHEDULE-001@1 -> scheduleMatchesArmedWork
+// - BACKUP-SCHEDULE-001@sha256:<64文字のSHA-256> -> scheduleMatchesArmedWork
 ```
 
 Quintでは`val` / `action` / `def`等、Alloyでは`assert` / `pred` / `fun`等の実在するsymbolを指定する。1つのrequirementを複数のpropertyで検査する場合はcoverage行を複数記載してよい。
@@ -113,12 +111,12 @@ CIは次を検査する。
 
 1. requirement IDが一意であること
 2. `models` の参照先が存在すること
-3. 各listed modelが現在の`ID@revision`をacknowledgeしていること
+3. 各listed modelが現在の`ID@sha256:<hash>`をacknowledgeしていること
 4. coverageで指定したsymbolがmodel内に存在すること
 5. model側のcoverageが存在するrequirementと相互に対応していること
-6. PRのbaseと比較してrequirement本文が変更された場合、revisionが増加していること
+6. model側のhashが現在のrequirement本文から計算したhashと一致すること
 
-revision更新はmodel codeの変更を必須にはしない。仕様の明確化等でmodelのabstractionが変わらない場合でも、model側の`ID@revision`を更新することで、そのrevisionを再確認済みであることを明示する。
+hash更新はmodel codeの変更を必須にはしない。仕様の明確化等でmodelのabstractionが変わらない場合でも、model側の`ID@sha256:<hash>`を更新することで、その本文を再確認済みであることを明示する。hashは検証scriptから計算される値を使用し、手動version番号は持たない。
 
 ## 5. modelの書き方
 
@@ -164,8 +162,8 @@ UI、platform integration、persistence adapter、実際のWorker実装等は従
 
 1. 対象の `docs/spec/*.md` を読む。
 2. 仕様節からlinkされたQuint / Alloy modelを読む。
-3. `formal-requirement` blockの本文を変更する場合はrequirement revisionを増加させる。
-4. `models` に列挙された全modelのcoverageを新しい `ID@revision` へ更新し、そのrevisionを再確認したことを明示する。
+3. `formal-requirement` blockの本文を変更したら、検証scriptが計算する新しいSHA-256を確認する。
+4. `models` に列挙された全modelのcoverageを新しい `ID@sha256:<hash>` へ更新し、その本文を再確認したことを明示する。
 5. 自然言語変更がmodelのabstractionに影響するか判断する。
 6. 影響する場合は同じPRでmodel本体も変更する。
 7. 影響しない場合も、modelが依然として同じ性質を表していることをreviewする。
@@ -213,7 +211,7 @@ bash scripts/verify_formal_models.sh
 
 このscriptは次を行う。
 
-1. specとmodelのlink、requirement ID / revision / coverage整合性検査。PR CIではbaseとのrequirement本文差分も検査
+1. specとmodelのlink、requirement ID / 本文SHA-256 / coverage整合性検査
 2. pinned Quintの取得とchecksum検証
 3. Quint typecheck
 4. Quintのfinite-state safety verification
@@ -240,7 +238,7 @@ versionは `bash scripts/verify_formal_models.sh` で固定する。更新時は
 
 - 自然言語仕様は単独でも意味が分かるか
 - specから対応modelへ直接辿れるか
-- formal requirementのID / revisionとmodel coverageが一致しているか
+- formal requirementのID / 本文SHA-256とmodel coverageが一致しているか
 - model commentから元specへ戻れるか
 - Quint / Alloyの役割分担が適切か
 - modelがimplementation detailを過剰に複製していないか
