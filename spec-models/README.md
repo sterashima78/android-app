@@ -25,5 +25,6 @@
 | Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
 | Web video playback privacy boundary | — | [`alloy/video_web_playback_privacy.als`](alloy/video_web_playback_privacy.als) |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
+| Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。
