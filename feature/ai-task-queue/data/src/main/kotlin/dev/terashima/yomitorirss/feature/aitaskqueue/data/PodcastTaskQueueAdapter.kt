@@ -20,7 +20,7 @@ internal class PodcastTaskQueueAdapter(
       id = "$PREFIX${task.episodeId}",
       kind = AiTaskQueueItemKind.PODCAST_EPISODE,
       title = task.title,
-      source = "${task.totalChapters}記事・未完了 ${remainingChapters}記事",
+      source = "${task.totalChapters}チャプター・未完了 ${remainingChapters}チャプター",
       state = task.state.toAiTaskState(),
       progressStage = if (task.state == PodcastGenerationTaskState.RUNNING) {
         AiTaskQueueProgressStage.GENERATING_CHAPTER

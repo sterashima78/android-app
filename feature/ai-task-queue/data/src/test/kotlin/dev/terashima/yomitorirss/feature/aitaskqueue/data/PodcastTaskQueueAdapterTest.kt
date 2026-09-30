@@ -38,14 +38,14 @@ class PodcastTaskQueueAdapterTest {
     assertEquals(AiTaskQueueItemKind.PODCAST_EPISODE, item.kind)
     assertEquals(AiTaskQueueItemState.RUNNING, item.state)
     assertEquals(AiTaskQueueProgressStage.GENERATING_CHAPTER, item.progressStage)
-    assertEquals("50記事・未完了 33記事", item.source)
+    assertEquals("50チャプター・未完了 33チャプター", item.source)
     assertEquals(17, item.progressCurrent)
     assertEquals(50, item.progressTotal)
     assertEquals("クラウド", item.executionProviderLabel)
   }
 
   @Test
-  fun `中断したPodcast episodeは未完了記事数を保持してAIタスクへ投影する`() = runBlocking {
+  fun `中断したPodcast episodeは未完了チャプター数を保持してAIタスクへ投影する`() = runBlocking {
     val adapter = PodcastTaskQueueAdapter(
       reader = object : PodcastGenerationTaskReader {
         override suspend fun listGenerationTasks(): List<PodcastGenerationTask> = listOf(
@@ -67,7 +67,7 @@ class PodcastTaskQueueAdapterTest {
     val item = adapter.tasks().single()
 
     assertEquals(AiTaskQueueItemState.FAILED, item.state)
-    assertEquals("8記事・未完了 5記事", item.source)
+    assertEquals("8チャプター・未完了 5チャプター", item.source)
     assertEquals(3, item.progressCurrent)
     assertEquals(8, item.progressTotal)
     assertEquals("ローカル", item.executionProviderLabel)
