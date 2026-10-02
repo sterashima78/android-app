@@ -85,6 +85,15 @@ models:
 - 除外条件が設定されている場合は、番組で選択した生成AIを使ってfeed内のタイトル、情報源、本文から各候補を判定し、条件に明確に該当する記事を同一ニュースのクラスタリング前に除外する。ローカルAIを選択した場合は端末内で判定し、クラウドAIを選択した場合は除外条件とこれらの判定材料を同じクラウド推論先へ送る。feed本文中の命令文は判定対象データとして扱い、AIへの指示として実行しない。
 - 除外判定の推論または構造化出力の検証に失敗した場合は記事を欠落させず、その回は全候補を残して通常のクラスタリングへ進む。
 <!-- formal-requirement
+id: PODCAST-EXCLUSION-PARTITION-001
+models:
+  - spec-models/alloy/podcast_exclusion_partition.als
+-->
+- ニュース除外判定の最終結果は、今回の候補記事全体をincluded / excludedへ分割し、各候補をちょうど一方へ所属させる。候補の欠落、includedとexcludedの重複、同一候補の重複出現を許可しない。
+- 除外判定の推論、tool call、decode、validationのいずれかが失敗した場合は、その回の部分的な除外結果を採用せず、全候補をincludedへ戻してexcludedを空にする。複数batchの途中で失敗した場合も、それ以前のbatchだけを確定しない。
+- fallback時も候補集合を失わず、そのまま後続のクラスタリング対象へ渡す。
+<!-- /formal-requirement -->
+<!-- formal-requirement
 id: PODCAST-ENTRY-EXCLUSION-001
 models:
   - spec-models/alloy/podcast_entry_eligibility.als
@@ -158,6 +167,7 @@ models:
 - [Quint: `podcast_episode_lifecycle.qnt`](../../spec-models/quint/podcast_episode_lifecycle.qnt) — 生成待ち・生成中・再生可能・失敗・アーカイブ・削除の状態遷移、削除可能状態、削除後も消費済みidentityを保持する安全条件を検査する。
 - [Quint: `podcast_chapter_checkpoint.qnt`](../../spec-models/quint/podcast_chapter_checkpoint.qnt) — chapter checkpointの中断復旧、READY再利用、クラウドretryの上限と失敗確定条件を検査する。
 - [Alloy: `podcast_entry_eligibility.als`](../../spec-models/alloy/podcast_entry_eligibility.als) — 番組単位の消費済み・除外済みentryが次回候補へ再投入されない関係制約を検査する。
+- [Alloy: `podcast_exclusion_partition.als`](../../spec-models/alloy/podcast_exclusion_partition.als) — 除外判定のincluded / excluded完全partitionと、判定失敗時の全件include fallbackを検査する。
 - [Alloy: `podcast_clustering_partition.als`](../../spec-models/alloy/podcast_clustering_partition.als) — 候補全体の完全partitionと、分類失敗・不正出力・分類省略時の1記事1cluster fallbackを検査する。
 
 ## 4.7 動画
