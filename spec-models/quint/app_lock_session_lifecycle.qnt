@@ -2,22 +2,23 @@
 // - docs/spec/15-privacy-security.md
 //
 // Covers:
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> enableAfterAuthentication
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> unlockSuccess
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> normalBackgroundStop
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> lifecycleStopIgnored
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> customTabLaunchStarted
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> customTabLaunchFailed
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> customTabMarkerExpires
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> stopAfterFreshCustomTab
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> stopAfterStaleCustomTab
-// - APP-LOCK-SESSION-001@sha256:614682f07b3efc51abb9d97903b51d9d6ada74603f725836223a41eb960f9e5e -> disabledIsUnlocked
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> enableAfterAuthentication
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> unlockSuccess
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> normalBackgroundStop
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> lifecycleStopIgnored
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> customTabLaunchStarted
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> customTabLaunchFailed
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> customTabMarkerExpires
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> stopAfterFreshCustomTab
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> stopAfterStaleCustomTab
+// - APP-LOCK-SESSION-001@sha256:44958760c899bfc3c0e21a343334bc3bdd3e308db3d90402599cb68b0c6ccf41 -> disabledIsUnlocked
 //
 // Abstraction:
 // The model tracks the app-wide enabled/unlocked session state and the
-// process-local Custom Tabs transition marker. Biometric capability checks,
-// prompt implementation, FLAG_SECURE, and exact elapsed time are covered by
-// platform code/tests; FRESH means the marker is still within the 10-second
+// process-local Custom Tabs transition marker. Durable preference membership,
+// biometric capability checks, prompt implementation, FLAG_SECURE, and exact
+// elapsed time are covered by platform code/tests; FRESH means the marker is
+// still within the 10-second
 // one-shot window and STALE means it has expired.
 
 module app_lock_session_lifecycle {
