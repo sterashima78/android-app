@@ -181,8 +181,11 @@ private const val PODCAST_CLUSTERING_MIN_TITLE_CHARS = 12
 private val PODCAST_CLUSTERING_JSON = Json { isLenient = false }
 
 private const val PODCAST_CLUSTERING_SYSTEM_INSTRUCTION =
-  "同じ具体的な出来事を報じる記事だけを同じニュースとして分類してください。" +
-    "同じ企業・人物・製品でも出来事が異なる場合や判断が曖昧な場合は別ニュースにしてください。" +
+  "候補全体を比較し、同じ具体的な出来事を報じる記事だけを同じニュースとして分類してください。" +
+    "見出しの語順、翻訳、言い換え、表現の強弱が異なっても、主要な主体・行為や決定・対象が一致し、同じ出来事を指すと判断できる場合は同じgroup IDにしてください。" +
+    "候補番号が離れていても必ず比較し、tool call前にsingletonを含む全候補を再確認して取りこぼしがないか確認してください。" +
+    "同じ企業・人物・製品を扱うだけで行為や決定・対象が異なる場合、または同一出来事と判断できない場合は別ニュースにしてください。" +
+    "情報源や公開時刻は補助情報であり、それだけを理由にニュースを分割しないでください。" +
     "通常テキストやMarkdownは返さず、指定toolを1回だけ呼び出してください。"
 
 private val PODCAST_CLUSTERING_OUTPUT_TOOL = AiStructuredTool(
