@@ -11,9 +11,9 @@
 // - LAN-WEB-AUTH-LIFECYCLE-001@sha256:12c9aa0d6230d69a7f83b8693fb0bf7341d3036aaaeab9fd2ce4996308d87b8a -> credentialExclusive
 //
 // Abstraction:
-// Token bytes are not modeled. Instead, the model tracks which credential class
-// is currently valid for one server generation. Replacing the bootstrap token
-// starts a new generation and invalidates the previous bootstrap/session state.
+// Token bytes and generation numbers are not modeled. Instead, the model tracks
+// which credential class is currently valid. Replacing the bootstrap token
+// invalidates the previous bootstrap/session state and enters BOOTSTRAP_READY.
 // URL query stripping and Cookie attributes remain implementation-level tests.
 
 module lan_web_auth_lifecycle {
@@ -22,13 +22,11 @@ module lan_web_auth_lifecycle {
   val SESSION_READY = 2
 
   var phase: int
-  var generation: int
   var bootstrapValid: bool
   var sessionValid: bool
 
   action init = all {
     phase' = STOPPED,
-    generation' = 0,
     bootstrapValid' = false,
     sessionValid' = false,
   }
@@ -36,7 +34,6 @@ module lan_web_auth_lifecycle {
   action startServer = all {
     phase == STOPPED,
     phase' = BOOTSTRAP_READY,
-    generation' = generation + 1,
     bootstrapValid' = true,
     sessionValid' = false,
   }
@@ -45,7 +42,6 @@ module lan_web_auth_lifecycle {
     phase == BOOTSTRAP_READY,
     bootstrapValid,
     phase' = SESSION_READY,
-    generation' = generation,
     bootstrapValid' = false,
     sessionValid' = true,
   }
@@ -54,7 +50,6 @@ module lan_web_auth_lifecycle {
     phase == SESSION_READY,
     not(bootstrapValid),
     phase' = SESSION_READY,
-    generation' = generation,
     bootstrapValid' = false,
     sessionValid' = sessionValid,
   }
@@ -63,7 +58,6 @@ module lan_web_auth_lifecycle {
     phase == SESSION_READY,
     sessionValid,
     phase' = SESSION_READY,
-    generation' = generation,
     bootstrapValid' = false,
     sessionValid' = true,
   }
@@ -71,7 +65,6 @@ module lan_web_auth_lifecycle {
   action rotateAddress = all {
     not(phase == STOPPED),
     phase' = BOOTSTRAP_READY,
-    generation' = generation + 1,
     bootstrapValid' = true,
     sessionValid' = false,
   }
@@ -79,14 +72,12 @@ module lan_web_auth_lifecycle {
   action stopServer = all {
     not(phase == STOPPED),
     phase' = STOPPED,
-    generation' = generation,
     bootstrapValid' = false,
     sessionValid' = false,
   }
 
   action idle = all {
     phase' = phase,
-    generation' = generation,
     bootstrapValid' = bootstrapValid,
     sessionValid' = sessionValid,
   }
@@ -118,14 +109,10 @@ module lan_web_auth_lifecycle {
   val sessionPhaseHasOnlySession =
     not(phase == SESSION_READY) or (not(bootstrapValid) and sessionValid)
 
-  val nonNegativeGeneration =
-    generation >= 0
-
   val safety =
     knownPhase and
     credentialExclusive and
     stoppedHasNoCredential and
     bootstrapPhaseHasOnlyBootstrap and
-    sessionPhaseHasOnlySession and
-    nonNegativeGeneration
+    sessionPhaseHasOnlySession
 }
