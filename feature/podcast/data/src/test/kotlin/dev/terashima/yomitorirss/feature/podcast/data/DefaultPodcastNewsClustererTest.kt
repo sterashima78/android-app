@@ -178,6 +178,62 @@ class DefaultPodcastNewsClustererTest {
   }
 
   @Test
+  fun `不正な分類出力が修復後も不正なら1記事1clusterへfallbackする`() = runSuspendForPodcastDataTest {
+    val textInference = FakeTextInference(promptBudgetChars = 4_096)
+    val structured = FakeStructuredInference(
+      ArrayDeque(
+        listOf(
+          AiStructuredToolCall(
+            name = "submit_podcast_news_clusters",
+            arguments = mapOf("group_ids" to """["only-one"]"""),
+          ),
+          AiStructuredToolCall(
+            name = "submit_podcast_news_clusters",
+            arguments = mapOf("group_ids" to """["still-only-one"]"""),
+          ),
+        ),
+      ),
+    )
+    val clusterer = DefaultPodcastNewsClusterer(
+      localTextInference = textInference,
+      cloudTextInference = textInference,
+      localStructuredInference = structured,
+      cloudStructuredInference = structured,
+    )
+
+    val result = clusterer.cluster(
+      PodcastGenerationProvider.CLOUD,
+      listOf(feedEntry("a1"), feedEntry("a2"), feedEntry("a3")),
+    )
+
+    assertEquals(PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT, result.status)
+    assertEquals(listOf(listOf(0), listOf(1), listOf(2)), result.groups)
+  }
+
+  @Test
+  fun `分類推論が失敗した場合は1記事1clusterへfallbackする`() = runSuspendForPodcastDataTest {
+    val textInference = FakeTextInference(promptBudgetChars = 4_096)
+    val structured = FakeStructuredInference(
+      outputs = ArrayDeque(),
+      failure = IllegalStateException("inference failed"),
+    )
+    val clusterer = DefaultPodcastNewsClusterer(
+      localTextInference = textInference,
+      cloudTextInference = textInference,
+      localStructuredInference = structured,
+      cloudStructuredInference = structured,
+    )
+
+    val result = clusterer.cluster(
+      PodcastGenerationProvider.CLOUD,
+      listOf(feedEntry("a1"), feedEntry("a2")),
+    )
+
+    assertEquals(PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR, result.status)
+    assertEquals(listOf(listOf(0), listOf(1)), result.groups)
+  }
+
+  @Test
   fun `1記事だけならstructured推論を呼ばず分類を省略する`() = runSuspendForPodcastDataTest {
     val textInference = FakeTextInference(promptBudgetChars = 4_096)
     val structured = FakeStructuredInference(ArrayDeque())
@@ -408,6 +464,7 @@ private class FakeTextInference(
 
 private class FakeStructuredInference(
   private val outputs: ArrayDeque<AiStructuredToolCall?>,
+  private val failure: Throwable? = null,
 ) : BackgroundAiStructuredTextInference() {
   data class Request(
     val systemInstruction: String,
@@ -425,6 +482,7 @@ private class FakeStructuredInference(
     tool: AiStructuredTool,
   ): AiStructuredToolCall? {
     requests += Request(systemInstruction, userMessage, tool)
+    failure?.let { throw it }
     return outputs.removeFirstOrNull()
   }
 }
