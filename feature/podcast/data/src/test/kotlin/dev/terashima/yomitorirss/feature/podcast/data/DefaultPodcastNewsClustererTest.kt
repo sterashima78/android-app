@@ -81,6 +81,54 @@ class DefaultPodcastNewsClustererTest {
   }
 
   @Test
+  fun `分類指示は言い換えと離れた候補の取りこぼしを防ぐ`() = runSuspendForPodcastDataTest {
+    val textInference = FakeTextInference(promptBudgetChars = 4_096)
+    val structured = FakeStructuredInference(
+      ArrayDeque(
+        listOf(
+          AiStructuredToolCall(
+            name = "submit_podcast_news_clusters",
+            arguments = mapOf("group_ids" to """["same","same"]"""),
+          ),
+        ),
+      ),
+    )
+    val clusterer = DefaultPodcastNewsClusterer(
+      localTextInference = textInference,
+      cloudTextInference = textInference,
+      localStructuredInference = structured,
+      cloudStructuredInference = structured,
+    )
+
+    clusterer.cluster(
+      PodcastGenerationProvider.CLOUD,
+      listOf(
+        feedEntry("a1").copy(
+          title = "行政と企業、AI安全協定に署名",
+          sourceTitle = "経済",
+          publishedAtEpochMillis = 100L,
+        ),
+        feedEntry("a2").copy(
+          title = "企業と行政、AI安全策で自主協定",
+          sourceTitle = "国際",
+          publishedAtEpochMillis = 200L,
+        ),
+      ),
+    )
+
+    val request = structured.requests.single()
+    assertTrue(request.systemInstruction.contains("言い換え"))
+    assertTrue(request.systemInstruction.contains("候補番号が離れていても"))
+    assertTrue(request.systemInstruction.contains("情報源や公開時刻は補助情報"))
+    assertTrue(request.userMessage.contains("全件まとめて比較"))
+    assertTrue(request.userMessage.contains("タイトル: 行政と企業、AI安全協定に署名"))
+    assertTrue(request.userMessage.contains("情報源: 経済"))
+    assertTrue(request.userMessage.contains("公開時刻: 1970-01-01T00:00:00.100Z"))
+    assertTrue(request.tool.description.contains("候補全体を比較"))
+    assertTrue(request.tool.arguments.single().description.contains("言い換え"))
+  }
+
+  @Test
   fun `不正なtool argumentsは1回だけ再生成する`() = runSuspendForPodcastDataTest {
     val textInference = FakeTextInference(promptBudgetChars = 4_096)
     val structured = FakeStructuredInference(
@@ -116,15 +164,15 @@ class DefaultPodcastNewsClustererTest {
   }
 
   @Test
-  fun `29記事でもprompt上限内に全候補番号を残す`() {
-    val entries = (1..29).map { index ->
+  fun `30記事でもprompt上限内に全候補番号を残す`() {
+    val entries = (1..30).map { index ->
       feedEntry("a$index").copy(title = "長いニュースタイトル".repeat(8) + index)
     }
 
     val prompt = buildPodcastClusteringToolPrompt(entries, maxChars = 4_096)
 
     assertTrue(prompt.length <= 4_096)
-    (1..29).forEach { index ->
+    (1..30).forEach { index ->
       assertTrue(prompt.contains("\n$index. ") || prompt.startsWith("$index. "))
     }
   }
