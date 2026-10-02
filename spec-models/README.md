@@ -34,5 +34,6 @@
 | Workout AI background lifecycle | [`quint/workout_ai_task_lifecycle.qnt`](quint/workout_ai_task_lifecycle.qnt) | — |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
+| LAN Web bootstrap/session authentication | [`quint/lan_web_auth_lifecycle.qnt`](quint/lan_web_auth_lifecycle.qnt) | — |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。

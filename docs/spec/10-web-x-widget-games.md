@@ -7,7 +7,22 @@
 - 共通Web Collectorを利用するWebViewベースのimport機能を持つ。
 - 内部に長い縦スクロール領域を持つ編集・閲覧overlayは、コンテンツのスクロールとdismiss gestureが競合しないフルスクリーンmodalで表示する。
 - LAN内からアプリ情報へアクセスするためのlocal web server機能を持つ。Android 17 / API 37 targetでは、サーバー起動時にローカルネットワーク権限を要求し、拒否された場合は起動しない。
+<!-- formal-requirement
+id: LAN-WEB-AUTH-LIFECYCLE-001
+models:
+  - spec-models/quint/lan_web_auth_lifecycle.qnt
+-->
+- LAN Web認証はservice起動単位のbootstrap / session tokenを利用し、どちらのtokenも永続化しない。
+- bootstrap tokenは一致する最初の1 requestでだけ成功し、その同じ同期処理でsession tokenを生成してbootstrap tokenを消費する。bootstrap成功後にquery tokenを再利用するrequestは、有効なsession Cookieを同時に送っても拒否する。
+- 認証済みrequestはtoken queryを持たず、現在のsession tokenと一致するCookieだけを受け入れる。
+- LAN IPv4 addressが変わった場合は新しいbootstrap tokenへrotationし、旧bootstrap tokenと既存session tokenを失効する。server停止時も両tokenを失効し、再起動後に旧tokenを受け入れない。
+<!-- /formal-requirement -->
 - RSS未読やTask等をホーム画面widgetへ表示する。
 - Gameでは数独、2048、ノノグラム、マインスイーパー、クロンダイク、スパイダーソリティア等の端末内ゲームを提供する。
 - 数独は Godot Engine を既存 Android アプリへ組み込んだ正式実装とする。盤面を大きく表示し、編集可能なマスを選ぶとその近くに数字入力パネルを表示する。入力途中では正解・不正解を表示せず、全マス入力後にだけ完成判定する。進行状態は永続化しない。
 - クロンダイクは同じ Godot runtime 上の専用 scene で実装し、横向きの盤面優先表示とする。山札は1枚めくり、捨て札は回数制限なく再利用でき、タップで選択したカードから合法な場札・組札を強調する。場札の移動で露出した伏せ札は自動で表向きにし、進行状態は永続化しない。
+
+
+## 形式モデル
+
+- [Quint: `lan_web_auth_lifecycle.qnt`](../../spec-models/quint/lan_web_auth_lifecycle.qnt) — LAN Webのone-shot bootstrap、session認証、address rotation、停止・再起動時のcredential失効を検査する。
