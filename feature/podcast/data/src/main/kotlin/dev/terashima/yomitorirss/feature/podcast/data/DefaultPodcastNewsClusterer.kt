@@ -126,7 +126,7 @@ internal fun buildPodcastClusteringToolPrompt(
   require(entries.isNotEmpty()) { "entries must not be empty" }
   require(maxChars > 0) { "maxChars must be positive" }
 
-  val header = "候補記事を番号順に分類してください。group_idsは候補記事と同じ要素数・同じ順序で返してください。\n"
+  val header = "候補記事を全件まとめて比較し、同じニュースごとに分類してください。番号が離れていても必ず比較してください。group_idsは候補記事と同じ要素数・同じ順序で返してください。\n"
   fun compactLine(index: Int, entry: PodcastFeedEntry, includeMetadata: Boolean): String = buildString {
     append(index + 1).append(". ").append(entry.title.replace(Regex("\\s+"), " ").trim())
     if (includeMetadata) {
