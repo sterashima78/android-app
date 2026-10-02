@@ -25,6 +25,7 @@
 | RSS exclusion-feedback learning | [`quint/rss_feedback_learning.qnt`](quint/rss_feedback_learning.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
 | Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
+| Podcast news exclusion partition | — | [`alloy/podcast_exclusion_partition.als`](alloy/podcast_exclusion_partition.als) |
 | Podcast news clustering partition | — | [`alloy/podcast_clustering_partition.als`](alloy/podcast_clustering_partition.als) |
 | Video saved/folder lifecycle | [`quint/video_saved_folder_lifecycle.qnt`](quint/video_saved_folder_lifecycle.qnt) | — |
 | Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
