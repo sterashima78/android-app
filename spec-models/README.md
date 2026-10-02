@@ -15,6 +15,7 @@
 | backup restore eligibility | [`quint/backup_restore.qnt`](quint/backup_restore.qnt) | — |
 | backup archive membership | — | [`alloy/backup_archive.als`](alloy/backup_archive.als) |
 | background request cleanup | [`quint/background_request_cleanup.qnt`](quint/background_request_cleanup.qnt) | — |
+| Audio transient playback boundary | — | [`alloy/audio_playback_boundary.als`](alloy/audio_playback_boundary.als) |
 | podcast episode lifecycle | [`quint/podcast_episode_lifecycle.qnt`](quint/podcast_episode_lifecycle.qnt) | — |
 | Web library / bookmark durable ownership | — | [`alloy/web_library_ownership.als`](alloy/web_library_ownership.als) |
 | Library cover prefetch lifecycle | [`quint/library_cover_prefetch_queue.qnt`](quint/library_cover_prefetch_queue.qnt) | — |

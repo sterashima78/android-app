@@ -16,6 +16,26 @@ class AppBoundaryOwnershipArchitectureTest {
   private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
+  fun `Audio再生はcross-context状態を変更せずruntime stateとcacheだけを所有する`() {
+    val audioData = source(
+      "feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/DefaultAudioPlaybackController.kt",
+    )
+    val audioBuild = source("feature/audio/data/build.gradle.kts")
+
+    assertTrue("Audio must read saved summaries through SummaryReader", "SummaryReader" in audioData)
+    assertTrue("Audio must request missing summaries through SummaryRequester", "SummaryRequester" in audioData)
+    assertFalse("Audio must not mutate Content reading state", "ArticleRepository" in audioData)
+    assertFalse("Audio must not mutate Curation membership", "BookmarkMutator" in audioData)
+    assertFalse("Audio data must not depend on Content data", ":feature:article:data" in audioBuild)
+    assertFalse("Audio data must not depend on Curation data", ":feature:bookmark:data" in audioBuild)
+    assertFalse("Audio data must not depend on Podcast data", ":feature:podcast:data" in audioBuild)
+    assertFalse("Audio must not use application database persistence", "DatabaseConnection" in audioData)
+    assertFalse("Audio must not use SharedPreferences for playback state", "SharedPreferences" in audioData)
+    assertFalse("Audio must not use durable file roots for generated speech", "filesDir" in audioData || "noBackupFilesDir" in audioData)
+    assertTrue("Generated speech must stay in app cache", "applicationContext.cacheDir" in audioData)
+  }
+
+  @Test
   fun `CalendarはTaskとWorkoutのread capabilityだけを使うread-only projectionである`() {
     val calendarData = source(
       "feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt",
