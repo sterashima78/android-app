@@ -31,6 +31,7 @@
 | Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
 | Web video playback privacy boundary | — | [`alloy/video_web_playback_privacy.als`](alloy/video_web_playback_privacy.als) |
 | Custom video provider security boundary | — | [`alloy/video_custom_provider_security.als`](alloy/video_custom_provider_security.als) |
+| Calendar read-only projection ownership | — | [`alloy/calendar_read_model_ownership.als`](alloy/calendar_read_model_ownership.als) |
 | Workout AI background lifecycle | [`quint/workout_ai_task_lifecycle.qnt`](quint/workout_ai_task_lifecycle.qnt) | — |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |

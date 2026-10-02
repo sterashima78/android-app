@@ -9,9 +9,20 @@
 
 ## 8.2 Calendar
 
-- Calendar は日付軸のread-only projectionとして扱う。
-- Android Calendar Provider の予定に加え、Task の期限や Workout の実績を共通 `CalendarEvent` として表示する。
-- Calendar 自身は Task / Workout の永続状態を所有しない。
+<!-- formal-requirement
+id: CALENDAR-PROJECTION-OWNERSHIP-001
+models:
+  - spec-models/alloy/calendar_read_model_ownership.als
+-->
+- Calendarは独自のdurable event stateを所有せず、Task・Workout・端末カレンダーの現在状態から`CalendarEvent`を生成するread-only projectionとする。
+- Task由来eventは`TaskReader`から期限付きTaskを読み`DEADLINE`へ、Workout由来eventは`WorkoutReader`から実績を読み`ACTIVITY`へ投影し、CalendarからTask / Workoutのcommand capability、table、private storageを参照しない。
+- 端末カレンダーはAndroid Calendar Providerをread-only sourceとして扱い、予定を`SCHEDULE`へ投影する。Calendarは端末予定を書き込むcommandを所有しない。
+- 各`CalendarEvent`はちょうど1つのsource recordから導出し、source固有のdurable stateのownerは元Contextまたは外部platformに残す。
+<!-- /formal-requirement -->
+
+### 形式モデル
+
+- [Alloy: `calendar_read_model_ownership.als`](../../spec-models/alloy/calendar_read_model_ownership.als) — Calendarのdurable state / command非所有、sourceごとのownerとevent kind、各projectionの単一source関係を検査する。
 
 ## 8.3 Workout
 
