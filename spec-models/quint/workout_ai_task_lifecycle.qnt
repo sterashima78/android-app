@@ -8,6 +8,8 @@
 // - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> retryQueued
 // - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> finishSucceeded
 // - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> dismissTerminal
+// - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> loseWorkRecord
+// - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> removeStaleReference
 // - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> queuedHasNoPromptSnapshot
 // - WORKOUT-AI-BACKGROUND-001@sha256:36bce950bfadd976a2c16f136c86adc9b96b648ff2d1b2f9a87edab517e7bddd -> activeOrTerminalTaskKeepsReference
 //
@@ -124,6 +126,16 @@ module workout_ai_task_lifecycle {
     resultPresent' = false,
   }
 
+  action loseWorkRecord = all {
+    state != NONE,
+    referencePresent,
+    state' = NONE,
+    currentInputRevision' = currentInputRevision,
+    promptRevision' = 0,
+    referencePresent' = true,
+    resultPresent' = false,
+  }
+
   action removeStaleReference = all {
     state == NONE,
     referencePresent,
@@ -152,6 +164,7 @@ module workout_ai_task_lifecycle {
     finishFailed,
     finishCancelled,
     dismissTerminal,
+    loseWorkRecord,
     removeStaleReference,
     idle,
   }
