@@ -36,6 +36,25 @@ class LanWebServerTest {
   }
 
   @Test
+  fun `session Cookieが有効でもquery token付きrequestは拒否する`() {
+    val authentication = LanWebAuthentication("bootstrap") { "session" }
+    authentication.authenticate("bootstrap", null)
+
+    assertEquals(AuthenticationResult.Rejected, authentication.authenticate("other", "session"))
+    assertEquals(AuthenticationResult.Authenticated, authentication.authenticate(null, "session"))
+  }
+
+  @Test
+  fun `bootstrap消費前のLANアドレス変更でも旧bootstrapを失効する`() {
+    val authentication = LanWebAuthentication("first") { "session" }
+
+    authentication.replaceBootstrapToken("second")
+
+    assertEquals(AuthenticationResult.Rejected, authentication.authenticate("first", null))
+    assertEquals(AuthenticationResult.Bootstrapped("session"), authentication.authenticate("second", null))
+  }
+
+  @Test
   fun `LANアドレス変更時はbootstrapとsession tokenを差し替える`() {
     val authentication = LanWebAuthentication("first") { "session" }
     authentication.authenticate("first", null)
