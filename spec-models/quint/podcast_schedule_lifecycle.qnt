@@ -4,6 +4,8 @@
 // Covers:
 // - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> enableAndSync
 // - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> ensureExistingSchedule
+// - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> scheduledWorkMissing
+// - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> ensureMissingSchedule
 // - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> scheduledSuccess
 // - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> scheduledPausedSkip
 // - PODCAST-SCHEDULE-LIFECYCLE-001@sha256:8d54b16b2c5fc7087e9ee66bb0fd729c752218fd6e7850ab2e11d9f80cc1f344 -> scheduledGenerationFailure
@@ -48,6 +50,14 @@ module podcast_schedule_lifecycle {
     state' = ARMED,
     enabled' = true,
     occurrence' = occurrence,
+  }
+
+  action scheduledWorkMissing = all {
+    enabled,
+    state == ARMED,
+    state' = NONE,
+    enabled' = true,
+    occurrence' = 0,
   }
 
   action ensureMissingSchedule = all {
@@ -127,6 +137,7 @@ module podcast_schedule_lifecycle {
   action step = any {
     enableAndSync,
     ensureExistingSchedule,
+    scheduledWorkMissing,
     ensureMissingSchedule,
     startScheduledOccurrence,
     scheduledSuccess,
