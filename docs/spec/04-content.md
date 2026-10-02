@@ -94,6 +94,16 @@ models:
 - feedから取得した候補は、Unicode表記、前後・連続空白、大文字小文字の差を正規化したタイトルが一致する場合、確実な重複として先に1件へまとめる。
 - 完全一致除外後の候補は、今回の生成候補全体を相互比較し、「同じ具体的な出来事を報じる記事」を同一ニュースとしてクラスタリングする。見出しの語順、翻訳、言い換え、表現の強弱が異なっても、主要な主体・行為または決定・対象が一致し、同じ出来事を指すと判断できる場合は同一ニュースとする。一覧内で離れていることや情報源が異なることだけを理由に分割しない。同じ企業・人物・製品を扱うだけでは同一ニュースとせず、判定が曖昧な記事は別ニュースとして残す。過去エピソードとの意味的な重複判定は行わない。
 - クラスタリングには候補のタイトル、情報源、公開時刻を利用する。分類処理が失敗する、結果が不正、または全記事を一意に分類できない場合は、生成全体を失敗させず1記事1ニュースへfallbackする。
+<!-- formal-requirement
+id: PODCAST-CLUSTERING-PARTITION-001
+models:
+  - spec-models/alloy/podcast_clustering_partition.als
+-->
+- ニュースクラスタリングの最終結果は、今回の候補記事全体を空でないclusterへ分割し、各候補をちょうど1つのclusterへ所属させる。候補の欠落、同一候補の複数clusterへの重複所属、空clusterを許可しない。
+- AI分類を採用する場合は、この完全partitionを満たす場合だけ分類成功として扱う。
+- 分類推論が失敗した場合、またはtool出力が候補全体の完全partitionとして検証できない場合は、生成全体を失敗させず各候補を1件ずつ独立clusterへfallbackする。fallback原因は分類状態として区別する。
+- 分類を省略する場合も、候補を失わず1記事1clusterとして扱う。
+<!-- /formal-requirement -->
 - 再生詳細画面ではニュース分類が正常終了したか、分類処理失敗または分類結果不正で1記事1ニュースへfallbackしたか、分類不要で省略したかを表示する。あわせて保存済み記事数とニュース数を表示し、分類記録を持たない既存エピソードは「記録なし」として区別する。
 - 同一ニュースにまとまった複数記事は1チャプターとして生成する。チャプター原稿にはクラスタ内の全記事のfeedタイトルとfeed本文を根拠として利用し、重複する内容は1回だけ説明し、各記事にだけ含まれる情報は矛盾しない範囲で統合する。記事間で内容が食い違う場合は断定せず、一致している事実を優先する。
 - 原稿の根拠にはRSS / Atomフィード内に含まれるタイトルと本文だけを利用し、記事リンク先の本文や一般知識を自動取得・追加しない。
@@ -148,6 +158,7 @@ models:
 - [Quint: `podcast_episode_lifecycle.qnt`](../../spec-models/quint/podcast_episode_lifecycle.qnt) — 生成待ち・生成中・再生可能・失敗・アーカイブ・削除の状態遷移、削除可能状態、削除後も消費済みidentityを保持する安全条件を検査する。
 - [Quint: `podcast_chapter_checkpoint.qnt`](../../spec-models/quint/podcast_chapter_checkpoint.qnt) — chapter checkpointの中断復旧、READY再利用、クラウドretryの上限と失敗確定条件を検査する。
 - [Alloy: `podcast_entry_eligibility.als`](../../spec-models/alloy/podcast_entry_eligibility.als) — 番組単位の消費済み・除外済みentryが次回候補へ再投入されない関係制約を検査する。
+- [Alloy: `podcast_clustering_partition.als`](../../spec-models/alloy/podcast_clustering_partition.als) — 候補全体の完全partitionと、分類失敗・不正出力・分類省略時の1記事1cluster fallbackを検査する。
 
 ## 4.7 動画
 
