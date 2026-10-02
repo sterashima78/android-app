@@ -193,11 +193,11 @@ private const val PODCAST_CLUSTERING_SYSTEM_INSTRUCTION =
 
 private val PODCAST_CLUSTERING_OUTPUT_TOOL = AiStructuredTool(
   name = "submit_podcast_news_clusters",
-  description = "候補記事ごとのニュース分類を提出する",
+  description = "候補全体を比較し、同じ具体的な出来事を報じる記事へ同じgroup IDを割り当てる",
   arguments = listOf(
     AiStructuredToolArgument(
       name = PODCAST_CLUSTERING_GROUP_IDS_ARGUMENT,
-      description = "候補記事と同じ順序・同じ要素数のgroup ID配列。同じ具体的なニュースの記事だけ同じ文字列を使う",
+      description = "候補記事と同じ順序・同じ要素数のgroup ID配列。語順・翻訳・言い換えが異なっても主要な主体・行為や決定・対象が一致して同一出来事なら同じ文字列を使う",
       required = true,
       type = AiStructuredToolArgumentType.STRING_ARRAY,
     ),
