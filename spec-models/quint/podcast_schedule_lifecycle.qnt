@@ -29,108 +29,108 @@ module podcast_schedule_lifecycle {
   val RETRYING = 3
 
   var state: int
-  var enabled: bool
+  var scheduleEnabled: bool
   var occurrence: int
 
   action init = all {
     state' = NONE,
-    enabled' = false,
+    scheduleEnabled' = false,
     occurrence' = 0,
   }
 
   action enableAndSync = all {
     state' = ARMED,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = if (occurrence == 1) 2 else 1,
   }
 
   action ensureExistingSchedule = all {
-    enabled,
+    scheduleEnabled,
     state == ARMED,
     state' = ARMED,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = occurrence,
   }
 
   action scheduledWorkMissing = all {
-    enabled,
+    scheduleEnabled,
     state == ARMED,
     state' = NONE,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = 0,
   }
 
   action ensureMissingSchedule = all {
-    enabled,
+    scheduleEnabled,
     state == NONE,
     state' = ARMED,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = 1,
   }
 
   action startScheduledOccurrence = all {
-    enabled,
+    scheduleEnabled,
     state == ARMED,
     state' = RUNNING,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = occurrence,
   }
 
   action scheduledSuccess = all {
-    enabled,
+    scheduleEnabled,
     state == RUNNING,
     state' = ARMED,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = if (occurrence == 1) 2 else 1,
   }
 
   action scheduledPausedSkip = all {
-    enabled,
+    scheduleEnabled,
     state == RUNNING,
     state' = ARMED,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = if (occurrence == 1) 2 else 1,
   }
 
   action scheduledGenerationFailure = all {
-    enabled,
+    scheduleEnabled,
     state == RUNNING,
     state' = ARMED,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = if (occurrence == 1) 2 else 1,
   }
 
   action alreadyRunningRetry = all {
-    enabled,
+    scheduleEnabled,
     state == RUNNING,
     state' = RETRYING,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = occurrence,
   }
 
   action retrySameOccurrence = all {
-    enabled,
+    scheduleEnabled,
     state == RETRYING,
     state' = RUNNING,
-    enabled' = true,
+    scheduleEnabled' = true,
     occurrence' = occurrence,
   }
 
   action manualGenerationDoesNotAdvanceSchedule = all {
     state' = state,
-    enabled' = enabled,
+    scheduleEnabled' = scheduleEnabled,
     occurrence' = occurrence,
   }
 
   action cancelSchedule = all {
     state' = NONE,
-    enabled' = false,
+    scheduleEnabled' = false,
     occurrence' = 0,
   }
 
   action idle = all {
     state' = state,
-    enabled' = enabled,
+    scheduleEnabled' = scheduleEnabled,
     occurrence' = occurrence,
   }
 
@@ -157,10 +157,10 @@ module podcast_schedule_lifecycle {
     occurrence == 0 or occurrence == 1 or occurrence == 2
 
   val disabledHasNoScheduledWork =
-    enabled or (state == NONE and occurrence == 0)
+    scheduleEnabled or (state == NONE and occurrence == 0)
 
   val activeScheduleRequiresEnabled =
-    state == NONE or enabled
+    state == NONE or scheduleEnabled
 
   val activeScheduleHasOccurrence =
     state == NONE or occurrence == 1 or occurrence == 2
