@@ -34,6 +34,21 @@ class AppLockExternalTransitionTrackerTest {
   }
 
   @Test
+  fun `Custom Tab の再ロック例外は起動から10秒まで含む`() {
+    var elapsedRealtimeMillis = 1_000L
+    val fresh = AppLockExternalTransitionTracker { elapsedRealtimeMillis }
+    fresh.onCustomTabLaunchStarted()
+    elapsedRealtimeMillis = 11_000L
+    assertFalse(fresh.shouldLockOnStop())
+
+    elapsedRealtimeMillis = 1_000L
+    val expired = AppLockExternalTransitionTracker { elapsedRealtimeMillis }
+    expired.onCustomTabLaunchStarted()
+    elapsedRealtimeMillis = 11_001L
+    assertTrue(expired.shouldLockOnStop())
+  }
+
+  @Test
   fun `古い Custom Tab 起動記録では通常のバックグラウンド移行を抑制しない`() {
     var elapsedRealtimeMillis = 1_000L
     val tracker = AppLockExternalTransitionTracker { elapsedRealtimeMillis }
