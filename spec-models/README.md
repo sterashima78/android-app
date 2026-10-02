@@ -16,6 +16,7 @@
 | backup archive membership | — | [`alloy/backup_archive.als`](alloy/backup_archive.als) |
 | background request cleanup | [`quint/background_request_cleanup.qnt`](quint/background_request_cleanup.qnt) | — |
 | podcast episode lifecycle | [`quint/podcast_episode_lifecycle.qnt`](quint/podcast_episode_lifecycle.qnt) | — |
+| Podcast scheduled generation lifecycle | [`quint/podcast_schedule_lifecycle.qnt`](quint/podcast_schedule_lifecycle.qnt) | — |
 | Web library / bookmark durable ownership | — | [`alloy/web_library_ownership.als`](alloy/web_library_ownership.als) |
 | Library cover prefetch lifecycle | [`quint/library_cover_prefetch_queue.qnt`](quint/library_cover_prefetch_queue.qnt) | — |
 | Library metadata normalization lifecycle | [`quint/library_metadata_normalization_lifecycle.qnt`](quint/library_metadata_normalization_lifecycle.qnt) | — |
@@ -31,8 +32,10 @@
 | Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
 | Web video playback privacy boundary | — | [`alloy/video_web_playback_privacy.als`](alloy/video_web_playback_privacy.als) |
 | Custom video provider security boundary | — | [`alloy/video_custom_provider_security.als`](alloy/video_custom_provider_security.als) |
+| Calendar read-only projection ownership | — | [`alloy/calendar_read_model_ownership.als`](alloy/calendar_read_model_ownership.als) |
 | Workout AI background lifecycle | [`quint/workout_ai_task_lifecycle.qnt`](quint/workout_ai_task_lifecycle.qnt) | — |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
+| LAN Web bootstrap/session authentication | [`quint/lan_web_auth_lifecycle.qnt`](quint/lan_web_auth_lifecycle.qnt) | — |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。
