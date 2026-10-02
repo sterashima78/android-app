@@ -32,7 +32,16 @@ models:
 <!-- /formal-requirement -->
 - 統合ビューへ遷移する新着通知の件数には購読型動画を含めず、統合ビューで実際に確認できる未読件数と一致させる。
 - custom Video Providerのfunction実行はforeground Activityに依存せず、Video-owned runtimeからbackground refreshでも実行する。
-- Podcastの定刻生成は番組ごとに次のローカル日時を再計算するone-shot work chainとして実行し、通常の生成失敗後も翌日のscheduleを維持する。
+<!-- formal-requirement
+id: PODCAST-SCHEDULE-LIFECYCLE-001
+models:
+  - spec-models/quint/podcast_schedule_lifecycle.qnt
+-->
+- Podcastの定刻生成は番組ごとのunique one-shot work chainとして扱い、scheduleが有効な場合だけ次回ローカル時刻のworkを保持する。設定変更時は現在の予約を置き換えて新しい時刻へre-anchorし、起動時のreconciliationでは既存予約を重複作成しない。
+- 定刻workが生成成功、provider一時停止によるskip、または通常の生成失敗で終了した場合は、その終了結果にかかわらず現在の番組設定から次回ローカル時刻を再計算してchainへ追加する。
+- 別のPodcast生成が実行中で定刻workをretryする場合は、同じ定刻occurrenceを再試行し、retry確定時点では次回occurrenceを追加しない。
+- schedule無効化または番組のschedule cancelでは定刻chainを解除する。画面からの手動生成・作り直しは定刻chainを進めず、定刻workだけが次回occurrenceを再予約する。
+<!-- /formal-requirement -->
 - Podcast画面から開始した新規生成と作り直しも同じPodcast-owned Workerへ即時登録し、画面を離れたり端末をロックしたりしてもUI lifetimeに依存せず生成を継続する。生成中はforeground通知へチャプター進捗を表示する。
 - Podcastのクラウドチャプター生成では、一時的な通信・rate limit・server failureとしてretryableに分類された失敗をchapter内で有限回自動再試行し、再試行を使い切った場合だけ既存の失敗checkpointへ確定する。
 - Podcast生成taskはチャプター単位の完了数をAIタスクキューへ投影し、生成中・再生成中または途中失敗したtaskでは全チャプター数と未完了チャプター数を確認できる。
@@ -50,4 +59,5 @@ models:
 - [Quint: `backup_schedule.qnt`](../../spec-models/quint/backup_schedule.qnt) — scheduleの状態遷移と再予約safety。
 - [Quint: `background_request_cleanup.qnt`](../../spec-models/quint/background_request_cleanup.qnt) — active workに対応するdurable request inputを期限だけで削除しないことを検査する。
 - [Quint: `rss_recommendation_queue.qnt`](../../spec-models/quint/rss_recommendation_queue.qnt) — recommendation taskのrevision reconciliationと中断復旧を検査する。
+- [Quint: `podcast_schedule_lifecycle.qnt`](../../spec-models/quint/podcast_schedule_lifecycle.qnt) — 定刻生成chainのre-anchor、同一occurrence retry、成功・skip・失敗後の次回再予約、manual生成との分離を検査する。
 - [Alloy: `backup_schedule.als`](../../spec-models/alloy/backup_schedule.als) — configured timeとscheduled work / automatic jobの構造制約。
