@@ -36,6 +36,26 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   @Test
+  fun `Workout AI taskはpromptをenqueue時に固定せずWorker実行時に最新入力を読む`() {
+    val background = source(
+      "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt",
+    )
+    val enqueueBlock = background.substringAfter("override suspend fun enqueue(type: WorkoutAiRequestType): String {")
+      .substringBefore("override suspend fun snapshot")
+    val generateBlock = background.substringAfter("private suspend fun generate(")
+      .substringBefore("private fun isPaused")
+
+    assertTrue("Workout AI work input must carry request type metadata", "KEY_REQUEST_TYPE to type.name" in enqueueBlock)
+    assertTrue("Workout AI work input must carry selected provider metadata", "KEY_PROVIDER to provider.name" in enqueueBlock)
+    assertFalse("Workout AI must not persist a prebuilt prompt in WorkManager Data", "prompt" in enqueueBlock)
+    assertTrue("Worker must read the current Workout snapshot at execution time", "workoutReader.load()" in generateBlock)
+    assertTrue("Worker must read current settings at execution time", "settingsRepository.loadSettings()" in generateBlock)
+    assertTrue("Worker must read current memos at execution time", "settingsRepository.loadMemos(dates)" in generateBlock)
+    assertTrue("Worker must read saved reviews at execution time", "reviewRepository.loadAll()" in generateBlock)
+    assertTrue("Worker must build the prompt only after reading execution-time inputs", "WorkoutAiPromptBuilder.build(" in generateBlock)
+  }
+
+  @Test
   fun `provider neutral ChatGPT text inferenceはOpenAI coreが所有する`() {
     val adapterPath = "core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptTextInference.kt"
     val adapter = source(adapterPath)
