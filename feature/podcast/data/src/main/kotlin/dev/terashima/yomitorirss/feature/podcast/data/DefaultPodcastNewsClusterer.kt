@@ -129,10 +129,12 @@ internal fun buildPodcastClusteringToolPrompt(
 
   val header = "候補記事を全件まとめて比較し、同じニュースごとに分類してください。番号が離れていても必ず比較してください。group_idsは候補記事と同じ要素数・同じ順序で返してください。\n"
   fun compactLine(index: Int, entry: PodcastFeedEntry, includeMetadata: Boolean): String = buildString {
-    append(index + 1).append(". ").append(entry.title.replace(Regex("\\s+"), " ").trim())
+    append(index + 1).append(". タイトル: ").append(entry.title.replace(Regex("\\s+"), " ").trim())
     if (includeMetadata) {
-      entry.sourceTitle?.takeIf(String::isNotBlank)?.let { append(" | ").append(it.replace(Regex("\\s+"), " ").trim()) }
-      entry.publishedAtEpochMillis?.let { append(" | ").append(it) }
+      entry.sourceTitle?.takeIf(String::isNotBlank)?.let {
+        append(" | 情報源: ").append(it.replace(Regex("\\s+"), " ").trim())
+      }
+      entry.publishedAtEpochMillis?.let { append(" | 公開時刻: ").append(Instant.ofEpochMilli(it)) }
     }
   }
 
