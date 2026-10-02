@@ -22,7 +22,7 @@ one sig ValidClassification, Fallback extends ExclusionOutcome {}
 sig Candidate {}
 
 abstract sig DecisionSlot {
-  candidate: one Candidate
+  item: one Candidate
 }
 sig IncludedSlot, ExcludedSlot extends DecisionSlot {}
 
@@ -36,29 +36,29 @@ fact NonEmptyInput {
 
 fact FinalResultIsExactClassification {
   all candidate: Candidate |
-    one slot: DecisionSlot | slot.candidate = candidate
+    one slot: DecisionSlot | slot.item = candidate
 }
 
 fact FailureFallbackShape {
   ExclusionResult.outcome = Fallback implies (
     no ExcludedSlot and
-    IncludedSlot.candidate = Candidate
+    IncludedSlot.item = Candidate
   )
 }
 
 assert EveryCandidateClassifiedExactlyOnce {
   all candidate: Candidate |
-    one slot: DecisionSlot | slot.candidate = candidate
+    one slot: DecisionSlot | slot.item = candidate
 }
 
 assert NoCandidateAppearsInBothOutcomes {
-  no IncludedSlot.candidate & ExcludedSlot.candidate
+  no IncludedSlot.item & ExcludedSlot.item
 }
 
 assert FallbackIncludesEveryCandidate {
   ExclusionResult.outcome = Fallback implies (
     no ExcludedSlot and
-    IncludedSlot.candidate = Candidate and
+    IncludedSlot.item = Candidate and
     #IncludedSlot = #Candidate
   )
 }
