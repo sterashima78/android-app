@@ -7,12 +7,12 @@
 - AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
 - RSS推薦は既定で端末内AIを利用する。利用者がクラウドAIを明示選択した場合だけ、RSS推薦に必要な除外条件・学習条件・記事タイトル・除外参考タイトルと直前評価をクラウド推論先へ送信する。記事URL、feed本文、リンク先本文、保存済み要約はRSS推薦の入力へ追加しない。
 - custom Video Provider codeには他Contextのcredentialやdatabase accessを公開せず、外部通信はboundedなHTTPS request capabilityに限定する。function code自体をcredential保存場所として扱わない。
+- アプリ全体ロックは既定で無効とし、永続化するのは有効フラグだけとする。認証済みsession状態とCustom Tabs遷移markerはprocess内の一時状態として扱う。
 <!-- formal-requirement
 id: APP-LOCK-SESSION-001
 models:
   - spec-models/quint/app_lock_session_lifecycle.qnt
 -->
-- アプリ全体ロックは既定で無効とし、永続化するのは有効フラグだけとする。認証済みsession状態とCustom Tabs遷移markerはprocess内の一時状態として扱う。
 - ロック有効時に未認証ならfeature content、起動時診断、共有・widget等のincoming Intent処理を認証成功まで公開・処理しない。認証成功後は同じsessionを解除状態にする。
 - ロック有効時にActivityが通常のbackgroundへ移行した場合は次回表示前に再認証が必要なlocked状態へ戻す。configuration changeと認証prompt自身によるlifecycle遷移では不要な再ロックを行わない。
 - アプリ自身がCustom Tabs起動を開始した直後は、10秒以内の最初のonStopだけを再ロック対象外にできる。このmarkerはone-shotとし、起動失敗、期限切れ、または一度消費した後のonStopは通常どおり再ロックする。
