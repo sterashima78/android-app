@@ -16,6 +16,25 @@ class AppBoundaryOwnershipArchitectureTest {
   private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
+  fun `CalendarはTaskとWorkoutのread capabilityだけを使うread-only projectionである`() {
+    val calendarData = source(
+      "feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt",
+    )
+    val calendarBuild = source("feature/calendar/data/build.gradle.kts")
+    val manifest = source("app/src/main/AndroidManifest.xml")
+
+    assertTrue("Calendar must depend on TaskReader", "TaskReader" in calendarData)
+    assertTrue("Calendar must depend on WorkoutReader", "WorkoutReader" in calendarData)
+    assertFalse("Calendar must not depend on TaskRepository command facade", "TaskRepository" in calendarData)
+    assertFalse("Calendar must not depend on WorkoutRepository command facade", "WorkoutRepository" in calendarData)
+    assertFalse("Calendar must not access application persistence directly", "DatabaseConnection" in calendarData)
+    assertFalse("Calendar data must not depend on Task data implementation", ":feature:task:data" in calendarBuild)
+    assertFalse("Calendar data must not depend on Workout data implementation", ":feature:workout:data" in calendarBuild)
+    assertTrue("Calendar must request read permission", "android.permission.READ_CALENDAR" in manifest)
+    assertFalse("Calendar must not request calendar write permission", "android.permission.WRITE_CALENDAR" in manifest)
+  }
+
+  @Test
   fun `Workout AI advisorはWorkout dataが所有しUIにはtask controllerだけを渡す`() {
     val advisorPath = "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutAiAdvisor.kt"
     val advisor = source(advisorPath)
