@@ -133,3 +133,8 @@ Local text inference の subprocess 接続待機と生成 response 待機は run
 - [ADR-0219](../adr/0219-local-ai-subprocess-exit-diagnostics-and-recovery.md)
 - [ADR-0266](../adr/0266-local-text-inference-watchdog.md)
 - [ADR-0273](../adr/0273-background-only-non-interactive-ai-inference.md)
+
+
+## Related decision
+
+- [ADR-0277: 対話型ローカルAI推論を短寿命サブプロセスへ隔離する](../adr/0277-isolate-local-chat-inference-process.md)
