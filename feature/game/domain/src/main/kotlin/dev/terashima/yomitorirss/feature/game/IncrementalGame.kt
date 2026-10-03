@@ -192,7 +192,7 @@ object IncrementalGame {
       current = tickSegment(
         state = current,
         elapsedSeconds = overdriveSlice,
-        productionMultiplier = overdriveMultiplier(current),
+        productionMultiplier = overdriveProductionMultiplier(current),
       ).copy(
         overdriveRemainingSeconds = (current.overdriveRemainingSeconds - overdriveSlice)
           .coerceAtLeast(0.0),
@@ -220,7 +220,7 @@ object IncrementalGame {
     )
     return saturatingMultiply(
       base,
-      if (state.overdriveRemainingSeconds > 0.0) overdriveMultiplier(state) else 1.0,
+      if (state.overdriveRemainingSeconds > 0.0) overdriveProductionMultiplier(state) else 1.0,
     )
   }
 
@@ -525,7 +525,7 @@ object IncrementalGame {
     return scaledProduct(manualMultiplier, cascadeOutputMultiplier, lowPressureMultiplier)
   }
 
-  private fun overdriveMultiplier(state: IncrementalGameState): Double =
+  fun overdriveProductionMultiplier(state: IncrementalGameState): Double =
     if (hasRunPick(state, IncrementalRunPick.OVERCLOCK)) {
       OVERCLOCK_MULTIPLIER
     } else {
