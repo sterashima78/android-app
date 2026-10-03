@@ -186,7 +186,7 @@ class ProcessIsolatedLocalAiConversationInference(
 internal fun conversationIpcCharacterCount(request: LocalInferenceConversationRequest): Int =
   request.systemInstruction.length +
     request.userMessage.length +
-    request.initialMessages.sumOf(LocalInferenceMessage::content.length) +
+    request.initialMessages.sumOf { message -> message.content.length } +
     request.tools.sumOf { toolDescriptionJson(it).length }
 
 private fun AiTextInferenceProgress.toLocalInferenceProgress(): LocalInferenceProgress =
