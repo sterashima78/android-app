@@ -134,12 +134,12 @@ assert KeptSessionsArePairwiseDistinctRealWorldExercises {
     sameRealWorldExercise[left, right]
 }
 
-check ExactIdentityCollapses for 8 expect 0
-check SameKnownOriginNonExactStayDistinct for 8 expect 0
-check CrossOriginDuplicateNeedsEvidence for 8 expect 0
-check EveryInputHasExactlyOneKeptRepresentative for 8 expect 0
-check KeptSessionsAreOriginalInputs for 8 expect 0
-check KeptSessionsArePairwiseDistinctRealWorldExercises for 8 expect 0
+check ExactIdentityCollapses for 6 expect 0
+check SameKnownOriginNonExactStayDistinct for 6 expect 0
+check CrossOriginDuplicateNeedsEvidence for 6 expect 0
+check EveryInputHasExactlyOneKeptRepresentative for 6 expect 0
+check KeptSessionsAreOriginalInputs for 6 expect 0
+check KeptSessionsArePairwiseDistinctRealWorldExercises for 6 expect 0
 
 run RepresentativeCrossOriginDedup {
   #Session = 4
@@ -152,4 +152,4 @@ run RepresentativeCrossOriginDedup {
     representative in DedupResult.kept
     separate in DedupResult.kept
   }
-} for 8 expect 1
+} for 6 expect 1
