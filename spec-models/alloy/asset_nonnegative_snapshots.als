@@ -31,7 +31,7 @@ sig ExistingRow extends SourceRow {}
 sig ImportRow extends SourceRow {}
 
 sig FinalRow {
-  source: one SourceRow
+  origin: one SourceRow
 }
 
 abstract sig ReadModel {
@@ -47,39 +47,39 @@ fun importedDates: set Date {
 fact SnapshotReplacement {
   all imported: ImportRow |
     imported.sign = Negative implies
-      no final: FinalRow | final.source = imported
+      no final: FinalRow | final.origin = imported
 
   all imported: ImportRow |
     imported.sign != Negative implies
-      one final: FinalRow | final.source = imported
+      one final: FinalRow | final.origin = imported
 
   all existing: ExistingRow |
     existing.date in importedDates implies
-      no final: FinalRow | final.source = existing
+      no final: FinalRow | final.origin = existing
 
   all existing: ExistingRow |
     existing.date not in importedDates implies
-      one final: FinalRow | final.source = existing
+      one final: FinalRow | final.origin = existing
 
   all sourceRow: SourceRow |
-    lone final: FinalRow | final.source = sourceRow
+    lone final: FinalRow | final.origin = sourceRow
 }
 
 fact NonnegativeReadModels {
   all view: ReadModel |
-    view.visible = { final: FinalRow | final.source.sign != Negative }
+    view.visible = { final: FinalRow | final.origin.sign != Negative }
 }
 
 assert NegativeImportNeverPersists {
   no imported: ImportRow |
     imported.sign = Negative and
-    some final: FinalRow | final.source = imported
+    some final: FinalRow | final.origin = imported
 }
 
 assert ImportedDateReplacesExistingRows {
   no existing: ExistingRow |
     existing.date in importedDates and
-    some final: FinalRow | final.source = existing
+    some final: FinalRow | final.origin = existing
 }
 
 assert NegativeOnlyImportClearsOldSnapshot {
@@ -88,18 +88,18 @@ assert NegativeOnlyImportClearsOldSnapshot {
       all imported: ImportRow |
         imported.date = targetDate implies imported.sign = Negative
     ) implies
-      no final: FinalRow | final.source.date = targetDate
+      no final: FinalRow | final.origin.date = targetDate
 }
 
 assert ReadModelsExcludeNegativeRows {
   all view: ReadModel |
-    no final: view.visible | final.source.sign = Negative
+    no final: view.visible | final.origin.sign = Negative
 }
 
 assert ZeroImportRemainsEligible {
   all imported: ImportRow |
     imported.sign = Zero implies
-      one final: FinalRow | final.source = imported
+      one final: FinalRow | final.origin = imported
 }
 
 check NegativeImportNeverPersists for 10 expect 0
@@ -117,7 +117,7 @@ run NegativeOnlyReplacementExample {
     (all imported: ImportRow |
       imported.date = targetDate implies imported.sign = Negative) and
     (no final: FinalRow |
-      final.source.date = targetDate)
+      final.origin.date = targetDate)
 } for 10 expect 1
 
 run LegacyNegativeOutsideReplacementExample {
@@ -125,5 +125,5 @@ run LegacyNegativeOutsideReplacementExample {
     legacy.sign = Negative and
     legacy.date not in importedDates and
     (some final: FinalRow |
-      final.source = legacy)
+      final.origin = legacy)
 } for 10 expect 1
