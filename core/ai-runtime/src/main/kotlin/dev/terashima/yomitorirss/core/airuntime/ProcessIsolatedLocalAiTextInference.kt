@@ -1199,7 +1199,21 @@ private fun persistStageDurations(
 
 private fun stageDurationKey(stage: String, modelId: String): String = "$stage.$modelId.duration_millis"
 
-private fun Throwable.textInferenceUserMessage(): String = when (this) {
-  is IllegalArgumentException, is IllegalStateException -> message?.takeIf(String::isNotBlank)?.take(MAX_ERROR_CHARS)
-  else -> null
-} ?: "ローカルAI推論に失敗しました (${javaClass.simpleName})"
+internal fun Throwable.hasLocalToolCallParseFailure(): Boolean =
+  generateSequence(this) { error -> error.cause }
+    .mapNotNull(Throwable::message)
+    .any { message ->
+      message.contains("Failed to parse tool calls", ignoreCase = true) ||
+        message.contains("Failed to parse FC tool calls", ignoreCase = true)
+    }
+
+private fun Throwable.textInferenceUserMessage(): String =
+  if (hasLocalToolCallParseFailure()) {
+    "Failed to parse tool calls"
+  } else {
+    when (this) {
+      is IllegalArgumentException, is IllegalStateException ->
+        message?.takeIf(String::isNotBlank)?.take(MAX_ERROR_CHARS)
+      else -> null
+    } ?: "ローカルAI推論に失敗しました (${javaClass.simpleName})"
+  }
