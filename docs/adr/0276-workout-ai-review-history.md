@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-03
 - Refines: [ADR-0194](0194-workout-ai-advisor.md), [ADR-0198](0198-workout-chat-tab-and-shared-chat-ui.md), [ADR-0261](0261-workout-menu-presets-and-daily-plan.md), [ADR-0273](0273-background-only-non-interactive-ai-inference.md)
 
 ## Context
@@ -22,6 +23,7 @@ Workout の完了後レビューは、直近14日間の実績、当日メモ、�
 - 完了後レビューでは、登録済みプリセット全体を「当日予定」とみなさず、完了履歴または進行中 day に保存された menu snapshot だけを当日の予定として扱う。
 - Workout persistence payload を version 3 へ更新し、現在の version 2 payload は menu snapshot がない履歴として version 3 へ読み込む。
 - 未知 version を推測解釈しない既存方針は維持する。
+- version 2 decode path は current compatibility baseline のためだけに保持する一時的な互換処理とする。version 2 payload を書き込む配布版が current compatibility baseline から外れた時点で、version 2 decoder と v2→v3 専用 fixture/test を削除し、version 2 を unsupported version として扱う。
 
 ### 完了後レビューを Workout-owned user data として永続化する
 
