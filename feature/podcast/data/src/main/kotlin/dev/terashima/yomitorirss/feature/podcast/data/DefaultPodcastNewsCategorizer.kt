@@ -32,8 +32,8 @@ class DefaultPodcastNewsCategorizer(
     if (news.isEmpty()) return emptyList()
 
     val route = when (provider) {
-      PodcastGenerationProvider.LOCAL -> InferenceRoute(localTextInference, localStructuredInference, true)
-      PodcastGenerationProvider.CLOUD -> InferenceRoute(cloudTextInference, cloudStructuredInference, false)
+      PodcastGenerationProvider.LOCAL -> CategorizerInferenceRoute(localTextInference, localStructuredInference, true)
+      PodcastGenerationProvider.CLOUD -> CategorizerInferenceRoute(cloudTextInference, cloudStructuredInference, false)
     }
     val model = try {
       checkNotNull(route.text.selectedModel()) { "利用するAIモデルを選択してください" }
@@ -69,7 +69,7 @@ class DefaultPodcastNewsCategorizer(
   }
 
   private suspend fun generateToolCall(
-    route: InferenceRoute,
+    route: CategorizerInferenceRoute,
     request: String,
   ): AiStructuredToolCall? = if (route.local) {
     LocalAiBackgroundTaskGate.withPermit(priority = LocalAiBackgroundTaskPriority.NORMAL) {
@@ -174,7 +174,7 @@ private fun buildRepairPrompt(original: String, message: String, maxChars: Int):
 private fun fallback(news: List<List<PodcastFeedEntry>>): List<String> =
   List(news.size) { PODCAST_OTHER_CATEGORY }
 
-private data class InferenceRoute(
+private data class CategorizerInferenceRoute(
   val text: BackgroundAiTextInference,
   val structured: BackgroundAiStructuredTextInference,
   val local: Boolean,
