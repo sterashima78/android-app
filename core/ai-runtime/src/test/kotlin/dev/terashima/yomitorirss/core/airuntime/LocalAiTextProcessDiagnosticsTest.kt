@@ -31,6 +31,22 @@ class LocalAiTextProcessDiagnosticsTest {
     assertFalse(summary.contains("modelId", ignoreCase = true))
   }
 
+
+  @Test
+  fun `chat process state summaryは対話推論として識別できる`() {
+    val summary = buildLocalAiTextProcessStateSummary(
+      LocalAiTextProcessDiagnosticState(
+        mode = LocalAiTextProcessMode.CHAT,
+        phase = LocalAiTextProcessPhase.PREPARING_MODEL,
+        backend = LocalInferenceBackend.CPU,
+        contextTokens = 4_096,
+        speculativeDecodingEnabled = false,
+      ),
+    )
+
+    assertEquals("ai=chat;phase=prepare;backend=cpu;ctx=4096;spec=0", summary)
+  }
+
   @Test
   fun `subprocess memory report は同じpidの終了前10分だけを時系列で返す`() {
     val report = """
