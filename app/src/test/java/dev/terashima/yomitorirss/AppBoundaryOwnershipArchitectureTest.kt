@@ -182,6 +182,85 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   @Test
+  fun `Mail credentialはaccount connectionとdurable stateへ流さない`() {
+    val authorizationManager = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/GmailAuthorizationManager.kt",
+    )
+    val authorizationBridge = source(
+      "$compositionSourceRoot/platform/authorization/AuthorizationDependencies.kt",
+    )
+    val routeHost = source("$presentationUiRoot/MailRouteHost.kt")
+    val viewModel = source(
+      "feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailViewModel.kt",
+    )
+    val repositoryContract = source(
+      "feature/mail/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailRepository.kt",
+    )
+    val repository = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
+    )
+    val worker = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt",
+    )
+    val schema = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailDatabaseSchema.kt",
+    )
+
+    val internalAuthorizedAccount = authorizationManager
+      .substringAfter("data class GmailAuthorizedAccount(")
+      .substringBefore("sealed interface GmailAuthorizationOutcome")
+    val publicAuthorizedAccount = authorizationBridge
+      .substringAfter("class MailAuthorizedAccount internal constructor(")
+      .substringBefore("sealed interface MailAuthorizationOutcome")
+    val connectContract = repositoryContract
+      .substringAfter("suspend fun connectAccount(")
+      .substringBefore("): MailAccount")
+    val connectImplementation = repository
+      .substringAfter("override suspend fun connectAccount(")
+      .substringBefore("override suspend fun removeAccount")
+    val scheduleInitialPage = worker
+      .substringAfter("fun scheduleInitialPage(")
+      .substringBefore("fun schedulePeriodic")
+
+    assertFalse(
+      "authorization result crossing the data boundary must not expose token values",
+      "accessToken" in internalAuthorizedAccount,
+    )
+    assertFalse(
+      "presentation authorization bridge must not expose token values",
+      "accessToken" in publicAuthorizedAccount,
+    )
+    assertFalse(
+      "Mail presentation must not receive token values",
+      "accessToken" in routeHost,
+    )
+    assertFalse(
+      "Mail ViewModel must not receive token values",
+      "accessToken" in viewModel,
+    )
+    assertFalse(
+      "Mail repository account-connection contract must not accept token values",
+      "accessToken" in connectContract,
+    )
+    assertFalse(
+      "Mail account connection must not receive or persist token values",
+      "accessToken" in connectImplementation,
+    )
+    assertFalse(
+      "Mail initial-sync WorkManager input must not carry access tokens",
+      "accessToken" in scheduleInitialPage || "access_token" in scheduleInitialPage,
+    )
+    assertFalse(
+      "Mail schema must not persist access tokens",
+      "access_token" in schema.lowercase(),
+    )
+    assertTrue(
+      "Mail runtime must reacquire authorization only when executing remote operations",
+      "authorization.accessToken(account.email)" in repository,
+    )
+  }
+
+  @Test
   fun `provider neutral ChatGPT text inferenceはOpenAI coreが所有する`() {
     val adapterPath = "core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptTextInference.kt"
     val adapter = source(adapterPath)

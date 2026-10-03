@@ -17,7 +17,6 @@ import kotlin.coroutines.suspendCoroutine
 data class GmailAuthorizedAccount(
   val email: String,
   val displayName: String?,
-  val accessToken: String,
 )
 
 sealed interface GmailAuthorizationOutcome {
@@ -32,16 +31,22 @@ class GmailAuthorizationManager(
   private val client = Identity.getAuthorizationClient(context.applicationContext)
   private val profileClient = GmailAccountProfileClient(httpClient)
 
-  suspend fun requestAccount(): GmailAuthorizationOutcome = request(
-    email = null,
-    selectAccount = true,
-  )
+  suspend fun requestAccount(): GmailAuthorizationOutcome {
+    val result = authorize(email = null, selectAccount = true)
+    return if (result.hasResolution()) {
+      GmailAuthorizationOutcome.RequiresResolution(
+        requireNotNull(result.pendingIntent) { "Google authorization resolution is missing" },
+      )
+    } else {
+      GmailAuthorizationOutcome.Authorized(account(result, fallbackEmail = null))
+    }
+  }
 
-  suspend fun accessToken(email: String): String = when (
-    val outcome = request(email = email, selectAccount = false)
-  ) {
-    is GmailAuthorizationOutcome.Authorized -> outcome.account.accessToken
-    is GmailAuthorizationOutcome.RequiresResolution -> throw MailAuthorizationRequiredException(email)
+  suspend fun accessToken(email: String): String {
+    val result = authorize(email = email, selectAccount = false)
+    if (result.hasResolution()) throw MailAuthorizationRequiredException(email)
+    return requireNotNull(result.accessToken).takeIf(String::isNotBlank)
+      ?: error("Gmail のアクセストークンを取得できませんでした")
   }
 
   suspend fun resultFromIntent(data: Intent): GmailAuthorizedAccount = account(
@@ -49,10 +54,10 @@ class GmailAuthorizationManager(
     fallbackEmail = null,
   )
 
-  private suspend fun request(
+  private suspend fun authorize(
     email: String?,
     selectAccount: Boolean,
-  ): GmailAuthorizationOutcome {
+  ): AuthorizationResult {
     val builder = AuthorizationRequest.builder()
       .setRequestedScopes(listOf(Scope(GMAIL_MODIFY_SCOPE)))
     if (selectAccount) {
@@ -60,17 +65,10 @@ class GmailAuthorizationManager(
     } else if (!email.isNullOrBlank()) {
       builder.setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
     }
-    val result = suspendCoroutine<AuthorizationResult> { continuation ->
+    return suspendCoroutine { continuation ->
       client.authorize(builder.build())
         .addOnSuccessListener(continuation::resume)
         .addOnFailureListener(continuation::resumeWithException)
-    }
-    return if (result.hasResolution()) {
-      GmailAuthorizationOutcome.RequiresResolution(
-        requireNotNull(result.pendingIntent) { "Google authorization resolution is missing" },
-      )
-    } else {
-      GmailAuthorizationOutcome.Authorized(account(result, email))
     }
   }
 
@@ -88,7 +86,6 @@ class GmailAuthorizationManager(
     return GmailAuthorizedAccount(
       email = email,
       displayName = googleAccount?.displayName,
-      accessToken = accessToken,
     )
   }
 

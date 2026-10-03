@@ -7,6 +7,16 @@
 - OAuth credentialやtokenを通常のdatabase backupへ含めない。
 
 <!-- formal-requirement
+id: MAIL-CREDENTIAL-BOUNDARY-001
+models:
+  - spec-models/alloy/mail_credential_boundary.als
+-->
+- Mail認証tokenはplatform authorizationから必要時に取得し、API requestの実行中だけruntime値として利用する。Presentation / domain repository APIへtokenを渡さず、Mail-owned database、SharedPreferences、WorkManager input、backup、logへ複製しない。
+- Mailのdurable account stateはaccount identity、表示metadata、同期checkpoint等に限定し、credential / tokenを含めない。
+- background syncのWorkManager inputはaccount id、初回同期flag、期待page checkpoint等のbounded metadataだけとし、worker実行時にauthorization boundaryからtokenを再取得する。
+<!-- /formal-requirement -->
+
+<!-- formal-requirement
 id: MAIL-INITIAL-SYNC-CHECKPOINT-001
 models:
   - spec-models/quint/mail_initial_sync_checkpoint.qnt
@@ -21,3 +31,4 @@ models:
 ## 形式モデル
 
 - [Quint: `mail_initial_sync_checkpoint.qnt`](../../spec-models/quint/mail_initial_sync_checkpoint.qnt) — 初回同期のdurable page checkpoint、stale work reconciliation、一時失敗からの再開、最終pageでのgeneration完了を検査する。
+- [Alloy: `mail_credential_boundary.als`](../../spec-models/alloy/mail_credential_boundary.als) — 認証credential/tokenをruntime/API requestだけへ限定し、presentation/domain/durable state/Worker input/backup/logへ流さない構造を検査する。
