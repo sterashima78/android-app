@@ -43,44 +43,77 @@ class IncrementalGameTest {
   }
 
   @Test
-  fun sparkProducesEnergyOverTime() {
-    val state = IncrementalGame.newGame().copy(
-      generatorAmounts = listOf(10.0, 0.0, 0.0, 0.0),
+  fun everyGeneratorProducesEnergyDirectly() {
+    val expected = mapOf(
+      IncrementalGeneratorType.SPARK to 1.0,
+      IncrementalGeneratorType.REACTOR to 50.0,
+      IncrementalGeneratorType.STAR_FORGE to 5_000.0,
+      IncrementalGeneratorType.SINGULARITY to 1_000_000.0,
     )
 
-    val next = IncrementalGame.tick(state, elapsedSeconds = 2.0)
+    expected.forEach { (type, production) ->
+      val amounts = MutableList(IncrementalGeneratorType.entries.size) { 0.0 }
+      amounts[type.ordinal] = 1.0
+      val state = IncrementalGame.newGame().copy(generatorAmounts = amounts)
 
-    assertEquals(20.0, next.energy, 0.0001)
-    assertEquals(20.0, next.runEnergy, 0.0001)
+      assertEquals(production, IncrementalGame.generatorProductionPerSecond(state, type), 0.0001)
+      assertEquals(production, IncrementalGame.tick(state, elapsedSeconds = 1.0).energy, 0.0001)
+    }
   }
 
   @Test
-  fun reactorProducesSparksGradually() {
+  fun automaticProductionDoesNotCreateOtherGenerators() {
+    val initial = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(1.0, 1.0, 1.0, 1.0),
+    )
+
+    val next = IncrementalGame.tick(initial, elapsedSeconds = 10.0)
+
+    assertEquals(initial.generatorAmounts, next.generatorAmounts)
+    assertTrue(next.energy > 0.0)
+  }
+
+  @Test
+  fun sparkProductionAlsoContributesToTapReward() {
+    val state = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(100.0, 0.0, 0.0, 0.0),
+    )
+
+    assertEquals(33.0, IncrementalGame.tap(state).gainedEnergy, 0.0001)
+  }
+
+  @Test
+  fun reactorGetsAnExtraMultiplierDuringOverdrive() {
     val state = IncrementalGame.newGame().copy(
       generatorAmounts = listOf(0.0, 1.0, 0.0, 0.0),
+      overdriveRemainingSeconds = 1.0,
     )
 
-    val next = IncrementalGame.tick(state, elapsedSeconds = 1.0)
-
-    assertEquals(0.5, next.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal], 0.0001)
-    assertEquals(0.25, next.energy, 0.0001)
+    assertEquals(1_500.0, IncrementalGame.productionPerSecond(state), 0.0001)
   }
 
   @Test
-  fun cascadeProductionDoesNotDependOnTickSize() {
-    val initial = IncrementalGame.newGame().copy(
-      generatorAmounts = listOf(0.0, 1.0, 1.0, 1.0),
+  fun starForgeHasStrongerPurchaseMilestones() {
+    val state = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(0.0, 0.0, 25.0, 0.0),
+      generatorPurchases = listOf(0, 0, 25, 0),
     )
 
-    val singleTick = IncrementalGame.tick(initial, elapsedSeconds = 1.0)
-    val splitTicks = generateSequence(initial) { state ->
-      IncrementalGame.tick(state, elapsedSeconds = 0.1)
-    }.drop(10).first()
+    assertEquals(3.0, IncrementalGame.milestoneProductionMultiplier(state, IncrementalGeneratorType.STAR_FORGE), 0.0001)
+    assertEquals(375_000.0, IncrementalGame.productionPerSecond(state), 0.0001)
+  }
 
-    singleTick.generatorAmounts.zip(splitTicks.generatorAmounts).forEach { (single, split) ->
-      assertEquals(single, split, 0.000001)
-    }
-    assertEquals(singleTick.energy, splitTicks.energy, 0.000001)
+  @Test
+  fun singularityBenefitsFromOwningOtherGeneratorTypes() {
+    val state = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(1.0, 1.0, 1.0, 1.0),
+    )
+
+    assertEquals(
+      2_744_000.0,
+      IncrementalGame.generatorProductionPerSecond(state, IncrementalGeneratorType.SINGULARITY),
+      0.001,
+    )
   }
 
   @Test
@@ -99,7 +132,7 @@ class IncrementalGameTest {
   }
 
   @Test
-  fun milestoneDoublesProductionInsteadOfMultiplyingByTen() {
+  fun normalMilestoneDoublesProduction() {
     val state = IncrementalGame.newGame().copy(
       generatorAmounts = listOf(25.0, 0.0, 0.0, 0.0),
       generatorPurchases = listOf(25, 0, 0, 0),
@@ -169,6 +202,18 @@ class IncrementalGameTest {
     assertEquals(0, tap.prestigeCores)
     assertEquals(1, IncrementalGame.prestigeUpgradeLevel(tap, IncrementalPrestigeUpgrade.TAP_RESONANCE))
     assertEquals(1.75, IncrementalGame.tapMultiplier(tap), 0.0001)
+  }
+
+  @Test
+  fun specializationUpgradeStrengthensGeneratorTraits() {
+    val state = IncrementalGame.newGame(prestigeCores = 1)
+
+    val upgraded = IncrementalGame.purchasePrestigeUpgrade(
+      state,
+      IncrementalPrestigeUpgrade.SPECIALIZATION_TUNING,
+    )
+
+    assertEquals(1.1, IncrementalGame.specializationMultiplier(upgraded), 0.0001)
   }
 
   @Test

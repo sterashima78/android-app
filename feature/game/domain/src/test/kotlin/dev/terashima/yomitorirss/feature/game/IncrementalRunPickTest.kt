@@ -12,18 +12,32 @@ class IncrementalRunPickTest {
 
     assertTrue(IncrementalGame.isRunPickDue(due))
 
-    val selected = IncrementalGame.selectRunPick(due, IncrementalRunPick.RHYTHM_RELAY)
+    val selected = IncrementalGame.selectRunPick(due, IncrementalRunPick.MANUAL_OVERRIDE)
 
-    assertEquals(listOf(IncrementalRunPick.RHYTHM_RELAY), selected.runPicks)
+    assertEquals(listOf(IncrementalRunPick.MANUAL_OVERRIDE), selected.runPicks)
     assertFalse(IncrementalGame.isRunPickDue(selected))
-    assertFalse(IncrementalGame.availableRunPicks(selected).contains(IncrementalRunPick.RHYTHM_RELAY))
+    assertFalse(IncrementalGame.availableRunPicks(selected).contains(IncrementalRunPick.MANUAL_OVERRIDE))
+  }
+
+  @Test
+  fun unitSpecificPicksUnlockAsTheRunReachesTheirTier() {
+    val sparkTier = IncrementalGame.newGame().copy(runEnergy = 100.0)
+    val reactorTier = sparkTier.copy(runEnergy = 10_000.0)
+    val forgeTier = sparkTier.copy(runEnergy = 2_500_000.0)
+    val singularityTier = sparkTier.copy(runEnergy = 1_200_000_000.0)
+
+    assertTrue(IncrementalRunPick.SPARK_DISCHARGE in IncrementalGame.availableRunPicks(sparkTier))
+    assertFalse(IncrementalRunPick.REACTOR_SURGE in IncrementalGame.availableRunPicks(sparkTier))
+    assertTrue(IncrementalRunPick.REACTOR_SURGE in IncrementalGame.availableRunPicks(reactorTier))
+    assertTrue(IncrementalRunPick.FORGE_COMPRESSION in IncrementalGame.availableRunPicks(forgeTier))
+    assertTrue(IncrementalRunPick.SINGULARITY_COLLAPSE in IncrementalGame.availableRunPicks(singularityTier))
   }
 
   @Test
   fun picksResetOnPrestige() {
     val state = IncrementalGame.newGame().copy(
       runEnergy = IncrementalGame.PRESTIGE_THRESHOLD,
-      runPicks = listOf(IncrementalRunPick.RHYTHM_RELAY, IncrementalRunPick.LOW_PRESSURE),
+      runPicks = listOf(IncrementalRunPick.MANUAL_OVERRIDE, IncrementalRunPick.LOW_PRESSURE),
     )
 
     val next = IncrementalGame.prestige(state)
@@ -33,13 +47,14 @@ class IncrementalRunPickTest {
   }
 
   @Test
-  fun rhythmRelayBoostsEveryTenthTap() {
+  fun sparkDischargeAddsSeveralSecondsOfSparkProductionEveryTenthTap() {
     val state = IncrementalGame.newGame().copy(
-      runPicks = listOf(IncrementalRunPick.RHYTHM_RELAY),
+      generatorAmounts = listOf(100.0, 0.0, 0.0, 0.0),
+      runPicks = listOf(IncrementalRunPick.SPARK_DISCHARGE),
       taps = 9,
     )
 
-    assertEquals(8.0, IncrementalGame.tap(state).gainedEnergy, 0.0001)
+    assertEquals(333.0, IncrementalGame.tap(state).gainedEnergy, 0.0001)
   }
 
   @Test
@@ -50,7 +65,7 @@ class IncrementalRunPickTest {
     )
 
     assertEquals(60.0, IncrementalGame.productionPerSecond(state), 0.0001)
-    assertEquals(19.2, IncrementalGame.tap(state).gainedEnergy, 0.0001)
+    assertEquals(79.2, IncrementalGame.tap(state).gainedEnergy, 0.0001)
   }
 
   @Test
@@ -66,16 +81,28 @@ class IncrementalRunPickTest {
   }
 
   @Test
-  fun cascadeResonanceSpeedsCascadeButReducesEnergyOutput() {
-    val state = IncrementalGame.newGame().copy(
+  fun reactorSurgeTradesNormalOutputForExtremeOverdriveOutput() {
+    val normal = IncrementalGame.newGame().copy(
       generatorAmounts = listOf(0.0, 1.0, 0.0, 0.0),
-      runPicks = listOf(IncrementalRunPick.CASCADE_RESONANCE),
+      runPicks = listOf(IncrementalRunPick.REACTOR_SURGE),
     )
+    val overdrive = normal.copy(overdriveRemainingSeconds = 1.0)
 
-    val next = IncrementalGame.tick(state, elapsedSeconds = 1.0)
+    assertEquals(35.0, IncrementalGame.productionPerSecond(normal), 0.0001)
+    assertEquals(4_200.0, IncrementalGame.productionPerSecond(overdrive), 0.0001)
+  }
 
-    assertEquals(0.875, next.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal], 0.0001)
-    assertEquals(0.328125, next.energy, 0.000001)
+  @Test
+  fun forgeCompressionMakesStarForgeMilestonesMoreFrequent() {
+    val normal = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(0.0, 0.0, 15.0, 0.0),
+      generatorPurchases = listOf(0, 0, 15, 0),
+    )
+    val compressed = normal.copy(runPicks = listOf(IncrementalRunPick.FORGE_COMPRESSION))
+
+    assertEquals(75_000.0, IncrementalGame.productionPerSecond(normal), 0.0001)
+    assertEquals(15, IncrementalGame.milestoneInterval(compressed, IncrementalGeneratorType.STAR_FORGE))
+    assertEquals(225_000.0, IncrementalGame.productionPerSecond(compressed), 0.0001)
   }
 
   @Test
@@ -104,4 +131,22 @@ class IncrementalRunPickTest {
     assertEquals(1.15, result.state.overdriveRemainingSeconds, 0.0001)
   }
 
+  @Test
+  fun singularityCollapseConcentratesProductionIntoSingularities() {
+    val state = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(1.0, 0.0, 0.0, 1.0),
+      runPicks = listOf(IncrementalRunPick.SINGULARITY_COLLAPSE),
+    )
+
+    assertEquals(
+      7_000_000.0,
+      IncrementalGame.generatorProductionPerSecond(state, IncrementalGeneratorType.SINGULARITY),
+      0.001,
+    )
+    assertEquals(
+      0.5,
+      IncrementalGame.generatorProductionPerSecond(state, IncrementalGeneratorType.SPARK),
+      0.0001,
+    )
+  }
 }

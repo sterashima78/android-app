@@ -343,15 +343,22 @@ private fun GeneratorCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
-        Text(
-          formatIncrementalNumber(amount),
-          style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.Bold,
-        )
+        Column(horizontalAlignment = Alignment.End) {
+          Text(
+            formatIncrementalNumber(amount),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+          )
+          Text(
+            "${formatIncrementalNumber(IncrementalGame.generatorProductionPerSecond(game, type))} / 秒",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
 
       Text(
-        "購入数 $purchases ・ ${IncrementalGame.milestoneInterval(game)}購入ごとに生産 ×${IncrementalGame.MILESTONE_MULTIPLIER.toInt()}",
+        "購入数 $purchases ・ ${IncrementalGame.milestoneInterval(game, type)}購入ごとに生産 ×${formatIncrementalNumber(IncrementalGame.milestoneProductionMultiplier(game, type))}",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -482,21 +489,25 @@ private fun PrestigeUpgradeCard(
 }
 
 private fun runPickTitle(pick: IncrementalRunPick): String = when (pick) {
-  IncrementalRunPick.RHYTHM_RELAY -> "共鳴拍"
+  IncrementalRunPick.SPARK_DISCHARGE -> "周期放電"
   IncrementalRunPick.MANUAL_OVERRIDE -> "手動制御"
   IncrementalRunPick.LOW_PRESSURE -> "低圧運転"
-  IncrementalRunPick.CASCADE_RESONANCE -> "連鎖共振"
+  IncrementalRunPick.REACTOR_SURGE -> "炉心暴走"
+  IncrementalRunPick.FORGE_COMPRESSION -> "圧縮鍛造"
   IncrementalRunPick.OVERCLOCK -> "過負荷"
   IncrementalRunPick.FEEDBACK_LOOP -> "帰還回路"
+  IncrementalRunPick.SINGULARITY_COLLAPSE -> "事象収束"
 }
 
 private fun runPickDescription(pick: IncrementalRunPick): String = when (pick) {
-  IncrementalRunPick.RHYTHM_RELAY -> "10回ごとのタップ報酬が ×8"
+  IncrementalRunPick.SPARK_DISCHARGE -> "10回ごとのタップでスパーク3秒分の生産を追加獲得"
   IncrementalRunPick.MANUAL_OVERRIDE -> "自動生産 ×0.6、タップ報酬 ×4"
   IncrementalRunPick.LOW_PRESSURE -> "所持エネルギーが周回累計の20%以下なら自動生産 ×3"
-  IncrementalRunPick.CASCADE_RESONANCE -> "上位設備からの生成 ×1.75、エネルギー生産 ×0.75"
+  IncrementalRunPick.REACTOR_SURGE -> "リアクター通常出力 ×0.7、暴走中はさらに ×4"
+  IncrementalRunPick.FORGE_COMPRESSION -> "恒星炉の生産マイルストーンを15購入ごとに短縮"
   IncrementalRunPick.OVERCLOCK -> "暴走中の自動生産 ×35、暴走時間は55%"
   IncrementalRunPick.FEEDBACK_LOOP -> "暴走中のタップ報酬 ×0.5、タップごとに暴走時間 +0.15秒"
+  IncrementalRunPick.SINGULARITY_COLLAPSE -> "特異点の生産 ×5、その他の設備の生産 ×0.5"
 }
 
 private fun generatorTitle(type: IncrementalGeneratorType): String = when (type) {
@@ -507,15 +518,15 @@ private fun generatorTitle(type: IncrementalGeneratorType): String = when (type)
 }
 
 private fun generatorDescription(type: IncrementalGeneratorType): String = when (type) {
-  IncrementalGeneratorType.SPARK -> "エネルギーを直接生産"
-  IncrementalGeneratorType.REACTOR -> "毎秒スパークを生成"
-  IncrementalGeneratorType.STAR_FORGE -> "毎秒リアクターを生成"
-  IncrementalGeneratorType.SINGULARITY -> "毎秒恒星炉を生成"
+  IncrementalGeneratorType.SPARK -> "直接生産。出力の一部がタップ報酬にも加わる"
+  IncrementalGeneratorType.REACTOR -> "直接生産。暴走中は固有の追加倍率を得る"
+  IncrementalGeneratorType.STAR_FORGE -> "直接生産。購入マイルストーンの倍率が高い"
+  IncrementalGeneratorType.SINGULARITY -> "直接生産。他種類の設備を持つほど出力が増える"
 }
 
 private fun prestigeUpgradeTitle(upgrade: IncrementalPrestigeUpgrade): String = when (upgrade) {
   IncrementalPrestigeUpgrade.OUTPUT_AMPLIFIER -> "出力増幅"
-  IncrementalPrestigeUpgrade.CASCADE_TUNING -> "連鎖調律"
+  IncrementalPrestigeUpgrade.SPECIALIZATION_TUNING -> "設備調律"
   IncrementalPrestigeUpgrade.TAP_RESONANCE -> "タップ共鳴"
   IncrementalPrestigeUpgrade.OVERDRIVE_CAPACITOR -> "暴走コンデンサ"
   IncrementalPrestigeUpgrade.STARTER_SPARK -> "初期点火"
@@ -528,8 +539,8 @@ private fun prestigeUpgradeDescription(
 ): String = when (upgrade) {
   IncrementalPrestigeUpgrade.OUTPUT_AMPLIFIER ->
     "エネルギー生産 +35% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.outputMultiplier(game))}"
-  IncrementalPrestigeUpgrade.CASCADE_TUNING ->
-    "上位設備から下位設備への生成 +30% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.cascadeMultiplier(game))}"
+  IncrementalPrestigeUpgrade.SPECIALIZATION_TUNING ->
+    "設備固有効果の強度 +10% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.specializationMultiplier(game))}"
   IncrementalPrestigeUpgrade.TAP_RESONANCE ->
     "タップ報酬 +75% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.tapMultiplier(game))}"
   IncrementalPrestigeUpgrade.OVERDRIVE_CAPACITOR ->
@@ -537,7 +548,7 @@ private fun prestigeUpgradeDescription(
   IncrementalPrestigeUpgrade.STARTER_SPARK ->
     "新しい周回をスパーク1基から開始する"
   IncrementalPrestigeUpgrade.COMPACT_MILESTONES ->
-    "設備の生産倍化を25購入ごとから20購入ごとへ短縮する"
+    "設備の生産マイルストーンを25購入ごとから20購入ごとへ短縮する"
 }
 
 private fun purchaseAmountLabel(amount: IncrementalPurchaseAmount): String = when (amount) {

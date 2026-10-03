@@ -173,7 +173,7 @@ private fun GameListScreen(
   ) {
     Text("一人用ゲーム", style = MaterialTheme.typography.titleLarge)
     Text("端末だけで遊べるゲームをまとめています。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    GameTextCard("⚡", "暴走炉", "周回ごとの選択と多段生産でインフレを組み立てるゲーム", onOpenIncremental)
+    GameTextCard("⚡", "暴走炉", "個性の異なる設備と周回ごとの選択でインフレを組み立てるゲーム", onOpenIncremental)
     Card(onClick = onOpenSudoku) {
       Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
