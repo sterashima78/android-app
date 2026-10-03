@@ -5,7 +5,13 @@
 - backup対象のSharedPreferencesはallowlist方式とし、将来追加される値を暗黙に外部backupへ含めない。
 - Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
 - AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
+<!-- formal-requirement
+id: RSS-RECOMMENDATION-CLOUD-EGRESS-001
+models:
+  - spec-models/alloy/rss_recommendation_cloud_egress.als
+-->
 - RSS推薦は既定で端末内AIを利用する。利用者がクラウドAIを明示選択した場合だけ、RSS推薦に必要な除外条件・学習条件・記事タイトル・除外参考タイトルと直前評価をクラウド推論先へ送信する。記事URL、feed本文、リンク先本文、保存済み要約はRSS推薦の入力へ追加しない。
+<!-- /formal-requirement -->
 - custom Video Provider codeには他Contextのcredentialやdatabase accessを公開せず、外部通信はboundedなHTTPS request capabilityに限定する。function code自体をcredential保存場所として扱わない。
 <!-- formal-requirement
 id: CRASH-DIAGNOSTIC-PRIVACY-001
@@ -22,3 +28,4 @@ models:
 ## 形式モデル
 
 - [Alloy: `crash_diagnostic_privacy.als`](../../spec-models/alloy/crash_diagnostic_privacy.als) — 共有可能なcrash / process-exit reportで、機密token classをredactし、高レベル診断値だけをraw表現のまま保持できる構造を検査する。
+- [Alloy: `rss_recommendation_cloud_egress.als`](../../spec-models/alloy/rss_recommendation_cloud_egress.als) — 推薦の既定local実行、cloud選択時の送信allowlist、URL・本文・保存済み要約のcloud非送信を検査する。
