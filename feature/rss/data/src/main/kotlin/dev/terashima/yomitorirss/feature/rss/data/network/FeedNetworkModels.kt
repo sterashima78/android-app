@@ -7,6 +7,7 @@ internal data class ParsedArticle(
   val title: String,
   val publishedAt: String,
   val feedContent: String = "",
+  val categories: List<String> = emptyList(),
 )
 
 internal data class ParsedFeed(
