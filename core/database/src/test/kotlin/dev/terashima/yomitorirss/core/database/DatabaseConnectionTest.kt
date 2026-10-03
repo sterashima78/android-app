@@ -144,6 +144,43 @@ class DatabaseConnectionTest {
   }
 
   @Test
+  fun `localTransactionはlocal変更だけなら通知しない`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.localTransaction {
+      insertOrThrow("items", null, values("local-only"))
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(0L, notifier.version.value)
+    assertEquals(1, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
+  fun `local変更後のdurable no-opも外側scopeをdurableへ昇格する`() {
+    val notifier = PersistenceChangeNotifier()
+    val database = DatabaseConnection(helper, notifier)
+
+    database.localTransaction {
+      insertOrThrow("items", null, values("local"))
+      database.write {
+        update("items", values("missing"), "id = ?", arrayOf("999"))
+      }
+      assertEquals(0L, notifier.version.value)
+    }
+
+    assertEquals(1L, notifier.version.value)
+    assertEquals(1, database.readable.rawQuery("SELECT COUNT(*) FROM items", null).use { cursor ->
+      cursor.moveToFirst()
+      cursor.getInt(0)
+    })
+  }
+
+  @Test
   fun `localTransaction内のdurable writeは外側commit後に通知する`() {
     val notifier = PersistenceChangeNotifier()
     val database = DatabaseConnection(helper, notifier)
