@@ -533,7 +533,7 @@ private class RemoteTextInferenceSession(
     val names = data.getStringArrayList(KEY_TOOL_ARGUMENT_NAMES).orEmpty()
     val values = data.getStringArrayList(KEY_TOOL_ARGUMENT_VALUES).orEmpty()
     val tool = toolName?.let { activeTools.get()[it] }
-    val result = if (names.size != values.size || tool == null) {
+    val result: Result<String> = if (names.size != values.size || tool == null) {
       Result.failure(IllegalStateException("tool call が不正です"))
     } else {
       runCatching { tool.execute(names.zip(values).toMap()) }
