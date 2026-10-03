@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-27
 - Refines: [ADR-0079](0079-process-wide-local-ai-inference-sessions.md), [ADR-0159](0159-isolate-smb-vision-inference-process.md), [ADR-0161](0161-android17-main-process-memory-diagnostics.md), [ADR-0165](0165-provider-neutral-text-inference-contract.md), [ADR-0171](0171-summary-local-chatgpt-routing-and-web-fetch.md), [ADR-0175](0175-knowledge-local-chatgpt-routing.md)
+- Amended by: [ADR-0277](0277-isolate-local-chat-inference-process.md)
 
 ## Context
 
