@@ -145,11 +145,11 @@ run RepresentativeCrossOriginDedup {
   #Session = 4
   #DedupResult.input = 3
   #DedupResult.kept = 2
-  some disj duplicate, representative, separate: DedupResult.input | {
-    duplicate.origin != representative.origin
-    representative in duplicate.strongOverlap
-    duplicate.representative = representative
-    representative in DedupResult.kept
+  some disj duplicate, keptSession, separate: DedupResult.input | {
+    duplicate.origin != keptSession.origin
+    keptSession in duplicate.strongOverlap
+    duplicate.representative = keptSession
+    keptSession in DedupResult.kept
     separate in DedupResult.kept
   }
 } for 6 expect 1
