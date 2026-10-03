@@ -50,6 +50,58 @@ class FeedClientTest {
   }
 
   @Test
+  fun `RSS 2_0 の複数カテゴリを記事へ保持する`() {
+    val feed = client.parseFeed(
+      """
+      <rss version="2.0">
+        <channel>
+          <title>Example</title>
+          <link>https://example.com/</link>
+          <item>
+            <title>Article</title>
+            <link>https://example.com/articles/a</link>
+            <description>Body</description>
+            <category>World</category>
+            <category>World/Diplomacy</category>
+            <category>Diplomacy</category>
+          </item>
+        </channel>
+      </rss>
+      """.trimIndent(),
+      "https://example.com/feed.xml",
+    )
+
+    assertEquals(
+      listOf("World", "World/Diplomacy", "Diplomacy"),
+      feed.articles.single().categories,
+    )
+  }
+
+  @Test
+  fun `Atom category の term を記事へ保持する`() {
+    val feed = client.parseFeed(
+      """
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>Example</title>
+        <link rel="alternate" href="/" />
+        <entry>
+          <id>tag:example.com,2026:a</id>
+          <title>Article</title>
+          <link href="/articles/a" />
+          <updated>2026-08-06T09:00:00+09:00</updated>
+          <summary>Body</summary>
+          <category term="Technology" />
+          <category term="AI" label="Artificial Intelligence" />
+        </entry>
+      </feed>
+      """.trimIndent(),
+      "https://example.com/feed.xml",
+    )
+
+    assertEquals(listOf("Technology", "AI"), feed.articles.single().categories)
+  }
+
+  @Test
   fun `更新時に ETag と Last-Modified を条件付きリクエストへ渡す`() = runBlocking {
     val httpClient = RecordingHttpClient(
       HttpResponse(
