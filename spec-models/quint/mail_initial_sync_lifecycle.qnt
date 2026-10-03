@@ -45,7 +45,7 @@ module mail_initial_sync_lifecycle {
   }
 
   action startInitialSync = all {
-    state == IDLE or state == ERROR,
+    state == IDLE,
     state' = SYNCING,
     checkpoint' = FIRST,
     workerExpected' = FIRST,
