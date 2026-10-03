@@ -61,6 +61,24 @@ class AppCompositionCleanupSourceTest {
     assertTrue("summary workers must receive text inference", "textInferenceProvider" in workerFactory)
   }
 
+
+  @Test
+  fun `AI Chatのgeneration engineはmain processで直接実行しない`() {
+    val aiCore = source("$compositionSourceRoot/composition/ai/AppAiCoreRuntimeDependencies.kt")
+    val crossFeature = source("$compositionSourceRoot/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt")
+    val chat = source(
+      "feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt",
+    )
+
+    assertTrue(
+      "app AI core must compose process-isolated conversation inference",
+      "ProcessIsolatedLocalAiConversationInference(application, modelManager)" in aiCore,
+    )
+    assertTrue("cross-feature composition must inject the conversation capability", "conversationInference" in crossFeature)
+    assertTrue("Chat must depend on LocalConversationInference", "LocalConversationInference" in chat)
+    assertFalse("Chat must not invoke LocalModelManager directly", "LocalModelManager" in chat)
+  }
+
   @Test
   fun `AppRouteDependenciesはcontentとsupporting compositionの薄いfaçadeにする`() {
     val facade = source("$compositionSourceRoot/AppRouteDependencies.kt")
