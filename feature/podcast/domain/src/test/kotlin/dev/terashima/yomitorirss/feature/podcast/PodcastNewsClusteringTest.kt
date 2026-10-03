@@ -52,6 +52,23 @@ class PodcastNewsClusteringTest {
   }
 
   @Test
+  fun `AI補完カテゴリも全ニュースの出現数へ含めて代表カテゴリを選ぶ`() {
+    val news = listOf(
+      listOf(feedEntry("a1", listOf("A", "B"))),
+      listOf(feedEntry("a2", listOf("B"))),
+      listOf(feedEntry("a3")),
+      listOf(feedEntry("a4")),
+    )
+
+    val categories = selectPodcastFeedCategories(
+      news = news,
+      supplementalCategories = mapOf(2 to "A", 3 to "A"),
+    )
+
+    assertEquals(listOf("B", "B", "A", "A"), categories)
+  }
+
+  @Test
   fun `同じニュース内の複数記事はカテゴリ出現数を1ニュースとして数える`() {
     val news = listOf(
       listOf(
