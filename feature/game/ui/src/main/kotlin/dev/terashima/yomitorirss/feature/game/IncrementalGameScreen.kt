@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -48,6 +49,7 @@ internal fun IncrementalGameScreen(
   onPurchase: (IncrementalGeneratorType) -> Unit,
   onPrestige: () -> Unit,
   onPrestigeUpgrade: (IncrementalPrestigeUpgrade) -> Unit,
+  onRunPick: (IncrementalRunPick) -> Unit,
 ) {
   LaunchedEffect(Unit) {
     var lastNanos = System.nanoTime()
@@ -65,6 +67,37 @@ internal fun IncrementalGameScreen(
   val prestigeReward = IncrementalGame.prestigeReward(game)
   val isOverdrive = game.overdriveRemainingSeconds > 0.0
 
+  if (state.pendingRunPicks.isNotEmpty()) {
+    AlertDialog(
+      onDismissRequest = {},
+      title = { Text("周回効果を選択") },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            "この周回だけ有効です。Prestigeすると失われます。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          state.pendingRunPicks.forEach { pick ->
+            Button(
+              onClick = { onRunPick(pick) },
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+              ) {
+                Text(runPickTitle(pick), fontWeight = FontWeight.Bold)
+                Text(runPickDescription(pick), style = MaterialTheme.typography.bodySmall)
+              }
+            }
+          }
+        }
+      },
+      confirmButton = {},
+    )
+  }
+
   Column(
     modifier = modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 8.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -79,7 +112,7 @@ internal fun IncrementalGameScreen(
       Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("暴走炉", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-          "コア ${game.prestigeCores} ・ 恒久強化 ${IncrementalGame.totalPrestigeUpgradeLevels(game)}",
+          "コア ${game.prestigeCores} ・ 恒久強化 ${IncrementalGame.totalPrestigeUpgradeLevels(game)} ・ 周回効果 ${game.runPicks.size}",
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -129,7 +162,7 @@ internal fun IncrementalGameScreen(
           )
           Text(
             if (isOverdrive) {
-              "自動生産 ×${formatIncrementalNumber(IncrementalGame.OVERDRIVE_MULTIPLIER)}"
+              "自動生産 ×${formatIncrementalNumber(IncrementalGame.overdriveProductionMultiplier(game))}"
             } else {
               "25タップで暴走"
             },
@@ -169,7 +202,7 @@ internal fun IncrementalGameScreen(
       LinearProgressIndicator(
         progress = {
           if (isOverdrive) {
-            (game.overdriveRemainingSeconds / IncrementalGame.overdriveDurationSeconds(game)).toFloat()
+            (game.overdriveRemainingSeconds / IncrementalGame.overdriveDurationSeconds(game)).toFloat().coerceIn(0f, 1f)
           } else {
             (game.overdriveCharge / IncrementalGame.OVERDRIVE_CHARGE_MAX).toFloat()
           }
@@ -188,6 +221,12 @@ internal fun IncrementalGameScreen(
       verticalArrangement = Arrangement.spacedBy(8.dp),
       contentPadding = PaddingValues(bottom = 12.dp),
     ) {
+      if (game.runPicks.isNotEmpty()) {
+        item {
+          RunPickSummary(game.runPicks)
+        }
+      }
+
       items(IncrementalGeneratorType.entries) { type ->
         GeneratorCard(
           game = game,
@@ -220,6 +259,28 @@ internal fun IncrementalGameScreen(
           upgrade = upgrade,
           onPurchase = { onPrestigeUpgrade(upgrade) },
         )
+      }
+    }
+  }
+}
+
+@Composable
+private fun RunPickSummary(picks: List<IncrementalRunPick>) {
+  Card {
+    Column(
+      modifier = Modifier.fillMaxWidth().padding(12.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      Text("この周回の効果", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+      picks.forEach { pick ->
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+          Text(runPickTitle(pick), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+          Text(
+            runPickDescription(pick),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
     }
   }
@@ -418,6 +479,24 @@ private fun PrestigeUpgradeCard(
       }
     }
   }
+}
+
+private fun runPickTitle(pick: IncrementalRunPick): String = when (pick) {
+  IncrementalRunPick.RHYTHM_RELAY -> "共鳴拍"
+  IncrementalRunPick.MANUAL_OVERRIDE -> "手動制御"
+  IncrementalRunPick.LOW_PRESSURE -> "低圧運転"
+  IncrementalRunPick.CASCADE_RESONANCE -> "連鎖共振"
+  IncrementalRunPick.OVERCLOCK -> "過負荷"
+  IncrementalRunPick.FEEDBACK_LOOP -> "帰還回路"
+}
+
+private fun runPickDescription(pick: IncrementalRunPick): String = when (pick) {
+  IncrementalRunPick.RHYTHM_RELAY -> "10回ごとのタップ報酬が ×8"
+  IncrementalRunPick.MANUAL_OVERRIDE -> "自動生産 ×0.6、タップ報酬 ×4"
+  IncrementalRunPick.LOW_PRESSURE -> "所持エネルギーが周回累計の20%以下なら自動生産 ×3"
+  IncrementalRunPick.CASCADE_RESONANCE -> "上位設備からの生成 ×1.75、エネルギー生産 ×0.75"
+  IncrementalRunPick.OVERCLOCK -> "暴走中の自動生産 ×35、暴走時間は55%"
+  IncrementalRunPick.FEEDBACK_LOOP -> "暴走中のタップ報酬 ×0.5、タップごとに暴走時間 +0.15秒"
 }
 
 private fun generatorTitle(type: IncrementalGeneratorType): String = when (type) {
