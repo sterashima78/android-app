@@ -142,6 +142,46 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   @Test
+  fun `Mail初回同期はdurable checkpointをremote page取得前に照合する`() {
+    val repository = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
+    )
+    val worker = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt",
+    )
+    val schema = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailDatabaseSchema.kt",
+    )
+    val syncBlock = repository
+      .substringAfter("override suspend fun syncInitialPage(")
+      .substringBefore("override fun markInitialSyncWaitingForNetwork")
+    val staleCheck = syncBlock.indexOf(
+      "if (state.pageToken != expectedPageToken) return MailInitialSyncStep.Stale",
+    )
+    val markRunning = syncBlock.indexOf("markInitialSyncRunning(accountId)")
+    val fetchPage = syncBlock.indexOf("api.listThreadPage(")
+    val persistNext = syncBlock.indexOf(
+      "updateInitialSyncCheckpoint(accountId, pageToken = nextPageToken, updatePageToken = true)",
+    )
+    val returnContinue = syncBlock.indexOf("return MailInitialSyncStep.Continue(nextPageToken)")
+
+    assertTrue("initial sync must reject stale work", staleCheck >= 0)
+    assertTrue("stale check must happen before state mutation", staleCheck < markRunning)
+    assertTrue("stale check must happen before remote page fetch", staleCheck < fetchPage)
+    assertTrue("next page checkpoint must be persisted", persistNext >= 0)
+    assertTrue("next checkpoint must be durable before continuation is returned", persistNext < returnContinue)
+    assertTrue(
+      "stale initial-sync work must reconcile from durable repository state",
+      "MailInitialSyncStep.Stale -> {" in worker &&
+        "repository.sync(accountId)" in worker,
+    )
+    assertFalse(
+      "mail schema must not persist access tokens",
+      "access_token" in schema.lowercase(),
+    )
+  }
+
+  @Test
   fun `provider neutral ChatGPT text inferenceはOpenAI coreが所有する`() {
     val adapterPath = "core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptTextInference.kt"
     val adapter = source(adapterPath)
