@@ -61,8 +61,8 @@ fact SnapshotReplacement {
     existing.date not in importedDates implies
       one final: FinalRow | final.source = existing
 
-  all source: SourceRow |
-    lone final: FinalRow | final.source = source
+  all sourceRow: SourceRow |
+    lone final: FinalRow | final.source = sourceRow
 }
 
 fact NonnegativeReadModels {
