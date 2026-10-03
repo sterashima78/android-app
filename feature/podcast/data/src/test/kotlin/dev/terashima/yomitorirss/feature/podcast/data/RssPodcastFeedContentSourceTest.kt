@@ -15,8 +15,18 @@ class RssPodcastFeedContentSourceTest {
   fun `正規化したタイトルが一致する記事は重複を除外する`() = runSuspend {
     val reader = FakeReader(
       listOf(
-        entry(identityKey = "first", feedId = "source-1", title = "AI News  Update"),
-        entry(identityKey = "duplicate", feedId = "source-2", title = "ＡＩ Ｎｅｗｓ Update "),
+        entry(
+          identityKey = "first",
+          feedId = "source-1",
+          title = "AI News  Update",
+          categories = listOf("World", "Technology"),
+        ),
+        entry(
+          identityKey = "duplicate",
+          feedId = "source-2",
+          title = "ＡＩ Ｎｅｗｓ Update ",
+          categories = listOf("World/AI", "AI"),
+        ),
         entry(identityKey = "other", feedId = "source-2", title = "Different news"),
       ),
     )
@@ -31,6 +41,10 @@ class RssPodcastFeedContentSourceTest {
     )
 
     assertEquals(listOf("source-1:first", "source-2:other"), result.map { it.articleId })
+    assertEquals(
+      listOf("World", "Technology", "World/AI", "AI"),
+      result.first().categories,
+    )
   }
 
   @Test
