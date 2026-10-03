@@ -165,6 +165,7 @@ models:
 ### 形式モデル
 
 - [Quint: `podcast_episode_lifecycle.qnt`](../../spec-models/quint/podcast_episode_lifecycle.qnt) — 生成待ち・生成中・再生可能・失敗・アーカイブ・削除の状態遷移、削除可能状態、削除後も消費済みidentityを保持する安全条件を検査する。
+- [Quint: `podcast_schedule_chain.qnt`](../../spec-models/quint/podcast_schedule_chain.qnt) — 番組ごとの定刻one-shot chain、設定変更・復元、生成結果からの次回予約、既存生成との競合retryを検査する。
 - [Quint: `podcast_chapter_checkpoint.qnt`](../../spec-models/quint/podcast_chapter_checkpoint.qnt) — chapter checkpointの中断復旧、READY再利用、クラウドretryの上限と失敗確定条件を検査する。
 - [Alloy: `podcast_entry_eligibility.als`](../../spec-models/alloy/podcast_entry_eligibility.als) — 番組単位の消費済み・除外済みentryが次回候補へ再投入されない関係制約を検査する。
 - [Alloy: `podcast_exclusion_partition.als`](../../spec-models/alloy/podcast_exclusion_partition.als) — 除外判定のincluded / excluded完全partitionと、判定失敗時の全件include fallbackを検査する。
