@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.feature.game
 
 import kotlin.math.floor
-import kotlin.math.log
+import kotlin.math.ln
 import kotlin.math.log10
 import kotlin.math.min
 import kotlin.math.pow
@@ -263,7 +263,7 @@ object IncrementalGame {
     val inside = 1.0 + state.energy * (type.costGrowth - 1.0) / firstCost
     if (!inside.isFinite()) return Int.MAX_VALUE
 
-    return floor(log(inside) / log(type.costGrowth))
+    return floor(ln(inside) / ln(type.costGrowth))
       .toLong()
       .coerceIn(1L, Int.MAX_VALUE.toLong())
       .toInt()
