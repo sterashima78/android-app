@@ -12,7 +12,6 @@ interface MailRepository {
   suspend fun connectAccount(
     email: String,
     displayName: String?,
-    accessToken: String,
   ): MailAccount
 
   suspend fun removeAccount(accountId: String)
