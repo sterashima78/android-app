@@ -126,7 +126,6 @@ internal class AppSupportingRuntimeDependencies(
             MailAuthorizedAccount(
               email = outcome.account.email,
               displayName = outcome.account.displayName,
-              accessToken = outcome.account.accessToken,
             ),
           )
           is GmailAuthorizationOutcome.RequiresResolution ->
@@ -138,7 +137,6 @@ internal class AppSupportingRuntimeDependencies(
           MailAuthorizedAccount(
             email = account.email,
             displayName = account.displayName,
-            accessToken = account.accessToken,
           )
         }
       },
