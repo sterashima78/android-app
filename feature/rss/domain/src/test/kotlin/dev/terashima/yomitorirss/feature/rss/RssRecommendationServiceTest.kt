@@ -10,6 +10,14 @@ import org.junit.Test
 
 class RssRecommendationServiceTest {
   @Test
+  fun `推薦の既定実行先はlocalである`() {
+    assertEquals(
+      RssRecommendationExecutionProvider.LOCAL,
+      RssRecommendationPolicy().executionProvider,
+    )
+  }
+
+  @Test
   fun `除外条件がなければ記事単位評価を実行しない`() = runBlocking {
     val repository = FakeRecommendationRepository()
     val engine = FakeRecommendationEngine()
