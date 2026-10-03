@@ -35,6 +35,7 @@ internal enum class GameScreen {
   NONOGRAM,
   MINESWEEPER,
   SPIDER,
+  INCREMENTAL,
 }
 
 enum class GameOrientationPreference {
@@ -54,6 +55,7 @@ fun GameRoute(
   nonogramViewModel: NonogramViewModel = viewModel(),
   minesweeperViewModel: MinesweeperViewModel = viewModel(),
   spiderViewModel: SpiderViewModel = viewModel(),
+  incrementalGameViewModel: IncrementalGameViewModel = viewModel(),
   onOrientationPreferenceChange: (GameOrientationPreference) -> Unit = {},
   onChromePreferenceChange: (GameChromePreference) -> Unit = {},
 ) {
@@ -81,6 +83,7 @@ fun GameRoute(
         context.startActivity(Intent(context, GodotKlondikeActivity::class.java))
       },
       onOpenSpider = { screen = GameScreen.SPIDER.name },
+      onOpenIncremental = { screen = GameScreen.INCREMENTAL.name },
     )
 
     GameScreen.GAME_2048 -> {
@@ -124,6 +127,20 @@ fun GameRoute(
       viewModel = spiderViewModel,
       onBack = { screen = GameScreen.LIST.name },
     )
+
+    GameScreen.INCREMENTAL -> {
+      val state by incrementalGameViewModel.state.collectAsState()
+      IncrementalGameScreen(
+        modifier = modifier,
+        state = state,
+        onBack = { screen = GameScreen.LIST.name },
+        onTick = incrementalGameViewModel::tick,
+        onTap = incrementalGameViewModel::tap,
+        onPurchaseAmountChange = incrementalGameViewModel::setPurchaseAmount,
+        onPurchase = incrementalGameViewModel::purchase,
+        onPrestige = incrementalGameViewModel::prestige,
+      )
+    }
   }
 }
 
@@ -146,6 +163,7 @@ private fun GameListScreen(
   onOpenMinesweeper: () -> Unit,
   onOpenKlondike: () -> Unit,
   onOpenSpider: () -> Unit,
+  onOpenIncremental: () -> Unit,
 ) {
   Column(
     modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -153,6 +171,7 @@ private fun GameListScreen(
   ) {
     Text("一人用ゲーム", style = MaterialTheme.typography.titleLarge)
     Text("端末だけで遊べるゲームをまとめています。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    GameTextCard("⚡", "暴走炉", "タップと多段自動生産で指数的にインフレするゲーム", onOpenIncremental)
     Card(onClick = onOpenSudoku) {
       Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
