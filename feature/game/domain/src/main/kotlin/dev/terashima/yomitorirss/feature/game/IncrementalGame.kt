@@ -526,8 +526,7 @@ object IncrementalGame {
     IncrementalRunPick.MANUAL_OVERRIDE,
     IncrementalRunPick.LOW_PRESSURE,
     IncrementalRunPick.OVERCLOCK,
-    IncrementalRunPick.FEEDBACK_LOOP,
-    -> true
+    IncrementalRunPick.FEEDBACK_LOOP -> true
   }
 
   private fun quantityFor(
