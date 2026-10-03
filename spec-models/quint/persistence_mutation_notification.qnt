@@ -4,6 +4,7 @@
 // Covers:
 // - PERSISTENCE-MUTATION-NOTIFICATION-001@sha256:a8df1efce71a7ddf7afb49dee24f01ab419f30d3ac6b8fa572a01e2e38c9a4ce -> beginDurable
 // - PERSISTENCE-MUTATION-NOTIFICATION-001@sha256:a8df1efce71a7ddf7afb49dee24f01ab419f30d3ac6b8fa572a01e2e38c9a4ce -> beginLocal
+// - PERSISTENCE-MUTATION-NOTIFICATION-001@sha256:a8df1efce71a7ddf7afb49dee24f01ab419f30d3ac6b8fa572a01e2e38c9a4ce -> localChange
 // - PERSISTENCE-MUTATION-NOTIFICATION-001@sha256:a8df1efce71a7ddf7afb49dee24f01ab419f30d3ac6b8fa572a01e2e38c9a4ce -> durableScopeNoChange
 // - PERSISTENCE-MUTATION-NOTIFICATION-001@sha256:a8df1efce71a7ddf7afb49dee24f01ab419f30d3ac6b8fa572a01e2e38c9a4ce -> nestedDurableChange
 // - PERSISTENCE-MUTATION-NOTIFICATION-001@sha256:a8df1efce71a7ddf7afb49dee24f01ab419f30d3ac6b8fa572a01e2e38c9a4ce -> nestedDurableOtherWrapper
