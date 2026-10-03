@@ -562,6 +562,7 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
   publishedAtEpochMillis = publishedAtEpochMillis,
   articleUrl = articleUrl,
   feedContent = feedContent,
+  chapterPosition = chapterPosition,
 )
 
 private class FakeFeedContentSource(
