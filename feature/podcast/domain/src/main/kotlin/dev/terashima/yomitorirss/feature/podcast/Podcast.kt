@@ -307,14 +307,26 @@ object OtherPodcastNewsCategorizer : PodcastNewsCategorizer {
 
 const val PODCAST_OTHER_CATEGORY = "その他"
 
-internal fun selectPodcastFeedCategories(news: List<List<PodcastFeedEntry>>): List<String?> {
-  val categoriesByNews = news.map { articles ->
-    articles.asSequence()
+internal fun selectPodcastFeedCategories(
+  news: List<List<PodcastFeedEntry>>,
+  supplementalCategories: Map<Int, String> = emptyMap(),
+): List<String?> {
+  val categoriesByNews = news.mapIndexed { index, articles ->
+    val feedCategories = articles.asSequence()
       .flatMap { it.categories.asSequence() }
       .map(::normalizePodcastCategory)
       .filter(String::isNotBlank)
       .distinct()
       .toList()
+    if (feedCategories.isNotEmpty()) {
+      feedCategories
+    } else {
+      listOfNotNull(
+        supplementalCategories[index]
+          ?.let(::normalizePodcastCategory)
+          ?.takeIf(String::isNotBlank),
+      )
+    }
   }
   val categoryCounts = categoriesByNews.flatten().groupingBy { it }.eachCount()
   return categoriesByNews.map { categories ->
@@ -490,15 +502,16 @@ class GeneratePodcastEpisodeUseCase(
     }
 
     val news = groups.map { indexes -> indexes.map(candidates::get) }
-    val categories = selectPodcastFeedCategories(news).toMutableList()
-    val uncategorizedIndexes = categories.indices.filter { categories[it] == null }
+    val preliminaryCategories = selectPodcastFeedCategories(news)
+    val uncategorizedIndexes = preliminaryCategories.indices.filter { preliminaryCategories[it] == null }
+    val supplementalCategories = mutableMapOf<Int, String>()
     if (uncategorizedIndexes.isNotEmpty()) {
       val uncategorizedNews = uncategorizedIndexes.map(news::get)
       val generatedCategories = try {
         newsCategorizer.categorize(
           provider = program.provider,
           news = uncategorizedNews,
-          existingCategories = categories.filterNotNull().toSet(),
+          existingCategories = preliminaryCategories.filterNotNull().toSet(),
         )
       } catch (error: CancellationException) {
         throw error
@@ -509,11 +522,13 @@ class GeneratePodcastEpisodeUseCase(
       } ?: List(uncategorizedNews.size) { PODCAST_OTHER_CATEGORY }
 
       uncategorizedIndexes.zip(generatedCategories).forEach { (index, category) ->
-        categories[index] = category
+        supplementalCategories[index] = category
       }
     }
 
-    val orderedNews = orderPodcastNewsByCategory(news, categories.map { it ?: PODCAST_OTHER_CATEGORY })
+    val categories = selectPodcastFeedCategories(news, supplementalCategories)
+      .map { it ?: PODCAST_OTHER_CATEGORY }
+    val orderedNews = orderPodcastNewsByCategory(news, categories)
     return PodcastClusteredCandidates(
       entries = orderedNews.flatMapIndexed { chapterPosition, articles ->
         articles.map { article -> article.copy(chapterPosition = chapterPosition) }
