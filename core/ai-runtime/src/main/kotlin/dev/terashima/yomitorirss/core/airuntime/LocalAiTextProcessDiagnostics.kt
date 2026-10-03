@@ -65,7 +65,7 @@ object LocalAiTextProcessDiagnostics {
   ): LocalAiTextProcessDiagnosticSession =
     LocalAiTextProcessDiagnosticSession(
       context = context.applicationContext,
-      mode = mode,
+      initialMode = mode,
     )
 
   @Suppress("UNUSED_PARAMETER")
