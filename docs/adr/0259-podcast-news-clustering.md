@@ -51,4 +51,4 @@ chapter checkpoint、script、errorは同一 `chapter_position` の全rowsへ同
 
 ## Relations
 
-- Refined by: ADR-0263
+- Refined by: ADR-0263, ADR-0278
