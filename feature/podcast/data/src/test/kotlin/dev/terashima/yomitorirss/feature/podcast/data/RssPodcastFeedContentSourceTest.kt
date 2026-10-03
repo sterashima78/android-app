@@ -34,6 +34,28 @@ class RssPodcastFeedContentSourceTest {
   }
 
   @Test
+  fun `フィードカテゴリをPodcast候補へ伝搬する`() = runSuspend {
+    val reader = FakeReader(
+      listOf(
+        entry(
+          identityKey = "first",
+          feedId = "source-1",
+          title = "News A",
+          categories = listOf("World", "World/Diplomacy", "Diplomacy"),
+        ),
+      ),
+    )
+    val source = RssPodcastFeedContentSource(reader)
+
+    val result = source.latestEntries(
+      sources = listOf(PodcastSource("source-1", "Source 1", "https://example.invalid/1.xml")),
+      limit = 10,
+    )
+
+    assertEquals(listOf("World", "World/Diplomacy", "Diplomacy"), result.single().categories)
+  }
+
+  @Test
   fun `異なるタイトルの記事はそのまま返す`() = runSuspend {
     val reader = FakeReader(
       listOf(
@@ -68,6 +90,7 @@ private fun entry(
   identityKey: String,
   feedId: String,
   title: String,
+  categories: List<String> = emptyList(),
 ) = RssFeedContentEntry(
   identityKey = identityKey,
   feedId = feedId,
@@ -76,6 +99,7 @@ private fun entry(
   publishedAtEpochMillis = 1L,
   url = "https://example.invalid/$identityKey",
   content = "content $identityKey",
+  categories = categories,
 )
 
 private fun runSuspend(block: suspend () -> Unit) {
