@@ -20,6 +20,7 @@ import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceModel
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceProgress
 import dev.terashima.yomitorirss.core.aiinference.AiTextInferenceStage
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -67,7 +68,23 @@ private const val GENERATING_RESPONSE_DURATION_KEY = "generating_response"
 private const val MSG_GENERATE = 1
 private const val MSG_RESULT = 2
 private const val MSG_PROGRESS = 3
+private const val MSG_GENERATE_CONVERSATION = 4
+private const val MSG_STREAM_CHUNK = 5
+private const val MSG_TOOL_CALL = 6
+private const val MSG_TOOL_RESULT = 7
 private const val KEY_PROMPT = "prompt"
+private const val KEY_SYSTEM_INSTRUCTION = "system_instruction"
+private const val KEY_USER_MESSAGE = "user_message"
+private const val KEY_INITIAL_MESSAGE_ROLES = "initial_message_roles"
+private const val KEY_INITIAL_MESSAGE_CONTENTS = "initial_message_contents"
+private const val KEY_TOOL_SCHEMAS = "tool_schemas"
+private const val KEY_STREAMING = "streaming"
+private const val KEY_STREAM_CHUNK = "stream_chunk"
+private const val KEY_TOOL_CALL_ID = "tool_call_id"
+private const val KEY_TOOL_NAME = "tool_name"
+private const val KEY_TOOL_ARGUMENT_NAMES = "tool_argument_names"
+private const val KEY_TOOL_ARGUMENT_VALUES = "tool_argument_values"
+private const val KEY_TOOL_RESULT = "tool_result"
 private const val KEY_SUCCESS = "success"
 private const val KEY_ERROR = "error"
 private const val KEY_OUTPUT = "output"
@@ -123,6 +140,64 @@ class ProcessIsolatedLocalAiTextInference(
     }
   }
 }
+
+class ProcessIsolatedLocalAiConversationInference(
+  context: Context,
+  private val manager: LocalModelManager,
+) : LocalConversationInference {
+  private val appContext = context.applicationContext
+  private val _progress = MutableStateFlow<LocalInferenceProgress?>(null)
+  private val remote = RemoteLocalTextInferenceClient(appContext) { progress ->
+    _progress.value = progress.toLocalInferenceProgress()
+  }
+
+  override val models: Flow<List<LocalModelStatus>> = manager.models
+  override val progress: Flow<LocalInferenceProgress?> = _progress.asStateFlow()
+
+  override fun selectedModel(): LocalModelStatus? = manager.selectedModel()
+
+  override suspend fun generateConversation(
+    request: LocalInferenceConversationRequest,
+    streaming: Boolean,
+    onPartial: (String) -> Unit,
+  ): String {
+    require(conversationIpcCharacterCount(request) <= TEXT_INFERENCE_IPC_MAX_CHARS) {
+      "AIチャットの入力が長すぎます"
+    }
+    return try {
+      remote.generateConversation(
+        request = request,
+        streaming = streaming,
+        onPartial = onPartial,
+      ) {
+        captureTextInferenceExecutionSnapshot(appContext, manager)
+      }
+    } catch (error: RemoteException) {
+      throw IllegalStateException(
+        "ローカルAI推論プロセスが終了しました。モデルまたはコンテキスト設定を軽くして再試行してください。",
+        error,
+      )
+    } finally {
+      _progress.value = null
+    }
+  }
+}
+
+internal fun conversationIpcCharacterCount(request: LocalInferenceConversationRequest): Int =
+  request.systemInstruction.length +
+    request.userMessage.length +
+    request.initialMessages.sumOf { message -> message.content.length } +
+    request.tools.sumOf { toolDescriptionJson(it).length }
+
+private fun AiTextInferenceProgress.toLocalInferenceProgress(): LocalInferenceProgress =
+  LocalInferenceProgress(
+    stage = when (stage) {
+      AiTextInferenceStage.PREPARING_MODEL -> LocalInferenceStage.PREPARING_MODEL
+      AiTextInferenceStage.GENERATING_RESPONSE -> LocalInferenceStage.GENERATING_RESPONSE
+    },
+    modelName = modelName,
+    estimatedStageDurationMillis = estimatedStageDurationMillis,
+  )
 
 internal data class TextInferenceExecutionSnapshot(
   val modelId: String,
@@ -268,6 +343,58 @@ private class RemoteLocalTextInferenceClient(
     throw requireNotNull(lastRemoteError)
   }
 
+  suspend fun generateConversation(
+    request: LocalInferenceConversationRequest,
+    streaming: Boolean,
+    onPartial: (String) -> Unit,
+    snapshotProvider: () -> TextInferenceExecutionSnapshot,
+  ): String = requestMutex.withLock {
+    val snapshot = snapshotProvider()
+    idleRetireJob?.cancel()
+    idleRetireJob = null
+    var lastRemoteError: RemoteException? = null
+
+    for (attempt in 0..1) {
+      var active: RemoteTextInferenceSession? = null
+      try {
+        val current = session ?: RemoteTextInferenceSession(appContext, onProgress).also { created ->
+          val connected = withTimeoutOrNull(TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS) {
+            created.connect()
+            true
+          } ?: false
+          if (!connected) {
+            throw IllegalStateException("ローカルAI推論プロセスへの接続がタイムアウトしました")
+          }
+          session = created
+        }
+        active = current
+        val response = withTimeoutOrNull(textInferenceRequestTimeoutMillis(snapshot)) {
+          current.generateConversation(request, streaming, onPartial, snapshot)
+        } ?: run {
+          retire(current)
+          throw IllegalStateException("ローカルAI推論がタイムアウトしました")
+        }
+        persistStageDurations(appContext, snapshot, response)
+        if (response.retireAfterResponse) {
+          retire(active)
+        } else {
+          scheduleIdleRetire(active)
+        }
+        response.error?.let { throw IllegalStateException(it) }
+        return@withLock requireNotNull(response.output) { "ローカルAI推論結果がありません" }
+      } catch (error: CancellationException) {
+        active?.let { retire(it) }
+        throw error
+      } catch (error: RemoteException) {
+        lastRemoteError = error
+        active?.let { retire(it) }
+        if (attempt == 1) throw error
+      }
+    }
+
+    throw requireNotNull(lastRemoteError)
+  }
+
   private fun scheduleIdleRetire(active: RemoteTextInferenceSession) {
     idleRetireJob?.cancel()
     idleRetireJob = idleScope.launch {
@@ -299,6 +426,9 @@ private class RemoteTextInferenceSession(
   private val connected = CompletableDeferred<Messenger>()
   private val processDeath = CompletableDeferred<Unit>()
   private val pendingResponse = AtomicReference<CompletableDeferred<Bundle>?>(null)
+  private val activeTools = AtomicReference<Map<String, LocalInferenceTool>>(emptyMap())
+  private val activePartialCallback = AtomicReference<((String) -> Unit)?>(null)
+  private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val deathRecipient = IBinder.DeathRecipient { onBinderDied() }
   private var binder: IBinder? = null
   private var bound = false
@@ -312,6 +442,24 @@ private class RemoteTextInferenceSession(
         MSG_PROGRESS -> {
           if (pendingResponse.get() != null) {
             decodeProgress(message.data)?.let(onProgress)
+          }
+          true
+        }
+        MSG_STREAM_CHUNK -> {
+          if (pendingResponse.get() != null) {
+            message.data.getString(KEY_STREAM_CHUNK)?.let { chunk ->
+              if (chunk.length <= TEXT_INFERENCE_IPC_MAX_CHARS) activePartialCallback.get()?.invoke(chunk)
+            }
+          }
+          true
+        }
+        MSG_TOOL_CALL -> {
+          if (pendingResponse.get() != null && message.replyTo != null) {
+            val replyTo = message.replyTo
+            val data = message.data
+            callbackScope.launch {
+              sendToolResult(replyTo, data)
+            }
           }
           true
         }
@@ -352,8 +500,61 @@ private class RemoteTextInferenceSession(
     }
   }
 
+  suspend fun generateConversation(
+    request: LocalInferenceConversationRequest,
+    streaming: Boolean,
+    onPartial: (String) -> Unit,
+    snapshot: TextInferenceExecutionSnapshot,
+  ): RemoteTextInferenceResponse {
+    val response = CompletableDeferred<Bundle>()
+    check(pendingResponse.compareAndSet(null, response)) { "ローカルAI推論要求が重複しています" }
+    activeTools.set(request.tools.associateBy(LocalInferenceTool::name))
+    activePartialCallback.set(onPartial)
+    return try {
+      val message = Message.obtain(null, MSG_GENERATE_CONVERSATION).apply {
+        data = encodeConversationRequest(request, streaming, snapshot)
+        replyTo = replyMessenger
+      }
+      connected.await().send(message)
+      decodeResponse(response.await())
+    } finally {
+      activeTools.set(emptyMap())
+      activePartialCallback.set(null)
+      pendingResponse.compareAndSet(response, null)
+    }
+  }
+
+  private suspend fun sendToolResult(
+    replyTo: Messenger,
+    data: Bundle,
+  ) {
+    val callId = data.getLong(KEY_TOOL_CALL_ID)
+    val toolName = data.getString(KEY_TOOL_NAME)
+    val names = data.getStringArrayList(KEY_TOOL_ARGUMENT_NAMES).orEmpty()
+    val values = data.getStringArrayList(KEY_TOOL_ARGUMENT_VALUES).orEmpty()
+    val tool = toolName?.let { activeTools.get()[it] }
+    val result: Result<String> = if (names.size != values.size || tool == null) {
+      Result.failure(IllegalStateException("tool call が不正です"))
+    } else {
+      runCatching { tool.execute(names.zip(values).toMap()) }
+    }
+    val response = Bundle().apply {
+      putLong(KEY_TOOL_CALL_ID, callId)
+      putBoolean(KEY_SUCCESS, result.isSuccess)
+      result.getOrNull()?.take(TEXT_INFERENCE_IPC_MAX_CHARS)?.let { putString(KEY_TOOL_RESULT, it) }
+    }
+    runCatching {
+      replyTo.send(
+        Message.obtain(null, MSG_TOOL_RESULT).apply {
+          this.data = response
+        },
+      )
+    }
+  }
+
   suspend fun closeAndAwaitProcessDeath() {
     failPending(DeadObjectException())
+    callbackScope.cancel()
     unbind()
     if (binder == null) {
       processDeath.complete(Unit)
@@ -422,27 +623,42 @@ class LocalTextInferenceService : Service() {
   private val requestMutex = Mutex()
   private val inFlight = AtomicBoolean(false)
   private val batchPolicy = TextInferenceProcessBatchPolicy()
+  private val toolBridge = ChildToolExecutionBridge()
   private var isolatedContext: TextInferenceSnapshotContext? = null
   private var modelManager: LocalModelManager? = null
   private lateinit var processDiagnostics: LocalAiTextProcessDiagnosticSession
   private val messenger = Messenger(
     Handler(Looper.getMainLooper()) { message ->
-      if (message.what != MSG_GENERATE || message.replyTo == null) return@Handler false
-      val replyTo = message.replyTo
-      val request = message.data
-      scope.launch {
-        val response = requestMutex.withLock {
-          handleRequest(request, replyTo)
+      when (message.what) {
+        MSG_GENERATE, MSG_GENERATE_CONVERSATION -> {
+          if (message.replyTo == null) return@Handler false
+          val replyTo = message.replyTo
+          val request = message.data
+          val requestType = message.what
+          scope.launch {
+            val response = requestMutex.withLock {
+              if (requestType == MSG_GENERATE_CONVERSATION) {
+                handleConversationRequest(request, replyTo)
+              } else {
+                handleRequest(request, replyTo)
+              }
+            }
+            runCatching {
+              replyTo.send(
+                Message.obtain(null, MSG_RESULT).apply {
+                  data = response
+                },
+              )
+            }
+          }
+          true
         }
-        runCatching {
-          replyTo.send(
-            Message.obtain(null, MSG_RESULT).apply {
-              data = response
-            },
-          )
+        MSG_TOOL_RESULT -> {
+          toolBridge.complete(message.data)
+          true
         }
+        else -> false
       }
-      true
     },
   )
 
@@ -461,6 +677,7 @@ class LocalTextInferenceService : Service() {
   override fun onDestroy() {
     val activeInference = inFlight.get()
     if (::processDiagnostics.isInitialized) processDiagnostics.stop()
+    toolBridge.cancel()
     scope.cancel()
     if (!activeInference) {
       runCatching { modelManager?.close() }
@@ -482,6 +699,7 @@ class LocalTextInferenceService : Service() {
     val result = try {
       val request = decodeRequest(bundle)
       snapshot = request.snapshot
+      processDiagnostics.setMode(LocalAiTextProcessMode.TEXT)
       processDiagnostics.mark(
         phase = LocalAiTextProcessPhase.REQUEST_RECEIVED,
         backend = request.snapshot.backend,
@@ -528,6 +746,82 @@ class LocalTextInferenceService : Service() {
     }
   }
 
+  private suspend fun handleConversationRequest(
+    bundle: Bundle,
+    replyTo: Messenger,
+  ): Bundle {
+    inFlight.set(true)
+    var snapshot: TextInferenceExecutionSnapshot? = null
+    val result = try {
+      val decoded = decodeConversationRequest(bundle)
+      snapshot = decoded.snapshot
+      processDiagnostics.setMode(LocalAiTextProcessMode.CHAT)
+      processDiagnostics.mark(
+        phase = LocalAiTextProcessPhase.REQUEST_RECEIVED,
+        backend = decoded.snapshot.backend,
+        contextTokens = decoded.snapshot.contextTokens,
+        speculativeDecodingEnabled = decoded.snapshot.speculativeDecodingEnabled,
+      )
+      processDiagnostics.mark(LocalAiTextProcessPhase.PREPARING_MODEL)
+      val manager = acquireManager(decoded.snapshot)
+      val tools = decoded.toolDefinitions.map { definition ->
+        definition.toTool { arguments ->
+          toolBridge.execute(
+            mainProcess = replyTo,
+            childProcess = messenger,
+            toolName = definition.name,
+            arguments = arguments,
+          )
+        }
+      }
+      coroutineScope {
+        val progressJob = launch {
+          manager.inferenceProgress
+            .filterNotNull()
+            .collect { progress ->
+              when (progress.stage.name) {
+                "PREPARING_MODEL" -> processDiagnostics.mark(LocalAiTextProcessPhase.PREPARING_MODEL)
+                "GENERATING_RESPONSE" -> processDiagnostics.mark(LocalAiTextProcessPhase.GENERATING_RESPONSE)
+              }
+              sendProgress(replyTo, progress)
+            }
+        }
+        try {
+          manager.generateConversation(
+            request = LocalInferenceConversationRequest(
+              systemInstruction = decoded.systemInstruction,
+              initialMessages = decoded.initialMessages,
+              userMessage = decoded.userMessage,
+              tools = tools,
+            ),
+            streaming = decoded.streaming,
+          ) { chunk ->
+            sendStreamChunk(replyTo, chunk)
+          }.also { output ->
+            require(output.length <= TEXT_INFERENCE_IPC_MAX_CHARS) { "ローカルAI推論結果が長すぎます" }
+          }
+        } finally {
+          progressJob.cancel()
+        }
+      }
+    } catch (error: Throwable) {
+      error
+    } finally {
+      inFlight.set(false)
+      if (::processDiagnostics.isInitialized) {
+        processDiagnostics.mark(LocalAiTextProcessPhase.COMPLETED)
+      }
+    }
+
+    val retire = batchPolicy.requestFinished()
+    val durations = snapshot?.let(::readChildStageDurations) ?: (null to null)
+    return if (result is String) {
+      successResponse(result, retire, durations)
+    } else {
+      errorResponse((result as Throwable).textInferenceUserMessage(), retire, durations)
+    }
+  }
+
   private fun acquireManager(snapshot: TextInferenceExecutionSnapshot): LocalModelManager {
     val context = isolatedContext ?: TextInferenceSnapshotContext(applicationContext).also {
       isolatedContext = it
@@ -543,6 +837,53 @@ class LocalTextInferenceService : Service() {
       .takeIf { it > 0 } to
       preferences.getLong(stageDurationKey(GENERATING_RESPONSE_DURATION_KEY, snapshot.modelId), 0)
         .takeIf { it > 0 }
+  }
+}
+
+private class ChildToolExecutionBridge {
+  private val nextCallId = AtomicLong(1L)
+  private val pending = AtomicReference<Pair<Long, CompletableDeferred<Bundle>>?>(null)
+
+  suspend fun execute(
+    mainProcess: Messenger,
+    childProcess: Messenger,
+    toolName: String,
+    arguments: Map<String, String>,
+  ): String {
+    val callId = nextCallId.getAndIncrement()
+    val deferred = CompletableDeferred<Bundle>()
+    val pendingCall = callId to deferred
+    check(pending.compareAndSet(null, pendingCall)) { "tool call が重複しています" }
+    return try {
+      val entries = arguments.entries.sortedBy(Map.Entry<String, String>::key)
+      mainProcess.send(
+        Message.obtain(null, MSG_TOOL_CALL).apply {
+          data = Bundle().apply {
+            putLong(KEY_TOOL_CALL_ID, callId)
+            putString(KEY_TOOL_NAME, toolName)
+            putStringArrayList(KEY_TOOL_ARGUMENT_NAMES, ArrayList(entries.map(Map.Entry<String, String>::key)))
+            putStringArrayList(KEY_TOOL_ARGUMENT_VALUES, ArrayList(entries.map(Map.Entry<String, String>::value)))
+          }
+          replyTo = childProcess
+        },
+      )
+      val result = deferred.await()
+      check(result.getBoolean(KEY_SUCCESS)) { "tool execution に失敗しました" }
+      requireNotNull(result.getString(KEY_TOOL_RESULT)) { "tool result がありません" }
+    } finally {
+      pending.compareAndSet(pendingCall, null)
+    }
+  }
+
+  fun complete(bundle: Bundle) {
+    val callId = bundle.getLong(KEY_TOOL_CALL_ID)
+    val current = pending.get() ?: return
+    if (current.first != callId) return
+    if (pending.compareAndSet(current, null)) current.second.complete(bundle)
+  }
+
+  fun cancel() {
+    pending.getAndSet(null)?.second?.completeExceptionally(DeadObjectException())
   }
 }
 
@@ -634,6 +975,131 @@ private fun decodeRequest(bundle: Bundle): DecodedTextInferenceRequest {
         .takeIf { bundle.containsKey(KEY_GENERATING_DURATION_MILLIS) && it > 0 },
     ),
   )
+}
+
+private data class DecodedConversationRequest(
+  val systemInstruction: String,
+  val initialMessages: List<LocalInferenceMessage>,
+  val userMessage: String,
+  val toolDefinitions: List<LocalInferenceToolDefinition>,
+  val streaming: Boolean,
+  val snapshot: TextInferenceExecutionSnapshot,
+)
+
+private fun encodeConversationRequest(
+  request: LocalInferenceConversationRequest,
+  streaming: Boolean,
+  snapshot: TextInferenceExecutionSnapshot,
+): Bundle = Bundle().apply {
+  require(conversationIpcCharacterCount(request) <= TEXT_INFERENCE_IPC_MAX_CHARS) {
+    "AIチャットの入力が長すぎます"
+  }
+  putString(KEY_SYSTEM_INSTRUCTION, request.systemInstruction)
+  putString(KEY_USER_MESSAGE, request.userMessage)
+  putStringArrayList(
+    KEY_INITIAL_MESSAGE_ROLES,
+    ArrayList(request.initialMessages.map { it.role.name }),
+  )
+  putStringArrayList(
+    KEY_INITIAL_MESSAGE_CONTENTS,
+    ArrayList(request.initialMessages.map(LocalInferenceMessage::content)),
+  )
+  putStringArrayList(
+    KEY_TOOL_SCHEMAS,
+    ArrayList(request.tools.map(::toolDescriptionJson)),
+  )
+  putBoolean(KEY_STREAMING, streaming)
+  putString(KEY_MODEL_ID, snapshot.modelId)
+  putString(KEY_BACKEND, snapshot.backend.name)
+  putBoolean(KEY_SPECULATIVE_DECODING, snapshot.speculativeDecodingEnabled)
+  putInt(KEY_CONTEXT_TOKENS, snapshot.contextTokens)
+  val revisionEntries = snapshot.modelRevisions.entries.sortedBy(Map.Entry<String, String>::key)
+  putStringArrayList(KEY_MODEL_REVISION_IDS, ArrayList(revisionEntries.map(Map.Entry<String, String>::key)))
+  putStringArrayList(KEY_MODEL_REVISION_VALUES, ArrayList(revisionEntries.map(Map.Entry<String, String>::value)))
+  snapshot.preparingDurationMillis?.let { putLong(KEY_PREPARING_DURATION_MILLIS, it) }
+  snapshot.generatingDurationMillis?.let { putLong(KEY_GENERATING_DURATION_MILLIS, it) }
+}
+
+private fun decodeConversationRequest(bundle: Bundle): DecodedConversationRequest {
+  val systemInstruction = requireNotNull(bundle.getString(KEY_SYSTEM_INSTRUCTION)) {
+    "system instruction がありません"
+  }
+  val userMessage = requireNotNull(bundle.getString(KEY_USER_MESSAGE)) { "user message がありません" }
+  val roles = requireNotNull(bundle.getStringArrayList(KEY_INITIAL_MESSAGE_ROLES)) {
+    "conversation role がありません"
+  }
+  val contents = requireNotNull(bundle.getStringArrayList(KEY_INITIAL_MESSAGE_CONTENTS)) {
+    "conversation message がありません"
+  }
+  require(roles.size == contents.size) { "conversation history が不正です" }
+  val initialMessages = roles.indices.map { index ->
+    LocalInferenceMessage(
+      role = runCatching { LocalInferenceMessageRole.valueOf(roles[index]) }
+        .getOrElse { throw IllegalArgumentException("conversation role が不正です") },
+      content = contents[index],
+    )
+  }
+  val toolDefinitions = bundle.getStringArrayList(KEY_TOOL_SCHEMAS)
+    .orEmpty()
+    .map(::parseToolDefinitionJson)
+  val modelId = requireNotNull(bundle.getString(KEY_MODEL_ID)) { "AIモデルがありません" }
+  val backendName = requireNotNull(bundle.getString(KEY_BACKEND)) { "AI backend がありません" }
+  val backend = runCatching { LocalInferenceBackend.valueOf(backendName) }
+    .getOrElse { throw IllegalArgumentException("AI backend が不正です") }
+  val contextTokens = bundle.getInt(KEY_CONTEXT_TOKENS)
+  isolatedContextSizeMode(contextTokens)
+  val revisionIds = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_IDS)) {
+    "AIモデル revision id がありません"
+  }
+  val revisionValues = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_VALUES)) {
+    "AIモデル revision value がありません"
+  }
+  require(revisionIds.size == revisionValues.size) { "AIモデル revision snapshot が不正です" }
+  val modelRevisions = revisionIds.zip(revisionValues).toMap()
+  require(modelId in modelRevisions) { "選択したAIモデルの revision がありません" }
+  val request = LocalInferenceConversationRequest(
+    systemInstruction = systemInstruction,
+    initialMessages = initialMessages,
+    userMessage = userMessage,
+    tools = toolDefinitions.map { definition -> definition.toTool { "" } },
+  )
+  require(conversationIpcCharacterCount(request) <= TEXT_INFERENCE_IPC_MAX_CHARS) {
+    "AIチャットの入力が長すぎます"
+  }
+  return DecodedConversationRequest(
+    systemInstruction = systemInstruction,
+    initialMessages = initialMessages,
+    userMessage = userMessage,
+    toolDefinitions = toolDefinitions,
+    streaming = bundle.getBoolean(KEY_STREAMING),
+    snapshot = TextInferenceExecutionSnapshot(
+      modelId = modelId,
+      backend = backend,
+      speculativeDecodingEnabled = bundle.getBoolean(KEY_SPECULATIVE_DECODING),
+      contextTokens = contextTokens,
+      modelRevisions = modelRevisions,
+      preparingDurationMillis = bundle.getLong(KEY_PREPARING_DURATION_MILLIS)
+        .takeIf { bundle.containsKey(KEY_PREPARING_DURATION_MILLIS) && it > 0 },
+      generatingDurationMillis = bundle.getLong(KEY_GENERATING_DURATION_MILLIS)
+        .takeIf { bundle.containsKey(KEY_GENERATING_DURATION_MILLIS) && it > 0 },
+    ),
+  )
+}
+
+private fun sendStreamChunk(
+  replyTo: Messenger,
+  chunk: String,
+) {
+  if (chunk.isEmpty() || chunk.length > TEXT_INFERENCE_IPC_MAX_CHARS) return
+  runCatching {
+    replyTo.send(
+      Message.obtain(null, MSG_STREAM_CHUNK).apply {
+        data = Bundle().apply {
+          putString(KEY_STREAM_CHUNK, chunk)
+        }
+      },
+    )
+  }
 }
 
 private fun sendProgress(
@@ -733,7 +1199,21 @@ private fun persistStageDurations(
 
 private fun stageDurationKey(stage: String, modelId: String): String = "$stage.$modelId.duration_millis"
 
-private fun Throwable.textInferenceUserMessage(): String = when (this) {
-  is IllegalArgumentException, is IllegalStateException -> message?.takeIf(String::isNotBlank)?.take(MAX_ERROR_CHARS)
-  else -> null
-} ?: "ローカルAI推論に失敗しました (${javaClass.simpleName})"
+internal fun Throwable.hasLocalToolCallParseFailure(): Boolean =
+  generateSequence(this) { error -> error.cause }
+    .mapNotNull(Throwable::message)
+    .any { message ->
+      message.contains("Failed to parse tool calls", ignoreCase = true) ||
+        message.contains("Failed to parse FC tool calls", ignoreCase = true)
+    }
+
+private fun Throwable.textInferenceUserMessage(): String =
+  if (hasLocalToolCallParseFailure()) {
+    "Failed to parse tool calls"
+  } else {
+    when (this) {
+      is IllegalArgumentException, is IllegalStateException ->
+        message?.takeIf(String::isNotBlank)?.take(MAX_ERROR_CHARS)
+      else -> null
+    } ?: "ローカルAI推論に失敗しました (${javaClass.simpleName})"
+  }

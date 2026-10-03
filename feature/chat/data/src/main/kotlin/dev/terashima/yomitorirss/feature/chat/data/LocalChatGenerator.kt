@@ -1,12 +1,12 @@
 package dev.terashima.yomitorirss.feature.chat.data
 
+import dev.terashima.yomitorirss.core.airuntime.LocalConversationInference
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceConversationRequest
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceMessage
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceMessageRole
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceStage
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceTool
 import dev.terashima.yomitorirss.core.airuntime.LocalInferenceToolArgument
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
 import dev.terashima.yomitorirss.feature.chat.AgentSkill
 import dev.terashima.yomitorirss.feature.chat.ChatContextProvider
 import dev.terashima.yomitorirss.feature.chat.ChatGenerator
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class LocalChatGenerator(
-  private val modelManager: LocalModelManager,
+  private val conversationInference: LocalConversationInference,
   private val contextProviders: List<ChatContextProvider> = emptyList(),
   private val skills: List<AgentSkill> = emptyList(),
 ) : ChatGenerator {
@@ -35,11 +35,11 @@ class LocalChatGenerator(
     require(inferenceTools.size == toolCount) { "Agent tool names must be unique" }
   }
 
-  override val selectedModel: Flow<ChatModelStatus?> = modelManager.models.map { models ->
+  override val selectedModel: Flow<ChatModelStatus?> = conversationInference.models.map { models ->
     models.firstOrNull { it.selected }?.let { ChatModelStatus(id = it.id, name = it.name) }
   }
 
-  override val progress: Flow<ChatProgress?> = modelManager.inferenceProgress.map { progress ->
+  override val progress: Flow<ChatProgress?> = conversationInference.progress.map { progress ->
     progress?.let {
       ChatProgress(
         stage = when (it.stage) {
@@ -55,7 +55,7 @@ class LocalChatGenerator(
   override val streamingReply: Flow<String> = _streamingReply.asStateFlow()
 
   override suspend fun reply(turns: List<ChatTurn>): String = withContext(Dispatchers.IO) {
-    val model = modelManager.selectedModel() ?: error("AIモデルをダウンロードして選択してください")
+    val model = conversationInference.selectedModel() ?: error("AIモデルをダウンロードして選択してください")
     val query = turns.lastOrNull { it.role == ChatRole.USER }?.content.orEmpty()
     require(query.isNotBlank()) { "メッセージを入力してください" }
 
@@ -88,7 +88,7 @@ class LocalChatGenerator(
     }
   }
 
-  private fun generateWithToolCallRecovery(request: LocalInferenceConversationRequest): String {
+  private suspend fun generateWithToolCallRecovery(request: LocalInferenceConversationRequest): String {
     var retryCount = 0
     while (true) {
       val streamedRaw = StringBuilder()
@@ -102,7 +102,7 @@ class LocalChatGenerator(
       }
 
       try {
-        return modelManager.generateConversation(currentRequest, streaming = true) { chunk ->
+        return conversationInference.generateConversation(currentRequest, streaming = true) { chunk ->
           appendStreamChunk(streamedRaw, chunk)
           _streamingReply.value = ChatResponseStream.partial(streamedRaw.toString())
         }

@@ -103,6 +103,37 @@ class LocalInferenceConversationTest {
     assertFalse(resultJson.contains("秘密の内部エラー"))
   }
 
+
+  @Test
+  fun `tool定義JSONをsubprocess用schemaへ復元する`() {
+    val original = LocalInferenceTool(
+      name = "search_items",
+      description = "項目を検索する",
+      arguments = listOf(
+        LocalInferenceToolArgument(
+          name = "query",
+          description = "検索語",
+          required = true,
+          type = LocalInferenceToolArgumentType.STRING,
+        ),
+        LocalInferenceToolArgument(
+          name = "ids",
+          description = "識別子",
+          type = LocalInferenceToolArgumentType.STRING_ARRAY,
+        ),
+      ),
+      allowAdditionalArguments = false,
+      execute = { "ok" },
+    )
+
+    val decoded = parseToolDefinitionJson(toolDescriptionJson(original))
+
+    assertEquals(original.name, decoded.name)
+    assertEquals(original.description, decoded.description)
+    assertEquals(original.arguments, decoded.arguments)
+    assertFalse(decoded.allowAdditionalArguments)
+  }
+
   @Test
   fun `tool名の重複を拒否する`() {
     val tool = LocalInferenceTool("same", "test", execute = { "ok" })

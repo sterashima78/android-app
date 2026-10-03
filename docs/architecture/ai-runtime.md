@@ -38,9 +38,9 @@ Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択す�
 - provider が変わった場合、background task の gate、network constraint、実際の inference 先が同じ設定を参照する。
 - AI task queue は provider-specific domain type へ依存せず、表示用 execution provider label と provider-neutral progress / failure state を扱う。RSS推薦についてもRSS-owned reader / scheduler contractからtaskを投影し、RSS persistenceを直接所有・参照しない。
 
-## Local one-shot text inference process boundary
+## Local text inference process boundary
 
-Summary、Knowledge 等が利用する Local `BackgroundAiTextInference.generate()` は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
+Summary、Knowledge 等が利用する Local `BackgroundAiTextInference.generate()` と AI Chat の対話型 conversation は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
 
 - main process は WorkManager、durable queue、DB、feature policy、`LocalAiBackgroundTaskGate` を所有し続ける。
 - child process は prompt と immutable execution snapshot を受け取り単発 text generation を返すだけで、Repository や Worker graph を構築しない。
@@ -58,7 +58,10 @@ Summary、Knowledge 等が利用する Local `BackgroundAiTextInference.generate
 - `PREPARING_MODEL` / `GENERATING_RESPONSE` の provider-neutral progress は child process から main process へ転送する。
 - prompt と output は diagnostics や log へ保存せず、IPC payload は128 Ki characters以下の text と必要最小限の primitive metadata に制限する。
 - `selectedModel()` と `countTokens()` は main process の application-scope `LocalModelManager` を利用する。重い generation Engine の lifecycle だけを subprocess へ分離する。
-- Chat の streaming / tool-capable conversation は `LocalModelManager` の conversation API を使う別経路であり、本境界では main process のままとする。
+- Chat の streaming / tool-capable conversation も同じ `:local_ai_text` process で Engine / Conversation を実行する。main process は tool schema と会話入力を渡し、tool call を受け取ったときだけ owner `AgentSkill` を実行して result text を child へ返す。Repository / DB / feature graph は child へ移さない。
+- Chat の partial output は bounded streaming event として main process へ返す。conversation request 全体、tool schema、tool call arguments / result、最終 output は既存 IPC 上限内に制限し、diagnostics へ保存しない。
+- subprocess diagnostics は `mode=chat` を区別し、prepare / generate phase、backend、effective context token count、speculative decoding flag と memory sample のみを記録する。
+- Chat 中の process death / Binder failure も1回だけ新 process で再試行し、それでも失敗した場合は request failure としてUIへ返す。user-selected model/backend/contextを暗黙に変更しない。
 
 この境界は Android 17 の main-process memory diagnostics で、Library organization 実行中に Java heap が小さいまま native heap / PSS が継続増加し `MemoryLimiter:AnonSwap` に至った実測を根拠とする。backend は診断 report から確定できないため、GPU/OpenCL 固有の不具合とは断定せず、process lifetime に残留する native allocation 全般に対する safety boundary として扱う。
 
@@ -130,3 +133,8 @@ Local text inference の subprocess 接続待機と生成 response 待機は run
 - [ADR-0219](../adr/0219-local-ai-subprocess-exit-diagnostics-and-recovery.md)
 - [ADR-0266](../adr/0266-local-text-inference-watchdog.md)
 - [ADR-0273](../adr/0273-background-only-non-interactive-ai-inference.md)
+
+
+## Related decision
+
+- [ADR-0277: 対話型ローカルAI推論を短寿命サブプロセスへ隔離する](../adr/0277-isolate-local-chat-inference-process.md)

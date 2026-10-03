@@ -8,7 +8,9 @@ import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptStructuredTextInferen
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptTextInference
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
+import dev.terashima.yomitorirss.core.airuntime.LocalConversationInference
 import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiConversationInference
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiStructuredTextInference
 import dev.terashima.yomitorirss.core.airuntime.ProcessIsolatedLocalAiTextInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
@@ -41,6 +43,10 @@ internal class AppAiCoreRuntimeDependencies(
 
   val textInference: BackgroundAiTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     ProcessIsolatedLocalAiTextInference(application, modelManager)
+  }
+
+  val conversationInference: LocalConversationInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    ProcessIsolatedLocalAiConversationInference(application, modelManager)
   }
 
   val structuredTextInference: BackgroundAiStructuredTextInference by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

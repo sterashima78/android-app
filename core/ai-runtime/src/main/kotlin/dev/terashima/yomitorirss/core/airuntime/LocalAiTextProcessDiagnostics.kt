@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 internal enum class LocalAiTextProcessMode(val wireName: String) {
   TEXT("text"),
+  CHAT("chat"),
   STRUCTURED("structured"),
 }
 
@@ -64,7 +65,7 @@ object LocalAiTextProcessDiagnostics {
   ): LocalAiTextProcessDiagnosticSession =
     LocalAiTextProcessDiagnosticSession(
       context = context.applicationContext,
-      mode = mode,
+      initialMode = mode,
     )
 
   @Suppress("UNUSED_PARAMETER")
@@ -177,8 +178,10 @@ object LocalAiTextProcessDiagnostics {
 
 internal class LocalAiTextProcessDiagnosticSession(
   private val context: Context,
-  private val mode: LocalAiTextProcessMode,
+  initialMode: LocalAiTextProcessMode,
 ) {
+  @Volatile
+  private var mode = initialMode
   @Volatile
   private var state = LocalAiTextProcessDiagnosticState(
     mode = mode,
@@ -190,6 +193,10 @@ internal class LocalAiTextProcessDiagnosticSession(
 
   fun start() {
     LocalAiTextProcessDiagnostics.activate(context, state)
+  }
+
+  fun setMode(mode: LocalAiTextProcessMode) {
+    this.mode = mode
   }
 
   fun mark(
