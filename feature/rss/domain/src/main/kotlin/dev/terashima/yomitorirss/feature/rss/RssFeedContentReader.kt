@@ -8,6 +8,7 @@ data class RssFeedContentEntry(
   val publishedAtEpochMillis: Long?,
   val url: String,
   val content: String,
+  val categories: List<String> = emptyList(),
 )
 
 data class RssFeedContentSource(
