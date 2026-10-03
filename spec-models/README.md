@@ -26,11 +26,16 @@
 | Podcast schedule one-shot chain | [`quint/podcast_schedule_chain.qnt`](quint/podcast_schedule_chain.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
 | Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
+| Podcast news exclusion partition | — | [`alloy/podcast_exclusion_partition.als`](alloy/podcast_exclusion_partition.als) |
+| Podcast news clustering partition | — | [`alloy/podcast_clustering_partition.als`](alloy/podcast_clustering_partition.als) |
 | Video saved/folder lifecycle | [`quint/video_saved_folder_lifecycle.qnt`](quint/video_saved_folder_lifecycle.qnt) | — |
 | Video subscription retention | [`quint/video_subscription_retention.qnt`](quint/video_subscription_retention.qnt) | — |
 | Web video playback privacy boundary | — | [`alloy/video_web_playback_privacy.als`](alloy/video_web_playback_privacy.als) |
 | Custom video provider security boundary | — | [`alloy/video_custom_provider_security.als`](alloy/video_custom_provider_security.als) |
+| Calendar read-only projection ownership | — | [`alloy/calendar_read_model_ownership.als`](alloy/calendar_read_model_ownership.als) |
+| Workout AI background lifecycle | [`quint/workout_ai_task_lifecycle.qnt`](quint/workout_ai_task_lifecycle.qnt) | — |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
+| LAN Web bootstrap/session authentication | [`quint/lan_web_auth_lifecycle.qnt`](quint/lan_web_auth_lifecycle.qnt) | — |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。

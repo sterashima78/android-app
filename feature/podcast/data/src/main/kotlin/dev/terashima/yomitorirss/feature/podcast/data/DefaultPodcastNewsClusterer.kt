@@ -13,6 +13,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusteringResult
+import java.time.Instant
 import java.util.concurrent.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -126,12 +127,14 @@ internal fun buildPodcastClusteringToolPrompt(
   require(entries.isNotEmpty()) { "entries must not be empty" }
   require(maxChars > 0) { "maxChars must be positive" }
 
-  val header = "候補記事を番号順に分類してください。group_idsは候補記事と同じ要素数・同じ順序で返してください。\n"
+  val header = "候補記事を全件まとめて比較し、同じニュースごとに分類してください。番号が離れていても必ず比較してください。group_idsは候補記事と同じ要素数・同じ順序で返してください。\n"
   fun compactLine(index: Int, entry: PodcastFeedEntry, includeMetadata: Boolean): String = buildString {
-    append(index + 1).append(". ").append(entry.title.replace(Regex("\\s+"), " ").trim())
+    append(index + 1).append(". タイトル: ").append(entry.title.replace(Regex("\\s+"), " ").trim())
     if (includeMetadata) {
-      entry.sourceTitle?.takeIf(String::isNotBlank)?.let { append(" | ").append(it.replace(Regex("\\s+"), " ").trim()) }
-      entry.publishedAtEpochMillis?.let { append(" | ").append(it) }
+      entry.sourceTitle?.takeIf(String::isNotBlank)?.let {
+        append(" | 情報源: ").append(it.replace(Regex("\\s+"), " ").trim())
+      }
+      entry.publishedAtEpochMillis?.let { append(" | 公開時刻: ").append(Instant.ofEpochMilli(it)) }
     }
   }
 
@@ -181,17 +184,20 @@ private const val PODCAST_CLUSTERING_MIN_TITLE_CHARS = 12
 private val PODCAST_CLUSTERING_JSON = Json { isLenient = false }
 
 private const val PODCAST_CLUSTERING_SYSTEM_INSTRUCTION =
-  "同じ具体的な出来事を報じる記事だけを同じニュースとして分類してください。" +
-    "同じ企業・人物・製品でも出来事が異なる場合や判断が曖昧な場合は別ニュースにしてください。" +
+  "候補全体を比較し、同じ具体的な出来事を報じる記事だけを同じニュースとして分類してください。" +
+    "タイトルの文字列一致ではなく出来事の意味で判断し、見出しの語順、翻訳、言い換え、表現の強弱が異なっても、主要な主体・行為や決定・対象が一致し、同じ出来事を指すと判断できる場合は同じgroup IDにしてください。" +
+    "候補番号が離れていても必ず比較し、tool call前に単独グループになった候補を含む全候補を再確認して取りこぼしがないか確認してください。" +
+    "同じ企業・人物・製品を扱うだけで行為や決定・対象が異なる場合、または同一出来事と判断できない場合は別ニュースにしてください。" +
+    "情報源や公開時刻は補助情報であり、それだけを理由にニュースを分割しないでください。" +
     "通常テキストやMarkdownは返さず、指定toolを1回だけ呼び出してください。"
 
 private val PODCAST_CLUSTERING_OUTPUT_TOOL = AiStructuredTool(
   name = "submit_podcast_news_clusters",
-  description = "候補記事ごとのニュース分類を提出する",
+  description = "候補全体を比較し、同じ具体的な出来事を報じる記事へ同じgroup IDを割り当てる",
   arguments = listOf(
     AiStructuredToolArgument(
       name = PODCAST_CLUSTERING_GROUP_IDS_ARGUMENT,
-      description = "候補記事と同じ順序・同じ要素数のgroup ID配列。同じ具体的なニュースの記事だけ同じ文字列を使う",
+      description = "候補記事と同じ順序・同じ要素数のgroup ID配列。語順・翻訳・言い換えが異なっても主要な主体・行為や決定・対象が一致して同一出来事なら同じ文字列を使う",
       required = true,
       type = AiStructuredToolArgumentType.STRING_ARRAY,
     ),

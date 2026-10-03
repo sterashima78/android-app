@@ -9,9 +9,20 @@
 
 ## 8.2 Calendar
 
-- Calendar は日付軸のread-only projectionとして扱う。
-- Android Calendar Provider の予定に加え、Task の期限や Workout の実績を共通 `CalendarEvent` として表示する。
-- Calendar 自身は Task / Workout の永続状態を所有しない。
+<!-- formal-requirement
+id: CALENDAR-PROJECTION-OWNERSHIP-001
+models:
+  - spec-models/alloy/calendar_read_model_ownership.als
+-->
+- Calendarは独自のdurable event stateを所有せず、Task・Workout・端末カレンダーの現在状態から`CalendarEvent`を生成するread-only projectionとする。
+- Task由来eventは`TaskReader`から期限付きTaskを読み`DEADLINE`へ、Workout由来eventは`WorkoutReader`から実績を読み`ACTIVITY`へ投影し、CalendarからTask / Workoutのcommand capability、table、private storageを参照しない。
+- 端末カレンダーはAndroid Calendar Providerをread-only sourceとして扱い、予定を`SCHEDULE`へ投影する。Calendarは端末予定を書き込むcommandを所有しない。
+- 各`CalendarEvent`はちょうど1つのsource recordから導出し、source固有のdurable stateのownerは元Contextまたは外部platformに残す。
+<!-- /formal-requirement -->
+
+### 形式モデル
+
+- [Alloy: `calendar_read_model_ownership.als`](../../spec-models/alloy/calendar_read_model_ownership.als) — Calendarのdurable state / command非所有、sourceごとのownerとevent kind、各projectionの単一source関係を検査する。
 
 ## 8.3 Workout
 
@@ -33,7 +44,16 @@ models:
 <!-- /formal-requirement -->
 - AIによるメニュー提案は通常のWorkoutメニューと同じ構造で生成し、当日だけ使うかプリセットとして保存できる。直近14日間の保存済みレビューも二次情報として参照し、現在の実績・メモ・方針を優先する。
 - AI支援の実行先は Local / cloud を明示選択し、既定はLocalとする。cloud選択時はWorkout記録・メモ・方針・メニュー候補・保存済みレビューをクラウドへ送信することを画面上で明示し、自動fallbackは行わない。
-- メニュー提案と完了後レビューはWorkout-owned background taskへ登録し、Workerが実行直前のWorkout記録・メモ・設定から入力を構築する。画面はtask stateと結果を表示し、推論実行をViewModel lifetimeへ依存させない。
+<!-- formal-requirement
+id: WORKOUT-AI-BACKGROUND-001
+models:
+  - spec-models/quint/workout_ai_task_lifecycle.qnt
+-->
+- Workoutのメニュー提案と完了後レビューはWorkout-owned background taskとして実行し、`QUEUED` / `RUNNING` / `SUCCEEDED` / `FAILED` / `CANCELLED`の状態を投影する。画面はtaskの登録・状態表示・結果回収だけを行い、推論実行をViewModel lifetimeへ依存させない。
+- enqueue時にWorkManagerへ渡す入力はrequest typeと選択provider等のbounded metadataに限定し、Workout記録・メモ・方針・レビューから構築したprompt本文を固定保存しない。Workerが実行を開始するたびに、その時点のWorkout snapshot、設定、対象期間のメモ、保存済みレビューからpromptを構築する。
+- provider一時停止等でretryする場合は同じrecoverable task referenceを保持して`QUEUED`へ戻し、再実行時にはpromptを再構築する。
+- terminal taskは画面再生成後も結果または失敗状態を回収できるようreferenceを保持し、ユーザーが結果を消去するか失敗・取消しを消費した後にdismissする。対応するWorkが存在しないstale referenceは破棄できる。
+<!-- /formal-requirement -->
 <!-- formal-requirement
 id: WORKOUT-HEALTH-BOUNDARY-001
 models:
@@ -48,6 +68,7 @@ models:
 
 - [Alloy: `workout_review_uniqueness.als`](../../spec-models/alloy/workout_review_uniqueness.als) — 日付ごとの保存済みレビューを1件に限定し、同日の複数生成attemptがある場合は最新attemptだけを保存状態へ投影する。
 - [Alloy: `workout_health_data_boundary.als`](../../spec-models/alloy/workout_health_data_boundary.als) — Health read dataをWorkout / AI / app databaseへ逆流させず、完了済みWorkoutだけを外部健康基盤へのwrite sourceとして許可する。
+- [Quint: `workout_ai_task_lifecycle.qnt`](../../spec-models/quint/workout_ai_task_lifecycle.qnt) — Workout AI taskのrecoverable lifecycle、retry、terminal result回収、enqueue時prompt非固定と実行開始時freshnessを検査する。
 
 ## 8.4 Health
 

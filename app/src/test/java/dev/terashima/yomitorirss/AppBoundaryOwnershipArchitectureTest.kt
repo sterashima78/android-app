@@ -16,6 +16,25 @@ class AppBoundaryOwnershipArchitectureTest {
   private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
+  fun `CalendarはTaskとWorkoutのread capabilityだけを使うread-only projectionである`() {
+    val calendarData = source(
+      "feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt",
+    )
+    val calendarBuild = source("feature/calendar/data/build.gradle.kts")
+    val manifest = source("app/src/main/AndroidManifest.xml")
+
+    assertTrue("Calendar must depend on TaskReader", "TaskReader" in calendarData)
+    assertTrue("Calendar must depend on WorkoutReader", "WorkoutReader" in calendarData)
+    assertFalse("Calendar must not depend on TaskRepository command facade", "TaskRepository" in calendarData)
+    assertFalse("Calendar must not depend on WorkoutRepository command facade", "WorkoutRepository" in calendarData)
+    assertFalse("Calendar must not access application persistence directly", "DatabaseConnection" in calendarData)
+    assertFalse("Calendar data must not depend on Task data implementation", ":feature:task:data" in calendarBuild)
+    assertFalse("Calendar data must not depend on Workout data implementation", ":feature:workout:data" in calendarBuild)
+    assertTrue("Calendar must request read permission", "android.permission.READ_CALENDAR" in manifest)
+    assertFalse("Calendar must not request calendar write permission", "android.permission.WRITE_CALENDAR" in manifest)
+  }
+
+  @Test
   fun `Workout AI advisorはWorkout dataが所有しUIにはtask controllerだけを渡す`() {
     val advisorPath = "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutAiAdvisor.kt"
     val advisor = source(advisorPath)
@@ -33,6 +52,26 @@ class AppBoundaryOwnershipArchitectureTest {
     assertTrue("composition runtime must compose the Workout-owned advisor", "DefaultWorkoutAiAdvisor(" in supportingRuntime)
     assertTrue("route composition must pass only the durable task controller", "taskController = container.workoutAiTaskController" in routeComposition)
     assertFalse("route composition must not receive raw inference", "container.textInference" in routeComposition)
+  }
+
+  @Test
+  fun `Workout AI taskはpromptをenqueue時に固定せずWorker実行時に最新入力を読む`() {
+    val background = source(
+      "feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt",
+    )
+    val enqueueBlock = background.substringAfter("override suspend fun enqueue(type: WorkoutAiRequestType): String {")
+      .substringBefore("override suspend fun snapshot")
+    val generateBlock = background.substringAfter("private suspend fun generate(")
+      .substringBefore("private fun isPaused")
+
+    assertTrue("Workout AI work input must carry request type metadata", "KEY_REQUEST_TYPE to type.name" in enqueueBlock)
+    assertTrue("Workout AI work input must carry selected provider metadata", "KEY_PROVIDER to provider.name" in enqueueBlock)
+    assertFalse("Workout AI must not persist a prebuilt prompt in WorkManager Data", "prompt" in enqueueBlock)
+    assertTrue("Worker must read the current Workout snapshot at execution time", "workoutReader.load()" in generateBlock)
+    assertTrue("Worker must read current settings at execution time", "settingsRepository.loadSettings()" in generateBlock)
+    assertTrue("Worker must read current memos at execution time", "settingsRepository.loadMemos(dates)" in generateBlock)
+    assertTrue("Worker must read saved reviews at execution time", "reviewRepository.loadAll()" in generateBlock)
+    assertTrue("Worker must build the prompt only after reading execution-time inputs", "WorkoutAiPromptBuilder.build(" in generateBlock)
   }
 
   @Test
