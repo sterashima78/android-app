@@ -28,13 +28,13 @@ sig Session {
   origin: one Origin,
   exactKey: one ExactKey,
   strongOverlap: set Session,
-  segmentMatch: set Session
+  segmentMatch: set Session,
+  representative: lone Session
 }
 
 one sig DedupResult {
   input: set Session,
-  kept: set Session,
-  representative: Session -> lone Session
+  kept: set Session
 }
 
 fact StrongOverlapIsSymmetric {
@@ -75,54 +75,54 @@ fact DedupProjection {
   DedupResult.kept in DedupResult.input
 
   all session: DedupResult.input | {
-    one session.(DedupResult.representative)
-    session.(DedupResult.representative) in DedupResult.kept
+    one session.representative
+    session.representative in DedupResult.kept
   }
 
   all session: Session - DedupResult.input |
-    no session.(DedupResult.representative)
+    no session.representative
 
   all kept: DedupResult.kept |
-    kept.(DedupResult.representative) = kept
+    kept.representative = kept
 
   all session: DedupResult.input |
-    let kept = session.(DedupResult.representative) |
+    let kept = session.representative |
       session = kept or sameRealWorldExercise[session, kept]
 
   all disj left, right: DedupResult.input |
     exactIdentity[left, right] implies
-      left.(DedupResult.representative) = right.(DedupResult.representative)
+      left.representative = right.representative
 
   no disj left, right: DedupResult.kept |
     sameRealWorldExercise[left, right]
 
   all disj left, right: DedupResult.input |
     sameKnownOrigin[left, right] and not exactIdentity[left, right] implies
-      left.(DedupResult.representative) != right.(DedupResult.representative)
+      left.representative != right.representative
 }
 
 assert ExactIdentityCollapses {
   all disj left, right: DedupResult.input |
     exactIdentity[left, right] implies
-      left.(DedupResult.representative) = right.(DedupResult.representative)
+      left.representative = right.representative
 }
 
 assert SameKnownOriginNonExactStayDistinct {
   all disj left, right: DedupResult.input |
     sameKnownOrigin[left, right] and not exactIdentity[left, right] implies
-      left.(DedupResult.representative) != right.(DedupResult.representative)
+      left.representative != right.representative
 }
 
 assert CrossOriginDuplicateNeedsEvidence {
   all disj session, kept: DedupResult.input |
-    session.(DedupResult.representative) = kept and not exactIdentity[session, kept] implies
+    session.representative = kept and not exactIdentity[session, kept] implies
       crossOriginDuplicateEvidence[session, kept]
 }
 
 assert EveryInputHasExactlyOneKeptRepresentative {
   all session: DedupResult.input |
     one kept: DedupResult.kept |
-      session.(DedupResult.representative) = kept
+      session.representative = kept
 }
 
 assert KeptSessionsAreOriginalInputs {
@@ -148,7 +148,7 @@ run RepresentativeCrossOriginDedup {
   some disj duplicate, representative, separate: DedupResult.input | {
     duplicate.origin != representative.origin
     representative in duplicate.strongOverlap
-    duplicate.(DedupResult.representative) = representative
+    duplicate.representative = representative
     representative in DedupResult.kept
     separate in DedupResult.kept
   }
