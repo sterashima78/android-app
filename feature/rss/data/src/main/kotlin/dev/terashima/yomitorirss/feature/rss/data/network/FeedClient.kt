@@ -171,7 +171,7 @@ internal class FeedClient(
     val headerCharset = contentType
       ?.substringAfter("charset=", "")
       ?.substringBefore(';')
-      ?.trim(' ', '"', ''')
+      ?.trim(' ', '"', '\'')
       ?.takeIf(String::isNotBlank)
     val declaration = bytes.take(256).toByteArray().toString(Charsets.US_ASCII)
       .let { XML_ENCODING.find(it)?.groupValues?.getOrNull(1) }
