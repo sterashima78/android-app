@@ -15,6 +15,7 @@
 | backup restore eligibility | [`quint/backup_restore.qnt`](quint/backup_restore.qnt) | — |
 | backup archive membership | — | [`alloy/backup_archive.als`](alloy/backup_archive.als) |
 | background request cleanup | [`quint/background_request_cleanup.qnt`](quint/background_request_cleanup.qnt) | — |
+| persistence mutation notification | [`quint/persistence_mutation_notification.qnt`](quint/persistence_mutation_notification.qnt) | — |
 | Local AI artifact lifecycle | [`quint/local_ai_artifact_lifecycle.qnt`](quint/local_ai_artifact_lifecycle.qnt) | — |
 | Mail initial sync checkpoint | [`quint/mail_initial_sync_checkpoint.qnt`](quint/mail_initial_sync_checkpoint.qnt) | — |
 | podcast episode lifecycle | [`quint/podcast_episode_lifecycle.qnt`](quint/podcast_episode_lifecycle.qnt) | — |
