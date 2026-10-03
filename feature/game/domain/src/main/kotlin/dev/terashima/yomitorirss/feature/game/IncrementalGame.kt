@@ -385,6 +385,15 @@ object IncrementalGame {
     milestoneInterval(state)
   }
 
+  fun milestoneProductionMultiplier(
+    state: IncrementalGameState,
+    type: IncrementalGeneratorType,
+  ): Double = if (type == IncrementalGeneratorType.STAR_FORGE) {
+    starForgeMilestoneMultiplier(state)
+  } else {
+    MILESTONE_MULTIPLIER
+  }
+
   fun overdriveDurationSeconds(state: IncrementalGameState): Double {
     val baseDuration =
       BASE_OVERDRIVE_DURATION_SECONDS +
@@ -570,11 +579,7 @@ object IncrementalGame {
     state: IncrementalGameState,
     type: IncrementalGeneratorType,
   ): Double {
-    val perMilestone = if (type == IncrementalGeneratorType.STAR_FORGE) {
-      starForgeMilestoneMultiplier(state)
-    } else {
-      MILESTONE_MULTIPLIER
-    }
+    val perMilestone = milestoneProductionMultiplier(state, type)
     return perMilestone.pow(
       (state.generatorPurchases[type.ordinal] / milestoneInterval(state, type))
         .coerceIn(0, 300)
