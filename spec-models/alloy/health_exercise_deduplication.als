@@ -32,6 +32,7 @@ sig Session {
 }
 
 one sig DedupResult {
+  input: set Session,
   kept: set Session,
   representative: Session -> lone Session
 }
@@ -70,54 +71,62 @@ pred sameRealWorldExercise[left, right: Session] {
 }
 
 fact DedupProjection {
-  DedupResult.kept in Session
+  some DedupResult.input
+  DedupResult.kept in DedupResult.input
 
-  all session: Session | {
+  all session: DedupResult.input | {
     one DedupResult.representative[session]
     DedupResult.representative[session] in DedupResult.kept
   }
 
+  all session: Session - DedupResult.input |
+    no DedupResult.representative[session]
+
   all kept: DedupResult.kept |
     DedupResult.representative[kept] = kept
 
-  all session: Session |
+  all session: DedupResult.input |
     let kept = DedupResult.representative[session] |
       session = kept or sameRealWorldExercise[session, kept]
+
+  all disj left, right: DedupResult.input |
+    exactIdentity[left, right] implies
+      DedupResult.representative[left] = DedupResult.representative[right]
 
   no disj left, right: DedupResult.kept |
     sameRealWorldExercise[left, right]
 
-  all disj left, right: Session |
+  all disj left, right: DedupResult.input |
     sameKnownOrigin[left, right] and not exactIdentity[left, right] implies
       DedupResult.representative[left] != DedupResult.representative[right]
 }
 
 assert ExactIdentityCanCollapse {
-  all disj left, right: Session |
+  all disj left, right: DedupResult.input |
     exactIdentity[left, right] implies
-      sameRealWorldExercise[left, right]
+      DedupResult.representative[left] = DedupResult.representative[right]
 }
 
 assert SameKnownOriginNonExactStayDistinct {
-  all disj left, right: Session |
+  all disj left, right: DedupResult.input |
     sameKnownOrigin[left, right] and not exactIdentity[left, right] implies
       DedupResult.representative[left] != DedupResult.representative[right]
 }
 
 assert CrossOriginDuplicateNeedsEvidence {
-  all disj session, kept: Session |
+  all disj session, kept: DedupResult.input |
     DedupResult.representative[session] = kept and not exactIdentity[session, kept] implies
       crossOriginDuplicateEvidence[session, kept]
 }
 
 assert EveryInputHasExactlyOneKeptRepresentative {
-  all session: Session |
+  all session: DedupResult.input |
     one kept: DedupResult.kept |
       DedupResult.representative[session] = kept
 }
 
 assert KeptSessionsAreOriginalInputs {
-  DedupResult.kept in Session
+  DedupResult.kept in DedupResult.input
 }
 
 assert KeptSessionsArePairwiseDistinctRealWorldExercises {
@@ -133,9 +142,10 @@ check KeptSessionsAreOriginalInputs for 8 expect 0
 check KeptSessionsArePairwiseDistinctRealWorldExercises for 8 expect 0
 
 run RepresentativeCrossOriginDedup {
-  #Session = 3
+  #Session = 4
+  #DedupResult.input = 3
   #DedupResult.kept = 2
-  some disj duplicate, representative, separate: Session | {
+  some disj duplicate, representative, separate: DedupResult.input | {
     duplicate.origin != representative.origin
     representative in duplicate.strongOverlap
     DedupResult.representative[duplicate] = representative
