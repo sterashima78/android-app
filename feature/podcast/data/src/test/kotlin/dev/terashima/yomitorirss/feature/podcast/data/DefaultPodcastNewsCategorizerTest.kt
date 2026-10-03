@@ -35,8 +35,8 @@ class DefaultPodcastNewsCategorizerTest {
 
   @Test
   fun `カテゴリなしニュースはstructured toolでまとめて分類する`() = runSuspendForCategorizerTest {
-    val textInference = FakeTextInference(promptBudgetChars = 4_096)
-    val structured = FakeStructuredInference(
+    val textInference = CategorizerFakeTextInference(promptBudgetChars = 4_096)
+    val structured = CategorizerFakeStructuredInference(
       ArrayDeque(
         listOf(
           AiStructuredToolCall(
@@ -76,8 +76,8 @@ class DefaultPodcastNewsCategorizerTest {
 
   @Test
   fun `カテゴリ分類結果が不正ならその他へfallbackする`() = runSuspendForCategorizerTest {
-    val textInference = FakeTextInference(promptBudgetChars = 4_096)
-    val structured = FakeStructuredInference(
+    val textInference = CategorizerFakeTextInference(promptBudgetChars = 4_096)
+    val structured = CategorizerFakeStructuredInference(
       ArrayDeque(
         listOf(
           AiStructuredToolCall(
@@ -133,7 +133,7 @@ class DefaultPodcastNewsCategorizerTest {
   )
 }
 
-private class FakeTextInference(
+private class CategorizerFakeTextInference(
   promptBudgetChars: Int,
 ) : BackgroundAiTextInference() {
   override val progress: Flow<AiTextInferenceProgress?> = flowOf(null)
@@ -158,7 +158,7 @@ private class FakeTextInference(
   }
 }
 
-private class FakeStructuredInference(
+private class CategorizerFakeStructuredInference(
   private val outputs: ArrayDeque<AiStructuredToolCall?>,
 ) : BackgroundAiStructuredTextInference() {
   data class Request(
