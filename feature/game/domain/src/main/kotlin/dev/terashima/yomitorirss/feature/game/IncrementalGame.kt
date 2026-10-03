@@ -9,12 +9,12 @@ import kotlin.math.sqrt
 enum class IncrementalGeneratorType(
   val baseCost: Double,
   val costGrowth: Double,
-  val cascadePerSecond: Double,
+  val baseProductionPerSecond: Double,
 ) {
-  SPARK(10.0, 1.17, 0.0),
-  REACTOR(5_000.0, 1.20, 0.5),
-  STAR_FORGE(2_000_000.0, 1.23, 0.2),
-  SINGULARITY(1_000_000_000.0, 1.26, 0.08),
+  SPARK(10.0, 1.17, 1.0),
+  REACTOR(5_000.0, 1.20, 50.0),
+  STAR_FORGE(2_000_000.0, 1.23, 5_000.0),
+  SINGULARITY(1_000_000_000.0, 1.26, 1_000_000.0),
 }
 
 enum class IncrementalPurchaseAmount {
@@ -24,12 +24,14 @@ enum class IncrementalPurchaseAmount {
 }
 
 enum class IncrementalRunPick {
-  RHYTHM_RELAY,
+  SPARK_DISCHARGE,
   MANUAL_OVERRIDE,
   LOW_PRESSURE,
-  CASCADE_RESONANCE,
+  REACTOR_SURGE,
+  FORGE_COMPRESSION,
   OVERCLOCK,
   FEEDBACK_LOOP,
+  SINGULARITY_COLLAPSE,
 }
 
 enum class IncrementalPrestigeUpgrade(
@@ -38,7 +40,7 @@ enum class IncrementalPrestigeUpgrade(
   val requiredTotalLevels: Int = 0,
 ) {
   OUTPUT_AMPLIFIER(1, 5),
-  CASCADE_TUNING(1, 5),
+  SPECIALIZATION_TUNING(1, 5),
   TAP_RESONANCE(1, 5),
   OVERDRIVE_CAPACITOR(1, 5),
   STARTER_SPARK(3, 1, 3),
@@ -77,20 +79,29 @@ object IncrementalGame {
   const val COMPACT_MILESTONE_INTERVAL = 20
   const val TAP_PRODUCTION_FRACTION = 0.08
   const val RUN_PICK_OPTION_COUNT = 3
-  val RUN_PICK_THRESHOLDS = listOf(100.0, 5_000.0, 100_000.0, 1_000_000.0)
+  val RUN_PICK_THRESHOLDS = listOf(100.0, 10_000.0, 2_500_000.0, 1_200_000_000.0)
 
-  private const val RHYTHM_RELAY_INTERVAL = 10L
-  private const val RHYTHM_RELAY_MULTIPLIER = 8.0
+  private const val SPARK_TAP_PRODUCTION_FRACTION = 0.25
+  private const val REACTOR_OVERDRIVE_BONUS = 1.5
+  private const val STAR_FORGE_MILESTONE_MULTIPLIER = 3.0
+  private const val SINGULARITY_DIVERSITY_MULTIPLIER = 1.4
+  private const val SPECIALIZATION_TUNING_PER_LEVEL = 0.10
+
+  private const val SPARK_DISCHARGE_INTERVAL = 10L
+  private const val SPARK_DISCHARGE_SECONDS = 3.0
   private const val MANUAL_OVERRIDE_AUTO_MULTIPLIER = 0.6
   private const val MANUAL_OVERRIDE_TAP_MULTIPLIER = 4.0
   private const val LOW_PRESSURE_THRESHOLD = 0.20
   private const val LOW_PRESSURE_MULTIPLIER = 3.0
-  private const val CASCADE_RESONANCE_MULTIPLIER = 1.75
-  private const val CASCADE_RESONANCE_OUTPUT_MULTIPLIER = 0.75
+  private const val REACTOR_SURGE_NORMAL_MULTIPLIER = 0.7
+  private const val REACTOR_SURGE_OVERDRIVE_MULTIPLIER = 4.0
+  private const val FORGE_COMPRESSION_INTERVAL = 15
   private const val OVERCLOCK_MULTIPLIER = 35.0
   private const val OVERCLOCK_DURATION_MULTIPLIER = 0.55
   private const val FEEDBACK_TAP_MULTIPLIER = 0.5
   private const val FEEDBACK_EXTENSION_SECONDS = 0.15
+  private const val SINGULARITY_COLLAPSE_MULTIPLIER = 5.0
+  private const val SINGULARITY_COLLAPSE_OTHER_MULTIPLIER = 0.5
 
   fun newGame(
     prestigeCores: Int = 0,
@@ -116,16 +127,26 @@ object IncrementalGame {
     jackpot: Boolean = false,
   ): IncrementalTapResult {
     val overdriveWasActive = state.overdriveRemainingSeconds > 0.0
-    val normalProductionPerSecond = productionPerSecond(state.copy(overdriveRemainingSeconds = 0.0))
-    val baseTap = maxOf(1.0, normalProductionPerSecond * TAP_PRODUCTION_FRACTION)
-    val rhythmMultiplier = if (
-      hasRunPick(state, IncrementalRunPick.RHYTHM_RELAY) &&
-      (state.taps + 1) % RHYTHM_RELAY_INTERVAL == 0L
+    val normalProductionPerSecond = automaticProductionPerSecond(state, overdrive = false)
+    val sparkProductionPerSecond =
+      generatorProductionPerSecond(state, IncrementalGeneratorType.SPARK, overdrive = false)
+    val sparkTapContribution =
+      saturatingMultiply(sparkProductionPerSecond, sparkTapProductionFraction(state))
+    val dischargeContribution = if (
+      hasRunPick(state, IncrementalRunPick.SPARK_DISCHARGE) &&
+      (state.taps + 1) % SPARK_DISCHARGE_INTERVAL == 0L
     ) {
-      RHYTHM_RELAY_MULTIPLIER
+      saturatingMultiply(sparkProductionPerSecond, SPARK_DISCHARGE_SECONDS)
     } else {
-      1.0
+      0.0
     }
+    val baseTap = maxOf(
+      1.0,
+      saturatingAdd(
+        saturatingMultiply(normalProductionPerSecond, TAP_PRODUCTION_FRACTION),
+        saturatingAdd(sparkTapContribution, dischargeContribution),
+      ),
+    )
     val manualTapMultiplier = if (hasRunPick(state, IncrementalRunPick.MANUAL_OVERRIDE)) {
       MANUAL_OVERRIDE_TAP_MULTIPLIER
     } else {
@@ -141,7 +162,6 @@ object IncrementalGame {
     val gainedEnergy = scaledProduct(
       baseTap,
       tapMultiplier(state),
-      rhythmMultiplier,
       manualTapMultiplier,
       feedbackTapMultiplier,
       if (jackpot) JACKPOT_MULTIPLIER else 1.0,
@@ -192,7 +212,7 @@ object IncrementalGame {
       current = tickSegment(
         state = current,
         elapsedSeconds = overdriveSlice,
-        productionMultiplier = overdriveProductionMultiplier(current),
+        overdrive = true,
       ).copy(
         overdriveRemainingSeconds = (current.overdriveRemainingSeconds - overdriveSlice)
           .coerceAtLeast(0.0),
@@ -204,38 +224,42 @@ object IncrementalGame {
       current = tickSegment(
         state = current,
         elapsedSeconds = remaining,
-        productionMultiplier = 1.0,
+        overdrive = false,
       )
     }
 
     return current
   }
 
-  fun productionPerSecond(state: IncrementalGameState): Double {
-    val base = scaledProduct(
-      state.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal],
-      milestoneMultiplier(state, IncrementalGeneratorType.SPARK),
-      outputMultiplier(state),
-      runAutomaticOutputMultiplier(state),
+  fun productionPerSecond(state: IncrementalGameState): Double =
+    automaticProductionPerSecond(
+      state = state,
+      overdrive = state.overdriveRemainingSeconds > 0.0,
     )
-    return saturatingMultiply(
-      base,
-      if (state.overdriveRemainingSeconds > 0.0) overdriveProductionMultiplier(state) else 1.0,
-    )
-  }
+
+  fun generatorProductionPerSecond(
+    state: IncrementalGameState,
+    type: IncrementalGeneratorType,
+  ): Double = generatorProductionPerSecond(
+    state = state,
+    type = type,
+    overdrive = state.overdriveRemainingSeconds > 0.0,
+  )
 
   fun isRunPickDue(state: IncrementalGameState): Boolean =
     state.runPicks.size < RUN_PICK_THRESHOLDS.size &&
       state.runEnergy >= RUN_PICK_THRESHOLDS[state.runPicks.size]
 
   fun availableRunPicks(state: IncrementalGameState): List<IncrementalRunPick> =
-    IncrementalRunPick.entries.filterNot(state.runPicks::contains)
+    IncrementalRunPick.entries.filter { pick ->
+      pick !in state.runPicks && isRunPickEligible(state, pick)
+    }
 
   fun selectRunPick(
     state: IncrementalGameState,
     pick: IncrementalRunPick,
   ): IncrementalGameState {
-    if (!isRunPickDue(state) || pick in state.runPicks) return state
+    if (!isRunPickDue(state) || pick !in availableRunPicks(state)) return state
     return state.copy(runPicks = state.runPicks + pick)
   }
 
@@ -349,6 +373,18 @@ object IncrementalGame {
       BASE_MILESTONE_INTERVAL
     }
 
+  fun milestoneInterval(
+    state: IncrementalGameState,
+    type: IncrementalGeneratorType,
+  ): Int = if (
+    type == IncrementalGeneratorType.STAR_FORGE &&
+    hasRunPick(state, IncrementalRunPick.FORGE_COMPRESSION)
+  ) {
+    min(milestoneInterval(state), FORGE_COMPRESSION_INTERVAL)
+  } else {
+    milestoneInterval(state)
+  }
+
   fun overdriveDurationSeconds(state: IncrementalGameState): Double {
     val baseDuration =
       BASE_OVERDRIVE_DURATION_SECONDS +
@@ -363,92 +399,130 @@ object IncrementalGame {
   fun outputMultiplier(state: IncrementalGameState): Double =
     1.0 + prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.OUTPUT_AMPLIFIER) * 0.35
 
-  fun cascadeMultiplier(state: IncrementalGameState): Double =
-    1.0 + prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.CASCADE_TUNING) * 0.30
+  fun specializationMultiplier(state: IncrementalGameState): Double =
+    1.0 +
+      prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.SPECIALIZATION_TUNING) *
+      SPECIALIZATION_TUNING_PER_LEVEL
 
   fun tapMultiplier(state: IncrementalGameState): Double =
     1.0 + prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.TAP_RESONANCE) * 0.75
 
+  fun overdriveProductionMultiplier(state: IncrementalGameState): Double =
+    if (hasRunPick(state, IncrementalRunPick.OVERCLOCK)) {
+      OVERCLOCK_MULTIPLIER
+    } else {
+      OVERDRIVE_MULTIPLIER
+    }
+
   private fun tickSegment(
     state: IncrementalGameState,
     elapsedSeconds: Double,
-    productionMultiplier: Double,
+    overdrive: Boolean,
   ): IncrementalGameState {
     if (elapsedSeconds <= 0.0) return state
 
-    val spark = state.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal]
-    val reactor = state.generatorAmounts[IncrementalGeneratorType.REACTOR.ordinal]
-    val starForge = state.generatorAmounts[IncrementalGeneratorType.STAR_FORGE.ordinal]
-    val singularity = state.generatorAmounts[IncrementalGeneratorType.SINGULARITY.ordinal]
-
-    val cascadeMultiplier = scaledProduct(
-      cascadeMultiplier(state),
-      if (hasRunPick(state, IncrementalRunPick.CASCADE_RESONANCE)) {
-        CASCADE_RESONANCE_MULTIPLIER
-      } else {
-        1.0
-      },
+    val gainedEnergy = saturatingMultiply(
+      automaticProductionPerSecond(state, overdrive),
+      elapsedSeconds,
     )
-    val reactorRate = scaledProduct(
-      IncrementalGeneratorType.REACTOR.cascadePerSecond,
-      milestoneMultiplier(state, IncrementalGeneratorType.REACTOR),
-      cascadeMultiplier,
-    )
-    val starForgeRate = scaledProduct(
-      IncrementalGeneratorType.STAR_FORGE.cascadePerSecond,
-      milestoneMultiplier(state, IncrementalGeneratorType.STAR_FORGE),
-      cascadeMultiplier,
-    )
-    val singularityRate = scaledProduct(
-      IncrementalGeneratorType.SINGULARITY.cascadePerSecond,
-      milestoneMultiplier(state, IncrementalGeneratorType.SINGULARITY),
-      cascadeMultiplier,
-    )
-
-    val t2 = elapsedSeconds * elapsedSeconds
-    val t3 = t2 * elapsedSeconds
-    val t4 = t3 * elapsedSeconds
-
-    val reactorFromStarForge = scaledProduct(starForge, starForgeRate, elapsedSeconds)
-    val reactorFromSingularity = scaledProduct(singularity, singularityRate, starForgeRate, t2 / 2.0)
-    val sparkFromReactor = scaledProduct(reactor, reactorRate, elapsedSeconds)
-    val sparkFromStarForge = scaledProduct(starForge, starForgeRate, reactorRate, t2 / 2.0)
-    val sparkFromSingularity =
-      scaledProduct(singularity, singularityRate, starForgeRate, reactorRate, t3 / 6.0)
-
-    val nextAmounts = listOf(
-      saturatingAdd(
-        spark,
-        saturatingAdd(sparkFromReactor, saturatingAdd(sparkFromStarForge, sparkFromSingularity)),
-      ),
-      saturatingAdd(reactor, saturatingAdd(reactorFromStarForge, reactorFromSingularity)),
-      saturatingAdd(starForge, scaledProduct(singularity, singularityRate, elapsedSeconds)),
-      singularity,
-    )
-
-    val integratedSpark = saturatingAdd(
-      saturatingMultiply(spark, elapsedSeconds),
-      saturatingAdd(
-        scaledProduct(reactor, reactorRate, t2 / 2.0),
-        saturatingAdd(
-          scaledProduct(starForge, starForgeRate, reactorRate, t3 / 6.0),
-          scaledProduct(singularity, singularityRate, starForgeRate, reactorRate, t4 / 24.0),
-        ),
-      ),
-    )
-    val energyMultiplier = scaledProduct(
-      milestoneMultiplier(state, IncrementalGeneratorType.SPARK),
-      outputMultiplier(state),
-      runAutomaticOutputMultiplier(state),
-      productionMultiplier,
-    )
-    val gainedEnergy = saturatingMultiply(integratedSpark, energyMultiplier)
 
     return state.copy(
       energy = saturatingAdd(state.energy, gainedEnergy),
       runEnergy = saturatingAdd(state.runEnergy, gainedEnergy),
-      generatorAmounts = nextAmounts,
     )
+  }
+
+  private fun automaticProductionPerSecond(
+    state: IncrementalGameState,
+    overdrive: Boolean,
+  ): Double = IncrementalGeneratorType.entries.fold(0.0) { total, type ->
+    saturatingAdd(total, generatorProductionPerSecond(state, type, overdrive))
+  }
+
+  private fun generatorProductionPerSecond(
+    state: IncrementalGameState,
+    type: IncrementalGeneratorType,
+    overdrive: Boolean,
+  ): Double {
+    val amount = state.generatorAmounts[type.ordinal]
+    if (amount <= 0.0) return 0.0
+
+    val base = scaledProduct(
+      amount,
+      type.baseProductionPerSecond,
+      milestoneMultiplier(state, type),
+    )
+
+    var unitMultiplier = 1.0
+
+    if (hasRunPick(state, IncrementalRunPick.SINGULARITY_COLLAPSE)) {
+      unitMultiplier = saturatingMultiply(
+        unitMultiplier,
+        if (type == IncrementalGeneratorType.SINGULARITY) {
+          SINGULARITY_COLLAPSE_MULTIPLIER
+        } else {
+          SINGULARITY_COLLAPSE_OTHER_MULTIPLIER
+        },
+      )
+    }
+
+    when (type) {
+      IncrementalGeneratorType.SPARK -> Unit
+
+      IncrementalGeneratorType.REACTOR -> {
+        if (overdrive) {
+          unitMultiplier = saturatingMultiply(unitMultiplier, reactorOverdriveMultiplier(state))
+        }
+        if (hasRunPick(state, IncrementalRunPick.REACTOR_SURGE)) {
+          unitMultiplier = saturatingMultiply(unitMultiplier, REACTOR_SURGE_NORMAL_MULTIPLIER)
+          if (overdrive) {
+            unitMultiplier = saturatingMultiply(
+              unitMultiplier,
+              REACTOR_SURGE_OVERDRIVE_MULTIPLIER,
+            )
+          }
+        }
+      }
+
+      IncrementalGeneratorType.STAR_FORGE -> Unit
+
+      IncrementalGeneratorType.SINGULARITY -> {
+        val otherOwnedTypes = IncrementalGeneratorType.entries.count { other ->
+          other != IncrementalGeneratorType.SINGULARITY &&
+            state.generatorAmounts[other.ordinal] > 0.0
+        }
+        unitMultiplier = saturatingMultiply(
+          unitMultiplier,
+          singularityDiversityMultiplier(state).pow(otherOwnedTypes.toDouble()),
+        )
+      }
+    }
+
+    val globalMultiplier = scaledProduct(
+      outputMultiplier(state),
+      runAutomaticOutputMultiplier(state),
+      if (overdrive) overdriveProductionMultiplier(state) else 1.0,
+    )
+    return scaledProduct(base, unitMultiplier, globalMultiplier)
+  }
+
+  private fun isRunPickEligible(
+    state: IncrementalGameState,
+    pick: IncrementalRunPick,
+  ): Boolean = when (pick) {
+    IncrementalRunPick.SPARK_DISCHARGE ->
+      state.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal] > 0.0
+    IncrementalRunPick.REACTOR_SURGE ->
+      state.generatorAmounts[IncrementalGeneratorType.REACTOR.ordinal] > 0.0
+    IncrementalRunPick.FORGE_COMPRESSION ->
+      state.generatorAmounts[IncrementalGeneratorType.STAR_FORGE.ordinal] > 0.0
+    IncrementalRunPick.SINGULARITY_COLLAPSE ->
+      state.generatorAmounts[IncrementalGeneratorType.SINGULARITY.ordinal] > 0.0
+    IncrementalRunPick.MANUAL_OVERRIDE,
+    IncrementalRunPick.LOW_PRESSURE,
+    IncrementalRunPick.OVERCLOCK,
+    IncrementalRunPick.FEEDBACK_LOOP,
+    -> true
   }
 
   private fun quantityFor(
@@ -495,21 +569,34 @@ object IncrementalGame {
   private fun milestoneMultiplier(
     state: IncrementalGameState,
     type: IncrementalGeneratorType,
-  ): Double =
-    MILESTONE_MULTIPLIER.pow(
-      (state.generatorPurchases[type.ordinal] / milestoneInterval(state))
+  ): Double {
+    val perMilestone = if (type == IncrementalGeneratorType.STAR_FORGE) {
+      starForgeMilestoneMultiplier(state)
+    } else {
+      MILESTONE_MULTIPLIER
+    }
+    return perMilestone.pow(
+      (state.generatorPurchases[type.ordinal] / milestoneInterval(state, type))
         .coerceIn(0, 300)
         .toDouble(),
     )
+  }
+
+  private fun sparkTapProductionFraction(state: IncrementalGameState): Double =
+    SPARK_TAP_PRODUCTION_FRACTION * specializationMultiplier(state)
+
+  private fun reactorOverdriveMultiplier(state: IncrementalGameState): Double =
+    1.0 + (REACTOR_OVERDRIVE_BONUS - 1.0) * specializationMultiplier(state)
+
+  private fun starForgeMilestoneMultiplier(state: IncrementalGameState): Double =
+    1.0 + (STAR_FORGE_MILESTONE_MULTIPLIER - 1.0) * specializationMultiplier(state)
+
+  private fun singularityDiversityMultiplier(state: IncrementalGameState): Double =
+    1.0 + (SINGULARITY_DIVERSITY_MULTIPLIER - 1.0) * specializationMultiplier(state)
 
   private fun runAutomaticOutputMultiplier(state: IncrementalGameState): Double {
     val manualMultiplier = if (hasRunPick(state, IncrementalRunPick.MANUAL_OVERRIDE)) {
       MANUAL_OVERRIDE_AUTO_MULTIPLIER
-    } else {
-      1.0
-    }
-    val cascadeOutputMultiplier = if (hasRunPick(state, IncrementalRunPick.CASCADE_RESONANCE)) {
-      CASCADE_RESONANCE_OUTPUT_MULTIPLIER
     } else {
       1.0
     }
@@ -522,15 +609,8 @@ object IncrementalGame {
     } else {
       1.0
     }
-    return scaledProduct(manualMultiplier, cascadeOutputMultiplier, lowPressureMultiplier)
+    return scaledProduct(manualMultiplier, lowPressureMultiplier)
   }
-
-  fun overdriveProductionMultiplier(state: IncrementalGameState): Double =
-    if (hasRunPick(state, IncrementalRunPick.OVERCLOCK)) {
-      OVERCLOCK_MULTIPLIER
-    } else {
-      OVERDRIVE_MULTIPLIER
-    }
 
   private fun hasRunPick(
     state: IncrementalGameState,
