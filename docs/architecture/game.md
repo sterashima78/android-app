@@ -74,6 +74,22 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 - 52枚すべてを組札へ移動すると完成とする。
 - 盤面は landscape viewport を優先し、7列を同時に確認できる board-first layout とする。
 
+## Incremental game rules
+
+暴走炉は通常の一人用ゲームとして Compose / ViewModel / pure Kotlin Domain の構成を使う。ゲーム進行は `:feature:game:domain` の `IncrementalGameState` を source of truth とし、UI は経過時間とユーザー操作を Domain transition へ渡す。
+
+- portrait 固定の既存 Game chrome 内で表示する。
+- タップはエネルギーを直接獲得し、暴走中でない場合は暴走ゲージを5ずつ増やす。20タップ相当でゲージが100へ達すると10秒間の暴走を開始する。
+- 暴走中は自動生産を1,000倍とし、暴走中のタップ報酬も現在の生産速度を反映する。
+- タップごとにUI層で2%のジャックポット判定を行い、成立時はそのタップ報酬を10,000倍にする。確率判定はゲーム状態の決定論的transitionと分離する。
+- スパークはエネルギーを直接生産する。リアクターはスパーク、恒星炉はリアクター、特異点は恒星炉を生成し、上位設備が下位設備の量を連続的に増やす。
+- 設備価格は購入回数に対する等比級数で増加し、生成によって増えた設備量は価格上昇の購入回数には含めない。
+- 各設備は25回購入ごとにその設備固有の生産を10倍にする。
+- 購入単位は1、10、現在資源で購入可能な最大数を選択できる。
+- 1周で累計1e12エネルギーを生産するとPrestigeを解禁する。Prestigeは現在資源、設備量、購入回数、暴走状態をリセットし、獲得したPrestige Pointを保持する。Prestige Point 1ごとに全エネルギー生産を10倍にする。
+- 初期実装では進行状態を永続化せず、process終了後の復元、offline progress、background productionは行わない。
+- network、permission、credential、external runtimeを追加しない。
+
 ## Runtime and platform boundary
 
 - 数独 Activity は portrait 固定、クロンダイク Activity は landscape 固定とする。
@@ -87,6 +103,8 @@ Godot Android dependency は `:feature:game:ui` に閉じ、app shell、Game dom
 - Godot project は APK assets に同梱し、runtime asset download を行わない。
 
 ## Verification
+
+暴走炉の変更では、Domain unit testでタップ、暴走発動、ジャックポット倍率、自動生産、上位設備から下位設備への生成、設備購入、Prestige resetを検証する。UI変更ではportrait表示、Game一覧からの遷移、タップ、購入単位切替、Prestige操作を確認する。
 
 Godot 数独の変更では Gradle / architecture verification に加え、Android 17 実機で少なくとも起動、戻る、上段・中央・下段セルの number panel 配置、値の変更・消去、途中で採点されないこと、全盤面完成時の判定を確認する。
 
