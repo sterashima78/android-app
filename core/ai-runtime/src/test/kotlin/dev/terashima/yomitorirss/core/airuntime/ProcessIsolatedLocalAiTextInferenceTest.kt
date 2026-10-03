@@ -102,6 +102,13 @@ class ProcessIsolatedLocalAiTextInferenceTest {
     assertTrue(conversationIpcCharacterCount(request) < TEXT_INFERENCE_IPC_MAX_CHARS)
   }
 
+  @Test
+  fun `tool call parse failureはcause chainからIPC越しにも識別できる`() {
+    val error = RuntimeException("wrapper", IllegalStateException("Failed to parse FC tool calls"))
+
+    assertTrue(error.hasLocalToolCallParseFailure())
+  }
+
   private fun textInferenceSnapshot(
     preparingDurationMillis: Long? = null,
     generatingDurationMillis: Long? = null,
