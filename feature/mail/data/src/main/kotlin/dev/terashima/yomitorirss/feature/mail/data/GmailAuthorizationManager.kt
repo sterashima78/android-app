@@ -17,7 +17,6 @@ import kotlin.coroutines.suspendCoroutine
 data class GmailAuthorizedAccount(
   val email: String,
   val displayName: String?,
-  val accessToken: String,
 )
 
 sealed interface GmailAuthorizationOutcome {
@@ -88,7 +87,6 @@ class GmailAuthorizationManager(
     return GmailAuthorizedAccount(
       email = email,
       displayName = googleAccount?.displayName,
-      accessToken = accessToken,
     )
   }
 
