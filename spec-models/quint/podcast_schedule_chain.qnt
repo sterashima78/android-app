@@ -4,6 +4,8 @@
 // Covers:
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> enableSchedule
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> replaceSchedule
+// - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> ensureExistingSchedule
+// - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> ensureRecoveredSchedule
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> disableSchedule
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> startScheduledRun
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> scheduledSuccess
@@ -15,7 +17,6 @@
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> startManualRun
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> completeManualRun
 // - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> retryDoesNotAdvanceSchedule
-// - PODCAST-SCHEDULE-CHAIN-001@sha256:3bbfbb56d5bf7bc27654dff342de5802cb0f878a00302be1a936371bd0d688e4 -> manualRunDoesNotAdvanceSchedule
 //
 // Abstraction:
 // One Podcast program is modeled. The automatic chain is separate from manual
@@ -62,6 +63,15 @@ module podcast_schedule_chain {
     scheduleEnabled' = true,
     autoState' = AUTO_SCHEDULED,
     rescheduleSource' = SOURCE_EXTERNAL,
+    manualRunning' = manualRunning,
+  }
+
+  action ensureExistingSchedule = all {
+    scheduleEnabled,
+    autoState != AUTO_RECOVERY_REQUIRED,
+    scheduleEnabled' = scheduleEnabled,
+    autoState' = autoState,
+    rescheduleSource' = rescheduleSource,
     manualRunning' = manualRunning,
   }
 
@@ -179,6 +189,7 @@ module podcast_schedule_chain {
   action step = any {
     enableSchedule,
     replaceSchedule,
+    ensureExistingSchedule,
     ensureRecoveredSchedule,
     disableSchedule,
     startScheduledRun,
@@ -227,15 +238,6 @@ module podcast_schedule_chain {
   val retryDoesNotAdvanceSchedule =
     not(autoState == AUTO_RETRY_WAIT) or rescheduleSource == SOURCE_NONE
 
-  // Manual work is intentionally orthogonal to the automatic chain.
-  val manualRunDoesNotAdvanceSchedule =
-    not(manualRunning) or
-    autoState == AUTO_NONE or
-    autoState == AUTO_SCHEDULED or
-    autoState == AUTO_RUNNING or
-    autoState == AUTO_RETRY_WAIT or
-    autoState == AUTO_RECOVERY_REQUIRED
-
   val safety =
     knownAutoState and
     knownRescheduleSource and
@@ -244,6 +246,5 @@ module podcast_schedule_chain {
     scheduledStateHasRescheduleSource and
     runningOrRetryHasNoNextSchedule and
     recoveryRequiresExternalScheduler and
-    retryDoesNotAdvanceSchedule and
-    manualRunDoesNotAdvanceSchedule
+    retryDoesNotAdvanceSchedule
 }
