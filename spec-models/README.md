@@ -17,6 +17,7 @@
 | background request cleanup | [`quint/background_request_cleanup.qnt`](quint/background_request_cleanup.qnt) | — |
 | Local AI artifact lifecycle | [`quint/local_ai_artifact_lifecycle.qnt`](quint/local_ai_artifact_lifecycle.qnt) | — |
 | Mail initial sync checkpoint | [`quint/mail_initial_sync_checkpoint.qnt`](quint/mail_initial_sync_checkpoint.qnt) | — |
+| Mail credential/token boundary | — | [`alloy/mail_credential_boundary.als`](alloy/mail_credential_boundary.als) |
 | podcast episode lifecycle | [`quint/podcast_episode_lifecycle.qnt`](quint/podcast_episode_lifecycle.qnt) | — |
 | Web library / bookmark durable ownership | — | [`alloy/web_library_ownership.als`](alloy/web_library_ownership.als) |
 | Library cover prefetch lifecycle | [`quint/library_cover_prefetch_queue.qnt`](quint/library_cover_prefetch_queue.qnt) | — |
