@@ -36,9 +36,9 @@ class MailViewModel(
     reload()
   }
 
-  fun connectAuthorizedAccount(email: String, displayName: String?, accessToken: String) {
+  fun connectAuthorizedAccount(email: String, displayName: String?) {
     mutate(
-      action = { repository.connectAccount(email, displayName, accessToken) },
+      action = { repository.connectAccount(email, displayName) },
       successMessage = "$email を追加しました。メールはバックグラウンドで同期します",
     )
   }
