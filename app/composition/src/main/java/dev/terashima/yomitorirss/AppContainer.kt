@@ -160,7 +160,7 @@ class AppContainer(
     AppCrossFeatureRuntimeDependencies(
       application = application,
       database = database,
-      modelManager = aiCoreRuntime.modelManager,
+      conversationInference = aiCoreRuntime.conversationInference,
       articleRepository = contentRuntime.articleRepository,
       bookmarkContentQuery = contentRuntime.bookmarkContentQuery,
       bookmarkRepository = contentRuntime.bookmarkRepository,
