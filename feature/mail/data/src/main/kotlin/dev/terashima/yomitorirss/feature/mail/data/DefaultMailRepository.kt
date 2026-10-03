@@ -39,7 +39,6 @@ class DefaultMailRepository(
   override suspend fun connectAccount(
     email: String,
     displayName: String?,
-    accessToken: String,
   ): MailAccount {
     val normalizedEmail = email.trim().lowercase()
     require(normalizedEmail.isNotBlank()) { "Google アカウントを取得できませんでした" }
