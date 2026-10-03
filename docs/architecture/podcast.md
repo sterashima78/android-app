@@ -24,11 +24,15 @@ Podcast画面からsourceを追加できる。どの番組からも参照され�
 
 Podcast data moduleはRSS domainの `RssFeedContentReader.latestEntriesFromSources` を利用する。このAPIは呼び出し側が渡したsource IDとfeed URLを直接読み、RSS購読登録を要求しない。
 
-RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する。entryのtitle、feed-carried body、published time、entry URLを返すが、リンク先ページは取得しない。entry URLは生成時の記事metadataとしてPodcastへ渡し、AI推論材料には含めない。
+RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する。entryのtitle、feed-carried body、published time、entry URLに加えて、RSS 2.0 itemの `category` 値とAtom entryの `category@term` を一時metadataとして返すが、リンク先ページは取得しない。entry URLは生成時の記事metadataとしてPodcastへ渡し、AI推論材料には含めない。feed categoryはニュース順を決める生成時metadataとして扱い、新しいdurable source of truthにはしない。
 
 Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。Unicode表記、空白、大文字小文字を正規化したtitleが一致するentryはRSS boundaryで確実な重複として1件へ縮約する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
 
 `PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。候補全体を相互比較し、titleの語順、翻訳、言い換え、表現の強弱が異なっても主要な主体・行為または決定・対象が一致して同一出来事を指す場合は同じclusterとする。候補位置、source title、published timeは補助情報であり、それだけを理由に分割しない。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `BackgroundAiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。
+
+cluster確定後、Podcast domainはcluster内entryのfeed categoryを正規化して和集合にする。feed categoryがないclusterだけは `PodcastNewsCategorizer` へ渡す。production implementationは番組で選択された生成providerと同じstructured inference基盤を使い、cluster内entryのtitle / source titleとfeed categoryから暫定選択した代表カテゴリ名だけを入力する。feed body、entry URL、linked pageはカテゴリ補完へ追加しない。tool resultがニュース数と一致する非空カテゴリ配列として検証できない、または推論に失敗した場合は対象clusterを `その他` へfallbackし、生成全体は失敗させない。
+
+feed由来カテゴリとカテゴリなしclusterへの補完カテゴリを揃えた後、今回の候補cluster全体におけるカテゴリ出現ニュース数を計算する。同一cluster内で同じカテゴリが複数entryに現れても1回として数える。feed categoryを持つclusterは自身のfeedカテゴリのうち出現ニュース数が最少のものを代表カテゴリとし、同数なら `/` 区切りの階層が深いもの、続いて文字列順で決定する。feed categoryがないclusterは補完された1カテゴリを代表カテゴリとする。代表カテゴリが同じclusterを元の最初の出現カテゴリ順に連続配置し、カテゴリ内では元のcluster順を維持してから `chapter_position` を振る。カテゴリ名自体は永続化せず、並べ替え後のcluster境界と順序だけを既存 `chapter_position` へsnapshotする。
 
 `PodcastNewsExcluder` は番組の除外条件が空でない場合だけ、候補のtitle、source title、feed bodyを使って各entryをinclude / excludeへ分類する。番組で選択された生成providerと同じprovider-neutral `BackgroundAiStructuredTextInference` を利用し、`submit_podcast_news_exclusion(decisions)` のtool argumentsだけを結果として採用する。候補本文はuntrusted dataとして扱い、本文内の命令へ従わないことをsystem instructionで固定する。推論、tool call、decode、validationに失敗した場合は全候補をincludeへfallbackし、記事を欠落させない。除外されたentry identityは `podcast_excluded_articles` へ保存し、後続生成で再判定しない。
 
@@ -49,12 +53,12 @@ Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Wo
 1. `GeneratePodcastEpisodeUseCase` が番組を取得する。
 2. 中断済みまたは予約済みepisodeがあれば、そのsnapshotとchapter checkpointを優先して再開する。この経路では再クラスタリングしない。
 3. 番組の `sourceIds` に対応するPodcast-owned source定義を取得し、欠落があれば設定エラーとする。
-4. source URLからRSS / Atom entryのtitle / body / published time / entry URL metadataを取得する。
+4. source URLからRSS / Atom entryのtitle / body / published time / entry URLとentry category metadataを取得する。
 5. program-scoped `podcast_consumed_articles` と `podcast_excluded_articles` のどちらにも存在しないentryだけを候補にする。
 6. 番組の除外条件が空でなければ `PodcastNewsExcluder` で候補を判定する。除外判定に成功してexcludeになったentry identityは番組単位でdurable stateへ記録する。判定失敗時は全候補を残す。
 7. 除外後の候補が0件なら新しいepisodeを作らず終了する。
 8. 完全一致重複除外後の今回候補を `PodcastNewsClusterer` へ渡し、同一ニュースclusterと分類状態を確定する。過去episodeとの意味的重複判定は行わない。
-9. 最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。
+9. clusterごとにfeed categoryから代表カテゴリを決め、feed categoryがないclusterだけAIでカテゴリを補完する。代表カテゴリが同じclusterを連続配置した後に `chapter_position` を再割当てする。最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。カテゴリ名自体はsnapshotしない。
 10. 最初のepisodeを生成し、残りはqueueへ保持する。
 11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論単位として扱う。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、retryableな一時失敗は同じchapter内で2秒・5秒・15秒を基準とするjitter付きbackoffにより最大3回再試行する。再試行を使い切るまではchapterを `FAILED` へ確定しない。ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
 12. chapter生成promptではcluster内の全記事のtitle / feed bodyだけを根拠に、重複内容を繰り返さず、矛盾しない追加情報を統合した音声ニュース向けの短い日本語見出しと本文を生成する。entry URLはpromptへ含めない。見出しを `[[TITLE:...]]` markerとして `chapter_script` 内へ保持する。同じclusterの全rowへ同一のcheckpoint、script、errorを保存する。
@@ -69,7 +73,7 @@ process終了やcoroutine cancellationによって初回生成の `GENERATING` �
 
 `retry()` と中断再開の内部経路は同じ記事・cluster snapshotを使い、`READY` checkpointを再利用して失敗・未完了chapterだけを続行する。
 
-利用者が `READY` または `FAILED` episodeを明示的に「現在の条件で作り直す」場合は別経路とする。保存済みarticle snapshotを `PodcastFeedEntry` へ戻し、現在の番組の除外条件を再適用した後、`PodcastNewsClusterer` でcluster境界を再計算する。全候補が除外された場合は既存episodeを変更せず終了する。候補が残る場合は同じepisode IDの `podcast_episode_articles` を新しいarticle / cluster snapshotへtransactionで置き換え、episode scriptを消去して `GENERATING` へ戻す。以降は通常生成と同じcheckpoint生成を行い、失敗時は `FAILED` とする。
+利用者が `READY` または `FAILED` episodeを明示的に「現在の条件で作り直す」場合は別経路とする。保存済みarticle snapshotを `PodcastFeedEntry` へ戻し、現在の番組の除外条件を再適用した後、`PodcastNewsClusterer` でcluster境界を再計算する。feed categoryはdurable snapshotへ複製しないため、作り直し時のclusterは保存済みtitle / source titleから `PodcastNewsCategorizer` でカテゴリを補完して並べ替える。全候補が除外された場合は既存episodeを変更せず終了する。候補が残る場合は同じepisode IDの `podcast_episode_articles` を新しいarticle / cluster snapshotへtransactionで置き換え、episode scriptを消去して `GENERATING` へ戻す。以降は通常生成と同じcheckpoint生成を行い、失敗時は `FAILED` とする。
 
 旧versionで開始済みの `regeneration_status=RUNNING` episodeは互換のため従来どおり同じsnapshotから再開する。新しい明示的な作り直しでは `regeneration_status` を新規作成しない。`regeneration_status=RUNNING` のepisodeでは重複操作、archive、deleteを引き続き拒否する。
 
@@ -138,6 +142,9 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
 - 意味的な同一ニュース判定は現在の未消費候補内だけで行い、過去episodeを意味比較して続報を抑止しない。
 - clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackし、fallback原因の分類状態を保存する。
+- feed categoryの代表選択はcluster単位で出現数を数え、最少出現カテゴリを優先する。同数時のtie-breakとカテゴリgroup順は決定的にする。
+- feed categoryがないclusterのカテゴリ補完失敗は `その他` へfallbackし、記事やclusterを欠落させない。カテゴリ補完へfeed body、entry URL、linked pageを追加しない。
+- feed categoryと代表カテゴリ名はdurable stateへ複製せず、episodeではカテゴリ単位に並べ替え済みの `chapter_position` だけを固定する。
 - 分類診断のためにraw prompt、raw AI response、例外本文を新たに永続化しない。
 - 1回のchapter生成AI推論は1つのnews clusterだけを生成材料とし、そのcluster外の記事本文を混在させない。
 - 同一clusterの全article rowは同じcheckpoint、chapter script、errorを共有する。
@@ -174,3 +181,4 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - `docs/adr/0267-podcast-news-exclusion-filter.md`
 - `docs/adr/0268-podcast-rebuild-regeneration.md`
 - `docs/adr/0269-podcast-durable-foreground-generation.md`
+- `docs/adr/0278-podcast-feed-category-ordering.md`

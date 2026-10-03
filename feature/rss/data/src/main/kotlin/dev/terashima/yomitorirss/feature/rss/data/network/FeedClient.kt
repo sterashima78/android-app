@@ -98,6 +98,9 @@ internal class FeedClient(
         .ifBlank { entry.directChildText("summary") }
         .repairText()
         .trim()
+      val categories = entry.directChildren("category")
+        .mapNotNull { category -> category.attr("term").repairText().trim().takeIf(String::isNotBlank) }
+        .distinct()
       ParsedArticle(
         externalId = externalId,
         identityKey = identityKey(externalId, url, articleTitle, published),
@@ -105,6 +108,7 @@ internal class FeedClient(
         title = articleTitle,
         publishedAt = published,
         feedContent = feedContent,
+        categories = categories,
       )
     }
     return ParsedFeed(title, feedUrl, siteUrl, articles)
@@ -134,6 +138,9 @@ internal class FeedClient(
         .ifBlank { item.directChildText("description") }
         .repairText()
         .trim()
+      val categories = item.directChildren("category")
+        .mapNotNull { category -> category.text().repairText().trim().takeIf(String::isNotBlank) }
+        .distinct()
       ParsedArticle(
         externalId = guid,
         identityKey = identityKey(guid, url, articleTitle, published),
@@ -141,6 +148,7 @@ internal class FeedClient(
         title = articleTitle,
         publishedAt = published,
         feedContent = feedContent,
+        categories = categories,
       )
     }
     if (articles.isEmpty() && title == feedUrl) error("RSSフィードを解析できませんでした")

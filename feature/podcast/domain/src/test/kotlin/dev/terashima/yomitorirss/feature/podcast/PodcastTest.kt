@@ -42,6 +42,30 @@ class PodcastTest {
   }
 
   @Test
+  fun `feedカテゴリが同じニュースを連続配置してからepisodeへ予約する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(
+      listOf(
+        entry("a1").copy(categories = listOf("Topic/A")),
+        entry("a2").copy(categories = listOf("Topic/B")),
+        entry("a3").copy(categories = listOf("Topic/A")),
+      ),
+    )
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      source,
+      RecordingGenerator("生成された原稿"),
+      nowEpochMillis = { 1234L },
+    )
+
+    val result = useCase.generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("a1", "a3", "a2"), result.episode.articles.map { it.articleId })
+    assertEquals(listOf(0, 1, 2), result.episode.articles.map { it.chapterPosition })
+  }
+
+  @Test
   fun `生成進捗は保存済みcheckpoint数から完了まで単調に更新する`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
@@ -538,6 +562,7 @@ private fun PodcastFeedEntry.toEpisodeArticle() = PodcastEpisodeArticle(
   publishedAtEpochMillis = publishedAtEpochMillis,
   articleUrl = articleUrl,
   feedContent = feedContent,
+  chapterPosition = chapterPosition,
 )
 
 private class FakeFeedContentSource(

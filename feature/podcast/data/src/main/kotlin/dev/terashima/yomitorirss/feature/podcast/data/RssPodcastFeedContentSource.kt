@@ -25,8 +25,14 @@ class RssPodcastFeedContentSource(
         publishedAtEpochMillis = entry.publishedAtEpochMillis,
         articleUrl = entry.url,
         feedContent = entry.content,
+        categories = entry.categories,
       )
-    }.distinctBy { entry -> normalizeTitleForDeduplication(entry.title) }
+    }
+      .groupBy { entry -> normalizeTitleForDeduplication(entry.title) }
+      .values
+      .map { duplicates ->
+        duplicates.first().copy(categories = duplicates.flatMap(PodcastFeedEntry::categories).distinct())
+      }
   }
 }
 

@@ -1,8 +1,10 @@
 package dev.terashima.yomitorirss.feature.podcast
 
+import java.text.Normalizer
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -64,6 +66,7 @@ data class PodcastFeedEntry(
   val publishedAtEpochMillis: Long?,
   val articleUrl: String?,
   val feedContent: String,
+  val categories: List<String> = emptyList(),
   val chapterPosition: Int? = null,
 ) {
   init {
@@ -286,6 +289,74 @@ object SingletonPodcastNewsClusterer : PodcastNewsClusterer {
   )
 }
 
+interface PodcastNewsCategorizer {
+  suspend fun categorize(
+    provider: PodcastGenerationProvider,
+    news: List<List<PodcastFeedEntry>>,
+    existingCategories: Set<String>,
+  ): List<String>
+}
+
+object OtherPodcastNewsCategorizer : PodcastNewsCategorizer {
+  override suspend fun categorize(
+    provider: PodcastGenerationProvider,
+    news: List<List<PodcastFeedEntry>>,
+    existingCategories: Set<String>,
+  ): List<String> = List(news.size) { PODCAST_OTHER_CATEGORY }
+}
+
+const val PODCAST_OTHER_CATEGORY = "その他"
+
+internal fun selectPodcastFeedCategories(
+  news: List<List<PodcastFeedEntry>>,
+  supplementalCategories: Map<Int, String> = emptyMap(),
+): List<String?> {
+  val categoriesByNews = news.mapIndexed { index, articles ->
+    val feedCategories = articles.asSequence()
+      .flatMap { it.categories.asSequence() }
+      .map(::normalizePodcastCategory)
+      .filter(String::isNotBlank)
+      .distinct()
+      .toList()
+    if (feedCategories.isNotEmpty()) {
+      feedCategories
+    } else {
+      listOfNotNull(
+        supplementalCategories[index]
+          ?.let(::normalizePodcastCategory)
+          ?.takeIf(String::isNotBlank),
+      )
+    }
+  }
+  val categoryCounts = categoriesByNews.flatten().groupingBy { it }.eachCount()
+  return categoriesByNews.map { categories ->
+    categories.minWithOrNull(
+      compareBy<String> { categoryCounts.getValue(it) }
+        .thenByDescending { category -> category.count { it == '/' } }
+        .thenBy { it.lowercase(Locale.ROOT) }
+        .thenBy { it },
+    )
+  }
+}
+
+internal fun orderPodcastNewsByCategory(
+  news: List<List<PodcastFeedEntry>>,
+  categories: List<String>,
+): List<List<PodcastFeedEntry>> {
+  require(news.size == categories.size) { "one category is required per news cluster" }
+  val grouped = linkedMapOf<String, MutableList<List<PodcastFeedEntry>>>()
+  news.forEachIndexed { index, articles ->
+    val category = normalizePodcastCategory(categories[index]).ifBlank { PODCAST_OTHER_CATEGORY }
+    grouped.getOrPut(category) { mutableListOf() } += articles
+  }
+  return grouped.values.flatten()
+}
+
+private fun normalizePodcastCategory(category: String): String =
+  Normalizer.normalize(category, Normalizer.Form.NFKC)
+    .trim()
+    .replace(Regex("\\s+"), " ")
+
 data class PodcastGenerationProgress(
   val completedChapters: Int,
   val totalChapters: Int,
@@ -315,6 +386,7 @@ class GeneratePodcastEpisodeUseCase(
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
   private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
+  private val newsCategorizer: PodcastNewsCategorizer = OtherPodcastNewsCategorizer,
   private val newsExcluder: PodcastNewsExcluder = IncludeAllPodcastNews,
   private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
 ) {
@@ -428,9 +500,38 @@ class GeneratePodcastEpisodeUseCase(
     require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
       "news clusterer must contain every candidate exactly once"
     }
+
+    val news = groups.map { indexes -> indexes.map(candidates::get) }
+    val preliminaryCategories = selectPodcastFeedCategories(news)
+    val uncategorizedIndexes = preliminaryCategories.indices.filter { preliminaryCategories[it] == null }
+    val supplementalCategories = mutableMapOf<Int, String>()
+    if (uncategorizedIndexes.isNotEmpty()) {
+      val uncategorizedNews = uncategorizedIndexes.map(news::get)
+      val generatedCategories = try {
+        newsCategorizer.categorize(
+          provider = program.provider,
+          news = uncategorizedNews,
+          existingCategories = preliminaryCategories.filterNotNull().toSet(),
+        )
+      } catch (error: CancellationException) {
+        throw error
+      } catch (_: Throwable) {
+        List(uncategorizedNews.size) { PODCAST_OTHER_CATEGORY }
+      }.takeIf { generated ->
+        generated.size == uncategorizedNews.size && generated.all { it.isNotBlank() }
+      } ?: List(uncategorizedNews.size) { PODCAST_OTHER_CATEGORY }
+
+      uncategorizedIndexes.zip(generatedCategories).forEach { (index, category) ->
+        supplementalCategories[index] = category
+      }
+    }
+
+    val categories = selectPodcastFeedCategories(news, supplementalCategories)
+      .map { it ?: PODCAST_OTHER_CATEGORY }
+    val orderedNews = orderPodcastNewsByCategory(news, categories)
     return PodcastClusteredCandidates(
-      entries = groups.flatMapIndexed { chapterPosition, indexes ->
-        indexes.map { index -> candidates[index].copy(chapterPosition = chapterPosition) }
+      entries = orderedNews.flatMapIndexed { chapterPosition, articles ->
+        articles.map { article -> article.copy(chapterPosition = chapterPosition) }
       },
       status = result.status,
     )

@@ -39,6 +39,7 @@ class DefaultRssFeedContentReader internal constructor(
             publishedAtEpochMillis = runCatching { Instant.parse(article.publishedAt).toEpochMilli() }.getOrNull(),
             url = article.url,
             content = content,
+            categories = article.categories,
           )
         }
       }
