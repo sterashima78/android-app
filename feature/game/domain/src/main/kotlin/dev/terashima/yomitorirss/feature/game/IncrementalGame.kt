@@ -2,41 +2,38 @@ package dev.terashima.yomitorirss.feature.game
 
 import kotlin.math.floor
 import kotlin.math.ln
-import kotlin.math.log10
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 enum class IncrementalGeneratorType(
   val baseCost: Double,
   val costGrowth: Double,
   val cascadePerSecond: Double,
 ) {
-  SPARK(
-    baseCost = 10.0,
-    costGrowth = 1.15,
-    cascadePerSecond = 0.0,
-  ),
-  REACTOR(
-    baseCost = 10_000.0,
-    costGrowth = 1.18,
-    cascadePerSecond = 1.0,
-  ),
-  STAR_FORGE(
-    baseCost = 100_000_000.0,
-    costGrowth = 1.22,
-    cascadePerSecond = 0.5,
-  ),
-  SINGULARITY(
-    baseCost = 100_000_000_000_000.0,
-    costGrowth = 1.25,
-    cascadePerSecond = 0.25,
-  ),
+  SPARK(10.0, 1.17, 0.0),
+  REACTOR(5_000.0, 1.20, 0.5),
+  STAR_FORGE(2_000_000.0, 1.23, 0.2),
+  SINGULARITY(1_000_000_000.0, 1.26, 0.08),
 }
 
 enum class IncrementalPurchaseAmount {
   ONE,
   TEN,
   MAX,
+}
+
+enum class IncrementalPrestigeUpgrade(
+  val baseCost: Int,
+  val maxLevel: Int,
+  val requiredTotalLevels: Int = 0,
+) {
+  OUTPUT_AMPLIFIER(1, 5),
+  CASCADE_TUNING(1, 5),
+  TAP_RESONANCE(1, 5),
+  OVERDRIVE_CAPACITOR(1, 5),
+  STARTER_SPARK(3, 1, 3),
+  COMPACT_MILESTONES(5, 1, 6),
 }
 
 data class IncrementalGameState(
@@ -46,7 +43,8 @@ data class IncrementalGameState(
   val generatorPurchases: List<Int> = List(IncrementalGeneratorType.entries.size) { 0 },
   val overdriveCharge: Double = 0.0,
   val overdriveRemainingSeconds: Double = 0.0,
-  val prestigePoints: Int = 0,
+  val prestigeCores: Int = 0,
+  val prestigeUpgradeLevels: List<Int> = List(IncrementalPrestigeUpgrade.entries.size) { 0 },
   val taps: Long = 0,
 )
 
@@ -59,25 +57,45 @@ data class IncrementalTapResult(
 
 object IncrementalGame {
   const val OVERDRIVE_CHARGE_MAX = 100.0
-  const val OVERDRIVE_CHARGE_PER_TAP = 5.0
-  const val OVERDRIVE_DURATION_SECONDS = 10.0
-  const val OVERDRIVE_MULTIPLIER = 1_000.0
-  const val JACKPOT_MULTIPLIER = 10_000.0
-  const val PRESTIGE_THRESHOLD = 1_000_000_000_000.0
+  const val OVERDRIVE_CHARGE_PER_TAP = 4.0
+  const val BASE_OVERDRIVE_DURATION_SECONDS = 6.0
+  const val OVERDRIVE_MULTIPLIER = 20.0
+  const val JACKPOT_MULTIPLIER = 50.0
+  const val PRESTIGE_THRESHOLD = 3_000_000.0
+  const val MILESTONE_MULTIPLIER = 2.0
+  const val BASE_MILESTONE_INTERVAL = 25
+  const val COMPACT_MILESTONE_INTERVAL = 20
+  const val TAP_PRODUCTION_FRACTION = 0.08
 
-  fun newGame(prestigePoints: Int = 0): IncrementalGameState =
-    IncrementalGameState(prestigePoints = prestigePoints.coerceAtLeast(0))
+  fun newGame(
+    prestigeCores: Int = 0,
+    prestigeUpgradeLevels: List<Int> = List(IncrementalPrestigeUpgrade.entries.size) { 0 },
+  ): IncrementalGameState {
+    val normalizedLevels = normalizePrestigeLevels(prestigeUpgradeLevels)
+    val starterSpark = if (
+      normalizedLevels[IncrementalPrestigeUpgrade.STARTER_SPARK.ordinal] > 0
+    ) {
+      1.0
+    } else {
+      0.0
+    }
+    return IncrementalGameState(
+      generatorAmounts = listOf(starterSpark, 0.0, 0.0, 0.0),
+      prestigeCores = prestigeCores.coerceAtLeast(0),
+      prestigeUpgradeLevels = normalizedLevels,
+    )
+  }
 
   fun tap(
     state: IncrementalGameState,
     jackpot: Boolean = false,
   ): IncrementalTapResult {
     val overdriveWasActive = state.overdriveRemainingSeconds > 0.0
-    val prestigeMultiplier = prestigeMultiplier(state)
-    val passivePerSecond = productionPerSecond(state)
-    val baseTap = maxOf(prestigeMultiplier, passivePerSecond * 0.15)
-    val gainedEnergy = saturatingMultiply(
+    val normalProductionPerSecond = productionPerSecond(state.copy(overdriveRemainingSeconds = 0.0))
+    val baseTap = maxOf(1.0, normalProductionPerSecond * TAP_PRODUCTION_FRACTION)
+    val gainedEnergy = scaledProduct(
       baseTap,
+      tapMultiplier(state),
       if (jackpot) JACKPOT_MULTIPLIER else 1.0,
     )
 
@@ -89,7 +107,7 @@ object IncrementalGame {
     val overdriveStarted = !overdriveWasActive && charged >= OVERDRIVE_CHARGE_MAX
     val nextCharge = if (overdriveStarted) 0.0 else charged
     val nextOverdrive = if (overdriveStarted) {
-      OVERDRIVE_DURATION_SECONDS
+      overdriveDurationSeconds(state)
     } else {
       state.overdriveRemainingSeconds
     }
@@ -142,13 +160,13 @@ object IncrementalGame {
   }
 
   fun productionPerSecond(state: IncrementalGameState): Double {
-    val base = saturatingMultiply(
+    val base = scaledProduct(
       state.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal],
-      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.SPARK.ordinal]),
+      milestoneMultiplier(state, IncrementalGeneratorType.SPARK),
+      outputMultiplier(state),
     )
-    val withPrestige = saturatingMultiply(base, prestigeMultiplier(state))
     return saturatingMultiply(
-      withPrestige,
+      base,
       if (state.overdriveRemainingSeconds > 0.0) OVERDRIVE_MULTIPLIER else 1.0,
     )
   }
@@ -188,18 +206,93 @@ object IncrementalGame {
 
   fun prestigeReward(state: IncrementalGameState): Int {
     if (state.runEnergy < PRESTIGE_THRESHOLD) return 0
-    val exponent = log10(state.runEnergy)
-    return (floor((exponent - 12.0) / 3.0).toInt() + 1).coerceAtLeast(1)
+    return floor(sqrt(state.runEnergy / PRESTIGE_THRESHOLD))
+      .toInt()
+      .coerceAtLeast(1)
   }
 
-  fun prestigeMultiplier(state: IncrementalGameState): Double =
-    10.0.pow(state.prestigePoints.coerceIn(0, 300).toDouble())
+  fun nextPrestigeRewardEnergy(state: IncrementalGameState): Double {
+    val nextReward = (prestigeReward(state) + 1).coerceAtLeast(1)
+    return PRESTIGE_THRESHOLD * nextReward.toDouble().pow(2.0)
+  }
 
   fun prestige(state: IncrementalGameState): IncrementalGameState {
     val reward = prestigeReward(state)
     if (reward <= 0) return state
-    return newGame(prestigePoints = state.prestigePoints + reward)
+    return newGame(
+      prestigeCores = state.prestigeCores + reward,
+      prestigeUpgradeLevels = state.prestigeUpgradeLevels,
+    )
   }
+
+  fun prestigeUpgradeLevel(
+    state: IncrementalGameState,
+    upgrade: IncrementalPrestigeUpgrade,
+  ): Int = state.prestigeUpgradeLevels[upgrade.ordinal]
+
+  fun prestigeUpgradeCost(
+    state: IncrementalGameState,
+    upgrade: IncrementalPrestigeUpgrade,
+  ): Int? {
+    val level = prestigeUpgradeLevel(state, upgrade)
+    if (level >= upgrade.maxLevel) return null
+    return if (upgrade.maxLevel == 1) upgrade.baseCost else upgrade.baseCost + level
+  }
+
+  fun isPrestigeUpgradeUnlocked(
+    state: IncrementalGameState,
+    upgrade: IncrementalPrestigeUpgrade,
+  ): Boolean = totalPrestigeUpgradeLevels(state) >= upgrade.requiredTotalLevels
+
+  fun purchasePrestigeUpgrade(
+    state: IncrementalGameState,
+    upgrade: IncrementalPrestigeUpgrade,
+  ): IncrementalGameState {
+    if (!isPrestigeUpgradeUnlocked(state, upgrade)) return state
+    val cost = prestigeUpgradeCost(state, upgrade) ?: return state
+    if (state.prestigeCores < cost) return state
+
+    val levels = state.prestigeUpgradeLevels.toMutableList()
+    levels[upgrade.ordinal] += 1
+
+    val amounts = state.generatorAmounts.toMutableList()
+    if (
+      upgrade == IncrementalPrestigeUpgrade.STARTER_SPARK &&
+      levels[upgrade.ordinal] == 1
+    ) {
+      amounts[IncrementalGeneratorType.SPARK.ordinal] =
+        saturatingAdd(amounts[IncrementalGeneratorType.SPARK.ordinal], 1.0)
+    }
+
+    return state.copy(
+      prestigeCores = state.prestigeCores - cost,
+      prestigeUpgradeLevels = levels,
+      generatorAmounts = amounts,
+    )
+  }
+
+  fun totalPrestigeUpgradeLevels(state: IncrementalGameState): Int =
+    state.prestigeUpgradeLevels.sum()
+
+  fun milestoneInterval(state: IncrementalGameState): Int =
+    if (prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.COMPACT_MILESTONES) > 0) {
+      COMPACT_MILESTONE_INTERVAL
+    } else {
+      BASE_MILESTONE_INTERVAL
+    }
+
+  fun overdriveDurationSeconds(state: IncrementalGameState): Double =
+    BASE_OVERDRIVE_DURATION_SECONDS +
+      prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.OVERDRIVE_CAPACITOR)
+
+  fun outputMultiplier(state: IncrementalGameState): Double =
+    1.0 + prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.OUTPUT_AMPLIFIER) * 0.35
+
+  fun cascadeMultiplier(state: IncrementalGameState): Double =
+    1.0 + prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.CASCADE_TUNING) * 0.30
+
+  fun tapMultiplier(state: IncrementalGameState): Double =
+    1.0 + prestigeUpgradeLevel(state, IncrementalPrestigeUpgrade.TAP_RESONANCE) * 0.75
 
   private fun tickSegment(
     state: IncrementalGameState,
@@ -213,12 +306,22 @@ object IncrementalGame {
     val starForge = state.generatorAmounts[IncrementalGeneratorType.STAR_FORGE.ordinal]
     val singularity = state.generatorAmounts[IncrementalGeneratorType.SINGULARITY.ordinal]
 
-    val reactorRate = IncrementalGeneratorType.REACTOR.cascadePerSecond *
-      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.REACTOR.ordinal])
-    val starForgeRate = IncrementalGeneratorType.STAR_FORGE.cascadePerSecond *
-      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.STAR_FORGE.ordinal])
-    val singularityRate = IncrementalGeneratorType.SINGULARITY.cascadePerSecond *
-      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.SINGULARITY.ordinal])
+    val cascadeMultiplier = cascadeMultiplier(state)
+    val reactorRate = scaledProduct(
+      IncrementalGeneratorType.REACTOR.cascadePerSecond,
+      milestoneMultiplier(state, IncrementalGeneratorType.REACTOR),
+      cascadeMultiplier,
+    )
+    val starForgeRate = scaledProduct(
+      IncrementalGeneratorType.STAR_FORGE.cascadePerSecond,
+      milestoneMultiplier(state, IncrementalGeneratorType.STAR_FORGE),
+      cascadeMultiplier,
+    )
+    val singularityRate = scaledProduct(
+      IncrementalGeneratorType.SINGULARITY.cascadePerSecond,
+      milestoneMultiplier(state, IncrementalGeneratorType.SINGULARITY),
+      cascadeMultiplier,
+    )
 
     val t2 = elapsedSeconds * elapsedSeconds
     val t3 = t2 * elapsedSeconds
@@ -252,8 +355,8 @@ object IncrementalGame {
       ),
     )
     val energyMultiplier = scaledProduct(
-      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.SPARK.ordinal]),
-      prestigeMultiplier(state),
+      milestoneMultiplier(state, IncrementalGeneratorType.SPARK),
+      outputMultiplier(state),
       productionMultiplier,
     )
     val gainedEnergy = saturatingMultiply(integratedSpark, energyMultiplier)
@@ -306,8 +409,20 @@ object IncrementalGame {
     return firstCost * (growth - 1.0) / (type.costGrowth - 1.0)
   }
 
-  private fun milestoneMultiplier(purchases: Int): Double =
-    10.0.pow((purchases / 25).coerceIn(0, 300).toDouble())
+  private fun milestoneMultiplier(
+    state: IncrementalGameState,
+    type: IncrementalGeneratorType,
+  ): Double =
+    MILESTONE_MULTIPLIER.pow(
+      (state.generatorPurchases[type.ordinal] / milestoneInterval(state))
+        .coerceIn(0, 300)
+        .toDouble(),
+    )
+
+  private fun normalizePrestigeLevels(levels: List<Int>): List<Int> =
+    IncrementalPrestigeUpgrade.entries.mapIndexed { index, upgrade ->
+      levels.getOrNull(index)?.coerceIn(0, upgrade.maxLevel) ?: 0
+    }
 
   private fun saturatingAdd(a: Double, b: Double): Double {
     val value = a + b
