@@ -110,20 +110,20 @@ check ZeroImportRemainsEligible for 10 expect 0
 
 run NegativeOnlyReplacementExample {
   some targetDate: Date |
-    some existing: ExistingRow |
-      existing.date = targetDate and existing.sign = Positive
-    some imported: ImportRow |
-      imported.date = targetDate and imported.sign = Negative
-    all imported: ImportRow |
-      imported.date = targetDate implies imported.sign = Negative
-    no final: FinalRow |
-      final.source.date = targetDate
+    (some existing: ExistingRow |
+      existing.date = targetDate and existing.sign = Positive) and
+    (some imported: ImportRow |
+      imported.date = targetDate and imported.sign = Negative) and
+    (all imported: ImportRow |
+      imported.date = targetDate implies imported.sign = Negative) and
+    (no final: FinalRow |
+      final.source.date = targetDate)
 } for 10 expect 1
 
 run LegacyNegativeOutsideReplacementExample {
   some legacy: ExistingRow |
     legacy.sign = Negative and
     legacy.date not in importedDates and
-    some final: FinalRow |
-      final.source = legacy
+    (some final: FinalRow |
+      final.source = legacy)
 } for 10 expect 1
