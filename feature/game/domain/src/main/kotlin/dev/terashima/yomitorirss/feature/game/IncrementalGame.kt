@@ -519,14 +519,10 @@ object IncrementalGame {
     state: IncrementalGameState,
     pick: IncrementalRunPick,
   ): Boolean = when (pick) {
-    IncrementalRunPick.SPARK_DISCHARGE ->
-      state.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal] > 0.0
-    IncrementalRunPick.REACTOR_SURGE ->
-      state.generatorAmounts[IncrementalGeneratorType.REACTOR.ordinal] > 0.0
-    IncrementalRunPick.FORGE_COMPRESSION ->
-      state.generatorAmounts[IncrementalGeneratorType.STAR_FORGE.ordinal] > 0.0
-    IncrementalRunPick.SINGULARITY_COLLAPSE ->
-      state.generatorAmounts[IncrementalGeneratorType.SINGULARITY.ordinal] > 0.0
+    IncrementalRunPick.SPARK_DISCHARGE -> state.runEnergy >= RUN_PICK_THRESHOLDS[0]
+    IncrementalRunPick.REACTOR_SURGE -> state.runEnergy >= RUN_PICK_THRESHOLDS[1]
+    IncrementalRunPick.FORGE_COMPRESSION -> state.runEnergy >= RUN_PICK_THRESHOLDS[2]
+    IncrementalRunPick.SINGULARITY_COLLAPSE -> state.runEnergy >= RUN_PICK_THRESHOLDS[3]
     IncrementalRunPick.MANUAL_OVERRIDE,
     IncrementalRunPick.LOW_PRESSURE,
     IncrementalRunPick.OVERCLOCK,
