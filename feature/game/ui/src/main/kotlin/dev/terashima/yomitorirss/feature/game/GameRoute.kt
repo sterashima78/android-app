@@ -140,6 +140,7 @@ fun GameRoute(
         onPurchase = incrementalGameViewModel::purchase,
         onPrestige = incrementalGameViewModel::prestige,
         onPrestigeUpgrade = incrementalGameViewModel::purchasePrestigeUpgrade,
+        onRunPick = incrementalGameViewModel::selectRunPick,
       )
     }
   }
@@ -172,7 +173,7 @@ private fun GameListScreen(
   ) {
     Text("一人用ゲーム", style = MaterialTheme.typography.titleLarge)
     Text("端末だけで遊べるゲームをまとめています。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    GameTextCard("⚡", "暴走炉", "タップと多段自動生産で指数的にインフレするゲーム", onOpenIncremental)
+    GameTextCard("⚡", "暴走炉", "周回ごとの選択と多段生産でインフレを組み立てるゲーム", onOpenIncremental)
     Card(onClick = onOpenSudoku) {
       Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),

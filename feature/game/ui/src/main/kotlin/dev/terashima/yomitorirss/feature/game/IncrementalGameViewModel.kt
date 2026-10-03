@@ -12,6 +12,7 @@ data class IncrementalGameUiState(
   val lastTapReward: Double = 0.0,
   val lastTapWasJackpot: Boolean = false,
   val tapEventId: Long = 0L,
+  val pendingRunPicks: List<IncrementalRunPick> = emptyList(),
 )
 
 class IncrementalGameViewModel : ViewModel() {
@@ -20,25 +21,39 @@ class IncrementalGameViewModel : ViewModel() {
 
   fun tick(elapsedSeconds: Double) {
     val current = _state.value
-    _state.value = current.copy(
-      game = IncrementalGame.tick(
-        state = current.game,
-        elapsedSeconds = elapsedSeconds.coerceIn(0.0, 0.25),
+    if (current.pendingRunPicks.isNotEmpty()) return
+    if (IncrementalGame.isRunPickDue(current.game)) {
+      _state.value = withRunPickOffer(current)
+      return
+    }
+    _state.value = withRunPickOffer(
+      current.copy(
+        game = IncrementalGame.tick(
+          state = current.game,
+          elapsedSeconds = elapsedSeconds.coerceIn(0.0, 0.25),
+        ),
       ),
     )
   }
 
   fun tap() {
     val current = _state.value
+    if (current.pendingRunPicks.isNotEmpty()) return
+    if (IncrementalGame.isRunPickDue(current.game)) {
+      _state.value = withRunPickOffer(current)
+      return
+    }
     val result = IncrementalGame.tap(
       state = current.game,
       jackpot = Random.nextDouble() < JACKPOT_CHANCE,
     )
-    _state.value = current.copy(
-      game = result.state,
-      lastTapReward = result.gainedEnergy,
-      lastTapWasJackpot = result.jackpot,
-      tapEventId = current.tapEventId + 1,
+    _state.value = withRunPickOffer(
+      current.copy(
+        game = result.state,
+        lastTapReward = result.gainedEnergy,
+        lastTapWasJackpot = result.jackpot,
+        tapEventId = current.tapEventId + 1,
+      ),
     )
   }
 
@@ -48,11 +63,18 @@ class IncrementalGameViewModel : ViewModel() {
 
   fun purchase(type: IncrementalGeneratorType) {
     val current = _state.value
-    _state.value = current.copy(
-      game = IncrementalGame.purchase(
-        state = current.game,
-        type = type,
-        amount = current.purchaseAmount,
+    if (current.pendingRunPicks.isNotEmpty()) return
+    if (IncrementalGame.isRunPickDue(current.game)) {
+      _state.value = withRunPickOffer(current)
+      return
+    }
+    _state.value = withRunPickOffer(
+      current.copy(
+        game = IncrementalGame.purchase(
+          state = current.game,
+          type = type,
+          amount = current.purchaseAmount,
+        ),
       ),
     )
   }
@@ -63,13 +85,35 @@ class IncrementalGameViewModel : ViewModel() {
       game = IncrementalGame.prestige(current.game),
       lastTapReward = 0.0,
       lastTapWasJackpot = false,
+      pendingRunPicks = emptyList(),
     )
+  }
+
+  fun selectRunPick(pick: IncrementalRunPick) {
+    val current = _state.value
+    if (pick !in current.pendingRunPicks) return
+    val next = current.copy(
+      game = IncrementalGame.selectRunPick(current.game, pick),
+      pendingRunPicks = emptyList(),
+    )
+    _state.value = withRunPickOffer(next)
   }
 
   fun purchasePrestigeUpgrade(upgrade: IncrementalPrestigeUpgrade) {
     val current = _state.value
     _state.value = current.copy(
       game = IncrementalGame.purchasePrestigeUpgrade(current.game, upgrade),
+    )
+  }
+
+  private fun withRunPickOffer(state: IncrementalGameUiState): IncrementalGameUiState {
+    if (state.pendingRunPicks.isNotEmpty() || !IncrementalGame.isRunPickDue(state.game)) {
+      return state
+    }
+    return state.copy(
+      pendingRunPicks = IncrementalGame.availableRunPicks(state.game)
+        .shuffled()
+        .take(IncrementalGame.RUN_PICK_OPTION_COUNT),
     )
   }
 
