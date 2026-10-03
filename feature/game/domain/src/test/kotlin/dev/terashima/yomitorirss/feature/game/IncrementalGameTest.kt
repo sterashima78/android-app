@@ -63,7 +63,25 @@ class IncrementalGameTest {
     val next = IncrementalGame.tick(state, elapsedSeconds = 1.0)
 
     assertEquals(1.0, next.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal], 0.0001)
-    assertEquals(1.0, next.energy, 0.0001)
+    assertEquals(0.5, next.energy, 0.0001)
+  }
+
+
+  @Test
+  fun cascadeProductionDoesNotDependOnTickSize() {
+    val initial = IncrementalGame.newGame().copy(
+      generatorAmounts = listOf(0.0, 1.0, 1.0, 1.0),
+    )
+
+    val singleTick = IncrementalGame.tick(initial, elapsedSeconds = 1.0)
+    val splitTicks = generateSequence(initial) { state ->
+      IncrementalGame.tick(state, elapsedSeconds = 0.1)
+    }.drop(10).first()
+
+    singleTick.generatorAmounts.zip(splitTicks.generatorAmounts).forEach { (single, split) ->
+      assertEquals(single, split, 0.000001)
+    }
+    assertEquals(singleTick.energy, splitTicks.energy, 0.000001)
   }
 
   @Test
