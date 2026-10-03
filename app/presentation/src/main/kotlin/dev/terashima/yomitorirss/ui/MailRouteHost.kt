@@ -60,7 +60,6 @@ internal fun MailRouteHost(
               mailViewModel.connectAuthorizedAccount(
                 email = account.email,
                 displayName = account.displayName,
-                accessToken = account.accessToken,
               )
             }
 
