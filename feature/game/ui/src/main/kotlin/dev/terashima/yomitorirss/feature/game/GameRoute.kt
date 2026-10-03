@@ -139,6 +139,7 @@ fun GameRoute(
         onPurchaseAmountChange = incrementalGameViewModel::setPurchaseAmount,
         onPurchase = incrementalGameViewModel::purchase,
         onPrestige = incrementalGameViewModel::prestige,
+        onPrestigeUpgrade = incrementalGameViewModel::purchasePrestigeUpgrade,
       )
     }
   }

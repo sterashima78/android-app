@@ -47,6 +47,7 @@ internal fun IncrementalGameScreen(
   onPurchaseAmountChange: (IncrementalPurchaseAmount) -> Unit,
   onPurchase: (IncrementalGeneratorType) -> Unit,
   onPrestige: () -> Unit,
+  onPrestigeUpgrade: (IncrementalPrestigeUpgrade) -> Unit,
 ) {
   LaunchedEffect(Unit) {
     var lastNanos = System.nanoTime()
@@ -78,7 +79,7 @@ internal fun IncrementalGameScreen(
       Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("暴走炉", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-          "Prestige ${game.prestigePoints}  ×${formatIncrementalNumber(IncrementalGame.prestigeMultiplier(game))}",
+          "コア ${game.prestigeCores} ・ 恒久強化 ${IncrementalGame.totalPrestigeUpgradeLevels(game)}",
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -128,9 +129,9 @@ internal fun IncrementalGameScreen(
           )
           Text(
             if (isOverdrive) {
-              "×${formatIncrementalNumber(IncrementalGame.OVERDRIVE_MULTIPLIER)}"
+              "自動生産 ×${formatIncrementalNumber(IncrementalGame.OVERDRIVE_MULTIPLIER)}"
             } else {
-              "20タップで暴走"
+              "25タップで暴走"
             },
             style = MaterialTheme.typography.labelMedium,
             color = if (isOverdrive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
@@ -168,7 +169,7 @@ internal fun IncrementalGameScreen(
       LinearProgressIndicator(
         progress = {
           if (isOverdrive) {
-            (game.overdriveRemainingSeconds / IncrementalGame.OVERDRIVE_DURATION_SECONDS).toFloat()
+            (game.overdriveRemainingSeconds / IncrementalGame.overdriveDurationSeconds(game)).toFloat()
           } else {
             (game.overdriveCharge / IncrementalGame.OVERDRIVE_CHARGE_MAX).toFloat()
           }
@@ -195,11 +196,29 @@ internal fun IncrementalGameScreen(
           onPurchase = { onPurchase(type) },
         )
       }
+
       item {
         PrestigeCard(
           game = game,
           reward = prestigeReward,
           onPrestige = onPrestige,
+        )
+      }
+
+      item {
+        Text(
+          "恒久アップグレード",
+          modifier = Modifier.padding(top = 4.dp),
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.Bold,
+        )
+      }
+
+      items(IncrementalPrestigeUpgrade.entries) { upgrade ->
+        PrestigeUpgradeCard(
+          game = game,
+          upgrade = upgrade,
+          onPurchase = { onPrestigeUpgrade(upgrade) },
         )
       }
     }
@@ -271,7 +290,7 @@ private fun GeneratorCard(
       }
 
       Text(
-        "購入数 $purchases ・ 25購入ごとに生産 ×10",
+        "購入数 $purchases ・ ${IncrementalGame.milestoneInterval(game)}購入ごとに生産 ×${IncrementalGame.MILESTONE_MULTIPLIER.toInt()}",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -299,25 +318,102 @@ private fun PrestigeCard(
   reward: Int,
   onPrestige: () -> Unit,
 ) {
+  val nextRewardEnergy = IncrementalGame.nextPrestigeRewardEnergy(game)
+
   Card {
     Column(
       modifier = Modifier.fillMaxWidth().padding(14.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Text("Prestige", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Text("Prestige", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("所持コア ${game.prestigeCores}", style = MaterialTheme.typography.titleSmall)
+      }
       Text(
-        "この周回の設備とエネルギーをリセットし、永久倍率を増やします。1ポイントごとに全生産 ×10。",
+        "周回をリセットして恒久アップグレード用のコアを獲得します。コア自体には倍率効果がないため、どの強化へ使うかを選びます。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       if (reward > 0) {
+        Text(
+          "今リセット: +$reward コア ・ 次の報酬: ${formatIncrementalNumber(nextRewardEnergy)}",
+          style = MaterialTheme.typography.labelMedium,
+        )
         Button(onClick = onPrestige, modifier = Modifier.fillMaxWidth()) {
-          Text("+$reward Prestige Point")
+          Text("+$reward コアでPrestige")
         }
       } else {
         Text(
-          "解禁まで ${formatIncrementalNumber((IncrementalGame.PRESTIGE_THRESHOLD - game.runEnergy).coerceAtLeast(0.0))}",
+          "最初のコアまで ${formatIncrementalNumber((IncrementalGame.PRESTIGE_THRESHOLD - game.runEnergy).coerceAtLeast(0.0))}",
           style = MaterialTheme.typography.labelMedium,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun PrestigeUpgradeCard(
+  game: IncrementalGameState,
+  upgrade: IncrementalPrestigeUpgrade,
+  onPurchase: () -> Unit,
+) {
+  val level = IncrementalGame.prestigeUpgradeLevel(game, upgrade)
+  val cost = IncrementalGame.prestigeUpgradeCost(game, upgrade)
+  val unlocked = IncrementalGame.isPrestigeUpgradeUnlocked(game, upgrade)
+  val canPurchase = unlocked && cost != null && game.prestigeCores >= cost
+
+  Card {
+    Column(
+      modifier = Modifier.fillMaxWidth().padding(12.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(prestigeUpgradeTitle(upgrade), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+          Text(
+            prestigeUpgradeDescription(upgrade, game),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        Text(
+          if (upgrade.maxLevel == 1) {
+            if (level > 0) "取得済み" else "一回限り"
+          } else {
+            "Lv $level/${upgrade.maxLevel}"
+          },
+          style = MaterialTheme.typography.labelMedium,
+        )
+      }
+
+      if (!unlocked) {
+        Text(
+          "恒久強化を合計${upgrade.requiredTotalLevels}レベル取得すると解禁",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+
+      Button(
+        onClick = onPurchase,
+        enabled = canPurchase,
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        Text(
+          when {
+            cost == null -> "取得済み"
+            !unlocked -> "未解禁"
+            else -> "$cost コアで強化"
+          },
         )
       }
     }
@@ -336,6 +432,33 @@ private fun generatorDescription(type: IncrementalGeneratorType): String = when 
   IncrementalGeneratorType.REACTOR -> "毎秒スパークを生成"
   IncrementalGeneratorType.STAR_FORGE -> "毎秒リアクターを生成"
   IncrementalGeneratorType.SINGULARITY -> "毎秒恒星炉を生成"
+}
+
+private fun prestigeUpgradeTitle(upgrade: IncrementalPrestigeUpgrade): String = when (upgrade) {
+  IncrementalPrestigeUpgrade.OUTPUT_AMPLIFIER -> "出力増幅"
+  IncrementalPrestigeUpgrade.CASCADE_TUNING -> "連鎖調律"
+  IncrementalPrestigeUpgrade.TAP_RESONANCE -> "タップ共鳴"
+  IncrementalPrestigeUpgrade.OVERDRIVE_CAPACITOR -> "暴走コンデンサ"
+  IncrementalPrestigeUpgrade.STARTER_SPARK -> "初期点火"
+  IncrementalPrestigeUpgrade.COMPACT_MILESTONES -> "高密度設計"
+}
+
+private fun prestigeUpgradeDescription(
+  upgrade: IncrementalPrestigeUpgrade,
+  game: IncrementalGameState,
+): String = when (upgrade) {
+  IncrementalPrestigeUpgrade.OUTPUT_AMPLIFIER ->
+    "エネルギー生産 +35% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.outputMultiplier(game))}"
+  IncrementalPrestigeUpgrade.CASCADE_TUNING ->
+    "上位設備から下位設備への生成 +30% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.cascadeMultiplier(game))}"
+  IncrementalPrestigeUpgrade.TAP_RESONANCE ->
+    "タップ報酬 +75% / Lv。現在 ×${String.format(Locale.US, "%.2f", IncrementalGame.tapMultiplier(game))}"
+  IncrementalPrestigeUpgrade.OVERDRIVE_CAPACITOR ->
+    "暴走時間 +1秒 / Lv。現在 ${IncrementalGame.overdriveDurationSeconds(game).toInt()}秒"
+  IncrementalPrestigeUpgrade.STARTER_SPARK ->
+    "新しい周回をスパーク1基から開始する"
+  IncrementalPrestigeUpgrade.COMPACT_MILESTONES ->
+    "設備の生産倍化を25購入ごとから20購入ごとへ短縮する"
 }
 
 private fun purchaseAmountLabel(amount: IncrementalPurchaseAmount): String = when (amount) {

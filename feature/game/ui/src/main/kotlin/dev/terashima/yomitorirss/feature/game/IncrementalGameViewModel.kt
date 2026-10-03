@@ -66,7 +66,14 @@ class IncrementalGameViewModel : ViewModel() {
     )
   }
 
+  fun purchasePrestigeUpgrade(upgrade: IncrementalPrestigeUpgrade) {
+    val current = _state.value
+    _state.value = current.copy(
+      game = IncrementalGame.purchasePrestigeUpgrade(current.game, upgrade),
+    )
+  }
+
   private companion object {
-    const val JACKPOT_CHANCE = 0.02
+    const val JACKPOT_CHANCE = 0.01
   }
 }
