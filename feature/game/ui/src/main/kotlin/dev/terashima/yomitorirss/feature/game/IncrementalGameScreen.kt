@@ -548,7 +548,7 @@ private fun prestigeUpgradeDescription(
   IncrementalPrestigeUpgrade.STARTER_SPARK ->
     "新しい周回をスパーク1基から開始する"
   IncrementalPrestigeUpgrade.COMPACT_MILESTONES ->
-    "設備の生産倍化を25購入ごとから20購入ごとへ短縮する"
+    "設備の生産マイルストーンを25購入ごとから20購入ごとへ短縮する"
 }
 
 private fun purchaseAmountLabel(amount: IncrementalPurchaseAmount): String = when (amount) {
