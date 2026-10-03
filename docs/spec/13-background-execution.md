@@ -38,7 +38,7 @@ models:
   - spec-models/quint/podcast_schedule_chain.qnt
 -->
 - Podcastの定刻生成は番組ごとに1本のunique one-shot work chainとして管理し、schedule無効時は予約を持たない。schedule設定変更時は次回ローカル時刻を再計算して置き換え、既存設定の復元時は登録済みworkを不必要に置き換えない。
-- 定刻workが実行された場合は、生成成功、通常の生成失敗、選択したAI providerの一時停止によるskipのいずれでも次のローカル日時を再計算してone-shot workを追加する。worker cancellationでは自身から次回scheduleを追加せず、設定変更・再登録側のschedule操作に委ねる。
+- 定刻workが実行された場合は、生成成功、通常の生成失敗、選択したAI providerの一時停止によるskipのいずれでも次のローカル日時を再計算してone-shot workを追加する。同じ番組の生成がすでに進行中で新しい生成を開始できない場合は現在の定刻workをretryし、まだ次回workを追加しない。worker cancellationでは自身から次回scheduleを追加せず、設定変更・再登録側のschedule操作に委ねる。
 - 画面から開始する手動生成・作り直しは定刻chainと別のunique workとして扱い、完了・失敗によって定刻scheduleを進めない。
 <!-- /formal-requirement -->
 - Podcast画面から開始した新規生成と作り直しも同じPodcast-owned Workerへ即時登録し、画面を離れたり端末をロックしたりしてもUI lifetimeに依存せず生成を継続する。生成中はforeground通知へチャプター進捗を表示する。
