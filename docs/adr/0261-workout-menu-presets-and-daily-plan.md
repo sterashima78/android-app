@@ -42,7 +42,7 @@ current compatibility baseline から v1 payload を含む配布版が外れた�
 - 同じ種目を複数プリセットで異なるセット構成として再利用できる。
 - `[8, 8, 6]` のようなセット単位の目標を当日の入力初期値として利用できる。
 - AI生成、インポート、手動プリセットが同一の実行パスを通る。
-- 旧データは明示的な破棄や別migration stateを必要とせず読み込み時に基本メニューへ投影される。
+- v1 compatibility 導入時は旧データを読み込み時に基本メニューへ投影したが、2026-09-29 amendment により v1 decode path は退役済みであり、version field がない payload と version 1 payload は unsupported version として扱う。
 - 保存形式を将来更新するときは、新しいversionを追加してdecode pathを明示し、未知versionを既存decoderへfall throughさせない。
 - 将来、メニュー編集UIを拡張する場合も種目マスタ自体を複製せずに済む。
 
