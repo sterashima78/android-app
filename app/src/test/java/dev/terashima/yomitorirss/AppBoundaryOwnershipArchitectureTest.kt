@@ -16,6 +16,34 @@ class AppBoundaryOwnershipArchitectureTest {
   private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
+  fun `共有可能なcrash診断は保存前に最終report全体をsanitizeする`() {
+    val startupCrashStore = source(
+      "app/src/main/java/dev/terashima/yomitorirss/diagnostics/StartupCrashStore.kt",
+    )
+    val crashRecord = startupCrashStore
+      .substringAfter("fun record(context: Context, threadName: String, throwable: Throwable) {")
+      .substringBefore("fun peek(context: Context)")
+    val processExitRecord = startupCrashStore
+      .substringAfter("fun recordRecentProcessExit(application: Application): Boolean")
+      .substringBefore("private fun preferences")
+
+    listOf(crashRecord, processExitRecord).forEach { block ->
+      assertTrue(
+        "shareable diagnostic report must sanitize the completed report before persistence",
+        "val report = sanitizeCrashDetails(" in block,
+      )
+      assertTrue(
+        "only the sanitized report variable may be persisted as the shareable report",
+        "putString(REPORT_KEY, report)" in block,
+      )
+    }
+    assertFalse(
+      "raw throwable text must not be written directly to the shareable report store",
+      "putString(REPORT_KEY, throwable.stackTraceToString())" in crashRecord,
+    )
+  }
+
+  @Test
   fun `Podcast定刻Workerはterminal実行だけ次回scheduleへ進める`() {
     val worker = source(
       "feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastGenerationWorker.kt",

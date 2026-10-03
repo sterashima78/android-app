@@ -54,6 +54,16 @@ class StartupCrashStoreTest {
   }
 
   @Test
+  fun `共有可能なクラッシュ情報ではHTTP以外のURI queryも除去する`() {
+    val source = "custom-scheme://synthetic-host/resource?token=synthetic-query"
+
+    val sanitized = sanitizeCrashDetails(source)
+
+    assertEquals("custom-scheme://synthetic-host/resource?[redacted]", sanitized)
+    assertFalse(sanitized.contains("synthetic-query"))
+  }
+
+  @Test
   fun `機密情報を含まないクラッシュ情報は変更しない`() {
     val source = "java.lang.IllegalStateException: synthetic failure"
 
