@@ -44,6 +44,46 @@ class AppBoundaryOwnershipArchitectureTest {
   }
 
   @Test
+  fun `Mail初回同期はdurable checkpointからpage continuationを再構築する`() {
+    val repository = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt",
+    )
+    val worker = source(
+      "feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt",
+    )
+    val pageSync = repository
+      .substringAfter("override suspend fun syncInitialPage(")
+      .substringBefore("override fun markInitialSyncWaitingForNetwork")
+    val continuation = pageSync.substringAfter("val nextPageToken = page.nextPageToken")
+    val complete = repository
+      .substringAfter("private fun completeInitialSync(")
+      .substringBefore("private data class InitialSyncState")
+
+    assertTrue(
+      "stale page work must stop before applying a mismatched checkpoint",
+      "if (state.pageToken != expectedPageToken) return MailInitialSyncStep.Stale" in pageSync,
+    )
+    assertTrue(
+      "next durable checkpoint must be stored before returning continuation metadata",
+      continuation.indexOf("updateInitialSyncCheckpoint(") in 0 until continuation.indexOf("return MailInitialSyncStep.Continue"),
+    )
+    assertTrue(
+      "stale Worker execution must rebuild continuation from repository state",
+      "MailInitialSyncStep.Stale" in worker && "repository.sync(accountId)" in worker,
+    )
+    assertTrue(
+      "retryable network failure must preserve the durable sync and request retry",
+      "markInitialSyncWaitingForNetwork(accountId, error.message)" in worker && "Result.retry()" in worker,
+    )
+    assertTrue(
+      "completion must clear page checkpoint and generation",
+      "putNull(SYNC_PAGE_TOKEN_COLUMN)" in complete &&
+        "putNull(SYNC_GENERATION_COLUMN)" in complete &&
+        "put(SYNC_STATE_COLUMN, SYNC_STATE_IDLE)" in complete,
+    )
+  }
+
+  @Test
   fun `Podcast定刻Workerはterminal実行だけ次回scheduleへ進める`() {
     val worker = source(
       "feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastGenerationWorker.kt",
