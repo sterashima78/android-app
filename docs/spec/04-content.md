@@ -65,6 +65,11 @@ models:
 
 ## 4.5 要約の音声再生
 
+<!-- formal-requirement
+id: AUDIO-PROGRESSIVE-PLAYBACK-001
+models:
+  - spec-models/quint/audio_progressive_playback.qnt
+-->
 - RSS の「あとで読む」から、現在表示している並び順の記事を「音声で聴く」で連続再生できる。
 - 各項目は記事タイトルと保存済み要約を端末の音声合成機能で読み上げる。
 - 保存済み要約がない記事は Summary が所有する既存の要約キューへ要求し、利用可能になった要約を読み上げ対象にする。Audio独自の要約生成は行わない。
@@ -75,6 +80,11 @@ models:
 - 画面を閉じてもmedia playbackとして再生を継続し、通知、lock screen、Bluetooth等の標準media controlから操作できる。
 - 再生開始、再生完了、skip、停止、queue完了のいずれでも記事の既読 / 未読状態を変更しない。「あとで読む」の所属やブックマーク状態も変更しない。
 - 再生queue、再生位置、再生済み状態はdurable user stateとして保存しない。生成した音声は再生成可能なcacheとして扱い、backup / export対象にしない。
+<!-- /formal-requirement -->
+
+### 形式モデル
+
+- [Quint: `audio_progressive_playback.qnt`](../../spec-models/quint/audio_progressive_playback.qnt) — 入力順を保った逐次音声準備、最初の準備完了からの再生開始、生成追いつき時の待機・再開、再生状態非永続化とcontent state非変更を検査する。
 
 ## 4.6 ニュースポッドキャスト
 
