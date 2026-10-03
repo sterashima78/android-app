@@ -208,35 +208,60 @@ object IncrementalGame {
   ): IncrementalGameState {
     if (elapsedSeconds <= 0.0) return state
 
-    val amounts = state.generatorAmounts.toMutableList()
+    val spark = state.generatorAmounts[IncrementalGeneratorType.SPARK.ordinal]
+    val reactor = state.generatorAmounts[IncrementalGeneratorType.REACTOR.ordinal]
+    val starForge = state.generatorAmounts[IncrementalGeneratorType.STAR_FORGE.ordinal]
+    val singularity = state.generatorAmounts[IncrementalGeneratorType.SINGULARITY.ordinal]
 
-    for (type in IncrementalGeneratorType.entries.asReversed()) {
-      if (type == IncrementalGeneratorType.SPARK) continue
-      val index = type.ordinal
-      val produced = saturatingMultiply(
-        saturatingMultiply(
-          amounts[index],
-          type.cascadePerSecond * milestoneMultiplier(state.generatorPurchases[index]),
+    val reactorRate = IncrementalGeneratorType.REACTOR.cascadePerSecond *
+      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.REACTOR.ordinal])
+    val starForgeRate = IncrementalGeneratorType.STAR_FORGE.cascadePerSecond *
+      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.STAR_FORGE.ordinal])
+    val singularityRate = IncrementalGeneratorType.SINGULARITY.cascadePerSecond *
+      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.SINGULARITY.ordinal])
+
+    val t2 = elapsedSeconds * elapsedSeconds
+    val t3 = t2 * elapsedSeconds
+    val t4 = t3 * elapsedSeconds
+
+    val reactorFromStarForge = scaledProduct(starForge, starForgeRate, elapsedSeconds)
+    val reactorFromSingularity = scaledProduct(singularity, singularityRate, starForgeRate, t2 / 2.0)
+    val sparkFromReactor = scaledProduct(reactor, reactorRate, elapsedSeconds)
+    val sparkFromStarForge = scaledProduct(starForge, starForgeRate, reactorRate, t2 / 2.0)
+    val sparkFromSingularity =
+      scaledProduct(singularity, singularityRate, starForgeRate, reactorRate, t3 / 6.0)
+
+    val nextAmounts = listOf(
+      saturatingAdd(
+        spark,
+        saturatingAdd(sparkFromReactor, saturatingAdd(sparkFromStarForge, sparkFromSingularity)),
+      ),
+      saturatingAdd(reactor, saturatingAdd(reactorFromStarForge, reactorFromSingularity)),
+      saturatingAdd(starForge, scaledProduct(singularity, singularityRate, elapsedSeconds)),
+      singularity,
+    )
+
+    val integratedSpark = saturatingAdd(
+      saturatingMultiply(spark, elapsedSeconds),
+      saturatingAdd(
+        scaledProduct(reactor, reactorRate, t2 / 2.0),
+        saturatingAdd(
+          scaledProduct(starForge, starForgeRate, reactorRate, t3 / 6.0),
+          scaledProduct(singularity, singularityRate, starForgeRate, reactorRate, t4 / 24.0),
         ),
-        elapsedSeconds,
-      )
-      amounts[index - 1] = saturatingAdd(amounts[index - 1], produced)
-    }
-
-    val sparkIndex = IncrementalGeneratorType.SPARK.ordinal
-    val rawProduction = saturatingMultiply(
-      amounts[sparkIndex],
-      milestoneMultiplier(state.generatorPurchases[sparkIndex]),
+      ),
     )
-    val gainedEnergy = saturatingMultiply(
-      saturatingMultiply(rawProduction, prestigeMultiplier(state)),
-      saturatingMultiply(productionMultiplier, elapsedSeconds),
+    val energyMultiplier = scaledProduct(
+      milestoneMultiplier(state.generatorPurchases[IncrementalGeneratorType.SPARK.ordinal]),
+      prestigeMultiplier(state),
+      productionMultiplier,
     )
+    val gainedEnergy = saturatingMultiply(integratedSpark, energyMultiplier)
 
     return state.copy(
       energy = saturatingAdd(state.energy, gainedEnergy),
       runEnergy = saturatingAdd(state.runEnergy, gainedEnergy),
-      generatorAmounts = amounts,
+      generatorAmounts = nextAmounts,
     )
   }
 
@@ -288,6 +313,9 @@ object IncrementalGame {
     val value = a + b
     return if (value.isFinite()) value else Double.MAX_VALUE
   }
+
+  private fun scaledProduct(vararg values: Double): Double =
+    values.fold(1.0, ::saturatingMultiply)
 
   private fun saturatingMultiply(a: Double, b: Double): Double {
     val value = a * b
