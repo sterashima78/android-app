@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss.composition.crossfeature
 
 import android.app.Application
 import dev.terashima.yomitorirss.composition.library.LibraryRuntimeDependencies
-import dev.terashima.yomitorirss.core.airuntime.LocalModelManager
+import dev.terashima.yomitorirss.core.airuntime.LocalConversationInference
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.aitaskqueue.AiTaskQueueRepository
 import dev.terashima.yomitorirss.feature.aitaskqueue.data.CompositeAiTaskQueueRepository
@@ -32,7 +32,7 @@ import dev.terashima.yomitorirss.feature.task.TaskRepository
 internal class AppCrossFeatureRuntimeDependencies(
   private val application: Application,
   private val database: YomitoriDatabase,
-  private val modelManager: LocalModelManager,
+  private val conversationInference: LocalConversationInference,
   private val articleRepository: ArticleRepository,
   private val bookmarkContentQuery: BookmarkContentQuery,
   private val bookmarkRepository: BookmarkRepository,
@@ -50,7 +50,7 @@ internal class AppCrossFeatureRuntimeDependencies(
 ) {
   val chatGenerator: ChatGenerator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     LocalChatGenerator(
-      modelManager = modelManager,
+      conversationInference = conversationInference,
       skills = createAppResourceSkills(
         articleRepository = articleRepository,
         bookmarkRepository = bookmarkRepository,
