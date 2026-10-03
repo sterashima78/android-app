@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.core.airuntime
 
 import com.google.ai.edge.litertlm.OpenApiTool
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -70,6 +71,77 @@ data class LocalInferenceConversationRequest(
       "Tool names must be unique"
     }
   }
+}
+
+interface LocalConversationInference {
+  val models: Flow<List<LocalModelStatus>>
+  val progress: Flow<LocalInferenceProgress?>
+
+  fun selectedModel(): LocalModelStatus?
+
+  suspend fun generateConversation(
+    request: LocalInferenceConversationRequest,
+    streaming: Boolean = false,
+    onPartial: (String) -> Unit = {},
+  ): String
+}
+
+internal data class LocalInferenceToolDefinition(
+  val name: String,
+  val description: String,
+  val arguments: List<LocalInferenceToolArgument>,
+  val allowAdditionalArguments: Boolean,
+) {
+  fun toTool(execute: suspend (Map<String, String>) -> String): LocalInferenceTool =
+    LocalInferenceTool(
+      name = name,
+      description = description,
+      arguments = arguments,
+      allowAdditionalArguments = allowAdditionalArguments,
+      execute = execute,
+    )
+}
+
+internal fun parseToolDefinitionJson(value: String): LocalInferenceToolDefinition {
+  val root = TOOL_JSON.parseToJsonElement(value).jsonObject
+  val name = root.getValue("name").jsonPrimitive.content
+  val description = root.getValue("description").jsonPrimitive.content
+  val parameters = root.getValue("parameters").jsonObject
+  val requiredNames = parameters["required"]
+    ?.let { element -> element as? JsonArray }
+    ?.map { element -> element.jsonPrimitive.content }
+    ?.toSet()
+    .orEmpty()
+  val allowAdditionalArguments = parameters["additionalProperties"]
+    ?.jsonPrimitive
+    ?.content
+    ?.toBooleanStrictOrNull()
+    ?: true
+  val properties = parameters.getValue("properties").jsonObject
+  val arguments = properties.map { (argumentName, element) ->
+    val schema = element.jsonObject
+    val schemaType = schema.getValue("type").jsonPrimitive.content
+    val type = when (schemaType) {
+      "string" -> LocalInferenceToolArgumentType.STRING
+      "integer" -> LocalInferenceToolArgumentType.INTEGER
+      "number" -> LocalInferenceToolArgumentType.NUMBER
+      "boolean" -> LocalInferenceToolArgumentType.BOOLEAN
+      "array" -> LocalInferenceToolArgumentType.STRING_ARRAY
+      else -> throw IllegalArgumentException("Unsupported tool argument type: $schemaType")
+    }
+    LocalInferenceToolArgument(
+      name = argumentName,
+      description = schema.getValue("description").jsonPrimitive.content,
+      required = argumentName in requiredNames,
+      type = type,
+    )
+  }
+  return LocalInferenceToolDefinition(
+    name = name,
+    description = description,
+    arguments = arguments,
+    allowAdditionalArguments = allowAdditionalArguments,
+  )
 }
 
 internal class LocalOpenApiTool(
