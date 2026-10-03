@@ -4,8 +4,23 @@
 
 - LiteRT-LM を利用する端末内AI runtime を共有する。
 - モデルのダウンロード、選択、削除、推論設定、端末上のベンチマークを管理できる。
+<!-- formal-requirement
+id: LOCAL-AI-ARTIFACT-LIFECYCLE-001
+models:
+  - spec-models/quint/local_ai_artifact_lifecycle.qnt
+-->
+- 端末内AI modelのdownloadは完成fileへ直接書き込まず、一時artifactへ書き込み、catalogが要求するartifact検証に成功した場合だけ完成fileへ昇格する。
+- modelをdownload済みとして扱う条件は、完成fileがcatalogの期待artifact条件を満たし、かつ保存済みartifact revision markerが現在catalog revisionと一致することとする。partial file、検証前の完成file、旧revision artifactはdownload済み・選択済みとして扱わない。
+- download開始時は不正な完成fileと旧revision marker、以前の一時artifactを破棄する。downloadまたは検証に失敗した場合は一時artifactを削除し、検証に成功して完成fileへ昇格した後にだけ現在revision markerを保存する。
+- model選択は有効なdownload済みartifactに限定する。起動時にcatalog revisionと一致しないartifactを検出した場合は完成file、一時artifact、派生cache、revision markerを削除して再取得対象にする。
+- model削除時は保持中の推論・tokenizerを解放し、完成file、一時artifact、派生cache、revision markerを削除する。削除対象が選択中なら選択状態も解除する。
+<!-- /formal-requirement -->
 - 非対話型のAI生成・分類・学習は foreground UI へ閉じず、feature 所有の durable background runtime または task queue へ委譲する。UIはtask登録と状態表示だけを行う。
 - RSS推薦評価はRSSが所有する記事単位キューで順次実行する。端末内AI選択時は共通のローカルAI一時停止・充電時自動再開・推論直列化に参加し、クラウドAI選択時はクラウドAI一時停止とnetwork constraintに従う。
+
+形式モデル:
+
+- [Quint: `local_ai_artifact_lifecycle.qnt`](../../spec-models/quint/local_ai_artifact_lifecycle.qnt) — model artifactの一時download、検証後昇格、revision marker、選択、旧artifact cleanup、削除を検査する。
 
 ## 5.2 要約
 
