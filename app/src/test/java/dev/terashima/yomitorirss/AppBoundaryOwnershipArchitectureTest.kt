@@ -16,6 +16,45 @@ class AppBoundaryOwnershipArchitectureTest {
   private val presentationUiRoot = "app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui"
 
   @Test
+  fun `Podcast定刻Workerはterminal実行だけ次回scheduleへ進める`() {
+    val worker = source(
+      "feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastGenerationWorker.kt",
+    )
+    val runBlock = worker.substringAfter("private suspend fun runBackgroundWork(): Result {")
+      .substringBefore("private fun createForegroundInfo")
+    val alreadyRunningCatch = runBlock.substringAfter("catch (error: PodcastGenerationAlreadyRunningException)")
+      .substringBefore("catch (error: CancellationException)")
+    val cancellationCatch = runBlock.substringAfter("catch (error: CancellationException) {")
+      .substringBefore("finally {")
+
+    assertTrue(
+      "scheduled pause skip must converge to the next occurrence",
+      "scheduleNext = true" in runBlock &&
+        "shouldSkipPodcastGeneration(" in runBlock,
+    )
+    assertTrue(
+      "successful scheduled generation must arm the next occurrence",
+      "scheduleNext = operation == PodcastGenerationOperation.SCHEDULED_GENERATE" in runBlock,
+    )
+    assertTrue(
+      "already-running scheduled generation must retry the current occurrence",
+      "Result.retry()" in alreadyRunningCatch,
+    )
+    assertFalse(
+      "already-running retry must not append the next occurrence",
+      "scheduleNext = true" in alreadyRunningCatch,
+    )
+    assertTrue(
+      "cancellation must suppress Worker-owned rescheduling",
+      "scheduleNext = false" in cancellationCatch,
+    )
+    assertTrue(
+      "terminal scheduled runs must append via PodcastScheduleController",
+      "currentProgram?.let(scheduleController::scheduleNext)" in runBlock,
+    )
+  }
+
+  @Test
   fun `CalendarはTaskとWorkoutのread capabilityだけを使うread-only projectionである`() {
     val calendarData = source(
       "feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt",

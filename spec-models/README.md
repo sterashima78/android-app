@@ -23,6 +23,7 @@
 | Knowledge page AI task lifecycle | [`quint/knowledge_page_ai_task_lifecycle.qnt`](quint/knowledge_page_ai_task_lifecycle.qnt) | — |
 | RSS recommendation revision queue | [`quint/rss_recommendation_queue.qnt`](quint/rss_recommendation_queue.qnt) | — |
 | RSS exclusion-feedback learning | [`quint/rss_feedback_learning.qnt`](quint/rss_feedback_learning.qnt) | — |
+| Podcast schedule one-shot chain | [`quint/podcast_schedule_chain.qnt`](quint/podcast_schedule_chain.qnt) | — |
 | Podcast chapter checkpoint / bounded retry | [`quint/podcast_chapter_checkpoint.qnt`](quint/podcast_chapter_checkpoint.qnt) | — |
 | Podcast consumed / excluded entry eligibility | — | [`alloy/podcast_entry_eligibility.als`](alloy/podcast_entry_eligibility.als) |
 | Podcast news exclusion partition | — | [`alloy/podcast_exclusion_partition.als`](alloy/podcast_exclusion_partition.als) |
