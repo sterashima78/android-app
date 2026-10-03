@@ -2,7 +2,7 @@
 // - docs/spec/08-task-calendar-workout-health.md
 //
 // Covers:
-// - HEALTH-EXERCISE-DEDUP-001@sha256:1cc91f87f217331462f6a3a8b5bb54a6d50325bbc540ba670e362499cbaf82bf -> ExactIdentityCanCollapse
+// - HEALTH-EXERCISE-DEDUP-001@sha256:1cc91f87f217331462f6a3a8b5bb54a6d50325bbc540ba670e362499cbaf82bf -> ExactIdentityCollapses
 // - HEALTH-EXERCISE-DEDUP-001@sha256:1cc91f87f217331462f6a3a8b5bb54a6d50325bbc540ba670e362499cbaf82bf -> SameKnownOriginNonExactStayDistinct
 // - HEALTH-EXERCISE-DEDUP-001@sha256:1cc91f87f217331462f6a3a8b5bb54a6d50325bbc540ba670e362499cbaf82bf -> CrossOriginDuplicateNeedsEvidence
 // - HEALTH-EXERCISE-DEDUP-001@sha256:1cc91f87f217331462f6a3a8b5bb54a6d50325bbc540ba670e362499cbaf82bf -> EveryInputHasExactlyOneKeptRepresentative
@@ -75,54 +75,54 @@ fact DedupProjection {
   DedupResult.kept in DedupResult.input
 
   all session: DedupResult.input | {
-    one DedupResult.representative[session]
-    DedupResult.representative[session] in DedupResult.kept
+    one session.(DedupResult.representative)
+    session.(DedupResult.representative) in DedupResult.kept
   }
 
   all session: Session - DedupResult.input |
-    no DedupResult.representative[session]
+    no session.(DedupResult.representative)
 
   all kept: DedupResult.kept |
-    DedupResult.representative[kept] = kept
+    kept.(DedupResult.representative) = kept
 
   all session: DedupResult.input |
-    let kept = DedupResult.representative[session] |
+    let kept = session.(DedupResult.representative) |
       session = kept or sameRealWorldExercise[session, kept]
 
   all disj left, right: DedupResult.input |
     exactIdentity[left, right] implies
-      DedupResult.representative[left] = DedupResult.representative[right]
+      left.(DedupResult.representative) = right.(DedupResult.representative)
 
   no disj left, right: DedupResult.kept |
     sameRealWorldExercise[left, right]
 
   all disj left, right: DedupResult.input |
     sameKnownOrigin[left, right] and not exactIdentity[left, right] implies
-      DedupResult.representative[left] != DedupResult.representative[right]
+      left.(DedupResult.representative) != right.(DedupResult.representative)
 }
 
-assert ExactIdentityCanCollapse {
+assert ExactIdentityCollapses {
   all disj left, right: DedupResult.input |
     exactIdentity[left, right] implies
-      DedupResult.representative[left] = DedupResult.representative[right]
+      left.(DedupResult.representative) = right.(DedupResult.representative)
 }
 
 assert SameKnownOriginNonExactStayDistinct {
   all disj left, right: DedupResult.input |
     sameKnownOrigin[left, right] and not exactIdentity[left, right] implies
-      DedupResult.representative[left] != DedupResult.representative[right]
+      left.(DedupResult.representative) != right.(DedupResult.representative)
 }
 
 assert CrossOriginDuplicateNeedsEvidence {
   all disj session, kept: DedupResult.input |
-    DedupResult.representative[session] = kept and not exactIdentity[session, kept] implies
+    session.(DedupResult.representative) = kept and not exactIdentity[session, kept] implies
       crossOriginDuplicateEvidence[session, kept]
 }
 
 assert EveryInputHasExactlyOneKeptRepresentative {
   all session: DedupResult.input |
     one kept: DedupResult.kept |
-      DedupResult.representative[session] = kept
+      session.(DedupResult.representative) = kept
 }
 
 assert KeptSessionsAreOriginalInputs {
@@ -134,7 +134,7 @@ assert KeptSessionsArePairwiseDistinctRealWorldExercises {
     sameRealWorldExercise[left, right]
 }
 
-check ExactIdentityCanCollapse for 8 expect 0
+check ExactIdentityCollapses for 8 expect 0
 check SameKnownOriginNonExactStayDistinct for 8 expect 0
 check CrossOriginDuplicateNeedsEvidence for 8 expect 0
 check EveryInputHasExactlyOneKeptRepresentative for 8 expect 0
@@ -148,7 +148,7 @@ run RepresentativeCrossOriginDedup {
   some disj duplicate, representative, separate: DedupResult.input | {
     duplicate.origin != representative.origin
     representative in duplicate.strongOverlap
-    DedupResult.representative[duplicate] = representative
+    duplicate.(DedupResult.representative) = representative
     representative in DedupResult.kept
     separate in DedupResult.kept
   }
