@@ -42,7 +42,7 @@ module local_ai_artifact_lifecycle {
   }
 
   action startDownload = all {
-    artifactState == ABSENT or artifactState == OUTDATED,
+    artifactState == ABSENT,
     artifactState' = DOWNLOADING,
     selected' = false,
     resourcesRetained' = false,
@@ -175,11 +175,10 @@ module local_ai_artifact_lifecycle {
   val retainedResourcesRequireValidArtifact =
     not(resourcesRetained) or artifactState == VALID
 
-  val absentArtifactHasNoRetainedResources =
+  val absentArtifactIsNotEffective =
     not(artifactState == ABSENT) or (
       not(selected) and
-      not(resourcesRetained) and
-      not(derivedCachePresent)
+      not(resourcesRetained)
     )
 
   val safety =
@@ -187,5 +186,5 @@ module local_ai_artifact_lifecycle {
     effectiveSelectionRequiresValidArtifact and
     partialArtifactNeverEffective and
     retainedResourcesRequireValidArtifact and
-    absentArtifactHasNoRetainedResources
+    absentArtifactIsNotEffective
 }
