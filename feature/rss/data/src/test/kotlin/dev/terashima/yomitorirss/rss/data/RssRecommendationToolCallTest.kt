@@ -59,6 +59,34 @@ class RssRecommendationToolCallTest {
   }
 
   @Test
+  fun `学習promptはfeedbackの内部IDを送信内容へ含めない`() {
+    val prompt = buildLearningPrompt(
+      manualCondition = "広告を低くする",
+      learnedCondition = "既存条件",
+      feedback = listOf(
+        RssRecommendationFeedback(
+          id = "synthetic-feedback-id",
+          articleId = "synthetic-article-id",
+          title = "共有対象タイトル",
+          previousAssessment = RssRecommendationAssessment.Scored(
+            score = 4,
+            revision = 1L,
+            assessedAt = 10L,
+          ),
+          createdAt = 20L,
+        ),
+      ),
+    )
+
+    assertTrue(prompt.contains("広告を低くする"))
+    assertTrue(prompt.contains("既存条件"))
+    assertTrue(prompt.contains("共有対象タイトル"))
+    assertTrue(prompt.contains("score=4"))
+    assertTrue(!prompt.contains("synthetic-feedback-id"))
+    assertTrue(!prompt.contains("synthetic-article-id"))
+  }
+
+  @Test
   fun `評価可能な記事は1から10のスコアとして受け取る`() {
     val result = parseScoringToolCall(
       AiStructuredToolCall(
