@@ -79,6 +79,29 @@ class ProcessIsolatedLocalAiTextInferenceTest {
     assertTrue(TEXT_INFERENCE_CONNECT_TIMEOUT_MILLIS < TEXT_INFERENCE_MIN_REQUEST_TIMEOUT_MILLIS)
   }
 
+
+  @Test
+  fun `chat conversation IPC budgetは履歴とtool schemaを含めて数える`() {
+    val request = LocalInferenceConversationRequest(
+      systemInstruction = "system",
+      initialMessages = listOf(
+        LocalInferenceMessage(LocalInferenceMessageRole.USER, "history"),
+      ),
+      userMessage = "question",
+      tools = listOf(
+        LocalInferenceTool(
+          name = "search_items",
+          description = "項目を検索する",
+          arguments = listOf(LocalInferenceToolArgument("query", "検索語")),
+          execute = { "ok" },
+        ),
+      ),
+    )
+
+    assertTrue(conversationIpcCharacterCount(request) > "systemhistoryquestion".length)
+    assertTrue(conversationIpcCharacterCount(request) < TEXT_INFERENCE_IPC_MAX_CHARS)
+  }
+
   private fun textInferenceSnapshot(
     preparingDurationMillis: Long? = null,
     generatingDurationMillis: Long? = null,
