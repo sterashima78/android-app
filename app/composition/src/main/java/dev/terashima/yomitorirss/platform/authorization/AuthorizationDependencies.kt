@@ -12,7 +12,6 @@ class MailAuthorizationDependencies internal constructor(
 class MailAuthorizedAccount internal constructor(
   val email: String,
   val displayName: String?,
-  val accessToken: String,
 )
 
 sealed interface MailAuthorizationOutcome {
