@@ -90,7 +90,6 @@ class RssRecommendationToolCallTest {
     assertTrue(!prompt.contains("synthetic-article-id"))
   }
 
-
   @Test
   fun `学習結果は条件更新を明示して受け取る`() {
     val result = parseLearnedConditionToolCall(
