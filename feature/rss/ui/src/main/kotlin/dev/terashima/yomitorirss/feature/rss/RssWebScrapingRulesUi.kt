@@ -132,13 +132,15 @@ internal fun RssWebScrapingRulesUi(
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (recommendationPendingFeedbackCount > 0) {
-          Text(
-            "除外参考を ${recommendationPendingFeedbackCount} 件、バックグラウンド学習待ちです",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
-          )
-        }
+        Text(
+          recommendationFeedbackStatusText(recommendationPendingFeedbackCount),
+          style = MaterialTheme.typography.labelSmall,
+          color = if (recommendationPendingFeedbackCount > 0) {
+            MaterialTheme.colorScheme.secondary
+          } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+          },
+        )
         if (recommendationPolicy.learnedCondition.isNotBlank()) {
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -475,6 +477,15 @@ private fun RssWebScrapingPreviewCard(result: RssWebScrapingPreview) {
         )
       }
     }
+  }
+}
+
+internal fun recommendationFeedbackStatusText(pendingCount: Int): String {
+  require(pendingCount >= 0) { "pendingCount must not be negative" }
+  return if (pendingCount > 0) {
+    "未処理の除外参考: ${pendingCount}件。最後の追加から約30秒後に学習し、失敗時は未処理のまま再試行します。"
+  } else {
+    "未処理の除外参考はありません。追加後に条件が変わらない場合は、既存の学習条件でカバー済みと判定されて処理済みです。"
   }
 }
 
