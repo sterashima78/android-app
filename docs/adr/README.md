@@ -181,6 +181,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0276: Workout の完了レビューを日付単位で永続化し次回提案へ再利用する](0276-workout-ai-review-history.md)
 - [ADR-0277: 対話型ローカルAI推論を短寿命サブプロセスへ隔離する](0277-isolate-local-chat-inference-process.md)
 - [ADR-0278: ニュースポッドキャストをfeed categoryで連続配置する](0278-podcast-feed-category-ordering.md)
+- [ADR-0279: RSS除外学習の適用結果を明示し未反映feedbackを保持する](0279-rss-feedback-learning-outcome.md)
 
 ### Content / summary / knowledge
 
@@ -257,3 +258,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0276](0276-workout-ai-review-history.md)
 - [ADR-0277](0277-isolate-local-chat-inference-process.md)
 - [ADR-0278](0278-podcast-feed-category-ordering.md)
+- [ADR-0279](0279-rss-feedback-learning-outcome.md)
