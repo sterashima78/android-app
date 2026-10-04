@@ -224,7 +224,7 @@ private const val LEARNING_SYSTEM_INSTRUCTION =
     "手動条件を変更・複製せず、現在の学習条件を土台に一般化可能な傾向だけを反映してください。" +
     "今回のfeedbackを必ず確認し、現在条件で明確にカバーされていないfeedbackがあればupdated、すべて明確にカバー済みの場合だけalready_coveredを返してください。" +
     "タイトル固有の語句の単純列挙や過剰な一般化は避けてください。" +
-    "通常テキストやMarkdownは返さず、指定toolを1回だけ呼び出してください."
+    "通常テキストやMarkdownは返さず、指定toolを1回だけ呼び出してください。"
 
 private val SCORING_TOOL = AiStructuredTool(
   name = "submit_rss_recommendation_scores",
