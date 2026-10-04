@@ -4,6 +4,8 @@ import dev.terashima.yomitorirss.core.aiinference.AiStructuredToolCall
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationDecision
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedback
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationLearningDecision
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationLearningOutcome
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,6 +58,8 @@ class RssRecommendationToolCallTest {
 
     assertTrue(prompt.contains("score=10"))
     assertTrue(prompt.contains("unscored:INFERENCE_FAILED"))
+    assertTrue(prompt.contains("outcome=updated"))
+    assertTrue(prompt.contains("outcome=already_covered"))
   }
 
   @Test
@@ -84,6 +88,63 @@ class RssRecommendationToolCallTest {
     assertTrue(prompt.contains("score=4"))
     assertTrue(!prompt.contains("synthetic-feedback-id"))
     assertTrue(!prompt.contains("synthetic-article-id"))
+  }
+
+
+  @Test
+  fun `学習結果は条件更新を明示して受け取る`() {
+    val result = parseLearnedConditionToolCall(
+      AiStructuredToolCall(
+        name = "submit_rss_learned_exclusion_condition",
+        arguments = mapOf(
+          "outcome" to "updated",
+          "condition" to "更新した条件",
+        ),
+      ),
+    )
+
+    assertEquals(
+      RssRecommendationLearningDecision(
+        outcome = RssRecommendationLearningOutcome.UPDATED,
+        learnedCondition = "更新した条件",
+      ),
+      result,
+    )
+  }
+
+  @Test
+  fun `学習結果は既存条件でカバー済みを明示できる`() {
+    val result = parseLearnedConditionToolCall(
+      AiStructuredToolCall(
+        name = "submit_rss_learned_exclusion_condition",
+        arguments = mapOf(
+          "outcome" to "already_covered",
+          "condition" to "既存条件",
+        ),
+      ),
+    )
+
+    assertEquals(
+      RssRecommendationLearningDecision(
+        outcome = RssRecommendationLearningOutcome.ALREADY_COVERED,
+        learnedCondition = "既存条件",
+      ),
+      result,
+    )
+  }
+
+  @Test
+  fun `学習結果はoutcomeなしの旧形式を拒否する`() {
+    val error = runCatching {
+      parseLearnedConditionToolCall(
+        AiStructuredToolCall(
+          name = "submit_rss_learned_exclusion_condition",
+          arguments = mapOf("condition" to "条件"),
+        ),
+      )
+    }.exceptionOrNull()
+
+    assertTrue(error is IllegalArgumentException)
   }
 
   @Test
