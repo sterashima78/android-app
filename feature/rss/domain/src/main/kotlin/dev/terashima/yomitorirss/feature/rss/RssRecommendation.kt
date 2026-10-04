@@ -62,6 +62,16 @@ sealed interface RssRecommendationDecision {
   data object InsufficientInformation : RssRecommendationDecision
 }
 
+enum class RssRecommendationLearningOutcome {
+  UPDATED,
+  ALREADY_COVERED,
+}
+
+data class RssRecommendationLearningDecision(
+  val outcome: RssRecommendationLearningOutcome,
+  val learnedCondition: String,
+)
+
 data class RssRecommendationFeedback(
   val id: String,
   val articleId: String,
@@ -148,7 +158,7 @@ interface RssRecommendationEngine {
     manualCondition: String,
     learnedCondition: String,
     feedback: List<RssRecommendationFeedback>,
-  ): String
+  ): RssRecommendationLearningDecision
 }
 
 class RssRecommendationService(
@@ -251,18 +261,19 @@ class RssRecommendationService(
     val pending = repository.listPendingFeedback().take(MAX_RECOMMENDATION_LEARNING_FEEDBACK)
     if (pending.isEmpty()) return null
     val policy = repository.loadPolicy()
-    val learned = try {
+    val decision = try {
       engine.improveLearnedCondition(
         provider = policy.executionProvider,
         manualCondition = policy.manualCondition,
         learnedCondition = policy.learnedCondition,
         feedback = pending,
-      ).trim()
+      )
     } catch (error: CancellationException) {
       throw error
     } catch (_: Throwable) {
       return null
     }
+    val learned = decision.learnedCondition.trim()
     val currentPolicy = repository.loadPolicy()
     if (
       currentPolicy.revision != policy.revision ||
@@ -270,6 +281,12 @@ class RssRecommendationService(
     ) {
       return null
     }
+    val validOutcome = when (decision.outcome) {
+      RssRecommendationLearningOutcome.UPDATED -> learned != policy.learnedCondition
+      RssRecommendationLearningOutcome.ALREADY_COVERED -> learned == policy.learnedCondition
+    }
+    if (!validOutcome) return null
+
     return repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = pending.mapTo(mutableSetOf(), RssRecommendationFeedback::id),
       learnedCondition = learned,
