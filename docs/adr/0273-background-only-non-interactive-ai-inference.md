@@ -4,6 +4,7 @@
 - Date: 2026-09-27
 - Amends: [ADR-0069](0069-unified-ai-model-settings-and-task-queue.md), [ADR-0071](0071-prioritized-background-ai-task-scheduling.md), [ADR-0074](0074-library-metadata-management-and-series-reorganization.md), [ADR-0101](0101-feature-route-and-background-runtime-ownership.md), [ADR-0194](0194-workout-ai-advisor.md), [ADR-0271](0271-rss-recommendation-background-queue.md)
 - Refines: [ADR-0172](0172-separate-ai-provider-routing-and-runtime-controls.md), [ADR-0269](0269-podcast-durable-foreground-generation.md)
+- Amended by: [ADR-0279](0279-rss-feedback-learning-outcome.md)
 
 ## Context
 
