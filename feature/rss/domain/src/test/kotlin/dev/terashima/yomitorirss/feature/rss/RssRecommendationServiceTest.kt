@@ -87,6 +87,62 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `初回学習後の新しいfeedbackでも学習条件を再更新できる`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        manualCondition = "広告は低くする",
+        revision = 1L,
+      ),
+    )
+    repository.addFeedback("a1", "最初の除外参考", null)
+    val firstService = RssRecommendationService(
+      repository,
+      FakeRecommendationEngine(improveResult = "告知記事を低くする"),
+    )
+
+    val first = firstService.improvePendingFeedback()
+
+    assertEquals("告知記事を低くする", first?.learnedCondition)
+    assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+
+    repository.addFeedback("a2", "次の除外参考", null)
+    val secondService = RssRecommendationService(
+      repository,
+      FakeRecommendationEngine(improveResult = "告知記事と募集記事を低くする"),
+    )
+
+    val second = secondService.improvePendingFeedback()
+
+    assertEquals("告知記事と募集記事を低くする", second?.learnedCondition)
+    assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+    assertEquals(3L, second?.revision)
+  }
+
+  @Test
+  fun `カバー済み結果なのに学習条件が変わる場合はfeedbackを消費しない`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        learnedCondition = "既存の学習条件",
+        revision = 2L,
+      ),
+    )
+    repository.addFeedback("a1", "除外参考", null)
+    val service = RssRecommendationService(
+      repository,
+      FakeRecommendationEngine(
+        improveOutcome = RssRecommendationLearningOutcome.ALREADY_COVERED,
+        improveResult = "別の学習条件",
+      ),
+    )
+
+    val result = service.improvePendingFeedback()
+
+    assertNull(result)
+    assertEquals("既存の学習条件", repository.policy.learnedCondition)
+    assertEquals(listOf("a1"), repository.listPendingFeedback().map { it.articleId })
+  }
+
+  @Test
   fun `更新結果なのに学習条件が変わらない場合はfeedbackを消費しない`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(
