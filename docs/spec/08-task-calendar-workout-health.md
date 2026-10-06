@@ -74,6 +74,17 @@ models:
 
 - Health Connectから歩数、活動消費カロリー、運動、心拍、睡眠、体重、体脂肪率、栄養情報等を読み取る。
 <!-- formal-requirement
+id: HEALTH-EXERCISE-DEDUP-001
+models:
+  - spec-models/alloy/health_exercise_deduplication.als
+-->
+- 運動履歴の表示用sessionは、運動種別・開始時刻・終了時刻が一致する完全一致を同一の実運動候補として重複除去する。
+- 提供元が同一と判明しているsession同士は、完全一致でない限り時間帯が重なっていても別の実運動として保持する。
+- 異なる提供元のsessionは、時間帯と長さが十分に一致する場合、または詳細sessionのsegmentと単独sessionが運動種別と時間帯の両方で十分に一致する場合に同一の実運動候補として統合できる。
+- 重複除去後は各入力sessionをちょうど1つの保持sessionへ対応付け、保持sessionは必ず入力由来とし、保持session同士に同一実運動と判定される組を残さない。
+<!-- /formal-requirement -->
+- 重複候補の代表にはsegment、notes、title等の情報が豊富なsessionを優先する。具体的な時間重複率と長さ比率の閾値はData層の実装とunit testを正本とする。
+<!-- formal-requirement
 id: HEALTH-READ-OWNERSHIP-001
 models:
   - spec-models/alloy/workout_health_data_boundary.als
@@ -86,3 +97,4 @@ models:
 ### 形式モデル
 
 - [Alloy: `workout_health_data_boundary.als`](../../spec-models/alloy/workout_health_data_boundary.als) — Health由来read dataをHealth read modelだけへ限定し、WorkoutへのimportやAI入力、app databaseへの複製を禁止する。
+- [Alloy: `health_exercise_deduplication.als`](../../spec-models/alloy/health_exercise_deduplication.als) — 運動sessionの代表projection、同一提供元の非完全一致保持、cross-origin重複証拠、kept集合の重複排除を検査する。
