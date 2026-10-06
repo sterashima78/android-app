@@ -1,6 +1,8 @@
 name: Cleanup merged branches
 
 on:
+  pull_request:
+    types: [closed]
   schedule:
     # GitHub Actions cron is UTC. 17:00 UTC = 02:00 JST on the following day.
     - cron: "0 17 * * *"
