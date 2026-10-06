@@ -13,6 +13,16 @@ models:
 - RSS推薦は既定で端末内AIを利用する。利用者がクラウドAIを明示選択した場合だけ、RSS推薦に必要な除外条件・学習条件・記事タイトル・除外参考タイトルと直前評価をクラウド推論先へ送信する。記事URL、feed本文、リンク先本文、保存済み要約はRSS推薦の入力へ追加しない。
 <!-- /formal-requirement -->
 - custom Video Provider codeには他Contextのcredentialやdatabase accessを公開せず、外部通信はboundedなHTTPS request capabilityに限定する。function code自体をcredential保存場所として扱わない。
+- アプリ全体ロックは既定で無効とし、永続化するのは有効フラグだけとする。認証済みsession状態とCustom Tabs遷移markerはprocess内の一時状態として扱う。
+<!-- formal-requirement
+id: APP-LOCK-SESSION-001
+models:
+  - spec-models/quint/app_lock_session_lifecycle.qnt
+-->
+- ロック有効時に未認証ならfeature content、起動時診断、共有・widget等のincoming Intent処理を認証成功まで公開・処理しない。認証成功後は同じsessionを解除状態にする。
+- ロック有効時にActivityが通常のbackgroundへ移行した場合は次回表示前に再認証が必要なlocked状態へ戻す。configuration changeと認証prompt自身によるlifecycle遷移では不要な再ロックを行わない。
+- アプリ自身がCustom Tabs起動を開始した直後は、10秒以内の最初のonStopだけを再ロック対象外にできる。このmarkerはone-shotとし、起動失敗、期限切れ、または一度消費した後のonStopは通常どおり再ロックする。
+<!-- /formal-requirement -->
 <!-- formal-requirement
 id: CRASH-DIAGNOSTIC-PRIVACY-001
 models:
@@ -26,6 +36,8 @@ models:
 
 
 ## 形式モデル
+
+- [Quint: `app_lock_session_lifecycle.qnt`](../../spec-models/quint/app_lock_session_lifecycle.qnt) — app-wide lockのsession状態、通常background再ロック、lifecycle例外、Custom Tabsの10秒one-shot遷移を検査する。
 
 - [Alloy: `crash_diagnostic_privacy.als`](../../spec-models/alloy/crash_diagnostic_privacy.als) — 共有可能なcrash / process-exit reportで、機密token classをredactし、高レベル診断値だけをraw表現のまま保持できる構造を検査する。
 - [Alloy: `rss_recommendation_cloud_egress.als`](../../spec-models/alloy/rss_recommendation_cloud_egress.als) — 推薦の既定local実行、cloud選択時の送信allowlist、URL・本文・保存済み要約のcloud非送信を検査する。
