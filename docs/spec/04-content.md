@@ -81,13 +81,22 @@ models:
 - 再生が後続音声の生成に追いついた場合は、次の音声が完成してqueueへ追加された時点で連続再生を再開する。
 - 再生、一時停止、前の記事、次の記事、15秒戻し、30秒送り、1x / 1.25x / 1.5x / 2x の再生速度変更を提供する。
 - 画面を閉じてもmedia playbackとして再生を継続し、通知、lock screen、Bluetooth等の標準media controlから操作できる。
-- 再生開始、再生完了、skip、停止、queue完了のいずれでも記事の既読 / 未読状態を変更しない。「あとで読む」の所属やブックマーク状態も変更しない。
-- 再生queue、再生位置、再生済み状態はdurable user stateとして保存しない。生成した音声は再生成可能なcacheとして扱い、backup / export対象にしない。
+<!-- /formal-requirement -->
+
+<!-- formal-requirement
+id: AUDIO-PLAYBACK-BOUNDARY-001
+models:
+  - spec-models/alloy/audio_playback_boundary.als
+-->
+- Audio再生queueは開始時に渡されたcontent identityを重複なく保持し、再生可能な項目だけを元の順序でqueueへ追加する。
+- 再生開始、再生完了、skip、停止、queue完了のいずれもContentの既読 / 未読状態、CurationのRead Later membership、Bookmark stateを変更しない。
+- Audioのqueue、再生位置、再生済み状態、生成音声はdurable user stateとして保存しない。生成音声は再生成可能なcacheとして扱い、backup / export対象にしない。
 <!-- /formal-requirement -->
 
 ### 形式モデル
 
 - [Quint: `audio_progressive_playback.qnt`](../../spec-models/quint/audio_progressive_playback.qnt) — 入力順を保った逐次音声準備、最初の準備完了からの再生開始、生成追いつき時の待機・再開、再生状態非永続化とcontent state非変更を検査する。
+- [Alloy: `audio_playback_boundary.als`](../../spec-models/alloy/audio_playback_boundary.als) — queue content identityの一意性、Audioのdurable state / Content-Curation command非所有、生成音声cacheの非backup / 非export境界を検査する。
 
 ## 4.6 ニュースポッドキャスト
 
