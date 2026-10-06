@@ -41,8 +41,8 @@ class DefaultBookmarkArticleGateway(
         } else {
           ExistingSharedArticle(
             id = cursor.getString(0),
-            title = cursor.getString(1),
-            sourceTitle = cursor.getString(2),
+            title = if (cursor.isNull(1)) "" else cursor.getString(1),
+            sourceTitle = if (cursor.isNull(2)) "" else cursor.getString(2),
           )
         }
       }
