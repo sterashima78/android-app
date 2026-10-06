@@ -20,6 +20,28 @@ class ArticleContentClientTest {
   }
 
   @Test
+  fun `ページタイトルをHTML titleから取得する`() = runBlocking {
+    val httpClient = RecordingHttpClient(
+      HttpResponse(
+        statusCode = 200,
+        reasonPhrase = "OK",
+        finalUrl = "https://example.com/articles/1",
+        headers = mapOf("Content-Type" to listOf("text/html; charset=UTF-8")),
+        body = """
+          <html>
+            <head><title>  Shared   Page  </title></head>
+            <body>body</body>
+          </html>
+        """.trimIndent().toByteArray(),
+      ),
+    )
+
+    val title = ArticleContentClient(httpClient).fetchArticleTitle("https://example.com/articles/1")
+
+    assertEquals("Shared Page", title)
+  }
+
+  @Test
   fun `記事本文抽出は article data 内で行う`() = runBlocking {
     val httpClient = RecordingHttpClient(
       HttpResponse(
