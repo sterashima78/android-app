@@ -43,6 +43,7 @@
 | Workout AI background lifecycle | [`quint/workout_ai_task_lifecycle.qnt`](quint/workout_ai_task_lifecycle.qnt) | — |
 | Workout review latest-per-day | — | [`alloy/workout_review_uniqueness.als`](alloy/workout_review_uniqueness.als) |
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
+| Health exercise-session deduplication | — | [`alloy/health_exercise_deduplication.als`](alloy/health_exercise_deduplication.als) |
 | LAN Web bootstrap/session authentication | [`quint/lan_web_auth_lifecycle.qnt`](quint/lan_web_auth_lifecycle.qnt) | — |
 | Shareable crash diagnostic privacy | — | [`alloy/crash_diagnostic_privacy.als`](alloy/crash_diagnostic_privacy.als) |
 | App lock session lifecycle | [`quint/app_lock_session_lifecycle.qnt`](quint/app_lock_session_lifecycle.qnt) | — |
