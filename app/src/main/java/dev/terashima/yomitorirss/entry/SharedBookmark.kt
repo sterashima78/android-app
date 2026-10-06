@@ -13,6 +13,7 @@ private val trailingUrlCharacters = charArrayOf('.', ',', '、', '。', ')', '�
 
 internal fun parseSharedBookmark(
   text: CharSequence?,
+  contentTitle: CharSequence?,
   subject: CharSequence?,
 ): SharedBookmark? {
   val rawText = text?.toString()?.trim().orEmpty()
@@ -21,6 +22,7 @@ internal fun parseSharedBookmark(
   val uri = runCatching { URI(url) }.getOrNull() ?: return null
   if (uri.scheme?.lowercase() !in setOf("http", "https") || uri.host.isNullOrBlank()) return null
 
+  val explicitContentTitle = contentTitle?.toString()?.trim()?.takeIf { it.isNotBlank() && it != url }
   val subjectTitle = subject?.toString()?.trim()?.takeIf { it.isNotBlank() && it != url }
   val textTitle = rawText
     .removeRange(match.range)
@@ -31,7 +33,7 @@ internal fun parseSharedBookmark(
 
   return SharedBookmark(
     url = url,
-    title = subjectTitle ?: textTitle ?: sourceTitle,
+    title = explicitContentTitle ?: subjectTitle ?: textTitle ?: sourceTitle,
     sourceTitle = sourceTitle,
   )
 }
