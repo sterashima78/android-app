@@ -45,6 +45,7 @@
 | Workout / health-data one-way boundary | — | [`alloy/workout_health_data_boundary.als`](alloy/workout_health_data_boundary.als) |
 | LAN Web bootstrap/session authentication | [`quint/lan_web_auth_lifecycle.qnt`](quint/lan_web_auth_lifecycle.qnt) | — |
 | Shareable crash diagnostic privacy | — | [`alloy/crash_diagnostic_privacy.als`](alloy/crash_diagnostic_privacy.als) |
+| App lock session lifecycle | [`quint/app_lock_session_lifecycle.qnt`](quint/app_lock_session_lifecycle.qnt) | — |
 | Asset nonnegative snapshot replacement | — | [`alloy/asset_nonnegative_snapshots.als`](alloy/asset_nonnegative_snapshots.als) |
 
 modelは自然言語仕様の置き換えではない。各spec documentから対応modelとcoverageへ直接linkする。
