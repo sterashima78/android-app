@@ -36,5 +36,5 @@ dependencies {
   implementation(libs.androidx.fragment)
   implementation(libs.godot.android)
 
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
 }

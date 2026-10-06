@@ -83,6 +83,7 @@ class RepositoryGovernanceSourceTest {
       "androidx.navigation:navigation-compose:",
       "androidx.webkit:webkit:",
       "org.jsoup:jsoup:",
+      "junit:junit:",
     )
     val buildScripts = repositoryRoot.walkTopDown()
       .onEnter { directory -> directory.name !in setOf(".git", ".gradle", "build") }
@@ -106,7 +107,7 @@ class RepositoryGovernanceSourceTest {
     assertTrue("Chat data must use the serialization catalog alias", "libs.kotlinx.serialization.json" in chatData)
     assertTrue("Chat data must use the JUnit catalog alias", "libs.junit4" in chatData)
     assertFalse("Chat data must not hardcode migrated dependency versions", ":1.11.0\"" in chatData)
-    assertFalse("Chat data must not hardcode JUnit4 version", "junit:junit:4.13.2" in chatData)
+    assertFalse("Chat data must not hardcode JUnit4 version", "junit:junit:" in chatData)
   }
 
   @Test

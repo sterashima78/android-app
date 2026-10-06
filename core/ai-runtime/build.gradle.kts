@@ -22,5 +22,5 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
   implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.1")
 
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
 }
