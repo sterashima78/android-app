@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultArticleRepository
 import dev.terashima.yomitorirss.feature.article.data.DefaultBookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.article.data.DefaultContentSourceGateway
+import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkArticleGateway
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkContentQuery
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEnrichmentRepository
@@ -58,7 +59,10 @@ internal class AppContentRuntimeDependencies(
   }
 
   private val bookmarkArticleGateway: BookmarkArticleGateway by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBookmarkArticleGateway(database)
+    DefaultBookmarkArticleGateway(
+      database = database,
+      articleContentClient = ArticleContentClient(httpClient),
+    )
   }
 
   private val contentClassificationSourceQuery by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

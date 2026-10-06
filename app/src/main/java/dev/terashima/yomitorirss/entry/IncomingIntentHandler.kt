@@ -59,6 +59,7 @@ internal class IncomingIntentHandler(
 
     val shared = parseSharedBookmark(
       text = incoming.getCharSequenceExtra(Intent.EXTRA_TEXT),
+      contentTitle = incoming.getCharSequenceExtra(Intent.EXTRA_TITLE),
       subject = incoming.getCharSequenceExtra(Intent.EXTRA_SUBJECT),
     )
     clearSharePayload(incoming)
@@ -92,6 +93,7 @@ internal class IncomingIntentHandler(
 
     val shared = parseSharedBookmark(
       text = incoming.getCharSequenceExtra(Intent.EXTRA_TEXT),
+      contentTitle = incoming.getCharSequenceExtra(Intent.EXTRA_TITLE),
       subject = incoming.getCharSequenceExtra(Intent.EXTRA_SUBJECT),
     )
     clearSharePayload(incoming)
@@ -121,6 +123,7 @@ internal class IncomingIntentHandler(
 
     val bookmark = parseSharedBookmark(
       text = incoming.getCharSequenceExtra(Intent.EXTRA_TEXT),
+      contentTitle = incoming.getCharSequenceExtra(Intent.EXTRA_TITLE),
       subject = incoming.getCharSequenceExtra(Intent.EXTRA_SUBJECT),
     )
     clearSharePayload(incoming)
@@ -152,6 +155,7 @@ internal class IncomingIntentHandler(
   private fun clearSharePayload(incoming: Intent) {
     incoming.action = null
     incoming.removeExtra(Intent.EXTRA_TEXT)
+    incoming.removeExtra(Intent.EXTRA_TITLE)
     incoming.removeExtra(Intent.EXTRA_SUBJECT)
   }
 

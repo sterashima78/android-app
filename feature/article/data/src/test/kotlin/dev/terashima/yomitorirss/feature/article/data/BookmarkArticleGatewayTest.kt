@@ -5,6 +5,10 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.test.core.app.ApplicationProvider
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
+import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.core.network.HttpRequest
+import dev.terashima.yomitorirss.core.network.HttpResponse
+import dev.terashima.yomitorirss.feature.article.data.network.ArticleContentClient
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -17,6 +21,7 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class BookmarkArticleGatewayTest {
   private lateinit var helper: SQLiteOpenHelper
+  private lateinit var database: DatabaseConnection
   private lateinit var gateway: DefaultBookmarkArticleGateway
 
   @Before
@@ -45,7 +50,8 @@ class BookmarkArticleGatewayTest {
 
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
-    gateway = DefaultBookmarkArticleGateway(DatabaseConnection(helper))
+    database = DatabaseConnection(helper)
+    gateway = DefaultBookmarkArticleGateway(database)
   }
 
   @After
@@ -68,6 +74,66 @@ class BookmarkArticleGatewayTest {
       assertEquals(true, cursor.moveToFirst())
       assertNotNull(cursor.getString(0))
     }
+  }
+
+  @Test
+  fun `共有元にタイトルがない場合はページタイトルを補完する`() = runBlocking {
+    val titleGateway = DefaultBookmarkArticleGateway(
+      database = database,
+      articleContentClient = ArticleContentClient(
+        FixedHttpClient(
+          """
+            <html><head><title>Resolved Page</title></head><body></body></html>
+          """.trimIndent(),
+        ),
+      ),
+    )
+
+    val articleId = titleGateway.findOrCreateSharedArticle(
+      url = "https://example.com/article",
+      title = "example.com",
+      sourceTitle = "example.com",
+    )
+
+    assertEquals("Resolved Page", storedTitle(articleId))
+  }
+
+  @Test
+  fun `ページタイトル取得に失敗してもホスト名で保存する`() = runBlocking {
+    val fallbackGateway = DefaultBookmarkArticleGateway(
+      database = database,
+      articleContentClient = ArticleContentClient(FailingHttpClient),
+    )
+
+    val articleId = fallbackGateway.findOrCreateSharedArticle(
+      url = "https://example.com/article",
+      title = "example.com",
+      sourceTitle = "example.com",
+    )
+
+    assertEquals("example.com", storedTitle(articleId))
+  }
+
+  @Test
+  fun `既存のホスト名タイトルは再共有時に具体的なタイトルへ更新する`() = runBlocking {
+    val fallbackGateway = DefaultBookmarkArticleGateway(
+      database = database,
+      articleContentClient = ArticleContentClient(FailingHttpClient),
+    )
+    val first = fallbackGateway.findOrCreateSharedArticle(
+      url = "https://example.com/article",
+      title = "example.com",
+      sourceTitle = "example.com",
+    )
+
+    val second = fallbackGateway.findOrCreateSharedArticle(
+      url = "https://example.com/article",
+      title = "Resolved Page",
+      sourceTitle = "example.com",
+    )
+
+    assertEquals(first, second)
+    assertEquals("Resolved Page", storedTitle(first))
   }
 
   @Test
@@ -99,4 +165,31 @@ class BookmarkArticleGatewayTest {
 
     assertEquals(shared, imported)
   }
+
+  private fun storedTitle(articleId: String): String = helper.readableDatabase.rawQuery(
+    "SELECT title FROM articles WHERE id=?",
+    arrayOf(articleId),
+  ).use { cursor ->
+    check(cursor.moveToFirst())
+    cursor.getString(0)
+  }
+}
+
+private class FixedHttpClient(
+  html: String,
+) : HttpClient {
+  private val response = HttpResponse(
+    statusCode = 200,
+    reasonPhrase = "OK",
+    finalUrl = "https://example.com/article",
+    headers = mapOf("Content-Type" to listOf("text/html; charset=UTF-8")),
+    body = html.toByteArray(),
+  )
+
+  override suspend fun execute(request: HttpRequest): HttpResponse = response
+}
+
+private object FailingHttpClient : HttpClient {
+  override suspend fun execute(request: HttpRequest): HttpResponse =
+    error("network unavailable")
 }

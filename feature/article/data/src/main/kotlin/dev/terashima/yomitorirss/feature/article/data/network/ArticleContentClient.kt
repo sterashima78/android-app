@@ -21,6 +21,17 @@ class ArticleContentClient(
       .ifBlank { error("記事本文を取得できませんでした") }
   }
 
+  suspend fun fetchArticleTitle(url: String): String {
+    val response = client.execute(request(normalizeInputUrl(url)))
+    response.requireSuccess()
+    val html = decode(response.body, response.header("Content-Type"))
+    return Jsoup.parse(html, response.finalUrl)
+      .title()
+      .replace(Regex("\\s+"), " ")
+      .trim()
+      .ifBlank { error("ページタイトルを取得できませんでした") }
+  }
+
   private fun request(url: String): HttpRequest = HttpRequest(
     url = url,
     headers = mapOf("Accept" to "text/html, application/xhtml+xml;q=0.9, */*;q=0.5"),

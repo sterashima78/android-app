@@ -1,6 +1,6 @@
 # Web Content Boundaries
 
-この文書は、ユーザー閲覧用 Web content、RSS の Web scraping、Library の Web metadata 取得について現在有効な境界をまとめる。
+この文書は、ユーザー閲覧用 Web content、共有ブックマークの metadata 補完、RSS の Web scraping、Library の Web metadata 取得について現在有効な境界をまとめる。
 
 ## User-visible browsing
 
@@ -13,6 +13,16 @@
 - metadata 取得や scraping のための WebView はユーザー閲覧用 browser へ置き換えない。
 
 Custom Tabs は navigation / platform wiring であり、feature module は `CustomTabsIntent` を直接所有しない。
+
+## Shared bookmark metadata
+
+共有インテントで Content / Curation へ追加する HTTP / HTTPS URL は、共有元が渡すタイトル情報を優先する。共有元から有効なタイトルを得られず host 名 fallback になる場合だけ、Content data layer の既存 HTTP transport で静的 HTML を取得し、document title を補完する。
+
+- この取得は bookmark 追加時の単発処理であり、background refresh や subscription を追加しない。
+- WebView、Cookie、認証情報、custom extractor は利用しない。
+- metadata 取得の失敗は bookmark 保存失敗へ昇格させず、host 名 fallback で保存を継続する。
+- 既に同じ URL の Content があり、その title が source title と同じ fallback 値の場合は、後から得られた具体的な共有タイトルで補完できる。
+- Library の bibliographic metadata pipeline は再利用せず、Content の article metadata と Library metadata の ownership を混在させない。
 
 ## RSS acquisition
 
