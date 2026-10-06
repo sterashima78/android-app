@@ -39,5 +39,5 @@ dependencies {
   implementation("androidx.compose.material:material-icons-extended")
 
   testImplementation(project(":feature:rss:domain"))
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
 }

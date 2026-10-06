@@ -25,7 +25,7 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
   implementation(libs.jsoup)
 
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
   testImplementation("androidx.test:core-ktx:1.7.0")
   testImplementation("org.robolectric:robolectric:4.17")
 }

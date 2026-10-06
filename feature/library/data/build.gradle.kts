@@ -36,7 +36,7 @@ dependencies {
   implementation("com.google.android.gms:play-services-auth:21.6.0")
   implementation("com.hierynomus:smbj:0.15.0")
 
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
   testImplementation("org.json:json:20260719")
   testImplementation("org.robolectric:robolectric:4.17")
   testImplementation("androidx.test:core-ktx:1.7.0")

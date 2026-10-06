@@ -30,7 +30,7 @@ dependencies {
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
   testImplementation("androidx.test:core-ktx:1.7.0")
   testImplementation("org.robolectric:robolectric:4.17")
 }

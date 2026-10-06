@@ -7,6 +7,6 @@ kotlin {
 }
 
 dependencies {
-  testImplementation("junit:junit:4.13.2")
+  testImplementation(libs.junit4)
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 }
