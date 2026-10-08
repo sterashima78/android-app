@@ -41,15 +41,19 @@ class DefaultVideoProviderRepository internal constructor(
 
   override fun subscriptions(providerId: String?): List<VideoSubscription> = database.subscriptions(providerId)
 
-  override suspend fun subscribe(providerId: String, sourceUrl: String): VideoSubscription {
+  override suspend fun subscribe(providerId: String, sourceUrl: String, title: String?): VideoSubscription {
     val provider = database.requireProvider(providerId)
     require(provider.enabled) { "動画プロバイダが無効です" }
     val feed = when (provider.type) {
       VideoProviderType.YOUTUBE -> youtubeClient.subscribe(sourceUrl)
       VideoProviderType.CUSTOM -> customRuntime().subscribe(provider.requireFunctionCode(), sourceUrl)
     }
-    return database.upsertProviderFeed(provider, feed).first
+    val customTitle = if (provider.type == VideoProviderType.CUSTOM) title else null
+    return database.upsertProviderFeed(provider, feed, customTitle).first
   }
+
+  override fun updateSubscriptionTitle(subscriptionId: String, title: String) =
+    database.updateCustomSubscriptionTitle(subscriptionId, title)
 
   override suspend fun unsubscribe(subscriptionId: String) = database.unsubscribe(subscriptionId)
 
