@@ -153,6 +153,7 @@ fun VideoFeatureRoute(
       onSaveProvider = viewModel::saveProvider,
       onDeleteProvider = viewModel::deleteProvider,
       onSubscribe = viewModel::subscribe,
+      onUpdateSubscriptionTitle = viewModel::updateSubscriptionTitle,
       onUnsubscribe = viewModel::unsubscribe,
       onRefresh = viewModel::refreshProviders,
       onDismiss = { providerSettingsVisible = false },
