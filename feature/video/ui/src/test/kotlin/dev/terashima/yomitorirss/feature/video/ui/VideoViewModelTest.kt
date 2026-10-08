@@ -362,7 +362,9 @@ private object FakeVideoProviderRepository : VideoProviderRepository {
   override fun saveProvider(provider: VideoProvider): VideoProvider = provider
   override fun deleteProvider(id: String) = Unit
   override fun subscriptions(providerId: String?): List<VideoSubscription> = emptyList()
-  override suspend fun subscribe(providerId: String, sourceUrl: String): VideoSubscription = error("unused")
+  override suspend fun subscribe(providerId: String, sourceUrl: String, title: String?): VideoSubscription =
+    error("unused")
+  override fun updateSubscriptionTitle(subscriptionId: String, title: String) = Unit
   override suspend fun unsubscribe(subscriptionId: String) = Unit
   override suspend fun refreshProviders(providerId: String?): VideoProviderRefreshResult =
     VideoProviderRefreshResult(0, 0, 0)
