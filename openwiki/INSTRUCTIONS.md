@@ -8,4 +8,4 @@
 - 設定値・スキーマ番号などは必要なときだけ記載し、変更されやすい数値や全シンボルの一覧を重複管理しない。
 - リポジトリの Knowledge 機能と、この開発用 OpenWiki を区別して説明する。
 - 認証情報、実ユーザーデータ、ローカル環境の絶対パス、生成ログ、ビルド成果物を Wiki に含めない。
-- GitHub Actions による自動生成や自動マージはこの初期導入では有効化しない。OpenWiki が生成する workflow は job を無効化した雛形として保持する。更新は Codex の OpenWiki 連携で行う。
+- 更新は Codex の OpenWiki 連携から行う。OpenWiki 用の GitHub Actions workflow は不要であり、無効化した雛形もリポジトリに残さない。生成ツールが `.github/workflows/openwiki-update.yml` や定期更新を前提とする案内を再作成した場合は、生成完了後に取り除く。
