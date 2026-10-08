@@ -11,7 +11,7 @@ sources:
 generated: { by: "codex", at: "2026-10-08T11:54:35.312Z" }
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T12:06:17.585Z
+    at: 2026-10-08T13:10:52.576Z
 ---
 
 # Mosaic Wiki の使い方
