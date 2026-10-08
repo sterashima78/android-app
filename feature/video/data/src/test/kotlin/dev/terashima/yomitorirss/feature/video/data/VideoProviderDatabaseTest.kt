@@ -113,6 +113,64 @@ class VideoProviderDatabaseTest {
   }
 
   @Test
+  fun `custom購読は任意タイトルを登録して更新後も保持する`() {
+    val provider = database.saveProvider(
+      VideoProvider(
+        id = "",
+        type = VideoProviderType.CUSTOM,
+        name = "Custom",
+        functionCode = "async () => ({})",
+      ),
+    )
+    val (subscription, _) = database.upsertProviderFeed(provider, testFeed(), " 登録時のタイトル ")
+    assertEquals("登録時のタイトル", subscription.title)
+    assertEquals("登録時のタイトル", database.subscriptions(provider.id).single().title)
+
+    database.updateCustomSubscriptionTitle(subscription.id, " 編集後のタイトル ")
+    val (refreshed, _) = database.upsertProviderFeed(
+      provider,
+      testFeed().copy(title = "取得結果で変更されたタイトル"),
+    )
+
+    assertEquals("編集後のタイトル", refreshed.title)
+    assertEquals("編集後のタイトル", database.subscriptions(provider.id).single().title)
+    assertEquals(subscription.id, refreshed.id)
+    assertEquals(subscription.sourceUrl, refreshed.sourceUrl)
+    assertEquals("編集後のタイトル", database.unreadVideos().single().subscriptionTitle)
+  }
+
+  @Test
+  fun `custom購読はタイトル省略時に取得タイトルを初期値とする`() {
+    val provider = database.saveProvider(
+      VideoProvider(id = "", type = VideoProviderType.CUSTOM, name = "Custom", functionCode = "() => ({})"),
+    )
+
+    val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
+    database.upsertProviderFeed(provider, testFeed().copy(title = "取得後に変わったタイトル"))
+
+    assertEquals("チャンネル1", subscription.title)
+    assertEquals("チャンネル1", database.subscriptions(provider.id).single().title)
+  }
+
+  @Test
+  fun `組み込み購読は従来どおり取得タイトルを更新し手動編集を拒否する`() {
+    val provider = database.saveProvider(testProvider())
+    val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
+
+    assertTrue(
+      runCatching { database.updateCustomSubscriptionTitle(subscription.id, "手動タイトル") }
+        .exceptionOrNull() is IllegalArgumentException,
+    )
+    database.upsertProviderFeed(provider, testFeed().copy(title = "更新後のチャンネル"))
+
+    assertEquals("更新後のチャンネル", database.subscriptions(provider.id).single().title)
+    assertTrue(
+      runCatching { database.updateCustomSubscriptionTitle(subscription.id, " ") }
+        .exceptionOrNull() is IllegalArgumentException,
+    )
+  }
+
+  @Test
   fun `provider設定を更新してもsubscriptionとitemを維持する`() {
     val provider = database.saveProvider(testProvider())
     val (subscription, _) = database.upsertProviderFeed(provider, testFeed())
