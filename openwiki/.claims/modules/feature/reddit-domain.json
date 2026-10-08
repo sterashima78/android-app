@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a3c89681faf408308be3e696219cf88576c18965b5dd745177f3da7c3fabc22d",
+  "claims": [
+    {
+      "id": "claim_8c952107cbb14d94803705392881516d",
+      "statement": "Reddit-owned boundaryはcommunity、threadとReddit feedを通常RSS登録入力から除外する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditSourceBoundary.kt#L9-L23",
+          "version": "repo-lines-v1:sha256:8f6e5056e20e085cba6617a69009e1546524061ee2ee24ae48188dc0f4165813:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNzk0YmY2YzBkNzIyYzRiY2UzZjFhOTFlMjIzMTk4YzgyOTVhOTg4ZGQ1Zjc2ZjE3YTcyOGMyMmQyY2RjYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkMTM5NzQ0M2I1ZDVmMzk1NjExMGI4YjgxNWNkNzQ1N2E3N2Q0ZjcyZTc3MWU1NDc2Nzk4MGE5MjFlNzNhMjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjNDliYzMyYmM2MDkzMDk4NDhlN2NmMGE1MTNlMWMwMmNkYWM2Y2I1ZDQyZDJmMGZiOWRhZGRmZmE5YWNjNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_02b5958c550f405db04bed528ebc708f",
+      "statement": "Reddit community URLはcommunity listingだけを受け付けてnew RSSへ正規化し、thread permalinkをcommunityと誤認しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditUrls.kt#L6-L29",
+          "version": "repo-lines-v1:sha256:6c8cfb7406bae6e2d390ebac4367d5718ebc5c4f5caec4670591c53a554daf5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxYjc1YTVlNGM3NTYxNGMzZjVkMDhjYWVlOTY4YmUxNjM1NGE5NTlmZmQyMTRhYmJkMGE4MGRmMmQwMTUzZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhNTk4MTRkZjkwZWY3NWU5NzljOTcyYTBkMjI2NDVhMzkxODU4NGE4ZTU3MjQ4MmE3OTQyMDk5OTdlNmE5YmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3YTQ2MzgzYWQyODM0OTc4YTViMmJhZmFmZTg2OGQwNTc5MzUwMmExZjcwMzhjMmNjNjEwNjhkYzU0YWExM2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4a86432027a4bcabc7f5003995e3039",
+      "statement": "Reddit Articleの分類はsourceFeedUrlに基づく。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditModels.kt#L35-L35",
+          "version": "repo-lines-v1:sha256:489760e281ba45ec0396a063a617cba3deb016ec82732da45da2c3a4cac4339f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5NzYwZTI4MWJhNDVlYzAzOTZhMDYzYTYxN2NiYTNkZWIwMTZlYzgyNzMyZGE0NWRhMmMzYTRjYWM0MzM5ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5NzYwZTI4MWJhNDVlYzAzOTZhMDYzYTYxN2NiYTNkZWIwMTZlYzgyNzMyZGE0NWRhMmMzYTRjYWM0MzM5ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTUzMDY4ZTY2YTc1YTQzZDViM2Y5NTkxZDU0NmYyNjU4MjVlNmEzNGFlNmNkYzYxMzBjMWFlMjQzZmMxMzc2MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

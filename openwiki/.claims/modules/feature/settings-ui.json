@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:e4fa53ef473df05d0b19458e255ecebbcc56761d36b1174d038fd9506f617f86",
+  "claims": [
+    {
+      "id": "claim_9355b0a4a0ca4c9b8f1f3271c872910a",
+      "statement": "Settings UIはownerのFlowを購読してmodel・download・prompt・Summary/Knowledge実行先と推論設定を表示へ反映する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiSettingsViewModel.kt#L82-L123",
+          "version": "repo-lines-v1:sha256:aa58d61f77335845e42fbd746459f644a103340f9911dd05a4a8511847e8ad21:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0YTIxNTg3OTc0OTJhZGI5ZjlhNmUwNDk4NTRjM2FhOGJlNTdmMDBlNjg3YTNjMmJhODhiYmI4OGI1NzBkOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5ZmZmZGU2Nzc0OGU5NGFkNjc5ZmIyOThiMDIxOTViYzhhZDI5ZTljZmEzYWFlYjc4ZTAyYmIxNTUzMjMyODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZjYWRmYWQzNDRkNjkyYzRjZDllMWIxMzk3NjgzYjU0ODJlZWRiODE2ZTc3OTZhYThiNzk1OGVkYjNjN2I3YjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_711c6514ec104499ab75fa9dc41981ed",
+      "statement": "Settings UIはChatGPTへの実行先変更前に接続と選択モデルを確認する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiSettingsViewModel.kt#L278-L300",
+          "version": "repo-lines-v1:sha256:dfc72c8ddb9ea82651b0021cdeb9b1465ed3c3bcbecd99eb8bf074f077bfba08:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZGNkMDc4MzFkMTc2NGJmNmQ0ZWIwYjIzODM3MDM0YWI3ODQ2YjFmNjZhMDgxYTQ2YjFiMjg3N2VlY2U5Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwZjNiODU5MTRiMjZhZjlhNDg2ZjIxOWY4MmM0Y2U5MjZjMzY1NGVmMTU0NDY3ZmQzY2NlMGUxYTBjODExY2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4ZTI3YzBiNDk4ODUwNGI5YzllMDRlNWQ4ZTkyOWZmMmIyOGZlN2Y4NWQyMzdiOWM3YTFlNmMxYjNhYTQ5OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2NzFjMmMyZjNkYTFkNjE3NDQyOWQ2Nzk4ZmJjYTRhYTU3YjcwYjYwZTRkMDJiYzYzZWI4M2ViYjE1MTE5YTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cc966053bcf94ed3a6f4ab61d300f4f6",
+      "statement": "Settings UIのChatGPT logoutはSummaryとKnowledgeのproviderをLOCALへ戻し、接続・候補・結果の表示状態を解除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiSettingsViewModel.kt#L196-L222",
+          "version": "repo-lines-v1:sha256:343a7ad8f99fe60ce73735215a70eb9dd65f51f5684a3a09dc0892fcca9866a3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzMzIzYzhlOTI4YjgzNzBmZjEzNTRmMmZhOWE1MWMyYjhlMmRiYWM3YmFlNWU2MGNlMmJiNzkzZDQ0ZGMzZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxOTU0NGIyZGViMzJkYTAzYTU2OWU1ZDdlNzJhNWZmODhhMjRhNDIyYzQzNDU5YWExYTVmYWVkMTUxNWM2MTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiMzM2ZmY1YTM1MzQ2MjI1NTVmZmIzNmVjY2NlNWM0NWVkMTdjOTM5ODU2ZTI0Yzk4MTYzNGFmZmExZjYyZGMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -5,7 +5,7 @@ description: 正本の確認、Change Impact Review、PR と検証、APK 配布�
 tags: [development, build, openwiki]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:10:52.576Z
+    at: 2026-10-08T13:53:53.288Z
 sources:
   - id: openwiki-source-7a80b79a6fb3618cbfab08a2
     resource: repo://.github/workflows/build.yml
@@ -17,7 +17,7 @@ sources:
     resource: repo://docs/development-workflow.md
   - id: openwiki-source-16b97cbfa50dd2e922fba80e
     resource: repo://docs/openwiki.md
-generated: { by: "codex", at: "2026-10-08T13:10:52.576Z" }
+generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 ---
 
 # 開発・ビルド・Wiki 更新

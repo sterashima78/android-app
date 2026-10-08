@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b438c180b0dc54db4537350e954d4587f68f13cf001940d563250ac53ad8537b",
+  "claims": [
+    {
+      "id": "claim_7d1a3e2057fd4e62987675f527482705",
+      "statement": "最初の準備済み音声で再生を開始し後続音声は現在queueへ追加する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/DefaultAudioPlaybackController.kt#L163-L207",
+          "version": "repo-lines-v1:sha256:2022ad244ea1966066d18135d698a84b52cd08a4fe9a51d86f9d06e42803add2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiYjY0OTM0ZjViNTI1YzcyYzNlNGU0ZTE3YjUxMjU5Y2Q4ODgxZWNmNjA5YzQ3MWE2MDUzZTc4NGU1NzdhYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwNWNkMWQ0ODdmZjUzMTkxMGQ0ZWM5OWRkZDdiZmU3MjU1Y2M0NjVhNWUzMjFiMDZkZTI1Y2ZmY2JjYzkxNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyODc4NGM3ZmI2N2FmMWYxYjA5NmJjZDUwMzM1MWRjMTEzODM3MzUzMTJjMjM2YjQzN2VhNDg3NTQwNmIzNmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5Zjc1Y2JmODZjZGJiMGVjMDBlYWIyYWYxMzhmNjRhMzQ1NjY4ZTAxYjZlOTRiZmE0YzgyNGYwYWVmZjJkMzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8fa6db35e219416ea7e5d2c5dc87d063",
+      "statement": "TTSはインストール済みオフライン日本語音声を選び、利用可能な音声がない場合は失敗する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/DefaultAudioPlaybackController.kt#L318-L342",
+          "version": "repo-lines-v1:sha256:1c2cbf65e48036e38af296259a4dbcf3faab1656871c3f66b6dfddbd5f180361:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliZGJiMzRmMmI0ZWZmMTY4Y2VjODJmNTA4NjlmYTM4OTNhYWIwNzA5Zjg5YjdiYWIzN2YzZjg5MDIzMWFiNzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTZkZmVmMjZiNDc4NGU2MzkyYTlkNGYzNmZlZjJlZjlkYzhiYWRjOGM0Y2VhNzNlMzc4NzY1NmQyMjQ5YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyNjIwYjQwNjMwZmMxOWU2N2Q5ZjM1NjUwOTAzMmVlNTcxZjZmODhlM2Y4YjY4YWJiMDk0ZWVhMDJlZDA0ZDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_10f74b64f5524c5390124d6ceb11f9c4",
+      "statement": "直接本文がない項目はSummary公開契約で取得または依頼し限定時間待つ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/DefaultAudioPlaybackController.kt#L239-L282",
+          "version": "repo-lines-v1:sha256:224c591e5a34058008646b539e826a114f63ef185f7c31a629ce1edc03235e03:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMjRjODI5YjJmZTc3MWY0NmQyODMzZDZjYzIwOWYxZTJlZTNmNjM2YjYyNzI2YjI5YTYzNzdlYTIyM2FiYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlZmI1ZDg1NDI2Mzg1MDQzYWU5NjczODZlNzc2NzEyNTk4ZTMwMjk5NjRkMzM4ZWY1N2ZlOTdmYjMzOGZmN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4ODVjZGUxYzQ4NGU3ZmY5NmFlMzZjOGE1YTg0OWI2YzIwMDAyMTBlZWFhODk2NzRkNjdiNmU3M2ViODU1YmMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f6fb5e7d736f77825c99935b049699139d85f55881035a5562cd5b1d9b9d080b",
+  "claims": [
+    {
+      "id": "claim_d10aea91ab8c4534939710b8fba1f4b8",
+      "statement": "X設定は3つのCSSセットを持ち、セット切替前に編集中CSSを保持し、copyは選択indexを変えない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/x/XViewerCssSettings.kt#L3-L50",
+          "version": "repo-lines-v1:sha256:a2353d9d2d75104a872365764271ae38aed35cd33b9686cd1978ef84b2cdfe67:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MGJlNzFhM2VkNzZjNjBkMjQ4YTNkZjYwYjEyNmY2YmY1NmZlZTI5NjBjZjBlNzg0YmQ5NWM1NmExOWYzZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwMzg5ZjNmZDA2ZTQ0ZjFmMzQ4ZmExZWJjYjQ2YWNiMDRmMDk5N2ViNmI0MDcxNTM5N2JlNjg4ZDhiMGIwMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3NTQ4OTU5N2EwMWI1NjU0NDkxYjgwODRlMjNkZjgxOTcwYjI2NDExYjY2YzJiM2U3ZDJjMGM0YjI2MmFkODIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ed4e9dbb9c4748ec9ac69aa11ce1037c",
+      "statement": "X設定のJavaScriptは初期状態で無効・空文字列で、CSSとは独立したflagにより注入文字列を判定する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/x/XViewerCssSettings.kt#L8-L19",
+          "version": "repo-lines-v1:sha256:f04c4fde132d1b09774490891b17fc4c3cafc9a8c9222d80f9baf175c211475b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiYjk3NWZjY2RmZWFmNzdiZDgxNDc4YWQyNDkyMjFkMDc2Mjc4MTA4ODc1ODE0Y2FkMGRjZTQyZGE4YzVhZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkZjVlM2Q2OGI4YTc0ZDBjMzg3MGY5MDg1M2I2NmNmNmMxNjhiMDY3YzAyZWFiYWMxMjIyY2FmZjJlN2Y5Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwNzNiMGE5ZTI2MTBjZmNhNTg5Mzk1ZmM3MTFjMTk5MGI5NzI3YzFhZjJiNzI4MWIwYmM5MTVjMzQ1YzYwMTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_42f29344e2ae4617b32158f465e7a075",
+      "statement": "無効なCSSまたはJavaScriptの注入判定は空文字列を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/x/XViewerCssSettings.kt#L61-L64",
+          "version": "repo-lines-v1:sha256:58cafd4e747162adfd33eb74ffdbaa55f8564aa1634631859daf950147cddf8f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGEwNDNkM2ZhZWYxNzExYjU1MzU2N2JiY2I2MjlkODQxMjM5Yjk3NTE5OWEzYTc1YzFjOTQyNTc1YjI5OTNiMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZiYWUwMWExNzYwYTNhMzg3MjRhMGRmZGRjZTBkZWYwN2EzMDNhNzYzODBjMzA1NDczNmRiNjIwOWJiMmE3YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2M4YTk5YWZmYzk3NzliODA4YTNlZWFlMjk5ZjI4ZmY5MTc3OWIxZGYxOTUxNjg5ZjEzNjkxOGI2OTI4NDY2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

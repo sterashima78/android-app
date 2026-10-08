@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b7e8ebdbd7f2d5beb096f1ebc2aa1452597102548f9d71d37c1ea68260631cdf",
+  "claims": [
+    {
+      "id": "claim_6bef935b62c84473a6fe05219233d476",
+      "statement": "単発自由文推論は公開 generate で背景実行 context を検証してから実装の生成処理を呼ぶ。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-inference/src/main/kotlin/dev/terashima/yomitorirss/core/aiinference/AiTextInference.kt#L48-L59",
+          "version": "repo-lines-v1:sha256:26575fb8b96135136bdc916b861faac92cd6c89b84ab721af6b4a15ba70ffa15:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MDNjNmM1NGI2MDhlNzM0YTYyNjk3OGYxZDEzZDE3MDMzMDQzYzBjMGQ0NmZiNmY1MzE4MWUzMTAwOGE1MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhYTg4ZjNmOTcyNGFjNDExMzcxMDhhYTVmYTg2MzBlNzZjZDY5ZGM1NTMzODQwNjFlYThlNzRlZWRlYWY4YjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a26c1a3a7f8d498589d912d91c6a22c6",
+      "statement": "背景 AI context の設定は CoroutineWorker receiver の withAiBackgroundInference を入口とし context 不在の推論を拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-inference/src/main/kotlin/dev/terashima/yomitorirss/core/aiinference/AiBackgroundInferenceScope.kt#L10-L32",
+          "version": "repo-lines-v1:sha256:3c911af05eb3428254b6a40495a382be1c5acde9fd845e4d2a18674eed90b2c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4ODI5MzgzM2M5YTdhZDkzZmI2MTc1YjcxNDBiZDViOTE3ZmM4N2RjZjg5MmZkMzdlMTUyYTE1NjNlYzhhZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJkOGMxYjA2YzM1YjhlMTk2YTkwYzk3NDc5ZjZiOGIyYjFhMWMyMWExODEyZDcxY2Y3NzNhYzFlNDZkZDU3NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4cb1862b16a249bf8a48568a76963d44",
+      "statement": "構造化出力は自由文推論と別契約で、tool 引数名の重複を拒否し tool call または null を返す。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-inference/src/main/kotlin/dev/terashima/yomitorirss/core/aiinference/AiStructuredTextInference.kt#L26-L71",
+          "version": "repo-lines-v1:sha256:6a69228af2c8351593f1e7cdd07ee7e83652645b5728b83486f49ec84d8db256:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNWMxOGIwNTgxMjA1ZGI2ZjU5NTZiMGQ0OWFjN2I1NTcwZGU2ZTAxN2EzODFiNmNjNjczY2FhM2ExOGJiMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMjRjYWZhNmYzNGUxMzM3Yzg0N2M2MzJjYzM4ZWJhNmJkZGE1NWMxOTAyNjIwODA4YzdjZmFiZmVlYTI0MWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

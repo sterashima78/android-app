@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c3ef3b78df81fb7fe9d489a6b3ca934bbf693f98d745709198821f8a342284d4",
+  "claims": [
+    {
+      "id": "claim_9615331837e04c209cbf366dafc9587e",
+      "statement": "text / structured 推論 service は exported=false の :local_ai_text subprocess で実行する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-runtime/src/main/AndroidManifest.xml#L1-L13",
+          "version": "repo-lines-v1:sha256:3268eb1b1bd481c51270d856a8e5286dd982eaf160d28cef310e4461d7385a65:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzOGRmYjA5MGQ3YjE5MTgyNjY5OTA4YTg5MTE4NjM2OGQ0YWY1YjAxOWE5ZTcxNjhlNGMwOGM5MjgyN2I1NGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyODY0MzNiZTcxNTdjZDZiNjIyOTdhZTdlM2JhZWI0ZDU2MjljZTRmZGI3NzMxYjg0YzY3MjcyMWFkOTViN2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f67a42af12f648b3b77c4b006412893d",
+      "statement": "process 分離 adapter は metadata と token counting を main process に保持し、生成入力の空白・上限を検証して終了時に progress を消す。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInference.kt#L104-L142",
+          "version": "repo-lines-v1:sha256:1c5122a49c5a55b50f6698cd7bf5dd2950f56ca44f946a4dfa0c878d24fb6dcc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3MjliMWUyMGM5MTNmYzViNzc3YjY2MTg3OTAxY2MwZGNkM2EyODE3NzhlNjlmZGZiZGI2ZWE3ZWZkYjljN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlNDcxODQxNjE2M2MwYjM5OGRiOWJiZDU0YjU4NzRlMmUyMDcyNTU5ZjdhMWU3MjgyOWM2NmVjMjc3Yjg2MjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f91f810a3f714454950b47246b84c410",
+      "statement": "process policy は 2 回目の生成で retirement を要求し、子 preferences、IPC budget、watchdog の境界を焦点テストで検証する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInference.kt#L271-L282",
+          "version": "repo-lines-v1:sha256:f48df33bef8408b20767578fc34e3a5edf66381a4c1bd4ccd423656851542e56:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZDE4NDQwNDkwZmNjODE0YmI5OGQyOGVkYTVmMWQzMjY3ZTBlNGFiZDAxOWM1MzY4YjMwMWMxODQ5ZTI4ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1MTcwNWJhZDVmMDVkNjQwODNhZDI3MGRkZDUwYTFmOTU1ZGM4NTMyNjM5NDNiZjYxODg0ZWM5M2UwOTMzZTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MGM1ZDNkYzNhNzczMDc5M2M4OTI3OTQ4YjU1OTY2NDIwN2Y3OWJhODc3NzNjMjE1MDA0NDMxOTYyZmQ0ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        },
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInference.kt#L44-L44",
+          "version": "repo-lines-v1:sha256:55dcee0bf2e8dd9fc383447697b1bef3fe59131fe22cc29e0fe8fcd0920a1ffe:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTVkY2VlMGJmMmU4ZGQ5ZmMzODM0NDc2OTdiMWJlZjNmZTU5MTMxZmUyMmNjMjllMGZlOGZjZDA5MjBhMWZmZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTVkY2VlMGJmMmU4ZGQ5ZmMzODM0NDc2OTdiMWJlZjNmZTU5MTMxZmUyMmNjMjllMGZlOGZjZDA5MjBhMWZmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTg0YjlmNTdmMjIwZTFhMTcyNDQ0ZWQxNGZjNDllNDM2OGNlMDZjZTlhYmMyZWJmZTc0NGYxN2MwMGY5NjA2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTM2NDEzZjM2OTZmZTc2MmIwYTRlYjc2YjVjMzkyZDdmYTRkMzIyMjJlNzVjODJmYmI0OTAxZDA3ODFkNTJjMyJ9"
+        },
+        {
+          "resource": "repo://core/ai-runtime/src/test/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInferenceTest.kt#L10-L81",
+          "version": "repo-lines-v1:sha256:f05b97624efdb20bbe3a4dedc14aee0cf1b4c95b66080e682c2a682d8fbda6c2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNDcyY2NkYWI4MGMzNTk1MzJjMjk3NDkxZDVkYTdmMjRkN2UxN2E2NzI1MjAzYTg5NzI3ZDU2OWI5MzM4YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxMzMzOTNhZDdhMjM3MjQyNDVhYzk3NjQ5ZmMzZjc0MmMzNDhjMTg2MTRjMzBhZWM1ZjI0ZTQ1MTU4OTk1MmQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T14:01:52.039Z"
+  }
+}

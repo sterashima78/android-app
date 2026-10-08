@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8b2ae16a94d3f4d3b11445e69120a8922933b70df1932eb5bf7d39a07756a444",
+  "claims": [
+    {
+      "id": "claim_edcfe1a402154f7d9702760d1aa11b3d",
+      "statement": "シリーズ再整理は同一シリーズの蔵書だけを対象にし、成功分を保存して読書状態を維持し、通常失敗を集計する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryMetadataOrganizer.kt#L15-L63",
+          "version": "repo-lines-v1:sha256:9de004f744e574a70263e9d4b1de35e438c3989ec92bc7f7a9e208d395cdf34b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzYmMzMWE0YzU1YzMyMzI3MWI5MDhmNjA3M2UyYWFkMzRjNjFlMTc2NjcwN2YyYzNiMGNiMDhjMTQyZjBkZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1MjVmMWE5NjQ0NmEwYTc3YzlkYTA1ZjRlMDAxZDk5OTRkM2Y2YmRlNDMwMjk2Zjk4NjBkNmY0MmRiNTI1MWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d2e14660b142457eaefddee09e2db9bd",
+      "statement": "蔵書AI操作は受付IDによる結果取得と復旧可能タスク一覧を公開する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryOrganizationAiTaskController.kt#L30-L35",
+          "version": "repo-lines-v1:sha256:fee4e199055a6e837bd7ce16ff06ad0deb5f5998ea4588fcfdd921a07ace3d26:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ0OTAzMjZmNzkyZDExMTJkOGRhZDYxMmE5NjhiNGRhNDE3Y2Y4MDE5ZmNmMjkwYzdiNjNjY2Y4NTA1OWUyOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGVlM2MxZjAwMWI1ZjY0NzQ4MjE2NjBhOWViYTc3YWNhYWI2NTY0ZGIzMjJiNjI4NTQwYzhhNTY2NjZkZDVjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTM0NGE0NmRmMzZiNDMyNmIxMjlkMTAwMDZlMzYwMzY0ZWI2ZTgwOTZiNmNhMzZjZTZjODYzYjI0NWEyNzIzMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

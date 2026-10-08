@@ -10,6 +10,7 @@ okf_version: "0.2"
 
 - [architecture](architecture/)
 - [integrations](integrations/)
+- [modules](modules/)
 - [operations](operations/)
 - [testing](testing/)
 - [workflows](workflows/)

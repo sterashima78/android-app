@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f0fd6c496b332830367ef65955948dfe53a2977f39e7e8db5b8de3612218ce46",
+  "claims": [
+    {
+      "id": "claim_dae7400f582443bbaa70fe342a699972",
+      "statement": "Knowledge再構築はeditor-managedページと資料fingerprintが一致するページを再利用し、topic実行時にも保護を確認する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/DefaultKnowledgeGenerationService.kt#L40-L99",
+          "version": "repo-lines-v1:sha256:ab147981223e773bd280890e7c1d52c9b25755cf05b38e9a6dd4aa2b2b41d9ac:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkOGVjOTE4Mzk3OGRiZGJiMWRlYWU0OWRhZGQ0NjY1NmI3ZGY2NmRlMWFjMzMwMTcxNTcyNzA5OTJkMjAwNzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0ZDM3Y2ZmZDk1MDc1MjM5MzE0MmViODk4YWI3OWJmZmRkMjMxZGYwMDQ1OGYxMTZjNjBmZDE2NmUyMTY4YzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ee8c66ab4b7044308676301cbf27d287",
+      "statement": "自動Knowledgeページの削除は非表示tombstoneを残し、ユーザー作成ページの削除とは区別される。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/ManagingKnowledgeRepository.kt#L135-L155",
+          "version": "repo-lines-v1:sha256:0750ee3c22fcd63a4167d61b0cf15a955819982b967ad3328c454b8f228228f1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZDY2NWU0MDFhYTk3OGFiMzhlMmM1ZDhlZjI0ZDEyMjdjZDNlMzA4ODE2NWRmZDdjMDE2N2U3YjgwZDcyMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhNDUyZDdmMWFkZDIzYjQ5Y2UyN2Q4ZWFlOGM1MzI5MWQwYzQ1ODg2NWUxZTRmMDVhMGI1OTk2MDViMGNhMDUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_38fb9000c1b549d1aa861adf10d78473",
+      "statement": "Knowledgeの親Workerは計画だけを行い、実際の生成をtopic Workerへ分割する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/test/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeApplicationServiceArchitectureTest.kt#L32-L41",
+          "version": "repo-lines-v1:sha256:f49fb3d6a15309b18baee4bcc2a120d785753dd0881ea69651756bafe7995ce2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0Y2Q5NjlmNWZiNWE4NmEzNmJmZWRiY2JhNjE2M2NhYWIzYjJkYTgwYTk3ZDQ1YjViZTg0MDlmMmMxMmNmMGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmMmY4MjM1YzBkMTNhOWQ2NDA5Y2NiY2M5NjM4YWU0YzY3NTM3Y2NjZGJkYjdiMmVkY2JhYjg1MjY2NmFhN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMGZlN2RlZTQwOWM4MDRlNDJmNWJhY2UwODVhYjMxOTI2MmQ3NGQ5N2NiNGUwZmViNTNmNDlmMTI3YTBhNzIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

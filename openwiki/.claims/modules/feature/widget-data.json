@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:7d35e7b319d9d75e049c65520ea759d930b62bf7b48b56e28e7dc20219a24401",
+  "claims": [
+    {
+      "id": "claim_5d059584ead84cc5acda11f2756ddb3a",
+      "statement": "Widget Dataは未読取得と既読をArticle、あとで読むをBookmark、feed更新をRSS Repositoryへ委譲する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/data/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/data/DefaultWidgetRepository.kt#L10-L45",
+          "version": "repo-lines-v1:sha256:fc2a40fcc5c8a7811c1b3bedf981bc90a1af4378a8657c1d3a7debda7f313579:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMmFkNjQzMjM1MGM1MTRjMDQ3MzZhNTA2Mjc1ZTljMWY2ZDk5OWZiMGQ1MDEzZTQ5NTgxZTg5ODdlZDQ2YmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjNDgyOGNiZTVlYzVlY2ZlN2ZjYjU4ZDNlOGZkZDYzNTFjMzQ2ODJjMmFlODM5Zjg0NGMwMTFiMTdjZTkyM2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ffa3a6fe488f493c96e067cef5d2d644",
+      "statement": "Widget feed更新はsource selectorで対象を絞り、個々のfeed失敗を吸収して続行する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/data/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/data/DefaultWidgetRepository.kt#L39-L45",
+          "version": "repo-lines-v1:sha256:ef85ec656183e2481cbf93c63a88a3220a52c0a060d05d0ff7f0b2a458fa605b:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmYyOTg1YzNkOTdiZDc0ZTVkZTg5MmNlZWU2YjAxYzk4NGUyMzc0ZTU2MGE2ZGQzMTg2MDU0MTY0NDliOThhMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGRlMTk3MDdlNjA1OTliNmQ1YjY3ODQ2YmNlZWUyMjBlYTBjN2RmYTUxMzM1OWU3YjcyNGRkZGQyOGExMzk1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_a00f97f7d79b418bab393c2d21c277d5",
+      "statement": "Widget Workerは実行時network policy違反ではretry、更新と完了callback成功ではsuccess、例外ではfailureとする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/data/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadWidgetRefreshWorker.kt#L14-L22",
+          "version": "repo-lines-v1:sha256:0116236d4b1b30be58a9aa183e0c807bb599dcd63ae6b4dfad1b85b7d3963c46:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjUxM2ZlOTk5Njg2Yzg4YmFmMzJkNjI3MDFhN2YxNmVjYTk4NDQ2NDkzODRjMzY0MzZiMzJlMzNmNWEyMWUzYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODZlYWM4ODI4NTA4ZWY1NTdmZDMxMGYxMGYwYmRkOWViYjY1MzhlYzdmZjMxNGY0ZDdjYWM5MzIzMjhjYmMzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY3MzlhMDZjMWNiYjEyNDRlMzM2M2QzOGJjZjlmYTUwY2U4NGZlZDM5OWMyMTkzYTNjN2YwOGQ1OTkxOGIyYSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

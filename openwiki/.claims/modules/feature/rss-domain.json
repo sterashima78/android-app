@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:84e3eb0f04dbb51da03d78a880c121f53f688cde03ca1ac72c535f0de248d205",
+  "claims": [
+    {
+      "id": "claim_596338c261684b69bd81dee5fb20e8d3",
+      "statement": "RSS feed更新はSemaphoreで同時数を制限し、個別失敗後も全件処理して進捗と失敗数を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/RefreshFeedsUseCase.kt#L15-L42",
+          "version": "repo-lines-v1:sha256:1c2b1c7dade4aa99d2cefdedf94fbad1f8993f53e7507eb24345cc36bee9b5f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwYTQwYjZhZGI4ZDI2MGM4NWZhMGE5Yjg4ZWU5ZmQxNjM3YjliNjE1MGFmYjFhZDM2N2JhNjhiZDlmNDRjOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5NjQ5YTg3ZWRmMzdjZGVhOTY5ZDNkNjg1Mzk2ZTRmYTg5YWY3MDNjY2JkODVlOWRhNWU3MjEwNDQ4YmFmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNzM5YTA2YzFjYmIxMjQ0ZTMzNjNkMzhiY2Y5ZmE1MGNlODRmZWQzOTljMjE5M2EzYzdmMDhkNTk5MThiMmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_53e89ac97b194b6f888ae8a18627684b",
+      "statement": "RSS記事の推薦評価は有効な現在revisionだけでタイトルをengineへ渡し、情報不足と推論失敗を数値にしない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/RssRecommendation.kt#L191-L234",
+          "version": "repo-lines-v1:sha256:86df14adecf6dac37fd353b77771630681649ce6fce31609e41ab9c5d806d133:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1NzI5MWE1MDZjMTcxNGY0Zjg5YjA3Y2JiZGE0ZTRmMzRjY2JkODY4NjcwYzZjYzM2YTBiMDQ3OWVlMzI3MTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhOTAwMWMxMzBlN2M1Y2U0ODU4NTg0OWY3YWZlMTAwOGNiN2ZkODZhZTQ2YjQxZjUyYzY3OWYxNzdlODFkNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhYThkYTA0OWU3ZjU5MmQ1NDBhNWQwN2NhNGZkNDFiOTU5NDhiOTI0OTkyOGY3ZmY5ZjhkNGQ1NjZkM2UxZDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0cf64b84f0ff4cde9ba9221c413c7796",
+      "statement": "RSS feedback学習は推論失敗・policy変更・結果矛盾時にfeedbackを保持し、成功時に開始時点のfeedbackだけを消費する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/RssRecommendation.kt#L260-L293",
+          "version": "repo-lines-v1:sha256:7e300fde18e7bed141ff22b1e028c005f8d93733913ef70e7d03f8cdc2cbd29d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0Mzg3ZGQzZjU2ZjhmMWE3ODU4MDJmM2I3ZjgzMmVlZDZhZTBjOTM5YmE0YWY1Nzg4YWE5N2I4ZGE0NzJhYzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwZTk3OWM1OWJmZTI2YWQ5NDg5MmU0ZmUxOTRmOTk5NmFkYzMyNDhlOTE2NGY4ZGZlN2E2MTA4MDUyM2RhMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

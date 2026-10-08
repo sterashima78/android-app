@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:088230d74364b74672c6d6c346f44b367bd462990b773ad94800d2e2b8b38934",
+  "claims": [
+    {
+      "id": "claim_9f1578b3ca3541fbb1e9718569f869db",
+      "statement": "階層フィルタは一致タスクの祖先も表示対象に含め、子行は親が展開されている場合にだけ出力する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskTree.kt#L49-L78",
+          "version": "repo-lines-v1:sha256:5c9c0fbd832982ddb0ec21af06276465afee36037c03f117f8502361b0772102:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZGNmZTQwNTFhOGE1NDczZGM5Y2Q3MjM0Njg4MzBkZGEzODQ4MTI5YjEwNjI5YmEzOTJhNzkzYTI4NTg2NWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMjQzZjI2NDVmYWViZDA1ZGY5MDE3YjFhZWUzMDczZmZkMTQwMTcwMWFjNmRhNmRjNDEzMDQyMjcwM2Y3ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzZjc3YTQ2ZjM2ZGZmZTc2NTM3ZWFkMzRhNTM4Zjc1MWJjNTExM2I3OGUzZWQ2ZjYwY2ExZWUyNjhjNjZiNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmYzgwMTAzODFmMjczM2U5ODZmOTViMDkzYjlmZDRlODQ5YjYzNTQzMWZjMTljMzJiMzNhMzUyOGY4ZjE2YjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9ac76a4af18e4a8baf8705f0fcf6999a",
+      "statement": "Task の変更通知 decorator は delegate の command が正常終了した後で通知し、一覧取得では通知しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskChangeNotifyingRepository.kt#L5-L39",
+          "version": "repo-lines-v1:sha256:6329d1ed0178fa6569372dddeb64d4e1a7881b06e0dcf8253db29dc94ebda4b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyM2RmNmFlMjczYWM4NDAyODcwOWIwNDM5NDZlZDM0MjQyYzVkYjhhNDAzYjMwMWUwZDRlNzBkY2JmYmU4MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5NjhiZjQ5NDQ1NDdjNTBiODZmMDk4ZWZmZWNkMDhjMmNjMjA3NzhjMzU3NDdmZjRiNmRmOGVhN2Q0ZTYxMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

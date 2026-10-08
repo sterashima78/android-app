@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:e2d2855e25b66b91ff7a41941e6a8227c66203bb7043111de43ee600f9081062",
+  "claims": [
+    {
+      "id": "claim_6068bbf4e7a2448abebda317d25ef350",
+      "statement": "SMB同期成功後に表紙先読みを投入し正規化schedulerを起動してsnapshotを再取得する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryViewModel.kt#L68-L80",
+          "version": "repo-lines-v1:sha256:84dfa9c227e39d9355b5a2fe861fbfbec9d51f4aabf77a8398ef5e67de1dc9cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5OTBlOTM0ZjBjODE3ZTVkZGE1NGVkYTQ4NTZjMWQ2MTZhODY0ZjMxZWE3OWU5ZjAwMmU3NzY4NGVkYTcyYmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwOWM2ZTFmOTNhZDJhNGVjOGJjMjlkZjg5MDhjZjYxYmE2Yjc2ZmI1Y2JhOTI0NWUwM2RkMTRhMTU4YTk3OWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d8137ee87aab4c7296e6ea08eddfd099",
+      "statement": "整理画面再生成後も複数の未保存AI候補を個別に消費することをテストしている。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/ui/src/test/kotlin/dev/terashima/yomitorirss/feature/library/LibraryOrganizationViewModelTest.kt#L32-L89",
+          "version": "repo-lines-v1:sha256:90119320ac9d652a5280951ff5c5fd616fd65324b08172be712be297d96d0718:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0YWQwODBmMDg1MTU1NmIzN2Y3MmY4MTc0MTRlZjI3M2M1NWZiM2Y2YzUxYjZiNjQ4MGRjYzE1ODllNjkwMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwMjNhNjFlY2I1NDlkMTkxNjM0MjlhNzQ1YjUyNWFiNzEwNGNiNWZkYzU1YzQ5NzAyY2U0MTU5ZmM0ZjM4NDMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

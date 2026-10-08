@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:0e183b743052adf6dfe677132c9d5cb61e25107356fed72fd0732e0217176f90",
+  "claims": [
+    {
+      "id": "claim_94dfd3c4814d4ccfb201dafd3f8854e4",
+      "statement": "Calendar Domain の Repository は期間イベントの読取だけを提供し、イベント書込 command を提供しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/CalendarRepository.kt#L5-L10",
+          "version": "repo-lines-v1:sha256:cb68833d50de586e9adc38b6945214b80d7758f66fa39940f1de580167b3ec7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2ZlODQwZDNkNWZmMjI2N2UwMmE5Yjk2NzhlM2RlNTRiMTk5OGUwYzI3N2Y4NTdmZDZhYWJmYzRjNjAzODI2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTk2OGJmNDk0NDU0N2M1MGI4NmYwOThlZmZlY2QwOGMyY2MyMDc3OGMzNTc0N2ZmNGI2ZGY4ZWE3ZDRlNjEzNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd55d1abffb34a9ebb79c10de4c16e96",
+      "statement": "CalendarEvent の時刻は Instant を使う時刻付きと LocalDate を使う終日に分かれ、終了は排他的な表現である。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/CalendarModels.kt#L18-L27",
+          "version": "repo-lines-v1:sha256:2f161fbdbe85a6133807bd5b380340011dc6397949a36fb3a605b253d1a4ea84:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5OTRlMDc0ZWMzM2UwNTY5M2VjNDkwODA2OWRmYWZiZDA1ZGY3NmUzN2ZlZDNmYjY4YWEwYTE1ODA3ZTczY2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmMWE2MmE4MzhhNDRiOWIyZDkzNDk5OTQ5MDIxYWY0OTIwNWE5ODlhOGFhNmFhNzYxNGQ3ZmQ2NzczMGI2OTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjNTE2MjI5Yjg1ZDVlNmQ1NGVjODU2MjM0Y2M3M2U3MTIzYWM4NGM3Y2YxYTBmZDBjYTExMDg5N2RlZWE2NjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkMzdlNTllZmRjNTIwZjI4NjA1ZjliNzNkYTYxYjE1OGU3NDBhMjVhMDM1YjEzZGVjOTRhYTQ4ZTRjMGRlODkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

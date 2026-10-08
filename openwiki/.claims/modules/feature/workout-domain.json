@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:687fb32d4899a781e767aad7a369f45609770ad4368f8ebe4d34b91998aa6d45",
+  "claims": [
+    {
+      "id": "claim_1c32e3528773464e983a3ddd9e68a1bb",
+      "statement": "Workout メニューのセット数と各目標は正であり、目標一覧は空かセット数と同じ長さに限定される。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt#L29-L40",
+          "version": "repo-lines-v1:sha256:5e17e286361ed4d962bc7741a202f3dbd057a760ae2316214da3f676f873f5dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMzVhZjdiOTNhMGNiYjRkYTNhMThjYWU0MDM3NmY2YjA0MWUyZDFkODkyY2E4MTk5NjM1Y2U1YjgzOWQ3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3ZTQ5YzUxZDViOTBmMjg1NmUyZGZlZDZmMjE1MDNhNjc1N2Y3NTZhMWJjNDQwNDExNTgxMDU1NjgzY2VhMWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhYzUzOThlNTAwYjJlOGNlNDExMTUzMjQwMDNlOTExZDY1MzViMzcyZjNmY2RjYzNiZDI1NWViODJiMGU5Y2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0f2a9a9887f9477dae045160f94beacf",
+      "statement": "Workout の日付 rollover はセットを持つ当日をメニュー snapshot と共に履歴へ移し、新しい日を開始する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt#L131-L153",
+          "version": "repo-lines-v1:sha256:34b6c8382d637cc4764da5cce0d4c5b0fd1f2de3f951c43d37f13124f8f92874:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYTRlMzE1NWVkMmRiOTM5M2UyZDI2Zjk0YTI4MWVhZmUzMzk1NTQwNmE4NTVlM2UwZTBmMDhjYmIzNTMzNmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlZmYxZGI0YjRmODM4ODcyNDUxMTE1YTBhODliN2RmZTc2MjUwZDM0ZmUxMWQ0ODllNTFjMDNjNWY4ZjQ4NmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0YjhhMDNmN2Q3N2Y4NTFkN2FkNGVjNzYyYjhmNzA5Njc3NjI3OGM0MjdhMmU3YmM5ZjdjZTNjYTdkNTM3NDUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

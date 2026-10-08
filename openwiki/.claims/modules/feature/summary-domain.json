@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b6150710471fc11f01b58868e3c361e5552a7d50cf7cb7b1cb486e8f712b70dd",
+  "claims": [
+    {
+      "id": "claim_7fa88119266d4bc78c7ebd5d4d8827d5",
+      "statement": "Summaryは保存済み要約のread capabilityと生成request capabilityを分け、要求結果にcache・処理中・既存失敗・enqueueを表す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/SummaryRepository.kt#L3-L12",
+          "version": "repo-lines-v1:sha256:d29fc6e11b9527456c38ea483508c603e3b0a9514532515dfe4028054023fc32:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2ZDczNzNjNDk3ZWEwNGJlOTIxZDhkNWFhOWQ3YTEyMWI3MzZhZTc0YTRiNWVkNjc0NDQwN2VmM2Q1NDhiNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhZWMwNGEzNzlhMWZhMGMxOThkMGJlODE0ODUxOTJlYTJmOTJjNzJlNjA4NzQ5YWNlN2U1YWRjZGIwNjBkYTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzMzk1OWM4OWM3ZmQwOGU5YTllMzllNjJiYzkyOTFhMjhiOGZjODY2MzFhZGQyMjk3ZWVkYTIzMjUxYzE1YzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_11da46af68c44dfeb8f71f2f7e63ca04",
+      "statement": "ブックマークの明示的補完refreshは要約とタグを再生成し、metadata生成成功後のタグ置換を要求する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/SummaryRepository.kt#L22-L41",
+          "version": "repo-lines-v1:sha256:664db32067381c728043d69fbdac255f463cbddc917e81506ad486a32b5cb432:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YjljOGFmYWE5Mjg4ZTA1YjFjOWE3OGQ3ZDRiNTNhNjlhZWJmZjU5YjY4Nzk4M2RmMjAwZTcyYTBjZjE3YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzOTQ4ZTcyZGYwMGQyODliNjZlYzFlOWJhMDJhNWMzOWI1MThlOTRjYzI4YWY0YjExZmU3M2NhYTM2MjgxNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMjk3NzlhMmNhMTRlZWQ3OTBlMmFjOTVjNjQ4NGI0ZDQxYjIwMDBiZjY4YjNmNzViYzFhNWFmYmUzYTg5ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzOTMxNjNkNzQ5ZDMyMzhjY2M0YWQ5ZDA0YmQ0ZGI3Zjc4ZTczM2NiNTdjYWE5MzQ2MTVlNTkwNmJkNWM2YjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_554e2e03f0a142d7b74f4dbd3ddde765",
+      "statement": "Summaryのtask queue契約は記事単位の状態・進捗・providerと、停止・取消・再開およびglobal pauseを公開する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/SummaryTaskQueueRepository.kt#L31-L81",
+          "version": "repo-lines-v1:sha256:ae55f27e0f2a51b2f9ca1338de791e1bf1a2b3b17362795f20fffc2c60381153:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkOWRhY2Q3OTczMTdjZTg3YjIyMzBlMzA4N2U1ODZlNTk2MWUyZmYwYzI1ZWQzODJjODhjZGQ1YzRiMWY4NGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MTc2NmRlYWYyNDBmN2JhMTQzYTRjYWUzOWU3ZDQwYWJkZjYxNzdlZjkyYjIzOTZlOWIyM2EzM2JkYmExYzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3NGVjYmY1NzZjYWU0MTBkOWVkZWE1NGJmZTFmOTVmYTk1MzA0YmIzNDY3ZjI1MzE5NmQxNjExZDAxMDU1MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

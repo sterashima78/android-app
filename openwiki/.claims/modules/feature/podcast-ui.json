@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:37ccabc2c18337327961cc06d41fcc774e75f0134ed736c8dc5f65710b4d225b",
+  "claims": [
+    {
+      "id": "claim_91fe2d4066734faf9287adc3325e9eb1",
+      "statement": "Podcast画面の手動生成はcontrollerへ依頼して受付を表示し、AI生成自体を画面scopeで行わない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastViewModel.kt#L206-L213",
+          "version": "repo-lines-v1:sha256:054ffff5e9a3b8ee30d530b1970e23b67eeb78fa28b88b1006e3c3566cd17714:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTczOTUxNzkwMWVjMjdlMWNmMjcyMDE4MzRlZDc1ZjAzNTZmMzE0YjRlMGE3ODVhYjM5OTY5MGZlYjE0OTdiNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDM0NjkwZjBiOWNmZTc4ZDgyMzVkNGU4NzU4OWEzZjE4OTY4YjNlNzZkNTE2ZGFkNzE3OTE4M2JjNGU2YzZlOSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_48d3382ab4674b4fb9c06ef660951590",
+      "statement": "章ジャンプはキュー中の章IDを探し、現在位置が無効または対象がない場合は移動距離を返さない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastRouteWithPlayback.kt#L50-L60",
+          "version": "repo-lines-v1:sha256:1270caf63ce7c0fea0987bfa9745435cc87007a27fc45be43467dfdba278075e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWNmMzIxMGZhYWEzMmI1YWYyZWFlYjU2ODBlNzgxYzRkYThlZjFiYjU1Y2I0NDNmM2I1NmZmZjdiMGJmYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8d4a212891ef608773291ada29b1a44c73aee8888363afb0fc8f8dbe9f80bf81",
+  "claims": [
+    {
+      "id": "claim_428155b3a23d49d89d393c0a1957e2df",
+      "statement": "Settings Dataのbenchmarkは共通local AI gateのHIGH permit下でcore runnerへ委譲し、model downloadはschedulerへ登録する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/DefaultAiModelRepository.kt#L99-L127",
+          "version": "repo-lines-v1:sha256:6ad194b059c19e688c661307cf2231aa4efac86539f3dec6727197efbea1dc72:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhMzY0ZjM4OTljMTUyM2Y3NGZiYWUwZWQzOGIwZGY1NzE2ZDRiZDJjYWJkYjY2Y2I4OTFkMGFkOTRmYWY5NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1OGJkYzczN2QzZGZlZDg4OTI2OWZiZGZlODRjNmI0NmY5Y2ZjODA3ZTU0NGJhZDBmMjUwMmIzYWI3NTAxMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIwNmZjN2Y2MjIxMzc3MGY0NWU0MjM5NTgwZjFlMDY5ZjYzMDBhMTY5Nzk3YmJiYjQ1NDZhNzJkMDJlMDc2YmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4ZTRmNmI2YjExOGNmNzE2YzI3NGY5ODc5MzI4YjcyNjQyMjFmM2U4OWY2YmFhNTU0NWQwZTMwMzlmMzU5YTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1c4f5747f8084c2ea10d9f3e98d27061",
+      "statement": "Settingsのdownload進捗はprivate preferencesからcallbackFlowで通知し、購読終了時にlistenerを解除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/AiModelDownloadBackground.kt#L48-L61",
+          "version": "repo-lines-v1:sha256:1c08f535ea219d9d677675d6a87f82d7c38d396b5f313eba28e11b8fe09eccc4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMzgwODAyN2Q1ZDY2Mzc3OTcyZTZjZjUxZTA1YzRhZDRlZDlmNGQ1Mjk4NzkxNDYzOGQzZjFiOGQ2ZTc5YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyZjMzYmI5N2I5NjNkMDNkZDVkMGE3YzZlNWJlNzEzZTA3YzZhYjcyM2Q0YTYwYmNkZGIzMjY3ZmFmNmI1ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5MzhhNTUyNzJhMjg3YzFhMGQ5ZDFiYzE4N2JlZDc5M2JkNzBiNjQ2YjJhZDY1OWE2MDk5M2Y3YjE1NDFjMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzNjc3MTQyM2ExNTg0NWIxMDYwZGU0M2U2ZmVhOGZmYTM4MjA3YjE3YjI2MWU4Yjk1MmIxNTA3Y2M0NzY4MDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1f81aaf21158411f8f4b4d3f2122abe5",
+      "statement": "ChatGPT provider候補はpicker可視・API対応・Web検索対応へ絞り、候補から消えた保存済み選択を解除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/DefaultChatGptProviderRepository.kt#L19-L45",
+          "version": "repo-lines-v1:sha256:22df131fc060acdb3659ba512c0ca1e24d9f061865e87b0bd836c381eb19dea6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhYzQ4OGRhYzYzMGNhMjc1MWFlZDk2YjIxNzQ2ZTU4YTZiNDFhMDNkYTg3YTdhYWY1MWZmNzc1MDgwMzQ2ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MDNlYzI4MDIwNTNjNjA0MDIxOGQyMDY1NTBlMDZkNzQxZTI1ZWZjZmI3ODc5YjhlZTVkZWY1ODRiOGM4ZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxZmZiMTFlMTJkYTQ2ZjI3NjE4NDZjNjUzZDExY2M5ZTY0NWM3MDM2MTRiMmIyMWYzYjRiMzE1Y2IzMTYxN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

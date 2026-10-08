@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:68b1b945147661ca60b654d233213cd70c104b59cd263bd8eb3ec9bda6bc2f24",
+  "claims": [
+    {
+      "id": "claim_317a5a1fe531435badb4aa180c4ee320",
+      "statement": "動画画面は一覧状態と再生sessionを別々のStateFlowで保持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/VideoViewModel.kt#L52-L64",
+          "version": "repo-lines-v1:sha256:c02fd4f784e0637cdd476d51c3e0626451fb2b326876dbfac0e2cb45740df1f0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNjc1YWZiNTZjOTU5ZTQ2ODI1NjNlZmFkMDBjNDU3YWNkNzI5Mjk0NDJhZDJhY2VmMmIzMjE2MTJmOWVmOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhM2RjYjBiNTAxNjRmZDBkNTE4NTBkY2VkYzg5MjBhNzU0ZTczMWU2ZjAwNTJkN2Y3ZTQ0Yjc2MmRiYzVhNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhYmY5ZDNlNjBmYWYzNjU4NmMxMWNmZGRiYzA5YTM4ZGRlZjYzZjBmYjkyMGE3YWY2MDllOWEwNzU0MTI5ZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxYmNjMmQ5NTAyODBmZGZhNTI3ZjQ4NzIyN2IxZmFlOTczZjdhNjNhZTlhMjhhOTg0YzRhZGJiNDI1YWY2NGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e63b319d347d4b4682a3579d86996328",
+      "statement": "player破棄時は再生位置を保存してlistener、player、SMB data-source factoryを解放する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/VideoPlayerLifecycleEffects.kt#L24-L49",
+          "version": "repo-lines-v1:sha256:4de777819406336698ea44bbb67b7e86fda81859a3086a126be43819fc9ea3ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZmUyYjFmYWIzZDEyNThmMWJmYzliNzc0OGFhNzA4NzU1YjMzZjI5YTZhZDNkNGYyNjZlZmQ1MzU2MzU0OWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxNTYxNDAwZjc4ZWExM2U4NzY5MDc0YWIxYWFhNDM0NDMyMDdhZTcxOTI4ZmIxODVjYjQwOWFlOTBkNWFjZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2N2RmNzBkMmQyZmM5NGQwOTRjYTBlNzhhMTJjOTFkNDg1MzgzMzQ5ZTIwY2E2MTk2MTJjNGFlY2FmODAyODcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_307a4449a3f048d49b0943b56b8a73cb",
+      "statement": "playerがIDLE以外なら定期的に再生位置を保存する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/VideoPlayerLifecycleEffects.kt#L65-L69",
+          "version": "repo-lines-v1:sha256:721a5cfaf9cb3b9442e5fad16db8ddbe3aed448ecdc49eb23660ec10b36be75e:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDY4N2QxMGY0YjNmZGVhMGFiOGIyMzQyZjA4YWMzYWRlODNmZmM4NWNjZWEwZDVjNzhiZTY5MjVjZWM5ZjNlOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY3MzlhMDZjMWNiYjEyNDRlMzM2M2QzOGJjZjlmYTUwY2U4NGZlZDM5OWMyMTkzYTNjN2YwOGQ1OTkxOGIyYSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

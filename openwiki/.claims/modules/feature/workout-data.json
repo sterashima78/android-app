@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b0ccef7be6b41aeb6330c7b61a742c5a96f09253bd2ae68bf5178eceabb21766",
+  "claims": [
+    {
+      "id": "claim_020d540142574cd9b99ec4b2fab9542a",
+      "statement": "Workout snapshot の未対応 version は decode 失敗時の新規 snapshot fallback に含めず、例外として呼出し側へ返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepository.kt#L26-L54",
+          "version": "repo-lines-v1:sha256:4e1fae0164becd6564932bd35ff665d09838d4c72899b213a6ccc40c72c9c2c0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkNzJmM2MxY2I0NGFhY2E1OGU2Y2Y1YTJmNzIzMDk2NTgzZWU0Zjk5NzVlZTI4YzA3NGU1ODdmZjBhYmM3YTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1MDRiMDdhYTVjMzY5MDM5ZTZhNjdmOWJkZGU0OGJlOWM2YzA3NDZiMDQzMGM1M2IzZmM0NDA5NmQyMDhmMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhMDU2YTNjYzIwY2RhNTJhZDg0OGFhZDI5ZTM4YmFmNmU1NDM3M2JiNDE3YjFjYjc5YTg4MTQ0MjRiZmFiODgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bce18951b6264f4a8091b0e42a4f4f6b",
+      "statement": "Workout AI は WorkManager 入力に request type と provider を渡し、Worker が実行時に最新記録・設定・メモ・レビューから prompt を構築する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt#L192-L210",
+          "version": "repo-lines-v1:sha256:d21a0fa73d1fbbb8ffa495d60e16816efaccbc171dfdf06e0f7d8e9da4c65e00:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllMTRhNGYzMzE4ZTQ1Nzg5N2NiOTkyNjZlYjZmYzNiNzQ3NmRjZDVmNmE1Mjk1MDZjNDYwYWNhNWYwMTM5MTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0NDdhODIxZjE2YjYyYTE2Nzk3YmY2NGJhZWMyOGI4MTNkN2ZmMWI0NGRlMTYxMGQyMWFmNTIxOTg5OTU2MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxOGMyODc1NDJiM2RlNGJkMTVmYzAzNzA4ZTdiODgzOWM2Njg2NTgyMzdjNTQ3MDk1MDYwODFkMThkNGJkOTcifQ"
+        },
+        {
+          "resource": "repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt#L57-L69",
+          "version": "repo-lines-v1:sha256:0f5857b531fcbdd7a5038eb78450683f821f80c77d004840a55ecc2b9a5cfcb7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlOWI0NjgyMTU0OGViNzhmNGU4ZjJmNjk5M2RjZTJmYzQ4YTk1MGM2MmZmMThkZmEyMjBlOGRhODNmMzFiOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiZWFjMGYwZjgwY2ZjZDRjZmQ4MTZiYzc2Nzg2MGNjMTcxNmNhMGY2ZGU1ZTg1MzBlZDI4NmZhYzA3YzRmMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmMmEyODAxNzFlZmNmNDdhMGQ3MTg4MGI4YjM5ODlkYzBjZmY3NTUzNmVjODY5M2Y2MDA3ZGJmNzI2YTcyMTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmYmM0NjY4Y2FkOWEyMmM5M2IxNzY0NmU1ZDJlMGQzNzIwMzJjMWExOTNmZDhjMTgxYmZmNTc2Y2RiY2U0NGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fa3aeba57b3c44eba0a209fe2c0a7e7e",
+      "statement": "Workout AI Worker は provider 一時停止で retry し、取消を再送出し、それ以外の推論失敗を task failure に変換する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt#L161-L189",
+          "version": "repo-lines-v1:sha256:32a0a1756a8aabe2b8c71080c0e2787f85832f97f854789ae6539f10e80979f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYmE3MDBlMzYwODJlYjUzNTc0NmZmMWMwYzBjMTk5ODc5ZTZkNjQzOTE2ODY3MDI5NzhmN2M0ZmE0YzkwZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxMDAzYzAzMWIyY2Y4ZDgwMzYyODM0MWVmZDgxNDA1NmZlMTgyZDgwNzIyNGRmMGM1YjI3Y2Y2NmI0ZWY2OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjZTdiYTIxN2YyMmRhOTMxNWIyMTIzMzg3YTg2MTkxMjRiMGU3MDA3YjVmNTNlYWNlOGNmMTFkZTc4NGRjN2EifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

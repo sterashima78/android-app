@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:14acaf58d2a9409075f3327128c8877fa4c241503f81fb831f45a551cae436bd",
+  "claims": [
+    {
+      "id": "claim_5bf5fc2d60ee4a6a99cf7b223c27e47b",
+      "statement": "RSS取得は一致するWeb scraping ruleを優先し、ruleがない場合だけ通常feed clientを利用する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/data/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/data/FeedRepository.kt#L37-L63",
+          "version": "repo-lines-v1:sha256:f3d8eb1da7b8785d8468b43cddba4613c5e6ead89bdf08ac29a4f214e5166ea0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYWE2YzRlMjg0MjVlYTFmMjExZmQ0MTY3OGM3MTNmNDNmMzU0MTYwMGVjMzMyMjRlOGU0YWNiNzUyZjJkYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwZTRkYmM4M2Y4NzZhNTg2M2QzYjIxMjljNDU4YWRhMmU4NzRkYmUyNDZjNmYwZjk3YjExNDUzMWY0Y2NiNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNmNzllYmMwZGMzN2ZiMzAwZGNkYWJjNGVmYjhhNTVjODhhYmY1ZGNjMjAzODYxYTZkMmJhMjdkNWRiOGM0NTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0bc8a6712f514d55a471985d85ccaae4",
+      "statement": "RSS更新失敗はFeedのerrorへ保存して変更通知を出し、例外を再送出する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/data/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/data/FeedRepository.kt#L105-L124",
+          "version": "repo-lines-v1:sha256:5b670d420835e21bb3c0c6611bfbe8c9234e3a0b4312b631cb20cc798894389b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ODU0ZDljYTBiNGVkNGUxZmU4MjllZTlkYWNlNzY0NWZhNWZjMjg0YTA3YmYyNzgwYzBlYzYxNjE3NjZkMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiMTA1YTllNGVlN2UxYzM4OTQ3MTJmMjhmYzM3MmI3YTVmZDNkOWM1MDdjNDRlY2I5ODI1Y2FlYWQ0YzAxYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzYmY3NTA2Y2ExNjU1ZTBkZDQ4OTg2OTI2MWI0N2MwMmNkN2I1MjVmYzk0N2QxMjMwMjczM2FjZGIyYzY5ZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5da2230a27584c43859f14a43a7c81b4",
+      "statement": "RSS推薦schedulerはCloud実行にnetwork constraintを付け、feedbackの学習delayを最後の追加日時から計算する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/data/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/data/RssRecommendationBackground.kt#L100-L149",
+          "version": "repo-lines-v1:sha256:f8a56e6feb432813077675cdca282d3386b811691fe4b85dd0fa24452b82ae53:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmZGM1NTdlZTkyNmI2YmQxYjgyZTJkZDYxOGZhYzI5OGViNTVlZWJjNjE4MWQ4MGE1MjI2OWVlMTI4NWI1NzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxMWM1YmUxMWVkNDA2NDI5OGRjOGIxYjJmMTI2OGRiYTE1MTQ2Y2E0ODJlZGY0YzIzNTY4MmE0Yzc0NTdlNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3NzllZmIzZTA3N2QyY2YxNmUxOTJkNTdjOWMwN2FhODU0MGQxZTQ4MTlmYTk5YjllZDAwOTMwNjA0YmZlNWMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

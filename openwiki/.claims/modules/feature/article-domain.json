@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:7cc82c5b95e04da2852f2a2207927d2293cd2901751da85b48d40eee4457daf8",
+  "claims": [
+    {
+      "id": "claim_837a7096fcd14ef58e0f98536962c489",
+      "statement": "Contentの実効種別は記事、source、source containerのoverride順に解決し、指定がなければARTICLEになる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentClassificationService.kt#L18-L28",
+          "version": "repo-lines-v1:sha256:7303803a463ec03cde3ce0116fb00450d6c4bf855a20c535f56ba06df38d8576:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZTEzOGY2NGQ0MGE0Zjg1NjYzNzI2MTcxYzg1OGNiM2QwYzQzZWQ1ODgyN2ZmOWY0NjgwYzhlZWNmZTcxODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjMDBkMTU2NTg3NTlmYzZhZjM3MThhM2Q1MWUwN2M1NmY4YjRkODI4NGE2MDBhYzhlODJmNDVkNWU3Yzk2MDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_03558d9b95bf466eb3b905ebae9ef6fa",
+      "statement": "Content保持方針は既定30日の期限を計算し、削除候補から外部Contextに保護されたidentityを除外する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentRetentionPolicy.kt#L19-L32",
+          "version": "repo-lines-v1:sha256:a6703778490206a43b6580ed205f740202b3e24eb1d0fb835c027066153e746a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxNjk1MWVkZGI4MjgwNzkwMjgwNzEzNjc1ZDQzYjM3ODc2MGY2MGQyMDM0MTg2ZDgyNDZlM2ZiZmMzMjI1OGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

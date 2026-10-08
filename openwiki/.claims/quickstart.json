@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:108bf8fc5206b61a8472500afd8456100d6704df1037e9dc0a81954965cdbe3d",
+  "pageVersion": "sha256:a966b1d0867797c6bd04e8927c5a8c8db3941f1b510abc347b46ebddffd87d2b",
   "claims": [
     {
       "id": "claim_dceeaa5b7e164df3b94f8aaa53aaf52b",
@@ -21,7 +21,7 @@
           "version": "repo-lines-v1:sha256:ae4775df0cf68e58ea57fc423ec4f580fa8bb6cf15c8c6756a42b034d67545d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2U4NzhiOGZjOGFjOTMzMDNjOTBkYzAyMGJmM2FmMTAwNzQwODYzOWI5NjVmODA1ZDFkYmM0N2U2MTE5YzJmMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA5YWU1NjdjZDg3YTEwNGY1YWU0OGQ2YmU4YjFiM2IyMmVjOTI0ZDBkNmZmM2MwYzc4MjQ1ZGY3NDkxODY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjc3OWYyNDMzYjVhMDZiNjIxYTRmNzRmMzllYmZjMzQ1NGJkMjA3OGU4ODdkM2IzZjc0ZTM2OGI4YTAyYjNiYyJ9"
         },
         {
-          "resource": "repo://docs/openwiki.md#L50-L52",
+          "resource": "repo://docs/openwiki.md#L52-L54",
           "version": "repo-lines-v1:sha256:6c00e494ead138d0c76611f61c441b2b86246e3dd8f9766eedf2db0d0eb427ea:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZiNjgxZjk0YzY3MWI2MTcyMzM3NDVkMTQ3NDg5NmVmZTY3YmE2YmY3MzU3MzIzOWZiYWE0ODUyMjI0MTFkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjczNDIyZDI1ZTU3Yzc0NTA3YmM0ODZhNDc3MWFlYTE5N2RjNWNkM2UyOGI2NGU2NmVjZjA1NmI1MDRiY2FjYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhhNGNkZmVhZGQ3NTY3MmVlMjNlMmUyYjBmZWVjYTA1MzIzZjAxNGM4OGE3NjU4Y2NhMTNkNmNjZjg0OWI0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
@@ -32,13 +32,23 @@
       "evidence": [
         {
           "resource": "repo://docs/openwiki.md",
-          "version": "repo-file-v1:sha256:3fc077d2aa80fb245874eacbc18f3c0597434793313286c1a02e511787e180b6"
+          "version": "repo-file-v1:sha256:8ecca0362cd115aa2e417d2c8779d20b920beb96493804476da9105744181c5b"
+        }
+      ]
+    },
+    {
+      "id": "claim_0cf0eab6d3ba40558f554390f34042cb",
+      "statement": "このリポジトリは app 3個、core 8個、feature 75個、lint-rules 1個の合計87個の Gradle module を登録している。",
+      "evidence": [
+        {
+          "resource": "repo://settings.gradle.kts#L18-L104",
+          "version": "repo-lines-v1:sha256:6fca8bf6f97c4598ceb224f61495daa8857db6e3a1e5db6dcdb37189757d664b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiYWEzN2E5MDAyZWVlODhhMzkzMWIzMTQ4MDI4ZjM1ODkzYmZmMzVkMWM3NTk5ODYwMmM0ZWE2NDUwMWYzZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyYjI4M2ZjZDQxMzUyYmNhZmI5N2UxMmJkNzdjODQ4ZjQwNDUxY2U2NjdmZTI1ZDkxZjQwMGZiNTQyZTBkZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwZWNiOTVmMjQ2MzY1M2NkYmNmYTEwZjU3ZGQxZmEzYmMzMmMyM2YwYWYwMDkwYjdiMjE4NGVhZWYzMWUyNDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:10:52.576Z"
+    "at": "2026-10-08T13:53:53.288Z"
   }
 }

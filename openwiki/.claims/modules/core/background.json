@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:580552fb31bcc35f1e7fafb92293437ee4cb85cae6aaa0ae1cc8d4e35a89d7e1",
+  "claims": [
+    {
+      "id": "claim_661fc7de53744ac3a8cd13abe4dcf5c2",
+      "statement": "ローカル AI gate は処理を直列化し、実行中を preempt せず優先度と同順位 FIFO で次の待機者を選ぶ。",
+      "evidence": [
+        {
+          "resource": "repo://core/background/src/main/kotlin/dev/terashima/yomitorirss/core/background/LocalAiBackgroundTaskGate.kt#L8-L20",
+          "version": "repo-lines-v1:sha256:81232791e46523b6dbf557db1aedc9ff44cf0f0a6ab66154526409a9df0d4f4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNWNkMDAzZGZlNDRjZWMxMjAyM2Q4NDUzOTkyZDk4YTc5YzM1NDQ3ZTdmOGNlNzI4NjdiYzhlM2U3MWVkM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkOGE4YjI2MDI0YTRmODc3M2VlYTA2NjQ3YWI2OGFkNDU3NzIxNjQ0MDc4MWU0ZjQ1ZDY2NjBkYTAwZWU2ZGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4OGQzMjE3OTY4MTM1NTllOTg0NjUzZWIyOGM5ODE1OTQ5NTgxZmYxMWY0ODUzOTE0MGNmYTJmNjQ1YzRhZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0MmUwMTVkZmQ3ZjZmMTBkMWNhMDEzNGYxNTc1NTQwZDhkN2JhNTIyMDY1YWNmYmYyNmEzMzljZjk3MGYxMjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5dfa5bbbbcde40c3869bdc3034a8d9fd",
+      "statement": "待機キャンセルは待機列から除き、既に permit を得たキャンセルは permit を解放する。",
+      "evidence": [
+        {
+          "resource": "repo://core/background/src/main/kotlin/dev/terashima/yomitorirss/core/background/LocalAiBackgroundTaskGate.kt#L79-L128",
+          "version": "repo-lines-v1:sha256:13a6c1ba3071aa3d653265255cc8062cf0c7756692762969d5c8d06341f68d83:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3NTBjMTk0ZjZmNTkzMDNlYTBjZjhiMGYxMGNlNGQ3MjJmNmUzODkyMGMxYzc2NjRjMjA0M2MyZWMzNDM5YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4NjNlMGI0YzU3MDBmZjk1MjAyOTgxZDc1ZGY2N2Q5ZDc4YjlhMzgyOGZiOGRjZTQ0NDgyZjU1NTk5ZGQxZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiYTFiZjZiMWM3M2Q5MjcyZTYwN2IwNGU0MmYzZTg3MDA2ODE5Njg2ZDIyZDRhMTA2NDliNTg5ZGE1ZWE0YTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZGJlNDI4NjBkN2NkMTFkNDI5OTIyYzBmMjQ4ZmU4YWQ0MmM4YzhkYTAyODFkMTgwN2Q2M2Y4Nzk0ZDgxNjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eba593f3888c4efc98e687d568a81212",
+      "statement": "クラウド AI の背景一時停止はローカルの充電時再開設定と独立している。",
+      "evidence": [
+        {
+          "resource": "repo://core/background/src/main/kotlin/dev/terashima/yomitorirss/core/background/CloudAiBackgroundExecutionPreferences.kt#L5-L28",
+          "version": "repo-lines-v1:sha256:6a22e44413b8b5d37a0af450e41e23ae78b31912f848469199d9c9a332456b98:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVlZjBjODBlZGNhYThkNTM4OGJlNWE5ZWMxMjE2YTBiYWIzZTVjZjU2OThkY2Y4NWJjMzgzMDM2NjM3MTY4NzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_065124b5548c4605ab653925b47b89ee",
+      "statement": "Wi-Fi 限定背景取得は INTERNET capability と Wi-Fi transport を確認する。",
+      "evidence": [
+        {
+          "resource": "repo://core/background/src/main/kotlin/dev/terashima/yomitorirss/core/background/BackgroundDataFetchPolicy.kt#L61-L78",
+          "version": "repo-lines-v1:sha256:53b09d42471d36c151988582d68f725f401d831e3e2ecb10d49e4152eca3a092:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkZTI3YzM0NTY1MGVmNzQ3ODQ3NzhjMmE5NTNjOTY0OTU1ZDI3NmQzMTNjODJlYmE2YTFmNjgwYTRiMTI4MjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2ZjVlZTAzMDYwNjQ4NDhhNTA2ZmNkZjk1NmE5NjI0ODU5ZTQyZWEyMjEyOWZlMDEzYWQyMzQwMGQwOGYzNTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMyNDcwNzcwMzVjMzU2ZDhlYjRlZGI0MmNmY2Q2NzZmZDRjZTAyODBjYTg0MGY4ZGY4ZGQ1MmY2YzNmNDhlZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

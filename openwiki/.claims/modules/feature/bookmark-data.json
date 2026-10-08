@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:99d2d1058d28f85b1d206101bb75bc36eeebc250410f3e416c6e98f7b839100a",
+  "claims": [
+    {
+      "id": "claim_b434869395fc48d0a795dbd6df53d984",
+      "statement": "Bookmark read modelはCurationのrecordとArticleRepository.findArticlesの結果を合成する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkRepository.kt#L185-L198",
+          "version": "repo-lines-v1:sha256:d76097356d770d4086cb779d93d97314c566c8e558f2be53b1639ce163e3c6d2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZDgzMTIyY2Q5N2I3N2I3ZTk4NmFmZDYyYjhiYWY2YjRjNzNiOGM1YjQyYzJlYjBlNWM3ZmZkNzJhNzIxYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwMTBkYjg2MWRlMDJhNzYyYTQzZmZjMTE3MmNmMTljY2M3MGYxZWVhNDg5Njk2ZTk1ZTIzMDIwOTU5YTdkMWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0YjllMWJkYjQzZDdiMDViMzI1ZmM4NTAyMzgwMjc4NjVmNTE1Y2EzMzE3MGY2YWQ0MTIwMmY3MThhMzk1YmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxNWY4NTI5MGI5YTE2MWVhODRiMTkwNWVhODUyYmNkMjZlMzg5ZDg0YmQzYzYxN2RlYWY4MWI1MDFjM2U5ZGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0c2616f54f514775921989685564364a",
+      "statement": "あとで読むの復元はタグ・保存状態・membershipとタグ関連をtransactionで更新する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkRepository.kt#L144-L155",
+          "version": "repo-lines-v1:sha256:fff2376a05819986ced56a1470c5aa493b76f28bf37b1439d7c6791b1e4f6eb8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2MzFhNGY1ZTdiYWUwZjc1M2Q0N2YxZjc4MWQwMDU3NjdkNTAxMTc1MjkwMTk1ZWVmYzhjZjQ0ZTQ4ODQzZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwZjEyYWQzYTQ2YmYxNDFmYzIxNjFiODNmZjk3YmVkNWFkYTkzM2I5Zjk1YjI4ZDRmMjViNjVkYTk4YWQ4YmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_30610a78d24541b0a51b76c2e5acdded",
+      "statement": "新規Bookmarkの補完callbackの通常失敗は保存の成功から独立し、キャンセルだけを伝播する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkRepository.kt#L207-L215",
+          "version": "repo-lines-v1:sha256:ce463608487a15b05d9532c707017707fc23f3a4f26a1d030cd805521cfb8f9f:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODA1MGZkYWZjZTY3MTIxZTRkODQ0MzJkMjgzNmIyOTlmNWQ0M2Y1ZWZmM2FlOWNkNjliNjU5ZThkNjU5MzBmMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmI1ODBlOTY0ZjgzYTQ3M2Y0M2Q0NDM4NDYyOTQ5ZDY4YjU2MDBmZGE3ODdmMTYzNzQ1ZDAwZGU4OWNiZjM2YSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

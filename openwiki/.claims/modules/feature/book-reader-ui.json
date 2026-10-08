@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:457078d726180d934122604ee6db982702a0306ee98ba4ba97e5d480a9a294a3",
+  "claims": [
+    {
+      "id": "claim_ea27f7018d164eafa1a11eac69c7e192",
+      "statement": "Reader画面は保存済み位置を読み、ページ・offset・表示モード・方向の変化で読書位置を保存する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/book-reader/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/ui/BookReaderScreen.kt#L60-L86",
+          "version": "repo-lines-v1:sha256:bab67b5b3a4970b51e8f01a2abea4c0eff6ce2df2385747e54514444aefc7bcf:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGQ5NzlhM2JiNjU4M2YyOWJhYmZlZmJlNGM4YjUwMGMxMDcxOWJjOTc4ODgwNzYyMTlhYWY3NTUzZDAzOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyMTU2NTQzMDljYzBlMDUyZGYyNGQ0YmRiODUzYzVlM2Y1ODQwNzEzYmVkMTYzMTQ2NTdhNzI5NDNmZWI4NTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2ZTYwN2MyZGI4NGRlYjhhMDgxYjNiMjI3YTc4MTJkYjVlYzBhZmM3MThhODU0Y2I0ZTBhYjI2MDMwM2Y1NTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_29eb4fb0de414ba1a1520dca1167c956",
+      "statement": "ページ画像はサイズと枚数上限によるLRU削除を行い、画像を保持しない場合も縦横比を記録する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/book-reader/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/ui/BookPageMemoryCache.kt#L25-L55",
+          "version": "repo-lines-v1:sha256:0ce8e4c7ea6338f5fae01997586a44617a91d97e430e0941a457d504fd7d556f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyMzMwYjExNDcwNzI4ZmFjY2UzNmRmZGVhMTcxODEzZjI3MWIwZGE4ODRhNTc2ZmRjMjI5MDU5Y2Q0ZjhmMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyZDY4NTNmYmY0ZDlkYzcxNTY5ZGZhNmZlMDdhYWMxZjQ5YmY0NGYxY2JlM2U4NDcwN2FkZGZlNjFiMGIzYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhOTliOTMxNGI2MzUzNjZmZGY1YjIzZjQ2ZDNmOWUxZTg1NzhlMDY3ZmYzYWVlMzZmZmUxNGFhNGUwODJlN2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMGY3MjkzZDE1NmE2ZDEyNTI4ZGIxMjkzMzc5ZTUyYTVmODM2NzA0NDI5N2IyMjgyYjk3ZmYyYzg2MDQzOGQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

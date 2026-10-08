@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:71d29fe3d32b6bd5b78f04b90938c3ad97bce852b0f7cfa9589f9d6c9bac827c",
+  "claims": [
+    {
+      "id": "claim_1f83de8a4de34d598868e13d61247d5c",
+      "statement": "Chat UIは空入力・送信中・モデル未選択の送信を抑止し、USER保存、生成、ASSISTANT保存の順に処理する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/ChatViewModel.kt#L93-L133",
+          "version": "repo-lines-v1:sha256:0862ef103f5d480d95adc0f8a41330ee7b70e03a2d453d7bf41dcc33aaae3a0a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2MzlkMjc1NDExYTZkNDExYTVhZjU3NTc3M2NlN2ZjNTJjODY2ZGM1ZTVkMzA2NGRmZGQ5NDNmNTg0ZmIxZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNDc2MDUyYTJmY2EwZjQ5ZDc1YTNkNGNjNzRmMjQ4MGUxYTBjMDY2MGI0OWI2ODY4NTEyOGYyMTQ2ZGE5M2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_22bda2b9349d44fa893fd63cd20015c4",
+      "statement": "Chat UIは送信中のセッション切替と新規会話開始を抑止する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/ChatViewModel.kt#L61-L90",
+          "version": "repo-lines-v1:sha256:b137772199bf26dc15b61f89be5ab57355318ddf0ed0acfa01df1083f83e96cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkNDhjOGIyMGIwM2Y3MGUyNmQ5MDViMDQ5N2RiNjQ1ODVlZjc2MWI3YmRmOGUxMWQ5YzM2NWUzODcyYTM4YjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhMjhjNmZhY2MyYWZmMTAzMzg5ZmUxMzMxNzBjMWI2YmZiNTFjZWI1ODZjNGI2YTM2NTFlMWQyNDIwMjY3ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlMzkyZTdkMGVlYTJiMDIzZmE0MTEyZGQxZTQ5MGJiMGE4ZWI3MzYwNmU2MTFmNzM5YmEwYjgzYzYzNzYxNGMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

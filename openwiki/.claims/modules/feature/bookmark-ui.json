@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ea705ab673d3179a02bb0a64b11e0671eff2a6adce9666837a69ede12562fdd9",
+  "claims": [
+    {
+      "id": "claim_da0413d2cfa04f6e94e2dfd428eb922d",
+      "statement": "Bookmark ViewModelはContentとBookmarkの変更通知を観測して状態を再読込する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkViewModel.kt#L31-L48",
+          "version": "repo-lines-v1:sha256:e21c519c9c398e05572e1a7c71ecca18f0122323e8324e53c27e3b616b038db9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkMWM1YWFkMDk0ODQ5ZmVmZWU2ZTVlNmM5MjZmNWJmZDVmNmI0MzBkN2QwOGYzOWRjNDFmOGMxYjY1YzI2MTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZTZmMjEyYWUzM2Q2YjQxM2QwMWRkNjQ1NDVkYjMzODE3ZmE1ZDM4Y2JmNDViOGU2ZWI0NmRlODk1NzFiZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4MDFmYzJkZWZhODUyOGYzNTRiYTY0NWI0ODBhODUwZDQ5Nzg4MWZjMDllMjU2ZmEyNzhjMmE2Y2JjM2U2ZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e558a8f93ab04e379cdcd1deb3bfc58d",
+      "statement": "Bookmark一覧は保存日時または公開日時を基準にそれぞれ昇順・降順で並べ、既定は保存日時の降順である。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkFeature.kt#L155-L158",
+          "version": "repo-lines-v1:sha256:b117e5f4bec0c55d4a071e1b7561239c5f35bedf38ba97a81e76120fb929dc09:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2YxNjNmNzc4NmM0MmNhODg5MjcwZjc1M2E3ODA2MjY0MjZjMDNmOTczYTA1YWRlYWVkZDRmYTRkMjcwZjBkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTU1ZWEyZjFkYmJlYzcyMTRkNTYzODFiMjUyYmIzNmI4ZGYzY2VkMzIzODVhYjNiZTdlYTgxMTJhNzRiNTdkYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGQyNmZmOTM5NGYyODQ1MTJmMzE4ODMwZGMyYjExMjMwZWE5MjYxZDZjMjQ5MzEyYzhhYjRhNTA1MDRiY2E1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjQ2YmUwNDk5YWNhZDVlZDNjODBlMGE0M2E3NDUzOGNjM2ExYTA5NTkwMTZkMTEzNDlmMDAwY2M4Mjg5NmYxYyJ9"
+        },
+        {
+          "resource": "repo://feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkFeature.kt#L46-L61",
+          "version": "repo-lines-v1:sha256:8f5e6bab83553387ffdb48badda804b57e65e6859d6050d4b508ad0e832bae67:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYzZlMWFlM2U2YWFhMTYxZmQ3MDgxZTAxMDY5ZjYyOTJkYWZiODU5MWI2MDk2ZjYwMTYwMTA0MDRhNTVhOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1YzJiY2MxNDU0ZjliYmM3MzkyZjlhNzk0ZmQxMmUyNzc2NDA4OGY3MzRmYWY2NjNkNzc2OTMzZmU5MTAxZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2OWQ0Y2U5MDQ2MGY4Yjg3YzU1ZTUyZWYwNjFkMDlhZTc4ZTBkMWJjNGI0YWQwNTI4NjllYTgyODBmNTMyY2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8cbb3457c92b4067946d232f108a1cb9",
+      "statement": "蔵書移動に失敗した場合は一時非表示を解除して失敗messageを表示する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkViewModel.kt#L72-L94",
+          "version": "repo-lines-v1:sha256:5ef687f7ee410a179a80fe09a62132a2b859e12eb367f244c1ee7704591b0315:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5OThjYWM3NjRjMzliYTlhZmQ4ZWQ5MWQxYWViOWFhOGM1ZGZhYTRkNGQ4ZWQ4NGEwZTMzNjkzNDI0NDA2NzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2NGU5YWMyMTk4ZWFiNjZiNjVlMGI2YmM4ZjM4ODBlMjc2NzhmNjJlYTIxZDMzZDU5NzMwMmRmMjkwNDM2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmMGU2ODQ4NDU4ZDJiNGY0ZDljMzUxMjU1MTExMGJjMWM2MWMyMGIzYzUyYjQ2YjdkNWU2NzFiOWY1ZGI3MjUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

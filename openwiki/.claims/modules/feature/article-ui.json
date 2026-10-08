@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b025d3fbb7a928d4d3a4b0e73f47dc0a0acafb1d42dd2d1e47c3de765e8e6591",
+  "claims": [
+    {
+      "id": "claim_194f189c5f6f4ae39561674adc7fa347",
+      "statement": "ArticleListは表示日時overrideを日付見出しと行に使い、未指定ならArticleの公開日時を使う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ArticleList.kt#L61-L119",
+          "version": "repo-lines-v1:sha256:5915022093fb63a41b5442165d4debbabe62ffd97d292550a9a0f3d719c1d134:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwNWIyY2RhMmE5YmU5NWY2MjU5MGQ4OGRlYWE5ZGQ4MjAwZWFhMjQxMTVkZGM5MjBhNDIxYjAyZDY4NjM5MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4MDVkOWVkOTcyNjBkMmZiM2ExYjNiYjhlYTMwZjRiODQ3ZjcyYzU1MWY5YmRjMWUxMjIyYjU4MDQ2YWRiOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMDhjYjdiODU0OTI2NGYxNWIyNGMyM2EzOTJiOTQ2YjM0ODM1ZTMyMDg1NGUwYWM1YTA1MzNjNTZjOWMzNmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f9adbf79c2f47c58769357e28fe58da",
+      "statement": "記事一覧のスワイプ確定は注入されたcallbackへ対象Articleを渡す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ArticleList.kt#L125-L170",
+          "version": "repo-lines-v1:sha256:bafd63c56f0b023e604c0c97c56313a9849c6c47b2d26cb1fe73a9d83849bccf:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGQ5NzlhM2JiNjU4M2YyOWJhYmZlZmJlNGM4YjUwMGMxMDcxOWJjOTc4ODgwNzYyMTlhYWY3NTUzZDAzOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxMjVhMzNlOTYzNDZmNWNhNWNhYmQwMjM0Nzc2N2M1ZWI0ODExMTI2MWFhY2JmMmY2YzgyZTNlZmE1ZTEwNjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7beefbe62fe54a02ae57867be9a5b29d",
+      "statement": "コンテンツ種別dialogの継承選択はnullを返して記事overrideの解除を呼出元へ委譲する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ArticleContentTypeDialog.kt#L14-L44",
+          "version": "repo-lines-v1:sha256:6e2442176261a4445c60ee14ad85ed30212016bfa65a709632a4f5d92876b267:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGQ5NzlhM2JiNjU4M2YyOWJhYmZlZmJlNGM4YjUwMGMxMDcxOWJjOTc4ODgwNzYyMTlhYWY3NTUzZDAzOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTk5MWNhZDYzY2NiOTM5ZjBiMzZmOGJlZTA2Nzk5NGEwNDNhNTVlODVhNzBiM2QyZDk2ZjdiY2RiYzc2MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1MjlmMjVkOWFjYjNlMTY2OWU3OGU3NDU4ZmY4ZDMwNWFlMTE3MTFjOWQ0NGQ3M2ZmMmQ0NDg5ODMwNzQxMzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzMmRjOTM4NDJkZTU5MDc2ODYyZWYzNzg1YzZiYjk0OGY2ZWI4ZjZkY2UzODEwYjllOWU0YTRhNTQzMjIxMDMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

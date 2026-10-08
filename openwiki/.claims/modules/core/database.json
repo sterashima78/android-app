@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8957b3a0395520f59bd5738eea7be80517a3a99681c55a59107c17d985548cff",
+  "claims": [
+    {
+      "id": "claim_518430f6083e46b29295473a3e26f699",
+      "statement": "durable 書き込みは実変更のある成功 commit 後に通知し、local transaction 内の durable 操作も通知対象へ昇格する。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseConnection.kt#L20-L90",
+          "version": "repo-lines-v1:sha256:4f00bb65f421900b5b547883062b4b3446e927cb491f12d6cd7eaa65e731e1ea:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNTFmM2M1NTY1NWFhMTNhNWY2NTNlYWZkYTg3OGJmNjY0NWZmMTVmYzdlN2Q0YTA4Mzk1MDNlNzQ0MjgwYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5MGRhZWZmMzVhMGE5MGE3M2MyNzYwMDM5OWMyNTMwMzBjYWM4Mzc3ZDIxNmI0ZmQ3YzU3N2U4YTU5MGZkZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyY2JjNTcwZTc1ZGNmMzUyOTAzMDlmYTMyMGQ3N2IzNThjYmU2N2Y2MmYxYmRjNjI4M2MyNDM2ZWFhZmUzY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViNzJkZjBjNTI5NTRkYTc2NjI2MzNiMjA2YTFmY2UwZDhlNGY1ODZmZDQ4NTJmMjIzNGM2M2UzYjcyNTQ0MzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d437b3b75aff4776b79a0eb2c384db2b",
+      "statement": "DB upgrade は BEFORE_SCHEMA migration、schema 作成、AFTER_SCHEMA migration の順で実行する。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt#L22-L26",
+          "version": "repo-lines-v1:sha256:062a6e0dc833236e1d155923f24335f41685859709f409a0f5d4fbcaf4203752:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjMThlNjVhZjk4NzI0MWE3MDRjMWFkYTljMDViNWY2MDcyMjM5NTgyZjRhNTgxNmY0YjI1Y2MzZTE2NjYxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjE3YWQ4Y2UyOGI3MzY1N2I3Mjk5Y2IzZWQ5NDZlODVlYWM4MWZmMzY1N2Y2NzgzMGE3NGUzOWM0ZTM2NTNjMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTMwZDIwMDlhMzQ5MzE5YWQ2OWNmYzA0ZDFlZmU5NWI0ZmRhNDA4Y2I1OGE3YzI2OWY2YjczYjc4NDk3ODZiMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d5f2fe48fa840c98fbc9cdbbeee0b23",
+      "statement": "snapshot 復元は ID・同一 schema version・quick_check を検証し、配置失敗時には退避した旧 DB へ戻す。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt#L63-L133",
+          "version": "repo-lines-v1:sha256:ac66298a7d8ad4306b12603054ad6327c6f5a205a327469b1348bcde486703f8:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3Nzg4NWE2MzZiMzQ1ODQ1ZTM2N2FlZTI0MGVjMDVjNjI3MTlmMTgyYTZlOGQyMTYxZGVlMjBhNWI3NDAzYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMjhmNzVkMGI2YjE0OTBmMWFiMDQyY2U1MWE5NDI3MjdjN2JhMWYxMjNlZTM0MGFlYjQ2NTk5OTVkNDFjNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3YTQwOWY3YmE0ZWE0ZjkxOGJlMTNhZjUxZjU3MjFmNzY5MDM5MDRhMjI1NjBlMjg0NDg5NGU4NTBkMWFkYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyNzQ5YTVmNjg2OGIzZTQ0MGZkODlkZWY5Mjg3ZDU2ZjJmOTA0ZmI3OTFkMTdlNTc0NTkzYjMyMzY1NDcxYmQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

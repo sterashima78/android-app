@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:dfd6bab558d29aa7f84a5ff6785848db63f6ac29f07370313401709b58036363",
+  "claims": [
+    {
+      "id": "claim_77470c5afa35432ba549414409804107",
+      "statement": "共通再生UIはIDLEで非表示、PREPARINGで準備と停止、FAILEDでエラー、READYで再生操作を表示する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/audio/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/ui/AudioPlayerControls.kt#L24-L82",
+          "version": "repo-lines-v1:sha256:9c16f300c61cbd7e1ca1d6c25ec4c64d61d49dfa22200bff8014c7e26e0247df:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMGViN2U3YWMxODcxZjQ1ODAwNDhlOGNhYWQwZTJjNDg1ZmVhYmFlZGE4YzhhZmFhMjNkOWFmMTgxZjUzMjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5Y2FiYTA2ZmIwYTZmYWE5ZWJkZjdjYTJjMjk1MTczN2YzNmMzZGFiMmQxMGNhNWNmN2YxZTJmYzIyZTBiZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0NTlkNjBjMzdlOGU2NDI1MDNlMDdhZjcwNTk0ZTc3MjBhNGUxNDM1ZDIwZWM2NzFiODBmYTY4ZmM0NzZlZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3ODg0OWZmYjI0NjJhNTk5ZjAxNTRjNTM2OTZkMWY4YzMxODAxZGMyMmMyOTY5MDkzMWI0NjQ1NjljOWZmMjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_39b02621d5bc4364911320ce3e18f5cf",
+      "statement": "READYの進捗は長さ不明ならゼロとなり、前後移動、seek、速度変更、終了をcallbackへ委譲する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/audio/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/ui/AudioPlayerControls.kt#L92-L132",
+          "version": "repo-lines-v1:sha256:3e5d3d8fe4bbc3caaf9cc5a36eac13f7600890a63512f60c519e9b82b6c1d305:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NTA5YjYxN2Y3MDRjOWMwZTgxZTIyNTcwMmRjNTEwZmZjMWFlNjc3ODgzZTMwOTBiYzMxYTcxMzFlZWU4ZDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MDA1ZDU3MTA2YTM2MmViMDAwZGFmM2RhNDY3NGM4MmI1MThmZjVhMmUyZjY3ZWU4ZTc1N2EzMzNjMmFmNjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwY2RkZTZkNjZjNWFlN2NlOWY4Mjg3OGI2MWY2MzZmZjc0MDliMTgwYmY2OTA4Y2ZjOWMxOTRlYTI1ZjYwNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliOWU0MmE0N2RiZjhhMzAxNDZkN2E0ODk5MzViZjA1NDhmOGVhZWJlMmEyYmNhZWY2MDE5MjU1ZmI0Zjg1NTIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

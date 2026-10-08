@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a75cdd736ae9f724b18ba2d2b87bd6efd887751921c5a9fd7a3442549a98c498",
+  "claims": [
+    {
+      "id": "claim_ba76d4ace9744178a27bc5d123d56d72",
+      "statement": "収集 WebView は file / content access、mixed content、自動 popup を無効化し safe browsing を有効にする。",
+      "evidence": [
+        {
+          "resource": "repo://core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt#L171-L181",
+          "version": "repo-lines-v1:sha256:e341d67e04344ffc7a7e5396f1d52ce4feb9c1a5134ed7f2fce4ecd235b8716e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2MzA0MzJiNmM0MzFhYmVmZjUxNGI5NTE2MTI1NWRlZDVjM2E2MjQzOGJhMjZkYWU2NTM1ODEzOTE0YWE5OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZGMyZGFkOTNiYWVkNDNiMjczOWRiZTY1MzExZGZmMTdlMzMwZTI0ZWEzZjBhY2YxOGFhMTAxMTZkNWU3YWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxZTAyOGM5MGVkZDgwZTAzNzliZWYxODU2N2MzNjYxODVkZGUwYjg2Njk1YTU2ZTg3ZTU2NmI2MjZlZmZmY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiYzZjMTkwOGU5ODJhYWIxMGJlN2U2MzJkYWE1ZTk4ODAyNmExZGQ1YTJjYzM2MzZmZmYzNDY1YWFkZjg0OGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1a1f5cdd660041979ff88ae75646776f",
+      "statement": "navigation は許可 HTTPS host と subdomain に限定し、bridge は明示した HTTPS origin だけを許可する。",
+      "evidence": [
+        {
+          "resource": "repo://core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt#L368-L386",
+          "version": "repo-lines-v1:sha256:a27a924462a31c7acea6e141b8a50829b95068a96df416f6a76d0cf3cfdd6020:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlOWJhYjRjYTJmYjBlMzM0ZjViNDFkY2QzNGM0YzdmNmVhN2FiYjllODdlYzZjMjZkZjJlOGMwYzkxYWU0M2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2OGVkNWJmYjRhYTFjNTUzZmRjM2NjNjEzNWNhMWM4MGI1MGQ2Y2E5OWQ4ZmY4ZDZmNDA1NjZmMmUwNWU0MWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwMzgzMmExZjQ0ODdjMWI4NTI5NGVjODE3NjM4N2NiYWY0ZDI0OTMwZTEyYWU4MGE5NjdiNzNhMGQ0YjQ2NjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_79f5560b104940c8b24643e4ee78d712",
+      "statement": "renderer crash はエラー状態、非 crash の終了は WebView 再生成と再読込へ進み、退出時には destroy する。",
+      "evidence": [
+        {
+          "resource": "repo://core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt#L279-L313",
+          "version": "repo-lines-v1:sha256:6011fa947ff0acfcf68cd99c50f7e5730b2afc02f01c9ab57f300562f24629dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ODRiNzBlYzg5YjgwODA3NDE1ZTg3OTcyMjAzM2U0OTJlOTQ4MGNiNzNiNDNmM2JiY2Q1MGJjYTdhZDhhYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlNzVjYTg4OThhNTZhOTZmZDI3NjY2OGEwMjc1N2UwZmNhY2I5MWY5OTAyYjZkZThmZGY5MTYzZTRkZTQ4ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiZmI1YzY3ODA5NzExYTY1NTNiYTZhOGE5N2U3MTI3MzNhOTQxNmZkNmZkMzNiMjVjMTlhYjAyZWJjNTg0OTIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

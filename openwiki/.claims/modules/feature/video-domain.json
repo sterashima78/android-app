@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:977697cbf74b780dd40d9ca69fdfba4fdcc86b14dd9d985d57465715b04adcaa",
+  "claims": [
+    {
+      "id": "claim_0339e69f2ea649bea7ad5981119410c4",
+      "statement": "動画の再生先はstream、SMBバイトsource、Webページの3形態を表す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/video/VideoModels.kt#L117-L133",
+          "version": "repo-lines-v1:sha256:53b8a402e288fb37e552adb306d3884ce2b2b4428190be7c474fa5563cf4f880:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyM2FlMjE5MzViNjRhMmIzZTMyMTM0Yzg5OWY1Yjg0MjcyNWYwNTdkMTIxZmYyNTI0ODE0ZTVhNTk0NDcwZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlYmVkZDNjZWI4NjA5N2FhOWQ5NTJkZmU1M2IwNDMzZDJmNjgxYzg1MzAwZmMwOGZiOTM2OWM5MmU5OTAyMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwZWUyMGYwYjAyZmNjZGQ2M2E5YWJhMTkyZWFiNzkwODc2ZDYxMzJlOGY0NmMxODdiMGViNmM4NWZlOTgzNzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_60fdaa7654524d0aa76accbd42c7f887",
+      "statement": "SMBブラウザ位置はserverが一致しshare指定があればshareも一致する最深同期rootから導出し、パスはsegmentで比較して .. を拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/video/VideoSmbBrowser.kt#L30-L65",
+          "version": "repo-lines-v1:sha256:7462344308fd566738645e9934317581d4c53e592238a847f1f84c89941ab676:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MjE2N2NhYWVkZGI3ZjcyNDkwMTRlNWQ5NDFjZWFmMTBmZjc4MTg1OWViZGZhZWM5NjNjYTYxMGFlNjkzYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzOGQyZjNkYzA3ZjQwZDg0YjY1OTkyOWJhZmM3YmJjYjcxZWY4MGU0MjU1MGJmMWM3MGY2MDZkYmZhYTZiNWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNDg0ZWI5ZjIyZjc2YjJiNzk1YmEzMmI3YTZhNGJjOTQxYTdhM2YyZDMwNmMzZDgwMzQ2NDM0MTYwYzAzNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyNDZmYjMyNjAwNzlmYjZjOTAxMmQwNzBiMjE2MjBhOWUyZjcxOTE4M2E0ZmVkYTk2NDk3ZTlkMThiMTRjNTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

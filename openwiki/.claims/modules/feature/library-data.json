@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:def9800ab04980fc77de8d98fc59d75a63e3bc2757beb5a9a8095a86e7fc4a32",
+  "claims": [
+    {
+      "id": "claim_092a35e22a6946b086e22e47d2222fc3",
+      "statement": "取得元の蔵書入れ替えは該当取得元の削除、再挿入、source同期状態更新を同じトランザクションで行う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt#L210-L223",
+          "version": "repo-lines-v1:sha256:9f44fb7573564e7066821efa880b757f3d0403f58905e1619a59cc13a5ec0c22:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3ZGNlOWY2MTk2ZWRjNDYwZTIxMDMzZjMwNTkwNGQwNzhlNGZhNzdiNDdhMzQ3NWFiYTY2Y2I0N2I2YjQ2ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3MGFkY2I0ZWY3ZDA5ZDhlODEwMjFmMjY1OWM4MGU2YTU2NDc3MzIxNDE3ZmM3ZTdjMTk0YmFhM2FiYWVmMzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdmMTM2ZDVjNDNhMDZhNzNmMGRiNDc3NjNmMGFhYWUxNzVjOWIyY2FkYjI0YjZmODg3MzU1N2M5YTA3YjdmZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlZGQyNmY5N2QwZjlkODBlYTUxZDdmYTVmOGM0OTlmZDc4MWMyODY2Njc0ZGM0ZWViOTgxMTJiMjIyNWM0NjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9eeacc08f1474010b0a5941d15c9f6cf",
+      "statement": "蔵書の非表示はsourceとsource IDに対応する別テーブルで保持し復元時に解除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/data/src/main/kotlin/dev/terashima/yomitorirss/feature/library/data/DefaultLibraryRepository.kt#L56-L80",
+          "version": "repo-lines-v1:sha256:1eeaebe823ab93f4c1523a5e358db4135b082b9fa465662a62f29870bb55ecba:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmOTU0ZDlhMTI2MzAxYTZmYTgzMTFjYjNjM2JhNzE5YjFlNzg0ZTdmMWVlMDVlNzYyZGMyNjZjZmRhNDU2ODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2MjIwZDFjOTgyNmFiYTNiYzc2MTRjOWQ4MDMyZDY3MDU1M2ZhZmI1ZmE5ZWQyZmU0MzZhMGRlZDQ3YjgzYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

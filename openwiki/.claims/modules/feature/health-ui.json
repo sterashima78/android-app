@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f928236669fdb3a63122b074437546b87f59a3139d8159ce521b8708000246dc",
+  "claims": [
+    {
+      "id": "claim_aee49b5c0c084adb97b9b22b1b372b9b",
+      "statement": "Health UI は provider 状態と必要読取権限を検査し、古い期間では履歴権限または非対応を別々の state にする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/health/HealthViewModel.kt#L99-L136",
+          "version": "repo-lines-v1:sha256:3ad0d0cea85ff488a2ebc2fe65f5181e512cffbc59a6e8d5a11a945fe0b5bebe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZGI5YTAxNDNmNTg1Njk0NzY0ZWVjNzZiOWJjN2E3N2QzNjQ5NGI1MmY5ODkzYWM1OTQ4NzU1NDIyZjJmZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3Nzk5N2U4MmYxMjY0N2NiZjkyMDliOTUwMTRjOTQyOGMxNDdjZmY0YjdlODI2NzM1MGFkNGRlYTdhMjAyZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjMDczY2JjODA2YWRkOGZhYTk3ZTRmODliMGI3N2Q4Y2RiMWNhZTZlMGFlNGE5NzNjMzkzNDJjMjMwYWMwZTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a604f722042f4a3eb3a3b291b4b56eb4",
+      "statement": "Health UI は取消を再送出し、SecurityException を権限必要、それ以外の Exception を error state に変換する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/health/HealthViewModel.kt#L154-L160",
+          "version": "repo-lines-v1:sha256:d94d6c5887b7060f7d4292f6515a772bd4b9f002074b897c14c263dcf164035c:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDlkMDcyYmU5MzhmNGM5YTg5ZmFkMDY1MzhmM2U0ZjE2M2Q3ZTE2MDJmMzI4MzFmOTM0ZDU2NDVkYWQyODhlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI2MmY2MGQ4NTkwYTU3OWNmNDZmOGQ2NzM3OGM0YzU3MmI5NjJjZWNjZGI5MGM3YTVmN2I0MmI5NjA3ODJhNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjcxZjkzOTNhYzNhYzMzMjJmNWU4NDA3ODYyNjM2NjI2NzQwZDBkNWMyYjc1NDU3Zjc2NGZhMDg1OWUyNGEwNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_16075b258638424fb33f9b8fd873d1c8",
+      "statement": "Health UI の週は月曜から始まり、月は月初から翌月初までの排他的範囲になる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/health/HealthViewModel.kt#L174-L183",
+          "version": "repo-lines-v1:sha256:b9e011d80ddb021ef105fc45636bc58e5905ed491db368fb5f7cfe4f192840ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwMDQxZmEwN2JmNDE2NTI1ZWU5OWQ1MGYyMmJjMzdlOGZhNjdjMzM5MmY4NjUyNDgzYTM0ZWIyZjJmYWExZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzYjJkMjBmMTY4MWE2OTA4OWEzODJiZWRkNmY0NzFmYjNiYTcxMzQ3NGNhZDY5OTExYzAzNzA1ZWQyZTNiYTMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

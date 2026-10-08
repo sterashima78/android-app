@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:73369a8c2161fc75ebc37c79386dae8d3ae16422aed473e37e8c77f1a8c7ee21",
+  "claims": [
+    {
+      "id": "claim_b7a91d59d91b417c9dbb9bcec86b3c0c",
+      "statement": "メール初回同期契約は期待page tokenを受け取り、継続・完了・古いworkを別結果で示す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailRepository.kt#L3-L38",
+          "version": "repo-lines-v1:sha256:bf2388f6b506416c5e7aad1feaaf365bcaf82a925f8cacc09d8cf4c57d418157:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MWI5NjBiZmYzNzA1OWJhOTY4MTc1MjEzZmIyMDBiMTMyZTQ2MWJmOTRjMDA0Yjg2M2Y1YTU5YzE0NDFlZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmM3NDg4MGYxODQ2MzI0Y2YwMDg0YjA2ZWVjYTcxODU4ZTFhNDVhOTY3MThkZWFiMGU0ZWZkMzljZWM5NjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc4MjVmNjgyNzUzYmQ2OTFiN2Q1M2FjOWJkOGIzNjQwNDY0M2MzMDE4OWI0MjQ4MTFlOGZiOTIyMzVjMWJhZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc3NjQ5MjIzMGQ4MDk3OGVmZjI2OTllY2EyMTIyMDE1Nzg4ZWNkYTk1MmE4YjE5MDcwMGNkNzY5NjljM2VmYmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_64aef6375c0241b5b444876cca6c49b2",
+      "statement": "メールaccountは同期中・network待ち・errorを区別し、進捗件数とエラー情報を持つ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailModels.kt#L3-L18",
+          "version": "repo-lines-v1:sha256:6b1d86c13c2fc3cb06943c99298db62470f3f47f8ee15c63d6b12ea580f68ede:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NWYwOWM0YWQ4OTI2NzFkNzk0NzVjOTYwNzFlYjU0MzAyMzdkMzgxYjgyNDZhNDk5MDdiOGE4ZDMwYWU0ZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc4MjVmNjgyNzUzYmQ2OTFiN2Q1M2FjOWJkOGIzNjQwNDY0M2MzMDE4OWI0MjQ4MTFlOGZiOTIyMzVjMWJhZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljZTA1ODhjNzIzMjNkNDIyMTVmMWI3YzgxNTU1YzdkYmU5MzI1OGYwODJmNjVmMjc0NzViMTQwMWVkNDc2NGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7144b69845fd4846a798572398af3daa",
+      "statement": "メール公開Repositoryはaccount identityで操作し、認証tokenを受け取るAPIを持たない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailRepository.kt#L9-L53",
+          "version": "repo-lines-v1:sha256:9927e527c327807a24b22a7655dbd5fc9c071fcee490fd36467593b5bd078e32:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1YzkyMTdlNzI3ODNjOTg4Mjg4MWFkNTg3NTgxMTY1NWFkMGU5NmIzNzkzM2YwYzAzY2QzMGUxYjBjNDkzZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzMTY0MTg5MDZiZTE4NWQ5ZmRkYzMyZGVkNzU3NGYzMDk5MDMzOTUzNGFmY2EwNzFjNjlmODFiMzgyZTY5ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

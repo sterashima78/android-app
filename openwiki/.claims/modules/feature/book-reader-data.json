@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:095b77887c2e6b4dc4cf0b60b87d89131f463c17403439e8aacc6065388c2b73",
+  "claims": [
+    {
+      "id": "claim_3ce8922d58be4a3da56b05e032945005",
+      "statement": "ZIPページは画像対象を選別して自然順で並べ、表示画像がないZIPを拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/book-reader/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/data/DefaultBookReaderData.kt#L69-L83",
+          "version": "repo-lines-v1:sha256:4ee4529a8deb42b9b1eeb422197315c43fb37078a8a80a74aa41d7ed76178c33:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzZjUzYjg1MDhmOWE3ZDFiMGMzNmRmMGU0MjM4ZjkwYjAxMzVmMDg0N2YyYzNhZmJhZGM4YWIwNmI2ZmZjZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMDQyZDk1NjJiMWE0MzM0NDk5ZjU2ZjkxZDY1NzMxMzMwYTBhYTBiNTVkZWU2NWQyOGM2MGI5NmM1ZGE1ZGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_45991b8650094e81a2b7d97df0597926",
+      "statement": "PDFページ描画はIO dispatcherとMutexで実行しbitmap、renderer、descriptorを解放する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/book-reader/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/data/DefaultBookReaderData.kt#L103-L142",
+          "version": "repo-lines-v1:sha256:e766bd0659d0de8d37b6c37855c2e972f6b37f8205f54d261e5234ce4cea4aae:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhYjlhNTc1MDNmMWI1YzM0NzU0NjVkMzJjYWZmOWM0MjdlOWJlYzZiMmUwMGE5MDQzOTY1Y2FlOGI4Njc1ODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhYzE1NDZlZjBkOGNjNWU2ZmIwNjQwMWM2YTVhMzdhODdmMzA5MDM5ZWFmODVhNjk5ZmY4MmMyMGZiZDJlYTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_98ade97bf0b842c881d31d49eb5a617b",
+      "statement": "読書位置ロードは負値を丸め不明なenum値に既定値を使う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/book-reader/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/data/DefaultBookReaderData.kt#L38-L59",
+          "version": "repo-lines-v1:sha256:3b408cf8e292ed7268cd5ccf08f050a6e9a2279cee44e6a44e1e76ecede636a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjNGQ1YTQ1NzdjMDY3MWY2MzIzZjkwNjE2ZjFmNTk1NWJmYTAxZmU3MDMzMTViMDY3YjM1N2I4ZWJlMmVkNGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3MzRhOTE0MzBjM2E0NDIyMTJhMWZlZWFkZjZjZjA3ZDc0N2RhMGQxNzE0YjcyOWM1MWY1NGU1M2U3ZmM2NjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNjZjZWZhMGJmMzk2OWNhNjFlZWNiZDg3MDY4Zjk3NmI1NGNjYmRkNzI4NzkwNTE0MGQyZDE2OWE4MDEwNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzMjM5MTllNGYxYjNmMGNiZWZmMzkyZDMxNzZlODBmNTg2MjZiYTgyNDgwN2FiNWU3Y2YwYWM4YWFiMzE2ZDAifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:191081037f097dcf524d3ea04fcda40d48fa8c3edbc1bef6cd7a3212408777f1",
+  "claims": [
+    {
+      "id": "claim_25d608f91c11409fab83c8964dd1d24d",
+      "statement": "保存先設定は、設定成功と初回保存だけの失敗を別結果で表現する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupRepository.kt#L3-L17",
+          "version": "repo-lines-v1:sha256:7d502e434ba7c1728eff331eeb0ecd6ae74a0f2f38e56494d808fe4cfdceb21d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4OTMyYWM1YzNjNjQ5NDY5ODA2NWJjOWI3OTAwZDllMjgyOGE2NWFkZTQ1NzU3MDAwOTg5YmQ0ZDJiNjQwZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzNmYwNTlhYWM2OTQ1NjU4ZjhjNmJmYzZmMjg5NTY4NzE3OWE3NzZmYTY1MmRjNjI2Njg3MTRhYjc4NzNlOTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MTY5ZDA4ODNkMzJjZWEzZmUwZWJhZDMwMzI0ODQwNjk2NDUwODdiMThmNDgxNDY1NTFjNDI2YzNmYjdkMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_52cd14a1590949a0bdbcb1379c662c3c",
+      "statement": "バックアップ時刻は時・分の範囲を検証し、HH:mmに符号化して比較する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupScheduleTime.kt#L3-L25",
+          "version": "repo-lines-v1:sha256:f1c8aadd0e25e854b7e1b17e0910dcc77fb7813dc26f1fd3445872c6a8e1a3fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3ZmZjNTU5YzY3MDBlODg1OGJiNGUzZDVkODQzMTg3ZTM2MjBiOGE1YjM1ZmVhNDQxNjljNzJkYjQ4ZjQ4ZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MTY5ZDA4ODNkMzJjZWEzZmUwZWJhZDMwMzI0ODQwNjk2NDUwODdiMThmNDgxNDY1NTFjNDI2YzNmYjdkMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNzM5YTA2YzFjYmIxMjQ0ZTMzNjNkMzhiY2Y5ZmE1MGNlODRmZWQzOTljMjE5M2EzYzdmMDhkNTk5MThiMmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_84cea92f6b4d4a2eb149ce956ec2c496",
+      "statement": "Driveの設定済み状態はfolderUriの有無で判定する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/GoogleDriveBackupStatus.kt#L3-L12",
+          "version": "repo-lines-v1:sha256:8b26c7826cafeb88907b9cd9fd64ea297cf88e1d5fee54d479fd885881c9d9cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3NTIyNmNmYWEzY2ZhNmY2Y2YyNzk0N2JlMzk5OGY2ODYxNDM0YmNiNGI5ZDFhOTE2M2Y1OWMwZGJkZTQyODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4N2RlODZiODJmMGVhY2MwZmRmYzJjNmYxY2FmMzAwMmYwNjhhYTkwZTMxMmIzYjBiZTY1YWVkZWE5YzNmM2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MTY5ZDA4ODNkMzJjZWEzZmUwZWJhZDMwMzI0ODQwNjk2NDUwODdiMThmNDgxNDY1NTFjNDI2YzNmYjdkMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

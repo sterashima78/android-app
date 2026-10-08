@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:62040530ca7e4c8d072ccc239a1748baf31fecb5adf03028fec3687a0b1459ed",
+  "claims": [
+    {
+      "id": "claim_cab0286273af4bbcb952639c9f2f1c2e",
+      "statement": "Application runtime と診断 hook は process 名が package 名と一致する main process でだけ初期化する。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt#L69-L83",
+          "version": "repo-lines-v1:sha256:446203ef5d2caac0c38dfc31867d9fb2028747d2e3158f85d89d4f2b39f85c46:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzZDIyZGNkYTMwOWVkNTRkYzdmYWNmYzkxYjk1ZjZmMmM3MDA2ZTc3YWRmODA0ZGE0NWNlN2EzNWI1NjVmYjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmOGM2YTk4ZjI3NWVmMGFhMTRlYTZiNGE3YTMzODk5NjUzOGUyMTRmMGMyODIyOTA2YTMwNDM0MGUxNWU4MjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1NzNjODVlOTZkOTM3ZGJjMDUyMjMzYWZmYzIyODY0MTYwMjE3YjRjMWVmYjU5OGFmYjg4MmM0NjJjYjUyOTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3MTlhMDAwZTBkZTE4NDMwZWI1OTdkMWU5MThhZjY1Yzg3ZDcyNGVlNjgyMzY2NDYzNjdiMzg2M2M0MTMwZGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0b6f18c8c3414a878dcaf060b24ecaca",
+      "statement": "WorkManager は application container から作った WorkerFactory を Configuration.Provider 経由で受け取る。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt#L57-L61",
+          "version": "repo-lines-v1:sha256:ef574227a5f9b5d8af806d0de7e6b95db3fab4eb60845e8d4d260ffaee44dca8:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzhiNGJjMzBmYmVhZTNiOTc0ZmI0ZjY4MjcwNGFkYzI1NmVlMzZlZjMxY2IwYjNlMTgzNzNjOGYyY2JjYWY1ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2M4N2QzMzBiZTA1NGJhZDQ1ZTFjNDAyYmNiZmE3NTY2Njg1Mjc0MWI5M2U1OWExMWQwN2M3Mzk2YmRmZjkwOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDRhZmEyMWMzNzVmOGJiZWRhMGFmNzY0OTBkZWE4MDM2MGNkMTg4ZWNhMWM2YWMyMDIwYzg3NGE3Y2Q4NTU2NCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_9728839e6feb455ea646dff1134f7ab4",
+      "statement": "現在 Activity を weak reference で保持し pause / stop / destroy で当該参照を clear する。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/YomitoriApplication.kt#L85-L118",
+          "version": "repo-lines-v1:sha256:90045bf05b7fe5e8c55bf275c224fa1179c28b69961bc51bc219be1a28a63fdb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjYjJlMDEzZjZiM2I3YTQ1OWI1MzNjZTNlMmMzNzIxZTEzNzY3Mzg0MGI5ZGI3YWRkOGU5NzI2NjgzNTQ0OGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MDlmNGU5YjQ0ZjFlNjU2Y2Q2YWMwNjA3MjExMjVkNmEyYmM0MjZiNzdiYjBmMzVlY2UxNmQxNTM2ZTU3OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

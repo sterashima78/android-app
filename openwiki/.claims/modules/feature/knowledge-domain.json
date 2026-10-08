@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:405b6c3b6bae8ce91f0a2afdd13fd45f3a69b2a96e6e14774a00516c1cee83bf",
+  "claims": [
+    {
+      "id": "claim_3285a521b9c341c1a3a71ba22c6c815e",
+      "statement": "Knowledgeはページ読取・管理のRepositoryと、再構築・作成・AI編集のapplication capabilityを分離する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeRepository.kt#L5-L32",
+          "version": "repo-lines-v1:sha256:d9fe182e504ece2719fee81b77dd4542003b8c1f004407cf18a807d4ae069e58:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5ODUwMTAzZjI1MDM0MTZmMmZiZTFlN2UzYTExOWM3NWM0NGI5MzQzMTI1N2E1YjM5ZDFkYzE4ZDU3MGNmZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkOTg0MDI0YzA4NGY1NTNjZTI0ODdkOWNhMmUzYjQ1MmEwYzFkNTVjMGQ1NDlmYmNiZTRjMjEwZmVhMmQyZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5cc57fbb4b9448d4b2eb528a5fd85f9a",
+      "statement": "KnowledgeページAIタスクはrequest IDで状態と結果を取得し、未消費タスクの再発見とdismissを提供する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgePageAiTaskController.kt#L11-L43",
+          "version": "repo-lines-v1:sha256:1770aef5943bcfdeab251e43c5ab70fc9e4ff696d551e4464e9d11faca94c008:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlYTU3NzU5NTNjYWVhNzNhOTQ0MGM2YzVjOGIxMmNmZDdlMTdlODEyODFiMjQxNzA3MjcyYjgwNWQ2ZGI2MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OTJmZjdhNTgyYTIwNzZlMGI5MzIyM2MzMGFiMjA1MjUyMzkwYzQwYzMyN2I4Zjc5ZDFmOWU5NDRmYmQ4N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3ZmE3MTM2Yzk4YzllMDEzOTM5OTkyZTNjN2Y1NTg2ZmNjMWI1Mzc1YzJiZDRhOGExN2YyOGRiMzNkYjcwYTYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

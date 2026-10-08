@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:e2c60097bb03f6685d49162e218a3c508e2a284a0cc9bdf35fd545a81e023cae",
+  "claims": [
+    {
+      "id": "claim_cbc370705d8b4222a960b96cd17be5e7",
+      "statement": "動画削除は保存状態、再生状態、カタログ行を同じトランザクションで削除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/DefaultVideoRepository.kt#L67-L73",
+          "version": "repo-lines-v1:sha256:cd05606981a75597a91f15a87955ed631a63c265f3b91a18838a1fae52faac46:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTIxZWViMDE0M2VhODFiZDBkMGEzYTE2Y2FjMDg0NDVkOTI4NjEzZjc5N2JlMmFkOTNiYjY2ZDVhMDI0NTlkYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWViMmRjMGEzNWYzNjNiZjA3MmM2NjMyNmM0MDY2NGUzYzAyOTI5YTEzOTlhYjYyZTQ4YzhkNzI5NzlmZGM5MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWNlNTU4YTc4YzcwYjNmMzgzMTkwMjVhZmY2MzI1OTczMjMwMTI1YTJiMmJkYThmODI5ZDBjMjkwZjYwYTE0YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_01978ab6c22a46ec82c10a51450b2f73",
+      "statement": "Webの直接stream抽出が得られない場合は元ページの再生先へfallbackする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/DefaultVideoPlaybackResolver.kt#L69-L100",
+          "version": "repo-lines-v1:sha256:efd1623b4024fc415eafaeba48847f58115cdf1f49e04c90349f5fb8b6d34540:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwYTk1YTlmOGFjY2E5ZWQ1MTFlOWYwNTBhNGY2ODZmYTIzMDgxYTk2NTMzNjc1MGEwN2YxOTZmOGYzZWQ1OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkZjBkYTRjM2YzNzBmYzUwMzQ3MzE3ZTQ0MjAxZWY5MjIyODVhMTAyMzFjMDA3ODcxMjk4ZTI5OGEwNGJhZmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_25c0885eadf949d69cc541dd8305c803",
+      "statement": "Web再生RefererはHTTP(S)に限りuserinfo/query/fragmentを除き、path共有の明示設定に従う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/DefaultVideoPlaybackResolver.kt#L112-L133",
+          "version": "repo-lines-v1:sha256:9cbe58bef6f05174cf10a776ebe8ed6fd2c9dec7489cdee0de191c86c37f8bf2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5ZGUxM2YxMWVjYWNhMGZkZWQ4MTRkMmY5MTk4ZmRmZTlhODc0M2JmZWU2ZTJiODhmZWIzNGU2NTMyMGIzMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwODhhY2NiMDVkNmFhNmY3NDNlNzFlYTc5N2NjYjM1ZTk5MDEyZjlhM2VhYTY2YjQ1ODJhNWE3NmJhZjI1OGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NWZlNGI5NTA1YmM3MmRjNzBlYWY0YTFiMzJmMDJiNmZkMWE5M2UyNTMwMWMwN2UwMjc1OGFlNjlhZDQ3YWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

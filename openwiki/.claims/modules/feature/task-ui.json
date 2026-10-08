@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b92279590e1cfb07b4a1ff2e9fda03f661e015fe96a342bc15b48d31fa01ff42",
+  "claims": [
+    {
+      "id": "claim_b011e9b2538b48c09ad6c5fc064166b6",
+      "statement": "Task UI の command は IO coroutine で実行し、成功した場合に一覧を再取得し、失敗した場合は UI の error に変換する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskViewModel.kt#L41-L78",
+          "version": "repo-lines-v1:sha256:d4d9a5471ea0cd69cbfcea27e5387ddf9407e32e42b195e723f880c6b74ebd12:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyMDAyNWE4NWFlNmZkMmEzODA2YTc5YmIwZDQ2ZDQ2ZTFlMTcxOTQ0Njg4MjY4NWZmZjEwMWIzODdmMjllNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ZjAxNjIyMDMxYjE0NGI2Yzc0ZGJhYmI5OWFmMTMzYmIwNGI5YWY5ZjY4NWQ2NjczZGU2MThlMWE1MzIxMjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3NTE5ZTVhZTJiMGVkYmU0M2EwZGU2NmYzNGIwODRhMzg2M2M3OWRmM2E3MTU3NDJkZWFlZGY1MTUwZWQ2M2IifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8a4d24c1184e461bad909614230734e0",
+      "statement": "Task UI の正常読込は initialized が false の場合だけ全 ID を展開対象にし、true では既存展開 ID と取得 ID の共通部分を保持する。失敗時も initialized は true に更新される。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskViewModel.kt#L61-L78",
+          "version": "repo-lines-v1:sha256:da070fd6c27e6f236a6e7c1f9feb9ae9bf7e73af282c7abb88a309535f161de7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMzMzYzNiYmVjNDU0YmRhZWQ0NTI2YzRmYWFmMDI4MDhmMTExODFmMmIyM2NiNWI4NjhiNzAxNjRiNjhlMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ZjAxNjIyMDMxYjE0NGI2Yzc0ZGJhYmI5OWFmMTMzYmIwNGI5YWY5ZjY4NWQ2NjczZGU2MThlMWE1MzIxMjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3NTE5ZTVhZTJiMGVkYmU0M2EwZGU2NmYzNGIwODRhMzg2M2M3OWRmM2E3MTU3NDJkZWFlZGY1MTUwZWQ2M2IifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}
