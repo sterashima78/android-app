@@ -31,7 +31,8 @@ internal fun VideoProviderSettingsDialog(
   state: VideoUiState,
   onSaveProvider: (VideoProvider) -> Unit,
   onDeleteProvider: (String) -> Unit,
-  onSubscribe: (String, String) -> Unit,
+  onSubscribe: (String, String, String?) -> Unit,
+  onUpdateSubscriptionTitle: (String, String) -> Unit,
   onUnsubscribe: (String) -> Unit,
   onRefresh: (String?) -> Unit,
   onDismiss: () -> Unit,
@@ -116,6 +117,7 @@ internal fun VideoProviderSettingsDialog(
               onSaveProvider = onSaveProvider,
               onDeleteProvider = onDeleteProvider,
               onSubscribe = onSubscribe,
+              onUpdateSubscriptionTitle = onUpdateSubscriptionTitle,
               onUnsubscribe = onUnsubscribe,
               onRefresh = onRefresh,
             )
@@ -138,11 +140,13 @@ private fun ProviderEditor(
   subscriptions: List<dev.terashima.yomitorirss.feature.video.VideoSubscription>,
   onSaveProvider: (VideoProvider) -> Unit,
   onDeleteProvider: (String) -> Unit,
-  onSubscribe: (String, String) -> Unit,
+  onSubscribe: (String, String, String?) -> Unit,
+  onUpdateSubscriptionTitle: (String, String) -> Unit,
   onUnsubscribe: (String) -> Unit,
   onRefresh: (String?) -> Unit,
 ) {
   var subscriptionInput by remember(provider.id) { mutableStateOf("") }
+  var subscriptionTitleInput by remember(provider.id) { mutableStateOf("") }
   var customName by remember(provider.id, provider.name) { mutableStateOf(provider.name) }
   var customFunctionCode by remember(provider.id, provider.functionCode) {
     mutableStateOf(provider.functionCode.orEmpty())
@@ -200,13 +204,24 @@ private fun ProviderEditor(
       Text(if (provider.type == VideoProviderType.CUSTOM) "購読入力" else "チャンネルURL")
     },
   )
+  if (provider.type == VideoProviderType.CUSTOM) {
+    OutlinedTextField(
+      value = subscriptionTitleInput,
+      onValueChange = { subscriptionTitleInput = it },
+      modifier = Modifier.fillMaxWidth(),
+      enabled = provider.enabled && !busy,
+      singleLine = true,
+      label = { Text("購読タイトル（任意）") },
+    )
+  }
   Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     Button(
       onClick = {
         val value = subscriptionInput.trim()
         if (value.isNotEmpty()) {
-          onSubscribe(provider.id, value)
+          onSubscribe(provider.id, value, subscriptionTitleInput.trim().takeIf(String::isNotEmpty))
           subscriptionInput = ""
+          subscriptionTitleInput = ""
         }
       },
       enabled = provider.enabled && subscriptionInput.isNotBlank() && !busy,
@@ -233,7 +248,27 @@ private fun ProviderEditor(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Column(Modifier.weight(1f)) {
-          Text(subscription.title)
+          if (provider.type == VideoProviderType.CUSTOM) {
+            var editedTitle by remember(subscription.id, subscription.title) {
+              mutableStateOf(subscription.title)
+            }
+            OutlinedTextField(
+              value = editedTitle,
+              onValueChange = { editedTitle = it },
+              modifier = Modifier.fillMaxWidth(),
+              enabled = !busy,
+              singleLine = true,
+              label = { Text("購読タイトル") },
+            )
+            TextButton(
+              onClick = { onUpdateSubscriptionTitle(subscription.id, editedTitle) },
+              enabled = !busy && editedTitle.isNotBlank() && editedTitle.trim() != subscription.title,
+            ) {
+              Text("タイトルを保存")
+            }
+          } else {
+            Text(subscription.title)
+          }
           Text(subscription.sourceUrl)
         }
         TextButton(
