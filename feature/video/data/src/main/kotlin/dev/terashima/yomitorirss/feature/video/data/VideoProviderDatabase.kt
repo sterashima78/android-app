@@ -101,10 +101,6 @@ internal class VideoProviderDatabase(
   fun requireProvider(id: String): VideoProvider = providers().firstOrNull { it.id == id }
     ?: throw IllegalArgumentException("動画プロバイダが見つかりません")
 
-  private companion object {
-    const val MAX_SUBSCRIPTION_TITLE_CHARS = 16 * 1024
-  }
-
   fun updateCustomSubscriptionTitle(subscriptionId: String, title: String) {
     ensureSchema()
     val normalizedTitle = title.trim()
@@ -430,3 +426,4 @@ private fun VideoProviderType.defaultDisplayName(): String = when (this) {
 }
 
 private const val MAX_CUSTOM_PROVIDER_FUNCTION_CHARS = 128 * 1024
+private const val MAX_SUBSCRIPTION_TITLE_CHARS = 16 * 1024
