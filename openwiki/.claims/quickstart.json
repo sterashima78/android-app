@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8d7848bd49f361b760b1796174aca402ead2c714ce5544fbca04e8ed29864c14",
+  "claims": [
+    {
+      "id": "claim_dceeaa5b7e164df3b94f8aaa53aaf52b",
+      "statement": "AGENTS.md が作業の共通入口であり、仕様・形式モデル・architecture・ADR・現在のコードとテストを順に確認する。",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L3-L16",
+          "version": "repo-lines-v1:sha256:019fbb967441ed6cfad20d10f8fcfa897c7ccd91b7747d8594c4e105a0444a03:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4Nzk5OTE3ZTE2ODM5MjQzNTU5ZWRkZmY4ZmVkN2VhZGNiNDlkZDgyMzU0NzhhMmVkYzhkOWY2M2FkYzc0ZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZmRhOTgwMzVjNDE3NjMwOTc4OTNmZTFkOGNkZjU4YWYzYTQ0YTNhZmY4MzYzZGEwODM4N2FhYWNiYTAzM2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0YjdjMGE0ZGM2ZWJkODQzMzE0MWM0ZDliMGU2MjRhN2Q0MTIwYzE4OGJjNjMwNThmZmYxZjM2NDhiNDg0NDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e707636e34624765bdd5d792dcbeb02f",
+      "statement": "このリポジトリの OpenWiki は開発用の日本語資料で既存 docs を正本として参照し、アプリ内 Knowledge のユーザー資料 Wiki とは別である。",
+      "evidence": [
+        {
+          "resource": "repo://docs/openwiki.md#L1-L5",
+          "version": "repo-lines-v1:sha256:ae4775df0cf68e58ea57fc423ec4f580fa8bb6cf15c8c6756a42b034d67545d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2U4NzhiOGZjOGFjOTMzMDNjOTBkYzAyMGJmM2FmMTAwNzQwODYzOWI5NjVmODA1ZDFkYmM0N2U2MTE5YzJmMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA5YWU1NjdjZDg3YTEwNGY1YWU0OGQ2YmU4YjFiM2IyMmVjOTI0ZDBkNmZmM2MwYzc4MjQ1ZGY3NDkxODY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjc3OWYyNDMzYjVhMDZiNjIxYTRmNzRmMzllYmZjMzQ1NGJkMjA3OGU4ODdkM2IzZjc0ZTM2OGI4YTAyYjNiYyJ9"
+        },
+        {
+          "resource": "repo://docs/openwiki.md#L50-L52",
+          "version": "repo-lines-v1:sha256:e15a4b2710168e108fedb17c7a97cec481499e39b29162a1c936355d9b54d6ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmFlODZiNGE0Zjk5MDY4MGUzZmI4MjZjMWYwYmViNDc1YjZmNWJiYjQxZmVhZDM5MDdkYjEwNDZmNGMzMGJkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjczNDIyZDI1ZTU3Yzc0NTA3YmM0ODZhNDc3MWFlYTE5N2RjNWNkM2UyOGI2NGU2NmVjZjA1NmI1MDRiY2FjYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhhNGNkZmVhZGQ3NTY3MmVlMjNlMmUyYjBmZWVjYTA1MzIzZjAxNGM4OGE3NjU4Y2NhMTNkNmNjZjg0OWI0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4714e5ecd19b4659a4d64f4400cc3965",
+      "statement": "OpenWiki 0.7.1 の Codex 連携と更新手順は docs/openwiki.md に記載し、編集方針は openwiki/INSTRUCTIONS.md に保持する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/openwiki.md",
+          "version": "repo-file-v1:sha256:b9d895f3e29816599519f331e4532a132e617f3c817c84728112d3f86ed2d9d9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T12:06:17.585Z"
+  }
+}

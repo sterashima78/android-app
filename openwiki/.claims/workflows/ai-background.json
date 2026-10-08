@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8c83df955435d6ae83b6ef3f66c6579722bb4773104aae8c24996bde96dadd66",
+  "claims": [
+    {
+      "id": "claim_9c22b1bf24f04747995489da71125868",
+      "statement": "技術 inference runtime と feature prompt/routing policy は分離し、cloud egress の暗黙追加を避ける。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/ai-runtime.md",
+          "version": "repo-file-v1:sha256:bc4bb179603385cdfc08711ee80b51bf874777285e5baa90475ea3246d7c044c"
+        },
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L103-L135",
+          "version": "repo-lines-v1:sha256:2c729b54e6c13ee8921df1b0099e2051b9a181004046f18eb67e32da32c81f19:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZWI4MDJhZDAzZjMwODc1OWY2ZjcxMDU0ZTZiNzQwMTIwNjI0N2RkNDFjN2ZkZDYwMTBiNTM4NzM0NzI5M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0NGZmMDlhZDQ4YmM3YWUxZThhZmJmMWZlZGNmOWVkZWU0YjU1OTJiNmVmMTA2ZmNjZWE0MDljNmI0ZjI5NTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjOGUwOTNlOTM2YTVhZjhiM2I5ZjRiYzM3NTc4YzI0YjI1NjVlYjgzMTM3MWFmY2RiOGYzMzlhY2Y1NDZhYjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_20be097b83094d7cb565ab5e68f47c9d",
+      "statement": "ProcessIsolatedLocalAiTextInference は background generation を短寿命 subprocess に置き、model metadata と token count は main process に残す。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInference.kt#L109-L138",
+          "version": "repo-lines-v1:sha256:4a8c20b1a80aced4777f7d6098d667e51e795159bc1678dc4cf602d94e99bff4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MmE0MjkzODJiMmUxNDcxOGUwZTM3YjA1NzBhOGExNzAyOTkxZmNkODQ5OGNkODQwNjBhOGJmNGYwNTAxN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNWEyNjAyYzdiOGYzMDZjNTYwZDUyMTY0MjI5NzgxZTczODFkMWFmZDM0NjRkMDMzNWYwZGMwMGRkYWE5YzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiNmQ0ZjhiMjk2NGM3YmRlOWVmYmQ2ZmU2MTRhNjhiYjVmNjkwMDJlNzQ2YTc1YmFkOWE3YmU0OTg0ODk3NGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5YmI3NTFlYWEzNzUxYTJiM2I3ZmU2MjMwMmI2NDExZmUwYjM3MTY4ZjFjM2YzODNhYjRkYWYwODNjZjc2MmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c5ebe65f1c834780bede88f8c9196e99",
+      "statement": "local text inference の接続と response 待機は runtime watchdog で有界化され、timeout cleanup と coroutine cancellation を区別する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-runtime/src/test/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInferenceTest.kt",
+          "version": "repo-file-v1:sha256:5bb46c34c95fc01cb8c20a1faeeddbebd2c8938c424c334378855f4929b4cd29"
+        },
+        {
+          "resource": "repo://docs/architecture/ai-runtime.md",
+          "version": "repo-file-v1:sha256:bc4bb179603385cdfc08711ee80b51bf874777285e5baa90475ea3246d7c044c"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b8d87e334ef40619b5ee3e5babb6d4c",
+      "statement": "AppWorkerFactory は feature WorkerFactory を既存 application-scope AppContainer に接続し Worker が並行 graph を構築する方式を避ける。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt",
+          "version": "repo-file-v1:sha256:dc43096059800adcea21fa490fefb15ad9810a512d2e1cd8680a1f66de804308"
+        }
+      ]
+    },
+    {
+      "id": "claim_949a56fb41f348a08ff94b9e038a17c6",
+      "statement": "UI に非対話型 background inference capability を渡さず WorkerFactory 経由の owner Worker 内で利用する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/ai-runtime.md",
+          "version": "repo-file-v1:sha256:bc4bb179603385cdfc08711ee80b51bf874777285e5baa90475ea3246d7c044c"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd496af74a584293b812ac20bc175359",
+      "statement": "Knowledge Repository と generation service は persistence/source収集/SQL の責務を分離し、自動 Wiki の親 Worker は計画し topic Worker が生成する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/test/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeApplicationServiceArchitectureTest.kt",
+          "version": "repo-file-v1:sha256:a6ec7b5d81a3c9e6b2ad3dc4dfaefbd1236e5d23525edbb4730763fe76c8a913"
+        }
+      ]
+    },
+    {
+      "id": "claim_d99093f0e1df457993ed7fc9d7c056c7",
+      "statement": "ChatGPT inference failure は core で taxonomy に正規化し raw response/prompt/token/account ID/URL を typed failure に保持せず retry policy は feature に残す。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/ai-runtime.md",
+          "version": "repo-file-v1:sha256:bc4bb179603385cdfc08711ee80b51bf874777285e5baa90475ea3246d7c044c"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T11:54:35.312Z"
+  }
+}

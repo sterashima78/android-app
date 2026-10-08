@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:cada0703a3420f35d911e57bb78aa92d1ed28770372c2602aaa4af210cc57b4e",
+  "claims": [
+    {
+      "id": "claim_57f12347c89a46018f14d50410174b14",
+      "statement": "物理 DB を共有してもテーブル ownership は共有せず、foreign table write は禁止し cross-context read は owner API 等を利用する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/persistence.md#L5-L31",
+          "version": "repo-lines-v1:sha256:e60bba6b7e441e361564bc1a5e6711962e9704ef42a6b6b51b43d7ee50136977:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmYjNlYWIwMDE4ZGQxYTQ3NzcxYTkxYjQxMzcyZDM3OWMwMDMwZTU5ZjU3NjVmNjRlNTA5MDA4OWZkODc5NWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3ZDdjMWQ3NGM2OTU0NTYyNWVmM2VkMDkzMWI5MTM2M2M0ZjMwMzI3YmM0ZDY5YzIzYzdiN2UwZDE0NGVjNDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0MTBhNzZmNDhmM2EyMzE1N2Q4NzE5NjA4ZjJhNDhjYTM0YmZiMjU5MmYxYjA1NzA5ZGRhYzhmMDZmZGM0YTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiZTUxMjE2NmM3OTI5MjQ0ZWIzNjZjOTI4YzNlYjI2NmZjMzljOGQ3NmQyZjNiYWQ0YmI4YTg5NzIzMzZlOTcifQ"
+        },
+        {
+          "resource": "repo://docs/architecture/principles.md",
+          "version": "repo-file-v1:sha256:618be1ae242bacc5c0342509d19c37f4951be5dd958619a2644cc81477619585"
+        }
+      ]
+    },
+    {
+      "id": "claim_e1183ae8c4154234ab879b2daa2e7c77",
+      "statement": "DatabaseSchema は owner の重複と schema version を越える migration を拒否し、対象範囲の migration を phase 別に targetVersion 順に並べる。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseSchema.kt",
+          "version": "repo-file-v1:sha256:fdfc1f92e8df61e8c1d2140b70feeb0bb80ce8b20e563164d1578f97f5ddf743"
+        },
+        {
+          "resource": "repo://core/database/src/test/kotlin/dev/terashima/yomitorirss/core/database/DatabaseSchemaTest.kt",
+          "version": "repo-file-v1:sha256:fef824c1d649225233d6c7fe131f895552a39bb65fdb06869e3dac4ec3d3c9a2"
+        }
+      ]
+    },
+    {
+      "id": "claim_18ab7b8bcd5b412da8a2d34e2b20d0c9",
+      "statement": "application composition が feature schema contribution を集約し、YomitoriDatabase の更新は BEFORE_SCHEMA、schema 作成、AFTER_SCHEMA の順で行う。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppDatabaseSchema.kt",
+          "version": "repo-file-v1:sha256:e4aec685a90956da983a09482a902c13a0cc3ddb528898de5432ef8b7a924004"
+        },
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt#L9-L29",
+          "version": "repo-lines-v1:sha256:f21ab9ee2e26c1a925acfe027d3b44dc2dfa0b851c8b712c6c445dfa34698590:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxNWVjZDEwOGVkY2I0NjAxYTE3ZDRjYTU5YmJmZmVjZDM2YTg3MmIzYjBhYjE0NWQwZDIwNmM5MTlhZWFmYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhMjNjNDljMzZhYjdjMGZmMTEwNTcxNTNlMjQyNzk5OGVlOWNmYjI4ZDJlZDcwNTYwOWE3ZTRhMmI4ODZiZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1MjJjYjdkYjlkZTI3OTMyY2FkMTdmMzAyNWJkZTY3ODcxNzExYjM4NDYzNmRhNWZlOGZmOTg0Y2E4ZjIzNzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fc228dbcc8f64549acad31aa22314950",
+      "statement": "snapshot 復元前に application ID、現在の schema version との一致、SQLite quick_check を検証する。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt#L65-L82",
+          "version": "repo-lines-v1:sha256:54bf681c2fe5c2557a0172f247bf618716abc7410526b01005eeb5717078a078:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmZTEyNDIyMDk1NzFhZjEwMTk5N2U2YmQ1ZDFlZjM1MDRiYzM5MzIwNGNhMjlkYzJjNGIzYzhmOTYxNjkwZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyNjg5NjViOWJlZDkwZDNlZTdhMzhmZWIyMmI5MzUyMTUxYzUxMTc0Y2Y3MGFmYmVkMmEwM2MyM2ZjNGNmMjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZjMWZhMTlhZDQ3ODhmNzM4NWE4OGU1ZWExOGFlMjBiMmI1ZTM2NzcyOTRkMzA4NjA4NDQ1MGFiNWM4ZTQ2MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyYjczNDRhYTU3YzBlZWI4MGI2OTc4YWEyYTJlODdhMDIxZWY3MGZjM2FjYjVlOWEwODRiNWY0MDY3MmMwMWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_129bee1de36d43e1966f42e71625abfc",
+      "statement": "durable mutation と local mutation は別の通知境界を持ち、local transaction 内の durable mutation は durable change に昇格する。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseConnection.kt",
+          "version": "repo-file-v1:sha256:4c72727fda8c3638141fb4f74c9c2dd07ceca1163bed0ab05fc516dcda7b0032"
+        },
+        {
+          "resource": "repo://docs/architecture/persistence.md#L37-L49",
+          "version": "repo-lines-v1:sha256:f21e1a1e1299fdefaedf9b401c6cea6b51c8e8ca99e6a7e4593c1c5128738950:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOWZhYmVjMmZmYzIzY2NmYTNlMDIxNDkyOTlmMDMwOWU5NGEzNDg3YjA2YmI0ODg2N2FlOTMzMzNkMWRhMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmNTllODkwYmYzZTliYjQ0NWM4MzE5ZjI2YzJlNWEwYTY0ZGYzMTlmNTI0NjRhNjM0MTRhMzIxOWVhZWZmMTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5OGZjOGE5YjA0NjQ5ZTc5MzczZTJkY2VmNzk4YTUzODU3MjkwMDI0NDlhYWI4ZWY4NzA3ODE3OTQ2NjYzNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmOGM5NmExNzlmODlmNGY4MTViMWFhY2Y1MDIzYTM1NzI4ZTI3ZDNiMjgzZWIwZGM2YWY4ZDExNGE0YzhkMjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d15088013d72476489da5d9bdb0ecab4",
+      "statement": "自動 backup は persistence change 通知ではなく Backup Context のローカル時刻設定に基づいて WorkManager job を予約する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/persistence.md#L49-L84",
+          "version": "repo-lines-v1:sha256:8e8565c57be3c6f8115df8082daebcd559b78dc0a9c3258b7fa15eac60de794f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmNTllODkwYmYzZTliYjQ0NWM4MzE5ZjI2YzJlNWEwYTY0ZGYzMTlmNTI0NjRhNjM0MTRhMzIxOWVhZWZmMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NjQwZWUxYjE0YzhhOTc3YmQ3YzkwMDMxNDExMTk1OTZlNWNjMzc0ZDM0ZTEwM2E2YmZmMWQ1NzAxOWE3MWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAxZDlkYTRlZTg3MTUwODk1Y2EzYmIzN2Q5MjU1OTY2OTFmODM4MGFhOGJhOGQyMzZlOTA2YjAxZGViNWVkMzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMwN2IxZTJjYTA1ODNjYjI0ZTA1M2QzMGI4MTYxMGM2ZjgwMjhkZjZlMTAyMGRhNmMxMGQ2ZDEwOGY2NTE0MzcifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T11:54:35.312Z"
+  }
+}

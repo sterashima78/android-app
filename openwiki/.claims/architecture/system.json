@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:837f988ce49d0f7ffbd66d3fb499b9d8d9314c4fc55bc9a517f67da3f7c7f3b8",
+  "claims": [
+    {
+      "id": "claim_2dffa51f6f0f4b118f91581668d8c8a7",
+      "statement": "Mosaic は端末内に個人情報を集約し source 固有の意味を保ち閲覧・整理・AI 処理へ接続する Android アプリである。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L7-L29",
+          "version": "repo-lines-v1:sha256:e53e2547cbcd773ffbdbffaee5f23bc478462996b86a9f00c4594b4248c0c1ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzOTQ1NWY2ZWEzNWVlNTYzZWJlMzkzNjdjY2IyNDdhZDUxYjU5ZTU1ODYyMWU0ZjY1ZGZmM2I4NTc5NzZmNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YjJhYmRhZTAwMzg3YmJiODA1MmYwOWIyOGY5NGVmOWIxNGExMzMyZDhkMTI3ZjA4YzIxYzc2YTc2YjBiODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzYzg5NDc4NzIxNDg0ZjJkMjkwNzgyYTRiZDA2Mjc1MmM2YTU2ZWY1YWEyNTE2OTc0N2FiN2RhZTBmZjA2OWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0cf3e1ada7754c16a2fb1744b4a49661",
+      "statement": "app は executable shell、app:presentation は UI composition、app:composition は application-scope concrete dependency graph を担う。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L31-L75",
+          "version": "repo-lines-v1:sha256:624b83d218f80f5cbb6f3c81ec2297b0e1aa44803010d93be39677020d376737:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMzg5MWM5YmZjNGQwNjllMmY4YmJiNDdlZmZiNzgzODZkMWFjMjQ5MDQyZmQ3NWU0Y2IzZGE3ODMzMjgxMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlNTY5ZjEyYTUzMzZkN2IzYTcyMTlhOTE4ODM3MGIzODcyOWZlNjQwNTgwYmJiZGNkNzY5NmEyNzc5MWFmYzcifQ"
+        },
+        {
+          "resource": "repo://settings.gradle.kts#L18-L25",
+          "version": "repo-lines-v1:sha256:9030477542e5f077452c3e56944dd25e8cef17fe9d8d0761caa3bfa0530542a4:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWJhYTM3YTkwMDJlZWU4OGEzOTMxYjMxNDgwMjhmMzU4OTNiZmYzNWQxYzc1OTk4NjAyYzRlYTY0NTAxZjNmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDQ0ZTkxYzVmYjljNzBjMzcxZjFiZGZiZTVlMTVlNWU3NGIxMjFiZTllYjdjNTdiZGFlNWRkODVjNGJhNDJhMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjBlY2I5NWYyNDYzNjUzY2RiY2ZhMTBmNTdkZDFmYTNiYzMyYzIzZjBhZjAwOTBiN2IyMTg0ZWFlZjMxZTI0NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTUzNmUyYmM5MTE1NTYzODUyNzcxNDk3NTYzNGM3YTk3ZWZhZjJlZTUzMjRlNzE3MDQxNTQ0YmRiZmM0NGI0ZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ac134a13ce8147f9944d0cb1863eba69",
+      "statement": "Domain は Android/DB/HTTP concrete implementation に依存せず、core->feature、domain->ui/data、ui->concrete data の逆向き依存を作らない。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/principles.md",
+          "version": "repo-file-v1:sha256:618be1ae242bacc5c0342509d19c37f4951be5dd958619a2644cc81477619585"
+        },
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L372-L394",
+          "version": "repo-lines-v1:sha256:c682f315dc792092f7a18ae4cff9123fada5a52cc983ae4683fa113c212721ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzYjQ2NmM5Nzc5NmM1OWZkODRhMjUzZTA1N2MyZDk0ODVmNWFjMGRkYjU5ZjgyYmE5NWFiNDg2ODJkMGUzMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5OWFlZDAxNDZkZjM0Y2VmNjJjZGZhMzRkNTBkZDRmNmY1N2ZkOTc5MmQ5NTY5ZTA0MTRhMmUzMTYxMzg4NzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhNWM0NWI1NTRiOWM4OTg1MmM1NWM5YWM1MTFiOTZlOWE3YjEzNzY2YzdkNzE5ODhlN2NjMTQ2MzU2NWIwYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhZWVkZjJhOWYwOWM5Y2ZmNWY2NjFjZmI5YTBkMWMzZmNlYzg3YTI3ZDYzNjNjNWVjMDc3ZmM5OTY3NjIzZDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fba5f42ec67241fb82d269fd5566d27a",
+      "statement": "Calendar は Task / Workout の read model、Health は Health Connect の read model であり、Workout から Health Connect への export は一方向である。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/context-map.md",
+          "version": "repo-file-v1:sha256:677d07aa3637e718c2d22ff26e1a3f41c894cb14e1e4b28b1b05053ccc7411d2"
+        },
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L230-L261",
+          "version": "repo-lines-v1:sha256:6327b8272533767ab6142735df610d841666e133db91c51b58a28ab583d836e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjY1NWI2OWExMGIyYzA2OWFmNGE4YzQ4ZGFkNzk3Y2ZiMGNiNWJlM2M5NzdkNDI2MTQzZGRkNTJmZGU2M2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0YzY3NTBiODU4ZmI0NzE3ZDA4NDhjMWNiMDQ5OWNmMzUxNWU1YTA5YWNiYjMzZmU0OGM2MmM3NjA1NWJiMTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4MjczYzE2ZjYyMDcxYjM2ZTQ5Y2M4Zjc2YmZjNzg4MDE3NzNmYTEwMTI5OTFlNWVjYTg2NmY3NTE3ZGNmNjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f9e3555a5de4caaba660a2aee1f0631",
+      "statement": "Gradle project 名は YomitoriRss で、Android applicationId は dev.terashima.yomitorirss を維持している。",
+      "evidence": [
+        {
+          "resource": "repo://app/build.gradle.kts#L43-L55",
+          "version": "repo-lines-v1:sha256:e6e74d84914bf8590a433b824709d5bcc077683206e39bbac86c32b5793e615b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjMDJjMzM3NTQzN2EyZmE0NGIxYmZhMDlmNjU0YWEyMmMzYjUzYTZmYmUzZTY1YjU5YjNlNDM1MTZlOWYyZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZTA5M2QwN2NiMzYwYjU5MTQ2YmU1NDYxM2U4YzliY2Q0YmFlMjYxMzNlNWM2Y2UwNDNhNzJhNzgxOTMyYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3YTY0MjY3ZGJjNDZjNjVlMGQwZjVmOTEyZGU0ZjljYWU3MzIwMDY0OTI3OTYzNTc5OTI2ZmM1ZmU4ZDUwOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5NDM5ZTc1YjRjOGY5OTQ3OTIxZGI5YmNkNGY4M2YwYjUyZDI4NWYxMGUxYjRlOWJlMGJhNmNiMmZhZDc0ZGIifQ"
+        },
+        {
+          "resource": "repo://settings.gradle.kts#L18-L20",
+          "version": "repo-lines-v1:sha256:bf894c5223095d5cf2273f77163e6b0734f50cf172d12e271785ed15d8c9b35c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWJhYTM3YTkwMDJlZWU4OGEzOTMxYjMxNDgwMjhmMzU4OTNiZmYzNWQxYzc1OTk4NjAyYzRlYTY0NTAxZjNmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGU1OTY4YWRkNTAzMWJkZDdhMTg0ZDdhMDc1MzVkYmVlMjYzOWIxZWMxYTQyNWRhZWZmNTFiYTc2NzY1NTA1NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjBlY2I5NWYyNDYzNjUzY2RiY2ZhMTBmNTdkZDFmYTNiYzMyYzIzZjBhZjAwOTBiN2IyMTg0ZWFlZjMxZTI0NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGZlODI5ZGZhNWZiMzAwOWE3MmQ0MDcyZDM4MWI1NDU4ZmY3MjU4ODNkNjdiZmUyYTIwNWYyYjc1ZDZjYWRmZSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T11:54:35.312Z"
+  }
+}

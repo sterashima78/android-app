@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b00f059a6eb7a58c51daf67e4a5daeeffef0f4fc1b2a8bbfd24c78918f7dffbd",
+  "claims": [
+    {
+      "id": "claim_8060b2b2b7d44d869a360921531f3b19",
+      "statement": "テストは守る contract の owner に合わせ、Domain rule は JVM unit test、UseCase は fake port test、DB は contract/integration、ownership は architecture verification を使う。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/testing.md#L5-L37",
+          "version": "repo-lines-v1:sha256:015958a8b6976fa8bdd5400b3f0c8377279dcdd136ca365ffaae86645383e265:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmNjFjYWQ1MGYyY2I5MDUxZDgyMTViYmNhZjhmMzEyMDZkZWNhMzJjZmY1OTIxYjZiNzJkNDFiYTA0YTdkNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1MTNjZjI5NjU0YTIzM2NmNGQ3MWJiZmRjMzE1MWExNDhlYWI2ODM2MDA0ZGZjNTQyNmRjMTZlOTU3NjA4ZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA5MjZkZWFjMzc5NzMyNzU5MzFhODdjMjUxM2IzNjE2ZWUyNmI3YWY0NmVkNWMzN2EyODZjM2E2ZjkxZjY2MjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0bbeab5c97e14c8f860086709a64fb4a",
+      "statement": "MoveBookmarkToLibraryUseCaseTest は Library 追加後の Bookmark 解除順序と追加失敗時に Bookmark を残す contract を検証する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/bookmark/MoveBookmarkToLibraryUseCaseTest.kt#L12-L40",
+          "version": "repo-lines-v1:sha256:363b0534302ccbf3a9857c8175378b902fb1b0ea552463d7648e0ce0a3cab311:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwNmYxODlmODcyMDEyZDA3NTQ4NmVhZWQ4YWNjOTI1NmY5M2RhMTc4MmIwZTFmODk0YjEzMmE0OGY5MTdhMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlNTg0ODgyZGRkYmRmY2IxM2UzMTI5YThmNjkzNWViYzYyYjZjZWQ1OTc2ZTUwM2FmYzZjODJkZjQzYWY4ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4OTIwODBhMTc3YmYzNzhhOGQ0YjhkZTdiNDI5MGNjYTU2YmIyZDMwOGQ5NjExZDkyNjE5ZTFlYmQ5NDA0MTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjYmU1MzVmZmZkMzM4NWI1NmI2ZmNhMzZjNDRjZjhkMTg0NWI4Yjc3ZjUwYzQxNjhkNjE5NjBkYWMwYTMyYTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_312ca652483b44daa9f0919b60f42634",
+      "statement": "Quint は状態・順序、Alloy は構造・関係の検査可能な projection で、自然言語仕様全体の置き換えではない。",
+      "evidence": [
+        {
+          "resource": "repo://docs/formal-modeling.md#L7-L44",
+          "version": "repo-lines-v1:sha256:ab159fd8d40177789b0ab75bde59e7a04e82cf5445d4694c32e3c5e29636f3df:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4YTVlNjQyMjQ4MjM3MDM3NzVhNTQ0NjcyYjNjMmUyNTZmNGIyZjQwYjUwZThlNDcwNzAxOGQxYjRhNzBjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwZjZlYTU0N2NhNGZmYmJjMDI5MTYwZDVkNDliOTMxNGExOWYwNTQ0OGVlMmQ0NzQ2NjMwMDliMjMxMTgwOTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1MTJkMjIwZjA3ZmYyYTI5NmU0ODdjYmE0NDI0ZmZmYzExYjVlYTVjNjdhNWI0NDMxYzAzNGEzYzFiNGFlMWMifQ"
+        },
+        {
+          "resource": "repo://spec-models/README.md#L1-L8",
+          "version": "repo-lines-v1:sha256:2c9bee1a29a2631c15ef1b957f9c11bfedb5d5c48f22ca3cba43ce9a988e82c6:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTY3MWJjZDZhOWFmNTU4MDA4ZGNlNzkwZTQ0ZmVmYTQwZWRkMDYxM2VlNTM3MWI4OWYzZWUxOWExMzZlZWI1ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDMxZTIzNDhkNWQ4YWY4YWQzN2U2YTMzYjg5ZWNmOTRiZmJkNmEzNzkwYTJlZDEzNzA2ZDhlZTAyOTgxODYzNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjcyNzc1NGM2Mzg0Mjc0OTA2ZDIxZDkzMGUxZDE4YzkxMzE5MTg5MmM1MmZkYWNiYTI0YjgwMWYxZjg5MTEyNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e00f47c05f484777bc3f7b0b962e70d5",
+      "statement": "PR CI は public_repository と Architecture/Test/Lint/R8 matrix を実行し Architecture job で形式仕様も検証する。",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/check.yml#L17-L98",
+          "version": "repo-lines-v1:sha256:870a698a11627b7b6fe497fde1a0ccbabe8a52134dc18d135cb965d95a73b7d2:eyJzZWxlY3RlZExpbmVDb3VudCI6ODIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MGY0NTA5NzE3MmEzZTE4ZDg2MDVjNDQ1NWUxMTQwMmU3MGNlZDY2MWQxMmIzNGVjZTVkYzE0N2RkM2YyMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5NWNiZTFiNDI2YzRmYjFhYmE1MjhhODg3OGNiNTliMGJlNGMzZGU3NTkxMTI5Yjg5ZTY5ZjRjOThjZjI5M2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVlNzUzODBmOGFhMzA5NWIwZmUyNTBjMjU5ZDlhNjI1OTI0MmFhMzFjYWRlOTZkMDVlMTdkYTlhZWNhMWYwMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhZjVkZWEyZDEyYmVjNTc2MDRmMTQzNmZiNTdhYWE4MjViMWE5ODI1ZDhjMWY0NzE5MjJkMjg4ZWIzNDRjYTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e07d4235f6b0455999cdb4cfdb4ded3e",
+      "statement": "公開内容 verifier は tracked file の path と高確度な secret pattern を検査する。",
+      "evidence": [
+        {
+          "resource": "repo://scripts/verify_public_repository.py#L85-L118",
+          "version": "repo-lines-v1:sha256:7ac3c000738bcc91b5c39afa616ec80fd2fdf50d41b7387532777464e60bcc1e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNjRlOTIwMDBhMTljYTM4NTkzYTRlNmEwYmFjNzcwOTZkMWU5ODY5NDlhM2I2MjgyNmI3Y2VhNGY3M2Q5ZTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiN2ZkMWM3NDYzZGFiOTlkNzIyMTM0ZTdlNjdiMDc0YjRmMDA0NDAzZWQzMWIwMGJiMmIxNzdjNmViN2E1ZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T11:54:35.312Z"
+  }
+}
