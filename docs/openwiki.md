@@ -49,6 +49,6 @@ openwiki visualize
 
 Wiki の Markdown、Claim、生成メタデータ、編集方針、Codex 連携を管理する。実行途中の状態はリポジトリの ignore 設定に従う。モデルの認証情報や個人の OpenWiki 設定をリポジトリへ追加しない。
 
-`openwiki/.run.json` はリポジトリの `.gitignore` で除外する。OpenWiki の初期化が生成する `.github/workflows/openwiki-update.yml` は、job の `if: ${{ false }}` によって実行を無効化した雛形として保持する。Codex からの更新には影響しない。定期実行を利用する場合は別途 provider・secret・CI のレビューを行い、明示的に有効化する。
+`openwiki/.run.json` はリポジトリの `.gitignore` で除外する。Wiki の更新は Codex 連携から行い、OpenWiki 用の GitHub Actions workflow は管理しない。初期化によって `.github/workflows/openwiki-update.yml` や定期更新を前提とする案内が生成された場合は、生成完了後に取り除く。
 
 この Wiki は開発用であり、アプリ内の Knowledge 機能がユーザーの資料から生成する Wiki とは別である。

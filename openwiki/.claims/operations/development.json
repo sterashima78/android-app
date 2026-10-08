@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f1e904436d294904ad5574e5cde4a80eead347ec7f9c0de742409228b1bda14c",
+  "pageVersion": "sha256:f9c20e8cbf448197ae846269f40569e648a4483226094982b88a3e0127463ca1",
   "claims": [
     {
       "id": "claim_abaf776ecf8e4dab8633b785eb221ac7",
@@ -62,27 +62,27 @@
       "evidence": [
         {
           "resource": "repo://docs/openwiki.md",
-          "version": "repo-file-v1:sha256:b9d895f3e29816599519f331e4532a132e617f3c817c84728112d3f86ed2d9d9"
+          "version": "repo-file-v1:sha256:3fc077d2aa80fb245874eacbc18f3c0597434793313286c1a02e511787e180b6"
         }
       ]
     },
     {
-      "id": "claim_b9f413a04c684d27972cc62f9c9d6fab",
-      "statement": "OpenWiki の定期更新 workflow は job の false 条件で実行を無効化してあり、通常は Codex 連携から更新する。",
+      "id": "claim_23f199a51c2c459396e17b9ac95c4bf3",
+      "statement": "リポジトリ Wiki の更新は Codex 連携から行い、OpenWiki 用の GitHub Actions workflow と定期更新を前提とする案内は生成完了後に取り除く。",
       "evidence": [
         {
-          "resource": "repo://.github/workflows/openwiki-update.yml#L12-L17",
-          "version": "repo-lines-v1:sha256:4678e53a6e6d66519d5a6870c7f1f8e2bdd924108fa598cc5e1859da31ca62d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTlkODAxNTRlZDQyZmM1Yzc3OWIxMzMxNTc4YjU4Yjg5YzgwMWVhY2U3NGYyNGNkNDhlYjRhMjM1Nzk0MGE5NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg5OTkxMTAzZjZiYTg4OGUzZGU3NjUxYzVhMzA1Yzc3ZTU1NDc2NzczYWJhODM5NTkxZWNjNWJkMGYyYWIxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTZmN2QzN2ZiMjk3Mzk5ZmVhMmE1Y2VmMWNjNDAyOGM4OTk3OWE5MDUwYTkyODU2ZjBkOTZlMWMxOGJhMTlhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2JlNDdmZWYyYmQ4Zjk5MTkxZGUzNDM3ZTI1Y2IxMzY4ZWU3ODUxZmRjOThkYzI3ZTFlYmQwZDM4ZmRkN2EwNyJ9"
+          "resource": "repo://AGENTS.md#L30-L32",
+          "version": "repo-lines-v1:sha256:3723ca1d70ee9ce4b4c3800612500922c7170546cc82f9141645087a1d72b53c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzQ4YjEzZjI1YjQ2OTMwMzgwYzQ2MDA4NGM2NTVmMTcwNWZhMGY3YmFiOWYzYjI2YjUyM2JiZmZkOTRhN2NmYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzBjOGMxNDM2NDkxMzMwZDgzNTg2ODQ1Mzg2ZGU0ODMwN2FiYmZmMmNjNTAwZDQzOWRjYWU4ZDQxOTMzNDFlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWJlYWUxZDU4MzI0NWYxNjhlYTE4YTM0NTVkN2E2MjBhZTRiMTBjYmJhMzc2MTg3ODAzZWNhNDE0YmQ5YzU4MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWIxYmM1YmM0YTIzN2Y1NzhlNmFmNGE0MTVkMDY0N2Y5OTEwYjAzYjM2NGUxZTI3YzFmMWRiYWE3NDNkMDNiYSJ9"
         },
         {
-          "resource": "repo://docs/openwiki.md",
-          "version": "repo-file-v1:sha256:b9d895f3e29816599519f331e4532a132e617f3c817c84728112d3f86ed2d9d9"
+          "resource": "repo://docs/openwiki.md#L50-L52",
+          "version": "repo-lines-v1:sha256:6c00e494ead138d0c76611f61c441b2b86246e3dd8f9766eedf2db0d0eb427ea:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZiNjgxZjk0YzY3MWI2MTcyMzM3NDVkMTQ3NDg5NmVmZTY3YmE2YmY3MzU3MzIzOWZiYWE0ODUyMjI0MTFkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjczNDIyZDI1ZTU3Yzc0NTA3YmM0ODZhNDc3MWFlYTE5N2RjNWNkM2UyOGI2NGU2NmVjZjA1NmI1MDRiY2FjYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhhNGNkZmVhZGQ3NTY3MmVlMjNlMmUyYjBmZWVjYTA1MzIzZjAxNGM4OGE3NjU4Y2NhMTNkNmNjZjg0OWI0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T12:04:16.240Z"
+    "at": "2026-10-08T13:10:52.576Z"
   }
 }

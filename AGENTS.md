@@ -29,7 +29,7 @@
 
 ## 開発用 Wiki の位置づけ
 
-`openwiki/` は現在のソースとテストへの案内として使い、上記の仕様・設計・開発手順の正本を置き換えない。運用は `docs/openwiki.md`、生成方針は `openwiki/INSTRUCTIONS.md` を参照する。初期化時に生成される定期更新 workflow は現在無効化してあり、通常は Codex 連携から更新する。
+`openwiki/` は現在のソースとテストへの案内として使い、上記の仕様・設計・開発手順の正本を置き換えない。運用は `docs/openwiki.md`、生成方針は `openwiki/INSTRUCTIONS.md` を参照する。更新は Codex 連携から行い、OpenWiki 用の GitHub Actions workflow は追加しない。生成ツールが workflow や定期更新を前提とする案内を再作成した場合は、生成完了後に取り除く。
 
 <!-- OPENWIKI:START -->
 
@@ -44,6 +44,6 @@ This repository has a generated `openwiki/` evidence index. It is optional just-
 - Treat source code and tests as authoritative. A brief's unknowns and review items are verification gaps, not automatic requirements.
 - Prefer the narrowest quiet validation that proves the changed behavior. Preserve complete failure output.
 
-The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+Update the repository wiki through the Codex OpenWiki integration. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
 
 <!-- OPENWIKI:END -->
