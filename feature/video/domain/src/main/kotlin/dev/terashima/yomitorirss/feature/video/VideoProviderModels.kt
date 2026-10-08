@@ -51,7 +51,9 @@ interface VideoProviderRepository {
 
   fun subscriptions(providerId: String? = null): List<VideoSubscription>
 
-  suspend fun subscribe(providerId: String, sourceUrl: String): VideoSubscription
+  suspend fun subscribe(providerId: String, sourceUrl: String, title: String? = null): VideoSubscription
+
+  fun updateSubscriptionTitle(subscriptionId: String, title: String)
 
   suspend fun unsubscribe(subscriptionId: String)
 
