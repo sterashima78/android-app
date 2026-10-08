@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9430604dbac21678cd78ebdd5b6afd94cfab4e3ad4c6d1edd819eca98973c58e",
+  "claims": [
+    {
+      "id": "claim_18840ad7d01f4489b07d39b4c63435c5",
+      "statement": "Calendar Data は TaskReader と WorkoutReader の現在状態を端末予定と統合し、開始値とタイトルでイベントを並べる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt#L24-L53",
+          "version": "repo-lines-v1:sha256:273237a3bc2f8184d258ec92b407371481a8fa5ba5bb88e4609f4e55b36298a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NGExYTI2OTM1NGNmNWE2NDdkZTc5YTc4MzUzYzBiM2I0MzI4MDMwM2EyNTNkODU3YjAzYzIwYzgwOWJlYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4NzJkNTQzODk2NTM3ZTBkNWUxNWQ2MGIzZjE2ZjU1NTM0YmM4NzY2ZGJhNDFmOTViYzMwNjgzMjE0ZjcyMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlOWZjYTQ0ODhkMTJiODU3MTYxNTMzNTFhYmQ1YmQ1NDU5MjU3MDI0NmE5ZGZiY2ZhYzZmMmQyNjczZThjMjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0c5c292dd373473981e0221d82a5a072",
+      "statement": "端末 Calendar Provider の query が SecurityException を送出すると端末 source は空一覧になり、アプリ内 source の投影は継続する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt#L147-L156",
+          "version": "repo-lines-v1:sha256:bceb3206b549219766bbd96e19fd3072f172dbffba4288e7b024fe743d443db8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MzcyYzJhOTM2N2YyNTFjYzRjMzRlNmM0YzUxZmZjN2E4ZDQ0MWEwZWM0Y2RmMjk0NGIzZjRiOTQ0Y2U2YzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyMTc4NTZmMDFlYWI3ODgzMjA4YmE3YmI4MGEyNzFjMTdjMTY4NmZmYmU4N2ExOTA1OWVhNDZjOWE0ZDE3MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyZDM5ZjU0MGZmNjYyZDQ2ZTU1ZTA3NjhlNWU2NjFhODk0Y2Q0NzVlMzFhN2IxYWMxN2M5M2ZhZDVhYjhhMzkifQ"
+        },
+        {
+          "resource": "repo://feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt#L37-L51",
+          "version": "repo-lines-v1:sha256:688436c39b006fcca256fb043652b449146f6b558ce1aec2675a82e9a1e9846d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3OGNiOWJkMmIyODMxMDhiN2Q2MGNmMjg1NTc2YzUxM2VkNWQ1YmE5ZDQxNzAxODE2NWU0M2JlMTRkNTQyOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2MjIwZDFjOTgyNmFiYTNiYzc2MTRjOWQ4MDMyZDY3MDU1M2ZhZmI1ZmE5ZWQyZmU0MzZhMGRlZDQ3YjgzYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5YTU3YzdhZjFhMjE2MWMyODllZGNhOWI1MDlhNWM1MmY2ZDIyNzAxNzU0YzU3YjIzNDRkNDZiOGNkOTIzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiNmJiMTU3NGI0MTYzYzlmN2Y2NGQ5ZmI5YWI1YmZiOTRjYjdkMjUwNTdlMjdhNDgwZDlmYWU2YTRlMGMxMjIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

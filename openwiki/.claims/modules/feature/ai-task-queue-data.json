@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4961688fc7cfb528a47ee5a2e1db0765991c49f7e12a7e7b52bf77226d6c3282",
+  "claims": [
+    {
+      "id": "claim_7fad57f0668949089c82a1f0d0871c31",
+      "statement": "AI task queue Dataはfeature Domainのadapterを合成し、ownerごとのtask一覧を共通モデルへ連結する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/data/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/data/CompositeAiTaskQueueRepository.kt#L18-L83",
+          "version": "repo-lines-v1:sha256:1df1ba8117df06f55139548aae5480b697877fd346a064b3e49ffe161c2648b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjZjU3MThiMWVkNjg5NzU0NzQ1OGU0ZmIxNmUwYTAwZGE2YjY3MTc0ZWVjZTZmOWYyZWM4OWY5YmM3YzM0YWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0OWZjNTU0MjBiYjE4MmQ2MmI1MDc4ZWU2OTU0M2UxZjEyNDcwNjMyMjBjMzRlN2UzMzBjYWM1ZGUzYjA5ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmZWI2NTdhMjRlNDhiOWIwN2YyZDQzZWQzNjdkMmEzMDhlYzI1NWM0NDY0MWM5OGQwYTczZWIwNGM5N2I2NTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2c3f1c9c4a38445e86643da0c5855b28",
+      "statement": "統合local pauseのowner連携が失敗した場合は状態の補償を試み、例外を呼び出し側へ返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/data/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/data/CompositeAiTaskQueueRepository.kt#L93-L119",
+          "version": "repo-lines-v1:sha256:f549014d30ea7fef465b178a6efc2124dea04b8c5d34b06c66fd3dd93635f573:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiM2ExYTdlMDczMmU3NTU0Yzk1NWU3OWE0MzA4NDcwYjIzNWFmMDAzZTAxNzg1YWM2NzA2MzYzOWE5YWJjZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0ODNiYzg5ZWQyNjg4Mzk1ZWI5M2UwY2RmOTYyZTAxMWIyYTQ4NGQ4M2UwODJiNzJkYjRkYzY0YzZlYTNhNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkOTdmZmEwN2I3MDkxYzkxODdkZWI0MTAyY2JhMmNkOTIzZWI1MGI2ODA0OTQ3NzExN2Q5NzFjOGJjYTE5ZGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b7f349c8d6046edb1f5b873d3b58211",
+      "statement": "統合cloud pauseはlocal Library処理を止めず、個別に停止したLibraryはglobal解除による再開対象にしない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/data/src/test/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/data/CompositeAiTaskQueueRepositoryTest.kt#L103-L142",
+          "version": "repo-lines-v1:sha256:0cdc3f48541aaf89e3eb276bd5224d4afa6bfd4f8086ae7b09ea2e1139e8b104:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1YWMzYzgyZTUzNmFhZjg5OWVkOWNkMGFhMTAzNGVhNWY1ZDk5MGRlMzU2YjgwYjA1MTM4MjQzMWY0OGI4YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ2ZWMwOTMyZmM2N2JlMTM4ZGY1NmJjNzQxMzU1MDQ0ODlmZWFkZTE2ZTU3N2EwODQ5NDM0NTk1ZGRjNDA5MjIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

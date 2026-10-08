@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8ccddaa6942f9eb1f55c58238deb95c14175bde269410c0e34187724d7837c9a",
+  "claims": [
+    {
+      "id": "claim_d48305655cb24e958dfab44a1f517211",
+      "statement": "Asset UI は operation の失敗時に message と loading state を更新する。成功後の変更 callback と overview 再取得は runCatching の外で、そこでの例外は同じ onFailure に入らない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt#L107-L120",
+          "version": "repo-lines-v1:sha256:889da865be9ea89cfa76f4f86e886bd41fb0c1cdc96a7329541b5a8e36824278:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlMjQ3ZjA3Mzk0ZDZjNTI4NmYwZTE4NWE4YjkwNDdmMmRiZGQ0MmZjMTJiYzc2NGNlMGIzMjQyMThmNjU5NWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzOTJjMjdiNjBkODZhMjFmZGFlNjZlZGJkMDFlNzVhZTFlYzViNDA1YjMwZmFiMjEwNDc5MTJmOGY4NWZmZTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4472e94e9f78491bb03d4f88bc05912f",
+      "statement": "Asset UI のカテゴリ grouping は登録カテゴリと設定に現れるカテゴリを合わせ、項目なしのカテゴリも空 group として保持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt#L509-L520",
+          "version": "repo-lines-v1:sha256:2943a553f24c3447717abe5334802332557234846a21581c93d4cc93973f2c6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyYTY1ZDhiZDVlMzU4ZTMxZGY5M2IzNTQwZjhlMDc0YjlkMjZmNTBjNjQxZWM5ZmYzZDRjMWU0ZWI4ZDg1OTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjNDg3YjQ0YjM3MjcyMzA4MGJhMWEwNjljOGY4MjNlMzA0MGQwZTBjMjEzNDE3MmVjMjkyZjMwMDFmM2RhYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2Y2YyYmMyYmYyYmZlODUxZTQxNGU2MzlmMTY1MjRkYTYyNTE3ZTdjNTAzYmFmNjExZTcyMTRhYzdhNWZlOWEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

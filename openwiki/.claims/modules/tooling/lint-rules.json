@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:1a55dc655f167a6ad4525c290c7840a735e7f3c837ae1f87603f8f708a16a7ba",
+  "claims": [
+    {
+      "id": "claim_b6c574da80f1414f8e9930e756a68374",
+      "statement": "detector は MainActivity.kt の import だけを走査し feature ViewModel と concrete feature Data を ERROR issue として拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://lint-rules/src/main/kotlin/dev/terashima/yomitorirss/lint/MainActivityFeatureBoundaryDetector.kt#L15-L69",
+          "version": "repo-lines-v1:sha256:668f30d187423223b0b8f9a0ac624177ddbb0c10774469d462b746efeee85192:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNTEyNTJiNjNmZDI5MTY4ZWMzNmVkNDMyZTExZGFkYWE0NTU2NzgwZTI2NTk1N2JhNmJiMGJmZDUwNWRkZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwODcyN2IxZjNlMjVlOTljOGI2OTc0NDYxZDRlNjRlNjZhYmY1ZTA4ODE3YjEwN2M3YWUwOWExMGYyZjYyNmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_00212929271e4e6a88a804f1bb6c4baf",
+      "statement": "lint tests は alias import の拒否、app shell ViewModel の許可、別 Activity の除外を検証する。",
+      "evidence": [
+        {
+          "resource": "repo://lint-rules/src/test/kotlin/dev/terashima/yomitorirss/lint/MainActivityFeatureBoundaryDetectorTest.kt#L31-L92",
+          "version": "repo-lines-v1:sha256:52268c7e4207a98391a5bf810831c18d26e55a4877ee073dca1bfaae1529a37f:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0YzljMjMzNTg4OTEzYzI2MTAxZWFmZjYyZTY4ZmMzOGE2YzM4MjgwZDVmOWJhMTgwZmRmNWE0YmFkODI3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiM2VhMGQwOGExYmQyOGMxZjkxZWI0NmNiMjg2MDkzMjljYjNjMWU4MmEzNWM0YWQ1N2I1YzQ5NTc0YjUyZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0MGJjNWZjZmM4NzM3NWE1MDY3ZGRhNzk3MDViOTVkYjVjMTc2ZjQ0ZmNhZWQ2YmM2MTI2NDVjNWUwMmU2NTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjYjhmNTI1OWJkZGIzZmRhMGJmZGRiN2JmYzIwMmVmZDA0ZDI4ZDdlMTliNmZkODA1YzE0ZjdjMzU2YWQ3ZWQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

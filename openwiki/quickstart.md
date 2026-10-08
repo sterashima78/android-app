@@ -2,16 +2,21 @@
 type: guide
 title: Mosaic Wiki の使い方
 description: 目的別に仕様・設計・実装・テストへ進む、日本語のリポジトリ Wiki の入口。
-tags: [quickstart, navigation, mosaic]
+tags:
+  - quickstart
+  - navigation
+  - mosaic
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-08T13:53:53.288Z
 sources:
   - id: openwiki-source-8037e2358a2c4f9b2c722a11
     resource: repo://AGENTS.md
   - id: openwiki-source-16b97cbfa50dd2e922fba80e
     resource: repo://docs/openwiki.md
-generated: { by: "codex", at: "2026-10-08T11:54:35.312Z" }
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-08T13:10:52.576Z
+  - id: openwiki-source-e620d7484b72a53c7fa812cd
+    resource: repo://settings.gradle.kts
+generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 ---
 
 # Mosaic Wiki の使い方
@@ -35,6 +40,19 @@ Wiki は正本を置き換えない。重要な判断では各ページの sourc
 | Audio・Podcast・Video・SMB | [媒体連携](integrations/media.md) | playback、source adapter、Library capability |
 | どの検証を実行するか | [契約と検証の選び方](testing/contracts.md) | focused test、PR CI、形式仕様 |
 | 開発手順・build・Wiki の更新 | [開発・ビルド・Wiki 更新](operations/development.md) | Development Workflow、build workflow |
+
+## モジュールごとの詳細
+
+[モジュール別の索引](modules/index.md) から、Gradle に登録された全87モジュールの説明へ進める。feature の Domain / Data / UI はそれぞれ独立したページであり、責務、入口と処理の流れ、状態・失敗時の扱い、依存境界、関連する実装とテストを確認できる。
+
+| 対象 | 入口 |
+| --- | --- |
+| executable shell・composition・presentation | [Application](modules/application/index.md) |
+| 各機能の Domain / Data / UI | [Feature](modules/feature/index.md) |
+| DB・HTTP・AI・Web collector・design system・background | [Core](modules/core/index.md) |
+| アーキテクチャ検証用 lint rules | [Tooling](modules/tooling/index.md) |
+
+機能をまたぐ流れは上の目的別の入口で確認し、個別 module の実装詳細へ移る。module 一覧の正本は [settings.gradle.kts](../settings.gradle.kts)、構造と ownership の読み方は [Module Map](../docs/architecture/module-map.md) を参照する。
 
 ## この Wiki の更新と閲覧
 

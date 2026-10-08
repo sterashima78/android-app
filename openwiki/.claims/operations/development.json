@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f9c20e8cbf448197ae846269f40569e648a4483226094982b88a3e0127463ca1",
+  "pageVersion": "sha256:e6591c0ed99afc849c73ebbbc03e7c9e78b430ac8de23245c86c865a5896eab5",
   "claims": [
     {
       "id": "claim_abaf776ecf8e4dab8633b785eb221ac7",
@@ -62,7 +62,7 @@
       "evidence": [
         {
           "resource": "repo://docs/openwiki.md",
-          "version": "repo-file-v1:sha256:3fc077d2aa80fb245874eacbc18f3c0597434793313286c1a02e511787e180b6"
+          "version": "repo-file-v1:sha256:8ecca0362cd115aa2e417d2c8779d20b920beb96493804476da9105744181c5b"
         }
       ]
     },
@@ -75,7 +75,7 @@
           "version": "repo-lines-v1:sha256:3723ca1d70ee9ce4b4c3800612500922c7170546cc82f9141645087a1d72b53c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzQ4YjEzZjI1YjQ2OTMwMzgwYzQ2MDA4NGM2NTVmMTcwNWZhMGY3YmFiOWYzYjI2YjUyM2JiZmZkOTRhN2NmYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzBjOGMxNDM2NDkxMzMwZDgzNTg2ODQ1Mzg2ZGU0ODMwN2FiYmZmMmNjNTAwZDQzOWRjYWU4ZDQxOTMzNDFlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWJlYWUxZDU4MzI0NWYxNjhlYTE4YTM0NTVkN2E2MjBhZTRiMTBjYmJhMzc2MTg3ODAzZWNhNDE0YmQ5YzU4MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWIxYmM1YmM0YTIzN2Y1NzhlNmFmNGE0MTVkMDY0N2Y5OTEwYjAzYjM2NGUxZTI3YzFmMWRiYWE3NDNkMDNiYSJ9"
         },
         {
-          "resource": "repo://docs/openwiki.md#L50-L52",
+          "resource": "repo://docs/openwiki.md#L52-L54",
           "version": "repo-lines-v1:sha256:6c00e494ead138d0c76611f61c441b2b86246e3dd8f9766eedf2db0d0eb427ea:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZiNjgxZjk0YzY3MWI2MTcyMzM3NDVkMTQ3NDg5NmVmZTY3YmE2YmY3MzU3MzIzOWZiYWE0ODUyMjI0MTFkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjczNDIyZDI1ZTU3Yzc0NTA3YmM0ODZhNDc3MWFlYTE5N2RjNWNkM2UyOGI2NGU2NmVjZjA1NmI1MDRiY2FjYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhhNGNkZmVhZGQ3NTY3MmVlMjNlMmUyYjBmZWVjYTA1MzIzZjAxNGM4OGE3NjU4Y2NhMTNkNmNjZjg0OWI0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
@@ -83,6 +83,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:10:52.576Z"
+    "at": "2026-10-08T13:53:53.288Z"
   }
 }

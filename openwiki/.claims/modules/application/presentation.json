@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:cee86bbbe02edc69bc83f1916f6808d032934e69fffddb3d672ae315df282e6a",
+  "claims": [
+    {
+      "id": "claim_0552dfba439f46fc8790f09dd61249ce",
+      "statement": "root back は drawer open を終了として優先し、そうでなければ履歴を pop、root では drawer を開く。",
+      "evidence": [
+        {
+          "resource": "repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/RootBackAction.kt#L9-L16",
+          "version": "repo-lines-v1:sha256:71af377a7eec5ac15465647f537e2e0f9e1b2bada198d79647d80c87d8449403:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTJhZTgwYzNlMGQ0NTA1MGVkODA5NWM3YTAzMzMwYzNlYjBjZWVkNmIxOTM1OGVlMzAwODdlYmVlZTI2ZTcxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY3NzRhOTJiODhlMmI0ZTY2NzAwMThjMDY5MzMwOWJiMzc5N2Y4OTIzNGUxMzVlMjIwOTIxOWE5OTQwMjEwNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0e8c90feba9c4688bf0244c9865968d7",
+      "statement": "presentation boundary verification は実行 app / feature Data 依存と DB / WorkManager import、root の feature state collection を拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://app/presentation/build.gradle.kts#L38-L125",
+          "version": "repo-lines-v1:sha256:9dee5a1f253dca7cfb70d3de1e79f41bf3c6f26e1c8573c8f738d1c9ec948fb9:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MGI2YTU1YTYwM2Y3NGU1NjhmYmQyMzQ3YzJhYTFkMzY0YzRmM2Q4NTc3NWVmZDM4YWZjNzkwODdjN2FlZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkM2NkNDUyMzlmNWY2MmRjNGI2Mzg2ZWFhODlkMTI2ZTYxNjQyZGRhODA3Yzk0OGQ4ODU2NzUwYzhmYjBlMGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0NzA2OThiODJhYjE4MzEzNzhiMWQ3ODAxYTQzNmM5ZDA5MmY1YmQxZGQ1ZDFjM2RmZjg1ZDgyNzkzMWU3MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiNTcwZDIwZjQzY2JjZGU3OTRmZjk4YjdjY2Y2YzczMzM0YjYzY2U0OWQ0YTE3MGEyMjhlMGI1NzBhOTk5YjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b54ef195fe434123bcca4da5f5aa9a51",
+      "statement": "YomitoriApp は navigation request を Flow から収集し top-level route と Web server dialog callback へ接続する。",
+      "evidence": [
+        {
+          "resource": "repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/YomitoriApp.kt#L40-L74",
+          "version": "repo-lines-v1:sha256:716e129a90341b36d84c8837b3ac116aa01740aa1af9f5357c97576339506baf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3ZmRhMmNiOWVkMTVhODAzZTk1MTM5ZTJjY2M0MjM3MmZiZTBmM2VhY2RkODU2MzFiYzA4ZjgxNGYxMzJhMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllMGI5YWY1ZTFhMzVmNDdkYTBlNzcxYjkzMmEzMDMwYTlmMzIxNjZhYjY0MGFiYzYyNzFiODRmMGFiNzRkODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYzU0MjA2YTBlMjRlY2QwYWI3ZDVjNTcwNjU2YTQyMmIxZDUzZDdkZjgxMWRhYThmMDRiNjk1MzZmYjk4MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

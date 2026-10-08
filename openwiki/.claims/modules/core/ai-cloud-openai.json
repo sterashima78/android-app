@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9e0fc21f53ee9e6372caa59cc4173434a938cce1e3e6bd2bbaafbb194b569f55",
+  "claims": [
+    {
+      "id": "claim_354a7fc219094f878d7bd6f50ff6b5e6",
+      "statement": "credential は Android Keystore の AES key による AES/GCM 暗号文と IV を private preferences に保存し、復号失敗時は null を返す。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/AndroidChatGptCredentialStore.kt#L25-L85",
+          "version": "repo-lines-v1:sha256:9cbc632101a3d56754ed43d62d74382466a42c34c413be305682bd7f796e2d65:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NTdlODNlMTFiMjMxZGM5ODM2ZWU4ZDk3ZTUwYTU3N2VhYTI1NzU1YzM4ZDYyNmYxYTQ4ZDk1N2VjYTcxNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4ZWU1NjRmODkzMjVkYWU1MGY2MTc5MDZhYzgxOGQ3ZTU1ZTk5YzhhMjA3YjVkYzhlOWMwMThiZjU2NzA1OWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2YjUyODAzYTNmOGMyOTY3ZTZmZDM5ZDk4ZTA1YjdjMGRlMjFhOTI3NjFiMGJmZjI1NmVmNDQ4MmQ3MGYwYTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bd9566e27d5f4b929890ccaa6273e451",
+      "statement": "provider-facing client は cancellation を保ち、IOException を一時障害へ、HTTP status を認証・rate limit・一時障害などへ正規化する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptInferenceClient.kt#L55-L127",
+          "version": "repo-lines-v1:sha256:27a7ab25f8c964ff093e34eaf8c1f5669afb568618c19c592b646e075d41941c:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2ZjYyY2U0OWRhOWFiYmZmN2RiMzQ3NDhkMTg5MDY2MTdjZmYwZTAwNjRkNTU1N2I5MDZhNTc1MDczYzdmYjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjMzZkNGZmYmVlNWRmNWM2NDJmZDdhZTVkNTQwNjExNDhkZjNlNjZmYzUwMDE1Mjk2YzM3YTgxOTczOGQ0NDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjOGFjMDFiYzNmZjM3NmVmMDY3OTRjYjNmODQwMzZmMTAzMTIwNjc5OTA3YWVlOTViYzdmYjQxMjBhOTMzNmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3e5b899c22fe46b7ad10f2cbc9393d44",
+      "statement": "自由文生成は 401 応答後に credential を強制 refresh し一度再送する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptOpenAiClient.kt#L202-L214",
+          "version": "repo-lines-v1:sha256:26647f827a92c8f7dc4c349bdf6f1bbb20529f97dcb558491a78f15b2d0be990:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxOTk1NWQ3ZTcxMGQ2ZGExMWI3OTY4MTExNDVlMzlmZmQ2YmJlNTIzMGYwMzJlMGM2ZWRjYWFjMzA1Y2QzM2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MGU5NzRjZWE0ZGU5MjlhN2NhODc2YjE2NzU2ZmZjYTUxODY2MzNhMWM1NjViOTBjZWI5YWQyYjkwZDUxYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1MmU4ODRmOTFlYzBmMjhlMzlhMTEyNWE5MzUxZDNjZjliYjMyYzM5MTI3MDBjZTAwMTAyMTk0MTE2MWU5ZDYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

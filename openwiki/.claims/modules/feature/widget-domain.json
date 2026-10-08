@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:28f4953bce132351dca996c82a58e93748aa24f281b52323eed671e34fc65cbd",
+  "claims": [
+    {
+      "id": "claim_bc671f340ff1492da8bccc4c632bec1b",
+      "statement": "Widget契約は表示用記事投影と未読一覧・既読・あとで読む・feed更新を提供する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/WidgetRepository.kt#L2-L19",
+          "version": "repo-lines-v1:sha256:47b9d38cacfebd991c1d778c623cac5d6d25e1d9eaad3e4e2e84ed9b8a48ec6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlYjk5YjIyYjczODg1MmY5YjJjNjQ2NTFlNDJmNGVlZWI0MGU1MGU4MTUyM2FlNjgyZTExZTE4M2I4ZTZiNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoxLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU4ODUyZjIwMzM0MjliMWZkNGIxNjVjNGNhZjgzMDdkNzYxYjg1NjI4MTU5YzYxZGE0OWJiOTMxMGJhMDc1YjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e60b4651ffb04d5d82157c468725a8f6",
+      "statement": "Widget framework境界は更新enqueue能力をproviderで取得し、起動actionは別のlaunch contractで共有する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/WidgetLaunchContract.kt#L3-L8",
+          "version": "repo-lines-v1:sha256:320ade4816f6b66d413ff8e788f59dfcebffca116d9ca8ef6ff841f4025778fe:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjAwYjMzZjdmZDFhMzAxM2IyNjdiYzllZTdkNDgzOTY3MTY4NDJlZGQ1MzQ1YTBiZmE5OWRjN2U3ODJlMzc3MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTc0OTUyNDA5YmIwNWQxZTM5YmU0MDA1MTkxYzFjYmM5NmU5ZmUyOTI4ZjJmN2FlNzNjYzRjMTRmNTI4NDFmYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://feature/widget/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/WidgetRefreshScheduler.kt#L3-L10",
+          "version": "repo-lines-v1:sha256:a3cca0a5e0e4b338d2b30b27c8cdb6230bd2fd5f03c9daf065d1ca176d3d88eb:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTUxNjhlZDUyZWU1MDYyMDA1ZjQ1NTVhMzk0ZWYwN2Q4Njk5OTU2NGIxNWEwYzA4Y2YyNjRiNDhjZDNhMjRiNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTc0OTUyNDA5YmIwNWQxZTM5YmU0MDA1MTkxYzFjYmM5NmU5ZmUyOTI4ZjJmN2FlNzNjYzRjMTRmNTI4NDFmYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T14:01:52.039Z"
+  }
+}

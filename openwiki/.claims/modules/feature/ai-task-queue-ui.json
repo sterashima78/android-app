@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a6c885e5fe247b070bc3319f488feec4037a58209c76e7d17e6159431b69caf8",
+  "claims": [
+    {
+      "id": "claim_90a63a165a1b4f55ad2fd529eafa0752",
+      "statement": "AI queue UIの監視は初回reloadとkickの後にpollingし、stopObservingで監視jobだけを取り消す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt#L33-L49",
+          "version": "repo-lines-v1:sha256:e48c9a22d4d9fc6fc1df96efc9289b2a4e731dd7d5ed4f22f721e3773f8dd90e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjc5NDExMTVmMjM4ZDczMDgzMDgyNjE5ZGUyMzE2MTVjNDg2NzQwODBiYWQ4Y2FlYTc3YmI5ZWI5YjFmYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwOTljM2E2NjJlN2QyZTY4ZWY0NzA0ZjRiNTg3MzdiYmRjN2NjYTU0N2JhZDQwMWI3OGY5NTgyYjcxODk4MjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxNTAwZjVkZjg3YWQ1MDdmYjc4NjYwNjllMWQwYTViZTUxZTIwZWZhYzNjOTU2N2JkNmY2NzcwODdkOGVhYTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_af594ae2e1af4c98a533d134a75fc744",
+      "statement": "AI queue UIはcompletedを表示から除外し、状態とpriorityで並べる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt#L159-L185",
+          "version": "repo-lines-v1:sha256:4644254aea9dcc704be072bc57a6c97a69884e791852d21402ca79a80d776b0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwMmY1MjNlMzk5OTM0YWZjYzY1MGQwNjA0OGEzM2U4NmFlMDE4YjAxYWUyMTYzNTkzMmVkODlkZTA3ZWRjYTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3MDhlZWYwNjBmZDdhNjJjOTcxM2U5YTY0MWU2NWQ2OTU1Y2Y2NjUxZjQzNTA3YjM3ODUzNWJiMmExNzAyZWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_22ae2fb76b25429a9a4b78e32ec41ead",
+      "statement": "AI queue個別操作のBooleanがfalseなら状態変更で操作できなかったと通知し、その後一覧を再取得する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt#L89-L101",
+          "version": "repo-lines-v1:sha256:3f443137822149baa80e28653cb16a1ebd3863b8fdbbe073b826cbe6282faa25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNzI4MzRiNGEwZWZlN2MzMTU1MzI1NjQ1NzU0NTkxMzczMzM1MmI1OGExZTIzOGIyOWFjNWUwYTYxYzRiOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmYzBhM2NjNGE3MjczMTM2MjcwNTFlNDEyMDFmYzBjNWQwMGYwNThiY2ZkODFmZmMzMjJlNzdiZTA1NTgzNDcifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

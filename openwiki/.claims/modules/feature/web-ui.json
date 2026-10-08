@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:94df4ce2810617d41ababa82e8754b94023a3b733b9da00f337de4a051a81e6c",
+  "claims": [
+    {
+      "id": "claim_d1e158a9e9bc42a4aec355b0667da16d",
+      "statement": "Web dialogはstateとcallbackを受け取り、開始・停止・閉じるを別操作として提供する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/web/WebServerDialog.kt#L17-L22",
+          "version": "repo-lines-v1:sha256:517508075cda26ac4e033f56d204cb332cf8a1c9f53c29b73b0870152615da2f:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDAyNjA1MDQxNzZlMGE4YzQ1NjcyZTk5MjA4YjM2MzNkYjRmZWE3NzQ1ODBlYThiMzVkMGIzZTQxMzdkOGNkYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2YxNjNmNzc4NmM0MmNhODg5MjcwZjc1M2E3ODA2MjY0MjZjMDNmOTczYTA1YWRlYWVkZDRmYTRkMjcwZjBkNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE1NGFlNjQwNTFmMTRmNDRkMTNkM2VlYzkyYTAzYWU3YjNhZmY1NjhmYTRlNTk0ODQ1ZDA1NWE0MjAzZDc1OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGY1N2M5YTU1YmU0MzE5YWViN2FlMWRmNTdjN2FhOWZkMGM4ZGVjMmQ2YWVlNDM4Yjg4OTAzNTQyM2UxMmU3MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_187da9238ae340978d3606f5a080a1b8",
+      "statement": "Web dialogは起動中でaccessUrlがない場合をnetwork待ちとして表示し、URLがある場合は初回URLとHTTPの説明を表示する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/web/WebServerDialog.kt#L28-L64",
+          "version": "repo-lines-v1:sha256:24023d59a60ae9558baa3e1392a563123692685ee0c31ee3e5215e581e3ce20b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmOTc1YzcwNzFhMTg0ZGRlMTA5MmJiOGQ3ZTEzMmU2YjU1MDE4MzU1MThmZWQ4MDE5NWI2NTU1MzA5NzIwZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwNjhhYTMzZGE3NTRkMzFiMjk4ODEzMzdhZjcwMGNiYzgxMWEyZDM1NDZiMTViZjQyYTc1ZmY1NzY3YTBhZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAzMDM4MjRjZmViZTNlYTJlNWYzMTNmNmMwYmVlZjc0MmE4MWMxNmE3OGE2ZmIwMjEyMjlkNjgxMDlmN2E5N2EifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

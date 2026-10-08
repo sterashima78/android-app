@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:94a1da396cc57cc6e46f8ad30c98d74026440a7e138d9c0b01b7175a385fca91",
+  "claims": [
+    {
+      "id": "claim_7898c9646b3d4fa599e41dc5341083ee",
+      "statement": "LAN Web gatewayは記事・feed一覧の読み取りのみを提供し、記事変更APIを持たない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/web/LanWebContentGateway.kt#L3-L11",
+          "version": "repo-lines-v1:sha256:94885e0f2659e9364c4e73993ba54e06b2041156b95455be131a7e7a95ca29f0:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTJkNmI2MWM1YzYwMGEwYzk0MzcwZTQxMjFiOWM5ZDg3YTliYTRlNWEyNzA1NDE5OTBlMDQ4Yjk0MTkyMDk1ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2I5ZDEwNmQzOWE4N2Y4ODM1N2JlMWIxYThmZjhlNjYyYzhjYzk1Y2FiNDYyMTc4Y2VmMzkxMDI0YmRiZDU2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTk4M2JjZjEwNGNmNGQzZjA5M2FjYTY2MDEyMmRiZjY4OGE5YmU2NTE2ZGUxZWUxMjM5OGJjZTkzNTJmZTM1YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d15d4a106424495db87451779a77c3b0",
+      "statement": "LAN Web controllerは開始・停止とStateFlowを公開し、runningとaddress/accessUrlの有無を独立して表現する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/web/LanWebServerController.kt#L5-L19",
+          "version": "repo-lines-v1:sha256:5b0c2c679cb66e1ecaf26bfa6df86a8844fd14fb6cbfaf5028e4a9a031b5d9dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1YWM1NTc4YTljNGVlMGI1ZmEzOWRiOTgxNjEwNDNlY2Y2NTEyZGM0OGNkZTg5YWFjNjA5MWFhMmNlMTZmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkOTg0MDI0YzA4NGY1NTNjZTI0ODdkOWNhMmUzYjQ1MmEwYzFkNTVjMGQ1NDlmYmNiZTRjMjEwZmVhMmQyZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

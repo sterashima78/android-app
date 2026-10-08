@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2980d791a50b1001a2e025fa5909f947816eb23c9923436d801a8719b3fdc495",
+  "claims": [
+    {
+      "id": "claim_9ddbf8cbd7864a819e81c46f9355f87e",
+      "statement": "Asset の公開 Repository は overview の読取、TSV と MoneyForward JSON の import、カテゴリ登録と資産名へのカテゴリ設定を提供する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetRepository.kt#L3-L9",
+          "version": "repo-lines-v1:sha256:c3e2ee7114fe3eb5c4af6d0aaa2f7d249335b5bea1cb53a68dd775a68b0dbbcc:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODBiMTc1NjQyODZmNDI3YzljYTFhYmU5Yjk3Nzg3YTQxN2UzM2EzOTdkNWY5ODE1ZTU5NGM0MDZiMzYzMWQ1YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjE0NjkyZjZlZTNhYzQ5YTNjM2ZmYzk1ODAzNWRmYjA3YTcwYmNhMjE3MWM2NWRiZGUyOGQzZjAxNDE2ZjgzNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c8373816fc5c48dfb1a3bbcd464d4295",
+      "statement": "Asset overview は nullable な最新日付、最新総額・カテゴリ構成、日別履歴、資産名分類と登録カテゴリを別々に保持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetModels.kt#L5-L23",
+          "version": "repo-lines-v1:sha256:f8219c2fb77d4978105e013fa07bef6c298a372b5afe4ca9579d0debf1578003:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2OTdiOWIwYjI1MDI4ZWZmMmE3MzRiOWZkY2RmODRiMzZlM2ZiNjYzNzUwY2M2MDJkM2M3ZmY0N2ViMjE5Y2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5NjhiZjQ5NDQ1NDdjNTBiODZmMDk4ZWZmZWNkMDhjMmNjMjA3NzhjMzU3NDdmZjRiNmRmOGVhN2Q0ZTYxMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4YTU3ZGQyMzI2ZTgzNGI3MzA1MWI5YjJlZDUxMDQzMjZmNzVhZGYxZTM5NTI3NGEwYmQwY2EwMWMxMDgxMzIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

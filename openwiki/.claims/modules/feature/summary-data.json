@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3aeae2acfd4ad8b47172ee9a7bfbbf07b4e0c10d3a6e6df0e09e47dcf2cfeafd",
+  "claims": [
+    {
+      "id": "claim_2c815f55e5024ebdbb961354fd06356c",
+      "statement": "Summaryの保存は要約・記事ごとの主キーを持つtask・準備済み本文の3テーブルで構成される。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryDatabaseSchema.kt#L5-L12",
+          "version": "repo-lines-v1:sha256:5c05b1586da0ff77c2699ca3255995b5cf9ca1bf4d66fee5c9ad5ae0191c50f3:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTI4MGYwMmFkMjBiMDk1ZjFjNWU3MTEyMTBkOGUzZGVkMDBlNzE2N2FkYmZkM2MyZDk1MmEwNzk5YTNlYzE1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWJmMWE3YTdkZjg0NGUxMjk1MGY0YjhmMjU0OTEwMzIzOGIwOTNkYWZhNTFkOTcwZWZiNmUxY2E0NGMxOTM5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f15a3890d0b74a52998c51de1de7e0ef",
+      "statement": "Summary Workerはlocalの準備済み本文とcloudのURL生成を分岐し、要約保存後にBookmark capabilityでmetadataを適用する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryWorker.kt#L100-L184",
+          "version": "repo-lines-v1:sha256:fdfc4f4d8fa72888ffd6ec34a4c9df39fa0e3daadf7a4b71cdab43c287e9fa2c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5ZDBkNzQyYTUyY2M1NTMzMmM2OWMyNTUyN2VlYjY1MzU0NWM5NTU5NzNhOTliZWMxOWZiNzYwMTFjOWM4ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxNWE3YzBhOGEyYzIyMTI1NTMzMDljZmZjOWRiMjIyYTg1ZGU3YzE0MWZjMjU0YTFlMDQwMDJhYjY2YjE2ZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzMzMyOTVmYmU1YTM1ZDJhOTkzM2NlZGZlMTE1ZWIxYzU2N2U1ZDNhYTE1ZDhlOGQ3NWUxMmMxNjJkOTU5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2MzI5MTM5NzQ1NWUxNDg5YTM1ZGE3ODc0MmJlMzhmMzg4ZWEzNzg3YzgyNjc3MjI5NTc3NzI2NjkxNDkxMDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_09918d26881648f5aaed765ecab0890b",
+      "statement": "Summary Workerはretryableなcloud失敗を再queueしてWorker retryへ戻し、その他の失敗をfailedとして記録する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryWorker.kt#L186-L198",
+          "version": "repo-lines-v1:sha256:dc3eb3f42d14dc037ace7d48edaa0ef94bfa7f1f649ef878d6fbf01ef0d00c57:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjOTkwYTBhM2U1Mzc0OWM4NDhlOWMxZTUzOGM4MmQ0MjY2MWJmZmJiYmQ0ZTc0YmQ2OGFmNjEyZjE2MDI3YzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzOWExY2VkMGQxODcyZDhhNGNhOWFmMGNhMTQ0NjNjMGYxNWU3YWY0NDM4MmZjYWVmZmI3NzdhMThjNjRmNzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjNWNmNzM1YWIxNDg0YmVlZjE0ODVmY2ZiZGJmZjMyODY5ZmE0YjEwMTUzNDdhYTYyNTdiYjBlZjBjYjBjYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

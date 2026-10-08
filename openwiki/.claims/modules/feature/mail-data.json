@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:1acc5c2878cb64f36de4253dc6b142e33b11a70ebf7e157c88cbb82a4b79039e",
+  "claims": [
+    {
+      "id": "claim_6e0d9b7b2a87421db798d65ddc3f77da",
+      "statement": "初回同期は期待checkpointを比較し、次checkpointを保存してContinueを返し、最終ページだけgeneration整理と完了を行う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt#L168-L220",
+          "version": "repo-lines-v1:sha256:1804ba8d27cc8e8f04c92a2fd3ed01c732b5daf0fc08816eb007407af9c9ee28:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhMjcwOGZjNDQ0YTljNDBmZWIyNmUxMzk0YTdmYmRmODhmM2FmYmI3YmFlMWQ3ZmYxYWY4ZGZjOGM5ZTU5ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5OGQxZWE0YzJjMGViNTMyYTNlYTEyM2JiZTBhYTYzOWI3Yjk3MzJkNTNiNTU0MTI3YzQ4ZjkyMmQ4NWE4ZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI3NTM3MWE2NTljMTA4NzEzNzM5ZWExMDE5OWI1MGIyYTM1YzEwYTE5YjUyOWRhZDc4MDAyOTU5Mjc3NDY1ZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e7b2dcbf94f040c19aacfab288f6a38d",
+      "statement": "Mail Workerは初回同期の再認証をerror/failure、通信失敗をnetwork待ち/retryへ分類する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt#L98-L154",
+          "version": "repo-lines-v1:sha256:c1c9d9233b663262b7607a0cbd8c62c3306ff3a68dc4300e88c70d18477938be:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MTNmZTk5OTY4NmM4OGJhZjMyZDYyNzAxYTdmMTZlY2E5ODQ0NjQ5Mzg0YzM2NDM2YjMyZTMzZjVhMjFlM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMTA1MWE2ODQ5Y2M1MTA1MTM3MWFhNzdkYmQ4MTU0ZDkyYWE3ZGJkZmIzNThlNzIxNjY1NzRmODMwMTMyMjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3NWVhNTFlYzhiMjI2MGU5YTlmMTNjMjUyNjQ4MjY3NGNiZjI0M2E4MTRlNjFmMzNhODJhN2QxYjdmYjI3YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMGY3MjkzZDE1NmE2ZDEyNTI4ZGIxMjkzMzc5ZTUyYTVmODM2NzA0NDI5N2IyMjgyYjk3ZmYyYzg2MDQzOGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9a58f38072694a1ca5f88949ddeb2a9a",
+      "statement": "Gmail tokenはplatform authorizationへ必要時に要求し、追加認証が必要ならDomain例外を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/GmailAuthorizationManager.kt#L46-L53",
+          "version": "repo-lines-v1:sha256:614a0c7fd15dc2a9f2dfeaf91c37b4a27b6b5a8af4e79f87d38dd89c74536e5c:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTYwNDMzOTc2MmI4MjU2ZjU0NTc0NjZhZDg3YjM2ZTQ1OWFiN2IwMGU0YWU4ZDA2MGFkNjUwYzEyZGRmOGI5NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzRmZmExOTdjMTg1YWZhODYzYWIzNDI2M2FiMDI0NWZjMzkwNTJkOWY0MWVkYTM0YTA2ODU3YTBkN2RkNGU0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTI5YzljZWFmMjA5OWZmNmMwNjhlOGViNjQyYzExYjY5ZGNkYzVlNzQwNmQ2YWJmZmVlYzdkOWQwNDY1YmY4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Q4ZGYwYmYzYmM3ZjkzY2NkNWZjMDA5ZWY1ZmFlZTg0YzcyNmQ4NWFkMWYyMDNjYjY1N2VjNWM5OTcxMDZmYyJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

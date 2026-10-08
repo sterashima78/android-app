@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:55937aea38926f8f48f4ef0b12bf00f4084b5c0d99bc2cbe4ceeb3369bc10743",
+  "claims": [
+    {
+      "id": "claim_a8c77f28a0e04992b5fce850ba99285f",
+      "statement": "X WebViewはX hostのpage完了時だけ最新設定を読み、CSSと有効JavaScriptを注入する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/ui/src/main/java/dev/terashima/yomitorirss/feature/x/XViewerScreen.kt#L159-L169",
+          "version": "repo-lines-v1:sha256:2291b911977a30312183dd7a1ea7a2977cca6fa63001b1857f0ecb624ea05b1a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyNWRjYzhjOWJjNzJiY2RiY2Q5Y2M3YmZmZmVmZDhmNjE4MWUxYTdiNjhjZWM2ZDFhM2ZhODNmYWUwMzU3NDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlN2M0NjUxYTkyOTNiZDk5ZGNjN2RmYWE1ZmVhY2RlMTY2ZWQxZGZkMThiYTJlNTkyNTY4OWQ0ZDJkNTg4MzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2YmI4Zjg4M2IxYTdiMmY0MzEyMTA3N2ZkYWUxNWNjZWUyNzE0ZmRmZWVmMGY2NWZkZjEwMTFiMjlkMmU2OGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bfb7bfbf2f3544f5bfc168c07e9a7cb4",
+      "statement": "X WebViewは非crash renderer終了でgenerationを更新し、dispose時にdestroyする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/ui/src/main/java/dev/terashima/yomitorirss/feature/x/XViewerScreen.kt#L171-L220",
+          "version": "repo-lines-v1:sha256:ec7cea0a3155d561ab64a7cd26e9a5e0e2fc2ad588a6010094fbee64ae6055c4:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ODRiNzBlYzg5YjgwODA3NDE1ZTg3OTcyMjAzM2U0OTJlOTQ4MGNiNzNiNDNmM2JiY2Q1MGJjYTdhZDhhYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyY2JhMTg0OTE5YWVjZDNlMTA4MTI1OTJmNzM1YjQzMzJlYTE5MTA0N2I2NDIxZDBmN2UyYjZlMmViYzU0ODgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlNzVjYTg4OThhNTZhOTZmZDI3NjY2OGEwMjc1N2UwZmNhY2I5MWY5OTAyYjZkZThmZGY5MTYzZTRkZTQ4ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a7b9f152c46b4cb28e8dd228644dde72",
+      "statement": "X media clientは全画面表示・終了をhostへ委譲し、読込100%でviewport回復処理を設置する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/ui/src/main/java/dev/terashima/yomitorirss/feature/x/XMediaWebChromeClient.kt#L7-L24",
+          "version": "repo-lines-v1:sha256:f0cecd1462e4cfeaa87fe2f6eb0366b2c534e89bc23109ccf773e4d6a294acc9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0NjAxNTBkNDJjODBlMGZjYWVhZmY0Yjk2MjcxM2MwN2IzZWExN2NmNmI2ZDVkMmFiY2RlYmJmMjQ1MGZhODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhODVhNWEzYTc5OTgwODcwYTM2NWNkYThlZjBhYjlkY2ZhYmNkOGIzOTFkMTAzMjVkNTk3ZjkwMzI4OGI0ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:708681cb9c350ce1e47784e715e21e240e8a100c0278eb10f026655a612e0f44",
+  "claims": [
+    {
+      "id": "claim_caecf50f7dc84867850eccfb0ad084d2",
+      "statement": "AppContainer は共有 HTTP / DB と機能別 runtime group を同期 lazy で application scope に合成する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppContainer.kt#L41-L81",
+          "version": "repo-lines-v1:sha256:c86115d23204166073c4d8470a418329c734c0bdfbd54bb3fdd7865f1d83a30b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZjdhZjRkMWMwZmNiY2IxZWZiZjgyMjBmYzRkOTlhMTMzYzNlM2M2N2M5MzNiYjA5NzNkYjZmZjQzNjU3MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4N2Q0MThkMzIyMDUyYmM4YTEyZDdhMDI3ZDg0M2U3NGExNWM0YTY4NTJiZWYyM2Y3ZjJlN2YwMzFhYzExNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmMjlmMDRkMTYwOWFjNTc1MGVkOTc2ZDA2MzlhZDY5ZjNiMTIxZWQxMjUxMWZlODBhMzg5ZDVkYzA4MmQ3OWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZTQ2YmJlMmY4Mzk2YTc4ZDdjM2ZmY2IyNmM4OTIwNmQ2NGY5MDgwMDQxMGFiZGQ3NDk2NGIxNzMyMTk3MTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_40c982a125604b0c971284ea069c7e44",
+      "statement": "WorkerFactory は DelegatingWorkerFactory に feature factory を追加し container の依存を provider 経由で注入する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppWorkerFactory.kt#L19-L70",
+          "version": "repo-lines-v1:sha256:ef75e1bc740a68b66ea794542983ca85c71021290ef3a769cf412e081a1f2ba5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkYWJkZWNkMGQ1YzQzNGM2ODBhNmNmNTljMjFlZjYyZjZkYTQ1YmUyMzZjY2ZhM2ZmZDY2Y2M0Yzk0YmU5MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3YjA1YWIyMWIyMTQ0NGFhOTI5YWQwN2QzOWM1NTViYWQyZWNjZGFjYmRkMTIzOGYzYjdhMWI3NDE2ODE0MDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

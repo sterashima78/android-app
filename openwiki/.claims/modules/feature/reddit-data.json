@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:dcc6a94d9c820b69e34c8346b7c6b00d8385bc015a0218ab531ac934300824f3",
+  "claims": [
+    {
+      "id": "claim_b0ebafe0ff0b4d56ac3730c5ab03baf2",
+      "statement": "Reddit repositoryはRSS FeedRepositoryの購読と変更通知を利用し、Reddit購読だけをread modelへ投影する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/data/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/data/DefaultRedditRepository.kt#L14-L31",
+          "version": "repo-lines-v1:sha256:adcd82517680881e0b4a0ed90cb10c329c630f709dce125c8ae06b9f717576be:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjNWI1YzYxYmEwMmEzZWRiMDViZjJhYmMyYmQyZjg4OTkwZmEyYTRkOWJiZGNjMmFmYjc0MmFhYjEwMzg0MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0YTFiOTYxNDQ3MmY3ZjU2ODNhMTExMzliMDgzMDRkZTMwMWE3MWVjNmM3NTc3MmMyYjUxMmEzZmVhOWFhZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxZGVmNDBjYTE3MGM2N2NlZWU0YmUzNmUxMWRlZmM0ZmM5NTQxY2NmNjA3NTY4MzA2NDdlYTA3ZTE4ZDRhNzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fca28d4a43744f2fa008cb37db82d98d",
+      "statement": "Reddit thread購読はpost identityの重複を拒否し、初回の既存記事を既読として登録する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/data/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/data/DefaultRedditRepository.kt#L42-L50",
+          "version": "repo-lines-v1:sha256:6e1deabccbf76bf529213084631192c75d8c2a0cb765f993fa2cc7cddb8247a8:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjljMjgwMmFmNTM2ZGExMDE4YzZkMjFlOTQyN2QyOTQ0NzE3NGNjM2JmZTkwMWIyYzBlMmYxYjFhZTA0MWEwNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2U2YWNjM2U2MDEwYWRjMzU5OTA1ZThiMzk2YTYzNzU4YjNmOTY4YjJjNjNjMjg3M2M4NWE2MDliMDViMjQxNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTE5MDA4NTk4MDgxMzFmZWU2ZjkyOWNkNDZkMGI2ZDE5ZDBhYWY3MmRiNGZmMDE3NGM0MWNlZTM0ZWRhZjFkOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzI0NDQ1OWY4NTc3NDNkM2E2NTgxNzc3MDg2MTM5ZDM2YTAzNzNlZWFlMzRiNzVhNDcxOTE0ZGU2MDhjOTAwNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_bf51a60008f54d249ee6e4be772f407c",
+      "statement": "Reddit全件更新はReddit feedだけを処理し、個別失敗後も続行して失敗数と進捗を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/data/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/data/DefaultRedditRepository.kt#L67-L77",
+          "version": "repo-lines-v1:sha256:4a40cfbd8a6ddab4cfbc3239e7005f00d8e072d5d6e53bcdd6faa8a96aeb4757:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxYmVkNTQyM2NmYTBjOTVhNTVmOGNjY2MzZTBhMmEyOTVkMTgzZWIxNjU1YWY5MGQ5Y2QzNzEyMTA1MjVjZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZGEyMzllMWZlOGIyNGQ0YWQ5YjYwZGQyMTJlOWI2YmZlMDkwZmE5NDYwYjI4OWZkMTc3ZjA1MDNmNzkxNzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNTkxMjEzODViNjI1YWQzZDdmZGE5MDRmNDRhOWIwYjFmNmJkYTlkYzFkMTYwYTYxMjQ4NzQ1MmRjY2ZjYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

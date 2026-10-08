@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:5a6074e23022a3ae6f27de18f3f8deab7bff50373c217b71a0f28e2b977b91f3",
+  "claims": [
+    {
+      "id": "claim_542a6a10ce51484abdc3317eb5a8c495",
+      "statement": "operationがない旧Podcast workは定刻生成として扱い、foreground昇格は手動生成と作り直しに限る。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastGenerationWorker.kt#L176-L187",
+          "version": "repo-lines-v1:sha256:7ecd5b7c0d65099c13fcc059dc3871532df8fcf7b097f626eb13f2121c2daa35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0MjFlZmViNGQ1ODdhNWEwZjkwOTViZWNhZGMxYzg4MWMxNzA4NDU5OTdhYTJmY2MzZWJkYTQ3MDBjNDFhMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDM0OWU5NjU3N2FlZmY2YzFmY2QzODk4Yzg1ODc2MmZmNDBiYjU4YjQ1NzNmMGUwMmM0ZWFjZjQyNTFhMzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkYmU4ZjFiMzkzMGQwNjU3NzdjYmRhZDQ5NjU2MTViNmE2Mjg3M2M2ZWRmZThiODEwOWQyYjVlMTQzNTMyOGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd3b3f054c8d4940885b405e8aec414c",
+      "statement": "Workerは同時生成でretry、キャンセルで伝播、通常生成例外でsuccessを返し、定刻処理では次回予定の登録を試みる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastGenerationWorker.kt#L92-L113",
+          "version": "repo-lines-v1:sha256:7e9d9c3ca252471e48eef3cff130b3eb7c44c6d33e1ab33ac3773b281290e741:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiNzdkNmZlOGQzMjEwZjM1YjYyNTYzZDEwMzQwOTQwZGM1Yjc5M2QwODQ1NWYwOTkyMDgzM2M2ZjIxOWI0ZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiYzc2NmQxZTgyMDk2MjJmYWFjOTgwNDYzYjFmN2QyYzNjNGMzODgwNzgxOTc4NmFmMzk4ZDZlZDI4NzA3MjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_04228798bc4141828c7beeb719dd88ea",
+      "statement": "episodeのarchive・復元・削除でも消費済み記事を再利用しないことを保存テストが確認する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/data/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastRepositoryPersistenceTest.kt#L190-L233",
+          "version": "repo-lines-v1:sha256:8e7b18102f95480d2d6caba1c6926d836d14fe9843238106fc0266b76c269998:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OTAyMTkyYzEwODFlMjFhNDk0YzZiNWFjZGJmZmFjZDcyYWUxYzc0YTBmNjQ4OTBhYTBiMTdjYjVhZDE0ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5OTVkYmE2YjAxNDdjN2FjYjRlYjFiOGRhMTI1ZDkxYmI5YWM3MmI3MWU0ZDczZmExMzJiYmYzZTBiYWQyMDAifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

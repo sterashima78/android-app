@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:62d47a56ad63c1e5a419f0871f72b1429ea5534d64145356e890bc3216eb1bd0",
+  "claims": [
+    {
+      "id": "claim_4cbf9a3c669f412d80b4ece9a77868b7",
+      "statement": "新規Podcast生成は予約済みepisodeを優先し、候補がない場合はepisodeを作らず終了する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/Podcast.kt#L383-L427",
+          "version": "repo-lines-v1:sha256:d7e03e82f86155c203a2f9a74a3f687e388d4e049711086037c04981edac8abd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyYmY1NjExZTZiNzMxOGY3MDg2YWI1NjRkNmQ0MTA2YTFiYWNkOGMzZTFmNzY2MGNhMjM0Zjg3ZDNjNDZiZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZTBmOTk4NWI1YTI0ODliZDJjZmJiYWU1ZDUyOWM5YTI1M2I1MjhhZjQ3YmFhZDBkZDhkY2IxYTBlZmEzYTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMTAzOWI2ZDBiNDk0YWI4YzNiYWE1YzQzMzY4NDE1OTZkZmQ3ODNmYWZjM2NkZDRjYTQ0NjFhZjA0NjkyYjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1ODQ5OWE5YjA2ZjJlNWQ3YzgyYTU3MjFjODQ0YTNhYzM5MTlmYjkwY2RkMDBhYzg4ODk3NzIwNjI2OGJiMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e10b19c717ad453db4f25bc2f09224cb",
+      "statement": "中断episodeの復旧は新しいfeed取得を行わず同じsnapshotから再開することをテストしている。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastInterruptedRecoveryTest.kt#L13-L31",
+          "version": "repo-lines-v1:sha256:4cd3d456c1155c0fa37c87596970287fa56da3a02457a5243aba150992c8d223:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MmFkYmU1N2Q2Mjc4ZjQzNTcyYjVhZDkyNzYzMzNlNDJhYzBhOGJjY2ZlYTJlOGI5MmY3M2NlMGZlZWM1NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiNDdhOTA2ZmYzNWUwMTBhOGZmNjY2OTlhN2Y5YjIzNzdhOGEzNDcyOGQxYzViNTc0ODNkNjQ4NTBiYmY0ZjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhM2I5Zjc1MGM0N2FkNjVjNTRiMjNjYjNkZWY1ZDI1NzFjNTBkYmIyYjQ2MzRhNGIyZTg3NzY4MGI5NzI4MzgifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

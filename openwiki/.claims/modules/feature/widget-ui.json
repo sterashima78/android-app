@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:0f915bc78139049cdeff3e724a7480c3ba9dbc6d6c9f1bc25c439ce269cbb021",
+  "claims": [
+    {
+      "id": "claim_6183b90f89214a12a78e77f55cf77ce6",
+      "statement": "未読Widgetの既読・あとで読む操作はgoAsyncとIO coroutineで処理し、finallyでbroadcastを終了する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetProvider.kt#L38-L68",
+          "version": "repo-lines-v1:sha256:8c66fd86e373b15e342553d611fb4e1ae846f9134655ec1a0684190026270a85:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNDBhODcwOWI4NGM1ZDY1M2FkNDZmNDdlNjhlZTk1N2MwZjZmODE4MGFkMTljNWI3NmZkZmU1YzhiMDVkZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MDA1ZDU3MTA2YTM2MmViMDAwZGFmM2RhNDY3NGM4MmI1MThmZjVhMmUyZjY3ZWU4ZTc1N2EzMzNjMmFmNjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0YmVjMWZjNzlhNzI4ZjFmODU4N2E0NmRlYTg0ZmVkMzcxYzBlZTcwYmU5OTlkN2FlMjE5NDYwOTlhMjMyNjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a56891f0238243379dbd4c7e61b5e68e",
+      "statement": "Task Widget完了操作はTask Repositoryへ委譲し、更新後にpending resultをfinallyで終了する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/TaskWidgetProvider.kt#L46-L62",
+          "version": "repo-lines-v1:sha256:c039f5dafa344744ea2ccc3fe1cb9e383e2fb1f287e19ddbe1374cb3d854adcf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNDBhODcwOWI4NGM1ZDY1M2FkNDZmNDdlNjhlZTk1N2MwZjZmODE4MGFkMTljNWI3NmZkZmU1YzhiMDVkZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxOWQ4ODVmNjkyOGQ0NWIyZjllMjdmOTEzNGRmNGU2YmZlNTkzMmIyOGFmNzA4ZGNiYzEyNjFlMmFlOTM1MjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fc0872e898a4b2ca94c5364136e7316",
+      "statement": "未読Widget observerはdataChangesを購読して全Widgetを更新し、startの重複購読を防ぐ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetRefreshObserver.kt#L12-L27",
+          "version": "repo-lines-v1:sha256:524200fb890f9797947915647ee7bb35aef086f73ac865bbd3366b4410b7f36b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3MmJhN2YwMzRmZDUwYmQxODk1NjA3NzBlYzdkOTE1YTU5MWI0Mjc3ZTlmZTkzZjlkMmNkMzRjNGI3YTdjMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1YmE0MzczYWRhMmI3MzhmMmY3NzllMDEwZTdkMzI1ODhjOTM4NzgzMDA1OWRkNDZiM2U0MDYyYjkyNzY3ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

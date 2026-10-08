@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:db1d1a8ec56e1bbc2bbf944987b089228b8c1df61f99cfe06b9f1be2e44e5753",
+  "claims": [
+    {
+      "id": "claim_e813d00667264e7b9d4eda31975b7f60",
+      "statement": "Chat履歴追加はメッセージ挿入とセッション更新をtransactionで行い、最新5セッションへ保持数を制限する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/ChatStore.kt#L77-L122",
+          "version": "repo-lines-v1:sha256:ead06727d093d466bec794c0c1c7a3ec76c9d29c138e6b6ef2b910679ba72dd7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzOTI5ZWEzOGUyOWI1NmMyMTVmMGE4MDU5ODAwYzU4ODIwZjIyOGZmNWI3NWU2MDAwMDc1MTVkNTUzZWRmYTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a85f0184fe5a4ba0b961dbe00c9ad490",
+      "statement": "ローカルChat生成はcontextと登録toolをrequestへ組み立て、tool-call parse failureだけを有限回再試行する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt#L57-L119",
+          "version": "repo-lines-v1:sha256:5dcb8d544a8f6cd90fd0cfd07800a460e719f64b6b1437564fee1ecc8dad5e5e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0N2U1YjNhZDBiYWY1OWU0MjdjYjcxNGFjOGVlMzc0YTA0YWUzMTgxZGU3MmY2N2IwOTI2YmQ2NTI1NmRiOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxMzY3YjdlMTY1ODliZjA4NWRkNjkyMjMxMTg1ODZjN2UzYmNiNmI5YWQ1M2VkYWUxZDcyMzYyNWM1MTFiNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5ODM0YjM2MGM5OGQ4NzMxOTgwMDc4ODgyNzNiMDdlYTZjZWM0MzQyZDE1MGJiOThjYzZiZTQxZmEyNDVlZmQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

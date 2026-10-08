@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:acbcbe44184aa26da4bf823eec3720589fad25a56f67fc621a24f42887315ca2",
+  "claims": [
+    {
+      "id": "claim_daf8565fe307403e94cab1de74b938e7",
+      "statement": "統合一覧はRSS・Reddit・メールのstateを投影し、未読メールを受信トレイ内に限定して未読・履歴は降順、あとで読むは昇順に並べる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedProjection.kt#L22-L87",
+          "version": "repo-lines-v1:sha256:a939c9b974fa4b1d314314809411b4ef73d3ffb5df45152dd69bf2da3f675423:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmMTU4Y2ExYzQzN2UwOTE1MDhhZTM0ZmMzY2QyM2EyNWVmMmJhZTE0OWRjNzQ3NmRmZmI2MzUyMDQ1NWQ2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjYzczZGU2ZmQxZGJkMjIzMzRkNmFmZTRlMjBkNGQxOTU4ZDFhMGQ1MzkxZDJkM2JiZTY4YjU5NWQxMDBmYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlYTRkMWRmNTQxZDVlMDBmYmI1ZTQyYjhlNzczMmRlZGE0NjJlMjUwMDk3ZjcyMDZkZTQ4NWQ1MzJmZmYyMWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_15d9515012454c829dd7b2200d72538c",
+      "statement": "統合画面の操作は元sourceへ委譲し、除外参考はRSS targetだけへ適用する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedTargetDispatcher.kt#L26-L69",
+          "version": "repo-lines-v1:sha256:cb855015421e0fd79a18c68530083354d9b8c88ae6a19fc2b9835669aec0dbb9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0OGE5NTA4OGEzZDBmZWNmYWNmMjJiZTA2YTA2MGU3NzlhYjI1YTQ0YWU1NmM5NzNjY2YzYTBhMjM4ZGYzYjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTRjYjA1NmU3NzgyNDQzNWY3MzUxMWMwZTM2YmIxYjEwMzg1ZDA3ZmY5OTE0ZmUyZjA2NTAwYzg1ZWZhMmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkNjQ3ZjliYWMxOGZlOWQ1YmUzYzAxNjIwYTZlNjgwNWUwYzc2YmE0NTdkNmY3ZWJmZTEwM2ZlZmViY2JhNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d83ab6f605484ce7aa0389d1a2617953",
+      "statement": "統合RouteはRSS・Reddit・メールの初期化完了を待ち、更新操作をそれぞれのViewModelへ要求する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedRoute.kt#L69-L105",
+          "version": "repo-lines-v1:sha256:9c41e98a6ba1df5b500d4325519253ac3550488a57665fd181ae81f91467e6d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZWJhNjQwY2NlZTliNDViZTY5YTJiN2E0OTY1NTdjNGFhMmYwZmNjZWU3N2RmZmJmOTA5YWU3YWU2Y2ZiYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NzBjMTkxMTY0ZTdlZWFkMWM1ZjcwOTQ5NjAwNWM2Yzc5M2I3MDYzOTRmMjllYTYzZGQ3Y2Q0MzhiODFlMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmMTZkZmM1NWIwMDk0YTk2MTNhNTRhNmEzYWZhZjgwZTQ4NzBmMWYxYTljYWU0MGM1ZGE1ZjFjMjg5YmVkOGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2NDc2ZWEzZDIxZWFkZGI2NWJiOTE2NDNkMGZlYjVhODEwMDA2Y2IyNzAyMmI2YjA1Mjg1NzY2ZGI1NDgzZTAifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

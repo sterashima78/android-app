@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f4168f2c2b21ac9763450e4465480ca687981527dcca0c84ceef07a6aa5c9125",
+  "claims": [
+    {
+      "id": "claim_5aca6b627f364768806ca79b715bffbf",
+      "statement": "統合AI taskモデルは複数ownerのtask種類・進捗・操作可否を表示契約として持つ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueRepository.kt#L3-L58",
+          "version": "repo-lines-v1:sha256:391140c11936ecb06018657bf7d3d102c6d4e46cd316c2f81f1e9c619cb19589:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkOWVmMmY5NmYyNjNkMDNlMWRmMDY1MzA3YjM4NzgyNThhODEwZjNiZjM4NWYzZjgwNGUyZTNhNDI2YjRiMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwZDQ0NzQ2NGE3YWE0MTEyZjBmODE1ZTA3MjA1ODdhZjFhMTFlOWRiYzY3YmExNTUwNmViYjUwZDBhNmE5MjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyYzI1YTdjYTdhYjJmOTU1YzliOGM3NjUxYzE2NTdlYWQ4ODY5ZDhlMTViMjI2NDU4OWFjMTRlYjMzZWRjYmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_43efe8b8e43445f98df55fe107c67654",
+      "statement": "統合AI queueの既定件数はrunning、queued、pausedまたはstoppedを一覧から数え、個別操作はIDとBooleanの変更結果で扱う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueRepository.kt#L72-L94",
+          "version": "repo-lines-v1:sha256:4660587c23798eb760316799f8c1788e2a850745ad54905ced2a813f9427ba09:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmNTIyMjk0ZTk3OWI2YzcyYTcyZTAwYmFiMTcyNDZjMjNkODc1NjZkYzViODUyZDczNzczMjc3YzA1MzMwNDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MTc2NmRlYWYyNDBmN2JhMTQzYTRjYWUzOWU3ZDQwYWJkZjYxNzdlZjkyYjIzOTZlOWIyM2EzM2JkYmExYzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4ZDE5NjA2OTk3NWEzNGM5ZDQ1M2JhNzMyYTUxMWRjNGNiNTA5ZDE5ZTEwODlhNDZlZmFmYzU3MDM2NDlhNmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

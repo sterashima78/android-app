@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:089d28e163bd5eff7cb474152e4c0fb16d5d8ed00661695ac9e4cc2e6b416414",
+  "claims": [
+    {
+      "id": "claim_c17ca6b4234142a793abc18240e7039b",
+      "statement": "Asset import は入力を日付でグループ化してから負額を除外し、全件負額の日も既存明細を削除する置換対象に保持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt#L163-L185",
+          "version": "repo-lines-v1:sha256:4cb8e7a24f71173b5db7fa1071e37956843df7f193ecc3d8bf2bbb7ea4989de1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MDk1ZDFiNmU5M2ZjMzQxMWMxNTljOTIyZTFkMjhiYTgyYjMxODFjZWM5YzRiZGVhYmM4ZDkyZDJiMTBkM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMTU2Nzg5ZGViMTkwODY4M2RhYjJiODU3OTc5ODFhY2YwOWI4NGQ3ZTJhZmVhYTJlYTI2M2E4MmJkOGE4ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmYjViMjg2NjM1MzAxZDQxNzE0ZmE5ZjdjZWUxMzZjMThlM2NkYTgwZGUwZGQ1MWRlMzhjMmU4ZjFhMTdlMTcifQ"
+        },
+        {
+          "resource": "repo://feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt#L197-L198",
+          "version": "repo-lines-v1:sha256:447c1ff7457d12c3b14ead76f4a031144efa2370c264d0d34c1efc7e0f1c2488:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWJlNzI0MjBkNDg5ZjMwYjdhNjA1YzM1OWNhYTEzZTIyNmU1YWE3MWM2ODkxMjdkMjgwYzQyMmU0NGFjNzRmYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGY2MGYzYmQ4MDllYTdiMjY4MDYzYTU3NjYxMWI5ODI0NTUyYzEzYWRjNGY0ZGFmMmQzM2U2ZDVlZGVhYzA1NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTc2M2Q1MGQxZGZhZTQ4ZTdkNWRhNGE3YzI5ODA2MmRlMDhiNWY3NzQyODc1MzBiOTIzOTFiZDVkNDY3M2Q4MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjRmYmZhNGRhMzYwYzMyOWU0ZTFmYzhjOTgzMWJjMGZjNDgyOTI1YjYwNGMyYjRjOGQ1OGUxMGYyMTBmNTM1OCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_654d817c5e8647429b5edc6cd3e5aee6",
+      "statement": "Asset の履歴・カテゴリ総額の read model は SQL の amount >= 0 条件で既存の負額明細を除外する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt#L25-L38",
+          "version": "repo-lines-v1:sha256:b0a6479fb5ae36ab78e182ca8063f4c6ba400fadad71bc5154611c7b5e38c1cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MmQwMTMyNGU4Y2YyOTExODgyYjA0NjgyZTI0NzE2NzY1NzJhNWZkODljYWUwMDJhYzgxNmZlYjJjNjhmOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyOGM0Y2Q3ZmIyYTVjOGJjODFkMDZiMDMwZmVmMDJjNmZiNDlmMTE1NjFlOWI1YjQzN2Y5MDE3ODEyN2FmMGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExYjFhMGFkZDZlN2ZiZjBlMzI3NmY2YTIxOWI3ZWU4YmU0MTFhOTNjOWRlMDA3MDJkMDRjODM5MWU4NzE1YzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlZDczZTQyYzIzNjFiYzc3ZjAwMDIxMDg0Y2EzY2NlZjg1NTkzNjdhMGYyMWUxZWFmNTYwNmZjMTdlOGUwNjEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

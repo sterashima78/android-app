@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f5a1976bf08cdf1e352ee811550c8e2cc88b7d603f9e269d58a5af6b1a1930ce",
+  "claims": [
+    {
+      "id": "claim_6653dc16a5f7463089019f477c4d16cf",
+      "statement": "メールUIは同期中・network待ちのaccountがある間overviewをpollingし、処理が終わると止める。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailViewModel.kt#L200-L219",
+          "version": "repo-lines-v1:sha256:57585b0f8926c805bd416918c5976e45e22d16692881d507fdcddf1026008556:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzMDNmYTQ4ZGVkYWI2MGUwYWMyMmFhY2U0NzlkMGJiYjIyMDFmYmRhZGQwMGJjNTQ5NGMzNjg4YWJmZjlhMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjJjMGExYWRkYWI3M2M3ZmRhMTlmNDI3ZDdmYzA4MWFkYjUxMmQzMTcxYjY4NmU1OTZjODBkNmNjMjgwMjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxNGMxYmM1Y2QxMTg1ZDQyNjU3NTJkYzgyZGUwZjIxYTg2ODFlNmMyYzlmMzZhOWMyMDE0ZTg3ZWE0YzdmZjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_51f1a48a613340d3bceb7f0f2612ef04",
+      "statement": "HTMLメールWebViewはJavaScript、file/content access、network loadとmixed contentを禁止する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailMessageBody.kt#L209-L220",
+          "version": "repo-lines-v1:sha256:fa777454d58fc37c02bb3e4550a0615917ab491869f3ad5fb18dec52e37acbe5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4ZWQzNTNmOWQyYzVjMzVlNjFmMjAyYjllM2ZmOTU4ZmMxYzYyZjgxZDdlMGE5ZjY1YjdlNWFlODgwYTVjYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MmNiMjAwOWYyMTkyZmE5YzcxYTA3MzA2ZjEyZGQzODY1NzQ1YWM0NmQzMzFmMzFlNDM3OTljMDQxNGFiYjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiMTA3OGY4MjcyM2Q5YmM5MGQxMDVmMmMwM2MyZGMyNGRiYmM0MWIzNjM2NjY4NWRlMjA0ODhkNjkxNTRjZWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6600a1e711f34af89d35126ae7070aba",
+      "statement": "readLaterはmailboxを問わず未読threadを既読化し、スター切替とあとで読む切替は未読mailboxからの追加時だけ既読化する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailViewModel.kt#L104-L141",
+          "version": "repo-lines-v1:sha256:715fa2afef4519cc25736c79619a96a7fc88df607036f838a9616e50fee96121:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5ZjAzNTAwNDg4ODAwYTU4ZDM4MjYwODIxNzFkZTk0OGFmMGMwNTU3ODczNDZmN2FlYzdjYjkxZDI0YjYyMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwZWE5MWU0NjU5ZWE2ODVmZTczOTIxZWQyZWIwMGUwY2VlMDIzODU3MzQ5MmRkZjM4ODNjMDZiYTRlZmIwMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjZmNlOTY4NTNiNjI3NDkzOGMzYzcwYjc3MzIyYmNmNmUwMTAwN2Y3ZGIxMzU1OGMwM2ZjNDc0OGJjYjExYjEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

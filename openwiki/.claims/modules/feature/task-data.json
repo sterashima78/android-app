@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6fe128a543d8ed89394cfe45de2ce07c99fe506ed2270506aa8cdba4675ae56e",
+  "claims": [
+    {
+      "id": "claim_5ba555e80e4145f4818ea549b13a3b91",
+      "statement": "Task 作成は空タイトルと存在しない親を拒否し、親付き作成後には祖先の完了状態を同期する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/data/src/main/kotlin/dev/terashima/yomitorirss/feature/task/data/TaskStore.kt#L16-L34",
+          "version": "repo-lines-v1:sha256:0125359fdb8354706d52eb19d22e21bcb46662b71d95c58552c695dcda413b4d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MDQ0MWJlZDUzMWEyM2RlMDRmZjBmZTI3MjE4YjEyOTQ4NGI0N2EyNzdjMDZhODAxNzAwYTA1N2MxNDljYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3MTQ1YzVmODY3ZDE4N2Q2N2E5YzQ3YWRjNDQ2OWFmZWRlMGQ2NGVhZDQ0N2UzOTFhMWI1MDE2OGFiMzUxNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwY2IwZWUyNjdlZGFiYmU1YzIxMzBhOWIyMzQ1YTEzODU1OWRjMGM4YThhNTdjMzk4ZDlmMWQyZDA0YmM4ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4OWY2N2NhMDRjMGM0YWZjYzEzMDA4ZDQ5ZWFmMzEzOGIxY2I4MDQwMzY5ZjM2Nzk2YjJhOWZlY2NiMTI4ZWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6a6d985b73594947b2e04d02848428df",
+      "statement": "Task の完了変更は全子孫へ適用し、直接の子が全て完了したかによって祖先の完了状態を更新する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/data/src/main/kotlin/dev/terashima/yomitorirss/feature/task/data/TaskStore.kt#L60-L110",
+          "version": "repo-lines-v1:sha256:15917a1301d60effbc93f6a3ab1aeec4c7b472079aa23dcbaf88d66235b3c5e5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NDU1YTY0YzNkODJlZTdiZjNiMWM3YThjYTFjMTdhMDY0YTkyMmZmNmU3YTAzM2VhZDUzNTdiNzFiNzQ2MGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkNjM4MTA0YWNlNzJjOTliOGI5Nzc1NTI4NWNkZTM3YzA1NDRhZDM4OTNmZGNiY2I2ZDIxOWQ3NzU3MTk5YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmYmIwZmMyZDE3MTVhYmJmMGVmYjA3ZDkwNmU4YzM0MzExZDY3YTg5MzE2MzI4ODZhMmI0YjRkNzZjOWE5MTIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

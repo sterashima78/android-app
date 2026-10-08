@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b6ebb0f72c31037e866fcb0d8520684290ec54f7ad52ec34b1a3e76a1e705abe",
+  "claims": [
+    {
+      "id": "claim_c284e94723474af69a9a7375f8fb11a7",
+      "statement": "SettingsのAI model契約は一覧・download・推論進捗・設定のFlowと、download・選択・削除・benchmarkの入口を公開する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiModelRepository.kt#L120-L137",
+          "version": "repo-lines-v1:sha256:037f2d7b7c402a7e415396e90b90a5f66ce7d7bf96ced0726102643335b027c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiOTZhNjI4NzNjMzA0ZWZjNzBjOGExNDVjODViNjIxMmQwOTUyNTZkYWE5M2M1MTRmMDQwNzYzNjU1ZjIzNWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzMGZkYzE0NDg0MmE2MzNjMzRiNjdmY2E5ZWU2MTRiOWQ1ZjU5OWJjN2U4YTA4Nzg4NzI0MTA5NGNmMzgzNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_369440d7365a4398b61a1974bb384a73",
+      "statement": "AI model downloadの作業中状態はqueued/downloading/verifyingに限定される。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/AiModelRepository.kt#L43-L52",
+          "version": "repo-lines-v1:sha256:17dab89ad24e5d05b8006fa9cb95c9bc3287b2bae6e6b41db8567ff868ccef81:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNTJkMTkyMmMzZmJkYzdlNTAzM2NkYTg4MDNlYjE2YzZkNDNmMWJkOTI5MjQwNTFjZDY2Yzk2OWY4NjIxYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNTM2NWQ2M2FmZmMzM2U3MTYwOTZjNWY2MTZlZmViMWFjNzJkNmE1MWI5MjQ3YThmMWFlMDNkZTQwMmVlZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0ZGEzNjBhNmMxYTk3YTRjZWMzZDZjN2Y5MDhhMzlhYmQ1ZGMzMGU2OWZmMmM0MGFiNTY0YzQxMzdjZDUzOTkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

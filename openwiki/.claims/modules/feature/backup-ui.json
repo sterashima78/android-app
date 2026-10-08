@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f2926a55471aafa3c990eaee461f9f7393b54ef5a0c498b386275126e43f8948",
+  "claims": [
+    {
+      "id": "claim_0960e47c68e74274aebdb4b44bd92d2c",
+      "statement": "Drive保存先設定UIは設定成功後の初回保存失敗を、保存先設定失敗と区別して表示する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt#L74-L112",
+          "version": "repo-lines-v1:sha256:da21f19ac27b8e133b13b57a9909546320e69452841fdf324952461da0470479:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1YjdlMzlmZTg5Njg3NzBmZjQ5MDkxNzVhODJkOTAwZWUzNzcxZTk2NmY0NjI0OTRhNDVkNTU3ODYzZDA2NDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MmM2NmMwYmNkOGFiNGE4OWNhZGM1MDA4NjU3YWY5NTI1NDA1MzViYjVmOWRjMTAxMDBmMmVmOWYwMjMzNjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3ab7fa0dae5840ebab0c1d64365e228b",
+      "statement": "復元成功は再起動案内と消費可能なrestoreCompleted状態へ反映される。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt#L60-L72",
+          "version": "repo-lines-v1:sha256:5ce89e99e4e06e8b65865f0113a6c19dd500d6c4bb3092f45626cffa73a5a8e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNjE3ZDBhM2FiNjY3MWI1N2I3ZjU0M2ZmYjM0M2ZjZjQ2ZThjODNjYzE1Mjk1MjE2YjEyYjQ3NzJkMGIwOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRlNGY5ZmZhM2NlYWQ2ZGFmYzE0NGMwYjNlMTE3N2IxNDIwZDc1ZmFmM2FlYzcwZjhlYzU3ODBhZDU1N2RkYzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_90dadf8876df45b8ad945fa800410f18",
+      "statement": "UIの時刻追加はDomain値へ変換し、重複を除き時刻順に並べてRepositoryへ保存する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt#L122-L143",
+          "version": "repo-lines-v1:sha256:4e8a1449305f32506f254f09c9e9e6c3968c4205e3bac9b0bd17702a654f659d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyMjY1MGJkNTBjZTUyMmM5YzIxNmRmOWE3MDhkNjViYzhiNDlmZmJkNzAxZTU5NDE3NTg1YmQwMmE4YTJkMjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjJjMGExYWRkYWI3M2M3ZmRhMTlmNDI3ZDdmYzA4MWFkYjUxMmQzMTcxYjY4NmU1OTZjODBkNmNjMjgwMjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlODE1ZGU5YmI0OTM2YmFmYmI5NzYyODk4ZjhlNDAxMjQyODY0NmYyZWU2NWVhMTAyZDcwOWIzNTc3ZTQxNzgifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:223b91e49d5da3373128e077ad27b6b3ff68c699e18e98d4534e242d451e090e",
+  "claims": [
+    {
+      "id": "claim_23f73e5713844c1f90e9289ec8216968",
+      "statement": "LAN Web認証はbootstrap一致時に同じ同期処理で一度だけ消費してsessionを生成し、その後のquery tokenを拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServer.kt#L200-L234",
+          "version": "repo-lines-v1:sha256:93b0b43d31b986cc703b46296286a3557bd0f9d08cddc719d27500065f4ebf33:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMDRkMmUyYWNkYzY5YWQ5OGI5ZGIzMmY3MjkwYjM5ODgzMjI4M2Q1ZjBlODc2NmFkZTA0Y2ZkZDk1YzMzNjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU0NDY1ZjIxZDUxMGM3ZjdlNWNhNDhjZGExMzU0YTg1OTdjYTY1YjI1OWQ5YWRlZmQwOTA3YTc3YWQ5ZjY5MTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1MDcxNTIzNGRlZDcyZDc1ZWY4MTgxZmVjOTQ3NTE4MjgxYzdkMzNlZTkyY2UyYzJkZjI2ZTFhY2ExM2Q2MTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_01b7c3b30a3d4b788cb8d3e60fcbfd94",
+      "statement": "LAN Serviceはaddress変更でbootstrap/sessionを更新し、破棄時にcallback・server・executorを終了して状態をresetする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt#L113-L135",
+          "version": "repo-lines-v1:sha256:d84ec82a6f4ff387ce18bdf1412489dd2bb7910bc8b74ac1c04f9d425649d3a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwNWQwZmZiMWZiYWJjZmUxODg2NjVkMTMzYTNkODNlN2I4MTZiMmY4OWE5MDQ0NWQxN2I5OTMzNzBlNjI0YTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZDNiYTU5NjUxOWViZGRmMTk3N2UzODJhOTA3M2QyOTZmZWM2MGEzYzIxNDVhOTVmMzlkZmY3NDQwMWE1M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        },
+        {
+          "resource": "repo://feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt#L67-L76",
+          "version": "repo-lines-v1:sha256:234d773f3e999338c71fb27887d55e9f0865e2984f098959268d97d55b5a4e41:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0MzYzNWU5ZmE2M2Q0NWIyMTIwNjQzYzI1ZjVmMWYzMDE0ZTZkYTE3NzNmNzE5NWMxM2E1OTQ0N2IzN2EzMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiZjhlOWEzNTg1OWFkNWU1NTc0NGMwMmYwZjY1OGMwYmYyYTU2MWZmM2I0YTU2ZGYwMjEzYjEwZTk5Yzk4NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0MWJiNTE3NzkzMTU3NTFjNTA1YjA4YjNjYTI5ZDY2ZTg0ZWViNjk1Y2QwODM0ZGVkZjRhMzQ2ZTMwYzdiZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0OTRmYzc2NGY3OTE1Yjc4MDhkNDg2YTA5YWM3NDZmM2E0MjQwZDQ2ZTQ3ODAxZGJkNzUzY2NiOWZiNzdkNjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_10cb2eb185ba48a79e056fbc2e138be3",
+      "statement": "LAN read modelは未知viewを未読に戻し、RSS/Redditの記事とRSS feedを種別で絞る。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebReadModel.kt#L11-L53",
+          "version": "repo-lines-v1:sha256:edc5a81a0718ed84f68d07c5fb5034bfde6843d6c1181d12251afee8a0ae52c4:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3NjEwZTE4YWQyZWI0MTg2YjFiMTgyZmJkNGJjNGU3NDA5MzJlODMwNWQ1YmE1OGU0Y2Y2MTk0NjYxN2UwMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzZjY5ODI2YWU2YmQyYjgxMzUyYmM1MDhjZjQ1MzRmY2I5M2E2MmNjN2Y4YmY5ZWY4ZGI2OTFjOTI3YTUyMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

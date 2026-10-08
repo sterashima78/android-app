@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:90a3455e974c8c6367bf892870c1451e502f987340c8030c76feabf7ca84c392",
+  "claims": [
+    {
+      "id": "claim_21606cc2a54748c4a1508d7d0e3ffa73",
+      "statement": "Bookmark importはContentの検索・作成後にCuration保存とタグ付与を行い、新規・重複・スキップ件数を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkImport.kt#L34-L71",
+          "version": "repo-lines-v1:sha256:42a4a359d6808932b2dffda4eee82f7c182dac68fa6c50a5edcd764b4c8aac36:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyMTdkOWE2ZWRmNDdlNWVhMjVmMmVhOWIyMWQ1OTg0NjZiOWQzYTVmOWM5OWI2MzYzYzFlODUwNmIxYWUxMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwMDIwMmMyYjE2YWM2NjVhOWRjZmNiZWMxZmYyZTEzMzk1MDJlMWU4ZjNhMmI3MjRlOGNlNDliODBlYWU0NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f39c85873f4043a18f2dbc25e4373374",
+      "statement": "BookmarkからLibraryへの移動はLibrary追加の成功後にBookmarkを解除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/MoveBookmarkToLibraryUseCase.kt#L6-L15",
+          "version": "repo-lines-v1:sha256:cc56abe9c1c62c3c7fa182482fd6d9d48394fd3f24f20e416bdf6b30341caa31:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MjE5YWQwM2QyNTM4MDFhZTM0OTE2NjY0ZTEzY2VmMjAyMTE3OGQ1Zjg1ZDRjOThkNjI4YThmMDQzMzI0ZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI2NGY3MzY0OWFiZjMxY2UwOWE5NzM4ZDFlYjUxMTJkZTI5YzM2ODMwNjVmY2EwODJjZDY5ZjNiNjYxM2U5ODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d80550fe5fb4f96aa30a69477bc6864",
+      "statement": "Curationは他Contextへ保存済みとあとで読むのcontent identityをnamed queryで公開する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkCrossContext.kt#L22-L26",
+          "version": "repo-lines-v1:sha256:f1b835d13265ae95dfe303c1104683fc4a7b4396bce2445c9a594519a23081a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTMwMTY5MThjMTQ0N2MxNTllZGNjMzRmY2ExY2RlOTY2NDdhYzYzOWNhZTQyOGU4ZjNiN2E5ZjQwYzcxMWM0MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmUwMjAyMTY1OWM2NmY3NDkxNjM3ZjYxNWRlMzRmOWM0M2UxZDExZGRhYzFlYzNjYTE2MDZkMzQxMmFiNDk3ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNjODAzOWZhZGIzN2MyYTFhNWZmMjQ0YTNkMDA3NmQzMmE5MjcyZTI5OGI1ODUwMDY1NzRlYWYyYzc5YTEyNCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

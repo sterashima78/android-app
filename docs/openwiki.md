@@ -37,6 +37,8 @@ Codex へ次のように依頼する。
 
 [`Wiki の索引`](../openwiki/index.md) から Markdown を読むか、ローカルのグラフ表示を使う。
 
+[`モジュール別の説明`](../openwiki/modules/index.md) は `settings.gradle.kts` に登録された各 Gradle module を対象にする。feature の Domain / Data / UI も個別に説明し、責務・処理の流れ・状態・依存境界と関連する実装・テストへ案内する。全体構成や機能をまたぐ処理は既存の architecture / workflow ページから確認する。
+
 ```sh
 openwiki visualize
 ```

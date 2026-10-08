@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6f70b4ca900eae7b4a9434a931f0974241b840f4ac0744e124c9b3ee9f460cbb",
+  "claims": [
+    {
+      "id": "claim_7584d34a56d142019cbc3843a5018a18",
+      "statement": "Game UIはKotlinゲームへViewModel stateを接続し、数独とクロンダイクは専用Godot Activityを起動する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/GameRoute.kt#L52-L146",
+          "version": "repo-lines-v1:sha256:5d61f8ed508c949633b18181cb778d36a23c040e33b7098c9d75ae0947a5dcc1:eyJzZWxlY3RlZExpbmVDb3VudCI6OTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2N2MyNWUwYjA3OWIwNGYwYjNlOGZlNmE4NjNjMTc4ZDliYzk1MTFmN2YwNzFhMmViNjVlYmZiMTQ5ODU2NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZTg1ODRkMTMyYThmOGQ2M2FlMDk4OGIyM2VlOGFkMTk4NWY4MjZiYjkzMWJjOTY4YTJlODMzZTFkYTI2ZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlY2JjM2Q2NDA1NTI0YTA0MWQ5Y2RlYThiZjMxYTJiZTQ4YzU4ZmU2NWE4MzFhM2E4N2UxZGZiM2FkYTNmNTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5cac0bfcecb6435e892c3617a05665c8",
+      "statement": "2048 ViewModelはtransition中のmoveを拒否し、現在transition idと一致する完了だけを受け入れる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/Game2048ViewModel.kt#L27-L42",
+          "version": "repo-lines-v1:sha256:3eed4a8e2374f4d77676f41fefb5612cae118055db111f6886bba4c91becdab9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZGM3NDA0NDY1MzhjMTQ0OWYwNDI1ZjI1MzQ2NmY4YzU2MDdhOGFkNzc1Y2ZjMzY0MjA3YzE4NzZhMzYzMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5ZTU1YzY1ZWQ5YjQ2YzVjMDRjOWQwZjZkZWY3ODQ0ZGYyMmYzZDczM2RiMTE2Nzg0ZTAyNDE3ODg1MmYzNTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNzM5YTA2YzFjYmIxMjQ0ZTMzNjNkMzhiY2Y5ZmE1MGNlODRmZWQzOTljMjE5M2EzYzdmMDhkNTk5MThiMmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_427b7cfbb22c42009ca535c58c7bf3b4",
+      "statement": "暴走炉UIは周回効果の選択待ち中はtick/tap/purchaseを止め、tick時間を0〜0.25秒に制限する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/IncrementalGameViewModel.kt#L22-L79",
+          "version": "repo-lines-v1:sha256:9bd85398f61229353848940c7a407db80a47258e3040d927f0713d73de35e49d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZjI1MGQ3ZDJlNGE3ZmJiOWY0YWQ5YmI0NzZlYTA0ODVhY2JjYzBlZWJkYWEzYWE1NTZjNjgyYjY0OWI4MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0ZmVkMzk0MDBlZTUxYjUwNDY3Njk0Mzk5MWQ3ZjFiNjVkNWUyZTYwMjAzODM0MTc2MDcxYTdkZjk2NzY5OGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhN2E4Mjk5MTE5Yzc5NDJmNjJmMDBmNjg0NTA5ZGQ5MDY5NDJlMmJjYjM0NDgwZGQwZWYzNWVlMDdhYjRkNWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1920e20b35c7421580c94baaed1efa0c",
+      "statement": "クロンダイクActivityはGodot user argumentでsceneを選択し、orientationを横向きへ補正する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/GodotKlondikeActivity.kt#L6-L21",
+          "version": "repo-lines-v1:sha256:e0a3b89d432fb6befa0b9e6ed1a97b46519293d0d5112f186fae77bccfd3cfda:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3ZjdlMTg4Nzg2ZWU5M2FkMWUzYTMxYzBkMDY1MDYxMDQzMGY1ZTZkNDEzM2VkYTdiNjYyYTU2NTMxYTAxOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0N2ZmMTA4NjM1ZTA1ZWNjYmY2MDBmZTEyZjQxN2EyYmM2MDQyMTU1ZDEwYWIyOTdiMWQ4NjMxNDM0Zjc3NTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

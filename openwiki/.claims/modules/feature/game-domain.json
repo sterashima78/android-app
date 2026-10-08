@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8b52424ecc84268aea74780d07dd6039d78fe1fab80b6fcfb59c48c0a5665462",
+  "claims": [
+    {
+      "id": "claim_f28a4893d4284eb981e96324cd54ee01",
+      "statement": "2048 Domainは次stateだけでなく移動と結合のtransitionを返し、動かない入力ではtileを追加しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/game/Game2048.kt#L68-L117",
+          "version": "repo-lines-v1:sha256:082a65eb4f02acf81f91788973d9f3c39588b8407aee12246d4a7f4270f35c3e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzYjc2NWE3NDMxOWY1MDY2YWNmYjA5MjQ2YTcyMTFiZDFkNzJiMDA2MzBjNGQyZjE5YzEzODZjN2YyZmZhZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MjY3OTM1ZmM2MzM0NjVkODQ4YjQwYTRlZDY5NjdlN2I3YTMyM2Y4MWNkNTNjMTEwYWUyMTAyOTY4N2FhMTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3NWYwMTZlNDc5MTJkNTY3ZTRmNGY0YzE5NTVjOTFmNDg1OWViZTY5Y2RmMWY3YmNkMjJkZjAzMGQ3ZmYwODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwNjdhYjk4ZjI3ZWFjNTNjYjA4MTcyOTcwNWQwYmNlMzcwZTVlZjY4MTZmMTQzMTIzMTdkNzUwODhmYjAyOWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_348a9b80e98447239ef8dc135608f1b1",
+      "statement": "マインスイーパーは初回open時に地雷を配置し、最初のマスと可能な周囲をsafe zoneにする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/game/Minesweeper.kt#L54-L98",
+          "version": "repo-lines-v1:sha256:b25a6949923ebddbf540fb19937a94691b4bfa94d36096cf0d2d11358c2f9ffd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4NjVmMTY4MTZiMmIzZjU4Njc2NDlmZWZhNzMzMjc4YWEzNjExNWQ4YTdhNWRjMmJlNTViM2E0OGYyNTk5ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkOWVlODVkMGMzNmEwNWM0ODczZDUwNjFkYTViNTc4Y2IyY2U5ZjA1YTJmZGQ4OWY2MmRhMmEwNzdiMmFhZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5NzAxNTU3NTA5MDJjY2I1ZDY0YTJhMWM2NTQyMTA5MDIwZTM3OGNlMDcxMGU3NGY1MzQ3N2ViYjVhOGQ1MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5ODM5NmEwOGQ3YjJjNTYxMjg0NTJmZTE0MThmZTAyMzQxMGYyOGRmMTBkN2UyZjFmMDY0ZDc2NjU0YjQ4ZDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_808963bc92684e8ebe5c68a5d89ca004",
+      "statement": "暴走炉の各設備はenergyを直接生産し、他設備を生成しないことをtestで確認する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/game/IncrementalGameTest.kt#L46-L75",
+          "version": "repo-lines-v1:sha256:1a2d5ad4050ae5c0eeab525d0d6ee20d561249d5e3e12164719df80570943094:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NGMxZjA1MjUxZjdjN2FiZjRkOGM1ODcxN2ViZjYwYjcyZjE3YzBmMzk0OTZjYmZkZWIzNjFiY2MwOTI1NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MTM1MzQ5MzQyN2M3MjFlNTFkNGI1YWVhMjZkYTYxNDNkZDUzNmVkYmYxNzQyZDZjZjRhYzYxYTM5NTViZTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

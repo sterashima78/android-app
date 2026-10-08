@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:614001d569f26b8f38acab4ddc2b71cdcb3986323db225239c2e889c156f407a",
+  "claims": [
+    {
+      "id": "claim_c62c90e025434a9ab43754c8bc0b9d02",
+      "statement": "Health Data は空の時間範囲を拒否し、期間 aggregate と詳細 record から Overview を構築する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt#L70-L95",
+          "version": "repo-lines-v1:sha256:97250f43292c049a676190932e0a641a11b68d275a8bc0164f00ecf9b9ac2133:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4NjdmN2MzZDlkN2E2MjViYzE3ODE1OGIwOTdiOTA0OGVhNWUzOGMwNGQ0Yzc2MTE3ZmQzMWU1ZGJiYWM5MGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMGEzNTM4MTQ0NTY4ZDMwMTVhYmIwZjBhYjBlY2ZmMmU0ZDgzODAxNGE4NDhlZTgyZjA3YzljMmUwMzI0ZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZjdmZDYzMmFlOGVjMzA2YzIyMzViMjY2YmFhMjI0MGEzY2Y0ODMxNGQ2Y2UwMTdmYjc2YTM4NzA4YzZiOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9e88c085e3344d69a714a2b70fde61ae",
+      "statement": "Health の運動重複除去は完全一致を統合し、同一の既知提供元の非完全一致は保持し、異なる提供元の候補には時間重複等の追加条件を使う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/ExerciseSessionDeduplication.kt#L27-L61",
+          "version": "repo-lines-v1:sha256:cb8bfeccc8c47fdf26f1450eb3074396064e283f051fca999ca82ebb35a2514f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwZDlkYjM3ZTgwZWJiOWQ3Mjc4MjU2NWYyYTg1ZWIyNDhjMTUxYWFmMzgxNDg3OWIyY2Y2OTA1MTA3OGNjZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyNThkNjYzYzgxOTU4YTIzMzMzMTIzMDc4OTVlMDk3NTU4YzY3OWMwNTYxMDY0OTc2NWEwNzM0ZGZmZmQ4OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyYzMzYzJiMzMzZDAwNzRhOWJjYmJjZjc3YmUyMGM1NWRhN2UzZDY2MWRiZGNmMmFhZWE3YjcyNmVjNWUxY2UifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

@@ -1,0 +1,77 @@
+# ファイル
+
+- [AI Task Queue Data — owner taskの合成と操作委譲](ai-task-queue-data.md) - 各featureのtask adapter、global pauseの連携と失敗時の補償を説明する。
+- [AI Task Queue Domain — 複数機能の統合taskモデル](ai-task-queue-domain.md) - feature固有taskを共通表示へ投影するモデルとglobal・個別操作の契約を説明する。
+- [AI Task Queue UI — 状態一覧と停止・再開操作](ai-task-queue-ui.md) - task polling、表示順序・件数、globalと個別操作の結果表示を説明する。
+- [Article Data：Content の保存と source 接続](article-data.md) - articles の永続化、既読状態、source 取り込みと共有ブックマークの Content 作成を担う。
+- [Article Domain：コンテンツ分類と保持の契約](article-domain.md) - RSS に限らない Content の閲覧状態、分類継承、保持期間と source command port を定義する。
+- [Article UI：共通記事一覧と操作の投影](article-ui.md) - RSS、Bookmark、Reddit が再利用する記事一覧、日付見出し、スワイプと種別選択を描画する。
+- [Asset Data：資産 snapshot の置換と非負集計](asset-data.md) - TSV/JSON import、日付単位 transaction と既存負額を除く read model。
+- [Asset Domain：dated snapshot の公開契約](asset-domain.md) - 最新総額、カテゴリ履歴とインポート・カテゴリ操作の境界。
+- [Asset UI：概要、収集、カテゴリ設定](asset-ui.md) - 資産画面の再読込、document import と Secure Web Collector、履歴グラフ。
+- [Audio Data：オフラインTTSとMedia Session](audio-data.md) - 音声本文解決、逐次準備、cacheとMedia3 serviceの寿命を説明する。
+- [Audio Domain：共有再生キューと操作](audio-domain.md) - 要約とPodcastから使う再生キュー、状態、操作の共有契約を説明する。
+- [Audio UI：準備と再生の共通コントロール](audio-ui.md) - 共通の再生操作表示とAudioPlaybackStateの扱いを説明する。
+- [バックアップ Data：ZIP整合性と時刻予約](backup-data.md) - 整合したdatabase archive、復元時の検証、Driveの時刻予約とWorker失敗処理を説明する。
+- [バックアップ Domain：保存・復元と時刻設定の契約](backup-domain.md) - バックアップの入口、設定済み判定、初回保存の部分失敗、時刻値の検証を説明する。
+- [バックアップ UI：操作状態と部分成功の表示](backup-ui.md) - BackupViewModelによる非同期保存・復元、Drive初回保存の部分成功と時刻一覧を説明する。
+- [Book Reader Data：ZIP・PDFと読書位置保存](book-reader-data.md) - ZIP画像とPDFレンダリング、SharedPreferences読書位置の実装を説明する。
+- [Book Reader Domain：文書と読書位置](book-reader-domain.md) - ローカル文書、ページsource、読書位置の保存契約を説明する。
+- [Book Reader UI：ページ式・縦式閲覧](book-reader-ui.md) - 読書位置の更新、画像読み込み、ページcacheと閲覧操作を説明する。
+- [Bookmark Data：Curation の永続化と復元](bookmark-data.md) - Bookmark 状態、タグ・フォルダ、あとで読むを保存し、Content query から一覧を合成する。
+- [Bookmark Domain：保存・整理と Context 間操作](bookmark-domain.md) - Curation の保存・タグ・フォルダ契約と、Content 作成、import、Library への移動の順序を定義する。
+- [Bookmark UI：一覧・タグ・フォルダと import](bookmark-ui.md) - Curation の一覧と編集を表示し、Content と Bookmark の変更通知から画面状態を再読込する。
+- [Calendar Data：三つの source の期間投影](calendar-data.md) - 端末 Calendar Provider、TaskReader、WorkoutReader の統合と権限拒否時の縮退。
+- [Calendar Domain：読み取り専用イベント契約](calendar-domain.md) - 予定、タスク期限、運動実績を統一する時間表現と read-only capability。
+- [Calendar UI：月表示と日付の occurrence](calendar-ui.md) - 月移動、選択日、期間取得の競合防止と日跨ぎイベントの表示。
+- [Chat Data — 履歴保存とローカル会話生成](chat-data.md) - 履歴の保存順序と保持上限、ローカルモデルへのprompt・tool接続、生成失敗を説明する。
+- [Chat Domain — 会話と読み取りツールの契約](chat-domain.md) - チャット履歴、会話生成、進捗とアプリ内情報参照の公開契約を説明する。
+- [Chat UI — 履歴選択とストリーミング会話](chat-ui.md) - チャット画面の送信制御、履歴保存と生成の順序、失敗時の表示状態を説明する。
+- [Game Domain：端末内ゲームの状態遷移](game-domain.md) - Kotlinゲームの盤面・移動・勝敗と暴走炉の設備生産・周回効果・Prestigeを説明する。
+- [Game UI：ComposeとGodotの実行・表示境界](game-ui.md) - ゲーム選択、ViewModel内の進行、animation入力制御、Godot scene選択と画面方向を説明する。
+- [Health Data：Health Connect 読取と重複除去](health-data.md) - 期間集計、page token 読取、栄養の日別集約と運動 session の代表選択。
+- [Health Domain：健康情報の read model](health-domain.md) - Health Connect 可用性、読取権限、日別・栄養・運動表示の契約。
+- [Health UI：期間閲覧と権限状態](health-ui.md) - 日・週・月の表示、過去履歴 permission gating、チャートと欠測表示。
+- [Integrated UI：RSS・Reddit・メールの横断表示](integrated-ui.md) - 各機能の画面状態を統合一覧へ投影し、source ごとの ViewModel に操作を戻す presentation module。
+- [Knowledge Data — 資料収集・永続ページ・背景生成](knowledge-data.md) - 保存済み要約からの生成、編集済みページ保護、分割統合とfeature-owned Workerを説明する。
+- [Knowledge Domain — ページ操作と生成タスクの契約](knowledge-domain.md) - ナレッジの読取・編集管理・AI生成を分離し、再構築とページ生成の状態を定義する。
+- [Knowledge UI — ページ閲覧とAIタスクの回収](knowledge-ui.md) - 検索・ページ管理と背景AIタスク登録、画面再生成後の結果回収を説明する。
+- [蔵書 Data：カタログ・同期・処理キュー](library-data.md) - 取得元別蔵書の保存、手動状態、SMBとAI処理の実装を調べる入口。
+- [蔵書 Domain：取得元と整理の契約](library-domain.md) - 蔵書の取得元、手動整理、シリーズ再整理と非同期AI操作の境界を説明する。
+- [蔵書 UI：一覧・書誌レビュー・Reader接続](library-ui.md) - 蔵書画面の状態、同期操作、AI結果復旧とBook Readerへの接続を説明する。
+- [メール Data：Gmail同期とdurable checkpoint](mail-data.md) - Gmail取得、local cache、ページ再開、Worker失敗分類とruntime認証tokenの扱いを説明する。
+- [メール Domain：トリアージと同期再開の契約](mail-domain.md) - メール状態、受信箱操作、初回同期のContinue・Complete・Stale契約と認証境界を説明する。
+- [メール UI：受信箱操作と制限付きHTML表示](mail-ui.md) - Mailbox選択、トリアージ状態更新、同期進捗polling、HTMLメールのWebView境界を説明する。
+- [Podcast Data：保存・Worker・AI境界](podcast-data.md) - Podcastの永続状態とWorker、RSS境界、AI生成実装を説明する。
+- [Podcast Domain：番組生成と章checkpoint](podcast-domain.md) - 番組独立source、ニュース生成、章checkpointと再開の契約を説明する。
+- [Podcast UI：番組管理と生成・章再生](podcast-ui.md) - 番組/source管理、生成受付と永続状態の観測、共有Audio再生を説明する。
+- [Reddit Data：RSS capability を利用する購読 adapter](reddit-data.md) - Reddit 固有の入力と重複検査を RSS FeedRepository へ適合し、購読と更新結果を公開する。
+- [Reddit Domain：source 判定と購読 identity](reddit-domain.md) - Reddit の community / thread URL 正規化と分類を所有し、通常 RSS との境界を公開する。
+- [Reddit UI：購読と source 固有記事の閲覧](reddit-ui.md) - Reddit の未読・あとで読む・履歴と購読管理を表示し、Content / Curation の公開操作へ委譲する。
+- [RSS Data：取得・永続化と推薦 background work](rss-data.md) - 通常 feed と Web scraping の取得、RSS-owned 保存、推薦 queue と feedback 学習の WorkManager 接続を実装する。
+- [RSS Domain：購読更新と推薦ルール](rss-domain.md) - Feed 契約、同時更新の制御、推薦評価と除外 feedback 学習の状態規則を定義する。
+- [RSS UI：未読・推薦と「あとで読む」レビュー](rss-ui.md) - RSS の閲覧・購読設定、推薦注記、除外参考と開始時点に固定した「あとで読む」レビューを提供する。
+- [Settings Data — core AI管理とbackground downloadの適合](settings-data.md) - core runtimeとの設定変換、download jobの永続進捗、ChatGPT候補の選別を説明する。
+- [Settings Domain — AIモデル管理と接続設定の契約](settings-domain.md) - ローカルモデル設定・download進捗・benchmark、ChatGPTモデル選択とdebug操作を説明する。
+- [Settings UI — AI実行先とモデル・接続管理](settings-ui.md) - モデル管理画面、ChatGPT接続と実行先選択、関連feature設定の合成を説明する。
+- [Summary Data — 本文準備と永続要約キュー](summary-data.md) - 記事単位のdurable task、local/cloud routing、要約とブックマークmetadata保存を説明する。
+- [Summary Domain — 要約要求・読取と補完の契約](summary-domain.md) - 要約結果の分類、ブックマーク補完と再生成、記事単位タスクの公開境界を説明する。
+- [Summary UI — 非同期要約要求とレビュー表示](summary-ui.md) - 要約ダイアログ、queue投入の通知、保存済み結果を待つレビュー状態を説明する。
+- [Task Data：タスク保存と親子の完了整合](task-data.md) - 共有 database 上の tasks 保存、子孫の完了変更と祖先更新。
+- [Task Domain：階層と読み書きの契約](task-domain.md) - タスクの階層表示、期限判定、読み取り能力と変更通知の境界。
+- [Task UI：階層画面と編集状態](task-ui.md) - TaskRoute、ViewModel の再読込、フィルタと展開状態、説明リンク。
+- [動画 Data：カタログと再生先解決](video-data.md) - Web/SMB動画保存、公開SMB能力の利用と再生request境界を説明する。
+- [動画 Domain：保存・購読・再生先](video-domain.md) - 動画モデルと保存・再生の契約、SMBブラウザ位置の導出を説明する。
+- [動画 UI：一覧・再生session・寿命管理](video-ui.md) - 動画画面の状態、非同期thumbnail、Media3再生と位置保存を説明する。
+- [LAN Web Data：Service・HTTP・一度限りの認証](web-data.md) - LAN Serviceの寿命、gateway/read model/renderer分離とbootstrap/session認証を説明する。
+- [LAN Web Domain：読み取りgatewayと起動状態](web-domain.md) - LAN公開のread-onlyデータ契約、起動状態と通知からの起動アクションを説明する。
+- [LAN Web UI：起動確認とアクセスURL表示](web-ui.md) - サーバーの起動・待機・停止状態、開始確認とHTTP公開の説明を扱うstateless dialogを説明する。
+- [Widget Data：owner委譲とbackground更新](widget-data.md) - Content・Bookmark・RSS Domainへの操作委譲とWidget更新Workerのnetwork・失敗処理を説明する。
+- [Widget Domain：記事操作とframework境界](widget-domain.md) - Widget向け記事投影、既読・あとで読む・更新の契約、providerと起動アクションを説明する。
+- [Widget UI：RemoteViewsと記事・Task操作](widget-ui.md) - ホーム画面の未読記事とTask Widget、非同期broadcast処理と変更通知からの再描画を説明する。
+- [Workout Data：保存、AI Worker、外部 export](workout-data.md) - snapshot の互換性、実行時 prompt 再構築と Workout-owned Health Connect export。
+- [Workout Domain：記録、メニュー、AI 契約](workout-domain.md) - Workout snapshot の日付遷移、メニュー制約と background AI capability。
+- [Workout UI：実績入力、タイマー、AI 結果](workout-ui.md) - 当日の運動状態、保存後の export、メニュー取り込みと AI task の回収。
+- [X Data：端末内カスタマイズ設定の保存](x-data.md) - SharedPreferencesによるCSS3セットとJavaScriptの保存、初期CSSとindex補正を説明する。
+- [X Domain：CSSセットとJavaScript有効判定](x-domain.md) - 3つのCSSセットの編集保持、独立したJavaScript設定と注入対象の判定を説明する。
+- [X UI：専用WebViewとカスタマイズの実行](x-ui.md) - X限定のCSS/JavaScript注入、外部リンク分岐、renderer回復と全画面メディアを説明する。

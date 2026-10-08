@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8fd9e8f03ce959e143d6d3c4da8be2c0d6f80294ee5ae66faf01d0fd243507ba",
+  "claims": [
+    {
+      "id": "claim_6152c0e7bc594b3e91968e7cedbe0230",
+      "statement": "Calendar UI の reload は前の job を cancel し、要求した月が現在の月と同じ場合だけ結果とエラーを反映する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/CalendarViewModel.kt#L63-L87",
+          "version": "repo-lines-v1:sha256:37a4f094ea93caaa5e75d1913735b57094169489f5a22bca47c39993698cd37e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZjM1NzRlN2UzYmY2ZWQ5Mzg0YjNhMDA0MjJlNjVmNGY1MmY5NjU3NGY5ZDJhYWRmOGNmMDBkZDBkYTdjOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzYzIxOTQxMWQ1YjFjZTIyNTFmYjRmNDBkNjFhMGJmMjcyN2FmYmU5ZGYwYWYxZTBmNTQzNzAxMmFjZDY2ZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_63a69cfe9ef24a50aa287fda9df229a1",
+      "statement": "Calendar UI の日付 occurrence は終日の排他的終了を守り、時刻付きイベントの終了時刻から 1ms を引いて最終表示日を決める。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/CalendarViewModel.kt#L111-L124",
+          "version": "repo-lines-v1:sha256:dc78d1f56eb37c07ec100fbaa9433e72ea5bc771549285481e98bc88cce34073:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzZjgxMTAzZTA5N2ZlZWJiYjFiNTdkM2EwOTE5MDg1ZjJmZjU1ZWY3Mzg2NzUwYTNmYWQ2N2Q2NzgyMWRiYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

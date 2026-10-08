@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9a10c205ae7305b1214a9cdd60650de6cbeb14a06844490e813766dd24b3b7ee",
+  "claims": [
+    {
+      "id": "claim_1e355b02bdc84b66911908b34edc9902",
+      "statement": "factory は process 内で OkHttp transport を共有し User-Agent ごとに wrapper を再利用する。",
+      "evidence": [
+        {
+          "resource": "repo://core/network/src/main/kotlin/dev/terashima/yomitorirss/core/network/OkHttpHttpClient.kt#L74-L87",
+          "version": "repo-lines-v1:sha256:c556fe59702d70234e2f92f5ee1ef35629dc86d2905a1780ef26988c17740308:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxNDhlNDFmMmY1ZTk5MmJjMjYyM2UyMGZmOGFiMGRlYWRiNGY3MTk0ZDlkZmUyMWYxZWI2NGYyMGY4ZmUxNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmNzg0MzA3YzJjOWE4NGE2MWQ3N2UyOTk3MDFlYmZkNDQ0Y2E4ZTJiZGM3YTMzYzMwY2Y1ZTdiMWU2MGM3ZTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_106ac994419e4e16a8f3667713ea0c0e",
+      "statement": "成功・失敗別の応答上限を適用し、Content-Length と累積読み込み量の両方で超過を拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://core/network/src/main/kotlin/dev/terashima/yomitorirss/core/network/OkHttpHttpClient.kt#L39-L75",
+          "version": "repo-lines-v1:sha256:d07fd7fdf307ed68771e64c2674a3fb83b0497e674739f9fdb56cf9186f2f106:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwMDVhYjZkZWY0MjA3ZTgzYzEzNmUyMGFiNWI3Zjg5MWIxMzYzMjBhZDIyMWIxNzQxYzY3ODBlNDA5NmQ0ZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxMjExMTExNDVlMjBkM2Y5ZDgzNGE0NzA3NzhkOGM1ZGUyNWYxNDNlMDY0NDdhMDJmNTlmOTU0NWRjZjU1MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxZjk0MzMyZWRkMDY2NTQ2YjhhNTVlMjk4YTIwZmIxMzI5Y2IyMjBjMThhMjczMWVlYWUyMWUyZDRiZTFmNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmZmI0MTk5NzUyODIzZGQ4OGQzMTFkZWU2MTk1Y2Q0NDhiMjViODdhZTUyYzk1YzViZTY1ZmQzNzgwNjBhY2YifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_93b99aa50bab4889aaa90d0e5806ad57",
+      "statement": "応答上限超過は IOException を継承せず、途中切断は IOException として失敗する。",
+      "evidence": [
+        {
+          "resource": "repo://core/network/src/test/kotlin/dev/terashima/yomitorirss/core/network/OkHttpHttpClientTest.kt#L28-L65",
+          "version": "repo-lines-v1:sha256:90d25a230b7a030f0c6e726ec31ddff12c23cff2a832f67d775f580cbbcae037:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyZDUzZWVlYjU0YzY0YzQ5NDRlNTViOWQ3MGUwZGZhNGJlOWE5ZjZhNmY4MzYyN2Y4Y2FjZWIzYzRhYjlhMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzZDRmM2NlMGIyZDYzMGQ0Y2M5MjViOWJjN2I5NzlhMjE1OWE4YWE1Y2E5ZThmNWY5YmU2ZDJlODRmYWY3ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlY2IyOTk2NTBlMDUyMzdjOWMxYjIwMWE2MzA2NWZiZmQyMWYwNDI4NDBhYWYwZWQ0YzY4NTRlOTRmNmVlNTMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}

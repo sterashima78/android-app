@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2125c198f27a8fb2469ba6d5623e047ce3266a7af0f63779d03f2b161344f7c1",
+  "claims": [
+    {
+      "id": "claim_76e449aa5f0046498b8dab77413b7b21",
+      "statement": "Reddit ViewModelは購読があれば初期読込後に更新し、Content・Curation・Redditの変更通知を観測する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditViewModel.kt#L32-L55",
+          "version": "repo-lines-v1:sha256:7270c356162745c35a9152f075b4b6c6e3fd306ae8e8f8bfe2d80b7217e92c4f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwMGVjMGFiZDVhY2Q5YzgwMjA5NjAwYmNlZGViOWQ1N2YyYjRjNDZkNWQ0ZTZjNDhkYTZjMjkxNTYzZDgzMTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiYTQzYmJiNDlhMjc2ZWYyNTU5YjdlNjAzMmI5ZmJjYmJjZWJkOWQ3OTJjODYwMGI5YWViNzhkNjEyYWNhZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwMzZjNGY3ZTNhMzAzMGFlMGVjYzNkMGY3ZmYwMWY4ZGJiYmUwMDQxNTdiNDY4MTliYzAyMmUwNmEwNmVlNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8747fe8ee98247e3b1c99035c071400d",
+      "statement": "Reddit手動更新の結果messageは購読なし・成功・全失敗・部分失敗を区別する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditViewModel.kt#L68-L101",
+          "version": "repo-lines-v1:sha256:eb3f7c0e00e872f2f8ee3ced3afc49e78a03549c25354fd8cf16c809efcd6b7b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ODEyY2Q3MzBmYTQ0YmM5MTgzMjNmY2Q0Y2QwMzE2NGJhNjllODQ5MzU2M2UxZWJkYTcwM2M1NDM5YzZiZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T13:53:53.288Z"
+  }
+}
