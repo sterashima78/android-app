@@ -117,8 +117,8 @@ internal class VideoProviderDatabase(
           put("title", normalizedTitle)
           put("updated_at", System.currentTimeMillis())
         },
-        "id = ? AND provider_id IN (SELECT id FROM video_providers WHERE provider_type = ?)",
-        arrayOf(subscriptionId, VideoProviderType.CUSTOM.name),
+        "id = ? AND provider_id IN (SELECT id FROM video_providers WHERE provider_type LIKE ?)",
+        arrayOf(subscriptionId, "${VideoProviderType.CUSTOM.name}:%"),
       )
       require(updated == 1) { "カスタム動画の購読先が見つかりません" }
     }
