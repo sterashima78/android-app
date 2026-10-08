@@ -241,6 +241,7 @@ models:
 <!-- /formal-requirement -->
 - custom Providerは画面を開いていないbackground refreshでも同じfunctionを実行できる。functionの失敗や不正な戻り値はそのsubscriptionの更新失敗として扱い、他Provider / subscriptionの更新を継続する。
 - 有効なProviderへチャンネル等のsource URLまたはProvider固有の入力をsubscriptionとして追加し、手動またはbackgroundで更新できる。
+- custom Providerのsubscriptionでは入力と併せて表示タイトルを任意指定でき、登録済みタイトルも編集できる。タイトルを省略した場合は取得したタイトルを初期値とし、以後のrefreshでは保存済みタイトルを保持する。タイトルとsource URLは購読設定に併記する。
 - Provider更新で新しく発見した動画はVideo catalogへ追加し、provider由来の未読として表示する。既存動画の更新では未読 / 既読、あとで見る、保存、再生位置を保持する。
 - provider由来の未読 / 既読状態と視聴済み状態は独立して扱う。既読化で視聴済みへ変更せず、再生完了で自動的に既読化しない。
 - 購読型Provider由来の未読、あとで見る、履歴、保存、再生は動画機能内で確認・操作し、統合ビューには重複表示しない。
