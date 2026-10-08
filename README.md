@@ -7,3 +7,5 @@
 - [Current Architecture](docs/architecture/README.md): 現在有効なアーキテクチャ
 - [ADR](docs/adr/README.md): 設計判断の履歴
 - [Specification](docs/spec.md): 現行ユーザー仕様の目次
+- [OpenWiki](openwiki/index.md): ソース・テストに基づく日本語のリポジトリ Wiki
+- [OpenWiki の利用と更新](docs/openwiki.md): Codex 連携の準備、更新、閲覧方法

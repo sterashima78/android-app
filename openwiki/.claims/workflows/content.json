@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:1a87da5a770b533c589493681c8a0648ab529f65cfa74452440df2c77ac91af7",
+  "claims": [
+    {
+      "id": "claim_a534817a910440dba784ac4c2dc871a5",
+      "statement": "source Context が購読/fetch state、Content が identity/metadata/reading state、Curation が Bookmark/Tag/Folder/Read Later を所有する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/context-map.md",
+          "version": "repo-file-v1:sha256:677d07aa3637e718c2d22ff26e1a3f41c894cb14e1e4b28b1b05053ccc7411d2"
+        },
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L79-L101",
+          "version": "repo-lines-v1:sha256:958613e350a331bf73a60636c40a31b71a6c0012dd2d1c67c4eb29a0f50eaee4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMDg1OTVkZDM1MzIwN2ZmNzc3NjcyYzJlMmJjZDNjYjM0NmE3Mjc3ZmJhNzRlNzhkODYxZmVhOWZkZTk5OTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMGUwNjFlMzc4NzFjODAwNzkzMjg5ZGM2MzJiMmNiYWQ3YmI3N2M5MzkxNGQwOTkwOWU2MTUzMDNkMmYwMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlNTY5ZjEyYTUzMzZkN2IzYTcyMTlhOTE4ODM3MGIzODcyOWZlNjQwNTgwYmJiZGNkNzY5NmEyNzc5MWFmYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5N2VmYzFiZjJhZjc3N2M2ZTU3ZTk3MTA5ZmE0MTIzOWFlYzg2MDgxODFkNGNkYzJiZjFkOWJlZWQwOTFlMjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5808af2a0e5a43b38291c43dba857bc0",
+      "statement": "ContentSourceGateway は source Context が Content persistence を操作する Content-owned command port であり upsert/rename/detach を公開する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentSourceGateway.kt",
+          "version": "repo-file-v1:sha256:ace0327b990cc4149e709cb8af4d17ea9cddc8407e7cbd454aea6119b42936ba"
+        }
+      ]
+    },
+    {
+      "id": "claim_ba0a6c467d854831ad7abe19432595db",
+      "statement": "Summary/Knowledge は owner API を通して Content/Curation を参照し foreign table を直接操作しない。",
+      "evidence": [
+        {
+          "resource": "repo://docs/architecture/system-overview.md#L93-L101",
+          "version": "repo-lines-v1:sha256:7b78b22ef85b582aefb35da680315db8230474498837bc002502097018727b8b:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2E3NzAxZTg5OTg2ODhlZmZlMTQyMWE4MDA0MGE1ZThiNGQ3Yzc5MGNmZWVmMzQ4MWJlODgyZTA4YzUzOWQ3NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmMwZTA2MWUzNzg3MWM4MDA3OTMyODlkYzYzMmIyY2JhZDdiYjc3YzkzOTE0ZDA5OTA5ZTYxNTMwM2QyZjAzMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODU3NzJkY2I4MzJiZTNmYjMzOTQ4YTc4Mjg4MmJlNWVhMDFlOWNhZDgyZjM2NjI1NjE2OTE4OWQ5NmIxNTZhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTk3ZWZjMWJmMmFmNzc3YzZlNTdlOTcxMDlmYTQxMjM5YWVjODYwODE4MWQ0Y2RjMmJmMWQ5YmVlZDA5MWUyNiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b29d9fa08b44433da24938425d15eb35",
+      "statement": "Bookmark-owned MoveBookmarkToLibraryUseCase は Library 追加、Bookmark 解除、変更 callback の順に実行し Library 追加の失敗時は解除へ進まない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/MoveBookmarkToLibraryUseCase.kt",
+          "version": "repo-file-v1:sha256:399886c8b99999254c734bf5d4d3308c9322a132045197fde10f9fe76c7865cd"
+        },
+        {
+          "resource": "repo://feature/bookmark/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/bookmark/MoveBookmarkToLibraryUseCaseTest.kt#L12-L40",
+          "version": "repo-lines-v1:sha256:363b0534302ccbf3a9857c8175378b902fb1b0ea552463d7648e0ce0a3cab311:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwNmYxODlmODcyMDEyZDA3NTQ4NmVhZWQ4YWNjOTI1NmY5M2RhMTc4MmIwZTFmODk0YjEzMmE0OGY5MTdhMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlNTg0ODgyZGRkYmRmY2IxM2UzMTI5YThmNjkzNWViYzYyYjZjZWQ1OTc2ZTUwM2FmYzZjODJkZjQzYWY4ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4OTIwODBhMTc3YmYzNzhhOGQ0YjhkZTdiNDI5MGNjYTU2YmIyZDMwOGQ5NjExZDkyNjE5ZTFlYmQ5NDA0MTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjYmU1MzVmZmZkMzM4NWI1NmI2ZmNhMzZjNDRjZjhkMTg0NWI4Yjc3ZjUwYzQxNjhkNjE5NjBkYWMwYTMyYTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T11:54:35.312Z"
+  }
+}

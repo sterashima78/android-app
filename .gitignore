@@ -26,3 +26,6 @@ keystore.properties
 *.heapprofile
 *.heapdump
 *.heapsnapshot
+
+# OpenWiki resumable generation state (pages and Claims are versioned)
+openwiki/.run.json

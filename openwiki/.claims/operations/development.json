@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f1e904436d294904ad5574e5cde4a80eead347ec7f9c0de742409228b1bda14c",
+  "claims": [
+    {
+      "id": "claim_abaf776ecf8e4dab8633b785eb221ac7",
+      "statement": "AGENTS.md は共通入口で、Development Workflow、仕様・形式モデル・architecture・ADR・実装テストの順に正本を調査する。",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L3-L16",
+          "version": "repo-lines-v1:sha256:019fbb967441ed6cfad20d10f8fcfa897c7ccd91b7747d8594c4e105a0444a03:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4Nzk5OTE3ZTE2ODM5MjQzNTU5ZWRkZmY4ZmVkN2VhZGNiNDlkZDgyMzU0NzhhMmVkYzhkOWY2M2FkYzc0ZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZmRhOTgwMzVjNDE3NjMwOTc4OTNmZTFkOGNkZjU4YWYzYTQ0YTNhZmY4MzYzZGEwODM4N2FhYWNiYTAzM2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0YjdjMGE0ZGM2ZWJkODQzMzE0MWM0ZDliMGU2MjRhN2Q0MTIwYzE4OGJjNjMwNThmZmYxZjM2NDhiNDg0NDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d695210053aa4bfca0cd1fea14434cf3",
+      "statement": "owner、durable state、cloud egress、credential/permission、compatibility 等の変更では Change Impact Brief と decision gate を適用する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/development-workflow.md#L88-L128",
+          "version": "repo-lines-v1:sha256:9ac2f6ef9b34ca44ea427d328b13674c40fcef514c5ff8123aea4e7b43bb5f70:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzZWRlYzkzMGFlZGQ3MjBkMGUxN2MyYTdlZWRiODI0YTgzODJjZjI4ZmU0Mzk5MzQ3ZmMxODZhYTkzMzc2NTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyZDcyYzA5Y2Q5OTc3MWQwZjBiOGZjZDAxZjFmZjhhNDI2YjQ4MzMxMmZhOTM1MTY5N2M5ZDM5MDAxY2EzNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5YTI3ZjE4NDM1YWQzYzdiNzlhNjU4YTZjNjQ2NjI5OWFhOTgyYjZhYmU3ZmU4MGZkNTM4NzY0MjFiOTU1ZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1ZWE0YmUyZDY3YzMxNjEzNTcwMWU4N2M5YWUzYzU5MmVlOTdjMjU0MGQ4NzczNmI5NzFlODM0Y2ZjNWMzOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_764a78a0418d486a9e77a7723b3f2bf4",
+      "statement": "最初の変更を push した段階で Draft PR を作り、独立レビュー・必要な CI の成功後に squash merge して main APK を共有する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/development-workflow.md#L132-L141",
+          "version": "repo-lines-v1:sha256:fa07734c01b8e035d5aa5a630c187f6e3b7e4a453cb8ff389d6fda272c9e3146:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiOTMwMDJjNzZlNzUxOGU3MDFhN2I3YWNiNzM0ZTAyODEyM2I3YjVmYWE1NTMwZWZjYjZlNGMxODI0MTdkYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1ZWE0YmUyZDY3YzMxNjEzNTcwMWU4N2M5YWUzYzU5MmVlOTdjMjU0MGQ4NzczNmI5NzFlODM0Y2ZjNWMzOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5MGJhYTRhYmE2Y2M3ZmVhMzVlZjE0MTE0NzIzOWFhMjM3OGNmYmNlNmUzNjNlM2ZkODA0NjczNGRiZTQzNjcifQ"
+        },
+        {
+          "resource": "repo://docs/development-workflow.md#L304-L328",
+          "version": "repo-lines-v1:sha256:1ae97d515fe9f999c9142a4a955ebf6d07f98449d06d6e9317d045ca23eee11a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljMWViYjUzMTQ4YmRjY2FhMGQ4NzU2ZjZjZTQzYjJhYWE0MDFiMmI3YmJlNWJmNjZjZjliZTZlZGFjNzFjMjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3OWQ1MTU3ZjZhMWM5M2RlYTc1Y2IxZDk5Nzk1NzdjOTBkYjIyYzVlZjI2Nzg5ZjBkZjk3Zjk2MzA5ODVhOGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_294828a2fa954d4896b741c1f2c760f4",
+      "statement": "現行 app は compileSdk/targetSdk 37、minSdk 35、Java 17、arm64-v8a の build 設定を持つ。",
+      "evidence": [
+        {
+          "resource": "repo://app/build.gradle.kts#L43-L71",
+          "version": "repo-lines-v1:sha256:c17d89a410b9765ae8174be931945878986426d9ceaeabddbde73c665253113e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjMDJjMzM3NTQzN2EyZmE0NGIxYmZhMDlmNjU0YWEyMmMzYjUzYTZmYmUzZTY1YjU5YjNlNDM1MTZlOWYyZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3YTY0MjY3ZGJjNDZjNjVlMGQwZjVmOTEyZGU0ZjljYWU3MzIwMDY0OTI3OTYzNTc5OTI2ZmM1ZmU4ZDUwOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d34d09d333154b43958d15467a4ceffe",
+      "statement": "main の Android Build は署名付き release APK を署名検査後 version 入りの名前で mosaic-android-apk artifact に upload する。",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/build.yml#L52-L95",
+          "version": "repo-lines-v1:sha256:d619cb9f6ee525eff8bc2e8d99d5582a84c7554a4f3c1d29de19a23b0aa2a1f9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjYTViNGFmMGEyNmJhY2Y0NmU4Y2Q3YWE0OTY0YTUxMGJhMGUwNDM0NDJjOWExY2JiZmM4YmM3YmEyOTZjNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlZGFmNWYyNTgxMmM3MDViOTA4MzIyNTczOWE1MzFjZmY5NmM4MDE3M2UyMTJmMzAzZWZjYjg5ZWU0MDc3NzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5YjI5ZDc2NWYzNDRjZjNmZmQ2ZjVmZWJkMjBjMGM4YzdkMGIzMzhmMDlkZTg5YjI2ZGRhODViMWNkYjIxMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhZWVhZTJjZDRhNjM5MTIzNTcxOGM5NzEwNzI0ZTQ0NDg0MmFiYmM4MjBiOTM5NGIwMDgwMGM4MzMzZmJhYTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3b137e61bb464701beeba16c094344e7",
+      "statement": "リポジトリの OpenWiki は既存 docs と AGENTS を正本として参照し、Codex 連携で更新し、人間の編集方針は INSTRUCTIONS.md に保持する。",
+      "evidence": [
+        {
+          "resource": "repo://docs/openwiki.md",
+          "version": "repo-file-v1:sha256:b9d895f3e29816599519f331e4532a132e617f3c817c84728112d3f86ed2d9d9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b9f413a04c684d27972cc62f9c9d6fab",
+      "statement": "OpenWiki の定期更新 workflow は job の false 条件で実行を無効化してあり、通常は Codex 連携から更新する。",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/openwiki-update.yml#L12-L17",
+          "version": "repo-lines-v1:sha256:4678e53a6e6d66519d5a6870c7f1f8e2bdd924108fa598cc5e1859da31ca62d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTlkODAxNTRlZDQyZmM1Yzc3OWIxMzMxNTc4YjU4Yjg5YzgwMWVhY2U3NGYyNGNkNDhlYjRhMjM1Nzk0MGE5NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg5OTkxMTAzZjZiYTg4OGUzZGU3NjUxYzVhMzA1Yzc3ZTU1NDc2NzczYWJhODM5NTkxZWNjNWJkMGYyYWIxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTZmN2QzN2ZiMjk3Mzk5ZmVhMmE1Y2VmMWNjNDAyOGM4OTk3OWE5MDUwYTkyODU2ZjBkOTZlMWMxOGJhMTlhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2JlNDdmZWYyYmQ4Zjk5MTkxZGUzNDM3ZTI1Y2IxMzY4ZWU3ODUxZmRjOThkYzI3ZTFlYmQwZDM4ZmRkN2EwNyJ9"
+        },
+        {
+          "resource": "repo://docs/openwiki.md",
+          "version": "repo-file-v1:sha256:b9d895f3e29816599519f331e4532a132e617f3c817c84728112d3f86ed2d9d9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-08T12:04:16.240Z"
+  }
+}
