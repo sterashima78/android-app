@@ -1,20 +1,52 @@
 ---
 type: module
-title: "Workout Domain：記録、メニュー、AI 契約"
-description: "Workout snapshot の日付遷移、メニュー制約と background AI capability。"
-tags: [workout, domain, modules]
+title: Workout Domain：記録、メニュー、AI 契約
+description: Workout snapshot の日付遷移、メニュー制約と background AI capability。
+tags:
+  - workout
+  - domain
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-40c394a2bc84198d73e003e7
     resource: repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+  - id: openwiki-source-d3629e40219840e19d1f59df
+    resource: repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutSetDetailText.kt
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Workout Domain：記録、メニュー、AI 契約
 
 `:feature:workout:domain` はアプリが所有する運動記録とメニュー、および AI 支援の契約を定義する Kotlin/JVM モジュールである。`WorkoutReader` は snapshot の読取、`WorkoutRepository` は保存を公開する。種目マスタ、プリセットメニュー、当日の記録、完了履歴を一つの snapshot として扱い、Calendar などの参照者へは Reader を渡す。Health Connect の read data をここへ取り込む契約は持たない。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| WorkoutExerciseType / WorkoutUnit / WorkoutMenuSource（enum）、WorkoutExercise / WorkoutMenuItem / WorkoutMenu（data class） | 種目マスタ、単位・種別、予定のセット数・目標とメニュー由来を分ける。 | [WorkoutModels.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt) |
+| WorkoutFormQuality / WorkoutLoadKind（enum）、WorkoutLoad / WorkoutSet（data class） | 任意のフォーム・負荷・RPE・実測休憩を記録する。重量負荷は有限非負値、RPE は許容範囲、休憩は非負を要求する。 | [WorkoutModels.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt) |
+| WorkoutDay / WorkoutHistory / WorkoutSnapshot（data class） | 当日と完了実績、種目・プリセット、前回入力値を集約する。History は実施時 menu を保持する。 | [WorkoutModels.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt) |
+| defaultWorkoutExercises / defaultWorkoutMenu / newWorkoutSnapshot / inferWorkoutExerciseType（関数） | 初期値と名前・単位からの種別補完。 | [WorkoutModels.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt) |
+| WorkoutSnapshot.effectiveMenu / menuExercises / menuItem / rolloverTo（拡張） | 当日・preset・既定 menu の優先、種目への投影、日付移行の純粋処理。 | [WorkoutModels.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt) |
+| WorkoutReader / WorkoutRepository（interface） | load による snapshot 読取と save による更新を分離する。 | [WorkoutRepository.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutRepository.kt) |
+| WorkoutHistoryExporter（fun interface）、WorkoutExportResult（enum） | export(history) が成功・権限不足・利用不可・失敗を返す outbound 契約。 | [WorkoutHistoryExporter.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutHistoryExporter.kt) |
+| WorkoutAiProvider / WorkoutAiRequestType / WorkoutAiTaskState（enum） | 実行先、提案・レビューの依頼種別、queued から終端までのタスク状態。 | [WorkoutAi.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAi.kt) |
+| WorkoutAiSettings / WorkoutAiReview / WorkoutAiTaskSnapshot / WorkoutAiTaskReference（data class） | provider と方針、日付付き応答、タスク状態と回収用参照。 | [WorkoutAi.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAi.kt) |
+| WorkoutAiSettingsRepository / WorkoutAiReviewRepository / WorkoutAiAdvisor / WorkoutAiTaskController（interface） | 設定・日付メモ、レビュー保存、生成、enqueue / snapshot / recoverableTask / dismiss の capability。 | [WorkoutAi.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAi.kt) |
+| WorkoutAiPromptBuilder（object） | build が一次記録と二次レビューを区別した prompt を作る。recentDates は取得するメモの日付集合を選ぶ。 | [WorkoutAi.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAi.kt) |
+| formatWorkoutSetDetails（関数） | 入力された詳細だけを文字列化し、タイマーや時刻から実測休憩を推定しない。 | [WorkoutSetDetailText.kt](../../../feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutSetDetailText.kt) |
+
+## 主要 API と接続
+
+`WorkoutRepository` は Data の `DefaultWorkoutRepository`、`WorkoutHistoryExporter` は `HealthConnectWorkoutHistoryExporter` に接続される。AI 設定契約は loadSettings / saveSettings / loadMemo / saveMemo / loadMemos、レビューは save / loadAll、Advisor は generate(provider,prompt)。TaskController は request ID を返し、結果と回収を UI の寿命から分離する。
+
+## 代表的な処理フロー
+
+`newWorkoutSnapshot` で初期種目と menu → `effectiveMenu` が当日の入力対象 → UI が WorkoutSet を追加 → `rolloverTo` または完了で History を形成 → Repository save。AI は `recentDates` でメモを選び、`build` が当日・過去のセットと実施時 menu を組み立て、MENU_SUGGESTION にだけ参考レビューを加える。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## メニューと日付の遷移
 

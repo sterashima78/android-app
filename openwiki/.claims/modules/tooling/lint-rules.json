@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1a55dc655f167a6ad4525c290c7840a735e7f3c837ae1f87603f8f708a16a7ba",
+  "pageVersion": "sha256:4d0331966ec5b7dfff3269ea36751b86e70671ec50f924be1facf6c95ea6a57c",
   "claims": [
     {
       "id": "claim_b6c574da80f1414f8e9930e756a68374",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:52268c7e4207a98391a5bf810831c18d26e55a4877ee073dca1bfaae1529a37f:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0YzljMjMzNTg4OTEzYzI2MTAxZWFmZjYyZTY4ZmMzOGE2YzM4MjgwZDVmOWJhMTgwZmRmNWE0YmFkODI3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiM2VhMGQwOGExYmQyOGMxZjkxZWI0NmNiMjg2MDkzMjljYjNjMWU4MmEzNWM0YWQ1N2I1YzQ5NTc0YjUyZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0MGJjNWZjZmM4NzM3NWE1MDY3ZGRhNzk3MDViOTVkYjVjMTc2ZjQ0ZmNhZWQ2YmM2MTI2NDVjNWUwMmU2NTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjYjhmNTI1OWJkZGIzZmRhMGJmZGRiN2JmYzIwMmVmZDA0ZDI4ZDdlMTliNmZkODA1YzE0ZjdjMzU2YWQ3ZWQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_745e035359794627ae9573300d1b31a3",
+      "statement": "lint registry が公開する MainActivityFeatureBoundary issue は import node visitor に接続され、app の lintChecks を通じて実行される。",
+      "evidence": [
+        {
+          "resource": "repo://lint-rules/src/main/kotlin/dev/terashima/yomitorirss/lint/MainActivityFeatureBoundaryDetector.kt#L17-L69",
+          "version": "repo-lines-v1:sha256:2d46259fb5e76bd6d32f4ff47e7ef76e77ae8020d4b0d0329b0f1ec37e5af850:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyZWU4ZTJjOTU0NWIxMWMzODk2MWZjNzRjNzg2NmE4MzZkNWI4YzVkYTlhYzc4YTNlMjEwMDcwNjQ2MmU0MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlZTk0NjRlZWRkZjNmM2ExY2Q4MGEzNjA0NWI3OWJjODI4ODNjODJjMmM1NDc5YWY3NjIwZWU3OTRlZjg4YTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://lint-rules/src/main/kotlin/dev/terashima/yomitorirss/lint/YomitoriIssueRegistry.kt#L6-L10",
+          "version": "repo-lines-v1:sha256:a6306ed32ddec7e446a476a9653ba180f30ef55fc66514e58a9820f748580af0:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2U5MGM0ZTJiNzU5ZjRiN2UyZGQ4NGM2ZjczMjA0YWYyNGUzNTk4YmQyZTkxMjUwMDU0MmRmYTdhYWJlM2RiOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjMzOGViYTVhZjkzN2NmNGY4ODQ4N2MwZWMzYTdhYzRiNjQ3YjQwZmRlMmU3MGYzOTMxZTBkNDEwYjQyYTE4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

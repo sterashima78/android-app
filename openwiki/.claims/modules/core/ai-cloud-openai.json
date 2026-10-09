@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9e0fc21f53ee9e6372caa59cc4173434a938cce1e3e6bd2bbaafbb194b569f55",
+  "pageVersion": "sha256:f27b1bcae65063db9e924de1522d8d4fe4c1181bef197817e095df7094a1132d",
   "claims": [
     {
       "id": "claim_354a7fc219094f878d7bd6f50ff6b5e6",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:26647f827a92c8f7dc4c349bdf6f1bbb20529f97dcb558491a78f15b2d0be990:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxOTk1NWQ3ZTcxMGQ2ZGExMWI3OTY4MTExNDVlMzlmZmQ2YmJlNTIzMGYwMzJlMGM2ZWRjYWFjMzA1Y2QzM2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MGU5NzRjZWE0ZGU5MjlhN2NhODc2YjE2NzU2ZmZjYTUxODY2MzNhMWM1NjViOTBjZWI5YWQyYjkwZDUxYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1MmU4ODRmOTFlYzBmMjhlMzlhMTEyNWE5MzUxZDNjZjliYjMyYzM5MTI3MDBjZTAwMTAyMTk0MTE2MWU5ZDYifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4d70b255b7ea478bbe909f67825512f3",
+      "statement": "ChatGptTextInference の countTokens は UTF-8 byte 数を返し、progress は emptyFlow である。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-cloud-openai/src/main/kotlin/dev/terashima/yomitorirss/core/aicloudopenai/ChatGptTextInference.kt#L12-L32",
+          "version": "repo-lines-v1:sha256:ec8467ee38efe17e26e4d0f45069550b5c40c1d881bafa36adcb1eb3ef8c9627:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNzY3ZGE5ODMzNDk2YjllZTJhMWNhOTNjZGZkMzA0YTk4ZDRhNjFiMTUxNjhhZmJjYWUwY2VmOTVkYTE4ODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjODJiMzQ4MGRmYzJjYjE2YWRlZjYzYzExZTYwZTllNGM5NDIzOWVmZDY5N2I2YzJkMjVlMjQwZWZjMGQwODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdmOWZkNTNhN2NlNGIwMDEwYjg4YWE1MzQ2MzJlODFlYWEzODVhMjExYjUwN2ExYTEwNWZkNjg2ZWJlZmI5NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzMzA2ZGJmOWEzZjBkNjUwYTg3OTA0MmYyZWIwNDY4MWIyMmMxM2M0MzRiOTk3YmFlODE3ZGIxN2FkMzAzNTQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

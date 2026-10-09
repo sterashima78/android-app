@@ -8,7 +8,7 @@ tags:
   - mosaic
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-8037e2358a2c4f9b2c722a11
     resource: repo://AGENTS.md
@@ -16,7 +16,7 @@ sources:
     resource: repo://docs/openwiki.md
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # Mosaic Wiki の使い方
@@ -43,7 +43,7 @@ Wiki は正本を置き換えない。重要な判断では各ページの sourc
 
 ## モジュールごとの詳細
 
-[モジュール別の索引](modules/index.md) から、Gradle に登録された全87モジュールの説明へ進める。feature の Domain / Data / UI はそれぞれ独立したページであり、責務、入口と処理の流れ、状態・失敗時の扱い、依存境界、関連する実装とテストを確認できる。
+[モジュール別の索引](modules/index.md) から、Gradle に登録された全87モジュールの説明へ進める。feature の Domain / Data / UI はそれぞれ独立したページであり、責務、主要な型・関数と主要メソッド、具体実装や composition との接続、処理フロー、状態・失敗時の扱い、関連する実装とテストを確認できる。公開契約の意味を Domain ページで確かめ、具象処理と保存・通信を Data、操作と表示への投影を UI で追う。
 
 | 対象 | 入口 |
 | --- | --- |
@@ -52,7 +52,7 @@ Wiki は正本を置き換えない。重要な判断では各ページの sourc
 | DB・HTTP・AI・Web collector・design system・background | [Core](modules/core/index.md) |
 | アーキテクチャ検証用 lint rules | [Tooling](modules/tooling/index.md) |
 
-機能をまたぐ流れは上の目的別の入口で確認し、個別 module の実装詳細へ移る。module 一覧の正本は [settings.gradle.kts](../settings.gradle.kts)、構造と ownership の読み方は [Module Map](../docs/architecture/module-map.md) を参照する。
+機能をまたぐ流れは上の目的別の入口で確認し、個別 module の実装詳細へ移る。各 module ページは、位置づけと責務から構成要素、API と接続、代表的なフロー、状態・失敗・境界、実装とテストへ進む。module 一覧の正本は [settings.gradle.kts](../settings.gradle.kts)、構造と ownership の読み方は [Module Map](../docs/architecture/module-map.md) を参照する。
 
 ## この Wiki の更新と閲覧
 

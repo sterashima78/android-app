@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b6150710471fc11f01b58868e3c361e5552a7d50cf7cb7b1cb486e8f712b70dd",
+  "pageVersion": "sha256:c05933d6cee5c5a65656a57cec92df8084b89c5ef60aeebe094f0c75e49b7efe",
   "claims": [
     {
       "id": "claim_7fa88119266d4bc78c7ebd5d4d8827d5",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:ae55f27e0f2a51b2f9ca1338de791e1bf1a2b3b17362795f20fffc2c60381153:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkOWRhY2Q3OTczMTdjZTg3YjIyMzBlMzA4N2U1ODZlNTk2MWUyZmYwYzI1ZWQzODJjODhjZGQ1YzRiMWY4NGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MTc2NmRlYWYyNDBmN2JhMTQzYTRjYWUzOWU3ZDQwYWJkZjYxNzdlZjkyYjIzOTZlOWIyM2EzM2JkYmExYzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3NGVjYmY1NzZjYWU0MTBkOWVkZWE1NGJmZTFmOTVmYTk1MzA0YmIzNDY3ZjI1MzE5NmQxNjExZDAxMDU1MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3b615bb537d3461698b0943dcd4da960",
+      "statement": "自動Bookmark補完はContentTypeが許可し、動画URLでもReddit source/feed URLでもない記事だけを対象にする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/BookmarkAutoEnrichmentUseCase.kt#L44-L53",
+          "version": "repo-lines-v1:sha256:0cf2aca1de6250785bca3dba4927856855b4b64b07e3feb711fba24b3b3581b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwM2Q2MzI4Mzc5NWRhMmI0NjE0MzRlMGE3YTQ3NDdjYzA1NjQyMDNjM2Y3ZGQzNmRiMzQ1OGZhNDBmYmZiYTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM2OTEyMDQ5MjE5M2MyOTg3M2ViNDMwOGFiYzk5NGJmOGZmYzYxNjQwNzkyZWY4YjA4YTgxMWRiNGMwY2I4OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2ZTI0OGU2Nzc4YWZjMmY5OGY3Y2I2ZmVlNTQ5YzFjMjA2ODc4ZTg1MzY4ZTIxNTJhYTE0NDE5YjQzOWZhMWIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

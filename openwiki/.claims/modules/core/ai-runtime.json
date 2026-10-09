@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c3ef3b78df81fb7fe9d489a6b3ca934bbf693f98d745709198821f8a342284d4",
+  "pageVersion": "sha256:472f5edb85f82c86ccad305cb7d382c202469193cce55b618caf0c22c4bcc06f",
   "claims": [
     {
       "id": "claim_9615331837e04c209cbf366dafc9587e",
@@ -39,10 +39,24 @@
           "version": "repo-lines-v1:sha256:f05b97624efdb20bbe3a4dedc14aee0cf1b4c95b66080e682c2a682d8fbda6c2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNDcyY2NkYWI4MGMzNTk1MzJjMjk3NDkxZDVkYTdmMjRkN2UxN2E2NzI1MjAzYTg5NzI3ZDU2OWI5MzM4YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxMzMzOTNhZDdhMjM3MjQyNDVhYzk3NjQ5ZmMzZjc0MmMzNDhjMTg2MTRjMzBhZWM1ZjI0ZTQ1MTU4OTk1MmQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_27ca5b442a674008b857935d9d073bc7",
+      "statement": "Process-isolated conversation adapter は LocalConversationInference を実装し、会話履歴、streaming callback、tool 実行を text service への IPC に接続する。",
+      "evidence": [
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalInferenceConversation.kt#L62-L88",
+          "version": "repo-lines-v1:sha256:7d09850a2d3cddc87388491081b4502e77ae70a8ad3a8a7fd769f788c21d78ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwZTZlYzdkZjlkYzVhOThiYmI1ZDQyOTAxMmZmMDViOWMyZDcxOTY0NDViOTJiYTA5OGEzODlhYTBjNTQ1ODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5YzQ0OGU0MjQ3NWY4ZWU5OGY2M2E1OWFiMjZmZTExZWVkNDgxY2IzNWE2ODRhMzdkZDVjY2I5YmM3MWQ5MmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkOTVmZDAwOGIwZTZjYTlmODA3ZmM0ZTQzZGQ3MjQ1Njc5MjNjNDc5ZDg0NWJmZWJlMTVlZTQxOWRiZjUxMmIifQ"
+        },
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/ProcessIsolatedLocalAiTextInference.kt#L144-L184",
+          "version": "repo-lines-v1:sha256:ff62d9c4d944542bc6f0d6ae6f4d4d9160b8f2d4bc9c7ffdeca795fe93610a63:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5M2RkMTlhZTk2YTFjOWZjYWNjODE3ZjM5ZGE5NzA4ZjQwZDhmYzc2MmVlZjNhZjZjNjE2YTljYjFlMzc3ZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlNDcxMjI1NjM4YmRiOTIyYTE1NTJhMzkyYTAzYWY3YjAzYjQyN2E4OGJkYzYzMzNlNjkxNDQ4OTZhYjE1MDkifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T14:01:52.039Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

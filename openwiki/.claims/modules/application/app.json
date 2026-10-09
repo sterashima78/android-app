@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:62040530ca7e4c8d072ccc239a1748baf31fecb5adf03028fec3687a0b1459ed",
+  "pageVersion": "sha256:31ef9e8bf760a51645d078f2e3630ab2e83669891cd71b26e93276bc2f336943",
   "claims": [
     {
       "id": "claim_cab0286273af4bbcb952639c9f2f1c2e",
@@ -31,10 +31,24 @@
           "version": "repo-lines-v1:sha256:90045bf05b7fe5e8c55bf275c224fa1179c28b69961bc51bc219be1a28a63fdb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjYjJlMDEzZjZiM2I3YTQ1OWI1MzNjZTNlMmMzNzIxZTEzNzY3Mzg0MGI5ZGI3YWRkOGU5NzI2NjgzNTQ0OGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MDlmNGU5YjQ0ZjFlNjU2Y2Q2YWMwNjA3MjExMjVkNmEyYmM0MjZiNzdiYjBmMzVlY2UxNmQxNTM2ZTU3OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_85696490e3454caba771a070185b3300",
+      "statement": "MainActivity は NavController をロック画面の分岐より上で保持し、ロック中の onNewIntent は即時処理せず、解除後に IncomingIntentHandler へ渡す。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt#L148-L163",
+          "version": "repo-lines-v1:sha256:7ee0bd59d24372c1f997a5b63d55d65185056b5218232ce9a914536707c81f74:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYjc5NWIzYzgyOGE2NzFhM2ZhMTZmOWY3ZjQ3MTk1NjgxM2EzOGUyNTBhOTcwMGVkYWNhYTNhYzI1ZmQ4YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4MjI5NTRlMjAzODMwYzViNjZhMzNiY2U1NGVmNTE4MDEzNmQ3MjIzNjM0MWUyMDRlY2M4N2NhMTVmMjBkMmIifQ"
+        },
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/MainActivity.kt#L52-L105",
+          "version": "repo-lines-v1:sha256:b54d5dcbfc0ecfa61a42ae19ec9fbe1281be327b826bcaa192709f1e0eaa83bc:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiNmMwZjk0OWY2NTFiMjAyNTY2ZmM1NjUwMzM4NjEzMzYzMzU4ZGM1NDg5NmEyYTRiZTQxMjUyNDg4MDYyOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkYWM3NDUyZjIyY2EyYmQ0Mjk5OWQ0OWZhZWI4ZWM5MThhNjJhYThlNGY3ZDc2NzM4YzNlZjk1NDBlYWM0NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIzYTNjOWYzMjJiMWVhM2E1ODU0YmMwNWZhYzAxYTVlOWZlZjJmMDdjOGJhZWJlOWU4MTIyMDgwNjI0MmMxMDQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b7e8ebdbd7f2d5beb096f1ebc2aa1452597102548f9d71d37c1ea68260631cdf",
+  "pageVersion": "sha256:11199cd71191d9b5ceddd9fab97ed9f12be7ccc0b14c162612e98c2a2c2ea1cb",
   "claims": [
     {
       "id": "claim_6bef935b62c84473a6fe05219233d476",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:6a69228af2c8351593f1e7cdd07ee7e83652645b5728b83486f49ec84d8db256:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNWMxOGIwNTgxMjA1ZGI2ZjU5NTZiMGQ0OWFjN2I1NTcwZGU2ZTAxN2EzODFiNmNjNjczY2FhM2ExOGJiMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMjRjYWZhNmYzNGUxMzM3Yzg0N2M2MzJjYzM4ZWJhNmJkZGE1NWMxOTAyNjIwODA4YzdjZmFiZmVlYTI0MWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_c7a9f765e22b4c04869dd2183259c2a7",
+      "statement": "AppAiCoreRuntimeDependencies は自由文と構造化の provider 共通契約を process-isolated local adapter と ChatGPT adapter に接続する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/ai/AppAiCoreRuntimeDependencies.kt#L35-L85",
+          "version": "repo-lines-v1:sha256:ba643c4a4c00d1883381d8e829979b60edcbf30217320057d10cf4da49d31e19:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiOTVlMTYyNjU1NjVhZTQ4NDFlNjljYTAyOWMxM2FlMGQ2ZDk3NTE3MTU5YmU2YTY3ZWFkMWQyYzdlOTFhYzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxN2QyMWI3Y2QzNWUyZjczNmRiMGIyYmRlNTQ1NGRiOGNhZTMzYjUzYWI4MjdiNDY2MWUyMTk0NzJiYjMwNmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5ZjA4NTYyYmU2ZmMxMmE5YTliY2IzYjNmMzgwN2NlYjdhZWFjNzRmZTdjYTUwMDRjN2M0Y2MzNjBlMzcyOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhYzk2OTA3NWU1NTA4MDk5ZWZkOWU3NzQ2ZWExNzg4YWNiNTNkYWQxNGM3NmY1Y2MzZGU3NTRiNDZlZmNjOWEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,20 +1,40 @@
 ---
 type: module
-title: "バックアップ UI：操作状態と部分成功の表示"
-description: "BackupViewModelによる非同期保存・復元、Drive初回保存の部分成功と時刻一覧を説明する。"
-tags: [backup, ui, modules]
+title: バックアップ UI：操作状態と部分成功の表示
+description: BackupViewModelによる非同期保存・復元、Drive初回保存の部分成功と時刻一覧を説明する。
+tags:
+  - backup
+  - ui
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T04:30:12.060Z
 sources:
   - id: openwiki-source-805655882ce1ba786f47e791
     resource: repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T04:30:12.060Z" }
 ---
 
 # バックアップ UI：操作状態と部分成功の表示
 
 `:feature:backup:ui` は`BackupViewModel`と`GoogleDriveBackupDialog`で保存・復元設定の操作を提供する。依存するのはBackup Domainで、URI権限やZIP検証をUIに持ち込まず、外側で選択されたURIをRepositoryへ渡す。
+
+## 主要な構成要素
+
+| 構成要素・種類 | 役割・主要メソッドと関係 |
+| --- | --- |
+| [BackupScheduleTimeUi](../../../feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt) / [BackupUiState](../../../feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt) | data class群。時刻label、Drive status、実行中、通知、復元完了イベントを表示状態にまとめる。 |
+| [BackupViewModel](../../../feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt) / [Factory](../../../feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt) | 公開class群。refreshStatus、exportBackup/importBackup、Drive設定・即時実行・予定編集・無効化とイベント消費を公開する。 |
+| [GoogleDriveBackupDialog](../../../feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/GoogleDriveBackupDialog.kt) | 公開Composable。stateと各callbackを受け、保存先選択、即時保存、Wi-Fi、時刻追加/削除、解除を表示する。内部BackupTimePickerDialogが時刻入力を担う。 |
+
+## 主要なAPI・構成要素の接続
+
+`exportBackup/importBackup(documentUri)`はIO coroutineでRepositoryを呼ぶ。復元成功は`restoreCompleted=true`と再起動を促すmessageを公開し、`consumeRestoreCompleted()`でイベントを消費する。`configureGoogleDrive`は設定失敗と初回保存のみの失敗を別messageにする。`backupToGoogleDriveNow()`は未設定ならcommandを送らず案内する。
+
+`addGoogleDriveScheduleTime`はDomain時刻を構築して既存一覧へ追加、重複除去・昇順化して保存し、`removeGoogleDriveScheduleTime`は一致時刻だけを除く。`setGoogleDriveWifiOnly`、`disableGoogleDrive`、`refreshStatus`はRepository statusを再読する。`dismissMessage`は通知のみを消す。
+
+利用者は[SettingsFeatureScreen](settings-ui.md)。フォルダpickerやdocument作成/選択はapp側callbackへ委譲し、本moduleはAndroid権限やDBを直接変更しない。
+
 
 ## 状態と操作フロー
 

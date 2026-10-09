@@ -1,22 +1,46 @@
 ---
 type: module
-title: "Article Domain：コンテンツ分類と保持の契約"
-description: "RSS に限らない Content の閲覧状態、分類継承、保持期間と source command port を定義する。"
-tags: [article, domain, content]
+title: Article Domain：コンテンツ分類と保持の契約
+description: RSS に限らない Content の閲覧状態、分類継承、保持期間と source command port を定義する。
+tags:
+  - article
+  - domain
+  - content
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-b40cffd1490e98cb27462fab
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt
+  - id: openwiki-source-459db603db2b328780770e54
+    resource: repo://feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt
   - id: openwiki-source-f9cb58af605eb50d6c5c61f2
     resource: repo://feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentClassificationService.kt
   - id: openwiki-source-c1294c11614f33435f4ade09
     resource: repo://feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentRetentionPolicy.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 ## 責務と所有権
 
 `:feature:article:domain` は Content Context のモデルと公開契約を持つ JVM module である。実装名は Article だが、共有URLやインポート済みコンテンツも扱う。記事のidentity、取得元情報、既読状態とコンテンツ種別を表現し、Bookmarkの保存日時やタグ・フォルダを自身の状態にはしない。画面やSQLite実装に依存せず、UIとDataが同じ意味の契約を使う入口となる。
+
+## 主要な構成要素
+
+| 構成要素と所在 | 種類・責務・主な API と関係 |
+| --- | --- |
+| [ArticleModels](../../../feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ArticleModels.kt) | ArticleはContentのidentity・取得元snapshot・既読日時・overrideと実効種別を受け渡すdata class。 |
+| [ArticleRepository](../../../feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ArticleRepository.kt) | ArticleRepositoryは変更通知と検索・未読/履歴一覧・既読/未読更新・一括既読・種別overrideを公開するinterface。 |
+| [ContentClassificationService](../../../feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentClassificationService.kt) | SourceContentTypeOverridesはsourceとcontainerの指定値。ContentClassificationSourceQuery.findOverridesが一括query、ContentClassificationService.resolveが優先順位を適用する。 |
+| [ContentRetentionPolicy](../../../feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentRetentionPolicy.kt) | ContentRetentionProtectionQueryは保護IDを返すfun interface。CompositeContentRetentionProtectionQueryは集合和を取り、ContentRetentionPolicy.expiryCutoff/deletableContentIdsが期限と除外を計算する。 |
+| [ContentSourceGateway](../../../feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentSourceGateway.kt) | SourceContentItem/ContentSourceSnapshotが取り込み入力。ContentSourceGateway.upsertSourceContent/renameSourceContent/detachSourceContentがContent所有のcommand port。 |
+| [ContentType](../../../feature/article/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/article/ContentType.kt) | ContentType enumはARTICLE/COMIC。resolveContentTypeはoverride継承、allowsAutomaticAiEnrichmentはARTICLEだけを許可、toContentTypeOrNullは不明文字列をnullへ変換する。 |
+
+## 主要 API と実装への接続
+
+`findArticle` は存在しないIDをnull、`findArticles` はID集合の取得結果を返す。未読と履歴のquery、`markArticleRead/markArticleUnread/markAllUnreadAsRead`、`setArticleContentType` は永続化と通知をDataへ委譲する。sourceの取り込み入力は記事本体とは別のsnapshotなので、Source Contextが記事tableを直接操作する必要はない。
+
+[AppContentRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt) は `DefaultArticleRepository` と `DefaultContentSourceGateway` を生成する。source queryにはRSS Dataの `RssContentClassificationSourceQuery`、削除保護にはBookmark queryとSummary Dataの保護queryを `CompositeContentRetentionProtectionQuery` で接続する。分類解決 → Article返却、期限計算 → 外部保護ID除外 → Data削除という責務分担である。
 
 ## 入口と処理フロー
 

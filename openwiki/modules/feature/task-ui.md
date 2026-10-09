@@ -1,20 +1,46 @@
 ---
 type: module
-title: "Task UI：階層画面と編集状態"
-description: "TaskRoute、ViewModel の再読込、フィルタと展開状態、説明リンク。"
-tags: [task, ui, modules]
+title: Task UI：階層画面と編集状態
+description: TaskRoute、ViewModel の再読込、フィルタと展開状態、説明リンク。
+tags:
+  - task
+  - ui
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-23f8ab301b52652e019befaa
+    resource: repo://feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskDescriptionLinks.kt
   - id: openwiki-source-eb5ba90134d214718f6cb667
     resource: repo://feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskViewModel.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Task UI：階層画面と編集状態
 
 `:feature:task:ui` はTask の Compose 画面、編集操作、説明文のリンク表示を所有する。`TaskRoute` は渡された `TaskViewModel.Factory` から ViewModel を取得し、`TaskScreen` に渡す。保存実装の生成を画面内に持ち込まず、Domain の Repository を注入して利用する。ナビゲーション metadata は feature にあり、アプリのルート接続と組み合わせる。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| TaskRoute（Composable 関数） | TaskViewModel.Factory から ViewModel を取得し TaskScreen に渡す。 | [TaskRoute.kt](../../../feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskRoute.kt) |
+| TaskEditorRequest（data class）、TaskScreen（Composable） | 新規・子追加・編集の文脈を分け、表示行、フィルタ、並び順、削除確認を表示する。 | [TaskScreen.kt](../../../feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskScreen.kt) |
+| TaskUiState / TaskViewModel / Factory（data class・class） | 一覧、filter / sort、展開 ID、初期化・エラーを所有する。selectFilter / selectSort / toggleExpanded は表示状態だけを更新する。 | [TaskViewModel.kt](../../../feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskViewModel.kt) |
+| TaskRow / TaskEditorDialog（private Composable） | 階層行の完了・長押し操作とタイトル・説明・nullable 期日入力。日付 picker は UTC で暦日を変換する。 | [TaskScreen.kt](../../../feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskScreen.kt) |
+| TaskDescriptionUrl / findTaskDescriptionUrls / taskDescriptionAnnotatedString / TaskDescriptionText（internal 型・関数） | HTTP/HTTPS の範囲を抽出し、日本語境界・末尾句読点を除いて Compose LinkAnnotation にする。 | [TaskDescriptionLinks.kt](../../../feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskDescriptionLinks.kt) |
+| TASKS_ROUTE / TASKS_TITLE（定数） | アプリの navigation metadata。 | [NavigationDestination.kt](../../../feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/NavigationDestination.kt) |
+
+## 主要 API と接続
+
+`createTask / updateTask / deleteTask / setCompleted` は suspend な Repository command を private `mutate` に渡す。`reload` / `loadTasks` が一覧を更新する。Factory は `AppSupportingRouteDependencies` で `TaskChangeNotifyingRepository` を受け、command 成功後の `TaskWidgetUpdater.updateAll` を接続する。Widget 更新失敗は composition の runCatching に収まり、保存失敗と同じ扱いにはならない。
+
+## 代表的な処理フロー
+
+`TaskScreen` が `TaskEditorRequest` を作る → `TaskEditorDialog` が保存 callback を返す → `TaskViewModel.createTask` または `updateTask` → `mutate` → Domain Repository → 成功後 `loadTasks` → `TaskUiState` → Domain の `taskTreeRows` で画面行を再投影する。説明リンクは表示処理であり保存文字列は変更しない。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## 一覧更新と一時状態
 

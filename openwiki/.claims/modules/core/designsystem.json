@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fcc364060244a038907c790699f335fa5d910d4c71aac848c974e0d6ef895d83",
+  "pageVersion": "sha256:310e6a89036250b18145ff98bee8d71d8b6b42bf4b671a05639c5356da7987db",
   "claims": [
     {
       "id": "claim_d2b973aaf3d54141a2459b8e530d147a",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:7ce908759da4d03952997d0700612ed5529a9714c38c7402db1afd1e39a5de04:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyZTZlNTU1MmY0NGE0NGY1ZmZmYmJkMjFiMTRjM2NhNWUwYWY0YmE0YjY5MWFmODE1ZDUzY2ZkZWU3M2Q0ZjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhM2RhMjQ4ZGU5NjA0NDYwODE5MGYyNGZhYjkwOTMwNWFiY2U3YjA3MGFhOTVmNjlmN2MyYmRjZDQ4YjE4M2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NGZkNTNmZDlkYWUyZjJhNWQ4M2ZiYjZjZGYxMjdiMDA2NGM3MzE1YmRiNTlkNDA2ODliMzVjNWZmYmMwMDYifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5d4e878415c247a88798dd7abfb6ff73",
+      "statement": "ChatMessageBubble は利用者の本文を Text、assistant の本文を MarkdownText へ渡して描画する。",
+      "evidence": [
+        {
+          "resource": "repo://core/designsystem/src/main/kotlin/dev/terashima/yomitorirss/core/designsystem/ChatMessageBubble.kt#L17-L51",
+          "version": "repo-lines-v1:sha256:5047c77a4da79646686762008f8d9ffa1ae2d497cef630ab270b10f1696d08c3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGQ5NzlhM2JiNjU4M2YyOWJhYmZlZmJlNGM4YjUwMGMxMDcxOWJjOTc4ODgwNzYyMTlhYWY3NTUzZDAzOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1MjlmMjVkOWFjYjNlMTY2OWU3OGU3NDU4ZmY4ZDMwNWFlMTE3MTFjOWQ0NGQ3M2ZmMmQ0NDg5ODMwNzQxMzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

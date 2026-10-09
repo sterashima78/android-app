@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4961688fc7cfb528a47ee5a2e1db0765991c49f7e12a7e7b52bf77226d6c3282",
+  "pageVersion": "sha256:42b973596caac053c82eac1f46926e1241961c5ebe5c5c0b28e5de6813c080b0",
   "claims": [
     {
       "id": "claim_7fad57f0668949089c82a1f0d0871c31",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:0cdc3f48541aaf89e3eb276bd5224d4afa6bfd4f8086ae7b09ea2e1139e8b104:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1YWMzYzgyZTUzNmFhZjg5OWVkOWNkMGFhMTAzNGVhNWY1ZDk5MGRlMzU2YjgwYjA1MTM4MjQzMWY0OGI4YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ2ZWMwOTMyZmM2N2JlMTM4ZGY1NmJjNzQxMzU1MDQ0ODlmZWFkZTE2ZTU3N2EwODQ5NDM0NTk1ZGRjNDA5MjIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_69dc6bbf0cc6494d8dec8ee22653fd5c",
+      "statement": "CompositeAiTaskQueueRepositoryはstop/cancelをSummaryとKnowledge、resumeをさらにLibraryとSMBへルーティングし、Podcastは一覧投影だけに使う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/data/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/data/CompositeAiTaskQueueRepository.kt#L202-L232",
+          "version": "repo-lines-v1:sha256:ef12cc4697fba703cf989d2888de5a5aa34dbe3dfebe22fc235fd35a386518d2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliOTE3OWZhNWRiZDk2N2ViODVjNjI0MDgxYjNiZDE1ODc3ZWUwOWQ5OWVmNzM0YWExZjVmMWI3NWVlMjg4MDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://feature/ai-task-queue/data/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/data/PodcastTaskQueueAdapter.kt#L12-L51",
+          "version": "repo-lines-v1:sha256:0ad7d97d3124bd5f3a174f06391c54a6b2f4a4cf19704617882baada04fbeb05:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MDZhYThkNjFlNjZmNTNjZjg0NTdkNDY2ZDhiMmRlMjcxODFmY2Y0MDA3YTdjYjExZDI1ZDc5NjAxY2FhOTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhMjRjYmJmY2U1YmM5ZDU1YjRlM2FhM2NjNzU3NTU2YmYxZGE0NGJiYjkyN2I2MWMyNmU4ZDdkZWIxNzRkODAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c11733246be14f87a4c9b830fb876a6a",
+      "statement": "CompositeAiTaskQueueRepositoryのkickはSummaryとRSS推薦、実行中Library/SMB、Knowledgeに委譲し、Podcastは起動対象にしない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/data/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/data/CompositeAiTaskQueueRepository.kt#L85-L91",
+          "version": "repo-lines-v1:sha256:f1ad07f434279524bfd2b685d857706e8808f840f0ba7eb01bc4957e2ff75c1b:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDJmOWZhNWZlNzZiZGE3NTY3YTI4NjEwNjliYjliNWMzYWM4YTE5ZjcyYmExMzk1ZTVmYzRhMTMzYmY1YjBhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWEyZmUyYzZlNzNiOThiNjI3NTc1ZWY2YTNjODJmODgzM2QxN2RmNTdmNzRhYTFjZWE3MzlkNGI4ODI1NDVhZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGRhMGIxNDk5Y2NkNGViODY5NzQyNDk3Zjg0MjIwNDJmYTI3YzM5YmUyZGVhYjQwZGFhNjc2OTdjMDA3NTBkYiJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T04:30:12.060Z"
   }
 }

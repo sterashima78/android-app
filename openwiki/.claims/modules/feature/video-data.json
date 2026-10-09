@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e2c60097bb03f6685d49162e218a3c508e2a284a0cc9bdf35fd545a81e023cae",
+  "pageVersion": "sha256:e836d14184d4d62ad5e1641c0dee23bc40e024d04b507e2b654006536c937a82",
   "claims": [
     {
       "id": "claim_cbc370705d8b4222a960b96cd17be5e7",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:9cbe58bef6f05174cf10a776ebe8ed6fd2c9dec7489cdee0de191c86c37f8bf2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5ZGUxM2YxMWVjYWNhMGZkZWQ4MTRkMmY5MTk4ZmRmZTlhODc0M2JmZWU2ZTJiODhmZWIzNGU2NTMyMGIzMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwODhhY2NiMDVkNmFhNmY3NDNlNzFlYTc5N2NjYjM1ZTk5MDEyZjlhM2VhYTY2YjQ1ODJhNWE3NmJhZjI1OGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NWZlNGI5NTA1YmM3MmRjNzBlYWY0YTFiMzJmMDJiNmZkMWE5M2UyNTMwMWMwN2UwMjc1OGFlNjlhZDQ3YWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_d959974b7c3242abbe37313d84618972",
+      "statement": "動画provider refreshは成功した購読を保存し、retry後に失敗が残る場合は部分成功件数を含む例外を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/DefaultVideoProviderRepository.kt#L60-L112",
+          "version": "repo-lines-v1:sha256:3161946a53faac03ffae2cd7b2090cb9d5c2624050e49c04f23d61cdc4d88b83:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2MjYwZjBjYmU0MmIyOGZkMWUyZDllNTE1OTQ5MWI2MWQ4NDEwNmYxZjg3MmU4NTNiMDc1NjUzOTMwZmQ3NzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwZTQ0YjRjMDc3MjMwNzk5OGQ4MzYwYzY1MGU0OGRkNmYzZGJkYzExOTVhMWFlNjJhM2M0MjcwMjEwMmJiMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlYWE3ZTkyMDMzODcwMDdjYjdhZjQ4NWZjMzJhOTNiYTE4OTdlZmEwMDk3NDhkMjU4MTcwNjA5OWFmMjk4ZTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_83a3baa5565646b6b0675960e2d1ff6b",
+      "statement": "video の所有 schema contribution は app composition の appDatabaseSchema に登録され、共通 database 初期化へ接続される。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppDatabaseSchema.kt#L17-L33",
+          "version": "repo-lines-v1:sha256:4f2188c1c874a55b86503b07587770522b09958971d6816889375cb8d6c8531e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkZTI4MzZlMzY1MzNlZDg4ZmMyNDE2MzJiNWZiZmE5MDViYmVkZDYwNzhjODMzNGI5YWFlYTJiODE4ZWI4MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiYzE4YjliNDRiMmU0MTgzMzQyNTU3YTJjOTIzYzFmODk2M2VhNTQwYThkNmY5NzYxZjkzMmE4YzkwNmEwOTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://feature/video/data/src/main/kotlin/dev/terashima/yomitorirss/feature/video/data/VideoDatabaseSchema.kt#L1-L13",
+          "version": "repo-lines-v1:sha256:7eb4781f3399de001f450727f7f10a67b28f3ec124d7f08b38cb56bc6d279cab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MThkNjYxOWM1M2FjMzU3ZWU1ZGFkOTE4MWEwNDNmMjRlNzVhYzE5MDI2ODJlMzk2ZjEwZjI3YmQ4MDQ5MTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YTcxNTI1NzJlZTg0ZjEwOTA2Yzc0YjlmMmE5MjQzNGRkYWIwZTNjNDI4MTNiMDRlNTk3ZWZjZWM5NTFiMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyMGQ2NmM0NWJmNzVjZWFmN2JiMGZkNjIzNTA2OWFkZDBlMjg1MTczNDYzMzFmMGI5OTJiN2YwM2FiMzI1OWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a6c885e5fe247b070bc3319f488feec4037a58209c76e7d17e6159431b69caf8",
+  "pageVersion": "sha256:2b7101b9e203e7085bbd64bdd70f951c094d97f4b343691e5b3d6ab99779eac6",
   "claims": [
     {
       "id": "claim_90a63a165a1b4f55ad2fd529eafa0752",
@@ -31,10 +31,30 @@
           "version": "repo-lines-v1:sha256:3f443137822149baa80e28653cb16a1ebd3863b8fdbbe073b826cbe6282faa25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNzI4MzRiNGEwZWZlN2MzMTU1MzI1NjQ1NzU0NTkxMzczMzM1MmI1OGExZTIzOGIyOWFjNWUwYTYxYzRiOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmYzBhM2NjNGE3MjczMTM2MjcwNTFlNDEyMDFmYzBjNWQwMGYwNThiY2ZkODFmZmMzMjJlNzdiZTA1NTgzNDcifQ"
         }
       ]
+    },
+    {
+      "id": "claim_c4732bb5c62840abaa74fb4cbbb1b1f7",
+      "statement": "AI Task Queue UIは実行中taskだけに進捗を表示し、failedの失敗理由とqueuedの直前失敗・自動再試行待ちを区別する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt#L247-L300",
+          "version": "repo-lines-v1:sha256:9005d6c6360618648344ec13ce71ae0bec9c74ed951675d6af10bbb38b8d6045:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2YWYyZDMyYzY0YzZkNWIyZGJjZjZhMGRiN2NiMWVhOWNlMmQ5ZTc2NThjY2RkZGRmZTIxMDBmNmVhNzQxMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlNTU2ZTk4OWEyZGYwNDMwN2RhNjFlODE3YWI1YjE4NTYyOTViNzIwYTdmYTQwZjczNjUzMDEzZTZhYWVkOTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fe77e54837bc48fba658d0d246ba318e",
+      "statement": "AI task queue UIの一括再実行はRepository.retryFailedBookmarkTasksへ委譲し、取得件数を表示せずreloadでstateを更新する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt#L72-L79",
+          "version": "repo-lines-v1:sha256:3f0bcf5b217ddd651578fdb9cdafc8eceab7609b5ea7083bb205140a44e4bc24:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU4NjZiYjBlOWNiNGQxZGQyODNmYzFmNDliNjBkNzg4MGQ4NTI3OTU2NjgzNDFmZGM1MzA2MTRkYjRjMzNiMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWI5ZTkxMDJkMjdmZWFhNzRjZTgzNWEwMzBhNTE0ODE2Yzk5ZjRlODJhYzQ5MmMwMWE2MDZiM2RlNThjN2FkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDk4MDk5OTdjYTZiM2E1NWQ4YjNkZmM5ZjA0NTZlMDY4MTc0NmM0ZDgxMTc4MGQzMDNjOWM5N2E3ZWJhNmQwZSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

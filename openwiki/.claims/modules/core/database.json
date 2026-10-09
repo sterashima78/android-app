@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8957b3a0395520f59bd5738eea7be80517a3a99681c55a59107c17d985548cff",
+  "pageVersion": "sha256:9ba9c015f646444131f9c40dc0e052fd46bb89af47576a56a07ff7d06db90833",
   "claims": [
     {
       "id": "claim_518430f6083e46b29295473a3e26f699",
@@ -31,10 +31,28 @@
           "version": "repo-lines-v1:sha256:ac66298a7d8ad4306b12603054ad6327c6f5a205a327469b1348bcde486703f8:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3Nzg4NWE2MzZiMzQ1ODQ1ZTM2N2FlZTI0MGVjMDVjNjI3MTlmMTgyYTZlOGQyMTYxZGVlMjBhNWI3NDAzYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMjhmNzVkMGI2YjE0OTBmMWFiMDQyY2U1MWE5NDI3MjdjN2JhMWYxMjNlZTM0MGFlYjQ2NTk5OTVkNDFjNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3YTQwOWY3YmE0ZWE0ZjkxOGJlMTNhZjUxZjU3MjFmNzY5MDM5MDRhMjI1NjBlMjg0NDg5NGU4NTBkMWFkYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyNzQ5YTVmNjg2OGIzZTQ0MGZkODlkZWY5Mjg3ZDU2ZjJmOTA0ZmI3OTFkMTdlNTc0NTkzYjMyMzY1NDcxYmQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_b8da28a93c154e358fa2def2c50f4422",
+      "statement": "DatabaseConnection の durable commit 通知は PersistenceChangeNotifier に流れ、DataChangeNotifier の表示更新 signal とは別に管理される。",
+      "evidence": [
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DataChangeNotifier.kt#L8-L19",
+          "version": "repo-lines-v1:sha256:8a2f39b39351e22463091da01eeeb736a56bea108a728e31d4c27316a108ace1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxZDc1YzM1M2NiMWQ5MjBjYmFlOGFiNTdhM2RlZDVjOTg0MzljOTViMzg1MzAxNjk5YjEyZTg2MDE2YTZlOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4YmFmYTQxMDcxODQzMzIyNjk1YTQ0M2M3NDkwYWNkMzIxY2M1Zjk5ZjM1ZWIxYTZkNzI0NzFiMWE0NzRjNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseConnection.kt#L5-L97",
+          "version": "repo-lines-v1:sha256:c238405f23c8350d6c1aa6cd2a99b74b99731f09dda578d877fcdc42f7005380:eyJzZWxlY3RlZExpbmVDb3VudCI6OTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZGJmOWU2ODAyZWZmY2JjZTNmMzNiN2ZhMDRkODFhMWVhZGNhMjRiZWQ5YmU3YzUwODhhMjcxNjE0M2M1MTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwZmRkMWIyYTJlYThjODQ5OTRhMGExNzUwZDVmODhiYmRlZTI3YTVhMzQ3NDY0ZWEyMTcxMjYwNDMzMDNiYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzNzAyMDk3ZGJiNjUyYzI4NGE3YzJmNWYxMTUyYzZlZGZlNTcxNjYzZDliMjZjZmJlZWZmZjE5ZmI2NDUyNjcifQ"
+        },
+        {
+          "resource": "repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/PersistenceChangeNotifier.kt#L9-L20",
+          "version": "repo-lines-v1:sha256:66aa8398d2dd6e3b661466206ebc232c902e11791152e1ed7c0f5a7b5914262c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmODA3ZWVjNzg4NGY4MmVkMTAzNWMwNTgwZmI5NTMyZjA3ZWEyNTExZmMyMTczZDZiY2I2NDVlMGEwYmZjNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzNWU0NDY0OTJhNjdiZTc3MTcxZmY2YTg4Mzc2ZWVmY2M5MjJjYWI3MDg5YjVlNTk5MWQ0NGRlNjg3MjM3OWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

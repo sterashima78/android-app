@@ -2,19 +2,49 @@
 type: module
 title: Audio Domain：共有再生キューと操作
 description: 要約とPodcastから使う再生キュー、状態、操作の共有契約を説明する。
-tags: [audio, domain, module]
+tags:
+  - audio
+  - domain
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-c50e553f8a523bc319609279
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/audio/AppAudioRuntimeDependencies.kt
   - id: openwiki-source-97e65664979c720b30363f97
     resource: repo://feature/audio/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/AudioPlayback.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # Audio Domain：共有再生キューと操作
 
-`:feature:audio:domain` は次の責務を持ちます。
+`:feature:audio:domain` は共有音声再生の JVM 契約です。キュー入力、準備と再生の表示状態、操作 capability を定義し、状態の実際の所有者は注入される controller 実装です。Summary と Podcast の UI が利用し、Data が TTS/Media3 の具象を実装します。
+
+
+## 主要な構成要素
+
+| 型・関数 | 種類 | 役割と関係 | 実装 |
+| --- | --- | --- | --- |
+| `AudioQueueItem` | data class | ID・タイトル・source・任意のspeechTextを持つキュー入力。 | [AudioPlayback.kt](../../../feature/audio/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/AudioPlayback.kt) |
+| `normalizeAudioQueue` | トップレベル関数 | contentIdの重複を除き、最初の項目と順序を保持する。 | [AudioPlayback.kt](../../../feature/audio/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/AudioPlayback.kt) |
+| `AudioPreparationStatus` | enum | IDLE/PREPARING/READY/FAILEDで準備段階を区別する。 | [AudioPlayback.kt](../../../feature/audio/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/AudioPlayback.kt) |
+| `AudioPlaybackState` | data class | キュー・現在index・再生位置/長さ/速度・準備件数・messageをまとめる。currentItemは範囲外ならnull。 | [AudioPlayback.kt](../../../feature/audio/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/AudioPlayback.kt) |
+| `AudioPlaybackController` | interface | stateを公開しplay/toggle/skip/seek/speed/stopを定義する。Dataが実装する。 | [AudioPlayback.kt](../../../feature/audio/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/AudioPlayback.kt) |
+
+
+## 主要 API と具象接続
+
+`AudioPlaybackController.play(items)` がキュー開始、`togglePlayPause()` が再生切替、`skipNext()` / `skipPrevious()` が項目移動、`seekBy(deltaMs)` が相対位置変更、`setPlaybackSpeed(speed)` が速度変更、`stop()` が終了の契約です。戻り値で成否を返す API ではなく、画面は `state` を観測します。`AudioQueueItem.speechText` は任意の直接本文、`normalizeAudioQueue` は純粋な重複排除関数です。
+
+具象は [DefaultAudioPlaybackController](audio-data.md)。[AppAudioRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/audio/AppAudioRuntimeDependencies.kt) が SummaryReader/SummaryRequester と Application を渡して一つの controller を構成し、[AppRouteDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/AppRouteDependencies.kt) と Podcast の factory へ渡します。Domain の契約自身は速度の具体範囲や media resource 解放手順を定めません。
+
+## 代表的な再生フロー
+
+1. 呼び出し側が可視順の `AudioQueueItem` を `AudioPlaybackController.play` へ渡します。
+2. Data実装が `normalizeAudioQueue` で重複を除き、キューと `PREPARING` を `AudioPlaybackState` に反映します。
+3. Dataの本文解決・音声準備で再生可能な項目ができると `READY` と現在項目/位置を更新します。通常の準備失敗は `FAILED` とmessageへ戻ります。
+4. 呼び出し側が `state` を購読して [AudioPlayerControls](audio-ui.md) に渡し、操作callbackを同じcontrollerへ戻します。
 
 ## 再生の公開境界
 

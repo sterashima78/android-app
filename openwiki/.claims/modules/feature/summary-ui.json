@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:069294e2f696737465262191b079af74938c3c187bffcf850f29ac9e035fa2a4",
+  "pageVersion": "sha256:26444ddff14b5ca694d74909dc5b7546b8dd7c5aca92f0a1b96120bd762bd85f",
   "claims": [
     {
       "id": "claim_a60a2a1f84fe465593d85e2adcc1f553",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:5c79e0c2098680bbbd7eb95bebd2953f7d9c681c50e862105748780d5daa51e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MTIwMTlkY2RiZWYyNzQ4ZTllMjI3NDQ1ZjUyMTEwYzg1NzIwYTZkOGMzNjE1ZTljNjEwNDQ2NjAxNDIxNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_00d34828096f40a58bf67658a2fa2125",
+      "statement": "compositionのsummaryViewModelFactoryはapplication runtimeが公開するSummaryRepositoryをSummaryViewModel.Factoryへ渡す。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/ai/AppAiCoreRuntimeDependencies.kt#L104-L113",
+          "version": "repo-lines-v1:sha256:2012e30707e4095c7353575f67b7da88703024835b3dab6a1c05d4fab33f868c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmNGU0OTJjNTRlNjNhNjYzZGMyMzQyMGY0Y2Y2YjcxOTIwNjRhNzg2NmRjMmNmZGZhNDE3ZjZhMzc0ZTVlYjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5YzI2YWI0OGZlY2MxMGFiMGEzOWI2OTliY2ExZTk4ZjkzZjE3YTQ4OTExYmFkYzg0NDVmM2MzOWQxYjJmOGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppContentRouteDependencies.kt#L80-L83",
+          "version": "repo-lines-v1:sha256:5f13081138bacf30eab76e197f5d1d16db91e367fb2de48a0212ade14c336d2e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGFmOWI5Zjk1ZmRjMjNiMzU3MmRiNzAyY2FhNTZkMDFiMmQ4YzFjMDNmNWQzZDVlMmMxYzcxOTllNTcwOThiMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzg1NThiN2UyMTMzNzYwODU0NWZhMWNlMDYzZWEwNTlhZTAyNDZjYWNjNzJlYzgzZDJiMjA3ZjU2N2FiYTA3NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGYyN2QxNDM0YWQ5MTc2MTA2ODYxYjZhOTJkMzBjYzg4MGI4ZTU5ZTg2ZjllOWNlMzI3NDg4ZTQzODcxNTI0NyJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

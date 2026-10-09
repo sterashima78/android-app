@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8b52424ecc84268aea74780d07dd6039d78fe1fab80b6fcfb59c48c0a5665462",
+  "pageVersion": "sha256:586272348e4b21c30d279e78e39f65715d14b03d9431be20074bce607ad7d2f0",
   "claims": [
     {
       "id": "claim_f28a4893d4284eb981e96324cd54ee01",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:1a2d5ad4050ae5c0eeab525d0d6ee20d561249d5e3e12164719df80570943094:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NGMxZjA1MjUxZjdjN2FiZjRkOGM1ODcxN2ViZjYwYjcyZjE3YzBmMzk0OTZjYmZkZWIzNjFiY2MwOTI1NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MTM1MzQ5MzQyN2M3MjFlNTFkNGI1YWVhMjZkYTYxNDNkZDUzNmVkYmYxNzQyZDZjZjRhYzYxYTM5NTViZTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_64bf5092e78a40398a59f5548b8dc90b",
+      "statement": "Spiderは選択runの合法性を確認して移動し、移動元の伏せ札公開と完成run回収を次stateへ反映する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/game/Spider.kt#L107-L130",
+          "version": "repo-lines-v1:sha256:7787817689a52a963eb5bea8cecdc282af0aaa1593ccfad08a565904de39a30d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3OTdmNWVkZGU1ZmRlOWU0OGFmMzg2MzU3YjQxZmUzNDVkZmVlYWVkNmE5ZGUxNTM2ZTc1ODE1NzhmOGMzNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyNDI2YTg3NWNlM2VjYjgwYTY5ZmRhZmY3ZTU0NzFkNjQ0YWJhMjg4ZmQ0YjkyZGFkZThhZDI1MjMzNTM1OWYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T04:30:12.060Z"
   }
 }

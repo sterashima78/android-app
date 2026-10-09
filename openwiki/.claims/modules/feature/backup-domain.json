@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:191081037f097dcf524d3ea04fcda40d48fa8c3edbc1bef6cd7a3212408777f1",
+  "pageVersion": "sha256:8590ea5dcc90881186501aa732e286247489e90f11bd48ba79fa1eb5eb55074b",
   "claims": [
     {
       "id": "claim_25d608f91c11409fab83c8964dd1d24d",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:8b26c7826cafeb88907b9cd9fd64ea297cf88e1d5fee54d479fd885881c9d9cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3NTIyNmNmYWEzY2ZhNmY2Y2YyNzk0N2JlMzk5OGY2ODYxNDM0YmNiNGI5ZDFhOTE2M2Y1OWMwZGJkZTQyODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4N2RlODZiODJmMGVhY2MwZmRmYzJjNmYxY2FmMzAwMmYwNjhhYTkwZTMxMmIzYjBiZTY1YWVkZWE5YzNmM2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MTY5ZDA4ODNkMzJjZWEzZmUwZWJhZDMwMzI0ODQwNjk2NDUwODdiMThmNDgxNDY1NTFjNDI2YzNmYjdkMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_6cdf9ae94b4e481b9b8c0890fbcc0a89",
+      "statement": "BackupRepositoryはdocument URIによるexport/restoreとtree URIによる保存先設定を分け、即時Drive backupはファイル名を返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/BackupRepository.kt#L40-L95",
+          "version": "repo-lines-v1:sha256:3451713040ebed8fdc0d13ceb9dfb1d6eec80067bc0a9efe1d773099550e7527:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1ZmQ0ZjBkZWZhOTk1MmJhOWUyZjk1OWEyZDE4OWJjMTA3MTdlYTExYmNlZjAwYmVkMmNjMTA5OGI4YmFhNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4ZWE0NGQzZDk3ODI2ZjQyZWE2NjgzZGUyMWUxODZlYzRkOTFlNDZjYjgyNGMwYmRiM2MzZjIwOTY2ODVmOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzZTljZTkzZTUxODQ3Y2Q4NzM1ODZjNjNlMGZjMGM2ZmIxMWE2Y2M4MjJiY2VkZGViZDcwZDdlNThlZmM3YzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmMjE4ZjJmY2E5MTlkODY1MjNjNzEwOTU1ODg3MzdjNDExNTIzMzYyMmU3YmU1OWFmOGI5NWQ4N2I3ZjJlYjcifQ"
+        },
+        {
+          "resource": "repo://feature/backup/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupRepository.kt#L8-L18",
+          "version": "repo-lines-v1:sha256:3cec8be3d6f0a0c8847f9d4cd94b574035ea0e75794720b052c07b4c82f3309d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5Y2NhMjg1YTRiOGZhZWUzZmU5NDA3MTRhM2JmZGQ4Mzk5N2ZkODcxYTIwNDE0ZjczMGUzMWQ5ZGYwYmUwZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0ZmQ1NjhjNzg0NGIwYzgxZGYwYmY1OWIyODRjMjAyM2U0NDY0NjNhZmYzZTE4OWEwZjBmOTE0NWNiMDMwNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d5fe188f028146669b119bf1dbf1c5a0",
+      "statement": "BackupScheduleTime.parseは形式不正と範囲外の入力にnullを返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupScheduleTime.kt#L19-L25",
+          "version": "repo-lines-v1:sha256:3911d3f9ce4bb56d300b078bc2d830122e26a11a2bca9b6f3c066c4ffba45542:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjM3ZmUzOTY1Yjg2NzMwMmY5NDc1Yzk1YTkwOTEzMTIxNjI1OTY0ZDVhMmUxZDM4NjgwOTdhMDZiZWMzNWFiMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWE0MmNhM2JmMWJiMGE1ODZmMjczZjRlYzAxOGZiMTFjZDI2MzQ4MWQzZTI2MWQ2NjI3Y2NjOTFjZTA1MWE5MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY3MzlhMDZjMWNiYjEyNDRlMzM2M2QzOGJjZjlmYTUwY2U4NGZlZDM5OWMyMTkzYTNjN2YwOGQ1OTkxOGIyYSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

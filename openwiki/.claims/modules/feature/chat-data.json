@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:db1d1a8ec56e1bbc2bbf944987b089228b8c1df61f99cfe06b9f1be2e44e5753",
+  "pageVersion": "sha256:2b2821096238b74a056f62403eeaacb0939a6fbac1f1315fe459518fcf478a16",
   "claims": [
     {
       "id": "claim_e813d00667264e7b9d4eda31975b7f60",
@@ -21,10 +21,44 @@
           "version": "repo-lines-v1:sha256:5dcb8d544a8f6cd90fd0cfd07800a460e719f64b6b1437564fee1ecc8dad5e5e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0N2U1YjNhZDBiYWY1OWU0MjdjYjcxNGFjOGVlMzc0YTA0YWUzMTgxZGU3MmY2N2IwOTI2YmQ2NTI1NmRiOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxMzY3YjdlMTY1ODliZjA4NWRkNjkyMjMxMTg1ODZjN2UzYmNiNmI5YWQ1M2VkYWUxZDcyMzYyNWM1MTFiNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5ODM0YjM2MGM5OGQ4NzMxOTgwMDc4ODgyNzNiMDdlYTZjZWM0MzQyZDE1MGJiOThjYzZiZTQxZmEyNDVlZmQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_636f1947a4184d36abf9543e6046a67f",
+      "statement": "ChatResponseStreamは途中応答からthink block・stop marker・assistant接頭辞を除き、確定応答が空なら失敗させる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/ChatResponseStream.kt#L3-L41",
+          "version": "repo-lines-v1:sha256:b66df83472cf234caaa6dbbe866af6cc18c14ec60c23325faf3cde3aca4d7e83:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzMDhmZTI2ZTIzOWExOGQ4MWE0ZTA0MWM5MzNhNjUyZjgxNmY3YTdiYTViODY1NDNmMDBkOWYzNjY5MGU1YjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3ZWJhZTFlZjViOGYzZWQ3NTMwZjVmMDE3MjZjNzExZDhiZGI2NTMxNGFiYmViMGY0YzQyY2Y4NmVjYmVlMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMjlkMDI0NDI4ZDRiNTRjZWI2YmRmMTgxZThmNmNlZTViM2ViYzAyZDljN2I3M2ZhNWIwNzFhYTRiM2E5ZGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8d2434b2ad0e4e3590f0784748f431ce",
+      "statement": "Chatの語彙検索は全検索語がいずれかのfieldに一致する候補を残し、field重みとphrase加点で順位付けし同点は元順を維持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LexicalRetrieval.kt#L20-L62",
+          "version": "repo-lines-v1:sha256:07f58d9f03684a23c388a1a22a8cc93e376e118ec2684c1083b3b03a0f6534d6:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOGYzMDM5NGZmMjdkMTg0M2JkMjBiZjc1MzlmMzIwODU4OTIyZDYxMWUyMDg3MTI5YTkyZGVkMGVhNjRmODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMDZkMWMyY2ZkZWQ2ZThjMWJjY2Q4ZDRjM2UxYzU3M2IwMWViZGNhNTRjY2M1OTQ5MjA3ZjdkYmRmM2VlYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhMjU0N2E1NjVkYmM3OTliYzQ5Mjc0ODI5Y2ZmZmMwZGQ0MzBjODIwYzFhYTA0ZWMyYWYyYzM5MTk5ZDJhYjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyYTBjZGI1ZThjYTZhNzA5MWZjNGQ2MDJiYmY5ZjAzZmVkMzFhYWEyMjUyNDY0MjdmMWM3NmI5MTQ5YzZjNTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_df7ac4f5d5754075a18033f1023a5a08",
+      "statement": "Chatのapp resource skillとKnowledge/Library skillは各ownerの読み取り契約をtoolへ公開し、保存記事・Knowledge・蔵書の検索と詳細取得を分ける。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/AppResourceSkills.kt#L124-L181",
+          "version": "repo-lines-v1:sha256:291fc3de93da2cab23f508a0ec8093f0e6cea2dd2a8eac1bedf9df3f2ee0dbb5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliOTYzNzZiNTllMTA2OTU2YTcwMTdkZTlkZmE1ZDU1ZWEzNTMwMjU0MjY0ZTEwN2UxMDY1YWEzMGMwMzhlNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxZWQzYjQ1NjFmOWIyNjAxZjBiYmE5MTgwMGY4ODQ2OTI5YTY2MTk4MjNiY2FhZWU0N2RhNTkzNjJjNzRjNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0YmY4YWM2ZDk5YjNlZGVmNWU5OTY2NDQzNThkMDdkNGE0MDY0YjUzM2Y3YzU0NWU2MjFhNjMwNzhlMDUzMWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhZThlN2MzN2Q2NzYzOWYyMjVkMTliY2EwY2UyMzQ1ODJjMjViYWEyNWEyNzk1Nzc3M2MzM2Q1ZDdiZGNmZmIifQ"
+        },
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/KnowledgeLibraryResourceSkills.kt#L12-L116",
+          "version": "repo-lines-v1:sha256:c0c829e2006be5ff4a3c67de4692799752dfc5ecfc8a5d9141080626fc6c6b20:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiZDRhNTZjM2QxNTg5ZTJiOWFjZmNhNjM1NTkzYWFlNmQyM2RmYmQ0NWEzZGY5N2Y5OWFjMjNiNzBiZGFkM2E5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIyN2U1Nzg4ZDVkOWQ3M2QyNGE4MWRiYzBhNWE3NGJmYTgyYzljM2IzYWY5OWU1MmFmNzk2ZTkwYjQ2OGE4YTNkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNzMwOGIzZjgxMzdhNDJmOThmZGMyZTBhOTA0YzYwZjQ1MTM4NjZiYTRhYWVjZTk0Nzc1NDZkNmFkYmNlNWM3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2MTVlY2YwNTdmOTVkNDg5NDFkMDZkOTM2ZmZmZTY3MDZmYTJiZGRkOWUwZTIzZjc1YmRjNzI3YjRjNGFkMDkxIn0"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T04:30:12.060Z"
   }
 }

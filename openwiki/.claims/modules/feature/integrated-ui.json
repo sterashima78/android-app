@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:acbcbe44184aa26da4bf823eec3720589fad25a56f67fc621a24f42887315ca2",
+  "pageVersion": "sha256:7e9a9f6a88bd6f8c51494976550efe42d2440cdefd2777dc5afd3949405ba74b",
   "claims": [
     {
       "id": "claim_daf8565fe307403e94cab1de74b938e7",
@@ -31,10 +31,44 @@
           "version": "repo-lines-v1:sha256:9c41e98a6ba1df5b500d4325519253ac3550488a57665fd181ae81f91467e6d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZWJhNjQwY2NlZTliNDViZTY5YTJiN2E0OTY1NTdjNGFhMmYwZmNjZWU3N2RmZmJmOTA5YWU3YWU2Y2ZiYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NzBjMTkxMTY0ZTdlZWFkMWM1ZjcwOTQ5NjAwNWM2Yzc5M2I3MDYzOTRmMjllYTYzZGQ3Y2Q0MzhiODFlMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmMTZkZmM1NWIwMDk0YTk2MTNhNTRhNmEzYWZhZjgwZTQ4NzBmMWYxYTljYWU0MGM1ZGE1ZjFjMjg5YmVkOGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2NDc2ZWEzZDIxZWFkZGI2NWJiOTE2NDNkMGZlYjVhODEwMDA2Y2IyNzAyMmI2YjA1Mjg1NzY2ZGI1NDgzZTAifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4afe672e044b48e0ada751f5d6a1a97e",
+      "statement": "IntegratedScreenのsource件数はsource filter適用前のitemsから計算し、source選択はrememberSaveableで保持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedScreen.kt#L143-L156",
+          "version": "repo-lines-v1:sha256:d6c4dcfbed479ef3fe2e36acd8e5f2abd612aab7053346214cdb5a7c962b8a02:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwMzEzNzMwOWVhNzc2MGU0YzE4MWI1NzhkMzUwMTc5MjFhMDI5NzhiNmJjZTE5ZGI2NWI3MmM4ZjgyMzdhODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NGJiZWEwNmIwNDE3NWRmM2Y0MTQzNTc0ZDMzMDM5YzJiZjI1OThhNWU4MTI3YjUxZjlhNTJmZDMwZGY3YTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmZTAwNWRlZmYxYTI5NTViMjQ1NmMxOTA2MDFmMjM1NDhmNjkwYWIxZjBlNThjY2M0NTMwYjllYjExZDYwMjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwNWVlMGFiNzJmNzRlYjMxYzA3OGE4MWJkNTFlZmRkMjg2NGNjZmRiNmU1ZTZjZTQ5NTMzM2U3NTcwOWVkNmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5f77dfc5c8664724ad4795601130ce0b",
+      "statement": "統合UIの未読RSS左swipeは既読、遠左は除外参考へ結び、遠左の操作にはDeliberateFarActionを選ぶ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedScreen.kt#L417-L426",
+          "version": "repo-lines-v1:sha256:97b1bd6a996db9ffdbfca51c4ca7904f52c656e096f665b40b1a3ab17f0ef993:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwMTkwM2RhZDE3ZDk4ZTg5MWM3MTIyZWEzYTU4MDZmMjRkMWQyZGNiYmJlNjM3NWY0MzQxMTU1YjUxNDY1M2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3YTZiNWM3ODA4YWE2ODA2NDQyOGQ2OWY4NWIwYzU3YWRhZDUwMGUwZTc1ODAxZDBhMDEwZmYyMzk1Y2JlYWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwOGQzZmRhYTExNWU3YTgxNzJmZjlkNDRkZjlkODUwM2MxOWEwNTk3MDBkN2Y5Mjk1Y2EzOGRmYWUzZjM5NWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE4NmRlZDg5ZDAyNGFjYjgwNzZhZmNhMmQzNzU1ZWQ1OTE1YjM0YjQ2M2E1NGYxNTY0YWUwYmU1MDE1Y2ZkNWMifQ"
+        },
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedScreen.kt#L477-L484",
+          "version": "repo-lines-v1:sha256:9a01f394678beb4cf306bc4cbd075d6b606777c1a99748407d56c92a21711286:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ3ODU3YTc5NDFiMzMwMzI0OGI4MWYxYjMxYzlhMmFhYjYyMjQwZTI5MzU2NjM2MzRhYTg0MTVhY2YzZGUxMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmI1ODBlOTY0ZjgzYTQ3M2Y0M2Q0NDM4NDYyOTQ5ZDY4YjU2MDBmZGE3ODdmMTYzNzQ1ZDAwZGU4OWNiZjM2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQxMTQ1MDFmZDEwOTNmODE4OWNkNjAzMjE1MmIzZGEwYTNmYWYyMjI3MDVkNWIzZGRjNGZlOGQyODcwMzUwNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_023688da64a84dcaa2f1a4cc76afda0b",
+      "statement": "IntegratedTargetDispatcherはsave/unsaveを記事だけ、star/archiveをMailだけに返し、null targetを無操作として扱う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedTargetDispatcher.kt#L55-L106",
+          "version": "repo-lines-v1:sha256:f8a5f39cbf0bcd8eeff717fe740c46941486eb83a4b1fbec233ef4242f890379:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwYjhhM2NmYzI1ZmIyNzZjY2JlNzVmZTZkNjM4ZTNhMWQyZDRlNTNkYjYwM2VmMDNlZDM0NTdjN2U4M2QyNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4YjVlYmU0YzA0NWFlYWVkNmM0NDViMzI3ODE4ZDk5M2U1MzBiNDA2NWYwMzkzN2EyOGEyYWU3OTZmNGY5OWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

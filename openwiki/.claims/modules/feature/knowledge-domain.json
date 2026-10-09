@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:405b6c3b6bae8ce91f0a2afdd13fd45f3a69b2a96e6e14774a00516c1cee83bf",
+  "pageVersion": "sha256:043dce082c9fc19a3153115557375fd2c7999cf7f131372a838f360ac567a92c",
   "claims": [
     {
       "id": "claim_3285a521b9c341c1a3a71ba22c6c815e",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:1770aef5943bcfdeab251e43c5ab70fc9e4ff696d551e4464e9d11faca94c008:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlYTU3NzU5NTNjYWVhNzNhOTQ0MGM2YzVjOGIxMmNmZDdlMTdlODEyODFiMjQxNzA3MjcyYjgwNWQ2ZGI2MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OTJmZjdhNTgyYTIwNzZlMGI5MzIyM2MzMGFiMjA1MjUyMzkwYzQwYzMyN2I4Zjc5ZDFmOWU5NDRmYmQ4N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3ZmE3MTM2Yzk4YzllMDEzOTM5OTkyZTNjN2Y1NTg2ZmNjMWI1Mzc1YzJiZDRhOGExN2YyOGRiMzNkYjcwYTYifQ"
         }
       ]
+    },
+    {
+      "id": "claim_d5ae119002564158a6b4e7a264eeae1e",
+      "statement": "Knowledgeの背景runnerはproviderを明示引数で受け、保存済み読取・管理とAI生成を別capabilityに分離する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeExecutionSettings.kt#L16-L20",
+          "version": "repo-lines-v1:sha256:7f8c1e2119e475c56a028768f3fa5cba3fedeeba7a8d89dedb625fb08dfa4f33:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTgyYzczN2NkNzM3MTM4Y2Y2ODE2NGY4MWJmNjEwNTYxMmFiNzc5ZWY5M2MyNWNhMDYzNjAyZDg1Zjc2NDFkYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjcyMTk3OThkOTUzMjVmYWI2MTA4MjY2YzU3NjRiZDdkMThkYmNhOGE4Njc5NDU5ZjJhMjA2Y2FmMWIwMjE5OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTU4MmFmYWRiNzg4ZjczMGI1ZjNlZDliNzdkMTg4ZmUyMjk2MzliOTlhZGM5ODc2MmU3ZGU5ZjExMGRiMzFmZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODE1MzcxY2ZkMjJkYzFhOTYyNGE4ZTQ1MDE0MTIyZTdkYTZmNTk0NjI0NjU0ZmUwZDcyMWE5MDdjYjg0NjE4ZSJ9"
+        },
+        {
+          "resource": "repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeRepository.kt#L5-L31",
+          "version": "repo-lines-v1:sha256:d84f2c6e53122991dbba0392fc2ff5cddf16f08dae15c7c4a6c4cafeb92701cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5ODUwMTAzZjI1MDM0MTZmMmZiZTFlN2UzYTExOWM3NWM0NGI5MzQzMTI1N2E1YjM5ZDFkYzE4ZDU3MGNmZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwODZiMjZkZDZlY2Q0NzUwMDYwOWU4OWRiNzU4ZjhjN2I5OWYzZDZhNDhjMDE1NDVjMzAwZmRlNGRiNjJlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkOTg0MDI0YzA4NGY1NTNjZTI0ODdkOWNhMmUzYjQ1MmEwYzFkNTVjMGQ1NDlmYmNiZTRjMjEwZmVhMmQyZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

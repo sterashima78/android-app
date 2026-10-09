@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d799b699b99078b03c6f270003e16c58a57c514b038169d230470e568d25833f",
+  "pageVersion": "sha256:3c86752017e958d4914a22afbbc3eaa398006546b49af2ddf3459cf346258be2",
   "claims": [
     {
       "id": "claim_c8cedee6770e4043b1dae6314091966c",
@@ -25,10 +25,30 @@
           "version": "repo-lines-v1:sha256:c9d88d7b1e8ffe98f6f9dbe33f45d564a1a60503c697e707314c8789e93db060:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNGU0NmZkYzg2MTZlZGU5OTgxMDY4ODRjMDQ4Y2I3OGM3ZGQxZWZhNzg3Y2U0NTlkMTljMjkxMzJkOWY4YzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlNzRiNmQzZjg2YWQ2ZDkzNmJhMjg1ZDQ5N2JiMDBkOGNlNjk3ZmI0MmQwNjAxYzFiNzgwODZiYzEzMWI1YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZDlkNTZmNTgwYzVmZjdiZWU5ZjM0MzY5M2I5MTI2YzQ1NTkyY2M5YTBhZDNlN2JlNmFhMjhhOGMwOTYzNDkifQ"
         }
       ]
+    },
+    {
+      "id": "claim_321d477dd37a4c139b1c5cec97865f8a",
+      "statement": "AgentSkillは名前・説明の非空と少なくとも一つの実行toolを構築時に要求する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/chat/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/AgentSkill.kt#L24-L32",
+          "version": "repo-lines-v1:sha256:471d37aeaf87c012355a3f3404eee4051f13c7e00e4f92c2e62bc2bc00ef2d0c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNiMTZlYzMzZmFmZmI5ZGFlMjA3Zjg1OGYxOTU4MmE2ZWVjMDkwNzBhZjAwOWFkZmM3N2RkMzRhMWJhMmFkYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjE2NTk1N2QxNDJhMmJkODQ4NmQyNjFkYjMwZWU3YzhmZWEyYjcxNDUxZjg0NWQ5NTQ0ZTliN2FiNmM5MWRlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e01e0b2233bf447cb1fa7dea67196c8a",
+      "statement": "現在のchat compositionはLocalChatGeneratorにapp resourceとKnowledge/Libraryのskillを注入し、context providerは渡さない。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt#L52-L67",
+          "version": "repo-lines-v1:sha256:b311785b0d2657902c00d5afeb67c6a5b90ade843e3eeede107cb2aff3195fc1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2NTM5MWE1NTRiYjUwZmMxOTc1MGFiNzU0NDRkODhiNDljYjdmYzA4Njg1MTliM2E4ZjIzNjc2NGExOTc1NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjYzliZDY2MTk2OWMzYThkYWJhNDU1MTc3YmExYmUxMmRhYzE1ODZhMTliNzYzYjdhYTFjMmU1ZDczOTQzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmZjEzMTE0YzhjOTFhODhkNTdlMzRhMmJlNGYxNzk5ZGE5Y2Y3ODNkMDRmZGQ3Y2QxNzkxNDU1NWZlNmExNDkifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

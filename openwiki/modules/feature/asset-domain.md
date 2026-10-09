@@ -1,22 +1,45 @@
 ---
 type: module
-title: "Asset Domain：dated snapshot の公開契約"
-description: "最新総額、カテゴリ履歴とインポート・カテゴリ操作の境界。"
-tags: [asset, domain, modules]
+title: Asset Domain：dated snapshot の公開契約
+description: 最新総額、カテゴリ履歴とインポート・カテゴリ操作の境界。
+tags:
+  - asset
+  - domain
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-c482dd5141dd1d42cc6d17c0
     resource: repo://feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetModels.kt
   - id: openwiki-source-721ab034d63a5242476d090b
     resource: repo://feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetRepository.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Asset Domain：dated snapshot の公開契約
 
 `:feature:asset:domain` は資産の dated snapshot を閲覧・分類・取り込むための Kotlin/JVM 契約を定義する。`AssetRepository` は overview の読取、document URI の TSV import、MoneyForward JSON import、カテゴリ追加と資産名への分類を公開する。SQLite、ContentResolver、WebView はこの契約に露出させず、それぞれ Data と UI adapter に分ける。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| AssetHistoryPoint（data class） | LocalDate ごとの総額とカテゴリ別 Long 金額。 | [AssetModels.kt](../../../feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetModels.kt) |
+| AssetCategorySetting（data class） | 資産レコード名と現在のカテゴリの対応。 | [AssetModels.kt](../../../feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetModels.kt) |
+| AssetOverview（data class） | 最新 snapshot の日付・金額、日別履歴、分類設定と登録カテゴリをまとめる。 | [AssetModels.kt](../../../feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetModels.kt) |
+| AssetImportResult（data class） | 取込後の非負明細 rowCount と非空 snapshotCount を返す。値の計算は Data が担う。 | [AssetModels.kt](../../../feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetModels.kt) |
+| AssetRepository（interface） | loadOverview / importTsv / importMoneyForwardJson / addCategory / setCategory の公開入口。 | [AssetRepository.kt](../../../feature/asset/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetRepository.kt) |
+
+## 主要 API と接続
+
+`importTsv(documentUri: String)` は Android Uri 型を Domain に持ち込まず文字列を受ける。`importMoneyForwardJson(json)` と共に AssetImportResult を返す。`addCategory` と `setCategory(assetName, category)` は Unit の command。overview は `latestDate == null` と空一覧で未取込を表現する。
+
+## 代表的な処理フロー
+
+UI の document 選択または Web collector の JSON → AssetRepository の import → Data の日付単位置換 → `loadOverview` → AssetOverview → カテゴリ一覧と履歴 chart。具体実装 `DefaultAssetRepository` は composition で共有 DatabaseConnection に接続される。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## snapshot と分類
 

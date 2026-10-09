@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:28f4953bce132351dca996c82a58e93748aa24f281b52323eed671e34fc65cbd",
+  "pageVersion": "sha256:b60e061c152c6a8f6f67e4043eaed6adc5fa2dd330cea9effb7057c32b115208",
   "claims": [
     {
       "id": "claim_bc671f340ff1492da8bccc4c632bec1b",
@@ -25,10 +25,20 @@
           "version": "repo-lines-v1:sha256:a3cca0a5e0e4b338d2b30b27c8cdb6230bd2fd5f03c9daf065d1ca176d3d88eb:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTUxNjhlZDUyZWU1MDYyMDA1ZjQ1NTVhMzk0ZWYwN2Q4Njk5OTU2NGIxNWEwYzA4Y2YyNjRiNDhjZDNhMjRiNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTc0OTUyNDA5YmIwNWQxZTM5YmU0MDA1MTkxYzFjYmM5NmU5ZmUyOTI4ZjJmN2FlNzNjYzRjMTRmNTI4NDFmYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_41e024e8f7564382a448997d11888b07",
+      "statement": "widget compositionはArticle・Feed・BookmarkをDefaultWidgetRepositoryへ注入し、RedditSourceBoundary.isNonRedditFeedでRSS側へ対象を限定する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt#L187-L195",
+          "version": "repo-lines-v1:sha256:651ca189b2893593c7a5f2d42450c462c4519ed82dc6ecd3a0ac9e448632dd1a:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzNiMTY0ZTgzOTc0MDAyYjBlMDU1M2UzMjFjOWZlYzYxNGFiY2U3YWFhZDI2Njc0YjM4MDM0NTQwYTNkNmM0ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGYxM2M4Y2ZkYmM2Y2Q0YjY1ZjM1NjAzMTAxZWRkNmFiOGU3YzA2YjA3ZTdlN2M0MmQwNjdiYjFiMGFjYzVmNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T14:01:52.039Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

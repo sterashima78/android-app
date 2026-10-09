@@ -2,14 +2,18 @@
 type: module
 title: 許可 origin に限定した Web 収集 dialog
 description: ログインを伴う Web 収集の WebView、message bridge、容量制限と renderer 終了を共通化する。
-tags: [webview, security, collection, module]
+tags:
+  - webview
+  - security
+  - collection
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-603f1af77361a17ca9dfa80b
     resource: repo://core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # 許可 origin に限定した Web 収集 dialog
@@ -17,6 +21,17 @@ generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 ## 収集 UI の共通境界
 
 `:core:web-collector` は Compose dialog 内の WebView 収集機構を提供する。[SecureWebCollectorDialog](../../../core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt) の設定には開始 URL、収集対象 prefix、許可 navigation host、許可 message origin、収集 script、結果容量・chunk 数などを渡す。provider ごとの何を収集するか、収集結果をどの repository に保存するかは caller の責務で、dialog は result と dismiss callback で返す。
+
+## 主要な構成要素と API
+
+| 宣言・種類 | 責務と入出力 | 根拠 |
+| --- | --- | --- |
+| `WebCollectorConfig` data class | 専用 profile、開始 URL、navigation/bridge allowlist、収集 script、UA 変換、cookie 方針、容量/chunk 上限を caller から受ける。 | [収集実装](../../../core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt)。 |
+| `WebCollectorContinuation` data class | URL prefix に一致する遷移後に実行する script と任意 status を定義する。 | 同上。 |
+| `SecureWebCollectorDialog` Composable | config、dismiss/result callback を公開。必要 WebView feature が不足すると説明と閉じる操作を表示する。 | 同上。 |
+| `CollectorContent` private Composable / `WebCollectorRendererLifecycle` private class | WebView、収集中/読込中 state、continuation 重複抑制、renderer lifetime を管理する。 | 同上。 |
+| `WebCollectorChunkAccumulator` internal class | `start` / `add` / `finish` / `reset` で session 単位の分割受信を管理する。重複 chunk は同じ内容だけ受理する。 | 同上。 |
+| `isCollectableUrl` / `isAllowedNavigation` / `isAllowedBridgeOrigin` internal 関数 | 収集ボタン用 prefix 判定、HTTPS host/port 判定、厳密 origin 判定を分離する。 | 同上。 |
 
 ## navigation と bridge の違い
 
@@ -26,6 +41,16 @@ WebView 内 navigation は HTTPS の許可 host またはその subdomain に限
 
 renderer 終了時は collection・continuation・chunk を破棄する。クラッシュならエラーを示し、メモリ不足による終了なら renderer generation を進めて新 WebView を作り再読込する。DisposableEffect で退出時に loading を停止し WebView を destroy するため、画面を閉じた後の収集 callback が元の状態へ流れないよう lifetime を揃える。
 
+## 利用者・結果と失敗の流れ
+
+[AmazonWebLibraryImportDialog](../../../feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/AmazonWebLibraryImportDialog.kt) と [AssetManagementDialog](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt) が provider 用 config を作る。dialog の専用 WebView profile に認証情報と cookie を留め、ネイティブ側には収集結果文字列だけを返す。
+
+1. 対応 feature を確認し、profile を設定した WebView で開始 URL を開く。
+2. caller の対象 prefix に一致すると収集ボタンから script を評価する。収集中の遷移は一致する continuation script を URL ごとに一度評価する。
+3. bridge は main frame、収集中、許可 origin の条件を満たす message だけ処理する。progress/error/result と chunk protocol を分岐し、result 成功時は `onResult` の後に `onDismiss` を呼ぶ。
+4. parse/容量/整合性失敗は収集を停止し chunk を破棄して status を表示する。許可外の main-frame navigation は WebView で阻止し、caller が認めた scheme だけ外部 Intent を試みる。
+
+renderer crash は自動再読込せず開始ページからの手動再試行を提示する。メモリ終了時は新しい WebView で許可された現 URL を再読込する。退出では callback 用 state と chunk を破棄し、WebView を destroy する。
 ## 確認と拡張
 
 [SecureWebCollectorDialogTest](../../../core/web-collector/src/test/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialogTest.kt) は HTTPS host / subdomain、紛らわしい別 host、port、bridge origin、JSON 分割、過大宣言、別 session の拒否を確認する。収集先追加では navigation と bridge の allowlist をそれぞれ最小範囲で指定する。renderer 回復や実際のログインを変更するときは純粋関数 test に加えて WebView の端末確認が必要になる。

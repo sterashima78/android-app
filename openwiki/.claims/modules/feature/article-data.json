@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:774a5ec6b3eb544db10639076d6b3a998ba60ae3bb64c32aa6cfbef2f8b91bcd",
+  "pageVersion": "sha256:d336464456d58b240694d90ee3835e9b619c163bab1bdffbec81e3d2244dd7ba",
   "claims": [
     {
       "id": "claim_b69758d1823d45fa985ebe50ba43f4c1",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:1fdbb838eaf89e166057149967c773f6a041e5593b8901d8535c7c9b0ed615a9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMzdlNTdmYjIzNzE0NGE2MjA1Mjk5N2UwNDExMTI0M2FiY2VhMDllOTI4NWI5NmFkNjE4YTIwNzdlYTM1N2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3aee0d34c4f742e69200bf802e91d9c0",
+      "statement": "Article検索はIDを正規化して分割取得し、source overrideを一括queryして実効分類付きモデルへ変換する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt#L105-L114",
+          "version": "repo-lines-v1:sha256:c078072b5136785b4ce1c6c724f09d7aaf7c208ae8eb0c030177028b37202714:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1MmRjNGEwMGJhN2FmYjc5MDMzNjU1MTY5MjU5ZTk0NjQ4Y2ZmYTJjNWU3ZGU1ZWRkNDQ4OTY5YWU4NzFlN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDRlZDg2NmJjMDc5NjMyNGIyNTFlZjEzNmY0MTU2MWFlNzM0NWIxNGRkYTU4Yjg5Njc4YjMwNGQ0ZDFlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5MGMwM2Y5YjdjM2NjODFjYjQ4NWIzYTIzOTIwNjI2Mzc3NzhjMTIyNjc0ZmM1ODNlODhkMGJlODcwNWIyNGQifQ"
+        },
+        {
+          "resource": "repo://feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt#L48-L60",
+          "version": "repo-lines-v1:sha256:2aa6ee0349fa4c1f5ed847b88eca56ca081c5b5e9b954e19a8435e90d4ccc6db:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MDAxMjQ0OTczNGJlY2I2ODYyNmQ2NDc3NWMzMDdmNzY5NDE5NzJiYjNhN2JiM2U1Y2ZhMTFlYmEzNzU0NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZGUwZDgzMzFlZGQ3YzU4NmY4NWJlZDQ4YjNjNDdjZDJkOTAxYjg1YmRhMWRkMmY3OTdiZmU4YjIxZGExZjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkOTg4YzY1MTgwNGFjYjVhYmE3MTIzMWI0ZGZhYWNmM2YyMTZiNWE2MDYwZTc2ZTViOTZmNmU1ODc5MWJhNGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxNGZiZmQxZTZmZWU0OWM1YzcyMmM2ZjFmYzlhMmM3MDcxMDRlMWQ3NTBhOGY0YzQ5OTczMTk0OGM0NGRjM2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fad4e6f1f6f5444e8d275e99de110a42",
+      "statement": "期限cleanupはsourceから切り離された既読記事だけを候補にし、外部保護IDを除外して削除した場合に変更通知する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt#L29-L46",
+          "version": "repo-lines-v1:sha256:e52f4048c7958874d214775f824f8010e7ee541bdd53fbad5009d737f8275326:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZmJiMGQzNGRmNjc3MGEwMWY3MTI0NjUyYjUzMmRjYjRlYmZkN2RiZjc0Y2ZmMDdiNDU3ZmNkYjY3ZDFhYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxM2U1MzUzZTVkYmFhOWE1YTA4NWM5YzQ5M2JlNDRiOGRiOWZhMTcyMWJiMjIyN2I5ZjJkYTkzMWE2NDZhYWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1N2M5Y2MyMGJhOWM1MjJlYjc4M2Q3NmExNzExNTU1NGExYWQ3ZjczYWRkNWY4NDE2NWM2ZDIwZmUyZGZlNWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

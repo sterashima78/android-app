@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cee86bbbe02edc69bc83f1916f6808d032934e69fffddb3d672ae315df282e6a",
+  "pageVersion": "sha256:2c3db3df463312c253105ce07e597f98c51eb171657f8b0ed05fe88598c4baf8",
   "claims": [
     {
       "id": "claim_0552dfba439f46fc8790f09dd61249ce",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:716e129a90341b36d84c8837b3ac116aa01740aa1af9f5357c97576339506baf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3ZmRhMmNiOWVkMTVhODAzZTk1MTM5ZTJjY2M0MjM3MmZiZTBmM2VhY2RkODU2MzFiYzA4ZjgxNGYxMzJhMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllMGI5YWY1ZTFhMzVmNDdkYTBlNzcxYjkzMmEzMDMwYTlmMzIxNjZhYjY0MGFiYzYyNzFiODRmMGFiNzRkODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYzU0MjA2YTBlMjRlY2QwYWI3ZDVjNTcwNjU2YTQyMmIxZDUzZDdkZjgxMWRhYThmMDRiNjk1MzZmYjk4MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_2773fa1a938244098aebe2527cdb5469",
+      "statement": "presentation の navigateTopLevel は route 集合を検査し、同じ destination への遷移を省き、singleTop と保存/復元付きの top-level navigation を行う。",
+      "evidence": [
+        {
+          "resource": "repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/AppNavHost.kt#L69-L80",
+          "version": "repo-lines-v1:sha256:6462c35c4fabcef37cafed4b696520b9c2d5df3bd7e0354ddc9666344fda6a3c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZGVjZjRiNjk1ZjQzZTlmZTU0Yjg1MjA1ZjFjNGE3ZjBkMWFkZjI2N2VkM2ZjNjZjYmY2ZDIwMWZlMjljMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_069bbca4af9c4a08bb9ced7746f56c87",
+      "statement": "LAN Web host は通知権限と SDK 37 以上でのローカルネットワーク権限を確認し、未許可があれば権限要求へ進んで server の開始を保留する。",
+      "evidence": [
+        {
+          "resource": "repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/LanWebServerDialogHost.kt#L28-L54",
+          "version": "repo-lines-v1:sha256:ebfffbcba94490a361f8ddda36a1f1680b11901a7b7c94cdd8b4b0ac5d3a346f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhYjNmNjk4NDZkNjYzZWMwMjMxNzUwZGJiNWUyMjE0YzUxOTg5MzVhMWJhMzBkZTNhYzA0NzQ3ZDA2MTQ5ZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5ZjcyN2NhMGY3MTU1M2FlZmRiNGJhYTlhZjdmODRlNjQyZWY0YWRkMWI1MjNhZDAyMTZhZjQ3Njc2YmZmZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmM2MwZDkxOTA5MWNmMmNjOTc3ZjgzOWVmMjRjODg4YmZjZTEwNDY1OTdiZmMwZjFjNmY3ZjgyOWFlN2M0ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjODlmNjI0Nzg0NTEyZTU0NjM4NjMzMWQ0NDZiOTcwY2EzMWUzZjBiMzAyMDA3OTQ1ZTM0ZGQzYjU1YmE2NzAifQ"
+        },
+        {
+          "resource": "repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/LanWebServerDialogHost.kt#L64-L92",
+          "version": "repo-lines-v1:sha256:6adf808f52f9fd3ccabca029fabd8cc670454b16c5769551857def1944c5e1a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0ODMyZDQ3ZjcyYmFkYzMxMGM0MGYzMmY2ZDk0MGVkNzU5Zjk0OGU4MTA3NjQwYTEwZDY1ZmMwZGM4NzYwZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MGM1ZDNkYzNhNzczMDc5M2M4OTI3OTQ4YjU1OTY2NDIwN2Y3OWJhODc3NzNjMjE1MDA0NDMxOTYyZmQ0ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T04:30:12.060Z"
   }
 }

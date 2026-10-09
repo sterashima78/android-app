@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dcc6a94d9c820b69e34c8346b7c6b00d8385bc015a0218ab531ac934300824f3",
+  "pageVersion": "sha256:21b20dbf3a2e3e8f74327953615c3a2a87a2e8e01cf74321ced950fc49a96e78",
   "claims": [
     {
       "id": "claim_b0ebafe0ff0b4d56ac3730c5ab03baf2",
@@ -31,10 +31,24 @@
           "version": "repo-lines-v1:sha256:4a40cfbd8a6ddab4cfbc3239e7005f00d8e072d5d6e53bcdd6faa8a96aeb4757:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxYmVkNTQyM2NmYTBjOTVhNTVmOGNjY2MzZTBhMmEyOTVkMTgzZWIxNjU1YWY5MGQ5Y2QzNzEyMTA1MjVjZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZGEyMzllMWZlOGIyNGQ0YWQ5YjYwZGQyMTJlOWI2YmZlMDkwZmE5NDYwYjI4OWZkMTc3ZjA1MDNmNzkxNzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNTkxMjEzODViNjI1YWQzZDdmZGE5MDRmNDRhOWIwYjFmNmJkYTlkYzFkMTYwYTYxMjQ4NzQ1MmRjY2ZjYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_e4f79c33b8b44bbc81736739c97ecd17",
+      "statement": "compositionはDefaultRedditRepositoryへRSS DomainのFeedRepositoryを注入し、Reddit UIのFactoryにはReddit・Article・Bookmark Repositoryを渡す。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt#L165-L169",
+          "version": "repo-lines-v1:sha256:7069a7586837c0cb23febe413cd813dbb4ac51d5fb4e973b3f4159d43241b587:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTllZWNiZTQ5MmM5OGVjM2UzYWE1YTBhMmUxMjk5NTMxNWEyMGQ5NGZlMGVlNzU2NjMxZTRlNjVjYzc2NDM1OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTgyZWRlMjkzNDYzOWUzY2I0MmUxZjhlYzYyYmFkNjEyMzU1NmNkZjYyYWQ4Y2YxNDJmMjhhMjYyNDBhZTM2OCJ9"
+        },
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppContentRouteDependencies.kt#L40-L46",
+          "version": "repo-lines-v1:sha256:8e55c50455b9c6e9d2f06c964789c43e923442da7f5a26010274061e85e69b71:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2Y0ZThjYWNjZTY4OTkzZTEwZDE5YjI0ZDQxYWFiNGQ1NzkwN2FmN2FkYTE3MjQyMTI1OWFhNDI2MGJhYjVlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGJmMzlhODcyMzY3MGViMGExYWZiYTEzNmExOTBhMzcyNzM3NmMyYmZkMDExZjBmZWEyMTM1NzU1YjRmOGQ2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRhYjc3OTQ0OTQzYWVmYWUxNDM2NmExMjZiNmFkZmM1MzVhNjA4MjcyNjY5ZWFiNTRkMThmNzI2MjJkMzU3NyJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

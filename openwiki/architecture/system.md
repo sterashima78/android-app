@@ -9,6 +9,16 @@ tags:
 verified:
   - by: openwiki/0.7.1
     at: 2026-10-09T02:32:57.934Z
+sources:
+  - id: openwiki-source-3bfcb28142050978edf94754
+    resource: repo://app/build.gradle.kts
+  - id: openwiki-source-d1d2160a3e9a979d5488e3ca
+    resource: repo://docs/architecture/principles.md
+  - id: openwiki-source-872141f77f71851168245852
+    resource: repo://docs/architecture/system-overview.md
+  - id: openwiki-source-e620d7484b72a53c7fa812cd
+    resource: repo://settings.gradle.kts
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # 全体構成と責務

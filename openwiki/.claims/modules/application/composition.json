@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:708681cb9c350ce1e47784e715e21e240e8a100c0278eb10f026655a612e0f44",
+  "pageVersion": "sha256:e1aa0abfdaff088625be73c354b857aca275e5b80103cc39a02bc0e0f9869bfc",
   "claims": [
     {
       "id": "claim_caecf50f7dc84867850eccfb0ad084d2",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:ef75e1bc740a68b66ea794542983ca85c71021290ef3a769cf412e081a1f2ba5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkYWJkZWNkMGQ1YzQzNGM2ODBhNmNmNTljMjFlZjYyZjZkYTQ1YmUyMzZjY2ZhM2ZmZDY2Y2M0Yzk0YmU5MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3YjA1YWIyMWIyMTQ0NGFhOTI5YWQwN2QzOWM1NTViYWQyZWNjZGFjYmRkMTIzOGYzYjdhMWI3NDE2ODE0MDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_6f77c75bb545420081facb28f858ed86",
+      "statement": "統合 refresh Worker は source 別の通常失敗を分離し、前後の未読キーが取得できたときだけ差分から新着通知する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/IntegratedRefreshWorker.kt#L25-L85",
+          "version": "repo-lines-v1:sha256:174a475a76f27bcbe78b05d63f773b6974f708f7689563c5740f0d1cb912f2fd:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NGZiYjJkMzBkNzE2ZGU5ZjIyN2E2MDg3MDg2NzljN2NlOGM5MjczYWNiYTY5NDNlM2JhYjk5MDQxZGQ0OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhMGEzOTkyMTY3Mjg0NzI1ZGVlZGYyNzE2MDQ1ZjNlNDkwNDY4MjFhZTU0NTVmYzM2YjExYzA4ZjgwODhjNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1NjdhZGIyMDU5MTlhMzYyNjZlNWUyMzQwYzljNmM5NDdmYWMzZGFlNmMxYWY5YzA0MWZjODQ4ODZjZmEyYmEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T04:31:39.659Z"
   }
 }

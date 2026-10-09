@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3aeae2acfd4ad8b47172ee9a7bfbbf07b4e0c10d3a6e6df0e09e47dcf2cfeafd",
+  "pageVersion": "sha256:d294b684a4a3fcdb5976a262c185154f3720d41d419c4b135d3c9e4620f0f095",
   "claims": [
     {
       "id": "claim_2c815f55e5024ebdbb961354fd06356c",
@@ -31,10 +31,30 @@
           "version": "repo-lines-v1:sha256:dc3eb3f42d14dc037ace7d48edaa0ef94bfa7f1f649ef878d6fbf01ef0d00c57:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjOTkwYTBhM2U1Mzc0OWM4NDhlOWMxZTUzOGM4MmQ0MjY2MWJmZmJiYmQ0ZTc0YmQ2OGFmNjEyZjE2MDI3YzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzOWExY2VkMGQxODcyZDhhNGNhOWFmMGNhMTQ0NjNjMGYxNWU3YWY0NDM4MmZjYWVmZmI3NzdhMThjNjRmNzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjNWNmNzM1YWIxNDg0YmVlZjE0ODVmY2ZiZGJmZjMyODY5ZmE0YjEwMTUzNDdhYTYyNTdiYjBlZjBjYjBjYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_76c6a97678094ae991f6c8588241ce14",
+      "statement": "SummaryContentRetentionProtectionQueryは保存済み要約またはqueued/running taskのあるContent identityを削除保護集合として返す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryContentRetentionProtectionQuery.kt#L7-L40",
+          "version": "repo-lines-v1:sha256:d7cd1708adc8f0adbee7d1fce81e9918808d27da873a61ea2bd70d71491a6f9a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0Y2U1NjdkMWQ0Yjk0ODQ0OWFkOTBhM2U4ZmU3ZmRjZDU4OTk3ZjA1ZThmMTFiYzBmYjVhMGI2YmNiM2VlMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkZmM3NGMyMjNkZDEyZGQ0MGMzZmY5YjVjNjlhMTc2ZWY3M2ExOGIxNjU2ZWVjZGFkZDZmYjE4YmJiZTAyN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_abe7608af707415b91f86459fb4a8b07",
+      "statement": "Summaryのprovider変更は設定を保存してStateFlowを更新した後、SummaryQueue.onProviderChangedへpipeline切替を要求する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/summary/data/src/main/kotlin/dev/terashima/yomitorirss/feature/summary/data/SummaryExecutionPreferences.kt#L19-L25",
+          "version": "repo-lines-v1:sha256:1ea79790f7174aeb557e0296c658a2ecb7ac23b3e1eac71fdb510edc2cf02ed3:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjAyYTA1OWQ5ODM1NzBlMDVkNTFjYTUwOGUwODdjNWJhYmNmOGE5ZDZmZjNiMmMzNjg2MjQ2ZTI3NGUxYWZiOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2EwMWY3MTMyZTc0ZjdhYmVlOWQ1ODViZmNiYTAxM2Q4ZjFkZmQ4Zjk5NzFmMDQ1NzA5MDFiZWE5ZjYyOThlMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjY2ZTg3ZTM3MmU4MTE0OTgzMjE1YzQ5NDgwZjc2ZmY5ZGEyNmI1ODI5NjNhYmYxYTFiN2I2Zjg4ZTNjZGZiYyJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

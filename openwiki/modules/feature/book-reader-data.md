@@ -2,14 +2,17 @@
 type: module
 title: Book Reader Data：ZIP・PDFと読書位置保存
 description: ZIP画像とPDFレンダリング、SharedPreferences読書位置の実装を説明する。
-tags: [book-reader, data, module]
+tags:
+  - book-reader
+  - data
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-bb879d4c6b559ad2f507919c
     resource: repo://feature/book-reader/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/data/DefaultBookReaderData.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # Book Reader Data：ZIP・PDFと読書位置保存
@@ -21,6 +24,20 @@ generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 DefaultBookPageSourceFactoryは文書形式に応じてZIPまたはPDFのsourceを開きます。ZIPではディレクトリと非画像、macOSのメタデータを除き、数字部分を自然順で比較した一覧をページ順にします。そのためファイル名が2と10のページは、通常の文字列順による逆転を避けられます。表示可能なページがない文書や画像寸法が読めないページはエラーになります。
 
 PDFではParcelFileDescriptorとPdfRendererを保持し、ページ読み出しをIO dispatcherで行います。rendererへの同時アクセスはMutexで直列化し、要求幅を許容範囲へ収めて縦横比を保ったbitmapへ描画します。画像のバイト列を返した後にはbitmapを解放し、sourceのcloseではrendererとdescriptorを閉じます。ZIP sourceもcloseでZipFileを閉じるため、呼び出し側の寿命管理が必要です。
+
+## 主要な構成要素
+
+| 構成要素と所在 | 種類・責務・主な API と関係 |
+| --- | --- |
+| [DefaultBookReaderData](../../../feature/book-reader/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/data/DefaultBookReaderData.kt) | DefaultBookPageSourceFactory.openが形式別に内部ZipBookPageSource/PdfBookPageSourceを作る。SharedPreferencesReadingPositionStore.load/saveが書籍ID別の位置を保存し、isDisplayableZipImageEntry/naturalCompareがZIPページの対象と順序を決める。 |
+
+## 主要 API とロードの順序
+
+`DefaultBookPageSourceFactory.open` はZIP/PDFで実装を選ぶ。ZIPではentryを画像拡張子で選別し、macOS補助ファイルを除き、数字部分を数として比較する `naturalCompare` で並べる。`loadPage` はentryのbytesと画像寸法を返し、targetWidthによる画像縮小は行わない。ページ不存在・decode不能・空ZIPは例外となる。
+
+PDFでは `PdfRenderer` とdescriptorを保持し、`loadPage` をIO dispatcherとMutexで直列化する。targetWidthを許容範囲へ丸め、縦横比を保った白背景bitmapをPNGへ変換して返し、bitmapはfinallyで破棄する。`close` はrendererとdescriptorを閉じる。
+
+位置storeは負のpage/offsetを0へ丸め、不明enumはPAGED/RIGHT_TO_LEFTへ戻す。保存はSharedPreferencesへapplyする。[AppLibraryRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/library/AppLibraryRuntimeDependencies.kt) がapplication scopeへ接続する。読書ファイルの準備とsource寿命はLibrary UI、表示位置のページ数内補正はReader UIが担う。
 
 ## 読書位置と検証
 

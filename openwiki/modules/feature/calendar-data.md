@@ -1,20 +1,42 @@
 ---
 type: module
-title: "Calendar Data：三つの source の期間投影"
-description: "端末 Calendar Provider、TaskReader、WorkoutReader の統合と権限拒否時の縮退。"
-tags: [calendar, data, modules]
+title: Calendar Data：三つの source の期間投影
+description: 端末 Calendar Provider、TaskReader、WorkoutReader の統合と権限拒否時の縮退。
+tags:
+  - calendar
+  - data
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-cd6bf1b1367680c6f6f06262
     resource: repo://feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Calendar Data：三つの source の期間投影
 
 `:feature:calendar:data` は端末カレンダー、タスク期限、運動実績を `CalendarEvent` へ投影する。`DefaultCalendarRepository` は `TaskReader` と `WorkoutReader` を受け取り、Android の `CalendarContract.Instances` を期間指定で読む。独自 event table や元 feature の private storage は利用せず、読取能力を経由して現在状態を統合する。処理は IO dispatcher で実行する。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| DefaultCalendarRepository（class） | CalendarRepository 実装。events は IO dispatcher で端末予定・タスク・運動を順に集めて並べる。 | [DefaultCalendarRepository.kt](../../../feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt) |
+| AndroidCalendarEventSource（private class） | ContentResolver を受け、events で CalendarContract.Instances を occurrence 単位に問い合わせる。 | [DefaultCalendarRepository.kt](../../../feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt) |
+| taskCalendarEvents / workoutCalendarEvents（internal 関数） | TaskItem の期限、WorkoutDay のセット実績を終日イベントへ写す。期限なし・無効な日付・範囲外・セットなしを除外する。 | [DefaultCalendarRepository.kt](../../../feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt) |
+| CalendarEvent.overlapsDateRange（internal 拡張）、calendarEventSortKey / workoutDescription（private 関数） | 端末 timezone で区間重なりを検査し、開始値の並べ替えと種目ごとの説明文を作る。 | [DefaultCalendarRepository.kt](../../../feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt) |
+
+## 主要 API と接続
+
+`events` は空・逆向き区間を `require` で拒否する。端末読取後に `taskReader.listTasks()`、`workoutReader.load()` を呼び、履歴とセットを持つ当日を `WorkoutDay` にして投影する。`AppSupportingRuntimeDependencies.calendarRepository` は同じ application scope の Task / Workout Repository を Reader として渡す。
+
+## 代表的な処理フロー
+
+`AndroidCalendarEventSource.events` が Provider の終日値を UTC の日付に戻す → `overlapsDateRange` で絞る → `taskCalendarEvents` が期日を一日区間へ変換 → `workoutCalendarEvents` が運動日を活動へ変換 → `calendarEventSortKey` と title で並ぶ。Task / Workout 取得例外は伝播し、Provider query の SecurityException だけが端末予定の空一覧へ縮退する。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## 取得と変換
 

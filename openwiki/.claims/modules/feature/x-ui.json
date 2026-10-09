@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:55937aea38926f8f48f4ef0b12bf00f4084b5c0d99bc2cbe4ceeb3369bc10743",
+  "pageVersion": "sha256:65fa0f40c9234f262b051d973fc219bfde0853b5a127e91747723c2fe7d4d37d",
   "claims": [
     {
       "id": "claim_a8c77f28a0e04992b5fce850ba99285f",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:f0cecd1462e4cfeaa87fe2f6eb0366b2c534e89bc23109ccf773e4d6a294acc9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0NjAxNTBkNDJjODBlMGZjYWVhZmY0Yjk2MjcxM2MwN2IzZWExN2NmNmI2ZDVkMmFiY2RlYmJmMjQ1MGZhODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhODVhNWEzYTc5OTgwODcwYTM2NWNkYThlZjBhYjlkY2ZhYmNkOGIzOTFkMTAzMjVkNTk3ZjkwMzI4OGI0ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_b1651f0606b844f0b1c44911c5770527",
+      "statement": "Xの戻る操作はfullscreenを閉じ、次にWebView履歴へ戻り、履歴がなければ親の戻るdispatcherへ渡す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/ui/src/main/java/dev/terashima/yomitorirss/feature/x/XViewerMediaHost.kt#L76-L93",
+          "version": "repo-lines-v1:sha256:801b4d9ff37897cfaee651b327d09b6d49f98149cea56e14e0267e53ff9b88b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyYTMwNjViN2E1ZjIyYWViZGQzMmRkOTZiMDgxY2QxZjVkZDgwYjBkMThjMmE1YWU0NzhhYzg4NmU0NmJlYTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3ZjExNDMxZTllZjcxNmZiZjA5ODQ4MGVhOTExZmFlMDgzMDYyMzAyN2EyOTQyMTY0NzVlYjc4ODMxZTExYjQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

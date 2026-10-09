@@ -2,19 +2,40 @@
 type: module
 title: Audio Data：オフラインTTSとMedia Session
 description: 音声本文解決、逐次準備、cacheとMedia3 serviceの寿命を説明する。
-tags: [audio, data, module]
+tags:
+  - audio
+  - data
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-f83341fcf097c74224e3e350
     resource: repo://feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/DefaultAudioPlaybackController.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # Audio Data：オフラインTTSとMedia Session
 
-`:feature:audio:data` は次の責務を持ちます。
+`:feature:audio:data` は共有音声再生契約の Android 実装です。controller が準備job・TTS・位置観測stateを所有し、Service がplayer/sessionを所有します。Summaryの公開能力へ依存し、compositionでApplicationに結び付けられた一つのcontrollerを複数UIが利用します。
+
+
+## 主要な構成要素
+
+| 型・関数 | 役割と関係 | 実装 |
+| --- | --- | --- |
+| `AudioPlaybackService`（class） | Android が生成する MediaSessionService。player/session を生成し破棄時に解放する。 主なメソッド: `onCreate`、`onGetSession`、`onDestroy`。 | [AudioPlaybackService.kt](../../../feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/AudioPlaybackService.kt) |
+| `DefaultAudioPlaybackController`（class）、`prepareProgressively`（関数）、`isInstalledOfflineJapaneseVoice`（関数） | Summary 公開能力から本文を解決し、TTS ファイル生成と MediaController 操作を連携する実装。 主なメソッド: `play`、`togglePlayPause`、`skipNext`、`skipPrevious`、`seekBy`、`setPlaybackSpeed`、`stop`。 | [DefaultAudioPlaybackController.kt](../../../feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/DefaultAudioPlaybackController.kt) |
+| `markdownToSpeechText`（関数） | Markdown の装飾・引用リンク・URL を読み上げ用テキストへ正規化する補助処理。 | [SpeechTextNormalizer.kt](../../../feature/audio/data/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/data/SpeechTextNormalizer.kt) |
+
+
+## API と状態更新の具体経路
+
+`play` は空キューなら現状態を変えずに戻り、有効キューなら以前の準備・位置更新 job と TTS を停止し、player のキューを消して `PREPARING` にします。`resolveSpeechTexts` → `synthesize` → `prepareProgressively` → `ensureMediaController` が本文から player への経路です。`prepareProgressively` は null の準備結果を飛ばし、準備成功のたびに callback と成功件数を返します。合成自体が例外なら呼び出し元の失敗処理へ伝わります。
+
+`skipPrevious` は前の項目がなければ現在項目の先頭へ戻ります。`seekBy` は負の位置をゼロへ、長さが既知なら終端へ丸めます。`setPlaybackSpeed` は実装の許容範囲へ丸め、controller 未接続でも state に速度を反映します。`stop` は準備・位置 job と TTS を停止し、media items を消して controller を release、state を初期状態へ戻します。TTS インスタンスと再生成可能な cache ファイルの寿命は controller release と同一ではありません。
+
+player listener と `startPositionUpdates` が `syncPlayerState` を通じて index・再生中・位置・長さ・速度を同期します。Android-created `AudioPlaybackService.onCreate` が ExoPlayer/MediaSession を生成し、`onGetSession` で接続、`onDestroy` が両者を解放します。
 
 ## 本文から再生への流れ
 

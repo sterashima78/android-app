@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8d4a212891ef608773291ada29b1a44c73aee8888363afb0fc8f8dbe9f80bf81",
+  "pageVersion": "sha256:43a7ef5070358b898db853d6c7b1192faa1fec3026e3a502106e2e2f2aead5cb",
   "claims": [
     {
       "id": "claim_428155b3a23d49d89d393c0a1957e2df",
@@ -31,10 +31,44 @@
           "version": "repo-lines-v1:sha256:22df131fc060acdb3659ba512c0ca1e24d9f061865e87b0bd836c381eb19dea6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhYzQ4OGRhYzYzMGNhMjc1MWFlZDk2YjIxNzQ2ZTU4YTZiNDFhMDNkYTg3YTdhYWY1MWZmNzc1MDgwMzQ2ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MDNlYzI4MDIwNTNjNjA0MDIxOGQyMDY1NTBlMDZkNzQxZTI1ZWZjZmI3ODc5YjhlZTVkZWY1ODRiOGM4ZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxZmZiMTFlMTJkYTQ2ZjI3NjE4NDZjNjUzZDExY2M5ZTY0NWM3MDM2MTRiMmIyMWYzYjRiMzE1Y2IzMTYxN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_b4a417f6d1dc4368b7f61ad805f80770",
+      "statement": "AiModelDownloadSchedulerは同一modelの実行中要求を無視し、別modelの競合を拒否し、予約失敗やJobScheduler上に存在しないactive状態をfailedにする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/AiModelDownloadBackground.kt#L116-L166",
+          "version": "repo-lines-v1:sha256:d05a569aa250eea14297758bbb778b6e4966bb915beed980e6a6b0d61bff494a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyNWNkZDE1OWU5YmI2ZGVkNGQ0ZmIwMWJkMjZlYzcwOTg4YjcxZWRkY2MzMTczOWFkZWJkZDBjNjIyNzIyYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNWVlOWMzM2I5NDEyMDNhMDgwMzQ5MTM2MmJjYmJmMWVjYWViODA3OGNkMDhjNzc2ZDNiOTI0ZWZkMzU4YTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ef14a512cfbf4df584fd2824a9cbf940",
+      "statement": "AiModelDownloadJobServiceは実行時背景取得policyを再確認し、IO失敗とOS停止ではqueuedへ戻して再実行し、その他の失敗をfailedにする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/AiModelDownloadBackground.kt#L173-L182",
+          "version": "repo-lines-v1:sha256:a04f3040b791d8305b3cba7b04e765ac977ccfa907745352836a6235323cb2ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1NzA4NGZiM2ZlNGVhYWRiYzlhMDNhZTFhZDljNTViZjllMjM4MTM0Y2UyMGEwMmY5MGRkMzc3MGQzNDliODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmNDQ0MzcwMDU4ZjhkYjg5OTAyYWY4MTllYjBjOTQwYzM2MzJmYTY5MTg3NmMzOTA5OTFkOWNlYzhjYzJlNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3ZmM2MGNmM2JkOTM1NGE3ODlkOTgzOTQwNDZkMjI4MDZjOWY1YWQwMDUyZWE5MzhiZGQwMGVjMzE4Nzk4MGYifQ"
+        },
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/AiModelDownloadBackground.kt#L217-L248",
+          "version": "repo-lines-v1:sha256:a4cd086c469b2d7248e09e828f367d4773a91f170dbf1097f0f69af260307759:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwNjBiZWE5MDM1ODdmYzA1ZTU3MzJkYzkwMTUwMTkyNzg4NzZkNTc1YjRjMjczNTNjZmZmODEyZGZmMDkyYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlNzBhZTIyOGFlZGJjNWVjZTdiYTVkYTY0ZDk3Y2NhYjNjNDQ2Y2NjY2E4YjNmNjFiNWUyYjVhZGQ4ZTgzNGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZjc2ZTYyNGZlY2NmODIxMWY5MGE0Y2VhOGY3YWUyNWQ4OTJmYjBiZWFjYzcxNzVkZjY0MGUxYzk4ODM2Y2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7ebe55b79f244289f5bb3f29aec7e2b",
+      "statement": "DefaultChatGptDebugRepositoryは新規loginで古い一時sessionを消し、認証完了とlogoutでも一時sessionを削除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/settings/data/src/main/kotlin/dev/terashima/yomitorirss/feature/settings/data/DefaultChatGptDebugRepository.kt#L31-L64",
+          "version": "repo-lines-v1:sha256:708203f9b50bd2157d67db219d2ba179fb6707338b3ff9649cae0b5f7c5ae6ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1ZTM4NDI4MzZkZjI5YzRjNzAxMDNjM2E5ZWNkMjE5NTQ4NWI5NTg2Mjk3MGQ5YzdjM2I3N2Y1YmZkMzQ5ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1MzM5NTUyMDM3MzM3MzE3NWFjMTNkYjUzNjZlODRlYWI4NDRkMzBhNWY4MmE1YWIwOWY5NmQ1NmRmNzdmY2UifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

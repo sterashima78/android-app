@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:095b77887c2e6b4dc4cf0b60b87d89131f463c17403439e8aacc6065388c2b73",
+  "pageVersion": "sha256:9c7a79f6447f0e56eec2f5592577663751c6c478d70859da170846b67303a5c8",
   "claims": [
     {
       "id": "claim_3ce8922d58be4a3da56b05e032945005",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:3b408cf8e292ed7268cd5ccf08f050a6e9a2279cee44e6a44e1e76ecede636a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjNGQ1YTQ1NzdjMDY3MWY2MzIzZjkwNjE2ZjFmNTk1NWJmYTAxZmU3MDMzMTViMDY3YjM1N2I4ZWJlMmVkNGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3MzRhOTE0MzBjM2E0NDIyMTJhMWZlZWFkZjZjZjA3ZDc0N2RhMGQxNzE0YjcyOWM1MWY1NGU1M2U3ZmM2NjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNjZjZWZhMGJmMzk2OWNhNjFlZWNiZDg3MDY4Zjk3NmI1NGNjYmRkNzI4NzkwNTE0MGQyZDE2OWE4MDEwNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzMjM5MTllNGYxYjNmMGNiZWZmMzkyZDMxNzZlODBmNTg2MjZiYTgyNDgwN2FiNWU3Y2YwYWM4YWFiMzE2ZDAifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4da0f7542df1435fbf167c6f0a2b7f10",
+      "statement": "ZIPページロードは画像bytesと寸法を返し、targetWidthによる縮小を行わず、不正な画像寸法と範囲外ページを拒否する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/book-reader/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookreader/data/DefaultBookReaderData.kt#L85-L98",
+          "version": "repo-lines-v1:sha256:857e0977d279d196aa96bac408ffd5888f8937447d9da945566bcfe50155450b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2NjI4NmQ1ZTk0MzM0MWRiZjM2MmY3ZDAwOTBkY2U4OGQyZmM5ZDA4ZGM1MTVmOTE2MGI2YTI4YWIzNWI4NGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiYmU3ZDJkMzFjNjE1MTdkY2JlYmM4NWMwMTZjNTZkNzBmZjAwZDI2NzBjNjc2ODIxYjA3OTAwN2NjYmMyNzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyOTM2ZjhjZjU5MzI1YjNiYzg3NDdhZTFlN2FlZTNhMDQ0ZjYzZjBhOTc2Nzk3MzRjMDRlMDAzYmVjYmU4ZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllM2ZhZGQ1NjBjNDMxMzVkYzc2NDA2ZmI0NzIzNzcwOTMzZTQ0MDc0MWI5ZGFiOGU1MzE5ZDVlNzBkYjJkYmMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -2,14 +2,19 @@
 type: module
 title: AI Task Queue UI — 状態一覧と停止・再開操作
 description: task polling、表示順序・件数、globalと個別操作の結果表示を説明する。
-tags: [ai-task-queue, ui, module]
+tags:
+  - ai-task-queue
+  - ui
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-92ddf2b008987f008b8f3487
+    resource: repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt
   - id: openwiki-source-74694aae4e0c397658c6cad0
     resource: repo://feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # AI Task Queue UI — 状態一覧と停止・再開操作
@@ -21,6 +26,23 @@ generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 AiTaskQueueRouteは共通Repositoryを画面へ渡し、AiTaskQueueViewModelがtask一覧、件数、local/cloud pause、充電時再開とaction errorをStateFlowで公開する。feature自身の生成結果は表示modelの向こう側に残り、UIはAI推論やDBを直接実行しない。
 
 startObservingはpolling jobの重複を抑止し、初回reloadとqueue kickの後、定期的にRepositoryを読み直す。stopObservingはjobを取り消して画面の監視を終える。監視停止だけではowner taskを止めるcommandを送らない。task一覧の取得後、件数は元のsnapshotから計算し、表示用の一覧ではcompletedを除外する。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 役割・主要メソッドと関係 |
+| --- | --- |
+| [AiTaskQueueRoute](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueRoute.kt) / [AiTaskQueueScreen](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt) | 公開Composable。RepositoryとonDismissを受け画面へ接続する。ScreenはViewModel.Factoryを作りDisposableEffectで観測を開始・終了する。 |
+| [AiTaskQueueUiState](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt) / [AiTaskQueueViewModel](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt) / [Factory](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt) | data classと公開class群。snapshot、gate、loading、actionErrorを所有し、startObserving/stopObserving、global設定、stop/cancel/resume、一括再実行を公開する。 |
+| [countAiTaskQueueTasks](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt) / [prepareVisibleAiTasks](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueViewModel.kt) | internal関数。元snapshotの件数計算とcompleted除外・state/priority順の表示変換を分ける。 |
+| [AiTaskProgressPresentation](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt) / [aiTaskProgressPresentation](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt) | internalモデル・関数。実行中taskだけに進捗段階文言と0〜1へ制限したfractionを与える。 |
+| [AiTaskFailurePresentation](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt) / [aiTaskFailurePresentation](../../../feature/ai-task-queue/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueScreen.kt) | internalモデル・関数。failedの理由とqueuedの直前失敗・自動再試行待ちを区別する。 |
+
+## 主要なAPI・構成要素の接続
+
+`retryFailedBookmarkTasks()`は失敗ブックマークの一括再実行commandをRepositoryへ送り、戻り件数は表示せずreloadで結果を取得する。Screenのボタンはこの入口へ接続する。`AiTaskRow`（Screen内のprivate Composable）はcanStop/canCancel/canResumeが真の操作だけを表示する。
+
+`reload()`は一覧から件数を算出した後に`executionState()`を取得し、全体が成功した場合だけsnapshotをstateへ反映する。進捗のtotalが未確定なら不定表示となり、queuedでerrorが残っている行はfailedと区別して自動再試行待ちを示す。
 
 ## 表示順序と操作結果
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f2926a55471aafa3c990eaee461f9f7393b54ef5a0c498b386275126e43f8948",
+  "pageVersion": "sha256:55eb3d09d5ba90f2244dffc49b016e4bf544df1f4b52908ec11b4ebc5c5c2331",
   "claims": [
     {
       "id": "claim_0960e47c68e74274aebdb4b44bd92d2c",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:4e8a1449305f32506f254f09c9e9e6c3968c4205e3bac9b0bd17702a654f659d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyMjY1MGJkNTBjZTUyMmM5YzIxNmRmOWE3MDhkNjViYzhiNDlmZmJkNzAxZTU5NDE3NTg1YmQwMmE4YTJkMjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjJjMGExYWRkYWI3M2M3ZmRhMTlmNDI3ZDdmYzA4MWFkYjUxMmQzMTcxYjY4NmU1OTZjODBkNmNjMjgwMjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlODE1ZGU5YmI0OTM2YmFmYmI5NzYyODk4ZjhlNDAxMjQyODY0NmYyZWU2NWVhMTAyZDcwOWIzNTc3ZTQxNzgifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3674a8a07a684eedb5ceb80472f90d43",
+      "statement": "BackupViewModelは未設定の即時Drive保存要求をRepositoryへ送らず、設定を促すmessageを出す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt#L95-L101",
+          "version": "repo-lines-v1:sha256:a4a15e4679a98b4a9a7eebe0b1a3bae8fd65f817f6dde900fd8d7566caee861c:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDQ1M2NmMTc0ZmJhNDhkZjNjMDliNmNiNWIxYzJkMjA1YjI2ZTBjY2I2NGZhZjAxMTZmMDY4MDQ0MWJlZGFjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjcwMGYyYWM0NDgwNDM5MGYyOTg5OTI0NDYxZjk4ZjBlNDc3YWRjNzZhNzFlYjgyZmVhYjdjMjJlMjMzMzM5NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDRjOGJhZDM0MTE3ZDczYTBiZWQ2NjBhY2Y3YzA1NDE1MDMyZWIwYmZkMWVlNDg0ZDU2NDY0YzU1MWRiYmY4ZSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T04:30:12.060Z"
   }
 }

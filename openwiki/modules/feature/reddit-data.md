@@ -1,20 +1,37 @@
 ---
 type: module
-title: "Reddit Data：RSS capability を利用する購読 adapter"
-description: "Reddit 固有の入力と重複検査を RSS FeedRepository へ適合し、購読と更新結果を公開する。"
-tags: [reddit, data, content]
+title: Reddit Data：RSS capability を利用する購読 adapter
+description: Reddit 固有の入力と重複検査を RSS FeedRepository へ適合し、購読と更新結果を公開する。
+tags:
+  - reddit
+  - data
+  - content
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-b40cffd1490e98cb27462fab
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt
+  - id: openwiki-source-5ef34b20493d1df075d7352e
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppContentRouteDependencies.kt
   - id: openwiki-source-7b8be6ef333687a999de6f59
     resource: repo://feature/reddit/data/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/data/DefaultRedditRepository.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 ## 責務と構成
 
 `:feature:reddit:data` はRedditRepositoryをDefaultRedditRepositoryで実装する。Reddit独自のdatabaseやnetwork clientを追加せず、RSS DomainのFeedRepositoryから購読情報と取得処理を利用する。Gradle依存はReddit、Content、RSSのDomainとcoroutinesで、具体的RSS Dataを直接参照しない。変更通知はFeedRepositoryのStateFlowをそのまま公開する。
+
+## 主要な構成要素
+
+| 実装・公開契約のまとまり | 種類・責務と主要なAPI |
+| --- | --- |
+| [DefaultRedditRepository](../../../feature/reddit/data/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/data/DefaultRedditRepository.kt) | `DefaultRedditRepository`（class）は`RedditRepository`を実装するadapter。`listSubscriptions`でRSS購読をRedditモデルへ投影し、`addCommunity`/`subscribeThread`はURLまたはpost identityの重複を検査する。`unsubscribeThread`/`deleteSubscription`は既存購読のidentityを検証して削除する。`refreshAll`は購読ごとの失敗を集計する。 |
+
+## 公開APIと構成要素間の接続
+
+[AppContentRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt)が`DefaultRedditRepository(feedRepository)`を作り、RSS Domain契約と接続する。[AppContentRouteDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppContentRouteDependencies.kt)の`redditViewModelFactory`がReddit・Article・BookmarkのRepositoryをUIへ注入する。購読状態の保存者はRSS、記事はContent、保存/あとで読むはCurationに分かれる。
 
 ## 購読の追加と解除
 

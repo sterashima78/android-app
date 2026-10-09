@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f928236669fdb3a63122b074437546b87f59a3139d8159ce521b8708000246dc",
+  "pageVersion": "sha256:3b8d8ae57cc61f522f1179fb8040587f4ce06ffa0f30e4ea1461f71693b30e6b",
   "claims": [
     {
       "id": "claim_aee49b5c0c084adb97b9b22b1b372b9b",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:b9e011d80ddb021ef105fc45636bc58e5905ed491db368fb5f7cfe4f192840ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwMDQxZmEwN2JmNDE2NTI1ZWU5OWQ1MGYyMmJjMzdlOGZhNjdjMzM5MmY4NjUyNDgzYTM0ZWIyZjJmYWExZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzYjJkMjBmMTY4MWE2OTA4OWEzODJiZWRkNmY0NzFmYjNiYTcxMzQ3NGNhZDY5OTExYzAzNzA1ZWQyZTNiYTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_99de860bc7bc40229947377787223f32",
+      "statement": "Health UI は日表示に栄養合計、週と月に栄養履歴と体組成 chart を表示し、体重線は週だけ、運動履歴は月以外に表示する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/health/HealthRoute.kt#L213-L251",
+          "version": "repo-lines-v1:sha256:d70371488eeaf361887c36f0bf1453b0a173ebdd65b8f3c9500e30f09673998f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MGUzYjRjY2JkMDVlMTMzOGQzNjliODkwMTRjODZjMTFjMDFlMTk5ZGE3YzQyMmEyNjAwNDMwZTk4MTEzM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMTZkOGM1MTY1YzUxZDI4MjFhZGVmOGU2OGMwOWRiODBkN2NiMjc1MTU3MTk5NjAxMjJiYmQ3MzhhYjY4YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

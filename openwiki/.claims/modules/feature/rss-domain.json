@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:84e3eb0f04dbb51da03d78a880c121f53f688cde03ca1ac72c535f0de248d205",
+  "pageVersion": "sha256:30c3561bf1580969dab11c64345d963021f261da6318b7a51d00d98b372b08f0",
   "claims": [
     {
       "id": "claim_596338c261684b69bd81dee5fb20e8d3",
@@ -31,10 +31,30 @@
           "version": "repo-lines-v1:sha256:7e300fde18e7bed141ff22b1e028c005f8d93733913ef70e7d03f8cdc2cbd29d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0Mzg3ZGQzZjU2ZjhmMWE3ODU4MDJmM2I3ZjgzMmVlZDZhZTBjOTM5YmE0YWY1Nzg4YWE5N2I4ZGE0NzJhYzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwZTk3OWM1OWJmZTI2YWQ5NDg5MmU0ZmUxOTRmOTk5NmFkYzMyNDhlOTE2NGY4ZGZlN2E2MTA4MDUyM2RhMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_cfe1d543e3874537b80b44518a634403",
+      "statement": "Feedの有効ContentTypeはfeed override、folder override、ARTICLEの順に選ぶ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/FeedModels.kt#L27-L40",
+          "version": "repo-lines-v1:sha256:f1e6a3a2a2eb7c90ddb762d2ac27f13c773028aaaa84ca9135d6b36bbe088f6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3ZTFmYTMwNmQ4OWU4MzNkMWFiMGEzZmU0NGE1ZmE5YzFjYTI3YTI0YTRhMTc3MjFjNjRhZjJmZmRjMTJhNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlYjMwZThkYmI5YjVmZTc1NmQ3M2UzZjBjYjQ0MTFmMjI0ZGU4ODY4YmQ4YzNmYTIwYzE1NDAzM2FhYTNiNmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b419a72680c44778b153e8a48157816d",
+      "statement": "RssFeedContentReaderはfeedに含まれる本文だけを取得し、記事リンク先ページを取得しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/rss/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/RssFeedContentReader.kt#L19-L28",
+          "version": "repo-lines-v1:sha256:63405f3c7d1563b9a253da9c2be4ec4be61f7796017524c5bddac6e9f0299fb7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxNmY2OTUzNjJiZDQxNTViYzlkYTRlZjdkMTExZDBjMGEwZjI5NGQzYmE4OTdhYzEwNmUxMzJhNzA3NTc3ZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlYmE5NTc2MjJhMDU2MDQwMzBkZTBjMWRkZmQ5YWQ5YTNkMGJiODQwZGQ2YTBjNWU0ZTdkZWY4MjIxODhlNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

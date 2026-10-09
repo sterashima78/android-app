@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:37ccabc2c18337327961cc06d41fcc774e75f0134ed736c8dc5f65710b4d225b",
+  "pageVersion": "sha256:f71c2d3eb19b371aa8dcc0bbe76c710bf568829322577cf8ec14a58fa7f655ef",
   "claims": [
     {
       "id": "claim_91fe2d4066734faf9287adc3325e9eb1",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:1270caf63ce7c0fea0987bfa9745435cc87007a27fc45be43467dfdba278075e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWNmMzIxMGZhYWEzMmI1YWYyZWFlYjU2ODBlNzgxYzRkYThlZjFiYjU1Y2I0NDNmM2I1NmZmZjdiMGJmYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_1528791f04f641f09631ad3a7102c216",
+      "statement": "Podcast UIのretryはcheckpoint再試行APIではなくgenerationController.regenerateによるepisode作り直しを要求する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastViewModel.kt#L215-L227",
+          "version": "repo-lines-v1:sha256:48c9a4db4d9c5c17d7aa3bdd85096043e8f1dcad205ec0ced803bfb85179b163:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MmRkMzk1OTYxNTFjYzA4ZTJkNGVkMTNjZTA1ZjhiZmFjYmM3MzcyY2FhNTM5NzZmNjJmNGVjMzgyOWJkNzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2ZWUyNWQzNThmYTM3MjliMDBhMDA1NWNjYTNmZWY5MzA3NzBiMWIxYzFhODAzNmMyOGE1Yzg3YjY3OTg0Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhMDdmNmUwZGVmMTUxMDg1NmYxZTJmMWI4NGM1YzA4YTQzNmRhOGQ0NTE4M2U5NmIzYWM2NDhhMGQ3ODQ0YWUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }
