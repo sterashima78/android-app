@@ -247,7 +247,7 @@ class WorkoutViewModel(
   fun updateRestSeconds(value: String) =
     _state.update { it.copy(restSeconds = value.filter(Char::isDigit).take(5)) }
 
-  fun reuseLastSetDetails() {
+  fun reuseLastLoad() {
     val current = _state.value
     val id = current.activeExercise?.id ?: return
     val previous = current.snapshot.today.sets.lastOrNull { it.exerciseId == id }
@@ -257,11 +257,8 @@ class WorkoutViewModel(
       ?: return
     _state.update {
       it.copy(
-        rpe = previous.rpe,
-        formQuality = previous.formQuality,
         loadKind = previous.load?.kind,
         loadValue = previous.load?.value.orEmpty(),
-        restSeconds = previous.restSeconds?.toString().orEmpty(),
       )
     }
   }
