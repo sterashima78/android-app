@@ -88,6 +88,7 @@ private fun WorkoutUiState.clearSetDetails(): WorkoutUiState = copy(
 class WorkoutViewModel(
   private val repository: WorkoutRepository,
   private val historyExporter: WorkoutHistoryExporter,
+  private val elapsedRealtimeMillis: () -> Long = SystemClock::elapsedRealtime,
 ) : ViewModel() {
   private val _state = MutableStateFlow(WorkoutUiState())
   val state: StateFlow<WorkoutUiState> = _state.asStateFlow()
@@ -116,7 +117,7 @@ class WorkoutViewModel(
     ticker = viewModelScope.launch {
       while (isActive) {
         delay(250)
-        tick(SystemClock.elapsedRealtime())
+        tick(elapsedRealtimeMillis())
       }
     }
   }
@@ -476,12 +477,12 @@ class WorkoutViewModel(
     val ui = _state.value
     if (ui.intervalRunning) return
     val remaining = if (ui.intervalRemainingSeconds <= 0) ui.intervalDurationSeconds else ui.intervalRemainingSeconds
-    intervalDeadlineMillis = SystemClock.elapsedRealtime() + remaining * 1000L
+    intervalDeadlineMillis = elapsedRealtimeMillis() + remaining * 1000L
     _state.update { it.copy(intervalRemainingSeconds = remaining, intervalRunning = true) }
   }
 
   fun pauseInterval() {
-    tick(SystemClock.elapsedRealtime())
+    tick(elapsedRealtimeMillis())
     intervalDeadlineMillis = null
     _state.update { it.copy(intervalRunning = false) }
   }
@@ -494,12 +495,12 @@ class WorkoutViewModel(
   fun startPlank() {
     if (_state.value.plankRunning) return
     plankBaseSeconds = _state.value.plankSeconds
-    plankStartedMillis = SystemClock.elapsedRealtime()
+    plankStartedMillis = elapsedRealtimeMillis()
     _state.update { it.copy(plankRunning = true) }
   }
 
   fun pausePlank() {
-    tick(SystemClock.elapsedRealtime())
+    tick(elapsedRealtimeMillis())
     plankBaseSeconds = _state.value.plankSeconds
     plankStartedMillis = null
     _state.update { it.copy(plankRunning = false) }
@@ -540,12 +541,12 @@ class WorkoutViewModel(
   fun startStepUp() {
     if (_state.value.stepUpRunning) return
     stepUpBaseSeconds = _state.value.stepUpSeconds
-    stepUpStartedMillis = SystemClock.elapsedRealtime()
+    stepUpStartedMillis = elapsedRealtimeMillis()
     _state.update { it.copy(stepUpRunning = true) }
   }
 
   fun pauseStepUp() {
-    tick(SystemClock.elapsedRealtime())
+    tick(elapsedRealtimeMillis())
     stepUpBaseSeconds = _state.value.stepUpSeconds
     stepUpStartedMillis = null
     _state.update { it.copy(stepUpRunning = false) }
