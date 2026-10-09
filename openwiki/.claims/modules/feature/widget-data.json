@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7d35e7b319d9d75e049c65520ea759d930b62bf7b48b56e28e7dc20219a24401",
+  "pageVersion": "sha256:ded57df138c59133015d4bda89c0c5475028f8d5f855de46597d07a2ba75c65f",
   "claims": [
     {
       "id": "claim_5d059584ead84cc5acda11f2756ddb3a",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:0116236d4b1b30be58a9aa183e0c807bb599dcd63ae6b4dfad1b85b7d3963c46:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjUxM2ZlOTk5Njg2Yzg4YmFmMzJkNjI3MDFhN2YxNmVjYTk4NDQ2NDkzODRjMzY0MzZiMzJlMzNmNWEyMWUzYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODZlYWM4ODI4NTA4ZWY1NTdmZDMxMGYxMGYwYmRkOWViYjY1MzhlYzdmZjMxNGY0ZDdjYWM5MzIzMjhjYmMzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY3MzlhMDZjMWNiYjEyNDRlMzM2M2QzOGJjZjlmYTUwY2U4NGZlZDM5OWMyMTkzYTNjN2YwOGQ1OTkxOGIyYSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_eed9c055ba1a4537aee7b35f5731d9e3",
+      "statement": "WorkManagerWidgetRefreshSchedulerは共有背景取得constraint付きのunique未読Widget更新workをREPLACEで予約する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/data/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/data/WidgetBackgroundRuntime.kt#L15-L34",
+          "version": "repo-lines-v1:sha256:8090306a37766fd060a87bb0de016c5e567969f35734d113c901bf6a36774d81:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MTk0ZjExNzQ3N2RmOTQ5ZWYwMDhkYmQ2YzI1OTg0Mjg5ZThjYzIyZTM1MDcyMjBlZjE1OTRhYTdkMWQ0OGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwYjhjNGVmMWExNjdmOWVkMzYzOGFmNzAzODExZDAyNDNjMmNhMDkyZTRlYTJiY2MwZjcyYzdjOGY1YTBkYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkZmJkODcxYWNmN2NlZDA1Njk0ZTk2OThmMTE4NGIyMjcyNjRiZGRkMzkxYTdiZWU5NjhiMzE3NTRlYzNlNGMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

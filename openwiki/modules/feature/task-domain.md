@@ -1,22 +1,46 @@
 ---
 type: module
-title: "Task Domain：階層と読み書きの契約"
-description: "タスクの階層表示、期限判定、読み取り能力と変更通知の境界。"
-tags: [task, domain, modules]
+title: Task Domain：階層と読み書きの契約
+description: タスクの階層表示、期限判定、読み取り能力と変更通知の境界。
+tags:
+  - task
+  - domain
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-71ebfde9498f9da3e42b12ac
     resource: repo://feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskChangeNotifyingRepository.kt
   - id: openwiki-source-84efa1dcc13f2eb5b18b8727
     resource: repo://feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskTree.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Task Domain：階層と読み書きの契約
 
 `:feature:task:domain` はタスクの値と読み書きの契約、および階層を表示行へ変換する規則を持つ Kotlin/JVM モジュールである。Android の保存 API や Compose に依存せず、UI と保存実装が同じ期限・完了・親子関係を扱うための入口になる。`TaskReader` は一覧取得だけを提供し、`TaskRepository` は作成・更新・削除・完了変更を加える。Calendar のような参照用途は Reader を受け取り、変更権限を持たない。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| TaskItem（data class） | 親 ID、期日、完了時刻、作成時刻と兄弟の sortOrder を保持する。completed は completedAt != null の派生値。 | [TaskItem.kt](../../../feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskItem.kt) |
+| TaskReader / TaskRepository（interface） | listTasks の参照契約と createTask / updateTask / deleteTask / setCompleted の変更契約を分離する。 | [TaskRepository.kt](../../../feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskRepository.kt) |
+| TaskRepositoryProvider（interface） | framework が生成する integration が application の taskRepository を得る接点。 | [TaskRepositoryProvider.kt](../../../feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskRepositoryProvider.kt) |
+| TaskFilter / TaskSort / TaskStatus（enum）、TaskTreeRow（data class） | 表示対象、兄弟順、完了・期限状態と depth / hasChildren を持つ行モデル。 | [TaskTree.kt](../../../feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskTree.kt) |
+| taskStatus / taskCount / taskTreeRows（関数） | today と一覧から状態・件数・階層行を計算する。taskCount は一致項目を数え、祖先の補完行は加算しない。 | [TaskTree.kt](../../../feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskTree.kt) |
+| TaskChangeNotifyingRepository（class） | Repository decorator。成功 command の後だけ onChanged を呼ぶ。 | [TaskChangeNotifyingRepository.kt](../../../feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskChangeNotifyingRepository.kt) |
+
+## 主要 API と接続
+
+`createTask` は親 ID と nullable な期日を入力し、Domain の返値は Unit。Data の `DefaultTaskRepository` が `TaskStore` に保存を委譲する。`updateTask` は既存 ID のタイトル・説明・期日だけを変更し、親移動を公開しない。`TaskRepositoryProvider` は [アプリ入口](../application/app.md) の framework 接続用に使う。
+
+## 代表的な処理フロー
+
+`TaskScreen` → `taskTreeRows` → filter 一致 ID と祖先 ID の集合 → 兄弟ごとの comparator → ルートから展開ノードの子を再帰表示する。孤立した親参照は root として扱い、visited / seen 集合で同じ ID の再訪を抑える。画面の変更 command には composition が通知 decorator を付け、Widget 更新を接続する。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## 表示規則と通知
 

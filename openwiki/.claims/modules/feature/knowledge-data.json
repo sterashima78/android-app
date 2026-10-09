@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f0fd6c496b332830367ef65955948dfe53a2977f39e7e8db5b8de3612218ce46",
+  "pageVersion": "sha256:63b922fc208d82358ef100e61dea316c8819ab8d895cc4d859724ca0a9fc6dc0",
   "claims": [
     {
       "id": "claim_dae7400f582443bbaa70fe342a699972",
@@ -31,10 +31,30 @@
           "version": "repo-lines-v1:sha256:f49fb3d6a15309b18baee4bcc2a120d785753dd0881ea69651756bafe7995ce2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0Y2Q5NjlmNWZiNWE4NmEzNmJmZWRiY2JhNjE2M2NhYWIzYjJkYTgwYTk3ZDQ1YjViZTg0MDlmMmMxMmNmMGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmMmY4MjM1YzBkMTNhOWQ2NDA5Y2NiY2M5NjM4YWU0YzY3NTM3Y2NjZGJkYjdiMmVkY2JhYjg1MjY2NmFhN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMGZlN2RlZTQwOWM4MDRlNDJmNWJhY2UwODVhYjMxOTI2MmQ3NGQ5N2NiNGUwZmViNTNmNDlmMTI3YTBhNzIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_ea93a33f22584f28ab44dc6664e30e44",
+      "statement": "Knowledge生成資料は保存済みBookmarkと要約を合成し、要約がない資料を除外してskip数へ数える。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/DefaultKnowledgeGenerationService.kt#L192-L211",
+          "version": "repo-lines-v1:sha256:9c0c8814abb20df2dc185650ec41d57f10bba039e7827e0fd3043d53c24361b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4OGMwOWI3Nzg5NTUzODdiM2ZmOGZhNzZmYWQ3NzRiYjBlN2I4NTY1OGVjZjhkM2Q4MTA4ZTVlZDUxOWNhYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyZTdmMDQwYzk5YTA0ZGI5MmQzNWEyYTFkNGE0OTNlZDc1ZmQ5ZGVmYTZlMTA4ODRkZmEzZTQ5MDdhNWIxNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5M2Y2NTJjYmYxMGY1NWEyMzdmOGU1YmE5MzQ2MzIzYWU1Zjg3ZTQ5ODQwOGJiZjRiNGJjMDdhNTFlYjE2NTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b84fa67c340f433dbd55a0389c8de185",
+      "statement": "Knowledge cloud adapterはprovider失敗を分類とretryableを持つ例外へ変換し、認証失敗と未知失敗を自動retry対象にしない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/ChatGptKnowledgeTextInference.kt#L20-L40",
+          "version": "repo-lines-v1:sha256:d861c254f31cdfb6c135ab5484b7dac0bee517bd07b3c7960af862dc38d493e2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1YTRiYjhkNjkyNGQzOTZhMzQyZWI0Y2FmMmQ4ODBmODU0YjEwOWExZDM2YTlhMWMzZWFkYjYyYTIwOTM5NmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0YjZlY2QxZGVjZWM1ZDk0ZTI4ZThmOWYwODI1N2IwMzJjODJhZWNiNzQ2ODc4OTNjY2RlZDc4MjE3ODQ2ZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4NjA2ZTA1Yzc3OWM2YjBjY2UwN2M3MDdiYjVhYjJmZjRmMzNkNDdjNDEwZjRlZTFhYWVjMTk4ZmMzMzYyZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1ZjhkMDk0YmU3OWRjMGJlMjYzZThiZjI5ODk2NWYwM2IzNjFiMTc3MTE4MjNhNTBjZDFlMDdjN2Q4ZWRmZWIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

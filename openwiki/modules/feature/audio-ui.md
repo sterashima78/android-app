@@ -2,19 +2,36 @@
 type: module
 title: Audio UI：準備と再生の共通コントロール
 description: 共通の再生操作表示とAudioPlaybackStateの扱いを説明する。
-tags: [audio, ui, module]
+tags:
+  - audio
+  - ui
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-6dadfa8e868236ab5e695b8b
     resource: repo://feature/audio/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/ui/AudioPlayerControls.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # Audio UI：準備と再生の共通コントロール
 
-`:feature:audio:ui` は次の責務を持ちます。
+`:feature:audio:ui` は Domain の再生状態と操作callbackを受け取る共通Compose部品です。Summary/Podcastの表示に利用され、独自のcontroller・再生キュー・永続状態を所有せず、Audio Domainとdesignsystemへ依存します。
+
+
+## 主要な構成要素
+
+| 型・関数 | 役割と関係 | 実装 |
+| --- | --- | --- |
+| `AudioPlayerControls`（関数） | state と callback を入力する共通 Compose コントロール。時間・速度の整形は内部補助。 | [AudioPlayerControls.kt](../../../feature/audio/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/audio/ui/AudioPlayerControls.kt) |
+
+
+## 公開関数と呼び出しフロー
+
+`AudioPlayerControls(state, onTogglePlayPause, onPrevious, onNext, onSeekBack, onSeekForward, onSpeedChange, onStop, modifier)` が唯一の公開 Compose 関数です。UI から seek のミリ秒量を渡す設計ではなく、前後 seek callback の具体量を呼び出し元が決めます。`formatDuration` / `formatSpeed` は表示文字列だけを作る private helper です。
+
+[PodcastRouteWithPlayback](../../../feature/podcast/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastRouteWithPlayback.kt) が再生 dialog の状態を購読し、[PodcastPlaybackDialog](../../../feature/podcast/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastPlaybackDialog.kt) がこの部品へ state と操作を渡します。タップから ViewModel、Audio controller へ戻り、その StateFlow の更新が再描画へ戻る循環です。
 
 ## 表示責務と利用方法
 

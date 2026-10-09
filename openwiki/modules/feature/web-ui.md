@@ -1,20 +1,39 @@
 ---
 type: module
-title: "LAN Web UI：起動確認とアクセスURL表示"
-description: "サーバーの起動・待機・停止状態、開始確認とHTTP公開の説明を扱うstateless dialogを説明する。"
-tags: [web, ui, modules]
+title: LAN Web UI：起動確認とアクセスURL表示
+description: サーバーの起動・待機・停止状態、開始確認とHTTP公開の説明を扱うstateless dialogを説明する。
+tags:
+  - web
+  - ui
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-d3cbca75a5805c2823b92d9e
+    resource: repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/LanWebServerDialogHost.kt
   - id: openwiki-source-fd08d3f87684cbe34f43d294
     resource: repo://feature/web/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/web/WebServerDialog.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # LAN Web UI：起動確認とアクセスURL表示
 
 `:feature:web:ui` は`WebServerDialog`を提供するComposeモジュールで、Web Domainの状態を表示へ変換する。サーバーや権限を自分で所有せず、stateとonStart/onStop/onDismissを受け取る。Serviceの寿命は画面の寿命から独立しており、dialogを閉じる操作と停止操作は別callbackである。
+
+
+## 主要な構成要素
+
+| 型・関数 | 役割と関係 | 実装 |
+| --- | --- | --- |
+| `WebServerDialog`（関数）、`webServerStatusText`（関数） | state に基づく公開説明と開始・停止・閉じる callback を提供する。 | [WebServerDialog.kt](../../../feature/web/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/web/WebServerDialog.kt) |
+
+
+## 関数と操作の接続
+
+公開 `WebServerDialog(state, onStart, onStop, onDismiss)` は現在状態を描画し、`webServerStatusText(state: LanWebServerState)` は表示ラベルを作る internal 関数です。開始ボタン → onStart、停止ボタン → onStop、dialog 閉鎖 → onDismiss の順路を呼び出し側へ戻します。
+
+具体的な接続先は [LanWebServerDialogHost](../../../app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/LanWebServerDialogHost.kt) です。host が `collectAsState()` で controller state を購読し、通知権限とSDKに応じたローカル network 権限を検査して controller callback を接続します。開始に失敗した場合、この module は `state.error` の表示を担い、Service の再試行や network の変更は所有しません。
 
 ## 状態に応じた説明
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6f70b4ca900eae7b4a9434a931f0974241b840f4ac0744e124c9b3ee9f460cbb",
+  "pageVersion": "sha256:b2895d7dfc8df1503224e391344891faceec3385ef11821d0f9099287fcb189e",
   "claims": [
     {
       "id": "claim_7584d34a56d142019cbc3843a5018a18",
@@ -41,10 +41,20 @@
           "version": "repo-lines-v1:sha256:e0a3b89d432fb6befa0b9e6ed1a97b46519293d0d5112f186fae77bccfd3cfda:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3ZjdlMTg4Nzg2ZWU5M2FkMWUzYTMxYzBkMDY1MDYxMDQzMGY1ZTZkNDEzM2VkYTdiNjYyYTU2NTMxYTAxOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0N2ZmMTA4NjM1ZTA1ZWNjYmY2MDBmZTEyZjQxN2EyYmM2MDQyMTU1ZDEwYWIyOTdiMWQ4NjMxNDM0Zjc3NTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_d6c2475070ac4ecaa8ce908d23ea9ec2",
+      "statement": "GameRouteは公開ViewModelを受けてKotlinゲームへ配線し、数独とクロンダイクのみ専用Godot Activityを起動する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/GameRoute.kt#L52-L93",
+          "version": "repo-lines-v1:sha256:4164d762c2b3c923d6cc333d429210bb2eb9225e7dba455d79da8e2f739d707c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2N2MyNWUwYjA3OWIwNGYwYjNlOGZlNmE4NjNjMTc4ZDliYzk1MTFmN2YwNzFhMmViNjVlYmZiMTQ5ODU2NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MTM4Y2RkYTllZGYxZmU5MTlmZmYxNGJhZTY2ZDA2MzZjZTBjNjA2ZWIyMGEyMTE0ZWQyZWI1NzUyZGIyMDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZTg1ODRkMTMyYThmOGQ2M2FlMDk4OGIyM2VlOGFkMTk4NWY4MjZiYjkzMWJjOTY4YTJlODMzZTFkYTI2ZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiYjMyNzczNzcxMGM5MDJhODdmNmFiNmUwNDk4ZTg2Y2VkYmY0ZjQwMDI0NDNkMzdiYTBjNzNiNTMzM2E2NWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

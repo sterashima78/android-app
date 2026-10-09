@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:580552fb31bcc35f1e7fafb92293437ee4cb85cae6aaa0ae1cc8d4e35a89d7e1",
+  "pageVersion": "sha256:d56aad5a0e6186ba692f47a4cfedf63973b8670e136ec92074205f1993f72ccd",
   "claims": [
     {
       "id": "claim_661fc7de53744ac3a8cd13abe4dcf5c2",
@@ -41,10 +41,24 @@
           "version": "repo-lines-v1:sha256:53b09d42471d36c151988582d68f725f401d831e3e2ecb10d49e4152eca3a092:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkZTI3YzM0NTY1MGVmNzQ3ODQ3NzhjMmE5NTNjOTY0OTU1ZDI3NmQzMTNjODJlYmE2YTFmNjgwYTRiMTI4MjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2ZjVlZTAzMDYwNjQ4NDhhNTA2ZmNkZjk1NmE5NjI0ODU5ZTQyZWEyMjEyOWZlMDEzYWQyMzQwMGQwOGYzNTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMyNDcwNzcwMzVjMzU2ZDhlYjRlZGI0MmNmY2Q2NzZmZDRjZTAyODBjYTg0MGY4ZGY4ZGQ1MmY2YzNmNDhlZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_c679934773c84d81bf4f3f13d4587f6b",
+      "statement": "Knowledge の build と page AI の Worker は local provider の生成区間を共通 gate の withPermit で直列化する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgeBuildBackground.kt#L275-L305",
+          "version": "repo-lines-v1:sha256:70ef3ad33dcc590829a409bc35df7b596af1e4cc24ea996e646037b82031d072:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZGEwYjQ5YzdhNTNkMzNlNmRhYmUzYWFlMDgzMTVjNzFkODMzMGUzYWZlYWU1MDM4MjQwYTQzMjY3NjEwMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZDE5NjA1MDA5YTdhMGNiY2RhNzliYjk4OTYxZmE5ZjlkNzY2OTU5ZGVlMTEzYTVmYmQ4YTU0YTIxYTBlNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxYjQxYmJmZGVmYjM1ZGIzYWUwMDhhMWZhYTM0YTFjMWNhZTk5MGM1YTNlY2NkMzk0NWZiOTc4ZGQ1MjgxMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE4MGJjNjE1OTExYWMzM2Y5MjEwYTcwYzZlOTUzMjU1MTBmNDkyZjVmYTQ0ZmU3NWEzNzk4MDM3ZmVkZDUzYjUifQ"
+        },
+        {
+          "resource": "repo://feature/knowledge/data/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/data/KnowledgePageAiBackground.kt#L210-L235",
+          "version": "repo-lines-v1:sha256:f761e93a084551a1b588474f4033ea35b27d9ade7a8da3439d67e3cc92849a59:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhOWFlMTYyODY2YTk2NTdmZTE2ODE4NWFhM2NiYmVkY2RhOGFiZTU0Zjk0MmUzMjI3OTk2YmU2ZDQ2ODE1NGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJkNjQ4NTc3ZDdmOGE4MzM4Zjc4ZjgxZGU2YWU0NWU4OTE3YWJlNTYzODRjMTBmYThiOTQ1NzFkYzAyOGFhMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiOTYxZWVlMDEzOTNjYjU1Yjg2ZWVkYWQxYjhhOTNhYzExZDBiOTEwMzliMjM0MThmOWYwODM0ODRkZGUyYTAifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

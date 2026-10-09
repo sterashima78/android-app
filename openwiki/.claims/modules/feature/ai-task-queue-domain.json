@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f4168f2c2b21ac9763450e4465480ca687981527dcca0c84ceef07a6aa5c9125",
+  "pageVersion": "sha256:0c7f3f1a4978835da6dd2ccfb8defb9aece19388c24b1e47fbd6a44c74e1dbf1",
   "claims": [
     {
       "id": "claim_5aca6b627f364768806ca79b715bffbf",
@@ -21,10 +21,30 @@
           "version": "repo-lines-v1:sha256:4660587c23798eb760316799f8c1788e2a850745ad54905ced2a813f9427ba09:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmNTIyMjk0ZTk3OWI2YzcyYTcyZTAwYmFiMTcyNDZjMjNkODc1NjZkYzViODUyZDczNzczMjc3YzA1MzMwNDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MTc2NmRlYWYyNDBmN2JhMTQzYTRjYWUzOWU3ZDQwYWJkZjYxNzdlZjkyYjIzOTZlOWIyM2EzM2JkYmExYzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4ZDE5NjA2OTk3NWEzNGM5ZDQ1M2JhNzMyYTUxMWRjNGNiNTA5ZDE5ZTEwODlhNDZlZmFmYzU3MDM2NDlhNmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_7465d61947c44838b9a8d43d6ce1abc0",
+      "statement": "統合AI queue契約のkickはowner起動用入口で、retryFailedBookmarkTasksは再待機へ戻した件数を返す拡張点を持ち既定値は0。",
+      "evidence": [
+        {
+          "resource": "repo://feature/ai-task-queue/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/aitaskqueue/AiTaskQueueRepository.kt#L72-L95",
+          "version": "repo-lines-v1:sha256:c8fb5900bc068933a22cd10d639e62e67a2b04c32881ad8a989c8b4577fcac85:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmNTIyMjk0ZTk3OWI2YzcyYTcyZTAwYmFiMTcyNDZjMjNkODc1NjZkYzViODUyZDczNzczMjc3YzA1MzMwNDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4ZDE5NjA2OTk3NWEzNGM5ZDQ1M2JhNzMyYTUxMWRjNGNiNTA5ZDE5ZTEwODlhNDZlZmFmYzU3MDM2NDlhNmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bf6ebde864a045cea9ed349a74a2356a",
+      "statement": "統合AI queueの具体実装はcompositionでSummary・Library・Knowledge・SMB・Podcast・RSSのowner契約を注入して作られる。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt#L95-L110",
+          "version": "repo-lines-v1:sha256:16193c21f4a5e8fa12f3291fa6aa5b7175c8fd204bbc63fcd0a2e49250bd9ffa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhYzYzMDgwZGIxODdjNzA1ZDQ5OGE1ZjEzMjUyNTRlZTFiYmZkMzcxMzMwNGIzMzJhODBjY2Y2NzBlNDZhNDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

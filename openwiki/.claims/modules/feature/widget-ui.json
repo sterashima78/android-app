@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0f915bc78139049cdeff3e724a7480c3ba9dbc6d6c9f1bc25c439ce269cbb021",
+  "pageVersion": "sha256:f4a044537c431e6fd012f21885105bd11ca8afa502f6bddafe0c05f29eb88939",
   "claims": [
     {
       "id": "claim_6183b90f89214a12a78e77f55cf77ce6",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:524200fb890f9797947915647ee7bb35aef086f73ac865bbd3366b4410b7f36b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3MmJhN2YwMzRmZDUwYmQxODk1NjA3NzBlYzdkOTE1YTU5MWI0Mjc3ZTlmZTkzZjlkMmNkMzRjNGI3YTdjMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1YmE0MzczYWRhMmI3MzhmMmY3NzllMDEwZTdkMzI1ODhjOTM4NzgzMDA1OWRkNDZiM2U0MDYyYjkyNzY3ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fa76d7520aca4aea849513960ca29b21",
+      "statement": "未読Widgetの項目openはURLをACTION_VIEWで外部へ開き、task項目openは共有task launch actionをapp Intentへ付ける。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/TaskWidgetProvider.kt#L228-L242",
+          "version": "repo-lines-v1:sha256:e3f0ceb77a797ccb08155dea3edfad2bb8f1c1b443047da17fda17cb2e58f1a2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwNjUzMTVmNmQ1OTExOWRmOTQ4MDY5MDUyMmEzNGE2NmY0NWM5MTNhMzcyYjFjMjA5ZmY2MDgyYjE1NDFmMDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmMjIxZjNkMTA0NTk2OGZkMjY1ZTljYWNhODQ2M2RjNWM3N2NiZjQyNGYzZjFiYjk5ZTQwZmQ5MGZhYTgwOGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MmUxZjc1YjhlMTIzMzNjMjhhN2U1OWY1YTgxZTc1ZmVjZDdmZjgyYzhhMmNkOTdjNWY5Y2E3ZjcwZWYzODQifQ"
+        },
+        {
+          "resource": "repo://feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetProvider.kt#L38-L49",
+          "version": "repo-lines-v1:sha256:6f89032884e7f0daeefbf23a13b998f205ee0fb6aec7e495956331293725fec3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNDBhODcwOWI4NGM1ZDY1M2FkNDZmNDdlNjhlZTk1N2MwZjZmODE4MGFkMTljNWI3NmZkZmU1YzhiMDVkZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlODA5OWI0Nzc0ZGIzZmYxZjA1OTdmZDhjMGM2ZWNmNmFlMzRiYjEwMTc5NmY2NGFmYzQ5NWU1OTZlYzAwZWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_33bca4fbcaae4a62b0003b979b007e67",
+      "statement": "未読Widget observerは更新例外をrunCatchingで吸収し、dataChangesの継続観測を保つ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/widget/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/widget/UnreadArticlesWidgetRefreshObserver.kt#L20-L27",
+          "version": "repo-lines-v1:sha256:c1f9c0f4511487eaaecc46c3e1ec61c574d09ffd081c7e28932dbb4461c50012:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzgyY2I4N2Y5ZjU2NTUwYmQzZmZlOGNhMjFmMTE3OWFjZmRkZGMxZmJkZjg2NWMyYmIzYjA2ODM2MDJiYjRlZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjVmZjNmYTNiMmMwMDk0MmY3MTM5N2JhNGQ1OWM3ZDY0ZTVkNzUxMGEwZTcyMDg0OTQ2NmVkMzJiZTg2OTJkMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:99d2d1058d28f85b1d206101bb75bc36eeebc250410f3e416c6e98f7b839100a",
+  "pageVersion": "sha256:a8ccd72fc9b7cd0f14e9cfd3b2d1653ee53de998086497ad35994dbc42828468",
   "claims": [
     {
       "id": "claim_b434869395fc48d0a795dbd6df53d984",
@@ -31,10 +31,30 @@
           "version": "repo-lines-v1:sha256:ce463608487a15b05d9532c707017707fc23f3a4f26a1d030cd805521cfb8f9f:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODA1MGZkYWZjZTY3MTIxZTRkODQ0MzJkMjgzNmIyOTlmNWQ0M2Y1ZWZmM2FlOWNkNjliNjU5ZThkNjU5MzBmMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmI1ODBlOTY0ZjgzYTQ3M2Y0M2Q0NDM4NDYyOTQ5ZDY4YjU2MDBmZGE3ODdmMTYzNzQ1ZDAwZGU4OWNiZjM2YSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_6394a85a56d34a0bb39a975d326c6737",
+      "statement": "Bookmarkの解除は保存と関連をtransactionで削除し、あとで読む解除はmembershipのみを削除する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkRepository.kt#L127-L142",
+          "version": "repo-lines-v1:sha256:76e6ee5b60f016c9ecb31b83c8e2d059f4045991d8325533fe666cc639d3c992:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiMTg4OTkxNTIxYjVhMTY2ZjJkODYwN2Y0MDM5ZmYxYzhkMjA2ZjNlNDQ3ZGU0Nzc3YzNlYTFhNmY0MGZkMDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3NWRjN2VhNzU0ZTRmNWFhZjYyNjViZDMzZWE3N2NjOWIzMzA0MDk5MzA4NTExMmY0ZmRjZTE2YTU3NjUyOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0ODM0ODJjM2RiYzQ2YThjODlkZjBiMzVlNmViZTZhNDNjNDIzZmUwM2U4Y2I5ZjBjYWQwY2ZjMDI1NzU1YjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6a958e238541431c898f74fc66816fe2",
+      "statement": "Bookmark AI分類はtransaction内で保存済みを再確認し、フォルダは未分類の場合だけ既存フォルダへ設定する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/bookmark/data/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/data/BookmarkEnrichmentRepository.kt#L29-L50",
+          "version": "repo-lines-v1:sha256:bc9fcf583a2668c28510585c17b788ee1201250063d5939830445e27d6bc94b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzMzJlNzk1MDY0OTMzNmFiYWI4MzBlNTM4NWIzMThjZTkxZGVlODg4MWExMTQ1MzQxNzM4YmUzMWZkYjJkMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzZjM1MmJiZjU1OGI5ZWY5YjljZDBlMTZkYjk2Yjk4MDA4NDgxNTY0NWVlMzAwY2I2OTk5NTgwYTJiOGJjNDUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

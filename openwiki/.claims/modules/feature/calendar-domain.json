@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0e183b743052adf6dfe677132c9d5cb61e25107356fed72fd0732e0217176f90",
+  "pageVersion": "sha256:1769aab38b7d6bf7c6527dd0404c740f7759f90a2a64bb6861606b0fbf7cfac2",
   "claims": [
     {
       "id": "claim_94dfd3c4814d4ccfb201dafd3f8854e4",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:2f161fbdbe85a6133807bd5b380340011dc6397949a36fb3a605b253d1a4ea84:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5OTRlMDc0ZWMzM2UwNTY5M2VjNDkwODA2OWRmYWZiZDA1ZGY3NmUzN2ZlZDNmYjY4YWEwYTE1ODA3ZTczY2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmMWE2MmE4MzhhNDRiOWIyZDkzNDk5OTQ5MDIxYWY0OTIwNWE5ODlhOGFhNmFhNzYxNGQ3ZmQ2NzczMGI2OTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjNTE2MjI5Yjg1ZDVlNmQ1NGVjODU2MjM0Y2M3M2U3MTIzYWM4NGM3Y2YxYTBmZDBjYTExMDg5N2RlZWE2NjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkMzdlNTllZmRjNTIwZjI4NjA1ZjliNzNkYTYxYjE1OGU3NDBhMjVhMDM1YjEzZGVjOTRhYTQ4ZTRjMGRlODkifQ"
         }
       ]
+    },
+    {
+      "id": "claim_10bc321d48be4c23a51c0baf37de4d2f",
+      "statement": "Calendar Domain はイベントの由来 source と予定・期限・活動の意味 kind を分離し、Provider の色は任意 ARGB metadata として保持する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/CalendarModels.kt#L6-L45",
+          "version": "repo-lines-v1:sha256:9312264ee7c7d3e73efe24a95517d3b971a1cd69bd5f1a79d469350c306ab8c3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzNWIwNjliOWNlNDc4MmUxNzgwZmMwYmFkODQ3MTAwYmMxYjMzOTg1MjY5NDRmNTI0YzJjMDE2ZTllZjI2YzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE3ZWNhNDViNDQ5ZGQyMzExNDBhOTUxOWRlM2YxNTRkODNhN2I3OTEwMDdiYTI2ZTE2ZDFjNGFlYjQyMDM4OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

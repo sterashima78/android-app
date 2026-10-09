@@ -1,20 +1,43 @@
 ---
 type: module
-title: "Asset Data：資産 snapshot の置換と非負集計"
-description: "TSV/JSON import、日付単位 transaction と既存負額を除く read model。"
-tags: [asset, data, modules]
+title: Asset Data：資産 snapshot の置換と非負集計
+description: TSV/JSON import、日付単位 transaction と既存負額を除く read model。
+tags:
+  - asset
+  - data
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-99afe94b3795153de2b45323
     resource: repo://feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Asset Data：資産 snapshot の置換と非負集計
 
 `:feature:asset:data` はAssetRepository を共有 database と document 読取に接続する。feature の schema contribution が明細、資産名別カテゴリ、登録カテゴリの保存を担当する。`DefaultAssetRepository` は TSV と MoneyForward JSON を共通の parsed row に正規化し、日付別 snapshot として保存する。資産の保存 ownership はこの feature にあり、UI のグラフを正本にしない。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| DefaultAssetRepository（class） | AssetRepository を共有 database と ContentResolver に接続する。loadOverview が現在のカテゴリ設定で全履歴を再集計する。 | [DefaultAssetRepository.kt](../../../feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt) |
+| ParsedAssetRow（internal data class） | TSV と JSON を同じ date / name / amount / account へ正規化する中間行。 | [DefaultAssetRepository.kt](../../../feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt) |
+| parseTsv / parseAmount / parseDate / buildAssetRecordName（internal 関数） | BOM・見出しと日付書式、円記号等の金額を解析し、口座があれば資産名に連結する。 | [DefaultAssetRepository.kt](../../../feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt) |
+| buildAssetSnapshotReplacements（internal 関数）、replaceSnapshots（private メソッド） | 日付で grouping して負額除外後の置換集合を作り、transaction でその日の既存行を削除して再挿入する。 | [DefaultAssetRepository.kt](../../../feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt) |
+| assetDatabaseSchema（val）、createCategoryDefinitions（private 関数） | 明細・資産名分類・カテゴリ定義と索引を所有し、既定カテゴリと既存分類をカテゴリ定義に取り込む。 | [AssetDatabaseSchema.kt](../../../feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/AssetDatabaseSchema.kt) |
+
+## 主要 API と接続
+
+`importTsv` は UTF-8 の URI 入力を閉じながら解析し、空結果や開けない入力を拒否する。`importMoneyForwardJson` は format / version / 日付・明細を検査する。`addCategory` は trim 後の空値・重複を拒否し、`setCategory` はカテゴリ定義の登録と資産名分類の upsert を同一 transaction にする。
+
+## 代表的な処理フロー
+
+`AssetViewModel.importTsv` → `DefaultAssetRepository.importTsv` → `parseTsv` → `ParsedAssetRow` → `buildAssetSnapshotReplacements` → `replaceSnapshots` → AssetImportResult。`loadOverview` は asset_entries と asset_categories を join し、日付順の履歴から最後を最新とする。カテゴリ変更は保存済み各日のカテゴリ列を書き換えるのではなく、その後の join 結果を変える。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## import の置換規則
 

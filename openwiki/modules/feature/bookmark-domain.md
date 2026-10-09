@@ -1,11 +1,14 @@
 ---
 type: module
-title: "Bookmark Domain：保存・整理と Context 間操作"
-description: "Curation の保存・タグ・フォルダ契約と、Content 作成、import、Library への移動の順序を定義する。"
-tags: [bookmark, domain, content]
+title: Bookmark Domain：保存・整理と Context 間操作
+description: Curation の保存・タグ・フォルダ契約と、Content 作成、import、Library への移動の順序を定義する。
+tags:
+  - bookmark
+  - domain
+  - content
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-ff439d6ad2c74986af9a18c1
     resource: repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkCrossContext.kt
@@ -13,12 +16,31 @@ sources:
     resource: repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkImport.kt
   - id: openwiki-source-2250676ba8a46befa8f3c83d
     resource: repo://feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/MoveBookmarkToLibraryUseCase.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 ## 責務と所有権
 
 `:feature:bookmark:domain` はCurationのモデルと公開capabilityを定義する。Contentの本文や既読日時を持つのではなく、保存日時、タグ、フォルダと「あとで読む」を記事identityに結び付ける。読み取り、catalog管理、状態変更、共有保存を分けた契約を提供し、利用側は必要な範囲のcapabilityだけを受け取れる。
+
+## 主要な構成要素
+
+| 構成要素と所在 | 種類・責務・主な API と関係 |
+| --- | --- |
+| [BookmarkCrossContext](../../../feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkCrossContext.kt) | BookmarkArticleGatewayはContentの検索作成と既読化、BookmarkContentQueryは保存/あとで読むのID query。BookmarkEnrichmentContext/Repositoryは既存分類の参照とAI分類の適用を公開する。 同じ役割群の公開名: `BookmarkEnrichmentRepository`。 |
+| [BookmarkImport](../../../feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkImport.kt) | BookmarkImportFormat/Entry/Batchが外部資料の形式と中立入力を表す。BookmarkImportSource/Writerが入出力のport、ImportBookmarksUseCase.invokeがContent作成とCuration保存を順序づける。 同じ役割群の公開名: `BookmarkImportEntry`、`BookmarkImportBatch`、`BookmarkImportWriter`。 |
+| [BookmarkModels](../../../feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkModels.kt) | Tag/BookmarkFolderは分類のdata class。BookmarkedArticleがArticleと保存日時・タグ・フォルダを合成する。BookmarkImportResultとBookmarkSaveResultが結果、READ_LATER/UNCATEGORIZED/YouTubeの定数が識別子を統一する。 |
+| [BookmarkRepository](../../../feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkRepository.kt) | BookmarkChangeSource/Reader/Catalog/Mutator/SharedBookmarkSaverは通知・読取・分類管理・状態変更・共有保存の役割別interface。BookmarkRepositoryはこれらを束ね、BookmarkImportRepositoryはCSV/HTML importの入口を別公開する。 |
+| [MoveBookmarkToLibraryUseCase](../../../feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/MoveBookmarkToLibraryUseCase.kt) | MoveBookmarkToLibraryUseCase.invokeはArticleを受け、WebLibraryAdder.addWebBook成功後にBookmarkMutator.unsaveArticleを呼ぶ。 |
+| [SaveSharedBookmarkUseCase](../../../feature/bookmark/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/SaveSharedBookmarkUseCase.kt) | SaveSharedBookmarkUseCase.invokeはSharedBookmarkSaverの結果を返し、ADDEDの場合だけonBookmarkChangedを呼ぶ。 |
+
+## 主要 API と所有権・実装接続
+
+`BookmarkReader` はタグ/フォルダ絞り込み・全件・あとで読む・保存有無を返す。`BookmarkCatalog` はフォルダ/タグCRUDと未使用タグ件数、`BookmarkMutator` は分類更新・保存と既読化・あとで読む・解除/復元、`SharedBookmarkSaver` は共有URLの保存結果を返す。分割interfaceを使うconsumerは不要な更新capabilityを受け取らずに済む。
+
+[AppContentRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt) が `DefaultBookmarkRepository`、import/enrichment/queryの具象実装を生成する。ContentへのcommandはArticle Dataの `DefaultBookmarkArticleGateway`、記事詳細のqueryは `ArticleRepository` へ接続する。タグやフォルダのSQLをContent側に公開しない。
+
+importはSource.read → Gateway.findOrCreateImportedArticle → Writer.saveBookmark/addTags → onChanged → 件数返却の順となる。全件を一つのtransactionで包む契約ではなく、途中失敗は呼出元へ伝播する。Library移動も横断transactionではなく追加成功後に解除するため、Library追加失敗時にはBookmarkを保持できるが、後段失敗のrollbackはUseCaseにない。
 
 ## import の流れ
 

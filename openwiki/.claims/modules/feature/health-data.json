@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:614001d569f26b8f38acab4ddc2b71cdcb3986323db225239c2e889c156f407a",
+  "pageVersion": "sha256:b46f69b2f8f729777a365ca3a407e4ac1a815a9c7f24090dfd404ae7453df641",
   "claims": [
     {
       "id": "claim_c62c90e025434a9ab43754c8bc0b9d02",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:cb8bfeccc8c47fdf26f1450eb3074396064e283f051fca999ca82ebb35a2514f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwZDlkYjM3ZTgwZWJiOWQ3Mjc4MjU2NWYyYTg1ZWIyNDhjMTUxYWFmMzgxNDg3OWIyY2Y2OTA1MTA3OGNjZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyNThkNjYzYzgxOTU4YTIzMzMzMTIzMDc4OTVlMDk3NTU4YzY3OWMwNTYxMDY0OTc2NWEwNzM0ZGZmZmQ4OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyYzMzYzJiMzMzZDAwNzRhOWJjYmJjZjc3YmUyMGM1NWRhN2UzZDY2MWRiZGNmMmFhZWE3YjcyNmVjNWUxY2UifQ"
         }
       ]
+    },
+    {
+      "id": "claim_eaa9e21520f7455691568cfc8b7a0f1c",
+      "statement": "Health Overview の運動時間は Health Connect aggregate の値を使い、重複除去した session の時間合計から再計算しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt#L67-L96",
+          "version": "repo-lines-v1:sha256:aebe4c3e95af4f21e0e12f114d640be4e0d8b238a2394e7927e21a9d2e4ab621:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5ZGY1NmY0ZTBmNTA5NGU4ZGY1YTdkN2MyMmY3OTUxYWY2NTNiNmU2NWU2ZjkxZGQ2NzA5ZjNkZWYxMzEzYzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViYzI4M2M1N2RhNWQwZjU5MzUyZWU2OTViOTNlNWU2ZWYxNjkxMTJkOGMxNzNhOGZjMzg2YzViYjAyZjE0MDgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

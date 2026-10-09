@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8b2ae16a94d3f4d3b11445e69120a8922933b70df1932eb5bf7d39a07756a444",
+  "pageVersion": "sha256:f03af1a15fa6197ccfb15032fd682b1cf8dc668b57b8b6db4d1fcdc92e415b2d",
   "claims": [
     {
       "id": "claim_edcfe1a402154f7d9702760d1aa11b3d",
@@ -21,10 +21,30 @@
           "version": "repo-lines-v1:sha256:fee4e199055a6e837bd7ce16ff06ad0deb5f5998ea4588fcfdd921a07ace3d26:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ0OTAzMjZmNzkyZDExMTJkOGRhZDYxMmE5NjhiNGRhNDE3Y2Y4MDE5ZmNmMjkwYzdiNjNjY2Y4NTA1OWUyOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGVlM2MxZjAwMWI1ZjY0NzQ4MjE2NjBhOWViYTc3YWNhYWI2NTY0ZGIzMjJiNjI4NTQwYzhhNTY2NjZkZDVjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTM0NGE0NmRmMzZiNDMyNmIxMjlkMTAwMDZlMzYwMzY0ZWI2ZTgwOTZiNmNhMzZjZTZjODYzYjI0NWEyNzIzMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_286ed81533c74a6dba58e60deb44714b",
+      "statement": "LibraryBookの開くURLはSMBではnull、Kindle Personal DocumentとASINを取得できるKindle通常本では専用URI、それ以外ではinfoUrlを優先してAudibleにASIN fallbackを持つ。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryModels.kt#L38-L57",
+          "version": "repo-lines-v1:sha256:aa28521bf3dc7ec7984969d69dea357cc67d4a74b28f7467eb022b4d09a10be5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwMjhkYmRiN2NhOTM1NDRhMDBlNjZhYjBjMmZlMzIyNmE4MjhiMTQ3NWMyY2JiMzgxMDU1ODczNjAzZDliYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5ZGMyMzE3ODgwM2RiMWIwYjZjYjdkOGI3ZmYyODE4ZWFmZGI2MjdiN2ZkMDcwZThkYzU3OWExOTc0YmM5ZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzMmIwMWRhY2EzNWUzMWNmYmM4YzI1ZjI2M2RmODU5YWExNTBkYzVlYWVmZTk5MmRhZjQxZTAxNjUzYTg5OTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_13b4583eb606461b9a21d61ce83de32f",
+      "statement": "SMB接続profileはcredentialConfiguredを公開し、password入力と蔵書location管理を別の契約として扱う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbLibraryModels.kt#L3-L34",
+          "version": "repo-lines-v1:sha256:bfaeacece2f6d66752712632619661a2e1440962f044f40d9eaf6e6683757477:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwNGNjMzIwMTg5ZjJiNTEwMTFiYzFkNWYzYWM5YjVhMjQ5ZTEwZDU1NGQyOTdhZmEzYmRmNjYxYTM0MjM4ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ4YWNlNzhmZTI5ZmYzNzQ4ODY3NmU4NjA5MGVlMGYxYTY2NjNjM2NlZjBiYzY3YTZlNGNhYWRiYzQ1N2I5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzZmZmYTk5ZmNiY2YzZGVhZDJlYTM0NWMwMjIxNWJiZDRhMTA0NzFmYTY0ZWIzNzY0NzBkNmY3Mzg1YTY3MDcifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

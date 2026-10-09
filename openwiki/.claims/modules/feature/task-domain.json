@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:088230d74364b74672c6d6c346f44b367bd462990b773ad94800d2e2b8b38934",
+  "pageVersion": "sha256:b664700f0a0f1b9f38d67d7b5ecc24fbf1289abb609b7222f35a7f7c27761100",
   "claims": [
     {
       "id": "claim_9f1578b3ca3541fbb1e9718569f869db",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:6329d1ed0178fa6569372dddeb64d4e1a7881b06e0dcf8253db29dc94ebda4b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyM2RmNmFlMjczYWM4NDAyODcwOWIwNDM5NDZlZDM0MjQyYzVkYjhhNDAzYjMwMWUwZDRlNzBkY2JmYmU4MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5NjhiZjQ5NDQ1NDdjNTBiODZmMDk4ZWZmZWNkMDhjMmNjMjA3NzhjMzU3NDdmZjRiNmRmOGVhN2Q0ZTYxMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_d8078362192d40eeb2052d0f705b7a8a",
+      "statement": "taskCount はフィルタに一致するタスクを数え、taskTreeRows が表示補完する祖先行を件数へ加算しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskTree.kt#L35-L58",
+          "version": "repo-lines-v1:sha256:b588ec94c907138b39291579fa6c4644f4b682768f4e25d7b7225e869208a518:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwMTVjMzdjYjc5ZTY2OTUzNzA4YWZjNDcwZTFhY2VlYjg4NzZjZDJiNDg1M2E5YmVlNzFmNjNjZTdjMjg4OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczNjBkMDBkYjI0Mjg3Y2M1ZWZhZTVjM2I5MDE4YTBlMGEzYjdkMjg1YTM4NmMxNzkyZGE3NmUwNDk5NjEwNDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkNzM1M2Y2MDliZTk2YmVmM2VmYWVlNjdlMTc3MmZjZDk2YTNmYjQ3NmRhMjNiYmMwMzY4OTQwNjdhMjRhNTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyYjUxNmRkNGIyZWNiY2FlYTA4Yjc2YTJhZGViM2MwM2YyMmZiMzYxNGVmYmNhNjU5MjE2YmJiNGEzZWE5YTYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

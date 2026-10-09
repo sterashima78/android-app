@@ -2,14 +2,17 @@
 type: module
 title: Knowledge UI — ページ閲覧とAIタスクの回収
 description: 検索・ページ管理と背景AIタスク登録、画面再生成後の結果回収を説明する。
-tags: [knowledge, ui, module]
+tags:
+  - knowledge
+  - ui
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-a80fbeeca7bcf4f03245e4f0
     resource: repo://feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeViewModel.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # Knowledge UI — ページ閲覧とAIタスクの回収
@@ -19,6 +22,23 @@ generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 ## 画面の責務
 
 KnowledgeRouteはfactoryからViewModelを取得し、一覧検索、個別ページ表示、作成・編集・削除・分割・統合の操作をKnowledgeScreenへ接続する。KnowledgeUiStateは検索語、選択ページ、composer入力、確認dialog、作業中表示と通知を所有する。本文の永続化と生成要求の保持はDomain capabilityの向こう側にあり、この表示状態へ移さない。
+
+## 主要な構成要素
+
+| 構成要素と所在 | 種類・責務・主な API と関係 |
+| --- | --- |
+| [KnowledgeRoute](../../../feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeRoute.kt) | 公開KnowledgeRouteはViewModel.Factoryを受け状態を収集し、KnowledgeScreenの全操作callbackをViewModelへ接続する。 |
+| [KnowledgeScreen](../../../feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeScreen.kt) | 公開KnowledgeScreenが一覧/詳細を切替。内部KnowledgePageList/PageDetail/CreateDialog/DeleteDialog/SplitDialog/MergeDialogが各操作を表示し、splitHeadingCandidatesが有効な分割見出しを選ぶ。 |
+| [KnowledgeViewModel](../../../feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeViewModel.kt) | KnowledgeUiState/KnowledgeViewModel/Factoryは検索・選択・入力・dialog・working・通知をStateFlowへ公開。create/editはtask登録、delete/split/mergeはRepository、rebuildはscheduler callbackへ委譲する。 |
+| [NavigationDestination](../../../feature/knowledge/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/NavigationDestination.kt) | KNOWLEDGE_ROUTE/KNOWLEDGE_TITLEがnavigation metadataを公開する。 |
+
+## API・画面間の関係と管理フロー
+
+`KnowledgeRoute(viewModelFactory)` は公開入口、`KnowledgeScreen(state, callbacks)` は表示入口である。入力のupdateQuery/updateComposerRequest/updateEditInstructionとdialogのstart/cancel群は表示状態を更新する。openPage/closePageは選択ページ、deletePage/splitPage/mergePageはRepositoryの管理APIを呼び、成功後に検索一覧と選択ページを更新する。
+
+検索の `refresh` は呼出時queryを保持し、返却時にもqueryが同じ場合だけStateFlowへ反映する。変更通知後の `refreshAfterDataChange` はqueryと選択IDを照合するため、遅れたquery結果で新しい選択を置き換えない。split dialogは本文の有効な第2レベル見出しだけを候補とし、merge候補から自分自身を除く。
+
+Factoryの実装接続は [AppKnowledgeRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/knowledge/AppKnowledgeRuntimeDependencies.kt) と [AppKnowledgeTaskRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/knowledge/AppKnowledgeTaskRuntimeDependencies.kt) を追う。ViewModelはAI推論や永続要求を所有せず、controllerのrequest IDを観測して保存済み結果を読み直す。端末再生成で失われるのは一時入力や選択状態であり、WorkManager要求の寿命とは分けて扱う。
 
 ## AI操作と再接続
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:11f101ade58863e530519fb7f6dff55783897ea285f8519a68185e72f4e238f3",
+  "pageVersion": "sha256:f0305a626f60008b338b5fbce7c3bfebe57e5c31e26d3a07de8311a49bbca580",
   "claims": [
     {
       "id": "claim_8bf010a1d04c4654a0d767ab97561294",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:efc8fd5a2cda30686deaab918aacc2a967fda612d85025356f6c03e46bba9ded:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwODJmZmJhMDY1YjJhN2Y4OGYxNTFhYzM0MDQxNjBkNzE5Y2I5ZWQwNzYxMjYyNzEwZTc0M2NkOTZhMzI4NjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhZGRmYmYzYjFhMzU4MGNlZThjN2ExMzhkNTc1ODJiMDdkZDZmZGE0ZmY0OGY4NmFiNzUxMTIzYjI1OWYzOGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1ZjA3NDY5NDg5Y2I0M2MyNmJjMGZiNDhiMTU3ZGE0NzRjODBlMzhhOWVjNDNkZGUxYThhMzRmMGIzNjljYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0MzlkZTg2YzAwMzE4ZGMxYjQ3MGM1NmM4ZTRjMmJiYmVkNDk3MTliN2I4NzlhMTc5YWIzOWQ4Y2RhZDg3NTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_823a0931a8334bd09e5d71b7c9db22e6",
+      "statement": "Audioの具象controllerはcompositionのAppAudioRuntimeDependenciesでSummaryReaderとSummaryRequesterを注入して構成される。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/audio/AppAudioRuntimeDependencies.kt#L9-L19",
+          "version": "repo-lines-v1:sha256:b24eab1a84f7dd356e8be246a8957d4ef6a90418ec11677142e0141569608fc7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmMTZkNTJkYTlhMDVkMDY2OGQ5ODZiOWRhN2Q5OTI2MDM4YzExZGZlZTg5ZjIyYTUxZjNiN2IzYTFhZjU3NzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxYjdkYTY5MWE2M2U2YzA0MDhlYmZkZTgwZTMyMmRmZjI3NzlkYzE0MTRiNWE2NjBmNGY3MTdiZjQwMWQxOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

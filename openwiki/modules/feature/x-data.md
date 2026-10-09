@@ -1,20 +1,33 @@
 ---
 type: module
-title: "X Data：端末内カスタマイズ設定の保存"
-description: "SharedPreferencesによるCSS3セットとJavaScriptの保存、初期CSSとindex補正を説明する。"
-tags: [x, data, modules]
+title: X Data：端末内カスタマイズ設定の保存
+description: SharedPreferencesによるCSS3セットとJavaScriptの保存、初期CSSとindex補正を説明する。
+tags:
+  - x
+  - data
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-b8bcee87e6a3b85a9f3413fe
     resource: repo://feature/x/data/src/main/kotlin/dev/terashima/yomitorirss/feature/x/data/SharedPreferencesXViewerCssRepository.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # X Data：端末内カスタマイズ設定の保存
 
 `:feature:x:data` は`SharedPreferencesXViewerCssRepository`でX Domainの設定契約を実装する。Android libraryで、他featureやUIへ依存しない。端末内private SharedPreferencesと同梱assetを使う保存adapterであり、WebView、network、DOMの操作は行わない。
+
+## 主要な構成要素
+
+| 実装・公開契約のまとまり | 種類・責務と主要なAPI |
+| --- | --- |
+| [SharedPreferencesXViewerCssRepository](../../../feature/x/data/src/main/kotlin/dev/terashima/yomitorirss/feature/x/data/SharedPreferencesXViewerCssRepository.kt) | `SharedPreferencesXViewerCssRepository`（class）は`XViewerCssRepository`の実装。`load`は保存済みセットと選択indexをモデルに戻し、保存値がない第1セットだけasset既定値を採用する。`save`はモデルの`persistedCssSets`を使って全セット・有効flag・JavaScriptを保存する。`defaultCss`は注入可能なproviderからlazyに読み、通常providerは`src/main/assets/x_viewer.css`を使う。 |
+
+## 公開APIと構成要素間の接続
+
+[AppSupportingRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)が`SharedPreferencesXViewerCssRepository(application)`を`XViewerCssRepository`として公開する。[AppSupportingRouteDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)が同じ設定契約をroute側へ渡す。DomainモデルがCSS編集状態、Dataが永続設定、UIがWebViewとfullscreenの一時状態を所有する。
 
 ## 初回読込と保存
 

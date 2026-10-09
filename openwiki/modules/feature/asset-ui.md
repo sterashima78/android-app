@@ -1,20 +1,49 @@
 ---
 type: module
-title: "Asset UI：概要、収集、カテゴリ設定"
-description: "資産画面の再読込、document import と Secure Web Collector、履歴グラフ。"
-tags: [asset, ui, modules]
+title: Asset UI：概要、収集、カテゴリ設定
+description: 資産画面の再読込、document import と Secure Web Collector、履歴グラフ。
+tags:
+  - asset
+  - ui
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-4301550c5269cbc315378da8
     resource: repo://feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+  - id: openwiki-source-e6c6f0ee05dd9d543c8fd3f5
+    resource: repo://feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetStackedHistoryChart.kt
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Asset UI：概要、収集、カテゴリ設定
 
 `:feature:asset:ui` はAssetRoute と資産画面の概要・import・カテゴリ設定を所有する。`AssetViewModel` は注入された Domain Repository を使い、loading、overview、message を公開する。カテゴリ構成と積み上げ履歴の描画はこの層の表示責務であり、保存時の非負ルールは Data にある。ViewModel や画面から database を直接読む構成にはしない。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| AssetRoute（Composable） | 注入された Factory から ViewModel を取得し AssetScreen を呼ぶ。 | [AssetRoute.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetRoute.kt) |
+| AssetUiState / AssetViewModel / Factory（data class・class） | loading、overview、message を保持する。importTsv / importMoneyForward / addCategory / setCategory が runOperation を使い、dismissMessage が通知を閉じる。 | [AssetManagementDialog.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt) |
+| AssetScreen（Composable）、AssetTab（private enum） | 概要・インポート・設定、document launcher と分類 dialog を組み立てる。 | [AssetManagementDialog.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt) |
+| AssetOverviewTab / AssetImportTab / AssetSettingsTab（private Composable） | 総額と chart、入力の選択、カテゴリ別編集を担当する。 | [AssetManagementDialog.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt) |
+| AssetCategoryGroup / groupAssetCategorySettings（internal 型・関数）、moneyForwardCollectorConfig（private 関数） | 空カテゴリを保持した grouping と origin / navigation 制限を持つ collector 設定。 | [AssetManagementDialog.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetManagementDialog.kt) |
+| AssetAreaBand / AssetAreaChartData / AssetYAxis / AssetXAxisTick / AssetPieSlice（internal data class） | 積上げ帯、縦軸・日付軸、円の描画用 read model。 | [AssetStackedHistoryChart.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetStackedHistoryChart.kt) |
+| buildAssetCategoryColorMap / buildAssetPieSlices / buildAssetAreaChartData / buildAssetYAxis / buildAssetXAxisTicks（internal 関数） | カテゴリ色、正額のみの円、金額または比率の帯、見やすい軸と日付目盛を計算する。 | [AssetStackedHistoryChart.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetStackedHistoryChart.kt) |
+| assetDateFraction / formatAssetYAxisValue / formatAssetXAxisValue / AssetStackedHistoryChart（internal 関数） | 暦日の間隔を座標へ変え、金額・比率ラベルと Canvas を描く。 | [AssetStackedHistoryChart.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetStackedHistoryChart.kt) |
+| ASSET_ROUTE / ASSET_TITLE（定数） | navigation metadata。 | [NavigationDestination.kt](../../../feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/NavigationDestination.kt) |
+
+## 主要 API と接続
+
+`AssetViewModel.Factory` は `AppSupportingRouteDependencies` で `container.assetRepository` に接続される。`onChanged` は注入可能な callback だが、現行接続では既定の空 callback。`AssetScreen` の OpenDocument が URI を文字列として渡し、`SecureWebCollectorDialog`（core:web-collector）が許可 origin のページから返した JSON を `importMoneyForward` に渡す。
+
+## 代表的な処理フロー
+
+文書選択 → `AssetViewModel.importTsv` → private `runOperation` → Repository import → onChanged → `loadOverview` → state → `AssetOverviewTab` の chart。operation 失敗は同じ onFailure で表示するが、成功 callback 内の onChanged / overview 再取得例外はその runCatching に捕捉されない。分類 grouping は項目ゼロの登録カテゴリを省略しない。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 
 ## 操作と再読込
 

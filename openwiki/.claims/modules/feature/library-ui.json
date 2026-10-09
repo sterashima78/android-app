@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e2d2855e25b66b91ff7a41941e6a8227c66203bb7043111de43ee600f9081062",
+  "pageVersion": "sha256:30b88734e008ef0b7360ab5bb57c3b74dbc850eefa58b1c7686c3e664ed3eb0a",
   "claims": [
     {
       "id": "claim_6068bbf4e7a2448abebda317d25ef350",
@@ -21,10 +21,30 @@
           "version": "repo-lines-v1:sha256:90119320ac9d652a5280951ff5c5fd616fd65324b08172be712be297d96d0718:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0YWQwODBmMDg1MTU1NmIzN2Y3MmY4MTc0MTRlZjI3M2M1NWZiM2Y2YzUxYjZiNjQ4MGRjYzE1ODllNjkwMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwMjNhNjFlY2I1NDlkMTkxNjM0MjlhNzQ1YjUyNWFiNzEwNGNiNWZkYzU1YzQ5NzAyY2U0MTU5ZmM0ZjM4NDMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fd023377e1434d299524c7c4cfcbf122",
+      "statement": "LibraryのSMB Reader routeはIOで文書準備してsourceを開き、取得/open失敗は再試行画面、離脱時はsource.closeとする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbBookReaderRoute.kt#L53-L117",
+          "version": "repo-lines-v1:sha256:f892827dc19a932012a34a47b310da360e5f9a4cb895b1d462c1c8a9141db12d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTYwMzZhNzE3NWVjNDU5MjcxMjY3NjlhY2E1MDEzMWRkNjUyZDA2NjRmYjllYmQzZmM0ZjU4MTEwZWMzOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MjY3OTM1ZmM2MzM0NjVkODQ4YjQwYTRlZDY5NjdlN2I3YTMyM2Y4MWNkNTNjMTEwYWUyMTAyOTY4N2FhMTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZDUyMWUyNzEzYWE4MTY4ZDgyYTQ4NWNhMWRkZjBiMTlhOWQ5YzVhMzY1ODkyMzZhNzU2MzUyMTA2ZmUzMWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZTg1ODRkMTMyYThmOGQ2M2FlMDk4OGIyM2VlOGFkMTk4NWY4MjZiYjkzMWJjOTY4YTJlODMzZTFkYTI2ZjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8806324f75cf4743a7915beacd1e0923",
+      "statement": "Libraryのseries groupingは既存seriesと自動推定除外を優先し、series mergeでは両側の巻数を保った一括更新入力を作る。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryGrouping.kt#L45-L99",
+          "version": "repo-lines-v1:sha256:86357635aba9670aff8d594ef42f1ab3b6fe44c1c835746d328e50b70077d903:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZTg5N2E4YjkxYzUwYzQ2OTNmYjU3ZGE0YzljMWI3ZDYzODE4YmVjOGFkNTljYzc1M2E2MTZiNDI5ZDAzNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MGM1ZDNkYzNhNzczMDc5M2M4OTI3OTQ4YjU1OTY2NDIwN2Y3OWJhODc3NzNjMjE1MDA0NDMxOTYyZmQ0ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1MDI0OTdkODJmOGE0ZTU0MTkzMDhmY2RjZjE1ZWU5OTJiYThhNjc2ODc5YTgxYjVmZDczMDEyYjJlODg2YzAifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

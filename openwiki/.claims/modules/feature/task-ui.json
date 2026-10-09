@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b92279590e1cfb07b4a1ff2e9fda03f661e015fe96a342bc15b48d31fa01ff42",
+  "pageVersion": "sha256:54057450a1b5007b8365af6ef22d7336f42b863270dec6e643f8f6bc206a4c9e",
   "claims": [
     {
       "id": "claim_b011e9b2538b48c09ad6c5fc064166b6",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:da070fd6c27e6f236a6e7c1f9feb9ae9bf7e73af282c7abb88a309535f161de7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMzMzYzNiYmVjNDU0YmRhZWQ0NTI2YzRmYWFmMDI4MDhmMTExODFmMmIyM2NiNWI4NjhiNzAxNjRiNjhlMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ZjAxNjIyMDMxYjE0NGI2Yzc0ZGJhYmI5OWFmMTMzYmIwNGI5YWY5ZjY4NWQ2NjczZGU2MThlMWE1MzIxMjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3NTE5ZTVhZTJiMGVkYmU0M2EwZGU2NmYzNGIwODRhMzg2M2M3OWRmM2E3MTU3NDJkZWFlZGY1MTUwZWQ2M2IifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fad7266c702f4c14ac560fac79c38812",
+      "statement": "Task UI の説明リンクは HTTP/HTTPS URL を抽出し、日本語の境界句読点と末尾句読点を除いた範囲を LinkAnnotation にする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/task/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/task/TaskDescriptionLinks.kt#L53-L94",
+          "version": "repo-lines-v1:sha256:d1b2e195e80a6fc0096c92ace506ede34a43bf1de80beadb2599aaab1e24d392:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyZjJiOTE2ODY4MGNlYTZmNmJjZGY2YzkzYTczYTVmNzBkODQxZjFlYzgyNjk5YmYzMTg3NmFjYTUxMjY4ZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkNmEzYjU3YzM2OWUzMWJmY2ZmMmMxZGUxYzJhZmI0Mjc1ZDkxM2VkYWI1MGYzODQ3OTFmY2E5YWU1NDRlZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiYTFhODk3YTk3MTNhNWViZWY3ZDc4Y2FmYWQ5YWU3OWQ5M2IyYWJlNTAyMzc5ZTMxZTQ0MmMwMzEwMTExYjgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

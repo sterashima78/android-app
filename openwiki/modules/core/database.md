@@ -2,16 +2,23 @@
 type: module
 title: SQLite 接続・スキーマと永続変更通知
 description: 共有 SQLite の接続、機能別スキーマの合成、commit 後通知、整合したスナップショットを提供する。
-tags: [database, persistence, module]
+tags:
+  - database
+  - persistence
+  - module
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-3a2d0957ae9e028aa54a266c
     resource: repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseConnection.kt
+  - id: openwiki-source-cf1d990d89cca11e4c36b971
+    resource: repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DataChangeNotifier.kt
+  - id: openwiki-source-5dca312bd9642cab0fb705f8
+    resource: repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/PersistenceChangeNotifier.kt
   - id: openwiki-source-2a81d079c8ed447770ff1884
     resource: repo://core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # SQLite 接続・スキーマと永続変更通知
@@ -19,6 +26,27 @@ generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
 ## 責務と処理の入口
 
 `:core:database` は業務 repository から使う SQLite 基盤で、各機能の table や業務判断はその機能の Data が所有する。[DatabaseSchema](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseSchema.kt) は owner が重複しない contribution をまとめ、対象 version と BEFORE_SCHEMA / AFTER_SCHEMA で migration を選ぶ。Application が提供する合成済み schema を [YomitoriDatabase](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt) が受け取り、作成時に外部キーと WAL を有効にする。upgrade は schema 前 migration、schema 作成、schema 後 migration の順で進む。
+
+## 主要な構成要素と API
+
+| 宣言・種類 | 責務・主要 API | 根拠 |
+| --- | --- | --- |
+| `DatabaseMigrationPhase` enum / `DatabaseMigration` class | schema 作成前後の区分、targetVersion と migration callback。初期版以下を拒否する。 | [schema 契約](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseSchema.kt)。 |
+| `DatabaseSchemaContribution` / `DatabaseSchema` class | feature owner の create/migration callback を合成。owner 重複や未来版 migration を拒否する。 | 同上。内部 `migrationsFor` は対象区間・phase で選び version 順にする。 |
+| `DatabaseSchemaProvider` interface | Application が `databaseSchema` を供給する契約。 | 同上。 |
+| `DatabaseConnection` class | `readable` / `writable` と durable/local の `write` / `transaction`。block の値を返し、失敗時は rollback。 | [接続](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DatabaseConnection.kt)。 |
+| `DataChangeNotifier` class | `version` StateFlow と `notifyChanged()`。feature の表示更新用 signal と shared instance。 | [表示通知](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/DataChangeNotifier.kt)。 |
+| `PersistenceChangeNotifier` class | 同形の signal だが durable commit の通知用。バックアップ観測と表示通知を区別する。 | [永続通知](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/PersistenceChangeNotifier.kt)。 |
+| `YomitoriDatabase` class | SQLiteOpenHelper。`create(context[, schema])`、`schemaVersion`、`createSnapshot` / `markSnapshot` / `validateSnapshot` / `replaceWithSnapshot`。 | [DB と snapshot](../../../core/database/src/main/kotlin/dev/terashima/yomitorirss/core/database/YomitoriDatabase.kt)。 |
+
+## 合成と通知の処理フロー
+
+[AppDatabaseSchema](../../../app/composition/src/main/java/dev/terashima/yomitorirss/AppDatabaseSchema.kt) が feature contribution を合成し、[AppContainer](../../../app/composition/src/main/java/dev/terashima/yomitorirss/AppContainer.kt) が database 接続と共有 notifier を repository へ渡す。
+
+1. repository が `write` / `transaction` を呼ぶと `DatabaseConnection.transact` が transaction を開始し変更量を測定する。
+2. 入れ子は同じ SQLiteDatabase の thread-local scope に参加する。管理外 transaction に durable 書き込みを混ぜると拒否する。
+3. 成功かつ変更ありの最外 commit 後だけ `PersistenceChangeNotifier.notifyChanged` を一度呼ぶ。`DataChangeNotifier` の表示更新は repository 等の利用側が必要に応じて通知する。
+4. バックアップ側は snapshot 作成後 `markSnapshot` で識別子を付け、復元側は `validateSnapshot` で同版と整合性を確認して置換する。自動的な旧版 snapshot migration は提供しない。
 
 ## 書き込み・通知・復元
 

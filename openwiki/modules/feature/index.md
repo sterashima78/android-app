@@ -47,7 +47,7 @@
 - [Podcast UI：番組管理と生成・章再生](podcast-ui.md) - 番組/source管理、生成受付と永続状態の観測、共有Audio再生を説明する。
 - [Reddit Data：RSS capability を利用する購読 adapter](reddit-data.md) - Reddit 固有の入力と重複検査を RSS FeedRepository へ適合し、購読と更新結果を公開する。
 - [Reddit Domain：source 判定と購読 identity](reddit-domain.md) - Reddit の community / thread URL 正規化と分類を所有し、通常 RSS との境界を公開する。
-- [Reddit UI：購読と source 固有記事の閲覧](reddit-ui.md) - Reddit の未読・あとで読む・履歴と購読管理を表示し、Content / Curation の公開操作へ委譲する。
+- [Reddit UI：購読と source 固有記事の閲覧](reddit-ui.md) - Reddit の未読・あとで読むと購読管理を表示し、Content / Curation の公開操作へ委譲する。
 - [RSS Data：取得・永続化と推薦 background work](rss-data.md) - 通常 feed と Web scraping の取得、RSS-owned 保存、推薦 queue と feedback 学習の WorkManager 接続を実装する。
 - [RSS Domain：購読更新と推薦ルール](rss-domain.md) - Feed 契約、同時更新の制御、推薦評価と除外 feedback 学習の状態規則を定義する。
 - [RSS UI：未読・推薦と「あとで読む」レビュー](rss-ui.md) - RSS の閲覧・購読設定、推薦注記、除外参考と開始時点に固定した「あとで読む」レビューを提供する。

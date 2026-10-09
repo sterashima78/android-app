@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8ccddaa6942f9eb1f55c58238deb95c14175bde269410c0e34187724d7837c9a",
+  "pageVersion": "sha256:5d420f1010c7924868659dad5014901a229afedaf4e89fe763bec11587ad0973",
   "claims": [
     {
       "id": "claim_d48305655cb24e958dfab44a1f517211",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:2943a553f24c3447717abe5334802332557234846a21581c93d4cc93973f2c6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyYTY1ZDhiZDVlMzU4ZTMxZGY5M2IzNTQwZjhlMDc0YjlkMjZmNTBjNjQxZWM5ZmYzZDRjMWU0ZWI4ZDg1OTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjNDg3YjQ0YjM3MjcyMzA4MGJhMWEwNjljOGY4MjNlMzA0MGQwZTBjMjEzNDE3MmVjMjkyZjMwMDFmM2RhYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2Y2YyYmMyYmYyYmZlODUxZTQxNGU2MzlmMTY1MjRkYTYyNTE3ZTdjNTAzYmFmNjExZTcyMTRhYzdhNWZlOWEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_547aa8efcd5b433cbc96e7c46cbb835e",
+      "statement": "Asset の円グラフは正の金額を持つカテゴリだけから構成比を計算し、0以下のカテゴリを含めない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/AssetStackedHistoryChart.kt#L101-L122",
+          "version": "repo-lines-v1:sha256:b0be2d75c7c74dc0a85f4384b87c55c5af6506a0a5482691671ca59773d67038:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjY2I5NTI1ODZjZWJhODA2NjBiYmRkNTE0ODg0MTBiY2I1Y2U2M2Y4OGIyOTc5YzhkMTViY2Q4MWU2NjlkNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEyY2E3MTRkN2FhMmY5M2I0NDczMjg3NWVkMjEwNDY4OTI4NTMwMTQ0MjdjZGY0ZDRmNGNjNTA1NzU3MjIyMTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

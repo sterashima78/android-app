@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2125c198f27a8fb2469ba6d5623e047ce3266a7af0f63779d03f2b161344f7c1",
+  "pageVersion": "sha256:cf7b6947a843c09910fa4953d570e89b3cf7f3ff4078b6d8919641d148b1adae",
   "claims": [
     {
       "id": "claim_76e449aa5f0046498b8dab77413b7b21",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:eb3f7c0e00e872f2f8ee3ced3afc49e78a03549c25354fd8cf16c809efcd6b7b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ODEyY2Q3MzBmYTQ0YmM5MTgzMjNmY2Q0Y2QwMzE2NGJhNjllODQ5MzU2M2UxZWJkYTcwM2M1NDM5YzZiZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_1d344d604a804ea5b494ab224c5b0203",
+      "statement": "Redditの記事操作は処理開始時に一時非表示を加え、失敗時は非表示を解除してmessageへ理由を表示する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditViewModel.kt#L202-L223",
+          "version": "repo-lines-v1:sha256:c6f1d5af508da84eb1ad309e4ff4bfaf8069cd7c8c8e5974af6fd33c1b5797cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmOWMzZGMyMjNiNzU0ZjM1MmI5YWY3ODE5NzhmYjAxZWJlY2RlZTc1YmEyZDZlOTRjNWE1OTcwODc0MDBkZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhZmJlYTRkOTY4MjgwYjE3M2YxMDAxZTNjYzNlNTllYjViNTM5MWRjNDMzY2U5NDhkNDg3N2JkYzRlNTlkNmQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:223b91e49d5da3373128e077ad27b6b3ff68c699e18e98d4534e242d451e090e",
+  "pageVersion": "sha256:58fe538f2697b17fbae2b0585f0b5cc52d0bef9a1369bcfa1a18a128fc2a4c19",
   "claims": [
     {
       "id": "claim_23f73e5713844c1f90e9289ec8216968",
@@ -35,10 +35,20 @@
           "version": "repo-lines-v1:sha256:edc5a81a0718ed84f68d07c5fb5034bfde6843d6c1181d12251afee8a0ae52c4:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3NjEwZTE4YWQyZWI0MTg2YjFiMTgyZmJkNGJjNGU3NDA5MzJlODMwNWQ1YmE1OGU0Y2Y2MTk0NjYxN2UwMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzZjY5ODI2YWU2YmQyYjgxMzUyYmM1MDhjZjQ1MzRmY2I5M2E2MmNjN2Y4YmY5ZWY4ZGI2OTFjOTI3YTUyMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_516fa30e6e764fa0a86a934eb26f37c0",
+      "statement": "LAN Web transportはGETのみを受け付け、認証後のhome要求をread modelとrendererへ渡す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServer.kt#L68-L146",
+          "version": "repo-lines-v1:sha256:180833b21eaa58936ff99688d2ccc2a53421b1497de2244bc7a779e3e5cd795e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0MTc5ZjQyM2EyZGYyZTRmOWE0ZDIyNTE4Mjc0ZTZlYmM2OWU3MzJiNWU1M2NkODk5YTQwN2FkYmJiNTI0ODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5OTFmMjU1NzI2MzQ5YmExN2QwMzlkMzNjM2NiN2Q1MTYxNjZlOWM4YTUxNTEyOGJmYmUxZjYwODUwZjczYzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmNWMyNmNjNmI0N2RmMWE2OWNlNTE0NWNhZDhlOGJmMjRjNzc2YmFhN2EyZDA2YmZlNGU1YmQ1MmI4YjMxZjIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

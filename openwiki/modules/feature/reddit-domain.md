@@ -1,11 +1,14 @@
 ---
 type: module
-title: "Reddit Domain：source 判定と購読 identity"
-description: "Reddit の community / thread URL 正規化と分類を所有し、通常 RSS との境界を公開する。"
-tags: [reddit, domain, content]
+title: Reddit Domain：source 判定と購読 identity
+description: Reddit の community / thread URL 正規化と分類を所有し、通常 RSS との境界を公開する。
+tags:
+  - reddit
+  - domain
+  - content
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-3ff5904482694e3de9e50787
     resource: repo://feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditModels.kt
@@ -13,12 +16,24 @@ sources:
     resource: repo://feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditSourceBoundary.kt
   - id: openwiki-source-2e6d18c781544d94f50e2cae
     resource: repo://feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditUrls.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 ## 責務と所有権
 
 `:feature:reddit:domain` はReddit固有の入力、source分類と購読契約を定義するJVM moduleである。communityとthreadを別の購読種別として表し、購読一覧、追加・解除、全件更新と進捗のAPIを公開する。ArticleモデルはContent Domainを再利用するが、Redditを通常RSSと区別するルールはReddit-owned boundaryへ集約する。
+
+## 主要な構成要素
+
+| 実装・公開契約のまとまり | 種類・責務と主要なAPI |
+| --- | --- |
+| [RedditModels](../../../feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditModels.kt) | `RedditSubscriptionKind`（enum）はcommunityとthreadを区別し、`RedditSubscription`（data class）は購読identity・取得結果を渡す。`RedditRefreshResult`は全件更新の総数と失敗数。`RedditRepository`（interface）は一覧、追加、解除、更新と変更通知の公開境界。`Article.isRedditArticle()`はsource feedによる分類を提供する。 |
+| [RedditSourceBoundary](../../../feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditSourceBoundary.kt) | `RedditSourceBoundary`（object）はArticle/feedの肯定・否定query、thread identity取得、通常RSS登録入力判定を集約する。RSSやSummary consumerがRedditのURL規則を複製せず利用する入口。 |
+| [RedditUrls](../../../feature/reddit/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditUrls.kt) | トップレベル関数`redditCommunityFeedUrl`、`redditThreadId`、`redditThreadFeedUrl`は入力を正規化し、認識できない入力にnullを返す。`isRedditFeedUrl`は分類、`redditSubscriptionKind`は購読種別判定を担う。内部URI helperがhostとpathを検査する。 |
+
+## 公開APIと構成要素間の接続
+
+[AppContentRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt)が`DefaultRedditRepository(feedRepository)`を作り、RSS Domain契約と接続する。[AppContentRouteDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppContentRouteDependencies.kt)の`redditViewModelFactory`がReddit・Article・BookmarkのRepositoryをUIへ注入する。購読状態の保存者はRSS、記事はContent、保存/あとで読むはCurationに分かれる。
 
 ## 入力と identity の流れ
 

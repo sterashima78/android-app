@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:57c6d9c4f4a95516e4b5a04764e8046f045837f3664d3dddf3856237f16306b5",
+  "pageVersion": "sha256:ffddbfce311da44ad4bc154b63163cab4efaf7b5a3471a07a93de6de49368ac6",
   "claims": [
     {
       "id": "claim_5b9f0fc122af4c198270b6e8853c52f7",
@@ -35,10 +35,40 @@
           "version": "repo-lines-v1:sha256:a2b216ac0d186d084dfa8612d27a38c4cf78948133ed617c02a43d998c4397e2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MTNmZTk5OTY4NmM4OGJhZjMyZDYyNzAxYTdmMTZlY2E5ODQ0NjQ5Mzg0YzM2NDM2YjMyZTMzZjVhMjFlM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1NDRlZTA3YTExZDY2YWE3NDJlY2Y1YTY4YWI5YTYyZWU3ZDg5MzA4ZDM5NDVhZTdmZmFlYTFhZGI4ZGZlYWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4YmM3MjZmMWQ0OTMxNTYyNTAyNzgwZGI3OTE5YmM2OThlZmM4OTI4MjA1OGY5YjljNjcxNDUxMDFmZDkxMmQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_dc1b3ff4d390473e8271575751295ad2",
+      "statement": "DriveバックアップStoreはSAF保存後にarchiveを再読検証してから保持整理を行い、途中失敗時には新規document削除を試みる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/GoogleDriveBackupStore.kt#L12-L44",
+          "version": "repo-lines-v1:sha256:0860c0efda1459a9f2f4a703838268b4aa15e7272d7806c136770218fb6ff3dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1OWIwYjUyNzViYjI2MDJhNTg3MzcxZjgzZDJhOWI4ZjRiNzUxNWRmMDU0ZDAxMTk1NmZlYjU0NDM1ZGZiMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4NWM1ZGEwNmJmOTZlZGY1YjE2OGM5MDdiM2UyODc0MmYyMWNlNTBlYmU5M2JlNjFjOTk2ZTk0ODA5N2M5NTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5MjY1M2Y4ZjJiNDIyNGY0YWVkMzBiMzEzMTY0M2EwZmIzNzliOTYzNGM2YzNhZjNjNjE1ZjZjYmE0YTIzNGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f6dc8560b1684b9591ecc4f2883317a2",
+      "statement": "DefaultBackupRepositoryはarchive復元後にLibrary・RSS推薦・Bookmarkの初期化、二種変更通知、Drive予約再設定を行う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/BackupRepository.kt#L47-L64",
+          "version": "repo-lines-v1:sha256:0bd3e4c90389f6dab0cebaa7bf864976cb820128f61f83ec55c56c2527c3cec8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBkOTBmZmM0M2RiNDc2ZTQwMGNjZTRiZTEyNjNhOGZkNGVmMjZiNWNhMTAwZWQ5OWYwNmQ3MzA3MjU4MTI2NmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyOGQ3NGM3NGY0MzViYmIzZDhlZDc2Zjg4MzE0Nzk1MjE0MGZiYjFkZTVlMjg4NmVjZDFmYzA4OTZiODhmNTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlZDFlNzlhZjViY2FiODU1N2FiZWQ3NmI1MDFlYzA5YWZmNDcwMjYxOGJjZmJlMjJlZDVmZmVjNmE2MmM1MjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0YmI5ZjI3ZmYwMWEwYWJkYjhkNjdjMjUwZDFlMDkzNGZkZjZlZWNjNmE4YmJiMmY4YjA0ZDQ2ZGZlY2Q2NzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_02d3d3ca36b84e488d76ed09d09dae91",
+      "statement": "BackupPreferencesは明示allowlistにある設定ファイル・キーだけをバックアップし、credential、URI権限、端末benchmark、一時状態はallowlistへ入れない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/BackupPreferences.kt#L145-L185",
+          "version": "repo-lines-v1:sha256:cd1d501e16869fbf181bda07f310d4b094fb3a110fce8983aaff7f6420902fc8:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhY2YyOWMwMTI4M2VlYThiZGQyNTllZTg3MTEzMmI1YjE3YzRkNDIwYjA3YTYzOWRmMzJkY2JmMmI0NWNhNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmZTIwMTc0YzkwMjQ3NGY1ZDc3MjljN2ViMzU4MWZkODk4MmRkZDhiYTRjOTQ1MjUxZmFkZDY2NTU0YTBlMjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T14:01:52.039Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

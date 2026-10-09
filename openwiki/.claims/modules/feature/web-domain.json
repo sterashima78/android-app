@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:94a1da396cc57cc6e46f8ad30c98d74026440a7e138d9c0b01b7175a385fca91",
+  "pageVersion": "sha256:7cf40990473b082d0105993aa10fb3d01e92315cba088b31c3f1e3a2b6094703",
   "claims": [
     {
       "id": "claim_7898c9646b3d4fa599e41dc5341083ee",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:5b0c2c679cb66e1ecaf26bfa6df86a8844fd14fb6cbfaf5028e4a9a031b5d9dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1YWM1NTc4YTljNGVlMGI1ZmEzOWRiOTgxNjEwNDNlY2Y2NTEyZGM0OGNkZTg5YWFjNjA5MWFhMmNlMTZmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkOTg0MDI0YzA4NGY1NTNjZTI0ODdkOWNhMmUzYjQ1MmEwYzFkNTVjMGQ1NDlmYmNiZTRjMjEwZmVhMmQyZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_ab5b166c1e2c4a31bbc9dc1c23e1635e",
+      "statement": "LAN Webのgateway具象はAppLanWebContentGatewayとしてcompositionで構成されApplication provider経由でServiceへ渡される。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppContainer.kt#L261-L267",
+          "version": "repo-lines-v1:sha256:d223a8eec32616d4f271f060dc6f56f874c57d04ae5959b49589d4e7ba6f57e0:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzdjNWE0Y2Q1NWJhYzJkZjE4YTlhZmUxYzMwNjAxM2E0MDZjNzQxNTBmYzJhNWFlMjY2YzA0N2Q2MzAxNzYwNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGJmMzlhODcyMzY3MGViMGExYWZiYTEzNmExOTBhMzcyNzM3NmMyYmZkMDExZjBmZWEyMTM1NzU1YjRmOGQ2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjQ3MjI1NjAxMDZlN2UxN2U3ZWZjYjY2NDViYmIwNjFiMjllM2NhODMxNmI4MDk4MWMzZmFmNmM0NTdiMTcyZCJ9"
+        },
+        {
+          "resource": "repo://feature/web/data/src/main/kotlin/dev/terashima/yomitorirss/feature/web/data/LanWebServerService.kt#L79-L88",
+          "version": "repo-lines-v1:sha256:761f5a0edb6864bc89b32c9a6519dd1087b7742fc7adcb8f08555f634e85327a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzODFlNTdjNDMxNDM4YjkyZWIzZjNhZjkzNmU5MjViZTc1MGZkZGExYzQ2NTIxNjhiNzcwNTM5OGYyMGIwNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmYzk2ODgyZTlmOTlmNjQ4YzNjMjk4MjQ4NmY3NGMzZTcyZDBmZjAyNTE3NjFhMzYwMzYzMWRhMmE5NzFmZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkNDM2YTM3YmU1MWFmZjEwOWEzM2Y4OGRjNGE1YzkyMDdiNTFjOTlhOTJmYzE1YjBiNjU3NmFmZTkwNTg2ZjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0NTlkOTlmYTA4MmQ0NWFhNzczMTM5MTMyMTMyNGViZTUzY2NiZDRiZGI4OGMwY2IwMjQ0YzM1NzNhMTA5YmUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f5a1976bf08cdf1e352ee811550c8e2cc88b7d603f9e269d58a5af6b1a1930ce",
+  "pageVersion": "sha256:6254ff43fbfb0ee37e7f699e1192a2fe186bb9ac1edf64071c236ac12ea18efe",
   "claims": [
     {
       "id": "claim_6653dc16a5f7463089019f477c4d16cf",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:715fa2afef4519cc25736c79619a96a7fc88df607036f838a9616e50fee96121:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5ZjAzNTAwNDg4ODAwYTU4ZDM4MjYwODIxNzFkZTk0OGFmMGMwNTU3ODczNDZmN2FlYzdjYjkxZDI0YjYyMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwZWE5MWU0NjU5ZWE2ODVmZTczOTIxZWQyZWIwMGUwY2VlMDIzODU3MzQ5MmRkZjM4ODNjMDZiYTRlZmIwMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjZmNlOTY4NTNiNjI3NDkzOGMzYzcwYjc3MzIyYmNmNmUwMTAwN2Y3ZGIxMzU1OGMwM2ZjNDc0OGJjYjExYjEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_68ff66f5b4c0439b94faf30279fcd223",
+      "statement": "MailRouteはMailViewModelのstateを購読し、認可開始は外側のcallbackへ、threadと一覧の操作はViewModelへ接続する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailRoute.kt#L12-L46",
+          "version": "repo-lines-v1:sha256:ce6a17ad4a21680ab427be9d7fdf9e51e07c8b480b691be2c5f88fd8ef3453ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4NDAzYmQ0NjA0YmIwN2I0MWIxODcwYTUyMTE5YjhmZDdlMzk3ZmIyZjg5OGFhZGZlZDEzY2MyYTcwMmQwMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkZDdkNjczZDk2YjE5OGYyYTM0NmY0NGFhYjliNDI4YzdhMTFiMDgzNmQyZGU1YTZhMjA3MWVhNmFiZWMwMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

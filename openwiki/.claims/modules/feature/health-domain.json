@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3fd4bbeae06a5d980006c47eaefc451649d8c7504d3f87af565833845fb49e35",
+  "pageVersion": "sha256:be9f4970e0766cdbae98d7672b46f624ddc0fe1f1867f9f37e61d8f70763fb6b",
   "claims": [
     {
       "id": "claim_7c5f6232a04847388515dec9c66142ef",
@@ -25,10 +25,20 @@
           "version": "repo-lines-v1:sha256:f62ad898a8e57707b1fc636194b917eb2bab16741e99359f4e40aa30d0c814d5:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTc2Y2JkMzIzOTAxYzM1ZjY3NzRiYjk5NzJiZTZkOTFjODUwODI3MTIzYjFjOWNmY2VkN2NkMTcyYmVmNjM0OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzUyYjgzYTkzYTRlNThmNGEyNmRkOGU3ODFhMjViOGExNzVmM2FlYzhiYzU0YTE4ZGVjMzQ5NDU4MmY4MDFlNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjViNDIxZjBmODNlYjUyOTc5ODVkY2NmZmE2M2E5MWRkMWJlZjc2OGI5ODIwM2I3OTFhOWFhOGNhOTc5YTAyZSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_ddf835ad5e7d42cc95dd9257bd164a2d",
+      "statement": "Health Domain の日別健康指標は nullable な欠測を保持し、日別栄養値は別のモデルとして扱う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/health/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/health/HealthModels.kt#L23-L39",
+          "version": "repo-lines-v1:sha256:f11c35edbb88886d503ab024242835772c21d7156c1bb10218f0226f91bf52d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhODFiNTUwNDkwZjM5YjBhM2IxNmQxOTc0MjcwMzFlMTM4OTUwYTZjZTdkNjU4NjUxYzE4MzliMTNkMWNiZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlNDU4MzVkMDQ2ODg5MDBkZmU1YTBhOGE0YmRhZTE1ZjNmNGY5MzI0ZmIxZmI1ZmI4YmIxNzg2ZmFkOTI4NmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3MmJhNmI0ZDliY2NjNjk5MDY3MjUwNTQ3ZGU2YTE2ZDA1NTEwMGZiNGZiMmRhZDY5MDc5NzIxNjFkOWJjMjkifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9013914f94bd687eab8002a630d74e4316d10bebfe770d1f097d3176f5be061e",
+  "pageVersion": "sha256:9b9f8cd6823abb6db681119ca3cf772905460542a5338a9d4f19d23b36e2af3e",
   "claims": [
     {
       "id": "claim_005b1586197b4eb3835290b2c98fec75",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:e1b55146424664161193dbaba8eba77d80d7c85ef20c465ba7b1dbc46a8e00ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1MTJhNzYxOGI1YzYwYjQ4NDI0YjAxNWM0NjllYTU1ZWExMWM2MWU3NTRkNjU0OGU0ZTdkZTJiN2RiZTA3NmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhMGEyYjk5MjZmYjA5ZWFiMzQ0YWQwNDFhM2I5MzJhZGFmYjA1ZjQ1ODdiNTkzOTllNzJmNmVkMmM5YmQ2NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3e857529f28b45c98a1fdab33979a8b1",
+      "statement": "Book Readerのsource生成と位置storeはapplication compositionから注入され、Library UIが文書準備とsource解放の寿命を所有する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/library/AppLibraryRuntimeDependencies.kt#L128-L135",
+          "version": "repo-lines-v1:sha256:b249886edcdd97183fb9d2a696643621308f8683a23a58078e18f97a8c9fa5f4:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDQ1ZDRlMjI0NDBjOGEzYjU2ZmFhNWU5MDJiMTVjZWFkZGIwYjVlYzE2NWEwNDQxZTUzZGZlY2VlZTg0Yjc2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzdlN2ZkNGFkZjEyMDg5Nzc4MTFhYmQ0NzdjNzgwMTgxZDI0NjM4NzZlODZmMGY5N2MwZDg5YzFiMjI3NDQzZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzE2Y2Q3ZDMyZDI4ZDU3ZDI5M2NhNWE2MTMxYzRmNmRiNDE0OGZjZmFlNTBkNDY5MmU4MzQ1MmNlMzkyY2NjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmJmNzJiMDIwNWFkYzg4MDg0Yjk0YjBhMmE2MGE2MzRjNjE1NGJlYzIwNjAwZjc4MGFhNGRjOWIzYzk2OGZiZSJ9"
+        },
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbBookReaderRoute.kt#L81-L117",
+          "version": "repo-lines-v1:sha256:c7baf253b6b22e7ab3c093bb54b8342fe1afcc7a2f28e388c94fd78c23aefae6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhY2I4MTJkMTY2MWQxMDI0M2MwMTI3NWIzZGNiYjAyMGNiNzMxNTJjMTRmZjFjZTk1NWQzNTUzZjE5NDNiNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MjY3OTM1ZmM2MzM0NjVkODQ4YjQwYTRlZDY5NjdlN2I3YTMyM2Y4MWNkNTNjMTEwYWUyMTAyOTY4N2FhMTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMTkwZjg1MzBjZjNlNzEwYzA5Y2UyMDg5MDA0NDIwMzQzMjhjMGM4Mzc3ZjE3ZjdhMTYzNzI3ODRmZDgzMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZTg1ODRkMTMyYThmOGQ2M2FlMDk4OGIyM2VlOGFkMTk4NWY4MjZiYjkzMWJjOTY4YTJlODMzZTFkYTI2ZjEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:73369a8c2161fc75ebc37c79386dae8d3ae16422aed473e37e8c77f1a8c7ee21",
+  "pageVersion": "sha256:892c0682585de979aa1e5852e600c1572862e470d8e02e148f15e313d1e4d521",
   "claims": [
     {
       "id": "claim_b7a91d59d91b417c9dbb9bcec86b3c0c",
@@ -31,10 +31,24 @@
           "version": "repo-lines-v1:sha256:9927e527c327807a24b22a7655dbd5fc9c071fcee490fd36467593b5bd078e32:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1YzkyMTdlNzI3ODNjOTg4Mjg4MWFkNTg3NTgxMTY1NWFkMGU5NmIzNzkzM2YwYzAzY2QzMGUxYjBjNDkzZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzMTY0MTg5MDZiZTE4NWQ5ZmRkYzMyZGVkNzU3NGYzMDk5MDMzOTUzNGFmY2EwNzFjNjlmODFiMzgyZTY5ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4ce0290f12a1401890ed42c0f40b1520",
+      "statement": "メール一覧取得はaccountId省略を許す一方、thread詳細とトリアージ操作はaccountIdとthreadIdを指定する契約である。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailRepository.kt#L19-L53",
+          "version": "repo-lines-v1:sha256:b4b9a3d3594b0f00b36ad8147a92f11075187082e6b5dc49d676b041cc3e6350:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzMmNlZDljZDg4OTdlNGVjNDQ0M2EwOWQ3MmYxNjI0OTU2ZTMxMmVhODI1OGEzZWFjNTIwNzAzNTY2ZWFjMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NThlMmZiZmJiYjkyMmRmYWQzZTJlMjc3ZjI5MTI4NTUxZDMwN2I2NmY1ZGM0Y2Q1Mjc4NjM2NjY3ZmU2NzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://feature/mail/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/MailRepository.kt#L42-L53",
+          "version": "repo-lines-v1:sha256:e6bae18e08996ba56546989883da86bf79a3e2101140d148f5c53cbc705f6024:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhN2ViZWFmNmU3NmYzMTlhZTQxM2ExZDhlYzc3OGFhNTZjNjFjYTQwN2Y1OTI5ZjhkZjgxMDY0YjczMGI5OWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3NjQ5MjIzMGQ4MDk3OGVmZjI2OTllY2EyMTIyMDE1Nzg4ZWNkYTk1MmE4YjE5MDcwMGNkNzY5NjljM2VmYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

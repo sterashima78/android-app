@@ -2,22 +2,23 @@
 type: architecture
 title: 全体構成と責務
 description: Mosaic の機能、app shell と composition、feature 境界、変更時の調査先を説明する。
-tags: [architecture, modules, contexts]
+tags:
+  - architecture
+  - modules
+  - contexts
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T11:54:35.312Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-3bfcb28142050978edf94754
     resource: repo://app/build.gradle.kts
-  - id: openwiki-source-735f02f4cb4a910668807f83
-    resource: repo://docs/architecture/context-map.md
   - id: openwiki-source-d1d2160a3e9a979d5488e3ca
     resource: repo://docs/architecture/principles.md
   - id: openwiki-source-872141f77f71851168245852
     resource: repo://docs/architecture/system-overview.md
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
-generated: { by: "codex", at: "2026-10-08T11:54:35.312Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
 
 # 全体構成と責務
@@ -57,3 +58,5 @@ Calendar は Task / Workout の read model で、それらの durable state を�
 ## 変更に入る前の確認
 
 DB、cloud egress、permission、credential、background runtime、composition graph の変更は波及しやすい。[開発手順](../operations/development.md) から Change Impact Review と関連 ADR へ進み、実装と設計が食い違う場合は drift の可能性を確認する。構造の検証は [契約と検証](../testing/contracts.md) にまとめる。
+
+モジュール内の型・関数・主要メソッドとその接続は [モジュール別の索引](../modules/index.md) から確認する。executable の入口は [app](../modules/application/app.md)、具体実装の組み立ては [composition](../modules/application/composition.md)、画面への接続は [presentation](../modules/application/presentation.md) に分けて説明している。

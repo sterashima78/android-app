@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:089d28e163bd5eff7cb474152e4c0fb16d5d8ed00661695ac9e4cc2e6b416414",
+  "pageVersion": "sha256:c844322936d2e1591ed37ae78779bfb5efa527840aaf9587e1ef5b08fdc9c8c8",
   "claims": [
     {
       "id": "claim_c17ca6b4234142a793abc18240e7039b",
@@ -25,10 +25,20 @@
           "version": "repo-lines-v1:sha256:b0a6479fb5ae36ab78e182ca8063f4c6ba400fadad71bc5154611c7b5e38c1cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MmQwMTMyNGU4Y2YyOTExODgyYjA0NjgyZTI0NzE2NzY1NzJhNWZkODljYWUwMDJhYzgxNmZlYjJjNjhmOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyOGM0Y2Q3ZmIyYTVjOGJjODFkMDZiMDMwZmVmMDJjNmZiNDlmMTE1NjFlOWI1YjQzN2Y5MDE3ODEyN2FmMGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExYjFhMGFkZDZlN2ZiZjBlMzI3NmY2YTIxOWI3ZWU4YmU0MTFhOTNjOWRlMDA3MDJkMDRjODM5MWU4NzE1YzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlZDczZTQyYzIzNjFiYzc3ZjAwMDIxMDg0Y2EzY2NlZjg1NTkzNjdhMGYyMWUxZWFmNTYwNmZjMTdlOGUwNjEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5fedd6bb729e4d1da20413e42663819f",
+      "statement": "Asset のカテゴリ設定はカテゴリ定義の登録と資産名分類の置換を一つの database transaction で行う。",
+      "evidence": [
+        {
+          "resource": "repo://feature/asset/data/src/main/kotlin/dev/terashima/yomitorirss/feature/asset/data/DefaultAssetRepository.kt#L139-L161",
+          "version": "repo-lines-v1:sha256:7b3e587db4c3753c9a405e83556d19f45b3351fef71d243c1ce0d88b9843b046:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwYjY2NTI4ZGI3M2ViMGRjMzI3MzNjYzE1ZTBhYTBiYmI0ZDNhYjJjYTRlNzQ2N2Q1ZTYwMDVlYWRkYWM2ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlODIzNDY3YzYzZTlmZGM0MzYyOTg5ZjAzZmEwZTU0ZDVkZjQ5MmMxODg1Y2IxYzQxZDI4ZTBiYTVhNzk0OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzYWU3Y2U5NTk4OTI4NTdjZGI2ODA3MTdiM2Y4MzFiZTY3MDNkNzg0MzVjZThmODYxYWM1OWQwNzFkNjc1YTEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

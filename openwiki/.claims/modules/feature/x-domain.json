@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f6fb5e7d736f77825c99935b049699139d85f55881035a5562cd5b1d9b9d080b",
+  "pageVersion": "sha256:e917b8357badea8968b72d9cdd21ad21fff64793e6805f0cb4eaf105ece4ebab",
   "claims": [
     {
       "id": "claim_d10aea91ab8c4534939710b8fba1f4b8",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:58cafd4e747162adfd33eb74ffdbaa55f8564aa1634631859daf950147cddf8f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGEwNDNkM2ZhZWYxNzExYjU1MzU2N2JiY2I2MjlkODQxMjM5Yjk3NTE5OWEzYTc1YzFjOTQyNTc1YjI5OTNiMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZiYWUwMWExNzYwYTNhMzg3MjRhMGRmZGRjZTBkZWYwN2EzMDNhNzYzODBjMzA1NDczNmRiNjIwOWJiMmE3YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2M4YTk5YWZmYzk3NzliODA4YTNlZWFlMjk5ZjI4ZmY5MTc3OWIxZGYxOTUxNjg5ZjEzNjkxOGI2OTI4NDY2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_8009d243c47547dfbea3660b5e0203e3",
+      "statement": "XViewerCssSettingsのセット選択・コピー・読取は範囲外indexをrequireで拒否し、セット編集操作自体はRepository保存を行わない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/x/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/x/XViewerCssSettings.kt#L21-L52",
+          "version": "repo-lines-v1:sha256:16dd6ffaffc8f46991bd335041eb538cc335806966b0d711cf8c4cae4a96ee0e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxYmEzMzVhMDc0NTc0NjZkMWE4ZDQ4MjhhYTliYWU3YWM0MWNhNWQ4OWVjMjk1NGU4ODMwZDNiZTI0NDJjOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwNDBiOGQxM2EwYWE5ZDQ2NDQxZmYyZWZhYmIyYTVjNzliMDZjZDY5NzRkYTA1YmVjOTQyNDY3ZmY3YzEzNjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4YzYyMGRkYzY5Mzc1NTFjNjdiNmE5NGE2MTg5MjFjODZkZDAzM2MxYmQ2OTZlMGJmYmUyYWFkM2FkZDRiZWYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

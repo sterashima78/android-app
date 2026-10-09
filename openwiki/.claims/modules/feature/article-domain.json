@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7cc82c5b95e04da2852f2a2207927d2293cd2901751da85b48d40eee4457daf8",
+  "pageVersion": "sha256:d6ee6ca7cb6ad8ff9e72dd50db4d899d835e1c5a6be493b82c90778099507ebe",
   "claims": [
     {
       "id": "claim_837a7096fcd14ef58e0f98536962c489",
@@ -21,10 +21,28 @@
           "version": "repo-lines-v1:sha256:a6703778490206a43b6580ed205f740202b3e24eb1d0fb835c027066153e746a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxNjk1MWVkZGI4MjgwNzkwMjgwNzEzNjc1ZDQzYjM3ODc2MGY2MGQyMDM0MTg2ZDgyNDZlM2ZiZmMzMjI1OGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_80f9ca75596e403a8ef8e4e7839532ba",
+      "statement": "Contentのsource分類queryと削除保護queryはcompositionでRSS DataとBookmark/Summary Dataへ接続され、ArticleRepositoryがforeign tableを直接参照しない。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/content/AppContentRuntimeDependencies.kt#L65-L87",
+          "version": "repo-lines-v1:sha256:003c2dc51de19a3dfcbcbd8f95c999e229596fc3ca22999e7cd856c6cf7bc2cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwYzBkNmIyNzk0ZTAxNzE3MDMxZTY0MDk4MzE1NzU4OTU3MmQ0ZTE1MzFjM2I1MDIwYWQ4ZjlhNjY5MTRlZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyNWVkY2RlZGVlMmE4MzczMGQyZTA2MzJkNjE2NDJlYWZlY2Q2NDliZWU3NmU5ODI4NzY5YzliNjA4Y2JjNTgifQ"
+        },
+        {
+          "resource": "repo://feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt#L105-L114",
+          "version": "repo-lines-v1:sha256:c078072b5136785b4ce1c6c724f09d7aaf7c208ae8eb0c030177028b37202714:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1MmRjNGEwMGJhN2FmYjc5MDMzNjU1MTY5MjU5ZTk0NjQ4Y2ZmYTJjNWU3ZGU1ZWRkNDQ4OTY5YWU4NzFlN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDRlZDg2NmJjMDc5NjMyNGIyNTFlZjEzNmY0MTU2MWFlNzM0NWIxNGRkYTU4Yjg5Njc4YjMwNGQ0ZDFlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5MGMwM2Y5YjdjM2NjODFjYjQ4NWIzYTIzOTIwNjI2Mzc3NzhjMTIyNjc0ZmM1ODNlODhkMGJlODcwNWIyNGQifQ"
+        },
+        {
+          "resource": "repo://feature/article/data/src/main/kotlin/dev/terashima/yomitorirss/feature/article/data/ArticleRepository.kt#L29-L46",
+          "version": "repo-lines-v1:sha256:e52f4048c7958874d214775f824f8010e7ee541bdd53fbad5009d737f8275326:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZmJiMGQzNGRmNjc3MGEwMWY3MTI0NjUyYjUzMmRjYjRlYmZkN2RiZjc0Y2ZmMDdiNDU3ZmNkYjY3ZDFhYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxM2U1MzUzZTVkYmFhOWE1YTA4NWM5YzQ5M2JlNDRiOGRiOWZhMTcyMWJiMjIyN2I5ZjJkYTkzMWE2NDZhYWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1N2M5Y2MyMGJhOWM1MjJlYjc4M2Q3NmExNzExNTU1NGExYWQ3ZjczYWRkNWY4NDE2NWM2ZDIwZmUyZGZlNWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

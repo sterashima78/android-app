@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a3ef2b10dff1aec5491b161db6109f19f40b87e6190c2c9643d440233d69d640",
+  "pageVersion": "sha256:ed05d8392b7f3389266e98439861e0a4170ba70004bb5078e027b8bc419536f9",
   "claims": [
     {
       "id": "claim_12f3d7fa93044d92914203453b0b4eb8",
       "statement": "Workout UI の完了はセットなしなら何もせず、実績と当日メニューを履歴に保存した後に Health Connect exporter を呼ぶ。",
       "evidence": [
         {
-          "resource": "repo://feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutViewModel.kt#L226-L260",
-          "version": "repo-lines-v1:sha256:08c37c84c1a0ea6d6636f7009c5e1f78cfb19ff91f545c9c6c418cc5e713adb6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MjUwNTY3OGRkYWEyZjUzYTQ5MzFkNzAxYTU1ZjA2N2M1YmNlOTQzMGYxMjBhMGE4Y2Y4ZWYwMTgzNzEwNzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjYjQyZGZhZWZhNjkzZDQ4M2IwMDExNjJjNmY0YWE5ZTUwZDNhYWQ4ZGZkMTdhNDQ1ZGJmNWY5MzJlZDk2ZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiODU0MTRiOTE5NDNiMGY5Y2UwOTEyMjI3YTdjMDM5NTE4ZmMyMWEyZTVjZDQzYThjN2M0ZDM2MzY5ODk5OGIifQ"
+          "resource": "repo://feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutViewModel.kt#L287-L321",
+          "version": "repo-lines-v1:sha256:d21b07009ab3dc56d7f6634ef85b7f15326dfeefc5d7b4a1b12c635aa5ae641b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MjUwNTY3OGRkYWEyZjUzYTQ5MzFkNzAxYTU1ZjA2N2M1YmNlOTQzMGYxMjBhMGE4Y2Y4ZWYwMTgzNzEwNzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjYjQyZGZhZWZhNjkzZDQ4M2IwMDExNjJjNmY0YWE5ZTUwZDNhYWQ4ZGZkMTdhNDQ1ZGJmNWY5MzJlZDk2ZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiODU0MTRiOTE5NDNiMGY5Y2UwOTEyMjI3YTdjMDM5NTE4ZmMyMWEyZTVjZDQzYThjN2M0ZDM2MzY5ODk5OGIifQ"
         }
       ]
     },
@@ -17,14 +17,24 @@
       "statement": "Workout UI は export 権限許可後に最新履歴の export を再試行する。",
       "evidence": [
         {
-          "resource": "repo://feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutViewModel.kt#L262-L282",
+          "resource": "repo://feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutViewModel.kt#L323-L343",
           "version": "repo-lines-v1:sha256:4d0c46c5b8e023da1f2e61e40eeef7716148d26b656c1ea739a061613927a75f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxOWEzNjVmNDNiYWZjYTMyZTI3Zjc5YWI5NTVjYmU2NjRmMTgxYTc3NjUxZWRkMTYxYWMyMGNiMzBhZDJjZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxMjJmZTZjYmM1NzQ4NDRmMjE1OTg5NWI1OWRiOTQ5YjY0MGM0NjBiZGVmOWY1MTljNjM5YTRkNzEwZTZmYzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_014dfdb782804812aa2bc87fab575197",
+      "statement": "Workout UI の完了保存と外部 export は同じ runCatching に入り、端末保存の例外も export の FAILED 表示に変換されるため、その表示だけで保存成功を保証しない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutViewModel.kt#L287-L320",
+          "version": "repo-lines-v1:sha256:43a470a5d37c771b02bb0144dd61a18e3925f1a86c364c169e11240b6a6813e5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MjUwNTY3OGRkYWEyZjUzYTQ5MzFkNzAxYTU1ZjA2N2M1YmNlOTQzMGYxMjBhMGE4Y2Y4ZWYwMTgzNzEwNzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjYjQyZGZhZWZhNjkzZDQ4M2IwMDExNjJjNmY0YWE5ZTUwZDNhYWQ4ZGZkMTdhNDQ1ZGJmNWY5MzJlZDk2ZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlZWUwMGZhZTc3MmE3Y2NlNWQ2N2UzNDYzODBlNzJkN2ExZDlmOTUxYzJjZjc3ZDYwMWViZmZhOTk3NjMxMjAifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

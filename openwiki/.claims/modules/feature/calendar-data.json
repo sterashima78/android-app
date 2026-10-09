@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9430604dbac21678cd78ebdd5b6afd94cfab4e3ad4c6d1edd819eca98973c58e",
+  "pageVersion": "sha256:8fa1284e424dc42ee1eaa027c0356fb2c570bfe69d3057c6dea3ddc7fdfc6d13",
   "claims": [
     {
       "id": "claim_18840ad7d01f4489b07d39b4c63435c5",
@@ -25,10 +25,20 @@
           "version": "repo-lines-v1:sha256:688436c39b006fcca256fb043652b449146f6b558ce1aec2675a82e9a1e9846d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3OGNiOWJkMmIyODMxMDhiN2Q2MGNmMjg1NTc2YzUxM2VkNWQ1YmE5ZDQxNzAxODE2NWU0M2JlMTRkNTQyOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2MjIwZDFjOTgyNmFiYTNiYzc2MTRjOWQ4MDMyZDY3MDU1M2ZhZmI1ZmE5ZWQyZmU0MzZhMGRlZDQ3YjgzYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5YTU3YzdhZjFhMjE2MWMyODllZGNhOWI1MDlhNWM1MmY2ZDIyNzAxNzU0YzU3YjIzNDRkNDZiOGNkOTIzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiNmJiMTU3NGI0MTYzYzlmN2Y2NGQ5ZmI5YWI1YmZiOTRjYjdkMjUwNTdlMjdhNDgwZDlmYWU2YTRlMGMxMjIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_ae3b2728ca92419bb1fd5afaf975f20d",
+      "statement": "Calendar のタスク投影は期日のある範囲内タスクを一日の終日期限として表示し、完了済みも除外せず説明へ完了を付ける。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/data/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/data/DefaultCalendarRepository.kt#L56-L78",
+          "version": "repo-lines-v1:sha256:c52a15b7c8c84ce5d1f42c1f84d31835bef1e044907905d2fe24cea19edb07c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MzVhYTYyYWE0MjgzZWJlYWU2YmJlM2QxZGZkYjc3MjdlNWM4MTAxYTllNWQwZmU1ZWU1YzAzOTFhM2QwYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1ZGE2MDUwMmY3ZDQwOGE5ZjBmODNlY2Y4ODMyZTk3MzI5MTk3YTE1NmNhYTgyNWU2NzVlMmJhZDkyMzc4YTQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

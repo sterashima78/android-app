@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1acc5c2878cb64f36de4253dc6b142e33b11a70ebf7e157c88cbb82a4b79039e",
+  "pageVersion": "sha256:75a1d349d0cb8d88a4d626412672608a896ffeb65920f6f20b793ad4b6e73433",
   "claims": [
     {
       "id": "claim_6e0d9b7b2a87421db798d65ddc3f77da",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:614a0c7fd15dc2a9f2dfeaf91c37b4a27b6b5a8af4e79f87d38dd89c74536e5c:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTYwNDMzOTc2MmI4MjU2ZjU0NTc0NjZhZDg3YjM2ZTQ1OWFiN2IwMGU0YWU4ZDA2MGFkNjUwYzEyZGRmOGI5NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzRmZmExOTdjMTg1YWZhODYzYWIzNDI2M2FiMDI0NWZjMzkwNTJkOWY0MWVkYTM0YTA2ODU3YTBkN2RkNGU0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTI5YzljZWFmMjA5OWZmNmMwNjhlOGViNjQyYzExYjY5ZGNkYzVlNzQwNmQ2YWJmZmVlYzdkOWQwNDY1YmY4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Q4ZGYwYmYzYmM3ZjkzY2NkNWZjMDA5ZWY1ZmFlZTg0YzcyNmQ4NWFkMWYyMDNjYjY1N2VjNWM5OTcxMDZmYyJ9"
         }
       ]
+    },
+    {
+      "id": "claim_7a6709b14cfe48ba981e1ac5d6835fa4",
+      "statement": "メールのあとで読む設定はremote Gmail labelではなくMail-owned threadのlocal属性として保存する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt#L249-L259",
+          "version": "repo-lines-v1:sha256:04c86d0eb6d9e6239e19ff3e248242c74b03b3244980241c4cd41948c5f68b50:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwMDkxZjIyMDFmMWNkM2FlMTliN2I0ZjI0MTllYTQxNTE5MjliMjk0YTdlMzg3OGUwMGVhYjdjMTQ1ODY1ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkNWYyNDBhMmUyMTAzNmY0NmFhMmY1ZjcwZGUyNmZkNzgxMGY1NTQ4MWUyMzI4YTgzZGQwY2EzNDkzM2M0NzgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

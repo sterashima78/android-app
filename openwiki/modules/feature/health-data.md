@@ -1,22 +1,46 @@
 ---
 type: module
-title: "Health Data：Health Connect 読取と重複除去"
-description: "期間集計、page token 読取、栄養の日別集約と運動 session の代表選択。"
-tags: [health, data, modules]
+title: Health Data：Health Connect 読取と重複除去
+description: 期間集計、page token 読取、栄養の日別集約と運動 session の代表選択。
+tags:
+  - health
+  - data
+  - modules
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-08T13:53:53.288Z
+    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-2d30eb295dced2580bd4cdde
     resource: repo://feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/ExerciseSessionDeduplication.kt
   - id: openwiki-source-cd3da51008ca8af7e121f19a
     resource: repo://feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt
-generated: { by: "codex", at: "2026-10-08T13:53:53.288Z" }
+generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ---
-
 # Health Data：Health Connect 読取と重複除去
 
 `:feature:health:data` はHealthRepository を Health Connect client に接続する Android library である。application context から client を遅延作成し、provider 状態、読取 permission と履歴 feature の対応を調べる。保存先の database を持たず、platform の record を Domain の read model に変換して返す。Workout の exporter が同じ platform を利用していても、ここは健康情報の読取を担当する。
+
+
+## 主要な構成要素
+
+| 構成要素・種類 | 責務・主要 API と関係 | 実装 |
+| --- | --- | --- |
+| HealthConnectHealthRepository（class） | HealthRepository 実装。availability / hasRequiredPermissions / historyAccess / requestPermissions / readOverview を platform client に接続する。 | [HealthConnectHealthRepository.kt](../../../feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt) |
+| readDailySummaries / readExerciseSessions / enrichExerciseSessionActivity / readBodyFatMeasurements / readDailyNutrition（private suspend メソッド） | 日別 aggregate、session 詳細と短期間の活動指標、体脂肪・栄養のページ読取を分担する。 | [HealthConnectHealthRepository.kt](../../../feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt) |
+| ExerciseSessionCandidate（internal data class）、deduplicateExerciseSessions（internal 関数） | 提供元 package と種別を保持し、segment・notes・title・期間の豊富な候補から代表 session を選ぶ。 | [ExerciseSessionDeduplication.kt](../../../feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/ExerciseSessionDeduplication.kt) |
+| sameRealWorldExercise / hasSegmentEquivalent / hasStrongTemporalOverlap（private 関数） | 完全一致、提供元、時間重複と segment 相当性で候補の統合可否を決める。 | [ExerciseSessionDeduplication.kt](../../../feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/ExerciseSessionDeduplication.kt) |
+| NutritionSample / aggregateNutritionByDay（internal 型・関数） | record の開始日と栄養値を暦日単位で合算して DailyNutritionIntake を返す。 | [HealthConnectHealthRepository.kt](../../../feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt) |
+| totalExerciseMinutes / exerciseSessionName / exerciseSegmentName（internal 関数） | session 時間合計と platform の種別名を表示モデル用に変換する。totalExerciseMinutes は空一覧なら null。 | [HealthConnectHealthRepository.kt](../../../feature/health/data/src/main/kotlin/dev/terashima/yomitorirss/feature/health/data/HealthConnectHealthRepository.kt) |
+
+## 主要 API と接続
+
+`requestPermissions()` は READ_PERMISSIONS と対応端末だけの HISTORY_PERMISSION を返し、composition が HealthRoute へ渡す。`readOverview` の exerciseMinutes は aggregate の値で、重複除去後 session の合計から再計算していない。`readDailySummaries` は端末 timezone で日別区間を作り、欠測日も nullable 指標を持つ行にする。
+
+## 代表的な処理フロー
+
+`readOverview` → client.aggregate → `readExerciseSessions` の pageToken loop → `deduplicateExerciseSessions` → 短期間なら session ごとの `enrichExerciseSessionActivity` → 体脂肪・栄養の pageToken loop → `readDailySummaries` → HealthOverview。栄養の日付は record の startZoneOffset を優先し、なければ端末 timezone を使う。読取の例外は UI へ伝播し、この Data は健康 record をアプリ内へ永続化しない。
+
+接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。Health Repository の生成は [AppHealthRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/health/AppHealthRuntimeDependencies.kt) を参照する。
 
 ## 期間集計と詳細
 

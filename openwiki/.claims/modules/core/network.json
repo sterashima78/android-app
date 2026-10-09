@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9a10c205ae7305b1214a9cdd60650de6cbeb14a06844490e813766dd24b3b7ee",
+  "pageVersion": "sha256:14bb66d49882fcea8b6fb8a3599bcebb6399c563861fab60b45ebb6d9db89df0",
   "claims": [
     {
       "id": "claim_1e355b02bdc84b66911908b34edc9902",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:90d25a230b7a030f0c6e726ec31ddff12c23cff2a832f67d775f580cbbcae037:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyZDUzZWVlYjU0YzY0YzQ5NDRlNTViOWQ3MGUwZGZhNGJlOWE5ZjZhNmY4MzYyN2Y4Y2FjZWIzYzRhYjlhMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzZDRmM2NlMGIyZDYzMGQ0Y2M5MjViOWJjN2I5NzlhMjE1OWE4YWE1Y2E5ZThmNWY5YmU2ZDJlODRmYWY3ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlY2IyOTk2NTBlMDUyMzdjOWMxYjIwMWE2MzA2NWZiZmQyMWYwNDI4NDBhYWYwZWQ0YzY4NTRlOTRmNmVlNTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_218553bf4d9e42d5aa61eeeea756c366",
+      "statement": "AppContainer は版付き User-Agent の共通 HttpClient を生成し、その transport を feature runtime に注入する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppContainer.kt#L30-L65",
+          "version": "repo-lines-v1:sha256:2939dd7b183267a1772f3a56f846b75d95fa8fea13eb16c9a0dacd0012de828b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiMzAzNDkyZTNhZTUxM2FlZDg3OWY0YWNjYjZiMzg4YzU4NGM3OTQyMWI3OTY2YmU3YThkNTUzNjFjMGJjMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3NzVkOWQ5NzhjYWY5ODQ0NmIxZWE3MmNjMjZkYjlmN2MyZDg0OTkxNzViNWJmOTVhOGQxMDZkZmUxODMzODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiNzc4ODdlMjZlZjc3NWNmZGVjMjJiYWNkNWQ1NGRlMWQwNmZhZTlkODY4NjU4M2ExZDFlNGEwZDIyZTk2NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNmMTYxZTI2ZmYxYjJlODE0OTVmNWZhZDllYzBjZjA3ZDBiNDFmYWFmNzEwMzJmNjQ0MDI4NjcwMzRhMjVjMDgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a75cdd736ae9f724b18ba2d2b87bd6efd887751921c5a9fd7a3442549a98c498",
+  "pageVersion": "sha256:9d08e277bf84754575b88ea026ddb63478d33ebad1ef97cd3c31d0f47786178b",
   "claims": [
     {
       "id": "claim_ba76d4ace9744178a27bc5d123d56d72",
@@ -31,10 +31,24 @@
           "version": "repo-lines-v1:sha256:6011fa947ff0acfcf68cd99c50f7e5730b2afc02f01c9ab57f300562f24629dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ODRiNzBlYzg5YjgwODA3NDE1ZTg3OTcyMjAzM2U0OTJlOTQ4MGNiNzNiNDNmM2JiY2Q1MGJjYTdhZDhhYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlNzVjYTg4OThhNTZhOTZmZDI3NjY2OGEwMjc1N2UwZmNhY2I5MWY5OTAyYjZkZThmZGY5MTYzZTRkZTQ4ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiZmI1YzY3ODA5NzExYTY1NTNiYTZhOGE5N2U3MTI3MzNhOTQxNmZkNmZkMzNiMjVjMTlhYjAyZWJjNTg0OTIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_f5d0532cf1f742bb8769ba2b92d16759",
+      "statement": "Web collector は必要な WebView feature を検査し、専用 profile の main-frame message からのみ結果を返し、結果 callback の後に dismiss callback を実行する。",
+      "evidence": [
+        {
+          "resource": "repo://core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt#L171-L240",
+          "version": "repo-lines-v1:sha256:d7c1055216d6bcd719f907614c002ef66bcdbbb53f3e4112527675e93cef5068:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2MzA0MzJiNmM0MzFhYmVmZjUxNGI5NTE2MTI1NWRlZDVjM2E2MjQzOGJhMjZkYWU2NTM1ODEzOTE0YWE5OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkYTJkMThiY2I1YWNhOTI3MWQ5NDJkNjY2NGYxYTcwZWM0NjU2NTZlZjVlNDgzNjE5ZWI3NWY4MGYzMDI0MDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxZTAyOGM5MGVkZDgwZTAzNzliZWYxODU2N2MzNjYxODVkZGUwYjg2Njk1YTU2ZTg3ZTU2NmI2MjZlZmZmY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1YTI0MmQ3ZDJkZGM0ZDcwYmVkY2YxYWEyNWMxNzA0MWVjM2NkOTk5ZWIyMTdmODE5ZmM1MjI0Yzc4NWFiNzkifQ"
+        },
+        {
+          "resource": "repo://core/web-collector/src/main/kotlin/dev/terashima/yomitorirss/core/webcollector/SecureWebCollectorDialog.kt#L73-L111",
+          "version": "repo-lines-v1:sha256:47db657a4ad7073464be7bcab13ffbdb161b372423689a265dee949d531cd2a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGQ5NzlhM2JiNjU4M2YyOWJhYmZlZmJlNGM4YjUwMGMxMDcxOWJjOTc4ODgwNzYyMTlhYWY3NTUzZDAzOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzYTQ0NDRmMTdmOGU5MDdhYzI5ZTUwNWM1ZmQyODcwMzFlODhiNmFjZmNlODVhYjFiNTI3ZmYwNzcyNTU4OGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwNTIyYTE0MGE4MGQ1YTg5ZDI5OWJjZjgzZDVkMDJhZDE3MGEzMDkzZGE2MjJkNDIxYWZmNGE0ODdjZTQ4YTIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

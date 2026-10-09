@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:94df4ce2810617d41ababa82e8754b94023a3b733b9da00f337de4a051a81e6c",
+  "pageVersion": "sha256:aaadf52bcb84e20b405b676bcc0ecb7537128fdfd92e27f423867822c9187fdd",
   "claims": [
     {
       "id": "claim_d1e158a9e9bc42a4aec355b0667da16d",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:24023d59a60ae9558baa3e1392a563123692685ee0c31ee3e5215e581e3ce20b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmOTc1YzcwNzFhMTg0ZGRlMTA5MmJiOGQ3ZTEzMmU2YjU1MDE4MzU1MThmZWQ4MDE5NWI2NTU1MzA5NzIwZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwNjhhYTMzZGE3NTRkMzFiMjk4ODEzMzdhZjcwMGNiYzgxMWEyZDM1NDZiMTViZjQyYTc1ZmY1NzY3YTBhZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAzMDM4MjRjZmViZTNlYTJlNWYzMTNmNmMwYmVlZjc0MmE4MWMxNmE3OGE2ZmIwMjEyMjlkNjgxMDlmN2E5N2EifQ"
         }
       ]
+    },
+    {
+      "id": "claim_c407659b77e94a36bc9f0d8d2ed50549",
+      "statement": "WebServerDialogのcontroller購読と起動権限処理はapp presentationのLanWebServerDialogHostが担う。",
+      "evidence": [
+        {
+          "resource": "repo://app/presentation/src/main/kotlin/dev/terashima/yomitorirss/ui/LanWebServerDialogHost.kt#L21-L72",
+          "version": "repo-lines-v1:sha256:f4d72094366a08c969f3edf7979a944087710fb1c1f86aebfdd5ecb308d89bfb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1NWNlYTZhNjc5MTk3ZDgyNzljMWE4MmU1M2MxMDJhMTcyMGU0Nzg3NjE0NDMwOTU2ZDZiZDI2MTIyNzFiZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2ZTg1NzM5MjI1ZWQ1MWQ3MDlhNDlmMDkxNzg2NTE2MTk2ZjMwOGI5YWVmMDIwNWMwYWYwNWFkNGE2MmQ1OGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ4OTJlODg1MzU5ODgwYWE2MWIzOWVjYzkwOWQ2YTNlOGY0N2IwMDI3OGE1ODYwZDZiYTZhZjkwMWMxNWNiYTAifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

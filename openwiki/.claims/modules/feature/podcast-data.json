@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5a6074e23022a3ae6f27de18f3f8deab7bff50373c217b71a0f28e2b977b91f3",
+  "pageVersion": "sha256:cb11a4b4165122b8c1da273b4055e01ce967ffde427cefad159fcfde33aa1817",
   "claims": [
     {
       "id": "claim_542a6a10ce51484abdc3317eb5a8c495",
@@ -31,10 +31,34 @@
           "version": "repo-lines-v1:sha256:8e7b18102f95480d2d6caba1c6926d836d14fe9843238106fc0266b76c269998:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OTAyMTkyYzEwODFlMjFhNDk0YzZiNWFjZGJmZmFjZDcyYWUxYzc0YTBmNjQ4OTBhYTBiMTdjYjVhZDE0ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5OTVkYmE2YjAxNDdjN2FjYjRlYjFiOGRhMTI1ZDkxYmI5YWM3MmI3MWU0ZDczZmExMzJiYmYzZTBiYWQyMDAifQ"
         }
       ]
+    },
+    {
+      "id": "claim_198864b28fe543fea63c690ceca08d75",
+      "statement": "Podcast手動workは番組単位KEEPで登録し、scheduleのsync/ensure/scheduleNextはREPLACE/KEEP/APPEND_OR_REPLACEを使い分ける。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastGenerationWorker.kt#L219-L280",
+          "version": "repo-lines-v1:sha256:9bf7c0ee4cb1db6c87ce624cda7fdff30ceb6cf09613719f4326c302dc3ee7a5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NmJjNWE2NTljNzMwYmJjNTYzZTRiY2NjZGRkMmY5ZTdmMzQzNzFmOTcwOThiZDE3NmI3OWNhZjhlYmViMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1MTMxYTYyZTViYjA0YzA5YWQzNTFjZGZkYWMzYmZjN2QwN2EzZTFlZWFhZTFhOWYwZWI1MWFiNWY5NTk1Y2IifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ab30559cb51d488597b92f8d2286231c",
+      "statement": "podcast の所有 schema contribution は app composition の appDatabaseSchema に登録され、共通 database 初期化へ接続される。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/AppDatabaseSchema.kt#L17-L33",
+          "version": "repo-lines-v1:sha256:4f2188c1c874a55b86503b07587770522b09958971d6816889375cb8d6c8531e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkZTI4MzZlMzY1MzNlZDg4ZmMyNDE2MzJiNWZiZmE5MDViYmVkZDYwNzhjODMzNGI5YWFlYTJiODE4ZWI4MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiYzE4YjliNDRiMmU0MTgzMzQyNTU3YTJjOTIzYzFmODk2M2VhNTQwYThkNmY5NzYxZjkzMmE4YzkwNmEwOTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://feature/podcast/data/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/data/PodcastDatabaseSchema.kt#L1-L13",
+          "version": "repo-lines-v1:sha256:848b9ba02fd3e5f19389a710bd4ab998db7e7e0cdcdbefdd57b6e736a3888cc5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5YjIwNjVhMGFhOThlYzRiMDQ0MGE1MDBhMWIzYjE3ZjIwNmJmMGE0YTI5YWUxMTAwNjgwN2ZjNjI3NjM0Y2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0YzE1NmFiMmQwM2RkZDM4NWE3MGNkNTMwN2QzZWU1N2RiYWY2ZTRlZDFiZWYzYzg0Y2JjOWFiMGM0ZjBmOWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }

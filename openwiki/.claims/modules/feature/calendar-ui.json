@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8fd9e8f03ce959e143d6d3c4da8be2c0d6f80294ee5ae66faf01d0fd243507ba",
+  "pageVersion": "sha256:aafdd2cfefbbc0e84399f477131564cd75c26d6318425340d01c1a22b814f40c",
   "claims": [
     {
       "id": "claim_6152c0e7bc594b3e91968e7cedbe0230",
@@ -21,10 +21,20 @@
           "version": "repo-lines-v1:sha256:dc78d1f56eb37c07ec100fbaa9433e72ea5bc771549285481e98bc88cce34073:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzZjgxMTAzZTA5N2ZlZWJiYjFiNTdkM2EwOTE5MDg1ZjJmZjU1ZWY3Mzg2NzUwYTNmYWQ2N2Q2NzgyMWRiYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_68e3069a4d9248628d1e263f2206cf92",
+      "statement": "Calendar UI は同じ月の日付選択では選択日だけを更新し、別月なら表示月を変更してイベントを再取得する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/calendar/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/CalendarViewModel.kt#L54-L61",
+          "version": "repo-lines-v1:sha256:83ba7d8a5a8e62bfecab1b0bcca330a05115e1b0cedbd8a89b0b7f2e68e2cd63:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDM4MjE3ZGJiZjBkMjUxZTdkMjliZmExZTE3OWQ4M2IyYWU3N2M1N2M5MmYwMDE0NGFhMzI5OTQzNGE3NmY4YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzZhMjMyZjU1Nzc1Y2RmZWI5NTE0ZGVjM2ZlZDBmMzc1ZjU2MjU2OTQxMjgzZDNjYzgzOGE0OGMwNDI2NGFiMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2QxOTQ1ZDUyODY1MmNhM2EyZmUyYzgxZTAzNmQ0NjkwNjY5OWI5MGIwNzZlODYyODIyYjJlNGIyZTgxMWRlYyJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T13:53:53.288Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }
