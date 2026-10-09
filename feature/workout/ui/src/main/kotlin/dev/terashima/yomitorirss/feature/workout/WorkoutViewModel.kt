@@ -51,7 +51,7 @@ data class WorkoutUiState(
   val menuMessage: String? = null,
 ) {
   val detailsValid: Boolean
-    get() = (loadKind == null || runCatching { WorkoutLoad(loadKind, loadValue) }.isSuccess) &&
+    get() = (loadKind?.let { kind -> runCatching { WorkoutLoad(kind, loadValue) }.isSuccess } ?: true) &&
       (restSeconds.isBlank() || restSeconds.toIntOrNull()?.let { it >= 0 } == true)
 
   fun selectedLoad(): WorkoutLoad? = loadKind?.let { kind ->
