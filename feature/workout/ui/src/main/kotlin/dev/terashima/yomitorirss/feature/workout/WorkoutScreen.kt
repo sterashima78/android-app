@@ -220,6 +220,14 @@ private fun WorkoutLogScreen(
             state.nextTarget?.let { target ->
               Text("次の目標: $target${active.unit.label}", style = MaterialTheme.typography.labelLarge)
             }
+            WorkoutSetDetailInputs(state, viewModel)
+            OutlinedTextField(
+              value = state.memo,
+              onValueChange = viewModel::updateMemo,
+              modifier = Modifier.fillMaxWidth(),
+              label = { Text("セットメモ") },
+              minLines = 2,
+            )
             when (active.type) {
               WorkoutExerciseType.PLANK -> StopwatchControls(
                 seconds = state.plankSeconds,
@@ -228,6 +236,7 @@ private fun WorkoutLogScreen(
                 onPause = viewModel::pausePlank,
                 onReset = viewModel::resetPlank,
                 onRecord = viewModel::recordPlank,
+                canRecord = state.detailsValid,
               )
               WorkoutExerciseType.STEP_UP -> {
                 StopwatchControls(
@@ -237,6 +246,7 @@ private fun WorkoutLogScreen(
                   onPause = viewModel::pauseStepUp,
                   onReset = viewModel::resetStepUp,
                   onRecord = viewModel::recordStepUp,
+                  canRecord = state.detailsValid,
                 )
                 OutlinedTextField(
                   value = state.stepCount,
@@ -259,22 +269,22 @@ private fun WorkoutLogScreen(
                   )
                   OutlinedButton(onClick = { viewModel.adjustAmount(1) }) { Text("+") }
                 }
-                Button(onClick = viewModel::recordSet, modifier = Modifier.fillMaxWidth()) { Text("セットを記録") }
+                Button(
+                  onClick = viewModel::recordSet,
+                  enabled = state.detailsValid,
+                  modifier = Modifier.fillMaxWidth(),
+                ) { Text("セットを記録") }
               }
             }
-            OutlinedTextField(
-              value = state.memo,
-              onValueChange = viewModel::updateMemo,
-              modifier = Modifier.fillMaxWidth(),
-              label = { Text("セットメモ") },
-              minLines = 2,
-            )
             if (state.activeSets.isNotEmpty()) {
               TextButton(onClick = viewModel::undoActiveSet) { Text("直前のセットを取り消す") }
               HorizontalDivider()
               state.activeSets.forEachIndexed { index, set ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                   Text("セット ${index + 1}: ${formatSet(set)}", fontWeight = FontWeight.SemiBold)
+                  formatWorkoutSetDetails(set).takeIf(String::isNotBlank)?.let { details ->
+                    Text(details, style = MaterialTheme.typography.bodySmall)
+                  }
                   if (set.memo.isNotBlank()) Text(set.memo, style = MaterialTheme.typography.bodySmall)
                 }
               }
@@ -287,6 +297,95 @@ private fun WorkoutLogScreen(
 }
 
 @Composable
+private fun WorkoutSetDetailInputs(state: WorkoutUiState, viewModel: WorkoutViewModel) {
+  var expanded by remember(state.selectedExerciseId) { mutableStateOf(false) }
+  TextButton(onClick = { expanded = !expanded }) {
+    Text(if (expanded) "強度・フォーム・負荷の詳細を閉じる" else "強度・フォーム・負荷を記録（任意）")
+  }
+  if (!expanded) return
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text("RPE（主観的なきつさ）", style = MaterialTheme.typography.labelLarge)
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+      item {
+        FilterChip(
+          selected = state.rpe == null,
+          onClick = { viewModel.updateRpe(null) },
+          label = { Text("未入力") },
+        )
+      }
+      items((1..10).toList()) { value ->
+        FilterChip(
+          selected = state.rpe == value,
+          onClick = { viewModel.updateRpe(value) },
+          label = { Text(value.toString()) },
+        )
+      }
+    }
+    Text("フォーム", style = MaterialTheme.typography.labelLarge)
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+      item { FilterChip(selected = state.formQuality == null, onClick = { viewModel.updateFormQuality(null) }, label = { Text("未入力") }) }
+      items(WorkoutFormQuality.entries) { quality ->
+        FilterChip(
+          selected = state.formQuality == quality,
+          onClick = { viewModel.updateFormQuality(quality) },
+          label = { Text(quality.label) },
+        )
+      }
+    }
+    Text("負荷条件", style = MaterialTheme.typography.labelLarge)
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+      item { FilterChip(selected = state.loadKind == null, onClick = { viewModel.updateLoadKind(null) }, label = { Text("未入力") }) }
+      items(WorkoutLoadKind.entries) { kind ->
+        FilterChip(
+          selected = state.loadKind == kind,
+          onClick = { viewModel.updateLoadKind(kind) },
+          label = { Text(kind.label) },
+        )
+      }
+    }
+    when (state.loadKind) {
+      WorkoutLoadKind.BODY_ANGLE -> {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          items(listOf("起こした姿勢", "中程度の傾斜", "水平に近い姿勢")) { posture ->
+            FilterChip(
+              selected = state.loadValue == posture,
+              onClick = { viewModel.updateLoadValue(posture) },
+              label = { Text(posture) },
+            )
+          }
+        }
+      }
+      WorkoutLoadKind.ADDED_WEIGHT, WorkoutLoadKind.ASSISTED_WEIGHT -> OutlinedTextField(
+        value = state.loadValue,
+        onValueChange = viewModel::updateLoadValue,
+        label = { Text("重量 (kg)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+      )
+      WorkoutLoadKind.OTHER -> OutlinedTextField(
+        value = state.loadValue,
+        onValueChange = viewModel::updateLoadValue,
+        label = { Text("負荷条件の説明") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+      )
+      null -> Unit
+    }
+    OutlinedTextField(
+      value = state.restSeconds,
+      onValueChange = viewModel::updateRestSeconds,
+      modifier = Modifier.fillMaxWidth(),
+      singleLine = true,
+      label = { Text("直前の休憩 (実測秒数、任意)") },
+    )
+    TextButton(onClick = viewModel::reuseLastSetDetails) { Text("同じ種目の前回記録を引き継ぐ") }
+    if (!state.detailsValid) {
+      Text("選択した負荷条件の値を入力するか、負荷条件を未入力にしてください。", color = MaterialTheme.colorScheme.error)
+    }
+  }
+}
+
+@Composable
 private fun StopwatchControls(
   seconds: Int,
   running: Boolean,
@@ -294,6 +393,7 @@ private fun StopwatchControls(
   onPause: () -> Unit,
   onReset: () -> Unit,
   onRecord: () -> Unit,
+  canRecord: Boolean = true,
 ) {
   Text(formatDuration(seconds), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
   Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -301,7 +401,7 @@ private fun StopwatchControls(
     OutlinedButton(onClick = onPause, enabled = running) { Text("一時停止") }
     OutlinedButton(onClick = onReset) { Text("リセット") }
   }
-  Button(onClick = onRecord, enabled = seconds > 0, modifier = Modifier.fillMaxWidth()) { Text("計測値を記録") }
+  Button(onClick = onRecord, enabled = seconds > 0 && canRecord, modifier = Modifier.fillMaxWidth()) { Text("計測値を記録") }
 }
 
 @Composable
@@ -366,6 +466,11 @@ private fun WorkoutHistoryScreen(state: WorkoutUiState, modifier: Modifier) {
           }
           Text("${history.sets.size} セット", style = MaterialTheme.typography.bodySmall)
           history.sets.groupBy { it.exerciseId }.values.forEach { sets -> Text(formatWorkoutHistoryExercise(sets)) }
+          history.sets.forEachIndexed { index, set ->
+            formatWorkoutSetDetails(set).takeIf(String::isNotBlank)?.let { details ->
+              Text("セット ${index + 1} (${set.exerciseName}): $details", style = MaterialTheme.typography.bodySmall)
+            }
+          }
         }
       }
     }
