@@ -33,6 +33,11 @@ data class WorkoutUiState(
   val amount: String = "10",
   val memo: String = "",
   val stepCount: String = "",
+  val rpe: Int? = null,
+  val formQuality: WorkoutFormQuality? = null,
+  val loadKind: WorkoutLoadKind? = null,
+  val loadValue: String = "",
+  val restSeconds: String = "",
   val intervalDurationSeconds: Int = 90,
   val intervalRemainingSeconds: Int = 90,
   val intervalRunning: Boolean = false,
@@ -45,6 +50,14 @@ data class WorkoutUiState(
   val exportPermissionRequired: Boolean = false,
   val menuMessage: String? = null,
 ) {
+  val detailsValid: Boolean
+    get() = (loadKind == null || runCatching { WorkoutLoad(loadKind, loadValue) }.isSuccess) &&
+      (restSeconds.isBlank() || restSeconds.toIntOrNull()?.let { it >= 0 } == true)
+
+  fun selectedLoad(): WorkoutLoad? = loadKind?.let { kind ->
+    runCatching { WorkoutLoad(kind, loadValue.trim()) }.getOrNull()
+  }
+
   val activeMenu: WorkoutMenu
     get() = snapshot.effectiveMenu()
 
@@ -108,6 +121,11 @@ class WorkoutViewModel(
         selectedExerciseId = id,
         amount = initialAmount(snapshot, id),
         memo = "",
+        rpe = null,
+        formQuality = null,
+        loadKind = null,
+        loadValue = "",
+        restSeconds = "",
         stepCount = snapshot.lastStepCounts[id]?.toString().orEmpty(),
       )
     }
@@ -211,6 +229,42 @@ class WorkoutViewModel(
   fun updateAmount(value: String) = _state.update { it.copy(amount = value.filter(Char::isDigit).take(5)) }
   fun updateMemo(value: String) = _state.update { it.copy(memo = value.take(240)) }
   fun updateStepCount(value: String) = _state.update { it.copy(stepCount = value.filter(Char::isDigit).take(6)) }
+  fun updateRpe(value: Int?) {
+    if (value != null && value !in 1..10) return
+    _state.update { it.copy(rpe = value) }
+  }
+  fun updateFormQuality(value: WorkoutFormQuality?) = _state.update { it.copy(formQuality = value) }
+  fun updateLoadKind(value: WorkoutLoadKind?) =
+    _state.update { it.copy(loadKind = value, loadValue = "") }
+  fun updateLoadValue(value: String) = _state.update { current ->
+    val next = when (current.loadKind) {
+      WorkoutLoadKind.ADDED_WEIGHT, WorkoutLoadKind.ASSISTED_WEIGHT ->
+        value.filter { it.isDigit() || it == '.' }.take(12)
+      else -> value.take(100)
+    }
+    current.copy(loadValue = next)
+  }
+  fun updateRestSeconds(value: String) =
+    _state.update { it.copy(restSeconds = value.filter(Char::isDigit).take(5)) }
+
+  fun reuseLastSetDetails() {
+    val current = _state.value
+    val id = current.activeExercise?.id ?: return
+    val previous = current.snapshot.today.sets.lastOrNull { it.exerciseId == id }
+      ?: current.snapshot.history.asSequence()
+        .flatMap { it.sets.asReversed().asSequence() }
+        .firstOrNull { it.exerciseId == id }
+      ?: return
+    _state.update {
+      it.copy(
+        rpe = previous.rpe,
+        formQuality = previous.formQuality,
+        loadKind = previous.load?.kind,
+        loadValue = previous.load?.value.orEmpty(),
+        restSeconds = previous.restSeconds?.toString().orEmpty(),
+      )
+    }
+  }
 
   fun adjustAmount(delta: Int) {
     val value = (_state.value.amount.toIntOrNull() ?: 0) + delta
@@ -296,7 +350,7 @@ class WorkoutViewModel(
     val ui = _state.value
     val exercise = ui.activeExercise ?: return
     val amount = ui.amount.toIntOrNull()?.coerceAtLeast(0) ?: return
-    if (amount <= 0) return
+    if (amount <= 0 || !ui.detailsValid) return
     val recordedAt = nowIso()
     appendSet(
       WorkoutSet(
@@ -313,7 +367,12 @@ class WorkoutViewModel(
       ),
       lastAmount = amount,
     )
-    _state.update { it.copy(memo = "", amount = initialAmount(it.snapshot, exercise.id)) }
+    _state.update {
+      it.copy(
+        memo = "", rpe = null, formQuality = null, restSeconds = "",
+        amount = initialAmount(it.snapshot, exercise.id),
+      )
+    }
     resetInterval()
     startInterval()
   }
@@ -449,7 +508,7 @@ class WorkoutViewModel(
   fun recordPlank() {
     val ui = _state.value
     val exercise = ui.activeExercise ?: return
-    if (exercise.type != WorkoutExerciseType.PLANK || ui.plankSeconds <= 0) return
+    if (exercise.type != WorkoutExerciseType.PLANK || ui.plankSeconds <= 0 || !ui.detailsValid) return
     val recordedAt = nowIso()
     appendSet(
       WorkoutSet(
@@ -466,7 +525,7 @@ class WorkoutViewModel(
       ),
       lastAmount = ui.plankSeconds,
     )
-    _state.update { it.copy(memo = "") }
+    _state.update { it.copy(memo = "", rpe = null, formQuality = null, restSeconds = "") }
     resetPlank()
     resetInterval()
     startInterval()
@@ -495,7 +554,7 @@ class WorkoutViewModel(
   fun recordStepUp() {
     val ui = _state.value
     val exercise = ui.activeExercise ?: return
-    if (exercise.type != WorkoutExerciseType.STEP_UP || ui.stepUpSeconds <= 0) return
+    if (exercise.type != WorkoutExerciseType.STEP_UP || ui.stepUpSeconds <= 0 || !ui.detailsValid) return
     val steps = ui.stepCount.toIntOrNull()?.coerceAtLeast(0) ?: 0
     val recordedAt = nowIso()
     appendSet(
@@ -515,17 +574,25 @@ class WorkoutViewModel(
       lastAmount = ui.stepUpSeconds,
       lastSteps = steps,
     )
-    _state.update { it.copy(memo = "") }
+    _state.update { it.copy(memo = "", rpe = null, formQuality = null, restSeconds = "") }
     resetStepUp()
   }
 
   private fun appendSet(set: WorkoutSet, lastAmount: Int, lastSteps: Int? = null) {
-    val current = _state.value.snapshot
+    val ui = _state.value
+    if (!ui.detailsValid) return
+    val completedSet = set.copy(
+      rpe = ui.rpe,
+      formQuality = ui.formQuality,
+      load = ui.selectedLoad(),
+      restSeconds = ui.restSeconds.toIntOrNull(),
+    )
+    val current = ui.snapshot
     val startedAt = current.today.startedAt ?: set.startedAt ?: set.recordedAt
     val lastStepCounts = if (lastSteps == null) current.lastStepCounts else current.lastStepCounts + (set.exerciseId to lastSteps)
     updateSnapshot(
       current.copy(
-        today = current.today.copy(startedAt = startedAt, menu = current.today.menu ?: current.effectiveMenu(), sets = current.today.sets + set),
+        today = current.today.copy(startedAt = startedAt, menu = current.today.menu ?: current.effectiveMenu(), sets = current.today.sets + completedSet),
         lastAmounts = current.lastAmounts + (set.exerciseId to lastAmount),
         lastStepCounts = lastStepCounts,
       ),
