@@ -378,7 +378,7 @@ private fun WorkoutSetDetailInputs(state: WorkoutUiState, viewModel: WorkoutView
       singleLine = true,
       label = { Text("直前の休憩 (実測秒数、任意)") },
     )
-    TextButton(onClick = viewModel::reuseLastSetDetails) { Text("同じ種目の前回記録を引き継ぐ") }
+    TextButton(onClick = viewModel::reuseLastLoad) { Text("同じ種目の前回負荷条件を引き継ぐ") }
     if (!state.detailsValid) {
       Text("選択した負荷条件の値を入力するか、負荷条件を未入力にしてください。", color = MaterialTheme.colorScheme.error)
     }
