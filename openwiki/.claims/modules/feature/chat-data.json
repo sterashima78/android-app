@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2b2821096238b74a056f62403eeaacb0939a6fbac1f1315fe459518fcf478a16",
+  "pageVersion": "sha256:24d38aaec3e7cd1799996a53cad1f7f75b35567ef017979becfbb31a4811c4e3",
   "claims": [
     {
       "id": "claim_e813d00667264e7b9d4eda31975b7f60",
@@ -55,10 +55,46 @@
           "version": "repo-lines-v1:sha256:c0c829e2006be5ff4a3c67de4692799752dfc5ecfc8a5d9141080626fc6c6b20:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiZDRhNTZjM2QxNTg5ZTJiOWFjZmNhNjM1NTkzYWFlNmQyM2RmYmQ0NWEzZGY5N2Y5OWFjMjNiNzBiZGFkM2E5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIyN2U1Nzg4ZDVkOWQ3M2QyNGE4MWRiYzBhNWE3NGJmYTgyYzljM2IzYWY5OWU1MmFmNzk2ZTkwYjQ2OGE4YTNkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNzMwOGIzZjgxMzdhNDJmOThmZGMyZTBhOTA0YzYwZjQ1MTM4NjZiYTRhYWVjZTk0Nzc1NDZkNmFkYmNlNWM3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2MTVlY2YwNTdmOTVkNDg5NDFkMDZkOTM2ZmZmZTY3MDZmYTJiZGRkOWUwZTIzZjc1YmRjNzI3YjRjNGFkMDkxIn0"
         }
       ]
+    },
+    {
+      "id": "claim_05c0330871ad4793bbf3421a1da6935e",
+      "statement": "LocalChatGenerator.contextProviders は省略時に空リストで、reply はそのリストの provider だけから context block を作る。現在のapp compositionは contextProviders を渡していない。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt#L51-L65",
+          "version": "repo-lines-v1:sha256:24d94fe81efb19f2d2108c2bf034f5fd7943f10dd23d35b08acf0821cb71b46f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiODljZjRiMzAyMDNkYjJkOGNiZTNiZGQzZmVmMTE0MDg3MjI3YjhkNmE2YzA5Njc1NDBmODY0MjZlNThjNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzMGEzZThkODQzZjdjN2ZjNTBjMjNjNmJhNzM1ZDNhMzE2MmMxNDM4MTgwZDI1NjQ4NzYwOTJmMzQ5NDAwNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiNGFhZjUwZjk4YTgxNTVjNGZjYTU4N2RjZTBiN2EwZjE3NGU5NTI3ODEzZDAxZTI2M2MzMGIxMjI2NDA0ODUifQ"
+        },
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt#L25-L29",
+          "version": "repo-lines-v1:sha256:9af14a7b850edb63a612060363bb835122ae17f64d7e71ab0cd8ccba1e33b375:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlmNjgwYWUzMjQ0NjQ1ZGJmY2Q4Yzc0ODQ2NTBjZWYyZjllMDgxOWFiY2FjMGZjOTk2NjE3Y2FkYmI2MGI4MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzllZGY3Yjc5ODJkZjNkZjNhODhmM2RlODcwZWJlY2ViNTNmMzBiNjc0Y2Q5ZGI2MTg5NzVhZjkyOWY5YTE0NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjUxNzhhMTZlMzE3MmE1Zjc5OTgzZWRjYzdjZWJjNjU0N2U5OTZiNGUwZjM5YjU2NjVmMjBkNzJhNWUyMTljOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWNmMTIwNGViOTE3ODUzMjZmZGQ0MzM0NWMyNTY3OGNmZTE4ZDNmYWZjNzUyMzQ4N2VhNmNjMWFhNzkzYjBkNyJ9"
+        },
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt#L62-L69",
+          "version": "repo-lines-v1:sha256:36c514f8f4931ac9302373612178ae2756a6066aad3fc00392b8800520d745d0:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjBkZmFmNDliOWEzYjQ0MGZkNWU1MjMzZjczN2IzNjI0NDYzZjRkNzgzNGQwNjkzMTU4YTA0ZGEyMTU1NzhmNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2NjM2U2ZGRhODY5ODRiMWJjZDQ1MWIyODA4NGQwZmFjY2M1ZDAwMzRlNDRkNWE0NjgxMzRiZDI2M2Y2YmJlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjIyMGNjZWMwNDY2MGNjNDQwOTI0ZTU1OWJkNWI5ODM2ZDM5YjA2NGY5NWJmYTQzZjY4NTJmZTkxY2NhNzBmYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1ec446c774a24d6a9b544f44a22ed18d",
+      "statement": "現行Chat compositionは feature-owned AgentSkill tools を LocalInferenceConversationRequest に渡し、tool 呼び出し時に対応する AgentTool.execute を実行する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt#L51-L65",
+          "version": "repo-lines-v1:sha256:24d94fe81efb19f2d2108c2bf034f5fd7943f10dd23d35b08acf0821cb71b46f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiODljZjRiMzAyMDNkYjJkOGNiZTNiZGQzZmVmMTE0MDg3MjI3YjhkNmE2YzA5Njc1NDBmODY0MjZlNThjNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzMGEzZThkODQzZjdjN2ZjNTBjMjNjNmJhNzM1ZDNhMzE2MmMxNDM4MTgwZDI1NjQ4NzYwOTJmMzQ5NDAwNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiNGFhZjUwZjk4YTgxNTVjNGZjYTU4N2RjZTBiN2EwZjE3NGU5NTI3ODEzZDAxZTI2M2MzMGIxMjI2NDA0ODUifQ"
+        },
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt#L122-L152",
+          "version": "repo-lines-v1:sha256:8f94c7082980a8ad875bbf0884444db2e8dd6ba44c7515e943e7bc1c24e33530:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0NjY1YWJhODMyMGE3ODFhMDFmMTYwZGQwNGQ5ZmJjNGRjMjc5ZGIzODM0NzcyZGZhMDVkZGYxZWZjNWFmOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjMjVkZmRkMjI2YTg2ZWI2YzU4NmM5ZWNmZGNmMDg3NjQ5YTIxYWE2ODlhODZkZDczNTU4NjAzMjFhZjAwMDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkMGQ4ODhhN2I0MjJjNzY4YzU5MGQ1ZWVkNjRiM2I5MWQxYjE5MTQxYmQ5Njc3MDI1Mzk4MzkyMjFjYzExNjYifQ"
+        },
+        {
+          "resource": "repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt#L70-L83",
+          "version": "repo-lines-v1:sha256:36f1a3cb9917c7d7b2bc4b89676e7efb7550447c385a5579c8f7adcd490e3c5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxNmUxOGE5NjZhMGE4Mzg0YzcwNjNhYzgzNzljOWI0OTI0YTdlZWJhMDdjY2EwNDNkZmVkNThhYTNmYTE1MWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwZDQxYjQ2MGM2OTI5ZTI0ZGRhYzU0ZDRlMmI5MjFiNTUwNjAyOWI4MDNiMjg5NmZhZWRiMTJkZTZlZDdjZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNWMzN2JmMmE3ZDY0NTdjNWIyMzBmYjA3ZjA2NWE5YzIwNTIzNWY2MDdiY2ZlNmFlYTYzMDQzYjBhMmE4MTYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T04:30:12.060Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

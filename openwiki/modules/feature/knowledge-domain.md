@@ -6,9 +6,6 @@ tags:
   - knowledge
   - domain
   - module
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-731477315cb6b40242269a20
     resource: repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeExecutionSettings.kt
@@ -16,7 +13,10 @@ sources:
     resource: repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgePageAiTaskController.kt
   - id: openwiki-source-b23705c373997e5870cbe414
     resource: repo://feature/knowledge/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/knowledge/KnowledgeRepository.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # Knowledge Domain — ページ操作と生成タスクの契約
@@ -51,7 +51,7 @@ Knowledge DomainはMarkdown本文と出典を持つKnowledgePage、および一�
 
 画面からのAI作成・編集はKnowledgePageAiTaskControllerへ登録し、request IDでsnapshotを読む。成功はpageId、失敗はerrorで伝え、未消費taskはrecoverableTaskで再発見してdismissできる。一方、全体再構築のControllerはkick、stop、cancel、resumeと充電時再開予約を扱い、QUEUED/RUNNING/PAUSED/STOPPED/FAILEDを投影する。両者の状態集合と消費手順を混同しない。
 
-DomainはDB本文やWorkManager Dataを保持せず、Dataの実装へ委ねる。契約変更はKnowledge UI、ChatのReader利用、統合AIキューのbuild adapterを併せて確認する。状態遷移の正本は端末内AI仕様とそこから参照するKnowledgeのQuintモデルである。
+DomainはDB本文やWorkManager Dataを保持せず、Dataの実装へ委ねる。契約変更はKnowledge UI、ChatのReader利用、統合AIキューのbuild adapterを併せて確認する。状態遷移の正本は[端末内AI仕様](../../../docs/spec/05-on-device-ai.md)と、そこから参照する[Knowledge自動buildのQuintモデル](../../../spec-models/quint/knowledge_build_lifecycle.qnt)、[Knowledge page AI task lifecycleのQuintモデル](../../../spec-models/quint/knowledge_page_ai_task_lifecycle.qnt)である。
 
 ## 調査・変更の入口
 

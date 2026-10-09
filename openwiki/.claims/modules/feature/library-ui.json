@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:30b88734e008ef0b7360ab5bb57c3b74dbc850eefa58b1c7686c3e664ed3eb0a",
+  "pageVersion": "sha256:dd148a3e1268a65d6556c1d855453dd5a9075f1d67b9d96fcee1ee0c9d895b5b",
   "claims": [
     {
       "id": "claim_6068bbf4e7a2448abebda317d25ef350",
@@ -41,10 +41,34 @@
           "version": "repo-lines-v1:sha256:86357635aba9670aff8d594ef42f1ab3b6fe44c1c835746d328e50b70077d903:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZTg5N2E4YjkxYzUwYzQ2OTNmYjU3ZGE0YzljMWI3ZDYzODE4YmVjOGFkNTljYzc1M2E2MTZiNDI5ZDAzNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MGM1ZDNkYzNhNzczMDc5M2M4OTI3OTQ4YjU1OTY2NDIwN2Y3OWJhODc3NzNjMjE1MDA0NDMxOTYyZmQ0ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1MDI0OTdkODJmOGE0ZTU0MTkzMDhmY2RjZjE1ZWU5OTJiYThhNjc2ODc5YTgxYjVmZDczMDEyYjJlODg2YzAifQ"
         }
       ]
+    },
+    {
+      "id": "claim_e3711d18a7e444c3a996ef14739049e0",
+      "statement": "SmbBookReaderRouteのretryKeyを変えるとLaunchedEffectが再実行され、repository.prepareBookをもう一度呼び出す。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbBookReaderRoute.kt#L51-L65",
+          "version": "repo-lines-v1:sha256:5a453c12e9e586eb5f6c145f0a0c584fc8f9126a8eb43c0fe520b87fd7eef6d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiZjczNDI1NTZlN2RmNDRkZDA3YmVkZGMyZWQxOTE0OGYzMDkwNjA2M2FjNDRjNzQ0YmE5NjE2NGViODQ0ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmOTdkNjY0ODg5MWJhYmJkNjFkZmQ3MDI3YTkyMTRiOTk5ZjNkOTQwY2Y0YzkwY2NiZDU1MjhmMTEyODk3ZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjMWVkYTg3YWVjYjEzMGU2NzdjOTc3MjEwNzc2MTg5YTg1YTVhY2E4MmEzMTdhNWNhMjE2ZDRhYjBlOGZhYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNmI0MTIxNzhhMWI4NmM1NjYyNGMzYmU0Njg5Yzg3NGUzZmZiMzViYTA0Njk5YzZlZTc1ODcxNjA5ZTQzZTYifQ"
+        },
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbBookReaderRoute.kt#L68-L78",
+          "version": "repo-lines-v1:sha256:c423f9c6f20296e0826f8220f3c5d0fe1cc5f7007e83960d43b23d857051d5be:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NDdhNDJjZDQ3MmM4MjJmN2M5NjM5ZjdmNGM1ZmQyNjdmNmE4MzhjOWY4Y2FkNjcwMGQzYTI4NWNlZDQ2ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZDk5MWY0YmI1OWE0OGRmNTdlY2M5ZTA4NTUxNTJhMjEwYzg0ODY4NTJlNjg4YjRmNzZiNmEyYjk0ZTJlNDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlMTg0NmMzMmM4ZGNkYTUxMzYwYWNlNGQ1ODdmZWZmYjQ2Y2JjNzBhNWFiY2Q5NWUzNmNhN2FlNjYzNjM2MzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5ZmNhMmUzZjhhMjZiZGMxODQ0ZGEyNWYyOGNjZjQwNzYwMDBkZjI1NmE0Y2U5MzYzMDU4OGU2NTIwODVkYWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_75aac72333cd40ae957ea0e25b08d08a",
+      "statement": "SmbBookReaderRouteはpageSourceFactory.openの成功または例外をdocumentとpageSourceFactoryをkeyとするrememberに保持するため、retry後も両keyが同じならopen失敗が再利用される場合がある。",
+      "evidence": [
+        {
+          "resource": "repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbBookReaderRoute.kt#L81-L105",
+          "version": "repo-lines-v1:sha256:de507e9881e0782be7c02fdd8ff1d1f8cb948396abd748a7ed4c30493b85486f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhY2I4MTJkMTY2MWQxMDI0M2MwMTI3NWIzZGNiYjAyMGNiNzMxNTJjMTRmZjFjZTk1NWQzNTUzZjE5NDNiNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZDk5MWY0YmI1OWE0OGRmNTdlY2M5ZTA4NTUxNTJhMjEwYzg0ODY4NTJlNjg4YjRmNzZiNmEyYjk0ZTJlNDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMTkwZjg1MzBjZjNlNzEwYzA5Y2UyMDg5MDA0NDIwMzQzMjhjMGM4Mzc3ZjE3ZjdhMTYzNzI3ODRmZDgzMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjM2Q4ODhiMDM5NzgwMTk0MDQ2ZDkwMTUyZTU4MzQ4YmMzNGM2ZDE0N2RjMTEzM2I0NTVkMzUyOTJkNjA1YTgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T02:32:57.934Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

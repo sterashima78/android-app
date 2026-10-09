@@ -6,9 +6,6 @@ tags:
   - backup
   - data
   - modules
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-e21606996fcee06eb4693cb9
     resource: repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/BackupPreferences.kt
@@ -22,7 +19,12 @@ sources:
     resource: repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/GoogleDriveBackupStore.kt
   - id: openwiki-source-79179474ad844222bd5f9a98
     resource: repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/GoogleDriveBackupWorker.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+  - id: openwiki-source-805655882ce1ba786f47e791
+    resource: repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # バックアップ Data：ZIP整合性と時刻予約
@@ -46,6 +48,8 @@ generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ## 主要なAPI・構成要素の接続
 
 `restoreFrom`はSAF入力を一時ファイルに写し、archive検証・復元後にLibrary、RSS推薦、Bookmarkのinitializerを呼び、persistence/data変更通知と予約再設定を行う。`DatabaseBackupArchive.restore`は設定を先に復元してDBを置換し、例外時は元設定への復元を試みて例外を返す。
+
+archive 内の置換処理で失敗した場合は、`DatabaseBackupArchive.restore` が復元前の設定への復帰を試みる。一方、archive の復元が戻った後に `DefaultBackupRepository.restoreFrom` が行う Library・RSS推薦・Bookmark initializer、変更通知、予約再設定はその catch 範囲外である。後続処理が失敗すると例外は呼び出し元へ伝わり、置換済み database は戻らない。[BackupViewModel.importBackup](../../../feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt) は成功時だけ完了通知を立て、失敗時はエラーメッセージを表示するため、復元済み database と画面の失敗表示が併存し得る。
 
 `GoogleDriveBackupStore.write`（internal）は永続read/write権限を検査し、document作成→書込み→再読検証→保持整理の順に進む。途中失敗は作成documentの削除を試みる。`GoogleDriveBackupWorker.doWork`は権限・引数例外や再試行上限ではfailure、その他の一時障害はretry。時刻Workerは設定解除や削除済み時刻ならsuccessで終える。
 

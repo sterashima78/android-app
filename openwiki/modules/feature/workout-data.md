@@ -6,15 +6,17 @@ tags:
   - workout
   - data
   - modules
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-03e97711729f1e7bfc34591a
     resource: repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepository.kt
   - id: openwiki-source-6429838b62a796633b6ca2d3
     resource: repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/WorkoutAiBackground.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+  - id: openwiki-source-3ef60730825e1e281bf117a7
+    resource: repo://feature/workout/data/src/test/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepositoryTest.kt
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 # Workout Data：保存、AI Worker、外部 export
 
@@ -50,6 +52,8 @@ Exporter は session 変換失敗を FAILED、利用不可を UNAVAILABLE、書�
 ## 保存と互換性
 
 未保存の場合は当日の新しい snapshot を返す。JSON の decode 失敗では新規 snapshot に戻すが、未対応の state version は専用例外を再送出する。保存済み未知形式を現行として解釈して上書きする扱いではない。メニュー・セット・履歴メニューの encode/decode を変える場合は `DefaultWorkoutRepositoryTest` の旧版読込、未知版保持、履歴メニュー round-trip を確認する。
+
+セット詳細はJSONへ保存し、再読込後も復元される。詳細項目を持たない旧snapshotは、RPE・フォーム品質・負荷・休憩を未入力（`null`）として読み込む。変更時は[DefaultWorkoutRepositoryTest.kt](../../../feature/workout/data/src/test/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepositoryTest.kt)のセット詳細の往復保存と旧snapshot読込を確認する。
 
 ## AI の寿命と結果
 

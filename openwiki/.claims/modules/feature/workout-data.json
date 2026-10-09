@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2a2f934bc76d3634e690ac2c6d095fba65cbf529236f21c79b83a36df263728f",
+  "pageVersion": "sha256:57243ed8e91cea9927dfe5636c3764a9ee181fed8e582752226d74c652cdffa6",
   "claims": [
     {
       "id": "claim_020d540142574cd9b99ec4b2fab9542a",
@@ -45,10 +45,38 @@
           "version": "repo-lines-v1:sha256:2372d9e55f71f630137d4f90bab6b81c3ca532619e71d73d549cd072abf8a9d2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExMjJmZTM4ZDY0ZDY3NDFmZGNhODE0ZTYzYTExMzlhMDY0NTdjMWI2ZTE4OGVhMDE4MzAxNjc0OTdlODAwZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3ZjY2ZjdiNzFkNjFiNjY5YTAyYzcwMTNiNmI4ZWY2NThmODVhYjkwNjllZjQ5ZTI4OTg0ZmIxODlmYzU4OTcifQ"
         }
       ]
+    },
+    {
+      "id": "claim_96ceaeecd49540aaa65a40a390d70a9d",
+      "statement": "Workoutのセット詳細（RPE、フォーム品質、負荷、休憩秒数）はJSONへ保存・復元され、version 4のrepository testでは当日と履歴のsetで往復を確認する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepository.kt#L142-L186",
+          "version": "repo-lines-v1:sha256:07dbc08d35f65eb14f03e6159c29469f17ca78c210d95276883d54d1441f684c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4Y2ExODUyZjc1MTM4MzFiNzg0MmRjMWMxMWIwZWZkMmVhNjkzMTY1NjhjNTZmMzE0MTBlOWY1YTQ0M2IxNzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ2ZjAxYTYyMWMzODNmNzE4NWMyNThjYWU1MWJiNjA0NWU2NmM0YjlkOTExYzVkNjQ1OWM0ZDFlZjc5MzJhZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhMDI4ZmIyNDU4MjUxMTM1OWRmOGQ3NDBjMmNmYjgwZDExODlkMWI2ODEzMGQ0ZGQyOGUyZTkyMmEwMzgyYmYifQ"
+        },
+        {
+          "resource": "repo://feature/workout/data/src/test/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepositoryTest.kt#L131-L165",
+          "version": "repo-lines-v1:sha256:9b35c73cb690c7cd8f4199d656ff55afcc47f5d51ca2a61343d047a49c4ebb4f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1NjBkOGE4YjE4MjAwZDBhOThhOWY4YTZmOGMxYWMzNjhlMjg1NWZjOThhNzBkZDBmMzFmNzgzZTU3MjczYjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyZjY1YWVlNzdhZTdlMGE3NDE3YWZjNjQxZWE2ZmNmZDE1ZmU1NzgxZTBmNWFhNWVmZjNhZjQyZDAwODhmMWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a21466974f241859fba01bda301e9d8",
+      "statement": "version 3のWorkout snapshotにRPE、フォーム品質、負荷、休憩秒数の項目がない場合、load後は各詳細が未入力（null）として扱われる。",
+      "evidence": [
+        {
+          "resource": "repo://feature/workout/data/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepository.kt#L162-L186",
+          "version": "repo-lines-v1:sha256:8ff44f42aee77564a7dcc5e6806f514444a6c696d8791e1046ea2ca0d129e370:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZTMyODI5MTMxZmJhZGFiYWExMGZjMzYwYTNiODExMzUwZGU0MjgzOTE5YjRlNjJjOWE1MWI5ZGU4MTJmNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2YzAyMzFiMmU0YTZlNTIxOTRkZjkwZGQzZDIyNTUxMTczMjUyYjZkYTM1YmE5ZGUxMDRiYWY1NTExYWJiYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhMDI4ZmIyNDU4MjUxMTM1OWRmOGQ3NDBjMmNmYjgwZDExODlkMWI2ODEzMGQ0ZGQyOGUyZTkyMmEwMzgyYmYifQ"
+        },
+        {
+          "resource": "repo://feature/workout/data/src/test/kotlin/dev/terashima/yomitorirss/feature/workout/data/DefaultWorkoutRepositoryTest.kt#L168-L196",
+          "version": "repo-lines-v1:sha256:e83cbfe32629762d2d74ac616d4956de47f0a2e6ba16e5ddb579a46e17f3d7cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0OTFhZGQwMGMwOGJjNzhkMTNmMzI2YzE4Y2Y2YmU1MDIwZDlhMDdkYjI0OWNhMGQ3ZWQ0N2Q2OWI3YmZkNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1M2Q3NWZmYzJhMTQ2Mjg2N2NkNmI3ZDM5ZDQ2YTgwMWM2NWU3NjA3ZWM2MTQ1ODQxMzFhZTIyNjc0ODkzOWUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T02:32:57.934Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ffddbfce311da44ad4bc154b63163cab4efaf7b5a3471a07a93de6de49368ac6",
+  "pageVersion": "sha256:ffe1220871c67593c22b9174a2459a650b57621b5b302c3698445887c46037d4",
   "claims": [
     {
       "id": "claim_5b9f0fc122af4c198270b6e8853c52f7",
@@ -65,10 +65,40 @@
           "version": "repo-lines-v1:sha256:cd1d501e16869fbf181bda07f310d4b094fb3a110fce8983aaff7f6420902fc8:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhY2YyOWMwMTI4M2VlYThiZGQyNTllZTg3MTEzMmI1YjE3YzRkNDIwYjA3YTYzOWRmMzJkY2JmMmI0NWNhNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmZTIwMTc0YzkwMjQ3NGY1ZDc3MjljN2ViMzU4MWZkODk4MmRkZDhiYTRjOTQ1MjUxZmFkZDY2NTU0YTBlMjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4ad0732a15054b0396fa41c743db38a0",
+      "statement": "DatabaseBackupArchive.restore は archive を検証し、設定復元後に database snapshot を置換する。内部処理が失敗した場合は復元前の設定への復帰を試みて例外を再送出する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/DatabaseBackupArchive.kt#L65-L75",
+          "version": "repo-lines-v1:sha256:21b9997190f88512da410ca55b01508162adae013284c741cebb6302e0f90866:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1YTU2ZTkxOTU4YTJjNGNlNmRmMmZmNjRjMzcwYmMyYzk2MWIwNTEyYTBkYjJmMWI5NWFjMDg3NThjN2RlMjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0919f2bfa5424b94b12ce6c0549e5545",
+      "statement": "archive 復元後に DefaultBackupRepository.restoreFrom は feature initializer、変更通知、backup schedule の再設定を順に実行するが、この後続処理には database rollback がない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/data/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/data/BackupRepository.kt#L56-L65",
+          "version": "repo-lines-v1:sha256:cebd67f31e528832cf791e5508f7a05d768df6c3cf07d8b3ccc2090f1ff6dba1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4Y2E4N2JmNTg4ZjUyYTY4ZjkxMmI4MmUxNDJlNzg2YzcwOThjMTAwMWIxYjYyMTQ1NjBiMjA2YjAyYjNlZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1NWNjNzljMzExNjgwOTczY2JiOTEyMDc0ZmYxYzZmZDAxOTU5Y2UwMWFmZGY4MjkzNzlkZGZhZjYxODIzYWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1MjBjOTg0Y2U1MjllZWU0MDU4ZGNlODY0ZGRhMzUxODExNDJhNmRjZjkyODg1ZWUxZmQ0Y2Q0NDFjNmIwYWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0bc7d512c6424e078cfaae94316ab674",
+      "statement": "BackupViewModel.importBackup は repository の復元が成功した場合だけ成功メッセージと restoreCompleted を設定し、例外の場合は error message に進む。",
+      "evidence": [
+        {
+          "resource": "repo://feature/backup/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/backup/BackupViewModel.kt#L60-L71",
+          "version": "repo-lines-v1:sha256:de68a44d3090e8fad75cd6841d9f8b9fad2089be62ad1f99ee4ca31430468ed1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNjE3ZDBhM2FiNjY3MWI1N2I3ZjU0M2ZmYjM0M2ZjZjQ2ZThjODNjYzE1Mjk1MjE2YjEyYjQ3NzJkMGIwOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjZmY0MTYxNWMwMWVjNGE1MjMxYjAwODYyYTlkZTUzOTZkNTkzYmJmMzhjZTFjMDQwNjc1N2JiZWNkZjIzMDMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T02:32:57.934Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

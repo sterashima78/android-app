@@ -6,17 +6,23 @@ tags:
   - mail
   - data
   - modules
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-0cbd6022a920844e9599f82e
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/AppBackgroundRuntime.kt
+  - id: openwiki-source-09be1dfd6a431715c79bfd5d
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/IntegratedRefreshWorker.kt
+  - id: openwiki-source-624694645c2e9cdf1804adfe
+    resource: repo://app/composition/src/test/kotlin/dev/terashima/yomitorirss/composition/IntegratedBackgroundRefreshArchitectureTest.kt
   - id: openwiki-source-1affdf3ffee02e90e6a1163c
     resource: repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/DefaultMailRepository.kt
   - id: openwiki-source-09d9f1cb80e0ff9dc68669dd
     resource: repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/GmailAuthorizationManager.kt
   - id: openwiki-source-90df18d5a2d00232b6578177
     resource: repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # メール Data：Gmail同期とdurable checkpoint
@@ -33,7 +39,7 @@ generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 | [GmailAuthorizationManager](../../../feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/GmailAuthorizationManager.kt) | `GmailAuthorizationManager`（class）の`requestAccount`は直接認可済み結果または解決Intentを返す。`resultFromIntent`は認可画面結果を`GmailAuthorizedAccount`（data class）へ変換し、`accessToken(email)`は同期時のtoken取得を行う。`GmailAuthorizationOutcome`（sealed interface）が認可済み/画面解決を区別する。 |
 | [MailBodyDecoder](../../../feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailBodyDecoder.kt) | `decodeMailBody`と`isDisplayMailBodyPart`（internalトップレベル関数）がbase64url・MIME charsetの復号と表示する本文partの選択を担う。未知charsetのfallbackと添付本文除外をここに集約する。 |
 | [MailDatabaseSchema](../../../feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailDatabaseSchema.kt) | `mailDatabaseSchema`はMail-owned tableの作成をdatabase bootstrapへ提供する。初回同期のcheckpoint/history/generationとthread/message/labelの保存領域を定義する。 |
-| [MailSyncWorker](../../../feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt) | `MailSyncScheduler`（class）は`scheduleInitialPage`、定期同期、network policy再設定、account/定期work取消を提供する。`MailSyncWorker`（class）の`doWork`がRepositoryの初回ページ/通常同期を呼び、結果と例外をWorkManager success/retry/failureへ変換する。`MailWorkerFactory`（class）がRepository providerを接続する。 |
+| [MailSyncWorker](../../../feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt) | `MailSyncScheduler`（class）は`scheduleInitialPage`を提供する。`schedulePeriodic`と`refreshPeriodicNetworkPolicy`は旧単独周期workの取消だけを行う。周期更新は[統合更新Worker](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/IntegratedRefreshWorker.kt)が所有し、Mailも更新対象に含む。[統合更新のarchitecture test](../../../app/composition/src/test/kotlin/dev/terashima/yomitorirss/composition/IntegratedBackgroundRefreshArchitectureTest.kt)は、Mail単独の周期workを再作成せず、初回ページworkを維持することを確認する。`MailSyncWorker`（class）の`doWork`はRepositoryの初回ページ処理または通常同期を呼び、結果をWorkManagerへ返す。`MailWorkerFactory`（class）はRepository providerを接続する。 |
 
 ## 公開APIと構成要素間の接続
 
