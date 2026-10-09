@@ -38,7 +38,7 @@ class OpenWikiCliTests(unittest.TestCase):
             agents.write_text("# Human rule\n", encoding="utf-8")
 
             def fake_run(command, **kwargs):
-                self.assertEqual(command, ["openwiki", "code", "--update", "--print"])
+                self.assertEqual(command, ["openwiki", "code", "--update"])
                 self.assertEqual(kwargs["cwd"], root)
                 agents.write_text(
                     "# Human rule\n\n<!-- OPENWIKI:START -->\nMCP\n"
@@ -61,7 +61,7 @@ class OpenWikiCliTests(unittest.TestCase):
             def fake_run(command, **kwargs):
                 self.assertEqual(
                     command,
-                    ["openwiki", "code", "--init", "--print", "--language", "ja"],
+                    ["openwiki", "code", "--init", "--language", "ja"],
                 )
                 workflow.parent.mkdir(parents=True, exist_ok=True)
                 workflow.write_text("generated", encoding="utf-8")
