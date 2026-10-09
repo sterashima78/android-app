@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:31ef9e8bf760a51645d078f2e3630ab2e83669891cd71b26e93276bc2f336943",
+  "pageVersion": "sha256:366ad5b6ee58f51e68989091afe22a719284f10aa37c515b9140e2a8b80ddfea",
   "claims": [
     {
       "id": "claim_cab0286273af4bbcb952639c9f2f1c2e",
@@ -45,10 +45,96 @@
           "version": "repo-lines-v1:sha256:b54d5dcbfc0ecfa61a42ae19ec9fbe1281be327b826bcaa192709f1e0eaa83bc:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiNmMwZjk0OWY2NTFiMjAyNTY2ZmM1NjUwMzM4NjEzMzYzMzU4ZGM1NDg5NmEyYTRiZTQxMjUyNDg4MDYyOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkYWM3NDUyZjIyY2EyYmQ0Mjk5OWQ0OWZhZWI4ZWM5MThhNjJhYThlNGY3ZDc2NzM4YzNlZjk1NDBlYWM0NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIzYTNjOWYzMjJiMWVhM2E1ODU0YmMwNWZhYzAxYTVlOWZlZjJmMDdjOGJhZWJlOWU4MTIyMDgwNjI0MmMxMDQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_72da69e061d347a39568f8c24113c0c8",
+      "statement": "StartupCrashStore は未確認の終了履歴から Mosaic 所有プロセスだけを対象とし、メモリ関連終了または指定された Godot process の failure reason を選んで process exit report を作る。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/StartupCrashStore.kt#L170-L229",
+          "version": "repo-lines-v1:sha256:c7e47c4e25d20d6bff8f8fa9cd423bc09f5d203d40efab73a0c2dd2f8c1c0339:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5YTQxMTA3NzhkZDM3MDgxNjg2NjZjOWQ5N2UyNGY3NTg2NjJhN2ZmZDY1OWFjODJlNDkwNmM4OTkwOWY3NGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyZmM3M2IzZmZmNzA4ZmUzODQwOGQyMWVjZjUyMGFjMzRhZThiYTNmODEyNjg3NzY4ZTFhMmQ1MmVkYWM0ZTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgwMDBkNWQ4ZWZlM2Y1MDNiMjRiYzcxNzE3YTFkODRlN2JlMDhiZjIzM2M3OThhN2ExMDA4ZmVlNThiYmUxNTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNmJjYTAxM2UxY2I3ZDJkMDA0MDk1YWRkZTA4OGJkMDNmMzA5NGI4ZTZkMGU4MTNkNzFlMGJjYTIyZDNmZWIifQ"
+        },
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/StartupCrashStore.kt#L70-L95",
+          "version": "repo-lines-v1:sha256:9032794922cc68a30eee6ea12de34681e38ec38c725db44fa53d023cb795e1d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0NWI2NzQzMWI0NjE0MjljODZmZmYxNDU5MTI5MDMwMGVlYWJkZDRkMGQ2ODFmMDc5ZTU1NGVjODU1NTg4MjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjOTBiZTg2ZDE0OWQ3MmRjNTZhNWI3OTVjMjdhNjlhMTMxNGNmODEzMTUzYjQ2ZWY3MjdmYTE1ZmEzZTU0N2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhNjVkZjM0NTg2ZjE5NTBkYjg1NDk5ZGMzOTMzMTNlZDBiMTc1NDE3MDFiNDA1OGRmNTA0YTQ1ZDU4NDgzOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NmYwMzdjODAwZjQ5Y2Q2ODFkMzUwYTk5MDVmZjI3ZDgxNzU5ZmViOTA4MjVkM2MxNWQxMWZlNjdiOTQzNGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f32aed4ebee8443caf20b1218b722ae2",
+      "statement": "process exit report は PID・process name と memory diagnostics を終了時刻に相関させ、全体を sanitize して schema/completion marker とともに保存する。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/StartupCrashStore.kt#L98-L163",
+          "version": "repo-lines-v1:sha256:f09d25ff28699d7c07a92e527532884a3975e2dc8bb42fb58e64d15d318a8f0c:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyMjgxZjg2YzlkNWMzY2YxY2MyNWQ0MjYyZWE5OTk2YWI0YzYwM2E1ZWUyZDIzYTM3NjYxZDBiOTAyMDQwZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlMDMyOWJjNTNkYTZlNWU4YzgyM2ZkNjZkNzg0MGYzYzhjYmM2ODQ4MDQwYjA0YTU4ZDFiMTBkNjUxZDVjMTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0NWMxMGI5MzE3YWQyZDI3ZGQxMzBhODhiMTVhZjI5YmExYzM3MzdkYzcyOTUwMzdlMjZmNDEyMzIxYzgzMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlZWRiNTg0NTJmOWI0MmZkODMwYzg1OTg1MTE3NmY2YTYyZGIxNTViNGJiYjk3YTc1MGZiZGRiODNkOTdhZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f7b5f5259d2401bbebc15d38f4ae05b",
+      "statement": "Android17MemoryAnomalyProfiler は API 37 以上でのみ anomaly trigger を登録し、exit 前10分以内の最大3件の安全な artifact file name を report に含め、artifact 本体や private path は report に含めない。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/Android17MemoryAnomalyProfiler.kt#L18-L49",
+          "version": "repo-lines-v1:sha256:3613d4a72de6bab0c276e5d00a52e2d7c7391522f3ed070f76d120e8e4fd2b92:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZjIyMmM2ZDQ1NzAzNmZjYmFkZTY5NWVkZWNlYWI2OTdkOGI1YjcwZmI2YThhODUwMzhkYWRmNDUzNzk5YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhNGFkMjU1YzFiMjQ2MzE1MDQxMzEzM2FiNmI0ZDcwNTRmZmM0ODA2NWUyZTY3ZjlkM2FmZmM3Y2QwMmI3NWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMGY3MjkzZDE1NmE2ZDEyNTI4ZGIxMjkzMzc5ZTUyYTVmODM2NzA0NDI5N2IyMjgyYjk3ZmYyYzg2MDQzOGQifQ"
+        },
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/Android17MemoryAnomalyProfiler.kt#L54-L82",
+          "version": "repo-lines-v1:sha256:74848eff489e343e6847afa65023d3798a31def2146ffbc81d81f6fec41b9294:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3YmZlNDk5OTI2ODY3NDhkNWM2Mzk4ZDJkNDU4OTMzYTVhMTBkNzkwODMwNDQ4OWQyZGNmYzczODRmNGI2OGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/StartupCrashStore.kt#L133-L137",
+          "version": "repo-lines-v1:sha256:70eddaabb02cb77b37876daeb1e936126f696b0c3567b27074c094b2c034dfe7:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGJjMmJiNjNkNmE4YmJmODU5ZDdhMWI1NDJhY2I2ZjJjMGVjNTBmOTMyYjAyZjZlMzNhMGQzY2U2NDEyMjRkOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODgwMDVkNTcxMDZhMzYyZWIwMDBkYWYzZGE0Njc0YzgyYjUxOGZmNWEyZTJmNjdlZThlNzU3YTMzM2MyYWY2NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWRmN2QwMmEyYTJjN2U2MDhjMjY4ZTAzMTRhYzFlZTc1ZDM5ODc2OTliM2M0MGZlZDVkMGY4ZTVmZmZmYzkyOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjI4NGFhZWVmYmY0NDE0ZDZjZDk1YTU2MDE4ZGMwNjMzMWNiMjIyOTk1MTljYjcyODNkOGU5M2NiMTBlZGViYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f74e23805d3447cead2d13039cb67592",
+      "statement": "AppLocalAiMemoryMonitor は background local-AI work 中に10秒間隔で sample を保存し、終了後は5分間、実装上の診断 label だけを保持して継続採取する。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/AppLocalAiMemoryMonitor.kt#L12-L47",
+          "version": "repo-lines-v1:sha256:2179ac8a9ab504981ab3d91bdb662b63bf63fdbf6d9d129c6f254c62563fa954:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZDA3ZTk5NDdkNDVmYjA3NTMyOTdjY2U3ZmQ2YzI5NjIyZjM4MmU4N2M2NzdlMTU0MTA3ZTAwNTU4NjMwMDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyNzU3M2E3OWFiZGJjMTYyNWEyZDE3MGM3ODVjYWVlMGYxMGNjNTBjMDk2NGMyNzE4ZmQzNTIyYzNiNWE1MWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNDE3ZGM2MjgyNmNkMTg1YzAyZDc2Yzg3YTk5MmMwMTBlN2Q1ODE4MzZjYmUyNWFjMjlmMTQ4MTYyYjU3ZjYifQ"
+        },
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/AppLocalAiMemoryMonitor.kt#L65-L87",
+          "version": "repo-lines-v1:sha256:8fcae07a7e49217400321cf4be762d91ac95736db0f4a08447fcfbafc8b880e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlNzcxYzAyMTc3N2E1M2QyOGFlZWRiYzI2M2QxNmE1MDljMDM0MTBjMzA2MGUxN2Q2ODkwMzZjOGJmYTJlZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkMmNhMjkzZmQzZmNlNGI2NjkwZDY1MTU5YTVmYjUzYTg4NTg1YjM2NzNiYmNiNTM2NTlhYzM4ZWI5YjBiOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ce84eb6b77e14567a110955d50805c4f",
+      "statement": "LocalAiMemoryDiagnostics は、時刻、PID、process 名、phase、PSS/RSS、native/Java heap と task の実装 class を基にした sanitized な診断 label を local-AI process sample に保存し、ユーザーデータを含めない。",
+      "evidence": [
+        {
+          "resource": "repo://app/src/main/java/dev/terashima/yomitorirss/diagnostics/AppLocalAiMemoryMonitor.kt#L12-L16",
+          "version": "repo-lines-v1:sha256:a72a787a7bb0289562afb13c9a5217f13bff6e9156bde31e9ba9bc5c939b9289:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWFmMjJjZjA3MzI1OTJjMjQ3MTQxY2JlNjFlZmExMTAxMjYxMmY1YTMxMjJiOWFmOWJiYWY1MmY1NzI0ZDE5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTcyYTQyOTM4MmIyZTE0NzE4ZTBlMzdiMDU3MGE4YTE3MDI5OTFmY2Q4NDk4Y2Q4NDA2MGE4YmY0ZjA1MDE3YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTI3NTczYTc5YWJkYmMxNjI1YTJkMTcwYzc4NWNhZWUwZjEwY2M1MGMwOTY0YzI3MThmZDM1MjJjM2I1YTUxZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTg2YWI1NWQwMjU2YTg2MWM5YjVjMWY5NDBhNzcyMjFmY2VhNmFmNDA2MTIwY2M5YzNiYzY4ZWRiNmFkZTJhZSJ9"
+        },
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalAiMemoryDiagnostics.kt#L103-L127",
+          "version": "repo-lines-v1:sha256:bcb32794f416a78f03ed3e7a7fe76029b525047d417e574a0e536cb93e6b8084:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNzgwODJlYThmMDIwY2Q0ZjBjYzUwNGM1MWJhYzMwYzFkODdiNTBiYzc2ODIwZDQ1ZmE1OGJkZTIyM2Y4ZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwNDRhZjJhZDMxYWJhYjNjN2NlYmYxM2Y1MzY1NGE4ZTgwNGZiOGU2YTA4ZTg5MTcxMzU1N2U2ODhhYTY5ZDMifQ"
+        },
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalAiMemoryDiagnostics.kt#L186-L237",
+          "version": "repo-lines-v1:sha256:6fb0d905facee60d21840f33d6b87bcdaf495e17096ecdef55acd75523e9c72d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyZTNmNGFhNmNlNTFiNmFkZWJhNGFiMjZlZTIyNGQzZTM1ODQ3YWZkMGFjNmFiMDc0NzY0NzI0MjhlNTM4ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiNThjODVlYTJiYzUyMWQwZGUyNTY4NTMxMTY0ZTAwNGRlMDM0MDBhZjI5MzEyMzk0NGIxZDZjODM5YWZlMGMifQ"
+        },
+        {
+          "resource": "repo://core/ai-runtime/src/main/kotlin/dev/terashima/yomitorirss/core/airuntime/LocalAiMemoryDiagnostics.kt#L68-L85",
+          "version": "repo-lines-v1:sha256:c2859d06834212984727f55d08f1f8d558e67b4c482fc84d0b77c5ff34b61bed:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MjExYTY0YjczMWJmOGM4NDU0YWNhMTQ1ZGVmNGQ3MjljNTAxNzUyOWRiNTljYWY4NGFiOTMwMDA1YTVlNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI3MjIzN2ZiMmJkZTUyMGZhZjg2Y2M3ZmRjMTI1MTJiYTZmMzllMTE4YTMzOWY0OGNhYTE5ZjZkODYzN2U3YzcifQ"
+        },
+        {
+          "resource": "repo://core/background/src/main/kotlin/dev/terashima/yomitorirss/core/background/LocalAiBackgroundTaskGate.kt#L122-L134",
+          "version": "repo-lines-v1:sha256:4a9835104e2f185b59323ed361775dbc61752bdb6c3fa737e5d0f33a3f8c1d7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1ZDM2NWVhMTAxNjBiMGE3ZmUzZTNmYzY3ZGFlYjAzMzVmZWIxOGVjZDg4ODllYmU2NWM4NTMxNDM0YzJmNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMjM3NmFiNWNhY2JhYmY2NzAxMDA4MTRlYTUwYzg0NzJjYTVmZjIwN2RlYTAxMTQ1MDhlMmM1OTVkZjQwZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4NTJmMzc0ZWRlZmQ1NjhmYjk2MmZhMDczZDE0MjNhMTA4ZmY3ZGFmNzEwY2VlNWEzM2ZkM2Q3ZDcyYmMyN2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiOWNjYTYzYjRlMDU3MzRmNmUyNWUyNDhjZDU2OTQ2YTFjNzcxOWIwNmE1NzcyNTc0YjliYjIzZGNlODFjMzAifQ"
+        },
+        {
+          "resource": "repo://core/background/src/main/kotlin/dev/terashima/yomitorirss/core/background/LocalAiBackgroundTaskGate.kt#L38-L42",
+          "version": "repo-lines-v1:sha256:e36401d639f994f5ba846e2a13a0f459c446b9165bcc8942f03ca442957262ac:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGYyYTJmOTk2ZjA4ZTY4MGJkMjkyMTM1YTZmYTQ5NzhiZGEyNmU2MDJkODRmMzNjYjFkNTk0Nzc1ZDQzMDRiNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmYxMmJhYjVjNGU0Y2ViOTQ3Yjg0ZmNmMzViNThkMDAxNzRjZjBlZGU1MjY3NmYxNWNmMWQxYmRjNWY2M2MwMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODljZDM3NTdmNzJmNDQxYTY1YjJlNjZjMTUzZWEyZDk2OTlhODQxMzI2NmYyMjI0NWQ5Nzc1OWIwNjQzMThiYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTZlNzJlN2VhNjdlMjRhZWNlOTBiMDkzNjA2M2ViODk1OWYxNTc2OGJjMzIyYjQ1NWVlZTQ3NWE3ZDI2MDIxMiJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T02:32:57.934Z"
+    "at": "2026-10-09T09:32:30.677Z"
   }
 }

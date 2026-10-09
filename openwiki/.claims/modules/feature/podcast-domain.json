@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3fdcfa08a776e7821c877e3d116ec2068e788ad3856dc6fc60312e7e785b69b2",
+  "pageVersion": "sha256:3aec1cc59483acda0e38a7fa0e5ef814d11da913c879bded45658e2716aba22d",
   "claims": [
     {
       "id": "claim_4cbf9a3c669f412d80b4ece9a77868b7",
@@ -31,10 +31,46 @@
           "version": "repo-lines-v1:sha256:4f6a8b3aeaa490fff90687d9afa1c9fdb5fc45c79d9c7700b4fb6723c06d46d7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkZmIwZmRkOGY3OWI1NzcyNDc5OGRmMTllMGE4MWI4ZmM3MWJhMzVkODY5ZmJlMmIwMTY4N2JhYjgwMDU2MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmY2ZjNDAwMTIwMDE4ZDMzYWI0ZjQ3NGE1MDY2NzJmMzI2NDI4NzIxZjhiMzU5NTVmMGQ4ODMxOWM4OWUxZTQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_9ac76450b3184c8181a792f0933bb9a9",
+      "statement": "Podcastの代表feed categoryはニュースclusterごとに重複を除いて数え、出現頻度が少ない順に選ぶ。同数時は階層が深いもの、case-insensitive順、元文字列順で決め、feed categoryのないclusterでは補完categoryを使い、補完失敗・件数不一致・空値を「その他」にする。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/Podcast.kt#L310-L339",
+          "version": "repo-lines-v1:sha256:abab7825536299e0697ee4d8e6a6bb4eb8384eae68b286756e5d4f6422913b62:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2ZGE3YmRmODdkMjIxMTRkYWNjYmQyNTdiYWZkM2QyNTBkZWYyZTE4NTExYTMyYjEwMGIzZGVhMGU4NGZmMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmZTVmNzFjN2RlYzA1MTAxYThkOTgwZGQ2OGM2NjBkODI3Y2RlNmFkM2E4MGNjYTk0NWI4ZWYzZWQ4OGRhZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3MmIwZjZjMTFhYzVjOWJjMDc4OTNiNGFlOTk2Y2IxZGZiZDhkODU1MzZjMmVhNGMyYWYwOWNhZTQwNjNhOGMifQ"
+        },
+        {
+          "resource": "repo://feature/podcast/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/Podcast.kt#L505-L530",
+          "version": "repo-lines-v1:sha256:9be2401b9d38185b9bb680e0fe7400addfa65483ca0effe7bd6499a428684ab5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmODBkMmFhOTQ2MThlMzNkNDFkN2ZiODg4YmE4ZTE1ZWUyYzNmNWVlNTAxZWE1NzA2Mzk5ZTk1NWViM2YzMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViZWMxZTUwMTBjOTMwYWMwZDYyOTZlYjE0YmRiODU0YjAyYjM0OWU0MDQxMjY0NGFkMGYxZmYzMjk4Y2I5NjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMDY2YTE5MTdlNmY1OWExMmQyOTQ4ZWQ4ZjhmNGVkMjg0NzdiNzE0NzdiNTM0ZmY4OTlhZDIxYjcyOGI3ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkNjdiYWNlOGFhNjQwZTdkODY3MmRiYmUzNDVjZjgyMTAxYWRmYjQzOTk3MTQxN2I3YTQwNDVhMzNmYzMyYmYifQ"
+        },
+        {
+          "resource": "repo://feature/podcast/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastNewsClusteringTest.kt#L38-L83",
+          "version": "repo-lines-v1:sha256:a45375616304d3d679ec66707fe9de2fb2204efc9d16e3eecfdbe71ee0b4c49f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5NjdjOTg4N2U3NDEwMWMyNGU4NGJjZWY4YTYzZjMwMjY5ZGRlN2RkMGIzNWZiMzAxYjEzOGMzOWFiODU3ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZmZiZjM4NjI4ODliNWI2NjViZWE5YjA3NWQ3YjNjNjg2NjFiMWNiZWViMTJjNzZjNzE2MDFmYzJkYjk1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_86bf63d7b87148658e3c42d4ec53f18b",
+      "statement": "Podcastの章順は代表categoryの初出順にcategory groupをまとめ、各group内のニュース順を保ってからchapterPositionを付ける。",
+      "evidence": [
+        {
+          "resource": "repo://feature/podcast/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/Podcast.kt#L342-L353",
+          "version": "repo-lines-v1:sha256:a2397094e3fbbaa3fd45fcd30748e79b93288bdaa197d47df89a975ae1537f5d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5OTg5NzIwNzA0MDg0NjE5Mjk2MjcwYjgxYjdkMmM2MmE1MWFmODkyMWNmNmQ1YzJlM2MyMTZjNzYwNGI0ZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmOWNkZWIyNWFlYWQxYjViYjBkNzljNTZkMWYyNzY2Y2RjMjhmODAwMTgwYzRjNDZiOWQ1ZjhjMzhlM2NmYzgifQ"
+        },
+        {
+          "resource": "repo://feature/podcast/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/Podcast.kt#L529-L535",
+          "version": "repo-lines-v1:sha256:6df855c004077c60c2292fca240b00a76f5e52bdc73c771f2c8ce0a20af44c66:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjcwYjA4Yjc2NDgyYWE5YjhlOWEwZjdkM2YyMDk5ZDk0ODNlODEwMjljN2NlZTRkMjJmODM0Y2FmZjA4Mzk3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk3OGUyNTAzYjhjZjM3YTA2ZjdkNmYwYTNhNmI2ZmUzNTY5MWZiY2FiNTBiODc3NWNhYjZmYWJjNzFjNTkyYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDRiOWEwYjE2Yjk5MTBiYWE1ZDBhNGRjYWZmOGE2MGM0Mjk2MzNiZjJhZTNjYmFjYzgyMDI5MDc1ODBkMTBjYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWNmZmMxZWJjN2FhYmYzZTgyMjBkZWYwZDFiOWM5YjA2MGNiMWExODg3MDNlZTI4NzU3MTdhMzcxNmU2ZGYyNCJ9"
+        },
+        {
+          "resource": "repo://feature/podcast/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastNewsClusteringTest.kt#L86-L98",
+          "version": "repo-lines-v1:sha256:6bae89c48ade7a425cfbbee51b2393339998ade0a78e91dc2c516fe00225f1fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkN2I2NWNkZmM3MThjOTVhZThiYWJhYTU4MzQzZThhNDgzYzI1ZDFiZmFjMjYxN2U0MmMzZjM0NmMyY2RiMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjMWU2OTI2Mzc2M2IzMDI2NGI4MjIxNjczMzA2MjJjMjE0ZjA4NDA0MDg1ZDY1Mjg1MTI5OGEwNWMxOGQ4OTgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T04:30:12.060Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

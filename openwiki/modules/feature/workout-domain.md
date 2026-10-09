@@ -6,15 +6,19 @@ tags:
   - workout
   - domain
   - modules
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
+  - id: openwiki-source-4eef3629cfff53442d086f82
+    resource: repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAi.kt
   - id: openwiki-source-40c394a2bc84198d73e003e7
     resource: repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutModels.kt
   - id: openwiki-source-d3629e40219840e19d1f59df
     resource: repo://feature/workout/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutSetDetailText.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+  - id: openwiki-source-b639649e21b4e09d57c66e26
+    resource: repo://feature/workout/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAiPromptBuilderTest.kt
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 # Workout Domain：記録、メニュー、AI 契約
 
@@ -45,6 +49,8 @@ generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ## 代表的な処理フロー
 
 `newWorkoutSnapshot` で初期種目と menu → `effectiveMenu` が当日の入力対象 → UI が WorkoutSet を追加 → `rolloverTo` または完了で History を形成 → Repository save。AI は `recentDates` でメモを選び、`build` が当日・過去のセットと実施時 menu を組み立て、MENU_SUGGESTION にだけ参考レビューを加える。
+
+`WorkoutAiPromptBuilder` は各セットを `formatSetForAi` で整形し、`formatWorkoutSetDetails` を通じて記録済みの RPE・フォーム・負荷・直前の休憩を prompt に含める。未入力の詳細は出力せず、休憩をタイマー設定や時刻から推定しない。[WorkoutAiPromptBuilderTest.kt](../../../feature/workout/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/workout/WorkoutAiPromptBuilderTest.kt) は `POST_WORKOUT_REVIEW` の prompt に各項目が含まれることを確認する。
 
 接続先: [runtime の生成](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)、[画面 Factory の注入](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/route/AppSupportingRouteDependencies.kt)。
 

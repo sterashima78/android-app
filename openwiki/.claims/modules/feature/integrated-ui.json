@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7e9a9f6a88bd6f8c51494976550efe42d2440cdefd2777dc5afd3949405ba74b",
+  "pageVersion": "sha256:72dbcadcf5caa0c7c5dfd68fe245b12643fe4b59092782005f7334a1f4cf13ee",
   "claims": [
     {
       "id": "claim_daf8565fe307403e94cab1de74b938e7",
@@ -65,10 +65,30 @@
           "version": "repo-lines-v1:sha256:f8a5f39cbf0bcd8eeff717fe740c46941486eb83a4b1fbec233ef4242f890379:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwYjhhM2NmYzI1ZmIyNzZjY2JlNzVmZTZkNjM4ZTNhMWQyZDRlNTNkYjYwM2VmMDNlZDM0NTdjN2U4M2QyNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZDg2MzJlNTRlOTI5OGFiYjk1ODcyN2UyZDUxNDA4YWJhZjEzNjYwMzUzNzkxMDE0MGFiZjY1YjMwYWI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4YjVlYmU0YzA0NWFlYWVkNmM0NDViMzI3ODE4ZDk5M2U1MzBiNDA2NWYwMzkzN2EyOGEyYWU3OTZmNGY5OWMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_c7bc0722c98046ad866bf8e11ec48bbf",
+      "statement": "IntegratedRouteはRSS、Reddit、Mailの初期化状態だけで一覧表示をゲートし、Feedの初期化状態はゲートに含めない。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedRoute.kt#L69-L71",
+          "version": "repo-lines-v1:sha256:e0007b246b69fc5d454ffac20b720b517b1c41466f2a498fba6182b02abd229d:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhlYmE2NDBjY2VlOWI0NWJlNjlhMmI3YTQ5NjU1N2M0YWEyZjBmY2NlZTc3ZGZmYmY5MDlhZTdhZTZjZmJjMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDgxYjNjMWIzY2Y2YmE2NWU5NmZmMzczMjE2ZDgyMTE1MWI3MzBlY2ZlYTNjOTZiMDRkNzRkNTRmODZkNjg0ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWYxNmRmYzU1YjAwOTRhOTYxM2E1NGE2YTNhZmFmODBlNDg3MGYxZjFhOWNhZTQwYzVkYTVmMWMyODliZWQ4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjAwMzczZWRkYzc0YmZmYTE5MDhiNzI1MGQ0ZTU5NjdmM2RmNGRkZjc2YjkwODY0ZTBhYzM1NDgwMTk2N2EyMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_dd42ba62353c49be928213fcb93ced73",
+      "statement": "IntegratedRouteはFeedのrefreshing状態を一覧の更新中表示へ含め、更新操作をFeed、Reddit、Mailの各ViewModelへ個別に要求する。",
+      "evidence": [
+        {
+          "resource": "repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedRoute.kt#L98-L105",
+          "version": "repo-lines-v1:sha256:85a5f420c035e1fc4503b64cf7977a96abbd2602fe3d2ddb374de51b8b0b2478:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGEzY2M1YjJmZmQzNTc4NTFiNThjNTRmZDJkZjA0ZmExNzFkODQ5ODY4MGFlZDlmZjZhMjYyNjk2ZWFlNTcwNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTc3MGMxOTExNjRlN2VlYWQxYzVmNzA5NDk2MDA1YzZjNzkzYjcwNjM5NGYyOWVhNjNkZDdjZDQzOGI4MWUyOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGYzYjFmMzBiZjRmZDY4YzkwODVhYjgwNTQzZjVjYzM1MzRiM2M4YmE3MzU5MzZhZmQ2Yzg5YzEyZDVjODRlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzY0NzZlYTNkMjFlYWRkYjY1YmI5MTY0M2QwZmViNWE4MTAwMDZjYjI3MDIyYjZiMDUyODU3NjZkYjU0ODNlMCJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T02:32:57.934Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

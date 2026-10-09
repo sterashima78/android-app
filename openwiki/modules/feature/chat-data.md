@@ -6,10 +6,9 @@ tags:
   - chat
   - data
   - module
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T04:30:12.060Z
 sources:
+  - id: openwiki-source-89882cbab574eaa63d090479
+    resource: repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt
   - id: openwiki-source-149a7ba97d0249a71ab81ba5
     resource: repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/AppResourceSkills.kt
   - id: openwiki-source-8982e7d0f2c8f1230f35235e
@@ -22,7 +21,10 @@ sources:
     resource: repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LexicalRetrieval.kt
   - id: openwiki-source-e0dc1953ec24a90da1e8d1da
     resource: repo://feature/chat/data/src/main/kotlin/dev/terashima/yomitorirss/feature/chat/data/LocalChatGenerator.kt
-generated: { by: "codex", at: "2026-10-09T04:30:12.060Z" }
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # Chat Data — 履歴保存とローカル会話生成
@@ -31,7 +33,7 @@ generated: { by: "codex", at: "2026-10-09T04:30:12.060Z" }
 
 ## 責務と入力経路
 
-`DefaultChatRepository`はChatStoreへ履歴操作を委譲し、`LocalChatGenerator`はcore runtimeの`LocalConversationInference`をChat契約へ適合する。UIが履歴と生成を組み合わせるため、このモジュールは保存操作と生成操作を別々に提供する。generatorは選択モデルを確認し、最後のUSER本文からcontext providerを呼び、モデルの入力予算に従ってChatPromptを組み立てる。
+`DefaultChatRepository`はChatStoreへ履歴操作を委譲し、`LocalChatGenerator`はcore runtimeの`LocalConversationInference`をChat契約へ適合する。UIが履歴と生成を組み合わせるため、このモジュールは保存操作と生成操作を別々に提供する。generatorは選択モデルを確認し、注入されたcontext providerがあれば最後のUSER本文に応じた参照blockを取得して、モデルの入力予算に従ってChatPromptを組み立てる。現行のapp compositionはcontext providerを注入せず、アプリ内データ参照は登録済みskill/tool経由で行う。
 
 
 
@@ -53,9 +55,11 @@ generated: { by: "codex", at: "2026-10-09T04:30:12.060Z" }
 
 `createAppResourceSkills`はownerのRepositoryを受け、候補検索と保存済み記事の詳細、最近取得、task状態照会をtoolへ結び付ける。`createKnowledgeLibraryResourceSkills`はKnowledgeReaderとLibraryReaderだけを受ける。アプリのKnowledgeは蓄積知識であり、このリポジトリのOpenWikiとは別の情報である。
 
-`LocalChatGenerator.reply`は選択modelと最後のUSERを検査し、context providerを順に呼んで`ChatPrompt.render`へ渡す。skill toolは名前一意を検査してruntime toolへ変換し、結果文字数を制限する。`generateWithToolCallRecovery`はtool call解析失敗だけ追加指示付きで一度再試行し、cancelは再throwする。stream chunkは累積全文と差分の両方を扱い、UIには`ChatResponseStream.partial`、永続保存には`complete`の結果を返す。
+`LocalChatGenerator.reply`は選択modelと最後のUSERを検査し、注入されたcontext providerがあれば順に呼んで`ChatPrompt.render`へ渡す。skill toolは名前一意を検査してruntime toolへ変換し、結果文字数を制限する。`generateWithToolCallRecovery`はtool call解析失敗だけ追加指示付きで一度再試行し、cancelは再throwする。stream chunkは累積全文と差分の両方を扱い、UIには`ChatResponseStream.partial`、永続保存には`complete`の結果を返す。
 
 [AppSupportingRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/supporting/AppSupportingRuntimeDependencies.kt)がDB接続をRepositoryへ、[AppCrossFeatureRuntimeDependencies](../../../app/composition/src/main/java/dev/terashima/yomitorirss/composition/crossfeature/AppCrossFeatureRuntimeDependencies.kt)がLocalConversationInferenceと両skill factoryをgeneratorへ注入する。`ChatStore.appendMessage`はmessage挿入とsession更新を同じtransactionにし、sessionが存在しない場合は保存を失敗させる。
+
+`LocalChatGenerator`の`contextProviders`を省略すると空の既定値が使われる。現行構成ではapp data skillがinference toolとして生成要求へ渡り、モデルがtoolを呼び出した時に各owner APIを実行する。
 
 
 ## 永続化と生成の状態

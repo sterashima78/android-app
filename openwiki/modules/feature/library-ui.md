@@ -6,9 +6,6 @@ tags:
   - library
   - ui
   - module
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-3ab6185a5e2ae1401b87dab5
     resource: repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/LibraryGrouping.kt
@@ -18,7 +15,10 @@ sources:
     resource: repo://feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbBookReaderRoute.kt
   - id: openwiki-source-35ef98bc318270b0e350799d
     resource: repo://feature/library/ui/src/test/kotlin/dev/terashima/yomitorirss/feature/library/LibraryOrganizationViewModelTest.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # 蔵書 UI：一覧・書誌レビュー・Reader接続
@@ -76,7 +76,7 @@ LibraryViewModelのsync/import/hide/restore/series/rename/delete群はDomain呼�
 ## 代表的な閲覧・取り込みフロー
 
 1. LibraryScreenのtapActionはSMBをReader、openUrlのある取得元を外部URI、残りをメニューへ振り分ける。LibraryUriHandlerはKindle Personal Documentの専用URIやGoogle Booksリンクを判定し、利用可能なreader ActivityへIntentを送る。起動不能は利用者へmessageを表示する。
-2. SMB閲覧はSmbBookReaderRouteがprepareBookをIOで実行してbytes進捗を表示し、BookDocumentを作ってpageSourceFactory.open、BookReaderScreenへ渡す。取得/open失敗は再試行画面になり、DisposableEffectの離脱でsource.closeする。
+2. SMB閲覧はSmbBookReaderRouteがprepareBookをIOで実行してbytes進捗を表示し、BookDocumentを作ってpageSourceFactory.open、BookReaderScreenへ渡す。取得/open失敗は再試行画面になり、DisposableEffectの離脱でsource.closeする。再試行はretryKeyの変更でprepareBookを再実行するが、sourceResultはdocumentとpageSourceFactoryをキーにrememberされるため、同じBookDocumentでのpageSourceFactory.open失敗は再試行後も残る場合がある。
 3. AmazonWebLibraryImportDialogはcore web collectorに取得元別のconfig/scriptを渡し、JSONを検証してViewModel.importAmazonLibraryJsonへ渡す。同期完了後の表紙や書誌解析は別queueで進む。
 4. Web追加はWebLibraryAddAction、再取得はrouteのrefresh状態、完全削除はWebLibraryDeleteDialogで操作する。extractor editorは未保存ruleのtest結果とPromise/timeoutなどのstatusを表示してから保存できる。
 

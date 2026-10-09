@@ -6,15 +6,17 @@ tags:
   - podcast
   - domain
   - module
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T04:30:12.060Z
 sources:
   - id: openwiki-source-3391ea41cc8fdc84138466e7
     resource: repo://feature/podcast/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/podcast/Podcast.kt
   - id: openwiki-source-cafc036dfaf531d238cf1a8d
     resource: repo://feature/podcast/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastInterruptedRecoveryTest.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+  - id: openwiki-source-86b30f8e30a15901636a5a73
+    resource: repo://feature/podcast/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastNewsClusteringTest.kt
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # Podcast Domain：番組生成と章checkpoint
@@ -55,6 +57,8 @@ generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
 ## 入口から checkpoint への具体フロー
 
 `GeneratePodcastEpisodeUseCase.generate(programId)` は候補の採否を検証し、除外済みを記録、`clusterCandidates` で全候補がちょうど一度 group に含まれることを検証し、feed category と不足分の分類から章順序を作ります。Repository の `reserveEpisode` が記事 snapshot と章位置を保存してから `generateReserved` に進みます。`retry` は FAILED の章checkpoint再利用、`regenerate` は READY/FAILED episode の保存済み記事に現在の条件を適用した rebuild、`resumeInterrupted` は中断した episode の再開を意味します。
+
+`clusterCandidates` は `selectPodcastFeedCategories` で各ニュースclusterの代表categoryを選び、`orderPodcastNewsByCategory` で章順を作ります。categoryはニュース単位で重複を除いて数え、出現数が最少のものを代表にします。同数なら`/`階層が深いもの、大小文字を無視した辞書順、元文字列順で決めます。feed categoryがないニュースに限って`PodcastNewsCategorizer`で補完し、推論失敗、返却件数の不一致、空値は「その他」にします。categoryの並びは最初に現れた順、同じcategory内では元のニュース順を保ち、その順で章位置を付けます。[PodcastNewsClusteringTest](../../../feature/podcast/domain/src/test/kotlin/dev/terashima/yomitorirss/feature/podcast/PodcastNewsClusteringTest.kt)は代表categoryの選択、補完、同一ニュース内の重複計数、category別の順序を検証します。
 
 `generateReserved` は READY で原稿のある章を飛ばし、残りを `generateChapter` → `markChapterGenerating` → `buildPodcastChapterPrompt` → generator → `completeChapter` の順で処理します。CLOUD は semaphore 付き並行生成、LOCAL は逐次生成です。最後に章原稿を結合して `completeEpisode` を呼びます。公開 `buildPodcastChapterPrompt` は単記事/記事群の入力から prompt を作ります。公開 `buildPodcastEpisodeScript` は各記事を一章として結合する互換入口で、生成UseCaseでは内部 `buildPodcastEpisodeScriptFromChapters` が保存済み章group単位で原稿を結合します。`chapterGroups()` は章位置順の group、`playbackChapters()` は marker を検証し、整合しない原稿は全体一章へ戻します。
 

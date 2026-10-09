@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:75a1d349d0cb8d88a4d626412672608a896ffeb65920f6f20b793ad4b6e73433",
+  "pageVersion": "sha256:87853056a862c2ece9f99b3a20362d3b1398a32036f6c1ee0ae84f09d116d708",
   "claims": [
     {
       "id": "claim_6e0d9b7b2a87421db798d65ddc3f77da",
@@ -41,10 +41,42 @@
           "version": "repo-lines-v1:sha256:04c86d0eb6d9e6239e19ff3e248242c74b03b3244980241c4cd41948c5f68b50:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwMDkxZjIyMDFmMWNkM2FlMTliN2I0ZjI0MTllYTQxNTE5MjliMjk0YTdlMzg3OGUwMGVhYjdjMTQ1ODY1ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkNWYyNDBhMmUyMTAzNmY0NmFhMmY1ZjcwZGUyNmZkNzgxMGY1NTQ4MWUyMzI4YTgzZGQwY2EzNDkzM2M0NzgifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3e4ed746fa0e42ceb81c71ba13767e1c",
+      "statement": "周期更新はApp compositionのIntegratedRefreshWorkerが所有し、その統合更新処理はMail repositoryの同期も実行する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/IntegratedRefreshWorker.kt#L100-L118",
+          "version": "repo-lines-v1:sha256:2e67a7c2b7999e34f8f7f277719ec9fd01daa1f3e32ec09fac88adf19b0e6ba5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyZmZkYjc3Y2E2NWU3MjEzNGQyZDI3OTlkYzg4NTc3Yzg0NzUxMTBjZmJjNTRlODUwZjg0ZjkxNDgyMzVhNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJjODNmNGM5MGFlZTIyODI5NTY1ZTk5NmQyZmFjZGY3OTdhMjdiZDIyMjgxYmMxNTg2ZjhmZjgxNzcyYmExMjUifQ"
+        },
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/IntegratedRefreshWorker.kt#L46-L55",
+          "version": "repo-lines-v1:sha256:186e9a59f13019c7e5a92e9a43436887d54a2805208dac88eeaa319e6bc70222:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyYTVmNzlhOTBiYzY1MDg2YzI0ZTg3ZDM1ZTU0MGRkYjc2MDNmZjg1ZTAwODI0NWNiZmY0Yjg4MWY1ZTI4YTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2ZWMxZDA1ZGQwNGZmNmIxZTA3NTMwYjliNTJhMWE0MjFlZjViYjNhM2UwYjExM2Q1NjNhMGE0MGMwNTRjZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmMTMwYTA4ZjViMDFlNDdhZDhkOGZjNmIzMTUzMDZjODZjNjY5NDAwYTFiZTIzOWZjNDc1NmQzZDdlNzliOTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7aa7f24d43de422db76a3e71a3030ca5",
+      "statement": "MailSyncSchedulerのschedulePeriodicとrefreshPeriodicNetworkPolicyはMail単独の旧周期workを作らずcancelPeriodicを呼び、起動時も旧workを取り消す。architecture testは単独周期workの再作成がなく初回ページworkが残ることを確認する。",
+      "evidence": [
+        {
+          "resource": "repo://app/composition/src/main/java/dev/terashima/yomitorirss/composition/background/AppBackgroundRuntime.kt#L20-L25",
+          "version": "repo-lines-v1:sha256:b0e4cf69b8752c002f1313eda61aaea8529cea6a08a49c4ff86963a6f3a2cdf5:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzgyY2I4N2Y5ZjU2NTUwYmQzZmZlOGNhMjFmMTE3OWFjZmRkZGMxZmJkZjg2NWMyYmIzYjA2ODM2MDJiYjRlZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmE5OTY5OGRjNTU3MGE0Y2IyYWVmYmE0MDQ4NGE3NmYwM2I2ODg3NGM5NjVjMzIxNGEzYjQ2ZjNhZTMyNjM2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjlhNjZhNTJiMTYzZjMwZTA1NDg3Mjc1YjNkYmVlZWVhMmI5NjkwOWEzODc4MzU3OGEyMjhkNThjY2QzMjJhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY3MzlhMDZjMWNiYjEyNDRlMzM2M2QzOGJjZjlmYTUwY2U4NGZlZDM5OWMyMTkzYTNjN2YwOGQ1OTkxOGIyYSJ9"
+        },
+        {
+          "resource": "repo://app/composition/src/test/kotlin/dev/terashima/yomitorirss/composition/IntegratedBackgroundRefreshArchitectureTest.kt#L33-L47",
+          "version": "repo-lines-v1:sha256:b676931205920772b24395c9397798560bb328863b10fdb17ee12055067f4b91:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgxNThmNGEwZWMzYWEyYjc3OTVmMWM4OTBiOGZiYjk5ZGYxYTM1YzY3MTM4ZjEyYjEzNzYyMjhhZDdhMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzZDMzOWQ4M2JkYWIzYWExMTI2NTQzZGZjNDU4ZjhhZTUxYzgyMDQzMDkzOWViM2NlZjk4NGEzY2VhNTA0ZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3ODRmNThhOWZhMzYyMjljMDU5YTE5NzY5ZWFjMDk3YzZhYzQ5NTMzZjUyZDI3MTk2NzgxMzc3MDJiYTc0YzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMDQ1ODNlZTBlZjU5MGVmOGUwYWExNWUxYWZjOGUwMzM0NzFjYWQyZjM1NTcwZDZhYmY2MzYyZWEwYzZkYzYifQ"
+        },
+        {
+          "resource": "repo://feature/mail/data/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/data/MailSyncWorker.kt#L59-L78",
+          "version": "repo-lines-v1:sha256:8063a758e2a3355a249289c3b1013f834f610ff2e1feded1f5b1448f31ed12da:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmMmEyZjk5NmYwOGU2ODBiZDI5MjEzNWE2ZmE0OTc4YmRhMjZlNjAyZDg0ZjMzY2IxZDU5NDc3NWQ0MzA0YjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZjM5YTg3MjM2NzBlYjBhMWFmYmExMzZhMTkwYTM3MjczNzZjMmJmZDAxMWYwZmVhMjEzNTc1NWI0ZjhkNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNGExMTM3Y2U3OTA0NDEwMWRhMWJlM2E2NTk4MGFmYTU1NjZkZDE4ZDY2MjUwYTA3NWJjZWJkNDZmNzIwMDAifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T02:32:57.934Z"
+    "at": "2026-10-09T08:22:11.354Z"
   }
 }

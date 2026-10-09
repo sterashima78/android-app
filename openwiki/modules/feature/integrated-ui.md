@@ -6,9 +6,6 @@ tags:
   - integrated
   - ui
   - content
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T02:32:57.934Z
 sources:
   - id: openwiki-source-b86daa9c0cafcbcf6f74668c
     resource: repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedProjection.kt
@@ -18,7 +15,10 @@ sources:
     resource: repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedScreen.kt
   - id: openwiki-source-101a3256f48d88cb1015b07d
     resource: repo://feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedTargetDispatcher.kt
-generated: { by: "codex", at: "2026-10-09T02:32:57.934Z" }
+generated: { by: "codex", at: "2026-10-09T08:22:11.354Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T08:22:11.354Z
 ---
 
 # Integrated UI：RSS・Reddit・メールの横断表示
@@ -60,7 +60,7 @@ IntegratedProjectionは一覧itemと元の操作targetを組にする。未読�
 
 ## 操作と lifecycle
 
-IntegratedTargetDispatcherはtargetのsourceに応じて既読、保存、あとで読む、開く等を元のViewModelへ返す。除外参考はRSSだけ、starとarchiveはメールだけに適用する。Routeは選択tabをrememberSaveableで保持し、tabに対応するmailboxを選ぶ。更新操作はFeed、Reddit、Mailへ個別に要求し、各featureの初期化完了を待って一覧を表示する。
+IntegratedTargetDispatcherはtargetのsourceに応じて既読、保存、あとで読む、開く等を元のViewModelへ返す。除外参考はRSSだけ、starとarchiveはメールだけに適用する。Routeは選択tabをrememberSaveableで保持し、tabに対応するmailboxを選ぶ。更新操作はFeed、Reddit、Mailへ個別に要求する。一覧表示はRSS・Reddit・Mailの初期化完了を待ち、Feedの初期化状態はゲートに含めない。Feedは更新中状態の表示と更新呼び出しに使う。
 
 ## 変更と検証
 
