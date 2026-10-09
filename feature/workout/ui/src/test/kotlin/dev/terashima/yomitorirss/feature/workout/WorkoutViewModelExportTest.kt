@@ -71,6 +71,45 @@ class WorkoutViewModelExportTest {
     }
   }
 
+  @Test
+  fun `詳細は任意で保存でき明示操作で前回値を再利用できる`() = runTest(dispatcher) {
+    val repository = FakeWorkoutRepository(newWorkoutSnapshot(LocalDate.now().toString()), mutableListOf())
+    val exporter = FakeWorkoutHistoryExporter(ArrayDeque(), mutableListOf())
+    val viewModel = WorkoutViewModel(repository, exporter)
+    try {
+      runCurrent()
+      viewModel.updateLoadKind(WorkoutLoadKind.ADDED_WEIGHT)
+      assertFalse(viewModel.state.value.detailsValid)
+      viewModel.updateLoadValue("5.5")
+      viewModel.updateRpe(7)
+      viewModel.updateFormQuality(WorkoutFormQuality.STABLE)
+      viewModel.updateRestSeconds("90")
+      assertTrue(viewModel.state.value.detailsValid)
+
+      viewModel.recordSet()
+      runCurrent()
+      val recorded = viewModel.state.value.snapshot.today.sets.single()
+      assertEquals(7, recorded.rpe)
+      assertEquals(WorkoutFormQuality.STABLE, recorded.formQuality)
+      assertEquals(WorkoutLoad(WorkoutLoadKind.ADDED_WEIGHT, "5.5"), recorded.load)
+      assertEquals(90, recorded.restSeconds)
+      assertEquals(null, viewModel.state.value.rpe)
+
+      viewModel.reuseLastSetDetails()
+      assertEquals(7, viewModel.state.value.rpe)
+      assertEquals(WorkoutFormQuality.STABLE, viewModel.state.value.formQuality)
+      assertEquals("5.5", viewModel.state.value.loadValue)
+      assertEquals("90", viewModel.state.value.restSeconds)
+
+      val other = viewModel.state.value.snapshot.exercises.first { it.id != recorded.exerciseId }
+      viewModel.selectExercise(other.id)
+      assertEquals(null, viewModel.state.value.rpe)
+      assertEquals(null, viewModel.state.value.loadKind)
+    } finally {
+      viewModel.viewModelScope.cancel()
+    }
+  }
+
   private fun snapshotWithCompletedSet(): WorkoutSnapshot {
     val exercise = defaultWorkoutExercises().first()
     return WorkoutSnapshot(
