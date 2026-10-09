@@ -47,6 +47,33 @@ data class WorkoutMenu(
   val source: WorkoutMenuSource = WorkoutMenuSource.PRESET,
 )
 
+enum class WorkoutFormQuality(val label: String) {
+  STABLE("安定"),
+  UNSTABLE("途中から崩れた"),
+  DISCOMFORT("痛み・違和感"),
+}
+
+enum class WorkoutLoadKind(val label: String) {
+  BODY_ANGLE("身体の角度"),
+  ADDED_WEIGHT("追加重量"),
+  ASSISTED_WEIGHT("補助重量"),
+  OTHER("その他"),
+}
+
+data class WorkoutLoad(
+  val kind: WorkoutLoadKind,
+  val value: String,
+) {
+  init {
+    require(value.isNotBlank()) { "Load value must not be blank" }
+    if (kind == WorkoutLoadKind.ADDED_WEIGHT || kind == WorkoutLoadKind.ASSISTED_WEIGHT) {
+      require(value.toDoubleOrNull()?.let { it.isFinite() && it >= 0.0 } == true) {
+        "Load weight must be a nonnegative number"
+      }
+    }
+  }
+}
+
 data class WorkoutSet(
   val id: String,
   val exerciseId: String,
@@ -59,7 +86,16 @@ data class WorkoutSet(
   val recordedAt: String,
   val startedAt: String? = null,
   val finishedAt: String? = null,
-)
+  val rpe: Int? = null,
+  val formQuality: WorkoutFormQuality? = null,
+  val load: WorkoutLoad? = null,
+  val restSeconds: Int? = null,
+) {
+  init {
+    require(rpe == null || rpe in 1..10) { "RPE must be from 1 to 10" }
+    require(restSeconds == null || restSeconds >= 0) { "Rest must be nonnegative" }
+  }
+}
 
 data class WorkoutDay(
   val date: String,
@@ -78,7 +114,7 @@ data class WorkoutHistory(
 )
 
 data class WorkoutSnapshot(
-  val version: Int = 3,
+  val version: Int = 4,
   val exercises: List<WorkoutExercise>,
   val menus: List<WorkoutMenu> = emptyList(),
   val today: WorkoutDay,
