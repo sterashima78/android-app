@@ -10,7 +10,7 @@
 - 設定値・スキーマ番号などは必要なときだけ記載し、変更されやすい数値や全シンボルの一覧を重複管理しない。
 - リポジトリの Knowledge 機能と、この開発用 OpenWiki を区別して説明する。
 - 認証情報、実ユーザーデータ、ローカル環境の絶対パス、生成ログ、ビルド成果物を Wiki に含めない。
-- 更新は Codex の OpenWiki 連携から行う。OpenWiki 用の GitHub Actions workflow は不要であり、無効化した雛形もリポジトリに残さない。生成ツールが `.github/workflows/openwiki-update.yml` や定期更新を前提とする案内を再作成した場合は、生成完了後に取り除く。
+- Wiki の生成・更新は `python3 scripts/openwiki_cli.py update`（初期化時のみ `python3 scripts/openwiki_cli.py init`）からスタンドアロン CLI で実行し、MCP ツールや外部エージェント向け連携を前提としない。Wiki 内の運用案内も CLI の手順に合わせる。CLI が生成する agent 用管理ブロックと定期更新 workflow はラッパーで整理し、リポジトリには残さない。
 
 ## モジュール説明ページの生成要件
 
