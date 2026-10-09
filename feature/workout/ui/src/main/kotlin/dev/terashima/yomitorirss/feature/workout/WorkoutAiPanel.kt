@@ -184,7 +184,7 @@ fun WorkoutAiSettingsSection(
       }
       if (state.settings.provider == WorkoutAiProvider.CHATGPT) {
         Text(
-          "直近14日間のワークアウト記録、メモ、方針、設定済みメニュー、保存済みレビューがクラウドへ送信されます。自動でLocalへ切り替えません。",
+          "直近14日間のワークアウト記録（入力したRPE・フォーム・負荷条件・休憩時間を含む）、メモ、方針、設定済みメニュー、保存済みレビューがクラウドへ送信されます。自動でLocalへ切り替えません。",
           style = MaterialTheme.typography.bodySmall,
         )
       }
