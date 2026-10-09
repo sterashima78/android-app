@@ -76,6 +76,15 @@ data class WorkoutUiState(
     }
 }
 
+private fun WorkoutUiState.clearSetDetails(): WorkoutUiState = copy(
+  memo = "",
+  rpe = null,
+  formQuality = null,
+  loadKind = null,
+  loadValue = "",
+  restSeconds = "",
+)
+
 class WorkoutViewModel(
   private val repository: WorkoutRepository,
   private val historyExporter: WorkoutHistoryExporter,
@@ -143,7 +152,7 @@ class WorkoutViewModel(
         amount = initialAmount(snapshot, selected),
         stepCount = snapshot.lastStepCounts[selected]?.toString().orEmpty(),
         menuMessage = "「${menu.name}」を今日のメニューにしました",
-      )
+      ).clearSetDetails()
     }
   }
 
@@ -197,7 +206,7 @@ class WorkoutViewModel(
         stepCount = snapshot.lastStepCounts[selected]?.toString().orEmpty(),
         selectedTab = WorkoutTab.WORKOUT,
         menuMessage = if (saveAsPreset) "「${menu.name}」を保存して今日のメニューにしました" else "「${menu.name}」を今日のメニューにしました",
-      )
+      ).clearSetDetails()
     }
   }
 
@@ -223,7 +232,7 @@ class WorkoutViewModel(
     val snapshot = current.copy(menus = menus, today = today)
     updateSnapshot(snapshot)
     val selected = snapshot.menuExercises().firstOrNull()?.id.orEmpty()
-    _state.update { it.copy(selectedExerciseId = selected, amount = initialAmount(snapshot, selected)) }
+    _state.update { it.copy(selectedExerciseId = selected, amount = initialAmount(snapshot, selected)).clearSetDetails() }
   }
 
   fun updateAmount(value: String) = _state.update { it.copy(amount = value.filter(Char::isDigit).take(5)) }
@@ -298,7 +307,7 @@ class WorkoutViewModel(
         amount = initialAmount(nextSnapshot, selected),
         exportMessage = null,
         exportPermissionRequired = false,
-      )
+      ).clearSetDetails()
     }
     resetTimers()
     viewModelScope.launch {
@@ -339,7 +348,7 @@ class WorkoutViewModel(
     val snapshot = current.copy(today = WorkoutDay(date = LocalDate.now().toString()))
     updateSnapshot(snapshot)
     val selected = snapshot.menuExercises().firstOrNull()?.id.orEmpty()
-    _state.update { it.copy(selectedExerciseId = selected, amount = initialAmount(snapshot, selected)) }
+    _state.update { it.copy(selectedExerciseId = selected, amount = initialAmount(snapshot, selected)).clearSetDetails() }
     resetTimers()
   }
 
@@ -415,7 +424,7 @@ class WorkoutViewModel(
         amount = initialAmount(snapshot, exercise.id),
         stepCount = snapshot.lastStepCounts[exercise.id]?.toString().orEmpty(),
         menuMessage = "種目「${exercise.name}」を登録し、今日のメニューに追加しました。",
-      )
+      ).clearSetDetails()
     }
   }
 
@@ -435,7 +444,7 @@ class WorkoutViewModel(
     )
     updateSnapshot(snapshot)
     val next = snapshot.menuExercises().firstOrNull()?.id.orEmpty()
-    _state.update { it.copy(selectedExerciseId = next, amount = initialAmount(snapshot, next)) }
+    _state.update { it.copy(selectedExerciseId = next, amount = initialAmount(snapshot, next)).clearSetDetails() }
   }
 
   fun restoreDefaultExercises() {
@@ -449,7 +458,7 @@ class WorkoutViewModel(
     )
     updateSnapshot(snapshot)
     val selected = exercises.first().id
-    _state.update { it.copy(selectedExerciseId = selected, amount = initialAmount(snapshot, selected)) }
+    _state.update { it.copy(selectedExerciseId = selected, amount = initialAmount(snapshot, selected)).clearSetDetails() }
   }
 
   fun setIntervalDuration(seconds: Int) {
