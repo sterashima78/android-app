@@ -152,12 +152,17 @@ class VideoViewModel(
     providerRepository.deleteProvider(id)
   }
 
-  fun subscribe(providerId: String, sourceUrl: String) = launchMutation(
+  fun subscribe(providerId: String, sourceUrl: String, title: String? = null) = launchMutation(
     fallbackMessage = "動画の購読を追加できませんでした",
     busyMessage = "購読先を確認中…",
   ) {
-    providerRepository.subscribe(providerId, sourceUrl)
+    providerRepository.subscribe(providerId, sourceUrl, title)
   }
+
+  fun updateSubscriptionTitle(subscriptionId: String, title: String) =
+    launchMutation("購読タイトルを更新できませんでした") {
+      providerRepository.updateSubscriptionTitle(subscriptionId, title)
+    }
 
   fun unsubscribe(subscriptionId: String) = launchMutation("動画の購読を解除できませんでした") {
     providerRepository.unsubscribe(subscriptionId)

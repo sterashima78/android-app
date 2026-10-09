@@ -100,6 +100,12 @@ Provider codeはユーザー自身が登録するtrusted configurationとして�
 
 Provider codeやHTTP response bodyをlogへ出力しない。error UIにはsecretを含み得るresponse本文やrequest headerを表示しない。
 
+## Amendment (2026-10-08): カスタム購読先の表示タイトル
+
+custom ProviderFeed の `title` は新規購読の初期表示名として採用する。ただし、購読画面からタイトルを任意指定・編集した場合は既存の `video_subscriptions.title` に保存し、以後のrefreshでFeedの `title` に置き換えない。ユーザー指定がない既存のcustom subscriptionも保存済みタイトルを維持する。組み込みProviderは従来どおりFeed由来の表示タイトルを更新する。
+
+表示名だけの変更であり、source identity、subscription membership、Video item titleやstateは変えない。既存のタイトルcolumnを利用するためmigrationとbackup format変更は不要である。
+
 ## Consequences
 
 ### Positive

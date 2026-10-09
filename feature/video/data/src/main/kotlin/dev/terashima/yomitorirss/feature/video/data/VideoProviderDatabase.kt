@@ -101,22 +101,56 @@ internal class VideoProviderDatabase(
   fun requireProvider(id: String): VideoProvider = providers().firstOrNull { it.id == id }
     ?: throw IllegalArgumentException("動画プロバイダが見つかりません")
 
-  fun upsertProviderFeed(provider: VideoProvider, feed: VideoProviderFeed): Pair<VideoSubscription, Int> {
+  fun updateCustomSubscriptionTitle(subscriptionId: String, title: String) {
+    ensureSchema()
+    val normalizedTitle = title.trim()
+    require(normalizedTitle.isNotEmpty()) { "購読タイトルを入力してください" }
+    require(normalizedTitle.length <= MAX_SUBSCRIPTION_TITLE_CHARS) { "購読タイトルが長すぎます" }
+    database.write {
+      val updated = update(
+        "video_subscriptions",
+        ContentValues().apply {
+          put("title", normalizedTitle)
+          put("updated_at", System.currentTimeMillis())
+        },
+        "id = ? AND provider_id IN (SELECT id FROM video_providers WHERE provider_type LIKE ?)",
+        arrayOf(subscriptionId, "${VideoProviderType.CUSTOM.name}:%"),
+      )
+      require(updated == 1) { "カスタム動画の購読先が見つかりません" }
+    }
+  }
+
+  fun upsertProviderFeed(
+    provider: VideoProvider,
+    feed: VideoProviderFeed,
+    titleOverride: String? = null,
+  ): Pair<VideoSubscription, Int> {
     ensureSchema()
     return database.transaction {
       val now = System.currentTimeMillis()
       val subscriptionId = providerSubscriptionId(provider.id, feed.sourceId)
-      val createdAt = rawQuery(
-        "SELECT created_at FROM video_subscriptions WHERE id = ?",
+      val existing = rawQuery(
+        "SELECT created_at, title FROM video_subscriptions WHERE id = ?",
         arrayOf(subscriptionId),
-      ).use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else now }
+      ).use { cursor ->
+        if (cursor.moveToFirst()) cursor.getLong(0) to cursor.getString(1) else null
+      }
+      val requestedTitle = titleOverride?.trim()?.takeIf(String::isNotEmpty)
+      require(requestedTitle == null || requestedTitle.length <= MAX_SUBSCRIPTION_TITLE_CHARS) {
+        "購読タイトルが長すぎます"
+      }
+      val subscriptionTitle = if (provider.type == VideoProviderType.CUSTOM) {
+        requestedTitle ?: existing?.second ?: feed.title
+      } else {
+        feed.title
+      }
       val subscription = VideoSubscription(
         id = subscriptionId,
         providerId = provider.id,
         sourceId = feed.sourceId,
-        title = feed.title,
+        title = subscriptionTitle,
         sourceUrl = feed.sourceUrl,
-        createdAtEpochMillis = createdAt,
+        createdAtEpochMillis = existing?.first ?: now,
         updatedAtEpochMillis = now,
       )
       val subscriptionValues = ContentValues().apply {
@@ -392,3 +426,4 @@ private fun VideoProviderType.defaultDisplayName(): String = when (this) {
 }
 
 private const val MAX_CUSTOM_PROVIDER_FUNCTION_CHARS = 128 * 1024
+private const val MAX_SUBSCRIPTION_TITLE_CHARS = 16 * 1024

@@ -151,10 +151,14 @@ class DefaultVideoProviderRepositoryTest {
       ),
     )
 
-    val subscription = repository.subscribe(provider.id, "source-input")
+    val subscription = repository.subscribe(provider.id, "source-input", "登録時のタイトル")
+    repository.updateSubscriptionTitle(subscription.id, "編集したタイトル")
     val refresh = repository.refreshProviders(provider.id)
 
     assertEquals("custom-source", subscription.sourceId)
+    assertEquals("登録時のタイトル", subscription.title)
+    assertEquals("編集したタイトル", repository.subscriptions(provider.id).single().title)
+    assertEquals("編集したタイトル", repository.unreadVideos().first().subscriptionTitle)
     assertEquals(listOf("source-input"), runtime.subscribeInputs)
     assertEquals(listOf("custom-source"), runtime.refreshInputs)
     assertEquals(listOf(provider.functionCode, provider.functionCode), runtime.functionCodes)

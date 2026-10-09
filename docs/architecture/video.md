@@ -149,6 +149,8 @@ video_provider_items + video_items
 
 custom providerは複数登録できる。function codeは `async (input, api) => ProviderFeed` 相当のJavaScript function expressionとして保存し、subscribe時は `input.mode = "subscribe"` とユーザー入力、refresh時は `input.mode = "refresh"` と保存済みsource IDを受け取る。戻り値はsource ID、表示タイトル、source URLと動画item配列へ正規化し、Video Dataがvalidation後に既存provider stateへ投影する。
 
+custom subscriptionは `video_subscriptions.title` を表示タイトルのsource of truthとして扱う。subscribe時にユーザーがタイトルを指定すればその値を保存し、省略時にはProviderFeedのタイトルを初期値とする。以後のcustom refreshでは保存済みタイトルを優先し、設定画面から更新できる。組み込みProviderは引き続きFeedからタイトルを更新する。既存title columnを再利用するためschema migrationや新しいdurable stateは不要であり、動画itemタイトルとsource identityには影響しない。
+
 custom providerの外部通信はhostが提供する `api.fetch` を利用する。requestはcredentialを含まないHTTPS URLに限定し、request回数、body size、response size、function size、実行時間をboundedにする。custom runtimeにはdatabase、filesystem、Android object、他Contextのrepositoryを公開しない。専用WebView profileではCookieを受け入れず、direct network loadも無効化する。
 
 `Authorization`、`Cookie`、proxy credential、API key相当のcredential headerは初期custom provider contractでは受け付けず、既存WebView Cookie、mail credential、SMB credential、cloud token等を暗黙に注入しない。認証付きproviderを追加する場合は、function codeとは分離されたprotected credential capabilityとして別途設計判断する。
