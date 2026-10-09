@@ -95,11 +95,11 @@ class WorkoutViewModelExportTest {
       assertEquals(90, recorded.restSeconds)
       assertEquals(null, viewModel.state.value.rpe)
 
-      viewModel.reuseLastSetDetails()
-      assertEquals(7, viewModel.state.value.rpe)
-      assertEquals(WorkoutFormQuality.STABLE, viewModel.state.value.formQuality)
+      viewModel.reuseLastLoad()
+      assertEquals(null, viewModel.state.value.rpe)
+      assertEquals(null, viewModel.state.value.formQuality)
       assertEquals("5.5", viewModel.state.value.loadValue)
-      assertEquals("90", viewModel.state.value.restSeconds)
+      assertEquals("", viewModel.state.value.restSeconds)
 
       val other = viewModel.state.value.snapshot.exercises.first { it.id != recorded.exerciseId }
       viewModel.selectExercise(other.id)
