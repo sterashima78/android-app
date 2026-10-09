@@ -75,7 +75,7 @@ class WorkoutViewModelExportTest {
   fun `詳細は任意で保存でき明示操作で前回値を再利用できる`() = runTest(dispatcher) {
     val repository = FakeWorkoutRepository(newWorkoutSnapshot(LocalDate.now().toString()), mutableListOf())
     val exporter = FakeWorkoutHistoryExporter(ArrayDeque(), mutableListOf())
-    val viewModel = WorkoutViewModel(repository, exporter)
+    val viewModel = WorkoutViewModel(repository, exporter, elapsedRealtimeMillis = { 0L })
     try {
       runCurrent()
       viewModel.updateLoadKind(WorkoutLoadKind.ADDED_WEIGHT)
