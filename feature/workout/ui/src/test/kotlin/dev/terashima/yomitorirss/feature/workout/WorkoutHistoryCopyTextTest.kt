@@ -25,6 +25,22 @@ class WorkoutHistoryCopyTextTest {
   }
 
   @Test
+  fun `セット詳細がある場合は履歴コピーにも含める`() {
+    val set = workoutSet("pull-1", "pull", "斜め懸垂", WorkoutUnit.REPS, 8).copy(
+      rpe = 7,
+      formQuality = WorkoutFormQuality.STABLE,
+      load = WorkoutLoad(WorkoutLoadKind.BODY_ANGLE, "中程度の傾斜"),
+      restSeconds = 60,
+    )
+    val history = WorkoutHistory("history-3", "2026-08-19", null, "2026-08-19T08:30:00+09:00", listOf(set))
+
+    assertEquals(
+      "2026-08-19\n1 セット\n斜め懸垂: 1セット / 8回\nセット 1 (斜め懸垂): RPE 7/10 / フォーム: 安定 / 身体の角度: 中程度の傾斜 / 直前の休憩: 60秒",
+      formatWorkoutHistoryForCopy(history),
+    )
+  }
+
+  @Test
   fun `1時間以上の時間は時分秒で整形する`() {
     val history = WorkoutHistory(
       id = "history-2",

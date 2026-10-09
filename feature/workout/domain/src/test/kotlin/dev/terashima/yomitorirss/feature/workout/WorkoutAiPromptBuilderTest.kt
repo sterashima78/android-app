@@ -35,6 +35,33 @@ class WorkoutAiPromptBuilderTest {
   }
 
   @Test
+  fun `セットの実際に記録した強度とフォームと負荷をAIへ渡す`() {
+    val set = workoutSet("details", "斜め懸垂", 10).copy(
+      rpe = 8,
+      formQuality = WorkoutFormQuality.UNSTABLE,
+      load = WorkoutLoad(WorkoutLoadKind.BODY_ANGLE, "中程度の傾斜"),
+      restSeconds = 90,
+    )
+    val snapshot = snapshotWithHistory().copy(
+      today = WorkoutDay(date = today.toString(), sets = listOf(set)),
+    )
+
+    val prompt = WorkoutAiPromptBuilder.build(
+      type = WorkoutAiRequestType.POST_WORKOUT_REVIEW,
+      snapshot = snapshot,
+      settings = WorkoutAiSettings(),
+      memos = emptyMap(),
+      today = today,
+    )
+
+    assertTrue(prompt.contains("RPE 8/10"))
+    assertTrue(prompt.contains("フォーム: 途中から崩れた"))
+    assertTrue(prompt.contains("身体の角度: 中程度の傾斜"))
+    assertTrue(prompt.contains("直前の休憩: 90秒"))
+    assertTrue(prompt.contains("負荷条件が異なるセットの回数は単純比較しない"))
+  }
+
+  @Test
   fun `完了後レビューには進行中の当日実績を含める`() {
     val snapshot = snapshotWithHistory().copy(
       today = WorkoutDay(

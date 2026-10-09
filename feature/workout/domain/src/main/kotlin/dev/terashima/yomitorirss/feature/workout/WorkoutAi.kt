@@ -105,7 +105,9 @@ object WorkoutAiPromptBuilder {
       appendLine("医療診断は行わず、痛み・強い不調・異常が記載されている場合は無理な運動を勧めないでください。")
       appendLine("入力にない重量・回数・体調・RPE・休憩時間などを事実として補完しないでください。")
       appendLine("登録済み種目やプリセットは候補です。今日の予定として扱ってよいのは「今日の予定メニュー」に示された内容だけです。")
-      appendLine("ワークアウトメモは利用者の主観的な所感です。客観的な負荷測定値と同一視しないでください。")
+      appendLine("ワークアウトメモ、RPE、フォーム所感は主観的な記録です。実測の重量や全体負荷と同一視しないでください。")
+      appendLine("運動強度や回復状況は確認できる記録の範囲で評価し、負荷条件が異なるセットの回数は単純比較しないでください。")
+      appendLine("休憩秒数は利用者が記録した場合だけ事実として扱ってください。")
       appendLine()
       appendLine("## ワークアウト方針")
       appendLine(settings.workoutPolicy.ifBlank { "未設定" })
@@ -170,7 +172,7 @@ object WorkoutAiPromptBuilder {
           appendLine("## 依頼")
           appendLine("今日のワークアウトをレビューしてください。")
           appendLine("「今日の予定メニュー」と「記録済みセット」を比較し、予定との差分は予定メニューに存在する項目だけについて述べてください。登録済み種目や他のプリセットにあるだけの種目を未実施扱いしないでください。")
-          appendLine("負荷の評価は、記録されたセット数・回数・時間と直近14日間の同種目実績から確認できる範囲に限定してください。重量、RPE、休憩時間等がない場合は全体負荷を断定しないでください。")
+          appendLine("負荷の評価は、記録されたセット数・回数・時間と直近14日間の同種目実績から確認できる範囲に限定してください。重量、RPE、フォーム、休憩時間等が未記録の場合は全体負荷を断定しないでください。")
           appendLine("メモの疲労感や筋肉への負荷感は主観的所感として扱い、客観的な運動強度と同一視しないでください。")
           appendLine("出力は「実績」「予定との差分」「最近の実績との比較」「所感の読み取り」「次回の調整案」「判断できない点」の順で簡潔にまとめてください。")
           appendLine("今日の記録が不足している場合は、不足していることを明示し、断定的な評価を避けてください。")
@@ -223,6 +225,7 @@ object WorkoutAiPromptBuilder {
     append(set.exerciseName)
     append(": ${set.amount}${set.unit.label}")
     set.steps?.let { append(" / ${it}段") }
+    formatWorkoutSetDetails(set).takeIf(String::isNotBlank)?.let { append(" / $it") }
     if (set.memo.isNotBlank()) append(" / セットメモ: ${set.memo}")
   }
 

@@ -6,6 +6,45 @@ import org.junit.Test
 
 class WorkoutModelsTest {
   @Test
+  fun `任意詳細は記録されている値だけを表示する`() {
+    val original = WorkoutSet(
+      id = "s1",
+      exerciseId = "pull",
+      exerciseName = "斜め懸垂",
+      unit = WorkoutUnit.REPS,
+      type = WorkoutExerciseType.REPS,
+      amount = 8,
+      recordedAt = "2026-10-09T08:00:00+09:00",
+      rpe = 8,
+      formQuality = WorkoutFormQuality.UNSTABLE,
+      load = WorkoutLoad(WorkoutLoadKind.BODY_ANGLE, "中程度の傾斜"),
+      restSeconds = 90,
+    )
+    assertEquals(
+      "RPE 8/10 / フォーム: 途中から崩れた / 身体の角度: 中程度の傾斜 / 直前の休憩: 90秒",
+      formatWorkoutSetDetails(original),
+    )
+    assertEquals("", formatWorkoutSetDetails(original.copy(rpe = null, formQuality = null, load = null, restSeconds = null)))
+  }
+
+  @Test
+  fun `異常な運動強度や重量は受け付けない`() {
+    val base = WorkoutSet(
+      id = "s1",
+      exerciseId = "pull",
+      exerciseName = "斜め懸垂",
+      unit = WorkoutUnit.REPS,
+      type = WorkoutExerciseType.REPS,
+      amount = 8,
+      recordedAt = "2026-10-09T08:00:00+09:00",
+    )
+    assertTrue(runCatching { base.copy(rpe = 11) }.isFailure)
+    assertTrue(runCatching { base.copy(restSeconds = -1) }.isFailure)
+    assertTrue(runCatching { WorkoutLoad(WorkoutLoadKind.ADDED_WEIGHT, "-1") }.isFailure)
+    assertTrue(runCatching { WorkoutLoad(WorkoutLoadKind.ADDED_WEIGHT, "invalid") }.isFailure)
+  }
+
+  @Test
   fun `日付変更時に当日の記録を履歴へ移す`() {
     val base = newWorkoutSnapshot("2026-08-09")
     val exercise = base.exercises.first()

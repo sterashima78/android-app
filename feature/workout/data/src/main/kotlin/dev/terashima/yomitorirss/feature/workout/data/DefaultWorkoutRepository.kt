@@ -5,6 +5,9 @@ import dev.terashima.yomitorirss.feature.workout.WorkoutDay
 import dev.terashima.yomitorirss.feature.workout.WorkoutExercise
 import dev.terashima.yomitorirss.feature.workout.WorkoutExerciseType
 import dev.terashima.yomitorirss.feature.workout.WorkoutHistory
+import dev.terashima.yomitorirss.feature.workout.WorkoutFormQuality
+import dev.terashima.yomitorirss.feature.workout.WorkoutLoad
+import dev.terashima.yomitorirss.feature.workout.WorkoutLoadKind
 import dev.terashima.yomitorirss.feature.workout.WorkoutMenu
 import dev.terashima.yomitorirss.feature.workout.WorkoutMenuItem
 import dev.terashima.yomitorirss.feature.workout.WorkoutMenuSource
@@ -49,7 +52,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private fun decode(json: JSONObject): WorkoutSnapshot {
     val version = json.optInt("version", MISSING_VERSION)
     return when (version) {
-      2, CURRENT_VERSION -> decodeCurrent(json)
+      2, 3, CURRENT_VERSION -> decodeCurrent(json)
       else -> throw UnsupportedWorkoutStateVersionException(version)
     }
   }
@@ -148,6 +151,12 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     put("recordedAt", value.recordedAt)
     put("startedAt", value.startedAt ?: JSONObject.NULL)
     put("finishedAt", value.finishedAt ?: JSONObject.NULL)
+    value.rpe?.let { put("rpe", it) }
+    value.formQuality?.let { put("formQuality", it.name) }
+    value.load?.let { load ->
+      put("load", JSONObject().put("kind", load.kind.name).put("value", load.value))
+    }
+    value.restSeconds?.let { put("restSeconds", it) }
   }
 
   private fun decodeSet(json: JSONObject): WorkoutSet {
@@ -165,6 +174,15 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
       recordedAt = json.optString("recordedAt"),
       startedAt = json.nullableString("startedAt"),
       finishedAt = json.nullableString("finishedAt"),
+      rpe = json.optInt("rpe").takeIf { it in 1..10 },
+      formQuality = enumOrNull<WorkoutFormQuality>(json.optString("formQuality")),
+      load = json.optJSONObject("load")?.let { load ->
+        val kind = enumOrNull<WorkoutLoadKind>(load.optString("kind"))
+        kind?.let { runCatching { WorkoutLoad(it, load.optString("value")) }.getOrNull() }
+      },
+      restSeconds = if (json.has("restSeconds") && !json.isNull("restSeconds")) {
+        json.optInt("restSeconds", -1).takeIf { it >= 0 }
+      } else null,
     )
   }
 
@@ -227,7 +245,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private companion object {
     const val KEY_STATE = "state_v1"
     const val MISSING_VERSION = 0
-    const val CURRENT_VERSION = 3
+    const val CURRENT_VERSION = 4
   }
 }
 
