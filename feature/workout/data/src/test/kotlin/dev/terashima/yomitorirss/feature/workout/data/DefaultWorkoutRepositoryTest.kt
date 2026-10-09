@@ -2,6 +2,13 @@ package dev.terashima.yomitorirss.feature.workout.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.terashima.yomitorirss.feature.workout.WorkoutDay
+import dev.terashima.yomitorirss.feature.workout.WorkoutExerciseType
+import dev.terashima.yomitorirss.feature.workout.WorkoutFormQuality
+import dev.terashima.yomitorirss.feature.workout.WorkoutLoad
+import dev.terashima.yomitorirss.feature.workout.WorkoutLoadKind
+import dev.terashima.yomitorirss.feature.workout.WorkoutSet
+import dev.terashima.yomitorirss.feature.workout.WorkoutUnit
 import dev.terashima.yomitorirss.feature.workout.WorkoutHistory
 import dev.terashima.yomitorirss.feature.workout.newWorkoutSnapshot
 import kotlinx.coroutines.test.runTest
@@ -65,7 +72,7 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
-  fun `version2のstateはversion3へ読み込み履歴メニューを未設定として扱う`() = runTest {
+  fun `version2のstateはversion4へ読み込み履歴メニューを未設定として扱う`() = runTest {
     val raw = JSONObject().apply {
       put("version", 2)
       put("exercises", JSONArray())
@@ -87,7 +94,7 @@ class DefaultWorkoutRepositoryTest {
 
     val loaded = DefaultWorkoutRepository(context).load()
 
-    assertEquals(3, loaded.version)
+    assertEquals(4, loaded.version)
     assertEquals(1, loaded.history.size)
     assertEquals(null, loaded.history.single().menu)
   }
@@ -113,11 +120,79 @@ class DefaultWorkoutRepositoryTest {
     repository.save(original)
     val loaded = repository.load()
 
-    assertEquals(3, loaded.version)
+    assertEquals(4, loaded.version)
     assertEquals(menu, loaded.history.single().menu)
     assertEquals(original.exercises, loaded.exercises)
     assertEquals(original.menus, loaded.menus)
     assertEquals(original.today, loaded.today)
+  }
+
+  @Test
+  fun `version4はRPEとフォームと負荷と休憩を往復できる`() = runTest {
+    val repository = DefaultWorkoutRepository(context)
+    val set = WorkoutSet(
+      id = "set-1",
+      exerciseId = "pull",
+      exerciseName = "斜め懸垂",
+      unit = WorkoutUnit.REPS,
+      type = WorkoutExerciseType.REPS,
+      amount = 10,
+      recordedAt = "2026-09-22T08:00:00+09:00",
+      rpe = 7,
+      formQuality = WorkoutFormQuality.UNSTABLE,
+      load = WorkoutLoad(WorkoutLoadKind.BODY_ANGLE, "中程度の傾斜"),
+      restSeconds = 90,
+    )
+    val original = newWorkoutSnapshot("2026-09-22").copy(
+      today = WorkoutDay("2026-09-22", sets = listOf(set)),
+      history = listOf(
+        WorkoutHistory(
+          id = "past-set",
+          date = "2026-09-21",
+          startedAt = null,
+          finishedAt = "2026-09-21T08:00:00+09:00",
+          sets = listOf(set.copy(load = WorkoutLoad(WorkoutLoadKind.ADDED_WEIGHT, "5.5"))),
+        ),
+      ),
+    )
+
+    repository.save(original)
+    val loaded = repository.load()
+
+    assertEquals(4, loaded.version)
+    assertEquals(original.today.sets, loaded.today.sets)
+    assertEquals(original.history.single().sets, loaded.history.single().sets)
+  }
+
+  @Test
+  fun `version3のセット詳細は未入力として読み込む`() = runTest {
+    val raw = JSONObject().apply {
+      put("version", 3)
+      put("exercises", JSONArray())
+      put("today", JSONObject().put("date", "2026-09-22").put(
+        "sets",
+        JSONArray().put(
+          JSONObject()
+            .put("id", "legacy")
+            .put("exerciseId", "push-up")
+            .put("exerciseName", "腕立て伏せ")
+            .put("unit", "REPS")
+            .put("type", "REPS")
+            .put("amount", 10)
+            .put("recordedAt", "2026-09-22T08:00:00+09:00"),
+        ),
+      ))
+    }.toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    val loaded = DefaultWorkoutRepository(context).load()
+
+    assertEquals(4, loaded.version)
+    val set = loaded.today.sets.single()
+    assertEquals(null, set.rpe)
+    assertEquals(null, set.formQuality)
+    assertEquals(null, set.load)
+    assertEquals(null, set.restSeconds)
   }
 
   @Test
