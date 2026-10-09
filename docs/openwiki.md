@@ -10,7 +10,7 @@ Node.js 22.22.0 以上と Python 3 が必要。OpenWiki はスタンドアロン
 npm install -g openwiki@0.7.1
 ```
 
-CLI の初回実行時にモデルプロバイダーを選択し、認証する。ホストエージェントの認証を引き継ぐ MCP 連携とは異なり、OpenWiki CLI 自身のプロバイダー設定が必要である。設定と認証情報はリポジトリへコミットしない。
+初回はターミナルで実行し、対話式の初期設定でモデルプロバイダーを選択・認証する。認証済みの環境では非対話実行も可能。ホストエージェントの認証を引き継ぐ MCP 連携とは異なり、OpenWiki CLI 自身のプロバイダー設定が必要である。設定と認証情報はリポジトリへコミットしない。
 
 ## Wiki の生成と更新
 
@@ -26,11 +26,11 @@ python3 scripts/openwiki_cli.py update
 python3 scripts/openwiki_cli.py init
 ```
 
-ラッパーはそれぞれ `openwiki code --update --print` / `openwiki code --init --print --language ja` を実行する。根拠追跡、Claim の再検証、変更されたページの選定、Markdown とメタデータの更新は OpenWiki 内蔵エージェントが行い、外部の MCP ツールは使わない。
+ラッパーはそれぞれ `openwiki code --update` / `openwiki code --init --language ja` を実行する。根拠追跡、Claim の再検証、変更されたページの選定、Markdown とメタデータの更新は OpenWiki 内蔵エージェントが行い、外部の MCP ツールは使わない。
 
 OpenWiki CLI は毎回 `AGENTS.md` に MCP 向けの管理ブロックを追加・更新する。これをそのまま残すと、このリポジトリの CLI 専用方針と矛盾する。そのためラッパーは実行終了時（失敗時も含む）に、`<!-- OPENWIKI:START -->` と `<!-- OPENWIKI:END -->` で囲まれた自動生成ブロックのみを除去する。人手で保守する指示には触れない。
 
-また、初期化時に CLI が新規作成する `.github/workflows/openwiki-update.yml` はラッパーで削除する。既存の同名ファイルを勝手に削除しない。Wiki 専用の定期更新 workflow は採用しない。CLI を直接呼び出すと管理ブロックや workflow が再生成され得るため、通常の生成・更新にはラッパーを使う。
+また、初期化時に CLI が新規作成する `.github/workflows/openwiki-update.yml` はラッパーで削除する。既存の同名ファイルを勝手に削除しない。Wiki 専用の定期更新 workflow は採用しない。CLI を直接呼び出すと管理ブロックや workflow が再生成され得るため、通常の生成・更新にはラッパーを使う。上流 CLI は実行開始時に管理ブロックを書き込むため、それ自体が worktree 差分として検出され、変更なしの更新でも計画処理が実行される場合がある。
 
 生成後は `openwiki/INSTRUCTIONS.md` の編集方針と現在の正本に合っているか確認する。ページと根拠の Claim は OpenWiki の生成手順で保存する。`.claims/`、索引、生成履歴、`.last-update.json` は手で編集しない。通常の変更後は初期化ではなく更新を行う。
 
