@@ -302,7 +302,12 @@ private fun WorkoutSetDetailInputs(state: WorkoutUiState, viewModel: WorkoutView
   TextButton(onClick = { expanded = !expanded }) {
     Text(if (expanded) "強度・フォーム・負荷の詳細を閉じる" else "強度・フォーム・負荷を記録（任意）")
   }
-  if (!expanded) return
+  if (!expanded) {
+    if (!state.detailsValid) {
+      Text("負荷条件が未完成です。詳細を開いて値を入力するか、未入力に戻してください。", color = MaterialTheme.colorScheme.error)
+    }
+    return
+  }
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text("RPE（主観的なきつさ）", style = MaterialTheme.typography.labelLarge)
     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
