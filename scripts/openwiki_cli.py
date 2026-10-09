@@ -40,7 +40,7 @@ def run(mode: str, root: Path = REPOSITORY_ROOT) -> int:
     agents_path = root / "AGENTS.md"
     workflow_path = root / GENERATED_WORKFLOW
     workflow_existed = workflow_path.exists()
-    command = ["openwiki", "code", "--" + mode, "--print"]
+    command = ["openwiki", "code", "--" + mode]
     if mode == "init":
         command.extend(["--language", "ja"])
 
