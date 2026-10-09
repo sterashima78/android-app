@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:837f988ce49d0f7ffbd66d3fb499b9d8d9314c4fc55bc9a517f67da3f7c7f3b8",
+  "pageVersion": "sha256:1811e4c3ef3df9a06f9feef931a6b9e0c59c9e519f889cae86a1128e2c8c705e",
   "claims": [
     {
       "id": "claim_2dffa51f6f0f4b118f91581668d8c8a7",
@@ -35,7 +35,7 @@
           "version": "repo-file-v1:sha256:618be1ae242bacc5c0342509d19c37f4951be5dd958619a2644cc81477619585"
         },
         {
-          "resource": "repo://docs/architecture/system-overview.md#L372-L394",
+          "resource": "repo://docs/architecture/system-overview.md#L373-L395",
           "version": "repo-lines-v1:sha256:c682f315dc792092f7a18ae4cff9123fada5a52cc983ae4683fa113c212721ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzYjQ2NmM5Nzc5NmM1OWZkODRhMjUzZTA1N2MyZDk0ODVmNWFjMGRkYjU5ZjgyYmE5NWFiNDg2ODJkMGUzMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5OWFlZDAxNDZkZjM0Y2VmNjJjZGZhMzRkNTBkZDRmNmY1N2ZkOTc5MmQ5NTY5ZTA0MTRhMmUzMTYxMzg4NzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhNWM0NWI1NTRiOWM4OTg1MmM1NWM5YWM1MTFiOTZlOWE3YjEzNzY2YzdkNzE5ODhlN2NjMTQ2MzU2NWIwYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhZWVkZjJhOWYwOWM5Y2ZmNWY2NjFjZmI5YTBkMWMzZmNlYzg3YTI3ZDYzNjNjNWVjMDc3ZmM5OTY3NjIzZDkifQ"
         }
       ]
@@ -45,12 +45,8 @@
       "statement": "Calendar は Task / Workout の read model、Health は Health Connect の read model であり、Workout から Health Connect への export は一方向である。",
       "evidence": [
         {
-          "resource": "repo://docs/architecture/context-map.md",
-          "version": "repo-file-v1:sha256:677d07aa3637e718c2d22ff26e1a3f41c894cb14e1e4b28b1b05053ccc7411d2"
-        },
-        {
-          "resource": "repo://docs/architecture/system-overview.md#L230-L261",
-          "version": "repo-lines-v1:sha256:6327b8272533767ab6142735df610d841666e133db91c51b58a28ab583d836e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjY1NWI2OWExMGIyYzA2OWFmNGE4YzQ4ZGFkNzk3Y2ZiMGNiNWJlM2M5NzdkNDI2MTQzZGRkNTJmZGU2M2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0YzY3NTBiODU4ZmI0NzE3ZDA4NDhjMWNiMDQ5OWNmMzUxNWU1YTA5YWNiYjMzZmU0OGM2MmM3NjA1NWJiMTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4MjczYzE2ZjYyMDcxYjM2ZTQ5Y2M4Zjc2YmZjNzg4MDE3NzNmYTEwMTI5OTFlNWVjYTg2NmY3NTE3ZGNmNjYifQ"
+          "resource": "repo://docs/architecture/system-overview.md#L212-L235",
+          "version": "repo-lines-v1:sha256:791b78d869f8f6044668ce7a6160d02ea495607e07c425bdbba64bdefb8bdb5a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiMDA0M2NlYjIyNzg5N2I3N2JmNDQ1ODY4NjMwMjU4ODQyYzJiYWNlMzc4OWFhYzZlYjQ5OTc4OGUwOTM5NmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxN2MyYzBhY2MxN2MxZDJjOGNhNmYyYTQwMmVmZjVhM2M4NjM2ZDZmMTBmMDU3MGEyMTM2ODczYTU4ODU2ZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNTBlOWRmZWNkNDY2YWRjYTQxYTNkMTY2ODg3YjE5YmQ1YmU5ZDM0YThiNGE1MWNjZDhkMmNhNWEwNThmZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyODA5Y2E2ZTA4NjhlMWYxNDA4NDk1NjRkODYzNGY5MWFkODljNGMzY2JhZGNmZDAyY2M3NWNiZDE5ZTFhMGYifQ"
         }
       ]
     },
@@ -71,6 +67,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-08T11:54:35.312Z"
+    "at": "2026-10-09T02:32:57.934Z"
   }
 }
