@@ -17,7 +17,12 @@ internal fun formatWorkoutHistoryForCopy(history: WorkoutHistory): String {
     .groupBy { it.exerciseId }
     .values
     .map(::formatWorkoutHistoryExercise)
-  return (listOf(history.date, "${history.sets.size} セット") + exerciseLines).joinToString("\n")
+  val detailLines = history.sets.mapIndexedNotNull { index, set ->
+    formatWorkoutSetDetails(set).takeIf(String::isNotBlank)?.let { details ->
+      "セット ${index + 1} (${set.exerciseName}): $details"
+    }
+  }
+  return (listOf(history.date, "${history.sets.size} セット") + exerciseLines + detailLines).joinToString("\n")
 }
 
 private fun formatHistoryDuration(totalSeconds: Int): String {
