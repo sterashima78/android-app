@@ -24,6 +24,8 @@
 - 既存 capability で要求を満たせる場合は、並行する第二実装や不要な abstraction を増やさない。
 - 公開リポジトリへ credential、token、実ユーザーデータ、private endpoint、共有すべきでない artifact を追加しない。
 - 実装後は変更範囲に応じた test / architecture verification と独立レビューを行う。
+- 独立レビューを含むレビューはすべてローカルの作業環境（agent の作業環境を含む）で完結させる。GitHub PR 上でレビューを実施・投稿しない。結果は必要に応じて PR 本文の `Independent review result` に要約する。
+- GitHub PR に対し、Codex、Copilot などの AI agent へレビューを依頼・起動しない。レビュアーの指定、PR コメントやメンションによる依頼、レビュー用 API / CLI / 自動レビュー機能の呼び出しを行わない。CI による検証は従来どおり実施する。
 
 詳細は `docs/development-workflow.md` を正本とし、このファイルへ手順全文を複製しない。
 
