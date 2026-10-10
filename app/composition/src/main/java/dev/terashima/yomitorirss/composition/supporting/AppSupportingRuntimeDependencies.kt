@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.task.data.DefaultTaskRepository
 import dev.terashima.yomitorirss.feature.web.LanWebServerController
@@ -156,7 +157,13 @@ internal class AppSupportingRuntimeDependencies(
   }
 
   val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBackupRepository(application, database, dataChanges, persistenceChanges)
+    DefaultBackupRepository(
+      application,
+      database,
+      dataChanges,
+      persistenceChanges,
+      smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application),
+    )
   }
 
   val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

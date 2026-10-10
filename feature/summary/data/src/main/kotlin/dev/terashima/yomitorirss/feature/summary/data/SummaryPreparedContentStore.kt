@@ -52,12 +52,12 @@ internal fun YomitoriDatabase.countPreparedSummaryArticleContentsForActiveTasks(
 internal fun YomitoriDatabase.savePreparedSummaryArticleContentIfQueued(
   articleId: String,
   content: String,
-): Boolean = transaction {
+): Boolean = localTransaction {
   val stillQueued = rawQuery(
     "SELECT 1 FROM summary_tasks WHERE article_id=? AND state=? LIMIT 1",
     arrayOf(articleId, SUMMARY_QUEUED),
   ).use(Cursor::moveToFirst)
-  if (!stillQueued) return@transaction false
+  if (!stillQueued) return@localTransaction false
 
   insertWithOnConflict(
     "summary_article_content",
@@ -80,16 +80,4 @@ internal fun YomitoriDatabase.savePreparedSummaryArticleContentIfQueued(
     arrayOf(articleId, SUMMARY_QUEUED),
   )
   true
-}
-
-private inline fun <T> YomitoriDatabase.transaction(block: SQLiteDatabase.() -> T): T {
-  val db = writableDatabase
-  db.beginTransaction()
-  return try {
-    val value = db.block()
-    db.setTransactionSuccessful()
-    value
-  } finally {
-    db.endTransaction()
-  }
 }

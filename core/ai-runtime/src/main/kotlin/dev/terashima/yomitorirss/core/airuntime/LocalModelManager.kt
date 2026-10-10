@@ -240,12 +240,12 @@ class LocalModelManager(context: Context) : AutoCloseable {
       }
       destination.delete()
       preferences.edit().remove(modelRevisionKey(model)).apply()
+      val temporary = temporaryModelFile(model)
+      temporary.delete()
       val requiredBytes = model.estimatedSizeBytes + DOWNLOAD_STORAGE_MARGIN_BYTES
       val availableBytes = StatFs(modelsDirectory().absolutePath).availableBytes
       check(availableBytes >= requiredBytes) { "モデルを保存する空き容量が不足しています" }
 
-      val temporary = temporaryModelFile(model)
-      temporary.delete()
       var connection: HttpURLConnection? = null
       try {
         connection = openDownloadConnection(model.downloadUrl)

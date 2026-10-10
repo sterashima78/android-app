@@ -24,8 +24,10 @@ download_verified() {
     local existing_sha
     existing_sha="$(sha256sum "$target" | awk '{print $1}')"
     if [[ "$existing_sha" == "$expected_sha" ]]; then
-      [[ "$executable" == "true" ]] && chmod +x "$target"
-      return
+      if [[ "$executable" == "true" ]]; then
+        chmod +x "$target"
+      fi
+      return 0
     fi
     rm -f "$target"
   fi

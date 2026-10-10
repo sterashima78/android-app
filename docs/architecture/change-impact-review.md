@@ -272,14 +272,39 @@ System Diff が Impact Brief と大きく異なる場合は、実装途中で新
 
 ## 9. Repository verification baseline
 
-PR 前の基準は CI と同じものを利用する。ADR の整合性確認は現在の Gradle architecture verification が担い、廃止済みの Python 検証スクリプトは実行しない。
+PR 前の基準は CI と同じものを利用する。ADR の整合性確認は現在の Gradle architecture verification が担い、廃止済みの `test_verify_adr_integrity.py` と `verify_adr_integrity.py` は実行しない。
 
 ```bash
 python3 scripts/test_verify_public_repository.py
+python3 scripts/test_report_apk_size.py
+python3 scripts/test_report_minified_dex_size.py
+python3 scripts/test_verify_formal_spec_links.py
 python3 scripts/verify_public_repository.py
 ./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
+bash scripts/verify_formal_models.sh
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
+./gradlew --no-daemon :app:minifyReleaseWithR8
+```
+
+R8 check は base commit でも `:app:minifyReleaseWithR8` を実行し、DEX 出力を比較する。base commit を detached worktree でビルドした後、CI と同じ比較を実行する。
+
+```bash
+set -euo pipefail
+git fetch --no-tags origin main
+BASE_SHA="$(git rev-parse origin/main)"
+BASE_WORKTREE_ROOT="$(mktemp -d)"
+BASE_WORKTREE="$BASE_WORKTREE_ROOT/base"
+trap 'git worktree remove --force "$BASE_WORKTREE" >/dev/null 2>&1 || true; rmdir "$BASE_WORKTREE_ROOT" >/dev/null 2>&1 || true' EXIT
+git worktree add --detach "$BASE_WORKTREE" "$BASE_SHA"
+(
+  cd "$BASE_WORKTREE"
+  ./gradlew --no-daemon :app:minifyReleaseWithR8
+)
+python3 scripts/report_minified_dex_size.py \
+  app/build/intermediates/dex/release/minifyReleaseWithR8 \
+  --baseline-root "$BASE_WORKTREE/app/build/intermediates/dex/release/minifyReleaseWithR8" \
+  --warning-percent 10
 ```
 
 変更範囲によって instrumentation / E2E test が必要な場合は追加する。

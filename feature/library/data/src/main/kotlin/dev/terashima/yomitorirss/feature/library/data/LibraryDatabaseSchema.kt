@@ -49,6 +49,12 @@ internal fun ensureLibrarySchema(db: SQLiteDatabase) {
       FROM smb_library_servers
     """.trimIndent(),
   )
+  ensureSmbCoverPrefetchQueueSchema(db)
+  ensureLibraryOrganizationSchema(db)
+  ensureSmbMetadataNormalizationSchema(db)
+}
+
+internal fun ensureSmbCoverPrefetchQueueSchema(db: SQLiteDatabase) {
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS smb_cover_prefetch_queue(
@@ -65,8 +71,6 @@ internal fun ensureLibrarySchema(db: SQLiteDatabase) {
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_smb_cover_prefetch_status ON smb_cover_prefetch_queue(status, updated_at)",
   )
-  ensureLibraryOrganizationSchema(db)
-  ensureSmbMetadataNormalizationSchema(db)
 }
 
 internal fun ensureLibraryCatalogSchema(db: SQLiteDatabase) {

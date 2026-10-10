@@ -226,22 +226,45 @@ Sources: [ADR-0275](../adr/0275-formal-specification-with-quint-and-alloy.md)
 
 Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の5 checkを独立して実行する。repository ruleset の required status checks は先頭4つとし、R8 は release shrinker とサイズ回帰を早期検出する追加検証として実行する。
 
-- `Public repository`: public repository verifier の unit test と tracked content scan
+- `Public repository`: `test_verify_public_repository.py`、APK / minified DEX size reporter の unit test、formal specification link の検証、tracked content scan
 - `Architecture`: Gradle metadata verifier、table/ownership verifier、Gradle `verifyArchitecture`、Quint / Alloy formal specification verification
 - `Test`: `./gradlew --no-daemon test`
 - `Lint`: `./gradlew --no-daemon :app:lintRelease`
-- `R8`: `./gradlew --no-daemon :app:minifyReleaseWithR8`。base branch と minified DEX 合計を比較し、10%以上の増加は warning として可視化する
+- `R8`: `./gradlew --no-daemon :app:minifyReleaseWithR8`。base branch でも同じ task を実行して `scripts/report_minified_dex_size.py` で minified DEX 合計を比較し、10%以上の増加は warning として可視化する
 
 Android の4検証は matrix で `fail-fast: false` とし、1つが失敗しても他の結果を取得する。従来の `quality` 集約 job は置かず、GitHub repository ruleset から4 checkを直接 required status checks とする。ADR integrity は path filter 付きの独立 workflow にせず、常時実行される `Architecture` check に含める。
 
 ```bash
 python3 scripts/test_verify_public_repository.py
+python3 scripts/test_report_apk_size.py
+python3 scripts/test_report_minified_dex_size.py
+python3 scripts/test_verify_formal_spec_links.py
 python3 scripts/verify_public_repository.py
 ./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
 bash scripts/verify_formal_models.sh
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
 ./gradlew --no-daemon :app:minifyReleaseWithR8
+```
+
+R8 のサイズ比較は、base commit を detached worktree で `:app:minifyReleaseWithR8` によりビルドした後、CI と同じ reporter で実行する。
+
+```bash
+set -euo pipefail
+git fetch --no-tags origin main
+BASE_SHA="$(git rev-parse origin/main)"
+BASE_WORKTREE_ROOT="$(mktemp -d)"
+BASE_WORKTREE="$BASE_WORKTREE_ROOT/base"
+trap 'git worktree remove --force "$BASE_WORKTREE" >/dev/null 2>&1 || true; rmdir "$BASE_WORKTREE_ROOT" >/dev/null 2>&1 || true' EXIT
+git worktree add --detach "$BASE_WORKTREE" "$BASE_SHA"
+(
+  cd "$BASE_WORKTREE"
+  ./gradlew --no-daemon :app:minifyReleaseWithR8
+)
+python3 scripts/report_minified_dex_size.py \
+  app/build/intermediates/dex/release/minifyReleaseWithR8 \
+  --baseline-root "$BASE_WORKTREE/app/build/intermediates/dex/release/minifyReleaseWithR8" \
+  --warning-percent 10
 ```
 
 `main` push と手動実行の signed release APK は `.github/workflows/build.yml` が所有する。PR gate を通過した commit を ruleset により `main` へ取り込む前提とし、main build では Architecture / Test / Lint を重複実行しない。repository scan は release keystore を runner へ復元する前に再実行し、その後 APK build / signature verification / artifact upload を行う。commit status publication は ADR-0201 で廃止した。

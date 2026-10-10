@@ -15,7 +15,6 @@ internal class RssWebScrapingRuleStore(
   private val database: DatabaseConnection,
 ) {
   fun list(): List<RssWebScrapingRule> {
-    ensureRssWebScrapingRuleSchema(database.writable)
     return database.readable.rawQuery(
       "SELECT id, url_pattern, function_code, timeout_seconds, updated_at " +
         "FROM rss_web_scraping_rules ORDER BY updated_at DESC, id",

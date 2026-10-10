@@ -23,7 +23,6 @@ class DefaultRssRecommendationRepository(
 ) : RssRecommendationRepository {
   override val changes: StateFlow<Long> = dataChanges.version
   override fun loadPolicy(): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       "SELECT manual_condition, learned_condition, execution_provider, revision FROM rss_recommendation_policy WHERE id=1",
       emptyArray<String>(),
@@ -78,7 +77,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun loadAssessments(articleIds: Collection<String>): Map<String, RssRecommendationAssessment> {
-    ensureRssRecommendationSchema(database.writable)
     if (articleIds.isEmpty()) return emptyMap()
     val result = mutableMapOf<String, RssRecommendationAssessment>()
     articleIds.distinct().chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
@@ -176,7 +174,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun listPendingFeedback(): List<RssRecommendationFeedback> {
-    ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       """
         SELECT id, article_id, title, previous_status, previous_score,
@@ -243,7 +240,6 @@ class DefaultRssRecommendationRepository(
     loadPolicy().executionProvider
 
   override fun listTasks(): List<RssRecommendationTask> {
-    ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       """
         SELECT article_id, title, revision, state, queued_at, started_at

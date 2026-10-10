@@ -209,7 +209,7 @@ SMB 表紙先読みキューは Library Context が所有する派生処理状�
 
 SMB 表紙画像は app cache に置く再生成可能な派生データで、database snapshot backup には画像本体を含めない。`library_items.thumbnail_url` に保存する `file:` scheme の参照も端末 local cache metadata として `localWrite` で更新する。復元後は Backup Context が Library-owned `LibraryBackupRestoreInitializer` を呼び、`localTransaction` で SMB の `file:` scheme の `thumbnail_url` と復元前の `smb_cover_prefetch_queue` を無効化する。Backup Context 自身は Library table を直接 write しない。SMB credential は backup 対象外なので復元直後には自動実行せず、credential 再設定後の通常の Library 経路で未取得表紙を再キューする。
 
-SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema も現行 `libraryDatabaseSchema` に含める。
+SMB 書誌正規化は Library Context が `smb_metadata_normalization_batches` / `smb_metadata_normalization_items` に解析・レビュー状態を保持し、`smb_metadata_normalization_decisions` にユーザーが反映または却下して確定した判断を保持する。`library_items` は同期キャッシュのままとし、`APPLIED` の確定書誌は Library snapshot で SMB 書籍へ overlay する。これらの schema も現行 `libraryDatabaseSchema` に含める。復元で `RUNNING` batch が戻った場合、Backup Context は Library-owned `LibraryBackupRestoreInitializer` を通じて WorkManager の依頼を再登録し、Worker が中断状態を再キューして処理を再開する。
 
 ## Cross-context query / command patterns
 

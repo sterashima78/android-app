@@ -23,6 +23,7 @@ android {
 dependencies {
   implementation(project(":feature:backup:domain"))
   implementation(project(":feature:bookmark:data"))
+  implementation(project(":feature:library:domain"))
   implementation(project(":feature:library:data"))
   implementation(project(":feature:rss:data"))
   implementation(project(":core:database"))

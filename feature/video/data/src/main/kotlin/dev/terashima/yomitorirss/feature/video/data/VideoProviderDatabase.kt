@@ -19,7 +19,6 @@ internal class VideoProviderDatabase(
   private val database: DatabaseConnection,
 ) {
   fun providers(): List<VideoProvider> {
-    ensureSchema()
     return database.readable.rawQuery(
       "SELECT id, provider_type, name, enabled, created_at, updated_at, function_code FROM video_providers ORDER BY name COLLATE NOCASE, id",
       null,
@@ -89,7 +88,6 @@ internal class VideoProviderDatabase(
   }
 
   fun subscriptions(providerId: String?): List<VideoSubscription> {
-    ensureSchema()
     val where = providerId?.let { "WHERE provider_id = ?" }.orEmpty()
     val args = providerId?.let { arrayOf(it) }
     return database.readable.rawQuery(
@@ -290,7 +288,6 @@ internal class VideoProviderDatabase(
   }
 
   private fun queryProviderVideos(whereClause: String, limit: Int? = null): List<VideoProviderVideo> {
-    ensureSchema()
     val limitClause = limit?.let { "LIMIT $it" }.orEmpty()
     return database.readable.rawQuery(
       """

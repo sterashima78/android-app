@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.feature.backup.BackupScheduleTime
 import dev.terashima.yomitorirss.feature.backup.ConfigureGoogleDriveResult
 import dev.terashima.yomitorirss.feature.backup.GoogleDriveBackupStatus
 import dev.terashima.yomitorirss.feature.bookmark.data.BookmarkDatabaseInitializer
+import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.library.data.LibraryBackupRestoreInitializer
 import dev.terashima.yomitorirss.feature.rss.data.RssRecommendationBackupRestoreInitializer
 import java.io.File
@@ -25,6 +26,7 @@ class DefaultBackupRepository(
   private val database: YomitoriDatabase,
   private val dataChanges: DataChangeNotifier,
   private val persistenceChanges: PersistenceChangeNotifier,
+  private val smbMetadataNormalizationScheduler: SmbMetadataNormalizationScheduler,
 ) : BackupRepository {
   private val appContext = context.applicationContext
   private val preferences = GoogleDriveBackupPreferences(appContext)
@@ -56,7 +58,7 @@ class DefaultBackupRepository(
       FileInputStream(imported).use { input -> archive.restore(input) }
     }
     val connection = DatabaseConnection(database, persistenceChanges)
-    LibraryBackupRestoreInitializer(connection).initialize()
+    LibraryBackupRestoreInitializer(connection, smbMetadataNormalizationScheduler).initialize()
     RssRecommendationBackupRestoreInitializer(connection).initialize()
     BookmarkDatabaseInitializer.initialize(connection)
     persistenceChanges.notifyChanged()

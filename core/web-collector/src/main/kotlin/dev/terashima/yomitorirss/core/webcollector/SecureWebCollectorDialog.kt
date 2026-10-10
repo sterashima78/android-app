@@ -117,6 +117,21 @@ private fun CollectorContent(
   onDismiss: () -> Unit,
   onResult: (String) -> Unit,
 ) {
+  val safeStartUrl = config.startUrl.takeIf {
+    isAllowedNavigation(it, config.allowedNavigationHosts)
+  }
+  if (safeStartUrl == null) {
+    Column(
+      modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),
+      verticalArrangement = Arrangement.Center,
+    ) {
+      Text("開始ページが許可されたホストに含まれていません", style = MaterialTheme.typography.titleMedium)
+      Spacer(Modifier.height(20.dp))
+      Button(onClick = onDismiss) { Text("閉じる") }
+    }
+    return
+  }
+
   val context = LocalContext.current
   val chunks = remember(config.maxResultBytes, config.maxChunks) {
     WebCollectorChunkAccumulator(
@@ -124,7 +139,7 @@ private fun CollectorContent(
       maxChunks = config.maxChunks,
     )
   }
-  var currentUrl by remember(config) { mutableStateOf(config.startUrl) }
+  var currentUrl by remember(config) { mutableStateOf(safeStartUrl) }
   var loading by remember { mutableStateOf(true) }
   var collecting by remember { mutableStateOf(false) }
   var status by remember { mutableStateOf("ページを開いています") }
@@ -145,7 +160,7 @@ private fun CollectorContent(
       Spacer(Modifier.height(20.dp))
       Button(
         onClick = {
-          currentUrl = config.startUrl
+          currentUrl = safeStartUrl
           loading = true
           collecting = false
           canGoBack = false
@@ -167,7 +182,7 @@ private fun CollectorContent(
   }
   val initialUrl = currentUrl.takeIf {
     isAllowedNavigation(it, config.allowedNavigationHosts)
-  } ?: config.startUrl
+  } ?: safeStartUrl
   val webView = remember(config, rendererGeneration, rendererLifecycle) {
     WebView(context).also { WebViewCompat.setProfile(it, config.profileName) }.apply {
       settings.javaScriptEnabled = true
@@ -346,7 +361,7 @@ private fun CollectorContent(
         } else {
           Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { webView.loadUrl(config.startUrl) },
+            onClick = { webView.loadUrl(safeStartUrl) },
           ) { Text("対象ページへ") }
         }
       }

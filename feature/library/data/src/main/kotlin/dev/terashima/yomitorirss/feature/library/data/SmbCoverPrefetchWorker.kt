@@ -488,22 +488,7 @@ internal class SmbCoverPrefetchQueueStore(
   }
 
   private fun ensureSchema() {
-    database.writable.execSQL(
-      """
-        CREATE TABLE IF NOT EXISTS $TABLE(
-          source_id TEXT PRIMARY KEY NOT NULL,
-          title TEXT NOT NULL,
-          status TEXT NOT NULL,
-          downloaded_bytes INTEGER NOT NULL DEFAULT 0,
-          total_bytes INTEGER NOT NULL DEFAULT 0,
-          message TEXT,
-          updated_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
-    database.writable.execSQL(
-      "CREATE INDEX IF NOT EXISTS idx_smb_cover_prefetch_status ON $TABLE(status, updated_at)",
-    )
+    ensureSmbCoverPrefetchQueueSchema(database.writable)
   }
 
   private companion object {

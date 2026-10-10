@@ -31,7 +31,6 @@ class DefaultVideoRepository(
   private val metadataClient = WebVideoMetadataClient(httpClient)
 
   override suspend fun items(): List<VideoItem> {
-    ensureSchema()
     return queryItems()
   }
 
@@ -104,7 +103,6 @@ class DefaultVideoRepository(
   }
 
   override fun smbSources(): List<VideoSmbSource> {
-    ensureSchema()
     return database.readable.rawQuery(
       """
         SELECT id, server_id, share_name, root_path, updated_at
@@ -163,7 +161,6 @@ class DefaultVideoRepository(
   }
 
   override fun folders(): List<VideoFolder> {
-    ensureSchema()
     return database.readable.rawQuery(
       """
         SELECT id, name, created_at, updated_at
@@ -295,7 +292,6 @@ class DefaultVideoRepository(
   }
 
   override fun extractorRules(): List<WebVideoExtractorRule> {
-    ensureSchema()
     return database.readable.rawQuery(
       """
         SELECT id, url_pattern, title_function, thumbnail_function,
