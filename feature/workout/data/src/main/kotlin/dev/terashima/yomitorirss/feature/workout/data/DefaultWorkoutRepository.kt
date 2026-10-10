@@ -56,18 +56,16 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private fun decode(json: JSONObject): WorkoutSnapshot {
     val version = json.optInt("version", MISSING_VERSION)
     return when (version) {
-      2, 3, CURRENT_VERSION -> decodeCurrent(json)
+      CURRENT_VERSION -> decodeCurrent(json)
       else -> throw UnsupportedWorkoutStateVersionException(version)
     }
   }
 
   private fun decodeCurrent(json: JSONObject): WorkoutSnapshot {
-    if (json.optInt("version") == CURRENT_VERSION) {
-      require(json.optJSONArray("exercises") != null) { "Missing workout exercises" }
-      require(json.optJSONArray("menus") != null) { "Missing workout menus" }
-      require(json.optJSONObject("today") != null) { "Missing workout day" }
-      require(json.optJSONArray("history") != null) { "Missing workout history" }
-    }
+    require(json.optJSONArray("exercises") != null) { "Missing workout exercises" }
+    require(json.optJSONArray("menus") != null) { "Missing workout menus" }
+    require(json.optJSONObject("today") != null) { "Missing workout day" }
+    require(json.optJSONArray("history") != null) { "Missing workout history" }
     val exercises = decodeExercises(json)
     val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
       .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
