@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringMode
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
@@ -41,7 +42,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 39, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -113,7 +114,7 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `database version 38から39へ除外設定schemaを移行する`() = runSuspend {
+  fun `database version 38から40へ既定の分類モードを維持して移行する`() = runSuspend {
     database.close()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     val legacySchema = DatabaseSchema(
@@ -146,12 +147,13 @@ class PodcastRepositoryPersistenceTest {
 
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 39, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
 
     val migrated = repository.listPrograms().single()
     assertEquals("", migrated.exclusionPrompt)
+    assertEquals(PodcastClusteringMode.EVENT, migrated.clusteringMode)
     repository.recordExcludedEntries(
       migrated.id,
       listOf(
