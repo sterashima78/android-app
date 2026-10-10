@@ -128,20 +128,28 @@ class RepositoryGovernanceSourceTest {
   }
 
   @Test
-  fun `Gradle起動スクリプトは検証済みdistributionだけを利用する`() {
+  fun `公式Gradle Wrapperと両checksumを固定する`() {
     val wrapper = source("gradle/wrapper/gradle-wrapper.properties")
     val shell = source("gradlew")
     val windows = source("gradlew.bat")
-    val expectedSha = "dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f"
+    val jar = File(repositoryRoot, "gradle/wrapper/gradle-wrapper.jar").readBytes()
+    val digest = java.security.MessageDigest.getInstance("SHA-256")
+      .digest(jar)
+      .joinToString("") { "%02x".format(it) }
+
     assertTrue("Gradle distribution must be 9.8.1", "gradle-9.8.1-bin.zip" in wrapper)
-    assertTrue("Wrapper properties must pin distribution checksum", "distributionSha256Sum=$expectedSha" in wrapper)
-    listOf(shell, windows).forEach { script ->
-      assertTrue("Launcher must use the same version", "GRADLE_VERSION=9.8.1" in script)
-      assertTrue("Launcher must pin the same checksum", "GRADLE_SHA256=$expectedSha" in script)
-      assertTrue("Launcher must reject invalid archives", "checksum mismatch" in script)
-    }
-    assertTrue("Shell launcher must verify cached archives", "verify_zip \"$" + "ZIP\"" in shell)
-    assertTrue("Windows launcher must verify SHA-256", "Get-FileHash" in windows)
+    assertTrue(
+      "The official distribution checksum must remain pinned",
+      "distributionSha256Sum=dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f" in wrapper,
+    )
+    assertEquals(
+      "The official wrapper JAR must have the published Gradle 9.8.1 checksum",
+      "3b8a25775a69158b5ad2b1d17a80a88dc7b40a352a73eb27d06c612a7ce68e98",
+      digest,
+    )
+    assertTrue("POSIX launcher must use GradleWrapperMain", "org.gradle.wrapper.GradleWrapperMain" in shell)
+    assertTrue("Windows launcher must use GradleWrapperMain", "org.gradle.wrapper.GradleWrapperMain" in windows)
+    assertFalse("Custom native launcher must be removed", "native-wrapper" in shell || "native-wrapper" in windows)
   }
 
   @Test
