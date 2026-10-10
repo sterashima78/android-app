@@ -17,8 +17,6 @@ import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 object GoogleDriveBackupScheduler {
-  private const val LEGACY_PERIODIC_WORK_NAME = "google-drive-backup-periodic"
-  private const val LEGACY_CHANGE_WORK_NAME = "google-drive-backup-after-change"
   private const val SCHEDULE_WORK_PREFIX = "google-drive-backup-schedule"
   private const val SCHEDULE_WORK_TAG = "google-drive-backup-schedule"
   private const val BACKUP_WORK_NAME = "google-drive-backup-scheduled-run"
@@ -32,8 +30,6 @@ object GoogleDriveBackupScheduler {
   fun reschedule(context: Context) {
     val appContext = context.applicationContext
     val workManager = WorkManager.getInstance(appContext)
-    workManager.cancelUniqueWork(LEGACY_PERIODIC_WORK_NAME)
-    workManager.cancelUniqueWork(LEGACY_CHANGE_WORK_NAME)
     workManager.cancelAllWorkByTag(SCHEDULE_WORK_TAG)
 
     val preferences = GoogleDriveBackupPreferences(appContext)
@@ -85,8 +81,6 @@ object GoogleDriveBackupScheduler {
 
   fun cancel(context: Context) {
     WorkManager.getInstance(context.applicationContext).apply {
-      cancelUniqueWork(LEGACY_PERIODIC_WORK_NAME)
-      cancelUniqueWork(LEGACY_CHANGE_WORK_NAME)
       cancelUniqueWork(BACKUP_WORK_NAME)
       cancelAllWorkByTag(SCHEDULE_WORK_TAG)
     }

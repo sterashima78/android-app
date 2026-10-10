@@ -128,9 +128,20 @@ class RepositoryGovernanceSourceTest {
   }
 
   @Test
-  fun `Gradle wrapper versionは検証済みbaselineを使う`() {
+  fun `Gradle起動スクリプトは検証済みdistributionだけを利用する`() {
     val wrapper = source("gradle/wrapper/gradle-wrapper.properties")
-    assertTrue("Gradle wrapper must use 9.7.1", "gradle-9.7.1-bin.zip" in wrapper)
+    val shell = source("gradlew")
+    val windows = source("gradlew.bat")
+    val expectedSha = "dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f"
+    assertTrue("Gradle distribution must be 9.8.1", "gradle-9.8.1-bin.zip" in wrapper)
+    assertTrue("Wrapper properties must pin distribution checksum", "distributionSha256Sum=$expectedSha" in wrapper)
+    listOf(shell, windows).forEach { script ->
+      assertTrue("Launcher must use the same version", "GRADLE_VERSION=9.8.1" in script)
+      assertTrue("Launcher must pin the same checksum", "GRADLE_SHA256=$expectedSha" in script)
+      assertTrue("Launcher must reject invalid archives", "checksum mismatch" in script)
+    }
+    assertTrue("Shell launcher must verify cached archives", "verify_zip \"$" + "ZIP\"" in shell)
+    assertTrue("Windows launcher must verify SHA-256", "Get-FileHash" in windows)
   }
 
   @Test

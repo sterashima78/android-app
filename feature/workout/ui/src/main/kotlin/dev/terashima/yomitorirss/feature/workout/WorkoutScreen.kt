@@ -74,7 +74,9 @@ fun WorkoutScreen(
   }
 
   if (!state.initialized) {
-    Column(modifier.fillMaxSize().padding(24.dp)) { Text("ワークアウトを読み込んでいます…") }
+    Column(modifier.fillMaxSize().padding(24.dp)) {
+      Text(state.loadError ?: "ワークアウトを読み込んでいます…")
+    }
     return
   }
 

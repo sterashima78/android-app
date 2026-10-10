@@ -50,7 +50,6 @@ class DefaultMailRepository(
     upsertAccount(account)
     prepareFreshInitialSync(account.id)
     syncScheduler.scheduleInitialPage(account.id, expectedPageToken = null)
-    syncScheduler.schedulePeriodic()
     return getAccounts().first { it.id == account.id }
   }
 
@@ -59,11 +58,6 @@ class DefaultMailRepository(
     database.write {
       delete("mail_accounts", "id = ?", arrayOf(accountId))
     }
-    if (getAccounts().isEmpty()) syncScheduler.cancelPeriodic()
-  }
-
-  override fun refreshPeriodicSyncPolicy() {
-    syncScheduler.refreshPeriodicNetworkPolicy()
   }
 
   override suspend fun getThreads(

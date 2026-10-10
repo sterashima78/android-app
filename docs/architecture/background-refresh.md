@@ -52,7 +52,7 @@ WorkManager の periodic work の最短周期が15分であるため、それ未
 - 初回同期: `feature/mail:data` の `MailSyncWorker` がページング checkpoint、network retry、continuation を所有する。
 - 周期同期: application-scope `IntegratedRefreshWorker` が他 source と同じ実行単位で `MailRepository.sync(null)` を呼ぶ。
 
-旧バージョンの mail periodic work は startup で cancel する。`MailSyncScheduler.schedulePeriodic()` と `refreshPeriodicNetworkPolicy()` は upgrade 時の旧 durable work cleanup 用 compatibility entry point とし、新しい periodic work を作成しない。
+現行の更新互換性baselineでは旧単独周期workは退役済みとし、起動時の互換cancel処理やmail固有の周期更新APIを保持しない。Wi-Fi設定変更は統合更新のscheduleだけを再設定する。
 
 ## New-item detection
 

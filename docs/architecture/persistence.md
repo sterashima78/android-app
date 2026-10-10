@@ -272,3 +272,7 @@ allowlist は恒久的な例外集ではない。新たな移行で一時的な 
 - [ADR-0117](../adr/0117-cross-context-persistence-boundary-phase1.md)
 - [ADR-0119](../adr/0119-content-classification-retention-and-table-ownership-enforcement.md)
 - [ADR-0264](../adr/0264-database-v38-compatibility-baseline.md)
+
+## Corrupt user payload handling
+
+Workout の保存済みpayloadは、欠落した未作成状態と破損・未知versionを区別する。未作成時だけ新しい初期状態を生成し、読み込みに失敗したデータは元payloadを維持して操作不能なエラー状態を表示する。画面の初期化時に空snapshotを自動保存して既存データを失わない（ADR-0281）。

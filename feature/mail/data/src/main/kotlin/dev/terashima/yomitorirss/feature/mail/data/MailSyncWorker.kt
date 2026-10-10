@@ -25,7 +25,6 @@ private const val INPUT_ACCOUNT_ID = "mail_account_id"
 private const val INPUT_INITIAL_SYNC = "mail_initial_sync"
 private const val INPUT_HAS_PAGE_TOKEN = "mail_has_page_token"
 private const val INPUT_PAGE_TOKEN = "mail_page_token"
-private const val PERIODIC_WORK_NAME = "gmail-mail-sync"
 private const val ACCOUNT_WORK_TAG_PREFIX = "gmail-mail-account:"
 
 class MailSyncScheduler(context: Context) {
@@ -35,7 +34,6 @@ class MailSyncScheduler(context: Context) {
   }
 
   fun scheduleInitialPage(accountId: String, expectedPageToken: String?) {
-    if (expectedPageToken == null) schedulePeriodic()
     val request = OneTimeWorkRequestBuilder<MailSyncWorker>()
       .setInputData(
         workDataOf(
@@ -56,25 +54,8 @@ class MailSyncScheduler(context: Context) {
     )
   }
 
-  /**
-   * Periodic mail refresh is owned by the app-level integrated refresh worker.
-   * Keep this compatibility entry point so account connection and older callers also retire any
-   * persisted standalone periodic work from previous app versions.
-   */
-  fun schedulePeriodic() {
-    cancelPeriodic()
-  }
-
-  fun refreshPeriodicNetworkPolicy() {
-    cancelPeriodic()
-  }
-
   fun cancelAccount(accountId: String) {
     workManager.cancelAllWorkByTag(accountWorkTag(accountId))
-  }
-
-  fun cancelPeriodic() {
-    workManager.cancelUniqueWork(PERIODIC_WORK_NAME)
   }
 
   private fun connectedConstraints() = Constraints.Builder()

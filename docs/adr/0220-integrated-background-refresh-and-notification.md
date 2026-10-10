@@ -132,3 +132,7 @@ Android runtime permission API の呼び出しは app presentation に置き、`
 - [Android Developers: Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
 - [Android Developers: NotificationChannel.setShowBadge](https://developer.android.com/reference/android/app/NotificationChannel#setShowBadge(boolean))
 - [Android Developers: Notification.Builder.setNumber](https://developer.android.com/reference/android/app/Notification.Builder#setNumber(int))
+
+## Compatibility retirement (2026-10-10)
+
+現行の更新互換性baselineへの収束を前提に、初回同期以外の旧単独周期workをcancelするstartup処理、および旧周期APIの互換entry pointを退役させた。周期更新は統合Workerだけが所有し、初回ページングは従来どおり機能側のWorkerが所有する。過去の移行決定そのものは変更しない。

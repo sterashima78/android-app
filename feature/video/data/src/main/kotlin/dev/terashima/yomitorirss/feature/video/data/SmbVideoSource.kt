@@ -19,13 +19,6 @@ internal fun smbVideoSourceId(serverId: String, share: String, path: String): St
     "&share=${encodeSmbVideoIdPart(share)}&path=${encodeSmbVideoIdPart(path)}"
 }
 
-internal fun legacySmbVideoSourceId(serverId: String, path: String): String {
-  require(serverId.isNotBlank()) { "SMB動画のserverIdがありません" }
-  require(path.isNotBlank()) { "SMB動画のpathがありません" }
-  return "mosaic-smb-video://file?serverId=${encodeSmbVideoIdPart(serverId)}" +
-    "&path=${encodeSmbVideoIdPart(path)}"
-}
-
 internal fun parseSmbVideoSourceId(sourceId: String): SmbVideoLocation {
   return requireNotNull(parseVideoSmbSourceId(sourceId)) { "SMB動画IDが不正です" }
 }

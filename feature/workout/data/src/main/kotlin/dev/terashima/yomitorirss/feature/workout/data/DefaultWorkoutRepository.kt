@@ -29,9 +29,13 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   override suspend fun load(): WorkoutSnapshot {
     val date = LocalDate.now().toString()
     val raw = preferences.getString(KEY_STATE, null) ?: return newWorkoutSnapshot(date)
-    return runCatching { decode(JSONObject(raw)) }.getOrElse { error ->
-      if (error is UnsupportedWorkoutStateVersionException) throw error
-      newWorkoutSnapshot(date)
+    return try {
+      decode(JSONObject(raw))
+    } catch (error: UnsupportedWorkoutStateVersionException) {
+      throw error
+    } catch (error: Exception) {
+      // Keep the original payload intact for recovery instead of silently replacing it.
+      throw CorruptWorkoutStateException(error)
     }
   }
 
@@ -52,12 +56,16 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private fun decode(json: JSONObject): WorkoutSnapshot {
     val version = json.optInt("version", MISSING_VERSION)
     return when (version) {
-      2, 3, CURRENT_VERSION -> decodeCurrent(json)
+      CURRENT_VERSION -> decodeCurrent(json)
       else -> throw UnsupportedWorkoutStateVersionException(version)
     }
   }
 
   private fun decodeCurrent(json: JSONObject): WorkoutSnapshot {
+    require(json.optJSONArray("exercises") != null) { "Missing workout exercises" }
+    require(json.optJSONArray("menus") != null) { "Missing workout menus" }
+    require(json.optJSONObject("today") != null) { "Missing workout day" }
+    require(json.optJSONArray("history") != null) { "Missing workout history" }
     val exercises = decodeExercises(json)
     val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
       .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
@@ -227,7 +235,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     return keys().asSequence().associateWith { optInt(it) }
   }
 
-  private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
+  private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 
   private fun JSONArray.ints(): List<Int> = (0 until length()).mapNotNull { index ->
     optInt(index).takeIf { it > 0 }
@@ -252,3 +260,6 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 internal class UnsupportedWorkoutStateVersionException(
   val version: Int,
 ) : IllegalStateException("Unsupported workout state version: $version")
+
+internal class CorruptWorkoutStateException(cause: Throwable) :
+  IllegalStateException("Corrupt workout state; original payload retained", cause)

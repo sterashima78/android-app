@@ -91,7 +91,6 @@ internal class AppSupportingRouteDependencies(
 
   fun setBackgroundFetchWifiOnly(wifiOnly: Boolean) {
     backgroundDataFetchPreferences.wifiOnly = wifiOnly
-    container.mailRepository.refreshPeriodicSyncPolicy()
     IntegratedRefreshScheduler.schedule(application)
   }
 

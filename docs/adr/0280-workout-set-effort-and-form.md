@@ -21,3 +21,7 @@
 ## Consequences and verification
 
 Workout Domain / UI / Data とAI入力、履歴テキスト、互換性テストを更新する。新しい module、permission、table、Worker、外部送信先は設けない。セットの任意値・復元・旧バージョン・AI入力境界を検査する。
+
+## Compatibility retirement (2026-10-10)
+
+現行の更新互換性baselineはversion 4 payloadであり、version 2/3の一時decoderと専用fixture/testを退役した。未知・旧versionは拒否して元データを保持する。現行payloadの破損時も暗黙に空状態へ置換しない（ADR-0281）。

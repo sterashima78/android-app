@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.composition.background
 import android.app.Application
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.feature.backup.data.GoogleDriveBackupScheduler
-import dev.terashima.yomitorirss.feature.mail.data.MailSyncScheduler
 import dev.terashima.yomitorirss.feature.summary.data.BookmarkAutoEnrichmentBackfillScheduler
 import dev.terashima.yomitorirss.feature.widget.UnreadArticlesWidgetRefreshObserver
 
@@ -21,7 +20,6 @@ internal class AppBackgroundRuntime(
     runCatching { GoogleDriveBackupScheduler.ensureScheduled(application) }
     unreadArticlesWidgetRefreshObserver.start()
     runCatching { BookmarkAutoEnrichmentBackfillScheduler.schedule(application) }
-    runCatching { MailSyncScheduler(application).cancelPeriodic() }
     runCatching { IntegratedRefreshScheduler.schedule(application) }
   }
 }

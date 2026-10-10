@@ -53,3 +53,7 @@ scheduleが空の場合、自動バックアップは行わない。手動バッ
 - exact alarm permissionは追加しない。
 - 時刻指定はbest-effortであり、OS制約により遅延し得る。
 - persistence change notification infrastructureはこの変更だけを理由に全systemから削除しないが、自動バックアップtriggerとしては使用しない。
+
+## Compatibility retirement (2026-10-10)
+
+現行の更新互換性baselineでは旧変更時・旧周期backup workへの移行は完了しているため、毎回の再設定・取消時に実行していた旧unique workのcancel処理を退役させた。現行の時刻scheduleの取消と再登録、network constraintは維持する。

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,65 +17,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
-
-enum class WorkoutTab(val label: String) {
-  WORKOUT("記録"),
-  TIMER("タイマー"),
-  HISTORY("履歴"),
-  CHAT("チャット"),
-  SETTINGS("設定"),
-}
-
-data class WorkoutUiState(
-  val initialized: Boolean = false,
-  val snapshot: WorkoutSnapshot = newWorkoutSnapshot(""),
-  val selectedExerciseId: String = "",
-  val selectedTab: WorkoutTab = WorkoutTab.WORKOUT,
-  val amount: String = "10",
-  val memo: String = "",
-  val stepCount: String = "",
-  val rpe: Int? = null,
-  val formQuality: WorkoutFormQuality? = null,
-  val loadKind: WorkoutLoadKind? = null,
-  val loadValue: String = "",
-  val restSeconds: String = "",
-  val intervalDurationSeconds: Int = 90,
-  val intervalRemainingSeconds: Int = 90,
-  val intervalRunning: Boolean = false,
-  val intervalCompletionToken: Int = 0,
-  val plankSeconds: Int = 0,
-  val plankRunning: Boolean = false,
-  val stepUpSeconds: Int = 0,
-  val stepUpRunning: Boolean = false,
-  val exportMessage: String? = null,
-  val exportPermissionRequired: Boolean = false,
-  val menuMessage: String? = null,
-) {
-  val detailsValid: Boolean
-    get() = (loadKind?.let { kind -> runCatching { WorkoutLoad(kind, loadValue) }.isSuccess } ?: true) &&
-      (restSeconds.isBlank() || restSeconds.toIntOrNull()?.let { it >= 0 } == true)
-
-  fun selectedLoad(): WorkoutLoad? = loadKind?.let { kind ->
-    runCatching { WorkoutLoad(kind, loadValue.trim()) }.getOrNull()
-  }
-
-  val activeMenu: WorkoutMenu
-    get() = snapshot.effectiveMenu()
-
-  val menuExercises: List<WorkoutExercise>
-    get() = snapshot.menuExercises()
-
-  val activeExercise: WorkoutExercise?
-    get() = menuExercises.firstOrNull { it.id == selectedExerciseId } ?: menuExercises.firstOrNull()
-
-  val activeSets: List<WorkoutSet>
-    get() = activeExercise?.let { exercise -> snapshot.today.sets.filter { it.exerciseId == exercise.id } }.orEmpty()
-
-  val nextTarget: Int?
-    get() = activeExercise?.let { exercise ->
-      snapshot.menuItem(exercise.id)?.targets?.getOrNull(activeSets.size)
-    }
-}
 
 private fun WorkoutUiState.clearSetDetails(): WorkoutUiState = copy(
   memo = "",
@@ -103,16 +45,24 @@ class WorkoutViewModel(
   init {
     viewModelScope.launch {
       val now = nowIso()
-      val loaded = repository.load().rolloverTo(LocalDate.now().toString(), now)
-      val selected = loaded.menuExercises().firstOrNull()?.id.orEmpty()
-      _state.value = WorkoutUiState(
-        initialized = true,
-        snapshot = loaded,
-        selectedExerciseId = selected,
-        amount = initialAmount(loaded, selected),
-        stepCount = loaded.lastStepCounts[selected]?.toString().orEmpty(),
-      )
-      repository.save(loaded)
+      try {
+        val loaded = repository.load().rolloverTo(LocalDate.now().toString(), now)
+        val selected = loaded.menuExercises().firstOrNull()?.id.orEmpty()
+        // Publish an editable state only after the initial persistence succeeds.
+        repository.save(loaded)
+        _state.value = WorkoutUiState(
+          initialized = true,
+          snapshot = loaded,
+          selectedExerciseId = selected,
+          amount = initialAmount(loaded, selected),
+          stepCount = loaded.lastStepCounts[selected]?.toString().orEmpty(),
+        )
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        // Do not initialize an editable empty state after a failed load.
+        _state.update { it.copy(loadError = "保存済みデータを読み込めませんでした。元の記録は変更されていません。") }
+      }
     }
     ticker = viewModelScope.launch {
       while (isActive) {
@@ -260,10 +210,10 @@ class WorkoutViewModel(
   fun reuseLastLoad() {
     val current = _state.value
     val id = current.activeExercise?.id ?: return
-    val previous = current.snapshot.today.sets.lastOrNull { it.exerciseId == id }
+    val previous = current.snapshot.today.sets.lastOrNull { it.exerciseId == id && it.load != null }
       ?: current.snapshot.history.asSequence()
         .flatMap { it.sets.asReversed().asSequence() }
-        .firstOrNull { it.exerciseId == id }
+        .firstOrNull { it.exerciseId == id && it.load != null }
       ?: return
     _state.update {
       it.copy(

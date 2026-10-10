@@ -26,7 +26,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -126,46 +125,6 @@ class DefaultVideoRepositoryTest {
     assertEquals(20_000L, playback.positionMs)
     assertEquals(100_000L, playback.durationMs)
     assertFalse(playback.completed)
-  }
-
-  @Test
-  fun `旧SMB動画IDの再生位置はshare付きIDへ初回再同期時に引き継ぐ`() = runBlocking {
-    val legacySourceId = legacySmbVideoSourceId("server-1", "videos\\movie.mp4")
-    val legacyVideoId = stableVideoId(VideoSource.SMB, legacySourceId)
-    helper.writableDatabase.insertOrThrow(
-      "video_items",
-      null,
-      ContentValues().apply {
-        put("id", legacyVideoId)
-        put("source", VideoSource.SMB.name)
-        put("source_id", legacySourceId)
-        put("title", "movie")
-        putNull("page_url")
-        putNull("thumbnail_url")
-        putNull("duration_ms")
-        put("size_bytes", 1234L)
-        put("mime_type", "video/mp4")
-        put("updated_at", 100L)
-      },
-    )
-    helper.writableDatabase.insertOrThrow(
-      "video_playback_state",
-      null,
-      ContentValues().apply {
-        put("video_id", legacyVideoId)
-        put("position_ms", 33_000L)
-        put("duration_ms", 100_000L)
-        put("last_played_at", 999L)
-        put("completed", 0)
-      },
-    )
-
-    assertEquals(1, repository.refreshSmb())
-
-    val refreshed = repository.items().single()
-    assertNotEquals(legacyVideoId, refreshed.id)
-    assertEquals(33_000L, refreshed.playbackState!!.positionMs)
-    assertEquals(100_000L, refreshed.playbackState!!.durationMs)
   }
 
   @Test
