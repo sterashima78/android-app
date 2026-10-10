@@ -18,6 +18,7 @@ class EmbeddingPodcastTopicClustererTest {
       object : BackgroundTextEmbedding {
         override suspend fun embed(texts: List<String>): List<FloatArray> {
           assertEquals(3, texts.size)
+          assertTrue(texts.all { it.startsWith("task: clustering | text:") })
           return listOf(floatArrayOf(1f, 0f), floatArrayOf(.9f, .43589f), floatArrayOf(0f, 1f))
         }
       },
