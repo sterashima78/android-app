@@ -152,6 +152,26 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
+  fun `version4の履歴が不正な場合は要素を捨てずpayloadを保全する`() = runTest {
+    val raw = JSONObject().apply {
+      put("version", 4)
+      put("exercises", JSONArray())
+      put("menus", JSONArray())
+      put("today", JSONObject().put("date", "2026-10-10").put("sets", JSONArray()))
+      put("history", JSONArray().put("invalid history entry"))
+    }.toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("CorruptWorkoutStateException was expected")
+    } catch (_: CorruptWorkoutStateException) {
+      // Keep the complete original snapshot rather than silently dropping invalid entries.
+    }
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
+  }
+
+  @Test
   fun `未知versionは現行形式として解釈せず保存済みpayloadも変更しない`() = runTest {
     val raw = JSONObject().apply {
       put("version", 99)
