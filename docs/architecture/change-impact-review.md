@@ -272,13 +272,11 @@ System Diff が Impact Brief と大きく異なる場合は、実装途中で新
 
 ## 9. Repository verification baseline
 
-PR 前の基準は CI と同じものを利用する。
+PR 前の基準は CI と同じものを利用する。ADR の整合性確認は現在の Gradle architecture verification が担い、廃止済みの Python 検証スクリプトは実行しない。
 
 ```bash
 python3 scripts/test_verify_public_repository.py
 python3 scripts/verify_public_repository.py
-python3 -m unittest scripts.test_verify_adr_integrity
-python3 scripts/verify_adr_integrity.py
 ./gradlew --no-daemon -I gradle/architecture-metadata.gradle.kts -I gradle/table-ownership.gradle.kts verifyArchitecture
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
