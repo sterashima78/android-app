@@ -72,34 +72,34 @@ internal const val MSG_GENERATE_CONVERSATION = 4
 internal const val MSG_STREAM_CHUNK = 5
 internal const val MSG_TOOL_CALL = 6
 internal const val MSG_TOOL_RESULT = 7
-internal const val KEY_PROMPT = "prompt"
-internal const val KEY_SYSTEM_INSTRUCTION = "system_instruction"
-internal const val KEY_USER_MESSAGE = "user_message"
-internal const val KEY_INITIAL_MESSAGE_ROLES = "initial_message_roles"
-internal const val KEY_INITIAL_MESSAGE_CONTENTS = "initial_message_contents"
-internal const val KEY_TOOL_SCHEMAS = "tool_schemas"
-internal const val KEY_STREAMING = "streaming"
-internal const val KEY_STREAM_CHUNK = "stream_chunk"
-internal const val KEY_TOOL_CALL_ID = "tool_call_id"
-internal const val KEY_TOOL_NAME = "tool_name"
-internal const val KEY_TOOL_ARGUMENT_NAMES = "tool_argument_names"
-internal const val KEY_TOOL_ARGUMENT_VALUES = "tool_argument_values"
-internal const val KEY_TOOL_RESULT = "tool_result"
-internal const val KEY_SUCCESS = "success"
-internal const val KEY_ERROR = "error"
-internal const val KEY_OUTPUT = "output"
-internal const val KEY_RETIRE = "retire"
-internal const val KEY_STAGE = "stage"
-internal const val KEY_MODEL_NAME = "model_name"
-internal const val KEY_ESTIMATED_STAGE_DURATION_MILLIS = "estimated_stage_duration_millis"
-internal const val KEY_MODEL_ID = "model_id"
-internal const val KEY_BACKEND = "backend"
-internal const val KEY_SPECULATIVE_DECODING = "speculative_decoding"
-internal const val KEY_CONTEXT_TOKENS = "context_tokens"
-internal const val KEY_MODEL_REVISION_IDS = "model_revision_ids"
-internal const val KEY_MODEL_REVISION_VALUES = "model_revision_values"
-internal const val KEY_PREPARING_DURATION_MILLIS = "preparing_duration_millis"
-internal const val KEY_GENERATING_DURATION_MILLIS = "generating_duration_millis"
+internal const val TEXT_KEY_PROMPT = "prompt"
+internal const val TEXT_KEY_SYSTEM_INSTRUCTION = "system_instruction"
+internal const val TEXT_KEY_USER_MESSAGE = "user_message"
+internal const val TEXT_KEY_INITIAL_MESSAGE_ROLES = "initial_message_roles"
+internal const val TEXT_KEY_INITIAL_MESSAGE_CONTENTS = "initial_message_contents"
+internal const val TEXT_KEY_TOOL_SCHEMAS = "tool_schemas"
+internal const val TEXT_KEY_STREAMING = "streaming"
+internal const val TEXT_KEY_STREAM_CHUNK = "stream_chunk"
+internal const val TEXT_KEY_TOOL_CALL_ID = "tool_call_id"
+internal const val TEXT_KEY_TOOL_NAME = "tool_name"
+internal const val TEXT_KEY_TOOL_ARGUMENT_NAMES = "tool_argument_names"
+internal const val TEXT_KEY_TOOL_ARGUMENT_VALUES = "tool_argument_values"
+internal const val TEXT_KEY_TOOL_RESULT = "tool_result"
+internal const val TEXT_KEY_SUCCESS = "success"
+internal const val TEXT_KEY_ERROR = "error"
+internal const val TEXT_KEY_OUTPUT = "output"
+internal const val TEXT_KEY_RETIRE = "retire"
+internal const val TEXT_KEY_STAGE = "stage"
+internal const val TEXT_KEY_MODEL_NAME = "model_name"
+internal const val TEXT_KEY_ESTIMATED_STAGE_DURATION_MILLIS = "estimated_stage_duration_millis"
+internal const val TEXT_KEY_MODEL_ID = "model_id"
+internal const val TEXT_KEY_BACKEND = "backend"
+internal const val TEXT_KEY_SPECULATIVE_DECODING = "speculative_decoding"
+internal const val TEXT_KEY_CONTEXT_TOKENS = "context_tokens"
+internal const val TEXT_KEY_MODEL_REVISION_IDS = "model_revision_ids"
+internal const val TEXT_KEY_MODEL_REVISION_VALUES = "model_revision_values"
+internal const val TEXT_KEY_PREPARING_DURATION_MILLIS = "preparing_duration_millis"
+internal const val TEXT_KEY_GENERATING_DURATION_MILLIS = "generating_duration_millis"
 
 /**
  * Local one-shot text inference whose generation engine lives in a short-lived app subprocess.
@@ -447,7 +447,7 @@ private class RemoteTextInferenceSession(
         }
         MSG_STREAM_CHUNK -> {
           if (pendingResponse.get() != null) {
-            message.data.getString(KEY_STREAM_CHUNK)?.let { chunk ->
+            message.data.getString(TEXT_KEY_STREAM_CHUNK)?.let { chunk ->
               if (chunk.length <= TEXT_INFERENCE_IPC_MAX_CHARS) activePartialCallback.get()?.invoke(chunk)
             }
           }
@@ -528,10 +528,10 @@ private class RemoteTextInferenceSession(
     replyTo: Messenger,
     data: Bundle,
   ) {
-    val callId = data.getLong(KEY_TOOL_CALL_ID)
-    val toolName = data.getString(KEY_TOOL_NAME)
-    val names = data.getStringArrayList(KEY_TOOL_ARGUMENT_NAMES).orEmpty()
-    val values = data.getStringArrayList(KEY_TOOL_ARGUMENT_VALUES).orEmpty()
+    val callId = data.getLong(TEXT_KEY_TOOL_CALL_ID)
+    val toolName = data.getString(TEXT_KEY_TOOL_NAME)
+    val names = data.getStringArrayList(TEXT_KEY_TOOL_ARGUMENT_NAMES).orEmpty()
+    val values = data.getStringArrayList(TEXT_KEY_TOOL_ARGUMENT_VALUES).orEmpty()
     val tool = toolName?.let { activeTools.get()[it] }
     val result: Result<String> = if (names.size != values.size || tool == null) {
       Result.failure(IllegalStateException("tool call が不正です"))
@@ -539,9 +539,9 @@ private class RemoteTextInferenceSession(
       runCatching { tool.execute(names.zip(values).toMap()) }
     }
     val response = Bundle().apply {
-      putLong(KEY_TOOL_CALL_ID, callId)
-      putBoolean(KEY_SUCCESS, result.isSuccess)
-      result.getOrNull()?.take(TEXT_INFERENCE_IPC_MAX_CHARS)?.let { putString(KEY_TOOL_RESULT, it) }
+      putLong(TEXT_KEY_TOOL_CALL_ID, callId)
+      putBoolean(TEXT_KEY_SUCCESS, result.isSuccess)
+      result.getOrNull()?.take(TEXT_INFERENCE_IPC_MAX_CHARS)?.let { putString(TEXT_KEY_TOOL_RESULT, it) }
     }
     runCatching {
       replyTo.send(
