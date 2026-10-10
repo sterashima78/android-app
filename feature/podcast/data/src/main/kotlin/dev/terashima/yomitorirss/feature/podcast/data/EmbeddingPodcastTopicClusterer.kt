@@ -54,33 +54,38 @@ internal fun groupRelatedTopics(
   if (vectors.isEmpty()) return emptyList()
   val size = vectors.first().size
   require(size > 0 && vectors.all { it.size == size && it.all(Float::isFinite) })
-  val groups = vectors.indices.map { mutableListOf(it) }.toMutableList()
   val norms = vectors.map { v -> sqrt(v.sumOf { it.toDouble() * it.toDouble() }) }
   require(norms.all { it > 0.0 && it.isFinite() })
-  fun similarity(left: Int, right: Int): Double {
-    val dot = vectors[left].indices.sumOf { i ->
-      vectors[left][i].toDouble() * vectors[right][i].toDouble()
-    }
-    return dot / (norms[left] * norms[right])
-  }
-  while (true) {
-    var bestLeft = -1
-    var bestRight = -1
-    var bestScore = threshold
-    for (left in 0 until groups.size) {
-      for (right in left + 1 until groups.size) {
-        if (groups[left].size + groups[right].size > maxArticlesPerGroup) continue
-        val minimum = groups[left].minOf { a -> groups[right].minOf { b -> similarity(a, b) } }
-        if (minimum > bestScore) {
-          bestScore = minimum
-          bestLeft = left
-          bestRight = right
-        }
+  val similarities = Array(vectors.size) { DoubleArray(vectors.size) { 1.0 } }
+  val edges = mutableListOf<Triple<Int, Int, Double>>()
+  for (left in vectors.indices) {
+    for (right in left + 1 until vectors.size) {
+      val dot = vectors[left].indices.sumOf { i ->
+        vectors[left][i].toDouble() * vectors[right][i].toDouble()
       }
+      val score = dot / (norms[left] * norms[right])
+      require(score.isFinite())
+      similarities[left][right] = score
+      similarities[right][left] = score
+      if (score >= threshold) edges += Triple(left, right, score)
     }
-    if (bestLeft < 0) break
-    groups[bestLeft].addAll(groups.removeAt(bestRight))
-    groups[bestLeft].sort()
   }
-  return groups.map { it.toList() }.sortedBy { it.first() }
+  // Consider strongest links first, and validate all cross-pairs before merging.
+  edges.sortWith(compareByDescending<Triple<Int, Int, Double>> { it.third }.thenBy { it.first }.thenBy { it.second })
+  val roots = vectors.indices.toMutableList()
+  val groups = vectors.indices.associateWith { mutableListOf(it) }.toMutableMap()
+  for ((left, right) in edges) {
+    val leftRoot = roots[left]
+    val rightRoot = roots[right]
+    if (leftRoot == rightRoot) continue
+    val leftMembers = requireNotNull(groups[leftRoot])
+    val rightMembers = requireNotNull(groups[rightRoot])
+    if (leftMembers.size + rightMembers.size > maxArticlesPerGroup) continue
+    if (!leftMembers.all { a -> rightMembers.all { b -> similarities[a][b] >= threshold } }) continue
+    leftMembers.addAll(rightMembers)
+    leftMembers.sort()
+    rightMembers.forEach { roots[it] = leftRoot }
+    groups.remove(rightRoot)
+  }
+  return groups.values.map { it.toList() }.sortedBy { it.first() }
 }
