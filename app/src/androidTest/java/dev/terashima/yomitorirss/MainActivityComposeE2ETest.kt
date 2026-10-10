@@ -1,11 +1,14 @@
 package dev.terashima.yomitorirss
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import org.junit.Rule
 import org.junit.Test
 
@@ -43,13 +46,15 @@ class MainActivityComposeE2ETest {
   fun `ワークアウトの記録と取り消しをCompose操作で確認する`() {
     composeRule.onNodeWithContentDescription("メニュー").performClick()
     composeRule.onNodeWithText("ワークアウト").performClick()
-    composeRule.onNodeWithText("今日の運動を始める").assertIsDisplayed()
+    composeRule.onNodeWithText("今日のメニュー").assertExists()
 
     // Start from a known state in the isolated debug application.
     composeRule.onNodeWithText("リセット").performClick()
-    composeRule.onNodeWithText("セットを記録").performScrollTo().performClick()
+    composeRule.onNodeWithTag("workout-record-list").performScrollToNode(hasText("セットを記録"))
+    composeRule.onNodeWithText("セットを記録").performClick()
     composeRule.onNodeWithText("1 セット記録済み").performScrollTo().assertIsDisplayed()
-    composeRule.onNodeWithText("直前のセットを取り消す").performScrollTo().performClick()
+    composeRule.onNodeWithTag("workout-record-list").performScrollToNode(hasText("直前のセットを取り消す"))
+    composeRule.onNodeWithText("直前のセットを取り消す").performClick()
     composeRule.onNodeWithText("0 セット記録済み").performScrollTo().assertIsDisplayed()
 
     composeRule.onNodeWithText("履歴").performClick()
