@@ -44,6 +44,7 @@ android {
     targetSdk = 37
     versionCode = appVersionCode
     versionName = "0.2.0"
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     buildConfigField("String", "GIT_COMMIT_SHA", "\"$gitCommitSha\"")
 
     ndk {
@@ -219,6 +220,10 @@ dependencies {
 
   debugImplementation("androidx.compose.ui:ui-tooling")
   debugImplementation("androidx.compose.ui:ui-test-manifest")
+  androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))
+  androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+  androidTestImplementation("androidx.test.ext:junit:1.3.0")
+  androidTestImplementation("androidx.test:runner:1.7.0")
   testImplementation(libs.junit4)
   testImplementation("org.robolectric:robolectric:4.17")
   testImplementation("androidx.test:core-ktx:1.7.0")
