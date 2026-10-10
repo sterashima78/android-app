@@ -164,6 +164,7 @@ class PodcastViewModel(
     name: String,
     sourceIds: Set<String>,
     provider: PodcastGenerationProvider,
+    clusteringMode: PodcastClusteringMode,
     exclusionPrompt: String,
     scheduleEnabled: Boolean,
     scheduleHour: Int,
@@ -177,6 +178,7 @@ class PodcastViewModel(
           name = name.trim(),
           sourceIds = sourceIds,
           provider = provider,
+          clusteringMode = clusteringMode,
           schedule = PodcastSchedule(scheduleEnabled, scheduleHour, scheduleMinute),
           maxArticlesPerEpisode = maxArticles,
           exclusionPrompt = exclusionPrompt.trim(),
@@ -210,6 +212,30 @@ class PodcastViewModel(
         _state.update { it.copy(message = "エピソード生成をバックグラウンドで開始しました") }
       }
       .onFailure(::showError)
+  }
+
+  fun generateAlternative(programId: String) {
+    val program = _state.value.programs.firstOrNull { it.id == programId }
+    if (program == null) {
+      showError(IllegalStateException("番組が見つかりません"))
+      return
+    }
+    runCatching { generationController.generate(programId, program.clusteringMode.alternative()) }
+      .onSuccess { _state.update { it.copy(message = "別モードで生成を開始しました") } }
+      .onFailure(::showError)
+  }
+
+  fun compareAlternative(episodeId: String) {
+    val episode = _state.value.episodes.firstOrNull { it.id == episodeId }
+    if (episode == null) {
+      showError(IllegalStateException("エピソードが見つかりません"))
+      return
+    }
+    runCatching {
+      generationController.compare(episode.programId, episode.id, episode.clusteringMode.alternative())
+    }.onSuccess {
+      _state.update { it.copy(message = "同じ記事から別モードの比較版を生成します") }
+    }.onFailure(::showError)
   }
 
   fun retry(episodeId: String) {
