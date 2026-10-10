@@ -27,7 +27,7 @@ class RssRecommendationRepositoryTest {
   fun setUp() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     helper = object : SQLiteOpenHelper(context, null, null, 1) {
-      override fun onCreate(db: SQLiteDatabase) = Unit
+      override fun onCreate(db: SQLiteDatabase) = ensureRssRecommendationSchema(db)
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
     repository = DefaultRssRecommendationRepository(DatabaseConnection(helper))
