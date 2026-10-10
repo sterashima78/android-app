@@ -131,3 +131,7 @@ backup restoreはADR-0138 / ADR-0237のexact-version policyを維持する。ver
 - Settings UIが接続プロファイルを編集し、Library / Video UIがそれぞれshare / root pathを編集することを確認する。
 - architecture verificationで `smb_connection_profiles` / `video_smb_sources` のownershipとfeature dependency directionを検証する。
 - public repository reviewで実host、username、password、share/pathをfixture・log・documentへ含めていないことを確認する。
+
+## Compatibility retirement (2026-10-10)
+
+現在の更新baselineはversion 38から39であり、version 28から29の初回移行時のみ使用していたshare未指定の旧動画identityと再生状態の移し替え処理を退役した。現行share付きidentityの保存・再同期は維持する。旧identity専用のfixture/testも削除した。
