@@ -235,7 +235,7 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     return keys().asSequence().associateWith { optInt(it) }
   }
 
-  private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
+  private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 
   private fun JSONArray.ints(): List<Int> = (0 until length()).mapNotNull { index ->
     optInt(index).takeIf { it > 0 }
