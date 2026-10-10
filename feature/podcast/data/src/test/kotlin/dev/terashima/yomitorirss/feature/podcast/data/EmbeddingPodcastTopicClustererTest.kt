@@ -33,7 +33,7 @@ class EmbeddingPodcastTopicClustererTest {
       listOf(
         floatArrayOf(1f, 0f),
         floatArrayOf(.9f, .43589f),
-        floatArrayOf(.62f, .7846f),
+        floatArrayOf(.56f, .82849f),
       ),
       threshold = .8,
     )
