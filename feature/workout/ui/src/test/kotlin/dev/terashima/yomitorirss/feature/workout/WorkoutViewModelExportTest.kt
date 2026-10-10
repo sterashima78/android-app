@@ -110,6 +110,46 @@ class WorkoutViewModelExportTest {
     }
   }
 
+  @Test
+  fun `初期読み込みが失敗した場合は空状態を保存せず操作を無効にする`() = runTest(dispatcher) {
+    val events = mutableListOf<String>()
+    val repository = object : WorkoutRepository {
+      override suspend fun load(): WorkoutSnapshot = throw IllegalStateException("invalid payload")
+      override suspend fun save(snapshot: WorkoutSnapshot) { events += "saved" }
+    }
+    val viewModel = WorkoutViewModel(repository, FakeWorkoutHistoryExporter(ArrayDeque(), events))
+    try {
+      runCurrent()
+      assertFalse(viewModel.state.value.initialized)
+      assertTrue(viewModel.state.value.loadError.orEmpty().contains("変更されていません"))
+      assertTrue(events.isEmpty())
+    } finally {
+      viewModel.viewModelScope.cancel()
+    }
+  }
+
+  @Test
+  fun `直近セットの負荷が未入力ならさらに前の記録から再利用する`() = runTest(dispatcher) {
+    val original = snapshotWithCompletedSet()
+    val recorded = original.today.sets.single()
+    val snapshot = original.copy(
+      today = original.today.copy(sets = listOf(
+        recorded.copy(load = WorkoutLoad(WorkoutLoadKind.ADDED_WEIGHT, "5")),
+        recorded.copy(id = "newer", load = null),
+      )),
+    )
+    val repository = FakeWorkoutRepository(snapshot, mutableListOf())
+    val viewModel = WorkoutViewModel(repository, FakeWorkoutHistoryExporter(ArrayDeque(), mutableListOf()))
+    try {
+      runCurrent()
+      viewModel.reuseLastLoad()
+      assertEquals(WorkoutLoadKind.ADDED_WEIGHT, viewModel.state.value.loadKind)
+      assertEquals("5", viewModel.state.value.loadValue)
+    } finally {
+      viewModel.viewModelScope.cancel()
+    }
+  }
+
   private fun snapshotWithCompletedSet(): WorkoutSnapshot {
     val exercise = defaultWorkoutExercises().first()
     return WorkoutSnapshot(
