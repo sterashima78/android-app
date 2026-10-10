@@ -91,3 +91,7 @@ Workout の完了後レビューは、直近14日間の実績、当日メモ、�
 - prompt builder で過去 review がメニュー提案に入り、完了後レビューには不要な二次情報として混入しないことを test する。
 - UI で review history を閲覧でき、cloud 選択時の送信内容説明に過去 review が含まれることを確認する。
 - public repository verification、architecture verification、unit test、lint を実行する。
+
+## Compatibility retirement (2026-10-10)
+
+現行配布baselineのWorkout書込形式はversion 4となったため、一時的なversion 2 decoderと専用testを退役した。これにより旧payloadを新形式へ推測変換せずunsupportedとして拒否し、保存済み文字列を保全する。version 3の互換読込も後続ADR-0280の終了条件に基づき同時に退役した。
