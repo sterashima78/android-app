@@ -172,6 +172,49 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
+  fun `database version 39から40で既存エピソードも出来事モードを保持する`() = runSuspend {
+    database.close()
+    context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    val legacySchema = DatabaseSchema(
+      version = 39,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "podcast",
+          createSchema = { db ->
+            db.execSQL(
+              "CREATE TABLE podcast_programs(" +
+                "id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,source_ids TEXT NOT NULL," +
+                "provider TEXT NOT NULL,schedule_enabled INTEGER NOT NULL DEFAULT 0," +
+                "schedule_hour INTEGER NOT NULL DEFAULT 7,schedule_minute INTEGER NOT NULL DEFAULT 0," +
+                "max_articles INTEGER NOT NULL DEFAULT 12,exclusion_prompt TEXT NOT NULL DEFAULT '')",
+            )
+            db.execSQL(
+              "CREATE TABLE podcast_episodes(" +
+                "id TEXT PRIMARY KEY NOT NULL,program_id TEXT NOT NULL," +
+                "title TEXT NOT NULL,created_at INTEGER NOT NULL,status TEXT NOT NULL," +
+                "script TEXT,error_message TEXT,regeneration_status TEXT,clustering_status TEXT)",
+            )
+            db.execSQL(
+              "INSERT INTO podcast_programs(id,name,source_ids,provider) VALUES('program','番組','source','LOCAL')",
+            )
+            db.execSQL(
+              "INSERT INTO podcast_episodes(id,program_id,title,created_at,status) VALUES('episode','program','番組',100,'READY')",
+            )
+          },
+        ),
+      ),
+    )
+    YomitoriDatabase.create(context, legacySchema).close()
+    database = YomitoriDatabase.create(
+      context,
+      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
+    )
+    repository = SqlitePodcastRepository(DatabaseConnection(database))
+    assertEquals(PodcastClusteringMode.EVENT, repository.findProgram("program")?.clusteringMode)
+    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode("episode")?.clusteringMode)
+  }
+
+  @Test
   fun `同一記事から別モード比較版を作っても消費履歴と原本は維持する`() = runSuspend {
     val source = PodcastSource("source", "ニュース", "https://example.invalid/feed")
     val program = PodcastProgram("program", "比較番組", setOf(source.id), PodcastGenerationProvider.LOCAL)
