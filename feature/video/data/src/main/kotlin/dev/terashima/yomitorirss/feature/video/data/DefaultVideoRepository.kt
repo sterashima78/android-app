@@ -92,18 +92,8 @@ class DefaultVideoRepository(
     val now = System.currentTimeMillis()
     val incoming = files.map { it.toVideoItem(now) }.distinctBy(VideoItem::id)
     val incomingIds = incoming.mapTo(HashSet()) { it.id }
-    val legacyPlaybackTargets = files
-      .groupBy { file -> stableVideoId(VideoSource.SMB, legacySmbVideoSourceId(file.serverId, file.path)) }
-      .mapNotNull { (legacyId, matchingFiles) ->
-        val targetIds = matchingFiles.map { it.toVideoItem(now).id }.distinct()
-        targetIds.singleOrNull()?.let { targetId -> legacyId to targetId }
-      }
-      .toMap()
     database.transaction {
       incoming.forEach(::upsertVideoItem)
-      legacyPlaybackTargets.forEach { (legacyId, targetId) ->
-        migratePlaybackStateIfAbsent(legacyId, targetId)
-      }
       existingSmbIds().filterNot(incomingIds::contains).forEach { staleId ->
         delete("video_saved_items", "video_id = ?", arrayOf(staleId))
         delete("video_playback_state", "video_id = ?", arrayOf(staleId))
@@ -497,24 +487,6 @@ private fun SQLiteDatabase.upsertVideoItem(item: VideoItem) {
   }
   val updated = update("video_items", values, "id = ?", arrayOf(item.id))
   if (updated == 0) insertOrThrow("video_items", null, values)
-}
-
-private fun SQLiteDatabase.migratePlaybackStateIfAbsent(
-  legacyVideoId: String,
-  targetVideoId: String,
-) {
-  if (legacyVideoId == targetVideoId) return
-  execSQL(
-    """
-      INSERT OR IGNORE INTO video_playback_state(
-        video_id, position_ms, duration_ms, last_played_at, completed
-      )
-      SELECT ?, position_ms, duration_ms, last_played_at, completed
-      FROM video_playback_state
-      WHERE video_id = ?
-    """.trimIndent(),
-    arrayOf(targetVideoId, legacyVideoId),
-  )
 }
 
 private fun SmbMediaFile.toVideoItem(now: Long): VideoItem {
