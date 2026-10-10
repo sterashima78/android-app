@@ -48,6 +48,8 @@ class WorkoutViewModel(
       try {
         val loaded = repository.load().rolloverTo(LocalDate.now().toString(), now)
         val selected = loaded.menuExercises().firstOrNull()?.id.orEmpty()
+        // Publish an editable state only after the initial persistence succeeds.
+        repository.save(loaded)
         _state.value = WorkoutUiState(
           initialized = true,
           snapshot = loaded,
@@ -55,7 +57,6 @@ class WorkoutViewModel(
           amount = initialAmount(loaded, selected),
           stepCount = loaded.lastStepCounts[selected]?.toString().orEmpty(),
         )
-        repository.save(loaded)
       } catch (error: CancellationException) {
         throw error
       } catch (error: Exception) {
