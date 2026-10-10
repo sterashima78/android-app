@@ -172,6 +172,32 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
+  fun `同一記事から別モード比較版を作っても消費履歴と原本は維持する`() = runSuspend {
+    val source = PodcastSource("source", "ニュース", "https://example.invalid/feed")
+    val program = PodcastProgram("program", "比較番組", setOf(source.id), PodcastGenerationProvider.LOCAL)
+    repository.saveSource(source)
+    repository.saveProgram(program)
+    val articles = listOf(
+      PodcastFeedEntry("article-a", source.id, "記事A", null, 10L, null, "本文A", chapterPosition = 0),
+      PodcastFeedEntry("article-b", source.id, "記事B", null, 11L, null, "本文B", chapterPosition = 1),
+    )
+    val original = requireNotNull(repository.reserveEpisode(program, articles, 100L))
+    val comparison = repository.reserveComparisonEpisode(
+      program.copy(clusteringMode = PodcastClusteringMode.TOPIC),
+      articles.map { it.copy(chapterPosition = 0) },
+      200L,
+      PodcastClusteringStatus.SUCCESS,
+    )
+    assertTrue(original.id != comparison.id)
+    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode(original.id)?.clusteringMode)
+    assertEquals(PodcastClusteringMode.TOPIC, repository.findEpisode(comparison.id)?.clusteringMode)
+    assertEquals(listOf(0, 0), comparison.articles.map { it.chapterPosition })
+    assertEquals(listOf(0, 1), repository.findEpisode(original.id)?.articles?.map { it.chapterPosition })
+    val filter = SqlitePodcastCandidateFilter(DatabaseConnection(database))
+    assertTrue(filter.availableEntries(program.id, articles).isEmpty())
+  }
+
+  @Test
   fun `存在しないPodcast sourceを参照する番組は保存しない`() = runSuspend {
     val error = runCatching {
       repository.saveProgram(
