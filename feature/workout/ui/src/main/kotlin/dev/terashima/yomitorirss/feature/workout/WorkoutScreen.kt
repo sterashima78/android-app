@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -132,7 +133,7 @@ private fun WorkoutLogScreen(
 ) {
   val active = state.activeExercise
   LazyColumn(
-    modifier = modifier,
+    modifier = modifier.testTag("workout-record-list"),
     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {

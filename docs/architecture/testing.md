@@ -312,3 +312,11 @@ PR review では test の「数」ではなく、変更した responsibility と
 - [ADR-0215](../adr/0215-gradle-current-documentation-compatibility-verification.md)
 - [ADR-0221](../adr/0221-android15-minimum-platform-baseline.md)
 - [ADR-0275](../adr/0275-formal-specification-with-quint-and-alloy.md)
+
+## Follow-up regression coverage (2026-10-10)
+
+Workoutの入力・記録・取り消し・履歴への遷移は、Domain/Repository unit testに加えてAndroid上のCompose操作テストで保証する。ユーザーデータに影響する状態変更はテスト端末の専用debug appデータに限定し、リリース実行中の実データを操作しない。
+
+大きなAI推論クラスのIPC通信と子プロセス実行、蔵書表示の一覧と書籍操作UIは責務単位でファイル分割する。共通のpublic API、Worker/Service FQCN、persisted payload、feature ownership、端末上の表示・操作は変更しない。
+
+CI の `Instrumentation Compile` job は端末なしで `:app:compileDebugAndroidTestKotlin` をコンパイルし、instrumented testの欠落dependencyや型エラーを検出する。実端末上の実行結果とは区別し、画面操作の成否はinstrumented実行で検証する。

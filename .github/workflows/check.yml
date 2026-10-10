@@ -45,6 +45,8 @@ jobs:
             command: ./gradlew --no-daemon test
           - name: Lint
             command: ./gradlew --no-daemon :app:lintRelease
+          - name: Instrumentation Compile
+            command: ./gradlew --no-daemon :app:compileDebugAndroidTestKotlin
           - name: R8
             command: ./gradlew --no-daemon :app:minifyReleaseWithR8
     steps:
