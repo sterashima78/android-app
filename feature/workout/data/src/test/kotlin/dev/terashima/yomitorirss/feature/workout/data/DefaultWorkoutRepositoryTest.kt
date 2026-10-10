@@ -196,6 +196,34 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
+  fun `破損したJSONを空状態へ置換せず元のpayloadを保護する`() = runTest {
+    val raw = "{invalid-json"
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("CorruptWorkoutStateException was expected")
+    } catch (error: CorruptWorkoutStateException) {
+      assertEquals(true, error.cause != null)
+    }
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
+  }
+
+  @Test
+  fun `version4で必須フィールドが欠けている場合は元のpayloadを保護する`() = runTest {
+    val raw = JSONObject().put("version", 4).put("exercises", JSONArray()).toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("CorruptWorkoutStateException was expected")
+    } catch (_: CorruptWorkoutStateException) {
+      // Deliberately do not initialize a replacement snapshot.
+    }
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
+  }
+
+  @Test
   fun `未知versionは現行形式として解釈せず保存済みpayloadも変更しない`() = runTest {
     val raw = JSONObject().apply {
       put("version", 99)
