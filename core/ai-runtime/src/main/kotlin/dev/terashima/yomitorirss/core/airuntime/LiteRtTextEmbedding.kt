@@ -25,9 +25,9 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
 
   override suspend fun embed(texts: List<String>): List<FloatArray> {
     if (texts.isEmpty()) return emptyList()
+    val model = withContext(Dispatchers.IO) { ensureModel() }
     return LocalAiBackgroundTaskGate.withPermit(priority = LocalAiBackgroundTaskPriority.NORMAL) {
       withContext(Dispatchers.IO) {
-        val model = ensureModel()
         EmbeddingEngine(
           EmbeddingEngineConfig(
             modelPath = model.absolutePath,
@@ -48,11 +48,11 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
     }
   }
 
-  private fun ensureModel(): File {
-    val directory = File(applicationContext.filesDir, "embedding-models")
+  private fun ensureModel(): File = synchronized(MODEL_DOWNLOAD_LOCK) {
+    val directory = File(applicationContext.noBackupFilesDir, "embedding-models")
     check(directory.isDirectory || directory.mkdirs()) { "embedding model directory unavailable" }
     val file = File(directory, MODEL_FILE)
-    if (file.length() >= MIN_MODEL_BYTES) return file
+    if (file.length() >= MIN_MODEL_BYTES) return@synchronized file
     val temporary = File(directory, "$MODEL_FILE.partial")
     temporary.delete()
     val connection = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
@@ -71,10 +71,11 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
       connection.disconnect()
       temporary.delete()
     }
-    return file
+    file
   }
 
   private companion object {
+    val MODEL_DOWNLOAD_LOCK = Any()
     const val MODEL_FILE = "embeddinggemma-2-text-270m.litertlm"
     const val MIN_MODEL_BYTES = 100_000_000L
     const val MODEL_URL =
