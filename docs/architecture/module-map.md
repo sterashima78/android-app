@@ -16,6 +16,10 @@
 
 共通 external dependency version は、移行済み dependency について [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml) を正本とする。module-local `build.gradle.kts` は generated `libs` accessor を利用する。Android platform baseline は別契約であり、各 Android module の `minSdk = 35` 明示と architecture verification を維持する。
 
+## Build entry point
+
+The checked-in official Gradle Wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`) is the only build launcher. `gradle-wrapper.properties` pins the Gradle distribution and its SHA-256, while a source regression test verifies the published upstream bootstrap JAR SHA-256. Wrapper scripts/JAR are taken from Gradle's upstream release source. The 9.8.1 release tag contains a bootstrap JAR generated for 9.8.0; this older official JAR is compatible with the 9.8.1 distribution, and its exact upstream checksum is pinned. Do not reintroduce the native custom ZIP download/extraction scripts.
+
 ## App
 
 ```text
@@ -181,3 +185,6 @@ Data -> other feature Data は物理 dependency として許容される場合�
 - module 名と Domain Context の関係が変わる: [context-map.md](context-map.md) と必要な ADR を更新する。
 - app composition / app presentation / app shell navigation ownership を変更する: ADR と本 `App` 節を同期し、app source layout / dependency regression test を更新する。
 - `:app:composition` の公開 facade / concrete feature dependency を変更する: `:app` / `:app:presentation` に `:feature:*:data` や composition-only provider/network dependency が漏れないことと、application scope lifetime を維持することを確認する。
+## Library presentation source responsibilities
+
+`LibraryScreen.kt` owns Library's tab navigation, filtering, series/list presentation, and parent screen wiring. `LibraryBookTiles.kt` contains individual book/series thumbnails, their action menus, and book-file operation confirmation dialogs. Both are in `:feature:library:ui`; navigation, Domain/Data dependencies, user-visible labels, and source-specific action selection are unchanged.
