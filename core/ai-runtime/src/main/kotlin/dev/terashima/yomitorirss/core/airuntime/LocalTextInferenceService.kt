@@ -282,24 +282,24 @@ private class ChildToolExecutionBridge {
       mainProcess.send(
         Message.obtain(null, MSG_TOOL_CALL).apply {
           data = Bundle().apply {
-            putLong(KEY_TOOL_CALL_ID, callId)
-            putString(KEY_TOOL_NAME, toolName)
-            putStringArrayList(KEY_TOOL_ARGUMENT_NAMES, ArrayList(entries.map(Map.Entry<String, String>::key)))
-            putStringArrayList(KEY_TOOL_ARGUMENT_VALUES, ArrayList(entries.map(Map.Entry<String, String>::value)))
+            putLong(TEXT_KEY_TOOL_CALL_ID, callId)
+            putString(TEXT_KEY_TOOL_NAME, toolName)
+            putStringArrayList(TEXT_KEY_TOOL_ARGUMENT_NAMES, ArrayList(entries.map(Map.Entry<String, String>::key)))
+            putStringArrayList(TEXT_KEY_TOOL_ARGUMENT_VALUES, ArrayList(entries.map(Map.Entry<String, String>::value)))
           }
           replyTo = childProcess
         },
       )
       val result = deferred.await()
-      check(result.getBoolean(KEY_SUCCESS)) { "tool execution に失敗しました" }
-      requireNotNull(result.getString(KEY_TOOL_RESULT)) { "tool result がありません" }
+      check(result.getBoolean(TEXT_KEY_SUCCESS)) { "tool execution に失敗しました" }
+      requireNotNull(result.getString(TEXT_KEY_TOOL_RESULT)) { "tool result がありません" }
     } finally {
       pending.compareAndSet(pendingCall, null)
     }
   }
 
   fun complete(bundle: Bundle) {
-    val callId = bundle.getLong(KEY_TOOL_CALL_ID)
+    val callId = bundle.getLong(TEXT_KEY_TOOL_CALL_ID)
     val current = pending.get() ?: return
     if (current.first != callId) return
     if (pending.compareAndSet(current, null)) current.second.complete(bundle)
@@ -353,32 +353,32 @@ internal fun encodeRequest(
   prompt: String,
   snapshot: TextInferenceExecutionSnapshot,
 ): Bundle = Bundle().apply {
-  putString(KEY_PROMPT, prompt)
-  putString(KEY_MODEL_ID, snapshot.modelId)
-  putString(KEY_BACKEND, snapshot.backend.name)
-  putBoolean(KEY_SPECULATIVE_DECODING, snapshot.speculativeDecodingEnabled)
-  putInt(KEY_CONTEXT_TOKENS, snapshot.contextTokens)
+  putString(TEXT_KEY_PROMPT, prompt)
+  putString(TEXT_KEY_MODEL_ID, snapshot.modelId)
+  putString(TEXT_KEY_BACKEND, snapshot.backend.name)
+  putBoolean(TEXT_KEY_SPECULATIVE_DECODING, snapshot.speculativeDecodingEnabled)
+  putInt(TEXT_KEY_CONTEXT_TOKENS, snapshot.contextTokens)
   val revisionEntries = snapshot.modelRevisions.entries.sortedBy(Map.Entry<String, String>::key)
-  putStringArrayList(KEY_MODEL_REVISION_IDS, ArrayList(revisionEntries.map(Map.Entry<String, String>::key)))
-  putStringArrayList(KEY_MODEL_REVISION_VALUES, ArrayList(revisionEntries.map(Map.Entry<String, String>::value)))
-  snapshot.preparingDurationMillis?.let { putLong(KEY_PREPARING_DURATION_MILLIS, it) }
-  snapshot.generatingDurationMillis?.let { putLong(KEY_GENERATING_DURATION_MILLIS, it) }
+  putStringArrayList(TEXT_KEY_MODEL_REVISION_IDS, ArrayList(revisionEntries.map(Map.Entry<String, String>::key)))
+  putStringArrayList(TEXT_KEY_MODEL_REVISION_VALUES, ArrayList(revisionEntries.map(Map.Entry<String, String>::value)))
+  snapshot.preparingDurationMillis?.let { putLong(TEXT_KEY_PREPARING_DURATION_MILLIS, it) }
+  snapshot.generatingDurationMillis?.let { putLong(TEXT_KEY_GENERATING_DURATION_MILLIS, it) }
 }
 
 private fun decodeRequest(bundle: Bundle): DecodedTextInferenceRequest {
-  val prompt = requireNotNull(bundle.getString(KEY_PROMPT)) { "推論プロンプトがありません" }
+  val prompt = requireNotNull(bundle.getString(TEXT_KEY_PROMPT)) { "推論プロンプトがありません" }
   require(prompt.isNotBlank()) { "推論プロンプトを入力してください" }
   require(prompt.length <= TEXT_INFERENCE_IPC_MAX_CHARS) { "推論プロンプトが長すぎます" }
-  val modelId = requireNotNull(bundle.getString(KEY_MODEL_ID)) { "AIモデルがありません" }
-  val backendName = requireNotNull(bundle.getString(KEY_BACKEND)) { "AI backend がありません" }
+  val modelId = requireNotNull(bundle.getString(TEXT_KEY_MODEL_ID)) { "AIモデルがありません" }
+  val backendName = requireNotNull(bundle.getString(TEXT_KEY_BACKEND)) { "AI backend がありません" }
   val backend = runCatching { LocalInferenceBackend.valueOf(backendName) }
     .getOrElse { throw IllegalArgumentException("AI backend が不正です") }
-  val contextTokens = bundle.getInt(KEY_CONTEXT_TOKENS)
+  val contextTokens = bundle.getInt(TEXT_KEY_CONTEXT_TOKENS)
   isolatedContextSizeMode(contextTokens)
-  val revisionIds = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_IDS)) {
+  val revisionIds = requireNotNull(bundle.getStringArrayList(TEXT_KEY_MODEL_REVISION_IDS)) {
     "AIモデル revision id がありません"
   }
-  val revisionValues = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_VALUES)) {
+  val revisionValues = requireNotNull(bundle.getStringArrayList(TEXT_KEY_MODEL_REVISION_VALUES)) {
     "AIモデル revision value がありません"
   }
   require(revisionIds.size == revisionValues.size) { "AIモデル revision snapshot が不正です" }
@@ -389,13 +389,13 @@ private fun decodeRequest(bundle: Bundle): DecodedTextInferenceRequest {
     snapshot = TextInferenceExecutionSnapshot(
       modelId = modelId,
       backend = backend,
-      speculativeDecodingEnabled = bundle.getBoolean(KEY_SPECULATIVE_DECODING),
+      speculativeDecodingEnabled = bundle.getBoolean(TEXT_KEY_SPECULATIVE_DECODING),
       contextTokens = contextTokens,
       modelRevisions = modelRevisions,
-      preparingDurationMillis = bundle.getLong(KEY_PREPARING_DURATION_MILLIS)
-        .takeIf { bundle.containsKey(KEY_PREPARING_DURATION_MILLIS) && it > 0 },
-      generatingDurationMillis = bundle.getLong(KEY_GENERATING_DURATION_MILLIS)
-        .takeIf { bundle.containsKey(KEY_GENERATING_DURATION_MILLIS) && it > 0 },
+      preparingDurationMillis = bundle.getLong(TEXT_KEY_PREPARING_DURATION_MILLIS)
+        .takeIf { bundle.containsKey(TEXT_KEY_PREPARING_DURATION_MILLIS) && it > 0 },
+      generatingDurationMillis = bundle.getLong(TEXT_KEY_GENERATING_DURATION_MILLIS)
+        .takeIf { bundle.containsKey(TEXT_KEY_GENERATING_DURATION_MILLIS) && it > 0 },
     ),
   )
 }
@@ -417,41 +417,41 @@ internal fun encodeConversationRequest(
   require(conversationIpcCharacterCount(request) <= TEXT_INFERENCE_IPC_MAX_CHARS) {
     "AIチャットの入力が長すぎます"
   }
-  putString(KEY_SYSTEM_INSTRUCTION, request.systemInstruction)
-  putString(KEY_USER_MESSAGE, request.userMessage)
+  putString(TEXT_KEY_SYSTEM_INSTRUCTION, request.systemInstruction)
+  putString(TEXT_KEY_USER_MESSAGE, request.userMessage)
   putStringArrayList(
-    KEY_INITIAL_MESSAGE_ROLES,
+    TEXT_KEY_INITIAL_MESSAGE_ROLES,
     ArrayList(request.initialMessages.map { it.role.name }),
   )
   putStringArrayList(
-    KEY_INITIAL_MESSAGE_CONTENTS,
+    TEXT_KEY_INITIAL_MESSAGE_CONTENTS,
     ArrayList(request.initialMessages.map(LocalInferenceMessage::content)),
   )
   putStringArrayList(
-    KEY_TOOL_SCHEMAS,
+    TEXT_KEY_TOOL_SCHEMAS,
     ArrayList(request.tools.map(::toolDescriptionJson)),
   )
-  putBoolean(KEY_STREAMING, streaming)
-  putString(KEY_MODEL_ID, snapshot.modelId)
-  putString(KEY_BACKEND, snapshot.backend.name)
-  putBoolean(KEY_SPECULATIVE_DECODING, snapshot.speculativeDecodingEnabled)
-  putInt(KEY_CONTEXT_TOKENS, snapshot.contextTokens)
+  putBoolean(TEXT_KEY_STREAMING, streaming)
+  putString(TEXT_KEY_MODEL_ID, snapshot.modelId)
+  putString(TEXT_KEY_BACKEND, snapshot.backend.name)
+  putBoolean(TEXT_KEY_SPECULATIVE_DECODING, snapshot.speculativeDecodingEnabled)
+  putInt(TEXT_KEY_CONTEXT_TOKENS, snapshot.contextTokens)
   val revisionEntries = snapshot.modelRevisions.entries.sortedBy(Map.Entry<String, String>::key)
-  putStringArrayList(KEY_MODEL_REVISION_IDS, ArrayList(revisionEntries.map(Map.Entry<String, String>::key)))
-  putStringArrayList(KEY_MODEL_REVISION_VALUES, ArrayList(revisionEntries.map(Map.Entry<String, String>::value)))
-  snapshot.preparingDurationMillis?.let { putLong(KEY_PREPARING_DURATION_MILLIS, it) }
-  snapshot.generatingDurationMillis?.let { putLong(KEY_GENERATING_DURATION_MILLIS, it) }
+  putStringArrayList(TEXT_KEY_MODEL_REVISION_IDS, ArrayList(revisionEntries.map(Map.Entry<String, String>::key)))
+  putStringArrayList(TEXT_KEY_MODEL_REVISION_VALUES, ArrayList(revisionEntries.map(Map.Entry<String, String>::value)))
+  snapshot.preparingDurationMillis?.let { putLong(TEXT_KEY_PREPARING_DURATION_MILLIS, it) }
+  snapshot.generatingDurationMillis?.let { putLong(TEXT_KEY_GENERATING_DURATION_MILLIS, it) }
 }
 
 private fun decodeConversationRequest(bundle: Bundle): DecodedConversationRequest {
-  val systemInstruction = requireNotNull(bundle.getString(KEY_SYSTEM_INSTRUCTION)) {
+  val systemInstruction = requireNotNull(bundle.getString(TEXT_KEY_SYSTEM_INSTRUCTION)) {
     "system instruction がありません"
   }
-  val userMessage = requireNotNull(bundle.getString(KEY_USER_MESSAGE)) { "user message がありません" }
-  val roles = requireNotNull(bundle.getStringArrayList(KEY_INITIAL_MESSAGE_ROLES)) {
+  val userMessage = requireNotNull(bundle.getString(TEXT_KEY_USER_MESSAGE)) { "user message がありません" }
+  val roles = requireNotNull(bundle.getStringArrayList(TEXT_KEY_INITIAL_MESSAGE_ROLES)) {
     "conversation role がありません"
   }
-  val contents = requireNotNull(bundle.getStringArrayList(KEY_INITIAL_MESSAGE_CONTENTS)) {
+  val contents = requireNotNull(bundle.getStringArrayList(TEXT_KEY_INITIAL_MESSAGE_CONTENTS)) {
     "conversation message がありません"
   }
   require(roles.size == contents.size) { "conversation history が不正です" }
@@ -462,19 +462,19 @@ private fun decodeConversationRequest(bundle: Bundle): DecodedConversationReques
       content = contents[index],
     )
   }
-  val toolDefinitions = bundle.getStringArrayList(KEY_TOOL_SCHEMAS)
+  val toolDefinitions = bundle.getStringArrayList(TEXT_KEY_TOOL_SCHEMAS)
     .orEmpty()
     .map(::parseToolDefinitionJson)
-  val modelId = requireNotNull(bundle.getString(KEY_MODEL_ID)) { "AIモデルがありません" }
-  val backendName = requireNotNull(bundle.getString(KEY_BACKEND)) { "AI backend がありません" }
+  val modelId = requireNotNull(bundle.getString(TEXT_KEY_MODEL_ID)) { "AIモデルがありません" }
+  val backendName = requireNotNull(bundle.getString(TEXT_KEY_BACKEND)) { "AI backend がありません" }
   val backend = runCatching { LocalInferenceBackend.valueOf(backendName) }
     .getOrElse { throw IllegalArgumentException("AI backend が不正です") }
-  val contextTokens = bundle.getInt(KEY_CONTEXT_TOKENS)
+  val contextTokens = bundle.getInt(TEXT_KEY_CONTEXT_TOKENS)
   isolatedContextSizeMode(contextTokens)
-  val revisionIds = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_IDS)) {
+  val revisionIds = requireNotNull(bundle.getStringArrayList(TEXT_KEY_MODEL_REVISION_IDS)) {
     "AIモデル revision id がありません"
   }
-  val revisionValues = requireNotNull(bundle.getStringArrayList(KEY_MODEL_REVISION_VALUES)) {
+  val revisionValues = requireNotNull(bundle.getStringArrayList(TEXT_KEY_MODEL_REVISION_VALUES)) {
     "AIモデル revision value がありません"
   }
   require(revisionIds.size == revisionValues.size) { "AIモデル revision snapshot が不正です" }
@@ -494,17 +494,17 @@ private fun decodeConversationRequest(bundle: Bundle): DecodedConversationReques
     initialMessages = initialMessages,
     userMessage = userMessage,
     toolDefinitions = toolDefinitions,
-    streaming = bundle.getBoolean(KEY_STREAMING),
+    streaming = bundle.getBoolean(TEXT_KEY_STREAMING),
     snapshot = TextInferenceExecutionSnapshot(
       modelId = modelId,
       backend = backend,
-      speculativeDecodingEnabled = bundle.getBoolean(KEY_SPECULATIVE_DECODING),
+      speculativeDecodingEnabled = bundle.getBoolean(TEXT_KEY_SPECULATIVE_DECODING),
       contextTokens = contextTokens,
       modelRevisions = modelRevisions,
-      preparingDurationMillis = bundle.getLong(KEY_PREPARING_DURATION_MILLIS)
-        .takeIf { bundle.containsKey(KEY_PREPARING_DURATION_MILLIS) && it > 0 },
-      generatingDurationMillis = bundle.getLong(KEY_GENERATING_DURATION_MILLIS)
-        .takeIf { bundle.containsKey(KEY_GENERATING_DURATION_MILLIS) && it > 0 },
+      preparingDurationMillis = bundle.getLong(TEXT_KEY_PREPARING_DURATION_MILLIS)
+        .takeIf { bundle.containsKey(TEXT_KEY_PREPARING_DURATION_MILLIS) && it > 0 },
+      generatingDurationMillis = bundle.getLong(TEXT_KEY_GENERATING_DURATION_MILLIS)
+        .takeIf { bundle.containsKey(TEXT_KEY_GENERATING_DURATION_MILLIS) && it > 0 },
     ),
   )
 }
@@ -518,7 +518,7 @@ private fun sendStreamChunk(
     replyTo.send(
       Message.obtain(null, MSG_STREAM_CHUNK).apply {
         data = Bundle().apply {
-          putString(KEY_STREAM_CHUNK, chunk)
+          putString(TEXT_KEY_STREAM_CHUNK, chunk)
         }
       },
     )
@@ -533,10 +533,10 @@ private fun sendProgress(
     replyTo.send(
       Message.obtain(null, MSG_PROGRESS).apply {
         data = Bundle().apply {
-          putString(KEY_STAGE, progress.stage.name)
-          progress.modelName?.let { putString(KEY_MODEL_NAME, it) }
+          putString(TEXT_KEY_STAGE, progress.stage.name)
+          progress.modelName?.let { putString(TEXT_KEY_MODEL_NAME, it) }
           progress.estimatedStageDurationMillis?.let {
-            putLong(KEY_ESTIMATED_STAGE_DURATION_MILLIS, it)
+            putLong(TEXT_KEY_ESTIMATED_STAGE_DURATION_MILLIS, it)
           }
         }
       },
@@ -545,14 +545,14 @@ private fun sendProgress(
 }
 
 internal fun decodeProgress(bundle: Bundle): AiTextInferenceProgress? {
-  val stage = bundle.getString(KEY_STAGE)
+  val stage = bundle.getString(TEXT_KEY_STAGE)
     ?.let { runCatching { AiTextInferenceStage.valueOf(it) }.getOrNull() }
     ?: return null
   return AiTextInferenceProgress(
     stage = stage,
-    modelName = bundle.getString(KEY_MODEL_NAME),
-    estimatedStageDurationMillis = bundle.getLong(KEY_ESTIMATED_STAGE_DURATION_MILLIS)
-      .takeIf { bundle.containsKey(KEY_ESTIMATED_STAGE_DURATION_MILLIS) },
+    modelName = bundle.getString(TEXT_KEY_MODEL_NAME),
+    estimatedStageDurationMillis = bundle.getLong(TEXT_KEY_ESTIMATED_STAGE_DURATION_MILLIS)
+      .takeIf { bundle.containsKey(TEXT_KEY_ESTIMATED_STAGE_DURATION_MILLIS) },
   )
 }
 
@@ -561,11 +561,11 @@ private fun successResponse(
   retire: Boolean,
   durations: Pair<Long?, Long?>,
 ): Bundle = Bundle().apply {
-  putBoolean(KEY_SUCCESS, true)
-  putBoolean(KEY_RETIRE, retire)
-  putString(KEY_OUTPUT, output)
-  durations.first?.let { putLong(KEY_PREPARING_DURATION_MILLIS, it) }
-  durations.second?.let { putLong(KEY_GENERATING_DURATION_MILLIS, it) }
+  putBoolean(TEXT_KEY_SUCCESS, true)
+  putBoolean(TEXT_KEY_RETIRE, retire)
+  putString(TEXT_KEY_OUTPUT, output)
+  durations.first?.let { putLong(TEXT_KEY_PREPARING_DURATION_MILLIS, it) }
+  durations.second?.let { putLong(TEXT_KEY_GENERATING_DURATION_MILLIS, it) }
 }
 
 private fun errorResponse(
@@ -573,30 +573,30 @@ private fun errorResponse(
   retire: Boolean,
   durations: Pair<Long?, Long?>,
 ): Bundle = Bundle().apply {
-  putBoolean(KEY_SUCCESS, false)
-  putBoolean(KEY_RETIRE, retire)
-  putString(KEY_ERROR, error.take(MAX_ERROR_CHARS))
-  durations.first?.let { putLong(KEY_PREPARING_DURATION_MILLIS, it) }
-  durations.second?.let { putLong(KEY_GENERATING_DURATION_MILLIS, it) }
+  putBoolean(TEXT_KEY_SUCCESS, false)
+  putBoolean(TEXT_KEY_RETIRE, retire)
+  putString(TEXT_KEY_ERROR, error.take(MAX_ERROR_CHARS))
+  durations.first?.let { putLong(TEXT_KEY_PREPARING_DURATION_MILLIS, it) }
+  durations.second?.let { putLong(TEXT_KEY_GENERATING_DURATION_MILLIS, it) }
 }
 
 internal fun decodeResponse(bundle: Bundle): RemoteTextInferenceResponse {
-  val retire = bundle.getBoolean(KEY_RETIRE)
-  val preparingDuration = bundle.getLong(KEY_PREPARING_DURATION_MILLIS)
-    .takeIf { bundle.containsKey(KEY_PREPARING_DURATION_MILLIS) && it > 0 }
-  val generatingDuration = bundle.getLong(KEY_GENERATING_DURATION_MILLIS)
-    .takeIf { bundle.containsKey(KEY_GENERATING_DURATION_MILLIS) && it > 0 }
-  if (!bundle.getBoolean(KEY_SUCCESS)) {
+  val retire = bundle.getBoolean(TEXT_KEY_RETIRE)
+  val preparingDuration = bundle.getLong(TEXT_KEY_PREPARING_DURATION_MILLIS)
+    .takeIf { bundle.containsKey(TEXT_KEY_PREPARING_DURATION_MILLIS) && it > 0 }
+  val generatingDuration = bundle.getLong(TEXT_KEY_GENERATING_DURATION_MILLIS)
+    .takeIf { bundle.containsKey(TEXT_KEY_GENERATING_DURATION_MILLIS) && it > 0 }
+  if (!bundle.getBoolean(TEXT_KEY_SUCCESS)) {
     return RemoteTextInferenceResponse(
       output = null,
-      error = bundle.getString(KEY_ERROR) ?: "ローカルAI推論に失敗しました",
+      error = bundle.getString(TEXT_KEY_ERROR) ?: "ローカルAI推論に失敗しました",
       retireAfterResponse = retire,
       preparingDurationMillis = preparingDuration,
       generatingDurationMillis = generatingDuration,
     )
   }
   return RemoteTextInferenceResponse(
-    output = requireNotNull(bundle.getString(KEY_OUTPUT)) { "ローカルAI推論結果がありません" },
+    output = requireNotNull(bundle.getString(TEXT_KEY_OUTPUT)) { "ローカルAI推論結果がありません" },
     error = null,
     retireAfterResponse = retire,
     preparingDurationMillis = preparingDuration,
