@@ -143,8 +143,8 @@ class RepositoryGovernanceSourceTest {
       "distributionSha256Sum=dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f" in wrapper,
     )
     assertEquals(
-      "The official wrapper JAR must have the published Gradle 9.8.1 checksum",
-      "3b8a25775a69158b5ad2b1d17a80a88dc7b40a352a73eb27d06c612a7ce68e98",
+      "The official wrapper JAR must have the published Gradle 9.8.0 checksum (the official bootstrap JAR in the 9.8.1 release tag)",
+      "238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5",
       digest,
     )
     assertTrue("POSIX launcher must use GradleWrapperMain", "org.gradle.wrapper.GradleWrapperMain" in shell)
