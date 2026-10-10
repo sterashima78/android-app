@@ -29,9 +29,13 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   override suspend fun load(): WorkoutSnapshot {
     val date = LocalDate.now().toString()
     val raw = preferences.getString(KEY_STATE, null) ?: return newWorkoutSnapshot(date)
-    return runCatching { decode(JSONObject(raw)) }.getOrElse { error ->
-      if (error is UnsupportedWorkoutStateVersionException) throw error
-      newWorkoutSnapshot(date)
+    return try {
+      decode(JSONObject(raw))
+    } catch (error: UnsupportedWorkoutStateVersionException) {
+      throw error
+    } catch (error: Exception) {
+      // Keep the original payload intact for recovery instead of silently replacing it.
+      throw CorruptWorkoutStateException(error)
     }
   }
 
@@ -58,6 +62,12 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   }
 
   private fun decodeCurrent(json: JSONObject): WorkoutSnapshot {
+    if (json.optInt("version") == CURRENT_VERSION) {
+      require(json.optJSONArray("exercises") != null) { "Missing workout exercises" }
+      require(json.optJSONArray("menus") != null) { "Missing workout menus" }
+      require(json.optJSONObject("today") != null) { "Missing workout day" }
+      require(json.optJSONArray("history") != null) { "Missing workout history" }
+    }
     val exercises = decodeExercises(json)
     val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
       .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
@@ -252,3 +262,6 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 internal class UnsupportedWorkoutStateVersionException(
   val version: Int,
 ) : IllegalStateException("Unsupported workout state version: $version")
+
+internal class CorruptWorkoutStateException(cause: Throwable) :
+  IllegalStateException("Corrupt workout state; original payload retained", cause)
