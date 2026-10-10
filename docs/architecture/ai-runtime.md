@@ -67,6 +67,12 @@ Summary、Knowledge 等が利用する Local `BackgroundAiTextInference.generate
 
 Android の `SharedPreferences` は複数 process 間の整合性保証を持たないため、process isolation を導入する際は設定の正本も main process に固定する。child process は Binder snapshot を execution input とし、main process の model/backend/context preference を直接同期ストアとして扱わない。subprocess の memory telemetry も SharedPreferences には保存せず、PID単位の app-private file を child process 自身が所有する。
 
+### Implementation responsibility split
+
+- `ProcessIsolatedLocalAiTextInference.kt` contains the main-process inference adapter, process transport/session management, and immutable execution snapshot.
+- `LocalTextInferenceService.kt` owns the process-isolated Android Service, child-side inference execution, request/response Bundle conversion, and tool-call IPC bridge.
+- The class name `LocalTextInferenceService`, permission/exported status, process name, Binder message IDs, and request/response encoding remain unchanged. This is a source-file responsibility split, not another inference runtime or a new trust boundary.
+
 ## Local structured text inference boundary
 
 Library organization と Podcast news exclusion / clustering の構造化結果は通常テキストの JSON として生成せず、`BackgroundAiStructuredTextInference` を通じて tool call arguments として受け取る。
