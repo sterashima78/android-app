@@ -37,7 +37,7 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(39, db.version)
+    assertEquals(40, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
@@ -54,6 +54,8 @@ class AppDatabaseSchemaTest {
     assertTrue("chapter_position" in columnNames(db, "podcast_episode_articles"))
     assertTrue("clustering_status" in columnNames(db, "podcast_episodes"))
     assertTrue("exclusion_prompt" in columnNames(db, "podcast_programs"))
+    assertTrue("clustering_mode" in columnNames(db, "podcast_programs"))
+    assertTrue("clustering_mode" in columnNames(db, "podcast_episodes"))
     assertEquals(
       setOf(
         "feed_folders",

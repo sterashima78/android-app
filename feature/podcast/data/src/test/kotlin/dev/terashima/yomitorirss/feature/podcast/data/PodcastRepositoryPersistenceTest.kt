@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringMode
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
@@ -41,7 +42,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 39, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -113,7 +114,7 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `database version 38から39へ除外設定schemaを移行する`() = runSuspend {
+  fun `database version 38から40へ既定の分類モードを維持して移行する`() = runSuspend {
     database.close()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     val legacySchema = DatabaseSchema(
@@ -146,12 +147,13 @@ class PodcastRepositoryPersistenceTest {
 
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 39, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
 
     val migrated = repository.listPrograms().single()
     assertEquals("", migrated.exclusionPrompt)
+    assertEquals(PodcastClusteringMode.EVENT, migrated.clusteringMode)
     repository.recordExcludedEntries(
       migrated.id,
       listOf(
@@ -167,6 +169,75 @@ class PodcastRepositoryPersistenceTest {
       ),
       100L,
     )
+  }
+
+  @Test
+  fun `database version 39から40で既存エピソードも出来事モードを保持する`() = runSuspend {
+    database.close()
+    context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    val legacySchema = DatabaseSchema(
+      version = 39,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "podcast",
+          createSchema = { db ->
+            db.execSQL(
+              "CREATE TABLE podcast_programs(" +
+                "id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,source_ids TEXT NOT NULL," +
+                "provider TEXT NOT NULL,schedule_enabled INTEGER NOT NULL DEFAULT 0," +
+                "schedule_hour INTEGER NOT NULL DEFAULT 7,schedule_minute INTEGER NOT NULL DEFAULT 0," +
+                "max_articles INTEGER NOT NULL DEFAULT 12,exclusion_prompt TEXT NOT NULL DEFAULT '')",
+            )
+            db.execSQL(
+              "CREATE TABLE podcast_episodes(" +
+                "id TEXT PRIMARY KEY NOT NULL,program_id TEXT NOT NULL," +
+                "title TEXT NOT NULL,created_at INTEGER NOT NULL,status TEXT NOT NULL," +
+                "script TEXT,error_message TEXT,regeneration_status TEXT,clustering_status TEXT)",
+            )
+            db.execSQL(
+              "INSERT INTO podcast_programs(id,name,source_ids,provider) VALUES('program','番組','source','LOCAL')",
+            )
+            db.execSQL(
+              "INSERT INTO podcast_episodes(id,program_id,title,created_at,status) VALUES('episode','program','番組',100,'READY')",
+            )
+          },
+        ),
+      ),
+    )
+    YomitoriDatabase.create(context, legacySchema).close()
+    database = YomitoriDatabase.create(
+      context,
+      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
+    )
+    repository = SqlitePodcastRepository(DatabaseConnection(database))
+    assertEquals(PodcastClusteringMode.EVENT, repository.findProgram("program")?.clusteringMode)
+    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode("episode")?.clusteringMode)
+  }
+
+  @Test
+  fun `同一記事から別モード比較版を作っても消費履歴と原本は維持する`() = runSuspend {
+    val source = PodcastSource("source", "ニュース", "https://example.invalid/feed")
+    val program = PodcastProgram("program", "比較番組", setOf(source.id), PodcastGenerationProvider.LOCAL)
+    repository.saveSource(source)
+    repository.saveProgram(program)
+    val articles = listOf(
+      PodcastFeedEntry("article-a", source.id, "記事A", null, 10L, null, "本文A", chapterPosition = 0),
+      PodcastFeedEntry("article-b", source.id, "記事B", null, 11L, null, "本文B", chapterPosition = 1),
+    )
+    val original = requireNotNull(repository.reserveEpisode(program, articles, 100L))
+    val comparison = repository.reserveComparisonEpisode(
+      program.copy(clusteringMode = PodcastClusteringMode.TOPIC),
+      articles.map { it.copy(chapterPosition = 0) },
+      200L,
+      PodcastClusteringStatus.SUCCESS,
+    )
+    assertTrue(original.id != comparison.id)
+    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode(original.id)?.clusteringMode)
+    assertEquals(PodcastClusteringMode.TOPIC, repository.findEpisode(comparison.id)?.clusteringMode)
+    assertEquals(listOf(0, 0), comparison.articles.map { it.chapterPosition })
+    assertEquals(listOf(0, 1), repository.findEpisode(original.id)?.articles?.map { it.chapterPosition })
+    val filter = SqlitePodcastCandidateFilter(DatabaseConnection(database))
+    assertTrue(filter.availableEntries(program.id, articles).isEmpty())
   }
 
   @Test

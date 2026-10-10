@@ -105,6 +105,8 @@ fun PodcastRoute(
         onSelectProgram = viewModel::selectProgram,
         onShowArchived = viewModel::setShowArchivedEpisodes,
         onGenerate = viewModel::generate,
+        onGenerateAlternative = viewModel::generateAlternative,
+        onCompareAlternative = viewModel::compareAlternative,
         onEdit = { program ->
           editorProgram = program
           editorVisible = true
@@ -128,8 +130,8 @@ fun PodcastRoute(
       onAddSource = viewModel::saveSource,
       onDeleteSource = viewModel::deleteSource,
       onDismiss = { editorVisible = false },
-      onSave = { id, name, sourceIds, provider, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles ->
-        viewModel.saveProgram(id, name, sourceIds, provider, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles)
+      onSave = { id, name, sourceIds, provider, mode, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles ->
+        viewModel.saveProgram(id, name, sourceIds, provider, mode, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles)
         editorVisible = false
       },
     )
@@ -180,6 +182,8 @@ private fun PodcastContent(
   onSelectProgram: (String) -> Unit,
   onShowArchived: (Boolean) -> Unit,
   onGenerate: (String) -> Unit,
+  onGenerateAlternative: (String) -> Unit,
+  onCompareAlternative: (String) -> Unit,
   onEdit: (PodcastProgram) -> Unit,
   onDelete: (PodcastProgram) -> Unit,
   onPlay: (PodcastEpisode) -> Unit,
@@ -229,6 +233,7 @@ private fun PodcastContent(
         hasQueuedEpisode = oldestQueuedEpisodeId != null,
         sourceCount = program.sourceIds.size,
         onGenerate = { onGenerate(program.id) },
+        onGenerateAlternative = { onGenerateAlternative(program.id) },
         onEdit = { onEdit(program) },
         onDelete = { onDelete(program) },
       )
@@ -264,6 +269,7 @@ private fun PodcastContent(
             onStartQueued = { onGenerate(program.id) },
             onPlay = { onPlay(episode) },
             onRetry = { onRetry(episode.id) },
+            onCompareAlternative = { onCompareAlternative(episode.id) },
             onArchive = { onArchiveEpisode(episode.id) },
             onRestore = { onRestoreEpisode(episode.id) },
             onDelete = { onDeleteEpisode(episode) },
@@ -283,6 +289,7 @@ private fun ProgramCard(
   hasQueuedEpisode: Boolean,
   sourceCount: Int,
   onGenerate: () -> Unit,
+  onGenerateAlternative: () -> Unit,
   onEdit: () -> Unit,
   onDelete: () -> Unit,
 ) {
@@ -295,6 +302,7 @@ private fun ProgramCard(
             "${sourceCount}ソース・${if (program.provider == PodcastGenerationProvider.LOCAL) "ローカルAI" else "クラウドAI"}",
             style = MaterialTheme.typography.bodyMedium,
           )
+          Text("既定: ${podcastClusteringModeLabel(program.clusteringMode)}", style = MaterialTheme.typography.bodySmall)
           if (program.exclusionPrompt.isNotBlank()) {
             Text("除外条件あり", style = MaterialTheme.typography.bodySmall)
           }
@@ -318,8 +326,14 @@ private fun ProgramCard(
         } else {
           Icon(Icons.Default.Refresh, contentDescription = null)
           Spacer(Modifier.width(8.dp))
-          Text(if (hasQueuedEpisode) "生成待ちのエピソードを開始" else "新しいエピソードを生成")
+          Text(if (hasQueuedEpisode) "生成待ちのエピソードを開始" else "既定モードで生成")
         }
+      }
+      OutlinedButton(onClick = onGenerateAlternative, enabled = !generating && !hasQueuedEpisode, modifier = Modifier.fillMaxWidth()) {
+        Text("別モード（${podcastClusteringModeLabel(program.clusteringMode.alternative())}）で生成")
+      }
+      if (hasQueuedEpisode) {
+        Text("生成待ちを先に処理してください。完成済みエピソードからも比較できます。", style = MaterialTheme.typography.bodySmall)
       }
     }
   }
@@ -334,6 +348,7 @@ private fun EpisodeCard(
   onStartQueued: () -> Unit,
   onPlay: () -> Unit,
   onRetry: () -> Unit,
+  onCompareAlternative: () -> Unit,
   onArchive: () -> Unit,
   onRestore: () -> Unit,
   onDelete: () -> Unit,
@@ -342,7 +357,7 @@ private fun EpisodeCard(
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text(episode.title, style = MaterialTheme.typography.titleMedium)
       Text(
-        "${formatEpisodeTime(episode.createdAtEpochMillis)}・${episode.articles.size}記事",
+        "${formatEpisodeTime(episode.createdAtEpochMillis)}・${episode.articles.size}記事・${podcastClusteringModeLabel(episode.clusteringMode)}",
         style = MaterialTheme.typography.bodySmall,
       )
       when (episode.status) {
@@ -356,6 +371,9 @@ private fun EpisodeCard(
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(if (busy) "処理中" else "現在の条件で作り直す")
+          }
+          OutlinedButton(onClick = onCompareAlternative, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            Text("同じ記事から別モードの比較版を生成")
           }
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -432,7 +450,7 @@ private fun PodcastProgramEditorDialog(
   onAddSource: (String, String) -> Unit,
   onDeleteSource: (String) -> Unit,
   onDismiss: () -> Unit,
-  onSave: (String?, String, Set<String>, PodcastGenerationProvider, String, Boolean, Int, Int, Int) -> Unit,
+  onSave: (String?, String, Set<String>, PodcastGenerationProvider, PodcastClusteringMode, String, Boolean, Int, Int, Int) -> Unit,
 ) {
   var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
   var selectedSourceIds by remember(program?.id) {
@@ -445,6 +463,7 @@ private fun PodcastProgramEditorDialog(
   var newSourceName by remember(program?.id) { mutableStateOf("") }
   var newSourceUrl by remember(program?.id) { mutableStateOf("") }
   var provider by remember(program?.id) { mutableStateOf(program?.provider ?: PodcastGenerationProvider.LOCAL) }
+  var clusteringMode by remember(program?.id) { mutableStateOf(program?.clusteringMode ?: PodcastClusteringMode.EVENT) }
   var exclusionPrompt by remember(program?.id) { mutableStateOf(program?.exclusionPrompt.orEmpty()) }
   var scheduleEnabled by remember(program?.id) { mutableStateOf(program?.schedule?.enabled ?: false) }
   var hour by remember(program?.id) { mutableStateOf((program?.schedule?.hour ?: 7).toString()) }
@@ -490,6 +509,11 @@ private fun PodcastProgramEditorDialog(
           Text("生成AI", style = MaterialTheme.typography.titleSmall)
           ProviderOption("ローカルAI", PodcastGenerationProvider.LOCAL, provider) { provider = it }
           ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
+          HorizontalDivider()
+          Text("既定の分類モード", style = MaterialTheme.typography.titleSmall)
+          ClusteringModeOption("出来事単位（従来方式）", PodcastClusteringMode.EVENT, clusteringMode) { clusteringMode = it }
+          ClusteringModeOption("関連トピック単位（試験運用）", PodcastClusteringMode.TOPIC, clusteringMode) { clusteringMode = it }
+          Text("試験モードは端末内で類似度を計算します。初回は追加モデルの取得が必要です。", style = MaterialTheme.typography.bodySmall)
 
           OutlinedTextField(
             value = exclusionPrompt,
@@ -622,6 +646,7 @@ private fun PodcastProgramEditorDialog(
                 name,
                 selectedSourceIds,
                 provider,
+                clusteringMode,
                 exclusionPrompt,
                 scheduleEnabled,
                 requireNotNull(parsedHour),
@@ -643,6 +668,19 @@ private fun ProviderOption(
   selected: PodcastGenerationProvider,
   onSelect: (PodcastGenerationProvider) -> Unit,
 ) {
+  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    RadioButton(selected = value == selected, onClick = { onSelect(value) })
+    Text(label)
+  }
+}
+
+private fun podcastClusteringModeLabel(mode: PodcastClusteringMode): String = when (mode) {
+  PodcastClusteringMode.EVENT -> "出来事単位"
+  PodcastClusteringMode.TOPIC -> "関連トピック単位"
+}
+
+@Composable
+private fun ClusteringModeOption(label: String, value: PodcastClusteringMode, selected: PodcastClusteringMode, onSelect: (PodcastClusteringMode) -> Unit) {
   Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     RadioButton(selected = value == selected, onClick = { onSelect(value) })
     Text(label)

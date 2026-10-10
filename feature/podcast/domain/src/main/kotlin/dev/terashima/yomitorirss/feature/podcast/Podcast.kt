@@ -18,6 +18,13 @@ import kotlinx.coroutines.sync.withPermit
 
 enum class PodcastGenerationProvider { LOCAL, CLOUD }
 
+enum class PodcastClusteringMode { EVENT, TOPIC }
+
+fun PodcastClusteringMode.alternative(): PodcastClusteringMode = when (this) {
+  PodcastClusteringMode.EVENT -> PodcastClusteringMode.TOPIC
+  PodcastClusteringMode.TOPIC -> PodcastClusteringMode.EVENT
+}
+
 data class PodcastSchedule(
   val enabled: Boolean = false,
   val hour: Int = 7,
@@ -49,6 +56,7 @@ data class PodcastProgram(
   val schedule: PodcastSchedule = PodcastSchedule(),
   val maxArticlesPerEpisode: Int = 12,
   val exclusionPrompt: String = "",
+  val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
 ) {
   init {
     require(id.isNotBlank()) { "program id must not be blank" }
@@ -117,6 +125,7 @@ data class PodcastEpisode(
   val errorMessage: String? = null,
   val regenerationStatus: PodcastRegenerationStatus? = null,
   val clusteringStatus: PodcastClusteringStatus? = null,
+  val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
 ) {
   fun chapterGroups(): List<List<PodcastEpisodeArticle>> = articles
     .mapIndexed { index, article -> (article.chapterPosition ?: index) to article }
@@ -228,6 +237,12 @@ interface PodcastRepository {
     createdAtEpochMillis: Long,
     clusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? = reserveEpisode(program, candidates, createdAtEpochMillis)
+  suspend fun reserveComparisonEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode = error("Comparison episode support is unavailable")
   suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode
   suspend fun prepareEpisodeRebuild(
     episodeId: String,
@@ -386,6 +401,7 @@ class GeneratePodcastEpisodeUseCase(
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
   private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
+  private val topicClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
   private val newsCategorizer: PodcastNewsCategorizer = OtherPodcastNewsCategorizer,
   private val newsExcluder: PodcastNewsExcluder = IncludeAllPodcastNews,
   private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
@@ -395,8 +411,15 @@ class GeneratePodcastEpisodeUseCase(
   suspend fun generate(
     programId: String,
     onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult = generate(programId, null, onProgress)
+
+  suspend fun generate(
+    programId: String,
+    modeOverride: PodcastClusteringMode?,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
   ): PodcastGenerationResult = withProgramGeneration(programId) {
-    val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
+    val savedProgram = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
+    val program = savedProgram.copy(clusteringMode = modeOverride ?: savedProgram.clusteringMode)
     repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it, onProgress) }
     val sources = repository.listSources().filter { it.id in program.sourceIds }
     require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
@@ -461,13 +484,31 @@ class GeneratePodcastEpisodeUseCase(
         )
       }
       require(exclusion.included.isNotEmpty()) { "現在の除外条件では再生成対象の記事がありません" }
-      val clustered = clusterCandidates(program, exclusion.included)
+      val clustered = clusterCandidates(program.copy(clusteringMode = episode.clusteringMode), exclusion.included)
       val prepared = repository.prepareEpisodeRebuild(
         episodeId = episode.id,
         candidates = clustered.entries,
         clusteringStatus = clustered.status,
       )
       generateReserved(program, prepared, onProgress)
+    }
+  }
+
+  suspend fun compare(
+    episodeId: String,
+    mode: PodcastClusteringMode,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated {
+    val original = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(original.programId) {
+      val source = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(source.status == PodcastEpisodeStatus.READY) { "only ready episodes can be compared" }
+      require(source.clusteringMode != mode) { "comparison must use the alternative mode" }
+      val savedProgram = requireNotNull(repository.findProgram(source.programId)) { "program not found" }
+      val program = savedProgram.copy(clusteringMode = mode)
+      val clustered = clusterCandidates(program, source.articles.map(PodcastEpisodeArticle::toFeedEntry))
+      val comparison = repository.reserveComparisonEpisode(program, clustered.entries, nowEpochMillis(), clustered.status)
+      generateReserved(program, comparison, onProgress)
     }
   }
 
@@ -495,7 +536,8 @@ class GeneratePodcastEpisodeUseCase(
   }
 
   private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): PodcastClusteredCandidates {
-    val result = newsClusterer.cluster(program.provider, candidates)
+    val classifier = if (program.clusteringMode == PodcastClusteringMode.TOPIC) topicClusterer else newsClusterer
+    val result = classifier.cluster(program.provider, candidates)
     val groups = result.groups
     require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
       "news clusterer must contain every candidate exactly once"
@@ -615,7 +657,7 @@ class GeneratePodcastEpisodeUseCase(
       val group = episode.chapterGroups()[position]
       val chapterScript = scriptGenerator.generate(
         program.provider,
-        buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters),
+        buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters, episode.clusteringMode),
       ).trim()
       require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
       repository.completeChapter(episodeId, position, chapterScript)
@@ -662,10 +704,18 @@ fun buildPodcastChapterPrompt(
   articles: List<PodcastEpisodeArticle>,
   chapterNumber: Int,
   totalChapters: Int,
+  mode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
 ): String {
   require(articles.isNotEmpty()) { "articles must not be empty" }
   require(chapterNumber in 1..totalChapters) { "chapterNumber must be within totalChapters" }
-  val targetChars = (PODCAST_TARGET_SCRIPT_CHARS / totalChapters).coerceIn(60, 500)
+  val targetChars = if (mode == PodcastClusteringMode.TOPIC) {
+    (articles.size * 140).coerceIn(300, 1_800)
+  } else (PODCAST_TARGET_SCRIPT_CHARS / totalChapters).coerceIn(60, 500)
+  val clusteringInstruction = if (mode == PodcastClusteringMode.TOPIC) {
+    "以下は関連するトピックを扱う記事です。同じ出来事とは限りません。異なる出来事・発表・日付・意見は混同せず、各記事の主要な事実を必ず個別に取り上げてください。共通部分だけ重複を省き、関連性をつないで説明してください。"
+  } else {
+    "以下は同じ具体的なニュースを報じた記事です。入力記事だけを根拠に、重複内容を繰り返さず1つの日本語音声チャプターへ統合してください。"
+  }
   val articleText = articles.mapIndexed { index, article ->
     buildString {
       appendLine("記事${index + 1}:")
@@ -678,7 +728,7 @@ fun buildPodcastChapterPrompt(
 
   return """
     あなたはニュース音声番組「$programName」の原稿編集者です。
-    以下は同じ具体的なニュースを報じた記事です。入力記事だけを根拠に、重複内容を繰り返さず1つの日本語音声チャプターへ統合してください。
+    $clusteringInstruction
 
     出力形式:
     - 1行目は必ず [[TITLE:日本語の見出し]] とする。
