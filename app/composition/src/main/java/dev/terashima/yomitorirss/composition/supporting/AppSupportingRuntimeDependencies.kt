@@ -15,8 +15,6 @@ import dev.terashima.yomitorirss.feature.calendar.CalendarRepository
 import dev.terashima.yomitorirss.feature.calendar.data.DefaultCalendarRepository
 import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
@@ -158,14 +156,7 @@ internal class AppSupportingRuntimeDependencies(
   }
 
   val backupRepository: BackupRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultBackupRepository(
-      application,
-      database,
-      dataChanges,
-      persistenceChanges,
-      smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application),
-      smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application),
-    )
+    DefaultBackupRepository(application, database, dataChanges, persistenceChanges)
   }
 
   val xViewerCssRepository: XViewerCssRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

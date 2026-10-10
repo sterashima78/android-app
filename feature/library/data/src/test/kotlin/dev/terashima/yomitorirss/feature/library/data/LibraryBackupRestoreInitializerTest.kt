@@ -8,9 +8,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseSchema
 import dev.terashima.yomitorirss.core.database.DatabaseSchemaContribution
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.feature.library.LibrarySource
-import dev.terashima.yomitorirss.feature.library.SmbCoverPrefetchScheduler
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationBatchStatus
-import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.library.SmbMetadataNormalizationStatus
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -93,7 +91,7 @@ class LibraryBackupRestoreInitializerTest {
   }
 
   @Test
-  fun `実行中batchの表紙待ちを先に再キューしてから解析workerを登録する`() {
+  fun `復元時は実行中batchの表紙待ちを資格情報が設定されるまで保留する`() {
     insertBook(LibrarySource.SMB, "smb-waiting-cover", null)
     insertNormalizationBatch("batch-running", SmbMetadataNormalizationBatchStatus.RUNNING)
     insertNormalizationItem(
@@ -101,59 +99,10 @@ class LibraryBackupRestoreInitializerTest {
       sourceId = "smb-waiting-cover",
       status = SmbMetadataNormalizationStatus.WAITING_FOR_COVER,
     )
-    val scheduled = mutableListOf<String>()
+    LibraryBackupRestoreInitializer(DatabaseConnection(database)).initialize()
 
-    LibraryBackupRestoreInitializer(
-      database = DatabaseConnection(database),
-      normalizationScheduler = RecordingNormalizationScheduler(scheduled),
-      coverPrefetchScheduler = RecordingCoverPrefetchScheduler(scheduled),
-    ).initialize()
-
-    assertEquals(listOf("cover-prefetch", "normalization"), scheduled)
-    assertEquals(1, queueCount())
-    assertEquals("PENDING", queueStatus("smb-waiting-cover"))
-  }
-
-  @Test
-  fun `実行中batchに表紙待ちがなければ解析workerだけを登録する`() {
-    insertBook(LibrarySource.SMB, "smb-queued", null)
-    insertNormalizationBatch("batch-running", SmbMetadataNormalizationBatchStatus.RUNNING)
-    insertNormalizationItem(
-      batchId = "batch-running",
-      sourceId = "smb-queued",
-      status = SmbMetadataNormalizationStatus.QUEUED,
-    )
-    val scheduled = mutableListOf<String>()
-
-    LibraryBackupRestoreInitializer(
-      database = DatabaseConnection(database),
-      normalizationScheduler = RecordingNormalizationScheduler(scheduled),
-      coverPrefetchScheduler = RecordingCoverPrefetchScheduler(scheduled),
-    ).initialize()
-
-    assertEquals(listOf("normalization"), scheduled)
     assertEquals(0, queueCount())
-  }
-
-  @Test
-  fun `完了batchは表紙先読みも解析workerも再登録しない`() {
-    insertBook(LibrarySource.SMB, "smb-completed", null)
-    insertNormalizationBatch("batch-completed", SmbMetadataNormalizationBatchStatus.COMPLETED)
-    insertNormalizationItem(
-      batchId = "batch-completed",
-      sourceId = "smb-completed",
-      status = SmbMetadataNormalizationStatus.WAITING_FOR_COVER,
-    )
-    val scheduled = mutableListOf<String>()
-
-    LibraryBackupRestoreInitializer(
-      database = DatabaseConnection(database),
-      normalizationScheduler = RecordingNormalizationScheduler(scheduled),
-      coverPrefetchScheduler = RecordingCoverPrefetchScheduler(scheduled),
-    ).initialize()
-
-    assertEquals(emptyList<String>(), scheduled)
-    assertEquals(0, queueCount())
+    assertEquals("WAITING_FOR_COVER", normalizationItemStatus("smb-waiting-cover"))
   }
 
   private fun insertNormalizationBatch(batchId: String, status: SmbMetadataNormalizationBatchStatus) {
@@ -226,30 +175,8 @@ class LibraryBackupRestoreInitializerTest {
     cursor.getInt(0)
   }
 
-  private fun queueStatus(sourceId: String): String? = database.readableDatabase.rawQuery(
-    "SELECT status FROM smb_cover_prefetch_queue WHERE source_id = ?",
+  private fun normalizationItemStatus(sourceId: String): String? = database.readableDatabase.rawQuery(
+    "SELECT status FROM $SMB_METADATA_NORMALIZATION_ITEM_TABLE WHERE source_id = ?",
     arrayOf(sourceId),
   ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
-
-  private class RecordingCoverPrefetchScheduler(
-    private val scheduled: MutableList<String>,
-  ) : SmbCoverPrefetchScheduler {
-    override fun enqueue() {
-      scheduled += "cover-prefetch"
-    }
-
-    override fun reschedule() = Unit
-  }
-
-  private class RecordingNormalizationScheduler(
-    private val scheduled: MutableList<String>,
-  ) : SmbMetadataNormalizationScheduler {
-    override fun kick() {
-      scheduled += "normalization"
-    }
-
-    override suspend fun cancel() = Unit
-
-    override fun setResumeOnChargingScheduled(enabled: Boolean) = Unit
-  }
 }

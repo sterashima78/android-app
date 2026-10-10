@@ -97,6 +97,9 @@ class LibraryViewModel(
               "新しく追加する表紙先読みはありません"
             },
           )
+          if (_state.value.smbMetadataNormalization?.hasActiveWork == true) {
+            smbMetadataNormalizationScheduler?.kick()
+          }
         }
         .onFailure(::showError)
     }
@@ -253,6 +256,9 @@ class LibraryViewModel(
       runCatching { smb.saveServer(settings, password) }
         .onSuccess { saved ->
           loadSnapshot(message = "${saved.name} のSMB設定を保存しました")
+          if (_state.value.smbMetadataNormalization?.hasActiveWork == true) {
+            smbMetadataNormalizationScheduler?.kick()
+          }
         }
         .onFailure(::showError)
     }
