@@ -43,7 +43,8 @@ class IntegratedBackgroundRefreshArchitectureTest {
       "standalone mail periodic work must not be created after migration",
       "PeriodicWorkRequestBuilder<MailSyncWorker>" in mailWorker,
     )
-    assertTrue("legacy mail periodic work must be cancelled at startup", "MailSyncScheduler(application).cancelPeriodic()" in startup)
+    assertFalse("legacy periodic cleanup must be retired", "cancelPeriodic()" in startup)
+    assertFalse("standalone mail periodic name must be retired", "gmail-mail-sync" in mailWorker)
     assertTrue("initial mail paging work must remain durable", "OneTimeWorkRequestBuilder<MailSyncWorker>()" in mailWorker)
   }
 
