@@ -129,6 +129,27 @@ class WorkoutViewModelExportTest {
   }
 
   @Test
+  fun `初期保存が失敗した場合も編集可能状態へ遷移しない`() = runTest(dispatcher) {
+    val events = mutableListOf<String>()
+    val repository = object : WorkoutRepository {
+      override suspend fun load() = newWorkoutSnapshot(LocalDate.now().toString())
+      override suspend fun save(snapshot: WorkoutSnapshot) {
+        events += "attempted"
+        throw IllegalStateException("storage unavailable")
+      }
+    }
+    val viewModel = WorkoutViewModel(repository, FakeWorkoutHistoryExporter(ArrayDeque(), events))
+    try {
+      runCurrent()
+      assertFalse(viewModel.state.value.initialized)
+      assertTrue(viewModel.state.value.loadError.orEmpty().contains("変更されていません"))
+      assertEquals(listOf("attempted"), events)
+    } finally {
+      viewModel.viewModelScope.cancel()
+    }
+  }
+
+  @Test
   fun `直近セットの負荷が未入力ならさらに前の記録から再利用する`() = runTest(dispatcher) {
     val original = snapshotWithCompletedSet()
     val recorded = original.today.sets.single()
