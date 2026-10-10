@@ -30,7 +30,7 @@ models:
 - credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
 - SMB表紙cacheやSMB動画thumbnail cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
 <!-- /formal-requirement -->
-- 復元したSMB書誌正規化batchが実行中なら、Library-owned workerを再登録して処理を再開する。中断時に`PROCESSING`だった候補はworker起動時に`QUEUED`へ戻す。
+- 復元したSMB書誌正規化batchが実行中なら、`WAITING_FOR_COVER`候補の表紙先読みを再登録してからLibrary-owned workerを再登録する。中断時に`PROCESSING`だった候補はworker起動時に`QUEUED`へ戻す。
 
 詳細は ADR-0099、ADR-0100、ADR-0135、ADR-0138、ADR-0217、ADR-0274 と `docs/architecture/persistence.md` を参照する。
 

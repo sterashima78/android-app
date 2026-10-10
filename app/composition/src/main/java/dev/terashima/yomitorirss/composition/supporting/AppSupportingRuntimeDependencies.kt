@@ -15,11 +15,12 @@ import dev.terashima.yomitorirss.feature.calendar.CalendarRepository
 import dev.terashima.yomitorirss.feature.calendar.data.DefaultCalendarRepository
 import dev.terashima.yomitorirss.feature.chat.ChatRepository
 import dev.terashima.yomitorirss.feature.chat.data.DefaultChatRepository
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbCoverPrefetchScheduler
+import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.mail.MailRepository
 import dev.terashima.yomitorirss.feature.mail.data.DefaultMailRepository
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationManager
 import dev.terashima.yomitorirss.feature.mail.data.GmailAuthorizationOutcome
-import dev.terashima.yomitorirss.feature.library.data.WorkManagerSmbMetadataNormalizationScheduler
 import dev.terashima.yomitorirss.feature.task.TaskRepository
 import dev.terashima.yomitorirss.feature.task.data.DefaultTaskRepository
 import dev.terashima.yomitorirss.feature.web.LanWebServerController
@@ -163,6 +164,7 @@ internal class AppSupportingRuntimeDependencies(
       dataChanges,
       persistenceChanges,
       smbMetadataNormalizationScheduler = WorkManagerSmbMetadataNormalizationScheduler(application),
+      smbCoverPrefetchScheduler = WorkManagerSmbCoverPrefetchScheduler(application),
     )
   }
 

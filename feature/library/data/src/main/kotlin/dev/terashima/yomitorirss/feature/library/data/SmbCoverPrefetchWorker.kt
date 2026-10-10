@@ -265,16 +265,41 @@ internal class SmbCoverPrefetchQueueStore(
   }
 
   fun enqueueMissing(retrySkipped: Boolean = false): Int {
+    return enqueueMissingCandidates(sourceIds = null, retrySkipped = retrySkipped)
+  }
+
+  fun enqueueMissingForSources(
+    sourceIds: Collection<String>,
+    retrySkipped: Boolean = false,
+  ): Int {
+    val distinctSourceIds = sourceIds.distinct()
+    if (distinctSourceIds.isEmpty()) return 0
+    return distinctSourceIds.chunked(SOURCE_ID_BIND_LIMIT).sumOf { sourceIdChunk ->
+      enqueueMissingCandidates(sourceIds = sourceIdChunk, retrySkipped = retrySkipped)
+    }
+  }
+
+  private fun enqueueMissingCandidates(
+    sourceIds: List<String>?,
+    retrySkipped: Boolean,
+  ): Int {
     ensureSchema()
     pruneMissingBooks()
+    val sourceFilter = sourceIds?.let { ids ->
+      " AND source_id IN (${ids.joinToString(",") { "?" }})"
+    }.orEmpty()
+    val args = buildList {
+      add(LibrarySource.SMB.name)
+      sourceIds?.forEach { add(it) }
+    }.toTypedArray()
     val candidates = database.readable.rawQuery(
       """
         SELECT source_id, title
         FROM library_items
-        WHERE source = ? AND (thumbnail_url IS NULL OR thumbnail_url = '')
+        WHERE source = ? AND (thumbnail_url IS NULL OR thumbnail_url = '')$sourceFilter
         ORDER BY title COLLATE NOCASE, source_id
       """.trimIndent(),
-      arrayOf(LibrarySource.SMB.name),
+      args,
     ).use { cursor ->
       buildList {
         while (cursor.moveToNext()) {
@@ -495,6 +520,7 @@ internal class SmbCoverPrefetchQueueStore(
     const val TABLE = "smb_cover_prefetch_queue"
     const val VISIBLE_ITEM_LIMIT = 200
     const val HISTORY_LIMIT = 200
+    const val SOURCE_ID_BIND_LIMIT = 400
   }
 }
 
