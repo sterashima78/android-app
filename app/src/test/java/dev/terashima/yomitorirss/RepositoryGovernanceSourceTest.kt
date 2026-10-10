@@ -148,8 +148,8 @@ class RepositoryGovernanceSourceTest {
       "238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5",
       digest,
     )
-    assertTrue("POSIX launcher must use GradleWrapperMain", "org.gradle.wrapper.GradleWrapperMain" in shell)
-    assertTrue("Windows launcher must use GradleWrapperMain", "org.gradle.wrapper.GradleWrapperMain" in windows)
+    assertTrue("POSIX launcher must invoke official bootstrap JAR", "-jar \"\$APP_HOME/gradle/wrapper/gradle-wrapper.jar\"" in shell)
+    assertTrue("Windows launcher must invoke official bootstrap JAR", "-jar \"%APP_HOME%\\gradle\\wrapper\\gradle-wrapper.jar\"" in windows)
     assertFalse("Custom native launcher must be removed", "native-wrapper" in shell || "native-wrapper" in windows)
   }
 
