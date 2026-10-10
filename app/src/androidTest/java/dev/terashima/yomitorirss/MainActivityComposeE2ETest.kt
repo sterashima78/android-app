@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Rule
 import org.junit.Test
 
@@ -37,4 +38,23 @@ class MainActivityComposeE2ETest {
     composeRule.onNodeWithContentDescription("タグ").assertIsDisplayed()
     composeRule.onNodeWithContentDescription("履歴").assertIsDisplayed()
   }
+
+  @Test
+  fun `ワークアウトの記録と取り消しをCompose操作で確認する`() {
+    composeRule.onNodeWithContentDescription("メニュー").performClick()
+    composeRule.onNodeWithText("ワークアウト").performClick()
+    composeRule.onNodeWithText("今日の運動を始める").assertIsDisplayed()
+
+    // Start from a known state in the isolated debug application.
+    composeRule.onNodeWithText("リセット").performClick()
+    composeRule.onNodeWithText("セットを記録").performScrollTo().performClick()
+    composeRule.onNodeWithText("1 セット記録済み").performScrollTo().assertIsDisplayed()
+    composeRule.onNodeWithText("直前のセットを取り消す").performScrollTo().performClick()
+    composeRule.onNodeWithText("0 セット記録済み").performScrollTo().assertIsDisplayed()
+
+    composeRule.onNodeWithText("履歴").performClick()
+    composeRule.onNodeWithText("記録").performClick()
+    composeRule.onNodeWithText("0 セット記録済み").performScrollTo().assertIsDisplayed()
+  }
+
 }
