@@ -94,8 +94,19 @@ private fun migratePodcastTo39(db: SQLiteDatabase) {
 }
 
 private fun migratePodcastTo40(db: SQLiteDatabase) {
-  db.execSQL("ALTER TABLE podcast_programs ADD COLUMN clustering_mode TEXT NOT NULL DEFAULT 'EVENT'")
-  db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN clustering_mode TEXT NOT NULL DEFAULT 'EVENT'")
+  listOf("podcast_programs", "podcast_episodes").forEach { table ->
+    val exists = db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+      val nameIndex = cursor.getColumnIndexOrThrow("name")
+      var found = false
+      while (cursor.moveToNext()) {
+        if (cursor.getString(nameIndex) == "clustering_mode") found = true
+      }
+      found
+    }
+    if (!exists) {
+      db.execSQL("ALTER TABLE $table ADD COLUMN clustering_mode TEXT NOT NULL DEFAULT 'EVENT'")
+    }
+  }
 }
 
 private fun createPodcastSourcesTable(db: SQLiteDatabase) {
