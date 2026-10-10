@@ -38,6 +38,14 @@ feed由来カテゴリとカテゴリなしclusterへの補完カテゴリを揃
 
 Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository`、`feeds` table、`articles` tableを参照しない。
 
+## Experimental topic clustering
+
+Podcast owns the mode selection as `PodcastClusteringMode`: `EVENT` preserves the structured-inference implementation, and `TOPIC` selects an embedding-based adapter. Program defaults and actual episode modes are separate durable values. Existing rows migrate as `EVENT`; a queued or interrupted episode retains the mode captured at reservation time.
+
+The embedding runtime is provider-neutral and resides behind `BackgroundTextEmbedding`, with its Android adapter in `:core:ai-runtime`. It downloads a public model to app-private storage on first use, sends no article text to the network, computes on-device vectors, and releases resources before chapter LLM generation. No vector cache or duplicate content table is introduced. A deterministic complete-link partition with a small maximum cluster size reduces topic chaining and prompt crowding. Its numeric threshold is experimental, not a verified semantic identity boundary.
+
+Comparison generation passes an episode's saved full article snapshot through the other mode, creates a separate episode row and chapter checkpoints, and never modifies the original or reinserts program-scoped consumed identities. Ordinary feed generation continues to use the consumed identity filter.
+
 ## Background execution boundary
 
 Podcast画面からの新規生成と作り直しは `PodcastGenerationController` へ依頼し、UIの `viewModelScope` では長時間生成を実行しない。controllerはPodcast-owned WorkManagerへ即時workを登録し、定刻生成と同じ `PodcastGenerationWorker` / application-scope dependency graphを利用する。手動workと定刻workは番組ごとの別unique identityで重複登録を抑え、同時に実行可能になった場合は既存のprogram単位generation guardで直列化する。
