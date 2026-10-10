@@ -23,7 +23,7 @@ class EmbeddingPodcastTopicClusterer(
     return try {
       val vectors = embedding.embed(candidates.map { entry ->
         val summary = entry.feedContent.replace(Regex("\\s+"), " ").take(400)
-        "${entry.title}\n$summary"
+        "task: clustering | text: ${entry.title.trim()}\n$summary".trim()
       })
       require(vectors.size == candidates.size && vectors.isNotEmpty())
       val dimension = vectors.first().size
