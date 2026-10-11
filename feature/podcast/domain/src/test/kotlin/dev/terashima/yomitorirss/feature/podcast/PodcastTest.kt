@@ -459,6 +459,50 @@ class PodcastTest {
   }
 
   @Test
+  fun `alternative topic mode routes inference and saves actual episode mode`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
+    val generator = RecordingGenerator("生成原稿")
+    var legacyCalls = 0
+    var topicCalls = 0
+    val legacy = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        legacyCalls++
+        return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SUCCESS)
+      }
+    }
+    val topic = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        topicCalls++
+        return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SUCCESS)
+      }
+    }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository = repository,
+      feedContentSource = source,
+      scriptGenerator = generator,
+      newsClusterer = legacy,
+      topicClusterer = topic,
+    )
+
+    val generated = useCase.generate(program.id, PodcastClusteringMode.TOPIC)
+      as PodcastGenerationResult.Generated
+
+    assertEquals(0, legacyCalls)
+    assertEquals(1, topicCalls)
+    assertEquals(PodcastClusteringMode.TOPIC, generated.episode.clusteringMode)
+    assertTrue(generator.prompts.all { it.contains("同じ出来事とは限りません") })
+    assertEquals(PodcastClusteringMode.EVENT, program.clusteringMode)
+  }
+
+  @Test
   fun `完成チャプターを記事順に決定的なエピソード原稿へ組み立てる`() {
     val articles = listOf(
       entry("a1").toEpisodeArticle().copy(
@@ -755,6 +799,7 @@ private class FakePodcastRepository(
         createdAtEpochMillis = createdAtEpochMillis + chunkIndex,
         status = if (chunkIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED,
         articles = selected.map { it.toEpisodeArticle() },
+        clusteringMode = program.clusteringMode,
       )
       episodes += episode
       if (first == null) first = episode

@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptInferenceClient
 import dev.terashima.yomitorirss.core.aicloudopenai.ChatGptModelPreferences
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiTextInference
+import dev.terashima.yomitorirss.core.airuntime.LiteRtTextEmbedding
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.network.HttpClient
@@ -17,6 +18,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastCloudTextInference
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsCategorizer
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer
+import dev.terashima.yomitorirss.feature.podcast.data.EmbeddingPodcastTopicClusterer
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsExcluder
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFactory
@@ -65,6 +67,7 @@ internal class AppPodcastRuntimeDependencies(
       localStructuredInference = localStructuredTextInference,
       cloudStructuredInference = cloudStructuredTextInference,
     ),
+    topicClusterer = EmbeddingPodcastTopicClusterer(LiteRtTextEmbedding(application)),
     newsCategorizer = DefaultPodcastNewsCategorizer(
       localTextInference = localTextInference,
       cloudTextInference = cloudTextInference,

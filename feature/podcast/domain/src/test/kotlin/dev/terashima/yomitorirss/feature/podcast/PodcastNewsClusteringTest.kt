@@ -111,6 +111,15 @@ class PodcastNewsClusteringTest {
     assertTrue(prompt.contains("本文 a2"))
   }
 
+  @Test
+  fun `topic mode prompt preserves distinct events`() {
+    val prompt = buildPodcastChapterPrompt(
+      "ニュース", listOf(article("a1", 0), article("a2", 0)), 1, 1, PodcastClusteringMode.TOPIC,
+    )
+    assertTrue(prompt.contains("同じ出来事とは限りません"))
+    assertTrue(prompt.contains("各記事の主要な事実を必ず個別に"))
+  }
+
   private fun feedEntry(id: String, categories: List<String> = emptyList()) = PodcastFeedEntry(
     articleId = id,
     feedId = "source-$id",

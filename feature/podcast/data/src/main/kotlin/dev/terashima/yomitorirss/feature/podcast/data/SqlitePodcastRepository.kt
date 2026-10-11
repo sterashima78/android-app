@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.feature.podcast.PodcastChapterGenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
+import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringMode
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisode
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeArticle
 import dev.terashima.yomitorirss.feature.podcast.PodcastEpisodeStatus
@@ -302,6 +303,7 @@ class SqlitePodcastRepository(
           put("title", program.name)
           put("created_at", episodeCreatedAt)
           put("status", status.name)
+          put("clustering_mode", program.clusteringMode.name)
           if (clusteringStatus == null) putNull("clustering_status") else put("clustering_status", clusteringStatus.name)
         },
       )
@@ -350,6 +352,7 @@ class SqlitePodcastRepository(
         status = status,
         articles = episodeArticles,
         clusteringStatus = clusteringStatus,
+        clusteringMode = program.clusteringMode,
       )
       if (firstEpisode == null) firstEpisode = episode
     }
@@ -429,6 +432,51 @@ class SqlitePodcastRepository(
         arrayOf(episodeId),
       )
       require(updated == 1) { "episode not found: $episodeId" }
+    }
+    return requireNotNull(findEpisode(episodeId))
+  }
+
+  override suspend fun reserveComparisonEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus,
+  ): PodcastEpisode {
+    require(candidates.isNotEmpty()) { "comparison requires article snapshot" }
+    val episodeId = UUID.randomUUID().toString()
+    database.transaction {
+      insertOrThrow(
+        "podcast_episodes",
+        null,
+        ContentValues().apply {
+          put("id", episodeId)
+          put("program_id", program.id)
+          put("title", program.name)
+          put("created_at", createdAtEpochMillis)
+          put("status", PodcastEpisodeStatus.GENERATING.name)
+          put("clustering_status", clusteringStatus.name)
+          put("clustering_mode", program.clusteringMode.name)
+        },
+      )
+      candidates.forEachIndexed { index, article ->
+        insertOrThrow(
+          "podcast_episode_articles",
+          null,
+          ContentValues().apply {
+            put("episode_id", episodeId)
+            put("position", index)
+            put("chapter_position", article.chapterPosition ?: index)
+            put("article_id", article.articleId)
+            put("feed_id", article.feedId)
+            put("title", article.title)
+            if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
+            if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
+            if (article.articleUrl == null) putNull("article_url") else put("article_url", article.articleUrl)
+            put("feed_content", article.feedContent)
+            put("chapter_status", PodcastChapterGenerationStatus.PENDING.name)
+          },
+        )
+      }
     }
     return requireNotNull(findEpisode(episodeId))
   }
@@ -550,6 +598,7 @@ private fun PodcastProgram.values(): ContentValues = ContentValues().apply {
   put("schedule_minute", schedule.minute)
   put("max_articles", maxArticlesPerEpisode)
   put("exclusion_prompt", exclusionPrompt)
+  put("clustering_mode", clusteringMode.name)
 }
 
 private fun Cursor.source(): PodcastSource = PodcastSource(
@@ -572,6 +621,7 @@ private fun Cursor.program(): PodcastProgram = PodcastProgram(
   ),
   maxArticlesPerEpisode = int("max_articles"),
   exclusionPrompt = string("exclusion_prompt"),
+  clusteringMode = PodcastClusteringMode.valueOf(string("clustering_mode")),
 )
 
 private fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
@@ -610,6 +660,7 @@ private fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
     errorMessage = nullableString("error_message"),
     regenerationStatus = nullableString("regeneration_status")?.let(PodcastRegenerationStatus::valueOf),
     clusteringStatus = nullableString("clustering_status")?.let(PodcastClusteringStatus::valueOf),
+    clusteringMode = PodcastClusteringMode.valueOf(string("clustering_mode")),
   )
 }
 
