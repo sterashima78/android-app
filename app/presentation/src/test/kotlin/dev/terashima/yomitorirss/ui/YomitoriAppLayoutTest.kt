@@ -17,5 +17,4 @@ class YomitoriAppLayoutTest {
       .filterNot { it == X_ROUTE }
       .forEach { assertTrue(it.usesGlobalTopBar()) }
   }
-
 }

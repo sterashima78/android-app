@@ -39,6 +39,12 @@ import org.junit.Test
 
 class AppNavigationSpecTest {
   @Test
+  fun `ゲームはアプリのナビゲーションから除外される`() {
+    assertFalse("game" in allAppRoutes)
+    assertFalse(AppSection.entries.any { it.label == "ゲーム" })
+  }
+
+  @Test
   fun `各セクションの既定routeは同じセクションに属する`() {
     AppSection.entries.forEach { section ->
       assertEquals(section, section.defaultRoute().appSection())
