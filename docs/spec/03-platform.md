@@ -5,6 +5,5 @@
 - API 37 targetではローカルネットワークアクセスに実行時許可が必要であり、LAN機能は利用時に許可を要求する。
 - 配布対象CPUは arm64-v8a とする。
 - Kotlin と Jetpack Compose を主要実装技術とする。
-- Game の数独とクロンダイクでは、既存 Android アプリへ組み込んだ Godot runtime を利用する。
 - ユーザー向け名称は Mosaic とする。
 - 既存インストールとの互換性のため application id `dev.terashima.yomitorirss` と内部 database file 名 `yomitori-rss.db` は維持する。
