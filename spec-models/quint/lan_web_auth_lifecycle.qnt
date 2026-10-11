@@ -1,5 +1,5 @@
 // Natural-language specifications:
-// - docs/spec/10-web-x-widget-games.md
+// - docs/spec/10-web-x-widget.md
 //
 // Covers:
 // - LAN-WEB-AUTH-LIFECYCLE-001@sha256:12c9aa0d6230d69a7f83b8693fb0bf7341d3036aaaeab9fd2ce4996308d87b8a -> startServer
