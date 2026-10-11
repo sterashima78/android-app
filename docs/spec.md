@@ -20,7 +20,7 @@
 7. [蔵書とBook Reader](spec/07-library-reader.md)
 8. [タスク、カレンダー、ワークアウト、ヘルス](spec/08-task-calendar-workout-health.md)
 9. [資産](spec/09-assets.md)
-10. [Web、X、Widget、補助機能](spec/10-web-x-widget-games.md)
+10. [Web、X、Widget、補助機能](spec/10-web-x-widget.md)
 11. [永続化](spec/11-persistence.md)
 12. [バックアップと復元](spec/12-backup-restore.md)
 13. [Background execution](spec/13-background-execution.md)

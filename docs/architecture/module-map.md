@@ -95,7 +95,6 @@ Route composition も同じ原則で分割する。`AppRouteDependencies` は既
 | book-reader | domain / data / ui |
 | calendar | domain / data / ui |
 | chat | domain / data / ui |
-| game | domain / ui |
 | health | domain / data / ui |
 | integrated | ui |
 | library | domain / data / ui |

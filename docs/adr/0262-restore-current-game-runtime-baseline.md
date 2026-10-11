@@ -1,6 +1,7 @@
 # ADR-0262: Embedded game runtime を 4.7.2 stable へ戻す
 
-- Status: Accepted
+- Status: Superseded
+- Superseded by: [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-09-19
 - Supersedes: [ADR-0236](0236-godot-android17-version-fallback.md)
 - Refines: [ADR-0238](0238-promote-godot-sudoku.md), [ADR-0251](0251-godot-klondike.md)
