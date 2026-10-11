@@ -11,14 +11,14 @@ class NativeTombstoneSummaryTest {
   fun `native tombstone から signal と crashing thread の backtrace を抽出する`() {
     val frame = protoMessage(
       protoVarint(1, 0x3fa97f8L),
-      protoString(4, "Object::_predelete()"),
+      protoString(4, "native_frame()"),
       protoVarint(5, 945L),
-      protoString(6, "/data/app/random/split_config.arm64_v8a.apk!libgodot_android.so"),
+      protoString(6, "/data/app/random/split_config.arm64_v8a.apk!libsample_native.so"),
       protoString(8, "270121fef88100c19643517c328b5868e01d345c"),
     )
     val crashingThread = protoMessage(
       protoVarint(1, 15955L),
-      protoString(2, "VkThread"),
+      protoString(2, "worker-thread"),
       protoBytes(4, frame),
     )
     val threadEntry = protoMessage(
@@ -43,10 +43,10 @@ class NativeTombstoneSummaryTest {
     assertEquals("SIGBUS", summary.signalName)
     assertEquals("BUS_ADRALN", summary.signalCodeName)
     assertEquals(15955, summary.crashingTid)
-    assertEquals("VkThread", summary.crashingThreadName)
+    assertEquals("worker-thread", summary.crashingThreadName)
     assertEquals(1, summary.frames.size)
     assertEquals(0x3fa97f8L, summary.frames.single().relativePc)
-    assertEquals("Object::_predelete()", summary.frames.single().functionName)
+    assertEquals("native_frame()", summary.frames.single().functionName)
     assertEquals(945L, summary.frames.single().functionOffset)
   }
 
@@ -57,13 +57,13 @@ class NativeTombstoneSummaryTest {
       signalName = "SIGBUS",
       signalCodeName = "BUS_ADRALN",
       crashingTid = 15955,
-      crashingThreadName = "VkThread",
+      crashingThreadName = "worker-thread",
       frames = listOf(
         NativeBacktraceFrame(
           relativePc = 0x3fa97f8L,
-          functionName = "Object::_predelete()",
+          functionName = "native_frame()",
           functionOffset = 945L,
-          fileName = "/data/app/random/split_config.arm64_v8a.apk!libgodot_android.so",
+          fileName = "/data/app/random/split_config.arm64_v8a.apk!libsample_native.so",
           buildId = "synthetic-build-id",
         ),
       ),
@@ -73,8 +73,8 @@ class NativeTombstoneSummaryTest {
 
     assertTrue(rendered.contains("signal=7 SIGBUS"))
     assertTrue(rendered.contains("signalCode=BUS_ADRALN"))
-    assertTrue(rendered.contains("thread=15955 VkThread"))
-    assertTrue(rendered.contains("libgodot_android.so Object::_predelete()+945"))
+    assertTrue(rendered.contains("thread=15955 worker-thread"))
+    assertTrue(rendered.contains("libsample_native.so native_frame()+945"))
     assertFalse(rendered.contains("/data/app/random"))
   }
 
