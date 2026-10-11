@@ -1,6 +1,6 @@
 # ADR-0252: 埋め込みゲームの画面向きを Activity 境界で固定する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-09-10
 - Refines: [ADR-0236](0236-godot-android17-version-fallback.md), [ADR-0251](0251-godot-klondike.md)
 

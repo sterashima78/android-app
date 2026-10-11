@@ -1,6 +1,6 @@
 # ADR-0114: ソリティアは盤面優先表示と合法手フィードバックを持つ
 
-- Status: Accepted; Klondike Compose / domain integration superseded by [ADR-0251](0251-godot-klondike.md)
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md); previously: Klondike Compose / domain integration superseded by [ADR-0251](0251-godot-klondike.md)
 - Date: 2026-08-17
 - Updated: 2026-08-24
 

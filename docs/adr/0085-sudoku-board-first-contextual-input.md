@@ -1,6 +1,6 @@
 # ADR-0085: 数独は盤面優先の固定ビューポートとコンテキスト入力を採用する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-08-17
 - Refines: ADR-0080
 - Amended by: [ADR-0238](0238-promote-godot-sudoku.md) — 盤面優先と必要時だけ入力 UI を出す原則を維持しつつ、Godot の floating number panel と完成時のみの判定へ置き換える。

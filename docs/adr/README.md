@@ -259,3 +259,4 @@ ADR には設計判断に必要な情報だけを記録し、credential、token�
 - [ADR-0277](0277-isolate-local-chat-inference-process.md)
 - [ADR-0278](0278-podcast-feed-category-ordering.md)
 - [ADR-0279](0279-rss-feedback-learning-outcome.md)
+- [ADR-0283](0283-separate-embedded-games.md)

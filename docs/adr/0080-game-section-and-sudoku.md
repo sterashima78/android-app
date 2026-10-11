@@ -1,6 +1,7 @@
 # ADR-0080: 一人用ゲームを独立した Game feature として追加する
 
-- Status: Accepted
+- Status: Superseded
+- Superseded by: [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-08-16
 - Amended by: [ADR-0238](0238-promote-godot-sudoku.md) — 数独の正式実装を Godot へ移し、数独固有の domain ownership と即時採点を廃止する。
 

@@ -1,6 +1,7 @@
 # ADR-0238: Godot 数独を正式実装へ昇格する
 
-- Status: Accepted
+- Status: Superseded
+- Superseded by: [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-09-07
 - Supersedes: [ADR-0234](0234-godot-sudoku-poc.md) の「Compose 数独を正式版として残し Godot を比較用 POC とする」判断
 - Refines: [ADR-0080](0080-game-section-and-sudoku.md), [ADR-0088](0088-offline-puzzle-game-expansion.md)

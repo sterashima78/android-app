@@ -14,7 +14,6 @@ import dev.terashima.yomitorirss.feature.calendar.CALENDAR_ROUTE
 import dev.terashima.yomitorirss.feature.chat.CHAT_ROUTE
 import dev.terashima.yomitorirss.feature.chat.ChatRoute
 import dev.terashima.yomitorirss.feature.chat.ChatViewModel
-import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
 import dev.terashima.yomitorirss.feature.health.HEALTH_ROUTE
 import dev.terashima.yomitorirss.feature.health.HealthRoute
 import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
@@ -40,7 +39,6 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
-  onGameFullscreenChange: (Boolean) -> Unit,
 ) {
   composable(LIBRARY_ROUTE) {
     LibraryRoute(
@@ -96,12 +94,6 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
     CalendarRoute(
       viewModelFactory = routeDependencies.calendarViewModelFactory,
       modifier = Modifier.fillMaxSize(),
-    )
-  }
-  composable(GAME_ROUTE) {
-    GameRouteHost(
-      modifier = Modifier.fillMaxSize(),
-      onFullscreenChange = onGameFullscreenChange,
     )
   }
   composable(HEALTH_ROUTE) {

@@ -1,6 +1,6 @@
 # ADR-0254: 埋め込みゲームの scene 選択を bootstrap で行う
 
-- Status: Accepted
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-09-10
 - Amends: [ADR-0251](0251-godot-klondike.md)
 - Refines: [ADR-0238](0238-promote-godot-sudoku.md)

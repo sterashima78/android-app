@@ -7,7 +7,6 @@
 - `docs/architecture/audio-playback.md`: 要約音声再生とMediaSessionService境界
 - `docs/architecture/podcast.md`: ニュースポッドキャスト生成、記事snapshot、チャプター再生境界
 - `docs/architecture/video.md`: SMB / Web / 購読型Provider動画カタログ、抽出、更新、custom Provider実行、Media3再生境界
-- `docs/architecture/game.md`: Game と Godot 数独・クロンダイクの runtime boundary
 - `docs/architecture/persistence.md`: schema / migration / table ownership / backup関連境界
 - `docs/architecture/testing.md`: test、architecture verification、formal specification verification
 - `docs/formal-modeling.md`: Quint / Alloyの役割分担、traceability、変更・検査ルール

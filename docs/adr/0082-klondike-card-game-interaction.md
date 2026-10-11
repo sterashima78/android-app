@@ -1,6 +1,6 @@
 # ADR-0082: クロンダイクはルールを domain に置きタップ選択で操作する
 
-- Status: Accepted; Kotlin domain / ViewModel ownership superseded by [ADR-0251](0251-godot-klondike.md)
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md); previously: Kotlin domain / ViewModel ownership superseded by [ADR-0251](0251-godot-klondike.md)
 - Date: 2026-08-16
 
 ## Context

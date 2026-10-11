@@ -104,8 +104,6 @@ class FeatureNavigationMetadataSourceArchitectureTest {
         ("TASKS_ROUTE -> TASKS_TITLE" to "const val TASKS_TITLE = \"タスク\""),
       "feature/calendar/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/calendar/NavigationDestination.kt" to
         ("CALENDAR_ROUTE -> CALENDAR_TITLE" to "const val CALENDAR_TITLE = \"カレンダー\""),
-      "feature/game/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/game/NavigationDestination.kt" to
-        ("GAME_ROUTE -> GAME_TITLE" to "const val GAME_TITLE = \"ゲーム\""),
       "feature/health/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/health/NavigationDestination.kt" to
         ("HEALTH_ROUTE -> HEALTH_TITLE" to "const val HEALTH_TITLE = \"ヘルス\""),
       "feature/workout/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/workout/NavigationDestination.kt" to

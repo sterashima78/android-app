@@ -83,9 +83,7 @@ internal object StartupCrashStore {
     val reportableExit = unseen
       .filter { isAppOwnedProcessName(application.packageName, it.processName) }
       .filter {
-        shouldReportProcessExit(
-          packageName = application.packageName,
-          processName = it.processName,
+        shouldReportMemoryProcessExit(
           reason = it.reason,
           description = it.description,
           importance = it.importance,
@@ -173,9 +171,6 @@ internal fun isAppOwnedProcessName(packageName: String, processName: String?): B
 internal fun isLocalAiTextProcessName(packageName: String, processName: String?): Boolean =
   processName == "$packageName:local_ai_text"
 
-internal fun isGodotProcessName(packageName: String, processName: String?): Boolean =
-  processName == "$packageName:godot"
-
 internal fun isMemoryRelatedProcessExit(reason: Int, description: String?): Boolean =
   reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
     reason == ANDROID_17_REASON_MEMORY_LIMITER ||
@@ -201,32 +196,6 @@ internal fun shouldReportMemoryProcessExit(
       reason == ApplicationExitInfo.REASON_LOW_MEMORY &&
         importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED
     )
-
-internal fun shouldReportGodotProcessExit(
-  packageName: String,
-  processName: String?,
-  reason: Int,
-): Boolean =
-  isGodotProcessName(packageName, processName) &&
-    when (reason) {
-      ApplicationExitInfo.REASON_CRASH,
-      ApplicationExitInfo.REASON_CRASH_NATIVE,
-      ApplicationExitInfo.REASON_ANR,
-      ApplicationExitInfo.REASON_INITIALIZATION_FAILURE,
-      -> true
-
-      else -> false
-    }
-
-internal fun shouldReportProcessExit(
-  packageName: String,
-  processName: String?,
-  reason: Int,
-  description: String?,
-  importance: Int,
-): Boolean =
-  shouldReportMemoryProcessExit(reason, description, importance) ||
-    shouldReportGodotProcessExit(packageName, processName, reason)
 
 internal fun processExitReasonName(reason: Int): String = when (reason) {
   ApplicationExitInfo.REASON_UNKNOWN -> "UNKNOWN"

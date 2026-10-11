@@ -209,7 +209,7 @@ Library は SMB server settings と credential の owner でもある。Video �
 
 ### Other application contexts
 
-Asset、Task、Workout、Mail、Chat、Game 等は現在 Content/Curation Aggregate へ統合しない。
+Asset、Task、Workout、Mail、Chat 等は現在 Content/Curation Aggregate へ統合しない。
 
 Workout の完了済み記録を Health Connect へ公開する処理は Workout Context 自身の outbound adapter とし、`WorkoutHistoryExporter` を domain port、`:feature:workout:data` の Health Connect implementation を adapter とする。Workout write permission は Workout UI から要求し、Health Context の read permission と混在させない。
 

@@ -24,7 +24,6 @@ internal fun AppNavHost(
   onOpenArticle: (Article) -> Unit,
   onOpenWebContent: (String) -> Boolean,
   onOpenWebServer: () -> Unit,
-  onGameFullscreenChange: (Boolean) -> Unit,
 ) {
   NavHost(
     navController = navController,
@@ -61,7 +60,6 @@ internal fun AppNavHost(
       onBiometricLockEnabledChange = onBiometricLockEnabledChange,
       onOpenWebContent = onOpenWebContent,
       onOpenWebServer = onOpenWebServer,
-      onGameFullscreenChange = onGameFullscreenChange,
     )
   }
 }

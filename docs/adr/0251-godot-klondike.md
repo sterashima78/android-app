@@ -1,6 +1,7 @@
 # ADR-0251: クロンダイクを Godot 実装へ移行する
 
-- Status: Accepted
+- Status: Superseded
+- Superseded by: [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-09-10
 - Supersedes in part: [ADR-0082](0082-klondike-card-game-interaction.md), [ADR-0114](0114-solitaire-board-first-visual-feedback.md)
 - Refines: [ADR-0238](0238-promote-godot-sudoku.md)
