@@ -11,7 +11,6 @@ jsoup = "1.23.2"
 media3 = "1.11.1"
 junit4 = "4.13.2"
 junit6 = "6.1.2"
-godot = "4.7.2.stable"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
@@ -38,4 +37,3 @@ junit4 = { module = "junit:junit", version.ref = "junit4" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit6" }
 junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit6" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit6" }
-godot-android = { module = "org.godotengine:godot", version.ref = "godot" }

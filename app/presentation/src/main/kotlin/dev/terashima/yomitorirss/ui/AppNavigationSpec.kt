@@ -11,8 +11,6 @@ import dev.terashima.yomitorirss.feature.calendar.CALENDAR_ROUTE
 import dev.terashima.yomitorirss.feature.calendar.CALENDAR_TITLE
 import dev.terashima.yomitorirss.feature.chat.CHAT_ROUTE
 import dev.terashima.yomitorirss.feature.chat.CHAT_TITLE
-import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
-import dev.terashima.yomitorirss.feature.game.GAME_TITLE
 import dev.terashima.yomitorirss.feature.health.HEALTH_ROUTE
 import dev.terashima.yomitorirss.feature.health.HEALTH_TITLE
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
@@ -77,7 +75,6 @@ internal val allAppRoutes: Set<String> = linkedSetOf(
   X_ROUTE,
   TASKS_ROUTE,
   CALENDAR_ROUTE,
-  GAME_ROUTE,
   HEALTH_ROUTE,
   WORKOUT_ROUTE,
   CHAT_ROUTE,
@@ -154,7 +151,6 @@ internal fun String.appSection(): AppSection = when (this) {
   X_ROUTE -> AppSection.X
   TASKS_ROUTE -> AppSection.TASKS
   CALENDAR_ROUTE -> AppSection.CALENDAR
-  GAME_ROUTE -> AppSection.GAME
   HEALTH_ROUTE -> AppSection.HEALTH
   WORKOUT_ROUTE -> AppSection.WORKOUT
   CHAT_ROUTE -> AppSection.AI_CHAT
@@ -176,7 +172,6 @@ internal fun String.screenTitle(): String = rssDestinationTitle(this)
     X_ROUTE -> X_TITLE
     TASKS_ROUTE -> TASKS_TITLE
     CALENDAR_ROUTE -> CALENDAR_TITLE
-    GAME_ROUTE -> GAME_TITLE
     HEALTH_ROUTE -> HEALTH_TITLE
     WORKOUT_ROUTE -> WORKOUT_TITLE
     CHAT_ROUTE -> CHAT_TITLE
@@ -198,7 +193,6 @@ internal fun AppSection.defaultRoute(): String = when (this) {
   AppSection.X -> X_ROUTE
   AppSection.TASKS -> TASKS_ROUTE
   AppSection.CALENDAR -> CALENDAR_ROUTE
-  AppSection.GAME -> GAME_ROUTE
   AppSection.HEALTH -> HEALTH_ROUTE
   AppSection.WORKOUT -> WORKOUT_ROUTE
   AppSection.AI_CHAT -> CHAT_ROUTE

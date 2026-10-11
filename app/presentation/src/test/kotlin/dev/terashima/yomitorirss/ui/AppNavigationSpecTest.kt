@@ -10,7 +10,6 @@ import dev.terashima.yomitorirss.feature.bookmark.bookmarkTabForRoute
 import dev.terashima.yomitorirss.feature.bookmark.routeForBookmarkTab
 import dev.terashima.yomitorirss.feature.calendar.CALENDAR_ROUTE
 import dev.terashima.yomitorirss.feature.chat.CHAT_ROUTE
-import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
 import dev.terashima.yomitorirss.feature.health.HEALTH_ROUTE
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
@@ -64,7 +63,6 @@ class AppNavigationSpecTest {
       X_ROUTE to "X",
       TASKS_ROUTE to "タスク",
       CALENDAR_ROUTE to "カレンダー",
-      GAME_ROUTE to "ゲーム",
       HEALTH_ROUTE to "ヘルス",
       WORKOUT_ROUTE to "ワークアウト",
       CHAT_ROUTE to "AIチャット",

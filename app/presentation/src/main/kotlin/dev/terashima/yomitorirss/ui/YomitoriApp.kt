@@ -14,17 +14,13 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
-import dev.terashima.yomitorirss.feature.game.GAME_ROUTE
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.reddit.rememberRedditRouteController
 import dev.terashima.yomitorirss.feature.rss.rememberRssRouteController
@@ -54,8 +50,6 @@ fun YomitoriApp(
   val redditController = rememberRedditRouteController()
   val bookmarkEditController = rememberBookmarkEditController()
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
-  var gameFullscreen by rememberSaveable { mutableStateOf(false) }
-  val hideAppChrome = shouldHideAppChrome(selectedRoute, gameFullscreen)
 
   LaunchedEffect(navController, navigationRequests) {
     navigationRequests.collect { target ->
@@ -109,17 +103,15 @@ fun YomitoriApp(
         ScaffoldDefaults.contentWindowInsets
       },
       topBar = {
-        if (!hideAppChrome) {
-          currentBackStackEntry?.let { owner ->
-            AppTopBarRoute(
-              selectedRoute = selectedRoute,
-              viewModelStoreOwner = owner,
-              routeDependencies = routeDependencies,
-              rssController = rssController,
-              redditController = redditController,
-              onOpenDrawer = openDrawer,
-            )
-          }
+        currentBackStackEntry?.let { owner ->
+          AppTopBarRoute(
+            selectedRoute = selectedRoute,
+            viewModelStoreOwner = owner,
+            routeDependencies = routeDependencies,
+            rssController = rssController,
+            redditController = redditController,
+            onOpenDrawer = openDrawer,
+          )
         }
       },
       bottomBar = {
@@ -141,7 +133,6 @@ fun YomitoriApp(
         onOpenArticle = { article -> onOpenArticleUrl(article.url) },
         onOpenWebContent = onOpenWebContent,
         onOpenWebServer = onOpenWebServer,
-        onGameFullscreenChange = { fullscreen -> gameFullscreen = fullscreen },
       )
     }
   }
@@ -166,7 +157,3 @@ fun YomitoriApp(
 internal fun AppNavigationTarget.opensWebServerDialog(): Boolean =
   this == AppNavigationTarget.WEB_SERVER
 
-internal fun shouldHideAppChrome(
-  selectedRoute: String,
-  gameFullscreen: Boolean,
-): Boolean = selectedRoute == GAME_ROUTE && gameFullscreen

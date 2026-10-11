@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
@@ -92,7 +91,6 @@ internal fun AppDrawerContent(
                 AppSection.X -> Icons.Default.Public
                 AppSection.TASKS -> Icons.Default.Checklist
                 AppSection.CALENDAR -> Icons.Default.CalendarMonth
-                AppSection.GAME -> Icons.Default.SportsEsports
                 AppSection.HEALTH -> Icons.Default.Favorite
                 AppSection.WORKOUT -> Icons.Default.FitnessCenter
                 AppSection.PODCAST -> Icons.Default.RssFeed

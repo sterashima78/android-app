@@ -133,8 +133,6 @@ dependencies {
   implementation(project(":feature:chat:ui"))
   implementation(project(":feature:calendar:domain"))
   implementation(project(":feature:calendar:ui"))
-  implementation(project(":feature:game:domain"))
-  implementation(project(":feature:game:ui"))
   implementation(project(":feature:health:domain"))
   implementation(project(":feature:health:ui"))
   implementation(project(":feature:integrated:ui"))
