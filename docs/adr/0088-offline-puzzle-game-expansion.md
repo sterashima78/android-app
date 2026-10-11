@@ -1,6 +1,6 @@
 # ADR-0088: オフラインパズルゲームを Game feature 内で拡張する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-08-17
 - Refines: ADR-0080
 

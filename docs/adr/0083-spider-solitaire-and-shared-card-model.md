@@ -1,6 +1,6 @@
 # ADR-0083: スパイダーソリティアとカードモデル共有
 
-- Status: Accepted
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-08-16
 
 ## Context

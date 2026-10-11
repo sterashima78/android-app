@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-11
-- Supersedes: [ADR-0080](0080-game-section-and-sudoku.md), [ADR-0238](0238-promote-godot-sudoku.md), [ADR-0251](0251-godot-klondike.md), [ADR-0262](0262-restore-current-game-runtime-baseline.md)
+- Supersedes: [ADR-0080](0080-game-section-and-sudoku.md), [ADR-0082](0082-klondike-card-game-interaction.md), [ADR-0083](0083-spider-solitaire-and-shared-card-model.md), [ADR-0085](0085-sudoku-board-first-contextual-input.md), [ADR-0088](0088-offline-puzzle-game-expansion.md), [ADR-0089](0089-2048-transition-animation.md), [ADR-0114](0114-solitaire-board-first-visual-feedback.md), [ADR-0238](0238-promote-godot-sudoku.md), [ADR-0251](0251-godot-klondike.md), [ADR-0252](0252-lock-embedded-game-orientation.md), [ADR-0254](0254-bootstrap-embedded-game-scene-selection.md), [ADR-0262](0262-restore-current-game-runtime-baseline.md)
 
 ## Context
 

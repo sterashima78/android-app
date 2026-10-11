@@ -1,6 +1,6 @@
 # ADR-0089: 2048 の手を遷移イベントとして可視化する
 
-- Status: Accepted
+- Status: Superseded by [ADR-0283](0283-separate-embedded-games.md)
 - Date: 2026-08-17
 - Refines: ADR-0088
 
