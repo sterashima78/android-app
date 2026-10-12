@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
 import android.content.Context
+import kotlin.math.roundToInt
 import dev.terashima.yomitorirss.feature.podcast.DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD
 import dev.terashima.yomitorirss.feature.podcast.MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD
 import dev.terashima.yomitorirss.feature.podcast.MIN_PODCAST_TOPIC_SIMILARITY_THRESHOLD
@@ -20,19 +21,20 @@ class PodcastTopicClusteringPreferences(context: Context) : PodcastTopicClusteri
     Context.MODE_PRIVATE,
   )
 
-  private val defaultTicks = (DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).toInt()
-  private val minTicks = (MIN_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).toInt()
-  private val maxTicks = (MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).toInt()
+  private val defaultTicks = (DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).roundToInt()
+  private val minTicks = (MIN_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).roundToInt()
+  private val maxTicks = (MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).roundToInt()
 
   private val _similarityThreshold = MutableStateFlow(
-    preferences.getInt(KEY_THRESHOLD_PERCENT, defaultTicks)
+    runCatching { preferences.getInt(KEY_THRESHOLD_PERCENT, defaultTicks) }
+      .getOrDefault(defaultTicks)
       .coerceIn(minTicks, maxTicks) / 100.0,
   )
   override val similarityThreshold: StateFlow<Double> = _similarityThreshold.asStateFlow()
 
   override fun updateSimilarityThreshold(value: Double) {
     val normalized = normalizePodcastTopicSimilarityThreshold(value)
-    val ticks = (normalized * 100).toInt()
+    val ticks = (normalized * 100).roundToInt()
     val editor = preferences.edit()
     if (ticks == defaultTicks) {
       editor.remove(KEY_THRESHOLD_PERCENT)
