@@ -19,6 +19,7 @@ import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastCloudTextInf
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsCategorizer
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.data.EmbeddingPodcastTopicClusterer
+import dev.terashima.yomitorirss.feature.podcast.data.PodcastTopicClusteringPreferences
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsExcluder
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationWorkerFactory
@@ -50,6 +51,7 @@ internal class AppPodcastRuntimeDependencies(
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val repository = SqlitePodcastRepository(database, persistenceChanges)
+  private val topicClusteringSettings = PodcastTopicClusteringPreferences(application)
   val taskReader: PodcastGenerationTaskReader = repository
   private val scriptGenerator = DefaultPodcastScriptGenerator(
     localInference = localTextInference,
@@ -67,7 +69,9 @@ internal class AppPodcastRuntimeDependencies(
       localStructuredInference = localStructuredTextInference,
       cloudStructuredInference = cloudStructuredTextInference,
     ),
-    topicClusterer = EmbeddingPodcastTopicClusterer(LiteRtTextEmbedding(application)),
+    topicClusterer = EmbeddingPodcastTopicClusterer(LiteRtTextEmbedding(application)) {
+      topicClusteringSettings.similarityThreshold.value
+    },
     newsCategorizer = DefaultPodcastNewsCategorizer(
       localTextInference = localTextInference,
       cloudTextInference = cloudTextInference,
@@ -90,6 +94,7 @@ internal class AppPodcastRuntimeDependencies(
     generationController = generationController,
     scheduleController = scheduleController,
     audioPlaybackController = audioPlaybackController,
+    topicClusteringSettings = topicClusteringSettings,
   )
 
   val workerFactory = PodcastGenerationWorkerFactory(repository, generationUseCase, scheduleController)
