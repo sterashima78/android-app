@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -44,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +60,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.roundToInt
 
 const val PODCAST_ROUTE = "podcast"
 const val PODCAST_TITLE = "ニュースポッドキャスト"
@@ -103,6 +107,7 @@ fun PodcastRoute(
       PodcastContent(
         state = state,
         onSelectProgram = viewModel::selectProgram,
+        onTopicSimilarityThresholdChange = viewModel::updateTopicSimilarityThreshold,
         onShowArchived = viewModel::setShowArchivedEpisodes,
         onGenerate = viewModel::generate,
         onGenerateAlternative = viewModel::generateAlternative,
@@ -180,6 +185,7 @@ fun PodcastRoute(
 private fun PodcastContent(
   state: PodcastUiState,
   onSelectProgram: (String) -> Unit,
+  onTopicSimilarityThresholdChange: (Double) -> Unit,
   onShowArchived: (Boolean) -> Unit,
   onGenerate: (String) -> Unit,
   onGenerateAlternative: (String) -> Unit,
@@ -238,6 +244,11 @@ private fun PodcastContent(
         onDelete = { onDelete(program) },
       )
 
+      TopicSimilarityThresholdCard(
+        threshold = state.topicSimilarityThreshold,
+        onUpdate = onTopicSimilarityThresholdChange,
+      )
+
       Text("エピソード", style = MaterialTheme.typography.titleMedium)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
@@ -279,6 +290,48 @@ private fun PodcastContent(
     }
 
     Spacer(Modifier.height(72.dp))
+  }
+}
+
+@Composable
+private fun TopicSimilarityThresholdCard(
+  threshold: Double,
+  onUpdate: (Double) -> Unit,
+) {
+  var sliderValue by remember(threshold) { mutableFloatStateOf(threshold.toFloat()) }
+  val displayed = (sliderValue * 100).roundToInt() / 100.0
+
+  Card(modifier = Modifier.fillMaxWidth()) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text("関連トピックの類似度しきい値", style = MaterialTheme.typography.titleMedium)
+      Text(
+        "全番組共通の試験設定です。値を高くするほど異なるニュースをまとめにくくなります。",
+        style = MaterialTheme.typography.bodySmall,
+      )
+      Text("しきい値: ${"%.2f".format(Locale.ROOT, displayed)}")
+      Slider(
+        value = sliderValue,
+        onValueChange = { sliderValue = it },
+        onValueChangeFinished = { onUpdate((sliderValue * 100).roundToInt() / 100.0) },
+        valueRange = MIN_PODCAST_TOPIC_SIMILARITY_THRESHOLD.toFloat()..
+          MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD.toFloat(),
+        steps = 28,
+      )
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("緩い (0.70)", style = MaterialTheme.typography.bodySmall)
+        Text("厳しい (0.99)", style = MaterialTheme.typography.bodySmall)
+      }
+      OutlinedButton(
+        onClick = { onUpdate(DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD) },
+        enabled = displayed != DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD,
+      ) {
+        Text("既定値 (0.78) に戻す")
+      }
+      Text(
+        "新しく分類するエピソードに反映されます。保存済みエピソードは「現在の条件で作り直す」で再評価できます。",
+        style = MaterialTheme.typography.bodySmall,
+      )
+    }
   }
 }
 
