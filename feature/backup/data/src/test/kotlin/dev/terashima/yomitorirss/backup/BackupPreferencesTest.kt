@@ -43,6 +43,8 @@ class BackupPreferencesTest {
       .commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().putString("summary_prompt", "custom-prompt").commit()
+    context.getSharedPreferences("podcast_topic_clustering", Context.MODE_PRIVATE)
+      .edit().putInt("similarity_threshold_percent", 91).putString("ignored", "private").commit()
     context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
       .edit().putString("smb_metadata_normalization_prompt", "custom-library-prompt").commit()
     context.getSharedPreferences("smb_library_credentials", Context.MODE_PRIVATE)
@@ -74,6 +76,8 @@ class BackupPreferencesTest {
     assertFalse(encoded.contains("source-revision"))
     assertFalse(encoded.contains("duration_millis"))
     assertTrue(encoded.contains("selected_model_id"))
+    assertTrue(encoded.contains("similarity_threshold_percent"))
+    assertFalse(encoded.contains("private"))
     assertTrue(encoded.contains("custom-library-prompt"))
     assertTrue(encoded.contains("synthetic-workout-memo"))
     assertTrue(encoded.contains("synthetic-workout-review"))
@@ -87,6 +91,8 @@ class BackupPreferencesTest {
       .edit().clear().putString("provider", "LOCAL").commit()
     context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE)
       .edit().clear().commit()
+    context.getSharedPreferences("podcast_topic_clustering", Context.MODE_PRIVATE)
+      .edit().clear().putString("ignored", "untouched").commit()
     context.getSharedPreferences("library_ai_preferences", Context.MODE_PRIVATE)
       .edit().putString("smb_metadata_normalization_prompt", "changed-library-prompt").commit()
     val drivePreferences = context.getSharedPreferences("google_drive_backup", Context.MODE_PRIVATE)
@@ -112,6 +118,16 @@ class BackupPreferencesTest {
     assertEquals("keep-going", workoutAi.getString("workout_policy", null))
     assertEquals("synthetic-workout-memo", workoutAi.getString("memo:2026-08-27", null))
     assertTrue(workoutAi.getString("reviews", null).orEmpty().contains("synthetic-workout-review"))
+    assertEquals(
+      91,
+      context.getSharedPreferences("podcast_topic_clustering", Context.MODE_PRIVATE)
+        .getInt("similarity_threshold_percent", 0),
+    )
+    assertEquals(
+      "untouched",
+      context.getSharedPreferences("podcast_topic_clustering", Context.MODE_PRIVATE)
+        .getString("ignored", null),
+    )
     assertEquals(
       "custom-prompt",
       context.getSharedPreferences("summary_preferences", Context.MODE_PRIVATE).getString("summary_prompt", null),
