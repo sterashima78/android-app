@@ -174,6 +174,7 @@ internal class BackupPreferences(context: Context) {
           "context_size_mode",
         ),
       ),
+      PreferenceBackupRule("podcast_topic_clustering", allowedKeys = setOf("similarity_threshold_percent")),
       PreferenceBackupRule("summary_preferences"),
       PreferenceBackupRule("workout"),
       PreferenceBackupRule("workout_ai"),
