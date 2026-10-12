@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 data class PodcastUiState(
   val initialized: Boolean = false,
+  val topicSimilarityThreshold: Double = DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD,
   val programs: List<PodcastProgram> = emptyList(),
   val sources: List<PodcastSource> = emptyList(),
   val selectedProgramId: String? = null,
@@ -38,16 +39,26 @@ class PodcastViewModel(
   private val generationController: PodcastGenerationController,
   private val scheduleController: PodcastScheduleController,
   private val audioPlaybackController: AudioPlaybackController,
+  private val topicClusteringSettings: PodcastTopicClusteringSettings,
 ) : ViewModel() {
   private val _state = MutableStateFlow(PodcastUiState())
   val state: StateFlow<PodcastUiState> = _state.asStateFlow()
   val audioState: StateFlow<AudioPlaybackState> = audioPlaybackController.state
 
   init {
+    viewModelScope.launch {
+      topicClusteringSettings.similarityThreshold.collect { threshold ->
+        _state.update { it.copy(topicSimilarityThreshold = threshold) }
+      }
+    }
     reload()
     viewModelScope.launch(Dispatchers.IO) {
       repository.changes.collect { reloadNow() }
     }
+  }
+
+  fun updateTopicSimilarityThreshold(value: Double) {
+    topicClusteringSettings.updateSimilarityThreshold(value)
   }
 
   fun reload() {
@@ -414,6 +425,7 @@ class PodcastViewModel(
     private val generationController: PodcastGenerationController,
     private val scheduleController: PodcastScheduleController,
     private val audioPlaybackController: AudioPlaybackController,
+    private val topicClusteringSettings: PodcastTopicClusteringSettings,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(PodcastViewModel::class.java))
@@ -423,6 +435,7 @@ class PodcastViewModel(
         generationController,
         scheduleController,
         audioPlaybackController,
+        topicClusteringSettings,
       ) as T
     }
   }
