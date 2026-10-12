@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import kotlin.math.roundToInt
 import dev.terashima.yomitorirss.feature.podcast.DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD
 import dev.terashima.yomitorirss.feature.podcast.MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD
@@ -25,12 +26,22 @@ class PodcastTopicClusteringPreferences(context: Context) : PodcastTopicClusteri
   private val minTicks = (MIN_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).roundToInt()
   private val maxTicks = (MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD * 100).roundToInt()
 
-  private val _similarityThreshold = MutableStateFlow(
+  private fun readThreshold(): Double =
     runCatching { preferences.getInt(KEY_THRESHOLD_PERCENT, defaultTicks) }
       .getOrDefault(defaultTicks)
-      .coerceIn(minTicks, maxTicks) / 100.0,
-  )
+      .coerceIn(minTicks, maxTicks) / 100.0
+
+  private val _similarityThreshold = MutableStateFlow(readThreshold())
   override val similarityThreshold: StateFlow<Double> = _similarityThreshold.asStateFlow()
+
+  // Backup restore writes directly to SharedPreferences instead of calling updateSimilarityThreshold.
+  private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+    if (key == KEY_THRESHOLD_PERCENT) _similarityThreshold.value = readThreshold()
+  }
+
+  init {
+    preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
+  }
 
   override fun updateSimilarityThreshold(value: Double) {
     val normalized = normalizePodcastTopicSimilarityThreshold(value)
