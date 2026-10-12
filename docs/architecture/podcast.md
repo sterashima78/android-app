@@ -44,6 +44,8 @@ Podcast owns the mode selection as `PodcastClusteringMode`: `EVENT` preserves th
 
 The embedding runtime is provider-neutral and resides behind `BackgroundTextEmbedding`, with its Android adapter in `:core:ai-runtime`. It downloads a public model to app-private storage on first use, sends no article text to the network, computes on-device vectors, and releases resources before chapter LLM generation. No vector cache or duplicate content table is introduced. A deterministic complete-link partition with a small maximum cluster size reduces topic chaining and prompt crowding. Its numeric threshold is experimental, not a verified semantic identity boundary.
 
+The experimental cosine similarity threshold is a device-wide Podcast-owned setting, shared by all programs using `TOPIC` mode. `PodcastTopicClusteringSettings` exposes its current value to the UI and embedding clusterer; Podcast Data stores a two-decimal value in app-private SharedPreferences. The UI offers 0.70–0.99 at 0.01 increments with 0.78 as the initial default and a reset action. A clustering pass captures its threshold before embedding inference; changes affect later new clustering passes and explicit episode rebuilds, not reserved/interrupted chapter snapshots. Existing `EVENT` behavior is unchanged. The setting is included in the explicit preference backup allowlist; no Podcast database migration is introduced.
+
 Comparison generation passes an episode's saved full article snapshot through the other mode, creates a separate episode row and chapter checkpoints, and never modifies the original or reinserts program-scoped consumed identities. Ordinary feed generation continues to use the consumed identity filter.
 
 ## Background execution boundary

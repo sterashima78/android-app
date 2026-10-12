@@ -29,6 +29,29 @@ class EmbeddingPodcastTopicClustererTest {
   }
 
   @Test
+  fun `updated threshold is used on the next clustering pass`() = runSuspend {
+    var threshold = 0.78
+    val clusterer = EmbeddingPodcastTopicClusterer(
+      embedding = object : BackgroundTextEmbedding {
+        override suspend fun embed(texts: List<String>): List<FloatArray> =
+          listOf(floatArrayOf(1f, 0f), floatArrayOf(.9f, .43589f))
+      },
+      similarityThreshold = { threshold },
+    )
+    val candidates = listOf(entry("a"), entry("b"))
+    assertEquals(
+      listOf(listOf(0, 1)),
+      clusterer.cluster(PodcastGenerationProvider.LOCAL, candidates).groups,
+    )
+
+    threshold = 0.95
+    assertEquals(
+      listOf(listOf(0), listOf(1)),
+      clusterer.cluster(PodcastGenerationProvider.LOCAL, candidates).groups,
+    )
+  }
+
+  @Test
   fun `complete link prevents transitive topic chains`() {
     val result = groupRelatedTopics(
       listOf(

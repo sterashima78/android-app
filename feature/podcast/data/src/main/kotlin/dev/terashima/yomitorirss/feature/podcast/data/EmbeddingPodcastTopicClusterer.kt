@@ -1,6 +1,7 @@
 package dev.terashima.yomitorirss.feature.podcast.data
 
 import dev.terashima.yomitorirss.core.aiinference.BackgroundTextEmbedding
+import dev.terashima.yomitorirss.feature.podcast.DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD
 import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CancellationException
 /** Experimental topic grouping; related but distinct events may share a chapter. */
 class EmbeddingPodcastTopicClusterer(
   private val embedding: BackgroundTextEmbedding,
+  private val similarityThreshold: () -> Double = { DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD },
 ) : PodcastNewsClusterer {
   override suspend fun cluster(
     provider: PodcastGenerationProvider,
@@ -21,6 +23,8 @@ class EmbeddingPodcastTopicClusterer(
       return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SKIPPED)
     }
     return try {
+      // Capture one threshold for this clustering pass, even if the UI changes it during inference.
+      val threshold = similarityThreshold()
       val vectors = embedding.embed(candidates.map { entry ->
         val summary = entry.feedContent.replace(Regex("\\s+"), " ").take(400)
         "task: clustering | text: ${entry.title.trim()}\n$summary".trim()
@@ -28,7 +32,7 @@ class EmbeddingPodcastTopicClusterer(
       require(vectors.size == candidates.size && vectors.isNotEmpty())
       val dimension = vectors.first().size
       require(dimension > 0 && vectors.all { it.size == dimension && it.all(Float::isFinite) })
-      PodcastNewsClusteringResult(groupRelatedTopics(vectors), PodcastClusteringStatus.SUCCESS)
+      PodcastNewsClusteringResult(groupRelatedTopics(vectors, threshold = threshold), PodcastClusteringStatus.SUCCESS)
     } catch (cancel: CancellationException) {
       throw cancel
     } catch (_: Exception) {
@@ -47,7 +51,7 @@ class EmbeddingPodcastTopicClusterer(
  */
 internal fun groupRelatedTopics(
   vectors: List<FloatArray>,
-  threshold: Double = 0.78,
+  threshold: Double = DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD,
   maxArticlesPerGroup: Int = 6,
 ): List<List<Int>> {
   require(threshold in -1.0..1.0 && maxArticlesPerGroup > 0)

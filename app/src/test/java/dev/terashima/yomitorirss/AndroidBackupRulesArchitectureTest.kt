@@ -94,6 +94,7 @@ class AndroidBackupRulesArchitectureTest {
       "background_data_fetch.xml",
       "book_reader_position.xml",
       "local_ai_background_execution.xml",
+      "podcast_topic_clustering.xml",
       "summary_preferences.xml",
       "workout.xml",
       "workout_ai.xml",

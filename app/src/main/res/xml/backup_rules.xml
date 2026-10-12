@@ -4,6 +4,7 @@
   <include domain="sharedpref" path="background_data_fetch.xml" />
   <include domain="sharedpref" path="book_reader_position.xml" />
   <include domain="sharedpref" path="local_ai_background_execution.xml" />
+  <include domain="sharedpref" path="podcast_topic_clustering.xml" />
   <include domain="sharedpref" path="summary_preferences.xml" />
   <include domain="sharedpref" path="workout.xml" />
   <include domain="sharedpref" path="workout_ai.xml" />
