@@ -25,3 +25,7 @@ Workout Domain / UI / Data とAI入力、履歴テキスト、互換性テスト
 ## Compatibility retirement (2026-10-10)
 
 現行の更新互換性baselineはversion 4 payloadであり、version 2/3の一時decoderと専用fixture/testを退役した。未知・旧versionは拒否して元データを保持する。現行payloadの破損時も暗黙に空状態へ置換しない（ADR-0281）。
+
+## Compatibility correction (2026-10-13)
+
+2026-10-10の互換読込退役後も、端末にversion 3のWorkout stateが残っており、Calendarのread-only projectionが`WorkoutReader.load()`で失敗する事象を確認した。version 3はversion 4と同じ基本構造を持ち、version 4で増えたセット詳細は任意項目であるため、version 3の読込を復元し、欠落した詳細を未入力として扱う。読込時に保存済みpayloadを変更せず、次の通常保存時にversion 4へ収束させる。version 2は引き続き非対応とし、version 3でも主要必須field欠落・不正entryは例外として元データを保護する。旧形式の読込を再び退役するのは、現行端末の保存状態がversion 4へ収束したことを確認してからとする。

@@ -72,18 +72,105 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
-  fun `互換baseline外のversion2と3は拒否して元のpayloadを保持する`() = runTest {
-    for (version in listOf(2, 3)) {
-      val raw = JSONObject().put("version", version).put("exercises", JSONArray()).toString()
-      preferences().edit().putString(STATE_KEY, raw).commit()
-      try {
-        DefaultWorkoutRepository(context).load()
-        fail("UnsupportedWorkoutStateVersionException was expected for version $version")
-      } catch (error: UnsupportedWorkoutStateVersionException) {
-        assertEquals(version, error.version)
-      }
-      assertEquals(raw, preferences().getString(STATE_KEY, null))
+  fun `互換baseline外のversion2は拒否して元のpayloadを保持する`() = runTest {
+    val raw = JSONObject().put("version", 2).put("exercises", JSONArray()).toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("UnsupportedWorkoutStateVersionException was expected")
+    } catch (error: UnsupportedWorkoutStateVersionException) {
+      assertEquals(2, error.version)
     }
+
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
+  }
+
+  @Test
+  fun `version3の記録と履歴メニューをversion4へ安全に読み替える`() = runTest {
+    val menu = JSONObject()
+      .put("id", "menu-1")
+      .put("name", "予定メニュー")
+      .put("source", "PRESET")
+      .put(
+        "items",
+        JSONArray().put(
+          JSONObject().put("exerciseId", "push-up").put("targetSets", 1)
+            .put("targets", JSONArray().put(12)),
+        ),
+      )
+    val set = JSONObject()
+      .put("id", "set-1")
+      .put("exerciseId", "push-up")
+      .put("exerciseName", "腕立て伏せ")
+      .put("unit", "REPS")
+      .put("type", "REPS")
+      .put("amount", 12)
+      .put("recordedAt", "2026-10-08T08:15:00+09:00")
+    val raw = JSONObject()
+      .put("version", 3)
+      .put(
+        "exercises",
+        JSONArray().put(
+          JSONObject().put("id", "push-up").put("name", "腕立て伏せ")
+            .put("targetSets", 3).put("unit", "REPS").put("type", "REPS"),
+        ),
+      )
+      .put("menus", JSONArray().put(menu))
+      .put("today", JSONObject().put("date", "2026-10-09").put("sets", JSONArray().put(set)))
+      .put(
+        "history",
+        JSONArray().put(
+          JSONObject().put("id", "history-1").put("date", "2026-10-08")
+            .put("startedAt", JSONObject.NULL)
+            .put("finishedAt", "2026-10-08T08:30:00+09:00")
+            .put("sets", JSONArray().put(set))
+            .put("menu", menu),
+        ),
+      )
+      .put("lastAmounts", JSONObject().put("push-up", 12))
+      .put("lastStepCounts", JSONObject().put("push-up", 3))
+      .toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    val repository = DefaultWorkoutRepository(context)
+    val loaded = repository.load()
+
+    assertEquals(4, loaded.version)
+    assertEquals("push-up", loaded.exercises.single().id)
+    assertEquals(listOf(12), loaded.menus.single().items.single().targets)
+    assertEquals(12, loaded.today.sets.single().amount)
+    assertEquals("2026-10-08", loaded.history.single().date)
+    assertEquals(12, loaded.history.single().sets.single().amount)
+    assertEquals(loaded.menus.single(), loaded.history.single().menu)
+    assertEquals(12, loaded.lastAmounts["push-up"])
+    assertEquals(3, loaded.lastStepCounts["push-up"])
+    assertEquals(null, loaded.today.sets.single().rpe)
+    assertEquals(null, loaded.today.sets.single().formQuality)
+    assertEquals(null, loaded.today.sets.single().load)
+    assertEquals(null, loaded.today.sets.single().restSeconds)
+    // Calendar reads must not mutate the persisted state.
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
+
+    // The next normal write converges to the current format without losing history.
+    repository.save(loaded)
+    assertEquals(4, JSONObject(preferences().getString(STATE_KEY, null)!!).getInt("version"))
+    assertEquals(loaded.history, repository.load().history)
+  }
+
+  @Test
+  fun `不完全なversion3の保存データは置換せずに保護する`() = runTest {
+    val raw = JSONObject().put("version", 3).put("exercises", JSONArray()).toString()
+    preferences().edit().putString(STATE_KEY, raw).commit()
+
+    try {
+      DefaultWorkoutRepository(context).load()
+      fail("CorruptWorkoutStateException was expected")
+    } catch (_: CorruptWorkoutStateException) {
+      // A recognized legacy version does not bypass payload validation.
+    }
+
+    assertEquals(raw, preferences().getString(STATE_KEY, null))
   }
 
   @Test
