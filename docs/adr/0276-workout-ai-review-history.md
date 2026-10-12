@@ -95,3 +95,7 @@ Workout の完了後レビューは、直近14日間の実績、当日メモ、�
 ## Compatibility retirement (2026-10-10)
 
 現行配布baselineのWorkout書込形式はversion 4となったため、一時的なversion 2 decoderと専用testを退役した。これにより旧payloadを新形式へ推測変換せずunsupportedとして拒否し、保存済み文字列を保全する。version 3の互換読込も後続ADR-0280の終了条件に基づき同時に退役した。
+
+## Compatibility correction (2026-10-13)
+
+上記2026-10-10の退役判断について、version 3の保存済み実績が現行端末に残っていたことが判明したため、version 3の読込を復元する。完了履歴のmenu snapshotを含む既存実績を失わずversion 4モデルへ読込むことを検証する。version 2の退役は維持する。詳細は[ADR-0280](0280-workout-set-effort-and-form.md)の同日追記を参照する。
