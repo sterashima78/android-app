@@ -197,7 +197,7 @@ class DefaultAudioPlaybackController(
         mutableState.update {
           it.copy(
             items = playableItems.toList(),
-            currentIndex = if (it.currentIndex < 0) 0 else it.currentIndex,
+            currentIndex = activeController.currentMediaItemIndex.coerceIn(0, playableItems.lastIndex),
             isPlaying = activeController.isPlaying,
             playbackSpeed = activeController.playbackParameters.speed,
             preparationStatus = AudioPreparationStatus.READY,
@@ -481,6 +481,7 @@ internal fun isInstalledOfflineJapaneseVoice(
   language == Locale.JAPANESE.language &&
     !isNetworkConnectionRequired &&
     TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in features
+
 internal fun <T> prioritizedAudioPreparation(items: List<T>, startIndex: Int): List<T> {
   if (startIndex !in items.indices) return items
   return items.drop(startIndex) + items.take(startIndex)
