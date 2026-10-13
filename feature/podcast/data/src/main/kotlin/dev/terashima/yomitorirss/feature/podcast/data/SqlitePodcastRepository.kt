@@ -17,7 +17,6 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTask
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskState
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
-import dev.terashima.yomitorirss.feature.podcast.PodcastRegenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
@@ -116,11 +115,10 @@ class SqlitePodcastRepository(
         ContentValues().apply {
           put("status", PodcastEpisodeStatus.ARCHIVED.name)
           putNull("last_played_chapter")
-          putNull("regeneration_status")
           putNull("error_message")
         },
-        "id=? AND status=? AND (regeneration_status IS NULL OR regeneration_status=?)",
-        arrayOf(episodeId, PodcastEpisodeStatus.READY.name, PodcastRegenerationStatus.FAILED.name),
+        "id=? AND status=?",
+        arrayOf(episodeId, PodcastEpisodeStatus.READY.name),
       )
       require(updated == 1) { "再生成中でない再生可能なエピソードだけアーカイブできます" }
     }
@@ -154,16 +152,12 @@ class SqlitePodcastRepository(
 
   override suspend fun deleteEpisode(episodeId: String) {
     database.transaction {
-      val lifecycle = rawQuery(
-        "SELECT status,regeneration_status FROM podcast_episodes WHERE id=? LIMIT 1",
+      val status = rawQuery(
+        "SELECT status FROM podcast_episodes WHERE id=? LIMIT 1",
         arrayOf(episodeId),
       ).use { cursor ->
-        if (!cursor.moveToFirst()) null
-        else PodcastEpisodeStatus.valueOf(cursor.getString(0)) to
-          if (cursor.isNull(1)) null else PodcastRegenerationStatus.valueOf(cursor.getString(1))
+        if (!cursor.moveToFirst()) null else PodcastEpisodeStatus.valueOf(cursor.getString(0))
       } ?: error("episode not found: $episodeId")
-      val (status, regeneration) = lifecycle
-      require(regeneration != PodcastRegenerationStatus.RUNNING) { "再生成中のエピソードは削除できません" }
       require(
         status == PodcastEpisodeStatus.READY ||
           status == PodcastEpisodeStatus.ARCHIVED ||
@@ -177,7 +171,6 @@ class SqlitePodcastRepository(
           put("status", PodcastEpisodeStatus.DELETED.name)
           putNull("script")
           putNull("error_message")
-          putNull("regeneration_status")
           putNull("clustering_status")
           putNull("last_played_chapter")
         },
@@ -191,7 +184,7 @@ class SqlitePodcastRepository(
 
   override suspend fun listGenerationTasks(): List<PodcastGenerationTask> = database.readable.rawQuery(
     """
-      SELECT e.id,e.title,e.created_at,e.status,e.error_message,e.regeneration_status,
+      SELECT e.id,e.title,e.created_at,e.status,e.error_message,
              p.name AS program_name,p.provider,
              COUNT(DISTINCT COALESCE(a.chapter_position,a.position)) AS total_chapters,
              COUNT(DISTINCT CASE
@@ -202,8 +195,8 @@ class SqlitePodcastRepository(
       FROM podcast_episodes e
       JOIN podcast_programs p ON p.id=e.program_id
       LEFT JOIN podcast_episode_articles a ON a.episode_id=e.id
-      WHERE e.status IN (?,?,?) OR e.regeneration_status IS NOT NULL
-      GROUP BY e.id,e.title,e.created_at,e.status,e.error_message,e.regeneration_status,p.name,p.provider
+      WHERE e.status IN (?,?,?)
+      GROUP BY e.id,e.title,e.created_at,e.status,e.error_message,p.name,p.provider
       ORDER BY e.created_at DESC,e.id DESC
     """.trimIndent(),
     arrayOf(
@@ -215,10 +208,7 @@ class SqlitePodcastRepository(
     buildList {
       while (cursor.moveToNext()) {
         val status = PodcastEpisodeStatus.valueOf(cursor.string("status"))
-        val regeneration = cursor.nullableString("regeneration_status")?.let(PodcastRegenerationStatus::valueOf)
         val state = when {
-          regeneration == PodcastRegenerationStatus.RUNNING -> PodcastGenerationTaskState.RUNNING
-          regeneration == PodcastRegenerationStatus.FAILED -> PodcastGenerationTaskState.FAILED
           status == PodcastEpisodeStatus.QUEUED -> PodcastGenerationTaskState.QUEUED
           status == PodcastEpisodeStatus.GENERATING -> PodcastGenerationTaskState.RUNNING
           status == PodcastEpisodeStatus.FAILED -> PodcastGenerationTaskState.FAILED
@@ -243,23 +233,21 @@ class SqlitePodcastRepository(
 
   override suspend fun findInterruptedGenerationEpisode(programId: String): PodcastEpisode? =
     database.readable.rawQuery(
-      "SELECT * FROM podcast_episodes WHERE program_id=? AND (status=? OR regeneration_status=?) ORDER BY created_at,id LIMIT 1",
-      arrayOf(programId, PodcastEpisodeStatus.GENERATING.name, PodcastRegenerationStatus.RUNNING.name),
+      "SELECT * FROM podcast_episodes WHERE program_id=? AND status=? ORDER BY created_at,id LIMIT 1",
+      arrayOf(programId, PodcastEpisodeStatus.GENERATING.name),
     ).use { cursor -> if (cursor.moveToFirst()) cursor.episode(database) else null }
 
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
     val episodeId = database.transaction {
       val pending = rawQuery(
         "SELECT id,status FROM podcast_episodes " +
-          "WHERE program_id=? AND (status IN (?,?) OR regeneration_status=?) " +
-          "ORDER BY CASE WHEN status=? OR regeneration_status=? THEN 0 ELSE 1 END, created_at, id LIMIT 1",
+          "WHERE program_id=? AND status IN (?,?) " +
+          "ORDER BY CASE WHEN status=? THEN 0 ELSE 1 END, created_at, id LIMIT 1",
         arrayOf(
           programId,
           PodcastEpisodeStatus.GENERATING.name,
           PodcastEpisodeStatus.QUEUED.name,
-          PodcastRegenerationStatus.RUNNING.name,
           PodcastEpisodeStatus.GENERATING.name,
-          PodcastRegenerationStatus.RUNNING.name,
         ),
       ).use { cursor ->
         if (!cursor.moveToFirst()) null else cursor.getString(0) to PodcastEpisodeStatus.valueOf(cursor.getString(1))
@@ -380,7 +368,6 @@ class SqlitePodcastRepository(
         ContentValues().apply {
           put("status", PodcastEpisodeStatus.GENERATING.name)
           putNull("error_message")
-          putNull("regeneration_status")
         },
         "id=? AND status=?",
         arrayOf(episodeId, PodcastEpisodeStatus.FAILED.name),
@@ -398,17 +385,15 @@ class SqlitePodcastRepository(
     require(candidates.isNotEmpty()) { "rebuild candidates must not be empty" }
     database.transaction {
       val state = rawQuery(
-        "SELECT status,regeneration_status FROM podcast_episodes WHERE id=? LIMIT 1",
+        "SELECT status FROM podcast_episodes WHERE id=? LIMIT 1",
         arrayOf(episodeId),
       ).use { cursor ->
         require(cursor.moveToFirst()) { "episode not found: $episodeId" }
-        PodcastEpisodeStatus.valueOf(cursor.getString(0)) to
-          (if (cursor.isNull(1)) null else PodcastRegenerationStatus.valueOf(cursor.getString(1)))
+        PodcastEpisodeStatus.valueOf(cursor.getString(0))
       }
-      require(state.first == PodcastEpisodeStatus.READY || state.first == PodcastEpisodeStatus.FAILED) {
+      require(state == PodcastEpisodeStatus.READY || state == PodcastEpisodeStatus.FAILED) {
         "only ready or failed episodes can be rebuilt"
       }
-      require(state.second != PodcastRegenerationStatus.RUNNING) { "episode regeneration already running: $episodeId" }
 
       delete("podcast_episode_articles", "episode_id=?", arrayOf(episodeId))
       candidates.forEachIndexed { position, article ->
@@ -439,7 +424,6 @@ class SqlitePodcastRepository(
           put("status", PodcastEpisodeStatus.GENERATING.name)
           putNull("script")
           putNull("error_message")
-          putNull("regeneration_status")
           putNull("last_played_chapter")
           put("clustering_status", clusteringStatus.name)
         },
@@ -527,22 +511,6 @@ class SqlitePodcastRepository(
       },
     )
 
-  override suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode {
-    database.write {
-      val updated = update(
-        "podcast_episodes",
-        ContentValues().apply {
-          put("regeneration_status", PodcastRegenerationStatus.FAILED.name)
-          put("error_message", message.take(1000))
-        },
-        "id=? AND status=?",
-        arrayOf(episodeId, PodcastEpisodeStatus.READY.name),
-      )
-      require(updated == 1) { "ready episode not found: $episodeId" }
-    }
-    return requireNotNull(findEpisode(episodeId))
-  }
-
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode {
     database.write {
       val updated = update(
@@ -552,7 +520,6 @@ class SqlitePodcastRepository(
           put("status", PodcastEpisodeStatus.READY.name)
           put("script", script)
           putNull("error_message")
-          putNull("regeneration_status")
         },
         "id=?",
         arrayOf(episodeId),
@@ -569,7 +536,6 @@ class SqlitePodcastRepository(
         ContentValues().apply {
           put("status", PodcastEpisodeStatus.FAILED.name)
           put("error_message", message.take(1000))
-          putNull("regeneration_status")
         },
         "id=?",
         arrayOf(episodeId),
