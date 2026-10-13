@@ -1,0 +1,342 @@
+package dev.terashima.yomitorirss.feature.podcast
+
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+
+data class PodcastGenerationProgress(
+  val completedChapters: Int,
+  val totalChapters: Int,
+) {
+  init {
+    require(totalChapters >= 0) { "totalChapters must not be negative" }
+    require(completedChapters in 0..totalChapters) { "completedChapters must be within totalChapters" }
+  }
+}
+
+class PodcastGenerationAlreadyRunningException(programId: String) :
+  IllegalStateException("podcast generation already in progress: $programId")
+
+sealed interface PodcastGenerationResult {
+  data class Generated(val episode: PodcastEpisode) : PodcastGenerationResult
+  data object NoNewArticles : PodcastGenerationResult
+}
+
+private data class PodcastClusteredCandidates(
+  val entries: List<PodcastFeedEntry>,
+  val status: PodcastClusteringStatus,
+)
+
+class GeneratePodcastEpisodeUseCase(
+  private val repository: PodcastRepository,
+  private val feedContentSource: PodcastFeedContentSource,
+  private val scriptGenerator: PodcastScriptGenerator,
+  private val nowEpochMillis: () -> Long = System::currentTimeMillis,
+  private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
+  private val topicClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
+  private val newsCategorizer: PodcastNewsCategorizer = OtherPodcastNewsCategorizer,
+  private val newsExcluder: PodcastNewsExcluder = IncludeAllPodcastNews,
+  private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
+) {
+  private val activeProgramIds = mutableSetOf<String>()
+
+  suspend fun generate(
+    programId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult = generate(programId, null, onProgress)
+
+  suspend fun generate(
+    programId: String,
+    modeOverride: PodcastClusteringMode?,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult = withProgramGeneration(programId) {
+    val savedProgram = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
+    val program = savedProgram.copy(clusteringMode = modeOverride ?: savedProgram.clusteringMode)
+    repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it, onProgress) }
+    val sources = repository.listSources().filter { it.id in program.sourceIds }
+    require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
+      "番組に利用できないソースがあります。番組設定を確認してください"
+    }
+    val candidates = feedContentSource.latestEntries(sources, Int.MAX_VALUE)
+    val availableCandidates = candidateFilter.availableEntries(program.id, candidates)
+    if (availableCandidates.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val exclusion = if (program.exclusionPrompt.isBlank()) {
+      PodcastNewsExclusionResult(availableCandidates, emptyList())
+    } else {
+      validateExclusionResult(
+        availableCandidates,
+        newsExcluder.filter(program.provider, program.exclusionPrompt, availableCandidates),
+      )
+    }
+    if (exclusion.excluded.isNotEmpty()) {
+      repository.recordExcludedEntries(program.id, exclusion.excluded, nowEpochMillis())
+    }
+    if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val clustered = clusterCandidates(program, exclusion.included)
+    val reserved = repository.reserveEpisode(
+      program = program,
+      candidates = clustered.entries,
+      createdAtEpochMillis = nowEpochMillis(),
+      clusteringStatus = clustered.status,
+    ) ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    generateReserved(program, reserved, onProgress)
+  }
+
+  suspend fun retry(
+    episodeId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated {
+    val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(initial.programId) {
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(episode.status == PodcastEpisodeStatus.FAILED) { "only failed episodes can be retried" }
+      val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      generateReserved(program, repository.prepareEpisodeRetry(episode.id), onProgress)
+    }
+  }
+
+  suspend fun regenerate(
+    episodeId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated {
+    val initial = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(initial.programId) {
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(episode.status == PodcastEpisodeStatus.READY || episode.status == PodcastEpisodeStatus.FAILED) {
+        "only ready or failed episodes can be regenerated"
+      }
+      val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      val candidates = episode.articles.map(PodcastEpisodeArticle::toFeedEntry)
+      val exclusion = if (program.exclusionPrompt.isBlank()) {
+        PodcastNewsExclusionResult(candidates, emptyList())
+      } else {
+        validateExclusionResult(
+          candidates,
+          newsExcluder.filter(program.provider, program.exclusionPrompt, candidates),
+        )
+      }
+      require(exclusion.included.isNotEmpty()) { "現在の除外条件では再生成対象の記事がありません" }
+      val clustered = clusterCandidates(program.copy(clusteringMode = episode.clusteringMode), exclusion.included)
+      val prepared = repository.prepareEpisodeRebuild(
+        episodeId = episode.id,
+        candidates = clustered.entries,
+        clusteringStatus = clustered.status,
+      )
+      generateReserved(program, prepared, onProgress)
+    }
+  }
+
+  suspend fun compare(
+    episodeId: String,
+    mode: PodcastClusteringMode,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated {
+    val original = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+    return withProgramGeneration(original.programId) {
+      val source = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      require(source.status == PodcastEpisodeStatus.READY) { "only ready episodes can be compared" }
+      require(source.clusteringMode != mode) { "comparison must use the alternative mode" }
+      val savedProgram = requireNotNull(repository.findProgram(source.programId)) { "program not found" }
+      val program = savedProgram.copy(clusteringMode = mode)
+      val clustered = clusterCandidates(program, source.articles.map(PodcastEpisodeArticle::toFeedEntry))
+      val comparison = repository.reserveComparisonEpisode(program, clustered.entries, nowEpochMillis(), clustered.status)
+      generateReserved(program, comparison, onProgress)
+    }
+  }
+
+  suspend fun resumeInterrupted(
+    programId: String,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
+  ): PodcastGenerationResult.Generated? = withProgramGeneration(programId) {
+    val program = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
+    val interrupted = repository.findInterruptedGenerationEpisode(programId) ?: return@withProgramGeneration null
+    generateReserved(program, interrupted, onProgress)
+  }
+
+  private fun validateExclusionResult(
+    candidates: List<PodcastFeedEntry>,
+    result: PodcastNewsExclusionResult,
+  ): PodcastNewsExclusionResult {
+    val expected = candidates.groupingBy { it }.eachCount()
+    val classified = (result.included + result.excluded).groupingBy { it }.eachCount()
+    val overlap = result.included.toSet().intersect(result.excluded.toSet())
+    return if (classified == expected && overlap.isEmpty()) {
+      result
+    } else {
+      PodcastNewsExclusionResult(candidates, emptyList())
+    }
+  }
+
+  private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): PodcastClusteredCandidates {
+    val classifier = if (program.clusteringMode == PodcastClusteringMode.TOPIC) topicClusterer else newsClusterer
+    val result = classifier.cluster(program.provider, candidates)
+    val groups = result.groups
+    require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
+      "news clusterer must contain every candidate exactly once"
+    }
+
+    val news = groups.map { indexes -> indexes.map(candidates::get) }
+    val preliminaryCategories = selectPodcastFeedCategories(news)
+    val uncategorizedIndexes = preliminaryCategories.indices.filter { preliminaryCategories[it] == null }
+    val supplementalCategories = mutableMapOf<Int, String>()
+    if (uncategorizedIndexes.isNotEmpty()) {
+      val uncategorizedNews = uncategorizedIndexes.map(news::get)
+      val generatedCategories = try {
+        newsCategorizer.categorize(
+          provider = program.provider,
+          news = uncategorizedNews,
+          existingCategories = preliminaryCategories.filterNotNull().toSet(),
+        )
+      } catch (error: CancellationException) {
+        throw error
+      } catch (_: Throwable) {
+        List(uncategorizedNews.size) { PODCAST_OTHER_CATEGORY }
+      }.takeIf { generated ->
+        generated.size == uncategorizedNews.size && generated.all { it.isNotBlank() }
+      } ?: List(uncategorizedNews.size) { PODCAST_OTHER_CATEGORY }
+
+      uncategorizedIndexes.zip(generatedCategories).forEach { (index, category) ->
+        supplementalCategories[index] = category
+      }
+    }
+
+    val categories = selectPodcastFeedCategories(news, supplementalCategories)
+      .map { it ?: PODCAST_OTHER_CATEGORY }
+    val orderedNews = orderPodcastNewsByCategory(news, categories)
+    return PodcastClusteredCandidates(
+      entries = orderedNews.flatMapIndexed { chapterPosition, articles ->
+        articles.map { article -> article.copy(chapterPosition = chapterPosition) }
+      },
+      status = result.status,
+    )
+  }
+
+  private suspend fun generateReserved(
+    program: PodcastProgram,
+    initialEpisode: PodcastEpisode,
+    onProgress: suspend (PodcastGenerationProgress) -> Unit,
+  ): PodcastGenerationResult.Generated {
+    val episodeId = initialEpisode.id
+    val regenerating = initialEpisode.regenerationStatus == PodcastRegenerationStatus.RUNNING
+    return try {
+      val groups = initialEpisode.chapterGroups()
+      val totalChapters = groups.size
+      val pendingPositions = groups.mapIndexedNotNull { position, group ->
+        val current = group.first()
+        position.takeUnless {
+          current.chapterStatus == PodcastChapterGenerationStatus.READY && !current.chapterScript.isNullOrBlank()
+        }
+      }
+
+      val progressMutex = Mutex()
+      var completedChapters = totalChapters - pendingPositions.size
+      reportProgress(onProgress, PodcastGenerationProgress(completedChapters, totalChapters))
+      val chapterCompleted: suspend () -> Unit = {
+        progressMutex.withLock {
+          completedChapters += 1
+          reportProgress(onProgress, PodcastGenerationProgress(completedChapters, totalChapters))
+        }
+      }
+
+      if (program.provider == PodcastGenerationProvider.CLOUD && pendingPositions.size > 1) {
+        val failures = coroutineScope {
+          val semaphore = Semaphore(CLOUD_CHAPTER_PARALLELISM)
+          pendingPositions.map { position ->
+            async {
+              semaphore.withPermit {
+                try {
+                  generateChapter(program, episodeId, position, totalChapters, chapterCompleted)
+                  null
+                } catch (error: CancellationException) {
+                  throw error
+                } catch (error: Throwable) {
+                  error
+                }
+              }
+            }
+          }.awaitAll()
+        }
+        failures.filterNotNull().firstOrNull()?.let { throw it }
+      } else {
+        pendingPositions.forEach { position ->
+          generateChapter(program, episodeId, position, totalChapters, chapterCompleted)
+        }
+      }
+
+      val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
+      val script = buildPodcastEpisodeScriptFromChapters(program.name, episode.chapterGroups())
+      val title = buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
+      PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
+    } catch (error: CancellationException) {
+      throw error
+    } catch (error: Throwable) {
+      val message = error.message ?: error::class.simpleName ?: "generation failed"
+      if (regenerating) runCatching { repository.failRegeneration(episodeId, message) }
+      else runCatching { repository.failEpisode(episodeId, message) }
+      throw error
+    }
+  }
+
+  private suspend fun generateChapter(
+    program: PodcastProgram,
+    episodeId: String,
+    position: Int,
+    totalChapters: Int,
+    onCompleted: suspend () -> Unit = {},
+  ) {
+    try {
+      val episode = repository.markChapterGenerating(episodeId, position)
+      val group = episode.chapterGroups()[position]
+      val chapterScript = scriptGenerator.generate(
+        program.provider,
+        buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters, episode.clusteringMode),
+      ).trim()
+      require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
+      repository.completeChapter(episodeId, position, chapterScript)
+      onCompleted()
+    } catch (error: CancellationException) {
+      throw error
+    } catch (error: Throwable) {
+      val message = error.message ?: error::class.simpleName ?: "generation failed"
+      runCatching { repository.failChapter(episodeId, position, message) }
+      throw error
+    }
+  }
+
+  private suspend fun reportProgress(
+    onProgress: suspend (PodcastGenerationProgress) -> Unit,
+    progress: PodcastGenerationProgress,
+  ) {
+    try {
+      onProgress(progress)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Throwable) {
+      // Progress is an observational projection. Failure to publish it must not corrupt chapter state.
+    }
+  }
+
+  private suspend fun <T> withProgramGeneration(programId: String, block: suspend () -> T): T {
+    if (!synchronized(activeProgramIds) { activeProgramIds.add(programId) }) {
+      throw PodcastGenerationAlreadyRunningException(programId)
+    }
+    return try { block() } finally { synchronized(activeProgramIds) { activeProgramIds.remove(programId) } }
+  }
+}
+
+private fun PodcastEpisodeArticle.toFeedEntry(): PodcastFeedEntry = PodcastFeedEntry(
+  articleId = articleId,
+  feedId = feedId,
+  title = title,
+  sourceTitle = sourceTitle,
+  publishedAtEpochMillis = publishedAtEpochMillis,
+  articleUrl = articleUrl,
+  feedContent = feedContent,
+)
+
+private const val CLOUD_CHAPTER_PARALLELISM = 3
