@@ -88,7 +88,6 @@ data class PodcastFeedEntry(
 }
 
 enum class PodcastChapterGenerationStatus { PENDING, GENERATING, READY, FAILED }
-enum class PodcastRegenerationStatus { RUNNING, FAILED }
 enum class PodcastClusteringStatus { SUCCESS, FALLBACK_INFERENCE_ERROR, FALLBACK_INVALID_OUTPUT, SKIPPED }
 
 data class PodcastEpisodeArticle(
@@ -123,7 +122,6 @@ data class PodcastEpisode(
   val articles: List<PodcastEpisodeArticle>,
   val script: String? = null,
   val errorMessage: String? = null,
-  val regenerationStatus: PodcastRegenerationStatus? = null,
   val clusteringStatus: PodcastClusteringStatus? = null,
   val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
   val lastPlayedChapter: Int? = null,
@@ -228,7 +226,7 @@ interface PodcastRepository {
 
   suspend fun findInterruptedGenerationEpisode(programId: String): PodcastEpisode? =
     listEpisodes(programId).asSequence()
-      .filter { it.status == PodcastEpisodeStatus.GENERATING || it.regenerationStatus == PodcastRegenerationStatus.RUNNING }
+      .filter { it.status == PodcastEpisodeStatus.GENERATING }
       .minWithOrNull(compareBy<PodcastEpisode> { it.createdAtEpochMillis }.thenBy { it.id })
 
   suspend fun claimPendingEpisode(programId: String): PodcastEpisode?
@@ -254,7 +252,6 @@ interface PodcastRepository {
   suspend fun markChapterGenerating(episodeId: String, position: Int): PodcastEpisode
   suspend fun completeChapter(episodeId: String, position: Int, script: String): PodcastEpisode
   suspend fun failChapter(episodeId: String, position: Int, message: String): PodcastEpisode
-  suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode
   suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode
   suspend fun failEpisode(episodeId: String, message: String): PodcastEpisode
 }
