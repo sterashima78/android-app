@@ -36,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -80,6 +81,7 @@ data class IntegratedItem(
   val isDeferred: Boolean = false,
   val isStarred: Boolean = false,
   val annotation: String? = null,
+  val recommendationScore: Int? = null,
 )
 
 data class IntegratedItemAction(
@@ -125,6 +127,8 @@ fun IntegratedScreen(
   selectedTab: IntegratedTab,
   items: List<IntegratedItem>,
   isRefreshing: Boolean,
+  newestFirst: Boolean,
+  onToggleDateOrder: () -> Unit,
   onSelectTab: (IntegratedTab) -> Unit,
   onRefresh: () -> Unit,
   onMarkProcessed: (IntegratedItem) -> Unit,
@@ -155,6 +159,16 @@ fun IntegratedScreen(
       counts = items.groupingBy(IntegratedItem::source).eachCount(),
       onSelect = { selectedSourceName = it.name },
     )
+    if (selectedTab == IntegratedTab.UNREAD) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.End,
+      ) {
+        TextButton(onClick = onToggleDateOrder) {
+          Text(if (newestFirst) "新しい順 ↓" else "古い順 ↑")
+        }
+      }
+    }
     PullToRefreshContainer(
       modifier = Modifier.weight(1f),
       isRefreshing = isRefreshing,

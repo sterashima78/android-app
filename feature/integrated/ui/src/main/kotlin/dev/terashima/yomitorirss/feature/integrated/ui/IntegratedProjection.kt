@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.feature.mail.MailUiState
 import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
 import dev.terashima.yomitorirss.feature.rss.recommendationAnnotationFor
+import dev.terashima.yomitorirss.feature.rss.recommendationScoreFor
 import java.time.Instant
 
 internal sealed interface IntegratedTarget {
@@ -24,6 +25,7 @@ internal fun integratedEntries(
   redditState: RedditUiState,
   mailState: MailUiState,
   tab: IntegratedTab = IntegratedTab.UNREAD,
+  newestFirst: Boolean = true,
 ): List<IntegratedEntry> {
   val accountLabels = mailState.accounts.associate { account ->
     account.id to (account.displayName?.takeIf(String::isNotBlank) ?: account.email)
@@ -40,6 +42,7 @@ internal fun integratedEntries(
                 source = IntegratedSource.RSS,
                 target = IntegratedTarget.Rss(article),
                 annotation = rssState.recommendationAnnotationFor(article.id),
+                recommendationScore = rssState.recommendationScoreFor(article.id),
               ),
             )
           }
@@ -81,7 +84,14 @@ internal fun integratedEntries(
     }
   }
   return when (tab) {
-    IntegratedTab.UNREAD -> entries.sortedByDescending { it.item.timestamp }
+    IntegratedTab.UNREAD -> {
+      val byScore = compareByDescending<IntegratedEntry> { it.item.recommendationScore }
+      if (newestFirst) {
+        entries.sortedWith(byScore.thenByDescending { it.item.timestamp }.thenBy { it.item.key })
+      } else {
+        entries.sortedWith(byScore.thenBy { it.item.timestamp }.thenBy { it.item.key })
+      }
+    }
     IntegratedTab.READ_LATER -> entries.sortedBy { it.item.timestamp }
     IntegratedTab.HISTORY -> entries.sortedByDescending { it.item.timestamp }
   }
@@ -93,6 +103,7 @@ private fun articleEntry(
   target: IntegratedTarget,
   timestamp: Long = article.eventTimeMillis(),
   annotation: String? = null,
+  recommendationScore: Int? = null,
 ): IntegratedEntry = IntegratedEntry(
   item = IntegratedItem(
     key = "${source.name.lowercase()}:${article.id}",
@@ -100,6 +111,7 @@ private fun articleEntry(
     title = article.title,
     subtitle = article.sourceTitle,
     annotation = annotation,
+    recommendationScore = recommendationScore,
     timestamp = timestamp,
   ),
   target = target,

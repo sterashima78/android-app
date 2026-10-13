@@ -65,6 +65,7 @@ fun ArticleList(
   bookmarkDetails: Map<String, BookmarkedArticle> = emptyMap(),
   displayedAtByArticleId: Map<String, String> = emptyMap(),
   annotationByArticleId: Map<String, String> = emptyMap(),
+  preserveSortOrder: Boolean = false,
   left: SwipeChoice? = null,
   farLeft: SwipeChoice? = null,
   right: SwipeChoice? = null,
@@ -77,8 +78,12 @@ fun ArticleList(
   onSetContentType: ((Article, ContentType?) -> Unit)? = null,
   extraMenuActions: (Article) -> List<ArticleMenuAction> = { emptyList() },
 ) {
-  val groups = articles.groupBy { article ->
-    dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
+  val groups = if (preserveSortOrder) {
+    consecutiveDateGroups(articles, displayedAtByArticleId)
+  } else {
+    articles.groupBy { article ->
+      dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
+    }.toList()
   }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
     if (articles.isEmpty()) {
@@ -88,8 +93,8 @@ fun ArticleList(
         }
       }
     }
-    groups.forEach { (date, values) ->
-      stickyHeader(key = "header-$date") {
+    groups.forEachIndexed { index, (date, values) ->
+      stickyHeader(key = if (preserveSortOrder) "header-$index-$date" else "header-$date") {
         Surface(color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f)) {
           Text(
             date,
@@ -120,6 +125,23 @@ fun ArticleList(
       }
     }
   }
+}
+
+// Only group adjacent dates. Grouping globally by date would undo score-first sorting.
+internal fun consecutiveDateGroups(
+  articles: List<Article>,
+  displayedAtByArticleId: Map<String, String> = emptyMap(),
+): List<Pair<String, List<Article>>> {
+  val groups = mutableListOf<Pair<String, MutableList<Article>>>()
+  articles.forEach { article ->
+    val date = dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
+    if (groups.lastOrNull()?.first == date) {
+      groups.last().second.add(article)
+    } else {
+      groups.add(date to mutableListOf(article))
+    }
+  }
+  return groups
 }
 
 @Composable

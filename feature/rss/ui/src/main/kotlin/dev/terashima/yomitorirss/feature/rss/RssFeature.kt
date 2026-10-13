@@ -23,6 +23,7 @@ import dev.terashima.yomitorirss.feature.article.ArticleList
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
+import java.time.Instant
 
 internal val rssUnreadLeftSwipeBehavior = SwipeBehavior.DeliberateFarAction
 
@@ -68,26 +69,42 @@ fun RssScreen(
   onListen: (List<BookmarkedArticle>) -> Unit,
 ) {
   when (tab) {
-    RssTab.UNREAD -> ArticleList(
-      modifier = modifier,
-      articles = state.unread.filterNot { it.id in state.hiddenArticleIds },
-      emptyText = "未読記事はありません",
-      annotationByArticleId = state.unread.mapNotNull { article ->
-        state.recommendationAnnotationFor(article.id)?.let { annotation ->
-          article.id to annotation
+    RssTab.UNREAD -> {
+      var newestFirst by rememberSaveable { mutableStateOf(true) }
+      val visibleUnread = state.unread.filterNot { it.id in state.hiddenArticleIds }
+      val sortedUnread = sortRssUnread(visibleUnread, state, newestFirst)
+      Column(modifier.fillMaxSize()) {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+          horizontalArrangement = Arrangement.End,
+        ) {
+          TextButton(onClick = { newestFirst = !newestFirst }) {
+            Text(if (newestFirst) "新しい順 ↓" else "古い順 ↑")
+          }
         }
-      }.toMap(),
-      left = SwipeChoice("既読", MaterialTheme.colorScheme.primary, onMarkRead),
-      farLeft = SwipeChoice("除外参考", MaterialTheme.colorScheme.error, onExclusionReference),
-      right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
-      farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
-      leftSwipeBehavior = rssUnreadLeftSwipeBehavior,
-      onOpen = onOpen,
-      onSummarize = onSummarize,
-      onEditTags = onEditTags,
-      onMoveFolder = onMoveFolder,
-      onSetContentType = onSetContentType,
-    )
+        ArticleList(
+          modifier = Modifier.weight(1f),
+          articles = sortedUnread,
+          emptyText = "未読記事はありません",
+          preserveSortOrder = true,
+          annotationByArticleId = sortedUnread.mapNotNull { article ->
+            state.recommendationAnnotationFor(article.id)?.let { annotation ->
+              article.id to annotation
+            }
+          }.toMap(),
+          left = SwipeChoice("既読", MaterialTheme.colorScheme.primary, onMarkRead),
+          farLeft = SwipeChoice("除外参考", MaterialTheme.colorScheme.error, onExclusionReference),
+          right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
+          farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
+          leftSwipeBehavior = rssUnreadLeftSwipeBehavior,
+          onOpen = onOpen,
+          onSummarize = onSummarize,
+          onEditTags = onEditTags,
+          onMoveFolder = onMoveFolder,
+          onSetContentType = onSetContentType,
+        )
+      }
+    }
 
     RssTab.READ_LATER -> {
       var oldestFirst by rememberSaveable { mutableStateOf(true) }
@@ -160,6 +177,33 @@ fun RssScreen(
 
     RssTab.FEEDS,
     RssTab.SETTINGS -> Unit
+  }
+}
+
+internal fun sortRssUnread(
+  articles: List<Article>,
+  state: RssUiState,
+  newestFirst: Boolean,
+): List<Article> {
+  val byScore = compareByDescending<Article> { state.recommendationScoreFor(it.id) }
+  return if (newestFirst) {
+    articles.sortedWith(byScore.thenByDescending(::rssArticleTimeMillis).thenBy(Article::id))
+  } else {
+    articles.sortedWith(byScore.thenBy(::rssArticleTimeMillis).thenBy(Article::id))
+  }
+}
+
+private fun rssArticleTimeMillis(article: Article): Long =
+  sequenceOf(article.publishedAt, article.fetchedAt)
+    .mapNotNull { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+    .firstOrNull()
+    ?: 0L
+
+fun RssUiState.recommendationScoreFor(articleId: String): Int? {
+  val assessment = recommendationAssessments[articleId] as? RssRecommendationAssessment.Scored
+    ?: return null
+  return assessment.score.takeIf {
+    recommendationPolicy.enabled && assessment.revision == recommendationPolicy.revision
   }
 }
 
