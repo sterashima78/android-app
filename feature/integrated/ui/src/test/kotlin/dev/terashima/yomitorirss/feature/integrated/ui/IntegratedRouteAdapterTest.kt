@@ -81,6 +81,39 @@ class IntegratedRouteAdapterTest {
   }
 
   @Test
+  fun `統合未読はRSS推薦スコアを最優先しスコアなし全sourceを日時順にする`() {
+    val high = article("high", "2026-08-11T09:00:00Z")
+    val low = article("low", "2026-08-11T14:00:00Z")
+    val unscored = article("unscored", "2026-08-11T17:00:00Z")
+    val reddit = article("reddit", "2026-08-11T16:00:00Z")
+    val mail = mail("mail", "2026-08-11T18:00:00Z", isUnread = true)
+    val rssState = RssUiState(
+      initialized = true,
+      unread = listOf(unscored, low, high),
+      recommendationPolicy = RssRecommendationPolicy(manualCondition = "不要な記事を低くする", revision = 3L),
+      recommendationAssessments = mapOf(
+        high.id to RssRecommendationAssessment.Scored(score = 9, revision = 3L, assessedAt = 1L),
+        low.id to RssRecommendationAssessment.Scored(score = 2, revision = 3L, assessedAt = 1L),
+      ),
+    )
+    val redditState = RedditUiState(initialized = true, unread = listOf(reddit))
+    val mailState = MailUiState(initialized = true, threads = listOf(mail))
+
+    val newest = integratedEntries(rssState, redditState, mailState, newestFirst = true)
+    assertEquals(
+      listOf("rss:high", "rss:low", "mail:account:mail", "rss:unscored", "reddit:reddit"),
+      newest.map { it.item.key },
+    )
+    assertEquals(listOf(9, 2, null, null, null), newest.map { it.item.recommendationScore })
+
+    val oldest = integratedEntries(rssState, redditState, mailState, newestFirst = false)
+    assertEquals(
+      listOf("rss:high", "rss:low", "reddit:reddit", "rss:unscored", "mail:account:mail"),
+      oldest.map { it.item.key },
+    )
+  }
+
+  @Test
   fun `あとで読むアイテムを各機能から古い順に統合する`() {
     val rss = article("rss-later", "2026-08-11T09:00:00Z")
     val reddit = article("reddit-later", "2026-08-11T10:00:00Z")
