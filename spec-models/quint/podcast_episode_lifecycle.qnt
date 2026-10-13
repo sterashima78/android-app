@@ -29,80 +29,80 @@ module podcast_episode_lifecycle {
   action init = all {
     status' = QUEUED,
     snapshotPresent' = true,
-    consumedIdentityPresent' = true,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = true,
+    playbackChapterRecorded' = false,
   }
 
   action startGeneration = all {
     status == QUEUED,
     status' = GENERATING,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action completeGeneration = all {
     status == GENERATING,
     status' = READY,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action failGeneration = all {
     status == GENERATING,
     status' = FAILED,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action retryFailure = all {
     status == FAILED,
     status' = GENERATING,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action regenerateEpisode = all {
     (status == READY or status == FAILED),
     status' = GENERATING,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action archiveEpisode = all {
     status == READY,
     status' = ARCHIVED,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action restoreEpisode = all {
     status == ARCHIVED,
     status' = READY,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action deleteEpisode = all {
     (status == READY or status == ARCHIVED or status == FAILED),
     status' = DELETED,
     snapshotPresent' = false,
-    consumedIdentityPresent' = true,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = true,
+    playbackChapterRecorded' = false,
   }
 
   action remainDeleted = all {
     status == DELETED,
     status' = DELETED,
     snapshotPresent' = false,
-    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
-
+    consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = false,
   }
 
   action recordPlaybackChapter = all {
