@@ -6,6 +6,10 @@ Podcast Contextはニュースポッドキャストの番組、入力source、ep
 
 RSS readerの購読状態やContentのread / unread stateはPodcastのsource of truthではない。Podcastで利用するRSS / Atom URLは `PodcastSource` としてPodcast Contextへ登録する。
 
+## Code responsibility split
+
+Podcast Domainの `Podcast.kt` はモデル・Repository等の契約と分類ルール、`PodcastGeneration.kt` は生成オーケストレーション、`PodcastScriptFormatting.kt` は原稿の生成・解析規則を所有する。Podcast Dataの `SqlitePodcastRepository.kt` は永続操作、`PodcastRowMappers.kt` はrow変換を所有する。UIでは `PodcastRoute.kt` が一覧・経路を、`PodcastProgramEditorDialog.kt` が番組編集フォームを所有する。分割は同一module内に限定し、Context boundaryは変えない。
+
 ## Source lifecycle
 
 `podcast_sources` は次を保持する。
