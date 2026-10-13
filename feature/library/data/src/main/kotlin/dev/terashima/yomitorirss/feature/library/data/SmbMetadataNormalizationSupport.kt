@@ -59,7 +59,7 @@ internal fun applyConfirmedSmbMetadata(
   val overrides = database.readable.rawQuery(
     """
       SELECT source_id, title, authors_json, publisher, published_date, isbn10, isbn13
-      FROM $DECISION_TABLE
+      FROM $SMB_NORMALIZATION_DECISION_TABLE
       WHERE decision_status = ?
     """.trimIndent(),
     arrayOf(SmbMetadataNormalizationStatus.APPLIED.name),
@@ -102,7 +102,7 @@ internal fun applyConfirmedSmbMetadata(
 internal fun ensureSmbMetadataNormalizationSchema(db: SQLiteDatabase) {
   db.execSQL(
     """
-      CREATE TABLE IF NOT EXISTS $BATCH_TABLE(
+      CREATE TABLE IF NOT EXISTS $SMB_NORMALIZATION_BATCH_TABLE(
         batch_id TEXT PRIMARY KEY NOT NULL,
         status TEXT NOT NULL,
         created_at INTEGER NOT NULL,
@@ -112,7 +112,7 @@ internal fun ensureSmbMetadataNormalizationSchema(db: SQLiteDatabase) {
   )
   db.execSQL(
     """
-      CREATE TABLE IF NOT EXISTS $ITEM_TABLE(
+      CREATE TABLE IF NOT EXISTS $SMB_NORMALIZATION_ITEM_TABLE(
         batch_id TEXT NOT NULL,
         source_id TEXT NOT NULL,
         original_file_name TEXT NOT NULL,
@@ -129,21 +129,21 @@ internal fun ensureSmbMetadataNormalizationSchema(db: SQLiteDatabase) {
       )
     """.trimIndent(),
   )
-  val itemColumns = db.rawQuery("PRAGMA table_info($ITEM_TABLE)", null).use { cursor ->
+  val itemColumns = db.rawQuery("PRAGMA table_info($SMB_NORMALIZATION_ITEM_TABLE)", null).use { cursor ->
     buildSet {
       val nameIndex = cursor.getColumnIndexOrThrow("name")
       while (cursor.moveToNext()) add(cursor.getString(nameIndex))
     }
   }
   if ("reanalysis_context" !in itemColumns) {
-    db.execSQL("ALTER TABLE $ITEM_TABLE ADD COLUMN reanalysis_context TEXT")
+    db.execSQL("ALTER TABLE $SMB_NORMALIZATION_ITEM_TABLE ADD COLUMN reanalysis_context TEXT")
   }
   db.execSQL(
-    "CREATE INDEX IF NOT EXISTS idx_smb_metadata_normalization_status ON $ITEM_TABLE(status, updated_at)",
+    "CREATE INDEX IF NOT EXISTS idx_smb_metadata_normalization_status ON $SMB_NORMALIZATION_ITEM_TABLE(status, updated_at)",
   )
   db.execSQL(
     """
-      CREATE TABLE IF NOT EXISTS $DECISION_TABLE(
+      CREATE TABLE IF NOT EXISTS $SMB_NORMALIZATION_DECISION_TABLE(
         source_id TEXT PRIMARY KEY NOT NULL,
         decision_status TEXT NOT NULL,
         title TEXT,
@@ -166,13 +166,13 @@ internal fun migrateSmbMetadataNormalizationIdentity(
   if (originalSourceId == renamedSourceId) return
   ensureSmbMetadataNormalizationSchema(db)
   db.update(
-    DECISION_TABLE,
+    SMB_NORMALIZATION_DECISION_TABLE,
     ContentValues().apply { put("source_id", renamedSourceId) },
     "source_id = ?",
     arrayOf(originalSourceId),
   )
   db.update(
-    ITEM_TABLE,
+    SMB_NORMALIZATION_ITEM_TABLE,
     ContentValues().apply { put("source_id", renamedSourceId) },
     "source_id = ?",
     arrayOf(originalSourceId),
@@ -181,13 +181,13 @@ internal fun migrateSmbMetadataNormalizationIdentity(
 
 internal fun deleteSmbMetadataNormalizationIdentity(db: SQLiteDatabase, sourceId: String) {
   ensureSmbMetadataNormalizationSchema(db)
-  db.delete(DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
-  db.delete(ITEM_TABLE, "source_id = ?", arrayOf(sourceId))
+  db.delete(SMB_NORMALIZATION_DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
+  db.delete(SMB_NORMALIZATION_ITEM_TABLE, "source_id = ?", arrayOf(sourceId))
 }
 
 internal fun finishBatchIfIdle(db: SQLiteDatabase, batchId: String, now: Long) {
   val remaining = db.rawQuery(
-    "SELECT COUNT(*) FROM $ITEM_TABLE WHERE batch_id = ? AND status IN (?, ?, ?)",
+    "SELECT COUNT(*) FROM $SMB_NORMALIZATION_ITEM_TABLE WHERE batch_id = ? AND status IN (?, ?, ?)",
     arrayOf(
       batchId,
       SmbMetadataNormalizationStatus.WAITING_FOR_COVER.name,
@@ -197,7 +197,7 @@ internal fun finishBatchIfIdle(db: SQLiteDatabase, batchId: String, now: Long) {
   ).use { cursor -> cursor.moveToFirst(); cursor.getInt(0) }
   if (remaining == 0) {
     db.update(
-      BATCH_TABLE,
+      SMB_NORMALIZATION_BATCH_TABLE,
       ContentValues().apply {
         put("status", SmbMetadataNormalizationBatchStatus.COMPLETED.name)
         put("updated_at", now)
@@ -375,6 +375,6 @@ internal val REANALYZABLE_STATUSES = setOf(
 internal const val SMB_METADATA_NORMALIZATION_BATCH_TABLE = "smb_metadata_normalization_batches"
 internal const val SMB_METADATA_NORMALIZATION_ITEM_TABLE = "smb_metadata_normalization_items"
 internal const val SMB_METADATA_NORMALIZATION_DECISION_TABLE = "smb_metadata_normalization_decisions"
-internal const val BATCH_TABLE = SMB_METADATA_NORMALIZATION_BATCH_TABLE
-internal const val ITEM_TABLE = SMB_METADATA_NORMALIZATION_ITEM_TABLE
-internal const val DECISION_TABLE = SMB_METADATA_NORMALIZATION_DECISION_TABLE
+internal const val SMB_NORMALIZATION_BATCH_TABLE = SMB_METADATA_NORMALIZATION_BATCH_TABLE
+internal const val SMB_NORMALIZATION_ITEM_TABLE = SMB_METADATA_NORMALIZATION_ITEM_TABLE
+internal const val SMB_NORMALIZATION_DECISION_TABLE = SMB_METADATA_NORMALIZATION_DECISION_TABLE
