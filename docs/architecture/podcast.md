@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Podcast Contextはニュースポッドキャストの番組、入力source、episode生成queue、生成時の記事・ニュースクラスタsnapshot、ニュース分類の診断状態、ニュースチャプター単位の生成checkpoint、番組単位のentry消費状態と除外済みentry identity、自然文の除外条件、生成原稿、定刻設定を所有する。
+Podcast Contextはニュースポッドキャストの番組、入力source、episode生成queue、生成時の記事・ニュースクラスタsnapshot、ニュース分類の診断状態、ニュースチャプター単位の生成checkpoint、番組単位のentry消費状態と除外済みentry identity、自然文の除外条件、生成原稿、定刻設定、再生可能なエピソードの最終再生チャプター番号を所有する。
 
 RSS readerの購読状態やContentのread / unread stateはPodcastのsource of truthではない。Podcastで利用するRSS / Atom URLは `PodcastSource` としてPodcast Contextへ登録する。
 
@@ -88,6 +88,12 @@ process終了やcoroutine cancellationによって初回生成の `GENERATING` �
 旧versionで開始済みの `regeneration_status=RUNNING` episodeは互換のため従来どおり同じsnapshotから再開する。新しい明示的な作り直しでは `regeneration_status` を新規作成しない。`regeneration_status=RUNNING` のepisodeでは重複操作、archive、deleteを引き続き拒否する。
 
 Podcast生成や再生はreader側の記事を既読化しない。
+
+## Playback chapter checkpoint
+
+`podcast_episodes.last_played_chapter` は nullable な1始まりの再生チャプター番号であり、Podcast Contextが所有するdurable stateである。Audioの一時的なqueueや再生時刻をPodcastへ保存するものではない。アプリ全体で共有する AudioPlaybackController の `currentItem.contentId` を composition の Podcast runtime が観測し、該当するepisodeが `READY` の場合だけ Repository 経由で記録する。画面のlifecycleに依存しないため、通知からのチャプター変更も反映できる。
+
+再生開始時には保存した番号をPodcast UIがAudioへ渡し、該当チャプターが存在しなければ先頭へfallbackする。Audioは最初に選んだチャプターから音声準備を開始し、既存のキュー順序を維持する。アーカイブと削除ではcheckpointを消去する。アーカイブ済みエピソードでは記録も復元も行わない。既存のdatabase snapshot backupへ含め、新しいWorkManagerや音声生成cacheは作らない。
 
 ## AI task queue projection
 
