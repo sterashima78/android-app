@@ -65,6 +65,7 @@ fun ArticleList(
   bookmarkDetails: Map<String, BookmarkedArticle> = emptyMap(),
   displayedAtByArticleId: Map<String, String> = emptyMap(),
   annotationByArticleId: Map<String, String> = emptyMap(),
+  preserveSortOrder: Boolean = false,
   left: SwipeChoice? = null,
   farLeft: SwipeChoice? = null,
   right: SwipeChoice? = null,
@@ -77,7 +78,13 @@ fun ArticleList(
   onSetContentType: ((Article, ContentType?) -> Unit)? = null,
   extraMenuActions: (Article) -> List<ArticleMenuAction> = { emptyList() },
 ) {
-  val groups = consecutiveDateGroups(articles, displayedAtByArticleId)
+  val groups = if (preserveSortOrder) {
+    consecutiveDateGroups(articles, displayedAtByArticleId)
+  } else {
+    articles.groupBy { article ->
+      dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
+    }.toList()
+  }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
     if (articles.isEmpty()) {
       item {
