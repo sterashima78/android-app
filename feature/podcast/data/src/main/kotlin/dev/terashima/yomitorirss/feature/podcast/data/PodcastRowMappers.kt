@@ -17,7 +17,6 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTask
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskState
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
-import dev.terashima.yomitorirss.feature.podcast.PodcastRegenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
@@ -102,7 +101,7 @@ internal fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
     },
     script = nullableString("script"),
     errorMessage = nullableString("error_message"),
-    regenerationStatus = nullableString("regeneration_status")?.let(PodcastRegenerationStatus::valueOf),
+
     clusteringStatus = nullableString("clustering_status")?.let(PodcastClusteringStatus::valueOf),
     clusteringMode = PodcastClusteringMode.valueOf(string("clustering_mode")),
     lastPlayedChapter = nullableInt("last_played_chapter"),
