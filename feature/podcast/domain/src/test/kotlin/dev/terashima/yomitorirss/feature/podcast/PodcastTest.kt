@@ -764,6 +764,7 @@ private class FakePodcastRepository(
     synchronized(episodes) { episodes.find { it.id == episodeId } }
   override suspend fun archiveEpisode(episodeId: String): PodcastEpisode = error("unused")
   override suspend fun restoreEpisode(episodeId: String): PodcastEpisode = error("unused")
+  override suspend fun recordPlaybackChapter(episodeId: String, chapterNumber: Int) = error("unused")
   override suspend fun deleteEpisode(episodeId: String) = error("unused")
 
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
