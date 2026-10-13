@@ -54,7 +54,7 @@ Podcast画面からの新規生成と作り直しは `PodcastGenerationControlle
 
 `PodcastGenerationWorker` は生成処理開始時にforeground workへ昇格し、episodeが予約された後は `PodcastGenerationProgress` を使ってREADY checkpoint数 / 全chapter数をongoing notificationへ反映する。notificationとWorkManager progressは観測用projectionであり、新しいdurable source of truthではない。
 
-旧versionが永続化したWorker inputとの互換のため、operation指定がない `PodcastGenerationWorker` は従来の定刻生成として解釈する。定刻生成だけがLocal / Cloudのbackground pause設定を尊重し、利用者が画面から明示的に開始した生成は従来の手動操作と同様に実行する。
+`PodcastGenerationWorker` はoperationを必須とし、未指定・未知のoperationは処理を失敗させる。定刻生成だけがLocal / Cloudのbackground pause設定を尊重し、利用者が画面から明示的に開始した生成は従来の手動操作と同様に実行する。
 
 Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Workerが更新したepisode / chapter stateを再読込する。UIはWorker stateそのものをPodcastのbusiness stateとして保持しない。
 
@@ -75,7 +75,7 @@ Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Wo
 13. 全cluster checkpointが `READY` になったら、Podcast Contextがchapter順に `chapter_script` を連結する。`[[CHAPTER:n]]` markerと番組の冒頭・締めはアプリ側で決定的に付与し、episode全体を対象とする追加AI推論は行わない。
 14. 完成したepisode原稿をAudio Contextへ再生委譲する。
 
-process終了やcoroutine cancellationによって初回生成の `GENERATING` または再生成の `regeneration_status=RUNNING` が残ったepisodeは、次のapplication background runtime起動時にも同じepisode ID、保存済み記事・cluster snapshot、checkpointから自動再開する。起動時再開は無関係な `QUEUED` をpromoteせず、新しいfeed候補も予約しない。定刻scheduleのreconciliationとは別のapplication-scope coroutineで実行し、新しいschedulerやdurable queueは追加しない。
+process終了やcoroutine cancellationによって `GENERATING` が残ったepisodeは、次のapplication background runtime起動時にも同じepisode ID、保存済み記事・cluster snapshot、checkpointから自動再開する。起動時再開は無関係な `QUEUED` をpromoteせず、新しいfeed候補も予約しない。定刻scheduleのreconciliationとは別のapplication-scope coroutineで実行し、新しいschedulerやdurable queueは追加しない。
 
 クラウドの有界並列生成でも各chapterは生成成功直後に `READY` と原稿をdurable checkpointへ保存する。中断時点で `READY` のchapterは再開時に再推論せず、`PENDING` / `GENERATING` / `FAILED` の未完了chapterだけを続行する。並列完了順は最終原稿の順序へ影響せず、全checkpoint完成後に `chapter_position` 順で組み立てる。
 
@@ -85,7 +85,7 @@ process終了やcoroutine cancellationによって初回生成の `GENERATING` �
 
 利用者が `READY` または `FAILED` episodeを明示的に「現在の条件で作り直す」場合は別経路とする。保存済みarticle snapshotを `PodcastFeedEntry` へ戻し、現在の番組の除外条件を再適用した後、`PodcastNewsClusterer` でcluster境界を再計算する。feed categoryはdurable snapshotへ複製しないため、作り直し時のclusterは保存済みtitle / source titleから `PodcastNewsCategorizer` でカテゴリを補完して並べ替える。全候補が除外された場合は既存episodeを変更せず終了する。候補が残る場合は同じepisode IDの `podcast_episode_articles` を新しいarticle / cluster snapshotへtransactionで置き換え、episode scriptを消去して `GENERATING` へ戻す。以降は通常生成と同じcheckpoint生成を行い、失敗時は `FAILED` とする。
 
-旧versionで開始済みの `regeneration_status=RUNNING` episodeは互換のため従来どおり同じsnapshotから再開する。新しい明示的な作り直しでは `regeneration_status` を新規作成しない。`regeneration_status=RUNNING` のepisodeでは重複操作、archive、deleteを引き続き拒否する。
+明示的な作り直しではepisode statusを `GENERATING` へ変更し、従来の `regeneration_status` は使用しない。生成中episodeの重複操作、archive、deleteはstatusで拒否する。
 
 Podcast生成や再生はreader側の記事を既読化しない。
 
@@ -111,9 +111,9 @@ Podcastのdurable generation stateはPodcast Contextに残し、`:feature:ai-tas
 
 ## Episode organization lifecycle
 
-`READY` episodeは、再生成中でなければ通常一覧から `ARCHIVED` へ移動でき、`ARCHIVED` episodeは `READY` へ復元できる。再生成失敗後にarchiveした場合は失敗したattempt状態を閉じ、既存の生成原稿と記事・cluster snapshotを保持する。generation queueは `QUEUED` / `GENERATING` と明示的な再生成状態だけを対象にするため、アーカイブ状態は生成予約や中断再開へ影響しない。
+`READY` episodeは、生成中でなければ通常一覧から `ARCHIVED` へ移動でき、`ARCHIVED` episodeは `READY` へ復元できる。再生成失敗後にarchiveした場合は失敗したattempt状態を閉じ、既存の生成原稿と記事・cluster snapshotを保持する。generation queueは `QUEUED` / `GENERATING` と明示的な再生成状態だけを対象にするため、アーカイブ状態は生成予約や中断再開へ影響しない。
 
-`READY` / `ARCHIVED` / `FAILED` episodeは、再生成中でなければ削除できる。削除はepisode rowの物理削除ではなく `DELETED` tombstoneへの不可逆な遷移とする。削除時にはtitle、script、error message、再生成状態、分類診断状態、`podcast_episode_articles` snapshotを消去するが、`podcast_consumed_articles` とその参照先として必要なepisode IDは保持する。これにより削除済みepisodeに由来するentryも未消費へ戻らず、新規episodeへ再利用されない。
+`READY` / `ARCHIVED` / `FAILED` episodeは、生成中でなければ削除できる。削除はepisode rowの物理削除ではなく `DELETED` tombstoneへの不可逆な遷移とする。削除時にはtitle、script、error message、分類診断状態、`podcast_episode_articles` snapshotを消去するが、`podcast_consumed_articles` とその参照先として必要なepisode IDは保持する。これにより削除済みepisodeに由来するentryも未消費へ戻らず、新規episodeへ再利用されない。
 
 通常一覧は `ARCHIVED` / `DELETED` を除外し、アーカイブ一覧は `ARCHIVED` だけを表示する。`DELETED` はどの一覧にも表示せず、再生、再生成、復元の対象にしない。
 
@@ -143,9 +143,9 @@ Podcast-owned tablesは次のとおり。
 
 ## Compatibility baseline
 
-application database versionは41で、更新互換性baselineはversion 38とする。fresh version 41 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnostics、番組・episodeの分類モード、episodeの最終再生チャプター番号を直接含む。
+application database versionは42で、更新互換性baselineはversion 41とする。fresh version 42 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnostics、番組・episodeの分類モード、episodeの最終再生チャプター番号を直接含む。旧再生成状態columnは保持しない。
 
-version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_excluded_articles`、39 -> 40 migrationは分類モード、40 -> 41 migrationは最終再生チャプター番号を追加する。version 33〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
+version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除する。version 38 -> 41 の過去migrationはADR-0285で退役済みであり、current runtimeはversion 40以下のPodcast schemaをcompatibility inputとして参照しない。
 
 ## Invariants
 
@@ -175,7 +175,7 @@ version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_e
 - 日本語見出しを抽出できない旧形式chapterは保存済み記事titleへfallbackする。
 - 中断された生成は同じ記事・cluster snapshotとcheckpointを利用し、新しいfeed候補を予約しない。
 - 明示的な作り直しはfeedを再取得せず保存済み記事へ現在の除外条件とクラスタリングを再適用し、開始後は旧scriptを保持しない。
-- `regeneration_status=RUNNING` のepisodeへ重複再生成、archive、deleteを行わない。
+- `GENERATING` episodeへ重複再生成、archive、deleteを行わない。
 - `ARCHIVED` episodeは再生可能な原稿とsnapshotを保持し、復元時は同じepisode IDで `READY` へ戻る。
 - `DELETED` episodeは原稿と記事snapshotを保持しないが、clusterに含まれていた全entryの消費済みidentityは保持する。
 - episode削除によって一度予約したentryを未消費へ戻さない。
