@@ -32,7 +32,7 @@ internal class SmbMetadataNormalizationQueries(private val database: DatabaseCon
 
   fun queryLatestBatchSnapshot(db: SQLiteDatabase): SmbMetadataNormalizationBatchSnapshot? {
     val header = db.rawQuery(
-      "SELECT batch_id, status, created_at, updated_at FROM $BATCH_TABLE ORDER BY created_at DESC LIMIT 1",
+      "SELECT batch_id, status, created_at, updated_at FROM $SMB_NORMALIZATION_BATCH_TABLE ORDER BY created_at DESC LIMIT 1",
       null,
     ).use { cursor ->
       if (!cursor.moveToFirst()) return@use null
@@ -48,7 +48,7 @@ internal class SmbMetadataNormalizationQueries(private val database: DatabaseCon
       """
         SELECT source_id, original_file_name, input_size, input_modified_at, status,
                proposed_file_name, metadata_json, error, updated_at
-        FROM $ITEM_TABLE
+        FROM $SMB_NORMALIZATION_ITEM_TABLE
         WHERE batch_id = ?
         ORDER BY
           CASE status
@@ -111,8 +111,8 @@ internal class SmbMetadataNormalizationQueries(private val database: DatabaseCon
     """
       SELECT i.batch_id, i.source_id, i.original_file_name, i.input_size, i.input_modified_at,
              i.proposed_file_name, i.metadata_json, i.error, i.updated_at
-      FROM $ITEM_TABLE i
-      JOIN $DECISION_TABLE d ON d.source_id = i.source_id
+      FROM $SMB_NORMALIZATION_ITEM_TABLE i
+      JOIN $SMB_NORMALIZATION_DECISION_TABLE d ON d.source_id = i.source_id
       WHERE d.decision_status = ? AND i.status = ? AND i.batch_id <> ?
       ORDER BY i.updated_at DESC
     """.trimIndent(),
@@ -148,7 +148,7 @@ internal class SmbMetadataNormalizationQueries(private val database: DatabaseCon
   }
 
   fun queryConfirmedSourceIds(db: SQLiteDatabase): Set<String> = db.rawQuery(
-    "SELECT source_id FROM $DECISION_TABLE WHERE decision_status IN (?, ?)",
+    "SELECT source_id FROM $SMB_NORMALIZATION_DECISION_TABLE WHERE decision_status IN (?, ?)",
     arrayOf(SmbMetadataNormalizationStatus.APPLIED.name, SmbMetadataNormalizationStatus.REJECTED.name),
   ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
 
