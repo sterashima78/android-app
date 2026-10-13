@@ -26,10 +26,11 @@ class DefaultSmbMetadataNormalizationRepository(
   private val database: DatabaseConnection,
   private val smbRepository: SmbLibraryRepository,
 ) : SmbMetadataNormalizationRepository {
+  private val queries = SmbMetadataNormalizationQueries(database)
   override suspend fun batchSnapshot(): SmbMetadataNormalizationBatchSnapshot? = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
     promoteCoverReadyItems()
-    queryLatestBatchSnapshot()
+    queries.queryLatestBatchSnapshot()
   }
 
   override suspend fun startBatch(books: List<LibraryBook>): Int = withContext(Dispatchers.IO) {
@@ -44,12 +45,12 @@ class DefaultSmbMetadataNormalizationRepository(
 
     val now = System.currentTimeMillis()
     database.transaction {
-      val latest = queryLatestBatchSnapshot(this)
+      val latest = queries.queryLatestBatchSnapshot(this)
       if (latest != null && latest.items.any { it.status in UNRESOLVED_STATUSES }) {
         error("前回の書誌正規化候補を仕分けしてから新しい一括解析を開始してください")
       }
 
-      val confirmed = queryConfirmedSourceIds(this)
+      val confirmed = queries.queryConfirmedSourceIds(this)
       val targets = smbBooks.filterNot { (book, _) -> book.sourceId in confirmed }
       require(targets.isNotEmpty()) { "未確定のファイルサーバ書籍はありません" }
 
@@ -106,7 +107,7 @@ class DefaultSmbMetadataNormalizationRepository(
   ): Unit = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
     val sanitizedProposal = sanitizeSmbBookMetadataProposal(proposal)
-    val item = queryLatestItem(sourceId)
+    val item = queries.queryLatestItem(sourceId)
       ?: error("反映できる書誌正規化候補がありません")
     require(
       item.status == SmbMetadataNormalizationStatus.PENDING_REVIEW ||
@@ -174,7 +175,7 @@ class DefaultSmbMetadataNormalizationRepository(
 
   override suspend fun rejectCandidate(sourceId: String): Unit = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
-    val item = queryLatestItem(sourceId) ?: error("却下できる候補がありません")
+    val item = queries.queryLatestItem(sourceId) ?: error("却下できる候補がありません")
     require(
       item.status in setOf(
         SmbMetadataNormalizationStatus.PENDING_REVIEW,
@@ -229,7 +230,7 @@ class DefaultSmbMetadataNormalizationRepository(
     supplementalContext: String?,
   ): Unit = withContext(Dispatchers.IO) {
     ensureSmbMetadataNormalizationSchema(database.writable)
-    val item = queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
+    val item = queries.queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
     require(item.status in REANALYZABLE_STATUSES) { "再解析できる候補がありません" }
     val context = sanitizeReanalysisContext(supplementalContext)
 
@@ -238,7 +239,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val currentInput = smbNormalizationInput(currentBook)
       ?: error("対象書籍のファイル情報を読み取れません")
     val coverReady = validCoverFile(currentBook.thumbnailUrl) != null
-    val latestBatchId = queryLatestBatchSnapshot()?.batchId ?: item.batchId
+    val latestBatchId = queries.queryLatestBatchSnapshot()?.batchId ?: item.batchId
     val now = System.currentTimeMillis()
     database.transaction {
       if (!coverReady) {
@@ -357,7 +358,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       waiting.forEach { item ->
-        val cover = queryBookCover(item.sourceId, this)
+        val cover = queries.queryBookCover(item.sourceId, this)
         val target = when {
           validCoverFile(cover) != null -> SmbMetadataNormalizationStatus.QUEUED
           item.queueStatus == "FAILED" -> SmbMetadataNormalizationStatus.FAILED
@@ -627,7 +628,7 @@ class DefaultSmbMetadataNormalizationRepository(
     target: SmbMetadataNormalizationStatus,
   ) {
     ensureSmbMetadataNormalizationSchema(database.writable)
-    val item = queryLatestItem(sourceId) ?: error("変更できる候補がありません")
+    val item = queries.queryLatestItem(sourceId) ?: error("変更できる候補がありません")
     require(item.status in allowed) { "変更できる候補がありません" }
     val now = System.currentTimeMillis()
     database.transaction {
@@ -687,152 +688,6 @@ class DefaultSmbMetadataNormalizationRepository(
       )
       touchBatch(item.batchId, now)
       finishBatchIfIdle(this, item.batchId, now)
-    }
-  }
-
-  private fun queryLatestItem(sourceId: String): SmbMetadataNormalizationItem? =
-    queryLatestBatchSnapshot()?.items?.firstOrNull { it.sourceId == sourceId }
-
-  private fun queryLatestBatchSnapshot(): SmbMetadataNormalizationBatchSnapshot? =
-    queryLatestBatchSnapshot(database.readable)
-
-  private fun queryLatestBatchSnapshot(db: SQLiteDatabase): SmbMetadataNormalizationBatchSnapshot? {
-    val header = db.rawQuery(
-      "SELECT batch_id, status, created_at, updated_at FROM $BATCH_TABLE ORDER BY created_at DESC LIMIT 1",
-      null,
-    ).use { cursor ->
-      if (!cursor.moveToFirst()) return@use null
-      SmbMetadataNormalizationBatchHeader(
-        batchId = cursor.getString(0),
-        status = SmbMetadataNormalizationBatchStatus.valueOf(cursor.getString(1)),
-        createdAt = cursor.getLong(2),
-        updatedAt = cursor.getLong(3),
-      )
-    } ?: return null
-    val covers = queryBookCovers(db)
-    val currentItems = db.rawQuery(
-      """
-        SELECT source_id, original_file_name, input_size, input_modified_at, status,
-               proposed_file_name, metadata_json, error, updated_at
-        FROM $ITEM_TABLE
-        WHERE batch_id = ?
-        ORDER BY
-          CASE status
-            WHEN 'PROCESSING' THEN 0
-            WHEN 'QUEUED' THEN 1
-            WHEN 'WAITING_FOR_COVER' THEN 2
-            WHEN 'PENDING_REVIEW' THEN 3
-            WHEN 'DEFERRED' THEN 4
-            WHEN 'FAILED' THEN 5
-            WHEN 'SKIPPED' THEN 6
-            ELSE 7
-          END,
-          updated_at DESC,
-          original_file_name COLLATE NOCASE
-      """.trimIndent(),
-      arrayOf(header.batchId),
-    ).use { cursor ->
-      buildList {
-        while (cursor.moveToNext()) {
-          val metadata = if (cursor.isNull(6)) null else proposalFromJson(cursor.getString(6))
-          add(
-            SmbMetadataNormalizationItem(
-              batchId = header.batchId,
-              sourceId = cursor.getString(0),
-              originalFileName = cursor.getString(1),
-              inputSize = cursor.getLong(2),
-              inputModifiedAt = cursor.getLong(3),
-              status = SmbMetadataNormalizationStatus.valueOf(cursor.getString(4)),
-              proposedFileName = if (cursor.isNull(5)) null else cursor.getString(5),
-              proposal = metadata,
-              coverUrl = covers[cursor.getString(0)],
-              error = if (cursor.isNull(7)) null else cursor.getString(7),
-              updatedAtEpochMillis = cursor.getLong(8),
-            ),
-          )
-        }
-      }
-    }
-    val historicalRejected = queryHistoricalRejectedItems(
-      db = db,
-      currentBatchId = header.batchId,
-      currentSourceIds = currentItems.mapTo(mutableSetOf(), SmbMetadataNormalizationItem::sourceId),
-      covers = covers,
-    )
-    return SmbMetadataNormalizationBatchSnapshot(
-      batchId = header.batchId,
-      status = header.status,
-      items = currentItems + historicalRejected,
-      createdAtEpochMillis = header.createdAt,
-      updatedAtEpochMillis = header.updatedAt,
-    )
-  }
-
-  private fun queryHistoricalRejectedItems(
-    db: SQLiteDatabase,
-    currentBatchId: String,
-    currentSourceIds: Set<String>,
-    covers: Map<String, String?>,
-  ): List<SmbMetadataNormalizationItem> = db.rawQuery(
-    """
-      SELECT i.batch_id, i.source_id, i.original_file_name, i.input_size, i.input_modified_at,
-             i.proposed_file_name, i.metadata_json, i.error, i.updated_at
-      FROM $ITEM_TABLE i
-      JOIN $DECISION_TABLE d ON d.source_id = i.source_id
-      WHERE d.decision_status = ? AND i.status = ? AND i.batch_id <> ?
-      ORDER BY i.updated_at DESC
-    """.trimIndent(),
-    arrayOf(
-      SmbMetadataNormalizationStatus.REJECTED.name,
-      SmbMetadataNormalizationStatus.REJECTED.name,
-      currentBatchId,
-    ),
-  ).use { cursor ->
-    buildList {
-      val seenSourceIds = currentSourceIds.toMutableSet()
-      while (cursor.moveToNext()) {
-        val sourceId = cursor.getString(1)
-        if (!seenSourceIds.add(sourceId)) continue
-        val metadata = if (cursor.isNull(6)) null else proposalFromJson(cursor.getString(6))
-        add(
-          SmbMetadataNormalizationItem(
-            batchId = cursor.getString(0),
-            sourceId = sourceId,
-            originalFileName = cursor.getString(2),
-            inputSize = cursor.getLong(3),
-            inputModifiedAt = cursor.getLong(4),
-            status = SmbMetadataNormalizationStatus.REJECTED,
-            proposedFileName = if (cursor.isNull(5)) null else cursor.getString(5),
-            proposal = metadata,
-            coverUrl = covers[sourceId],
-            error = if (cursor.isNull(7)) null else cursor.getString(7),
-            updatedAtEpochMillis = cursor.getLong(8),
-          ),
-        )
-      }
-    }
-  }
-
-  private fun queryConfirmedSourceIds(db: SQLiteDatabase): Set<String> = db.rawQuery(
-    "SELECT source_id FROM $DECISION_TABLE WHERE decision_status IN (?, ?)",
-    arrayOf(SmbMetadataNormalizationStatus.APPLIED.name, SmbMetadataNormalizationStatus.REJECTED.name),
-  ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
-
-  private fun queryBookCover(sourceId: String): String? = queryBookCover(sourceId, database.readable)
-
-  private fun queryBookCover(sourceId: String, db: SQLiteDatabase): String? = db.rawQuery(
-    "SELECT thumbnail_url FROM library_items WHERE source = ? AND source_id = ? LIMIT 1",
-    arrayOf(LibrarySource.SMB.name, sourceId),
-  ).use { cursor ->
-    if (!cursor.moveToFirst() || cursor.isNull(0)) null else cursor.getString(0)
-  }
-
-  private fun queryBookCovers(db: SQLiteDatabase): Map<String, String?> = db.rawQuery(
-    "SELECT source_id, thumbnail_url FROM library_items WHERE source = ?",
-    arrayOf(LibrarySource.SMB.name),
-  ).use { cursor ->
-    buildMap {
-      while (cursor.moveToNext()) put(cursor.getString(0), if (cursor.isNull(1)) null else cursor.getString(1))
     }
   }
 
