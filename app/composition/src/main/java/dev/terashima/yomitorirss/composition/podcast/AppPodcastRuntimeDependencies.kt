@@ -48,7 +48,7 @@ internal class AppPodcastRuntimeDependencies(
   cloudModelPreferences: ChatGptModelPreferences,
   localStructuredTextInference: BackgroundAiStructuredTextInference,
   cloudStructuredTextInference: BackgroundAiStructuredTextInference,
-  audioPlaybackController: AudioPlaybackController,
+  private val audioPlaybackController: AudioPlaybackController,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
