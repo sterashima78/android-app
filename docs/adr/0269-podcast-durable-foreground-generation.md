@@ -94,3 +94,7 @@ database schemaと保存形式は変更しない。
 - foreground notificationの初期状態とchapter進捗表示をtest可能な純粋関数へ分離してunit testする。
 - 進捗projectionの通常失敗がchapter / episode failureへ波及しないことをunit testする。
 - architecture verification、unit tests、lint、public repository verificationを実行する。
+
+## Later decision
+
+See [ADR-0285](0285-retire-compatibility-and-split-responsibilities.md) for the later retirement of the v38 upgrade path and legacy generation state.
