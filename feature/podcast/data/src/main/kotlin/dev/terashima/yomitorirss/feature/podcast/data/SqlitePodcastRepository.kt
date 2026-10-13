@@ -440,6 +440,7 @@ class SqlitePodcastRepository(
           putNull("script")
           putNull("error_message")
           putNull("regeneration_status")
+          putNull("last_played_chapter")
           put("clustering_status", clusteringStatus.name)
         },
         "id=?",
