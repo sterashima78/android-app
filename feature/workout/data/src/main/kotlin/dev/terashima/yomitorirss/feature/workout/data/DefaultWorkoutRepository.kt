@@ -179,20 +179,25 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
       unit = unit,
       type = enumOrNull<WorkoutExerciseType>(json.optString("type")) ?: inferWorkoutExerciseType(name, unit),
       amount = json.optInt("amount"),
-      steps = if (json.has("steps") && !json.isNull("steps")) json.optInt("steps") else null,
+      steps = json.optionalNonNegativeInt("steps"),
       memo = json.optString("memo"),
       recordedAt = json.optString("recordedAt"),
       startedAt = json.nullableString("startedAt"),
       finishedAt = json.nullableString("finishedAt"),
-      rpe = json.optInt("rpe").takeIf { it in 1..10 },
-      formQuality = enumOrNull<WorkoutFormQuality>(json.optString("formQuality")),
-      load = json.optJSONObject("load")?.let { load ->
-        val kind = enumOrNull<WorkoutLoadKind>(load.optString("kind"))
-        kind?.let { runCatching { WorkoutLoad(it, load.optString("value")) }.getOrNull() }
-      },
-      restSeconds = if (json.has("restSeconds") && !json.isNull("restSeconds")) {
-        json.optInt("restSeconds", -1).takeIf { it >= 0 }
+      rpe = json.optionalIntRange("rpe", 1..10),
+      formQuality = if (json.has("formQuality") && !json.isNull("formQuality")) {
+        requireNotNull(enumOrNull<WorkoutFormQuality>(json.getString("formQuality"))) {
+          "Invalid workout form quality"
+        }
       } else null,
+      load = if (json.has("load") && !json.isNull("load")) {
+        val load = requireNotNull(json.optJSONObject("load")) { "Invalid workout load" }
+        val kind = requireNotNull(enumOrNull<WorkoutLoadKind>(load.getString("kind"))) {
+          "Invalid workout load kind"
+        }
+        WorkoutLoad(kind, load.getString("value"))
+      } else null,
+      restSeconds = json.optionalNonNegativeInt("restSeconds"),
     )
   }
 
@@ -254,6 +259,14 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
   private fun JSONArray.ints(): List<Int> = (0 until length()).map { index ->
     getInt(index).also { require(it > 0) { "Invalid workout target" } }
   }
+
+  private fun JSONObject.optionalIntRange(name: String, range: IntRange): Int? {
+    if (!has(name) || isNull(name)) return null
+    return getInt(name).also { require(it in range) { "Invalid workout $name" } }
+  }
+
+  private fun JSONObject.optionalNonNegativeInt(name: String): Int? =
+    optionalIntRange(name, 0..Int.MAX_VALUE)
 
   private fun JSONObject.nullableString(name: String): String? =
     if (!has(name) || isNull(name)) null else optString(name).takeIf(String::isNotBlank)
