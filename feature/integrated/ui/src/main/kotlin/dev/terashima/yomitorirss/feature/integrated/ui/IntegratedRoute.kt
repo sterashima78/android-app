@@ -39,6 +39,7 @@ fun IntegratedRoute(
   val mailState by mailViewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
   var selectedTabName by rememberSaveable { mutableStateOf(IntegratedTab.UNREAD.name) }
+  var newestFirst by rememberSaveable { mutableStateOf(true) }
   val selectedTab = IntegratedTab.entries.firstOrNull { it.name == selectedTabName }
     ?: IntegratedTab.UNREAD
 
@@ -74,6 +75,7 @@ fun IntegratedRoute(
     redditState = redditState,
     mailState = mailState,
     tab = selectedTab,
+    newestFirst = newestFirst,
   )
   val targetsByKey = entries.associate { it.item.key to it.target }
   val dispatcher = integratedTargetDispatcher(
@@ -98,6 +100,8 @@ fun IntegratedRoute(
         isRefreshing = feedState.refreshing ||
           redditState.refreshing ||
           mailState.loading,
+        newestFirst = newestFirst,
+        onToggleDateOrder = { newestFirst = !newestFirst },
         onSelectTab = { selectedTabName = it.name },
         onRefresh = {
           feedViewModel.refresh()
