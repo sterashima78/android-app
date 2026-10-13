@@ -107,7 +107,6 @@ class PodcastRegenerationTest {
     assertTrue(repository.rebuildCalled)
     assertEquals(PodcastEpisodeStatus.FAILED, repository.episode.status)
     assertNull(repository.episode.script)
-    assertNull(repository.episode.regenerationStatus)
     assertTrue(repository.failEpisodeCalled)
   }
 }
@@ -143,7 +142,7 @@ private class RegenerationRepository(
   override suspend fun deleteEpisode(episodeId: String) = error("unused")
 
   override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode {
-    episode = episode.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null, regenerationStatus = null)
+    episode = episode.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null)
     return episode
   }
 
@@ -159,7 +158,6 @@ private class RegenerationRepository(
       articles = candidates.map { it.toEpisodeArticle() },
       script = null,
       errorMessage = null,
-      regenerationStatus = null,
       clusteringStatus = clusteringStatus,
     )
     return episode
@@ -182,11 +180,6 @@ private class RegenerationRepository(
       it.copy(chapterStatus = PodcastChapterGenerationStatus.FAILED, chapterError = message)
     }
 
-  override suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode {
-    episode = episode.copy(regenerationStatus = PodcastRegenerationStatus.FAILED, errorMessage = message)
-    return episode
-  }
-
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode {
     check(episode.id == episodeId)
     episode = episode.copy(
@@ -194,14 +187,13 @@ private class RegenerationRepository(
       script = script,
       errorMessage = null,
       status = PodcastEpisodeStatus.READY,
-      regenerationStatus = null,
     )
     return episode
   }
 
   override suspend fun failEpisode(episodeId: String, message: String): PodcastEpisode {
     failEpisodeCalled = true
-    episode = episode.copy(errorMessage = message, status = PodcastEpisodeStatus.FAILED, regenerationStatus = null)
+    episode = episode.copy(errorMessage = message, status = PodcastEpisodeStatus.FAILED)
     return episode
   }
 
