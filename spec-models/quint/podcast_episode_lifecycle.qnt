@@ -24,74 +24,93 @@ module podcast_episode_lifecycle {
   var status: int
   var snapshotPresent: bool
   var consumedIdentityPresent: bool
+  var playbackChapterRecorded: bool
 
   action init = all {
     status' = QUEUED,
     snapshotPresent' = true,
-    consumedIdentityPresent' = true,
+    consumedIdentityPresent' = true,    playbackChapterRecorded' = false,
+
   }
 
   action startGeneration = all {
     status == QUEUED,
     status' = GENERATING,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action completeGeneration = all {
     status == GENERATING,
     status' = READY,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action failGeneration = all {
     status == GENERATING,
     status' = FAILED,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action retryFailure = all {
     status == FAILED,
     status' = GENERATING,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action regenerateEpisode = all {
     (status == READY or status == FAILED),
     status' = GENERATING,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action archiveEpisode = all {
     status == READY,
     status' = ARCHIVED,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action restoreEpisode = all {
     status == ARCHIVED,
     status' = READY,
     snapshotPresent' = snapshotPresent,
-    consumedIdentityPresent' = consumedIdentityPresent,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
   }
 
   action deleteEpisode = all {
     (status == READY or status == ARCHIVED or status == FAILED),
     status' = DELETED,
     snapshotPresent' = false,
-    consumedIdentityPresent' = true,
+    consumedIdentityPresent' = true,    playbackChapterRecorded' = false,
+
   }
 
   action remainDeleted = all {
     status == DELETED,
     status' = DELETED,
     snapshotPresent' = false,
+    consumedIdentityPresent' = consumedIdentityPresent,    playbackChapterRecorded' = false,
+
+  }
+
+  action recordPlaybackChapter = all {
+    status == READY,
+    status' = status,
+    snapshotPresent' = snapshotPresent,
     consumedIdentityPresent' = consumedIdentityPresent,
+    playbackChapterRecorded' = true,
   }
 
   action step = any {
@@ -102,6 +121,7 @@ module podcast_episode_lifecycle {
     regenerateEpisode,
     archiveEpisode,
     restoreEpisode,
+    recordPlaybackChapter,
     deleteEpisode,
     remainDeleted,
   }
@@ -119,8 +139,11 @@ module podcast_episode_lifecycle {
 
   val consumedIdentityNeverReturnsToUnused = consumedIdentityPresent
 
+  val checkpointOnlyForReady = not(playbackChapterRecorded) or status == READY
+
   val safety =
     knownStatus and
+    checkpointOnlyForReady and
     deletedEpisodeKeepsConsumption and
     nonDeletedEpisodeKeepsSnapshot and
     consumedIdentityNeverReturnsToUnused
