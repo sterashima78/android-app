@@ -446,6 +446,7 @@ class PodcastRepositoryPersistenceTest {
     repository.completeChapter(episode.id, 0, "既存原稿1")
     repository.completeChapter(episode.id, 1, "既存原稿2")
     repository.completeEpisode(episode.id, "朝のニュース / 1/1 07:00", "既存原稿")
+    repository.recordPlaybackChapter(episode.id, 2)
 
     val rebuilding = repository.prepareEpisodeRebuild(
       episodeId = episode.id,
@@ -467,6 +468,7 @@ class PodcastRepositoryPersistenceTest {
     assertEquals(episode.id, rebuilding.id)
     assertEquals(PodcastEpisodeStatus.GENERATING, rebuilding.status)
     assertNull(rebuilding.script)
+    assertNull(rebuilding.lastPlayedChapter)
     assertNull(rebuilding.regenerationStatus)
     assertEquals(PodcastClusteringStatus.SUCCESS, rebuilding.clusteringStatus)
     assertEquals(listOf("article-2"), rebuilding.articles.map { it.articleId })
