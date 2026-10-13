@@ -60,7 +60,7 @@ class DefaultSmbMetadataNormalizationRepository(
 
       val batchId = "smbmeta-${UUID.randomUUID()}"
       insertOrThrow(
-        BATCH_TABLE,
+        SMB_NORMALIZATION_BATCH_TABLE,
         null,
         ContentValues().apply {
           put("batch_id", batchId)
@@ -71,7 +71,7 @@ class DefaultSmbMetadataNormalizationRepository(
       )
       targets.forEach { (book, input) ->
         insertOrThrow(
-          ITEM_TABLE,
+          SMB_NORMALIZATION_ITEM_TABLE,
           null,
           ContentValues().apply {
             put("batch_id", batchId)
@@ -187,7 +187,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       insertWithOnConflict(
-        DECISION_TABLE,
+        SMB_NORMALIZATION_DECISION_TABLE,
         null,
         ContentValues().apply {
           put("source_id", sourceId)
@@ -203,7 +203,7 @@ class DefaultSmbMetadataNormalizationRepository(
         SQLiteDatabase.CONFLICT_REPLACE,
       )
       update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", SmbMetadataNormalizationStatus.REJECTED.name)
           putNull("error")
@@ -246,9 +246,9 @@ class DefaultSmbMetadataNormalizationRepository(
         clearStaleCoverReference(this, sourceId, currentBook.thumbnailUrl)
       }
       if (item.status == SmbMetadataNormalizationStatus.REJECTED) {
-        delete(DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
+        delete(SMB_NORMALIZATION_DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
         insertWithOnConflict(
-          ITEM_TABLE,
+          SMB_NORMALIZATION_ITEM_TABLE,
           null,
           ContentValues().apply {
             put("batch_id", latestBatchId)
@@ -275,7 +275,7 @@ class DefaultSmbMetadataNormalizationRepository(
         )
       } else {
         val changed = update(
-          ITEM_TABLE,
+          SMB_NORMALIZATION_ITEM_TABLE,
           ContentValues().apply {
             put("original_file_name", currentInput.fileName)
             put("input_size", currentInput.size)
@@ -300,7 +300,7 @@ class DefaultSmbMetadataNormalizationRepository(
       }
       val targetBatchId = if (item.status == SmbMetadataNormalizationStatus.REJECTED) latestBatchId else item.batchId
       update(
-        BATCH_TABLE,
+        SMB_NORMALIZATION_BATCH_TABLE,
         ContentValues().apply {
           put("status", SmbMetadataNormalizationBatchStatus.RUNNING.name)
           put("updated_at", now)
@@ -315,7 +315,7 @@ class DefaultSmbMetadataNormalizationRepository(
     ensureSmbMetadataNormalizationSchema(database.writable)
     database.write {
       update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", SmbMetadataNormalizationStatus.QUEUED.name)
           put("updated_at", System.currentTimeMillis())
@@ -331,8 +331,8 @@ class DefaultSmbMetadataNormalizationRepository(
     val waiting = database.readable.rawQuery(
       """
         SELECT i.batch_id, i.source_id, q.status, q.message
-        FROM $ITEM_TABLE i
-        JOIN $BATCH_TABLE b ON b.batch_id = i.batch_id
+        FROM $SMB_NORMALIZATION_ITEM_TABLE i
+        JOIN $SMB_NORMALIZATION_BATCH_TABLE b ON b.batch_id = i.batch_id
         LEFT JOIN smb_cover_prefetch_queue q ON q.source_id = i.source_id
         WHERE b.status = ? AND i.status = ?
       """.trimIndent(),
@@ -366,7 +366,7 @@ class DefaultSmbMetadataNormalizationRepository(
           else -> null
         } ?: return@forEach
         update(
-          ITEM_TABLE,
+          SMB_NORMALIZATION_ITEM_TABLE,
           ContentValues().apply {
             put("status", target.name)
             if (target == SmbMetadataNormalizationStatus.FAILED || target == SmbMetadataNormalizationStatus.SKIPPED) {
@@ -397,8 +397,8 @@ class DefaultSmbMetadataNormalizationRepository(
         """
           SELECT i.batch_id, i.source_id, i.original_file_name, i.input_size, i.input_modified_at,
                  i.metadata_json, i.reanalysis_context
-          FROM $ITEM_TABLE i
-          JOIN $BATCH_TABLE b ON b.batch_id = i.batch_id
+          FROM $SMB_NORMALIZATION_ITEM_TABLE i
+          JOIN $SMB_NORMALIZATION_BATCH_TABLE b ON b.batch_id = i.batch_id
           WHERE b.status = ? AND i.status = ?
           ORDER BY i.created_at, i.source_id
           LIMIT 1
@@ -420,7 +420,7 @@ class DefaultSmbMetadataNormalizationRepository(
         )
       } ?: return@transaction null
       val changed = update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", SmbMetadataNormalizationStatus.PROCESSING.name)
           put("updated_at", now)
@@ -442,7 +442,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       val changed = update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", SmbMetadataNormalizationStatus.PENDING_REVIEW.name)
           put("proposed_file_name", fileName)
@@ -486,9 +486,9 @@ class DefaultSmbMetadataNormalizationRepository(
   ) {
     val now = System.currentTimeMillis()
     database.transaction {
-      delete(DECISION_TABLE, "source_id = ?", arrayOf(oldSourceId))
+      delete(SMB_NORMALIZATION_DECISION_TABLE, "source_id = ?", arrayOf(oldSourceId))
       insertWithOnConflict(
-        DECISION_TABLE,
+        SMB_NORMALIZATION_DECISION_TABLE,
         null,
         ContentValues().apply {
           put("source_id", renamedBook.sourceId)
@@ -504,7 +504,7 @@ class DefaultSmbMetadataNormalizationRepository(
         SQLiteDatabase.CONFLICT_REPLACE,
       )
       update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("source_id", renamedBook.sourceId)
           put("status", SmbMetadataNormalizationStatus.APPLIED.name)
@@ -553,7 +553,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       val decisionChanged = update(
-        DECISION_TABLE,
+        SMB_NORMALIZATION_DECISION_TABLE,
         ContentValues().apply {
           put("title", proposal.title)
           put("authors_json", JSONArray(proposal.authors).toString())
@@ -569,7 +569,7 @@ class DefaultSmbMetadataNormalizationRepository(
       require(decisionChanged == 1) { "反映済み書誌情報が見つかりません" }
 
       val itemChanged = update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("metadata_json", proposalToJson(proposal))
           putNull("reanalysis_context")
@@ -633,7 +633,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       val changed = update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", target.name)
           put("updated_at", now)
@@ -653,7 +653,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       val changed = update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", SmbMetadataNormalizationStatus.SKIPPED.name)
           putNull("proposed_file_name")
@@ -677,7 +677,7 @@ class DefaultSmbMetadataNormalizationRepository(
     val now = System.currentTimeMillis()
     database.transaction {
       update(
-        ITEM_TABLE,
+        SMB_NORMALIZATION_ITEM_TABLE,
         ContentValues().apply {
           put("status", target.name)
           if (message == null) putNull("error") else put("error", message)
@@ -693,7 +693,7 @@ class DefaultSmbMetadataNormalizationRepository(
 
   private fun SQLiteDatabase.touchBatch(batchId: String, now: Long) {
     update(
-      BATCH_TABLE,
+      SMB_NORMALIZATION_BATCH_TABLE,
       ContentValues().apply { put("updated_at", now) },
       "batch_id = ?",
       arrayOf(batchId),
