@@ -44,6 +44,7 @@ models:
 - Podcast画面から開始した新規生成と作り直しも同じPodcast-owned Workerへ即時登録し、画面を離れたり端末をロックしたりしてもUI lifetimeに依存せず生成を継続する。生成中はforeground通知へチャプター進捗を表示する。
 - Podcastのクラウドチャプター生成では、一時的な通信・rate limit・server failureとしてretryableに分類された失敗をchapter内で有限回自動再試行し、再試行を使い切った場合だけ既存の失敗checkpointへ確定する。
 - Podcast生成taskはチャプター単位の完了数をAIタスクキューへ投影し、生成中・再生成中または途中失敗したtaskでは全チャプター数と未完了チャプター数を確認できる。
+- ニュース分類が推論失敗または不正出力で1記事1クラスタに退避した場合は、エピソード画面でその理由を確認できる。正常分類と分類不要の場合は警告を表示しない。
 - ユーザーが開始したAudioの継続再生はWorkManagerではなくforeground `MediaSessionService`を利用し、durable taskへ変換しない。
 - `:app` はbackground business logicの恒久的な所有場所とせず、compositionとframework wiringに限定する。
 - Android framework が直接生成し constructor injection を差し込めない entry point だけ、監査済みProvider contractからapplication-level dependencyを取得できる。
