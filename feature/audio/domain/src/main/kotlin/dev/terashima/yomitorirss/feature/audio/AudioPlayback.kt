@@ -38,7 +38,7 @@ data class AudioPlaybackState(
 interface AudioPlaybackController {
   val state: StateFlow<AudioPlaybackState>
 
-  fun play(items: List<AudioQueueItem>)
+  fun play(items: List<AudioQueueItem>, startIndex: Int = 0)
 
   fun togglePlayPause()
 

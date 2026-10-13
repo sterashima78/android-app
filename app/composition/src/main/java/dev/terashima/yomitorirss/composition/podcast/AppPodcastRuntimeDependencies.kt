@@ -34,6 +34,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 internal class AppPodcastRuntimeDependencies(
@@ -46,7 +48,7 @@ internal class AppPodcastRuntimeDependencies(
   cloudModelPreferences: ChatGptModelPreferences,
   localStructuredTextInference: BackgroundAiStructuredTextInference,
   cloudStructuredTextInference: BackgroundAiStructuredTextInference,
-  audioPlaybackController: AudioPlaybackController,
+  private val audioPlaybackController: AudioPlaybackController,
   private val persistenceChanges: PersistenceChangeNotifier = PersistenceChangeNotifier.shared,
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -100,6 +102,15 @@ internal class AppPodcastRuntimeDependencies(
   val workerFactory = PodcastGenerationWorkerFactory(repository, generationUseCase, scheduleController)
 
   fun restoreSchedules() {
+    scope.launch {
+      audioPlaybackController.state
+        .map { it.currentItem?.contentId }
+        .distinctUntilChanged()
+        .collect { contentId ->
+          val chapter = parsePodcastPlaybackChapter(contentId) ?: return@collect
+          runCatching { repository.recordPlaybackChapter(chapter.first, chapter.second) }
+        }
+    }
     scope.launch { resumeInterruptedGenerations() }
     scope.launch {
       var previousPrograms = emptyMap<String, PodcastProgram>()
@@ -146,4 +157,12 @@ internal fun reconcilePodcastSchedules(
       previousPrograms[programId] != program -> scheduleController.sync(program)
     }
   }
+}
+
+internal fun parsePodcastPlaybackChapter(contentId: String?): Pair<String, Int>? {
+  if (contentId == null || !contentId.startsWith("podcast:")) return null
+  val parts = contentId.removePrefix("podcast:").split(":chapter:")
+  if (parts.size != 2 || parts[0].isBlank()) return null
+  val chapter = parts[1].toIntOrNull()?.takeIf { it > 0 } ?: return null
+  return parts[0] to chapter
 }

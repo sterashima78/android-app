@@ -61,7 +61,7 @@ class DefaultAudioPlaybackController(
   private var prepareJob: Job? = null
   private var positionJob: Job? = null
 
-  override fun play(items: List<AudioQueueItem>) {
+  override fun play(items: List<AudioQueueItem>, startIndex: Int) {
     val queue = normalizeAudioQueue(items)
     if (queue.isEmpty()) return
 
@@ -83,7 +83,7 @@ class DefaultAudioPlaybackController(
       )
 
       runCatching {
-        prepareAndPlay(queue)
+        prepareAndPlay(queue, startIndex.takeIf { it in queue.indices } ?: 0)
       }.onFailure { error ->
         if (error is CancellationException) return@onFailure
         mediaController?.let { controller ->
@@ -155,13 +155,14 @@ class DefaultAudioPlaybackController(
     mutableState.value = AudioPlaybackState()
   }
 
-  private suspend fun prepareAndPlay(queue: List<AudioQueueItem>) {
+  private suspend fun prepareAndPlay(queue: List<AudioQueueItem>, startIndex: Int) {
     val speechTexts = resolveSpeechTexts(queue)
     val playableItems = mutableListOf<AudioQueueItem>()
     var controller: MediaController? = null
 
+    val originalPositions = queue.mapIndexed { index, item -> item.contentId to index }.toMap()
     val preparedCount = prepareProgressively(
-      items = queue,
+      items = prioritizedAudioPreparation(queue, startIndex),
       prepare = { item ->
         val speechText = speechTexts[item.contentId] ?: return@prepareProgressively null
         synthesize(item, speechText)
@@ -170,27 +171,33 @@ class DefaultAudioPlaybackController(
         val activeController = controller ?: ensureMediaController().also { controller = it }
         val mediaItem = createMediaItem(item, file)
         val isFirstPreparedItem = preparedNumber == 1
-        val appendedIndex = activeController.mediaItemCount
-        val resumeFromEnded = !isFirstPreparedItem && activeController.playbackState == Player.STATE_ENDED
+        val originalIndex = originalPositions.getValue(item.contentId)
+        val insertionIndex = if (originalIndex < startIndex) {
+          playableItems.count { originalPositions.getValue(it.contentId) < originalIndex }
+        } else {
+          playableItems.size
+        }
+        val resumeFromEnded = !isFirstPreparedItem && originalIndex >= startIndex &&
+          activeController.playbackState == Player.STATE_ENDED
 
         if (isFirstPreparedItem) {
           activeController.setMediaItem(mediaItem)
           activeController.prepare()
           activeController.play()
         } else {
-          activeController.addMediaItem(mediaItem)
+          activeController.addMediaItem(insertionIndex, mediaItem)
           if (resumeFromEnded) {
-            activeController.seekToDefaultPosition(appendedIndex)
+            activeController.seekToDefaultPosition(insertionIndex)
             activeController.prepare()
             activeController.play()
           }
         }
 
-        playableItems += item
+        playableItems.add(insertionIndex, item)
         mutableState.update {
           it.copy(
             items = playableItems.toList(),
-            currentIndex = if (it.currentIndex < 0) 0 else it.currentIndex,
+            currentIndex = activeController.currentMediaItemIndex.coerceIn(0, playableItems.lastIndex),
             isPlaying = activeController.isPlaying,
             playbackSpeed = activeController.playbackParameters.speed,
             preparationStatus = AudioPreparationStatus.READY,
@@ -474,3 +481,8 @@ internal fun isInstalledOfflineJapaneseVoice(
   language == Locale.JAPANESE.language &&
     !isNetworkConnectionRequired &&
     TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in features
+
+internal fun <T> prioritizedAudioPreparation(items: List<T>, startIndex: Int): List<T> {
+  if (startIndex !in items.indices) return items
+  return items.drop(startIndex) + items.take(startIndex)
+}

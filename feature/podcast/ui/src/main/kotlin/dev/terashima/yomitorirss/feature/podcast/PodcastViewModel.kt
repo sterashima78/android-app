@@ -362,7 +362,12 @@ class PodcastViewModel(
       )
     }
     _state.update { it.copy(playbackEpisodeId = episode.id) }
-    audioPlaybackController.play(queue)
+    val resumeIndex = if (queue.size == chapters.size) {
+      podcastResumeIndex(episode.status, episode.lastPlayedChapter, chapters.map { it.number })
+    } else {
+      0
+    }
+    audioPlaybackController.play(queue, startIndex = resumeIndex)
   }
 
   fun dismissPlayback() {
@@ -445,3 +450,13 @@ fun podcastEpisodeContentId(episodeId: String): String = "podcast:$episodeId"
 
 fun podcastChapterContentId(episodeId: String, chapterNumber: Int): String =
   "${podcastEpisodeContentId(episodeId)}:chapter:$chapterNumber"
+
+internal fun podcastResumeIndex(
+  status: PodcastEpisodeStatus,
+  lastPlayedChapter: Int?,
+  chapterNumbers: List<Int>,
+): Int = if (status == PodcastEpisodeStatus.READY) {
+  chapterNumbers.indexOfFirst { it == lastPlayedChapter }.coerceAtLeast(0)
+} else {
+  0
+}

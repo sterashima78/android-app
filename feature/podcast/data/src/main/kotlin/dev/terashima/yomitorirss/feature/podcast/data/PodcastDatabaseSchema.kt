@@ -10,6 +10,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
   migrations = listOf(
     DatabaseMigration(targetVersion = 39, migrate = ::migratePodcastTo39),
     DatabaseMigration(targetVersion = 40, migrate = ::migratePodcastTo40),
+    DatabaseMigration(targetVersion = 41, migrate = ::migratePodcastTo41),
   ),
 )
 
@@ -40,7 +41,8 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "error_message TEXT," +
       "regeneration_status TEXT," +
       "clustering_status TEXT," +
-      "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'" +
+      "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'," +
+      "last_played_chapter INTEGER" +
       ")",
   )
   db.execSQL(
@@ -106,6 +108,20 @@ private fun migratePodcastTo40(db: SQLiteDatabase) {
     if (!exists) {
       db.execSQL("ALTER TABLE $table ADD COLUMN clustering_mode TEXT NOT NULL DEFAULT 'EVENT'")
     }
+  }
+}
+
+private fun migratePodcastTo41(db: SQLiteDatabase) {
+  val exists = db.rawQuery("PRAGMA table_info(podcast_episodes)", null).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    var found = false
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == "last_played_chapter") found = true
+    }
+    found
+  }
+  if (!exists) {
+    db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN last_played_chapter INTEGER")
   }
 }
 

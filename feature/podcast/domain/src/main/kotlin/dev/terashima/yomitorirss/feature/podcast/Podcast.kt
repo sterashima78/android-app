@@ -126,6 +126,7 @@ data class PodcastEpisode(
   val regenerationStatus: PodcastRegenerationStatus? = null,
   val clusteringStatus: PodcastClusteringStatus? = null,
   val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
+  val lastPlayedChapter: Int? = null,
 ) {
   fun chapterGroups(): List<List<PodcastEpisodeArticle>> = articles
     .mapIndexed { index, article -> (article.chapterPosition ?: index) to article }
@@ -222,6 +223,7 @@ interface PodcastRepository {
   suspend fun findEpisode(episodeId: String): PodcastEpisode?
   suspend fun archiveEpisode(episodeId: String): PodcastEpisode
   suspend fun restoreEpisode(episodeId: String): PodcastEpisode
+  suspend fun recordPlaybackChapter(episodeId: String, chapterNumber: Int)
   suspend fun deleteEpisode(episodeId: String)
 
   suspend fun findInterruptedGenerationEpisode(programId: String): PodcastEpisode? =

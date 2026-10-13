@@ -139,6 +139,7 @@ private class RegenerationRepository(
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = episode.takeIf { it.id == episodeId }
   override suspend fun archiveEpisode(episodeId: String): PodcastEpisode = error("unused")
   override suspend fun restoreEpisode(episodeId: String): PodcastEpisode = error("unused")
+  override suspend fun recordPlaybackChapter(episodeId: String, chapterNumber: Int) = error("unused")
   override suspend fun deleteEpisode(episodeId: String) = error("unused")
 
   override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode {
