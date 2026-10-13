@@ -115,6 +115,7 @@ class SqlitePodcastRepository(
         "podcast_episodes",
         ContentValues().apply {
           put("status", PodcastEpisodeStatus.ARCHIVED.name)
+          putNull("last_played_chapter")
           putNull("regeneration_status")
           putNull("error_message")
         },
@@ -137,6 +138,18 @@ class SqlitePodcastRepository(
       require(updated == 1) { "アーカイブ済みエピソードだけ復元できます" }
     }
     return requireNotNull(findEpisode(episodeId))
+  }
+
+  override suspend fun recordPlaybackChapter(episodeId: String, chapterNumber: Int) {
+    require(chapterNumber > 0) { "chapter number must be positive" }
+    database.write {
+      update(
+        "podcast_episodes",
+        ContentValues().apply { put("last_played_chapter", chapterNumber) },
+        "id=? AND status=? AND (last_played_chapter IS NULL OR last_played_chapter!=?)",
+        arrayOf(episodeId, PodcastEpisodeStatus.READY.name, chapterNumber.toString()),
+      )
+    }
   }
 
   override suspend fun deleteEpisode(episodeId: String) {
@@ -166,6 +179,7 @@ class SqlitePodcastRepository(
           putNull("error_message")
           putNull("regeneration_status")
           putNull("clustering_status")
+          putNull("last_played_chapter")
         },
         "id=?",
         arrayOf(episodeId),
@@ -661,6 +675,7 @@ private fun Cursor.episode(database: DatabaseConnection): PodcastEpisode {
     regenerationStatus = nullableString("regeneration_status")?.let(PodcastRegenerationStatus::valueOf),
     clusteringStatus = nullableString("clustering_status")?.let(PodcastClusteringStatus::valueOf),
     clusteringMode = PodcastClusteringMode.valueOf(string("clustering_mode")),
+    lastPlayedChapter = nullableInt("last_played_chapter"),
   )
 }
 
