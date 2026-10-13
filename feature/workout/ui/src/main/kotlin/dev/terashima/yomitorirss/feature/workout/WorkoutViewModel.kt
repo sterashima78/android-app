@@ -46,10 +46,11 @@ class WorkoutViewModel(
     viewModelScope.launch {
       val now = nowIso()
       try {
-        val loaded = repository.load().rolloverTo(LocalDate.now().toString(), now)
+        val stored = repository.load()
+        val loaded = stored.rolloverTo(LocalDate.now().toString(), now)
         val selected = loaded.menuExercises().firstOrNull()?.id.orEmpty()
-        // Publish an editable state only after the initial persistence succeeds.
-        repository.save(loaded)
+        // Do not rewrite an unchanged payload merely by opening the screen.
+        if (loaded != stored) repository.save(loaded)
         _state.value = WorkoutUiState(
           initialized = true,
           snapshot = loaded,
