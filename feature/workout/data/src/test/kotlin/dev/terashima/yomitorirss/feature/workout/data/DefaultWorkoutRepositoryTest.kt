@@ -259,6 +259,36 @@ class DefaultWorkoutRepositoryTest {
   }
 
   @Test
+  fun `nested workout corruption is rejected without dropping stored records`() = runTest {
+    val repository = DefaultWorkoutRepository(context)
+    repository.save(newWorkoutSnapshot("2026-10-13"))
+    val valid = JSONObject(requireNotNull(preferences().getString(STATE_KEY, null)))
+    val brokenHistory = JSONObject(valid.toString()).put(
+      "history",
+      JSONArray().put(JSONObject().put("id", "h1").put("date", "2026-10-12")
+        .put("finishedAt", "2026-10-12T12:00:00+09:00").put("sets", "not-an-array")),
+    )
+    val brokenMenuItem = JSONObject(valid.toString()).also { snapshot ->
+      val menus = snapshot.getJSONArray("menus")
+      val menu = menus.getJSONObject(0)
+      menu.put("items", JSONArray().put(JSONObject().put("exerciseId", "")))
+    }
+    val brokenToday = JSONObject(valid.toString()).also { snapshot ->
+      snapshot.getJSONObject("today").put("sets", "not-an-array")
+    }
+    listOf(brokenHistory, brokenMenuItem, brokenToday).forEach { malformed ->
+      val raw = malformed.toString()
+      preferences().edit().putString(STATE_KEY, raw).commit()
+      try {
+        repository.load()
+        fail("CorruptWorkoutStateException was expected")
+      } catch (_: CorruptWorkoutStateException) {
+        assertEquals(raw, preferences().getString(STATE_KEY, null))
+      }
+    }
+  }
+
+  @Test
   fun `未知versionは現行形式として解釈せず保存済みpayloadも変更しない`() = runTest {
     val raw = JSONObject().apply {
       put("version", 99)
