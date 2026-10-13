@@ -276,7 +276,21 @@ class DefaultWorkoutRepositoryTest {
     val brokenToday = JSONObject(valid.toString()).also { snapshot ->
       snapshot.getJSONObject("today").put("sets", "not-an-array")
     }
-    listOf(brokenHistory, brokenMenuItem, brokenToday).forEach { malformed ->
+    val brokenTargets = JSONObject(valid.toString()).also { snapshot ->
+      val knownExercise = snapshot.getJSONArray("exercises").getJSONObject(0).getString("id")
+      snapshot.getJSONArray("menus").getJSONObject(0).put(
+        "items",
+        JSONArray().put(JSONObject().put("exerciseId", knownExercise).put("targets", "not-an-array")),
+      )
+    }
+    val brokenSetDetails = JSONObject(valid.toString()).also { snapshot ->
+      snapshot.getJSONObject("today").put(
+        "sets",
+        JSONArray().put(JSONObject().put("id", "set").put("exerciseId", "id")
+          .put("exerciseName", "example").put("rpe", 99).put("formQuality", "UNKNOWN")),
+      )
+    }
+    listOf(brokenHistory, brokenMenuItem, brokenToday, brokenTargets, brokenSetDetails).forEach { malformed ->
       val raw = malformed.toString()
       preferences().edit().putString(STATE_KEY, raw).commit()
       try {
