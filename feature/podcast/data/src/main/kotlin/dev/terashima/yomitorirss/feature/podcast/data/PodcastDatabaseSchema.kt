@@ -10,6 +10,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
   migrations = listOf(
     DatabaseMigration(targetVersion = 39, migrate = ::migratePodcastTo39),
     DatabaseMigration(targetVersion = 40, migrate = ::migratePodcastTo40),
+    DatabaseMigration(targetVersion = 41, migrate = ::migratePodcastTo41),
   ),
 )
 
@@ -26,7 +27,8 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "schedule_minute INTEGER NOT NULL DEFAULT 0," +
       "max_articles INTEGER NOT NULL DEFAULT 12," +
       "exclusion_prompt TEXT NOT NULL DEFAULT ''," +
-      "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'" +
+      "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'," +
+      "last_played_chapter INTEGER" +
       ")",
   )
   db.execSQL(
@@ -107,6 +109,10 @@ private fun migratePodcastTo40(db: SQLiteDatabase) {
       db.execSQL("ALTER TABLE $table ADD COLUMN clustering_mode TEXT NOT NULL DEFAULT 'EVENT'")
     }
   }
+}
+
+private fun migratePodcastTo41(db: SQLiteDatabase) {
+  db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN last_played_chapter INTEGER")
 }
 
 private fun createPodcastSourcesTable(db: SQLiteDatabase) {
