@@ -112,7 +112,17 @@ private fun migratePodcastTo40(db: SQLiteDatabase) {
 }
 
 private fun migratePodcastTo41(db: SQLiteDatabase) {
-  db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN last_played_chapter INTEGER")
+  val exists = db.rawQuery("PRAGMA table_info(podcast_episodes)", null).use { cursor ->
+    val nameIndex = cursor.getColumnIndexOrThrow("name")
+    var found = false
+    while (cursor.moveToNext()) {
+      if (cursor.getString(nameIndex) == "last_played_chapter") found = true
+    }
+    found
+  }
+  if (!exists) {
+    db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN last_played_chapter INTEGER")
+  }
 }
 
 private fun createPodcastSourcesTable(db: SQLiteDatabase) {
