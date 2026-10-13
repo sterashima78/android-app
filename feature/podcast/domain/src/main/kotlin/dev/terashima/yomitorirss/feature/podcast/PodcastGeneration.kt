@@ -222,7 +222,6 @@ class GeneratePodcastEpisodeUseCase(
     onProgress: suspend (PodcastGenerationProgress) -> Unit,
   ): PodcastGenerationResult.Generated {
     val episodeId = initialEpisode.id
-    val regenerating = initialEpisode.regenerationStatus == PodcastRegenerationStatus.RUNNING
     return try {
       val groups = initialEpisode.chapterGroups()
       val totalChapters = groups.size
@@ -276,8 +275,7 @@ class GeneratePodcastEpisodeUseCase(
       throw error
     } catch (error: Throwable) {
       val message = error.message ?: error::class.simpleName ?: "generation failed"
-      if (regenerating) runCatching { repository.failRegeneration(episodeId, message) }
-      else runCatching { repository.failEpisode(episodeId, message) }
+      runCatching { repository.failEpisode(episodeId, message) }
       throw error
     }
   }
