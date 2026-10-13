@@ -28,7 +28,7 @@ RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する�
 
 Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。Unicode表記、空白、大文字小文字を正規化したtitleが一致するentryはRSS boundaryで確実な重複として1件へ縮約する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
 
-従来の出来事単位モードで利用する `PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。候補全体を相互比較し、titleの語順、翻訳、言い換え、表現の強弱が異なっても主要な主体・行為または決定・対象が一致して同一出来事を指す場合は同じclusterとする。候補位置、source title、published timeは補助情報であり、それだけを理由に分割しない。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `BackgroundAiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。
+従来の出来事単位モードで利用する `PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。候補全体を相互比較し、titleの語順、翻訳、言い換え、表現の強弱が異なっても主要な主体・行為または決定・対象が一致して同一出来事を指す場合は同じclusterとする。候補位置、source title、published timeは補助情報であり、それだけを理由に分割しない。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `BackgroundAiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。推論失敗と分類出力不正のfallbackはエピソード画面でも理由を表示し、正常終了・分類不要は警告を表示しない。
 
 cluster確定後、Podcast domainはcluster内entryのfeed categoryを正規化して和集合にする。feed categoryがないclusterだけは `PodcastNewsCategorizer` へ渡す。production implementationは番組で選択された生成providerと同じstructured inference基盤を使い、cluster内entryのtitle / source titleとfeed categoryから暫定選択した代表カテゴリ名だけを入力する。feed body、entry URL、linked pageはカテゴリ補完へ追加しない。tool resultがニュース数と一致する非空カテゴリ配列として検証できない、または推論に失敗した場合は対象clusterを `その他` へfallbackし、生成全体は失敗させない。
 
@@ -143,9 +143,9 @@ Podcast-owned tablesは次のとおり。
 
 ## Compatibility baseline
 
-application database versionは39で、更新互換性baselineはversion 38とする。fresh version 39 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnosticsを直接含む。
+application database versionは41で、更新互換性baselineはversion 38とする。fresh version 41 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnostics、番組・episodeの分類モード、episodeの最終再生チャプター番号を直接含む。
 
-version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_excluded_articles` を追加する。version 33〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
+version 38 -> 39 migrationは `podcast_programs.exclusion_prompt` と `podcast_excluded_articles`、39 -> 40 migrationは分類モード、40 -> 41 migrationは最終再生チャプター番号を追加する。version 33〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
 
 ## Invariants
 

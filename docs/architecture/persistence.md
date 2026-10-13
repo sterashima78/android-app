@@ -28,7 +28,7 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は 39 である。version 38 を更新互換性 baseline として維持し、Podcastの除外条件と除外済みentry identityを追加するversion 38 -> 39 migrationを保持する。version 38へ到達するためだけの一度限りmigrationはcurrent runtimeから退役済みである。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
+現在の application database version は 41 である。version 38 からのPodcast migrationは、38 -> 39 で除外条件と除外済みentry identity、39 -> 40 で分類モード、40 -> 41 で最後に再生したチャプター番号を追加する。version 38へ到達するためだけの一度限りmigrationはcurrent runtimeから退役済みである。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
 バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpoint、分類診断状態を含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
@@ -147,7 +147,7 @@ Podcast Context の fresh DB schema は `PodcastDatabaseSchema.kt` を正本と�
 
 `podcast_sources` はPodcast専用sourceの表示名とRSS / Atom feed URLを保持する。`podcast_programs` は番組定義、対象Podcast source ID群、生成provider、1エピソードの最大ニュース数、毎日の生成時刻、自然文の除外条件 `exclusion_prompt` を保持する。DB column `max_articles` とdomain property `maxArticlesPerEpisode` は互換上維持するが、実行意味論はcluster後のニュース数である。`podcast_episodes` は生成単位と状態・生成原稿・ニュース分類の診断状態 `clustering_status` を保持する。`podcast_episode_articles` はAI入力として予約したentry identity、title、feed-carried content、entry URLに加えて `chapter_position` をsnapshotし、同じpositionを持つ複数rowを1ニュースclusterとして扱う。`podcast_consumed_articles` は番組ごとに一度予約したentryを再利用しないためのdurable stateであり、cluster内の全entryを記録する。`podcast_excluded_articles` は除外条件で一度除外したentry identityと除外時刻だけを保持し、本文や条件snapshotは重複保存しない。
 
-version 39 のcurrent schemaは上記6 tableと現在のcolumnをfresh databaseへ直接作成する。version 38 -> 39 migrationは番組の除外条件columnと除外済みentry tableを追加する。version 32〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
+version 41 のcurrent schemaは上記6 tableと現在のcolumn（分類モードと最後に再生したチャプター番号を含む）をfresh databaseへ直接作成する。version 38 -> 39 migrationは番組の除外条件columnと除外済みentry table、39 -> 40 は分類モードcolumn、40 -> 41 は最後に再生したチャプター番号columnを追加する。version 32〜37からversion 38へ到達する過去migrationはADR-0264で退役済みであり、current runtimeは旧RSS / Content tableやpre-38 Podcast columnをcompatibility inputとして参照しない。
 
 Podcast生成は `podcast_sources` のURLを入力としてRSS-owned `RssFeedContentReader` capabilityからfeed-carried contentを取得する。候補判定にContentのread / unread stateを利用せず、Podcast-owned consumed / excluded stateで番組内の未処理entryを判定する。番組に除外条件があれば `PodcastNewsExcluder` がfeed-carried title / source title / bodyから候補をinclude / excludeへ分類し、成功時のexclude identityを `podcast_excluded_articles` へ保存する。判定失敗時は候補を失わず全件includeへfallbackする。正規化title完全一致の確実な重複除外後、Podcast domainの `PodcastNewsClusterer` が残った候補だけを同一ニュースclusterへ分類する。分類失敗時は1記事1clusterへfallbackし、fallback種別をepisodeの分類診断状態へsnapshotする。過去episodeとの意味的な重複判定は行わない。
 

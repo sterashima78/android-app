@@ -413,6 +413,9 @@ private fun EpisodeCard(
         "${formatEpisodeTime(episode.createdAtEpochMillis)}・${episode.articles.size}記事・${podcastClusteringModeLabel(episode.clusteringMode)}",
         style = MaterialTheme.typography.bodySmall,
       )
+      podcastClusteringStatusMessage(episode.clusteringStatus)?.let { warning ->
+        Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+      }
       when (episode.status) {
         PodcastEpisodeStatus.READY -> {
           OutlinedButton(onClick = onPlay, modifier = Modifier.fillMaxWidth()) {
@@ -725,6 +728,12 @@ private fun ProviderOption(
     RadioButton(selected = value == selected, onClick = { onSelect(value) })
     Text(label)
   }
+}
+
+internal fun podcastClusteringStatusMessage(status: PodcastClusteringStatus?): String? = when (status) {
+  PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR -> "分類処理に失敗したため、記事を1件ずつ分けました"
+  PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT -> "分類結果が不正だったため、記事を1件ずつ分けました"
+  PodcastClusteringStatus.SUCCESS, PodcastClusteringStatus.SKIPPED, null -> null
 }
 
 private fun podcastClusteringModeLabel(mode: PodcastClusteringMode): String = when (mode) {
