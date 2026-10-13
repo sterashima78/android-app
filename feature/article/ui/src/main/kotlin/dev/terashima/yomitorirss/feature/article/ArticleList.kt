@@ -94,7 +94,7 @@ fun ArticleList(
       }
     }
     groups.forEachIndexed { index, (date, values) ->
-      stickyHeader(key = "header-$index-$date") {
+      stickyHeader(key = if (preserveSortOrder) "header-$index-$date" else "header-$date") {
         Surface(color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f)) {
           Text(
             date,
