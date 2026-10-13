@@ -769,9 +769,7 @@ private class FakePodcastRepository(
 
   override suspend fun claimPendingEpisode(programId: String): PodcastEpisode? {
     val index = episodes.indexOfFirst {
-      it.programId == programId && (
-        it.status == PodcastEpisodeStatus.GENERATING || it.regenerationStatus == PodcastRegenerationStatus.RUNNING
-      )
+      it.programId == programId && it.status == PodcastEpisodeStatus.GENERATING
     }.takeIf { it >= 0 } ?: episodes.indexOfFirst {
       it.programId == programId && it.status == PodcastEpisodeStatus.QUEUED
     }
@@ -809,7 +807,7 @@ private class FakePodcastRepository(
   }
 
   override suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode =
-    update(episodeId) { it.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null, regenerationStatus = null) }
+    update(episodeId) { it.copy(status = PodcastEpisodeStatus.GENERATING, errorMessage = null) }
 
   override suspend fun prepareEpisodeRebuild(
     episodeId: String,
@@ -822,7 +820,6 @@ private class FakePodcastRepository(
         articles = candidates.map { it.toEpisodeArticle() },
         script = null,
         errorMessage = null,
-        regenerationStatus = null,
         clusteringStatus = clusteringStatus,
       )
     }
@@ -846,11 +843,6 @@ private class FakePodcastRepository(
       it.copy(chapterStatus = PodcastChapterGenerationStatus.FAILED, chapterError = message)
     }
 
-  override suspend fun failRegeneration(episodeId: String, message: String): PodcastEpisode =
-    update(episodeId) {
-      it.copy(regenerationStatus = PodcastRegenerationStatus.FAILED, errorMessage = message)
-    }
-
   override suspend fun completeEpisode(episodeId: String, title: String, script: String): PodcastEpisode =
     update(episodeId) {
       it.copy(
@@ -858,13 +850,12 @@ private class FakePodcastRepository(
         script = script,
         errorMessage = null,
         status = PodcastEpisodeStatus.READY,
-        regenerationStatus = null,
       )
     }
 
   override suspend fun failEpisode(episodeId: String, message: String): PodcastEpisode =
     update(episodeId) {
-      it.copy(errorMessage = message, status = PodcastEpisodeStatus.FAILED, regenerationStatus = null)
+      it.copy(errorMessage = message, status = PodcastEpisodeStatus.FAILED)
     }
 
   private fun updateArticle(

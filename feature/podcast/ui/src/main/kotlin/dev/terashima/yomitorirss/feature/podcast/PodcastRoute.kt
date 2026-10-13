@@ -224,8 +224,7 @@ private fun PodcastContent(
 
     state.selectedProgram?.let { program ->
       val generating = state.episodes.any { episode ->
-        episode.status == PodcastEpisodeStatus.GENERATING ||
-          episode.regenerationStatus == PodcastRegenerationStatus.RUNNING
+        episode.status == PodcastEpisodeStatus.GENERATING
       }
       val oldestQueuedEpisodeId = state.episodes
         .asSequence()
@@ -274,7 +273,7 @@ private fun PodcastContent(
         state.episodes.forEach { episode ->
           EpisodeCard(
             episode = episode,
-            busy = episode.id in state.busyEpisodeIds || episode.regenerationStatus == PodcastRegenerationStatus.RUNNING,
+            busy = episode.id in state.busyEpisodeIds,
             queuedStartEnabled = episode.id == oldestQueuedEpisodeId && !generating,
             queuedStarting = episode.id == oldestQueuedEpisodeId && generating,
             onStartQueued = { onGenerate(program.id) },
@@ -498,237 +497,6 @@ private fun EpisodeCard(
   }
 }
 
-@Composable
-private fun PodcastProgramEditorDialog(
-  program: PodcastProgram?,
-  sources: List<PodcastSource>,
-  sourceIdsInUse: Set<String>,
-  onAddSource: (String, String) -> Unit,
-  onDeleteSource: (String) -> Unit,
-  onDismiss: () -> Unit,
-  onSave: (String?, String, Set<String>, PodcastGenerationProvider, PodcastClusteringMode, String, Boolean, Int, Int, Int) -> Unit,
-) {
-  var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
-  var selectedSourceIds by remember(program?.id) {
-    mutableStateOf<Set<String>>(
-      program?.sourceIds.orEmpty().filter { sourceId ->
-        sources.any { it.id == sourceId }
-      }.toSet(),
-    )
-  }
-  var newSourceName by remember(program?.id) { mutableStateOf("") }
-  var newSourceUrl by remember(program?.id) { mutableStateOf("") }
-  var provider by remember(program?.id) { mutableStateOf(program?.provider ?: PodcastGenerationProvider.LOCAL) }
-  var clusteringMode by remember(program?.id) { mutableStateOf(program?.clusteringMode ?: PodcastClusteringMode.EVENT) }
-  var exclusionPrompt by remember(program?.id) { mutableStateOf(program?.exclusionPrompt.orEmpty()) }
-  var scheduleEnabled by remember(program?.id) { mutableStateOf(program?.schedule?.enabled ?: false) }
-  var hour by remember(program?.id) { mutableStateOf((program?.schedule?.hour ?: 7).toString()) }
-  var minute by remember(program?.id) { mutableStateOf((program?.schedule?.minute ?: 0).toString()) }
-  var maxArticles by remember(program?.id) { mutableStateOf((program?.maxArticlesPerEpisode ?: 12).toString()) }
-
-  val parsedHour = hour.toIntOrNull()
-  val parsedMinute = minute.toIntOrNull()
-  val parsedMaxArticles = maxArticles.toIntOrNull()
-  val valid = name.isNotBlank() &&
-    selectedSourceIds.isNotEmpty() &&
-    parsedHour != null && parsedHour in 0..23 &&
-    parsedMinute != null && parsedMinute in 0..59 &&
-    parsedMaxArticles != null && parsedMaxArticles in 1..50
-
-  Dialog(
-    onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Surface(
-      modifier = Modifier.fillMaxSize(),
-      color = MaterialTheme.colorScheme.background,
-    ) {
-      Column(Modifier.fillMaxSize()) {
-        Text(
-          if (program == null) "番組を追加" else "番組を編集",
-          modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-          style = MaterialTheme.typography.titleLarge,
-        )
-        HorizontalDivider()
-        Column(
-          modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
-          verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-          OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("番組名") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-          )
-
-          Text("生成AI", style = MaterialTheme.typography.titleSmall)
-          ProviderOption("ローカルAI", PodcastGenerationProvider.LOCAL, provider) { provider = it }
-          ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
-          HorizontalDivider()
-          Text("既定の分類モード", style = MaterialTheme.typography.titleSmall)
-          ClusteringModeOption("出来事単位（従来方式）", PodcastClusteringMode.EVENT, clusteringMode) { clusteringMode = it }
-          ClusteringModeOption("関連トピック単位（試験運用）", PodcastClusteringMode.TOPIC, clusteringMode) { clusteringMode = it }
-          Text("試験モードは端末内で類似度を計算します。初回は追加モデルの取得が必要です。", style = MaterialTheme.typography.bodySmall)
-
-          OutlinedTextField(
-            value = exclusionPrompt,
-            onValueChange = { exclusionPrompt = it },
-            label = { Text("除外条件") },
-            placeholder = { Text("例: 特定カテゴリのニュースは除外する") },
-            supportingText = { Text("聞かなくてよいニュースの条件を自然文で指定します。空欄ならすべて候補にします。") },
-            minLines = 3,
-            maxLines = 6,
-            modifier = Modifier.fillMaxWidth(),
-          )
-
-          HorizontalDivider()
-          Text("利用するソース", style = MaterialTheme.typography.titleSmall)
-          Text(
-            "ここで追加したソースはニュースポッドキャスト専用です。RSS購読一覧とは別に管理されます。",
-            style = MaterialTheme.typography.bodySmall,
-          )
-          OutlinedTextField(
-            value = newSourceName,
-            onValueChange = { newSourceName = it },
-            label = { Text("ソース名") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-          )
-          OutlinedTextField(
-            value = newSourceUrl,
-            onValueChange = { newSourceUrl = it },
-            label = { Text("RSS / Atom URL") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-          )
-          OutlinedButton(
-            enabled = newSourceName.isNotBlank() && newSourceUrl.isNotBlank(),
-            onClick = {
-              onAddSource(newSourceName, newSourceUrl)
-              newSourceName = ""
-              newSourceUrl = ""
-            },
-            modifier = Modifier.fillMaxWidth(),
-          ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Podcast用ソースを追加")
-          }
-          if (sources.isEmpty()) {
-            Text("利用できるソースがありません。上からPodcast用ソースを追加してください。")
-          } else {
-            sources.forEach { source ->
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Checkbox(
-                  checked = source.id in selectedSourceIds,
-                  onCheckedChange = { checked ->
-                    selectedSourceIds = if (checked) selectedSourceIds + source.id else selectedSourceIds - source.id
-                  },
-                )
-                Column(Modifier.weight(1f)) {
-                  Text(source.name)
-                  Text(source.feedUrl, style = MaterialTheme.typography.bodySmall)
-                }
-                IconButton(
-                  enabled = source.id !in sourceIdsInUse,
-                  onClick = {
-                    selectedSourceIds -= source.id
-                    onDeleteSource(source.id)
-                  },
-                ) {
-                  Icon(Icons.Default.Delete, contentDescription = "ソースを削除")
-                }
-              }
-            }
-            if (sourceIdsInUse.isNotEmpty()) {
-              Text("番組で利用中のソースは、番組から外して保存した後に削除できます。", style = MaterialTheme.typography.bodySmall)
-            }
-          }
-
-          HorizontalDivider()
-          Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("毎日自動生成", modifier = Modifier.weight(1f))
-            Switch(checked = scheduleEnabled, onCheckedChange = { scheduleEnabled = it })
-          }
-          if (scheduleEnabled) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              OutlinedTextField(
-                value = hour,
-                onValueChange = { hour = it.filter(Char::isDigit).take(2) },
-                label = { Text("時") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-              )
-              OutlinedTextField(
-                value = minute,
-                onValueChange = { minute = it.filter(Char::isDigit).take(2) },
-                label = { Text("分") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-              )
-            }
-          }
-          OutlinedTextField(
-            value = maxArticles,
-            onValueChange = { maxArticles = it.filter(Char::isDigit).take(2) },
-            label = { Text("1回に使う最大記事数") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-          )
-          Text(
-            "原稿にはRSS/Atomフィード内の本文だけを使用し、記事リンク先は取得しません。",
-            style = MaterialTheme.typography.bodySmall,
-          )
-        }
-        HorizontalDivider()
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-          horizontalArrangement = Arrangement.End,
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          TextButton(onClick = onDismiss) { Text("キャンセル") }
-          TextButton(
-            enabled = valid,
-            onClick = {
-              onSave(
-                program?.id,
-                name,
-                selectedSourceIds,
-                provider,
-                clusteringMode,
-                exclusionPrompt,
-                scheduleEnabled,
-                requireNotNull(parsedHour),
-                requireNotNull(parsedMinute),
-                requireNotNull(parsedMaxArticles),
-              )
-            },
-          ) { Text("保存") }
-        }
-      }
-    }
-  }
-}
-
-@Composable
-private fun ProviderOption(
-  label: String,
-  value: PodcastGenerationProvider,
-  selected: PodcastGenerationProvider,
-  onSelect: (PodcastGenerationProvider) -> Unit,
-) {
-  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-    RadioButton(selected = value == selected, onClick = { onSelect(value) })
-    Text(label)
-  }
-}
 
 internal fun podcastClusteringStatusMessage(status: PodcastClusteringStatus?): String? = when (status) {
   PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR -> "分類処理に失敗したため、記事を1件ずつ分けました"
@@ -741,13 +509,6 @@ private fun podcastClusteringModeLabel(mode: PodcastClusteringMode): String = wh
   PodcastClusteringMode.TOPIC -> "関連トピック単位"
 }
 
-@Composable
-private fun ClusteringModeOption(label: String, value: PodcastClusteringMode, selected: PodcastClusteringMode, onSelect: (PodcastClusteringMode) -> Unit) {
-  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-    RadioButton(selected = value == selected, onClick = { onSelect(value) })
-    Text(label)
-  }
-}
 
 private fun formatEpisodeTime(epochMillis: Long): String = EPISODE_DATE_FORMATTER.format(
   Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()),

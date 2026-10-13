@@ -47,7 +47,7 @@ class PodcastGenerationWorker(
   private suspend fun runBackgroundWork(): Result {
     val programId = inputData.getString(KEY_PROGRAM_ID) ?: return Result.failure()
     val program = repository.findProgram(programId) ?: return Result.success()
-    val operation = podcastGenerationOperation(inputData.getString(KEY_OPERATION))
+    val operation = podcastGenerationOperation(inputData.getString(KEY_OPERATION)) ?: return Result.failure()
     val useForeground = shouldUsePodcastGenerationForeground(operation)
     var scheduleNext = false
 
@@ -191,9 +191,8 @@ enum class PodcastGenerationOperation {
   REGENERATE,
 }
 
-internal fun podcastGenerationOperation(raw: String?): PodcastGenerationOperation =
+internal fun podcastGenerationOperation(raw: String?): PodcastGenerationOperation? =
   raw?.let { value -> runCatching { PodcastGenerationOperation.valueOf(value) }.getOrNull() }
-    ?: PodcastGenerationOperation.SCHEDULED_GENERATE
 
 internal fun shouldUsePodcastGenerationForeground(operation: PodcastGenerationOperation): Boolean =
   operation != PodcastGenerationOperation.SCHEDULED_GENERATE

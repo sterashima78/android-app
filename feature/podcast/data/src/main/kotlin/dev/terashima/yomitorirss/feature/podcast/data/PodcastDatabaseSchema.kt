@@ -8,9 +8,7 @@ val podcastDatabaseSchema = DatabaseSchemaContribution(
   owner = "podcast",
   createSchema = ::createPodcastSchema,
   migrations = listOf(
-    DatabaseMigration(targetVersion = 39, migrate = ::migratePodcastTo39),
-    DatabaseMigration(targetVersion = 40, migrate = ::migratePodcastTo40),
-    DatabaseMigration(targetVersion = 41, migrate = ::migratePodcastTo41),
+    DatabaseMigration(targetVersion = 42, migrate = ::migratePodcastTo42),
   ),
 )
 
@@ -39,7 +37,6 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "status TEXT NOT NULL," +
       "script TEXT," +
       "error_message TEXT," +
-      "regeneration_status TEXT," +
       "clustering_status TEXT," +
       "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'," +
       "last_played_chapter INTEGER" +
@@ -90,39 +87,9 @@ private fun createPodcastExcludedArticlesTable(db: SQLiteDatabase) {
   )
 }
 
-private fun migratePodcastTo39(db: SQLiteDatabase) {
-  db.execSQL("ALTER TABLE podcast_programs ADD COLUMN exclusion_prompt TEXT NOT NULL DEFAULT ''")
-  createPodcastExcludedArticlesTable(db)
-}
-
-private fun migratePodcastTo40(db: SQLiteDatabase) {
-  listOf("podcast_programs", "podcast_episodes").forEach { table ->
-    val exists = db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
-      val nameIndex = cursor.getColumnIndexOrThrow("name")
-      var found = false
-      while (cursor.moveToNext()) {
-        if (cursor.getString(nameIndex) == "clustering_mode") found = true
-      }
-      found
-    }
-    if (!exists) {
-      db.execSQL("ALTER TABLE $table ADD COLUMN clustering_mode TEXT NOT NULL DEFAULT 'EVENT'")
-    }
-  }
-}
-
-private fun migratePodcastTo41(db: SQLiteDatabase) {
-  val exists = db.rawQuery("PRAGMA table_info(podcast_episodes)", null).use { cursor ->
-    val nameIndex = cursor.getColumnIndexOrThrow("name")
-    var found = false
-    while (cursor.moveToNext()) {
-      if (cursor.getString(nameIndex) == "last_played_chapter") found = true
-    }
-    found
-  }
-  if (!exists) {
-    db.execSQL("ALTER TABLE podcast_episodes ADD COLUMN last_played_chapter INTEGER")
-  }
+// The v41 distribution baseline is the only supported upgrade input.
+private fun migratePodcastTo42(db: SQLiteDatabase) {
+  db.execSQL("ALTER TABLE podcast_episodes DROP COLUMN regeneration_status")
 }
 
 private fun createPodcastSourcesTable(db: SQLiteDatabase) {

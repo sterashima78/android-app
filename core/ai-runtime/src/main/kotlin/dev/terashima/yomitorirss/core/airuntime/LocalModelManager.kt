@@ -28,63 +28,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.runBlocking
 
-enum class LocalInferenceBackend {
-  CPU,
-  GPU,
-}
-
-enum class LocalPromptFormat {
-  CHAT_ML,
-  PLAIN,
-}
-
-enum class LocalInferenceStage {
-  PREPARING_MODEL,
-  GENERATING_RESPONSE,
-}
-
-data class LocalInferenceSettings(
-  val backend: LocalInferenceBackend = LocalInferenceBackend.CPU,
-  val thinkingEnabled: Boolean = false,
-  val speculativeDecodingEnabled: Boolean = false,
-  val contextSizeMode: LocalContextSizeMode = LocalContextSizeMode.AUTO,
-)
-
-data class LocalModelStatus(
-  val id: String,
-  val name: String,
-  val description: String,
-  val source: String,
-  val license: String,
-  val quantization: String,
-  val sizeBytes: Long,
-  val downloadedBytes: Long,
-  val downloaded: Boolean,
-  val selected: Boolean,
-  val recommended: Boolean,
-  val memoryLow: Boolean,
-  val supportsThinking: Boolean,
-  val supportsSpeculativeDecoding: Boolean,
-  val contextTokens: Int,
-  val maxInputChars: Int,
-  val promptBudgetChars: Int,
-  val promptFormat: LocalPromptFormat,
-)
-
-data class ModelDownloadProgress(
-  val modelId: String,
-  val phase: String,
-  val downloadedBytes: Long,
-  val totalBytes: Long,
-  val estimatedRemainingMillis: Long? = null,
-)
-
-data class LocalInferenceProgress(
-  val stage: LocalInferenceStage,
-  val modelName: String? = null,
-  val estimatedStageDurationMillis: Long? = null,
-)
-
 class LocalModelManager(context: Context) : AutoCloseable {
   private val appContext = context.applicationContext
   private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -248,7 +191,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
       temporary.delete()
       var connection: HttpURLConnection? = null
       try {
-        connection = openDownloadConnection(model.downloadUrl)
+        connection = openModelDownloadConnection(model.downloadUrl)
         val totalBytes = connection.contentLengthLong.takeIf { it > 0 } ?: model.estimatedSizeBytes
         var downloadedBytes = 0L
         var lastProgressAt = 0L
@@ -625,31 +568,6 @@ class LocalModelManager(context: Context) : AutoCloseable {
     )
   }
 
-  private fun openDownloadConnection(initialUrl: String): HttpURLConnection {
-    var currentUrl = initialUrl
-    repeat(MAX_REDIRECTS) {
-      val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
-        connectTimeout = DOWNLOAD_CONNECT_TIMEOUT_MILLIS
-        readTimeout = DOWNLOAD_READ_TIMEOUT_MILLIS
-        instanceFollowRedirects = false
-        setRequestProperty("Accept-Encoding", "identity")
-        setRequestProperty("User-Agent", "Yomitori-RSS-Reader/0.2")
-      }
-      val status = connection.responseCode
-      if (status in 300..399) {
-        val location = connection.getHeaderField("Location") ?: throw IOException("リダイレクト先がありません")
-        currentUrl = URL(URL(currentUrl), location).toString()
-        connection.disconnect()
-      } else {
-        if (status !in 200..299) {
-          connection.disconnect()
-          throw IOException("HTTP $status")
-        }
-        return connection
-      }
-    }
-    throw IOException("リダイレクト回数が上限を超えました")
-  }
 
   private fun modelFile(model: ModelDefinition) = File(modelsDirectory(), model.fileName)
   private fun temporaryModelFile(model: ModelDefinition) = File(modelsDirectory(), "${model.fileName}.part")
@@ -744,32 +662,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
     val tokenizer: LiteRtLmTokenizer,
   )
 
-  private data class ModelDefinition(
-    val id: String,
-    val name: String,
-    val description: String,
-    val source: String,
-    val license: String,
-    val quantization: String,
-    val contextTokens: Int,
-    val maxInputChars: Int,
-    val promptBudgetChars: Int,
-    val estimatedSizeBytes: Long,
-    val fileName: String,
-    val downloadUrl: String,
-    val artifactRevision: String,
-    val minDeviceMemoryGb: Int,
-    val supportsSpeculativeDecoding: Boolean = false,
-    val recommended: Boolean = false,
-  )
-
   companion object {
     private const val DOWNLOAD_BUFFER_SIZE = 1024 * 1024
-    private const val DOWNLOAD_CONNECT_TIMEOUT_MILLIS = 30_000
-    private const val DOWNLOAD_READ_TIMEOUT_MILLIS = 60_000
     private const val DOWNLOAD_PROGRESS_INTERVAL_MILLIS = 250L
     private const val DOWNLOAD_STORAGE_MARGIN_BYTES = 256L * 1024 * 1024
-    private const val MAX_REDIRECTS = 8
     private const val BYTES_PER_GB = 1024L * 1024 * 1024
     private const val MINIMUM_DEVICE_MEMORY_BYTES = 4L * BYTES_PER_GB
     private const val PREFERENCES_NAME = "local_summary_models"
@@ -792,184 +688,5 @@ class LocalModelManager(context: Context) : AutoCloseable {
           ?: LocalModelManager(context.applicationContext).also { sharedInferenceManager = it }
       }
 
-    private val MODEL_CATALOG = listOf(
-      ModelDefinition(
-        id = "gemma4-e2b-it",
-        name = "Gemma 4 E2B",
-        description = "日本語要約とアプリ内ツール利用に対応する軽量Gemma 4モデルです。",
-        source = "litert-community/gemma-4-E2B-it-litert-lm",
-        license = "Apache-2.0",
-        quantization = "Mixed 2/4/8-bit",
-        contextTokens = 32_768,
-        maxInputChars = 2500,
-        promptBudgetChars = 4096,
-        estimatedSizeBytes = 2_588_147_712,
-        fileName = "gemma-4-E2B-it.litertlm",
-        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/6e5c4f1e395deb959c494953478fa5cec4b8008f/gemma-4-E2B-it.litertlm?download=true",
-        artifactRevision = "6e5c4f1e395deb959c494953478fa5cec4b8008f",
-        minDeviceMemoryGb = 8,
-        supportsSpeculativeDecoding = true,
-        recommended = true,
-      ),
-      ModelDefinition(
-        id = "gemma4-e4b-it",
-        name = "Gemma 4 E4B 高品質",
-        description = "品質を優先するGemma 4モデルです。約3.7 GBの保存容量と12 GB級のメモリを推奨します。",
-        source = "litert-community/gemma-4-E4B-it-litert-lm",
-        license = "Apache-2.0",
-        quantization = "Mixed 2/4/8-bit",
-        contextTokens = 32_768,
-        maxInputChars = 2500,
-        promptBudgetChars = 4096,
-        estimatedSizeBytes = 3_659_530_240,
-        fileName = "gemma-4-E4B-it.litertlm",
-        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/28299f30ee4d43294517a4ac93abd6163412f07f/gemma-4-E4B-it.litertlm?download=true",
-        artifactRevision = "28299f30ee4d43294517a4ac93abd6163412f07f",
-        minDeviceMemoryGb = 12,
-        supportsSpeculativeDecoding = true,
-      ),
-    )
-  }
-}
-
-private class LiteRtLmInference(
-  file: File,
-  cacheDirectory: File,
-  backend: LocalInferenceBackend,
-  contextTokens: Int,
-  speculativeDecodingEnabled: Boolean,
-  visionEnabled: Boolean,
-) : AutoCloseable {
-  private val engine = createEngine(
-    file = file,
-    cacheDirectory = cacheDirectory,
-    backend = backend,
-    contextTokens = contextTokens,
-    speculativeDecodingEnabled = speculativeDecodingEnabled,
-    visionEnabled = visionEnabled,
-  )
-
-  fun generate(prompt: String): String =
-    engine.createConversation().use { conversation ->
-      conversation.sendMessage(prompt).toString()
-    }
-
-  fun generateWithImage(prompt: String, imageBytes: ByteArray): String =
-    engine.createConversation().use { conversation ->
-      conversation.sendMessage(
-        Contents.of(
-          Content.ImageBytes(imageBytes),
-          Content.Text(prompt),
-        ),
-      ).toString()
-    }
-
-  fun generateImageToolCall(
-    systemInstruction: String,
-    userMessage: String,
-    imageBytes: ByteArray,
-    tools: List<LocalInferenceTool>,
-  ): LocalInferenceToolCall? {
-    val config = ConversationConfig(
-      systemInstruction = Contents.of(systemInstruction),
-      tools = tools.map { definition -> tool(LocalOpenApiTool(definition)) },
-      automaticToolCalling = false,
-    )
-    return engine.createConversation(config).use { conversation ->
-      val response = conversation.sendMessage(
-        Contents.of(
-          Content.ImageBytes(imageBytes),
-          Content.Text(userMessage),
-        ),
-      )
-      response.toolCalls.singleOrNull()?.let { call ->
-        LocalInferenceToolCall(call.name, call.arguments)
-      }
-    }
-  }
-
-  fun generateStreaming(prompt: String, onChunk: (String) -> Unit): String =
-    engine.createConversation().use { conversation ->
-      collectStreamingResponse(conversation.sendMessageAsync(prompt), onChunk)
-    }
-
-  fun generateConversation(
-    request: LocalInferenceConversationRequest,
-    streaming: Boolean,
-    onChunk: (String) -> Unit,
-  ): String {
-    val config = ConversationConfig(
-      systemInstruction = Contents.of(request.systemInstruction),
-      initialMessages = request.initialMessages.map { message ->
-        when (message.role) {
-          LocalInferenceMessageRole.USER -> Message.user(message.content)
-          LocalInferenceMessageRole.MODEL -> Message.model(message.content)
-        }
-      },
-      tools = request.tools.map { definition -> tool(LocalOpenApiTool(definition)) },
-      automaticToolCalling = true,
-    )
-    return engine.createConversation(config).use { conversation ->
-      if (streaming) {
-        collectStreamingResponse(conversation.sendMessageAsync(request.userMessage), onChunk)
-      } else {
-        conversation.sendMessage(request.userMessage).toString()
-      }
-    }
-  }
-
-  private fun collectStreamingResponse(
-    messages: kotlinx.coroutines.flow.Flow<Message>,
-    onChunk: (String) -> Unit,
-  ): String {
-    val response = StringBuilder()
-    runBlocking {
-      messages.collect { message ->
-        val chunk = message.toString()
-        if (chunk.isNotEmpty()) {
-          response.append(chunk)
-          onChunk(chunk)
-        }
-      }
-    }
-    return response.toString()
-  }
-
-  override fun close() {
-    engine.close()
-  }
-
-  @OptIn(ExperimentalApi::class)
-  private fun createEngine(
-    file: File,
-    cacheDirectory: File,
-    backend: LocalInferenceBackend,
-    contextTokens: Int,
-    speculativeDecodingEnabled: Boolean,
-    visionEnabled: Boolean,
-  ): Engine = engineInitializationLock.withLock {
-    val previous = ExperimentalFlags.enableSpeculativeDecoding
-    ExperimentalFlags.enableSpeculativeDecoding = speculativeDecodingEnabled
-    try {
-      val textBackend = when (backend) {
-        LocalInferenceBackend.CPU -> Backend.CPU()
-        LocalInferenceBackend.GPU -> Backend.GPU()
-      }
-      Engine(
-        EngineConfig(
-          modelPath = file.absolutePath,
-          backend = textBackend,
-          visionBackend = Backend.GPU().takeIf { visionEnabled },
-          cacheDir = cacheDirectory.absolutePath,
-          maxNumTokens = contextTokens,
-        ),
-      ).also { it.initialize() }
-    } finally {
-      ExperimentalFlags.enableSpeculativeDecoding = previous
-    }
-  }
-
-  companion object {
-    private val engineInitializationLock = ReentrantLock()
   }
 }

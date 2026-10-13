@@ -51,3 +51,7 @@ fresh database はすでに version 38 の完全な schema を直接作成する
 
 - version 37以下のdatabaseを持つ古いインストールからcurrent versionへ直接更新する互換性は保証しない。
 - 古いdatabaseを移行する必要が生じた場合は対応する中間版を経由する必要がある。
+
+## Later decision
+
+See [ADR-0285](0285-retire-compatibility-and-split-responsibilities.md) for the later retirement of the v38 upgrade path and legacy generation state.

@@ -55,3 +55,7 @@ feed URLへの再アクセスや新しいfeed entryの取り込みは行わな�
 - Domain testで、全記事除外時に既存episodeを保持して再生成を開始しないことを確認する。
 - Repository testで、同一episode IDの記事snapshotを再構築し旧scriptを消去して `GENERATING` へ戻すことを確認する。
 - architecture verification、unit test、lint、public repository verificationを実行する。
+
+## Later decision
+
+See [ADR-0285](0285-retire-compatibility-and-split-responsibilities.md) for the later retirement of the v38 upgrade path and legacy generation state.
