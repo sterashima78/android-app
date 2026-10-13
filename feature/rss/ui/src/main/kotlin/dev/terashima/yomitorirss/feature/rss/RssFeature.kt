@@ -86,6 +86,7 @@ fun RssScreen(
           modifier = Modifier.weight(1f),
           articles = sortedUnread,
           emptyText = "未読記事はありません",
+          preserveSortOrder = true,
           annotationByArticleId = sortedUnread.mapNotNull { article ->
             state.recommendationAnnotationFor(article.id)?.let { annotation ->
               article.id to annotation
