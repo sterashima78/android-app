@@ -14,7 +14,6 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskState
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
-import dev.terashima.yomitorirss.feature.podcast.PodcastRegenerationStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
@@ -42,7 +41,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 42, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -114,112 +113,11 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `database version 38から41へ既定の分類モードを維持して移行する`() = runSuspend {
+  fun `database version 41を42へ更新して旧再生成columnだけを削除する`() {
     database.close()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
-    val legacySchema = DatabaseSchema(
-      version = 38,
-      contributions = listOf(
-        DatabaseSchemaContribution(
-          owner = "podcast",
-          createSchema = { db ->
-            db.execSQL(
-              "CREATE TABLE podcast_programs(" +
-                "id TEXT PRIMARY KEY NOT NULL," +
-                "name TEXT NOT NULL," +
-                "source_ids TEXT NOT NULL," +
-                "provider TEXT NOT NULL," +
-                "schedule_enabled INTEGER NOT NULL DEFAULT 0," +
-                "schedule_hour INTEGER NOT NULL DEFAULT 7," +
-                "schedule_minute INTEGER NOT NULL DEFAULT 0," +
-                "max_articles INTEGER NOT NULL DEFAULT 12" +
-                ")",
-            )
-            db.execSQL(
-              "INSERT INTO podcast_programs(id,name,source_ids,provider,max_articles) VALUES(?,?,?,?,?)",
-              arrayOf<Any>("program-1", "番組", "source-1", PodcastGenerationProvider.LOCAL.name, 12),
-            )
-          },
-        ),
-      ),
-    )
-    YomitoriDatabase.create(context, legacySchema).close()
-
-    database = YomitoriDatabase.create(
-      context,
-      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
-    )
-    repository = SqlitePodcastRepository(DatabaseConnection(database))
-
-    val migrated = repository.listPrograms().single()
-    assertEquals("", migrated.exclusionPrompt)
-    assertEquals(PodcastClusteringMode.EVENT, migrated.clusteringMode)
-    repository.recordExcludedEntries(
-      migrated.id,
-      listOf(
-        PodcastFeedEntry(
-          articleId = "source-1:article-1",
-          feedId = "source-1",
-          title = "記事",
-          sourceTitle = null,
-          publishedAtEpochMillis = null,
-          articleUrl = "https://example.invalid/article-1",
-          feedContent = "本文",
-        ),
-      ),
-      100L,
-    )
-  }
-
-  @Test
-  fun `database version 39から41で既存エピソードも出来事モードを保持する`() = runSuspend {
-    database.close()
-    context.deleteDatabase(YomitoriDatabase.DB_NAME)
-    val legacySchema = DatabaseSchema(
-      version = 39,
-      contributions = listOf(
-        DatabaseSchemaContribution(
-          owner = "podcast",
-          createSchema = { db ->
-            db.execSQL(
-              "CREATE TABLE podcast_programs(" +
-                "id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,source_ids TEXT NOT NULL," +
-                "provider TEXT NOT NULL,schedule_enabled INTEGER NOT NULL DEFAULT 0," +
-                "schedule_hour INTEGER NOT NULL DEFAULT 7,schedule_minute INTEGER NOT NULL DEFAULT 0," +
-                "max_articles INTEGER NOT NULL DEFAULT 12,exclusion_prompt TEXT NOT NULL DEFAULT '')",
-            )
-            db.execSQL(
-              "CREATE TABLE podcast_episodes(" +
-                "id TEXT PRIMARY KEY NOT NULL,program_id TEXT NOT NULL," +
-                "title TEXT NOT NULL,created_at INTEGER NOT NULL,status TEXT NOT NULL," +
-                "script TEXT,error_message TEXT,regeneration_status TEXT,clustering_status TEXT)",
-            )
-            db.execSQL(
-              "INSERT INTO podcast_programs(id,name,source_ids,provider) VALUES('program','番組','source','LOCAL')",
-            )
-            db.execSQL(
-              "INSERT INTO podcast_episodes(id,program_id,title,created_at,status) VALUES('episode','program','番組',100,'READY')",
-            )
-          },
-        ),
-      ),
-    )
-    YomitoriDatabase.create(context, legacySchema).close()
-    database = YomitoriDatabase.create(
-      context,
-      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
-    )
-    repository = SqlitePodcastRepository(DatabaseConnection(database))
-    assertEquals(PodcastClusteringMode.EVENT, repository.findProgram("program")?.clusteringMode)
-    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode("episode")?.clusteringMode)
-  }
-
-  @Test
-  fun `database version 40から41で既存エピソードを保持し再生位置は未記録になる`() {
-    database.close()
-    context.deleteDatabase(YomitoriDatabase.DB_NAME)
-    val legacySchema = DatabaseSchema(
-      version = 40,
+    val previousSchema = DatabaseSchema(
+      version = 41,
       contributions = listOf(
         DatabaseSchemaContribution(
           owner = "podcast",
@@ -229,30 +127,39 @@ class PodcastRepositoryPersistenceTest {
                 "id TEXT PRIMARY KEY NOT NULL,program_id TEXT NOT NULL," +
                 "title TEXT NOT NULL,created_at INTEGER NOT NULL,status TEXT NOT NULL," +
                 "script TEXT,error_message TEXT,regeneration_status TEXT,clustering_status TEXT," +
-                "clustering_mode TEXT NOT NULL DEFAULT 'EVENT')",
+                "clustering_mode TEXT NOT NULL DEFAULT 'EVENT',last_played_chapter INTEGER)",
             )
             db.execSQL(
-              "INSERT INTO podcast_episodes(id,program_id,title,created_at,status) " +
-                "VALUES('episode','program','番組',100,'READY')",
+              "INSERT INTO podcast_episodes(id,program_id,title,created_at,status,regeneration_status) " +
+                "VALUES('episode','program','保存済み原稿',100,'READY',NULL)",
             )
           },
         ),
       ),
     )
-    YomitoriDatabase.create(context, legacySchema).close()
-
+    YomitoriDatabase.create(context, previousSchema).close()
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 42, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
+    assertEquals(42, database.readableDatabase.version)
+    database.readableDatabase.rawQuery("PRAGMA table_info(podcast_episodes)", null).use { cursor ->
+      val nameColumn = cursor.getColumnIndexOrThrow("name")
+      val columns = buildSet {
+        while (cursor.moveToNext()) add(cursor.getString(nameColumn))
+      }
+      assertTrue("regeneration_status" !in columns)
+      assertTrue("last_played_chapter" in columns)
+      assertTrue("clustering_mode" in columns)
+    }
     database.readableDatabase.rawQuery(
-      "SELECT status,last_played_chapter FROM podcast_episodes WHERE id='episode'",
+      "SELECT title,status FROM podcast_episodes WHERE id='episode'",
       null,
     ).use { cursor ->
       assertTrue(cursor.moveToFirst())
-      assertEquals("READY", cursor.getString(0))
-      assertTrue(cursor.isNull(1))
+      assertEquals("保存済み原稿", cursor.getString(0))
+      assertEquals("READY", cursor.getString(1))
     }
   }
 
@@ -469,7 +376,6 @@ class PodcastRepositoryPersistenceTest {
     assertEquals(PodcastEpisodeStatus.GENERATING, rebuilding.status)
     assertNull(rebuilding.script)
     assertNull(rebuilding.lastPlayedChapter)
-    assertNull(rebuilding.regenerationStatus)
     assertEquals(PodcastClusteringStatus.SUCCESS, rebuilding.clusteringStatus)
     assertEquals(listOf("article-2"), rebuilding.articles.map { it.articleId })
     assertEquals(0, rebuilding.articles.single().chapterPosition)
