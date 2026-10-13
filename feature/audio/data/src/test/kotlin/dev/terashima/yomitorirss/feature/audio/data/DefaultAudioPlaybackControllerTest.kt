@@ -10,6 +10,14 @@ import org.junit.Test
 
 class DefaultAudioPlaybackControllerTest {
   @Test
+  fun `指定チャプターを先に準備しても元の順序を維持する`() {
+    val original = listOf(1, 2, 3, 4)
+    assertEquals(listOf(3, 4, 1, 2), prioritizedAudioPreparation(original, 2))
+    assertEquals(original, prioritizedAudioPreparation(original, 0))
+    assertEquals(original, prioritizedAudioPreparation(original, 99))
+  }
+
+  @Test
   fun `インストール済みのオフライン日本語音声だけを利用する`() {
     assertTrue(
       isInstalledOfflineJapaneseVoice(
