@@ -42,7 +42,7 @@ class PodcastRepositoryPersistenceTest {
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
   }
@@ -114,7 +114,7 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `database version 38から40へ既定の分類モードを維持して移行する`() = runSuspend {
+  fun `database version 38から41へ既定の分類モードを維持して移行する`() = runSuspend {
     database.close()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     val legacySchema = DatabaseSchema(
@@ -147,7 +147,7 @@ class PodcastRepositoryPersistenceTest {
 
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
 
@@ -172,7 +172,7 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `database version 39から40で既存エピソードも出来事モードを保持する`() = runSuspend {
+  fun `database version 39から41で既存エピソードも出来事モードを保持する`() = runSuspend {
     database.close()
     context.deleteDatabase(YomitoriDatabase.DB_NAME)
     val legacySchema = DatabaseSchema(
@@ -207,11 +207,53 @@ class PodcastRepositoryPersistenceTest {
     YomitoriDatabase.create(context, legacySchema).close()
     database = YomitoriDatabase.create(
       context,
-      DatabaseSchema(version = 40, contributions = listOf(podcastDatabaseSchema)),
+      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
     )
     repository = SqlitePodcastRepository(DatabaseConnection(database))
     assertEquals(PodcastClusteringMode.EVENT, repository.findProgram("program")?.clusteringMode)
     assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode("episode")?.clusteringMode)
+  }
+
+  @Test
+  fun `database version 40から41で既存エピソードを保持し再生位置は未記録になる`() {
+    database.close()
+    context.deleteDatabase(YomitoriDatabase.DB_NAME)
+    val legacySchema = DatabaseSchema(
+      version = 40,
+      contributions = listOf(
+        DatabaseSchemaContribution(
+          owner = "podcast",
+          createSchema = { db ->
+            db.execSQL(
+              "CREATE TABLE podcast_episodes(" +
+                "id TEXT PRIMARY KEY NOT NULL,program_id TEXT NOT NULL," +
+                "title TEXT NOT NULL,created_at INTEGER NOT NULL,status TEXT NOT NULL," +
+                "script TEXT,error_message TEXT,regeneration_status TEXT,clustering_status TEXT," +
+                "clustering_mode TEXT NOT NULL DEFAULT 'EVENT')",
+            )
+            db.execSQL(
+              "INSERT INTO podcast_episodes(id,program_id,title,created_at,status) " +
+                "VALUES('episode','program','番組',100,'READY')",
+            )
+          },
+        ),
+      ),
+    )
+    YomitoriDatabase.create(context, legacySchema).close()
+
+    database = YomitoriDatabase.create(
+      context,
+      DatabaseSchema(version = 41, contributions = listOf(podcastDatabaseSchema)),
+    )
+    repository = SqlitePodcastRepository(DatabaseConnection(database))
+    database.readableDatabase.rawQuery(
+      "SELECT status,last_played_chapter FROM podcast_episodes WHERE id='episode'",
+      null,
+    ).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals("READY", cursor.getString(0))
+      assertTrue(cursor.isNull(1))
+    }
   }
 
   @Test
@@ -284,18 +326,27 @@ class PodcastRepositoryPersistenceTest {
     val reserved = requireNotNull(repository.reserveEpisode(program, listOf(article), 100L))
     repository.completeChapter(reserved.id, 0, "原稿")
     repository.completeEpisode(reserved.id, "朝のニュース / 1/1 07:00", "原稿")
+    repository.recordPlaybackChapter(reserved.id, 2)
+    assertEquals(2, repository.findEpisode(reserved.id)?.lastPlayedChapter)
 
     val archived = repository.archiveEpisode(reserved.id)
     assertEquals(PodcastEpisodeStatus.ARCHIVED, archived.status)
+    assertNull(archived.lastPlayedChapter)
+    repository.recordPlaybackChapter(reserved.id, 3)
+    assertNull(repository.findEpisode(reserved.id)?.lastPlayedChapter)
     assertEquals("原稿", archived.script)
     assertEquals(1, archived.articles.size)
 
     val restored = repository.restoreEpisode(reserved.id)
     assertEquals(PodcastEpisodeStatus.READY, restored.status)
+    assertNull(restored.lastPlayedChapter)
+    repository.recordPlaybackChapter(reserved.id, 1)
+    assertEquals(1, repository.findEpisode(reserved.id)?.lastPlayedChapter)
 
     repository.deleteEpisode(reserved.id)
     val deleted = requireNotNull(repository.findEpisode(reserved.id))
     assertEquals(PodcastEpisodeStatus.DELETED, deleted.status)
+    assertNull(deleted.lastPlayedChapter)
     assertTrue(deleted.articles.isEmpty())
     assertNull(deleted.script)
     assertNull(repository.reserveEpisode(program, listOf(article), 200L))
