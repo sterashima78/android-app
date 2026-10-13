@@ -224,8 +224,7 @@ private fun PodcastContent(
 
     state.selectedProgram?.let { program ->
       val generating = state.episodes.any { episode ->
-        episode.status == PodcastEpisodeStatus.GENERATING ||
-          episode.regenerationStatus == PodcastRegenerationStatus.RUNNING
+        episode.status == PodcastEpisodeStatus.GENERATING
       }
       val oldestQueuedEpisodeId = state.episodes
         .asSequence()
@@ -274,7 +273,7 @@ private fun PodcastContent(
         state.episodes.forEach { episode ->
           EpisodeCard(
             episode = episode,
-            busy = episode.id in state.busyEpisodeIds || episode.regenerationStatus == PodcastRegenerationStatus.RUNNING,
+            busy = episode.id in state.busyEpisodeIds,
             queuedStartEnabled = episode.id == oldestQueuedEpisodeId && !generating,
             queuedStarting = episode.id == oldestQueuedEpisodeId && generating,
             onStartQueued = { onGenerate(program.id) },
