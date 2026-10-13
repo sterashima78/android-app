@@ -77,16 +77,7 @@ fun ArticleList(
   onSetContentType: ((Article, ContentType?) -> Unit)? = null,
   extraMenuActions: (Article) -> List<ArticleMenuAction> = { emptyList() },
 ) {
-  // Preserve the caller's sort order: score-first lists can revisit the same date.
-  val groups = mutableListOf<Pair<String, MutableList<Article>>>()
-  articles.forEach { article ->
-    val date = dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
-    if (groups.lastOrNull()?.first == date) {
-      groups.last().second.add(article)
-    } else {
-      groups.add(date to mutableListOf(article))
-    }
-  }
+  val groups = consecutiveDateGroups(articles, displayedAtByArticleId)
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
     if (articles.isEmpty()) {
       item {
@@ -127,6 +118,23 @@ fun ArticleList(
       }
     }
   }
+}
+
+// Only group adjacent dates. Grouping globally by date would undo score-first sorting.
+internal fun consecutiveDateGroups(
+  articles: List<Article>,
+  displayedAtByArticleId: Map<String, String> = emptyMap(),
+): List<Pair<String, List<Article>>> {
+  val groups = mutableListOf<Pair<String, MutableList<Article>>>()
+  articles.forEach { article ->
+    val date = dateLabel(displayedAtByArticleId[article.id] ?: article.publishedAt)
+    if (groups.lastOrNull()?.first == date) {
+      groups.last().second.add(article)
+    } else {
+      groups.add(date to mutableListOf(article))
+    }
+  }
+  return groups
 }
 
 @Composable
