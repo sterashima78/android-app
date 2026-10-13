@@ -67,9 +67,11 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     require(json.optJSONObject("today") != null) { "Missing workout day" }
     require(json.optJSONArray("history") != null) { "Missing workout history" }
     val exercises = decodeExercises(json)
-    val menus = json.optJSONArray("menus")?.objects()?.map(::decodeMenu).orEmpty()
-      .filter { menu -> menu.items.any { item -> exercises.any { it.id == item.exerciseId } } }
-      .ifEmpty { listOf(defaultWorkoutMenu(exercises)) }
+    val decodedMenus = json.getJSONArray("menus").objects().map(::decodeMenu)
+    require(decodedMenus.all { menu -> menu.items.all { item -> exercises.any { exercise -> exercise.id == item.exerciseId } } }) {
+      "Workout menu refers to an unknown exercise"
+    }
+    val menus = decodedMenus.ifEmpty { listOf(defaultWorkoutMenu(exercises)) }
     return decodeSnapshot(json = json, exercises = exercises, menus = menus)
   }
 
@@ -118,12 +120,15 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     put("items", JSONArray().apply { value.items.forEach { put(encodeMenuItem(it)) } })
   }
 
-  private fun decodeMenu(json: JSONObject): WorkoutMenu = WorkoutMenu(
-    id = json.optString("id"),
-    name = json.optString("name", "メニュー"),
-    source = enumOrDefault(json.optString("source"), WorkoutMenuSource.PRESET),
-    items = json.optJSONArray("items")?.objects()?.mapNotNull(::decodeMenuItem).orEmpty(),
-  )
+  private fun decodeMenu(json: JSONObject): WorkoutMenu {
+    val items = requireNotNull(json.optJSONArray("items")) { "Missing workout menu items" }
+    return WorkoutMenu(
+      id = json.optString("id"),
+      name = json.optString("name", "メニュー"),
+      source = enumOrDefault(json.optString("source"), WorkoutMenuSource.PRESET),
+      items = items.objects().map(::decodeMenuItem),
+    )
+  }
 
   private fun encodeMenuItem(value: WorkoutMenuItem) = JSONObject().apply {
     put("exerciseId", value.exerciseId)
@@ -133,18 +138,15 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     }
   }
 
-  private fun decodeMenuItem(json: JSONObject): WorkoutMenuItem? {
+  private fun decodeMenuItem(json: JSONObject): WorkoutMenuItem {
     val exerciseId = json.optString("exerciseId")
-    if (exerciseId.isBlank()) return null
+    require(exerciseId.isNotBlank()) { "Missing workout menu exercise ID" }
     val targetSets = json.optInt("targetSets", 1).coerceAtLeast(1)
-    val targets = json.optJSONArray("targets")?.ints().orEmpty().filter { it > 0 }
-    return runCatching {
-      WorkoutMenuItem(
-        exerciseId = exerciseId,
-        targetSets = targetSets,
-        targets = targets.takeIf { it.size == targetSets }.orEmpty(),
-      )
-    }.getOrNull()
+    val targetArray = json.optJSONArray("targets")
+    require(!json.has("targets") || targetArray != null) { "Invalid workout menu targets" }
+    val targets = targetArray?.ints().orEmpty()
+    require(targets.isEmpty() || targets.size == targetSets) { "Incomplete workout menu targets" }
+    return WorkoutMenuItem(exerciseId = exerciseId, targetSets = targetSets, targets = targets)
   }
 
   private fun encodeSet(value: WorkoutSet) = JSONObject().apply {
@@ -201,12 +203,18 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     put("sets", JSONArray().apply { value.sets.forEach { put(encodeSet(it)) } })
   }
 
-  private fun decodeDay(json: JSONObject) = WorkoutDay(
-    date = json.optString("date", LocalDate.now().toString()),
-    startedAt = json.nullableString("startedAt"),
-    menu = json.optJSONObject("menu")?.let(::decodeMenu),
-    sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet).orEmpty(),
-  )
+  private fun decodeDay(json: JSONObject): WorkoutDay {
+    val sets = requireNotNull(json.optJSONArray("sets")) { "Missing workout day sets" }
+    require(!json.has("menu") || json.isNull("menu") || json.optJSONObject("menu") != null) {
+      "Invalid workout day menu"
+    }
+    return WorkoutDay(
+      date = json.optString("date", LocalDate.now().toString()),
+      startedAt = json.nullableString("startedAt"),
+      menu = json.optJSONObject("menu")?.let(::decodeMenu),
+      sets = sets.objects().map(::decodeSet),
+    )
+  }
 
   private fun encodeHistory(value: WorkoutHistory) = JSONObject().apply {
     put("id", value.id)
@@ -217,14 +225,20 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
     value.menu?.let { put("menu", encodeMenu(it)) }
   }
 
-  private fun decodeHistory(json: JSONObject) = WorkoutHistory(
-    id = json.optString("id"),
-    date = json.optString("date"),
-    startedAt = json.nullableString("startedAt"),
-    finishedAt = json.optString("finishedAt"),
-    sets = json.optJSONArray("sets")?.objects()?.map(::decodeSet).orEmpty(),
-    menu = json.optJSONObject("menu")?.let(::decodeMenu),
-  )
+  private fun decodeHistory(json: JSONObject): WorkoutHistory {
+    val sets = requireNotNull(json.optJSONArray("sets")) { "Missing workout history sets" }
+    require(!json.has("menu") || json.isNull("menu") || json.optJSONObject("menu") != null) {
+      "Invalid workout history menu"
+    }
+    return WorkoutHistory(
+      id = json.optString("id"),
+      date = json.optString("date"),
+      startedAt = json.nullableString("startedAt"),
+      finishedAt = json.optString("finishedAt"),
+      sets = sets.objects().map(::decodeSet),
+      menu = json.optJSONObject("menu")?.let(::decodeMenu),
+    )
+  }
 
   private fun encodeIntMap(values: Map<String, Int>) = JSONObject().apply {
     values.forEach { (key, value) -> put(key, value) }
@@ -237,8 +251,8 @@ class DefaultWorkoutRepository(context: Context) : WorkoutRepository {
 
   private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 
-  private fun JSONArray.ints(): List<Int> = (0 until length()).mapNotNull { index ->
-    optInt(index).takeIf { it > 0 }
+  private fun JSONArray.ints(): List<Int> = (0 until length()).map { index ->
+    getInt(index).also { require(it > 0) { "Invalid workout target" } }
   }
 
   private fun JSONObject.nullableString(name: String): String? =
