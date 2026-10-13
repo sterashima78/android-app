@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,9 +26,9 @@ class PodcastGenerationWorkerTest {
   }
 
   @Test
-  fun `operation未指定の既存workは定刻生成として扱う`() {
-    assertEquals(PodcastGenerationOperation.SCHEDULED_GENERATE, podcastGenerationOperation(null))
-    assertEquals(PodcastGenerationOperation.SCHEDULED_GENERATE, podcastGenerationOperation("unknown"))
+  fun `operation未指定や未知のworkは失敗として扱う`() {
+    assertNull(podcastGenerationOperation(null))
+    assertNull(podcastGenerationOperation("unknown"))
   }
 
   @Test
