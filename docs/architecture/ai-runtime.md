@@ -38,6 +38,10 @@ Summary と Knowledge は Local / ChatGPT の実行先を明示的に選択す�
 - provider が変わった場合、background task の gate、network constraint、実際の inference 先が同じ設定を参照する。
 - AI task queue は provider-specific domain type へ依存せず、表示用 execution provider label と provider-neutral progress / failure state を扱う。RSS推薦についてもRSS-owned reader / scheduler contractからtaskを投影し、RSS persistenceを直接所有・参照しない。
 
+## Local engine responsibility split
+
+`:core:ai-runtime` の `LocalModelManager` はcatalog、選択設定、artifactの検証、推論session cacheのlifetimeを所有する。 `LiteRtLmInference` は単一推論Engineの構築、streaming、tool call、closeを所有する。両者は同一moduleにあり、別のruntimeや永続状態を作らない。推論のapplication-scope共有とchild process境界は変更しない。
+
 ## Local text inference process boundary
 
 Summary、Knowledge 等が利用する Local `BackgroundAiTextInference.generate()` と AI Chat の対話型 conversation は main process で LiteRT-LM Engine を実行せず、`:core:ai-runtime` の非公開 bound Service を `:local_ai_text` process で起動して実行する。
