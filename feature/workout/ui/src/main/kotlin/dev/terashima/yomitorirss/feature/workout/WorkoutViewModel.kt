@@ -24,7 +24,7 @@ private fun WorkoutUiState.clearSetDetails(): WorkoutUiState = copy(
   formQuality = null,
   loadKind = null,
   loadValue = "",
-  restSeconds = "",
+  restSeconds = intervalDurationSeconds.toString(),
 )
 
 class WorkoutViewModel(
@@ -85,7 +85,7 @@ class WorkoutViewModel(
         formQuality = null,
         loadKind = null,
         loadValue = "",
-        restSeconds = "",
+        restSeconds = it.intervalDurationSeconds.toString(),
         stepCount = snapshot.lastStepCounts[id]?.toString().orEmpty(),
       )
     }
@@ -326,7 +326,7 @@ class WorkoutViewModel(
     )
     _state.update {
       it.copy(
-        memo = "", rpe = null, formQuality = null, restSeconds = "",
+        memo = "", rpe = null, formQuality = null, restSeconds = it.intervalDurationSeconds.toString(),
         amount = initialAmount(it.snapshot, exercise.id),
       )
     }
@@ -414,11 +414,13 @@ class WorkoutViewModel(
 
   fun setIntervalDuration(seconds: Int) {
     intervalDeadlineMillis = null
+    val duration = seconds.coerceAtLeast(1)
     _state.update {
       it.copy(
-        intervalDurationSeconds = seconds.coerceAtLeast(1),
-        intervalRemainingSeconds = seconds.coerceAtLeast(1),
+        intervalDurationSeconds = duration,
+        intervalRemainingSeconds = duration,
         intervalRunning = false,
+        restSeconds = duration.toString(),
       )
     }
   }
@@ -482,7 +484,7 @@ class WorkoutViewModel(
       ),
       lastAmount = ui.plankSeconds,
     )
-    _state.update { it.copy(memo = "", rpe = null, formQuality = null, restSeconds = "") }
+    _state.update { it.copy(memo = "", rpe = null, formQuality = null, restSeconds = it.intervalDurationSeconds.toString()) }
     resetPlank()
     resetInterval()
     startInterval()
@@ -531,7 +533,7 @@ class WorkoutViewModel(
       lastAmount = ui.stepUpSeconds,
       lastSteps = steps,
     )
-    _state.update { it.copy(memo = "", rpe = null, formQuality = null, restSeconds = "") }
+    _state.update { it.copy(memo = "", rpe = null, formQuality = null, restSeconds = it.intervalDurationSeconds.toString()) }
     resetStepUp()
   }
 
