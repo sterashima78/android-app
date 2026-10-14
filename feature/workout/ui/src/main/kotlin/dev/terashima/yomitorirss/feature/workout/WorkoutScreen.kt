@@ -384,7 +384,7 @@ private fun WorkoutSetDetailInputs(state: WorkoutUiState, viewModel: WorkoutView
       onValueChange = viewModel::updateRestSeconds,
       modifier = Modifier.fillMaxWidth(),
       singleLine = true,
-      label = { Text("直前の休憩 (実測秒数、任意)") },
+      label = { Text("直前の休憩 (秒・インターバル設定を初期入力)") },
     )
     TextButton(onClick = viewModel::reuseLastLoad) { Text("同じ種目の前回負荷条件を引き継ぐ") }
     if (!state.detailsValid) {
