@@ -45,3 +45,7 @@ Yomitori 側では ADR-0001 と ADR-0003 により UI / Domain / Data の依存�
 ## Relationship
 
 ADR-0001 の UI / Domain / Data 境界、ADR-0002 の stateful object と interface の使い分け、ADR-0003 の feature-first module ownership、ADR-0004 の concept-oriented ownership を継承する。ADR-0015 で導入された `:core:designsystem` は横断 UI interaction primitive のための capability であり、現時点のワークアウト UI は固有の記録・計測画面のみを持つため依存しない。
+
+## Amendment (2026-10-14)
+
+休憩タイマーの既定値を90秒から60秒へ変更する。選択できる30/60/90/120秒の候補、セット記録後にタイマーを自動開始する動作は維持する。休憩入力欄の初期値は現在のインターバル設定秒数とする（詳細はADR-0280の追記を参照）。上記の90秒は初回設計時の判断履歴として残す。

@@ -99,12 +99,65 @@ class WorkoutViewModelExportTest {
       assertEquals(null, viewModel.state.value.rpe)
       assertEquals(null, viewModel.state.value.formQuality)
       assertEquals("5.5", viewModel.state.value.loadValue)
-      assertEquals("", viewModel.state.value.restSeconds)
+      assertEquals("60", viewModel.state.value.restSeconds)
 
       val other = viewModel.state.value.snapshot.exercises.first { it.id != recorded.exerciseId }
       viewModel.selectExercise(other.id)
       assertEquals(null, viewModel.state.value.rpe)
       assertEquals(null, viewModel.state.value.loadKind)
+    } finally {
+      viewModel.viewModelScope.cancel()
+    }
+  }
+
+  @Test
+  fun `インターバルは60秒が既定値で休憩時間に入力されセットごとに再設定される`() = runTest(dispatcher) {
+    val repository = FakeWorkoutRepository(newWorkoutSnapshot(LocalDate.now().toString()), mutableListOf())
+    val viewModel = WorkoutViewModel(repository, FakeWorkoutHistoryExporter(ArrayDeque(), mutableListOf()), elapsedRealtimeMillis = { 0L })
+    try {
+      runCurrent()
+      assertEquals(60, viewModel.state.value.intervalDurationSeconds)
+      assertEquals(60, viewModel.state.value.intervalRemainingSeconds)
+      assertEquals("60", viewModel.state.value.restSeconds)
+
+      viewModel.recordSet()
+      runCurrent()
+      assertEquals(60, viewModel.state.value.snapshot.today.sets.last().restSeconds)
+      assertEquals("60", viewModel.state.value.restSeconds)
+
+      viewModel.updateRestSeconds("")
+      viewModel.recordSet()
+      runCurrent()
+      assertEquals(null, viewModel.state.value.snapshot.today.sets.last().restSeconds)
+      assertEquals("60", viewModel.state.value.restSeconds)
+    } finally {
+      viewModel.viewModelScope.cancel()
+    }
+  }
+
+  @Test
+  fun `設定秒数の変更は休憩欄へ反映し手動修正した値も保存できる`() = runTest(dispatcher) {
+    val repository = FakeWorkoutRepository(newWorkoutSnapshot(LocalDate.now().toString()), mutableListOf())
+    val viewModel = WorkoutViewModel(repository, FakeWorkoutHistoryExporter(ArrayDeque(), mutableListOf()), elapsedRealtimeMillis = { 0L })
+    try {
+      runCurrent()
+      viewModel.setIntervalDuration(120)
+      assertEquals(120, viewModel.state.value.intervalDurationSeconds)
+      assertEquals(120, viewModel.state.value.intervalRemainingSeconds)
+      assertEquals("120", viewModel.state.value.restSeconds)
+
+      viewModel.updateRestSeconds("75")
+      viewModel.recordSet()
+      runCurrent()
+      assertEquals(75, viewModel.state.value.snapshot.today.sets.last().restSeconds)
+      assertEquals("120", viewModel.state.value.restSeconds)
+
+      val nextExercise = viewModel.state.value.snapshot.exercises.first {
+        it.id != viewModel.state.value.selectedExerciseId
+      }
+      viewModel.updateRestSeconds("40")
+      viewModel.selectExercise(nextExercise.id)
+      assertEquals("120", viewModel.state.value.restSeconds)
     } finally {
       viewModel.viewModelScope.cancel()
     }
