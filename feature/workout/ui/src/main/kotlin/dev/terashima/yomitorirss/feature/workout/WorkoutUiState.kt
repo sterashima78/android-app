@@ -1,5 +1,7 @@
 package dev.terashima.yomitorirss.feature.workout
 
+private const val DEFAULT_INTERVAL_SECONDS = 60
+
 enum class WorkoutTab(val label: String) {
   WORKOUT("記録"),
   TIMER("タイマー"),
@@ -21,9 +23,9 @@ data class WorkoutUiState(
   val formQuality: WorkoutFormQuality? = null,
   val loadKind: WorkoutLoadKind? = null,
   val loadValue: String = "",
-  val restSeconds: String = "",
-  val intervalDurationSeconds: Int = 90,
-  val intervalRemainingSeconds: Int = 90,
+  val restSeconds: String = DEFAULT_INTERVAL_SECONDS.toString(),
+  val intervalDurationSeconds: Int = DEFAULT_INTERVAL_SECONDS,
+  val intervalRemainingSeconds: Int = DEFAULT_INTERVAL_SECONDS,
   val intervalRunning: Boolean = false,
   val intervalCompletionToken: Int = 0,
   val plankSeconds: Int = 0,
