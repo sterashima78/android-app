@@ -14,15 +14,17 @@ enum class RssRecommendationExecutionProvider {
 data class RssRecommendationPolicy(
   val manualCondition: String = "",
   val learnedCondition: String = "",
+  val learnedPriorityCondition: String = "",
   val executionProvider: RssRecommendationExecutionProvider = RssRecommendationExecutionProvider.LOCAL,
   val revision: Long = 0L,
 ) {
   val enabled: Boolean
-    get() = manualCondition.isNotBlank() || learnedCondition.isNotBlank()
+    get() = manualCondition.isNotBlank() || learnedCondition.isNotBlank() || learnedPriorityCondition.isNotBlank()
 
   fun effectiveCondition(): String = buildList {
-    manualCondition.trim().takeIf(String::isNotBlank)?.let { add("手動条件:\n$it") }
-    learnedCondition.trim().takeIf(String::isNotBlank)?.let { add("学習条件:\n$it") }
+    manualCondition.trim().takeIf(String::isNotBlank)?.let { add("手動の除外条件:\n$it") }
+    learnedCondition.trim().takeIf(String::isNotBlank)?.let { add("学習した除外条件:\n$it") }
+    learnedPriorityCondition.trim().takeIf(String::isNotBlank)?.let { add("学習した優先条件:\n$it") }
   }.joinToString("\n\n")
 }
 
@@ -62,6 +64,11 @@ sealed interface RssRecommendationDecision {
   data object InsufficientInformation : RssRecommendationDecision
 }
 
+enum class RssRecommendationFeedbackKind {
+  EXCLUSION,
+  PRIORITY,
+}
+
 enum class RssRecommendationLearningOutcome {
   UPDATED,
   ALREADY_COVERED,
@@ -70,6 +77,7 @@ enum class RssRecommendationLearningOutcome {
 data class RssRecommendationLearningDecision(
   val outcome: RssRecommendationLearningOutcome,
   val learnedCondition: String,
+  val learnedPriorityCondition: String = "",
 )
 
 data class RssRecommendationFeedback(
@@ -78,6 +86,7 @@ data class RssRecommendationFeedback(
   val title: String,
   val previousAssessment: RssRecommendationAssessment?,
   val createdAt: Long,
+  val kind: RssRecommendationFeedbackKind = RssRecommendationFeedbackKind.EXCLUSION,
 )
 
 data class RssRecommendationSnapshot(
@@ -85,6 +94,7 @@ data class RssRecommendationSnapshot(
   val assessments: Map<String, RssRecommendationAssessment>,
   val pendingFeedbackCount: Int,
   val latestPendingFeedbackAt: Long?,
+  val pendingPriorityFeedbackCount: Int = 0,
 )
 
 enum class RssRecommendationTaskState {
@@ -124,18 +134,22 @@ interface RssRecommendationRepository : RssRecommendationTaskReader {
   fun saveManualCondition(condition: String): RssRecommendationPolicy
   fun setExecutionProvider(provider: RssRecommendationExecutionProvider): RssRecommendationPolicy
   fun resetLearnedCondition(): RssRecommendationPolicy
+  fun resetLearnedPriorityCondition(): RssRecommendationPolicy
   fun loadAssessments(articleIds: Collection<String>): Map<String, RssRecommendationAssessment>
   fun saveAssessments(assessments: Map<String, RssRecommendationAssessment>)
   fun addFeedback(
     articleId: String,
     title: String,
     previousAssessment: RssRecommendationAssessment?,
+    kind: RssRecommendationFeedbackKind = RssRecommendationFeedbackKind.EXCLUSION,
   ): RssRecommendationFeedback
+  fun listLearningExamples(): List<RssRecommendationFeedback>
   fun listPendingFeedback(): List<RssRecommendationFeedback>
   fun removeFeedback(feedbackId: String)
   fun applyLearnedConditionAndConsumeFeedback(
     feedbackIds: Set<String>,
     learnedCondition: String,
+    learnedPriorityCondition: String = "",
   ): RssRecommendationPolicy
 
   fun enqueueTasks(articles: List<Article>, revision: Long)
@@ -157,7 +171,9 @@ interface RssRecommendationEngine {
     provider: RssRecommendationExecutionProvider,
     manualCondition: String,
     learnedCondition: String,
+    learnedPriorityCondition: String,
     feedback: List<RssRecommendationFeedback>,
+    examples: List<RssRecommendationFeedback>,
   ): RssRecommendationLearningDecision
 }
 
@@ -185,6 +201,7 @@ class RssRecommendationService(
       assessments = currentAssessments,
       pendingFeedbackCount = pending.size,
       latestPendingFeedbackAt = pending.maxOfOrNull(RssRecommendationFeedback::createdAt),
+      pendingPriorityFeedbackCount = pending.count { it.kind == RssRecommendationFeedbackKind.PRIORITY },
     )
   }
 
@@ -246,11 +263,21 @@ class RssRecommendationService(
   fun resetLearnedCondition(): RssRecommendationPolicy =
     repository.resetLearnedCondition()
 
+  fun resetLearnedPriorityCondition(): RssRecommendationPolicy =
+    repository.resetLearnedPriorityCondition()
+
   fun recordExclusionFeedback(article: Article): RssRecommendationFeedback {
     val policy = repository.loadPolicy()
     val assessment = repository.loadAssessments(listOf(article.id))[article.id]
       ?.takeIf { it.revision == policy.revision }
     return repository.addFeedback(article.id, article.title, assessment)
+  }
+
+  fun recordPriorityFeedback(article: Article): RssRecommendationFeedback {
+    val policy = repository.loadPolicy()
+    val assessment = repository.loadAssessments(listOf(article.id))[article.id]
+      ?.takeIf { it.revision == policy.revision }
+    return repository.addFeedback(article.id, article.title, assessment, RssRecommendationFeedbackKind.PRIORITY)
   }
 
   fun cancelExclusionFeedback(feedbackId: String) {
@@ -266,7 +293,9 @@ class RssRecommendationService(
         provider = policy.executionProvider,
         manualCondition = policy.manualCondition,
         learnedCondition = policy.learnedCondition,
+        learnedPriorityCondition = policy.learnedPriorityCondition,
         feedback = pending,
+        examples = repository.listLearningExamples().filterNot { example -> pending.any { it.id == example.id } },
       )
     } catch (error: CancellationException) {
       throw error
@@ -274,6 +303,7 @@ class RssRecommendationService(
       return null
     }
     val learned = decision.learnedCondition.trim()
+    val learnedPriority = decision.learnedPriorityCondition.trim()
     val currentPolicy = repository.loadPolicy()
     if (
       currentPolicy.revision != policy.revision ||
@@ -282,14 +312,17 @@ class RssRecommendationService(
       return null
     }
     val validOutcome = when (decision.outcome) {
-      RssRecommendationLearningOutcome.UPDATED -> learned != policy.learnedCondition
-      RssRecommendationLearningOutcome.ALREADY_COVERED -> learned == policy.learnedCondition
+      RssRecommendationLearningOutcome.UPDATED ->
+        learned != policy.learnedCondition || learnedPriority != policy.learnedPriorityCondition
+      RssRecommendationLearningOutcome.ALREADY_COVERED ->
+        learned == policy.learnedCondition && learnedPriority == policy.learnedPriorityCondition
     }
     if (!validOutcome) return null
 
     return repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = pending.mapTo(mutableSetOf(), RssRecommendationFeedback::id),
       learnedCondition = learned,
+      learnedPriorityCondition = learnedPriority,
     )
   }
 }
