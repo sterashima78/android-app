@@ -74,7 +74,14 @@ class DefaultRssRecommendationRepository(
     val current = loadPolicy()
     if (current.learnedPriorityCondition.isBlank()) return current
     return current.copy(learnedPriorityCondition = "", revision = current.revision + 1).also { policy ->
-      savePolicy(policy)
+      database.transaction {
+        savePolicyInTransaction(this, policy)
+        delete(
+          "rss_recommendation_feedback",
+          "kind=? AND processed_at IS NOT NULL",
+          arrayOf(RssRecommendationFeedbackKind.PRIORITY.name),
+        )
+      }
       dataChanges.notifyChanged()
     }
   }
@@ -84,7 +91,14 @@ class DefaultRssRecommendationRepository(
     val current = loadPolicy()
     if (current.learnedCondition.isBlank()) return current
     return current.copy(learnedCondition = "", revision = current.revision + 1).also { policy ->
-      savePolicy(policy)
+      database.transaction {
+        savePolicyInTransaction(this, policy)
+        delete(
+          "rss_recommendation_feedback",
+          "kind=? AND processed_at IS NOT NULL",
+          arrayOf(RssRecommendationFeedbackKind.EXCLUSION.name),
+        )
+      }
       dataChanges.notifyChanged()
     }
   }
