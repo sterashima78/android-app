@@ -165,7 +165,7 @@ internal fun parseLearnedConditionToolCall(
 }
 
 internal fun buildScoringPrompt(condition: String, titles: List<String>): String = buildString {
-  appendLine("除外条件:")
+  appendLine("優先・除外の評価条件:")
   appendLine(condition.trim().take(MAX_CONDITION_PROMPT_CHARS))
   appendLine()
   appendLine("次の記事タイトルを番号順に評価してください。")
