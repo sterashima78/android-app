@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedbackKind
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import org.junit.After
@@ -115,6 +116,97 @@ class RssRecommendationRepositoryTest {
     assertEquals(1L, updated.revision)
     assertEquals("広告的な告知を低くする", updated.learnedCondition)
     assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+  }
+
+  @Test
+  fun `優先参考を学習後も保持し次回の両条件の改善へ使える`() {
+    val reference = repository.addFeedback(
+      articleId = "a-priority",
+      title = "技術のキャンペーン",
+      previousAssessment = null,
+      kind = RssRecommendationFeedbackKind.PRIORITY,
+    )
+
+    val updated = repository.applyLearnedConditionAndConsumeFeedback(
+      feedbackIds = setOf(reference.id),
+      learnedCondition = "販促だけを除外",
+      learnedPriorityCondition = "技術的な内容を優先",
+    )
+
+    assertEquals("販促だけを除外", updated.learnedCondition)
+    assertEquals("技術的な内容を優先", updated.learnedPriorityCondition)
+    assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+    assertEquals(reference, repository.listLearningExamples().single())
+    assertEquals(updated, repository.loadPolicy())
+  }
+
+  @Test
+  fun `学習条件をリセットしたら同種の学習済み参考も削除する`() {
+    val excluded = repository.addFeedback("exclude", "除外記事", null)
+    repository.applyLearnedConditionAndConsumeFeedback(
+      setOf(excluded.id), "宣伝を除外", "",
+    )
+    val priority = repository.addFeedback("priority", "優先記事", null, RssRecommendationFeedbackKind.PRIORITY)
+    repository.applyLearnedConditionAndConsumeFeedback(
+      setOf(priority.id), "宣伝を除外", "技術記事を優先",
+    )
+    assertEquals(2, repository.listLearningExamples().size)
+
+    val afterPriorityReset = repository.resetLearnedPriorityCondition()
+    assertEquals("", afterPriorityReset.learnedPriorityCondition)
+    assertEquals("宣伝を除外", afterPriorityReset.learnedCondition)
+    assertEquals(listOf(RssRecommendationFeedbackKind.EXCLUSION), repository.listLearningExamples().map { it.kind })
+
+    val afterExclusionReset = repository.resetLearnedCondition()
+    assertEquals("", afterExclusionReset.learnedCondition)
+    assertEquals(emptyList<Any>(), repository.listLearningExamples())
+  }
+
+  @Test
+  fun `旧データの除外参考と条件を維持し古いスコアを無効化する`() {
+    val db = helper.writableDatabase
+    db.execSQL(
+      """
+        CREATE TABLE rss_recommendation_policy(
+          id INTEGER PRIMARY KEY NOT NULL CHECK(id=1),
+          manual_condition TEXT NOT NULL DEFAULT '',
+          learned_condition TEXT NOT NULL DEFAULT '',
+          execution_provider TEXT NOT NULL DEFAULT 'LOCAL',
+          revision INTEGER NOT NULL DEFAULT 0
+        )
+      """.trimIndent(),
+    )
+    db.execSQL(
+      "INSERT INTO rss_recommendation_policy(id, manual_condition, learned_condition, revision) " +
+        "VALUES (1, '手動の除外条件', '古い学習条件', 4)",
+    )
+    db.execSQL(
+      """
+        CREATE TABLE rss_recommendation_feedback(
+          id TEXT PRIMARY KEY NOT NULL,
+          article_id TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          previous_status TEXT,
+          previous_score INTEGER,
+          previous_unscored_reason TEXT,
+          previous_revision INTEGER,
+          previous_assessed_at INTEGER,
+          created_at INTEGER NOT NULL
+        )
+      """.trimIndent(),
+    )
+    db.execSQL(
+      "INSERT INTO rss_recommendation_feedback(id, article_id, title, created_at) " +
+        "VALUES ('old-feedback', 'a1', '古い除外参考', 1)",
+    )
+
+    val policy = repository.loadPolicy()
+
+    assertEquals(5L, policy.revision)
+    assertEquals("手動の除外条件", policy.manualCondition)
+    assertEquals("古い学習条件", policy.learnedCondition)
+    assertEquals("", policy.learnedPriorityCondition)
+    assertEquals(RssRecommendationFeedbackKind.EXCLUSION, repository.listPendingFeedback().single().kind)
   }
 
   @Test

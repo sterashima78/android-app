@@ -45,9 +45,11 @@ import androidx.compose.ui.window.DialogProperties
 internal fun RssWebScrapingRulesUi(
   recommendationPolicy: RssRecommendationPolicy,
   recommendationPendingFeedbackCount: Int,
+  recommendationPendingPriorityFeedbackCount: Int,
   onSaveRecommendationCondition: (String) -> Unit,
   onRecommendationProviderChange: (RssRecommendationExecutionProvider) -> Unit,
   onResetRecommendationLearning: () -> Unit,
+  onResetPriorityRecommendationLearning: () -> Unit,
   rules: List<RssWebScrapingRule>,
   testState: WebScrapingRuleTestUiState,
   onSave: (String?, String, String, Int) -> Unit,
@@ -71,12 +73,12 @@ internal fun RssWebScrapingRulesUi(
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("記事推薦", style = MaterialTheme.typography.titleLarge)
         Text(
-          "除外条件をもとに未読記事のタイトルだけを1〜10で評価します。10は正常に評価した結果として除外不要な記事です。" +
+          "除外・優先条件から未読記事の読みたい優先度を1〜10で評価します。1は低優先、10は高優先です。" +
             "タイトルだけでは判断できない場合や判定に失敗した場合は数値を付けず、理由を記事一覧に表示します。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text("記事評価・除外条件学習の実行先", style = MaterialTheme.typography.titleMedium)
+        Text("記事評価・優先と除外の同時学習の実行先", style = MaterialTheme.typography.titleMedium)
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -99,9 +101,9 @@ internal fun RssWebScrapingRulesUi(
         }
         Text(
           if (recommendationPolicy.executionProvider == RssRecommendationExecutionProvider.CLOUD) {
-            "クラウド実行では除外条件、学習条件、評価対象の記事タイトル、除外参考のタイトルと直前評価をクラウドAIへ送信します。クラウドAI設定で事前に接続と利用モデルの選択が必要です。"
+            "クラウド実行では手動条件、学習した優先・除外条件、評価対象の記事タイトル、両種類の参考記事のタイトルと直前評価をクラウドAIへ送信します。クラウドAI設定で事前に接続と利用モデルの選択が必要です。"
           } else {
-            "端末内AIで記事評価と除外条件学習を実行します。記事タイトルや除外条件は端末外へ送信しません。"
+            "端末内AIで記事評価と優先・除外条件の同時学習を実行します。記事タイトルや条件は端末外へ送信しません。"
           },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -133,7 +135,7 @@ internal fun RssWebScrapingRulesUi(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-          recommendationFeedbackStatusText(recommendationPendingFeedbackCount),
+          recommendationFeedbackStatusText(recommendationPendingFeedbackCount, recommendationPendingPriorityFeedbackCount),
           style = MaterialTheme.typography.labelSmall,
           color = if (recommendationPendingFeedbackCount > 0) {
             MaterialTheme.colorScheme.secondary
@@ -147,10 +149,31 @@ internal fun RssWebScrapingRulesUi(
             horizontalArrangement = Arrangement.End,
           ) {
             TextButton(onClick = onResetRecommendationLearning) {
-              Text("学習条件をリセット")
+              Text("除外学習条件をリセット")
             }
           }
         }
+        Text("学習された優先条件", style = MaterialTheme.typography.titleMedium)
+        Text(
+          recommendationPolicy.learnedPriorityCondition.ifBlank { "まだ学習された優先条件はありません。" },
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (recommendationPolicy.learnedPriorityCondition.isNotBlank()) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+          ) {
+            TextButton(onClick = onResetPriorityRecommendationLearning) {
+              Text("優先学習条件をリセット")
+            }
+          }
+        }
+        Text(
+          "未読記事の長押しメニューから優先参考を指定できます。優先・除外の参考は両方の学習条件へ同時に反映します。学習条件のリセット時は、対応する種類の学習済み参考履歴も消去されます。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
     }
 
@@ -480,12 +503,12 @@ private fun RssWebScrapingPreviewCard(result: RssWebScrapingPreview) {
   }
 }
 
-internal fun recommendationFeedbackStatusText(pendingCount: Int): String {
-  require(pendingCount >= 0) { "pendingCount must not be negative" }
+internal fun recommendationFeedbackStatusText(pendingCount: Int, pendingPriorityCount: Int = 0): String {
+  require(pendingCount >= 0 && pendingPriorityCount in 0..pendingCount) { "pendingCount must not be negative" }
   return if (pendingCount > 0) {
-    "未処理の除外参考: ${pendingCount}件。最後の追加から約30秒後に学習し、失敗時は未処理のまま再試行します。"
+    "未処理の参考: ${pendingCount}件（優先${pendingPriorityCount}件、除外${pendingCount - pendingPriorityCount}件）。最後の追加から約30秒後に両方の条件を同時学習し、失敗時は未処理のまま再試行します。"
   } else {
-    "未処理の除外参考はありません。追加後に条件が変わらない場合は、既存の学習条件でカバー済みと判定されて処理済みです。"
+    "未処理の除外参考はありません。未処理の優先参考もありません。追加後に条件が変わらない場合は、既存の学習条件でカバー済みと判定されて処理済みです。"
   }
 }
 

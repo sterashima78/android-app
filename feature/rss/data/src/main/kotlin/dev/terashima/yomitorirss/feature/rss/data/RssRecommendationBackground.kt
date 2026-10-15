@@ -309,7 +309,9 @@ internal class RssRecommendationLearningWorker(
         Result.retry()
       } else {
         scheduler.enqueueUnread()
-        Result.success()
+        // A single inference consumes at most 50 feedback entries. Keep the unique work
+        // alive until all pending entries (including arrivals during inference) are processed.
+        if (repository.listPendingFeedback().isNotEmpty()) Result.retry() else Result.success()
       }
     } catch (cancelled: CancellationException) {
       throw cancelled

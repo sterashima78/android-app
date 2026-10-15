@@ -94,10 +94,11 @@ class RssRecommendationToolCallTest {
   fun `学習結果は条件更新を明示して受け取る`() {
     val result = parseLearnedConditionToolCall(
       AiStructuredToolCall(
-        name = "submit_rss_learned_exclusion_condition",
+        name = "submit_rss_learned_recommendation_conditions",
         arguments = mapOf(
           "outcome" to "updated",
-          "condition" to "更新した条件",
+          "exclusion_condition" to "更新した条件",
+          "priority_condition" to "",
         ),
       ),
     )
@@ -115,10 +116,11 @@ class RssRecommendationToolCallTest {
   fun `学習結果は既存条件でカバー済みを明示できる`() {
     val result = parseLearnedConditionToolCall(
       AiStructuredToolCall(
-        name = "submit_rss_learned_exclusion_condition",
+        name = "submit_rss_learned_recommendation_conditions",
         arguments = mapOf(
           "outcome" to "already_covered",
-          "condition" to "既存条件",
+          "exclusion_condition" to "既存条件",
+          "priority_condition" to "",
         ),
       ),
     )
@@ -137,13 +139,53 @@ class RssRecommendationToolCallTest {
     val error = runCatching {
       parseLearnedConditionToolCall(
         AiStructuredToolCall(
-          name = "submit_rss_learned_exclusion_condition",
+          name = "submit_rss_learned_recommendation_conditions",
           arguments = mapOf("condition" to "条件"),
         ),
       )
     }.exceptionOrNull()
 
     assertTrue(error is IllegalArgumentException)
+  }
+
+  @Test
+  fun `優先と除外を両方更新した学習結果を受け取る`() {
+    val result = parseLearnedConditionToolCall(
+      AiStructuredToolCall(
+        name = "submit_rss_learned_recommendation_conditions",
+        arguments = mapOf(
+          "outcome" to "updated",
+          "exclusion_condition" to "広告だけを除外",
+          "priority_condition" to "技術の解説を優先",
+        ),
+      ),
+    )
+
+    assertEquals("広告だけを除外", result.learnedCondition)
+    assertEquals("技術の解説を優先", result.learnedPriorityCondition)
+  }
+
+  @Test
+  fun `優先参考が除外側の条件も修正するよう学習promptで要求する`() {
+    val prompt = buildLearningPrompt(
+      manualCondition = "宣伝を減らす",
+      learnedCondition = "告知を除外",
+      learnedPriorityCondition = "技術を優先",
+      feedback = listOf(
+        RssRecommendationFeedback(
+          id = "positive-ref-id",
+          articleId = "article-id",
+          title = "技術発表キャンペーン",
+          previousAssessment = null,
+          createdAt = 10L,
+          kind = dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedbackKind.PRIORITY,
+        ),
+      ),
+    )
+    assertTrue(prompt.contains("優先参考: 技術発表キャンペーン"))
+    assertTrue(prompt.contains("除外条件も狭める"))
+    assertTrue(prompt.contains("技術を優先"))
+    assertTrue(!prompt.contains("positive-ref-id"))
   }
 
   @Test

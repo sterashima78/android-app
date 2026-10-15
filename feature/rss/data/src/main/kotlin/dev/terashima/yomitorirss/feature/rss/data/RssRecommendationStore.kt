@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedback
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedbackKind
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTask
@@ -25,7 +26,7 @@ class DefaultRssRecommendationRepository(
   override fun loadPolicy(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
-      "SELECT manual_condition, learned_condition, execution_provider, revision FROM rss_recommendation_policy WHERE id=1",
+      "SELECT manual_condition, learned_condition, execution_provider, revision, learned_priority_condition FROM rss_recommendation_policy WHERE id=1",
       emptyArray<String>(),
     ).use { cursor ->
       if (!cursor.moveToFirst()) {
@@ -38,6 +39,7 @@ class DefaultRssRecommendationRepository(
             RssRecommendationExecutionProvider.valueOf(cursor.getString(2))
           }.getOrDefault(RssRecommendationExecutionProvider.LOCAL),
           revision = cursor.getLong(3),
+          learnedPriorityCondition = cursor.getString(4),
         )
       }
     }
@@ -67,12 +69,36 @@ class DefaultRssRecommendationRepository(
     }
   }
 
+  override fun resetLearnedPriorityCondition(): RssRecommendationPolicy {
+    ensureRssRecommendationSchema(database.writable)
+    val current = loadPolicy()
+    if (current.learnedPriorityCondition.isBlank()) return current
+    return current.copy(learnedPriorityCondition = "", revision = current.revision + 1).also { policy ->
+      database.transaction {
+        savePolicyInTransaction(this, policy)
+        delete(
+          "rss_recommendation_feedback",
+          "kind=? AND processed_at IS NOT NULL",
+          arrayOf(RssRecommendationFeedbackKind.PRIORITY.name),
+        )
+      }
+      dataChanges.notifyChanged()
+    }
+  }
+
   override fun resetLearnedCondition(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     val current = loadPolicy()
     if (current.learnedCondition.isBlank()) return current
     return current.copy(learnedCondition = "", revision = current.revision + 1).also { policy ->
-      savePolicy(policy)
+      database.transaction {
+        savePolicyInTransaction(this, policy)
+        delete(
+          "rss_recommendation_feedback",
+          "kind=? AND processed_at IS NOT NULL",
+          arrayOf(RssRecommendationFeedbackKind.EXCLUSION.name),
+        )
+      }
       dataChanges.notifyChanged()
     }
   }
@@ -129,6 +155,7 @@ class DefaultRssRecommendationRepository(
     articleId: String,
     title: String,
     previousAssessment: RssRecommendationAssessment?,
+    kind: RssRecommendationFeedbackKind,
   ): RssRecommendationFeedback {
     ensureRssRecommendationSchema(database.writable)
     val id = UUID.randomUUID().toString()
@@ -138,6 +165,8 @@ class DefaultRssRecommendationRepository(
       put("article_id", articleId)
       put("title", title)
       put("created_at", createdAt)
+      put("kind", kind.name)
+      putNull("processed_at")
       when (previousAssessment) {
         is RssRecommendationAssessment.Scored -> {
           put("previous_status", STATUS_SCORED)
@@ -166,7 +195,7 @@ class DefaultRssRecommendationRepository(
       insertWithOnConflict("rss_recommendation_feedback", null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
     dataChanges.notifyChanged()
-    return RssRecommendationFeedback(id, articleId, title, previousAssessment, createdAt)
+    return RssRecommendationFeedback(id, articleId, title, previousAssessment, createdAt, kind)
   }
 
   override fun removeFeedback(feedbackId: String) {
@@ -175,13 +204,33 @@ class DefaultRssRecommendationRepository(
     dataChanges.notifyChanged()
   }
 
+  override fun listLearningExamples(): List<RssRecommendationFeedback> {
+    ensureRssRecommendationSchema(database.writable)
+    return RssRecommendationFeedbackKind.entries.flatMap { kind ->
+      database.readable.rawQuery(
+        """
+          SELECT id, article_id, title, previous_status, previous_score,
+                 previous_unscored_reason, previous_revision, previous_assessed_at, created_at, kind
+          FROM rss_recommendation_feedback
+          WHERE processed_at IS NOT NULL AND kind=?
+          ORDER BY created_at DESC, id DESC
+          LIMIT 25
+        """.trimIndent(),
+        arrayOf(kind.name),
+      ).use { cursor ->
+        buildList { while (cursor.moveToNext()) add(cursor.feedback()) }
+      }
+    }.sortedWith(compareBy(RssRecommendationFeedback::createdAt, RssRecommendationFeedback::id))
+  }
+
   override fun listPendingFeedback(): List<RssRecommendationFeedback> {
     ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       """
         SELECT id, article_id, title, previous_status, previous_score,
-               previous_unscored_reason, previous_revision, previous_assessed_at, created_at
+               previous_unscored_reason, previous_revision, previous_assessed_at, created_at, kind
         FROM rss_recommendation_feedback
+        WHERE processed_at IS NULL
         ORDER BY created_at, id
       """.trimIndent(),
       emptyArray<String>(),
@@ -193,23 +242,43 @@ class DefaultRssRecommendationRepository(
   override fun applyLearnedConditionAndConsumeFeedback(
     feedbackIds: Set<String>,
     learnedCondition: String,
+    learnedPriorityCondition: String,
   ): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     val normalized = learnedCondition.trim()
     require(normalized.length <= MAX_RECOMMENDATION_CONDITION_LENGTH) { "学習条件が長すぎます" }
+    val normalizedPriority = learnedPriorityCondition.trim()
+    require(normalizedPriority.length <= MAX_RECOMMENDATION_CONDITION_LENGTH) { "優先条件が長すぎます" }
     val current = loadPolicy()
-    val changed = current.learnedCondition != normalized
-    val updated = if (changed) current.copy(learnedCondition = normalized, revision = current.revision + 1) else current
+    val changed = current.learnedCondition != normalized || current.learnedPriorityCondition != normalizedPriority
+    val updated = if (changed) current.copy(learnedCondition = normalized, learnedPriorityCondition = normalizedPriority, revision = current.revision + 1) else current
     database.transaction {
       if (changed) savePolicyInTransaction(this, updated)
       feedbackIds.chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
         if (chunk.isNotEmpty()) {
-          delete(
+          update(
             "rss_recommendation_feedback",
-            "id IN (${chunk.joinToString(",") { "?" }})",
+            ContentValues().apply { put("processed_at", System.currentTimeMillis()) },
+            "id IN (${chunk.joinToString(",") { "?" }}) AND processed_at IS NULL",
             chunk.toTypedArray(),
           )
         }
+      }
+      // Keep the most recent representative history per label; avoid unbounded backup growth.
+      RssRecommendationFeedbackKind.entries.forEach { kind ->
+        execSQL(
+          """
+            DELETE FROM rss_recommendation_feedback
+            WHERE processed_at IS NOT NULL AND kind=?
+              AND id NOT IN (
+                SELECT id FROM rss_recommendation_feedback
+                WHERE processed_at IS NOT NULL AND kind=?
+                ORDER BY created_at DESC, id DESC
+                LIMIT 250
+              )
+          """.trimIndent(),
+          arrayOf(kind.name, kind.name),
+        )
       }
     }
     dataChanges.notifyChanged()
@@ -347,11 +416,17 @@ internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
         id INTEGER PRIMARY KEY NOT NULL CHECK(id=1),
         manual_condition TEXT NOT NULL DEFAULT '',
         learned_condition TEXT NOT NULL DEFAULT '',
+        learned_priority_condition TEXT NOT NULL DEFAULT '',
         execution_provider TEXT NOT NULL DEFAULT 'LOCAL',
         revision INTEGER NOT NULL DEFAULT 0
       )
     """.trimIndent(),
   )
+  if (!db.hasColumn("rss_recommendation_policy", "learned_priority_condition")) {
+    db.execSQL("ALTER TABLE rss_recommendation_policy ADD COLUMN learned_priority_condition TEXT NOT NULL DEFAULT ''")
+    // The 1..10 score meaning now includes explicit priority preference; invalidate old assessments.
+    db.execSQL("UPDATE rss_recommendation_policy SET revision=revision+1")
+  }
   if (!db.hasColumn("rss_recommendation_policy", "execution_provider")) {
     db.execSQL(
       "ALTER TABLE rss_recommendation_policy ADD COLUMN execution_provider TEXT NOT NULL DEFAULT 'LOCAL'",
@@ -385,10 +460,18 @@ internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
         previous_unscored_reason TEXT,
         previous_revision INTEGER,
         previous_assessed_at INTEGER,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'EXCLUSION',
+        processed_at INTEGER
       )
     """.trimIndent(),
   )
+  if (!db.hasColumn("rss_recommendation_feedback", "kind")) {
+    db.execSQL("ALTER TABLE rss_recommendation_feedback ADD COLUMN kind TEXT NOT NULL DEFAULT 'EXCLUSION'")
+  }
+  if (!db.hasColumn("rss_recommendation_feedback", "processed_at")) {
+    db.execSQL("ALTER TABLE rss_recommendation_feedback ADD COLUMN processed_at INTEGER")
+  }
   db.execSQL("CREATE INDEX IF NOT EXISTS rss_recommendation_feedback_created_at ON rss_recommendation_feedback(created_at,id)")
   db.execSQL(
     """
@@ -411,6 +494,7 @@ private fun savePolicyInTransaction(db: SQLiteDatabase, policy: RssRecommendatio
     ContentValues().apply {
       put("manual_condition", policy.manualCondition)
       put("learned_condition", policy.learnedCondition)
+      put("learned_priority_condition", policy.learnedPriorityCondition)
       put("execution_provider", policy.executionProvider.name)
       put("revision", policy.revision)
     },
@@ -469,6 +553,7 @@ private fun Cursor.feedback(): RssRecommendationFeedback {
     title = getString(2),
     previousAssessment = previous,
     createdAt = getLong(8),
+    kind = RssRecommendationFeedbackKind.valueOf(getString(9)),
   )
 }
 

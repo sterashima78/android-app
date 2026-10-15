@@ -2,11 +2,11 @@
 // - docs/spec/15-privacy-security.md
 //
 // Covers:
-// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:5ed0dfde725a05b5c5fb73edde34d4980076dc69db7af8a270b57d04ee45ea29 -> DefaultProviderIsLocal
-// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:5ed0dfde725a05b5c5fb73edde34d4980076dc69db7af8a270b57d04ee45ea29 -> LocalProviderHasNoCloudEgress
-// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:5ed0dfde725a05b5c5fb73edde34d4980076dc69db7af8a270b57d04ee45ea29 -> ForbiddenDataNeverLeavesForRecommendation
-// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:5ed0dfde725a05b5c5fb73edde34d4980076dc69db7af8a270b57d04ee45ea29 -> ScoringCloudPayloadIsAllowlisted
-// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:5ed0dfde725a05b5c5fb73edde34d4980076dc69db7af8a270b57d04ee45ea29 -> LearningCloudPayloadIsAllowlisted
+// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:9d643abace1ef31745f49c46988a140a4e7e7ab570f3bf6af7944545ec221c62 -> DefaultProviderIsLocal
+// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:9d643abace1ef31745f49c46988a140a4e7e7ab570f3bf6af7944545ec221c62 -> LocalProviderHasNoCloudEgress
+// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:9d643abace1ef31745f49c46988a140a4e7e7ab570f3bf6af7944545ec221c62 -> ForbiddenDataNeverLeavesForRecommendation
+// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:9d643abace1ef31745f49c46988a140a4e7e7ab570f3bf6af7944545ec221c62 -> ScoringCloudPayloadIsAllowlisted
+// - RSS-RECOMMENDATION-CLOUD-EGRESS-001@sha256:9d643abace1ef31745f49c46988a140a4e7e7ab570f3bf6af7944545ec221c62 -> LearningCloudPayloadIsAllowlisted
 //
 // Scope:
 // The model represents data categories crossing the cloud inference boundary,
@@ -24,8 +24,8 @@ abstract sig Operation {}
 one sig Scoring, Learning extends Operation {}
 
 abstract sig DataCategory {}
-one sig ManualCondition, LearnedCondition, ArticleTitle,
-  FeedbackTitle, PreviousAssessment extends DataCategory {}
+one sig ManualCondition, LearnedCondition, LearnedPriorityCondition, ArticleTitle,
+  FeedbackTitle, FeedbackKind, PreviousAssessment extends DataCategory {}
 one sig ArticleUrl, FeedBody, LinkedPageBody, SavedSummary extends DataCategory {}
 
 one sig DefaultRecommendationPolicy {
@@ -39,11 +39,11 @@ sig RecommendationRequest {
 }
 
 fun scoringAllowlist: set DataCategory {
-  ManualCondition + LearnedCondition + ArticleTitle
+  ManualCondition + LearnedCondition + LearnedPriorityCondition + ArticleTitle
 }
 
 fun learningAllowlist: set DataCategory {
-  ManualCondition + LearnedCondition + FeedbackTitle + PreviousAssessment
+  ManualCondition + LearnedCondition + LearnedPriorityCondition + FeedbackTitle + FeedbackKind + PreviousAssessment
 }
 
 fun forbiddenCategories: set DataCategory {
