@@ -214,6 +214,55 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `優先参考により除外条件と優先条件を同時に修正する`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        learnedCondition = "宣伝を広く除外",
+        learnedPriorityCondition = "技術の解説を優先",
+        revision = 2L,
+      ),
+    )
+    val service = RssRecommendationService(
+      repository,
+      FakeRecommendationEngine(
+        improveResult = "購入のみを促す宣伝は除外",
+        improvePriorityResult = "技術解説とリリース情報を優先",
+      ),
+    )
+    val feedback = service.recordPriorityFeedback(article("a1", "新技術のリリース記念記事"))
+    assertEquals(RssRecommendationFeedbackKind.PRIORITY, feedback.kind)
+
+    val updated = service.improvePendingFeedback()
+
+    assertEquals("購入のみを促す宣伝は除外", updated?.learnedCondition)
+    assertEquals("技術解説とリリース情報を優先", updated?.learnedPriorityCondition)
+    assertEquals(3L, updated?.revision)
+    assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+    assertEquals(RssRecommendationFeedbackKind.PRIORITY, repository.listLearningExamples().single().kind)
+  }
+
+  @Test
+  fun `両方の学習条件が変わらなければ更新結果でfeedbackを消費しない`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        learnedCondition = "既存の除外条件",
+        learnedPriorityCondition = "既存の優先条件",
+      ),
+    )
+    repository.addFeedback("a1", "優先記事", null, RssRecommendationFeedbackKind.PRIORITY)
+    val service = RssRecommendationService(
+      repository,
+      FakeRecommendationEngine(
+        improveOutcome = RssRecommendationLearningOutcome.UPDATED,
+        improveResult = "既存の除外条件",
+        improvePriorityResult = "既存の優先条件",
+      ),
+    )
+    assertNull(service.improvePendingFeedback())
+    assertEquals(1, repository.listPendingFeedback().size)
+  }
+
+  @Test
   fun `記事単位評価は数値スコアを保存する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(manualCondition = "広告は低くする", revision = 3L),
@@ -339,6 +388,7 @@ private class FakeRecommendationEngine(
   private val failImprove: Boolean = false,
   private val improveOutcome: RssRecommendationLearningOutcome = RssRecommendationLearningOutcome.UPDATED,
   private val improveResult: String = "",
+  private val improvePriorityResult: String? = null,
   private val onImprove: () -> Unit = {},
 ) : RssRecommendationEngine {
   var scoreCalls = 0
@@ -357,13 +407,16 @@ private class FakeRecommendationEngine(
     provider: RssRecommendationExecutionProvider,
     manualCondition: String,
     learnedCondition: String,
+    learnedPriorityCondition: String,
     feedback: List<RssRecommendationFeedback>,
+    examples: List<RssRecommendationFeedback>,
   ): RssRecommendationLearningDecision {
     onImprove()
     if (failImprove) error("learning failed")
     return RssRecommendationLearningDecision(
       outcome = improveOutcome,
       learnedCondition = improveResult.ifBlank { learnedCondition },
+      learnedPriorityCondition = improvePriorityResult ?: learnedPriorityCondition,
     )
   }
 }
@@ -395,6 +448,13 @@ private class FakeRecommendationRepository(
     return policy
   }
 
+  override fun resetLearnedPriorityCondition(): RssRecommendationPolicy {
+    if (policy.learnedPriorityCondition.isNotBlank()) {
+      policy = policy.copy(learnedPriorityCondition = "", revision = policy.revision + 1)
+    }
+    return policy
+  }
+
   override fun resetLearnedCondition(): RssRecommendationPolicy {
     if (policy.learnedCondition.isNotBlank()) {
       policy = policy.copy(learnedCondition = "", revision = policy.revision + 1)
@@ -415,6 +475,7 @@ private class FakeRecommendationRepository(
     articleId: String,
     title: String,
     previousAssessment: RssRecommendationAssessment?,
+    kind: RssRecommendationFeedbackKind,
   ): RssRecommendationFeedback {
     val item = RssRecommendationFeedback(
       id = "f${feedback.size}",
@@ -422,11 +483,16 @@ private class FakeRecommendationRepository(
       title = title,
       previousAssessment = previousAssessment,
       createdAt = 500L,
+      kind = kind,
     )
     feedback.removeAll { it.articleId == articleId }
     feedback += item
     return item
   }
+
+  private val examples = mutableListOf<RssRecommendationFeedback>()
+
+  override fun listLearningExamples(): List<RssRecommendationFeedback> = examples.toList()
 
   override fun listPendingFeedback(): List<RssRecommendationFeedback> = feedback.toList()
 
@@ -437,10 +503,17 @@ private class FakeRecommendationRepository(
   override fun applyLearnedConditionAndConsumeFeedback(
     feedbackIds: Set<String>,
     learnedCondition: String,
+    learnedPriorityCondition: String,
   ): RssRecommendationPolicy {
-    if (policy.learnedCondition != learnedCondition) {
-      policy = policy.copy(learnedCondition = learnedCondition, revision = policy.revision + 1)
+    if (policy.learnedCondition != learnedCondition || policy.learnedPriorityCondition != learnedPriorityCondition) {
+      policy = policy.copy(
+        learnedCondition = learnedCondition,
+        learnedPriorityCondition = learnedPriorityCondition,
+        revision = policy.revision + 1,
+      )
     }
+    val consumed = feedback.filter { it.id in feedbackIds }
+    examples.addAll(consumed)
     feedback.removeAll { it.id in feedbackIds }
     return policy
   }
