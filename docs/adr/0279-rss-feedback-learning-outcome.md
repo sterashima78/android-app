@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-05
 - Amends: [ADR-0270](0270-rss-recommendation-scoring.md), [ADR-0273](0273-background-only-non-interactive-ai-inference.md)
+- Amended by: [ADR-0286](0286-rss-joint-preference-learning.md)
 
 ## Context
 
