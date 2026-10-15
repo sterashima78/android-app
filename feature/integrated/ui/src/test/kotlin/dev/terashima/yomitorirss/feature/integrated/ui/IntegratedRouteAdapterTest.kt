@@ -239,7 +239,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf("はてなブックマークコメントを見る"),
+      listOf("優先参考に追加", "はてなブックマークコメントを見る"),
       actionLabels(IntegratedTarget.Rss(rss), redditState),
     )
     assertEquals(
