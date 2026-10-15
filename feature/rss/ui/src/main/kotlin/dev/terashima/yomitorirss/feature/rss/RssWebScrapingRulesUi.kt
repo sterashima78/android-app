@@ -170,7 +170,7 @@ internal fun RssWebScrapingRulesUi(
           }
         }
         Text(
-          "未読記事の長押しメニューから優先参考を指定できます。優先・除外の参考は両方の学習条件へ同時に反映します。学習条件のリセット時は、対応する種類の学習済み参考履歴も消去されます。",
+          "RSS記事を「あとで読む」に追加すると、自動的に優先参考にも登録されます。未読記事の長押しメニューから直接優先参考を指定することもできます。優先・除外の参考は両方の学習条件へ同時に反映します。学習条件のリセット時は、対応する種類の学習済み参考履歴も消去されます。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
