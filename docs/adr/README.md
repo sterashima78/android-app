@@ -182,6 +182,7 @@ ADR を後から現在形へ書き換えることは避け、後続判断で変�
 - [ADR-0277: 対話型ローカルAI推論を短寿命サブプロセスへ隔離する](0277-isolate-local-chat-inference-process.md)
 - [ADR-0278: ニュースポッドキャストをfeed categoryで連続配置する](0278-podcast-feed-category-ordering.md)
 - [ADR-0279: RSS除外学習の適用結果を明示し未反映feedbackを保持する](0279-rss-feedback-learning-outcome.md)
+- [ADR-0286: RSSの優先・除外参考を同時学習する](0286-rss-joint-preference-learning.md)
 
 ### Content / summary / knowledge
 
