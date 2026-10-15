@@ -235,7 +235,18 @@ class RssViewModel(
   }
 
   fun readLater(article: Article) = performArticleAction(article) {
-    bookmarkRepository.markReadLater(article.id)
+    markReadLaterWithPriorityFeedback(
+      saveReadLater = { bookmarkRepository.markReadLater(article.id) },
+      recordPriority = recommendationService?.let { service ->
+        { service.recordPriorityFeedback(article) }
+      },
+      scheduleLearning = { recommendationTaskScheduler?.scheduleFeedbackLearning() },
+      onPriorityError = { error ->
+        _state.update {
+          it.copy(message = "あとで読むに追加しましたが、優先参考を登録できませんでした: ${error.userMessage()}")
+        }
+      },
+    )
   }
 
   fun unsave(article: Article) = performArticleAction(article) {
@@ -407,6 +418,29 @@ class RssViewModel(
   }
 }
 
+
+/**
+ * Only a successfully persisted read-later addition can provide positive RSS feedback.
+ * A feedback failure must not turn an already saved article into a failed save operation.
+ */
+internal suspend fun markReadLaterWithPriorityFeedback(
+  saveReadLater: suspend () -> Unit,
+  recordPriority: (() -> Unit)?,
+  scheduleLearning: () -> Unit,
+  onPriorityError: (Throwable) -> Unit,
+) {
+  saveReadLater()
+  val record = recordPriority ?: return
+  try {
+    record()
+  } catch (error: CancellationException) {
+    throw error
+  } catch (error: Throwable) {
+    onPriorityError(error)
+    return
+  }
+  runCatching { scheduleLearning() }
+}
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
