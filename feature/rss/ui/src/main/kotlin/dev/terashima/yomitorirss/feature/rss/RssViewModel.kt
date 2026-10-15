@@ -134,7 +134,7 @@ class RssViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         service.recordPriorityFeedback(article)
-        recommendationTaskScheduler?.scheduleFeedbackLearning()
+        runCatching { recommendationTaskScheduler?.scheduleFeedbackLearning() }
         val snapshot = service.snapshot(_state.value.unread.map(Article::id))
         applyRecommendationSnapshot(snapshot)
         _state.update { it.copy(message = "優先参考に追加しました") }
