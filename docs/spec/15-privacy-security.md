@@ -10,7 +10,7 @@ id: RSS-RECOMMENDATION-CLOUD-EGRESS-001
 models:
   - spec-models/alloy/rss_recommendation_cloud_egress.als
 -->
-- RSS推薦は既定で端末内AIを利用する。利用者がクラウドAIを明示選択した場合だけ、RSS推薦に必要な除外条件・学習条件・記事タイトル・除外参考タイトルと直前評価をクラウド推論先へ送信する。記事URL、feed本文、リンク先本文、保存済み要約はRSS推薦の入力へ追加しない。
+- RSS推薦は既定で端末内AIを利用する。利用者がクラウドAIを明示選択した場合だけ、RSS推薦に必要な手動除外条件・学習済みの優先条件と除外条件・評価対象の記事タイトル・優先参考と除外参考のタイトルおよび直前評価をクラウド推論先へ送信する。記事URL、feed本文、リンク先本文、保存済み要約、参考記事の内部IDはRSS推薦の入力へ追加しない。
 <!-- /formal-requirement -->
 - custom Video Provider codeには他Contextのcredentialやdatabase accessを公開せず、外部通信はboundedなHTTPS request capabilityに限定する。function code自体をcredential保存場所として扱わない。
 - アプリ全体ロックは既定で無効とし、永続化するのは有効フラグだけとする。認証済みsession状態とCustom Tabs遷移markerはprocess内の一時状態として扱う。
