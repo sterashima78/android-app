@@ -43,10 +43,12 @@ class DefaultWidgetRepository(
       saveReadLater = { bookmarkRepository.markReadLater(articleId) },
       recordPriority = notifier?.let { callback ->
         suspend {
-          articleRepository.findArticle(articleId)
-            ?.takeIf { sourceSelector(it.sourceFeedUrl) }
-            ?.let(callback)
-          Unit
+          notifyWidgetReadLaterAdded(
+            articleId = articleId,
+            findArticle = articleRepository::findArticle,
+            sourceSelector = sourceSelector,
+            onReadLaterSaved = callback,
+          )
         }
       },
       // The application-scoped callback registers the feedback and schedules learning together.
@@ -64,4 +66,15 @@ class DefaultWidgetRepository(
         runCatching { feedRepository.refreshFeed(feed) }
       }
   }
+}
+
+internal suspend fun notifyWidgetReadLaterAdded(
+  articleId: String,
+  findArticle: suspend (String) -> Article?,
+  sourceSelector: (String) -> Boolean,
+  onReadLaterSaved: (Article) -> Unit,
+) {
+  findArticle(articleId)
+    ?.takeIf { article -> sourceSelector(article.sourceFeedUrl) }
+    ?.let(onReadLaterSaved)
 }
