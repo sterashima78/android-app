@@ -27,6 +27,7 @@ data class RssUiState(
   val recommendationPolicy: RssRecommendationPolicy = RssRecommendationPolicy(),
   val recommendationAssessments: Map<String, RssRecommendationAssessment> = emptyMap(),
   val recommendationPendingFeedbackCount: Int = 0,
+  val recommendationPendingPriorityFeedbackCount: Int = 0,
   val message: String? = null,
 )
 
@@ -128,6 +129,23 @@ class RssViewModel(
     }
   }
 
+  fun markAsPriorityReference(article: Article) {
+    val service = recommendationService ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        service.recordPriorityFeedback(article)
+        recommendationTaskScheduler?.scheduleFeedbackLearning()
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        _state.update { it.copy(message = "優先参考に追加しました") }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(message = "優先参考を登録できませんでした: ${error.userMessage()}") }
+      }
+    }
+  }
+
   fun saveRecommendationCondition(condition: String) {
     val service = recommendationService ?: return
     viewModelScope.launch(Dispatchers.IO) {
@@ -170,6 +188,23 @@ class RssViewModel(
         throw error
       } catch (error: Throwable) {
         _state.update { it.copy(message = "RSS推薦の実行先を変更できませんでした: ${error.userMessage()}") }
+      }
+    }
+  }
+
+  fun resetPriorityRecommendationLearning() {
+    val service = recommendationService ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        service.resetLearnedPriorityCondition()
+        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
+        applyRecommendationSnapshot(snapshot)
+        recommendationTaskScheduler?.enqueueUnread()
+        _state.update { it.copy(message = "学習した優先条件をリセットしました") }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        _state.update { it.copy(message = "優先条件をリセットできませんでした: ${error.userMessage()}") }
       }
     }
   }
@@ -344,6 +379,7 @@ class RssViewModel(
         recommendationPolicy = snapshot.policy,
         recommendationAssessments = snapshot.assessments,
         recommendationPendingFeedbackCount = snapshot.pendingFeedbackCount,
+        recommendationPendingPriorityFeedbackCount = snapshot.pendingPriorityFeedbackCount,
       )
     }
   }
