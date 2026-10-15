@@ -13,14 +13,18 @@ internal fun integratedItemActions(
   onSummarize: (Article) -> Unit,
   onSubscribeRedditThread: (Article) -> Unit,
   onUnsubscribeRedditThread: (Article) -> Unit,
-  onPriorityReference: (Article) -> Unit = {},
+  onPriorityReference: ((Article) -> Unit)? = null,
 ): List<IntegratedItemAction> = when (target) {
-  is IntegratedTarget.Rss -> listOf(
-    IntegratedItemAction("優先参考に追加") { onPriorityReference(target.article) },
-    IntegratedItemAction("はてなブックマークコメントを見る") {
-      onOpenArticle(target.article.withHatenaBookmarkCommentsUrl())
-    },
-  )
+  is IntegratedTarget.Rss -> buildList {
+    onPriorityReference?.let { register ->
+      add(IntegratedItemAction("優先参考に追加") { register(target.article) })
+    }
+    add(
+      IntegratedItemAction("はてなブックマークコメントを見る") {
+        onOpenArticle(target.article.withHatenaBookmarkCommentsUrl())
+      },
+    )
+  }
 
   is IntegratedTarget.Reddit -> buildList {
     add(
