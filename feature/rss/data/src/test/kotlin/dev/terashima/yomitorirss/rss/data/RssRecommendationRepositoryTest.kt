@@ -141,6 +141,28 @@ class RssRecommendationRepositoryTest {
   }
 
   @Test
+  fun `学習条件をリセットしたら同種の学習済み参考も削除する`() {
+    val excluded = repository.addFeedback("exclude", "除外記事", null)
+    repository.applyLearnedConditionAndConsumeFeedback(
+      setOf(excluded.id), "宣伝を除外", "",
+    )
+    val priority = repository.addFeedback("priority", "優先記事", null, RssRecommendationFeedbackKind.PRIORITY)
+    repository.applyLearnedConditionAndConsumeFeedback(
+      setOf(priority.id), "宣伝を除外", "技術記事を優先",
+    )
+    assertEquals(2, repository.listLearningExamples().size)
+
+    val afterPriorityReset = repository.resetLearnedPriorityCondition()
+    assertEquals("", afterPriorityReset.learnedPriorityCondition)
+    assertEquals("宣伝を除外", afterPriorityReset.learnedCondition)
+    assertEquals(listOf(RssRecommendationFeedbackKind.EXCLUSION), repository.listLearningExamples().map { it.kind })
+
+    val afterExclusionReset = repository.resetLearnedCondition()
+    assertEquals("", afterExclusionReset.learnedCondition)
+    assertEquals(emptyList<Any>(), repository.listLearningExamples())
+  }
+
+  @Test
   fun `旧データの除外参考と条件を維持し古いスコアを無効化する`() {
     val db = helper.writableDatabase
     db.execSQL(
