@@ -17,7 +17,7 @@
 // Abstraction:
 // The model represents two feedback generations: the snapshot captured when a
 // learning attempt starts and feedback added while that attempt is running.
-// Concrete feedback IDs, the 50-item batch cap, WorkManager backoff, and model
+// Concrete feedback IDs, priority/exclusion labels, processed example retention, the 50-item batch cap, WorkManager backoff, and model
 // output text are intentionally omitted. A policy/provider change during an
 // attempt is represented by the stale flag.
 
