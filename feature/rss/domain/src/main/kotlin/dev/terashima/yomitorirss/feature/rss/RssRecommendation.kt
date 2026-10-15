@@ -319,6 +319,10 @@ class RssRecommendationService(
     }
     if (!validOutcome) return null
 
+    // Feedback may be replaced or cancelled while inference runs. Never apply the stale label.
+    val stillPending = repository.listPendingFeedback().associateBy(RssRecommendationFeedback::id)
+    if (pending.any { stillPending[it.id] != it }) return null
+
     return repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = pending.mapTo(mutableSetOf(), RssRecommendationFeedback::id),
       learnedCondition = learned,
