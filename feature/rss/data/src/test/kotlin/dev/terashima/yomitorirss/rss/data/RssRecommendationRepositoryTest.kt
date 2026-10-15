@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationExecutionProvider
+import dev.terashima.yomitorirss.feature.rss.RssRecommendationFeedbackKind
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
 import org.junit.After
@@ -115,6 +116,28 @@ class RssRecommendationRepositoryTest {
     assertEquals(1L, updated.revision)
     assertEquals("広告的な告知を低くする", updated.learnedCondition)
     assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+  }
+
+  @Test
+  fun `優先参考を学習後も保持し次回の両条件の改善へ使える`() {
+    val reference = repository.addFeedback(
+      articleId = "a-priority",
+      title = "技術のキャンペーン",
+      previousAssessment = null,
+      kind = RssRecommendationFeedbackKind.PRIORITY,
+    )
+
+    val updated = repository.applyLearnedConditionAndConsumeFeedback(
+      feedbackIds = setOf(reference.id),
+      learnedCondition = "販促だけを除外",
+      learnedPriorityCondition = "技術的な内容を優先",
+    )
+
+    assertEquals("販促だけを除外", updated.learnedCondition)
+    assertEquals("技術的な内容を優先", updated.learnedPriorityCondition)
+    assertEquals(emptyList<Any>(), repository.listPendingFeedback())
+    assertEquals(reference, repository.listLearningExamples().single())
+    assertEquals(updated, repository.loadPolicy())
   }
 
   @Test
