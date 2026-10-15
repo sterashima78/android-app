@@ -214,6 +214,28 @@ class RssRecommendationServiceTest {
   }
 
   @Test
+  fun `学習中に除外参考を優先参考に変更した場合は古い学習結果を棄却する`() = runBlocking {
+    val repository = FakeRecommendationRepository(
+      policy = RssRecommendationPolicy(
+        learnedCondition = "従来の除外条件",
+        revision = 1L,
+      ),
+    )
+    repository.addFeedback("a1", "古い除外参考", null)
+    val engine = FakeRecommendationEngine(
+      improveResult = "上書きされるはずの除外条件",
+      onImprove = {
+        repository.addFeedback("a1", "新しい優先参考", null, RssRecommendationFeedbackKind.PRIORITY)
+      },
+    )
+    val result = RssRecommendationService(repository, engine).improvePendingFeedback()
+
+    assertNull(result)
+    assertEquals("従来の除外条件", repository.loadPolicy().learnedCondition)
+    assertEquals(RssRecommendationFeedbackKind.PRIORITY, repository.listPendingFeedback().single().kind)
+  }
+
+  @Test
   fun `優先参考により除外条件と優先条件を同時に修正する`() = runBlocking {
     val repository = FakeRecommendationRepository(
       policy = RssRecommendationPolicy(
