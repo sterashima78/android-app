@@ -190,6 +190,10 @@ internal class AppContentRuntimeDependencies(
       feedRepository = feedRepository,
       bookmarkRepository = bookmarkRepository,
       sourceSelector = RedditSourceBoundary::isNonRedditFeed,
+      onReadLaterSaved = { article ->
+        rssRecommendationService.recordPriorityFeedback(article)
+        rssRecommendationTaskScheduler.scheduleFeedbackLearning()
+      },
     )
   }
 }

@@ -238,7 +238,7 @@ class RssViewModel(
     markReadLaterWithPriorityFeedback(
       saveReadLater = { bookmarkRepository.markReadLater(article.id) },
       recordPriority = recommendationService?.let { service ->
-        {
+        suspend {
           service.recordPriorityFeedback(article)
           Unit
         }
@@ -421,29 +421,6 @@ class RssViewModel(
   }
 }
 
-
-/**
- * Only a successfully persisted read-later addition can provide positive RSS feedback.
- * A feedback failure must not turn an already saved article into a failed save operation.
- */
-internal suspend fun markReadLaterWithPriorityFeedback(
-  saveReadLater: suspend () -> Unit,
-  recordPriority: (() -> Unit)?,
-  scheduleLearning: () -> Unit,
-  onPriorityError: (Throwable) -> Unit,
-) {
-  saveReadLater()
-  val record = recordPriority ?: return
-  try {
-    record()
-  } catch (error: CancellationException) {
-    throw error
-  } catch (error: Throwable) {
-    onPriorityError(error)
-    return
-  }
-  runCatching { scheduleLearning() }
-}
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }

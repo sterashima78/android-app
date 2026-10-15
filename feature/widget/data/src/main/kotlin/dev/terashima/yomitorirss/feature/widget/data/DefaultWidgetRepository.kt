@@ -1,8 +1,12 @@
 package dev.terashima.yomitorirss.feature.widget.data
 
+import android.util.Log
+
+import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.rss.markReadLaterWithPriorityFeedback
 import dev.terashima.yomitorirss.feature.widget.WidgetArticle
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
 import kotlinx.coroutines.runBlocking
@@ -12,6 +16,7 @@ class DefaultWidgetRepository(
   private val feedRepository: FeedRepository,
   private val bookmarkRepository: BookmarkRepository,
   private val sourceSelector: (String) -> Boolean = { true },
+  private val onReadLaterSaved: ((Article) -> Unit)? = null,
 ) : WidgetRepository {
   override fun listUnreadArticles(): List<WidgetArticle> = runBlocking {
     articleRepository.listUnreadArticles()
@@ -33,7 +38,25 @@ class DefaultWidgetRepository(
   }
 
   override suspend fun markReadLater(articleId: String) {
-    bookmarkRepository.markReadLater(articleId)
+    val notifier = onReadLaterSaved
+    markReadLaterWithPriorityFeedback(
+      saveReadLater = { bookmarkRepository.markReadLater(articleId) },
+      recordPriority = notifier?.let { callback ->
+        suspend {
+          notifyWidgetReadLaterAdded(
+            articleId = articleId,
+            findArticle = articleRepository::findArticle,
+            sourceSelector = sourceSelector,
+            onReadLaterSaved = callback,
+          )
+        }
+      },
+      // The application-scoped callback registers the feedback and schedules learning together.
+      scheduleLearning = {},
+      onPriorityError = { error ->
+        Log.w("UnreadWidget", "Could not register RSS priority reference after saving", error)
+      },
+    )
   }
 
   override suspend fun refreshFeeds() {
@@ -43,4 +66,15 @@ class DefaultWidgetRepository(
         runCatching { feedRepository.refreshFeed(feed) }
       }
   }
+}
+
+internal suspend fun notifyWidgetReadLaterAdded(
+  articleId: String,
+  findArticle: suspend (String) -> Article?,
+  sourceSelector: (String) -> Boolean,
+  onReadLaterSaved: (Article) -> Unit,
+) {
+  findArticle(articleId)
+    ?.takeIf { article -> sourceSelector(article.sourceFeedUrl) }
+    ?.let(onReadLaterSaved)
 }
