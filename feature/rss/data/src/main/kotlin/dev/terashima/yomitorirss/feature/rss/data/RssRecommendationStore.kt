@@ -250,6 +250,22 @@ class DefaultRssRecommendationRepository(
           )
         }
       }
+      // Keep the most recent representative history per label; avoid unbounded backup growth.
+      RssRecommendationFeedbackKind.entries.forEach { kind ->
+        execSQL(
+          """
+            DELETE FROM rss_recommendation_feedback
+            WHERE processed_at IS NOT NULL AND kind=?
+              AND id NOT IN (
+                SELECT id FROM rss_recommendation_feedback
+                WHERE processed_at IS NOT NULL AND kind=?
+                ORDER BY created_at DESC, id DESC
+                LIMIT 250
+              )
+          """.trimIndent(),
+          arrayOf(kind.name, kind.name),
+        )
+      }
     }
     dataChanges.notifyChanged()
     return updated
