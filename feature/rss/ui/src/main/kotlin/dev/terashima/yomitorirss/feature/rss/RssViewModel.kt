@@ -238,7 +238,10 @@ class RssViewModel(
     markReadLaterWithPriorityFeedback(
       saveReadLater = { bookmarkRepository.markReadLater(article.id) },
       recordPriority = recommendationService?.let { service ->
-        { service.recordPriorityFeedback(article) }
+        {
+          service.recordPriorityFeedback(article)
+          Unit
+        }
       },
       scheduleLearning = { recommendationTaskScheduler?.scheduleFeedbackLearning() },
       onPriorityError = { error ->
