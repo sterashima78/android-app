@@ -129,7 +129,7 @@ fun IntegratedRoute(
               onSummarize = onSummarize,
               onSubscribeRedditThread = redditViewModel::subscribeThread,
               onUnsubscribeRedditThread = redditViewModel::unsubscribeThread,
-              onPriorityReference = rssViewModel::markAsPriorityReference,
+              onPriorityReference = if (selectedTab == IntegratedTab.UNREAD) rssViewModel::markAsPriorityReference else null,
             )
           }.orEmpty()
         },
