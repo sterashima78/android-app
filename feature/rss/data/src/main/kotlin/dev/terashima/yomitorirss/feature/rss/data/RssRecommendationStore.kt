@@ -410,6 +410,8 @@ internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
   )
   if (!db.hasColumn("rss_recommendation_policy", "learned_priority_condition")) {
     db.execSQL("ALTER TABLE rss_recommendation_policy ADD COLUMN learned_priority_condition TEXT NOT NULL DEFAULT ''")
+    // The 1..10 score meaning now includes explicit priority preference; invalidate old assessments.
+    db.execSQL("UPDATE rss_recommendation_policy SET revision=revision+1")
   }
   if (!db.hasColumn("rss_recommendation_policy", "execution_provider")) {
     db.execSQL(
