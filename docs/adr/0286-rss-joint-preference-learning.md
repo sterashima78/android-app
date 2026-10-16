@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-15
 - Amends: [ADR-0270](0270-rss-recommendation-scoring.md), [ADR-0279](0279-rss-feedback-learning-outcome.md)
+- Amended by: [ADR-0287](0287-rss-read-later-priority-entry-point.md)
 
 ## Context
 
