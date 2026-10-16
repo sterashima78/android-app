@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.core.designsystem.SwipeBehavior
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleList
-import dev.terashima.yomitorirss.feature.article.ArticleMenuAction
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.SwipeChoice
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
@@ -48,7 +47,6 @@ fun RssScreen(
   state: RssUiState,
   onMarkRead: (Article) -> Unit,
   onExclusionReference: (Article) -> Unit,
-  onPriorityReference: (Article) -> Unit,
   onSaveAndRead: (Article) -> Unit,
   onReadLater: (Article) -> Unit,
   onUnsave: (Article) -> Unit,
@@ -99,9 +97,6 @@ fun RssScreen(
           right = SwipeChoice("ブックマーク", MaterialTheme.colorScheme.secondary, onSaveAndRead),
           farRight = SwipeChoice("あとで読む", MaterialTheme.colorScheme.tertiary, onReadLater),
           leftSwipeBehavior = rssUnreadLeftSwipeBehavior,
-          extraMenuActions = { article ->
-            listOf(ArticleMenuAction("優先参考に追加") { onPriorityReference(article) })
-          },
           onOpen = onOpen,
           onSummarize = onSummarize,
           onEditTags = onEditTags,
