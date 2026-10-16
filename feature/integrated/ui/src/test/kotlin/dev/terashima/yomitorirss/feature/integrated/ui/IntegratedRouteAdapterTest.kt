@@ -239,10 +239,6 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf("優先参考に追加", "はてなブックマークコメントを見る"),
-      actionLabels(IntegratedTarget.Rss(rss), redditState, allowPriority = true),
-    )
-    assertEquals(
       listOf("はてなブックマークコメントを見る"),
       actionLabels(IntegratedTarget.Rss(rss), redditState),
     )
@@ -276,7 +272,6 @@ class IntegratedRouteAdapterTest {
   private fun actionLabels(
     target: IntegratedTarget,
     redditState: RedditUiState,
-    allowPriority: Boolean = false,
   ): List<String> = integratedItemActions(
     target = target,
     redditState = redditState,
@@ -284,7 +279,6 @@ class IntegratedRouteAdapterTest {
     onSummarize = {},
     onSubscribeRedditThread = {},
     onUnsubscribeRedditThread = {},
-    onPriorityReference = if (allowPriority) ({ _: Article -> }) else null,
   ).map(IntegratedItemAction::label)
 
   private fun article(id: String, publishedAt: String): Article = Article(

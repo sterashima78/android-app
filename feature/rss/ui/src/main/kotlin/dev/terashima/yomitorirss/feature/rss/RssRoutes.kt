@@ -72,7 +72,6 @@ fun RssRoute(
         state = rssState,
         onMarkRead = rssViewModel::markRead,
         onExclusionReference = rssViewModel::markAsExclusionReference,
-        onPriorityReference = rssViewModel::markAsPriorityReference,
         onSaveAndRead = rssViewModel::saveAndRead,
         onReadLater = rssViewModel::readLater,
         onUnsave = rssViewModel::unsave,
