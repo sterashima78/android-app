@@ -129,23 +129,6 @@ class RssViewModel(
     }
   }
 
-  fun markAsPriorityReference(article: Article) {
-    val service = recommendationService ?: return
-    viewModelScope.launch(Dispatchers.IO) {
-      try {
-        service.recordPriorityFeedback(article)
-        runCatching { recommendationTaskScheduler?.scheduleFeedbackLearning() }
-        val snapshot = service.snapshot(_state.value.unread.map(Article::id))
-        applyRecommendationSnapshot(snapshot)
-        _state.update { it.copy(message = "優先参考に追加しました") }
-      } catch (error: CancellationException) {
-        throw error
-      } catch (error: Throwable) {
-        _state.update { it.copy(message = "優先参考を登録できませんでした: ${error.userMessage()}") }
-      }
-    }
-  }
-
   fun saveRecommendationCondition(condition: String) {
     val service = recommendationService ?: return
     viewModelScope.launch(Dispatchers.IO) {
