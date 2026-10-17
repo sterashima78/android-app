@@ -269,7 +269,7 @@ class DefaultVideoRepositoryTest {
     assertTrue("share_cookies_for_playback" in columns)
     db.execSQL(
       "INSERT INTO video_web_extractor_rules(id, url_pattern, updated_at) VALUES(?, ?, ?)",
-      arrayOf("rule", "https://example.invalid/*", 1L),
+      arrayOf<Any>("rule", "https://example.invalid/*", 1L),
     )
     val value = db.rawQuery(
       "SELECT share_cookies_for_playback FROM video_web_extractor_rules WHERE id = ?",
