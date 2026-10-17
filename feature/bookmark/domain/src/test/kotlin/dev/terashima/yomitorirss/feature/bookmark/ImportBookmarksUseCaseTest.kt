@@ -114,7 +114,7 @@ private class FakeArticleGateway(
 ) : BookmarkArticleGateway {
   val identityPrefixes = mutableListOf<String>()
 
-  override suspend fun markRead(articleId: String) = Unit
+  override fun markRead(articleId: String) = Unit
 
   override suspend fun findOrCreateSharedArticle(
     url: String,
