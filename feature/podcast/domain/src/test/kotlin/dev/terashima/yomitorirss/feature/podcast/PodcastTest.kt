@@ -376,6 +376,50 @@ class PodcastTest {
   }
 
   @Test
+  fun `重複ニュースの複数記事は一チャプターと数え上限まで収録する`() = runSuspend {
+    val program = program(maxArticlesPerEpisode = 1)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    val repository = FakePodcastRepository(program)
+    repository.episodes += PodcastEpisode(
+      id = "archived", programId = program.id, title = "過去のニュース",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = listOf(entry("previous").toEpisodeArticle()),
+    )
+    val classifier = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        assertEquals(
+          listOf("previous", "covered", "new-a", "new-a-another-source", "new-b"),
+          candidates.map { it.articleId },
+        )
+        return PodcastNewsClusteringResult(
+          listOf(listOf(0, 1), listOf(2, 3), listOf(4)),
+          PodcastClusteringStatus.SUCCESS,
+        )
+      }
+    }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository,
+      FakeFeedContentSource(
+        listOf(entry("covered"), entry("new-a"), entry("new-a-another-source"), entry("new-b")),
+      ),
+      RecordingGenerator("原稿"),
+      nowEpochMillis = { now },
+      newsClusterer = classifier,
+    )
+
+    val first = useCase.generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("new-a", "new-a-another-source"), first.episode.articles.map { it.articleId })
+    assertEquals(listOf(0, 0), first.episode.articles.map { it.chapterPosition })
+    val remaining = repository.episodes.single { it.status == PodcastEpisodeStatus.QUEUED }
+    assertEquals(listOf("new-b"), remaining.articles.map { it.articleId })
+    assertEquals(0, remaining.articles.single().chapterPosition)
+  }
+
+  @Test
   fun `48時間より古いアーカイブは重複判定に使用しない`() = runSuspend {
     val program = program()
     val now = 5L * 24 * 60 * 60 * 1_000
