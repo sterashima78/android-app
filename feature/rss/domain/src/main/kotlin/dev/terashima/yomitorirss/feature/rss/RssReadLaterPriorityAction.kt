@@ -9,12 +9,12 @@ import kotlinx.coroutines.CancellationException
  * bookmark operation if reference registration fails. Both RSS UI and the RSS widget use this flow.
  */
 suspend fun markReadLaterWithPriorityFeedback(
-  saveReadLater: suspend () -> Unit,
+  saveReadLater: suspend () -> Boolean,
   recordPriority: (suspend () -> Unit)?,
   scheduleLearning: () -> Unit,
   onPriorityError: (Throwable) -> Unit,
 ) {
-  saveReadLater()
+  if (!saveReadLater()) return
   val record = recordPriority ?: return
   try {
     record()
