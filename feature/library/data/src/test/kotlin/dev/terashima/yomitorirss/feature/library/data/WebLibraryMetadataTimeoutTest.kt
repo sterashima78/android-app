@@ -103,4 +103,5 @@ class WebLibraryMetadataTimeoutTest {
     } finally {
       db.close()
     }
-  }}
+  }
+}
