@@ -260,43 +260,20 @@ class DefaultVideoRepositoryTest {
   }
 
   @Test
-  fun `既存Web抽出ルールschemaにはCookie共有列をOFFで追加する`() {
+  fun `fresh Web抽出ルールschemaはCookie共有OFFを既定とする`() {
     val db = helper.writableDatabase
-    db.execSQL("DROP TABLE video_web_extractor_rules")
-    db.execSQL(
-      """
-        CREATE TABLE video_web_extractor_rules (
-          id TEXT PRIMARY KEY NOT NULL,
-          url_pattern TEXT NOT NULL,
-          title_function TEXT,
-          thumbnail_function TEXT,
-          playback_function TEXT,
-          timeout_seconds INTEGER NOT NULL DEFAULT 15,
-          updated_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
-    db.insertOrThrow(
-      "video_web_extractor_rules",
-      null,
-      ContentValues().apply {
-        put("id", "legacy-rule")
-        put("url_pattern", "https://example.invalid/*")
-        put("timeout_seconds", 15)
-        put("updated_at", 1L)
-      },
-    )
-
-    ensureVideoSchema(db)
-
-    val columnNames = db.rawQuery("PRAGMA table_info(video_web_extractor_rules)", null).use { cursor ->
-      val nameColumn = cursor.getColumnIndexOrThrow("name")
-      buildSet { while (cursor.moveToNext()) add(cursor.getString(nameColumn)) }
+    val columns = db.rawQuery("PRAGMA table_info(video_web_extractor_rules)", null).use { cursor ->
+      val index = cursor.getColumnIndexOrThrow("name")
+      buildSet { while (cursor.moveToNext()) add(cursor.getString(index)) }
     }
-    assertTrue("share_cookies_for_playback" in columnNames)
+    assertTrue("share_cookies_for_playback" in columns)
+    db.execSQL(
+      "INSERT INTO video_web_extractor_rules(id, url_pattern, updated_at) VALUES(?, ?, ?)",
+      arrayOf("rule", "https://example.invalid/*", 1L),
+    )
     val value = db.rawQuery(
       "SELECT share_cookies_for_playback FROM video_web_extractor_rules WHERE id = ?",
-      arrayOf("legacy-rule"),
+      arrayOf("rule"),
     ).use { cursor ->
       assertTrue(cursor.moveToFirst())
       cursor.getInt(0)
