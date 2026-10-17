@@ -143,8 +143,7 @@ internal fun RssWebScrapingRulesUi(
             MaterialTheme.colorScheme.onSurfaceVariant
           },
         )
-        if (recommendationPolicy.learnedCondition.isNotBlank()) {
-          Row(
+        Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
           ) {
@@ -152,15 +151,13 @@ internal fun RssWebScrapingRulesUi(
               Text("除外学習条件をリセット")
             }
           }
-        }
         Text("学習された優先条件", style = MaterialTheme.typography.titleMedium)
         Text(
           recommendationPolicy.learnedPriorityCondition.ifBlank { "まだ学習された優先条件はありません。" },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (recommendationPolicy.learnedPriorityCondition.isNotBlank()) {
-          Row(
+        Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
           ) {
@@ -168,7 +165,6 @@ internal fun RssWebScrapingRulesUi(
               Text("優先学習条件をリセット")
             }
           }
-        }
         Text(
           "RSS記事を「あとで読む」に追加すると、自動的に優先参考にも登録されます。優先・除外の参考は両方の学習条件へ同時に反映します。学習条件のリセット時は、対応する種類の学習済み参考履歴も消去されます。",
           style = MaterialTheme.typography.bodySmall,
