@@ -87,8 +87,6 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
       )
     """.trimIndent(),
   )
-  ensureVideoWebExtractorRuleCookieColumn(db)
-  ensureVideoWebExtractorRuleReferrerPathColumn(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS video_providers (
@@ -102,7 +100,6 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
       )
     """.trimIndent(),
   )
-  ensureVideoProviderFunctionCodeColumn(db)
   db.execSQL(
     """
       CREATE TABLE IF NOT EXISTS video_subscriptions (
@@ -162,45 +159,4 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
 }
 
 private fun ensureVideoWebExtractorRuleCookieColumn(db: SQLiteDatabase) {
-  if (!db.hasColumn("video_web_extractor_rules", "share_cookies_for_playback")) {
-    db.execSQL(
-      "ALTER TABLE video_web_extractor_rules " +
-        "ADD COLUMN share_cookies_for_playback INTEGER NOT NULL DEFAULT 0",
-    )
-  }
-}
-
-private fun ensureVideoWebExtractorRuleReferrerPathColumn(db: SQLiteDatabase) {
-  if (!db.hasColumn("video_web_extractor_rules", "share_referrer_path_for_playback")) {
-    db.execSQL(
-      "ALTER TABLE video_web_extractor_rules " +
-        "ADD COLUMN share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0",
-    )
-  }
-}
-
-private fun ensureVideoProviderFunctionCodeColumn(db: SQLiteDatabase) {
-  if (db.tableExists("video_providers") && !db.hasColumn("video_providers", "function_code")) {
-    db.execSQL("ALTER TABLE video_providers ADD COLUMN function_code TEXT")
-  }
-}
-
-private fun SQLiteDatabase.hasColumn(table: String, column: String): Boolean = rawQuery(
-  "PRAGMA table_info($table)",
-  null,
-).use { cursor ->
-  val nameColumn = cursor.getColumnIndexOrThrow("name")
-  var found = false
-  while (cursor.moveToNext()) {
-    if (cursor.getString(nameColumn) == column) {
-      found = true
-      break
-    }
-  }
-  found
-}
-
-private fun SQLiteDatabase.tableExists(name: String): Boolean = rawQuery(
-  "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
-  arrayOf(name),
-).use { it.moveToFirst() }
+  if (!db.hasColumn("video_web_extractor_rules", "share_cookies_for
