@@ -894,11 +894,24 @@ private class FakePodcastRepository(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
     createdAtEpochMillis: Long,
+  ): PodcastEpisode? = reserveEpisode(program, candidates, createdAtEpochMillis, null)
+
+  override suspend fun reserveEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? {
     val available = candidates.distinctBy { it.articleId }.filterNot { it.articleId in consumed }
     if (available.isEmpty()) return null
+    val chapters = available.mapIndexed { index, item ->
+      (item.chapterPosition ?: index) to item
+    }.groupBy({ it.first }, { it.second }).toSortedMap().values.toList()
     var first: PodcastEpisode? = null
-    available.chunked(program.maxArticlesPerEpisode).forEachIndexed { chunkIndex, selected ->
+    chapters.chunked(program.maxArticlesPerEpisode).forEachIndexed { chunkIndex, selectedClusters ->
+      val selected = selectedClusters.flatMapIndexed { chapterIndex, entries ->
+        entries.map { it.copy(chapterPosition = chapterIndex) }
+      }
       consumed += selected.map { it.articleId }
       val episode = PodcastEpisode(
         id = "episode-${episodes.size + 1}",
@@ -908,6 +921,7 @@ private class FakePodcastRepository(
         status = if (chunkIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED,
         articles = selected.map { it.toEpisodeArticle() },
         clusteringMode = program.clusteringMode,
+        clusteringStatus = clusteringStatus,
       )
       episodes += episode
       if (first == null) first = episode
