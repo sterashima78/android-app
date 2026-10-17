@@ -150,7 +150,8 @@ interface RssRecommendationRepository : RssRecommendationTaskReader {
     feedbackIds: Set<String>,
     learnedCondition: String,
     learnedPriorityCondition: String = "",
-  ): RssRecommendationPolicy
+    expectedRevision: Long,
+  ): RssRecommendationPolicy?
 
   fun enqueueTasks(articles: List<Article>, revision: Long)
   fun claimNextTask(): RssRecommendationTask?
@@ -327,6 +328,7 @@ class RssRecommendationService(
       feedbackIds = pending.mapTo(mutableSetOf(), RssRecommendationFeedback::id),
       learnedCondition = learned,
       learnedPriorityCondition = learnedPriority,
+      expectedRevision = policy.revision,
     )
   }
 }
