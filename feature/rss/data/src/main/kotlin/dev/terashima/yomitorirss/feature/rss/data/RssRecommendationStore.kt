@@ -72,7 +72,11 @@ class DefaultRssRecommendationRepository(
   override fun resetLearnedPriorityCondition(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     val current = loadPolicy()
-    if (current.learnedPriorityCondition.isBlank()) return current
+    val hasProcessedFeedback = database.readable.rawQuery(
+      "SELECT 1 FROM rss_recommendation_feedback WHERE kind=? AND processed_at IS NOT NULL LIMIT 1",
+      arrayOf(RssRecommendationFeedbackKind.PRIORITY.name),
+    ).use { it.moveToFirst() }
+    if (current.learnedPriorityCondition.isBlank() && !hasProcessedFeedback) return current
     return current.copy(learnedPriorityCondition = "", revision = current.revision + 1).also { policy ->
       database.transaction {
         savePolicyInTransaction(this, policy)
@@ -89,7 +93,11 @@ class DefaultRssRecommendationRepository(
   override fun resetLearnedCondition(): RssRecommendationPolicy {
     ensureRssRecommendationSchema(database.writable)
     val current = loadPolicy()
-    if (current.learnedCondition.isBlank()) return current
+    val hasProcessedFeedback = database.readable.rawQuery(
+      "SELECT 1 FROM rss_recommendation_feedback WHERE kind=? AND processed_at IS NOT NULL LIMIT 1",
+      arrayOf(RssRecommendationFeedbackKind.EXCLUSION.name),
+    ).use { it.moveToFirst() }
+    if (current.learnedCondition.isBlank() && !hasProcessedFeedback) return current
     return current.copy(learnedCondition = "", revision = current.revision + 1).also { policy ->
       database.transaction {
         savePolicyInTransaction(this, policy)
