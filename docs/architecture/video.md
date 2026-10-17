@@ -243,13 +243,13 @@ ADR-0239で `video_smb_sources` と `smb_connection_profiles` を追加してapp
 
 ADR-0240でapplication database versionを30へ進め、`video_folders` と `video_saved_items` を追加する。version 29 -> 30では既存Video itemを自動保存せず、保存状態とフォルダは空から開始する。ADR-0244ではschemaを変更せず、SMB / Webの保存済み判定をcatalog lifecycleへ移し、既存tableをSERVICEの明示保存とWeb / SERVICEの整理に再利用する。
 
-ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存version 30 databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
+ADR-0241でCookie共有のopt-in列を追加した。現行fresh schemaは `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` を直接持ち、旧databaseの列欠落を補修するruntime分岐は退役した。
 
-ADR-0248では同じtableへ `share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存databaseではidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でReferer path共有OFFとなり、この追加だけを理由としたdatabase version bumpは行わない。
+ADR-0248でReferer path共有のopt-in列を追加した。現行fresh schemaは `share_referrer_path_for_playback INTEGER NOT NULL DEFAULT 0` を直接持ち、既定OFFを維持する。旧databaseの列欠落を補修するruntime分岐は退役した。
 
-ADR-0242でapplication database versionを31へ進め、購読型provider用tableを追加する。version 30 -> 31 migrationでは、旧専用subscription/video tableが存在する場合だけprovider設定、subscription、item identity、publish time、read / watch-later stateをVideo-owned stateへ取り込む。旧tableはmigration inputとしてのみ参照し、fresh schemaでは作成せずcurrent runtimeからも参照しない。version 31 schema initializationでもADR-0241とADR-0248のadditive rule column refinementはidempotentに適用される。
+ADR-0242のversion 30→31 migrationは履歴上の判断であり、現行runtimeでは旧専用tableを参照しない。version 41からの更新とfresh schemaを現在の互換対象とする。
 
-ADR-0246でapplication database versionを32へ進め、`video_providers.function_code` を追加する。version 31 -> 32 migrationは既存provider row、subscription、provider item stateを保持したまま不足columnだけを追加する。組み込みproviderはfunction codeを持たず、custom providerだけがfunction codeをdurable user configurationとして保持する。backup restoreのexact-version policyは変更しない。
+ADR-0246のversion 31→32 migrationは履歴上の判断である。現行fresh schemaは `video_providers.function_code` を最初から持ち、旧column欠落を補修するruntime分岐は維持しない。
 
 ## Playback state semantics
 

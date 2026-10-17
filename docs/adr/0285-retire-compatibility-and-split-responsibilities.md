@@ -31,3 +31,9 @@ Accepted
 ## Relations
 
 - Refines: [ADR-0264](0264-database-v38-compatibility-baseline.md), [ADR-0268](0268-podcast-rebuild-regeneration.md), [ADR-0269](0269-podcast-durable-foreground-generation.md)
+
+## 2026-10-17 refinement
+
+互換baseline 41 以降に存在する列は現在の fresh schema を正本とし、41 より古い状態だけを救済する copy / ALTER 分岐を退役した。Library の旧 SMB connection profile copy、Web metadata timeout列の補修、Video extractor / provider の旧列補修、SMB normalization の旧 reanalysis context 列補修、RSS の旧 execution provider 列補修を対象とする。現行 41→42 のために必要な RSS priority feedback 列追加と Podcast migration は維持する。
+
+各featureのschema初期化はdatabase bootstrapの所有責務とし、Repository readや通常commandの副作用で実行しない。変更によって新しい永続状態や外部通信は増やさない。

@@ -74,8 +74,11 @@ internal class BookmarkAssociationStore(
     }
   }
 
-  fun addReadLater(articleId: String) {
-    database.transaction {
+  fun addReadLater(articleId: String): Boolean = database.transaction {
+      val alreadyReadLater = rawQuery(
+        "SELECT 1 FROM article_folders WHERE article_id=? AND folder_id=? LIMIT 1",
+        arrayOf(articleId, READ_LATER_FOLDER_ID),
+      ).use { it.moveToFirst() }
       val now = nowIso()
       ensureReadLaterFolder(this, now)
       insertWithOnConflict(
@@ -84,7 +87,7 @@ internal class BookmarkAssociationStore(
         values("article_id" to articleId, "folder_id" to READ_LATER_FOLDER_ID),
         SQLiteDatabase.CONFLICT_REPLACE,
       )
-    }
+      !alreadyReadLater
   }
 
   fun clearArticleAssociations(articleId: String) {

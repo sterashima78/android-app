@@ -24,7 +24,6 @@ class DefaultRssRecommendationRepository(
 ) : RssRecommendationRepository {
   override val changes: StateFlow<Long> = dataChanges.version
   override fun loadPolicy(): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       "SELECT manual_condition, learned_condition, execution_provider, revision, learned_priority_condition FROM rss_recommendation_policy WHERE id=1",
       emptyArray<String>(),
@@ -46,65 +45,66 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun saveManualCondition(condition: String): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
     val normalized = condition.trim()
     require(normalized.length <= MAX_RECOMMENDATION_CONDITION_LENGTH) { "除外条件が長すぎます" }
-    val current = loadPolicy()
-    if (current.manualCondition == normalized) return current
-    return current.copy(manualCondition = normalized, revision = current.revision + 1).also { policy ->
-      savePolicy(policy)
-      dataChanges.notifyChanged()
-    }
+    return updatePolicy { it.copy(manualCondition = normalized) }
   }
 
   override fun setExecutionProvider(
     provider: RssRecommendationExecutionProvider,
-  ): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
-    val current = loadPolicy()
-    if (current.executionProvider == provider) return current
-    return current.copy(executionProvider = provider, revision = current.revision + 1).also { policy ->
-      savePolicy(policy)
-      dataChanges.notifyChanged()
+  ): RssRecommendationPolicy = updatePolicy { it.copy(executionProvider = provider) }
+
+  override fun resetLearnedPriorityCondition(): RssRecommendationPolicy =
+    resetLearning(RssRecommendationFeedbackKind.PRIORITY)
+
+  override fun resetLearnedCondition(): RssRecommendationPolicy =
+    resetLearning(RssRecommendationFeedbackKind.EXCLUSION)
+
+  private fun resetLearning(kind: RssRecommendationFeedbackKind): RssRecommendationPolicy {
+    val updated = database.transaction {
+      val current = loadPolicy()
+      val hasHistory = rawQuery(
+        "SELECT 1 FROM rss_recommendation_feedback WHERE kind=? AND processed_at IS NOT NULL LIMIT 1",
+        arrayOf(kind.name),
+      ).use { it.moveToFirst() }
+      val hasCondition = when (kind) {
+        RssRecommendationFeedbackKind.PRIORITY -> current.learnedPriorityCondition.isNotBlank()
+        RssRecommendationFeedbackKind.EXCLUSION -> current.learnedCondition.isNotBlank()
+      }
+      if (!hasCondition && !hasHistory) return@transaction null
+      // Clearing processed history also invalidates in-flight learning, even when the text was blank.
+      val next = when (kind) {
+        RssRecommendationFeedbackKind.PRIORITY ->
+          current.copy(learnedPriorityCondition = "", revision = current.revision + 1)
+        RssRecommendationFeedbackKind.EXCLUSION ->
+          current.copy(learnedCondition = "", revision = current.revision + 1)
+      }
+      savePolicyInTransaction(this, next)
+      delete(
+        "rss_recommendation_feedback",
+        "kind=? AND processed_at IS NOT NULL",
+        arrayOf(kind.name),
+      )
+      next
     }
+    if (updated != null) dataChanges.notifyChanged()
+    return updated ?: loadPolicy()
   }
 
-  override fun resetLearnedPriorityCondition(): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
-    val current = loadPolicy()
-    if (current.learnedPriorityCondition.isBlank()) return current
-    return current.copy(learnedPriorityCondition = "", revision = current.revision + 1).also { policy ->
-      database.transaction {
-        savePolicyInTransaction(this, policy)
-        delete(
-          "rss_recommendation_feedback",
-          "kind=? AND processed_at IS NOT NULL",
-          arrayOf(RssRecommendationFeedbackKind.PRIORITY.name),
-        )
-      }
-      dataChanges.notifyChanged()
+  private fun updatePolicy(transform: (RssRecommendationPolicy) -> RssRecommendationPolicy): RssRecommendationPolicy {
+    var changed = false
+    val updated = database.transaction {
+      val current = loadPolicy()
+      val candidate = transform(current)
+      if (candidate == current) return@transaction current
+      changed = true
+      candidate.copy(revision = current.revision + 1).also { savePolicyInTransaction(this, it) }
     }
-  }
-
-  override fun resetLearnedCondition(): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
-    val current = loadPolicy()
-    if (current.learnedCondition.isBlank()) return current
-    return current.copy(learnedCondition = "", revision = current.revision + 1).also { policy ->
-      database.transaction {
-        savePolicyInTransaction(this, policy)
-        delete(
-          "rss_recommendation_feedback",
-          "kind=? AND processed_at IS NOT NULL",
-          arrayOf(RssRecommendationFeedbackKind.EXCLUSION.name),
-        )
-      }
-      dataChanges.notifyChanged()
-    }
+    if (changed) dataChanges.notifyChanged()
+    return updated
   }
 
   override fun loadAssessments(articleIds: Collection<String>): Map<String, RssRecommendationAssessment> {
-    ensureRssRecommendationSchema(database.writable)
     if (articleIds.isEmpty()) return emptyMap()
     val result = mutableMapOf<String, RssRecommendationAssessment>()
     articleIds.distinct().chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
@@ -124,7 +124,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun saveAssessments(assessments: Map<String, RssRecommendationAssessment>) {
-    ensureRssRecommendationSchema(database.writable)
     if (assessments.isEmpty()) return
     database.transaction {
       assessments.forEach { (articleId, assessment) ->
@@ -157,7 +156,6 @@ class DefaultRssRecommendationRepository(
     previousAssessment: RssRecommendationAssessment?,
     kind: RssRecommendationFeedbackKind,
   ): RssRecommendationFeedback {
-    ensureRssRecommendationSchema(database.writable)
     val id = UUID.randomUUID().toString()
     val createdAt = System.currentTimeMillis()
     val values = ContentValues().apply {
@@ -199,13 +197,11 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun removeFeedback(feedbackId: String) {
-    ensureRssRecommendationSchema(database.writable)
     database.write { delete("rss_recommendation_feedback", "id=?", arrayOf(feedbackId)) }
     dataChanges.notifyChanged()
   }
 
   override fun listLearningExamples(): List<RssRecommendationFeedback> {
-    ensureRssRecommendationSchema(database.writable)
     return RssRecommendationFeedbackKind.entries.flatMap { kind ->
       database.readable.rawQuery(
         """
@@ -224,7 +220,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun listPendingFeedback(): List<RssRecommendationFeedback> {
-    ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       """
         SELECT id, article_id, title, previous_status, previous_score,
@@ -243,28 +238,47 @@ class DefaultRssRecommendationRepository(
     feedbackIds: Set<String>,
     learnedCondition: String,
     learnedPriorityCondition: String,
-  ): RssRecommendationPolicy {
-    ensureRssRecommendationSchema(database.writable)
+    expectedRevision: Long,
+  ): RssRecommendationPolicy? {
     val normalized = learnedCondition.trim()
     require(normalized.length <= MAX_RECOMMENDATION_CONDITION_LENGTH) { "学習条件が長すぎます" }
     val normalizedPriority = learnedPriorityCondition.trim()
     require(normalizedPriority.length <= MAX_RECOMMENDATION_CONDITION_LENGTH) { "優先条件が長すぎます" }
-    val current = loadPolicy()
-    val changed = current.learnedCondition != normalized || current.learnedPriorityCondition != normalizedPriority
-    val updated = if (changed) current.copy(learnedCondition = normalized, learnedPriorityCondition = normalizedPriority, revision = current.revision + 1) else current
-    database.transaction {
-      if (changed) savePolicyInTransaction(this, updated)
-      feedbackIds.chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
-        if (chunk.isNotEmpty()) {
-          update(
-            "rss_recommendation_feedback",
-            ContentValues().apply { put("processed_at", System.currentTimeMillis()) },
-            "id IN (${chunk.joinToString(",") { "?" }}) AND processed_at IS NULL",
-            chunk.toTypedArray(),
-          )
+    if (feedbackIds.isEmpty()) return null
+
+    // Recheck the policy and feedback under the same SQLite write transaction. Inference may
+    // finish after a manual edit, reset, provider switch, or cancellation of a reference.
+    val updated = database.transaction {
+      val current = loadPolicy()
+      if (current.revision != expectedRevision) return@transaction null
+      val pendingCount = feedbackIds.chunked(SQLITE_BIND_CHUNK).sumOf { chunk ->
+        rawQuery(
+          "SELECT COUNT(*) FROM rss_recommendation_feedback WHERE processed_at IS NULL AND id IN (" +
+            chunk.joinToString(",") { "?" } + ")",
+          chunk.toTypedArray(),
+        ).use { cursor ->
+          check(cursor.moveToFirst())
+          cursor.getInt(0)
         }
       }
-      // Keep the most recent representative history per label; avoid unbounded backup growth.
+      if (pendingCount != feedbackIds.size) return@transaction null
+
+      val changed = current.learnedCondition != normalized ||
+        current.learnedPriorityCondition != normalizedPriority
+      val next = if (changed) current.copy(
+        learnedCondition = normalized,
+        learnedPriorityCondition = normalizedPriority,
+        revision = current.revision + 1,
+      ) else current
+      if (changed) savePolicyInTransaction(this, next)
+      feedbackIds.chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
+        update(
+          "rss_recommendation_feedback",
+          ContentValues().apply { put("processed_at", System.currentTimeMillis()) },
+          "id IN (" + chunk.joinToString(",") { "?" } + ") AND processed_at IS NULL",
+          chunk.toTypedArray(),
+        )
+      }
       RssRecommendationFeedbackKind.entries.forEach { kind ->
         execSQL(
           """
@@ -280,13 +294,13 @@ class DefaultRssRecommendationRepository(
           arrayOf(kind.name, kind.name),
         )
       }
+      next
     }
-    dataChanges.notifyChanged()
+    if (updated != null) dataChanges.notifyChanged()
     return updated
   }
 
   override fun enqueueTasks(articles: List<Article>, revision: Long) {
-    ensureRssRecommendationSchema(database.writable)
     val queuedAt = System.currentTimeMillis()
     database.localTransaction {
       delete("rss_recommendation_tasks", "revision<>?", arrayOf(revision.toString()))
@@ -312,7 +326,6 @@ class DefaultRssRecommendationRepository(
     loadPolicy().executionProvider
 
   override fun listTasks(): List<RssRecommendationTask> {
-    ensureRssRecommendationSchema(database.writable)
     return database.readable.rawQuery(
       """
         SELECT article_id, title, revision, state, queued_at, started_at
@@ -326,7 +339,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun claimNextTask(): RssRecommendationTask? {
-    ensureRssRecommendationSchema(database.writable)
     val startedAt = System.currentTimeMillis()
     return database.localTransaction {
       val queued = rawQuery(
@@ -359,7 +371,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun completeTask(articleId: String, revision: Long) {
-    ensureRssRecommendationSchema(database.writable)
     database.localWrite {
       delete(
         "rss_recommendation_tasks",
@@ -370,7 +381,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun requeueTask(articleId: String, revision: Long) {
-    ensureRssRecommendationSchema(database.writable)
     database.localWrite {
       update(
         "rss_recommendation_tasks",
@@ -385,7 +395,6 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun requeueInterruptedTasks() {
-    ensureRssRecommendationSchema(database.writable)
     database.localWrite {
       update(
         "rss_recommendation_tasks",
@@ -400,13 +409,9 @@ class DefaultRssRecommendationRepository(
   }
 
   override fun clearTasks() {
-    ensureRssRecommendationSchema(database.writable)
     database.localWrite { delete("rss_recommendation_tasks", null, null) }
   }
 
-  private fun savePolicy(policy: RssRecommendationPolicy) {
-    database.transaction { savePolicyInTransaction(this, policy) }
-  }
 }
 
 internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
@@ -426,11 +431,6 @@ internal fun ensureRssRecommendationSchema(db: SQLiteDatabase) {
     db.execSQL("ALTER TABLE rss_recommendation_policy ADD COLUMN learned_priority_condition TEXT NOT NULL DEFAULT ''")
     // The 1..10 score meaning now includes explicit priority preference; invalidate old assessments.
     db.execSQL("UPDATE rss_recommendation_policy SET revision=revision+1")
-  }
-  if (!db.hasColumn("rss_recommendation_policy", "execution_provider")) {
-    db.execSQL(
-      "ALTER TABLE rss_recommendation_policy ADD COLUMN execution_provider TEXT NOT NULL DEFAULT 'LOCAL'",
-    )
   }
   db.execSQL(
     "INSERT OR IGNORE INTO rss_recommendation_policy(" +

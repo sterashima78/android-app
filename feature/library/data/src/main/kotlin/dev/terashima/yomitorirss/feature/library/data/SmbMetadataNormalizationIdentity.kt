@@ -9,7 +9,6 @@ internal fun migrateSmbMetadataNormalizationDecisionIdentity(
   renamedSourceId: String,
 ) {
   if (originalSourceId == renamedSourceId) return
-  ensureSmbMetadataNormalizationSchema(db)
   db.update(
     SMB_METADATA_NORMALIZATION_DECISION_TABLE,
     ContentValues().apply { put("source_id", renamedSourceId) },

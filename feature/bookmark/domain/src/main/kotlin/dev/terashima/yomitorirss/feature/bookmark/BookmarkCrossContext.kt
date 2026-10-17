@@ -2,7 +2,7 @@ package dev.terashima.yomitorirss.feature.bookmark
 
 /** Content の検索・作成・閲覧状態更新だけを要求する Curation -> Content command port。 */
 interface BookmarkArticleGateway {
-  suspend fun markRead(articleId: String)
+  fun markRead(articleId: String)
 
   suspend fun findOrCreateSharedArticle(
     url: String,

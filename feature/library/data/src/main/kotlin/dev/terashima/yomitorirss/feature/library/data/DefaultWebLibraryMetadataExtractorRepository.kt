@@ -14,7 +14,6 @@ class DefaultWebLibraryMetadataExtractorRepository(
   private val database: DatabaseConnection,
 ) : WebLibraryMetadataExtractorRepository {
   override fun list(): List<WebLibraryMetadataExtractor> {
-    ensureWebLibraryMetadataExtractorSchema(database.writable)
     return database.readable.rawQuery(
       "SELECT id, url_pattern, function_code, timeout_seconds, updated_at " +
         "FROM web_library_metadata_extractors ORDER BY updated_at DESC, id",
@@ -32,7 +31,6 @@ class DefaultWebLibraryMetadataExtractorRepository(
     functionCode: String,
     timeoutSeconds: Int,
   ): WebLibraryMetadataExtractor {
-    ensureWebLibraryMetadataExtractorSchema(database.writable)
     val normalizedPattern = urlPattern.trim()
     val normalizedFunction = functionCode.trim()
     validateWebLibraryMetadataExtractor(normalizedPattern, normalizedFunction, timeoutSeconds)
@@ -78,7 +76,6 @@ class DefaultWebLibraryMetadataExtractorRepository(
   }
 
   override fun delete(id: String) {
-    ensureWebLibraryMetadataExtractorSchema(database.writable)
     database.write {
       delete(
         "web_library_metadata_extractors",
@@ -101,26 +98,7 @@ internal fun ensureWebLibraryMetadataExtractorSchema(db: android.database.sqlite
       )
     """.trimIndent(),
   )
-  val hasTimeoutColumn = db.rawQuery(
-    "PRAGMA table_info(web_library_metadata_extractors)",
-    null,
-  ).use { cursor ->
-    val nameIndex = cursor.getColumnIndexOrThrow("name")
-    var found = false
-    while (cursor.moveToNext()) {
-      if (cursor.getString(nameIndex) == "timeout_seconds") {
-        found = true
-        break
-      }
-    }
-    found
-  }
-  if (!hasTimeoutColumn) {
-    db.execSQL(
-      "ALTER TABLE web_library_metadata_extractors " +
-        "ADD COLUMN timeout_seconds INTEGER NOT NULL DEFAULT $DEFAULT_WEB_LIBRARY_METADATA_TIMEOUT_SECONDS",
-    )
-  }
+
 }
 
 internal fun validateWebLibraryMetadataExtractor(
