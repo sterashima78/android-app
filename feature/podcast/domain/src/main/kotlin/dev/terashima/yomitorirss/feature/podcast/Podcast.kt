@@ -218,6 +218,25 @@ interface PodcastRepository {
   suspend fun deleteProgram(programId: String)
   suspend fun recordExcludedEntries(programId: String, entries: List<PodcastFeedEntry>, excludedAtEpochMillis: Long)
   suspend fun listEpisodes(programId: String): List<PodcastEpisode>
+  /** Saved articles from archived episodes created since [sinceEpochMillis], scoped to one program. */
+  suspend fun listRecentArchivedArticles(programId: String, sinceEpochMillis: Long): List<PodcastFeedEntry> =
+    listEpisodes(programId)
+      .asSequence()
+      .filter { it.status == PodcastEpisodeStatus.ARCHIVED && it.createdAtEpochMillis >= sinceEpochMillis }
+      .flatMap { it.articles.asSequence() }
+      .map { article ->
+        PodcastFeedEntry(
+          articleId = article.articleId,
+          feedId = article.feedId,
+          title = article.title,
+          sourceTitle = article.sourceTitle,
+          publishedAtEpochMillis = article.publishedAtEpochMillis,
+          articleUrl = article.articleUrl,
+          feedContent = article.feedContent,
+        )
+      }
+      .distinctBy(PodcastFeedEntry::articleId)
+      .toList()
   suspend fun findEpisode(episodeId: String): PodcastEpisode?
   suspend fun archiveEpisode(episodeId: String): PodcastEpisode
   suspend fun restoreEpisode(episodeId: String): PodcastEpisode

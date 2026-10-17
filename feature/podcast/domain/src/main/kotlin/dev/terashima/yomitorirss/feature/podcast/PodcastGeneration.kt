@@ -32,6 +32,11 @@ private data class PodcastClusteredCandidates(
   val status: PodcastClusteringStatus,
 )
 
+private data class PodcastArchiveComparison(
+  val entries: List<PodcastFeedEntry>,
+  val eventClustering: PodcastNewsClusteringResult? = null,
+)
+
 class GeneratePodcastEpisodeUseCase(
   private val repository: PodcastRepository,
   private val feedContentSource: PodcastFeedContentSource,
@@ -77,7 +82,9 @@ class GeneratePodcastEpisodeUseCase(
       repository.recordExcludedEntries(program.id, exclusion.excluded, nowEpochMillis())
     }
     if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
-    val clustered = clusterCandidates(program, exclusion.included)
+    val fresh = filterRecentlyCoveredNews(program, exclusion.included)
+    if (fresh.entries.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    val clustered = clusterCandidates(program, fresh.entries, fresh.eventClustering)
     val reserved = repository.reserveEpisode(
       program = program,
       candidates = clustered.entries,
@@ -172,9 +179,58 @@ class GeneratePodcastEpisodeUseCase(
     }
   }
 
-  private suspend fun clusterCandidates(program: PodcastProgram, candidates: List<PodcastFeedEntry>): PodcastClusteredCandidates {
+  /** Compare past archived coverage using event identity, never broad topical similarity. */
+  private suspend fun filterRecentlyCoveredNews(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastArchiveComparison {
+    val recentArchive = repository.listRecentArchivedArticles(
+      programId = program.id,
+      sinceEpochMillis = nowEpochMillis() - RECENT_PODCAST_ARCHIVE_MILLIS,
+    )
+    if (recentArchive.isEmpty()) return PodcastArchiveComparison(candidates)
+
+    val comparison = try {
+      newsClusterer.cluster(program.provider, recentArchive + candidates)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Exception) {
+      // Uncertain history must not silently discard newly available entries.
+      return PodcastArchiveComparison(candidates)
+    }
+    val originalCount = recentArchive.size + candidates.size
+    if (comparison.status != PodcastClusteringStatus.SUCCESS ||
+      comparison.groups.flatten().toSet() != (0 until originalCount).toSet() ||
+      comparison.groups.sumOf { it.size } != originalCount
+    ) {
+      return PodcastArchiveComparison(candidates)
+    }
+
+    val currentGroups = comparison.groups
+      .filter { group -> group.none { it < recentArchive.size } }
+      .map { group -> group.map { it - recentArchive.size } }
+    val retainedIndexes = currentGroups.flatten().toSet()
+    val retainedEntries = candidates.filterIndexed { index, _ -> index in retainedIndexes }
+    val newIndexes = candidates.indices.filter { it in retainedIndexes }
+      .withIndex().associate { (newIndex, oldIndex) -> oldIndex to newIndex }
+    val remapped = PodcastNewsClusteringResult(
+      groups = currentGroups.map { group -> group.map { requireNotNull(newIndexes[it]) } },
+      status = comparison.status,
+    )
+    return PodcastArchiveComparison(retainedEntries, remapped)
+  }
+
+  private suspend fun clusterCandidates(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    preclassifiedEvents: PodcastNewsClusteringResult? = null,
+  ): PodcastClusteredCandidates {
     val classifier = if (program.clusteringMode == PodcastClusteringMode.TOPIC) topicClusterer else newsClusterer
-    val result = classifier.cluster(program.provider, candidates)
+    val result = if (program.clusteringMode == PodcastClusteringMode.EVENT && preclassifiedEvents != null) {
+      preclassifiedEvents
+    } else {
+      classifier.cluster(program.provider, candidates)
+    }
     val groups = result.groups
     require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
       "news clusterer must contain every candidate exactly once"
@@ -338,3 +394,4 @@ private fun PodcastEpisodeArticle.toFeedEntry(): PodcastFeedEntry = PodcastFeedE
 )
 
 private const val CLOUD_CHAPTER_PARALLELISM = 3
+private const val RECENT_PODCAST_ARCHIVE_MILLIS = 2L * 24 * 60 * 60 * 1_000

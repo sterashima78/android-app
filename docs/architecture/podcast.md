@@ -30,7 +30,7 @@ Podcast data moduleはRSS domainの `RssFeedContentReader.latestEntriesFromSourc
 
 RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する。entryのtitle、feed-carried body、published time、entry URLに加えて、RSS 2.0 itemの `category` 値とAtom entryの `category@term` を一時metadataとして返すが、リンク先ページは取得しない。entry URLは生成時の記事metadataとしてPodcastへ渡し、AI推論材料には含めない。feed categoryはニュース順を決める生成時metadataとして扱い、新しいdurable source of truthにはしない。
 
-Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。Unicode表記、空白、大文字小文字を正規化したtitleが一致するentryはRSS boundaryで確実な重複として1件へ縮約する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
+Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。別entry identityはタイトルが一致しても縮約せず、各配信元のentryとfeed categoryを保持する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
 
 従来の出来事単位モードで利用する `PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。候補全体を相互比較し、titleの語順、翻訳、言い換え、表現の強弱が異なっても主要な主体・行為または決定・対象が一致して同一出来事を指す場合は同じclusterとする。候補位置、source title、published timeは補助情報であり、それだけを理由に分割しない。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `BackgroundAiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。推論失敗と分類出力不正のfallbackはエピソード画面でも理由を表示し、正常終了・分類不要は警告を表示しない。
 
@@ -71,7 +71,7 @@ Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Wo
 5. program-scoped `podcast_consumed_articles` と `podcast_excluded_articles` のどちらにも存在しないentryだけを候補にする。
 6. 番組の除外条件が空でなければ `PodcastNewsExcluder` で候補を判定する。除外判定に成功してexcludeになったentry identityは番組単位でdurable stateへ記録する。判定失敗時は全候補を残す。
 7. 除外後の候補が0件なら新しいepisodeを作らず終了する。
-8. 完全一致重複除外後の今回候補をモードに対応する `PodcastNewsClusterer` へ渡し、同一出来事または関連トピックのclusterと分類状態を確定する。過去episodeとの意味的重複判定は行わない。
+8. 番組で作成日時が直近48時間以内かつ `ARCHIVED` のepisode記事snapshotをPodcast repositoryから参照し、除外後の新規候補と同一出来事分類を行う。既報と同じ出来事の候補だけを今回の生成から除外する。比較失敗・不正partition時は候補を欠落させない。出来事モードは有効な分類結果を再利用し、関連トピックモードは既報除外後の候補だけを埋め込み分類する。
 9. clusterごとにfeed categoryから代表カテゴリを決め、feed categoryがないclusterだけAIでカテゴリを補完する。代表カテゴリが同じclusterを連続配置した後に `chapter_position` を再割当てする。最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。カテゴリ名自体はsnapshotしない。
 10. 最初のepisodeを生成し、残りはqueueへ保持する。
 11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論単位として扱う。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、retryableな一時失敗は同じchapter内で2秒・5秒・15秒を基準とするjitter付きbackoffにより最大3回再試行する。再試行を使い切るまではchapterを `FAILED` へ確定しない。ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
@@ -160,7 +160,7 @@ version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除�
 - 除外判定が失敗した場合は候補を捨てず全件includeへfallbackする。
 - episodeへ予約したfeed body、entry URL、cluster境界、分類診断状態は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
-- 意味的な同一ニュース判定は現在の未消費候補内だけで行い、過去episodeを意味比較して続報を抑止しない。
+- 新規生成時だけ直近48時間に作成された同番組のアーカイブ済みepisodeを参照し、既報と明確に同一の出来事を除く。単なる関連トピックや新しい進展は除外しない。過去episodeの内容・消費済み状態は変更しない。
 - clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackし、fallback原因の分類状態を保存する。
 - feed categoryの代表選択はcluster単位で出現数を数え、最少出現カテゴリを優先する。同数時のtie-breakとカテゴリgroup順は決定的にする。
 - feed categoryがないclusterのカテゴリ補完失敗は `その他` へfallbackし、記事やclusterを欠落させない。カテゴリ補完へfeed body、entry URL、linked pageを追加しない。
@@ -202,3 +202,4 @@ version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除�
 - `docs/adr/0268-podcast-rebuild-regeneration.md`
 - `docs/adr/0269-podcast-durable-foreground-generation.md`
 - `docs/adr/0278-podcast-feed-category-ordering.md`
+- `docs/adr/0288-podcast-recent-archive-deduplication.md`

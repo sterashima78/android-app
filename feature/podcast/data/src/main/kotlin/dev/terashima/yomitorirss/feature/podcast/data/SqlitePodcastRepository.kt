@@ -103,6 +103,33 @@ class SqlitePodcastRepository(
     arrayOf(programId),
   ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.episode(database)) } }
 
+  override suspend fun listRecentArchivedArticles(
+    programId: String,
+    sinceEpochMillis: Long,
+  ): List<PodcastFeedEntry> = database.readable.rawQuery(
+    "SELECT a.article_id, a.feed_id, a.title, a.source_title, a.published_at, a.article_url, a.feed_content " +
+      "FROM podcast_episode_articles a JOIN podcast_episodes e ON e.id=a.episode_id " +
+      "WHERE e.program_id=? AND e.status=? AND e.created_at>=? " +
+      "ORDER BY e.created_at DESC, a.position",
+    arrayOf(programId, PodcastEpisodeStatus.ARCHIVED.name, sinceEpochMillis.toString()),
+  ).use { cursor ->
+    buildList {
+      while (cursor.moveToNext()) {
+        add(
+          PodcastFeedEntry(
+            articleId = cursor.getString(0),
+            feedId = cursor.getString(1),
+            title = cursor.getString(2),
+            sourceTitle = if (cursor.isNull(3)) null else cursor.getString(3),
+            publishedAtEpochMillis = if (cursor.isNull(4)) null else cursor.getLong(4),
+            articleUrl = if (cursor.isNull(5)) null else cursor.getString(5),
+            feedContent = cursor.getString(6),
+          ),
+        )
+      }
+    }.distinctBy(PodcastFeedEntry::articleId)
+  }
+
   override suspend fun findEpisode(episodeId: String): PodcastEpisode? = database.readable.rawQuery(
     "SELECT * FROM podcast_episodes WHERE id=? LIMIT 1",
     arrayOf(episodeId),

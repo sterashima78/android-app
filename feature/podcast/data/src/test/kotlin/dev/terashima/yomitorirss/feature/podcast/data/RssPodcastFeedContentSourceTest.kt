@@ -12,7 +12,7 @@ import org.junit.Test
 
 class RssPodcastFeedContentSourceTest {
   @Test
-  fun `正規化したタイトルが一致する記事は重複を除外する`() = runSuspend {
+  fun `正規化したタイトルが一致しても異なる配信元の記事を保持する`() = runSuspend {
     val reader = FakeReader(
       listOf(
         entry(
@@ -40,11 +40,9 @@ class RssPodcastFeedContentSourceTest {
       limit = 10,
     )
 
-    assertEquals(listOf("source-1:first", "source-2:other"), result.map { it.articleId })
-    assertEquals(
-      listOf("World", "Technology", "World/AI", "AI"),
-      result.first().categories,
-    )
+    assertEquals(listOf("source-1:first", "source-2:duplicate", "source-2:other"), result.map { it.articleId })
+    assertEquals(listOf("World", "Technology"), result[0].categories)
+    assertEquals(listOf("World/AI", "AI"), result[1].categories)
   }
 
   @Test
