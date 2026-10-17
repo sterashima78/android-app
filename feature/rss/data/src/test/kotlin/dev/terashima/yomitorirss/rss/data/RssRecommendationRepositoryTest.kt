@@ -165,50 +165,17 @@ class RssRecommendationRepositoryTest {
   }
 
   @Test
-  fun `旧データの除外参考と条件を維持し古いスコアを無効化する`() {
-    val db = helper.writableDatabase
-    db.execSQL(
-      """
-        CREATE TABLE rss_recommendation_policy(
-          id INTEGER PRIMARY KEY NOT NULL CHECK(id=1),
-          manual_condition TEXT NOT NULL DEFAULT '',
-          learned_condition TEXT NOT NULL DEFAULT '',
-          execution_provider TEXT NOT NULL DEFAULT 'LOCAL',
-          revision INTEGER NOT NULL DEFAULT 0
-        )
-      """.trimIndent(),
-    )
-    db.execSQL(
-      "INSERT INTO rss_recommendation_policy(id, manual_condition, learned_condition, revision) " +
-        "VALUES (1, '手動の除外条件', '古い学習条件', 4)",
-    )
-    db.execSQL(
-      """
-        CREATE TABLE rss_recommendation_feedback(
-          id TEXT PRIMARY KEY NOT NULL,
-          article_id TEXT NOT NULL UNIQUE,
-          title TEXT NOT NULL,
-          previous_status TEXT,
-          previous_score INTEGER,
-          previous_unscored_reason TEXT,
-          previous_revision INTEGER,
-          previous_assessed_at INTEGER,
-          created_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
-    db.execSQL(
-      "INSERT INTO rss_recommendation_feedback(id, article_id, title, created_at) " +
-        "VALUES ('old-feedback', 'a1', '古い除外参考', 1)",
-    )
+  fun `学習結果のrevisionが変わった場合は適用しない`() {
+    val reference = repository.addFeedback("article", "記事", null)
+    val oldRevision = repository.loadPolicy().revision
+    repository.saveManualCondition("new")
 
-    val policy = repository.loadPolicy()
-
-    assertEquals(5L, policy.revision)
-    assertEquals("手動の除外条件", policy.manualCondition)
-    assertEquals("古い学習条件", policy.learnedCondition)
-    assertEquals("", policy.learnedPriorityCondition)
-    assertEquals(RssRecommendationFeedbackKind.EXCLUSION, repository.listPendingFeedback().single().kind)
+    assertNull(repository.applyLearnedConditionAndConsumeFeedback(
+      feedbackIds = setOf(reference.id),
+      learnedCondition = "stale",
+      expectedRevision = oldRevision,
+    ))
+    assertEquals(listOf(reference), repository.listPendingFeedback())
   }
 
   @Test
