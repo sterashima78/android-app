@@ -1032,7 +1032,7 @@ private class FakePodcastRepository(
   ): PodcastEpisode = update(episodeId) { episode ->
     episode.copy(
       articles = episode.articles.mapIndexed { index, article ->
-        if (index == position) transform(article) else article
+        if ((article.chapterPosition ?: index) == position) transform(article) else article
       },
     )
   }
