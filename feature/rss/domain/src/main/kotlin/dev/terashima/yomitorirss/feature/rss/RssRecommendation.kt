@@ -333,4 +333,4 @@ class RssRecommendationService(
   }
 }
 
-private const val MAX_RECOMMENDATION_LEARNING_FEEDBACK = 50
+private const val MAX_RECOMMENDATION_LEARNING_FEEDBACK = 24
