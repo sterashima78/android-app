@@ -526,7 +526,9 @@ private class FakeRecommendationRepository(
     feedbackIds: Set<String>,
     learnedCondition: String,
     learnedPriorityCondition: String,
-  ): RssRecommendationPolicy {
+    expectedRevision: Long,
+  ): RssRecommendationPolicy? {
+    if (policy.revision != expectedRevision) return null
     if (policy.learnedCondition != learnedCondition || policy.learnedPriorityCondition != learnedPriorityCondition) {
       policy = policy.copy(
         learnedCondition = learnedCondition,
