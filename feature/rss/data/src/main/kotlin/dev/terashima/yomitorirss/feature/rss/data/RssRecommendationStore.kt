@@ -72,15 +72,14 @@ class DefaultRssRecommendationRepository(
         RssRecommendationFeedbackKind.EXCLUSION -> current.learnedCondition.isNotBlank()
       }
       if (!hasCondition && !hasHistory) return@transaction null
-      val next = if (hasCondition) {
-        when (kind) {
-          RssRecommendationFeedbackKind.PRIORITY ->
-            current.copy(learnedPriorityCondition = "", revision = current.revision + 1)
-          RssRecommendationFeedbackKind.EXCLUSION ->
-            current.copy(learnedCondition = "", revision = current.revision + 1)
-        }
-      } else current
-      if (next != current) savePolicyInTransaction(this, next)
+      // Clearing processed history also invalidates in-flight learning, even when the text was blank.
+      val next = when (kind) {
+        RssRecommendationFeedbackKind.PRIORITY ->
+          current.copy(learnedPriorityCondition = "", revision = current.revision + 1)
+        RssRecommendationFeedbackKind.EXCLUSION ->
+          current.copy(learnedCondition = "", revision = current.revision + 1)
+      }
+      savePolicyInTransaction(this, next)
       delete(
         "rss_recommendation_feedback",
         "kind=? AND processed_at IS NOT NULL",
