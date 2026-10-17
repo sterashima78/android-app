@@ -143,6 +143,27 @@ class BookmarkReadLaterRestoreTest {
     assertEquals(0, count("article_tags", "article_id='article-1'"))
   }
 
+  @Test
+  fun `あとで読むの重複追加では新規登録を返さない`() = runBlocking {
+    assertTrue(repository.markReadLater("article-1"))
+    assertFalse(repository.markReadLater("article-1"))
+    assertEquals(1, count("bookmarks", "article_id='article-1'"))
+    assertEquals(1, count("article_folders", "article_id='article-1'"))
+  }
+
+  @Test
+  fun `あとで読むへの関連付けが失敗したらブックマークをロールバックする`() = runBlocking {
+    helper.writableDatabase.execSQL(
+      "CREATE TRIGGER reject_read_later BEFORE INSERT ON article_folders " +
+        "WHEN NEW.article_id='article-1' BEGIN SELECT RAISE(ABORT, 'association failed'); END",
+    )
+    val result = runCatching { repository.markReadLater("article-1") }
+
+    assertTrue(result.isFailure)
+    assertFalse(repository.isBookmarked("article-1"))
+    assertEquals(0, count("article_folders", "article_id='article-1'"))
+  }
+
   private fun insertTag(tag: Tag) {
     helper.writableDatabase.insertOrThrow(
       "tags",
