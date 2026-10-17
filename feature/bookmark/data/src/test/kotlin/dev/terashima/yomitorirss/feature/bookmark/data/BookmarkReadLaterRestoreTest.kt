@@ -184,7 +184,7 @@ private class FakeArticleRepository : ArticleRepository {
 }
 
 private class FakeBookmarkArticleGateway : BookmarkArticleGateway {
-  override suspend fun markRead(articleId: String) = Unit
+  override fun markRead(articleId: String) = Unit
 
   override suspend fun findOrCreateSharedArticle(
     url: String,
