@@ -28,13 +28,11 @@ class DefaultSmbMetadataNormalizationRepository(
 ) : SmbMetadataNormalizationRepository {
   private val queries = SmbMetadataNormalizationQueries(database)
   override suspend fun batchSnapshot(): SmbMetadataNormalizationBatchSnapshot? = withContext(Dispatchers.IO) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     promoteCoverReadyItems()
     queries.queryLatestBatchSnapshot()
   }
 
   override suspend fun startBatch(books: List<LibraryBook>): Int = withContext(Dispatchers.IO) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     val smbBooks = books
       .asSequence()
       .filter { it.source == LibrarySource.SMB }
@@ -105,7 +103,6 @@ class DefaultSmbMetadataNormalizationRepository(
     proposedFileName: String,
     proposal: SmbBookMetadataProposal,
   ): Unit = withContext(Dispatchers.IO) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     val sanitizedProposal = sanitizeSmbBookMetadataProposal(proposal)
     val item = queries.queryLatestItem(sourceId)
       ?: error("反映できる書誌正規化候補がありません")
@@ -174,7 +171,6 @@ class DefaultSmbMetadataNormalizationRepository(
   }
 
   override suspend fun rejectCandidate(sourceId: String): Unit = withContext(Dispatchers.IO) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     val item = queries.queryLatestItem(sourceId) ?: error("却下できる候補がありません")
     require(
       item.status in setOf(
@@ -229,7 +225,6 @@ class DefaultSmbMetadataNormalizationRepository(
     sourceId: String,
     supplementalContext: String?,
   ): Unit = withContext(Dispatchers.IO) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     val item = queries.queryLatestItem(sourceId) ?: error("再解析できる候補がありません")
     require(item.status in REANALYZABLE_STATUSES) { "再解析できる候補がありません" }
     val context = sanitizeReanalysisContext(supplementalContext)
@@ -312,7 +307,6 @@ class DefaultSmbMetadataNormalizationRepository(
   }
 
   internal fun requeueInterrupted() {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     database.write {
       update(
         SMB_NORMALIZATION_ITEM_TABLE,
@@ -327,7 +321,6 @@ class DefaultSmbMetadataNormalizationRepository(
   }
 
   internal fun promoteCoverReadyItems() {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     val waiting = database.readable.rawQuery(
       """
         SELECT i.batch_id, i.source_id, q.status, q.message
@@ -389,7 +382,6 @@ class DefaultSmbMetadataNormalizationRepository(
   }
 
   internal fun claimNext(): ClaimedSmbMetadataNormalizationItem? {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     promoteCoverReadyItems()
     val now = System.currentTimeMillis()
     return database.transaction {
@@ -473,7 +465,6 @@ class DefaultSmbMetadataNormalizationRepository(
   }
 
   internal fun finishBatchIfIdle(batchId: String) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     finishBatchIfIdle(database.writable, batchId, System.currentTimeMillis())
   }
 
@@ -627,7 +618,6 @@ class DefaultSmbMetadataNormalizationRepository(
     allowed: Set<SmbMetadataNormalizationStatus>,
     target: SmbMetadataNormalizationStatus,
   ) {
-    ensureSmbMetadataNormalizationSchema(database.writable)
     val item = queries.queryLatestItem(sourceId) ?: error("変更できる候補がありません")
     require(item.status in allowed) { "変更できる候補がありません" }
     val now = System.currentTimeMillis()
