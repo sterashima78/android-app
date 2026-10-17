@@ -5,8 +5,6 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
 import dev.terashima.yomitorirss.feature.rss.RssFeedContentReader
 import dev.terashima.yomitorirss.feature.rss.RssFeedContentSource
-import java.text.Normalizer
-import java.util.Locale
 
 class RssPodcastFeedContentSource(
   private val reader: RssFeedContentReader,
@@ -28,16 +26,5 @@ class RssPodcastFeedContentSource(
         categories = entry.categories,
       )
     }
-      .groupBy { entry -> normalizeTitleForDeduplication(entry.title) }
-      .values
-      .map { duplicates ->
-        duplicates.first().copy(categories = duplicates.flatMap(PodcastFeedEntry::categories).distinct())
-      }
   }
 }
-
-private fun normalizeTitleForDeduplication(title: String): String =
-  Normalizer.normalize(title, Normalizer.Form.NFKC)
-    .trim()
-    .replace(Regex("\\s+"), " ")
-    .lowercase(Locale.ROOT)
