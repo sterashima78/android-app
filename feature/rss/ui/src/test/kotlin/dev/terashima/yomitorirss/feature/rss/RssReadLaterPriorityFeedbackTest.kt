@@ -11,13 +11,25 @@ class RssReadLaterPriorityFeedbackTest {
     val calls = mutableListOf<String>()
 
     markReadLaterWithPriorityFeedback(
-      saveReadLater = { calls += "saved" },
+      saveReadLater = { calls += "saved"; true },
       recordPriority = { calls += "priority" },
       scheduleLearning = { calls += "scheduled" },
       onPriorityError = { calls += "error" },
     )
 
     assertEquals(listOf("saved", "priority", "scheduled"), calls)
+  }
+
+  @Test
+  fun `既にあとで読む場合は優先参考と学習予約を重複させない`() = runBlocking {
+    val calls = mutableListOf<String>()
+    markReadLaterWithPriorityFeedback(
+      saveReadLater = { calls += "saved"; false },
+      recordPriority = { calls += "priority" },
+      scheduleLearning = { calls += "scheduled" },
+      onPriorityError = { calls += "error" },
+    )
+    assertEquals(listOf("saved"), calls)
   }
 
   @Test
@@ -45,7 +57,7 @@ class RssReadLaterPriorityFeedbackTest {
     var reported: Throwable? = null
 
     markReadLaterWithPriorityFeedback(
-      saveReadLater = { calls += "saved" },
+      saveReadLater = { calls += "saved"; true },
       recordPriority = { calls += "priority"; throw failure },
       scheduleLearning = { calls += "scheduled" },
       onPriorityError = { reported = it },
@@ -60,7 +72,7 @@ class RssReadLaterPriorityFeedbackTest {
     val calls = mutableListOf<String>()
 
     markReadLaterWithPriorityFeedback(
-      saveReadLater = { calls += "saved" },
+      saveReadLater = { calls += "saved"; true },
       recordPriority = null,
       scheduleLearning = { calls += "scheduled" },
       onPriorityError = { calls += "error" },
@@ -74,7 +86,7 @@ class RssReadLaterPriorityFeedbackTest {
     val calls = mutableListOf<String>()
 
     markReadLaterWithPriorityFeedback(
-      saveReadLater = { calls += "saved" },
+      saveReadLater = { calls += "saved"; true },
       recordPriority = { calls += "priority" },
       scheduleLearning = { calls += "schedule"; error("failed to schedule") },
       onPriorityError = { calls += "error" },
