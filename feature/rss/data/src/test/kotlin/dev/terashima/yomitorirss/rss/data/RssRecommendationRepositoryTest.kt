@@ -28,7 +28,7 @@ class RssRecommendationRepositoryTest {
   fun setUp() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     helper = object : SQLiteOpenHelper(context, null, null, 1) {
-      override fun onCreate(db: SQLiteDatabase) = Unit
+      override fun onCreate(db: SQLiteDatabase) = ensureRssRecommendationSchema(db)
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
     repository = DefaultRssRecommendationRepository(DatabaseConnection(helper))
@@ -108,10 +108,11 @@ class RssRecommendationRepositoryTest {
 
     assertEquals(previous, repository.listPendingFeedback().single().previousAssessment)
 
-    val updated = repository.applyLearnedConditionAndConsumeFeedback(
+    val updated = requireNotNull(repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = setOf(feedback.id),
       learnedCondition = "広告的な告知を低くする",
-    )
+      expectedRevision = repository.loadPolicy().revision,
+    ))
 
     assertEquals(1L, updated.revision)
     assertEquals("広告的な告知を低くする", updated.learnedCondition)
@@ -127,11 +128,12 @@ class RssRecommendationRepositoryTest {
       kind = RssRecommendationFeedbackKind.PRIORITY,
     )
 
-    val updated = repository.applyLearnedConditionAndConsumeFeedback(
+    val updated = requireNotNull(repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = setOf(reference.id),
       learnedCondition = "販促だけを除外",
       learnedPriorityCondition = "技術的な内容を優先",
-    )
+      expectedRevision = repository.loadPolicy().revision,
+    ))
 
     assertEquals("販促だけを除外", updated.learnedCondition)
     assertEquals("技術的な内容を優先", updated.learnedPriorityCondition)
@@ -144,11 +146,11 @@ class RssRecommendationRepositoryTest {
   fun `学習条件をリセットしたら同種の学習済み参考も削除する`() {
     val excluded = repository.addFeedback("exclude", "除外記事", null)
     repository.applyLearnedConditionAndConsumeFeedback(
-      setOf(excluded.id), "宣伝を除外", "",
+      setOf(excluded.id), "宣伝を除外", "", repository.loadPolicy().revision,
     )
     val priority = repository.addFeedback("priority", "優先記事", null, RssRecommendationFeedbackKind.PRIORITY)
     repository.applyLearnedConditionAndConsumeFeedback(
-      setOf(priority.id), "宣伝を除外", "技術記事を優先",
+      setOf(priority.id), "宣伝を除外", "技術記事を優先", repository.loadPolicy().revision,
     )
     assertEquals(2, repository.listLearningExamples().size)
 
