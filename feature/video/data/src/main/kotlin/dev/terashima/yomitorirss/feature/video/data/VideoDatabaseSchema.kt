@@ -158,5 +158,3 @@ internal fun ensureVideoSchema(db: SQLiteDatabase) {
   )
 }
 
-private fun ensureVideoWebExtractorRuleCookieColumn(db: SQLiteDatabase) {
-  if (!db.hasColumn("video_web_extractor_rules", "share_cookies_for
