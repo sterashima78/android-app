@@ -29,7 +29,7 @@ interface BookmarkMutator {
   suspend fun moveArticleToFolder(articleId: String, folderId: String?)
   suspend fun replaceArticleTags(articleId: String, tagIds: Set<String>)
   suspend fun saveAndReadArticle(articleId: String)
-  suspend fun markReadLater(articleId: String)
+  suspend fun markReadLater(articleId: String): Boolean
   suspend fun unsaveArticle(articleId: String)
   suspend fun removeReadLater(articleId: String)
   suspend fun restoreReadLater(articleId: String, tags: Set<Tag>)
