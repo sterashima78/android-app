@@ -179,6 +179,23 @@ class RssRecommendationRepositoryTest {
   }
 
   @Test
+  fun `条件が空でも学習済み参考をリセットすると履歴は削除される`() {
+    val item = repository.addFeedback("one", "記事", null)
+    val policy = repository.loadPolicy()
+    val result = repository.applyLearnedConditionAndConsumeFeedback(
+      feedbackIds = setOf(item.id),
+      learnedCondition = "",
+      expectedRevision = policy.revision,
+    )
+    assertEquals(policy, result)
+    assertEquals(1, repository.listLearningExamples().size)
+
+    repository.resetLearnedCondition()
+
+    assertEquals(0, repository.listLearningExamples().size)
+  }
+
+  @Test
   fun `推薦タスクは記事単位でFIFOにclaimして完了時に削除する`() {
     val first = article("a1", "記事1")
     val second = article("a2", "記事2")
