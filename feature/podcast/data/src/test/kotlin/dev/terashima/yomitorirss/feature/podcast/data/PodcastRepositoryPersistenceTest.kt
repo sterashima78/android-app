@@ -207,6 +207,40 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
+  fun `直近アーカイブの記事参照は番組と作成日時と状態で限定する`() = runSuspend {
+    val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
+    val first = PodcastProgram("program-1", "朝のニュース", setOf(source.id), PodcastGenerationProvider.LOCAL)
+    val other = first.copy(id = "program-2")
+    repository.saveSource(source)
+    repository.saveProgram(first)
+    repository.saveProgram(other)
+
+    suspend fun saveEpisode(program: PodcastProgram, id: String, createdAt: Long, archive: Boolean) {
+      val episode = requireNotNull(
+        repository.reserveEpisode(
+          program,
+          listOf(PodcastFeedEntry(id, source.id, "記事 $id", "情報源", createdAt, "https://example.invalid/$id", "本文 $id")),
+          createdAt,
+        ),
+      )
+      repository.completeChapter(episode.id, 0, "原稿")
+      repository.completeEpisode(episode.id, "完成", "原稿")
+      if (archive) repository.archiveEpisode(episode.id)
+    }
+
+    saveEpisode(first, "old", 100L, archive = true)
+    saveEpisode(first, "recent", 300L, archive = true)
+    saveEpisode(first, "ready", 400L, archive = false)
+    saveEpisode(other, "another-program", 350L, archive = true)
+
+    val current = repository.listRecentArchivedArticles(first.id, 200L)
+    assertEquals(listOf("recent"), current.map { it.articleId })
+    assertEquals("https://example.invalid/recent", current.single().articleUrl)
+    assertEquals("本文 recent", current.single().feedContent)
+    assertEquals(listOf("recent", "old"), repository.listRecentArchivedArticles(first.id, 0L).map { it.articleId })
+  }
+
+  @Test
   fun `エピソードをアーカイブ復元削除しても消費済み記事は再利用しない`() = runSuspend {
     val source = PodcastSource(
       id = "source-1",
