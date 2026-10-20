@@ -19,6 +19,7 @@ import androidx.work.WorkerParameters
 import androidx.work.await
 import androidx.work.workDataOf
 import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
+import dev.terashima.yomitorirss.core.network.TrafficAttribution
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskGate
@@ -247,17 +248,19 @@ class KnowledgePageAiWorker(
     operation: KnowledgePageAiOperation,
     provider: KnowledgeExecutionProvider,
     payload: KnowledgePageAiRequest,
-  ) = when (operation) {
-    KnowledgePageAiOperation.CREATE -> runner.createPage(
-      provider = provider,
-      request = requireNotNull(payload.request),
-      sourcePageId = payload.sourcePageId,
-    )
-    KnowledgePageAiOperation.EDIT -> runner.editPage(
-      provider = provider,
-      pageId = requireNotNull(payload.pageId),
-      instruction = requireNotNull(payload.instruction),
-    )
+  ) = withContext(TrafficAttribution("wiki")) {
+    when (operation) {
+      KnowledgePageAiOperation.CREATE -> runner.createPage(
+        provider = provider,
+        request = requireNotNull(payload.request),
+        sourcePageId = payload.sourcePageId,
+      )
+      KnowledgePageAiOperation.EDIT -> runner.editPage(
+        provider = provider,
+        pageId = requireNotNull(payload.pageId),
+        instruction = requireNotNull(payload.instruction),
+      )
+    }
   }
 
   private fun createForegroundInfo(operation: KnowledgePageAiOperation): ForegroundInfo {
