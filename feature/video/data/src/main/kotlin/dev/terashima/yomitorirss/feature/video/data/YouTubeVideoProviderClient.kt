@@ -45,6 +45,7 @@ internal class YouTubeVideoProviderClient(
   private suspend fun fetch(channelId: String): VideoProviderFeed = withContext(Dispatchers.IO) {
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "video",
         url = feedUrl(channelId),
         maxResponseBytes = 4L * 1024 * 1024,
       ),

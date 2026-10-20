@@ -190,6 +190,7 @@ internal class GmailApiClient(
   ): JSONObject {
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "mail",
         url = "$BASE_URL/$path",
         headers = mapOf(
           "Authorization" to "Bearer $accessToken",

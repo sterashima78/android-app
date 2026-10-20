@@ -156,6 +156,7 @@ internal class FeedClient(
   }
 
   private fun request(url: String, additionalHeaders: Map<String, String> = emptyMap()): HttpRequest = HttpRequest(
+    trafficTag = "rss",
     url = url,
     headers = mapOf(
       "Accept" to "application/atom+xml, application/rss+xml, application/rdf+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5",

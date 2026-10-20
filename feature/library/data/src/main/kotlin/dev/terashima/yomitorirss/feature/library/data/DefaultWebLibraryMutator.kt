@@ -269,6 +269,7 @@ class WebLibraryMetadataClient(
     val requestedUrl = normalizeWebUrl(url)
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "library",
         url = requestedUrl,
         headers = mapOf(
           "Accept" to "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",

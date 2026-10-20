@@ -17,6 +17,7 @@ internal class WebVideoMetadataClient(
   suspend fun fetch(url: String): StaticWebVideoMetadata {
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "video",
         url = url,
         maxResponseBytes = MAX_METADATA_BYTES,
       ),
