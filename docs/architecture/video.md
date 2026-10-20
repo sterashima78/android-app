@@ -359,4 +359,6 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - `feature/video/`
 - `feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbMediaFileAccess.kt`
 
-<!-- UI source layout: route, saved browser, and settings remain within the owning video UI module. -->
+## UI source organization (2026-10-21)
+
+Video UIの画面・表示状態の調停は `VideoScreen.kt`、保存済みディレクトリのブラウズとsource filterは `VideoSavedBrowser.kt`、設定・フォルダ・取得ルールのdialogは `VideoSettings.kt` に配置する。すべて `:feature:video:ui` 内に残し、Domain / Data ownership、navigation、UI callbackの契約は変更しない。
