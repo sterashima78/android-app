@@ -123,6 +123,7 @@ internal fun NavGraphBuilder.registerSingleFeatureDestinations(
       backupViewModel = backupViewModel,
       aiSettingsViewModel = aiSettingsViewModel,
       aiTaskQueueRepository = routeDependencies.aiTaskQueueRepository,
+      trafficUsageReader = routeDependencies.trafficUsageReader,
       smbConnectionProfileRepository = routeDependencies.smbConnectionProfileRepository,
       initialBackgroundFetchWifiOnly = routeDependencies.backgroundFetchWifiOnly(),
       onBackgroundFetchWifiOnlyChange = routeDependencies::setBackgroundFetchWifiOnly,

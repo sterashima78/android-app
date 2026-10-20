@@ -22,6 +22,7 @@ private enum class SettingsOverlay {
   SUMMARY_PROMPT,
   AI_TASK_QUEUE,
   DRIVE_BACKUP,
+  TRAFFIC_USAGE,
 }
 
 @Composable
@@ -30,6 +31,7 @@ fun SettingsFeatureScreen(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   aiTaskQueueRepository: AiTaskQueueRepository,
+  trafficUsageReader: TrafficUsageReader,
   smbConnectionProfileRepository: SmbConnectionProfileRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
@@ -92,6 +94,7 @@ fun SettingsFeatureScreen(
     },
     onOpenSummaryPrompt = { overlay = SettingsOverlay.SUMMARY_PROMPT },
     onOpenAiTaskQueue = { overlay = SettingsOverlay.AI_TASK_QUEUE },
+    onOpenTrafficUsage = { overlay = SettingsOverlay.TRAFFIC_USAGE },
     onOpenDriveBackup = {
       backupViewModel.refreshStatus()
       overlay = SettingsOverlay.DRIVE_BACKUP
@@ -171,6 +174,11 @@ fun SettingsFeatureScreen(
 
     SettingsOverlay.AI_TASK_QUEUE -> AiTaskQueueRoute(
       repository = aiTaskQueueRepository,
+      onDismiss = { overlay = null },
+    )
+
+    SettingsOverlay.TRAFFIC_USAGE -> TrafficUsageDialog(
+      reader = trafficUsageReader,
       onDismiss = { overlay = null },
     )
 

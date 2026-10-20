@@ -23,6 +23,7 @@ import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.TrafficTelemetry
+import dev.terashima.yomitorirss.feature.settings.TrafficUsageReader
 import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
 
 /**
@@ -37,10 +38,11 @@ class AppContainer(
   private val appVersionName: String,
   private val resumedActivityProvider: () -> Activity? = { null },
 ) {
-  internal val trafficUsageReader = AndroidTrafficUsageRepository(application)
+  private val trafficUsageRepository = AndroidTrafficUsageRepository(application)
+  internal val trafficUsageReader: TrafficUsageReader = trafficUsageRepository
 
   init {
-    TrafficTelemetry.recorder = trafficUsageReader::record
+    TrafficTelemetry.recorder = trafficUsageRepository::record
   }
 
   private val dataChanges = DataChangeNotifier.shared
