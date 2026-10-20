@@ -2,6 +2,10 @@
 
 この文書は durable data の schema、migration、table access ownership と cross-context read/write の現在の規則を示す。
 
+## Library organization source responsibilities (2026-10-21)
+
+Library Contextの整理用永続化では、`LibraryOrganizationDatabase.kt` がRepository操作とbatch lifecycle、`LibraryOrganizationPersistenceSupport.kt` がschema定義、永続値の正規化・decodeを所有する。別の永続状態やmigrationは追加しない。Web metadata取得は `AndroidWebViewLibraryMetadataClient.kt` がWebView lifecycleを、`WebLibraryRenderedMetadataParsing.kt` が抽出script・JSON結果検証を所有し、Library Data境界内で完結させる。
+
 ## Physical database
 
 アプリの durable user data は原則として単一 SQLite database を共有する。ただし、同じ database に存在することは共同 ownership を意味しない。
