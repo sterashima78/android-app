@@ -236,7 +236,6 @@ internal fun nativeTombstoneSummary(exitInfo: ApplicationExitInfo): String? {
 }
 
 private fun processStateSummary(exitInfo: ApplicationExitInfo): String? {
-  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
   return exitInfo.processStateSummary
     ?.let { bytes -> String(bytes, StandardCharsets.US_ASCII) }
     ?.takeIf(String::isNotBlank)

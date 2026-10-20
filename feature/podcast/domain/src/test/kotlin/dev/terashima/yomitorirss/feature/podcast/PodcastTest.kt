@@ -486,6 +486,105 @@ class PodcastTest {
   }
 
   @Test
+  fun `多数のアーカイブでも入力を分割して既報だけを除外する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "既報",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = (0 until 25).map { entry("old-$it").toEpisodeArticle() },
+    )
+    val requests = mutableListOf<List<String>>()
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        requests += candidates.map(PodcastFeedEntry::articleId)
+        val oldIndex = candidates.indexOfFirst { it.articleId == "old-24" }
+        val repeatedIndex = candidates.indexOfFirst { it.articleId == "repeated" }
+        val matched = if (oldIndex >= 0 && repeatedIndex >= 0) setOf(oldIndex, repeatedIndex) else emptySet()
+        val groups = candidates.indices.filterNot { it in matched }.map { listOf(it) } +
+          if (matched.isNotEmpty()) listOf(listOf(oldIndex, repeatedIndex)) else emptyList()
+        return PodcastNewsClusteringResult(groups, PodcastClusteringStatus.SUCCESS)
+      }
+    }
+
+    val generated = GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(listOf(entry("repeated"), entry("new"))),
+      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer,
+    ).generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
+    assertEquals(4, requests.size) // Three archive batches, then fresh-event clustering.
+    assertTrue(requests.take(3).all { it.size <= 24 })
+    assertEquals(listOf("new"), requests.last())
+  }
+
+  @Test
+  fun `比較予算超過時は既報除外を省略して新着を保持する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "既報",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = (0 until 97).map { entry("old-$it").toEpisodeArticle() },
+    )
+    val requests = mutableListOf<List<String>>()
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        requests += candidates.map(PodcastFeedEntry::articleId)
+        return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SUCCESS)
+      }
+    }
+
+    val generated = GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(listOf(entry("new"))),
+      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer,
+    ).generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
+    assertEquals(listOf(listOf("new")), requests)
+  }
+
+  @Test
+  fun `分割比較の途中で失敗すると全候補を維持する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "既報",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = (0 until 25).map { entry("old-$it").toEpisodeArticle() },
+    )
+    var requests = 0
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        requests++
+        return PodcastNewsClusteringResult(
+          candidates.indices.map { listOf(it) },
+          if (requests == 2) PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR else PodcastClusteringStatus.SUCCESS,
+        )
+      }
+    }
+    val generated = GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(listOf(entry("first"), entry("second"))),
+      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer,
+    ).generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("first", "second"), generated.episode.articles.map { it.articleId })
+    assertEquals(3, requests) // Two comparison attempts, then ordinary clustering.
+  }
+
+  @Test
   fun `同じ番組で消費済みの記事は次のエピソードに含めない`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)

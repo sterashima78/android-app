@@ -190,6 +190,12 @@ class GeneratePodcastEpisodeUseCase(
     )
     if (recentArchive.isEmpty()) return PodcastArchiveComparison(candidates)
 
+    // A normal-sized comparison retains its complete event partition for reuse below.
+    // Larger inputs are compared in bounded batches without losing archive coverage.
+    if (recentArchive.size + candidates.size > MAX_ARCHIVE_COMPARISON_ITEMS) {
+      return compareRecentArchiveInBatches(program, recentArchive, candidates)
+    }
+
     val comparison = try {
       newsClusterer.cluster(program.provider, recentArchive + candidates)
     } catch (error: CancellationException) {
@@ -218,6 +224,50 @@ class GeneratePodcastEpisodeUseCase(
       status = comparison.status,
     )
     return PodcastArchiveComparison(retainedEntries, remapped)
+  }
+
+  private suspend fun compareRecentArchiveInBatches(
+    program: PodcastProgram,
+    archive: List<PodcastFeedEntry>,
+    candidates: List<PodcastFeedEntry>,
+  ): PodcastArchiveComparison {
+    val archiveBatches = archive.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
+    val candidateBatches = candidates.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
+    // Never launch an unbounded series of model calls merely to eliminate repeats.
+    // When the comparison budget is exceeded, fail open and retain all new entries.
+    if (candidateBatches.size > MAX_ARCHIVE_COMPARISON_CALLS ||
+      archiveBatches.size > MAX_ARCHIVE_COMPARISON_CALLS / candidateBatches.size
+    ) {
+      return PodcastArchiveComparison(candidates)
+    }
+
+    val covered = mutableSetOf<Int>()
+    for (archiveBatch in archiveBatches) {
+      for ((candidateIndex, candidateBatch) in candidateBatches.withIndex()) {
+        val combined = archiveBatch + candidateBatch
+        val result = try {
+          newsClusterer.cluster(program.provider, combined)
+        } catch (error: CancellationException) {
+          throw error
+        } catch (_: Exception) {
+          return PodcastArchiveComparison(candidates)
+        }
+        if (result.status != PodcastClusteringStatus.SUCCESS ||
+          result.groups.flatten().toSet() != combined.indices.toSet() ||
+          result.groups.sumOf { it.size } != combined.size
+        ) {
+          return PodcastArchiveComparison(candidates)
+        }
+        result.groups
+          .filter { group -> group.any { it < archiveBatch.size } }
+          .flatMap { group -> group.filter { it >= archiveBatch.size } }
+          .forEach { index ->
+            covered += candidateIndex * ARCHIVE_COMPARISON_BATCH_SIZE + index - archiveBatch.size
+          }
+      }
+    }
+    // Batch partitions cannot be reused as a global partition; cluster fresh entries again.
+    return PodcastArchiveComparison(candidates.filterIndexed { index, _ -> index !in covered })
   }
 
   private suspend fun clusterCandidates(
@@ -395,3 +445,7 @@ private fun PodcastEpisodeArticle.toFeedEntry(): PodcastFeedEntry = PodcastFeedE
 
 private const val CLOUD_CHAPTER_PARALLELISM = 3
 private const val RECENT_PODCAST_ARCHIVE_MILLIS = 2L * 24 * 60 * 60 * 1_000
+
+private const val MAX_ARCHIVE_COMPARISON_ITEMS = 24
+private const val ARCHIVE_COMPARISON_BATCH_SIZE = 12
+private const val MAX_ARCHIVE_COMPARISON_CALLS = 8

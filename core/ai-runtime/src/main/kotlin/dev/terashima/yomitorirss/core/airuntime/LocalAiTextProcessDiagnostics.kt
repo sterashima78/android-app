@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.core.airuntime
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
-import android.os.Build
 import android.os.Debug
 import android.os.Process
 import java.io.File
@@ -252,7 +251,6 @@ private fun publishProcessStateSummary(
   context: Context,
   state: LocalAiTextProcessDiagnosticState,
 ) {
-  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
   runCatching {
     val bytes = buildLocalAiTextProcessStateSummary(state).toByteArray(StandardCharsets.US_ASCII)
     val summary = if (bytes.size <= LocalAiTextProcessDiagnostics.PROCESS_STATE_SUMMARY_MAX_BYTES) {

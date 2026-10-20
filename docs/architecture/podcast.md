@@ -71,7 +71,7 @@ Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Wo
 5. program-scoped `podcast_consumed_articles` と `podcast_excluded_articles` のどちらにも存在しないentryだけを候補にする。
 6. 番組の除外条件が空でなければ `PodcastNewsExcluder` で候補を判定する。除外判定に成功してexcludeになったentry identityは番組単位でdurable stateへ記録する。判定失敗時は全候補を残す。
 7. 除外後の候補が0件なら新しいepisodeを作らず終了する。
-8. 番組で作成日時が直近48時間以内かつ `ARCHIVED` のepisode記事snapshotをPodcast repositoryから参照し、除外後の新規候補と同一出来事分類を行う。既報と同じ出来事の候補だけを今回の生成から除外する。比較失敗・不正partition時は候補を欠落させない。出来事モードは有効な分類結果を再利用し、関連トピックモードは既報除外後の候補だけを埋め込み分類する。
+8. 番組で作成日時が直近48時間以内かつ `ARCHIVED` のepisode記事snapshotをPodcast repositoryから参照し、除外後の新規候補と同一出来事分類を行う。合計24件以内は一括比較とし、超過時は各12件ずつのアーカイブ・候補chunkを最大8推論で総当たり比較する。各推論は最大24件とし、分割時は残った候補を再度通常分類する。比較予算超過・部分失敗・不正partition時は候補を一切除外しない。出来事モードは一括比較の有効な分類結果だけを再利用し、関連トピックモードは既報除外後の候補だけを埋め込み分類する。
 9. clusterごとにfeed categoryから代表カテゴリを決め、feed categoryがないclusterだけAIでカテゴリを補完する。代表カテゴリが同じclusterを連続配置した後に `chapter_position` を再割当てする。最大ニュース数単位でclusterをepisodeへ分割し、cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。カテゴリ名自体はsnapshotしない。
 10. 最初のepisodeを生成し、残りはqueueへ保持する。
 11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論単位として扱う。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、retryableな一時失敗は同じchapter内で2秒・5秒・15秒を基準とするjitter付きbackoffにより最大3回再試行する。再試行を使い切るまではchapterを `FAILED` へ確定しない。ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
