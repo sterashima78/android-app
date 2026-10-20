@@ -27,6 +27,8 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationAlreadyRunning
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationController
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProgress
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
+import dev.terashima.yomitorirss.core.network.TrafficAttribution
+import kotlinx.coroutines.withContext
 import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastScheduleController
@@ -42,7 +44,9 @@ class PodcastGenerationWorker(
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
   private val scheduleController: PodcastScheduleController,
 ) : CoroutineWorker(appContext, params) {
-  override suspend fun doWork(): Result = withAiBackgroundInference { runBackgroundWork() }
+  override suspend fun doWork(): Result = withAiBackgroundInference {
+    withContext(TrafficAttribution("podcast")) { runBackgroundWork() }
+  }
 
   private suspend fun runBackgroundWork(): Result {
     val programId = inputData.getString(KEY_PROGRAM_ID) ?: return Result.failure()

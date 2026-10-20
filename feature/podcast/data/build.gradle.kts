@@ -21,6 +21,7 @@ dependencies {
   implementation(project(":core:ai-cloud-openai"))
   implementation(project(":core:background"))
   implementation(project(":core:database"))
+  implementation(project(":core:network"))
   implementation(project(":feature:podcast:domain"))
   implementation(project(":feature:rss:domain"))
   implementation(libs.androidx.core.ktx)
