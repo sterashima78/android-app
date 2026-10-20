@@ -242,6 +242,7 @@ python3 scripts/verify_public_repository.py
 bash scripts/verify_formal_models.sh
 ./gradlew --no-daemon test
 ./gradlew --no-daemon :app:lintRelease
+./gradlew --no-daemon :app:compileDebugAndroidTestKotlin
 ./gradlew --no-daemon :app:minifyReleaseWithR8
 ```
 
