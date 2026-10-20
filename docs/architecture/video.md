@@ -358,3 +358,5 @@ providerのread stateとplayback completed stateは別の状態である。provi
 - [audio-playback.md](audio-playback.md)
 - `feature/video/`
 - `feature/library/domain/src/main/kotlin/dev/terashima/yomitorirss/feature/library/SmbMediaFileAccess.kt`
+
+<!-- UI source layout: route, saved browser, and settings remain within the owning video UI module. -->
