@@ -1,31 +1,36 @@
-# 通信量診断の変更影響
+# Traffic diagnostics
 
-## Goal
-回線（モバイル・Wi-Fi・その他）ごとの通信量を日次・機能別・送受信別に記録し、設定画面から確認できるようにする。原因不明の通信を「未計測」として可視化する。
+## Change Impact Brief
 
-## Existing capability / evidence
-- 共通HTTPクライアント: `core/network/.../OkHttpHttpClient.kt`
-- 動画配信: `feature/video/ui/.../VideoPlayerMedia.kt`
-- 設定UI: `feature/settings/ui/.../SettingsScreen.kt`
-- アプリ配線: `app/composition/.../AppContainer.kt`
-- OSに表示されるアプリ通信量は内部機能別には分類されていない。
+目的: RSS更新・動画・生成などで通信量が増えた原因を、機能別・回線別に端末内で分析できるようにする。
 
-## Impact and boundaries
-- 既存のHTTP通信と動画読み込みへ送受信量の計測を追加する。既存API呼び出し内容や外部通信の宛先は変更しない。
-- アプリ内部の匿名・日次集計だけをアプリ専用ストレージへ保持し、90日で期限切れとする。URL・本文・認証情報・個別ユーザーID・時刻単位の行動履歴は保存しない。
-- 通信先を用いた動的な分類ではなく、明示的な機能タグを優先する。未知経路は「その他・未計測」と区別する。
-- 共通HTTPクライアントはJVMモジュールのまま維持する。端末の回線判断・永続化・OS統計取得はcomposition側のAndroid実装とする。
-- 新しいランタイム権限、Worker、スケジューラ、DBスキーマは追加しない。既存のバックアップallowlistには追加しない。
-- OS統計取得が利用できない端末では、その旨を表示する。計測されたHTTP本文バイト数は通信網全体のバイト数とは一致しない。
+Existing capability:
+- `core/network/OkHttpHttpClient.kt`: 共通HTTP送受信。
+- `feature/video/ui/VideoPlayerMedia.kt`: 動画再生の別通信経路。
+- `feature/settings/ui/SettingsScreen.kt`: 設定overlay。
 
-## Options
-A. OSのアプリ合計だけ表示する: 低コストだが機能別分析不可。
-B. 共通通信経路に軽量計測を加え、OS合計と比較する: 一部未計測経路があるが原因分析可能。
+Options:
+- OSのUID合計だけ表示: 低コストだが原因を機能別に特定できない。
+- ペイロードとメディアの転送量を機能タグ付きで集計: 転送階層の差と一部未計測通信が残るが、機能別原因を絞れる。
 
-## Decision / system delta
-Bを採用。新規の端末内診断集計データを加え、通信内容と外部送信先は変更しない。
-既存のHTTP/動画データフローに計測side effectを追加。独立した解析基盤や通信送信処理は新設しない。
+選択: 後者。新しい外部送信・権限・Worker・DB schema・feature owner変更なし。追加状態は90日以内の匿名な日次カウンタのみ。保存済みコンテンツや既存user stateの移行不要。通信途中の回線判定、計測漏れ、OS API制約はUIで説明する。
 
-## Migration and verification
-新規診断データは空状態から開始し、旧バージョンへ戻してもアプリのユーザーデータは影響しない。
-テストでは分類・送受信量・保存期限・失敗通信・回線不明時処理を確認し、CIのコンパイルと静的検査で配線を検証する。
+## Current architecture
+
+- `core/network`: 実受信ペイロード・送信bodyの概算量を通知。コルーチンの`TrafficAttribution`でWikiやPodcastなどの生成コンテキストを識別。Android依存を持たない。
+- `feature/video/ui`: Media3 `TransferListener`でストリーミング受信量を計測。
+- `core/ai-runtime`: モデルartifact取得の受信済みバイト数を計測。失敗・中断時のダウンロード済み量も含める。
+- `app/composition`: 端末のアクティブなtransportをWi-Fi / mobile / unknownへ区分し、アプリ専用preferencesへ匿名集計する。独自のネットワーククライアントは追加しない。
+- `feature/settings:domain/ui`: read-onlyの診断インターフェースと「通信量の分析」画面。期間7/30/90日、回線別と機能別・日別集計を表示。
+- OSの自分自身のUID通信量を`NetworkStatsManager`から取得可能なら比較値として表示。結果が利用不可なら未計測量を断定しない。
+
+## Persistence / privacy
+
+`traffic_diagnostics` SharedPreferencesは日付・機能ラベル・transport・送受信量の集約値だけを格納し、90日を超えた記録は次の通信時に破棄する。バックアップのallowlistに含めない。URL、hostname、headers、body、credential、個別の履歴時刻は収集しない。
+
+## Accuracy
+
+共通HTTPではdecode後のresponse bodyを計測し、ヘッダや下位ネットワークパケットは含めない。動画はMedia3のネットワーク転送byte数、直接ダウンロードは実際に読み込んだbytesを計測する。OS合計は通信階層・WebView等の未計測経路・アプリ更新以前の期間・VPN/通信切替等の事情で差が生じる。差分は未計測の可能性を示す参考値であり、精密な利用量の一致を保証しない。
+
+## Decision
+- [ADR-0289](../adr/0289-on-device-network-usage-diagnostics.md)
